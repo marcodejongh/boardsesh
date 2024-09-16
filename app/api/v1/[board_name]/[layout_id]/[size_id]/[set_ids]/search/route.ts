@@ -1,4 +1,4 @@
-import { FetchResultsResponse } from "@/app/lib/types";
+import { ErrorResponse, FetchResultsResponse } from "@/app/lib/types";
 import { sql } from "@vercel/postgres";
 import { NextResponse } from "next/server";
 

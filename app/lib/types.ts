@@ -166,8 +166,16 @@ export type GetAnglesResponse = { angle: number }[];
 
 export type GetGradesResponse = Grade[];
 
-export type GetBetaResponse = BetaLink[];export type BoardLayoutSizeSetIdRouteParameters = {
-  board_name: string; layout_id: number; size_id: number; set_ids: SetIds;
+export type GetBetaResponse = BetaLink[];
+
+export type BoardLayoutSizeRouteParameters = {
+  board_name: string;
+  layout_id: number;
+  size_id: number;
+};
+
+export type BoardLayoutSizeSetIdRouteParameters = BoardLayoutSizeRouteParameters & {
+  set_ids: SetIds;
 };
 //TODO: Refactor useEffects so this page can SSR
 

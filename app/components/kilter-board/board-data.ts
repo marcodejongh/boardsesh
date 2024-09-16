@@ -12,9 +12,9 @@ export const defaultLayouts = [
   [8, "Kilter Board Homewall"],
 ];
 
-const fullride = [26, 27];
-const mainline = [26];
-const aux = [27];
+export const fullride = [26, 27];
+export const mainline = [26];
+export const aux = [27];
 
 export const boltsAndScrews = [1, 20];
 export const bolts = [1];
