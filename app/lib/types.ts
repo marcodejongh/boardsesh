@@ -1,4 +1,5 @@
 import { SetIds } from "../components/kilter-board/board-data";
+import { BoulderProblem } from "./types";
 
 export type BoulderProblem = {
   uuid: string;
@@ -173,4 +174,11 @@ export type GetBetaResponse = BetaLink[];export type BoardLayoutSizeSetIdRoutePa
 export type Board = string;
 export type Layout = number;
 export type Size = number;
+export type FetchResultsResponse = {
+  rows: BoulderProblem[];
+  totalCount: number;
+};
 
+export interface ErrorResponse {
+  error: string;
+}

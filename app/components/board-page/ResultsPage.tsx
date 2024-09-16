@@ -49,6 +49,7 @@ const ResultsPage = ({
   });
 
   const [results, setResults] = useState<BoulderProblem[]>([]);
+  const [resultsCount, setResultsCount] = useState<number>(9999);
   const [currentClimb, setCurrentClimbState] = useState<BoulderProblem>();
   const [pageNumber, setPageNumber] = useState(0);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -120,13 +121,16 @@ const ResultsPage = ({
 
         // Append results if pageNumber increases, otherwise reset results
         if (pageNumber > 0) {
-          setResults((prevResults) => [...prevResults, ...fetchedResults]);
+          setResults((prevResults) => [...prevResults, ...fetchedResults.rows]);
+          setResultsCount(fetchedResults.totalCount);
         } else {
-          setResults(fetchedResults);
+          setResults(fetchedResults.rows);
+          setResultsCount(fetchedResults.totalCount);
         }
 
-        if (!currentClimb && fetchedResults.length > 0) {
-          setCurrentClimb(fetchedResults[0]);
+        if (!currentClimb && fetchedResults.rows.length > 0) {
+          setCurrentClimb(fetchedResults.rows[0]);
+          setResultsCount(fetchedResults.totalCount);
         }
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -317,6 +321,7 @@ const ResultsPage = ({
         onApplyFilters={applyFilters}
         size={size}
         set_ids={set_ids}
+        resultsCount={resultsCount}
       />
     </Layout>
   );

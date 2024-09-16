@@ -2,53 +2,21 @@
 
 import { SetIds } from "../kilter-board/board-data";
 import {
-  BoardLayoutSizeSetIdRouteParameters,
-  BoulderProblem,
-  GetAnglesResponse,
+  BoardLayoutSizeSetIdRouteParameters, FetchResultsResponse, GetAnglesResponse,
   GetBoardDetailsResponse,
   GetGradesResponse,
-  SearchCountResponse,
-  SearchRequest,
+  SearchRequest
 } from "@/app/lib/types";
 
 const API_BASE_URL = "/api";
 const headers = new Headers({ "ngrok-skip-browser-warning": "true" });
-
-export const fetchResultsCount = async (
-  pageNumber: number,
-  pageSize: number,
-  queryParameters: Partial<SearchRequest>,
-  routeParameters: BoardLayoutSizeSetIdRouteParameters,
-): Promise<SearchCountResponse> => {
-  const urlParams = new URLSearchParams(
-    Object.entries({
-      ...queryParameters,
-      page: pageNumber,
-      pageSize,
-      onlyClassics: queryParameters.onlyClassics ? "1" : "0",
-    }).reduce((acc, [key, value]) => {
-      if (value !== undefined) {
-        acc[key] = String(value);
-      }
-      return acc;
-    }, {} as Record<string, string>),
-  );
-
-  // Build the URL using the new route structure
-  const response = await fetch(
-    `${API_BASE_URL}/v1/${routeParameters.board_name}/${routeParameters.layout_id}/${routeParameters.size_id}/${routeParameters.set_ids}/count?${urlParams}`,
-    { headers },
-  );
-
-  return response.json();
-};
 
 export const fetchResults = async (
   pageNumber: number,
   pageSize: number,
   queryParameters: Partial<SearchRequest>,
   routeParameters: BoardLayoutSizeSetIdRouteParameters,
-): Promise<BoulderProblem[]> => {
+): Promise<FetchResultsResponse> => {
   const urlParams = new URLSearchParams(
     Object.entries({
       ...queryParameters,
@@ -71,7 +39,7 @@ export const fetchResults = async (
 
   const rawResults = await response.json();
 
-  return rawResults as BoulderProblem[];
+  return rawResults;
 };
 
 const gradesCache = new Map<string, GetGradesResponse>();

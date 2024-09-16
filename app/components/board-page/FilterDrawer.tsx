@@ -2,12 +2,10 @@ import React, { useState, useEffect } from "react";
 import {
   Drawer,
   List,
-  Button,
   Input,
   Select,
   Slider,
   InputNumber,
-  Checkbox,
   Form,
   Row,
   Col,
@@ -16,8 +14,7 @@ import {
   Typography,
 } from "antd";
 
-import { fetchAngles, fetchGrades, fetchResultsCount } from "../rest-api/api";
-import { PAGE_LIMIT } from "./constants";
+import { fetchAngles, fetchGrades } from "../rest-api/api";
 import { BoulderProblem, GetAnglesResponse, GetGradesResponse, SearchRequest } from "@/lib/types";
 import { FilterDrawerProps } from "./types";
 import { useDebouncedCallback } from "use-debounce";
@@ -36,8 +33,7 @@ const FilterDrawer = ({
   onApplyFilters,
   board,
   layout,
-  size,
-  set_ids,
+  resultsCount,
 }: FilterDrawerProps) => {
   const [filters, setFilters] = useState({
     minGrade: currentSearchValues.minGrade,
@@ -59,14 +55,11 @@ const FilterDrawer = ({
   const [loading, setLoading] = useState(true);
   const [fetchedGrades, setFetchedGrades] = useState(false);
   const [fetchedAngles, setFetchedAngles] = useState(false);
-  const [resultsCount, setResultsCount] = useState(9999);
 
-  // Debounced update for applying filters
   const debouncedUpdate = useDebouncedCallback((updatedFilters) => {
     onApplyFilters(updatedFilters);
-  }, 500); // Debouncing for 500ms
+  }, 300);
 
-  // Update filters state and call the debounced function
   const updateFilters = (newFilters: Partial<SearchRequest>) => {
     const updatedFilters = { ...filters, ...newFilters };
     setFilters(updatedFilters);
@@ -113,24 +106,6 @@ const FilterDrawer = ({
       fetchAngleValues();
     }
   }, [layout, board]);
-
-  useEffect(() => {
-    const fetchClimbCount = async () => {
-      try {
-        const data = await fetchResultsCount(
-          0,
-          PAGE_LIMIT,
-          filters,
-          { board_name: board, layout_id: layout, size_id: size, set_ids }
-        );
-        setResultsCount(data);
-      } catch (error) {
-        console.error("Error fetching climb count:", error);
-      }
-    };
-
-    fetchClimbCount();
-  }, [filters]);
 
   if (loading || grades.length === 0) {
     return (
