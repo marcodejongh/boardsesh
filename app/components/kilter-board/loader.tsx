@@ -8,7 +8,6 @@ const KilterBoardLoader = (props: KilterBoardProps) => {
   const {board, layout, size} = props;
   // Memoize the set_ids to prevent unnecessary re-renders
   const set_ids = useMemo(() => {
-    console.log(layout)
     if (layout && size) {
       return (boardLayouts[layout].find(([sizeId]) => sizeId == size) || [])[3];
     }
@@ -20,7 +19,6 @@ const KilterBoardLoader = (props: KilterBoardProps) => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    console.log('wtf')
     fetchBoardDetails(board, layout, size, set_ids)
       .then((data) => {
         setBoardDetails(data);

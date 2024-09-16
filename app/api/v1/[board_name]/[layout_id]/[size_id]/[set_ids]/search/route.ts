@@ -67,20 +67,6 @@ export async function GET(
         offset,
       ].filter((value) => value !== null), // Filter out null values
     });
-    console.log([
-      size_id,
-      layout_id,
-      size_id,
-      minAscents,
-      minGrade,
-      maxGrade,
-      minRating,
-      gradeAccuracy,
-      pageSize,
-      offset,
-    ]);
-
-    ["17", "8", "17", "1", 1, 29, "1", "1", 50, 0];
 
     return NextResponse.json(result.rows);
   } catch (error) {

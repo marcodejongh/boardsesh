@@ -12,10 +12,7 @@ import {
 } from "./types";
 
 const API_BASE_URL = "/api";
-// 
 const headers = new Headers({ "ngrok-skip-browser-warning": "true" });
-
-
 
 export const fetchResultsCount = async (
   pageNumber: number,
