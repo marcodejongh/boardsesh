@@ -14,20 +14,12 @@ import FilterDrawer from "./FilterDrawer";
 import { useSwipeable } from "react-swipeable";
 import { PAGE_LIMIT } from "./constants";
 import { ShareBoardButton } from "./share-button";
-import { BoulderProblem, SearchRequest } from "../rest-api/types";
+import { BoulderProblem, SearchRequest } from "@/lib/types";
 import FloatingBar from "./floating-bar";
+import { ResultPageProps } from "./types";
  
 const { Title, Text } = Typography;
 const { Header, Content } = Layout;
-
-type ResultPageProps = {
-  board: string;
-  layout: number;
-  size: number;
-  hostId?: string;
-  pathname: string;
-  search: string;
-}
 
 const ResultsPage = ({
   board,
@@ -264,7 +256,7 @@ const ResultsPage = ({
                       textOverflow: "ellipsis",
                     }}
                   >
-                    Grade: {currentClimb.difficulty} ({currentClimb.quality_average}) at {currentClimb.angle}°
+                    {currentClimb.difficulty} {currentClimb.quality_average}★ at {currentClimb.angle}°
                   </Text>
                 </Col>
                 <Col>
@@ -301,7 +293,7 @@ const ResultsPage = ({
             layout={layout}
             size={size}
             litUpHolds={currentClimb ? currentClimb.frames : ''} />
-            
+
           <FloatingBar
           //@ts-expect-error goawaystupiderror
             currentClimb={currentClimb}

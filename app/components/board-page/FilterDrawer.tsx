@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Drawer,
   List,
@@ -18,7 +18,9 @@ import {
 
 import { fetchAngles, fetchGrades, fetchResultsCount } from "../rest-api/api";
 import { PAGE_LIMIT } from "./constants";
-import { BoulderProblem } from "../rest-api/types";
+import { BoulderProblem, GetAnglesResponse, GetGradesResponse, SearchRequest } from "@/lib/types";
+import { FilterDrawerProps } from "./types";
+import { useDebouncedCallback } from "use-debounce";
 
 const { Option } = Select;
 const { Title, Text } = Typography;
@@ -36,48 +38,40 @@ const FilterDrawer = ({
   layout,
   size,
   set_ids,
-}) => {
-  const [holdFilterCount, setHoldFilterCount] = useState(0);
-  const [holds, setHolds] = useState('');
-  const [grades, setGrades] = useState([]);
-  const [minGrade, setminGrade] = useState(currentSearchValues.minGrade);
-  const [maxGrade, setmaxGrade] = useState(currentSearchValues.maxGrade);
-  const [minHoldNumber, setMinHoldNumber] = useState(null);
-  const [maxHoldNumber, setMaxHoldNumber] = useState(null);
-  const [minAscents, setMinAscents] = useState(currentSearchValues.minAscents);
-  const [sortBy, setSortBy] = useState(currentSearchValues.sortBy);
-  const [sortOrder, setSortOrder] = useState(currentSearchValues.sortOrder);
-  const [angle, setSelectedAngle] = useState(currentSearchValues.angle);
-  const [minRating, setMinRating] = useState(currentSearchValues.minRating);
-  const [onlyClassics, setOnlyClassics] = useState(currentSearchValues.onlyClassics);
-  const [gradeAccuracy, setGradeAccuracy] = useState(currentSearchValues.gradeAccuracy);
-  const [settername, setsettername] = useState("");
-  const [roleMatch, setRoleMatch] = useState("strict");
+}: FilterDrawerProps) => {
+  const [filters, setFilters] = useState({
+    minGrade: currentSearchValues.minGrade,
+    maxGrade: currentSearchValues.maxGrade,
+    minAscents: currentSearchValues.minAscents,
+    sortBy: currentSearchValues.sortBy,
+    sortOrder: currentSearchValues.sortOrder,
+    angle: currentSearchValues.angle,
+    minRating: currentSearchValues.minRating,
+    onlyClassics: currentSearchValues.onlyClassics,
+    gradeAccuracy: currentSearchValues.gradeAccuracy,
+    settername: "",
+    roleMatch: "strict",
+    holds: "",
+  });
+
+  const [grades, setGrades] = useState<GetGradesResponse>([]);
+  const [angles, setAngles] = useState<GetAnglesResponse>([]);
   const [loading, setLoading] = useState(true);
-  const [fetchedGrades, setFetchedGrades] = useState(null);
-  const [fetchedAngles, setFetchedAngles] = useState(null);
-  const [angles, setAngles] = useState([]);
+  const [fetchedGrades, setFetchedGrades] = useState(false);
+  const [fetchedAngles, setFetchedAngles] = useState(false);
   const [resultsCount, setResultsCount] = useState(9999);
 
-  // Debounce setup
-  const debounce = (func, delay) => {
-    let timeoutId;
-    return (...args) => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-      timeoutId = setTimeout(() => {
-        func(...args);
-      }, delay);
-    };
-  };
+  // Debounced update for applying filters
+  const debouncedUpdate = useDebouncedCallback((updatedFilters) => {
+    onApplyFilters(updatedFilters);
+  }, 500); // Debouncing for 500ms
 
-  const debouncedApplyFilters = useCallback(
-    debounce((filters) => {
-      onApplyFilters(filters);
-    }, 500),
-    [],
-  );
+  // Update filters state and call the debounced function
+  const updateFilters = (newFilters: Partial<SearchRequest>) => {
+    const updatedFilters = { ...filters, ...newFilters };
+    setFilters(updatedFilters);
+    debouncedUpdate(updatedFilters);
+  };
 
   useEffect(() => {
     const fetchGradeValues = async () => {
@@ -85,8 +79,10 @@ const FilterDrawer = ({
         const data = await fetchGrades(board);
         setGrades(data);
         if (data.length > 0) {
-          setminGrade(data[0][0]); // Set default min gradeId
-          setmaxGrade(data[data.length - 1][0]); // Set default max gradeId
+          updateFilters({
+            minGrade: data[0].difficulty_id,
+            maxGrade: data[data.length - 1].difficulty_id,
+          });
         }
         setLoading(false);
         setFetchedGrades(true);
@@ -104,10 +100,10 @@ const FilterDrawer = ({
   useEffect(() => {
     const fetchAngleValues = async () => {
       try {
-        const data = ["any", ...(await fetchAngles(board, layout))];
+        const data = await fetchAngles(board, layout);
         setAngles(data);
-        setSelectedAngle(currentSearchValues.angle);
-        setFetchedAngles(data);
+        updateFilters({ angle: currentSearchValues.angle });
+        setFetchedAngles(true);
       } catch (error) {
         console.error("Error fetching angles:", error);
       }
@@ -121,7 +117,12 @@ const FilterDrawer = ({
   useEffect(() => {
     const fetchClimbCount = async () => {
       try {
-        const data = await fetchResultsCount(0, PAGE_LIMIT, currentSearchValues, { board, layout, size, set_ids });
+        const data = await fetchResultsCount(
+          0,
+          PAGE_LIMIT,
+          filters,
+          { board_name: board, layout_id: layout, size_id: size, set_ids }
+        );
         setResultsCount(data);
       } catch (error) {
         console.error("Error fetching climb count:", error);
@@ -129,76 +130,7 @@ const FilterDrawer = ({
     };
 
     fetchClimbCount();
-  }, [currentSearchValues]);
-
-  useEffect(() => {
-    const filters = {
-      minGrade,
-      maxGrade,
-      minAscents,
-      sortBy,
-      sortOrder,
-      angle,
-      minRating,
-      onlyClassics,
-      gradeAccuracy,
-      settername,
-      roleMatch,
-      holds,
-    };
-    debouncedApplyFilters(filters);
-  }, [
-    minGrade,
-    maxGrade,
-    minAscents,
-    sortBy,
-    sortOrder,
-    angle,
-    minRating,
-    onlyClassics,
-    gradeAccuracy,
-    settername,
-    roleMatch,
-    holds,
-    debouncedApplyFilters,
-  ]);
-
-  const handleHoldClick = (holdId, mirroredHoldId) => {
-    const currentColor = holds[holdId] || "black";
-    const colorRows = [
-      ["1", "red"],
-      ["2", "blue"],
-      ["3", "green"],
-    ]; // Example color rows
-    const colorIds = colorRows.map((colorRow) => colorRow[0]);
-    const colors = colorRows.map((colorRow) => colorRow[1]);
-
-    let currentIndex = colors.indexOf(currentColor);
-    let nextIndex = currentIndex + 1;
-
-    if (nextIndex >= colors.length) {
-      const updatedHolds = { ...holds };
-      delete updatedHolds[holdId];
-      if (mirroredHoldId) delete updatedHolds[mirroredHoldId];
-      setHolds(updatedHolds);
-      setHoldFilterCount(holdFilterCount - 1);
-    } else {
-      const updatedHolds = {
-        ...holds,
-        [holdId]: colors[nextIndex],
-      };
-      if (mirroredHoldId) updatedHolds[mirroredHoldId] = colors[nextIndex];
-      setHolds(updatedHolds);
-      if (currentIndex === -1) {
-        setHoldFilterCount(holdFilterCount + 1);
-      }
-    }
-  };
-
-  const resetHoldFilter = () => {
-    setHolds({});
-    setHoldFilterCount(0);
-  };
+  }, [filters]);
 
   if (loading || grades.length === 0) {
     return (
@@ -207,43 +139,50 @@ const FilterDrawer = ({
       </Drawer>
     );
   }
-  // TODO: Change the "change climb" action to use the popconfirm feagture: https://ant.design/components/popconfirm
+
   return (
     <Drawer title="Advanced Filters" placement="left" onClose={onClose} width={"80%"} open={open}>
       <Collapse defaultActiveKey={[]} accordion>
-        {/* TODO: Show filter summary as part of the collapsed search  */}
         <Panel header={`Found ${resultsCount} matching climbs`} key="1">
           <Form layout="vertical">
-            {true === false && grades.length > 0 && (
+            {grades.length > 0 && (
               <Form.Item label="Grade Range">
                 <Slider
                   range
-                  min={grades[0][0]}
-                  max={grades[grades.length - 1][0]}
-                  value={[minGrade, maxGrade]}
+                  min={grades[0].difficulty_id}
+                  max={grades[grades.length - 1].difficulty_id}
+                  value={[filters.minGrade, filters.maxGrade]}
                   marks={{
-                    [minGrade]: grades.find(([id]) => id === minGrade)[1],
-                    [maxGrade]: grades.find(([id]) => id === maxGrade)[1],
+                    [filters.minGrade]: grades.find(({ difficulty_id }) => difficulty_id === filters.minGrade)?.difficulty_name,
+                    [filters.maxGrade]: grades.find(({ difficulty_id }) => difficulty_id === filters.maxGrade)?.difficulty_name,
                   }}
-                  onChange={(value) => {
-                    setminGrade(value[0]);
-                    setmaxGrade(value[1]);
-                  }}
+                  onChange={(value) =>
+                    updateFilters({ minGrade: value[0], maxGrade: value[1] })
+                  }
                   tooltip={{
-                    formatter: (value) => grades.find(([id]) => id === value)[1],
+                    formatter: (value) => grades.find(({ difficulty_id }) => difficulty_id === value)?.difficulty_name,
                   }}
                 />
               </Form.Item>
             )}
 
             <Form.Item label="Min Ascents">
-              <InputNumber min={1} value={minAscents} onChange={setMinAscents} style={{ width: "100%" }} />
+              <InputNumber
+                min={1}
+                value={filters.minAscents}
+                onChange={(value) => updateFilters({ minAscents: value || 10 })}
+                style={{ width: "100%" }}
+              />
             </Form.Item>
 
             <Form.Item label="Sort By">
               <Row gutter={8}>
                 <Col span={16}>
-                  <Select value={sortBy} onChange={setSortBy} style={{ width: "100%" }}>
+                  <Select
+                    value={filters.sortBy}
+                    onChange={(value) => updateFilters({ sortBy: value })}
+                    style={{ width: "100%" }}
+                  >
                     <Option value="ascents">Ascents</Option>
                     <Option value="difficulty">Difficulty</Option>
                     <Option value="name">Name</Option>
@@ -251,7 +190,11 @@ const FilterDrawer = ({
                   </Select>
                 </Col>
                 <Col span={8}>
-                  <Select value={sortOrder} onChange={setSortOrder} style={{ width: "100%" }}>
+                  <Select
+                    value={filters.sortOrder}
+                    onChange={(value) => updateFilters({ sortOrder: value })}
+                    style={{ width: "100%" }}
+                  >
                     <Option value="desc">Descending</Option>
                     <Option value="asc">Ascending</Option>
                   </Select>
@@ -261,12 +204,12 @@ const FilterDrawer = ({
 
             <Form.Item label="Angle">
               <Select
-                value={typeof angle === "string" ? angle.toLowerCase() : angle}
-                onChange={setSelectedAngle}
+                value={filters.angle}
+                onChange={(value) => updateFilters({ angle: value })}
                 style={{ width: "100%" }}
               >
-                {angles.map((angle) => (
-                  <Option key={angle} value={typeof angle === "string" ? angle.toLowerCase() : angle}>
+                {angles.map(({angle}) => (
+                  <Option key={angle} value={angle}>
                     {angle}
                   </Option>
                 ))}
@@ -278,21 +221,29 @@ const FilterDrawer = ({
                 min={1.0}
                 max={3.0}
                 step={0.1}
-                value={minRating}
-                onChange={setMinRating}
+                value={filters.minRating}
+                onChange={(value) => updateFilters({ minRating: value || 1 })}
                 style={{ width: "100%" }}
               />
             </Form.Item>
 
             <Form.Item label="Classics Only">
-              <Select value={onlyClassics} onChange={setOnlyClassics} style={{ width: "100%" }}>
+              <Select
+                value={filters.onlyClassics}
+                onChange={(value) => updateFilters({ onlyClassics: value })}
+                style={{ width: "100%" }}
+              >
                 <Option value="0">No</Option>
                 <Option value="1">Yes</Option>
               </Select>
             </Form.Item>
 
             <Form.Item label="Grade Accuracy">
-              <Select value={gradeAccuracy} onChange={setGradeAccuracy} style={{ width: "100%" }}>
+              <Select
+                value={filters.gradeAccuracy}
+                onChange={(value) => updateFilters({ gradeAccuracy: value })}
+                style={{ width: "100%" }}
+              >
                 <Option value={1}>Any</Option>
                 <Option value={0.2}>Somewhat Accurate (&lt;0.2)</Option>
                 <Option value={0.1}>Very Accurate (&lt;0.1)</Option>
@@ -301,45 +252,15 @@ const FilterDrawer = ({
             </Form.Item>
 
             <Form.Item label="Setter Name">
-              <Input value={settername} onChange={(e) => setsettername(e.target.value)} />
-            </Form.Item>
-
-            <Form.Item label="Hold Filters">
-              <Button type="dashed" onClick={resetHoldFilter} block>
-                Reset Hold Filter ({holdFilterCount} Selected)
-              </Button>
-              <Row gutter={8} style={{ marginTop: 16 }}>
-                <Col span={12}>
-                  <Checkbox onChange={(e) => setMinHoldNumber(e.target.checked ? 1 : null)}>Min Hand Holds</Checkbox>
-                  {minHoldNumber !== null && (
-                    <InputNumber
-                      min={1}
-                      max={30}
-                      value={minHoldNumber}
-                      onChange={setMinHoldNumber}
-                      style={{ width: "100%", marginTop: 8 }}
-                    />
-                  )}
-                </Col>
-                <Col span={12}>
-                  <Checkbox onChange={(e) => setMaxHoldNumber(e.target.checked ? 1 : null)}>Max Hand Holds</Checkbox>
-                  {maxHoldNumber !== null && (
-                    <InputNumber
-                      min={1}
-                      max={30}
-                      value={maxHoldNumber}
-                      onChange={setMaxHoldNumber}
-                      style={{ width: "100%", marginTop: 8 }}
-                    />
-                  )}
-                </Col>
-              </Row>
+              <Input
+                value={filters.settername}
+                onChange={(e) => updateFilters({ settername: e.target.value })}
+              />
             </Form.Item>
           </Form>
         </Panel>
       </Collapse>
 
-      
       <List
         itemLayout="vertical"
         dataSource={climbs}
@@ -355,20 +276,19 @@ const FilterDrawer = ({
               borderLeft: currentClimb?.uuid === climb.uuid ? "5px solid #1890ff" : "none",
             }}
           >
-            <Title level={5} style={{ margin: 0}}>
+            <Title level={5} style={{ margin: 0 }}>
               {climb.name}
             </Title>
             <Text>
-              Grade: {climb.difficulty} ({climb.quality_average}) at {climb.angle}°
+              Grade: {climb.difficulty} at {climb.angle}°
             </Text>
             <br />
             <Text type="secondary">
-              {climb.ascensionist_count} ascents, {climb.stars}★
+              {climb.ascensionist_count} ascents, {climb.quality_average}★
             </Text>
           </List.Item>
         )}
       />
-        
     </Drawer>
   );
 };

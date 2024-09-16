@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 export async function GET() {
   try {
     const { rows: grades } = await sql`
-      SELECT difficulty, boulder_name
+      SELECT difficulty as difficulty_id, boulder_name as difficulty_name
       FROM difficulty_grades
       WHERE is_listed = 1
       ORDER BY difficulty ASC

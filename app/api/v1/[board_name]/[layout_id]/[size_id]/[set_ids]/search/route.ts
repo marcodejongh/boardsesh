@@ -36,12 +36,13 @@ export async function GET(
         SELECT
           climbs.uuid, climbs.setter_username, climbs.name, climbs.description,
           climbs.frames, climb_stats.angle, climb_stats.ascensionist_count,
-          (SELECT boulder_name FROM difficulty_grades WHERE difficulty = ROUND(climb_stats.display_difficulty::numeric, 2)) AS difficulty,
-          climb_stats.quality_average,
-          (SELECT ROUND(climb_stats.difficulty_average::numeric - ROUND(climb_stats.display_difficulty::numeric, 2), 2)) AS difficulty_error,
+          dg.boulder_name as difficulty,
+          ROUND(climb_stats.quality_average::numeric, 2) as quality_average,
+          ROUND(climb_stats.difficulty_average::numeric - climb_stats.display_difficulty::numeric, 2) AS difficulty_error,
           climb_stats.benchmark_difficulty
         FROM climbs
         LEFT JOIN climb_stats ON climb_stats.climb_uuid = climbs.uuid
+        LEFT JOIN difficulty_grades dg on difficulty = ROUND(climb_stats.display_difficulty::numeric)
         INNER JOIN product_sizes ON product_sizes.id = $1
         WHERE climbs.layout_id = $2
         AND climbs.is_listed = 1

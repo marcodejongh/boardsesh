@@ -2,18 +2,9 @@ import React from "react";
 import { Button, Typography, Row, Col } from "antd";
 import { LeftOutlined, RightOutlined } from "@ant-design/icons";
 import KilterBoardLoader from "../kilter-board/loader"; // Import KilterBoardLoader
-import type { BoulderProblem } from "../rest-api/types";
+import { FloatingBarProps } from "./types";
 
 const { Title, Text } = Typography;
-
-interface FloatingBarProps {
-  currentClimb: BoulderProblem;
-  navigateClimbsLeft: () => void;
-  navigateClimbsRight: () => void;
-  board: string;
-  layout: number;
-  size: number;
-}
 
 const FloatingBar: React.FC<FloatingBarProps> = ({
   currentClimb,
@@ -47,7 +38,7 @@ const FloatingBar: React.FC<FloatingBarProps> = ({
               {currentClimb.name}
             </Title>
             <Text>
-              {currentClimb.difficulty} | {currentClimb.angle}°
+              {currentClimb.difficulty} {currentClimb.quality_average}★ at {currentClimb.angle}°
             </Text>
           </div>
         </Col>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { HoldTuple } from "../rest-api/types";
+import { HoldTuple } from "@/lib/types";
 import { KilterBoardProps } from "./types";
 
 const getImageUrl = (imageUrl) => `/images/${imageUrl}`;

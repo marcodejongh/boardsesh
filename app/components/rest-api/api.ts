@@ -2,20 +2,17 @@
 
 import { SetIds } from "../kilter-board/board-data";
 import {
+  BoardLayoutSizeSetIdRouteParameters,
   BoulderProblem,
   GetAnglesResponse,
   GetBoardDetailsResponse,
   GetGradesResponse,
   SearchCountResponse,
   SearchRequest,
-} from "./types";
+} from "@/app/lib/types";
 
 const API_BASE_URL = "/api";
 const headers = new Headers({ "ngrok-skip-browser-warning": "true" });
-
-type BoardLayoutSizeSetIdRouteParameters = { 
-  board_name: string; layout_id: number; size_id: number; set_ids: SetIds
-};
 
 export const fetchResultsCount = async (
   pageNumber: number,
@@ -109,8 +106,6 @@ export const fetchAngles = async (boardName: string, layout: number): Promise<Ge
 
   return data;
 };
-
-
 
 // Fetch beta count
 export const fetchBetaCount = async (board: string, uuid: string): Promise<number> => {
