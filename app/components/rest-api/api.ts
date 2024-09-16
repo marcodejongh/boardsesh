@@ -15,34 +15,67 @@ const API_BASE_URL = "/api";
 // 
 const headers = new Headers({ "ngrok-skip-browser-warning": "true" });
 
+
+
 export const fetchResultsCount = async (
   pageNumber: number,
   pageSize: number,
   queryParameters: Partial<SearchRequest>,
-  routeParameters: Record<string, any>,
+  routeParameters: { board_name: string; layout_id: string; size_id: string; set_ids: string },
 ): Promise<SearchCountResponse> => {
   const urlParams = new URLSearchParams(
     Object.entries({
       ...queryParameters,
-      ...routeParameters,
       page: pageNumber,
       pageSize,
       onlyClassics: queryParameters.onlyClassics ? "1" : "0",
     }).reduce((acc, [key, value]) => {
-      // Only include the parameter if value is not undefined
       if (value !== undefined) {
-        acc[key] = String(value); // Convert all values to strings
+        acc[key] = String(value);
       }
       return acc;
     }, {} as Record<string, string>),
   );
 
-  const response = await fetch(`${API_BASE_URL}/v1/search/count?${urlParams}`, {
-    headers,
-  });
+  // Build the URL using the new route structure
+  const response = await fetch(
+    `${API_BASE_URL}/v1/${routeParameters.board_name}/${routeParameters.layout_id}/${routeParameters.size_id}/${routeParameters.set_ids}/count?${urlParams}`,
+    { headers },
+  );
+
   return response.json();
 };
 
+export const fetchResults = async (
+  pageNumber: number,
+  pageSize: number,
+  queryParameters: Partial<SearchRequest>,
+  routeParameters: { board_name: string; layout_id: string; size_id: string; set_ids: string },
+): Promise<BoulderProblem[]> => {
+  const urlParams = new URLSearchParams(
+    Object.entries({
+      ...queryParameters,
+      page: pageNumber,
+      pageSize,
+      onlyClassics: queryParameters.onlyClassics ? "1" : "0",
+    }).reduce((acc, [key, value]) => {
+      if (value !== undefined) {
+        acc[key] = String(value);
+      }
+      return acc;
+    }, {} as Record<string, string>),
+  );
+
+  // Build the URL using the new route structure
+  const response = await fetch(
+    `${API_BASE_URL}/v1/${routeParameters.board_name}/${routeParameters.layout_id}/${routeParameters.size_id}/${routeParameters.set_ids}/search?${urlParams}`,
+    { headers },
+  );
+
+  const rawResults = await response.json();
+
+  return rawResults as BoulderProblem[];
+};
 
 const gradesCache = new Map<string, GetGradesResponse>();
 
@@ -77,46 +110,6 @@ export const fetchAngles = async (boardName: string, layout: number): Promise<Ge
   return data;
 };
 
-export const fetchResults = async (
-  pageNumber: number,
-  pageSize: number,
-  queryParameters: Partial<SearchRequest>,
-  routeParameters: Record<string, any>,
-): Promise<BoulderProblem[]> => {
-  const urlParams = new URLSearchParams(
-    Object.entries({
-      ...queryParameters,
-      ...routeParameters,
-      page: pageNumber,
-      pageSize,
-      onlyClassics: queryParameters.onlyClassics ? "1" : "0",
-    }).reduce((acc, [key, value]) => {
-      if (value !== undefined) {
-        acc[key] = String(value);
-      }
-      return acc;
-    }, {} as Record<string, string>),
-  );
-
-  const response = await fetch(`${API_BASE_URL}/v1/search?${urlParams}`, { headers });
-  const rawResults = await response.json();
-
-  return rawResults.map(
-    (row: any): BoulderProblem => ({
-      uuid: row[0],
-      setter: row[1],
-      name: row[2],
-      instructions: row[3],
-      holds: row[4],
-      angle: row[5],
-      ascents: row[6],
-      grade: row[7],
-      gradeAdjustment: `${row[9]}`.replace("0.", "."),
-      stars: Math.round(row[8] * 100) / 100,
-      mystery2: row[10], // Define a more specific type for mystery2 if needed
-    }),
-  );
-};
 
 
 // Fetch beta count
@@ -133,7 +126,7 @@ export const fetchBoardDetails = async (
   size: string,
   set_ids: string,
 ): Promise<GetBoardDetailsResponse> => {
-  const apiUrl = `${API_BASE_URL}/v1/get_board_details/${board}/${layout}/${size}/${set_ids}`;
+  const apiUrl = `${API_BASE_URL}/v1/${board}/${layout}/${size}/${set_ids}/details`;
   const response = await fetch(apiUrl, { headers });
   if (!response.ok) {
     throw new Error(`HTTP error! status: ${response.status}`);

@@ -2,17 +2,34 @@
 
 export type BoulderProblem = {
   uuid: string;
-  setter: string;
+  setter_username: string;
   name: string;
-  instructions: string;
-  holds: string[];
+  description: string;
+  frames: string;
   angle: number;
-  ascents: number;
-  grade: string;
-  gradeAdjustment: string;
+  ascensionist_count: number;
+  difficulty: string;
+  quality_average: string;
   stars: number;
-  mystery2: any; // Adjust this type based on what `row[10]` represents
+  difficulty_error: string;
 };
+
+export type ClimbQueryResult = {
+  uuid: string; // UUID of the climb
+  setter_username: string; // Username of the setter
+  name: string; // Name of the climb
+  description: string; // Description of the climb
+  frames: string; // Holds and placement frames for the climb
+  angle: number; // Angle of the climb
+  ascensionist_count: number; // Number of people who completed the climb
+  difficulty: string | null; // Difficulty grade of the climb, can be null
+  quality_average: number; // Average quality rating of the climb
+  difficulty_error: string; // Difficulty error, represented as a string (e.g., "0.00")
+  benchmark_difficulty: string | null; // Benchmark difficulty, can be null
+};
+
+// Example of an array of ClimbQueryResult
+export type ClimbQueryResults = ClimbQueryResult[];
 
 // Layout Type
 export type Layout = {

@@ -38,7 +38,7 @@ const FilterDrawer = ({
   set_ids,
 }) => {
   const [holdFilterCount, setHoldFilterCount] = useState(0);
-  const [holds, setHolds] = useState({});
+  const [holds, setHolds] = useState('');
   const [grades, setGrades] = useState([]);
   const [minGrade, setminGrade] = useState(currentSearchValues.minGrade);
   const [maxGrade, setmaxGrade] = useState(currentSearchValues.maxGrade);
@@ -359,11 +359,11 @@ const FilterDrawer = ({
               {climb.name}
             </Title>
             <Text>
-              Grade: {climb.grade} ({climb.gradeAdjustment}) at {climb.angle}°
+              Grade: {climb.difficulty} ({climb.quality_average}) at {climb.angle}°
             </Text>
             <br />
             <Text type="secondary">
-              {climb.ascents} ascents, {climb.stars}★
+              {climb.ascensionist_count} ascents, {climb.stars}★
             </Text>
           </List.Item>
         )}

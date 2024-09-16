@@ -145,12 +145,18 @@ const ResultsPage = ({
     const fetchData = async () => {
       try {
         const [fetchedResults] = await Promise.all([
-          fetchResults(pageNumber, PAGE_LIMIT, queryParameters, {
-            board,
-            layout,
-            size,
-            set_ids,
-          }),
+          fetchResults(
+            pageNumber,                     // Page number for pagination
+            PAGE_LIMIT,                     // The limit of results per page
+            queryParameters,                // Any query parameters like `minGrade`, `maxGrade`, etc.
+            {
+              board_name: board,            // Replace `board` with your `board_name` variable
+              layout_id: layout,            // Replace `layout` with your `layout_id` variable
+              size_id: size,                // Replace `size` with your `size_id` variable
+              set_ids: set_ids,             // Pass `set_ids` as a comma-separated string (e.g., '26,27')
+            }
+          ),
+
         ]);
 
         // Append results if pageNumber increases, otherwise reset results
@@ -276,7 +282,7 @@ const ResultsPage = ({
                       textOverflow: "ellipsis",
                     }}
                   >
-                    by {currentClimb.setter}
+                    by {currentClimb.setter_username}
                   </Text>
                   <Text
                     style={{
@@ -287,7 +293,7 @@ const ResultsPage = ({
                       textOverflow: "ellipsis",
                     }}
                   >
-                    Grade: {currentClimb.grade} ({currentClimb.gradeAdjustment}) at {currentClimb.angle}°
+                    Grade: {currentClimb.difficulty} ({currentClimb.quality_average}) at {currentClimb.angle}°
                   </Text>
                 </Col>
                 <Col>
@@ -319,7 +325,7 @@ const ResultsPage = ({
             backgroundColor: "#FFF",
           }}
         >
-          <KilterBoardLoader board={board} layout={layout} size={size} scale={0.8} litUpHolds={currentClimb ? currentClimb.holds : null} />
+          <KilterBoardLoader board={board} layout={layout} size={size} scale={0.8} litUpHolds={currentClimb ? currentClimb.frames : null} />
           <FloatingBar
           //@ts-expect-error goawaystupiderror
             currentClimb={currentClimb}
