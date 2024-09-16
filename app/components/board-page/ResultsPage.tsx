@@ -61,6 +61,7 @@ const ResultsPage = ({
   const [pageNumber, setPageNumber] = useState(0);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [viewportWidth, setViewportWidth] = useState();
+  const [hasConnected, setHasConnected] = useState(false);
 
   const setCurrentClimb = (newClimb: any) => {
     setCurrentClimbState(newClimb);
@@ -83,10 +84,11 @@ const ResultsPage = ({
   }, [receivedData]);
 
   useEffect(() => {
-    if (readyToConnect && hostId) {
+    if (readyToConnect && hostId && !hasConnected) {
       connectToPeer(hostId);
+      setHasConnected(true)
     }
-  }, [hostId, readyToConnect, connectToPeer]);
+  }, [hostId, readyToConnect, connectToPeer, hasConnected]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -323,6 +325,9 @@ const ResultsPage = ({
             currentClimb={currentClimb}
             navigateClimbsLeft={navigateClimbsLeft}
             navigateClimbsRight={navigateClimbsRight}
+            board={board} 
+            layout={layout}
+            size={size}
           />
         </Content>
       

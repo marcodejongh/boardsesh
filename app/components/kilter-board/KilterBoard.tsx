@@ -3,7 +3,7 @@ import { ImagesToHolds, HoldTuple } from "../rest-api/types";
 
 const getImageUrl = (imageUrl) => `/images/${imageUrl}`;
 
-type KilterBoardProps = {
+export type KilterBoardProps = {
   editEnabled: boolean;
   litUpHolds: string;
   imagesToHolds: ImagesToHolds;
@@ -12,6 +12,10 @@ type KilterBoardProps = {
   edgeBottom: number;
   edgeTop: number;
   onCircleClick: () => void;
+  onBoardClick: () => void;
+  board: string;
+  layout: string;
+  size: string;
 };
 
 type HoldsArray = Array<{ id: number; mirroredHoldId: number | null; cx: number; cy: number; r: number; state: string }>
@@ -24,6 +28,7 @@ const KilterBoard = ({
   edgeBottom = 0,
   edgeTop = 156,
   onCircleClick = undefined,
+  onBoardClick = undefined
 }: KilterBoardProps) => {
   const [imageDimensions, setImageDimensions] = useState<Record<string, { width: number; height: number }>>({});
   const [holdsData, setHoldsData] = useState<HoldsArray>([]);
@@ -160,7 +165,7 @@ const KilterBoard = ({
   const viewBoxHeight = firstImageDimensions?.height || 0;
   
   return (
-    <svg
+    <svg onClick={onBoardClick}
       viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
       preserveAspectRatio="xMidYMid meet"
       style={{ width: "100%", height: "100%" }}

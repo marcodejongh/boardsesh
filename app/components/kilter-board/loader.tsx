@@ -1,16 +1,10 @@
 import React, { useState, useEffect, useMemo } from "react";
-import KilterBoard from "./KilterBoard";
+import KilterBoard, { KilterBoardProps } from "./KilterBoard";
 import { fetchBoardDetails } from "../rest-api/api";
 import { boardLayouts } from "./board-data";
 
-type KilterBoardLoaderProps = {
-  board: string;
-  layout: string;
-  size: string;
-}
-
 // TODO: Unhardcode set_ids
-const KilterBoardLoader = (props: KilterBoardLoaderProps) => {
+const KilterBoardLoader = (props: KilterBoardProps) => {
   const {board, layout, size} = props;
   // Memoize the set_ids to prevent unnecessary re-renders
   const set_ids = useMemo(() => {

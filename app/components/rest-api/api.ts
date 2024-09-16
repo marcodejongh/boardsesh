@@ -11,6 +11,8 @@ import {
   SearchRequest,
 } from "./types";
 
+const API_BASE_URL = "/api";
+// 
 const headers = new Headers({ "ngrok-skip-browser-warning": "true" });
 
 export const fetchResultsCount = async (
@@ -35,7 +37,7 @@ export const fetchResultsCount = async (
     }, {} as Record<string, string>),
   );
 
-  const response = await fetch(`/api/v1/search/count?${urlParams}`, {
+  const response = await fetch(`${API_BASE_URL}/v1/search/count?${urlParams}`, {
     headers,
   });
   return response.json();
@@ -50,7 +52,7 @@ export const fetchGrades = async (boardName: string): Promise<GetGradesResponse>
     return gradesCache.get(boardName)!;
   }
 
-  const response = await fetch(`/api/v1/grades/${boardName}`, { headers });
+  const response = await fetch(`${API_BASE_URL}/v1/grades/${boardName}`, { headers });
   const data: GetGradesResponse = await response.json();
 
   gradesCache.set(boardName, data);
@@ -67,7 +69,7 @@ export const fetchAngles = async (boardName: string, layout: number): Promise<Ge
     return anglesCache.get(cacheKey)!;
   }
 
-  const response = await fetch(`/api/v1/angles/${boardName}/${layout}`, { headers });
+  const response = await fetch(`${API_BASE_URL}/v1/angles/${boardName}/${layout}`, { headers });
   const data: GetAnglesResponse = (await response.json()).flat();
 
   anglesCache.set(cacheKey, data);
@@ -96,7 +98,7 @@ export const fetchResults = async (
     }, {} as Record<string, string>),
   );
 
-  const response = await fetch(`/api/v1/search?${urlParams}`, { headers });
+  const response = await fetch(`${API_BASE_URL}/v1/search?${urlParams}`, { headers });
   const rawResults = await response.json();
 
   return rawResults.map(
@@ -119,7 +121,7 @@ export const fetchResults = async (
 
 // Fetch beta count
 export const fetchBetaCount = async (board: string, uuid: string): Promise<number> => {
-  const response = await fetch(`/api/v1/${board}/beta/${uuid}`, { headers });
+  const response = await fetch(`${API_BASE_URL}/v1/${board}/beta/${uuid}`, { headers });
   const data = await response.json();
   return data.length;
 };
@@ -131,7 +133,7 @@ export const fetchBoardDetails = async (
   size: string,
   set_ids: string,
 ): Promise<GetBoardDetailsResponse> => {
-  const apiUrl = `/api/v1/get_board_details/${board}/${layout}/${size}/${set_ids}`;
+  const apiUrl = `${API_BASE_URL}/v1/get_board_details/${board}/${layout}/${size}/${set_ids}`;
   const response = await fetch(apiUrl, { headers });
   if (!response.ok) {
     throw new Error(`HTTP error! status: ${response.status}`);

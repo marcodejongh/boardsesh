@@ -14,31 +14,30 @@ interface FloatingBarProps {
   };
   navigateClimbsLeft: () => void;
   navigateClimbsRight: () => void;
+  board: string;
+  layout: string;
+  size: string;
 }
 
 const FloatingBar: React.FC<FloatingBarProps> = ({
   currentClimb,
   navigateClimbsLeft,
   navigateClimbsRight,
-}) => {
+  board, layout, size
+}: FloatingBarProps) => {
   if (!currentClimb) return null;
 
   return (
     <div style={fixedBarStyle}>
-      <Row justify="center" align="middle" gutter={16}>
-        {/* Previous button */}
-        <Col>
-          <Button
-            type="default"
-            onClick={navigateClimbsLeft}
-            icon={<LeftOutlined />}
-          />
-        </Col>
-
+      <Row justify="left" align="left" gutter={16}>
         {/* KilterBoardLoader for small preview */}
         <Col>
           <div style={boardPreviewStyle}>
             <KilterBoardLoader
+              board={board} 
+              layout={layout}
+              size={size}
+              showLargeOnClick={true}
               litUpHolds={currentClimb.holds} // Passing the holds to display
               scale={0.3} // Adjust scale for the small preview (you can fine-tune this value)
             />
@@ -56,7 +55,13 @@ const FloatingBar: React.FC<FloatingBarProps> = ({
             </Text>
           </div>
         </Col>
-
+        <Col>
+          <Button
+            type="default"
+            onClick={navigateClimbsLeft}
+            icon={<LeftOutlined />}
+          />
+        </Col>
         {/* Next button */}
         <Col>
           <Button
@@ -80,8 +85,8 @@ const fixedBarStyle: React.CSSProperties = {
   padding: "10px 20px",
   boxShadow: "0px -2px 10px rgba(0, 0, 0, 0.1)",
   display: "flex",
-  justifyContent: "center",
-  alignItems: "center",
+  justifyContent: "left",
+  alignItems: "left",
   zIndex: 1000,
 };
 
