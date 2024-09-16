@@ -214,7 +214,7 @@ const FilterDrawer = ({
         {/* TODO: Show filter summary as part of the collapsed search  */}
         <Panel header={`Found ${resultsCount} matching climbs`} key="1">
           <Form layout="vertical">
-            {grades.length > 0 && (
+            {true === false && grades.length > 0 && (
               <Form.Item label="Grade Range">
                 <Slider
                   range
