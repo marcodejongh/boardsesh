@@ -302,16 +302,16 @@ const ResultsPage = ({
             layout={layout}
             size={size}
             litUpHolds={currentClimb ? currentClimb.frames : ''} />
-
-          <FloatingBar
-          //@ts-expect-error goawaystupiderror
-            currentClimb={currentClimb}
-            navigateClimbsLeft={navigateClimbsLeft}
-            navigateClimbsRight={navigateClimbsRight}
-            board={board} 
-            layout={layout}
-            size={size}
-          />
+          {currentClimb && (
+            <FloatingBar
+              currentClimb={currentClimb}
+              navigateClimbsLeft={navigateClimbsLeft}
+              navigateClimbsRight={navigateClimbsRight}
+              board={board} 
+              layout={layout}
+              size={size}
+          />)}
+          
         </Content>
       
       <FilterDrawer
