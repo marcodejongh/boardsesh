@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 // Dynamic handler for fetching sizes related to a specific layout
 export async function GET(req: Request, { params }: { params: { board_name: string; layout_id: string } }) {
-  const { board_name, layout_id } = params;
+  const { /*board_name,*/ layout_id } = params;
 
   try {
     // Fetch sizes based on layout_id

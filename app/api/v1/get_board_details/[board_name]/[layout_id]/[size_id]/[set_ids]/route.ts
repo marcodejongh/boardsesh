@@ -1,15 +1,24 @@
 import { sql } from "@vercel/postgres";
 import { NextResponse } from "next/server";
 
-export async function GET(req, { params }) {
-  const { board_name, layout_id, size_id, set_ids } = params;
+export async function GET(
+  req: Request,
+  { params }: { params: { board_name: string; layout_id: string; size_id: string; set_ids: string } },
+) {
+  const { 
+    // board_name, 
+    layout_id, 
+    size_id,
+    set_ids } = params;
 
   // Split comma-separated set_ids
   const setIdsArray = set_ids.split(",");
   console.log(setIdsArray);
+
   try {
     // Collect data for each set_id
-    const imagesToHolds = {};
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const imagesToHolds: Record<string, any> = {};
 
     for (const set_id of setIdsArray) {
       // Get image filename
@@ -20,20 +29,13 @@ export async function GET(req, { params }) {
         AND product_size_id = ${size_id}
         AND set_id = ${set_id}
       `;
-      console.log(`
-        SELECT image_filename
-        FROM product_sizes_layouts_sets
-        WHERE layout_id = ${layout_id}
-        AND product_size_id = ${size_id}
-        AND set_id = ${set_id}
-      `);
-      console.log(rows)
+
       if (rows.length === 0) continue;
-      
+
       const imageFilename = rows[0].image_filename;
 
       // Extract image filename
-      const image_url = imageFilename[0].image_filename.split("/")[1];
+      const image_url = imageFilename.split("/")[1];
 
       // Get holds data
       const { rows: holds } = await sql`
@@ -46,16 +48,6 @@ export async function GET(req, { params }) {
         AND mirrored_placements.set_id = ${set_id}
         AND mirrored_placements.layout_id = ${layout_id}
       `;
-      console.log(`
-        SELECT placements.id, mirrored_placements.id, holes.x, holes.y
-        FROM holes
-        INNER JOIN placements ON placements.hole_id = holes.id
-        AND placements.set_id = ${set_id}
-        AND placements.layout_id = ${layout_id}
-        LEFT JOIN placements mirrored_placements ON mirrored_placements.hole_id = holes.mirrored_hole_id
-        AND mirrored_placements.set_id = ${set_id}
-        AND mirrored_placements.layout_id = ${layout_id}
-      `);
 
       if (holds.length > 0) {
         imagesToHolds[image_url] = holds;

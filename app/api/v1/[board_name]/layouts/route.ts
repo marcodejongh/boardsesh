@@ -1,7 +1,8 @@
 import { sql } from "@vercel/postgres";
 import { NextResponse } from "next/server";
 
-export async function GET(req, { params }) {
+// Correct typing for the parameters
+export async function GET(req: Request, { params }: { params: { board_name: string } }) {
   const { board_name } = params;
 
   try {
@@ -14,6 +15,7 @@ export async function GET(req, { params }) {
 
     return NextResponse.json(layouts);
   } catch (error) {
+    console.error("Error fetching layouts:", error); // Log the error for debugging
     return NextResponse.json({ error: "Failed to fetch layouts" }, { status: 500 });
   }
 }

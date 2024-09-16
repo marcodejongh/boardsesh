@@ -3,17 +3,6 @@ import { NextResponse } from "next/server";
 
 export async function GET(req: Request) {
   const query = new URL(req.url).searchParams;
-  const page = parseInt(query.get("page") || "0", 10);
-  const pageSize = parseInt(query.get("pageSize") || "10", 10);
-  const offset = page * pageSize;
-
-  // Get sorting information from query params
-  const sortBy = query.get("sortBy") || "ascensionist_count";
-  const sortOrder = query.get("sortOrder") === "asc" ? "ASC" : "DESC";
-
-  // Ensure safe sorting by allowing only specific fields
-  const allowedSortColumns = ["ascensionist_count", "display_difficulty", "name", "quality_average"];
-  const safeSortBy = allowedSortColumns.includes(sortBy) ? sortBy : "ascensionist_count";
 
   try {
     // Parameterized query
