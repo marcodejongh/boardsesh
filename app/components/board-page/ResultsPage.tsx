@@ -1,4 +1,4 @@
-"use client"
+"use client" //TODO: Refactor useEffects so this page can SSR
 import React, { useEffect, useState, useContext } from "react";
 import { PeerContext } from "../connection-manager/PeerProvider";
 import {
@@ -9,7 +9,7 @@ import {
 import { Button, Badge, Typography, Space, Layout, Row, Col } from "antd";
 import { fetchResults } from "../rest-api/api";
 import KilterBoardLoader from "../kilter-board/loader";
-import { boardLayouts } from "../kilter-board/board-data";
+import { getSetIds } from "../kilter-board/board-data";
 import FilterDrawer from "./FilterDrawer";
 import { useSwipeable } from "react-swipeable";
 import { PAGE_LIMIT } from "./constants";
@@ -22,8 +22,8 @@ const { Header, Content } = Layout;
 
 type ResultPageProps = {
   board: string;
-  layout: string;
-  size: string;
+  layout: number;
+  size: number;
   hostId?: string;
   pathname: string;
   search: string;
@@ -37,8 +37,8 @@ const ResultsPage = ({
   pathname,
   search
 }: ResultPageProps) => {
-  const set_ids = (boardLayouts[layout]?.find(([sizeId]) => sizeId == size) || [])[3] || "";
-
+  const set_ids = getSetIds(layout, size);
+  
   const [queryParameters, setQueryParameters] = useState<Partial<SearchRequest>>({
     minGrade: 10,
     maxGrade: 33,
@@ -56,14 +56,13 @@ const ResultsPage = ({
     mirroredHolds: "",
   });
 
-  const [results, setResults] = useState([]);
+  const [results, setResults] = useState<BoulderProblem[]>([]);
   const [currentClimb, setCurrentClimbState] = useState<BoulderProblem>();
   const [pageNumber, setPageNumber] = useState(0);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [viewportWidth, setViewportWidth] = useState();
   const [hasConnected, setHasConnected] = useState(false);
 
-  const setCurrentClimb = (newClimb: any) => {
+  const setCurrentClimb = (newClimb: BoulderProblem) => {
     setCurrentClimbState(newClimb);
     sendData({
       type: "set-current-climb",
@@ -90,43 +89,11 @@ const ResultsPage = ({
     }
   }, [hostId, readyToConnect, connectToPeer, hasConnected]);
 
-  useEffect(() => {
-    const handleResize = () => {
-      //TODO: Use media queries
-      setViewportWidth(window.innerWidth);
-    };
-
-    window.addEventListener("resize", handleResize);
-
-    return () => {
-      window.removeEventListener("resize", handleResize);
-    };
-  }, []);
-
-  const getResponsiveStyles = () => {
-    // TODO: Just use media queries instead
-    if (viewportWidth > 1200) {
-      return {
-        titleSize: "24px",
-        textSize: "16px",
-        padding: "0 24px",
-      };
-    } else if (viewportWidth > 768) {
-      return {
-        titleSize: "20px",
-        textSize: "14px",
-        padding: "0 16px",
-      };
-    } else {
-      return {
-        titleSize: "16px",
-        textSize: "12px",
-        padding: "0 8px",
-      };
-    }
+  const styles = {
+    titleSize: "16px",
+    textSize: "12px",
+    padding: "0 8px",
   };
-
-  const styles = getResponsiveStyles();
 
   const showDrawer = () => {
     setDrawerOpen(true);
@@ -136,7 +103,7 @@ const ResultsPage = ({
     setDrawerOpen(false);
   };
 
-  const applyFilters = (filters) => {
+  const applyFilters = (filters: SearchRequest) => {
     setPageNumber(0);
     setQueryParameters(filters);
   };
@@ -177,7 +144,7 @@ const ResultsPage = ({
     fetchData();
   }, [board, layout, size, queryParameters, pageNumber]);
 
-  const handleClimbClick = (climb) => {
+  const handleClimbClick = (climb: BoulderProblem) => {
     setCurrentClimb(climb);
     closeDrawer();
   };
@@ -186,14 +153,18 @@ const ResultsPage = ({
     if (!currentClimb) {
       return;
     }
-    const currentIndex = results.findIndex((climb) => climb.uuid === currentClimb.uuid);
+    const currentIndex = results.findIndex((climb: BoulderProblem) => climb.uuid === currentClimb.uuid);
     if (currentIndex > 0) {
       setCurrentClimb(results[currentIndex - 1]);
     }
   };
 
   const navigateClimbsRight = () => {
-    const currentIndex = results.findIndex((climb) => climb.uuid === currentClimb.uuid);
+    if (!currentClimb) {
+      return;
+    }
+
+    const currentIndex = results.findIndex((climb: BoulderProblem) => climb.uuid === currentClimb.uuid);
 
     if (currentIndex > results.length - 10) {
       setPageNumber(pageNumber + 1);
@@ -205,7 +176,7 @@ const ResultsPage = ({
 
   // Keyboard event listener
   useEffect(() => {
-    const handleKeyDown = (event) => {
+    const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "ArrowLeft") {
         navigateClimbsLeft();
       } else if (event.key === "ArrowRight") {
@@ -325,7 +296,12 @@ const ResultsPage = ({
             backgroundColor: "#FFF",
           }}
         >
-          <KilterBoardLoader board={board} layout={layout} size={size} scale={0.8} litUpHolds={currentClimb ? currentClimb.frames : null} />
+          <KilterBoardLoader 
+            board={board}
+            layout={layout}
+            size={size}
+            litUpHolds={currentClimb ? currentClimb.frames : ''} />
+            
           <FloatingBar
           //@ts-expect-error goawaystupiderror
             currentClimb={currentClimb}

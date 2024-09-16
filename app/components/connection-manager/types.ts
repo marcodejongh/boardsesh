@@ -1,10 +1,10 @@
-import { DataConnection, Peer } from "peerjs";
+import { DataConnection } from "peerjs";
 
 // Type for the Peer Context
 export type PeerContextType = {
   readyToConnect: boolean;
-  receivedData: any; // You can adjust this based on what kind of data is received
-  sendData: (data: any, connectionId?: string | null) => void;
+  receivedData: object; // You can adjust this based on what kind of data is received
+  sendData: (data: object, connectionId?: string | null) => void;
   connectToPeer: (connectionId: string) => void;
   peerId: string | null;
 };

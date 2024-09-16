@@ -1,12 +1,11 @@
 // api.ts
 
+import { SetIds } from "../kilter-board/board-data";
 import {
   BoulderProblem,
   GetAnglesResponse,
   GetBoardDetailsResponse,
   GetGradesResponse,
-  GetLayoutsResponse,
-  GetSearchResultsResponse,
   SearchCountResponse,
   SearchRequest,
 } from "./types";
@@ -14,11 +13,15 @@ import {
 const API_BASE_URL = "/api";
 const headers = new Headers({ "ngrok-skip-browser-warning": "true" });
 
+type BoardLayoutSizeSetIdRouteParameters = { 
+  board_name: string; layout_id: number; size_id: number; set_ids: SetIds
+};
+
 export const fetchResultsCount = async (
   pageNumber: number,
   pageSize: number,
   queryParameters: Partial<SearchRequest>,
-  routeParameters: { board_name: string; layout_id: string; size_id: string; set_ids: string },
+  routeParameters: BoardLayoutSizeSetIdRouteParameters,
 ): Promise<SearchCountResponse> => {
   const urlParams = new URLSearchParams(
     Object.entries({
@@ -47,7 +50,7 @@ export const fetchResults = async (
   pageNumber: number,
   pageSize: number,
   queryParameters: Partial<SearchRequest>,
-  routeParameters: { board_name: string; layout_id: string; size_id: string; set_ids: string },
+  routeParameters: BoardLayoutSizeSetIdRouteParameters,
 ): Promise<BoulderProblem[]> => {
   const urlParams = new URLSearchParams(
     Object.entries({
@@ -119,9 +122,9 @@ export const fetchBetaCount = async (board: string, uuid: string): Promise<numbe
 // Fetch board details
 export const fetchBoardDetails = async (
   board: string,
-  layout: string,
-  size: string,
-  set_ids: string,
+  layout: number,
+  size: number,
+  set_ids: SetIds,
 ): Promise<GetBoardDetailsResponse> => {
   const apiUrl = `${API_BASE_URL}/v1/${board}/${layout}/${size}/${set_ids}/details`;
   const response = await fetch(apiUrl, { headers });

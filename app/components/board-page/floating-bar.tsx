@@ -2,21 +2,17 @@ import React from "react";
 import { Button, Typography, Row, Col } from "antd";
 import { LeftOutlined, RightOutlined } from "@ant-design/icons";
 import KilterBoardLoader from "../kilter-board/loader"; // Import KilterBoardLoader
+import type { BoulderProblem } from "../rest-api/types";
 
 const { Title, Text } = Typography;
 
 interface FloatingBarProps {
-  currentClimb: {
-    name: string;
-    grade: string;
-    angle: number;
-    holds: string[]; // Add holds to display the KilterBoard route
-  };
+  currentClimb: BoulderProblem;
   navigateClimbsLeft: () => void;
   navigateClimbsRight: () => void;
   board: string;
-  layout: string;
-  size: string;
+  layout: number;
+  size: number;
 }
 
 const FloatingBar: React.FC<FloatingBarProps> = ({
@@ -29,7 +25,7 @@ const FloatingBar: React.FC<FloatingBarProps> = ({
 
   return (
     <div style={fixedBarStyle}>
-      <Row justify="left" align="left" gutter={16}>
+      <Row justify="start" align="top" gutter={16}>
         {/* KilterBoardLoader for small preview */}
         <Col>
           <div style={boardPreviewStyle}>
@@ -37,9 +33,9 @@ const FloatingBar: React.FC<FloatingBarProps> = ({
               board={board} 
               layout={layout}
               size={size}
-              showLargeOnClick={true}
-              litUpHolds={currentClimb.holds} // Passing the holds to display
-              scale={0.3} // Adjust scale for the small preview (you can fine-tune this value)
+              // TODO: Implement
+              // showLargeOnClick={true}
+              litUpHolds={currentClimb.frames} 
             />
           </div>
         </Col>
@@ -51,7 +47,7 @@ const FloatingBar: React.FC<FloatingBarProps> = ({
               {currentClimb.name}
             </Title>
             <Text>
-              {currentClimb.grade} | {currentClimb.angle}°
+              {currentClimb.difficulty} | {currentClimb.angle}°
             </Text>
           </div>
         </Col>

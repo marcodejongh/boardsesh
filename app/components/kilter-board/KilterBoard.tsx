@@ -1,22 +1,8 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { ImagesToHolds, HoldTuple } from "../rest-api/types";
+import { HoldTuple } from "../rest-api/types";
+import { KilterBoardProps } from "./types";
 
 const getImageUrl = (imageUrl) => `/images/${imageUrl}`;
-
-export type KilterBoardProps = {
-  editEnabled: boolean;
-  litUpHolds: string;
-  imagesToHolds: ImagesToHolds;
-  edgeLeft: number;
-  edgeRight: number;
-  edgeBottom: number;
-  edgeTop: number;
-  onCircleClick: () => void;
-  onBoardClick: () => void;
-  board: string;
-  layout: string;
-  size: string;
-};
 
 type HoldsArray = Array<{ id: number; mirroredHoldId: number | null; cx: number; cy: number; r: number; state: string }>
 const KilterBoard = ({

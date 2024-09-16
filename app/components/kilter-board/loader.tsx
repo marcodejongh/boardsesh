@@ -1,15 +1,16 @@
 import React, { useState, useEffect, useMemo } from "react";
-import KilterBoard, { KilterBoardProps } from "./KilterBoard";
+import KilterBoard from "./KilterBoard";
 import { fetchBoardDetails } from "../rest-api/api";
-import { boardLayouts } from "./board-data";
+import { getSetIds } from "./board-data";
+import type { KilterBoardLoaderProps } from "./types";
 
 // TODO: Unhardcode set_ids
-const KilterBoardLoader = (props: KilterBoardProps) => {
+const KilterBoardLoader = (props: KilterBoardLoaderProps) => {
   const {board, layout, size} = props;
-  // Memoize the set_ids to prevent unnecessary re-renders
+  
   const set_ids = useMemo(() => {
     if (layout && size) {
-      return (boardLayouts[layout].find(([sizeId]) => sizeId == size) || [])[3];
+      return getSetIds(layout, size);
     }
     return;
   }, [layout, size]);
@@ -19,6 +20,9 @@ const KilterBoardLoader = (props: KilterBoardProps) => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    if (!set_ids) {
+      return;
+    }
     fetchBoardDetails(board, layout, size, set_ids)
       .then((data) => {
         setBoardDetails(data);
@@ -30,7 +34,7 @@ const KilterBoardLoader = (props: KilterBoardProps) => {
       });
   }, [board, layout, size, set_ids]);
 
-  if (loading) {
+  if (loading || !boardDetails) {
     return <div>Loading...</div>;
   }
 

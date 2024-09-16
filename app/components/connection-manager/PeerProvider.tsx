@@ -10,7 +10,7 @@ let peerInstance: Peer | undefined;
 const PeerProvider: React.FC<PeerProviderProps> = ({ children }) => {
   const [peer, setPeer] = useState<Peer | null>(null);
   const [connections, setConnections] = useState<PeerConnectionState>([]);
-  const [receivedData, setReceivedData] = useState<any>();
+  const [receivedData, setReceivedData] = useState<object>();
   const [peerId, setPeerId] = useState<string | null>(null);
   const [readyToConnect, setReadyToConnect] = useState(false);
 
