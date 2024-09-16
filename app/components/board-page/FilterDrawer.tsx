@@ -88,7 +88,7 @@ const FilterDrawer = ({
     if (!fetchedGrades) {
       fetchGradeValues();
     }
-  }, [board]);
+  }, [board, fetchedGrades, updateFilters]);
 
   useEffect(() => {
     const fetchAngleValues = async () => {

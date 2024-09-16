@@ -2,14 +2,19 @@ import React, { useState } from "react";
 import { ShareAltOutlined, CopyOutlined } from "@ant-design/icons";
 import { Button, Input, Modal, QRCode, Flex, message } from "antd";
 
-const getShareUrl = (pathname, search, peerId) => {
+const getShareUrl = (pathname: string, search: string, peerId: string) => {
   const params = new URLSearchParams(search);
   params.set("hostId", peerId);
 
   return `${window.location.origin}${pathname}?${params.toString()}`;
 };
-
-export const ShareBoardButton = ({ peerId, hostId, pathname, search }) => {
+export type ShareButtonProps = {
+  peerId: string;
+  hostId: string;
+  pathname: string;
+  search: string;
+}
+export const ShareBoardButton = ({ peerId, hostId, pathname, search }: ShareButtonProps) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const showModal = () => {
@@ -60,7 +65,6 @@ export const ShareBoardButton = ({ peerId, hostId, pathname, search }) => {
             />
           </Flex>
           <Flex justify="center" align="center">
-            {/* Increase QR code size to 200px */}
             <QRCode value={shareUrl} size={200} bordered={false} />
           </Flex>
         </Flex>

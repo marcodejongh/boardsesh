@@ -26,7 +26,7 @@ export type FilterDrawerProps = {
   climbs: BoulderProblem[];
   handleClimbClick: (newClimb: BoulderProblem) => void;
   onClose: () => void;
-  onApplyFilters: (filters: Partial<SearchRequest>) => void;
+  onApplyFilters: (filters: SearchRequest) => void;
   open: boolean;
   currentSearchValues: SearchRequest;
   board: Board;

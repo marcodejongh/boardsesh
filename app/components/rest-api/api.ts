@@ -1,11 +1,13 @@
 // api.ts
 
+import { PAGE_LIMIT } from "../board-page/constants";
 import { SetIds } from "../kilter-board/board-data";
 import {
   BoardLayoutSizeSetIdRouteParameters, FetchResultsResponse, GetAnglesResponse,
   GetBoardDetailsResponse,
   GetGradesResponse,
-  SearchRequest
+  SearchRequest,
+  SearchRequestPagination
 } from "@/app/lib/types";
 
 const API_BASE_URL = "/api";
@@ -14,14 +16,14 @@ const headers = new Headers({ "ngrok-skip-browser-warning": "true" });
 export const fetchResults = async (
   pageNumber: number,
   pageSize: number,
-  queryParameters: Partial<SearchRequest>,
+  queryParameters: SearchRequest,
   routeParameters: BoardLayoutSizeSetIdRouteParameters,
 ): Promise<FetchResultsResponse> => {
   const urlParams = new URLSearchParams(
     Object.entries({
       ...queryParameters,
       page: pageNumber,
-      pageSize,
+      pageSize: pageSize,
       onlyClassics: queryParameters.onlyClassics ? "1" : "0",
     }).reduce((acc, [key, value]) => {
       if (value !== undefined) {

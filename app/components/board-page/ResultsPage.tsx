@@ -31,7 +31,7 @@ const ResultsPage = ({
 }: ResultPageProps) => {
   const set_ids = getSetIds(layout, size);
   
-  const [queryParameters, setQueryParameters] = useState<Partial<SearchRequest>>({
+  const [queryParameters, setQueryParameters] = useState<SearchRequest>({
     minGrade: 10,
     maxGrade: 33,
     name: "",
@@ -57,26 +57,31 @@ const ResultsPage = ({
 
   const setCurrentClimb = (newClimb: BoulderProblem) => {
     setCurrentClimbState(newClimb);
-    sendData({
+    sendData && sendData({
       type: "set-current-climb",
       data: newClimb,
     });
   }
 
-  const { readyToConnect, receivedData, sendData, connectToPeer, peerId } = useContext(PeerContext);
+  const peerContext = useContext(PeerContext);
+  const readyToConnect = peerContext?.readyToConnect;
+  const receivedData = peerContext?.receivedData;
+  const sendData = peerContext?.sendData;
+  const connectToPeer = peerContext?.connectToPeer;
+  const peerId = peerContext?.peerId;
 
   useEffect(() => {
     if (receivedData) {
       console.log("New data received:", receivedData);
       if (receivedData && receivedData.type && receivedData.type === "set-current-climb") {
-        setCurrentClimbState(receivedData.data);
+        setCurrentClimbState((receivedData.data as BoulderProblem));
       }
       // Handle the received data
     }
   }, [receivedData]);
 
   useEffect(() => {
-    if (readyToConnect && hostId && !hasConnected) {
+    if (connectToPeer && readyToConnect && hostId && !hasConnected) {
       connectToPeer(hostId);
       setHasConnected(true)
     }
@@ -106,14 +111,14 @@ const ResultsPage = ({
       try {
         const [fetchedResults] = await Promise.all([
           fetchResults(
-            pageNumber,                     // Page number for pagination
-            PAGE_LIMIT,                     // The limit of results per page
-            queryParameters,                // Any query parameters like `minGrade`, `maxGrade`, etc.
+            pageNumber,
+            PAGE_LIMIT,               
+            queryParameters,
             {
-              board_name: board,            // Replace `board` with your `board_name` variable
-              layout_id: layout,            // Replace `layout` with your `layout_id` variable
-              size_id: size,                // Replace `size` with your `size_id` variable
-              set_ids: set_ids,             // Pass `set_ids` as a comma-separated string (e.g., '26,27')
+              board_name: board,
+              layout_id: layout,
+              size_id: size,
+              set_ids: set_ids,
             }
           ),
 
@@ -265,7 +270,7 @@ const ResultsPage = ({
                 </Col>
                 <Col>
                   <Space>
-                     {currentClimb && (
+                     {currentClimb && peerId && hostId && (
                       <ShareBoardButton peerId={peerId} hostId={hostId} pathname={pathname} search={search} />
                     )}
                     <Badge count={10} offset={[-5, 5]}>
@@ -319,8 +324,6 @@ const ResultsPage = ({
         open={drawerOpen}
         onClose={closeDrawer}
         onApplyFilters={applyFilters}
-        size={size}
-        set_ids={set_ids}
         resultsCount={resultsCount}
       />
     </Layout>

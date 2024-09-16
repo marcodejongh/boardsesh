@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, createContext } from "react";
 import Peer, { DataConnection } from "peerjs";
-import { PeerContextType, PeerProviderProps, PeerConnectionState } from "./types"; // Assuming your types are in a file named types.ts
+import { PeerContextType, PeerProviderProps, PeerConnectionState, PeerData } from "./types"; // Assuming your types are in a file named types.ts
 import { message } from "antd";
 export const PeerContext = createContext<PeerContextType | undefined>(undefined);
 let peerInstance: Peer | undefined;
@@ -10,7 +10,7 @@ let peerInstance: Peer | undefined;
 const PeerProvider: React.FC<PeerProviderProps> = ({ children }) => {
   const [peer, setPeer] = useState<Peer | null>(null);
   const [connections, setConnections] = useState<PeerConnectionState>([]);
-  const [receivedData, setReceivedData] = useState<object>();
+  const [receivedData, setReceivedData] = useState<PeerData | null>(null);
   const [peerId, setPeerId] = useState<string | null>(null);
   const [readyToConnect, setReadyToConnect] = useState(false);
 
@@ -27,9 +27,9 @@ const PeerProvider: React.FC<PeerProviderProps> = ({ children }) => {
       p.on("connection", (newConn: DataConnection) => {
         console.log("New Connection established");
 
-        newConn.on("data", (data: any) => {
+        newConn.on("data", (data) => {
           console.log("Received data:", data);
-          setReceivedData(data); // Store received data in an array
+          setReceivedData(data as PeerData); // Store received data in an array
         });
         
         setConnections((prevConnections) => {
@@ -49,7 +49,7 @@ const PeerProvider: React.FC<PeerProviderProps> = ({ children }) => {
     };
   }, [peer]);
 
-  const sendData = (data: any, connectionId: string | null = null) => {
+  const sendData = (data: PeerData, connectionId: string | null = null) => {
     console.log(`Sending `, data);
     if (connectionId) {
       const connection = connections.find((conn) => conn.peer === connectionId);

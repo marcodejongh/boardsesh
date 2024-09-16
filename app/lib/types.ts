@@ -60,8 +60,6 @@ export type SearchRequest = {
   minRating: number;
   sortBy: "ascents" | "difficulty" | "name" | "quality";
   sortOrder: "asc" | "desc";
-  pageSize: number;
-  page: number;
   name: string;
   angle: number;
   onlyClassics: boolean;
@@ -69,6 +67,10 @@ export type SearchRequest = {
   setternameSuggestion: string;
   holds: string;
   mirroredHolds: string;
+};
+
+export type SearchRequestPagination = {
+  page: number;
 };
 
 // Search Result Type

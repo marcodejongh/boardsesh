@@ -30,8 +30,6 @@ const FloatingBar: React.FC<FloatingBarProps> = ({
             />
           </div>
         </Col>
-
-        {/* Climb details */}
         <Col>
           <div style={climbPreviewStyle}>
             <Title level={5} style={{ marginBottom: 0 }}>
@@ -49,7 +47,6 @@ const FloatingBar: React.FC<FloatingBarProps> = ({
             icon={<LeftOutlined />}
           />
         </Col>
-        {/* Next button */}
         <Col>
           <Button
             type="default"
