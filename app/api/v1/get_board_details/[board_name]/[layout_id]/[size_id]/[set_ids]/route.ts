@@ -5,15 +5,10 @@ export async function GET(
   req: Request,
   { params }: { params: { board_name: string; layout_id: string; size_id: string; set_ids: string } },
 ) {
-  const { 
-    // board_name, 
-    layout_id, 
-    size_id,
-    set_ids } = params;
+  const { layout_id, size_id, set_ids } = params;
 
   // Split comma-separated set_ids
   const setIdsArray = set_ids.split(",");
-  console.log(setIdsArray);
 
   try {
     // Collect data for each set_id
@@ -39,7 +34,10 @@ export async function GET(
 
       // Get holds data
       const { rows: holds } = await sql`
-        SELECT placements.id, mirrored_placements.id, holes.x, holes.y
+        SELECT 
+          placements.id AS placement_id, 
+          mirrored_placements.id AS mirrored_placement_id, 
+          holes.x, holes.y
         FROM holes
         INNER JOIN placements ON placements.hole_id = holes.id
         AND placements.set_id = ${set_id}
@@ -50,7 +48,12 @@ export async function GET(
       `;
 
       if (holds.length > 0) {
-        imagesToHolds[image_url] = holds;
+        imagesToHolds[image_url] = holds.map((hold) => [
+          hold.placement_id, // First position: regular placement ID
+          hold.mirrored_placement_id || null, // Second position: mirrored placement ID (or null)
+          hold.x, // Third position: x coordinate
+          hold.y, // Fourth position: y coordinate
+        ]);
       }
     }
 
