@@ -4,9 +4,9 @@ import { PeerContext } from "../connection-manager/PeerProvider";
 import {
   SearchOutlined,
   BulbOutlined,
-  InstagramOutlined,
+  InfoCircleOutlined,
 } from "@ant-design/icons";
-import { Button, Badge, Typography, Space, Layout, Row, Col } from "antd";
+import { Button, Badge, Typography, Space, Layout, Row, Col, message } from "antd";
 import { fetchResults } from "../rest-api/api";
 import KilterBoardLoader from "../kilter-board/loader";
 import { getSetIds } from "../kilter-board/board-data";
@@ -273,14 +273,12 @@ const ResultsPage = ({
                      {currentClimb && peerId && (
                       <ShareBoardButton peerId={peerId} hostId={hostId} pathname={pathname} search={search} />
                     )}
-                    <Badge count={10} offset={[-5, 5]}>
                       <Button
-                        id="anchor-beta"
                         type="default"
-                        href="/kilter/beta/A0BC2661C68B4B00A5CDF2271CEAF246/"
-                        icon={<InstagramOutlined />}
+                        // href="/kilter/beta/A0BC2661C68B4B00A5CDF2271CEAF246/"
+                        icon={<InfoCircleOutlined />}
+                        onClick={()=> message.info('To be implemented, instagram beta videos will also go in here')}
                       />
-                    </Badge>
                   </Space>
                 </Col>
               </>
