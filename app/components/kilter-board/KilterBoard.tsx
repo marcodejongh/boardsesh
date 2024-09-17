@@ -1,10 +1,12 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { HoldTuple } from "@/lib/types";
 import { KilterBoardProps } from "./types";
+import { BOARD_IMAGE_DIMENSIONS } from "./board-data"; // Import the dimensions
 
-const getImageUrl = (imageUrl) => `/images/${imageUrl}`;
+const getImageUrl = (imageUrl: string) => `/images/${imageUrl}`;
 
-type HoldsArray = Array<{ id: number; mirroredHoldId: number | null; cx: number; cy: number; r: number; state: string }>
+type HoldsArray = Array<{ id: number; mirroredHoldId: number | null; cx: number; cy: number; r: number; state: string }>;
+
 const KilterBoard = ({
   editEnabled = false,
   litUpHolds = "",
@@ -16,7 +18,6 @@ const KilterBoard = ({
   onCircleClick = undefined,
   onBoardClick = undefined
 }: KilterBoardProps) => {
-  const [imageDimensions, setImageDimensions] = useState<Record<string, { width: number; height: number }>>({});
   const [holdsData, setHoldsData] = useState<HoldsArray>([]);
 
   const holdStates = {
@@ -38,25 +39,23 @@ const KilterBoard = ({
   const parsedLitUpHolds = useMemo(() => {
     const holdStateMapping = {
       //TODO: Use rest api
-      //kilterhw
       42: holdStates.STARTING,
       43: holdStates.HAND,
       44: holdStates.FINISH,
       45: holdStates.FOOT,
-      //kilter og
       12: holdStates.STARTING,
       13: holdStates.HAND,
       14: holdStates.FINISH,
       15: holdStates.FOOT,
     };
 
-    const litUpHoldsMap = {};
+    const litUpHoldsMap: Record<number, string> = {};
 
     if (litUpHolds) {
       litUpHolds.split("p").forEach((holdData) => {
         if (holdData) {
           const [holdId, stateCode] = holdData.split("r");
-          litUpHoldsMap[holdId] = holdStateMapping[stateCode];
+          litUpHoldsMap[Number(holdId)] = holdStateMapping[stateCode];
         }
       });
     }
@@ -64,60 +63,40 @@ const KilterBoard = ({
     return litUpHoldsMap;
   }, [litUpHolds]);
 
-  useEffect(() => {
-    const loadImages = async () => {
-      const dimensions: Record<string, { width: number; height: number }> = {};
+  const calculateHoldsData = () => {
+    const newHoldsData: HoldsArray = [];
 
-      for (const imageUrl of Object.keys(imagesToHolds)) {
-        const image = new Image();
-        await new Promise<void>((resolve) => {
-          image.onload = () => {
-            dimensions[imageUrl] = { width: image.width, height: image.height };
-            resolve(); // This is now correct, since Promise<void> expects no arguments
-          };
-          image.src = getImageUrl(imageUrl);
+    for (const [imageUrl, holds] of Object.entries<HoldTuple[]>(imagesToHolds)) {
+      const { width, height } = BOARD_IMAGE_DIMENSIONS[imageUrl];
+      const xSpacing = width / (edgeRight - edgeLeft);
+      const ySpacing = height / (edgeTop - edgeBottom);
+
+      holds.forEach(([holdId, mirroredHoldId, x, y]) => {
+        if (x <= edgeLeft || x >= edgeRight || y <= edgeBottom || y >= edgeTop) {
+          return;
+        }
+
+        const xPixel = (x - edgeLeft) * xSpacing;
+        const yPixel = height - (y - edgeBottom) * ySpacing;
+
+        newHoldsData.push({
+          id: holdId,
+          mirroredHoldId,
+          cx: xPixel,
+          cy: yPixel,
+          r: xSpacing * 4,
+          state: parsedLitUpHolds[holdId] || holdStates.OFF,
         });
-      }
-
-      setImageDimensions(dimensions);
-    };
-
-    loadImages();
-  }, [imagesToHolds]);
-
-  useEffect(() => {
-    if (Object.keys(imageDimensions).length > 0) {
-      const newHoldsData = [];
-
-      for (const [imageUrl, holds] of Object.entries<HoldTuple[]>(imagesToHolds)) {
-        const { width, height } = imageDimensions[imageUrl];
-        const xSpacing = width / (edgeRight - edgeLeft);
-        const ySpacing = height / (edgeTop - edgeBottom);
-
-        holds.forEach(([holdId, mirroredHoldId, x, y]) => {
-          if (x <= edgeLeft || x >= edgeRight || y <= edgeBottom || y >= edgeTop) {
-            return;
-          }
-
-          const xPixel = (x - edgeLeft) * xSpacing;
-          const yPixel = height - (y - edgeBottom) * ySpacing;
-
-          newHoldsData.push({
-            id: holdId,
-            mirroredHoldId,
-            cx: xPixel,
-            cy: yPixel,
-            r: xSpacing * 4,
-            state: parsedLitUpHolds[holdId] || holdStates.OFF,
-          });
-        });
-      }
-
-      setHoldsData(newHoldsData);
+      });
     }
-  }, [imageDimensions, imagesToHolds, edgeLeft, edgeRight, edgeBottom, edgeTop, parsedLitUpHolds]);
 
-  const handleCircleClick = (id) => {
+    setHoldsData(newHoldsData);
+  };
+
+  // Call this function on mount or when imagesToHolds or other dependent values change
+  useMemo(calculateHoldsData, [imagesToHolds, edgeLeft, edgeRight, edgeBottom, edgeTop, parsedLitUpHolds]);
+
+  const handleCircleClick = (id: number) => {
     setHoldsData((prevHolds) =>
       prevHolds.map((hold) =>
         hold.id === id
@@ -130,7 +109,7 @@ const KilterBoard = ({
     );
   };
 
-  const getNextHoldState = (currentState) => {
+  const getNextHoldState = (currentState: string) => {
     switch (currentState) {
       case holdStates.OFF:
         return holdStates.STARTING;
@@ -145,20 +124,30 @@ const KilterBoard = ({
     }
   };
 
-  const firstImageDimensions = Object.values(imageDimensions)[0] as { width: number; height: number } | undefined;
+const firstImageDimensions = Object.values(BOARD_IMAGE_DIMENSIONS)[0];
 
-  const viewBoxWidth = firstImageDimensions?.width || 0;
-  const viewBoxHeight = firstImageDimensions?.height || 0;
-  
-  return (
-    <svg onClick={onBoardClick}
+const viewBoxWidth = firstImageDimensions?.width || 0;
+const viewBoxHeight = firstImageDimensions?.height || 0;
+
+return (
+  <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+    <svg
+      onClick={onBoardClick}
       viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
       preserveAspectRatio="xMidYMid meet"
-      style={{ width: "100%", height: "100%" }}
+      style={{ width: "100%", height: "auto", maxWidth: "100%", maxHeight: "100%" }}
     >
-      {Object.keys(imagesToHolds).map((imageUrl) => (
-        <image key={imageUrl} href={getImageUrl(imageUrl)} width="100%" height="100%" />
-      ))}
+      {Object.keys(imagesToHolds).map((imageUrl) => {
+        const { width, height } = BOARD_IMAGE_DIMENSIONS[imageUrl];
+        return (
+          <image
+            key={imageUrl}
+            href={getImageUrl(imageUrl)}
+            width={width}
+            height={height}
+          />
+        );
+      })}
       {holdsData
         .filter((hold) => editEnabled || hold.state !== holdStates.OFF)
         .map((hold) => (
@@ -176,7 +165,10 @@ const KilterBoard = ({
           />
         ))}
     </svg>
-  );
+  </div>
+);
+
+
 };
 
 export default KilterBoard;

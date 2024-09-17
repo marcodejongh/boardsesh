@@ -60,3 +60,43 @@ export type SetIds = number[];
 export const getSetIds = (layout: number, size: number): SetIds =>
   (boardLayouts[layout]?.find(([sizeId]) => sizeId == size) || [])[3] || [];
 
+type ImageDimensions = {
+  [imageName: string]: {
+    width: number;
+    height: number;
+  };
+};
+
+export const BOARD_IMAGE_DIMENSIONS: ImageDimensions = {
+  "15_5_24.png": { width: 1080, height: 2498 },
+  "36-1.png": { width: 1080, height: 1350 },
+  "38-1.png": { width: 1080, height: 1350 },
+  "39-1.png": { width: 1080, height: 1755 },
+  "41-1.png": { width: 1080, height: 1755 },
+  "45-1.png": { width: 1080, height: 1170 },
+  "46-1.png": { width: 1080, height: 1170 },
+  "47.png": { width: 1200, height: 663 },
+  "48.png": { width: 1080, height: 1080 },
+  "49.png": { width: 1080, height: 1188 },
+  "50-1.png": { width: 1080, height: 1473 },
+  "51-1.png": { width: 1080, height: 1473 },
+  "53.png": { width: 1080, height: 1636 },
+  "54.png": { width: 1080, height: 1636 },
+  "55-v2.png": { width: 1080, height: 1473 },
+  "56-v3.png": { width: 1080, height: 1473 },
+  "59.png": { width: 1080, height: 1404 },
+  "60-v3.png": { width: 1080, height: 1157 },
+  "61-v3.png": { width: 1080, height: 1157 },
+  "63-v3.png": { width: 1080, height: 1915 },
+  "64-v3.png": { width: 1080, height: 1915 },
+  "65-v2.png": { width: 1080, height: 1915 },
+  "66-v2.png": { width: 1080, height: 1915 },
+  "70-v2.png": { width: 1080, height: 1504 },
+  "71-v3.png": { width: 1080, height: 1504 },
+  "72.png": { width: 1080, height: 1504 },
+  "73.png": { width: 1080, height: 1504 },
+  "77-1.png": { width: 1080, height: 1080 },
+  "78-1.png": { width: 1080, height: 1080 },
+  "original-16x12-bolt-ons-v2.png": { width: 1477, height: 1200 },
+  "original-16x12-screw-ons-v2.png": { width: 1477, height: 1200 },
+};

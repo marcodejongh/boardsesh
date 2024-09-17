@@ -51,5 +51,5 @@ images=(
 # Loop through the array and download each image
 for image in "${images[@]}"
 do
-  wget "${base_url}${image}"
+  wget "${base_url}${image}" -P ../public/images
 done
