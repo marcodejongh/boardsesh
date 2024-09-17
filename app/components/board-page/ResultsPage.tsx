@@ -25,7 +25,7 @@ const ResultsPage = ({
   board,
   layout,
   size,
-  hostId,
+  hostId = '',
   pathname,
   search
 }: ResultPageProps) => {
@@ -270,7 +270,7 @@ const ResultsPage = ({
                 </Col>
                 <Col>
                   <Space>
-                     {currentClimb && peerId && hostId && (
+                     {currentClimb && peerId && (
                       <ShareBoardButton peerId={peerId} hostId={hostId} pathname={pathname} search={search} />
                     )}
                     <Badge count={10} offset={[-5, 5]}>

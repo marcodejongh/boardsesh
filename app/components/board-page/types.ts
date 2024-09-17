@@ -6,7 +6,7 @@ export type ResultPageProps = {
   board: Board;
   layout: Layout;
   size: Size;
-  hostId?: string;
+  hostId: string;
   pathname: string;
   search: string;
 };
