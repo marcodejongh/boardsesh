@@ -9,7 +9,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>
+      <body style={{overflow: 'hidden'}}>
         <AntdRegistry>{children}</AntdRegistry>
       </body>
     </html>
