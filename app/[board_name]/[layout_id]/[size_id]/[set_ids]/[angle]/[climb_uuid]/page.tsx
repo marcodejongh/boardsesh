@@ -54,6 +54,8 @@ export default async function DynamicResultsPage({
     
 
     // Fetch the current climb by UUID if it exists in the URL
+    let boulderProblems = [ ...fetchedResults.rows ];
+
     let currentClimb = fetchedResults.rows.find(({ uuid }) => uuid === climb_uuid);
     if (!currentClimb) {
       currentClimb = await fetchCurrentClimb({
@@ -64,14 +66,13 @@ export default async function DynamicResultsPage({
         climb_uuid,
         angle
       });
+      boulderProblems = [ currentClimb, ...boulderProblems];
     }
-
+    
     // Fallback: If no climb_uuid provided or fetch fails, use the first result as current climb
     if (!currentClimb && fetchedResults.rows.length > 0) {
       currentClimb = fetchedResults.rows[0];
     }
-    console.log(boardDetails);
-    console.log('xxxxxxxxx');
 
     return (
       <ResultsPage
@@ -81,7 +82,7 @@ export default async function DynamicResultsPage({
         angle={angle}
         set_ids={set_ids}
         currentClimb={currentClimb}
-        results={fetchedResults.rows}
+        results={boulderProblems}
         resultsCount={fetchedResults.totalCount}
         initialQueryParameters={queryParameters}
         boardDetails={boardDetails}

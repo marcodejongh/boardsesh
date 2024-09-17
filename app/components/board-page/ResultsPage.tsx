@@ -50,6 +50,7 @@ const ResultsPage = ({
   const [queryParameters, setQueryParameters] = useState(initialQueryParameters);
   const [pageNumber, setPageNumber] = useState(0);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [ isFetching, setIsFetching ] = useState(false);
   const router = useRouter();
   
   // Set the current climb and update the URL dynamically
@@ -130,6 +131,7 @@ const ResultsPage = ({
   
   useEffect(() => {
     const fetchData = async () => {
+      setIsFetching(true);
       try {
         const [fetchedResults] = await Promise.all([
           fetchResults(
@@ -145,7 +147,7 @@ const ResultsPage = ({
             }
           ),
         ]);
-
+        
         // Append results if pageNumber increases, otherwise reset results
         if (pageNumber > 0) {
           setResults((prevResults) => [...prevResults, ...fetchedResults.rows]);
@@ -156,13 +158,15 @@ const ResultsPage = ({
         if (!currentClimb && fetchedResults.rows.length > 0) {
           setCurrentClimb(fetchedResults.rows[0]);
         }
+        setIsFetching(false);
       } catch (error) {
         console.error("Error fetching data:", error);
       }
     };
-
-    fetchData();
-  }, [board, layout, size, queryParameters, pageNumber]);
+    if (!isFetching) {
+      fetchData();
+    }
+  }, [board, layout, size, set_ids, angle, queryParameters, pageNumber]);
 
 
   return (
