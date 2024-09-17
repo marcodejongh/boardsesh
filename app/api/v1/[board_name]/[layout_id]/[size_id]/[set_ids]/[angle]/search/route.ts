@@ -1,18 +1,17 @@
-import { ErrorResponse, FetchResultsResponse } from "@/app/lib/types";
+import { BoardRouteParameters, ErrorResponse, FetchResultsResponse } from "@/app/lib/types";
 import { sql } from "@vercel/postgres";
 import { NextResponse } from "next/server";
 
 export async function GET(
   req: Request,
-  { params }: { params: { board_name: string; layout_id: string; size_id: string; set_ids: string } },
+  { params }: { params: BoardRouteParameters },
 ): Promise<NextResponse<FetchResultsResponse | ErrorResponse>> {
-  const { layout_id, size_id } = params;
+  const { layout_id, size_id, angle } = params;
 
   // Extract search parameters from query string
   const query = new URL(req.url).searchParams;
 
   const minGrade = query.get("minGrade") || 1;
-  const angle = query.get("angle") || 40;
   const maxGrade = query.get("maxGrade") || 29;
   const minAscents = query.get("minAscents") || "0";
   const minRating = query.get("minRating") || "0";

@@ -1,23 +1,22 @@
 // api.ts
 
-import { PAGE_LIMIT } from "../board-page/constants";
 import { SetIds } from "../kilter-board/board-data";
 import {
-  BoardLayoutSizeSetIdRouteParameters, FetchResultsResponse, GetAnglesResponse,
+  BoardLayoutSizeSetIdRouteClimbUUIDParameters,
+  BoardRouteParameters, FetchCurrentProblemResponse, FetchResultsResponse, GetAnglesResponse,
   GetBoardDetailsResponse,
   GetGradesResponse,
   SearchRequest,
-  SearchRequestPagination
 } from "@/app/lib/types";
 
-const API_BASE_URL = "/api";
+const API_BASE_URL = `http://localhost:3000/api`;
 const headers = new Headers({ "ngrok-skip-browser-warning": "true" });
 
 export const fetchResults = async (
   pageNumber: number,
   pageSize: number,
   queryParameters: SearchRequest,
-  routeParameters: BoardLayoutSizeSetIdRouteParameters,
+  routeParameters: BoardRouteParameters,
 ): Promise<FetchResultsResponse> => {
   const urlParams = new URLSearchParams(
     Object.entries({
@@ -35,7 +34,9 @@ export const fetchResults = async (
 
   // Build the URL using the new route structure
   const response = await fetch(
-    `${API_BASE_URL}/v1/${routeParameters.board_name}/${routeParameters.layout_id}/${routeParameters.size_id}/${routeParameters.set_ids}/search?${urlParams}`,
+    `${API_BASE_URL}/v1/${routeParameters.board_name}/${routeParameters.layout_id}/${
+      routeParameters.size_id
+    }/${routeParameters.set_ids}/${routeParameters.angle}/search?${urlParams}`,
     { headers },
   );
 
@@ -43,6 +44,18 @@ export const fetchResults = async (
 
   return rawResults;
 };
+
+export const fetchCurrentClimb = async (
+  routeParameters: BoardLayoutSizeSetIdRouteClimbUUIDParameters,
+): Promise<FetchCurrentProblemResponse> =>
+  (
+    await fetch(
+      `${API_BASE_URL}/v1/${routeParameters.board_name}/${routeParameters.layout_id}/${
+        routeParameters.size_id
+      }/${routeParameters.set_ids}/${routeParameters.angle}/${routeParameters.climb_uuid}`,
+      { headers },
+    )
+  ).json();
 
 const gradesCache = new Map<string, GetGradesResponse>();
 

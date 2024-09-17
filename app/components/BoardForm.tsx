@@ -1,8 +1,7 @@
 "use client"
 
-import React, { useEffect, useState, useContext } from "react";
+import React, { useEffect, useState } from "react";
 import { Form, Select, Input, Button, Row, Col, Typography } from "antd";
-import { PeerContext } from "./connection-manager/PeerProvider";
 import Link from "next/link"; // Import Next.js Link
 import { defaultLayouts, boardLayouts } from "./kilter-board/board-data";
 
@@ -27,19 +26,7 @@ const BoardForm = () => {
     setSizes(boardLayouts[value]);
   };
 
-  const { peerId, receivedData, sendData, connectToPeer } = useContext(PeerContext);
   const [message, setMessage] = useState("");
-
-  useEffect(() => {
-    if (receivedData) {
-      console.log("New data received:", receivedData);
-      // Handle the received data
-    }
-  }, [receivedData]);
-
-  const handleSendMessage = () => {
-    sendData({ message });
-  };
 
   return (
     <div style={{ padding: "24px", background: "#f7f7f7", borderRadius: "8px" }}>
@@ -95,9 +82,6 @@ const BoardForm = () => {
           </Col>
         </Row>
       </Form>
-      <div style={{ marginTop: "16px" }}>
-        <Typography.Text type="secondary">Peer ID: {peerId}</Typography.Text>
-      </div>
     </div>
   );
 };

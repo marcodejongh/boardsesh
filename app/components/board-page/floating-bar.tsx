@@ -61,7 +61,6 @@ const FloatingBar: React.FC<FloatingBarProps> = ({
 
 // Styles for the fixed bottom bar and board preview
 const fixedBarStyle: React.CSSProperties = {
-  position: "fixed",  // Make sure this is explicitly typed
   bottom: 0,
   left: 0,
   right: 0,

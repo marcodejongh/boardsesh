@@ -4,9 +4,8 @@ import { fetchBoardDetails } from "../rest-api/api";
 import { getSetIds } from "./board-data";
 import type { KilterBoardLoaderProps } from "./types";
 
-// TODO: Unhardcode set_ids
 const KilterBoardLoader = (props: KilterBoardLoaderProps) => {
-  const {board, layout, size} = props;
+  const { board, layout, size } = props;
   
   const set_ids = useMemo(() => {
     if (layout && size) {
@@ -14,6 +13,8 @@ const KilterBoardLoader = (props: KilterBoardLoaderProps) => {
     }
     return;
   }, [layout, size]);
+
+  const memoizedProps = useMemo(() => ({ ...props }), [props]); // Memoize the props
 
   const [boardDetails, setBoardDetails] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -49,7 +50,7 @@ const KilterBoardLoader = (props: KilterBoardLoaderProps) => {
       edgeRight={boardDetails.edge_right}
       edgeBottom={boardDetails.edge_bottom}
       edgeTop={boardDetails.edge_top}
-      {...props}
+      {...memoizedProps} // Pass memoized props to KilterBoard
     />
   );
 };

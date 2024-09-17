@@ -61,7 +61,6 @@ export type SearchRequest = {
   sortBy: "ascents" | "difficulty" | "name" | "quality";
   sortOrder: "asc" | "desc";
   name: string;
-  angle: number;
   onlyClassics: boolean;
   settername: string;
   setternameSuggestion: string;
@@ -170,14 +169,17 @@ export type GetGradesResponse = Grade[];
 
 export type GetBetaResponse = BetaLink[];
 
-export type BoardLayoutSizeRouteParameters = {
+export type BoardRouteParameters = {
   board_name: string;
   layout_id: number;
   size_id: number;
+  set_ids: SetIds;
+  angle: number;
 };
 
-export type BoardLayoutSizeSetIdRouteParameters = BoardLayoutSizeRouteParameters & {
-  set_ids: SetIds;
+export type ClimbUuid = string;
+export type BoardLayoutSizeSetIdRouteClimbUUIDParameters = BoardRouteParameters & {
+  climb_uuid: ClimbUuid;
 };
 //TODO: Refactor useEffects so this page can SSR
 
@@ -189,6 +191,46 @@ export type FetchResultsResponse = {
   totalCount: number;
 };
 
+export type FetchCurrentProblemResponse = BoulderProblem;
+
 export interface ErrorResponse {
   error: string;
+}
+
+// Define the structure for the holds data for each image
+export interface StaticPropHoldData {
+  placement_id: number;
+  mirrored_placement_id: number | null;
+  x: number;
+  y: number;
+}
+
+// Define the structure for images_to_holds
+export interface StaticPropImagesToHolds {
+  [layout_id: string]: {
+    [product_size_id: string]: {
+      [image_url: string]: HoldData[];
+    };
+  };
+}
+
+// Define the structure for size dimensions
+export interface StaticPropSizeDimensions {
+  edge_left: number;
+  edge_right: number;
+  edge_bottom: number;
+  edge_top: number;
+}
+
+// Define the boardData prop type
+export interface StaticPropBoardData {
+  images_to_holds: ImagesToHolds;
+  size_dimensions: {
+    [product_size_id: number]: SizeDimensions;
+  };
+}
+
+// Define the props for the page component
+export interface StaticPropBoardPageProps {
+  boardData: BoardData;
 }
