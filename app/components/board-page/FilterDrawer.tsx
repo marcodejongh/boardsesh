@@ -33,7 +33,9 @@ const FilterDrawer = ({
   onApplyFilters,
   board,
   layout,
+  angle,
   resultsCount,
+  closeDrawer,
 }: FilterDrawerProps) => {
   const [filters, setFilters] = useState({
     minGrade: currentSearchValues.minGrade,
@@ -41,7 +43,6 @@ const FilterDrawer = ({
     minAscents: currentSearchValues.minAscents,
     sortBy: currentSearchValues.sortBy,
     sortOrder: currentSearchValues.sortOrder,
-    angle: currentSearchValues.angle,
     minRating: currentSearchValues.minRating,
     onlyClassics: currentSearchValues.onlyClassics,
     gradeAccuracy: currentSearchValues.gradeAccuracy,
@@ -93,9 +94,9 @@ const FilterDrawer = ({
   useEffect(() => {
     const fetchAngleValues = async () => {
       try {
+        // TODO: Move to a button in the resultspage
         const data = await fetchAngles(board, layout);
         setAngles(data);
-        updateFilters({ angle: currentSearchValues.angle });
         setFetchedAngles(true);
       } catch (error) {
         console.error("Error fetching angles:", error);
@@ -242,7 +243,10 @@ const FilterDrawer = ({
         renderItem={(climb: BoulderProblem) => (
           <List.Item
             key={climb.uuid}
-            onClick={() => handleClimbClick(climb)}
+            onClick={() => {
+              handleClimbClick(climb);
+              closeDrawer();
+            }}
             style={{
               cursor: "pointer",
               paddingLeft: "16px",

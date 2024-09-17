@@ -3,6 +3,7 @@ import { Button, Typography, Row, Col } from "antd";
 import { LeftOutlined, RightOutlined } from "@ant-design/icons";
 import KilterBoardLoader from "../kilter-board/loader"; // Import KilterBoardLoader
 import { FloatingBarProps } from "./types";
+import KilterBoard from "../kilter-board/KilterBoard";
 
 const { Title, Text } = Typography;
 
@@ -10,7 +11,7 @@ const FloatingBar: React.FC<FloatingBarProps> = ({
   currentClimb,
   navigateClimbsLeft,
   navigateClimbsRight,
-  board, layout, size
+  boardDetails
 }: FloatingBarProps) => {
   if (!currentClimb) return null;
 
@@ -20,10 +21,8 @@ const FloatingBar: React.FC<FloatingBarProps> = ({
         {/* KilterBoardLoader for small preview */}
         <Col>
           <div style={boardPreviewStyle}>
-            <KilterBoardLoader
-              board={board} 
-              layout={layout}
-              size={size}
+            <KilterBoard
+              boardDetails={boardDetails}
               // TODO: Implement
               // showLargeOnClick={true}
               litUpHolds={currentClimb.frames} 

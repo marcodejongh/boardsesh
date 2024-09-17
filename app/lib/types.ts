@@ -185,6 +185,7 @@ export type BoardLayoutSizeSetIdRouteClimbUUIDParameters = BoardRouteParameters 
 
 export type Board = string;
 export type Layout = number;
+export type Angle = number;
 export type Size = number;
 export type FetchResultsResponse = {
   rows: BoulderProblem[];

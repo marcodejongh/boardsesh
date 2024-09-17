@@ -85,6 +85,7 @@ export default async function DynamicResultsPage({
         resultsCount={fetchedResults.totalCount}
         initialQueryParameters={queryParameters}
         boardDetails={boardDetails}
+        climb_uuid={climb_uuid}
       />
     );
   } catch (error) {

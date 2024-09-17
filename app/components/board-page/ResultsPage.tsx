@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import KilterBoardLoader from "../kilter-board/loader";
+
 import FilterDrawer from "./FilterDrawer";
 import FloatingBar from "./floating-bar";
 import { BoulderProblem, GetBoardDetailsResponse, SearchRequest } from "@/lib/types";
@@ -14,6 +14,8 @@ import {
 } from "@ant-design/icons";
 import { Footer } from "antd/es/layout/layout";
 import KilterBoard from "../kilter-board/KilterBoard";
+import { fetchResults } from "../rest-api/api";
+import { PAGE_LIMIT } from "./constants";
 
 const { Header, Content } = Layout;
 const { Title, Text } = Typography;
@@ -22,6 +24,7 @@ interface ResultsPageProps {
   layout: number;
   size: number;
   set_ids: SetIds;
+  climb_uuid: string;
   angle: number;
   currentClimb: BoulderProblem;
   results: BoulderProblem[];
@@ -48,12 +51,13 @@ const ResultsPage = ({
   const [pageNumber, setPageNumber] = useState(0);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const router = useRouter();
-
+  
   // Set the current climb and update the URL dynamically
   const setCurrentClimb = (newClimb: BoulderProblem) => {
     // Update the URL dynamically to include the climb_uuid
+    setCurrentClimbState(newClimb);
     const newUrl = `/${board}/${layout}/${size}/${set_ids}/${angle}/${newClimb.uuid}`;
-    router.push(newUrl, undefined, { shallow: true });
+    window.history.pushState({}, '', newUrl);
   };
 
   // Function to apply filters
@@ -123,6 +127,43 @@ const ResultsPage = ({
   const closeDrawer = () => {
     setDrawerOpen(false);
   };
+  
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [fetchedResults] = await Promise.all([
+          fetchResults(
+            pageNumber,
+            PAGE_LIMIT,
+            queryParameters,
+            {
+              board_name: board,
+              layout_id: layout,
+              size_id: size,
+              set_ids: set_ids,
+              angle: angle
+            }
+          ),
+        ]);
+
+        // Append results if pageNumber increases, otherwise reset results
+        if (pageNumber > 0) {
+          setResults((prevResults) => [...prevResults, ...fetchedResults.rows]);
+        } else {
+          setResults(fetchedResults.rows);
+        }
+
+        if (!currentClimb && fetchedResults.rows.length > 0) {
+          setCurrentClimb(fetchedResults.rows[0]);
+        }
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      }
+    };
+
+    fetchData();
+  }, [board, layout, size, queryParameters, pageNumber]);
+
 
   return (
     <Layout style={{ height: "100vh" }}>
@@ -226,6 +267,7 @@ const ResultsPage = ({
         {/* Floating bar to navigate between climbs */}
         {currentClimb && (
           <FloatingBar
+            boardDetails={boardDetails}
             currentClimb={currentClimb}
             navigateClimbsLeft={navigateClimbsLeft}
             navigateClimbsRight={navigateClimbsRight}
@@ -244,6 +286,9 @@ const ResultsPage = ({
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         onApplyFilters={applyFilters}
+        angle={angle}
+        closeDrawer={closeDrawer}
+        resultsCount={initialResultsCount}
       />
     </Layout>
   );

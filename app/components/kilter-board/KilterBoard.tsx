@@ -2,16 +2,19 @@ import React, { useEffect, useState, useMemo } from "react";
 import { HoldTuple } from "@/lib/types";
 import { KilterBoardProps } from "./types";
 
-const getImageUrl = (imageUrl) => `/images/${imageUrl}`;
+const getImageUrl = (imageUrl: string) => `/images/${imageUrl}`;
 
 type HoldsArray = Array<{ id: number; mirroredHoldId: number | null; cx: number; cy: number; r: number; state: string }>
 const KilterBoard = ({
   editEnabled = false,
   litUpHolds = "",
-  boardDetails,
+  boardDetails = {},
   onCircleClick = undefined,
   onBoardClick = undefined
 }: KilterBoardProps) => {
+  if (!boardDetails) {
+    return;
+  }
   const { images_to_holds: imagesToHolds, edge_bottom: edgeBottom, edge_left: edgeLeft, edge_right: edgeRight, edge_top: edgeTop } = boardDetails;
   const [imageDimensions, setImageDimensions] = useState<Record<string, { width: number; height: number }>>({});
   const [holdsData, setHoldsData] = useState<HoldsArray>([]);
