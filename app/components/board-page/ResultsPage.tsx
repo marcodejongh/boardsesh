@@ -1,11 +1,10 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 
 import FilterDrawer from "./FilterDrawer";
 import FloatingBar from "./floating-bar";
 import { BoulderProblem, GetBoardDetailsResponse, SearchRequest } from "@/lib/types";
-import { Button, Col, Layout, Row, Space, Typography } from "antd";
+import { Button, Col, Layout, message, Row, Space, Typography } from "antd";
 import { SetIds } from "../kilter-board/board-data";
 import {
   SearchOutlined,
@@ -48,11 +47,12 @@ const ResultsPage = ({
   const [results, setResults] = useState(initialResults);
   const [currentClimb, setCurrentClimbState] = useState(initialClimb);
   const [queryParameters, setQueryParameters] = useState(initialQueryParameters);
-  const [pageNumber, setPageNumber] = useState(0);
+  
+  const [pageNumber, setPageNumber] = useState(1);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [ isFetching, setIsFetching ] = useState(false);
-  const router = useRouter();
   
+  console.log(initialResults)
   // Set the current climb and update the URL dynamically
   const setCurrentClimb = (newClimb: BoulderProblem) => {
     // Update the URL dynamically to include the climb_uuid
@@ -63,7 +63,7 @@ const ResultsPage = ({
 
   // Function to apply filters
   const applyFilters = (filters: SearchRequest) => {
-    setPageNumber(0);
+    setPageNumber(1);
     setQueryParameters(filters);
     // You could trigger fetching new results based on updated filters here
   };
@@ -149,24 +149,23 @@ const ResultsPage = ({
         ]);
         
         // Append results if pageNumber increases, otherwise reset results
-        if (pageNumber > 0) {
-          setResults((prevResults) => [...prevResults, ...fetchedResults.rows]);
+        if (pageNumber > 1) {
+          debugger;
+          setResults((prevResults) => [...prevResults, ...fetchedResults.boulderproblems]);
         } else {
-          setResults(fetchedResults.rows);
+          debugger;
+          setResults(fetchedResults.boulderproblems);
         }
 
-        if (!currentClimb && fetchedResults.rows.length > 0) {
-          setCurrentClimb(fetchedResults.rows[0]);
-        }
         setIsFetching(false);
       } catch (error) {
         console.error("Error fetching data:", error);
       }
     };
-    if (!isFetching) {
+    if (!isFetching && (pageNumber * PAGE_LIMIT > results.length )) {
       fetchData();
     }
-  }, [board, layout, size, set_ids, angle, queryParameters, pageNumber]);
+  }, [isFetching, board, layout, size, set_ids, angle, pageNumber]);
 
 
   return (

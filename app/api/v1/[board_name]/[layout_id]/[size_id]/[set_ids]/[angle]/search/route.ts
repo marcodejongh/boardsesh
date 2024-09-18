@@ -1,82 +1,42 @@
-import { BoardRouteParameters, ErrorResponse, FetchResultsResponse } from "@/app/lib/types";
+import { PAGE_LIMIT } from "@/app/components/board-page/constants";
+import { SearchBoulderProblemResult, searchBoulderProblems } from "@/app/lib/data/queries";
+import { BoardRouteParameters, ErrorResponse, FetchResultsResponse, SearchRequest, SearchRequestPagination } from "@/app/lib/types";
 import { sql } from "@vercel/postgres";
 import { NextResponse } from "next/server";
 
+// Refactor: Keep BoardRouteParameters and SearchRequest fields in separate objects
 export async function GET(
   req: Request,
   { params }: { params: BoardRouteParameters },
-): Promise<NextResponse<FetchResultsResponse | ErrorResponse>> {
-  const { layout_id, size_id, angle } = params;
-
+): Promise<NextResponse<SearchBoulderProblemResult | ErrorResponse>> {
   // Extract search parameters from query string
   const query = new URL(req.url).searchParams;
 
-  const minGrade = query.get("minGrade") || 1;
-  const maxGrade = query.get("maxGrade") || 29;
-  const minAscents = query.get("minAscents") || "0";
-  const minRating = query.get("minRating") || "0";
-  const gradeAccuracy = query.get("gradeAccuracy") || "0";
-  const sortBy = query.get("sortBy") || "ascensionist_count";
-  const sortOrder = query.get("sortOrder") === "asc" ? "ASC" : "DESC";
-  const page = parseInt(query.get("page") || "0", 10);
-  const pageSize = parseInt(query.get("pageSize") || "10", 10);
-  const offset = page * pageSize;
+  const searchParams: SearchRequestPagination = {
+    gradeAccuracy: parseFloat(query.get("gradeAccuracy") || "0"),
+    maxGrade: parseInt(query.get("maxGrade") || "29", 10),
+    minAscents: parseInt(query.get("minAscents") || "0", 10),
+    minGrade: parseInt(query.get("minGrade") || "1", 10),
+    minRating: parseFloat(query.get("minRating") || "0"),
+    sortBy: (query.get("sortBy") || "ascents") as "ascents" | "difficulty" | "name" | "quality",
+    sortOrder: (query.get("sortOrder") || "desc") as "asc" | "desc",
+    name: query.get("name") || "",
+    onlyClassics: query.get("onlyClassics") === "true",
+    settername: query.get("settername") || "",
+    setternameSuggestion: query.get("setternameSuggestion") || "",
+    holds: query.get("holds") || "",
+    mirroredHolds: query.get("mirroredHolds") || "",
+    pageSize: Number(query.get("pageSize") || PAGE_LIMIT),
+    page: Number(query.get("page") || 0),
 
-  // Ensure safe sorting by allowing only specific fields
-  const allowedSortColumns = ["ascensionist_count", "display_difficulty", "name", "quality_average"];
-  const safeSortBy = allowedSortColumns.includes(sortBy) ? sortBy : "ascensionist_count";
+  };
 
   try {
-    const result = await sql.query({
-      text: `
-        WITH filtered_climbs AS (
-          SELECT
-            climbs.uuid, climbs.setter_username, climbs.name, climbs.description,
-            climbs.frames, climb_stats.angle, climb_stats.ascensionist_count,
-            dg.boulder_name as difficulty,
-            ROUND(climb_stats.quality_average::numeric, 2) as quality_average,
-            ROUND(climb_stats.difficulty_average::numeric - climb_stats.display_difficulty::numeric, 2) AS difficulty_error,
-            climb_stats.benchmark_difficulty
-          FROM climbs
-          LEFT JOIN climb_stats ON climb_stats.climb_uuid = climbs.uuid
-          LEFT JOIN difficulty_grades dg on difficulty = ROUND(climb_stats.display_difficulty::numeric)
-          INNER JOIN product_sizes ON product_sizes.id = $1
-          WHERE climbs.layout_id = $2
-          AND climbs.is_listed = 1
-          AND climbs.is_draft = 0
-          AND product_sizes.id = $3
-          AND climb_stats.angle = $11
-          AND climb_stats.ascensionist_count >= $4
-          ${minGrade && maxGrade ? "AND ROUND(climb_stats.display_difficulty::numeric, 0) BETWEEN $5 AND $6" : ""}
-          AND climb_stats.quality_average >= $7
-          AND ABS(ROUND(climb_stats.display_difficulty::numeric, 0) - climb_stats.difficulty_average::numeric) <= $8
-        )
-        SELECT *, 
-        (SELECT COUNT(*) FROM filtered_climbs) as total_count
-        FROM filtered_climbs
-        ORDER BY ${safeSortBy} ${sortOrder}
-        LIMIT $9 OFFSET $10
-      `,
-      values: [
-        size_id,
-        layout_id,
-        size_id,
-        minAscents,
-        minGrade,
-        maxGrade,
-        minRating,
-        gradeAccuracy,
-        pageSize,
-        offset,
-        angle,
-      ].filter((value) => value !== null), // Filter out null values
-    });
+    // Call the separate function to perform the search
+    const result = await searchBoulderProblems(params, searchParams);
 
-    // Include both the rows and the total count in the response
-    return NextResponse.json({
-      rows: result.rows,
-      totalCount: result.rows.length > 0 ? result.rows[0].total_count : 0,
-    });
+    // Return response
+    return NextResponse.json(result);
   } catch (error) {
     console.error("Error fetching data:", error);
     return NextResponse.json({ error: "Failed to fetch board details" }, { status: 500 });

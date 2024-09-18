@@ -1,30 +1,29 @@
 import ResultsPage from "@/app/components/board-page/ResultsPage";
-import { fetchResults, fetchCurrentClimb, fetchBoardDetails } from "@/app/components/rest-api/api";
+import { fetchCurrentClimb, fetchBoardDetails } from "@/app/components/rest-api/api";
 import { getSetIds } from "@/app/components/kilter-board/board-data";
 import { PAGE_LIMIT } from "@/app/components/board-page/constants";
 import { notFound } from "next/navigation";
-import { BoardLayoutSizeSetIdRouteClimbUUIDParameters } from "@/app/lib/types";
+import { BoardLayoutSizeSetIdRouteClimbUUIDParameters, SearchRequest, SearchRequestPagination } from "@/app/lib/types";
+import { getBoardDetails, getBoulderProblem, searchBoulderProblems } from "@/app/lib/data/queries";
 
 export default async function DynamicResultsPage({
   params,
 }: {
   params: BoardLayoutSizeSetIdRouteClimbUUIDParameters;
 }) {
-  console.log(`!!!!!!!!!Route rerendered!!!!!!!!!!!`)
+  console.log(`!!!!!!!!!Route rerendered!!!!!!!!!!!`);
   const { board_name, climb_uuid } = params;
   const layout_id = Number(params.layout_id);
   const size_id = Number(params.size_id);
   const angle = Number(params.angle);
   
-  console.log(params.set_ids);
   const set_ids = params.set_ids || getSetIds(layout_id, size_id);
 
   // Query parameters for search results
-  const queryParameters = {
+  const queryParameters: SearchRequestPagination = {
     minGrade: 10,
     maxGrade: 33,
     name: "",
-    angle: 40,
     minAscents: 1,
     sortBy: "ascents",
     sortOrder: "desc",
@@ -35,45 +34,42 @@ export default async function DynamicResultsPage({
     setternameSuggestion: "",
     holds: "",
     mirroredHolds: "",
+    pageSize: PAGE_LIMIT,
+    page: 0
   };
 
   try {
-    // Fetch the search results
-    const [fetchedResults, boardDetails] = await Promise.all([
-      fetchResults(0, PAGE_LIMIT, queryParameters, {
+    // Fetch the search results using searchBoulderProblems
+    const [fetchedResults, boardDetails, currentClimb] = await Promise.all([
+      searchBoulderProblems({
         board_name,
         layout_id,
         size_id,
         set_ids,
-        angle,
-      }),
-      fetchBoardDetails(board_name, layout_id, size_id, set_ids)]);
-    if (!fetchedResults || fetchedResults.rows.length === 0) {
-      notFound();
-    }
-    
-
-    // Fetch the current climb by UUID if it exists in the URL
-    let boulderProblems = [ ...fetchedResults.rows ];
-
-    let currentClimb = fetchedResults.rows.find(({ uuid }) => uuid === climb_uuid);
-    if (!currentClimb) {
-      currentClimb = await fetchCurrentClimb({
+        angle
+      }, queryParameters),
+      getBoardDetails(board_name, layout_id, size_id, [1,20]),
+      getBoulderProblem({
         board_name,
         layout_id,
         size_id,
         set_ids,
         climb_uuid,
         angle
-      });
+      }) // TODO: Update logic if necessary
+    ]);
+
+    if (!fetchedResults || fetchedResults.boulderproblems.length === 0) {
+      notFound();
+    }
+    
+    
+    let boulderProblems = [ ...fetchedResults.boulderproblems ];
+
+    if (!fetchedResults.boulderproblems.find(({ uuid }) => uuid === climb_uuid)) {
       boulderProblems = [ currentClimb, ...boulderProblems];
     }
     
-    // Fallback: If no climb_uuid provided or fetch fails, use the first result as current climb
-    if (!currentClimb && fetchedResults.rows.length > 0) {
-      currentClimb = fetchedResults.rows[0];
-    }
-
     return (
       <ResultsPage
         board={board_name}

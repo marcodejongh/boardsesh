@@ -1,5 +1,6 @@
 // api.ts
 
+import { SearchBoulderProblemResult } from "@/app/lib/data/queries";
 import { SetIds } from "../kilter-board/board-data";
 import {
   BoardLayoutSizeSetIdRouteClimbUUIDParameters,
@@ -9,7 +10,7 @@ import {
   SearchRequest,
 } from "@/app/lib/types";
 
-const API_BASE_URL = `http://localhost:3000/api`;
+const API_BASE_URL = `/api`;
 const headers = new Headers({ "ngrok-skip-browser-warning": "true" });
 
 export const fetchResults = async (
@@ -17,7 +18,7 @@ export const fetchResults = async (
   pageSize: number,
   queryParameters: SearchRequest,
   routeParameters: BoardRouteParameters,
-): Promise<FetchResultsResponse> => {
+): Promise<SearchBoulderProblemResult> => {
   const urlParams = new URLSearchParams(
     Object.entries({
       ...queryParameters,

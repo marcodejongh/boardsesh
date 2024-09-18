@@ -1,6 +1,7 @@
 import { fetchResults } from "@/app/components/rest-api/api";
 import { getSetIds } from "@/app/components/kilter-board/board-data";
 import { redirect } from "next/navigation";
+import { searchBoulderProblems } from "@/app/lib/data/queries";
 
 export default async function ClimbPage({
   params,
@@ -35,7 +36,7 @@ export default async function ClimbPage({
   try {
     // Fetch results for the initial render
     fetchedResults = (await Promise.all([
-      fetchResults(0, 1, queryParameters, {
+      searchBoulderProblems(0, 1, queryParameters, {
         board_name,
         layout_id,
         size_id,

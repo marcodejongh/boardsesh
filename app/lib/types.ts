@@ -68,8 +68,9 @@ export type SearchRequest = {
   mirroredHolds: string;
 };
 
-export type SearchRequestPagination = {
+export type SearchRequestPagination = SearchRequest & {
   page: number;
+  pageSize: number;
 };
 
 // Search Result Type
