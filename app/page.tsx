@@ -1,12 +1,7 @@
 // app/page.tsx
 import React from "react";
-import BoardForm from './components/BoardForm'; // Import your form component here
+import { redirect } from "next/navigation";
 
 export default function Home() {
-  return (
-    <div>
-      <h1>Welcome to Kilter</h1>
-      <BoardForm />
-    </div>
-  );
+  redirect(`/kilter/8/17/26,27/40/ED76B2C0552B4EB9A9BD5C978C4395E5`);
 }
