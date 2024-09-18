@@ -34,7 +34,7 @@ const AngleButton: React.FC<InfoButtonProps> = ({
         icon={<InfoCircleOutlined />}
         onClick={openDrawer}
       />
-      <Drawer title="Info" placement="right" onClose={closeDrawer} width={"90%"} open={drawerOpen}>
+      <Drawer title="Info" placement="right" onClose={closeDrawer} width={"80%"} open={drawerOpen}>
         <h1>TODO: Implement</h1>
         This will show the first 4 beta videos, and the problem stats
       </Drawer>

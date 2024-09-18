@@ -46,7 +46,7 @@ const AngleButton: React.FC<AngleButtonProps> = ({
   return (
     <>
       <Button type="default" onClick={openDrawer} >{angle}°</Button>
-      <Drawer title="Angles" placement="right" onClose={closeDrawer} width={"90%"} open={drawerOpen}>
+      <Drawer title="Angles" placement="right" onClose={closeDrawer} width={"80%"} open={drawerOpen}>
         <h1>TODO: Implement</h1>
         Will show the grades etc for the current problem but at different angles
       </Drawer>

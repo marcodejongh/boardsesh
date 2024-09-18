@@ -135,7 +135,7 @@ const FilterDrawer = ({
     : climbs;
 
   return (
-    <Drawer title="Advanced Filters" placement="left" onClose={onClose} width={"90%"} open={open}>
+    <Drawer title="Advanced Filters" placement="left" onClose={onClose} width={"80%"} open={open}>
       <Collapse defaultActiveKey={[]} accordion>
         <Panel header={isFetching && !searchChanged ? `Searching for problems` : `Found ${resultsCount} matching climbs`} key="1">
           <Form layout="vertical">
