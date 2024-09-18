@@ -193,6 +193,8 @@ const ResultsPage = ({
   });
 
   return (
+    <>
+    <title>{`${board} problem: ${currentClimb.name} ${currentClimb.difficulty} @ ${currentClimb.angle}°`}</title>
     <Layout style={{ height: "100vh" }}>
       <Header
           style={{
@@ -317,7 +319,7 @@ const ResultsPage = ({
         fetchMoreClimbs={fetchMoreClimbs}
       />
     </Layout>
-  );
+  </>);
 };
 
 export default ResultsPage;
