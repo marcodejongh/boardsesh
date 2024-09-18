@@ -33,5 +33,5 @@ export type FilterDrawerProps = {
   angle: Angle;
   resultsCount: number;
   isFetching: boolean;
-  
+  searchChanged: boolean;
 };

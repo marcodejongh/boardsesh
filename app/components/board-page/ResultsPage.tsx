@@ -55,6 +55,7 @@ const ResultsPage = ({
   const [pageNumber, setPageNumber] = useState(1);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [ isFetching, setIsFetching ] = useState(false);
+  const [ isFetchingMoreProblems, setIsFetchingMoreProblems ] = useState(false);
   
   // Set the current climb and update the URL dynamically
   const setCurrentClimb = (newClimb: BoulderProblem) => {
@@ -63,9 +64,18 @@ const ResultsPage = ({
     const newUrl = `/${board}/${layout}/${size}/${set_ids}/${angle}/${newClimb.uuid}`;
     window.history.pushState({}, '', newUrl);
   };
+  
+  const fetchMoreClimbs = () => {
+    if (!isFetchingMoreProblems) {
+      setPageNumber((prevPageNumber) => {
+        setIsFetchingMoreProblems(true);
+        return prevPageNumber + 1;
+      });
+    }
+  }
 
   const applyFilters = (filters: SearchRequest) => {
-    setQueryParameters((prevParams) => {
+    setQueryParameters(() => {
       const updatedParams = filters;
       setSearchChanged(true); 
       return updatedParams;
@@ -84,8 +94,8 @@ const ResultsPage = ({
     }
 
     // Handle fetching more results if the user is near the end of the current list
-    if (currentIndex >= results.length - 10) {
-      setPageNumber(pageNumber + 1);
+    if (currentIndex >= (results.length - PAGE_LIMIT - 5)) {
+      fetchMoreClimbs();
       // Fetch more results logic can be triggered here based on page number
     }
   };
@@ -155,6 +165,7 @@ const ResultsPage = ({
         // Append results if pageNumber increases, otherwise reset results
         if (pageNumber > 1) {
           setResults((prevResults) => [...prevResults, ...fetchedResults.boulderproblems]);
+          setIsFetchingMoreProblems(false);
         } else {
           setResults(fetchedResults.boulderproblems);
           setResultsCount(fetchedResults.totalCount);
@@ -171,7 +182,7 @@ const ResultsPage = ({
     if (!isFetching && ((pageNumber * PAGE_LIMIT > results.length && resultsCount > pageNumber * PAGE_LIMIT) || searchChanged)) {
       fetchData();
     }
-  }, [isFetching, board, layout, size, set_ids, angle, pageNumber, searchChanged, queryParameters]);
+  }, [isFetching, board, layout, size, set_ids, angle, pageNumber, searchChanged, queryParameters, isFetchingMoreProblems]);
 
 
   return (
@@ -295,6 +306,7 @@ const ResultsPage = ({
         closeDrawer={closeDrawer}
         resultsCount={resultsCount}
         isFetching={isFetching}
+        searchChanged={searchChanged}
       />
     </Layout>
   );

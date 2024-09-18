@@ -12,16 +12,25 @@ import {
   Collapse,
   Spin,
   Typography,
+  Skeleton,
 } from "antd";
 
 import { fetchGrades } from "../rest-api/api";
 import { BoulderProblem, GetAnglesResponse, GetGradesResponse, SearchRequest } from "@/lib/types";
 import { FilterDrawerProps } from "./types";
 import { useDebouncedCallback } from "use-debounce";
+import { PAGE_LIMIT } from "./constants";
 
 const { Option } = Select;
 const { Title, Text } = Typography;
 const { Panel } = Collapse;
+
+type ShadowProblem = { shadow: true; uuid: string }
+type ClimbListItem = BoulderProblem | ShadowProblem;
+
+const isShadowItem = (item: ClimbListItem): item is { shadow: true; uuid: string } => {
+  return (item as { shadow: true }).shadow === true;
+};
 
 const FilterDrawer = ({
   currentClimb,
@@ -37,6 +46,7 @@ const FilterDrawer = ({
   resultsCount,
   closeDrawer,
   isFetching,
+  searchChanged,
 }: FilterDrawerProps) => {
   const [filters, setFilters] = useState({
     minGrade: currentSearchValues.minGrade,
@@ -68,6 +78,7 @@ const FilterDrawer = ({
 
   useEffect(() => {
     const fetchGradeValues = async () => {
+      // TODO: Grades should be fetched in the routes page.tsx as its not going to change
       try {
         const data = await fetchGrades(board);
         setGrades(data);
@@ -97,6 +108,20 @@ const FilterDrawer = ({
       </Drawer>
     );
   }
+
+    // Generate shadow items to append to the climbs list
+  const generateShadowItems = (): ShadowProblem[] => {
+    return Array.from({ length: PAGE_LIMIT }, (_, index) => ({
+      uuid: `shadow-${index}`, // Use a unique ID for shadow items
+      shadow: true, // Flag to identify the shadow items
+    }));
+  };
+
+  const combinedClimbs = isFetching && !searchChanged
+    ? [...climbs, ...generateShadowItems()]
+    : climbs;
+
+
   // TODO: When the filter is first opened it already fetches with the old query parameters
   // So it's probably firing the onchange when it shouldn't yet
   return (
@@ -208,34 +233,40 @@ const FilterDrawer = ({
 
       <List
         itemLayout="vertical"
-        dataSource={climbs}
-        renderItem={(climb: BoulderProblem) => (
-          <List.Item
-            key={climb.uuid}
-            onClick={() => {
-              handleClimbClick(climb);
-              closeDrawer();
-            }}
-            style={{
-              cursor: "pointer",
-              paddingLeft: "16px",
-              borderBottom: "1px solid #f0f0f0",
-              backgroundColor: currentClimb?.uuid === climb.uuid ? "#f0f0f0" : "transparent",
-              borderLeft: currentClimb?.uuid === climb.uuid ? "5px solid #1890ff" : "none",
-            }}
-          >
-            <Title level={5} style={{ margin: 0 }}>
-              {climb.name}
-            </Title>
-            <Text>
-              Grade: {climb.difficulty} at {climb.angle}°
-            </Text>
-            <br />
-            <Text type="secondary">
-              {climb.ascensionist_count} ascents, {climb.quality_average}★
-            </Text>
-          </List.Item>
-        )}
+        dataSource={combinedClimbs}
+        renderItem={(climb: ClimbListItem) =>
+          isShadowItem(climb) ? (
+            <List.Item key={climb.uuid}>
+              <Skeleton active title={false} paragraph={{ rows: 2 }} />
+            </List.Item>
+          ) : (
+            <List.Item
+              key={climb.uuid}
+              onClick={() => {
+                handleClimbClick(climb);
+                closeDrawer();
+              }}
+              style={{
+                cursor: "pointer",
+                paddingLeft: "16px",
+                borderBottom: "1px solid #f0f0f0",
+                backgroundColor: currentClimb?.uuid === climb.uuid ? "#f0f0f0" : "transparent",
+                borderLeft: currentClimb?.uuid === climb.uuid ? "5px solid #1890ff" : "none",
+              }}
+            >
+              <Title level={5} style={{ margin: 0 }}>
+                {climb.name}
+              </Title>
+              <Text>
+                Grade: {climb.difficulty} at {climb.angle}°
+              </Text>
+              <br />
+              <Text type="secondary">
+                {climb.ascensionist_count} ascents, {climb.quality_average}★
+              </Text>
+            </List.Item>
+          )
+        }
       />
     </Drawer>
   );
