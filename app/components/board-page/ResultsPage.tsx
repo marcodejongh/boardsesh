@@ -9,12 +9,13 @@ import { SetIds } from "../kilter-board/board-data";
 import {
   SearchOutlined,
   BulbOutlined,
-  InfoCircleOutlined,
 } from "@ant-design/icons";
 import { Footer } from "antd/es/layout/layout";
 import KilterBoard from "../kilter-board/KilterBoard";
 import { fetchResults } from "../rest-api/api";
 import { PAGE_LIMIT } from "./constants";
+import AngleButton from "./angle-button";
+import InfoButton from "./info-button";
 
 const { Header, Content } = Layout;
 const { Title, Text } = Typography;
@@ -45,14 +46,16 @@ const ResultsPage = ({
   boardDetails,
 }: ResultsPageProps) => {
   const [results, setResults] = useState(initialResults);
+  const [resultsCount, setResultsCount] = useState(initialResultsCount);
+
   const [currentClimb, setCurrentClimbState] = useState(initialClimb);
   const [queryParameters, setQueryParameters] = useState(initialQueryParameters);
+  const [searchChanged, setSearchChanged] = useState(false);
   
   const [pageNumber, setPageNumber] = useState(1);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [ isFetching, setIsFetching ] = useState(false);
   
-  console.log(initialResults)
   // Set the current climb and update the URL dynamically
   const setCurrentClimb = (newClimb: BoulderProblem) => {
     // Update the URL dynamically to include the climb_uuid
@@ -61,11 +64,12 @@ const ResultsPage = ({
     window.history.pushState({}, '', newUrl);
   };
 
-  // Function to apply filters
   const applyFilters = (filters: SearchRequest) => {
-    setPageNumber(1);
-    setQueryParameters(filters);
-    // You could trigger fetching new results based on updated filters here
+    setQueryParameters((prevParams) => {
+      const updatedParams = filters;
+      setSearchChanged(true); 
+      return updatedParams;
+    });
   };
 
   // Function to handle navigation to the next climb (right arrow)
@@ -150,22 +154,24 @@ const ResultsPage = ({
         
         // Append results if pageNumber increases, otherwise reset results
         if (pageNumber > 1) {
-          debugger;
           setResults((prevResults) => [...prevResults, ...fetchedResults.boulderproblems]);
         } else {
-          debugger;
           setResults(fetchedResults.boulderproblems);
+          setResultsCount(fetchedResults.totalCount);
         }
-
+        if(searchChanged) {
+          setSearchChanged(false);
+          setPageNumber(1);
+        }
         setIsFetching(false);
       } catch (error) {
         console.error("Error fetching data:", error);
       }
     };
-    if (!isFetching && (pageNumber * PAGE_LIMIT > results.length )) {
+    if (!isFetching && ((pageNumber * PAGE_LIMIT > results.length && resultsCount > pageNumber * PAGE_LIMIT) || searchChanged)) {
       fetchData();
     }
-  }, [isFetching, board, layout, size, set_ids, angle, pageNumber]);
+  }, [isFetching, board, layout, size, set_ids, angle, pageNumber, searchChanged, queryParameters]);
 
 
   return (
@@ -243,12 +249,8 @@ const ResultsPage = ({
                      {/* {currentClimb && peerId && (
                       <ShareBoardButton peerId={peerId} hostId={hostId} pathname={pathname} search={search} />
                     )} */}
-                      <Button
-                        type="default"
-                        // href="/kilter/beta/A0BC2661C68B4B00A5CDF2271CEAF246/"
-                        icon={<InfoCircleOutlined />}
-                        onClick={()=> message.info('To be implemented, instagram beta videos will also go in here')}
-                      />
+                      <AngleButton angle={angle} layout={layout} board={board} />
+                      <InfoButton angle={angle} layout={layout} board={board} currentClimb={currentClimb} />
                   </Space>
                 </Col>
               </>
@@ -291,7 +293,8 @@ const ResultsPage = ({
         onApplyFilters={applyFilters}
         angle={angle}
         closeDrawer={closeDrawer}
-        resultsCount={initialResultsCount}
+        resultsCount={resultsCount}
+        isFetching={isFetching}
       />
     </Layout>
   );

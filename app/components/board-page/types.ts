@@ -31,6 +31,7 @@ export type FilterDrawerProps = {
   board: Board;
   layout: Layout;
   angle: Angle;
-  resultsCount: number
+  resultsCount: number;
+  isFetching: boolean;
   
 };

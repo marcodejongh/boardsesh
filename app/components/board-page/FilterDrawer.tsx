@@ -14,7 +14,7 @@ import {
   Typography,
 } from "antd";
 
-import { fetchAngles, fetchGrades } from "../rest-api/api";
+import { fetchGrades } from "../rest-api/api";
 import { BoulderProblem, GetAnglesResponse, GetGradesResponse, SearchRequest } from "@/lib/types";
 import { FilterDrawerProps } from "./types";
 import { useDebouncedCallback } from "use-debounce";
@@ -36,6 +36,7 @@ const FilterDrawer = ({
   angle,
   resultsCount,
   closeDrawer,
+  isFetching,
 }: FilterDrawerProps) => {
   const [filters, setFilters] = useState({
     minGrade: currentSearchValues.minGrade,
@@ -52,10 +53,8 @@ const FilterDrawer = ({
   });
 
   const [grades, setGrades] = useState<GetGradesResponse>([]);
-  const [angles, setAngles] = useState<GetAnglesResponse>([]);
   const [loading, setLoading] = useState(true);
   const [fetchedGrades, setFetchedGrades] = useState(false);
-  const [fetchedAngles, setFetchedAngles] = useState(false);
 
   const debouncedUpdate = useDebouncedCallback((updatedFilters) => {
     onApplyFilters(updatedFilters);
@@ -91,23 +90,6 @@ const FilterDrawer = ({
     }
   }, [board, fetchedGrades, updateFilters]);
 
-  useEffect(() => {
-    const fetchAngleValues = async () => {
-      try {
-        // TODO: Move to a button in the resultspage
-        const data = await fetchAngles(board, layout);
-        setAngles(data);
-        setFetchedAngles(true);
-      } catch (error) {
-        console.error("Error fetching angles:", error);
-      }
-    };
-
-    if (!fetchedAngles) {
-      fetchAngleValues();
-    }
-  }, [layout, board]);
-
   if (loading || grades.length === 0) {
     return (
       <Drawer title="Advanced Filters" placement="left" onClose={onClose} width={400}>
@@ -115,11 +97,12 @@ const FilterDrawer = ({
       </Drawer>
     );
   }
-
+  // TODO: When the filter is first opened it already fetches with the old query parameters
+  // So it's probably firing the onchange when it shouldn't yet
   return (
-    <Drawer title="Advanced Filters" placement="left" onClose={onClose} width={"80%"} open={open}>
+    <Drawer title="Advanced Filters" placement="left" onClose={onClose} width={"90%"} open={open}>
       <Collapse defaultActiveKey={[]} accordion>
-        <Panel header={`Found ${resultsCount} matching climbs`} key="1">
+        <Panel header={isFetching ? `Searching for problems` : `Found ${resultsCount} matching climbs`} key="1">
           <Form layout="vertical">
             {grades.length > 0 && (
               <Form.Item label="Grade Range">
@@ -176,20 +159,6 @@ const FilterDrawer = ({
                   </Select>
                 </Col>
               </Row>
-            </Form.Item>
-
-            <Form.Item label="Angle">
-              <Select
-                value={filters.angle}
-                onChange={(value) => updateFilters({ angle: value })}
-                style={{ width: "100%" }}
-              >
-                {angles.map(({angle}) => (
-                  <Option key={angle} value={angle}>
-                    {angle}
-                  </Option>
-                ))}
-              </Select>
             </Form.Item>
 
             <Form.Item label="Min Rating">
