@@ -194,7 +194,7 @@ const ResultsPage = ({
 
   return (
     <>
-    <title>{`${board} problem: ${currentClimb.name} ${currentClimb.difficulty} @ ${currentClimb.angle}°`}</title>
+    <title>{`Boardsesh on ${board}: ${currentClimb.name} ${currentClimb.difficulty} @ ${currentClimb.angle}°`}</title>
     <Layout style={{ height: "100vh" }}>
       <Header
           style={{

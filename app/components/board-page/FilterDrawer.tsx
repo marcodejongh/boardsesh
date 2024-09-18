@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Drawer,
   List,
@@ -14,9 +14,9 @@ import {
   Typography,
   Skeleton,
 } from "antd";
-
+import { useInView } from "react-intersection-observer";
 import { fetchGrades } from "../rest-api/api";
-import { BoulderProblem, GetAnglesResponse, GetGradesResponse, SearchRequest } from "@/lib/types";
+import { BoulderProblem, GetGradesResponse, SearchRequest } from "@/lib/types";
 import { FilterDrawerProps } from "./types";
 import { useDebouncedCallback } from "use-debounce";
 import { PAGE_LIMIT } from "./constants";
@@ -66,9 +66,6 @@ const FilterDrawer = ({
   const [grades, setGrades] = useState<GetGradesResponse>([]);
   const [loading, setLoading] = useState(true);
   const [fetchedGrades, setFetchedGrades] = useState(false);
-  
-  // Create a ref for the last list item
-  const observerRef = useRef<HTMLDivElement | null>(null);
 
   const debouncedUpdate = useDebouncedCallback((updatedFilters) => {
     onApplyFilters(updatedFilters);
@@ -104,25 +101,18 @@ const FilterDrawer = ({
     }
   }, [board, fetchedGrades, updateFilters]);
 
+  // Intersection observer hook from react-intersection-observer
+  const { ref: observerRef, inView } = useInView({
+    triggerOnce: false,
+    threshold: 1.0, // Full visibility of the item
+  });
+
+  // Fetch more climbs when the last item comes into view
   useEffect(() => {
-    // Setup IntersectionObserver
-    const observer = new IntersectionObserver((entries) => {
-      const lastItem = entries[0];
-      if (lastItem.isIntersecting && !isFetching && climbs.length < resultsCount) {
-        fetchMoreClimbs(); // Trigger fetching more climbs
-      }
-    });
-
-    if (observerRef.current) {
-      observer.observe(observerRef.current); // Observe the last item
+    if (inView && !isFetching && climbs.length < resultsCount) {
+      fetchMoreClimbs();
     }
-
-    return () => {
-      if (observerRef.current) {
-        observer.unobserve(observerRef.current); // Cleanup the observer
-      }
-    };
-  }, [isFetching, climbs, resultsCount, fetchMoreClimbs]);
+  }, [inView, isFetching, climbs, resultsCount, fetchMoreClimbs]);
 
   if (loading || grades.length === 0) {
     return (
@@ -144,11 +134,10 @@ const FilterDrawer = ({
     ? [...climbs, ...generateShadowItems()]
     : climbs;
 
-
   return (
     <Drawer title="Advanced Filters" placement="left" onClose={onClose} width={"90%"} open={open}>
       <Collapse defaultActiveKey={[]} accordion>
-        <Panel header={isFetching ? `Searching for problems` : `Found ${resultsCount} matching climbs`} key="1">
+        <Panel header={isFetching && !searchChanged ? `Searching for problems` : `Found ${resultsCount} matching climbs`} key="1">
           <Form layout="vertical">
             {grades.length > 0 && (
               <Form.Item label="Grade Range">
@@ -268,7 +257,7 @@ const FilterDrawer = ({
                 handleClimbClick(climb);
                 closeDrawer();
               }}
-              ref={isLastItem ? observerRef : null} // Add ref to the last item
+              ref={isLastItem ? observerRef : null} // Attach the observer ref to the last item
               style={{
                 cursor: "pointer",
                 paddingLeft: "16px",
