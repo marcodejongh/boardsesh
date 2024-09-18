@@ -1,4 +1,4 @@
-import { GetBoardDetailsResponse, ImagesToHolds } from "@/lib/types";
+import { Board, GetBoardDetailsResponse, ImagesToHolds } from "@/lib/types";
 
 export type KilterBoardProps = {
   editEnabled: boolean;
@@ -6,4 +6,5 @@ export type KilterBoardProps = {
   onCircleClick?: () => void;
   onBoardClick?: () => void;
   litUpHolds: string;
+  board: Board;
 };

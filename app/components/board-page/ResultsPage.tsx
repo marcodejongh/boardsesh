@@ -285,6 +285,7 @@ const ResultsPage = ({
           editEnabled={false}
           boardDetails={boardDetails}
           litUpHolds={currentClimb ? currentClimb.frames : ""}
+          board={board}
         />
 
         
@@ -293,6 +294,7 @@ const ResultsPage = ({
         {/* Floating bar to navigate between climbs */}
         {currentClimb && (
           <FloatingBar
+            board={board}
             boardDetails={boardDetails}
             currentClimb={currentClimb}
             navigateClimbsLeft={navigateClimbsLeft}

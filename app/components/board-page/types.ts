@@ -16,6 +16,7 @@ export interface FloatingBarProps {
   navigateClimbsLeft: () => void;
   navigateClimbsRight: () => void;
   boardDetails: GetBoardDetailsResponse;
+  board: Board;
 }
 
 

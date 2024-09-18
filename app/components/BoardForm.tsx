@@ -72,7 +72,7 @@ const BoardForm = () => {
           </Col>
           <Col span={12}>
             {/* Use Next.js's Link component for routing */}
-            <Link href={`/climb/${selectedBoard}/${selectedLayout}/${selectedSize}`} passHref>
+            <Link href={`/${selectedBoard}/${selectedLayout}/${selectedSize}`} passHref>
               <Button type="primary" block>
                 Start a session
               </Button>

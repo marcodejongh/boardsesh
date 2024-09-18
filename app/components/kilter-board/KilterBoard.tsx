@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { HoldTuple } from "@/lib/types";
+import { Board, HoldTuple } from "@/lib/types";
 import { KilterBoardProps } from "./types";
 
-const getImageUrl = (imageUrl: string) => `/images/${imageUrl}`;
+const getImageUrl = (imageUrl: string, board: Board) => `
+https://api.${board}boardapp${board === 'tension' ? '2' : ''}.com/img/${imageUrl}`;
 
 const holdStates = {
   OFF: "OFF",
@@ -12,6 +13,7 @@ const holdStates = {
   FINISH: "FINISH",
 } as const;
 
+// TODO: Add Tension specific colours
 const holdColours = {
   OFF: undefined,
   STARTING: "#00DD00",
@@ -32,7 +34,8 @@ const KilterBoard = ({
   litUpHolds = "",
   boardDetails,
   onCircleClick,
-  onBoardClick
+  onBoardClick,
+  board
 }: KilterBoardProps) => {
   if (!boardDetails) {
     return;
@@ -55,6 +58,12 @@ const KilterBoard = ({
       13: holdStates.HAND,
       14: holdStates.FINISH,
       15: holdStates.FOOT,
+      
+      // TODO: Figure out tension colours
+      5: holdStates.STARTING,
+      7: holdStates.FINISH,
+      8: holdStates.FOOT,
+      6: holdStates.HAND,
     };
 
     const litUpHoldsMap: Record<number, string> = {};
@@ -82,7 +91,7 @@ const KilterBoard = ({
             dimensions[imageUrl] = { width: image.width, height: image.height };
             resolve(); // This is now correct, since Promise<void> expects no arguments
           };
-          image.src = getImageUrl(imageUrl);
+          image.src = getImageUrl(imageUrl, board);
         });
       }
 
@@ -171,7 +180,7 @@ const KilterBoard = ({
       style={{ width: "100%", height: "100%" }}
     >
       {Object.keys(imagesToHolds).map((imageUrl) => (
-        <image key={imageUrl} href={getImageUrl(imageUrl)} width="100%" height="100%" />
+        <image key={imageUrl} href={getImageUrl(imageUrl, board)} width="100%" height="100%" />
       ))}
       {holdsData
         .filter((hold) => editEnabled || hold.state !== holdStates.OFF)

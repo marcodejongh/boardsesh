@@ -32,7 +32,7 @@ export const getBoardDetails = async ({board_name, layout_id, size_id, set_ids} 
     const imageFilename = rows[0].image_filename;
       
     // Extract image filename
-    const image_url = imageFilename.split("/")[1];
+    const image_url = imageFilename;
     // Get holds data
     const { rows: holds } = await sql.query(`
         SELECT 

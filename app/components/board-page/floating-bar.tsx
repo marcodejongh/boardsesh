@@ -10,7 +10,8 @@ const FloatingBar: React.FC<FloatingBarProps> = ({
   currentClimb,
   navigateClimbsLeft,
   navigateClimbsRight,
-  boardDetails
+  boardDetails,
+  board
 }: FloatingBarProps) => {
   if (!currentClimb) return null;
 
@@ -23,6 +24,7 @@ const FloatingBar: React.FC<FloatingBarProps> = ({
             <KilterBoard
               editEnabled={false}
               boardDetails={boardDetails}
+              board={board}
               // TODO: Implement
               // showLargeOnClick={true}
               litUpHolds={currentClimb.frames} 
