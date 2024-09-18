@@ -8,7 +8,6 @@ export default async function ClimbPage({
 }: {
   params: { board_name: string; layout_id: string; size_id: string, set_ids: string; angle: string };
 }) {
-  console.log('!!!!!!!!!!!!');
   const { board_name } = params;
   const layout_id = Number(params.layout_id);
   const size_id = Number(params.size_id);
