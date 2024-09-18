@@ -34,4 +34,5 @@ export type FilterDrawerProps = {
   resultsCount: number;
   isFetching: boolean;
   searchChanged: boolean;
+  fetchMoreClimbs: () => void;
 };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Drawer,
   List,
@@ -47,6 +47,7 @@ const FilterDrawer = ({
   closeDrawer,
   isFetching,
   searchChanged,
+  fetchMoreClimbs,
 }: FilterDrawerProps) => {
   const [filters, setFilters] = useState({
     minGrade: currentSearchValues.minGrade,
@@ -65,6 +66,9 @@ const FilterDrawer = ({
   const [grades, setGrades] = useState<GetGradesResponse>([]);
   const [loading, setLoading] = useState(true);
   const [fetchedGrades, setFetchedGrades] = useState(false);
+  
+  // Create a ref for the last list item
+  const observerRef = useRef<HTMLDivElement | null>(null);
 
   const debouncedUpdate = useDebouncedCallback((updatedFilters) => {
     onApplyFilters(updatedFilters);
@@ -78,7 +82,6 @@ const FilterDrawer = ({
 
   useEffect(() => {
     const fetchGradeValues = async () => {
-      // TODO: Grades should be fetched in the routes page.tsx as its not going to change
       try {
         const data = await fetchGrades(board);
         setGrades(data);
@@ -101,6 +104,26 @@ const FilterDrawer = ({
     }
   }, [board, fetchedGrades, updateFilters]);
 
+  useEffect(() => {
+    // Setup IntersectionObserver
+    const observer = new IntersectionObserver((entries) => {
+      const lastItem = entries[0];
+      if (lastItem.isIntersecting && !isFetching && climbs.length < resultsCount) {
+        fetchMoreClimbs(); // Trigger fetching more climbs
+      }
+    });
+
+    if (observerRef.current) {
+      observer.observe(observerRef.current); // Observe the last item
+    }
+
+    return () => {
+      if (observerRef.current) {
+        observer.unobserve(observerRef.current); // Cleanup the observer
+      }
+    };
+  }, [isFetching, climbs, resultsCount, fetchMoreClimbs]);
+
   if (loading || grades.length === 0) {
     return (
       <Drawer title="Advanced Filters" placement="left" onClose={onClose} width={400}>
@@ -109,9 +132,9 @@ const FilterDrawer = ({
     );
   }
 
-    // Generate shadow items to append to the climbs list
+  // Generate shadow items to append to the climbs list
   const generateShadowItems = (): ShadowProblem[] => {
-    return Array.from({ length: PAGE_LIMIT }, (_, index) => ({
+    return Array.from({ length: 3 }, (_, index) => ({
       uuid: `shadow-${index}`, // Use a unique ID for shadow items
       shadow: true, // Flag to identify the shadow items
     }));
@@ -122,8 +145,6 @@ const FilterDrawer = ({
     : climbs;
 
 
-  // TODO: When the filter is first opened it already fetches with the old query parameters
-  // So it's probably firing the onchange when it shouldn't yet
   return (
     <Drawer title="Advanced Filters" placement="left" onClose={onClose} width={"90%"} open={open}>
       <Collapse defaultActiveKey={[]} accordion>
@@ -234,8 +255,9 @@ const FilterDrawer = ({
       <List
         itemLayout="vertical"
         dataSource={combinedClimbs}
-        renderItem={(climb: ClimbListItem) =>
-          isShadowItem(climb) ? (
+        renderItem={(climb: ClimbListItem, index: number) => {
+          const isLastItem = index === combinedClimbs.length - 1;
+          return isShadowItem(climb) ? (
             <List.Item key={climb.uuid}>
               <Skeleton active title={false} paragraph={{ rows: 2 }} />
             </List.Item>
@@ -246,6 +268,7 @@ const FilterDrawer = ({
                 handleClimbClick(climb);
                 closeDrawer();
               }}
+              ref={isLastItem ? observerRef : null} // Add ref to the last item
               style={{
                 cursor: "pointer",
                 paddingLeft: "16px",
@@ -265,8 +288,8 @@ const FilterDrawer = ({
                 {climb.ascensionist_count} ascents, {climb.quality_average}★
               </Text>
             </List.Item>
-          )
-        }
+          );
+        }}
       />
     </Drawer>
   );

@@ -307,6 +307,7 @@ const ResultsPage = ({
         resultsCount={resultsCount}
         isFetching={isFetching}
         searchChanged={searchChanged}
+        fetchMoreClimbs={fetchMoreClimbs}
       />
     </Layout>
   );
