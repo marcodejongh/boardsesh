@@ -3,7 +3,7 @@
 import { SearchBoulderProblemResult } from "@/app/lib/data/queries";
 import { SetIds } from "../kilter-board/board-data";
 import {
-  BoardLayoutSizeSetIdRouteClimbUUIDParameters,
+  BoardRouteParametersWithUuid,
   BoardRouteParameters, FetchCurrentProblemResponse, FetchResultsResponse, GetAnglesResponse,
   GetBoardDetailsResponse,
   GetGradesResponse,
@@ -47,7 +47,7 @@ export const fetchResults = async (
 };
 
 export const fetchCurrentClimb = async (
-  routeParameters: BoardLayoutSizeSetIdRouteClimbUUIDParameters,
+  routeParameters: BoardRouteParametersWithUuid,
 ): Promise<FetchCurrentProblemResponse> =>
   (
     await fetch(

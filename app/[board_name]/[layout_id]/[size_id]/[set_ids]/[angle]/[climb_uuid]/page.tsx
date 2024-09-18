@@ -3,21 +3,17 @@ import { fetchCurrentClimb, fetchBoardDetails } from "@/app/components/rest-api/
 import { getSetIds } from "@/app/components/kilter-board/board-data";
 import { PAGE_LIMIT } from "@/app/components/board-page/constants";
 import { notFound } from "next/navigation";
-import { BoardLayoutSizeSetIdRouteClimbUUIDParameters, SearchRequest, SearchRequestPagination } from "@/app/lib/types";
+import { BoardRouteParametersWithUuid, SearchRequest, SearchRequestPagination } from "@/app/lib/types";
 import { getBoardDetails, getBoulderProblem, searchBoulderProblems } from "@/app/lib/data/queries";
+import { parseBoardRouteParams } from "@/app/lib/util";
 
 export default async function DynamicResultsPage({
   params,
 }: {
-  params: BoardLayoutSizeSetIdRouteClimbUUIDParameters;
+  params: BoardRouteParametersWithUuid;
 }) {
-  const { board_name, climb_uuid } = params;
-  const layout_id = Number(params.layout_id);
-  const size_id = Number(params.size_id);
-  const angle = Number(params.angle);
+  const parsedParams = parseBoardRouteParams(params);
   
-  const set_ids = params.set_ids || getSetIds(layout_id, size_id);
-
   // Query parameters for search results
   const queryParameters: SearchRequestPagination = {
     minGrade: 10,
@@ -40,22 +36,9 @@ export default async function DynamicResultsPage({
   try {
     // Fetch the search results using searchBoulderProblems
     const [fetchedResults, boardDetails, currentClimb] = await Promise.all([
-      searchBoulderProblems({
-        board_name,
-        layout_id,
-        size_id,
-        set_ids,
-        angle
-      }, queryParameters),
-      getBoardDetails(board_name, layout_id, size_id, [1,20]),
-      getBoulderProblem({
-        board_name,
-        layout_id,
-        size_id,
-        set_ids,
-        climb_uuid,
-        angle
-      }) // TODO: Update logic if necessary
+      searchBoulderProblems(parsedParams, queryParameters),
+      getBoardDetails(parsedParams),
+      getBoulderProblem(parsedParams)
     ]);
 
     if (!fetchedResults || fetchedResults.boulderproblems.length === 0) {
@@ -65,23 +48,23 @@ export default async function DynamicResultsPage({
     
     let boulderProblems = [ ...fetchedResults.boulderproblems ];
 
-    if (!fetchedResults.boulderproblems.find(({ uuid }) => uuid === climb_uuid)) {
+    if (!fetchedResults.boulderproblems.find(({ uuid }) => uuid === parsedParams.climb_uuid)) {
       boulderProblems = [ currentClimb, ...boulderProblems];
     }
     
     return (
       <ResultsPage
-        board={board_name}
-        layout={layout_id}
-        size={size_id}
-        angle={angle}
-        set_ids={set_ids}
+        board={parsedParams.board_name}
+        layout={parsedParams.layout_id}
+        size={parsedParams.size_id}
+        angle={parsedParams.angle}
+        set_ids={parsedParams.set_ids}
         currentClimb={currentClimb}
         results={boulderProblems}
         resultsCount={fetchedResults.totalCount}
         initialQueryParameters={queryParameters}
         boardDetails={boardDetails}
-        climb_uuid={climb_uuid}
+        climb_uuid={parsedParams.climb_uuid}
       />
     );
   } catch (error) {

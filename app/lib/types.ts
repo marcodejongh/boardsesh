@@ -172,14 +172,26 @@ export type GetBetaResponse = BetaLink[];
 
 export type BoardRouteParameters = {
   board_name: string;
+  layout_id: string;
+  size_id: string;
+  set_ids: string;
+  angle: string;
+};
+
+export type ParsedBoardRouteParameters = {
+  board_name: string;
   layout_id: number;
   size_id: number;
   set_ids: SetIds;
   angle: number;
 };
 
+export type ParsedBoardRouteParametersWithUuid = ParsedBoardRouteParameters & {
+  climb_uuid: ClimbUuid;
+};
+
 export type ClimbUuid = string;
-export type BoardLayoutSizeSetIdRouteClimbUUIDParameters = BoardRouteParameters & {
+export type BoardRouteParametersWithUuid = BoardRouteParameters & {
   climb_uuid: ClimbUuid;
 };
 //TODO: Refactor useEffects so this page can SSR

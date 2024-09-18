@@ -2,21 +2,18 @@ import { fetchResults } from "@/app/components/rest-api/api";
 import { getSetIds } from "@/app/components/kilter-board/board-data";
 import { redirect } from "next/navigation";
 import { searchBoulderProblems } from "@/app/lib/data/queries";
+import { BoardRouteParametersWithUuid, SearchRequestPagination } from "@/app/lib/types";
+import { parseBoardRouteParams } from "@/app/lib/util";
 
 export default async function ClimbPage({
   params,
 }: {
-  params: { board_name: string; layout_id: string; size_id: string, set_ids: string; angle: string };
+  params: BoardRouteParametersWithUuid;
 }) {
-  const { board_name } = params;
-  const layout_id = Number(params.layout_id);
-  const size_id = Number(params.size_id);
-  const angle = Number(params.angle);
-
-  const set_ids = params.set_ids || getSetIds(layout_id, size_id);
-
+  const parsedParams = parseBoardRouteParams(params);
+  
   // Example query parameters
-  const queryParameters = {
+  const queryParameters: SearchRequestPagination = {
     minGrade: 10,
     maxGrade: 33,
     name: "",
@@ -30,18 +27,14 @@ export default async function ClimbPage({
     setternameSuggestion: "",
     holds: "",
     mirroredHolds: "",
+    page: 1,
+    pageSize: 1
   };
   let fetchedResults;
   try {
     // Fetch results for the initial render
     fetchedResults = (await Promise.all([
-      searchBoulderProblems(0, 1, queryParameters, {
-        board_name,
-        layout_id,
-        size_id,
-        set_ids,
-        angle,
-      }),
+      searchBoulderProblems(parsedParams, queryParameters),
     ]))[0];
 
     
@@ -49,6 +42,6 @@ export default async function ClimbPage({
     console.error("Error fetching climb data:", error);
     return <div>Failed to load climbs.</div>;
   }
-  redirect(`/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/${fetchedResults.rows[0].uuid}`);
+  redirect(`/${parsedParams.board_name}/${parsedParams.layout_id}/${parsedParams.size_id}/${parsedParams.set_ids.join(',')}/${parsedParams.angle}/${fetchedResults.boulderproblems[0].uuid}`);
 }
 

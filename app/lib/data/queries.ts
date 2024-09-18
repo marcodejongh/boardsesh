@@ -1,13 +1,13 @@
 import { sql } from "@vercel/postgres";
-import { BoardLayoutSizeSetIdRouteClimbUUIDParameters, BoardRouteParameters, BoulderProblem, SearchRequest, SearchRequestPagination } from "../types";
+import { BoardRouteParametersWithUuid, BoardRouteParameters, BoulderProblem, ParsedBoardRouteParametersWithUuid, ParsedBoardRouteParameters, SearchRequest, SearchRequestPagination } from "../types";
 import { PAGE_LIMIT } from "@/app/components/board-page/constants";
 
 // Collect data for each set_id
-export const getBoardDetails = async (board_name: string, layout_id: number, size_id: number, setIdsArray: number[]) => {
+export const getBoardDetails = async ({board_name, layout_id, size_id, set_ids} : ParsedBoardRouteParameters) => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const imagesToHolds: Record<string, any> = {};
 
-  for (const set_id of setIdsArray) {
+  for (const set_id of set_ids) {
     // Get image filename
     const { rows } = await sql`
         SELECT image_filename
@@ -70,7 +70,7 @@ export const getBoardDetails = async (board_name: string, layout_id: number, siz
 };
 
 
-export const getBoulderProblem = async (params: BoardLayoutSizeSetIdRouteClimbUUIDParameters): Promise<BoulderProblem> => {
+export const getBoulderProblem = async (params: ParsedBoardRouteParametersWithUuid): Promise<BoulderProblem> => {
   return (await sql.query({
     text: `
         SELECT climbs.uuid, climbs.setter_username, climbs.name, climbs.description,
@@ -98,7 +98,10 @@ export type SearchBoulderProblemResult = {
   totalCount: number;
 }
 
-export const searchBoulderProblems = async (params: BoardRouteParameters, searchParams: SearchRequestPagination): Promise<SearchBoulderProblemResult> => {
+export const searchBoulderProblems = async (
+  params: ParsedBoardRouteParameters,
+  searchParams: SearchRequestPagination,
+): Promise<SearchBoulderProblemResult> => {
   const allowedSortColumns: Record<SearchRequest["sortBy"], string> = {
     ascents: "ascensionist_count",
     difficulty: "display_difficulty",
@@ -152,7 +155,7 @@ export const searchBoulderProblems = async (params: BoardRouteParameters, search
       searchParams.minRating,
       searchParams.gradeAccuracy,
       searchParams.pageSize,
-      (searchParams.page * PAGE_LIMIT),
+      searchParams.page * PAGE_LIMIT,
       params.angle,
     ],
   });

@@ -1,6 +1,7 @@
 import { PAGE_LIMIT } from "@/app/components/board-page/constants";
 import { SearchBoulderProblemResult, searchBoulderProblems } from "@/app/lib/data/queries";
 import { BoardRouteParameters, ErrorResponse, FetchResultsResponse, SearchRequest, SearchRequestPagination } from "@/app/lib/types";
+import { parseBoardRouteParams } from "@/app/lib/util";
 import { sql } from "@vercel/postgres";
 import { NextResponse } from "next/server";
 
@@ -11,6 +12,7 @@ export async function GET(
 ): Promise<NextResponse<SearchBoulderProblemResult | ErrorResponse>> {
   // Extract search parameters from query string
   const query = new URL(req.url).searchParams;
+  const parsedParams = parseBoardRouteParams(params);
 
   const searchParams: SearchRequestPagination = {
     gradeAccuracy: parseFloat(query.get("gradeAccuracy") || "0"),
@@ -33,7 +35,7 @@ export async function GET(
 
   try {
     // Call the separate function to perform the search
-    const result = await searchBoulderProblems(params, searchParams);
+    const result = await searchBoulderProblems(parsedParams, searchParams);
 
     // Return response
     return NextResponse.json(result);
