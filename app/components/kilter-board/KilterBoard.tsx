@@ -4,13 +4,35 @@ import { KilterBoardProps } from "./types";
 
 const getImageUrl = (imageUrl: string) => `/images/${imageUrl}`;
 
+const holdStates = {
+  OFF: "OFF",
+  STARTING: "STARTING",
+  HAND: "HAND",
+  FOOT: "FOOT",
+  FINISH: "FINISH",
+} as const;
+
+const holdColours = {
+  OFF: undefined,
+  STARTING: "#00DD00",
+  HAND: "#00FFFF",
+  FOOT: "#FFA500",
+  FINISH: "#FF00FF",
+} as const;
+
+function isValidHoldState(state: string): state is HoldState {
+  return state in holdColours;
+}
+
 type HoldsArray = Array<{ id: number; mirroredHoldId: number | null; cx: number; cy: number; r: number; state: string }>
+type HoldState = keyof typeof holdColours;
+
 const KilterBoard = ({
   editEnabled = false,
   litUpHolds = "",
-  boardDetails = {},
-  onCircleClick = undefined,
-  onBoardClick = undefined
+  boardDetails,
+  onCircleClick,
+  onBoardClick
 }: KilterBoardProps) => {
   if (!boardDetails) {
     return;
@@ -19,24 +41,9 @@ const KilterBoard = ({
   const [imageDimensions, setImageDimensions] = useState<Record<string, { width: number; height: number }>>({});
   const [holdsData, setHoldsData] = useState<HoldsArray>([]);
 
-  const holdStates = {
-    OFF: "OFF",
-    STARTING: "STARTING",
-    HAND: "HAND",
-    FOOT: "FOOT",
-    FINISH: "FINISH",
-  };
-
-  const holdColours = {
-    OFF: null,
-    STARTING: "#00DD00",
-    HAND: "#00FFFF",
-    FOOT: "#FFA500",
-    FINISH: "#FF00FF",
-  };
 
   const parsedLitUpHolds = useMemo(() => {
-    const holdStateMapping = {
+    const holdStateMapping: Record<number, string> = {
       //TODO: Use rest api
       //kilterhw
       42: holdStates.STARTING,
@@ -50,12 +57,12 @@ const KilterBoard = ({
       15: holdStates.FOOT,
     };
 
-    const litUpHoldsMap = {};
+    const litUpHoldsMap: Record<number, string> = {};
 
     if (litUpHolds) {
       litUpHolds.split("p").forEach((holdData) => {
         if (holdData) {
-          const [holdId, stateCode] = holdData.split("r");
+          const [holdId, stateCode] = holdData.split("r").map(str => Number(str));
           litUpHoldsMap[holdId] = holdStateMapping[stateCode];
         }
       });
@@ -87,7 +94,14 @@ const KilterBoard = ({
 
   useEffect(() => {
     if (Object.keys(imageDimensions).length > 0) {
-      const newHoldsData = [];
+      const newHoldsData: {
+            id: number,
+            mirroredHoldId: number | null,
+            cx: number,
+            cy: number,
+            r: number,
+            state: string,
+          }[] = [];
 
       for (const [imageUrl, holds] of Object.entries<HoldTuple[]>(imagesToHolds)) {
         const { width, height } = imageDimensions[imageUrl];
@@ -117,7 +131,7 @@ const KilterBoard = ({
     }
   }, [imageDimensions, imagesToHolds, edgeLeft, edgeRight, edgeBottom, edgeTop, parsedLitUpHolds]);
 
-  const handleCircleClick = (id) => {
+  const handleCircleClick = (id: number) => {
     setHoldsData((prevHolds) =>
       prevHolds.map((hold) =>
         hold.id === id
@@ -130,7 +144,7 @@ const KilterBoard = ({
     );
   };
 
-  const getNextHoldState = (currentState) => {
+  const getNextHoldState = (currentState: string) => {
     switch (currentState) {
       case holdStates.OFF:
         return holdStates.STARTING;
@@ -169,10 +183,10 @@ const KilterBoard = ({
             cx={hold.cx}
             cy={hold.cy}
             r={hold.r}
-            stroke={holdColours[hold.state]}
+            stroke={isValidHoldState(hold.state) ? holdColours[hold.state] : undefined}
             strokeWidth={6}
             fillOpacity={0}
-            onClick={editEnabled ? () => handleCircleClick(hold.id) : null}
+            onClick={editEnabled ? () => handleCircleClick(hold.id) : undefined}
           />
         ))}
     </svg>

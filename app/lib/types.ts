@@ -1,5 +1,4 @@
 import { SetIds } from "../components/kilter-board/board-data";
-import { BoulderProblem } from "./types";
 
 export type BoulderProblem = {
   uuid: string;
@@ -209,42 +208,4 @@ export type FetchCurrentProblemResponse = BoulderProblem;
 
 export interface ErrorResponse {
   error: string;
-}
-
-// Define the structure for the holds data for each image
-export interface StaticPropHoldData {
-  placement_id: number;
-  mirrored_placement_id: number | null;
-  x: number;
-  y: number;
-}
-
-// Define the structure for images_to_holds
-export interface StaticPropImagesToHolds {
-  [layout_id: string]: {
-    [product_size_id: string]: {
-      [image_url: string]: HoldData[];
-    };
-  };
-}
-
-// Define the structure for size dimensions
-export interface StaticPropSizeDimensions {
-  edge_left: number;
-  edge_right: number;
-  edge_bottom: number;
-  edge_top: number;
-}
-
-// Define the boardData prop type
-export interface StaticPropBoardData {
-  images_to_holds: ImagesToHolds;
-  size_dimensions: {
-    [product_size_id: number]: SizeDimensions;
-  };
-}
-
-// Define the props for the page component
-export interface StaticPropBoardPageProps {
-  boardData: BoardData;
 }

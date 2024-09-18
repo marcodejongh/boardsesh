@@ -1,7 +1,6 @@
 import React from "react";
 import { Button, Typography, Row, Col } from "antd";
 import { LeftOutlined, RightOutlined } from "@ant-design/icons";
-import KilterBoardLoader from "../kilter-board/loader"; // Import KilterBoardLoader
 import { FloatingBarProps } from "./types";
 import KilterBoard from "../kilter-board/KilterBoard";
 
@@ -22,6 +21,7 @@ const FloatingBar: React.FC<FloatingBarProps> = ({
         <Col>
           <div style={boardPreviewStyle}>
             <KilterBoard
+              editEnabled={false}
               boardDetails={boardDetails}
               // TODO: Implement
               // showLargeOnClick={true}

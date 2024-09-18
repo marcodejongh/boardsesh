@@ -8,6 +8,7 @@ import {
   GetBoardDetailsResponse,
   GetGradesResponse,
   SearchRequest,
+  ParsedBoardRouteParameters,
 } from "@/app/lib/types";
 
 const API_BASE_URL = `/api`;
@@ -17,7 +18,7 @@ export const fetchResults = async (
   pageNumber: number,
   pageSize: number,
   queryParameters: SearchRequest,
-  routeParameters: BoardRouteParameters,
+  routeParameters: ParsedBoardRouteParameters,
 ): Promise<SearchBoulderProblemResult> => {
   const urlParams = new URLSearchParams(
     Object.entries({

@@ -12,22 +12,20 @@ const BoardForm = () => {
   const [layouts, setLayouts] = useState(defaultLayouts);
   const [sets, setSets] = useState([]);
 
-  const [selectedBoard, setSelectedBoard] = useState("kilter");
-  const [selectedLayout, setSelectedLayout] = useState(8);
+  const [selectedBoard, setSelectedBoard] = useState<string>("kilter");
+  const [selectedLayout, setSelectedLayout] = useState<number>(8);
   const [selectedSize, setSelectedSize] = useState(17);
   const [sizes, setSizes] = useState(boardLayouts[selectedLayout] || []);
 
-  const handleBoardChange = (value) => {
+  const handleBoardChange = (value: string) => {
     setSelectedBoard(value);
   };
 
-  const onLayoutChange = (value) => {
+  const onLayoutChange = (value: number) => {
     setSelectedLayout(value);
     setSizes(boardLayouts[value]);
   };
-
-  const [message, setMessage] = useState("");
-
+  // TODO: Create nextjs route and fill this in with queries
   return (
     <div style={{ padding: "24px", background: "#f7f7f7", borderRadius: "8px" }}>
       <Title level={4}>Board Settings</Title>

@@ -282,6 +282,7 @@ const ResultsPage = ({
       <Content style={{ display: "flex", backgroundColor: 'white', height: '70vh', justifyContent: "center", alignItems: "center" }} {...handlers}>
         {/* Render the KilterBoard */}
         <KilterBoard
+          editEnabled={false}
           boardDetails={boardDetails}
           litUpHolds={currentClimb ? currentClimb.frames : ""}
         />
