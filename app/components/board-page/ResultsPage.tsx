@@ -16,6 +16,7 @@ import { fetchResults } from "../rest-api/api";
 import { PAGE_LIMIT } from "./constants";
 import AngleButton from "./angle-button";
 import InfoButton from "./info-button";
+import { useSwipeable } from "react-swipeable";
 
 const { Header, Content } = Layout;
 const { Title, Text } = Typography;
@@ -183,7 +184,13 @@ const ResultsPage = ({
       fetchData();
     }
   }, [isFetching, board, layout, size, set_ids, angle, pageNumber, searchChanged, queryParameters, isFetchingMoreProblems]);
-
+  
+  // Swipe event handlers
+  const handlers = useSwipeable({
+    onSwipedLeft: () => navigateClimbsRight(),
+    onSwipedRight: () => navigateClimbsLeft(),
+    trackMouse: true, // optional, enables mouse swipe events
+  });
 
   return (
     <Layout style={{ height: "100vh" }}>
@@ -270,7 +277,7 @@ const ResultsPage = ({
         </Header>
 
 
-      <Content style={{ display: "flex", backgroundColor: 'white', height: '70vh', justifyContent: "center", alignItems: "center" }}>
+      <Content style={{ display: "flex", backgroundColor: 'white', height: '70vh', justifyContent: "center", alignItems: "center" }} {...handlers}>
         {/* Render the KilterBoard */}
         <KilterBoard
           boardDetails={boardDetails}
