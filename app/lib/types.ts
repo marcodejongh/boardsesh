@@ -195,7 +195,7 @@ export type BoardRouteParametersWithUuid = BoardRouteParameters & {
 };
 //TODO: Refactor useEffects so this page can SSR
 
-export type Board = string;
+export type Board = 'kilter' | 'tension';
 export type Layout = number;
 export type Angle = number;
 export type Size = number;
