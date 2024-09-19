@@ -1,10 +1,10 @@
 "use client";
-import type { Angle, Board, BoulderProblem, GetBoardDetailsResponse, Layout, SearchRequest, Size } from "@/lib/types";
+import type { Angle, Board, BoulderProblem, GetBoardDetailsResponse, LayoutId, SearchRequest, Size } from "@/lib/types";
 import type { SetIds } from "../kilter-board/board-data";
 
 export type ResultPageProps = {
   board: Board;
-  layout: Layout;
+  layout: LayoutId;
   size: Size;
   hostId: string;
   pathname: string;
@@ -30,7 +30,7 @@ export type FilterDrawerProps = {
   open: boolean;
   currentSearchValues: SearchRequest;
   board: Board;
-  layout: Layout;
+  layout: LayoutId;
   angle: Angle;
   resultsCount: number;
   isFetching: boolean;

@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 
 import FilterDrawer from "./FilterDrawer";
 import FloatingBar from "./floating-bar";
-import { BoulderProblem, GetBoardDetailsResponse, SearchRequest } from "@/lib/types";
+import { Angle, Board, BoulderProblem, ClimbUuid, GetBoardDetailsResponse, LayoutId, SearchRequest, Size } from "@/lib/types";
 import { Button, Col, Layout, message, Row, Space, Typography } from "antd";
 import { SetIds } from "../kilter-board/board-data";
 import {
@@ -21,12 +21,12 @@ import { useSwipeable } from "react-swipeable";
 const { Header, Content } = Layout;
 const { Title, Text } = Typography;
 interface ResultsPageProps {
-  board: string;
-  layout: number;
-  size: number;
+  board: Board;
+  layout: LayoutId;
+  size: Size;
   set_ids: SetIds;
-  climb_uuid: string;
-  angle: number;
+  climb_uuid: ClimbUuid;
+  angle: Angle;
   currentClimb: BoulderProblem;
   results: BoulderProblem[];
   resultsCount: number;

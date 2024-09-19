@@ -1,3 +1,4 @@
+"use client";
 import React from "react";
 import { Button, Typography, Row, Col } from "antd";
 import { LeftOutlined, RightOutlined } from "@ant-design/icons";

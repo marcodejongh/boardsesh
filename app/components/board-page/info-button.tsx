@@ -1,6 +1,7 @@
+"use client";
 import React, { useEffect, useState } from "react";
 import { Button, Typography, Row, Col, Drawer } from "antd";
-import { Layout, Board, ClimbUuid, BoulderProblem, Angle } from "@/app/lib/types";
+import { LayoutId, Board, ClimbUuid, BoulderProblem, Angle } from "@/app/lib/types";
 import {
   InfoCircleOutlined,
 } from "@ant-design/icons";
@@ -8,7 +9,7 @@ import {
 const { Title, Text } = Typography;
 export type InfoButtonProps = {
   board: Board;
-  layout: Layout;
+  layout: LayoutId;
   angle: Angle;
   currentClimb: BoulderProblem;
 }

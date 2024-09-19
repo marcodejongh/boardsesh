@@ -11,7 +11,7 @@ fi
 output="{"
 
 # Set the image directory to process
-image_directory="../public/images"
+image_directory="../public/images/tension"
 
 # Iterate over all image files in the target directory
 for file in "$image_directory"/*.{jpg,jpeg,png,gif,bmp,tiff}; do

@@ -26,9 +26,8 @@ export const getBoardDetails = async ({board_name, layout_id, size_id, set_ids} 
         AND set_id = $3
       `, [ layout_id, size_id, set_id ]);
 
-      
-    if (rows.length === 0) continue;
-      
+    if (rows.length === 0) throw new Error(`Could not find set_id ${set_id} for ${layout_id} & ${size_id}`);
+    
     const imageFilename = rows[0].image_filename;
       
     // Extract image filename
