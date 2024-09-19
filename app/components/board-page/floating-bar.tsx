@@ -3,7 +3,7 @@ import React from "react";
 import { Button, Typography, Row, Col } from "antd";
 import { LeftOutlined, RightOutlined } from "@ant-design/icons";
 import { FloatingBarProps } from "./types";
-import KilterBoard from "../kilter-board/KilterBoard";
+import Board from "../board/board";
 
 const { Title, Text } = Typography;
 
@@ -22,7 +22,7 @@ const FloatingBar: React.FC<FloatingBarProps> = ({
         {/* KilterBoardLoader for small preview */}
         <Col>
           <div style={boardPreviewStyle}>
-            <KilterBoard
+            <Board
               editEnabled={false}
               boardDetails={boardDetails}
               board={board}

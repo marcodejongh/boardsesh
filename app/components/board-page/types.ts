@@ -1,9 +1,9 @@
 "use client";
-import type { Angle, Board, BoulderProblem, GetBoardDetailsResponse, LayoutId, SearchRequest, Size } from "@/lib/types";
-import type { SetIds } from "../kilter-board/board-data";
+import type { Angle, BoardName, BoulderProblem, GetBoardDetailsResponse, LayoutId, SearchRequest, Size } from "@/lib/types";
+import type { SetIds } from "../board/board-data";
 
 export type ResultPageProps = {
-  board: Board;
+  board: BoardName;
   layout: LayoutId;
   size: Size;
   hostId: string;
@@ -16,7 +16,7 @@ export interface FloatingBarProps {
   navigateClimbsLeft: () => void;
   navigateClimbsRight: () => void;
   boardDetails: GetBoardDetailsResponse;
-  board: Board;
+  board: BoardName;
 }
 
 
@@ -29,7 +29,7 @@ export type FilterDrawerProps = {
   onApplyFilters: (filters: SearchRequest) => void;
   open: boolean;
   currentSearchValues: SearchRequest;
-  board: Board;
+  board: BoardName;
   layout: LayoutId;
   angle: Angle;
   resultsCount: number;

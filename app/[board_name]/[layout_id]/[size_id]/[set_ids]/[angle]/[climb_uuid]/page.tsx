@@ -1,6 +1,6 @@
 import ResultsPage from "@/app/components/board-page/ResultsPage";
 import { fetchCurrentClimb, fetchBoardDetails } from "@/app/components/rest-api/api";
-import { getSetIds } from "@/app/components/kilter-board/board-data";
+import { getSetIds } from "@/app/components/board/board-data";
 import { PAGE_LIMIT } from "@/app/components/board-page/constants";
 import { notFound } from "next/navigation";
 import { BoardRouteParametersWithUuid, SearchRequest, SearchRequestPagination } from "@/app/lib/types";

@@ -1,12 +1,12 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { Button, Typography, Row, Col, Drawer } from "antd";
-import { Angle, GetAnglesResponse, LayoutId, Board } from "@/app/lib/types";
+import { Angle, GetAnglesResponse, LayoutId, BoardName } from "@/app/lib/types";
 import { fetchAngles } from "../rest-api/api";
 
 const { Title, Text } = Typography;
 export type AngleButtonProps = {
-  board: Board;
+  board: BoardName;
   layout: LayoutId;
   angle: Angle;
 }

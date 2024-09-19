@@ -1,5 +1,5 @@
 import { fetchResults } from "@/app/components/rest-api/api";
-import { getSetIds } from "@/app/components/kilter-board/board-data";
+import { getSetIds } from "@/app/components/board/board-data";
 import { redirect } from "next/navigation";
 import { searchBoulderProblems } from "@/app/lib/data/queries";
 import { BoardRouteParametersWithUuid, SearchRequestPagination } from "@/app/lib/types";

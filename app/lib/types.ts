@@ -1,4 +1,4 @@
-import { SetIds } from "../components/kilter-board/board-data";
+import { SetIds } from "../components/board/board-data";
 
 export type BoulderProblem = {
   uuid: string;
@@ -195,7 +195,7 @@ export type BoardRouteParametersWithUuid = BoardRouteParameters & {
 };
 //TODO: Refactor useEffects so this page can SSR
 
-export type Board = 'kilter' | 'tension';
+export type BoardName = 'kilter' | 'tension';
 export type LayoutId = number;
 export type Angle = number;
 export type Size = number;

@@ -1,7 +1,7 @@
 // api.ts
 
 import { SearchBoulderProblemResult } from "@/app/lib/data/queries";
-import { SetIds } from "../kilter-board/board-data";
+import { SetIds } from "../board/board-data";
 import {
   BoardRouteParametersWithUuid,
   BoardRouteParameters, FetchCurrentProblemResponse, FetchResultsResponse, GetAnglesResponse,

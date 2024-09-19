@@ -3,15 +3,15 @@ import React, { useEffect, useState } from "react";
 
 import FilterDrawer from "./FilterDrawer";
 import FloatingBar from "./floating-bar";
-import { Angle, Board, BoulderProblem, ClimbUuid, GetBoardDetailsResponse, LayoutId, SearchRequest, Size } from "@/lib/types";
+import { Angle, BoardName, BoulderProblem, ClimbUuid, GetBoardDetailsResponse, LayoutId, SearchRequest, Size } from "@/lib/types";
 import { Button, Col, Layout, message, Row, Space, Typography } from "antd";
-import { SetIds } from "../kilter-board/board-data";
+import { SetIds } from "../board/board-data";
 import {
   SearchOutlined,
   BulbOutlined,
 } from "@ant-design/icons";
 import { Footer } from "antd/es/layout/layout";
-import KilterBoard from "../kilter-board/KilterBoard";
+import Board from "../board/board";
 import { fetchResults } from "../rest-api/api";
 import { PAGE_LIMIT } from "./constants";
 import AngleButton from "./angle-button";
@@ -21,7 +21,7 @@ import { useSwipeable } from "react-swipeable";
 const { Header, Content } = Layout;
 const { Title, Text } = Typography;
 interface ResultsPageProps {
-  board: Board;
+  board: BoardName;
   layout: LayoutId;
   size: Size;
   set_ids: SetIds;
@@ -281,7 +281,7 @@ const ResultsPage = ({
 
       <Content style={{ display: "flex", backgroundColor: 'white', height: '70vh', justifyContent: "center", alignItems: "center" }} {...handlers}>
         {/* Render the KilterBoard */}
-        <KilterBoard
+        <Board
           editEnabled={false}
           boardDetails={boardDetails}
           litUpHolds={currentClimb ? currentClimb.frames : ""}
