@@ -45,7 +45,7 @@ type HoldRenderData = {
   cy: number;
   r: number;
   state: HoldState;
-  color: Color;
+  color?: Color;
 };
 
 type LitUpHoldsMap = Record<HoldCode, { state: HoldState, color: string }>;
@@ -65,55 +65,35 @@ const getBoardImageDimensions = (board: Board, firstImage: string) => board === 
 
 
 const KilterBoard = ({
-  editEnabled = false,
   litUpHolds = "",
   boardDetails,
-  onCircleClick,
-  onBoardClick,
   board
 }: KilterBoardProps) => {
-  if (!boardDetails) {
-    return;
-  }
-  const { images_to_holds: imagesToHolds, edge_bottom: edgeBottom, edge_left: edgeLeft, edge_right: edgeRight, edge_top: edgeTop } = boardDetails;
-  
-  const {width: boardWidth, height: boardHeight} = getBoardImageDimensions(board, Object.keys(imagesToHolds)[0]);
+  const {width: boardWidth, height: boardHeight} = getBoardImageDimensions(board, Object.keys(boardDetails.images_to_holds)[0]);
 
   const holdsData: HoldRenderData[] = useMemo(() => {
-    if (!litUpHolds) {
-      return;
-    }
+    const { images_to_holds: imagesToHolds, edge_bottom: edgeBottom, edge_left: edgeLeft, edge_right: edgeRight, edge_top: edgeTop } = boardDetails;
+
+    const xSpacing = boardWidth / (edgeRight - edgeLeft);
+    const ySpacing = boardHeight / (edgeTop - edgeBottom);
 
     const litUpHoldsMap = convertLitUpHoldsStringToMap(litUpHolds, board);
-    const newHoldsData: HoldRenderData[] = [];
-
-    for (const [imageUrl, holds] of Object.entries<HoldTuple[]>(imagesToHolds)) {
-
-        const xSpacing = boardWidth / (edgeRight - edgeLeft);
-        const ySpacing = boardHeight / (edgeTop - edgeBottom);
-
-        holds.forEach(([holdId, mirroredHoldId, x, y]) => {
-          if (x <= edgeLeft || x >= edgeRight || y <= edgeBottom || y >= edgeTop) {
-            return;
-          }
-
-          const xPixel = (x - edgeLeft) * xSpacing;
-          const yPixel = boardHeight - (y - edgeBottom) * ySpacing;
-
-          newHoldsData.push({
+    
+    return Object.values<HoldTuple[]>(imagesToHolds)
+      .flatMap(holds =>
+        holds
+          .filter(([,, x, y]) => x > edgeLeft && x < edgeRight && y > edgeBottom && y < edgeTop)
+          .map(([holdId, mirroredHoldId, x, y]) => ({
             id: holdId,
             mirroredHoldId,
-            cx: xPixel,
-            cy: yPixel,
+            cx: (x - edgeLeft) * xSpacing,
+            cy: boardHeight - (y - edgeBottom) * ySpacing,
             r: xSpacing * 4,
-            ...litUpHoldsMap[holdId],
-          });
-        });
-      }
-      return newHoldsData;
-  }, [litUpHolds, board]) || [];
-  
-  
+            ...litUpHoldsMap[holdId]
+            // TODO: When reimplementing create mode, draw all circles when in edit mode
+          })).filter(({state}) => state && state !== 'OFF')
+      );
+  }, [boardDetails, litUpHolds, board]) || [];
 
   return (
     <svg
@@ -121,7 +101,7 @@ const KilterBoard = ({
       preserveAspectRatio="xMidYMid meet"
       style={{ width: "100%", height: "100%" }}
     >
-      {Object.keys(imagesToHolds).map((imageUrl) => (
+      {Object.keys(boardDetails.images_to_holds).map((imageUrl) => (
         <image
           key={imageUrl}
           href={getImageUrl(imageUrl, board)}
@@ -130,7 +110,6 @@ const KilterBoard = ({
         />
       ))}
       {holdsData
-        .filter((hold) => hold.state !== 'OFF')
         .map((hold) => (
           <circle
             key={hold.id}
