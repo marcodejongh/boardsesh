@@ -1,5 +1,14 @@
+import "server-only";
 import { sql } from "@vercel/postgres";
-import { BoardRouteParametersWithUuid, BoardRouteParameters, BoulderProblem, ParsedBoardRouteParametersWithUuid, ParsedBoardRouteParameters, SearchRequest, SearchRequestPagination } from "../types";
+import {
+  BoardRouteParametersWithUuid,
+  BoardRouteParameters,
+  BoulderProblem,
+  ParsedBoardRouteParametersWithUuid,
+  ParsedBoardRouteParameters,
+  SearchRequest,
+  SearchRequestPagination,
+} from "../types";
 import { PAGE_LIMIT } from "@/app/components/board-page/constants";
 
 const getTableName = (board_name: string, table_name: string) => {
@@ -12,28 +21,32 @@ const getTableName = (board_name: string, table_name: string) => {
 };
 
 // Collect data for each set_id
-export const getBoardDetails = async ({board_name, layout_id, size_id, set_ids} : ParsedBoardRouteParameters) => {
+export const getBoardDetails = async ({ board_name, layout_id, size_id, set_ids }: ParsedBoardRouteParameters) => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const imagesToHolds: Record<string, any> = {};
 
   for (const set_id of set_ids) {
     // Get image filename
-    const { rows } = await sql.query(`
+    const { rows } = await sql.query(
+      `
         SELECT image_filename
         FROM ${getTableName(board_name, "product_sizes_layouts_sets")} product_sizes_layouts_sets
         WHERE layout_id = $1
         AND product_size_id = $2
         AND set_id = $3
-      `, [ layout_id, size_id, set_id ]);
+      `,
+      [layout_id, size_id, set_id],
+    );
 
     if (rows.length === 0) throw new Error(`Could not find set_id ${set_id} for ${layout_id} & ${size_id}`);
-    
+
     const imageFilename = rows[0].image_filename;
-      
+
     // Extract image filename
     const image_url = imageFilename;
     // Get holds data
-    const { rows: holds } = await sql.query(`
+    const { rows: holds } = await sql.query(
+      `
         SELECT 
           placements.id AS placement_id, 
           mirrored_placements.id AS mirrored_placement_id, 
@@ -48,7 +61,9 @@ export const getBoardDetails = async ({board_name, layout_id, size_id, set_ids} 
         )} mirrored_placements ON mirrored_placements.hole_id = holes.mirrored_hole_id
         AND mirrored_placements.set_id = $1
         AND mirrored_placements.layout_id = $2
-      `, [set_id, layout_id]);
+      `,
+      [set_id, layout_id],
+    );
 
     if (holds.length > 0) {
       imagesToHolds[image_url] = holds.map((hold) => [
@@ -61,11 +76,14 @@ export const getBoardDetails = async ({board_name, layout_id, size_id, set_ids} 
   }
 
   // Get size dimensions
-  const { rows: sizeDimensions } = await sql.query(`
+  const { rows: sizeDimensions } = await sql.query(
+    `
     SELECT edge_left, edge_right, edge_bottom, edge_top
     FROM ${getTableName(board_name, "product_sizes")}
     WHERE id = $1
-  `, [ size_id ]);
+  `,
+    [size_id],
+  );
 
   if (sizeDimensions.length === 0) {
     throw new Error("Size dimensions not found");
@@ -79,7 +97,6 @@ export const getBoardDetails = async ({board_name, layout_id, size_id, set_ids} 
     edge_top: sizeDimensions[0].edge_top,
   };
 };
-
 
 export const getBoulderProblem = async (params: ParsedBoardRouteParametersWithUuid): Promise<BoulderProblem> => {
   return (
@@ -112,7 +129,7 @@ export const getBoulderProblem = async (params: ParsedBoardRouteParametersWithUu
 export type SearchBoulderProblemResult = {
   boulderproblems: BoulderProblem[];
   totalCount: number;
-}
+};
 
 export const searchBoulderProblems = async (
   params: ParsedBoardRouteParameters,

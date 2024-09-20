@@ -205,7 +205,7 @@ const ResultsPage = ({
     >
       <Header
         style={{
-          height: "10dvh", // Fixed height for the header
+          height: "7dvh", // Fixed height for the header
           background: "#fff",
           padding: "0 16px",
         }}
@@ -220,59 +220,15 @@ const ResultsPage = ({
           </Col>
           
           <Col xs={12} sm={16} md={16} lg={16} xl={16} style={{ textAlign: "center" }}>
-            {/* Centered title and climb information */}
-            {currentClimb && (
-              <>
-                <Title
-                  level={4}
-                  style={{
-                    margin: 0,
-                    fontSize: styles.titleSize,
-                    lineHeight: "1.2",
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                  }}
-                >
-                  <a
-                    href={`https://kilterboardapp.com/climbs/${currentClimb.uuid}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      display: "block",
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      fontSize: styles.titleSize,
-                    }}
-                  >
-                    {currentClimb.name}
-                  </a>
-                </Title>
-                <Text
-                  style={{
-                    display: "block",
-                    fontSize: styles.textSize,
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                  }}
-                >
-                  by {currentClimb.setter_username}
-                </Text>
-                <Text
-                  style={{
-                    display: "block",
-                    fontSize: styles.textSize,
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                  }}
-                >
-                  {currentClimb.difficulty} {currentClimb.quality_average}★ at {currentClimb.angle}°
-                </Text>
-              </>
-            )}
+            <Title
+                level={4}
+                style={{
+                  margin: 0,
+                  lineHeight: "1.2",
+                }}
+              >
+                BoardSesh logo
+              </Title>
           </Col>
 
           <Col xs={6} sm={4} md={4} lg={4} xl={4} style={{ textAlign: "right" }}>
@@ -289,17 +245,88 @@ const ResultsPage = ({
 
        <Content
         style={{
-          height: "80dvh", // Fixed height for the content to leave space for footer
-          display: "flex",
+          height: "70dvh", // Fixed height for the content to leave space for footer
+          // display: "flex",
           justifyContent: "center",
           alignItems: "center",
           overflow: "hidden", // Prevent scrolling
         }}
         {...handlers}
       >
-          {/* Render the KilterBoard */}
+       <Row justify="center" align="middle" style={{ width: "100%", height: '8vh', display: 'flex' }}>
+        <Col
+          xs={24}
+          sm={24}
+          md={24}
+          lg={24}
+          xl={24}
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center',
+            textAlign: "center",
+            overflow: 'hidden', // Prevent overflow for long titles
+          }}
+        >
+            <>
+              <Title
+                level={4}
+                style={{
+                  margin: 0,
+                  fontSize: styles.titleSize,
+                  lineHeight: "1.2",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden", // Hide overflow for long titles
+                  textOverflow: "ellipsis", // Add ellipsis for long titles
+                  width: "100%", // Take up the full width of the flex container
+                  maxWidth: "100%", // Ensure it doesn't overflow outside
+                }}
+              >
+                <a
+                  href={`https://kilterboardapp.com/climbs/${currentClimb.uuid}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: "block",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden", // Prevent text from overflowing
+                    textOverflow: "ellipsis", // Show ellipsis for long titles
+                    fontSize: styles.titleSize,
+                  }}
+                >
+                  {currentClimb.name}
+                </a>
+              </Title>
+              <Text
+                style={{
+                  display: "block",
+                  fontSize: styles.textSize,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden", // Prevent overflow for long setter names
+                  textOverflow: "ellipsis",
+                }}
+              >
+                by {currentClimb.setter_username}
+              </Text>
+              <Text
+                style={{
+                  display: "block",
+                  fontSize: styles.textSize,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden", // Prevent overflow for other information
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {currentClimb.difficulty} {currentClimb.quality_average}★ @ {currentClimb.angle}°
+              </Text>
+            </>
+          
+        </Col>
+      </Row>
+
           <Row justify="space-between" align="middle" style={{ width: "100%" }}>
-            <Col xs={24} sm={20} md={16} lg={12} xl={8} style={{ textAlign: "center" }}>
+            <Col xs={24} sm={20} md={16} lg={12} xl={8} style={{ textAlign: "center", height: '75dvh' }}>
               <Board
                 boardDetails={boardDetails}
                 litUpHolds={currentClimb ? currentClimb.frames : ""}
@@ -308,6 +335,7 @@ const ResultsPage = ({
             </Col>
           </Row>
         </Content>
+        
 
        <Footer
         style={{
