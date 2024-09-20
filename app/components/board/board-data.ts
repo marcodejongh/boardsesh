@@ -5,6 +5,8 @@ type ImageDimensions = {
   };
 };
 
+export type SetIdList = number[]
+
 export const KILTER_BOARD_IMAGE_DIMENSIONS: ImageDimensions = {
   "product_sizes_layouts_sets/15_5_24.png": { width: 1080, height: 2498 },
   "product_sizes_layouts_sets/36-1.png": { width: 1080, height: 1350 },

@@ -55,10 +55,10 @@ export default async function DynamicResultsPage({
     return (
       <ResultsPage
         board={parsedParams.board_name}
-        layout={parsedParams.layout_id}
-        size={parsedParams.size_id}
+        layoutId={parsedParams.layout_id}
+        sizeId={parsedParams.size_id}
         angle={parsedParams.angle}
-        set_ids={parsedParams.set_ids}
+        setIdList={parsedParams.set_ids}
         currentClimb={currentClimb}
         results={boulderProblems}
         resultsCount={fetchedResults.totalCount}

@@ -3,9 +3,9 @@ import React, { useEffect, useState } from "react";
 
 import FilterDrawer from "./FilterDrawer";
 import HistoryControlBar from "./history-control-bar";
-import { Angle, BoardName, BoulderProblem, ClimbUuid, GetBoardDetailsResponse, LayoutId, SearchRequest, Size } from "@/lib/types";
+import { Angle, BoardName, BoulderProblem, ClimbUuid, GetBoardDetailsResponse, LayoutId, SearchRequest, Size as SizeId } from "@/lib/types";
 import { Button, Col, Layout, message, Row, Space, Typography } from "antd";
-import { SetIds } from "../board/board-data";
+import { SetIdList } from "../board/board-data";
 import {
   SearchOutlined,
   BulbOutlined,
@@ -22,9 +22,9 @@ const { Header, Content } = Layout;
 const { Title, Text } = Typography;
 interface ResultsPageProps {
   board: BoardName;
-  layout: LayoutId;
-  size: Size;
-  set_ids: SetIds;
+  layoutId: LayoutId;
+  sizeId: SizeId;
+  setIdList: SetIdList;
   climb_uuid: ClimbUuid;
   angle: Angle;
   currentClimb: BoulderProblem;
@@ -36,9 +36,9 @@ interface ResultsPageProps {
 
 const ResultsPage = ({
   board,
-  layout,
-  size,
-  set_ids,
+  layoutId,
+  sizeId,
+  setIdList,
   angle,
   currentClimb: initialClimb,
   results: initialResults,
@@ -62,7 +62,7 @@ const ResultsPage = ({
   const setCurrentClimb = (newClimb: BoulderProblem) => {
     // Update the URL dynamically to include the climb_uuid
     setCurrentClimbState(newClimb);
-    const newUrl = `/${board}/${layout}/${size}/${set_ids}/${angle}/${newClimb.uuid}`;
+    const newUrl = `/${board}/${layoutId}/${sizeId}/${setIdList}/${angle}/${newClimb.uuid}`;
     window.history.pushState({}, '', newUrl);
   };
   
@@ -155,9 +155,9 @@ const ResultsPage = ({
             queryParameters,
             {
               board_name: board,
-              layout_id: layout,
-              size_id: size,
-              set_ids: set_ids,
+              layout_id: layoutId,
+              size_id: sizeId,
+              set_ids: setIdList,
               angle: angle
             }
           ),
@@ -183,7 +183,7 @@ const ResultsPage = ({
     if (!isFetching && ((pageNumber * PAGE_LIMIT > results.length && resultsCount > pageNumber * PAGE_LIMIT) || searchChanged)) {
       fetchData();
     }
-  }, [isFetching, board, layout, size, set_ids, angle, pageNumber, searchChanged, queryParameters, isFetchingMoreProblems]);
+  }, [isFetching, board, layoutId, sizeId, setIdList, angle, pageNumber, searchChanged, queryParameters, isFetchingMoreProblems]);
   
   // Swipe event handlers
   const handlers = useSwipeable({
@@ -234,14 +234,12 @@ const ResultsPage = ({
           <Col xs={6} sm={4} md={4} lg={4} xl={4} style={{ textAlign: "right" }}>
             {/* Right-aligned buttons */}
             <Space>
-              <AngleButton angle={angle} layout={layout} board={board} />
-              <InfoButton angle={angle} layout={layout} board={board} currentClimb={currentClimb} />
+              <AngleButton angle={angle} layout={layoutId} board={board} />
+              <InfoButton angle={angle} layout={layoutId} board={board} currentClimb={currentClimb} />
             </Space>
           </Col>
         </Row>
       </Header>
-
-
 
        <Content
         style={{
@@ -363,7 +361,7 @@ const ResultsPage = ({
         currentClimb={currentClimb}
         handleClimbClick={(climb) => setCurrentClimb(climb)}
         board={board}
-        layout={layout}
+        layout={layoutId}
         climbs={results}
         currentSearchValues={queryParameters}
         open={drawerOpen}
