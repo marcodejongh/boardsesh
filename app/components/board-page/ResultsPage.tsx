@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 
 import FilterDrawer from "./FilterDrawer";
-import FloatingBar from "./floating-bar";
+import HistoryControlBar from "./history-control-bar";
 import { Angle, BoardName, BoulderProblem, ClimbUuid, GetBoardDetailsResponse, LayoutId, SearchRequest, Size } from "@/lib/types";
 import { Button, Col, Layout, message, Row, Space, Typography } from "antd";
 import { SetIds } from "../board/board-data";
@@ -195,113 +195,140 @@ const ResultsPage = ({
   return (
     <>
     <title>{`Boardsesh on ${board}: ${currentClimb.name} ${currentClimb.difficulty} @ ${currentClimb.angle}°`}</title>
-    <Layout style={{ height: "100vh" }}>
+     <Layout
+      style={{
+        height: "100dvh", // Full viewport height
+        display: "flex",
+        flexDirection: "column", // Vertical layout
+        overflow: "hidden", // No scrolling
+      }}
+    >
       <Header
-          style={{
-            background: "#fff",
-            // padding: styles.padding,
-            display: "flex",
-            alignItems: "center",
-            height: '10vh'
-          }}
-        >
-          <Row justify="space-between" align="middle" style={{ width: "100%" }}>
+        style={{
+          height: "10dvh", // Fixed height for the header
+          background: "#fff",
+          padding: "0 16px",
+        }}
+      >
+        <Row justify="space-between" align="middle" style={{ width: "100%" }}>
+          <Col xs={6} sm={4} md={4} lg={4} xl={4}>
+            {/* Left-aligned buttons */}
+            <Space>
+              <Button id="button-illuminate" type="default" icon={<BulbOutlined />} />
+              <Button type="default" onClick={showDrawer} icon={<SearchOutlined />} />
+            </Space>
+          </Col>
+          
+          <Col xs={12} sm={16} md={16} lg={16} xl={16} style={{ textAlign: "center" }}>
+            {/* Centered title and climb information */}
             {currentClimb && (
               <>
-                <Col>
-                  <Space>
-                    <Button id="button-illuminate" type="default" icon={<BulbOutlined />} />
-                    <Button type="default" onClick={showDrawer} icon={<SearchOutlined />} />
-                  </Space>
-                </Col>
-                <Col flex="auto" style={{ textAlign: "center" }}>
-                  <Title
-                    level={4}
+                <Title
+                  level={4}
+                  style={{
+                    margin: 0,
+                    fontSize: styles.titleSize,
+                    lineHeight: "1.2",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  <a
+                    href={`https://kilterboardapp.com/climbs/${currentClimb.uuid}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     style={{
-                      margin: 0,
+                      display: "block",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
                       fontSize: styles.titleSize,
-                      lineHeight: "1.2",
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
                     }}
                   >
-                    <a
-                      href={`https://kilterboardapp.com/climbs/${currentClimb.uuid}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{
-                        display: "block",
-                        whiteSpace: "nowrap",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        fontSize: styles.titleSize,
-                      }}
-                    >
-                      {currentClimb.name}
-                    </a>
-                  </Title>
-                  <Text
-                    style={{
-                      display: "block",
-                      fontSize: styles.textSize,
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                    }}
-                  >
-                    by {currentClimb.setter_username}
-                  </Text>
-                  <Text
-                    style={{
-                      display: "block",
-                      fontSize: styles.textSize,
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                    }}
-                  >
-                    {currentClimb.difficulty} {currentClimb.quality_average}★ at {currentClimb.angle}°
-                  </Text>
-                </Col>
-                <Col>
-                  <Space>
-                     {/* {currentClimb && peerId && (
-                      <ShareBoardButton peerId={peerId} hostId={hostId} pathname={pathname} search={search} />
-                    )} */}
-                      <AngleButton angle={angle} layout={layout} board={board} />
-                      <InfoButton angle={angle} layout={layout} board={board} currentClimb={currentClimb} />
-                  </Space>
-                </Col>
+                    {currentClimb.name}
+                  </a>
+                </Title>
+                <Text
+                  style={{
+                    display: "block",
+                    fontSize: styles.textSize,
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  by {currentClimb.setter_username}
+                </Text>
+                <Text
+                  style={{
+                    display: "block",
+                    fontSize: styles.textSize,
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {currentClimb.difficulty} {currentClimb.quality_average}★ at {currentClimb.angle}°
+                </Text>
               </>
             )}
+          </Col>
+
+          <Col xs={6} sm={4} md={4} lg={4} xl={4} style={{ textAlign: "right" }}>
+            {/* Right-aligned buttons */}
+            <Space>
+              <AngleButton angle={angle} layout={layout} board={board} />
+              <InfoButton angle={angle} layout={layout} board={board} currentClimb={currentClimb} />
+            </Space>
+          </Col>
+        </Row>
+      </Header>
+
+
+
+       <Content
+        style={{
+          height: "80dvh", // Fixed height for the content to leave space for footer
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          overflow: "hidden", // Prevent scrolling
+        }}
+        {...handlers}
+      >
+          {/* Render the KilterBoard */}
+          <Row justify="space-between" align="middle" style={{ width: "100%" }}>
+            <Col xs={24} sm={20} md={16} lg={12} xl={8} style={{ textAlign: "center" }}>
+              <Board
+                boardDetails={boardDetails}
+                litUpHolds={currentClimb ? currentClimb.frames : ""}
+                board={board}
+              />
+            </Col>
           </Row>
-        </Header>
+        </Content>
+
+       <Footer
+        style={{
+          height: "10dvh", // Fixed height for the footer (HistoryControlBar)
+          padding: 0,
+          backgroundColor: "#fff",
+        }}
+      >
+
+          {currentClimb && (
+            <HistoryControlBar
+              board={board}
+              boardDetails={boardDetails}
+              currentClimb={currentClimb}
+              navigateClimbsLeft={navigateClimbsLeft}
+              navigateClimbsRight={navigateClimbsRight}
+            />
+          )}
+        </Footer>
 
 
-      <Content style={{ display: "flex", backgroundColor: 'white', height: '70vh', justifyContent: "center", alignItems: "center" }} {...handlers}>
-        {/* Render the KilterBoard */}
-        <Board
-          editEnabled={false}
-          boardDetails={boardDetails}
-          litUpHolds={currentClimb ? currentClimb.frames : ""}
-          board={board}
-        />
-
-        
-      </Content>
-      <Footer style={{height: '20vh', padding: '0'}}>
-        {/* Floating bar to navigate between climbs */}
-        {currentClimb && (
-          <FloatingBar
-            board={board}
-            boardDetails={boardDetails}
-            currentClimb={currentClimb}
-            navigateClimbsLeft={navigateClimbsLeft}
-            navigateClimbsRight={navigateClimbsRight}
-          />
-        )}
-      </Footer>
 
       {/* Drawer for filter options */}
       <FilterDrawer
