@@ -1,69 +1,90 @@
-import React, { useMemo } from "react";
-import { HoldTuple } from "@/lib/types";
-import { BoardProps, HoldRenderData } from "./types";
-import { getBoardImageDimensions, convertLitUpHoldsStringToMap, getImageUrl } from "./util";
+// BoardWithLayout.tsx
 
-const Board = ({
-  litUpHolds = "",
-  boardDetails,
-  board
-}: BoardProps) => {
-  const {width: boardWidth, height: boardHeight} = getBoardImageDimensions(board, Object.keys(boardDetails.images_to_holds)[0]);
+import React from "react";
+import { Col, Row, Typography, Layout } from "antd";
+import BoardRenderer from "./board-renderer";
+import { BoulderProblem, GetBoardDetailsResponse, BoardName } from "@/lib/types";
 
-  const holdsData: HoldRenderData[] = useMemo(() => {
-    const { images_to_holds: imagesToHolds, edge_bottom: edgeBottom, edge_left: edgeLeft, edge_right: edgeRight, edge_top: edgeTop } = boardDetails;
+const { Title, Text } = Typography;
+const { Content } = Layout;
 
-    const xSpacing = boardWidth / (edgeRight - edgeLeft);
-    const ySpacing = boardHeight / (edgeTop - edgeBottom);
+interface BoardWithLayoutProps {
+  currentClimb: BoulderProblem;
+  boardDetails: GetBoardDetailsResponse;
+  board: BoardName;
+}
 
-    const litUpHoldsMap = convertLitUpHoldsStringToMap(litUpHolds, board);
-    
-    return Object.values<HoldTuple[]>(imagesToHolds)
-      .flatMap(holds =>
-        holds
-          .filter(([,, x, y]) => x > edgeLeft && x < edgeRight && y > edgeBottom && y < edgeTop)
-          .map(([holdId, mirroredHoldId, x, y]) => ({
-            id: holdId,
-            mirroredHoldId,
-            cx: (x - edgeLeft) * xSpacing,
-            cy: boardHeight - (y - edgeBottom) * ySpacing,
-            r: xSpacing * 4,
-            ...litUpHoldsMap[holdId]
-            // TODO: When reimplementing create mode, draw all circles when in edit mode
-          })).filter(({state}) => state && state !== 'OFF')
-      );
-  }, [boardDetails, litUpHolds, board]) || [];
+const Board = ({ currentClimb, boardDetails, board }: BoardWithLayoutProps) => {
+  const styles = {
+    titleSize: "16px",
+    textSize: "12px",
+    padding: "0 8px",
+  };
 
   return (
-    <svg
-      viewBox={`0 0 ${boardWidth} ${boardHeight}`}
-      preserveAspectRatio="xMidYMid meet"
-      style={{ width: "100%", height: "100%" }}
-    >
-      {Object.keys(boardDetails.images_to_holds).map((imageUrl) => (
-        <image
-          key={imageUrl}
-          href={getImageUrl(imageUrl, board)}
-          width="100%"
-          height="100%"
-        />
-      ))}
-      {holdsData
-        .map((hold) => (
-          <circle
-            key={hold.id}
-            id={`hold-${hold.id}`}
-            data-mirror-id={hold.mirroredHoldId || undefined}
-            cx={hold.cx}
-            cy={hold.cy}
-            r={hold.r}
-            stroke={hold.color}
-            strokeWidth={6}
-            fillOpacity={0}
-            // onClick={editEnabled ? () => handleCircleClick(hold.id) : undefined}
-          />
-        ))}
-    </svg>
+    <>
+      <Row justify="center" align="middle" style={{ width: "100%", height: "8vh", display: "flex" }}>
+        <Col
+          xs={24}
+          sm={24}
+          md={24}
+          lg={24}
+          xl={24}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            alignItems: "center",
+            textAlign: "center",
+            overflow: "hidden", // Prevent overflow for long titles
+          }}
+        >
+          <Title
+            level={4}
+            style={{
+              margin: 0,
+              fontSize: styles.titleSize,
+              lineHeight: "1.2",
+              whiteSpace: "nowrap",
+              overflow: "hidden", // Hide overflow for long titles
+              textOverflow: "ellipsis", // Add ellipsis for long titles
+              width: "100%", // Take up the full width of the flex container
+              maxWidth: "100%", // Ensure it doesn't overflow outside
+            }}
+          >
+            {currentClimb.name}
+          </Title>
+          <Text
+            style={{
+              display: "block",
+              fontSize: styles.textSize,
+              whiteSpace: "nowrap",
+              overflow: "hidden", // Prevent overflow for long setter names
+              textOverflow: "ellipsis",
+            }}
+          >
+            by {currentClimb.setter_username}
+          </Text>
+          <Text
+            style={{
+              display: "block",
+              fontSize: styles.textSize,
+              whiteSpace: "nowrap",
+              overflow: "hidden", // Prevent overflow for other information
+              textOverflow: "ellipsis",
+            }}
+          >
+            {currentClimb.difficulty} {currentClimb.quality_average}★ @ {currentClimb.angle}°
+          </Text>
+        </Col>
+      </Row>
+
+      <Row justify="space-between" align="middle" style={{ width: "100%" }}>
+        <Col xs={24} sm={20} md={16} lg={12} xl={8} style={{ textAlign: "center", height: "72dvh" }}>
+          <BoardRenderer boardDetails={boardDetails} litUpHolds={currentClimb ? currentClimb.frames : ""} board={board} />
+        </Col>
+      </Row>
+    </>
   );
 };
 

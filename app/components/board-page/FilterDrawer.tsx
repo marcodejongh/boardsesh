@@ -21,7 +21,7 @@ import { BoulderProblem, GetGradesResponse, SearchRequest } from "@/lib/types";
 import { FilterDrawerProps } from "./types";
 import { useDebouncedCallback } from "use-debounce";
 import { PAGE_LIMIT } from "./constants";
-import Board from "../board/board";
+import BoardRenderer from "../board/board-renderer";
 
 const { Option } = Select;
 const { Title, Text } = Typography;
@@ -271,7 +271,7 @@ const FilterDrawer = ({
             >
                         <Row justify="space-between" align="middle" style={{ width: "100%" }}>
             <Col xs={24} sm={20} md={16} lg={12} xl={8} style={{ textAlign: "center", height: '75dvh' }}>
-              <Board
+              <BoardRenderer
                 boardDetails={boardDetails}
                 litUpHolds={currentClimb ? currentClimb.frames : ""}
                 board={board}

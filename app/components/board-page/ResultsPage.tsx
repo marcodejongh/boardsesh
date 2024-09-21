@@ -1,22 +1,17 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 
-import FilterDrawer from "./FilterDrawer";
 import HistoryControlBar from "./history-control-bar";
 import { Angle, BoardName, BoulderProblem, ClimbUuid, GetBoardDetailsResponse, LayoutId, SearchRequest, Size as SizeId } from "@/lib/types";
-import { Button, Col, Layout, message, Row, Space, Typography } from "antd";
+import { Button, Col, Layout, Row, Space, Typography } from "antd";
 import { SetIdList } from "../board/board-data";
 import {
-  SearchOutlined,
   BulbOutlined,
 } from "@ant-design/icons";
 import { Footer } from "antd/es/layout/layout";
 import Board from "../board/board";
-import { fetchResults } from "../rest-api/api";
-import { PAGE_LIMIT } from "./constants";
 import AngleButton from "./angle-button";
 import InfoButton from "./info-button";
-import { useSwipeable } from "react-swipeable";
 import FilterButton from "./filter-button";
 
 const { Header, Content } = Layout;
@@ -34,22 +29,22 @@ interface ResultsPageProps {
   initialQueryParameters: SearchRequest;
   boardDetails: GetBoardDetailsResponse;
 }
+const styles = {
+  titleSize: "16px",
+  textSize: "12px",
+  padding: "0 8px",
+};
 
 const ResultsPage = (props: ResultsPageProps) => {
-const {
-  board,
-  layoutId,
-  angle,
-  currentClimb: initialClimb,
-  boardDetails,
-} = props;
+  const {
+    board,
+    layoutId,
+    angle,
+    currentClimb: initialClimb,
+    boardDetails,
+  } = props;
 
   const [currentClimb, setCurrentClimbState] = useState(initialClimb);
-  const styles = {
-    titleSize: "16px",
-    textSize: "12px",
-    padding: "0 8px",
-  };
 
   return (
     <>
@@ -64,7 +59,7 @@ const {
     >
       <Header
         style={{
-          height: "7dvh", // Fixed height for the header
+          height: "10dvh", // Fixed height for the header
           background: "#fff",
           padding: "0 16px",
         }}
@@ -106,96 +101,19 @@ const {
 
        <Content
         style={{
-          height: "70dvh", // Fixed height for the content to leave space for footer
+          height: "80dvh", // Fixed height for the content to leave space for footer
           // display: "flex",
           justifyContent: "center",
           alignItems: "center",
           overflow: "hidden", // Prevent scrolling
-        }}>
-       <Row justify="center" align="middle" style={{ width: "100%", height: '8vh', display: 'flex' }}>
-        <Col
-          xs={24}
-          sm={24}
-          md={24}
-          lg={24}
-          xl={24}
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            alignItems: 'center',
-            textAlign: "center",
-            overflow: 'hidden', // Prevent overflow for long titles
-          }}
-        >
-            <>
-              <Title
-                level={4}
-                style={{
-                  margin: 0,
-                  fontSize: styles.titleSize,
-                  lineHeight: "1.2",
-                  whiteSpace: "nowrap",
-                  overflow: "hidden", // Hide overflow for long titles
-                  textOverflow: "ellipsis", // Add ellipsis for long titles
-                  width: "100%", // Take up the full width of the flex container
-                  maxWidth: "100%", // Ensure it doesn't overflow outside
-                }}
-              >
-                <a
-                  href={`https://kilterboardapp.com/climbs/${currentClimb.uuid}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    display: "block",
-                    whiteSpace: "nowrap",
-                    overflow: "hidden", // Prevent text from overflowing
-                    textOverflow: "ellipsis", // Show ellipsis for long titles
-                    fontSize: styles.titleSize,
-                  }}
-                >
-                  {currentClimb.name}
-                </a>
-              </Title>
-              <Text
-                style={{
-                  display: "block",
-                  fontSize: styles.textSize,
-                  whiteSpace: "nowrap",
-                  overflow: "hidden", // Prevent overflow for long setter names
-                  textOverflow: "ellipsis",
-                }}
-              >
-                by {currentClimb.setter_username}
-              </Text>
-              <Text
-                style={{
-                  display: "block",
-                  fontSize: styles.textSize,
-                  whiteSpace: "nowrap",
-                  overflow: "hidden", // Prevent overflow for other information
-                  textOverflow: "ellipsis",
-                }}
-              >
-                {currentClimb.difficulty} {currentClimb.quality_average}★ @ {currentClimb.angle}°
-              </Text>
-            </>
-          
-        </Col>
-      </Row>
-
-          <Row justify="space-between" align="middle" style={{ width: "100%" }}>
-            <Col xs={24} sm={20} md={16} lg={12} xl={8} style={{ textAlign: "center", height: '75dvh' }}>
-              <Board
-                boardDetails={boardDetails}
-                litUpHolds={currentClimb ? currentClimb.frames : ""}
-                board={board}
-              />
-            </Col>
-          </Row>
+        }}>         
+          <Board
+            currentClimb={currentClimb}
+            boardDetails={boardDetails}
+            board={board}
+          />
         </Content>
         
-
        <Footer
         style={{
           height: "10dvh", // Fixed height for the footer (HistoryControlBar)
@@ -203,17 +121,16 @@ const {
           backgroundColor: "#fff",
         }}
       >
-
-          {currentClimb && (
-            <HistoryControlBar
-              board={board}
-              boardDetails={boardDetails}
-              currentClimb={currentClimb}
-              // navigateClimbsLeft={navigateClimbsLeft}
-              // navigateClimbsRight={navigateClimbsRight}
-            />
-          )}
-        </Footer>
+        {currentClimb && (
+          <HistoryControlBar
+            board={board}
+            boardDetails={boardDetails}
+            currentClimb={currentClimb}
+            // navigateClimbsLeft={navigateClimbsLeft}
+            // navigateClimbsRight={navigateClimbsRight}
+          />
+        )}
+      </Footer>
     </Layout>
   </>);
 };

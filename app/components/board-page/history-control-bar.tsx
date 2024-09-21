@@ -3,7 +3,7 @@ import React from "react";
 import { Button, Typography, Row, Col, Card } from "antd";
 import { LeftOutlined, RightOutlined } from "@ant-design/icons";
 import { FloatingBarProps } from "./types";
-import Board from "../board/board";
+import BoardRenderer from "../board/board-renderer";
 
 const { Title, Text } = Typography;
 
@@ -34,7 +34,7 @@ const HistoryControlBar: React.FC<FloatingBarProps> = ({
         <Col xs={6}>
           {/* Board preview */}
           <div style={boardPreviewContainerStyle}>
-            <Board
+            <BoardRenderer
               boardDetails={boardDetails}
               board={board}
               litUpHolds={currentClimb.frames}
@@ -62,7 +62,7 @@ const HistoryControlBar: React.FC<FloatingBarProps> = ({
               textOverflow: 'ellipsis',
             }}
           >
-            {currentClimb.difficulty} {currentClimb.quality_average}★ at {currentClimb.angle}°
+            {currentClimb.difficulty} {currentClimb.quality_average}★ @ {currentClimb.angle}°
           </Text>
         </Col>
         <Col xs={6} style={{ textAlign: "right" }}>

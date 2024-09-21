@@ -1,6 +1,5 @@
 "use client";
 import type { Angle, BoardName, BoulderProblem, GetBoardDetailsResponse, LayoutId, SearchRequest, Size } from "@/lib/types";
-import type { SetIds } from "../board/board-data";
 
 export type ResultPageProps = {
   board: BoardName;
@@ -13,8 +12,8 @@ export type ResultPageProps = {
 
 export interface FloatingBarProps {
   currentClimb: BoulderProblem;
-  navigateClimbsLeft: () => void;
-  navigateClimbsRight: () => void;
+  navigateClimbsLeft?: () => void;
+  navigateClimbsRight?: () => void;
   boardDetails: GetBoardDetailsResponse;
   board: BoardName;
 }
