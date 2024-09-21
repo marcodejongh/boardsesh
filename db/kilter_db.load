@@ -1,0 +1,10 @@
+LOAD DATABASE
+     FROM sqlite://./{{DB_FILE}}
+     INTO {{DATABASE_URL}}
+
+     WITH no foreign keys, include drop, create tables, no truncate, reset sequences
+     SET work_mem to '16MB', maintenance_work_mem to '512 MB'
+
+     -- After the load, run the SQL file to rename tables
+     AFTER LOAD 
+          EXECUTE ./kilter_table_rename.sql;
