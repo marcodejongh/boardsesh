@@ -21,6 +21,7 @@ import { BoulderProblem, GetGradesResponse, SearchRequest } from "@/lib/types";
 import { FilterDrawerProps } from "./types";
 import { useDebouncedCallback } from "use-debounce";
 import { PAGE_LIMIT } from "./constants";
+import Board from "../board/board";
 
 const { Option } = Select;
 const { Title, Text } = Typography;
@@ -49,6 +50,7 @@ const FilterDrawer = ({
   isFetching,
   searchChanged,
   fetchMoreClimbs,
+  boardDetails,
 }: FilterDrawerProps) => {
   const [filters, setFilters] = useState({
     minGrade: currentSearchValues.minGrade,
@@ -267,6 +269,15 @@ const FilterDrawer = ({
                 borderLeft: currentClimb?.uuid === climb.uuid ? "5px solid #1890ff" : "none",
               }}
             >
+                        <Row justify="space-between" align="middle" style={{ width: "100%" }}>
+            <Col xs={24} sm={20} md={16} lg={12} xl={8} style={{ textAlign: "center", height: '75dvh' }}>
+              <Board
+                boardDetails={boardDetails}
+                litUpHolds={currentClimb ? currentClimb.frames : ""}
+                board={board}
+              />
+            </Col>
+          </Row>
               <Title level={5} style={{ margin: 0 }}>
                 {climb.name}
               </Title>

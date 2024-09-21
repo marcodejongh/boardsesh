@@ -17,6 +17,7 @@ import { PAGE_LIMIT } from "./constants";
 import AngleButton from "./angle-button";
 import InfoButton from "./info-button";
 import { useSwipeable } from "react-swipeable";
+import FilterButton from "./filter-button";
 
 const { Header, Content } = Layout;
 const { Title, Text } = Typography;
@@ -34,163 +35,21 @@ interface ResultsPageProps {
   boardDetails: GetBoardDetailsResponse;
 }
 
-const ResultsPage = ({
+const ResultsPage = (props: ResultsPageProps) => {
+const {
   board,
   layoutId,
-  sizeId,
-  setIdList,
   angle,
   currentClimb: initialClimb,
-  results: initialResults,
-  resultsCount: initialResultsCount,
-  initialQueryParameters,
   boardDetails,
-}: ResultsPageProps) => {
-  const [results, setResults] = useState(initialResults);
-  const [resultsCount, setResultsCount] = useState(initialResultsCount);
+} = props;
 
   const [currentClimb, setCurrentClimbState] = useState(initialClimb);
-  const [queryParameters, setQueryParameters] = useState(initialQueryParameters);
-  const [searchChanged, setSearchChanged] = useState(false);
-  
-  const [pageNumber, setPageNumber] = useState(1);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [ isFetching, setIsFetching ] = useState(false);
-  const [ isFetchingMoreProblems, setIsFetchingMoreProblems ] = useState(false);
-  
-  // Set the current climb and update the URL dynamically
-  const setCurrentClimb = (newClimb: BoulderProblem) => {
-    // Update the URL dynamically to include the climb_uuid
-    setCurrentClimbState(newClimb);
-    const newUrl = `/${board}/${layoutId}/${sizeId}/${setIdList}/${angle}/${newClimb.uuid}`;
-    window.history.pushState({}, '', newUrl);
-  };
-  
-  const fetchMoreClimbs = () => {
-    if (!isFetchingMoreProblems) {
-      setPageNumber((prevPageNumber) => {
-        setIsFetchingMoreProblems(true);
-        return prevPageNumber + 1;
-      });
-    }
-  }
-
-  const applyFilters = (filters: SearchRequest) => {
-    setQueryParameters(() => {
-      const updatedParams = filters;
-      setSearchChanged(true); 
-      return updatedParams;
-    });
-  };
-
-  // Function to handle navigation to the next climb (right arrow)
-  const navigateClimbsRight = () => {
-    if (!currentClimb) return;
-
-    const currentIndex = results.findIndex((climb) => climb.uuid === currentClimb.uuid);
-    if (currentIndex < results.length - 1) {
-      setCurrentClimb(results[currentIndex + 1]);
-    } else {
-      setCurrentClimb(results[0]);
-    }
-
-    // Handle fetching more results if the user is near the end of the current list
-    if (currentIndex >= (results.length - PAGE_LIMIT - 5)) {
-      fetchMoreClimbs();
-      // Fetch more results logic can be triggered here based on page number
-    }
-  };
-
-  // Function to handle navigation to the previous climb (left arrow)
-  const navigateClimbsLeft = () => {
-    if (!currentClimb) return;
-
-    const currentIndex = results.findIndex((climb) => climb.uuid === currentClimb.uuid);
-    if (currentIndex === -1) {
-      setCurrentClimb(results[0]);
-    } else {
-      setCurrentClimb(results[currentIndex - 1]);
-    }
-  };
-  
-    // Keyboard event listener
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "ArrowLeft") {
-        navigateClimbsLeft();
-      } else if (event.key === "ArrowRight") {
-        navigateClimbsRight();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [currentClimb, results]);
-
   const styles = {
     titleSize: "16px",
     textSize: "12px",
     padding: "0 8px",
   };
-
-  const showDrawer = () => {
-    setDrawerOpen(true);
-  };
-
-  const closeDrawer = () => {
-    setDrawerOpen(false);
-  };
-  
-  useEffect(() => {
-    const fetchData = async () => {
-      setIsFetching(true);
-      try {
-        const [fetchedResults] = await Promise.all([
-          fetchResults(
-            pageNumber,
-            PAGE_LIMIT,
-            queryParameters,
-            {
-              board_name: board,
-              layout_id: layoutId,
-              size_id: sizeId,
-              set_ids: setIdList,
-              angle: angle
-            }
-          ),
-        ]);
-        
-        // Append results if pageNumber increases, otherwise reset results
-        if (pageNumber > 1) {
-          setResults((prevResults) => [...prevResults, ...fetchedResults.boulderproblems]);
-          setIsFetchingMoreProblems(false);
-        } else {
-          setResults(fetchedResults.boulderproblems);
-          setResultsCount(fetchedResults.totalCount);
-        }
-        if(searchChanged) {
-          setSearchChanged(false);
-          setPageNumber(1);
-        }
-        setIsFetching(false);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      }
-    };
-    if (!isFetching && ((pageNumber * PAGE_LIMIT > results.length && resultsCount > pageNumber * PAGE_LIMIT) || searchChanged)) {
-      fetchData();
-    }
-  }, [isFetching, board, layoutId, sizeId, setIdList, angle, pageNumber, searchChanged, queryParameters, isFetchingMoreProblems]);
-  
-  // Swipe event handlers
-  const handlers = useSwipeable({
-    onSwipedLeft: () => navigateClimbsRight(),
-    onSwipedRight: () => navigateClimbsLeft(),
-    trackMouse: true, // optional, enables mouse swipe events
-  });
 
   return (
     <>
@@ -215,7 +74,11 @@ const ResultsPage = ({
             {/* Left-aligned buttons */}
             <Space>
               <Button id="button-illuminate" type="default" icon={<BulbOutlined />} />
-              <Button type="default" onClick={showDrawer} icon={<SearchOutlined />} />
+              <FilterButton
+                {...props}
+                currentClimb={currentClimb}
+                setCurrentClimbState={setCurrentClimbState}
+              />
             </Space>
           </Col>
           
@@ -248,9 +111,7 @@ const ResultsPage = ({
           justifyContent: "center",
           alignItems: "center",
           overflow: "hidden", // Prevent scrolling
-        }}
-        {...handlers}
-      >
+        }}>
        <Row justify="center" align="middle" style={{ width: "100%", height: '8vh', display: 'flex' }}>
         <Col
           xs={24}
@@ -348,32 +209,11 @@ const ResultsPage = ({
               board={board}
               boardDetails={boardDetails}
               currentClimb={currentClimb}
-              navigateClimbsLeft={navigateClimbsLeft}
-              navigateClimbsRight={navigateClimbsRight}
+              // navigateClimbsLeft={navigateClimbsLeft}
+              // navigateClimbsRight={navigateClimbsRight}
             />
           )}
         </Footer>
-
-
-
-      {/* Drawer for filter options */}
-      <FilterDrawer
-        currentClimb={currentClimb}
-        handleClimbClick={(climb) => setCurrentClimb(climb)}
-        board={board}
-        layout={layoutId}
-        climbs={results}
-        currentSearchValues={queryParameters}
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        onApplyFilters={applyFilters}
-        angle={angle}
-        closeDrawer={closeDrawer}
-        resultsCount={resultsCount}
-        isFetching={isFetching}
-        searchChanged={searchChanged}
-        fetchMoreClimbs={fetchMoreClimbs}
-      />
     </Layout>
   </>);
 };

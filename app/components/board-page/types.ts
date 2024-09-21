@@ -36,4 +36,5 @@ export type FilterDrawerProps = {
   isFetching: boolean;
   searchChanged: boolean;
   fetchMoreClimbs: () => void;
+  boardDetails: GetBoardDetailsResponse
 };
