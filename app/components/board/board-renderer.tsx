@@ -6,9 +6,12 @@ import { getBoardImageDimensions, convertLitUpHoldsStringToMap, getImageUrl } fr
 const BoardRenderer = ({
   litUpHolds = "",
   boardDetails,
-  board
+  board_name
 }: BoardRendererPropsProps) => {
-  const {width: boardWidth, height: boardHeight} = getBoardImageDimensions(board, Object.keys(boardDetails.images_to_holds)[0]);
+  
+  
+
+  const {width: boardWidth, height: boardHeight} = getBoardImageDimensions(board_name, Object.keys(boardDetails.images_to_holds)[0]);
 
   const holdsData: HoldRenderData[] = useMemo(() => {
     const { images_to_holds: imagesToHolds, edge_bottom: edgeBottom, edge_left: edgeLeft, edge_right: edgeRight, edge_top: edgeTop } = boardDetails;
@@ -16,7 +19,7 @@ const BoardRenderer = ({
     const xSpacing = boardWidth / (edgeRight - edgeLeft);
     const ySpacing = boardHeight / (edgeTop - edgeBottom);
 
-    const litUpHoldsMap = convertLitUpHoldsStringToMap(litUpHolds, board);
+    const litUpHoldsMap = convertLitUpHoldsStringToMap(litUpHolds, board_name);
     
     return Object.values<HoldTuple[]>(imagesToHolds)
       .flatMap(holds =>
@@ -32,7 +35,7 @@ const BoardRenderer = ({
             // TODO: When reimplementing create mode, draw all circles when in edit mode
           })).filter(({state}) => state && state !== 'OFF')
       );
-  }, [boardDetails, litUpHolds, board]) || [];
+  }, [boardDetails, litUpHolds, board_name]) || [];
 
   return (
     <svg
@@ -43,7 +46,7 @@ const BoardRenderer = ({
       {Object.keys(boardDetails.images_to_holds).map((imageUrl) => (
         <image
           key={imageUrl}
-          href={getImageUrl(imageUrl, board)}
+          href={getImageUrl(imageUrl, board_name)}
           width="100%"
           height="100%"
         />

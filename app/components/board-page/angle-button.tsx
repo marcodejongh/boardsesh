@@ -13,11 +13,8 @@ export type AngleButtonProps = {
 const AngleButton: React.FC<AngleButtonProps> = ({
   board,
   layout,
-  angle: initialAngle
+  angle,
 }: AngleButtonProps) => {
-  const [angle, setAngle] = useState<Angle>(initialAngle)
-  const [angles, setAngles] = useState<GetAnglesResponse>([]);
-  const [fetchedAngles, setFetchedAngles] = useState<boolean>(false);
   const [drawerOpen, setDrawerOpen] = useState<boolean>(false);
   
   const openDrawer = () => {
@@ -26,23 +23,6 @@ const AngleButton: React.FC<AngleButtonProps> = ({
   const closeDrawer = () => {
     setDrawerOpen(false);
   }
-  
-  useEffect(() => {
-    const fetchAngleValues = async () => {
-      try {
-        // TODO: Move to a button in the resultspage
-        const data = await fetchAngles(board, layout);
-        setAngles(data);
-        setFetchedAngles(true);
-      } catch (error) {
-        console.error("Error fetching angles:", error);
-      }
-    };
-
-    if (!fetchedAngles) {
-      fetchAngleValues();
-    }
-  }, [layout, board]);
 
   return (
     <>

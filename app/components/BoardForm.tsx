@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { Form, Select, Input, Button, Row, Col, Typography } from "antd";
 import Link from "next/link"; // Import Next.js Link
-import { defaultLayouts, boardLayouts } from "./board/board-data";
+import { defaultLayouts, boardLayouts } from "../lib/board-data";
 
 const { Option } = Select;
 const { Title } = Typography;

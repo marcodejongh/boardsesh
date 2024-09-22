@@ -30,7 +30,6 @@ export async function GET(
     mirroredHolds: query.get("mirroredHolds") || "",
     pageSize: Number(query.get("pageSize") || PAGE_LIMIT),
     page: Number(query.get("page") || 0),
-
   };
 
   try {

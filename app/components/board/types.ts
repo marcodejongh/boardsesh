@@ -4,8 +4,10 @@ import { HoldCode, HoldState, HoldColor } from "./types";
 export type BoardProps = {
   boardDetails: GetBoardDetailsResponse;
   litUpHolds: string;
-  board: BoardName;
-};export type HoldState = 'OFF' | 'STARTING' | 'FINISH' | 'HAND' | 'FOOT';
+  board_name: BoardName;
+};
+
+export type HoldState = 'OFF' | 'STARTING' | 'FINISH' | 'HAND' | 'FOOT';
 
 type HoldsArray = Array<{
   id: number;

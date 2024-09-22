@@ -1,5 +1,6 @@
 import "server-only";
-import { sql } from "@vercel/postgres";
+import { sql } from "@/lib/db";
+
 import {
   BoardRouteParametersWithUuid,
   BoardRouteParameters,
@@ -14,7 +15,8 @@ import { PAGE_LIMIT } from "@/app/components/board-page/constants";
 const getTableName = (board_name: string, table_name: string) => {
   switch (board_name) {
     case "tension":
-      return `tension_${table_name}`;
+    case "kilter":
+      return `${board_name}_${table_name}`;
     default:
       return `${table_name}`;
   }
@@ -38,7 +40,7 @@ export const getBoardDetails = async ({ board_name, layout_id, size_id, set_ids 
       [layout_id, size_id, set_id],
     );
 
-    if (rows.length === 0) throw new Error(`Could not find set_id ${set_id} for ${layout_id} & ${size_id}`);
+    if (rows.length === 0) throw new Error(`Could not find set_id ${set_id} for layout_id: ${layout_id} and size_id: ${size_id}`);
 
     const imageFilename = rows[0].image_filename;
 
@@ -64,7 +66,7 @@ export const getBoardDetails = async ({ board_name, layout_id, size_id, set_ids 
       `,
       [set_id, layout_id],
     );
-
+    
     if (holds.length > 0) {
       imagesToHolds[image_url] = holds.map((hold) => [
         hold.placement_id, // First position: regular placement ID
@@ -165,8 +167,8 @@ export const searchBoulderProblems = async (
           )} dg on dg.difficulty = ROUND(climb_stats.display_difficulty::numeric)
           INNER JOIN ${getTableName(params.board_name, "product_sizes")} product_sizes ON product_sizes.id = $1
           WHERE climbs.layout_id = $2
-          AND climbs.is_listed = 1
-          AND climbs.is_draft = 0
+          AND climbs.is_listed = true
+          AND climbs.is_draft = false
           AND product_sizes.id = $3
           AND climb_stats.angle = $11
           AND climb_stats.ascensionist_count >= $4

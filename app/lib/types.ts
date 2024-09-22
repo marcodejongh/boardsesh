@@ -1,4 +1,4 @@
-import { SetIds } from "../components/board/board-data";
+import { SetIdList } from "./board-data";
 
 export type BoulderProblem = {
   uuid: string;
@@ -175,14 +175,16 @@ export type BoardRouteParameters = {
   size_id: string;
   set_ids: string;
   angle: string;
+  climb_uuid?: string;
 };
 
 export type ParsedBoardRouteParameters = {
-  board_name: string;
+  board_name: BoardName;
   layout_id: number;
   size_id: number;
-  set_ids: SetIds;
+  set_ids: SetIdList;
   angle: number;
+  uuid?: string;
 };
 
 export type ParsedBoardRouteParametersWithUuid = ParsedBoardRouteParameters & {

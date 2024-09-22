@@ -5,8 +5,8 @@ export async function GET() {
   try {
     const { rows: grades } = await sql`
       SELECT difficulty as difficulty_id, boulder_name as difficulty_name
-      FROM difficulty_grades
-      WHERE is_listed = 1
+      FROM kilter_difficulty_grades
+      WHERE is_listed = true
       ORDER BY difficulty ASC
     `;
     return NextResponse.json(grades);

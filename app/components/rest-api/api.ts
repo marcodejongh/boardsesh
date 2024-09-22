@@ -1,17 +1,15 @@
 // api.ts
 
 import { SearchBoulderProblemResult } from "@/app/lib/data/queries";
-import { SetIds } from "../board/board-data";
 import {
   BoardRouteParametersWithUuid,
-  BoardRouteParameters, FetchCurrentProblemResponse, FetchResultsResponse, GetAnglesResponse,
+  FetchCurrentProblemResponse,
   GetBoardDetailsResponse,
-  GetGradesResponse,
   SearchRequest,
   ParsedBoardRouteParameters,
 } from "@/app/lib/types";
 
-const API_BASE_URL = `/api`;
+const API_BASE_URL = `http://localhost:3000/api`;
 const headers = new Headers({ "ngrok-skip-browser-warning": "true" });
 
 export const fetchResults = async (
@@ -59,39 +57,6 @@ export const fetchCurrentClimb = async (
     )
   ).json();
 
-const gradesCache = new Map<string, GetGradesResponse>();
-
-// Fetch grades
-export const fetchGrades = async (boardName: string): Promise<GetGradesResponse> => {
-  if (gradesCache.has(boardName)) {
-    return gradesCache.get(boardName)!;
-  }
-
-  const response = await fetch(`${API_BASE_URL}/v1/grades/${boardName}`, { headers });
-  const data: GetGradesResponse = await response.json();
-
-  gradesCache.set(boardName, data);
-
-  return data;
-};
-
-const anglesCache = new Map<string, GetAnglesResponse>();
-
-// Fetch angles
-export const fetchAngles = async (boardName: string, layout: number): Promise<GetAnglesResponse> => {
-  const cacheKey = `${boardName}_${layout}`;
-  if (anglesCache.has(cacheKey)) {
-    return anglesCache.get(cacheKey)!;
-  }
-
-  const response = await fetch(`${API_BASE_URL}/v1/angles/${boardName}/${layout}`, { headers });
-  const data: GetAnglesResponse = (await response.json()).flat();
-
-  anglesCache.set(cacheKey, data);
-
-  return data;
-};
-
 // Fetch beta count
 export const fetchBetaCount = async (board: string, uuid: string): Promise<number> => {
   const response = await fetch(`${API_BASE_URL}/v1/${board}/beta/${uuid}`, { headers });
@@ -106,7 +71,7 @@ export const fetchBoardDetails = async (
   size: number,
   set_ids: SetIds,
 ): Promise<GetBoardDetailsResponse> => {
-  const apiUrl = `${API_BASE_URL}/v1/${board}/${layout}/${size}/${set_ids}/details`;
+  const apiUrl = `${API_BASE_URL}/v1/${board}/${layout}/${size}/${set_ids.join(',')}/details`;
   const response = await fetch(apiUrl, { headers });
   if (!response.ok) {
     throw new Error(`HTTP error! status: ${response.status}`);

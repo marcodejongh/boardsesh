@@ -10,13 +10,9 @@ const { Title, Text } = Typography;
 
 const HistoryControlBar: React.FC<FloatingBarProps> = ({
   currentClimb,
-  navigateClimbsLeft,
-  navigateClimbsRight,
   boardDetails,
   board,
 }: FloatingBarProps) => {
-  if (!currentClimb) return null;
-
   return (
     <Card
       bodyStyle={{
@@ -36,8 +32,8 @@ const HistoryControlBar: React.FC<FloatingBarProps> = ({
           <div style={boardPreviewContainerStyle}>
             <BoardRenderer
               boardDetails={boardDetails}
-              board={board}
-              litUpHolds={currentClimb.frames}
+              board_name={board}
+              litUpHolds={currentClimb && currentClimb.frames}
             />
           </div>
         </Col>
@@ -52,7 +48,7 @@ const HistoryControlBar: React.FC<FloatingBarProps> = ({
               textOverflow: 'ellipsis',
             }}
           >
-            {currentClimb.name}
+            {currentClimb && currentClimb.name ? currentClimb.name : 'No climb selected'}
           </Title>
           <Text
             style={{
@@ -62,21 +58,20 @@ const HistoryControlBar: React.FC<FloatingBarProps> = ({
               textOverflow: 'ellipsis',
             }}
           >
-            {currentClimb.difficulty} {currentClimb.quality_average}★ @ {currentClimb.angle}°
+            {currentClimb && currentClimb.name ? `${currentClimb.difficulty} ${currentClimb.quality_average}★ @ ${currentClimb.angle}°` : 'No climb selected'}
+            
           </Text>
         </Col>
         <Col xs={6} style={{ textAlign: "right" }}>
           {/* Navigation buttons */}
           <Button
             type="default"
-            onClick={navigateClimbsLeft}
             icon={<LeftOutlined />}
             aria-label="Previous climb"
             style={{ marginRight: '4px' }}
           />
           <Button
             type="default"
-            onClick={navigateClimbsRight}
             icon={<RightOutlined />}
             aria-label="Next climb"
           />

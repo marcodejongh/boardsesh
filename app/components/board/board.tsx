@@ -1,20 +1,17 @@
-// BoardWithLayout.tsx
-
 import React from "react";
-import { Col, Row, Typography, Layout } from "antd";
 import BoardRenderer from "./board-renderer";
-import { BoulderProblem, GetBoardDetailsResponse, BoardName } from "@/lib/types";
+import { BoulderProblem, GetBoardDetailsResponse, BoardName,  ParsedBoardRouteParametersWithUuid } from "@/lib/types";
+import Row from "antd/es/row";
+import Col from "antd/es/col";
+import Title from "antd/es/typography/Title";
 
-const { Title, Text } = Typography;
-const { Content } = Layout;
-
-interface BoardWithLayoutProps {
+type BoardWithLayoutProps = {
+  routeParams: ParsedBoardRouteParametersWithUuid;
   currentClimb: BoulderProblem;
   boardDetails: GetBoardDetailsResponse;
-  board: BoardName;
 }
 
-const Board = ({ currentClimb, boardDetails, board }: BoardWithLayoutProps) => {
+const Board = ({ currentClimb, boardDetails, routeParams: {board_name} }: BoardWithLayoutProps) => {
   const styles = {
     titleSize: "16px",
     textSize: "12px",
@@ -54,7 +51,7 @@ const Board = ({ currentClimb, boardDetails, board }: BoardWithLayoutProps) => {
           >
             {currentClimb.name}
           </Title>
-          <Text
+          <div
             style={{
               display: "block",
               fontSize: styles.textSize,
@@ -64,8 +61,8 @@ const Board = ({ currentClimb, boardDetails, board }: BoardWithLayoutProps) => {
             }}
           >
             by {currentClimb.setter_username}
-          </Text>
-          <Text
+          </div>
+          <div
             style={{
               display: "block",
               fontSize: styles.textSize,
@@ -75,13 +72,13 @@ const Board = ({ currentClimb, boardDetails, board }: BoardWithLayoutProps) => {
             }}
           >
             {currentClimb.difficulty} {currentClimb.quality_average}★ @ {currentClimb.angle}°
-          </Text>
+          </div>
         </Col>
       </Row>
 
       <Row justify="space-between" align="middle" style={{ width: "100%" }}>
         <Col xs={24} sm={20} md={16} lg={12} xl={8} style={{ textAlign: "center", height: "72dvh" }}>
-          <BoardRenderer boardDetails={boardDetails} litUpHolds={currentClimb ? currentClimb.frames : ""} board={board} />
+          <BoardRenderer boardDetails={boardDetails} litUpHolds={currentClimb ? currentClimb.frames : ""} board_name={board_name} />
         </Col>
       </Row>
     </>
