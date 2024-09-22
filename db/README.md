@@ -13,21 +13,13 @@ But for now, we just drop everything and recreated it.
 
 
 ## Development setup
-First install the required dependencies:
+Run docker to startup the development database:
 
 ```
-brew install postgres pgloader 
-python3 -m pip install boardlib
+docker-compose up
 ```
 
-To setup a development database, make sure you have `postgres` started locally.
-On MacOs this can be done using brew:
-
-```
-brew services start postgresql 
-```
-
-In  db/ To create the databases then run:
+This starts up a docker container that uses Boardlib to download the databases and then loads them into postgres with an db update script and pgloader.
 
 ```
  DATABASE_URL="postgresql://$(whoami):@localhost:5432/boardsesh" ./setup-development-db.sh 
