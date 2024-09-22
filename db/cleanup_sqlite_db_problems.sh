@@ -18,7 +18,7 @@ WHERE product_id NOT IN (SELECT id FROM products);
 
 -- Clean up orphaned rows in holes table where product_id or mirrored_hole_id no longer exists in products or holes
 DELETE FROM holes
-WHERE product_id NOT IN (SELECT product_id FROM products)
+WHERE product_id NOT IN (SELECT product_id FROM products);
 
 -- Clean up orphaned rows in leds table where product_size_id or hole_id no longer exists
 DELETE FROM leds
