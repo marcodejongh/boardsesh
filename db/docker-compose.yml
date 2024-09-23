@@ -1,0 +1,43 @@
+services:
+  postgres:
+    image: postgres
+    environment:
+      POSTGRES_PASSWORD: password
+    ports:
+      - '54320:5432'
+    volumes:
+      - ./db-scripts:/docker-entrypoint-initdb.d
+
+  pg_proxy:
+    image: ghcr.io/neondatabase/wsproxy:latest
+    environment:
+      APPEND_PORT: 'postgres:5432'
+      ALLOW_ADDR_REGEX: '.*'
+      LOG_TRAFFIC: 'true'
+    ports:
+      - '54330:80'
+    depends_on:
+      - postgres
+
+  db_setup:
+    image: python:3.9
+    volumes:
+      - ./:/db
+    build:
+      context: .
+    environment:
+      - POSTGRES_PASSWORD=password
+    depends_on:
+      - postgres
+    entrypoint: |
+      /bin/sh -c "
+      if [ ! -f /db/tmp/db-setup-complete.flag ]; then
+        apt-get update &&
+        apt-get install -y pgloader postgresql-client sqlite3 &&
+        pip install boardlib &&
+        /db/setup-development-db.sh &&
+        touch /db/tmp/db-setup-complete.flag
+      else
+        echo 'Database setup already completed. Skipping.'
+      fi
+      "

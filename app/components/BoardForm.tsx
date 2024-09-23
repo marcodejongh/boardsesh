@@ -1,10 +1,9 @@
 "use client"
 
-import React, { useEffect, useState, useContext } from "react";
+import React, { useEffect, useState } from "react";
 import { Form, Select, Input, Button, Row, Col, Typography } from "antd";
-import { PeerContext } from "./connection-manager/PeerProvider";
 import Link from "next/link"; // Import Next.js Link
-import { defaultLayouts, boardLayouts } from "./kilter-board/board-data";
+import { defaultLayouts, boardLayouts } from "../lib/board-data";
 
 const { Option } = Select;
 const { Title } = Typography;
@@ -13,34 +12,20 @@ const BoardForm = () => {
   const [layouts, setLayouts] = useState(defaultLayouts);
   const [sets, setSets] = useState([]);
 
-  const [selectedBoard, setSelectedBoard] = useState("kilter");
-  const [selectedLayout, setSelectedLayout] = useState(8);
+  const [selectedBoard, setSelectedBoard] = useState<string>("kilter");
+  const [selectedLayout, setSelectedLayout] = useState<number>(8);
   const [selectedSize, setSelectedSize] = useState(17);
   const [sizes, setSizes] = useState(boardLayouts[selectedLayout] || []);
 
-  const handleBoardChange = (value) => {
+  const handleBoardChange = (value: string) => {
     setSelectedBoard(value);
   };
 
-  const onLayoutChange = (value) => {
+  const onLayoutChange = (value: number) => {
     setSelectedLayout(value);
     setSizes(boardLayouts[value]);
   };
-
-  const { peerId, receivedData, sendData, connectToPeer } = useContext(PeerContext);
-  const [message, setMessage] = useState("");
-
-  useEffect(() => {
-    if (receivedData) {
-      console.log("New data received:", receivedData);
-      // Handle the received data
-    }
-  }, [receivedData]);
-
-  const handleSendMessage = () => {
-    sendData({ message });
-  };
-
+  // TODO: Create nextjs route and fill this in with queries
   return (
     <div style={{ padding: "24px", background: "#f7f7f7", borderRadius: "8px" }}>
       <Title level={4}>Board Settings</Title>
@@ -87,7 +72,7 @@ const BoardForm = () => {
           </Col>
           <Col span={12}>
             {/* Use Next.js's Link component for routing */}
-            <Link href={`/climb/${selectedBoard}/${selectedLayout}/${selectedSize}`} passHref>
+            <Link href={`/${selectedBoard}/${selectedLayout}/${selectedSize}`} passHref>
               <Button type="primary" block>
                 Start a session
               </Button>
@@ -95,9 +80,6 @@ const BoardForm = () => {
           </Col>
         </Row>
       </Form>
-      <div style={{ marginTop: "16px" }}>
-        <Typography.Text type="secondary">Peer ID: {peerId}</Typography.Text>
-      </div>
     </div>
   );
 };

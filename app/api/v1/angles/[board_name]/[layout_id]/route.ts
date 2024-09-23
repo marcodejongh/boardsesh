@@ -7,7 +7,7 @@ export async function GET(req: Request, { params }: { params: { board_name: stri
   try {
     const { rows: angles } = await sql`
       SELECT angle
-      FROM products_angles
+      FROM kilter_products_angles
       JOIN layouts ON layouts.product_id = products_angles.product_id
       WHERE layouts.id = ${layout_id}
       ORDER BY angle ASC

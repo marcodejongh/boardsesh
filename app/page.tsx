@@ -1,12 +1,7 @@
 // app/page.tsx
 import React from "react";
-import BoardForm from './components/BoardForm'; // Import your form component here
+import { redirect } from "next/navigation";
 
 export default function Home() {
-  return (
-    <div>
-      <h1>Welcome to Kilter</h1>
-      <BoardForm />
-    </div>
-  );
+  redirect(`/tension/10/6/12,13/40`);
 }

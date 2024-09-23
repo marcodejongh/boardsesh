@@ -9,8 +9,8 @@ export async function GET(req: Request, { params }: { params: { board_name: stri
     // Fetch sizes based on layout_id
     const result = await sql`
       SELECT product_sizes.id, product_sizes.name, product_sizes.description
-      FROM product_sizes
-      INNER JOIN layouts ON product_sizes.product_id = layouts.product_id
+      FROM kilter_product_sizes
+      INNER JOIN kilter_layouts ON product_sizes.product_id = layouts.product_id
       WHERE layouts.id = ${layout_id}
     `;
 

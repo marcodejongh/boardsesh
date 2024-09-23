@@ -9,7 +9,7 @@ export async function GET(req: Request, { params }: { params: { board_name: stri
     const { rows: layouts } = await sql`
       SELECT id, name
       FROM layouts
-      WHERE is_listed = 1
+      WHERE is_listed = true
       AND password IS NULL
     `;
 

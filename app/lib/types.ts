@@ -1,5 +1,4 @@
-import { SetIds } from "../components/kilter-board/board-data";
-import { BoulderProblem } from "./types";
+import { SetIdList } from "./board-data";
 
 export type BoulderProblem = {
   uuid: string;
@@ -61,7 +60,6 @@ export type SearchRequest = {
   sortBy: "ascents" | "difficulty" | "name" | "quality";
   sortOrder: "asc" | "desc";
   name: string;
-  angle: number;
   onlyClassics: boolean;
   settername: string;
   setternameSuggestion: string;
@@ -69,8 +67,9 @@ export type SearchRequest = {
   mirroredHolds: string;
 };
 
-export type SearchRequestPagination = {
+export type SearchRequestPagination = SearchRequest & {
   page: number;
+  pageSize: number;
 };
 
 // Search Result Type
@@ -170,24 +169,44 @@ export type GetGradesResponse = Grade[];
 
 export type GetBetaResponse = BetaLink[];
 
-export type BoardLayoutSizeRouteParameters = {
+export type BoardRouteParameters = {
   board_name: string;
-  layout_id: number;
-  size_id: number;
+  layout_id: string;
+  size_id: string;
+  set_ids: string;
+  angle: string;
+  climb_uuid?: string;
 };
 
-export type BoardLayoutSizeSetIdRouteParameters = BoardLayoutSizeRouteParameters & {
-  set_ids: SetIds;
+export type ParsedBoardRouteParameters = {
+  board_name: BoardName;
+  layout_id: number;
+  size_id: number;
+  set_ids: SetIdList;
+  angle: number;
+  uuid?: string;
+};
+
+export type ParsedBoardRouteParametersWithUuid = ParsedBoardRouteParameters & {
+  climb_uuid: ClimbUuid;
+};
+
+export type ClimbUuid = string;
+export type BoardRouteParametersWithUuid = BoardRouteParameters & {
+  climb_uuid: ClimbUuid;
 };
 //TODO: Refactor useEffects so this page can SSR
 
-export type Board = string;
-export type Layout = number;
+export type BoardName = 'kilter' | 'tension';
+export type LayoutId = number;
+export type Angle = number;
 export type Size = number;
 export type FetchResultsResponse = {
   rows: BoulderProblem[];
   totalCount: number;
 };
+
+export type FetchCurrentProblemResponse = BoulderProblem;
 
 export interface ErrorResponse {
   error: string;
