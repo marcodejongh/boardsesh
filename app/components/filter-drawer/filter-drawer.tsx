@@ -17,6 +17,7 @@ import { SearchOutlined } from "@ant-design/icons";
 import { ANGLES, TENSION_KILTER_GRADES } from "@/app/lib/board-data";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import { PAGE_LIMIT } from "../board-page/constants";
+import { usePlaylistContext } from "../playlist-control/playlist-context";
 
 
 export type FilterDrawerProps =  {
@@ -38,6 +39,8 @@ const FilterDrawer = ({
   routeParams: { board_name }
 }: FilterDrawerProps) => {
     // Use the context to get and update the search parameters
+  const { climbSearchParams, setClimbSearchParams } = usePlaylistContext()
+
   const searchParams = useSearchParams();
   const pathName = usePathname();
   const { replace } = useRouter();
@@ -45,34 +48,15 @@ const FilterDrawer = ({
   const grades = TENSION_KILTER_GRADES;
   const angles = ANGLES[board_name];
 
-  const [filters, setFilters] = useState<SearchRequest>({
-    gradeAccuracy: parseFloat(searchParams.get("gradeAccuracy") || "0"),
-    maxGrade: parseInt(searchParams.get("maxGrade") || "29", 10),
-    minAscents: parseInt(searchParams.get("minAscents") || "0", 10),
-    minGrade: parseInt(searchParams.get("minGrade") || "1", 10),
-    minRating: parseFloat(searchParams.get("minRating") || "0"),
-    sortBy: (searchParams.get("sortBy") || "ascents") as "ascents" | "difficulty" | "name" | "quality",
-    sortOrder: (searchParams.get("sortOrder") || "desc") as "asc" | "desc",
-    name: searchParams.get("name") || "",
-    onlyClassics: searchParams.get("onlyClassics") === "true",
-    settername: searchParams.get("settername") || "",
-    setternameSuggestion: searchParams.get("setternameSuggestion") || "",
-    holds: searchParams.get("holds") || "",
-    mirroredHolds: searchParams.get("mirroredHolds") || "",
-  });
-
   const [ isOpen, setIsOpen ] = useState<Boolean>(false);
 
-  // const [fetchedGrades, setFetchedGrades] = useState(false);
-
   const debouncedUpdate = useDebouncedCallback((updatedFilters) => {
-    debugger;
-    replace(`${pathName}?${new URLSearchParams(filters).toString()}`);
+    replace(`${pathName}?${new URLSearchParams(climbSearchParams).toString()}`);
   }, 300);
 
   const updateFilters = (newFilters: Partial<SearchRequest>) => {
-    const updatedFilters = { ...filters, ...newFilters };
-    setFilters(updatedFilters);
+    const updatedFilters = { ...climbSearchParams, ...newFilters };
+    setClimbSearchParams(updatedFilters);
     debouncedUpdate(updatedFilters);
   };
 
@@ -87,10 +71,10 @@ const FilterDrawer = ({
                 range
                 min={grades[0].difficulty_id}
                 max={grades[grades.length - 1].difficulty_id}
-                value={[filters.minGrade, filters.maxGrade]}
+                value={[climbSearchParams.minGrade, climbSearchParams.maxGrade]}
                 marks={{
-                  [filters.minGrade]: grades.find(({ difficulty_id }) => difficulty_id === filters.minGrade)?.difficulty_name,
-                  [filters.maxGrade]: grades.find(({ difficulty_id }) => difficulty_id === filters.maxGrade)?.difficulty_name,
+                  [climbSearchParams.minGrade]: grades.find(({ difficulty_id }) => difficulty_id === climbSearchParams.minGrade)?.difficulty_name,
+                  [climbSearchParams.maxGrade]: grades.find(({ difficulty_id }) => difficulty_id === climbSearchParams.maxGrade)?.difficulty_name,
                 }}
                 onChange={(value) =>
                   updateFilters({ minGrade: value[0], maxGrade: value[1] })
@@ -105,7 +89,7 @@ const FilterDrawer = ({
           <Form.Item label="Min Ascents">
             <InputNumber
               min={1}
-              value={filters.minAscents}
+              value={climbSearchParams.minAscents}
               onChange={(value) => updateFilters({ minAscents: value || 10 })}
               style={{ width: "100%" }}
             />
@@ -115,7 +99,7 @@ const FilterDrawer = ({
             <Row gutter={8}>
               <Col span={16}>
                 <Select
-                  value={filters.sortBy}
+                  value={climbSearchParams.sortBy}
                   onChange={(value) => updateFilters({ sortBy: value })}
                   style={{ width: "100%" }}
                 >
@@ -127,7 +111,7 @@ const FilterDrawer = ({
               </Col>
               <Col span={8}>
                 <Select
-                  value={filters.sortOrder}
+                  value={climbSearchParams.sortOrder}
                   onChange={(value) => updateFilters({ sortOrder: value })}
                   style={{ width: "100%" }}
                 >
@@ -143,7 +127,7 @@ const FilterDrawer = ({
               min={1.0}
               max={3.0}
               step={0.1}
-              value={filters.minRating}
+              value={climbSearchParams.minRating}
               onChange={(value) => updateFilters({ minRating: value || 1 })}
               style={{ width: "100%" }}
             />
@@ -151,7 +135,7 @@ const FilterDrawer = ({
 
           <Form.Item label="Classics Only">
             <Select
-              value={filters.onlyClassics}
+              value={climbSearchParams.onlyClassics}
               onChange={(value) => updateFilters({ onlyClassics: value })}
               style={{ width: "100%" }}
             >
@@ -162,7 +146,7 @@ const FilterDrawer = ({
 
           <Form.Item label="Grade Accuracy">
             <Select
-              value={filters.gradeAccuracy}
+              value={climbSearchParams.gradeAccuracy}
               onChange={(value) => updateFilters({ gradeAccuracy: value })}
               style={{ width: "100%" }}
             >
@@ -175,7 +159,7 @@ const FilterDrawer = ({
 
           <Form.Item label="Setter Name">
             <Input
-              value={filters.settername}
+              value={climbSearchParams.settername}
               onChange={(e) => updateFilters({ settername: e.target.value })}
             />
           </Form.Item>

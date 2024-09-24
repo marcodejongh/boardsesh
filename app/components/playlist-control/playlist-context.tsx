@@ -1,5 +1,7 @@
 "use client";
 
+import { SearchRequest, SearchRequestPagination } from "@/app/lib/types";
+import { useSearchParams } from "next/navigation";
 import { createContext, useContext, useState, ReactNode } from "react";
 
 // Define the shape of the playlist object
@@ -8,6 +10,7 @@ interface Playlist {
   name: string;
   tracks: string[];
   currentTrack: string;
+  searchParams: SearchRequestPagination;
 }
 
 // Define the context value structure
@@ -16,6 +19,8 @@ interface PlaylistContextType {
   setPlaylist: (playlist: Playlist) => void;
   nextTrack: () => void;
   addToPlaylist: (track: string) => void;
+  setClimbSearchParams: (searchParams: SearchRequestPagination) => void;
+  climbSearchParams: SearchRequestPagination;
 }
 
 // Create the context
@@ -33,6 +38,23 @@ export const usePlaylistContext = () => {
 // Provider component with utility functions
 export const PlaylistProvider = ({ children }: { children: ReactNode }) => {
   const [playlist, setPlaylist] = useState<Playlist | null>(null);
+
+  const searchParams = useSearchParams();
+  const [ climbSearchParams, setClimbSearchParams ] = useState<SearchRequest>({
+    gradeAccuracy: parseFloat(searchParams.get("gradeAccuracy") || "0"),
+    maxGrade: parseInt(searchParams.get("maxGrade") || "29", 10),
+    minAscents: parseInt(searchParams.get("minAscents") || "0", 10),
+    minGrade: parseInt(searchParams.get("minGrade") || "1", 10),
+    minRating: parseFloat(searchParams.get("minRating") || "0"),
+    sortBy: (searchParams.get("sortBy") || "ascents") as "ascents" | "difficulty" | "name" | "quality",
+    sortOrder: (searchParams.get("sortOrder") || "desc") as "asc" | "desc",
+    name: searchParams.get("name") || "",
+    onlyClassics: searchParams.get("onlyClassics") === "true",
+    settername: searchParams.get("settername") || "",
+    setternameSuggestion: searchParams.get("setternameSuggestion") || "",
+    holds: searchParams.get("holds") || "",
+    mirroredHolds: searchParams.get("mirroredHolds") || "",
+  });
 
   const nextTrack = () => {
     if (playlist && playlist.tracks.length > 0) {
@@ -55,7 +77,7 @@ export const PlaylistProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <PlaylistContext.Provider value={{ playlist, setPlaylist, nextTrack, addToPlaylist }}>
+    <PlaylistContext.Provider value={{ playlist, setPlaylist, nextTrack, addToPlaylist, setClimbSearchParams, climbSearchParams }}>
       {children}
     </PlaylistContext.Provider>
   );
