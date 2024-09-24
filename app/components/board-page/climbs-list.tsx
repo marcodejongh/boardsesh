@@ -74,7 +74,7 @@ const ClimbsList = ({
         hasMore={hasMore}
         loader={<Skeleton active />}
         endMessage={<div style={{ textAlign: "center" }}>No more climbs 🤐</div>}
-        // scrollableTarget="scrollableDiv"
+        scrollableTarget="scrollableDiv"
       >
         <List
           itemLayout="vertical"
