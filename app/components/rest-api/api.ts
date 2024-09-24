@@ -9,7 +9,7 @@ import {
   ParsedBoardRouteParameters,
 } from "@/app/lib/types";
 
-const API_BASE_URL = `http://localhost:3000/api`;
+const API_BASE_URL = `${process.env.BASE_URL}/api`;
 const headers = new Headers({ "ngrok-skip-browser-warning": "true" });
 
 export const fetchResults = async (
