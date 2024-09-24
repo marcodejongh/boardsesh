@@ -8,9 +8,6 @@ const BoardRenderer = ({
   boardDetails,
   board_name
 }: BoardRendererPropsProps) => {
-  
-  
-
   const {width: boardWidth, height: boardHeight} = getBoardImageDimensions(board_name, Object.keys(boardDetails.images_to_holds)[0]);
 
   const holdsData: HoldRenderData[] = useMemo(() => {
@@ -18,7 +15,6 @@ const BoardRenderer = ({
 
     const xSpacing = boardWidth / (edgeRight - edgeLeft);
     const ySpacing = boardHeight / (edgeTop - edgeBottom);
-
     const litUpHoldsMap = convertLitUpHoldsStringToMap(litUpHolds, board_name);
     
     return Object.values<HoldTuple[]>(imagesToHolds)

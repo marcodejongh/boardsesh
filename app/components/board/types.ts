@@ -1,5 +1,4 @@
 import { BoardName, GetBoardDetailsResponse } from "@/lib/types";
-import { HoldCode, HoldState, HoldColor } from "./types";
 
 export type BoardProps = {
   boardDetails: GetBoardDetailsResponse;
@@ -9,7 +8,7 @@ export type BoardProps = {
 
 export type HoldState = 'OFF' | 'STARTING' | 'FINISH' | 'HAND' | 'FOOT';
 
-type HoldsArray = Array<{
+export type HoldsArray = Array<{
   id: number;
   mirroredHoldId: number | null;
   cx: number;

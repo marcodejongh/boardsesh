@@ -7,6 +7,7 @@ import BoardRenderer from "../board/board-renderer";
 import { SearchRequestPagination, BoulderProblem, ParsedBoardRouteParameters, GetBoardDetailsResponse } from "@/app/lib/types";
 import { PAGE_LIMIT } from "./constants";
 import Link from "next/link";
+import { useSWRConfig } from "swr";
 
 const { Title } = Typography;
 
@@ -30,7 +31,7 @@ const ClimbsList = ({
 }: ClimbsListProps) => {
   // SWR fetcher function for client-side fetching
   const fetcher = (url: string) => fetch(url).then(res => res.json());
-
+  
   const getKey = (pageIndex: number, previousPageData: any) => {
     if (previousPageData && previousPageData.boulderproblems.length === 0) return null;
 
@@ -55,12 +56,16 @@ const ClimbsList = ({
     return `/api/v1/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/search?${queryString}`
   };
 
-    const { data, error, isLoading, isValidating, size, setSize } = useSWRInfinite(
+  const { data, error, isLoading, isValidating, size, setSize } = useSWRInfinite(
     getKey,
     fetcher,
-    { initialData: [{ boulderproblems: initialClimbs, totalCount: resultsCount }] }
+    { 
+      fallbackData: [{ boulderproblems: initialClimbs, totalCount: resultsCount }],
+      revalidateOnFocus: false, 
+      revalidateFirstPage: false 
+    }
   );
-  
+
   const hasMore = !!(data && data[data.length - 1]?.boulderproblems.length === PAGE_LIMIT);
   
   // Aggregate all pages of climbs

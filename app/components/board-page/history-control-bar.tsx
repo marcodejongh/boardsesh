@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import { Button, Typography, Row, Col, Card } from "antd";
-import { LeftOutlined, RightOutlined } from "@ant-design/icons";
+import { LeftOutlined, RightOutlined, BulbOutlined } from "@ant-design/icons";
 import { FloatingBarProps } from "./types";
 import BoardRenderer from "../board/board-renderer";
 
@@ -59,7 +59,7 @@ const HistoryControlBar: React.FC<FloatingBarProps> = ({
             }}
           >
             {currentClimb && currentClimb.name ? `${currentClimb.difficulty} ${currentClimb.quality_average}★ @ ${currentClimb.angle}°` : 'No climb selected'}
-            
+            <Button id="button-illuminate" type="default" icon={<BulbOutlined />} />
           </Text>
         </Col>
         <Col xs={6} style={{ textAlign: "right" }}>
