@@ -121,6 +121,7 @@ export const getBoulderProblem = async (params: ParsedBoardRouteParametersWithUu
         AND product_sizes.id = $3
         AND climbs.uuid = $4
         AND climb_stats.angle = $5
+        AND climbs.frames_count = 1
         limit 1
       `,
       values: [params.size_id, params.layout_id, params.size_id, params.climb_uuid, params.angle],
@@ -169,6 +170,9 @@ export const searchBoulderProblems = async (
           WHERE climbs.layout_id = $2
           AND climbs.is_listed = true
           AND climbs.is_draft = false
+
+          -- Ensures only boulder problems are found and not routes
+          AND climbs.frames_count = 1
           AND product_sizes.id = $3
           AND climb_stats.angle = $11
           AND climb_stats.ascensionist_count >= $4
