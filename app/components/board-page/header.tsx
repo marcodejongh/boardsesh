@@ -19,11 +19,9 @@ interface HeaderProps {
 
 
 export default function BoardSeshHeader(props: HeaderProps) {
-  if (!props) {
-    return null;
-  }
-  const pathname = usePathname();  
+  const pathname = usePathname();
   const { params } = props;
+  const isList = pathname.endsWith('/list');
 
   return (
     <>
@@ -37,8 +35,7 @@ export default function BoardSeshHeader(props: HeaderProps) {
         <Row justify="space-between" align="middle" style={{ width: "100%" }}>
           <Col xs={6} sm={4} md={4} lg={4} xl={4}>
             <Space>
-              {/* {uuid === undefined ? <BackToClimbList {...parsedParams}/> : <FilterDrawer />} */}
-              <FilterDrawer routeParams={params} />
+              {isList ? <FilterDrawer routeParams={params} /> : <BackToClimbList {...params}/>}
             </Space>
           </Col>
 

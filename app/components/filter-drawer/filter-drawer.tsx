@@ -78,7 +78,7 @@ const FilterDrawer = ({
 
   return (
     <>      
-      <Button type="default" icon={<SearchOutlined/>} onClick={()=> setIsOpen(true)}>Back to list</Button>
+      <Button type="default" icon={<SearchOutlined/>} onClick={()=> setIsOpen(true)} />
       <Drawer title="Advanced Filters" placement="left" width={"80%"} open={isOpen} onClose={()=> setIsOpen(false)}>
         <Form layout="vertical">
           {grades.length > 0 && (
