@@ -14,6 +14,7 @@ import Title from "antd/es/typography/Title";
 import BackToClimbList from "@/app/components/board-page/back-to-climb-list-button";
 import FilterDrawer from "@/app/components/filter-drawer/filter-drawer";
 import BoardSeshHeader from "@/app/components/board-page/header";
+import { PlaylistProvider } from "@/app/components/playlist-control/playlist-context";
 
 interface LayoutProps {
   params: BoardRouteParametersWithUuid;
@@ -31,21 +32,23 @@ export default async function BoardLayout({ children, params }: PropsWithChildre
     <>
       <title>{`Boardsesh on ${board_name} - Layout ${layout_id}`}</title>
       <Layout style={{ height: "100dvh", display: "flex", flexDirection: "column" }}>
-        <BoardSeshHeader params={parsedParams} />
+        <PlaylistProvider>
+          <BoardSeshHeader params={parsedParams} />
+            <Content style={{ height: "80dvh", justifyContent: "center", alignItems: "center" }}>
+              {children} {/* This will render the dynamic content from the child pages */}
+            </Content>
 
-        <Content style={{ height: "80dvh", justifyContent: "center", alignItems: "center" }}>
-          {children} {/* This will render the dynamic content from the child pages */}
-        </Content>
-
-        <Footer style={{ height: "10dvh", padding: 0, backgroundColor: "#fff" }}>
-          <HistoryControlBar
-            board={board_name}
-            boardDetails={boardDetails}
-            
-            // navigateClimbsLeft={navigateClimbsLeft}
-            // navigateClimbsRight={navigateClimbsRight}
-          />
-        </Footer>
+            <Footer style={{ height: "10dvh", padding: 0, backgroundColor: "#fff" }}>
+              <HistoryControlBar
+                board={board_name}
+                boardDetails={boardDetails}
+                
+                // navigateClimbsLeft={navigateClimbsLeft}
+                // navigateClimbsRight={navigateClimbsRight}
+              />
+            </Footer>
+        </PlaylistProvider>
+        
       </Layout>
     </>
   );

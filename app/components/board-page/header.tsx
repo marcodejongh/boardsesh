@@ -18,7 +18,7 @@ interface HeaderProps {
 }
 
 
-export default async function BoardSeshHeader(props: HeaderProps) {
+export default function BoardSeshHeader(props: HeaderProps) {
   if (!props) {
     return null;
   }
