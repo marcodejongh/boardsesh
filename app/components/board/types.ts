@@ -1,23 +1,26 @@
 import { BoardName, GetBoardDetailsResponse } from "@/lib/types";
 
+export type LitUpHolds = string;
 export type BoardProps = {
   boardDetails: GetBoardDetailsResponse;
-  litUpHolds: string;
+  litUpHolds: LitUpHolds;
   board_name: BoardName;
 };
 
 export type HoldState = 'OFF' | 'STARTING' | 'FINISH' | 'HAND' | 'FOOT';
+export type HoldsArray = Array<HoldRenderData>;
 
-export type HoldsArray = Array<{
+export type HoldColor = string;
+export type HoldCode = number;
+export type HoldRenderData = {
   id: number;
   mirroredHoldId: number | null;
   cx: number;
   cy: number;
   r: number;
-  state: HoldState;
-}>;
-export type HoldColor = string;
-export type HoldCode = number;
+};
+export type LitUpHoldsMap = Record<HoldCode, { state: HoldState; color: string; }>;
+
 // Mapping object for board-specific hold states
 export const holdStateMapping: Record<BoardName, Record<HoldCode, { name: HoldState; color: HoldColor; }>> = {
   kilter: {
@@ -37,14 +40,3 @@ export const holdStateMapping: Record<BoardName, Record<HoldCode, { name: HoldSt
     8: { name: 'FOOT', color: '#FF00FF' },
   },
 };
-export type HoldRenderData = {
-  id: number;
-  mirroredHoldId: number | null;
-  cx: number;
-  cy: number;
-  r: number;
-  state: HoldState;
-  color?: HoldColor;
-};
-export type LitUpHoldsMap = Record<HoldCode, { state: HoldState; color: string; }>;
-

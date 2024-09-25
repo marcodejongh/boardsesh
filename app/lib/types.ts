@@ -1,3 +1,4 @@
+import { HoldRenderData } from "../components/board/types";
 import { SetIdList } from "./board-data";
 
 export type BoulderProblem = {
@@ -155,10 +156,13 @@ export type HoldTuple = [number, number | null, number, number];
 export type ImagesToHolds = Record<string, HoldTuple[]>;
 export type GetBoardDetailsResponse = {
   images_to_holds: ImagesToHolds;
+  holdsData: HoldRenderData[];
   edge_left: number;
   edge_right: number;
   edge_bottom: number;
   edge_top: number;
+  boardHeight: number;
+  boardWidth: number;
 };
 
 export type GetLedColorsResponse = LedColor;

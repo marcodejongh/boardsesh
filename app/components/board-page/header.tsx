@@ -5,9 +5,7 @@ import { BulbOutlined } from "@ant-design/icons";
 import AngleButton from "@/app/components/board-page/angle-button";
 import InfoButton from "@/app/components/board-page/info-button";
 
-import { Content, Footer, Header } from "antd/es/layout/layout";
-import HistoryControlBar from "@/app/components/board-page/history-control-bar";
-import { fetchBoardDetails } from "@/app/components/rest-api/api";
+import { Header } from "antd/es/layout/layout";
 import Title from "antd/es/typography/Title";
 import BackToClimbList from "@/app/components/board-page/back-to-climb-list-button";
 import FilterDrawer from "@/app/components/filter-drawer/filter-drawer";

@@ -1,5 +1,6 @@
 // api.ts
 
+import { SetIdList } from "@/app/lib/board-data";
 import { SearchBoulderProblemResult } from "@/app/lib/data/queries";
 import {
   BoardRouteParametersWithUuid,
@@ -7,22 +8,19 @@ import {
   GetBoardDetailsResponse,
   SearchRequest,
   ParsedBoardRouteParameters,
+  ParsedBoardRouteParametersWithUuid,
+  SearchRequestPagination,
 } from "@/app/lib/types";
 
 const API_BASE_URL = `${process.env.BASE_URL || 'https://www.boardsesh.com'}/api`;
-const headers = new Headers({ "ngrok-skip-browser-warning": "true" });
 
 export const fetchResults = async (
-  pageNumber: number,
-  pageSize: number,
-  queryParameters: SearchRequest,
+  queryParameters: SearchRequestPagination,
   routeParameters: ParsedBoardRouteParameters,
 ): Promise<SearchBoulderProblemResult> => {
   const urlParams = new URLSearchParams(
     Object.entries({
       ...queryParameters,
-      page: pageNumber,
-      pageSize: pageSize,
       onlyClassics: queryParameters.onlyClassics ? "1" : "0",
     }).reduce((acc, [key, value]) => {
       if (value !== undefined) {
@@ -46,7 +44,7 @@ export const fetchResults = async (
 };
 
 export const fetchCurrentClimb = async (
-  routeParameters: BoardRouteParametersWithUuid,
+  routeParameters: ParsedBoardRouteParametersWithUuid,
 ): Promise<FetchCurrentProblemResponse> =>
   (
     await fetch(
@@ -69,12 +67,14 @@ export const fetchBoardDetails = async (
   board: string,
   layout: number,
   size: number,
-  set_ids: SetIds,
+  set_ids: SetIdList,
 ): Promise<GetBoardDetailsResponse> => {
-  const apiUrl = `${API_BASE_URL}/v1/${board}/${layout}/${size}/${set_ids.join(',')}/details`;
+  const apiUrl = `${API_BASE_URL}/v1/${board}/${layout}/${size}/${set_ids.join(",")}/details?bustCache=1`;
   const response = await fetch(apiUrl, { headers });
+  
   if (!response.ok) {
     throw new Error(`HTTP error! status: ${response.status}`);
   }
+  
   return response.json();
 };

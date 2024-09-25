@@ -3,6 +3,7 @@ import { BoardRouteParametersWithUuid, SearchRequestPagination } from "@/app/lib
 import { getBoardDetails, searchBoulderProblems } from "@/app/lib/data/queries";
 import { parseBoardRouteParams } from "@/app/lib/util";
 import ClimbsList from "@/app/components/board-page/climbs-list";
+import { fetchBoardDetails, fetchResults } from "@/app/components/rest-api/api";
 
 const PAGE_LIMIT = 20; // Set your page limit here or import it from elsewhere
 
@@ -53,8 +54,8 @@ export default async function DynamicResultsPage({
     };
     // Fetch the climbs and board details server-side
     const [fetchedResults, boardDetails] = await Promise.all([
-      searchBoulderProblems(parsedParams, searchParamsObject),
-      getBoardDetails(parsedParams),
+      fetchResults(searchParamsObject, parsedParams),
+      fetchBoardDetails(parsedParams.board_name, parsedParams.layout_id, parsedParams.size_id, parsedParams.set_ids),
     ]);
 
     if (!fetchedResults || fetchedResults.boulderproblems.length === 0) {

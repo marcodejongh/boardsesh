@@ -1,6 +1,5 @@
 import { getBoardDetails } from "@/app/lib/data/queries";
 import { BoardRouteParameters } from "@/app/lib/types";
-import { sql } from "@vercel/postgres";
 import { NextResponse } from "next/server";
 import { parseBoardRouteParams } from "@/app/lib/util";
 

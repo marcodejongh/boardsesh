@@ -1,16 +1,25 @@
+/**
+ * Fetches in server components are cached by default by next.
+ * But direct query calls are not, therefore always use the rest api
+ * when fetching data in server components, as it will leverage the next cache and be more
+ * performant.
+ */
+
 import "server-only";
 import { sql } from "@/lib/db";
 
 import {
-  BoardRouteParametersWithUuid,
-  BoardRouteParameters,
   BoulderProblem,
   ParsedBoardRouteParametersWithUuid,
   ParsedBoardRouteParameters,
   SearchRequest,
   SearchRequestPagination,
+  HoldTuple,
+  GetBoardDetailsResponse,
 } from "../types";
 import { PAGE_LIMIT } from "@/app/components/board-page/constants";
+import { HoldRenderData } from "@/app/components/board/types";
+import { getBoardImageDimensions } from "@/app/components/board/util";
 
 const getTableName = (board_name: string, table_name: string) => {
   switch (board_name) {
@@ -23,10 +32,15 @@ const getTableName = (board_name: string, table_name: string) => {
 };
 
 // Collect data for each set_id
-export const getBoardDetails = async ({ board_name, layout_id, size_id, set_ids }: ParsedBoardRouteParameters) => {
+export const getBoardDetails = async ({
+  board_name,
+  layout_id,
+  size_id,
+  set_ids,
+}: ParsedBoardRouteParameters): Promise<GetBoardDetailsResponse> => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const imagesToHolds: Record<string, any> = {};
-
+  
   for (const set_id of set_ids) {
     // Get image filename
     const { rows } = await sql.query(
@@ -40,7 +54,8 @@ export const getBoardDetails = async ({ board_name, layout_id, size_id, set_ids 
       [layout_id, size_id, set_id],
     );
 
-    if (rows.length === 0) throw new Error(`Could not find set_id ${set_id} for layout_id: ${layout_id} and size_id: ${size_id}`);
+    if (rows.length === 0)
+      throw new Error(`Could not find set_id ${set_id} for layout_id: ${layout_id} and size_id: ${size_id}`);
 
     const imageFilename = rows[0].image_filename;
 
@@ -66,7 +81,7 @@ export const getBoardDetails = async ({ board_name, layout_id, size_id, set_ids 
       `,
       [set_id, layout_id],
     );
-    
+
     if (holds.length > 0) {
       imagesToHolds[image_url] = holds.map((hold) => [
         hold.placement_id, // First position: regular placement ID
@@ -91,12 +106,32 @@ export const getBoardDetails = async ({ board_name, layout_id, size_id, set_ids 
     throw new Error("Size dimensions not found");
   }
 
+  const { width: boardWidth, height: boardHeight } = getBoardImageDimensions(board_name, Object.keys(imagesToHolds)[0]);
+  const { edge_left, edge_right, edge_bottom, edge_top } = sizeDimensions[0];
+  const xSpacing = boardWidth / (edge_right - edge_left);
+  const ySpacing = boardHeight / (edge_top - edge_bottom);
+
+  const holdsData: HoldRenderData[] = Object.values<HoldTuple[]>(imagesToHolds).flatMap((holds) =>
+    holds
+      .filter(([, , x, y]) => x > edge_left && x < edge_right && y > edge_bottom && y < edge_top)
+      .map(([holdId, mirroredHoldId, x, y]) => ({
+        id: holdId,
+        mirroredHoldId,
+        cx: (x - edge_left) * xSpacing,
+        cy: boardHeight - (y - edge_bottom) * ySpacing,
+        r: xSpacing * 4,
+      })),
+  );
+  
   return {
     images_to_holds: imagesToHolds,
+    holdsData,
     edge_left: sizeDimensions[0].edge_left,
     edge_right: sizeDimensions[0].edge_right,
     edge_bottom: sizeDimensions[0].edge_bottom,
     edge_top: sizeDimensions[0].edge_top,
+    boardHeight,
+    boardWidth,
   };
 };
 

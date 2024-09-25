@@ -85,7 +85,7 @@ const ClimbsList = ({
           itemLayout="vertical"
           dataSource={allClimbs}
           renderItem={(climb) => (
-            <Link href={`/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/${climb.uuid}`}>
+            <Link href={`/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/${climb.uuid}/view`}>
               <List.Item key={climb.uuid}>
                 <Row>
                   <Col xs={24} sm={20} md={16} lg={12} xl={8} style={{ textAlign: "center"}}>
