@@ -1,5 +1,7 @@
 # Boardsesh
 
+[Join us on discord](https://discord.gg/YXA8GsXfQK)
+
 Boardsesh is an app for controlling a ["standardized interactive climbing training boards" (SICTBs)](https://gearjunkie.com/climbing/kilter-moon-grasshopper-more-interactive-climbing-training-boards-explained) and intends to add missing functionality to boards that utilize Aurora Climbing's software, such as [Kilter](https://settercloset.com/pages/the-kilter-board), 
 [Tension](https://tensionclimbing.com/product/tension-board-sets/), and [Decoy](https://decoy-holds.com/pages/decoy-board).
 
