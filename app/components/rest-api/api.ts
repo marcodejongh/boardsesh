@@ -35,7 +35,6 @@ export const fetchResults = async (
     `${API_BASE_URL}/v1/${routeParameters.board_name}/${routeParameters.layout_id}/${
       routeParameters.size_id
     }/${routeParameters.set_ids}/${routeParameters.angle}/search?${urlParams}`,
-    { headers },
   );
 
   const rawResults = await response.json();
@@ -51,13 +50,12 @@ export const fetchCurrentClimb = async (
       `${API_BASE_URL}/v1/${routeParameters.board_name}/${routeParameters.layout_id}/${
         routeParameters.size_id
       }/${routeParameters.set_ids}/${routeParameters.angle}/${routeParameters.climb_uuid}`,
-      { headers },
     )
   ).json();
 
 // Fetch beta count
 export const fetchBetaCount = async (board: string, uuid: string): Promise<number> => {
-  const response = await fetch(`${API_BASE_URL}/v1/${board}/beta/${uuid}`, { headers });
+  const response = await fetch(`${API_BASE_URL}/v1/${board}/beta/${uuid}`);
   const data = await response.json();
   return data.length;
 };
@@ -70,7 +68,7 @@ export const fetchBoardDetails = async (
   set_ids: SetIdList,
 ): Promise<GetBoardDetailsResponse> => {
   const apiUrl = `${API_BASE_URL}/v1/${board}/${layout}/${size}/${set_ids.join(",")}/details?bustCache=1`;
-  const response = await fetch(apiUrl, { headers });
+  const response = await fetch(apiUrl);
   
   if (!response.ok) {
     throw new Error(`HTTP error! status: ${response.status}`);
