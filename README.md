@@ -22,11 +22,10 @@ Currently planned features in order of priority :
 # Getting Started
 
 ## Database setup
-Before we can start developing, we need to setup a database.
-From the db/ directory, run docker to startup the development database:
+Before we can start developing, we need to setup a database. Start the docker container to startup the development database:
 
 ```
-docker-compose up
+cd db/ && docker-compose up
 ```
 
 This starts up a docker container that uses Boardlib to download the databases and then loads them into postgres with an db update script and pgloader. When the postgres docker container is up, 
