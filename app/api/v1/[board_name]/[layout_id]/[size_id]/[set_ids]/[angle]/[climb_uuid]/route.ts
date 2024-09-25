@@ -1,4 +1,5 @@
 // api/v1/[board_name]/[layout_id]/[size_id]/[set_ids]/[climb_uuid]
+import { convertLitUpHoldsStringToMap } from "@/app/components/board/util";
 import { getBoulderProblem } from "@/app/lib/data/queries";
 import { BoardRouteParametersWithUuid, ErrorResponse, FetchCurrentProblemResponse } from "@/app/lib/types";
 import { parseBoardRouteParams } from "@/app/lib/util";
@@ -12,12 +13,14 @@ export async function GET(
   try {
     const parsedParams = parseBoardRouteParams(params);
     const result = await getBoulderProblem(parsedParams)
+    
+    const litUpHoldsMap = convertLitUpHoldsStringToMap(result.frames, parsedParams.board_name);
 
     if (!result) {
       return NextResponse.json({ error: `Failed to find problem ${params.climb_uuid}` }, { status: 404 });
     }
     // Include both the rows and the total count in the response
-    return NextResponse.json(result);
+    return NextResponse.json({ ...result, litUpHoldsMap });
   } catch (error) {
     console.error("Error fetching data:", error);
     return NextResponse.json({ error: "Failed to fetch board details" }, { status: 500 });

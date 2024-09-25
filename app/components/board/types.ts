@@ -1,11 +1,7 @@
 import { BoardName, GetBoardDetailsResponse } from "@/lib/types";
 
 export type LitUpHolds = string;
-export type BoardProps = {
-  boardDetails: GetBoardDetailsResponse;
-  litUpHolds: LitUpHolds;
-  board_name: BoardName;
-};
+
 
 export type HoldState = 'OFF' | 'STARTING' | 'FINISH' | 'HAND' | 'FOOT';
 export type HoldsArray = Array<HoldRenderData>;

@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
 import { BoardRouteParametersWithUuid, SearchRequestPagination } from "@/app/lib/types";
-import { getBoardDetails, searchBoulderProblems } from "@/app/lib/data/queries";
 import { parseBoardRouteParams } from "@/app/lib/util";
 import ClimbsList from "@/app/components/board-page/climbs-list";
 import { fetchBoardDetails, fetchResults } from "@/app/components/rest-api/api";

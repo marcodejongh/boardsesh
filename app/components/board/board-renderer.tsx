@@ -1,14 +1,19 @@
 import React from "react";
-import { BoardProps as BoardRendererPropsProps } from "./types";
-import { getBoardImageDimensions, getImageUrl } from "./util";
-import BoardLitupHolds from "./board-litup-holds";
+import { getImageUrl } from "./util";
+import { BoardName, GetBoardDetailsResponse } from "@/app/lib/types";
+
+export type BoardProps = {
+  boardDetails: GetBoardDetailsResponse;
+  board_name: BoardName;
+  children: React.ReactNode;
+};
 
 const BoardRenderer = ({
-  litUpHolds = "",
   boardDetails,
-  board_name
-}: BoardRendererPropsProps) => {
-  const { holdsData, boardWidth, boardHeight} = boardDetails;
+  board_name,
+  children
+}: BoardProps) => {
+  const { boardWidth, boardHeight} = boardDetails;
 
   return (
     <svg
@@ -24,7 +29,7 @@ const BoardRenderer = ({
           height="100%"
         />
       ))}
-      <BoardLitupHolds holdsData={holdsData} litUpHolds={litUpHolds} board_name={board_name} />
+      {children}
     </svg>
   );
 };

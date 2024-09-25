@@ -8,6 +8,7 @@ import { SearchRequestPagination, BoulderProblem, ParsedBoardRouteParameters, Ge
 import { PAGE_LIMIT } from "./constants";
 import Link from "next/link";
 import { useSWRConfig } from "swr";
+import BoardLitupHolds from "../board/board-litup-holds";
 
 const { Title } = Typography;
 
@@ -106,10 +107,16 @@ const ClimbsList = ({
                   
                 <Row justify="space-between" align="middle" style={{ width: "100%" }}>
                   <Col xs={24} sm={20} md={16} lg={12} xl={8} style={{ textAlign: "center", height: "30dvh" }}>
-                    <BoardRenderer boardDetails={boardDetails} litUpHolds={climb.frames} board_name={board_name} />
+                    <BoardRenderer 
+                      boardDetails={boardDetails} 
+                      board_name={board_name}>
+                          <BoardLitupHolds 
+                            holdsData={boardDetails.holdsData} 
+                            litUpHoldsMap={climb.litUpHoldsMap} 
+                          />
+                      </BoardRenderer>
                   </Col>
                 </Row>
-                
               </List.Item>
             </Link>
           )}

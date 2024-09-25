@@ -1,4 +1,5 @@
 import { PAGE_LIMIT } from "@/app/components/board-page/constants";
+import { convertLitUpHoldsStringToMap } from "@/app/components/board/util";
 import { SearchBoulderProblemResult, searchBoulderProblems } from "@/app/lib/data/queries";
 import { BoardRouteParameters, ErrorResponse, FetchResultsResponse, SearchRequest, SearchRequestPagination } from "@/app/lib/types";
 import { parseBoardRouteParams } from "@/app/lib/util";
@@ -35,9 +36,15 @@ export async function GET(
   try {
     // Call the separate function to perform the search
     const result = await searchBoulderProblems(parsedParams, searchParams);
-
+    
     // Return response
-    return NextResponse.json(result);
+    return NextResponse.json({
+      totalCount: result.totalCount,
+      boulderproblems: result.boulderproblems.map((boulderProblem) => ({
+        ...boulderProblem,
+        litUpHoldsMap: convertLitUpHoldsStringToMap(boulderProblem.frames, parsedParams.board_name),
+      })),
+    });
   } catch (error) {
     console.error("Error fetching data:", error);
     return NextResponse.json({ error: "Failed to fetch board details" }, { status: 500 });

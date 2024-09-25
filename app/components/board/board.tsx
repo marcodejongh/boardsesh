@@ -1,6 +1,6 @@
 import React from "react";
 import BoardRenderer from "./board-renderer";
-import { BoulderProblem, GetBoardDetailsResponse, BoardName,  ParsedBoardRouteParametersWithUuid } from "@/lib/types";
+import { BoulderProblem, GetBoardDetailsResponse, ParsedBoardRouteParametersWithUuid } from "@/lib/types";
 import Row from "antd/es/row";
 import Col from "antd/es/col";
 import Title from "antd/es/typography/Title";
@@ -9,9 +9,10 @@ type BoardWithLayoutProps = {
   routeParams: ParsedBoardRouteParametersWithUuid;
   currentClimb: BoulderProblem;
   boardDetails: GetBoardDetailsResponse;
+  children: React.ReactNode;
 }
 
-const Board = ({ currentClimb, boardDetails, routeParams: {board_name} }: BoardWithLayoutProps) => {
+const Board = ({ currentClimb, boardDetails, routeParams: {board_name}, children }: BoardWithLayoutProps) => {
   const styles = {
     titleSize: "16px",
     textSize: "12px",
@@ -78,7 +79,9 @@ const Board = ({ currentClimb, boardDetails, routeParams: {board_name} }: BoardW
 
       <Row justify="space-between" align="middle" style={{ width: "100%" }}>
         <Col xs={24} sm={20} md={16} lg={12} xl={8} style={{ textAlign: "center", height: "72dvh" }}>
-          <BoardRenderer boardDetails={boardDetails} litUpHolds={currentClimb ? currentClimb.frames : ""} board_name={board_name} />
+          <BoardRenderer boardDetails={boardDetails} board_name={board_name}>
+            {children}
+          </BoardRenderer>
         </Col>
       </Row>
     </>

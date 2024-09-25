@@ -1,9 +1,9 @@
 import { notFound } from "next/navigation";
 import { BoardRouteParametersWithUuid } from "@/app/lib/types";
-import { getBoulderProblem } from "@/app/lib/data/queries";
 import { parseBoardRouteParams } from "@/app/lib/util";
 import Board from "@/app/components/board/board";
 import { fetchBoardDetails, fetchCurrentClimb } from "@/app/components/rest-api/api";
+import BoardLitupHolds from "@/app/components/board/board-litup-holds";
 
 export default async function DynamicResultsPage({
   params,
@@ -20,11 +20,10 @@ export default async function DynamicResultsPage({
     ]);
     
     return (
-      <Board
-        currentClimb={currentClimb}
-        boardDetails={boardDetails}
-        routeParams={parsedParams}
-      />
+      <BoardLitupHolds 
+        holdsData={boardDetails.holdsData} 
+        litUpHoldsMap={currentClimb.litUpHoldsMap} 
+       />
     );
   } catch (error) {
     console.error("Error fetching results or climb:", error);

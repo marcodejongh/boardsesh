@@ -1,4 +1,4 @@
-import { HoldRenderData } from "../components/board/types";
+import { HoldRenderData, LitUpHoldsMap } from "../components/board/types";
 import { SetIdList } from "./board-data";
 
 export type BoulderProblem = {
@@ -13,6 +13,7 @@ export type BoulderProblem = {
   quality_average: string;
   stars: number;
   difficulty_error: string;
+  litUpHoldsMap: LitUpHoldsMap;
 };
 
 export type ClimbQueryResult = {

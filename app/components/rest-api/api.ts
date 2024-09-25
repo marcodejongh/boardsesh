@@ -32,9 +32,7 @@ export const fetchResults = async (
 
   // Build the URL using the new route structure
   const response = await fetch(
-    `${API_BASE_URL}/v1/${routeParameters.board_name}/${routeParameters.layout_id}/${
-      routeParameters.size_id
-    }/${routeParameters.set_ids}/${routeParameters.angle}/search?${urlParams}`,
+    `${API_BASE_URL}/v1/${routeParameters.board_name}/${routeParameters.layout_id}/${routeParameters.size_id}/${routeParameters.set_ids}/${routeParameters.angle}/search?${urlParams}&bustCache=1`,
   );
 
   const rawResults = await response.json();
@@ -47,9 +45,7 @@ export const fetchCurrentClimb = async (
 ): Promise<FetchCurrentProblemResponse> =>
   (
     await fetch(
-      `${API_BASE_URL}/v1/${routeParameters.board_name}/${routeParameters.layout_id}/${
-        routeParameters.size_id
-      }/${routeParameters.set_ids}/${routeParameters.angle}/${routeParameters.climb_uuid}`,
+      `${API_BASE_URL}/v1/${routeParameters.board_name}/${routeParameters.layout_id}/${routeParameters.size_id}/${routeParameters.set_ids}/${routeParameters.angle}/${routeParameters.climb_uuid}?bustCache=1`,
     )
   ).json();
 

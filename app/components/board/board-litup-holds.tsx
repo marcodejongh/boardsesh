@@ -1,16 +1,14 @@
 import React, { useMemo } from "react";
-import { HoldRenderData, LitUpHolds } from "./types";
+import { HoldRenderData, LitUpHolds, LitUpHoldsMap } from "./types";
 import { BoardName } from "@/app/lib/types";
 import { convertLitUpHoldsStringToMap } from "./util";
 
 interface BoardLitupHoldsProps {
   holdsData: HoldRenderData[];
-  litUpHolds: LitUpHolds;
-  board_name: BoardName;
+  litUpHoldsMap: LitUpHoldsMap;
 }
 
-const BoardLitupHolds: React.FC<BoardLitupHoldsProps> = ({ holdsData, board_name, litUpHolds }) => {
-  const litUpHoldsMap = useMemo(() => convertLitUpHoldsStringToMap(litUpHolds, board_name), [litUpHolds, board_name]);
+const BoardLitupHolds: React.FC<BoardLitupHoldsProps> = ({ holdsData, litUpHoldsMap }) => {
   if(!holdsData) return null
   return (
     <>
