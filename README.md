@@ -7,7 +7,7 @@ Try it out [here](https://www.boardsesh.com/)
 
 This app was originally started as a fork of https://github.com/lemeryfertitta/Climbdex.
 We also use https://github.com/lemeryfertitta/BoardLib for creating the database.
-Many thanks to lemeryfertitta for making this project possible!! 
+Many thanks to @lemeryfertitta for making this project possible!! 
 
 ## Current status
 
