@@ -1,36 +1,59 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Boardsesh
 
-## Getting Started
+Boardsesh is an app for controlling a ["standardized interactive climbing training boards" (SICTBs)](https://gearjunkie.com/climbing/kilter-moon-grasshopper-more-interactive-climbing-training-boards-explained) and intends to add missing functionality to boards that utilize Aurora Climbing's software, such as [Kilter](https://settercloset.com/pages/the-kilter-board), 
+[Tension](https://tensionclimbing.com/product/tension-board-sets/), and [Decoy](https://decoy-holds.com/pages/decoy-board).
 
-First, run the development server:
+Try it out [here](https://www.boardsesh.com/)
+
+This app was originally started as a fork of https://github.com/lemeryfertitta/Climbdex.
+We also use https://github.com/lemeryfertitta/BoardLib for creating the database.
+Many thanks to lemeryfertitta for making this project possible!! 
+
+## Current status
+
+This project is currently in a pretty early alpha phase. 
+The intention of this app is to eventually be able to support all the features the official apps
+support, but initially we're focussing on the missing features that make the missed functionality possible.
+Currently planned features in order of priority :
+* Improved multi-user support. Spotify Jams like functionality for using the board in groups.
+* Faster beta video uploads. Current process for beta videos is manual, and as a result new beta videos are almost never added. We'll implement our own Instagram integration to get beta videos faster.
+* Hold filtering. Similar to Climbdex search by hold feature
+
+# Getting Started
+
+## Database setup
+Before we can start developing, we need to setup a database.
+From the db/ directory, run docker to startup the development database:
+
+```
+docker-compose up
+```
+
+This starts up a docker container that uses Boardlib to download the databases and then loads them into postgres with an db update script and pgloader. When the postgres docker container is up, 
+you can connect to the database on localhost:54320 using `default:password` as the login details.
+
+## Setup ENV variables
+
+Create the following `.env.development.local`:
+
+```
+VERCEL_ENV=development
+POSTGRES_URL=postgresql://default:password@localhost:54320/verceldb
+BASE_URL=http://localhost:3000
+```
+
+## Running webapp
+
+In root of the repo, npm install the dependencies
+```
+npm install
+```
+
+
+Now we can run the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
