@@ -3,7 +3,7 @@ import { BOARD_IMAGE_DIMENSIONS } from "../../lib/board-data";
 import { LitUpHoldsMap, holdStateMapping } from "./types";
 
 
-const USE_SELF_HOSTED_IMAGES = false;
+const USE_SELF_HOSTED_IMAGES = true;
 
 export const getImageUrl = (imageUrl: string, board: BoardName) => {
   if (USE_SELF_HOSTED_IMAGES) {
