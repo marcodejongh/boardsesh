@@ -9,6 +9,7 @@ import { PAGE_LIMIT } from "./constants";
 import Link from "next/link";
 import { useSWRConfig } from "swr";
 import BoardLitupHolds from "../board/board-litup-holds";
+import { usePlaylistContext } from "../playlist-control/playlist-context";
 
 const { Title } = Typography;
 
@@ -32,7 +33,7 @@ const ClimbsList = ({
 }: ClimbsListProps) => {
   // SWR fetcher function for client-side fetching
   const fetcher = (url: string) => fetch(url).then(res => res.json());
-  
+  const { setCurrentClimb } = usePlaylistContext();
   const getKey = (pageIndex: number, previousPageData: any) => {
     if (previousPageData && previousPageData.boulderproblems.length === 0) return null;
 
@@ -86,7 +87,7 @@ const ClimbsList = ({
           itemLayout="vertical"
           dataSource={allClimbs}
           renderItem={(climb) => (
-            <Link href={`/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/${climb.uuid}/view`}>
+            <Link onClick={(event) => { setCurrentClimb(climb) }} href={`/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/${climb.uuid}/view`}>
               <List.Item key={climb.uuid}>
                 <Row>
                   <Col xs={24} sm={20} md={16} lg={12} xl={8} style={{ textAlign: "center"}}>

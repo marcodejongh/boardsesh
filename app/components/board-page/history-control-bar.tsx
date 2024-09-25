@@ -4,15 +4,17 @@ import { Button, Typography, Row, Col, Card } from "antd";
 import { LeftOutlined, RightOutlined, BulbOutlined } from "@ant-design/icons";
 import { FloatingBarProps } from "./types";
 import BoardRenderer from "../board/board-renderer";
+import { usePlaylistContext } from "../playlist-control/playlist-context";
+import BoardLitupHolds from "../board/board-litup-holds";
 
 const { Title, Text } = Typography;
 
 
 const HistoryControlBar: React.FC<FloatingBarProps> = ({
-  currentClimb,
   boardDetails,
   board,
 }: FloatingBarProps) => {
+  const { currentClimbState: currentClimb } = usePlaylistContext();
   return (
     <Card
       bodyStyle={{
@@ -33,8 +35,9 @@ const HistoryControlBar: React.FC<FloatingBarProps> = ({
             <BoardRenderer
               boardDetails={boardDetails}
               board_name={board}
-              litUpHolds={currentClimb && currentClimb.frames}
-            />
+            >
+              {currentClimb && <BoardLitupHolds holdsData={boardDetails.holdsData} litUpHoldsMap={currentClimb.litUpHoldsMap}  />}
+            </BoardRenderer>
           </div>
         </Col>
         <Col xs={12} style={{ textAlign: 'center' }}>

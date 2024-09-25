@@ -1,6 +1,6 @@
 "use client";
 
-import { SearchRequest, SearchRequestPagination } from "@/app/lib/types";
+import { BoulderProblem, SearchRequest, SearchRequestPagination } from "@/app/lib/types";
 import { useSearchParams } from "next/navigation";
 import { createContext, useContext, useState, ReactNode } from "react";
 
@@ -21,6 +21,7 @@ interface PlaylistContextType {
   addToPlaylist: (track: string) => void;
   setClimbSearchParams: (searchParams: SearchRequestPagination) => void;
   climbSearchParams: SearchRequestPagination;
+  currentClimb: BoulderProblem;
 }
 
 // Create the context
@@ -38,6 +39,7 @@ export const usePlaylistContext = () => {
 // Provider component with utility functions
 export const PlaylistProvider = ({ children }: { children: ReactNode }) => {
   const [playlist, setPlaylist] = useState<Playlist | null>(null);
+  const [currentClimbState, setCurrentClimbState] = useState<BoulderProblem | null>(null);
 
   const searchParams = useSearchParams();
   const [ climbSearchParams, setClimbSearchParams ] = useState<SearchRequest>({
@@ -76,8 +78,12 @@ export const PlaylistProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const setCurrentClimb = (climb: BoulderProblem) => {
+    setCurrentClimbState(climb);
+  }
+
   return (
-    <PlaylistContext.Provider value={{ playlist, setPlaylist, nextTrack, addToPlaylist, setClimbSearchParams, climbSearchParams }}>
+    <PlaylistContext.Provider value={{ playlist, setPlaylist, nextTrack, addToPlaylist, setClimbSearchParams, climbSearchParams, setCurrentClimb, currentClimbState }}>
       {children}
     </PlaylistContext.Provider>
   );
