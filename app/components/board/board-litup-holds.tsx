@@ -6,9 +6,10 @@ import { convertLitUpHoldsStringToMap } from "./util";
 interface BoardLitupHoldsProps {
   holdsData: HoldRenderData[];
   litUpHoldsMap: LitUpHoldsMap;
+  thumbnail?: boolean;
 }
 
-const BoardLitupHolds: React.FC<BoardLitupHoldsProps> = ({ holdsData, litUpHoldsMap }) => {
+const BoardLitupHolds: React.FC<BoardLitupHoldsProps> = ({ holdsData, litUpHoldsMap, thumbnail }) => {
   if(!holdsData) return null
   return (
     <>
@@ -23,8 +24,9 @@ const BoardLitupHolds: React.FC<BoardLitupHoldsProps> = ({ holdsData, litUpHolds
             cy={hold.cy}
             r={hold.r}
             stroke={litUpHoldsMap[hold.id].color}
-            strokeWidth={6}
-            fillOpacity={0}
+            strokeWidth={thumbnail ? 8 : 6}
+            fillOpacity={thumbnail ? 1 : 0}
+            fill={ thumbnail ? litUpHoldsMap[hold.id].color : undefined }
           />
         ))}
     </>

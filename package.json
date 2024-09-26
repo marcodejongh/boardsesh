@@ -25,7 +25,8 @@
     "react-swipeable": "^7.0.1",
     "server-only": "^0.0.1",
     "swr": "^2.2.5",
-    "use-debounce": "^10.0.3"
+    "use-debounce": "^10.0.3",
+    "uuid": "^10.0.0"
   },
   "devDependencies": {
     "@types/jest": "^29.5.13",
