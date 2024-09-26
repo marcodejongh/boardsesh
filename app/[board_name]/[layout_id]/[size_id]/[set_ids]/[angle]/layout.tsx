@@ -4,10 +4,10 @@ import { ParsedBoardRouteParameters, BoardRouteParametersWithUuid } from "@/app/
 import { parseBoardRouteParams } from "@/app/lib/util"; // Assume this utility helps with parsing
 
 import { Content, Footer, Header } from "antd/es/layout/layout";
-import HistoryControlBar from "@/app/components/board-page/history-control-bar";
+import HistoryControlBar from "@/app/components/board-control/history-control-bar";
 import { fetchBoardDetails } from "@/app/components/rest-api/api";
 import BoardSeshHeader from "@/app/components/board-page/header";
-import { PlaylistProvider } from "@/app/components/playlist-control/playlist-context";
+import { QueueProvider } from "@/app/components/board-control/queue-context";
 
 interface LayoutProps {
   params: BoardRouteParametersWithUuid;
@@ -23,7 +23,7 @@ export default async function BoardLayout({ children, params }: PropsWithChildre
     <>
       <title>{`Boardsesh on ${board_name} - Layout ${layout_id}`}</title>
       <Layout style={{ height: "100dvh", display: "flex", flexDirection: "column" }}>
-        <PlaylistProvider>
+        <QueueProvider>
           <BoardSeshHeader params={parsedParams} />
             <Content style={{ height: "80dvh", justifyContent: "center", alignItems: "center" }}>
               {children} {/* This will render the dynamic content from the child pages */}
@@ -38,7 +38,7 @@ export default async function BoardLayout({ children, params }: PropsWithChildre
                 // navigateClimbsRight={navigateClimbsRight}
               />
             </Footer>
-        </PlaylistProvider>
+        </QueueProvider>
         
       </Layout>
     </>

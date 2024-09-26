@@ -1,7 +1,7 @@
 'use client';
 
 import useSWRInfinite from "swr/infinite";
-import { List, Row, Col, Typography, Skeleton } from "antd";
+import { List, Row, Col, Typography, Skeleton, Card } from "antd";
 import InfiniteScroll from "react-infinite-scroll-component";
 import BoardRenderer from "../board/board-renderer";
 import { SearchRequestPagination, BoulderProblem, ParsedBoardRouteParameters, GetBoardDetailsResponse } from "@/app/lib/types";
@@ -9,7 +9,8 @@ import { PAGE_LIMIT } from "./constants";
 import Link from "next/link";
 import { useSWRConfig } from "swr";
 import BoardLitupHolds from "../board/board-litup-holds";
-import { usePlaylistContext } from "../playlist-control/playlist-context";
+import { useQueueContext } from "../board-control/queue-context";
+import { SettingOutlined, PlusCircleOutlined } from "@ant-design/icons";
 
 const { Title } = Typography;
 
@@ -33,7 +34,8 @@ const ClimbsList = ({
 }: ClimbsListProps) => {
   // SWR fetcher function for client-side fetching
   const fetcher = (url: string) => fetch(url).then(res => res.json());
-  const { setCurrentClimb } = usePlaylistContext();
+  const { setCurrentClimb, setSuggestedQueue, suggestedQueue } = useQueueContext();
+
   const getKey = (pageIndex: number, previousPageData: any) => {
     if (previousPageData && previousPageData.boulderproblems.length === 0) return null;
 
@@ -67,12 +69,23 @@ const ClimbsList = ({
       revalidateFirstPage: false 
     }
   );
-
+  
   const hasMore = !!(data && data[data.length - 1]?.boulderproblems.length === PAGE_LIMIT);
   
   // Aggregate all pages of climbs
   const allClimbs = data ? data.flatMap((page) => page.boulderproblems) : initialClimbs;
-
+  
+  if(!suggestedQueue || suggestedQueue.length === 0) {
+    setSuggestedQueue(allClimbs);
+  }
+  const boardPreview = (climb: BoulderProblem) => (
+    <Link onClick={() => { setCurrentClimb(climb) }} href={`/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/view/${climb.uuid}`}>
+      <BoardRenderer boardDetails={boardDetails} board_name={board_name}>
+        <BoardLitupHolds holdsData={boardDetails.holdsData} litUpHoldsMap={climb.litUpHoldsMap} />
+      </BoardRenderer>
+    </Link>
+    )
+  
   return (
     <div id="scrollableDiv" style={{ height: "80vh", overflow: "auto", padding: "0 16px", border: "1px solid rgba(140, 140, 140, 0.35)" }}>
       <InfiniteScroll
@@ -86,40 +99,18 @@ const ClimbsList = ({
         <List
           itemLayout="vertical"
           dataSource={allClimbs}
+          bordered={false}
           renderItem={(climb) => (
-            <Link onClick={(event) => { setCurrentClimb(climb) }} href={`/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/${climb.uuid}/view`}>
-              <List.Item key={climb.uuid}>
-                <Row>
-                  <Col xs={24} sm={20} md={16} lg={12} xl={8} style={{ textAlign: "center"}}>
-                    <Title level={5}>{climb.name}</Title>
-                  </Col>
-                </Row>                
-                <Row>
-                  <Col xs={24} sm={20} md={16} lg={12} xl={8} style={{ textAlign: "center"}}>
-                    <Typography.Text>Grade: {climb.difficulty} at {climb.angle}°</Typography.Text>
-                  </Col>
-                </Row>
-                <Row>
-                  <Col xs={24} sm={20} md={16} lg={12} xl={8} style={{ textAlign: "center"}}>
-                    <Typography.Text>{climb.ascensionist_count} ascents, {climb.quality_average}★</Typography.Text>
-                  </Col>
-                </Row>
+            <List.Item key={climb.uuid}>
+              <Card size="small" title={climb.name} cover={boardPreview(climb)} actions={[
+                  <SettingOutlined key="setting" />,
+                  <PlusCircleOutlined key="edit" />,
+                ]}>
+                {`Grade: ${climb.difficulty} at ${climb.angle}°
+                  ${climb.ascensionist_count} ascents, ${climb.quality_average}★`}
                 
-                  
-                <Row justify="space-between" align="middle" style={{ width: "100%" }}>
-                  <Col xs={24} sm={20} md={16} lg={12} xl={8} style={{ textAlign: "center", height: "30dvh" }}>
-                    <BoardRenderer 
-                      boardDetails={boardDetails} 
-                      board_name={board_name}>
-                          <BoardLitupHolds 
-                            holdsData={boardDetails.holdsData} 
-                            litUpHoldsMap={climb.litUpHoldsMap} 
-                          />
-                      </BoardRenderer>
-                  </Col>
-                </Row>
-              </List.Item>
-            </Link>
+              </Card>
+            </List.Item>
           )}
         />
       </InfiniteScroll>

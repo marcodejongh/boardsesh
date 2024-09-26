@@ -17,7 +17,7 @@ import { SearchOutlined } from "@ant-design/icons";
 import { ANGLES, TENSION_KILTER_GRADES } from "@/app/lib/board-data";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import { PAGE_LIMIT } from "../board-page/constants";
-import { usePlaylistContext } from "../playlist-control/playlist-context";
+import { useQueueContext } from "../board-control/queue-context";
 
 
 export type FilterDrawerProps =  {
@@ -39,7 +39,7 @@ const FilterDrawer = ({
   routeParams: { board_name }
 }: FilterDrawerProps) => {
     // Use the context to get and update the search parameters
-  const { climbSearchParams, setClimbSearchParams } = usePlaylistContext()
+  const { climbSearchParams, setClimbSearchParams } = useQueueContext()
 
   const searchParams = useSearchParams();
   const pathName = usePathname();

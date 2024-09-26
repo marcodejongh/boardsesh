@@ -2,19 +2,45 @@
 import React from "react";
 import { Button, Typography, Row, Col, Card } from "antd";
 import { LeftOutlined, RightOutlined, BulbOutlined } from "@ant-design/icons";
-import { FloatingBarProps } from "./types";
+import { FloatingBarProps } from "../board-page/types";
 import BoardRenderer from "../board/board-renderer";
-import { usePlaylistContext } from "../playlist-control/playlist-context";
+import { useQueueContext } from "./queue-context";
 import BoardLitupHolds from "../board/board-litup-holds";
+import NextClimbButton from "./next-climb-button";
+import { useParams, usePathname } from "next/navigation";
+import PreviousClimbButton from "./previous-climb-button";
+import Link from "next/link";
+import { parseBoardRouteParams } from "@/app/lib/util";
+import { BoardName, BoardRouteParametersWithUuid, BoulderProblem, GetBoardDetailsResponse } from "@/app/lib/types";
 
 const { Title, Text } = Typography;
 
+type BoardPreviewProps = {
+  board: BoardName; 
+  currentClimb: BoulderProblem | null;
+  boardDetails: GetBoardDetailsResponse;
+  
+}
+
+const BoardPreview = ({ boardDetails, board, currentClimb}: BoardPreviewProps) => (
+   <BoardRenderer
+    boardDetails={boardDetails}
+    board_name={board}
+  >
+    {currentClimb && <BoardLitupHolds holdsData={boardDetails.holdsData} litUpHoldsMap={currentClimb.litUpHoldsMap} thumbnail />}
+  </BoardRenderer>
+)
 
 const HistoryControlBar: React.FC<FloatingBarProps> = ({
   boardDetails,
   board,
 }: FloatingBarProps) => {
-  const { currentClimbState: currentClimb } = usePlaylistContext();
+  const pathname = usePathname();
+  const { board_name, layout_id, size_id, set_ids, angle } = parseBoardRouteParams(useParams<BoardRouteParametersWithUuid>());
+  
+  const isViewPage = pathname.includes('/view/');
+
+  const { currentClimb, nextClimb } = useQueueContext();
   return (
     <Card
       bodyStyle={{
@@ -32,12 +58,11 @@ const HistoryControlBar: React.FC<FloatingBarProps> = ({
         <Col xs={6}>
           {/* Board preview */}
           <div style={boardPreviewContainerStyle}>
-            <BoardRenderer
-              boardDetails={boardDetails}
-              board_name={board}
+            { currentClimb ? (<Link
+              href={`/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/view/${currentClimb.uuid}`}
             >
-              {currentClimb && <BoardLitupHolds holdsData={boardDetails.holdsData} litUpHoldsMap={currentClimb.litUpHoldsMap}  />}
-            </BoardRenderer>
+             <BoardPreview boardDetails={boardDetails} board={board} currentClimb={currentClimb}/>
+            </Link>) : <BoardPreview boardDetails={boardDetails} board={board} currentClimb={currentClimb}/>}
           </div>
         </Col>
         <Col xs={12} style={{ textAlign: 'center' }}>
@@ -67,17 +92,8 @@ const HistoryControlBar: React.FC<FloatingBarProps> = ({
         </Col>
         <Col xs={6} style={{ textAlign: "right" }}>
           {/* Navigation buttons */}
-          <Button
-            type="default"
-            icon={<LeftOutlined />}
-            aria-label="Previous climb"
-            style={{ marginRight: '4px' }}
-          />
-          <Button
-            type="default"
-            icon={<RightOutlined />}
-            aria-label="Next climb"
-          />
+          <PreviousClimbButton navigate={isViewPage} />
+          <NextClimbButton navigate={isViewPage} />
         </Col>
       </Row>
     </Card>
