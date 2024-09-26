@@ -79,9 +79,11 @@ const ClimbsList = ({
     setSuggestedQueue(allClimbs);
   }
   const boardPreview = (climb: BoulderProblem) => (
-    <BoardRenderer boardDetails={boardDetails} board_name={board_name}>
-      <BoardLitupHolds holdsData={boardDetails.holdsData} litUpHoldsMap={climb.litUpHoldsMap} />
-    </BoardRenderer>
+    <Link onClick={() => { setCurrentClimb(climb) }} href={`/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/view/${climb.uuid}`}>
+      <BoardRenderer boardDetails={boardDetails} board_name={board_name}>
+        <BoardLitupHolds holdsData={boardDetails.holdsData} litUpHoldsMap={climb.litUpHoldsMap} />
+      </BoardRenderer>
+    </Link>
     )
   
   return (
@@ -97,19 +99,18 @@ const ClimbsList = ({
         <List
           itemLayout="vertical"
           dataSource={allClimbs}
+          bordered={false}
           renderItem={(climb) => (
-            <Link onClick={() => { setCurrentClimb(climb) }} href={`/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/view/${climb.uuid}`}>
-              <List.Item key={climb.uuid}>
-                <Card title={climb.name} cover={boardPreview(climb)} actions={[
-                    <SettingOutlined key="setting" />,
-                    <PlusCircleOutlined key="edit" />,
-                  ]}>
-                  {`Grade: ${climb.difficulty} at ${climb.angle}°
-                    ${climb.ascensionist_count} ascents, ${climb.quality_average}★`}
-                  
-                </Card>
-              </List.Item>
-            </Link>
+            <List.Item key={climb.uuid}>
+              <Card size="small" title={climb.name} cover={boardPreview(climb)} actions={[
+                  <SettingOutlined key="setting" />,
+                  <PlusCircleOutlined key="edit" />,
+                ]}>
+                {`Grade: ${climb.difficulty} at ${climb.angle}°
+                  ${climb.ascensionist_count} ascents, ${climb.quality_average}★`}
+                
+              </Card>
+            </List.Item>
           )}
         />
       </InfiniteScroll>
