@@ -80,9 +80,9 @@ const ClimbsList = ({
   }
   const boardPreview = (climb: BoulderProblem) => (
     <Link onClick={() => { setCurrentClimb(climb) }} href={`/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/view/${climb.uuid}`}>
-      <BoardRenderer boardDetails={boardDetails} board_name={board_name}>
+      <div style={{maxHeight:"60dvh"}}><BoardRenderer boardDetails={boardDetails} board_name={board_name}>
         <BoardLitupHolds holdsData={boardDetails.holdsData} litUpHoldsMap={climb.litUpHoldsMap} />
-      </BoardRenderer>
+      </BoardRenderer></div>
     </Link>
     )
   
