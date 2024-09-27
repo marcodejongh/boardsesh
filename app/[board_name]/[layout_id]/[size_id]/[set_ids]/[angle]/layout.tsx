@@ -1,9 +1,9 @@
 import { PropsWithChildren } from "react";
-import { Layout } from "antd";
+import { Affix, Layout } from "antd";
 import { ParsedBoardRouteParameters, BoardRouteParametersWithUuid } from "@/app/lib/types";
 import { parseBoardRouteParams } from "@/app/lib/util"; // Assume this utility helps with parsing
 
-import { Content, Footer, Header } from "antd/es/layout/layout";
+import { Content } from "antd/es/layout/layout";
 import HistoryControlBar from "@/app/components/board-control/history-control-bar";
 import { fetchBoardDetails } from "@/app/components/rest-api/api";
 import BoardSeshHeader from "@/app/components/board-page/header";
@@ -18,28 +18,26 @@ export default async function BoardLayout({ children, params }: PropsWithChildre
   const parsedParams: ParsedBoardRouteParameters = parseBoardRouteParams(params);
   const { board_name, layout_id, size_id, set_ids, angle, uuid } = parsedParams;
   const boardDetails = await fetchBoardDetails(board_name, layout_id, size_id, set_ids);
-  
+
   return (
     <>
       <title>{`Boardsesh on ${board_name} - Layout ${layout_id}`}</title>
       <Layout style={{ height: "100dvh", display: "flex", flexDirection: "column" }}>
         <QueueProvider>
           <BoardSeshHeader params={parsedParams} />
-            <Content style={{ height: "80dvh", justifyContent: "center", alignItems: "center" }}>
-              {children} {/* This will render the dynamic content from the child pages */}
-            </Content>
+          <Content style={{ flex: 1, justifyContent: "center", alignItems: "center", overflowY: "auto" }}>
+            {children}
+          </Content>
 
-            <Footer style={{ height: "10dvh", padding: 0, backgroundColor: "#fff" }}>
+          <Affix offsetBottom={0}>
+            <div style={{ width: "100%", backgroundColor: "#fff", boxShadow: "0 -2px 8px rgba(0, 0, 0, 0.15)" }}>
               <HistoryControlBar
                 board={board_name}
                 boardDetails={boardDetails}
-                
-                // navigateClimbsLeft={navigateClimbsLeft}
-                // navigateClimbsRight={navigateClimbsRight}
               />
-            </Footer>
+            </div>
+          </Affix>
         </QueueProvider>
-        
       </Layout>
     </>
   );

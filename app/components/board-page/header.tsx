@@ -8,8 +8,8 @@ import InfoButton from "@/app/components/board-page/info-button";
 import { Header } from "antd/es/layout/layout";
 import Title from "antd/es/typography/Title";
 import BackToClimbList from "@/app/components/board-page/back-to-climb-list-button";
-import FilterDrawer from "@/app/components/filter-drawer/filter-drawer";
 import { usePathname } from "next/navigation";
+import SearchButton from "../search-drawer/search-button";
 
 interface HeaderProps {
   params: ParsedBoardRouteParameters;
@@ -33,7 +33,8 @@ export default function BoardSeshHeader(props: HeaderProps) {
         <Row justify="space-between" align="middle" style={{ width: "100%" }}>
           <Col xs={6} sm={4} md={4} lg={4} xl={4}>
             <Space>
-              {isList ? <FilterDrawer routeParams={params} /> : <BackToClimbList {...params}/>}
+              <AngleButton angle={params.angle} layout={params.layout_id} board={params.board_name} />
+              <InfoButton angle={params.angle} layout={params.layout_id} board={params.board_name} currentClimb={null} />
             </Space>
           </Col>
 
@@ -45,8 +46,7 @@ export default function BoardSeshHeader(props: HeaderProps) {
 
           <Col xs={6} sm={4} md={4} lg={4} xl={4} style={{ textAlign: "right" }}>
             <Space>
-              <AngleButton angle={params.angle} layout={params.layout_id} board={params.board_name} />
-              <InfoButton angle={params.angle} layout={params.layout_id} board={params.board_name} currentClimb={null} />
+              {isList ? <SearchButton /> : <BackToClimbList {...params}/>}
             </Space>
           </Col>
         </Row>

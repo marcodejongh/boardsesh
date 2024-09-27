@@ -7,10 +7,9 @@ import BoardRenderer from "../board/board-renderer";
 import { SearchRequestPagination, BoulderProblem, ParsedBoardRouteParameters, GetBoardDetailsResponse } from "@/app/lib/types";
 import { PAGE_LIMIT } from "./constants";
 import Link from "next/link";
-import { useSWRConfig } from "swr";
-import BoardLitupHolds from "../board/board-litup-holds";
 import { useQueueContext } from "../board-control/queue-context";
 import { SettingOutlined, PlusCircleOutlined } from "@ant-design/icons";
+import BoardLitupHolds from "../board/board-litup-holds";
 
 const { Title } = Typography;
 
@@ -75,19 +74,20 @@ const ClimbsList = ({
   // Aggregate all pages of climbs
   const allClimbs = data ? data.flatMap((page) => page.boulderproblems) : initialClimbs;
   
-  if(!suggestedQueue || suggestedQueue.length === 0) {
+  if (!suggestedQueue || suggestedQueue.length === 0) {
     setSuggestedQueue(allClimbs);
   }
+
   const boardPreview = (climb: BoulderProblem) => (
     <Link onClick={() => { setCurrentClimb(climb) }} href={`/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/view/${climb.uuid}`}>
       <BoardRenderer boardDetails={boardDetails} board_name={board_name}>
         <BoardLitupHolds holdsData={boardDetails.holdsData} litUpHoldsMap={climb.litUpHoldsMap} />
       </BoardRenderer>
     </Link>
-    )
+  );
   
   return (
-    <div id="scrollableDiv" style={{ height: "80vh", overflow: "auto", padding: "0 16px", border: "1px solid rgba(140, 140, 140, 0.35)" }}>
+    <div id="scrollableDiv" style={{ height: "80vh", padding: "0 16px", border: "1px solid rgba(140, 140, 140, 0.35)" }}>
       <InfiniteScroll
         dataLength={allClimbs.length}
         next={() => setSize(size + 1)}
@@ -96,23 +96,23 @@ const ClimbsList = ({
         endMessage={<div style={{ textAlign: "center" }}>No more climbs 🤐</div>}
         scrollableTarget="scrollableDiv"
       >
-        <List
-          itemLayout="vertical"
-          dataSource={allClimbs}
-          bordered={false}
-          renderItem={(climb) => (
-            <List.Item key={climb.uuid}>
-              <Card size="small" title={climb.name} cover={boardPreview(climb)} actions={[
+        <Row gutter={[16, 16]}>
+          {allClimbs.map((climb) => (
+            <Col xs={24} lg={12} xl={12} key={climb.uuid}>
+              <Card
+                size="small"
+                title={`${climb.name}`}
+                cover={boardPreview(climb)}
+                actions={[
                   <SettingOutlined key="setting" />,
                   <PlusCircleOutlined key="edit" />,
-                ]}>
-                {`Grade: ${climb.difficulty} at ${climb.angle}°
-                  ${climb.ascensionist_count} ascents, ${climb.quality_average}★`}
-                
+                ]}
+              >
+                {`Grade:  at ${climb.angle}° - ${climb.ascensionist_count} ascents, ${climb.quality_average}★`}
               </Card>
-            </List.Item>
-          )}
-        />
+            </Col>
+          ))}
+        </Row>
       </InfiniteScroll>
     </div>
   );
