@@ -1,10 +1,19 @@
 "use client";
 
-import { BoulderProblem, SearchRequest, SearchRequestPagination } from "@/app/lib/types";
-import { urlParamsToSearchParams } from "@/app/lib/url-utils";
+import { BoulderProblem, ParsedBoardRouteParameters, SearchRequest, SearchRequestPagination } from "@/app/lib/types";
+import { constructClimbSearchUrl, searchParamsToUrlParams, urlParamsToSearchParams } from "@/app/lib/url-utils";
 import { useSearchParams } from "next/navigation";
 import { createContext, useContext, useState, ReactNode } from "react";
+import useSWRInfinite from "swr/infinite";
 import { v4 as uuidv4 } from 'uuid';
+import { PAGE_LIMIT } from "../board-page/constants";
+
+type QueueContextProps = {
+  parsedParams: ParsedBoardRouteParameters;
+  children: ReactNode;
+  initialClimbSearchResults: BoulderProblem[];
+  initialClimbSearchTotalCount: number;
+}
 
 type UserName = string;
 type ClimbQueueItem = {
@@ -13,6 +22,8 @@ type ClimbQueueItem = {
   climb: BoulderProblem;
   uuid: string;
 };
+
+const fetcher = (url: string) => fetch(url).then(res => res.json());
 
 type ClimbQueue = ClimbQueueItem[];
 
@@ -31,13 +42,14 @@ interface QueueContextType {
 
   setClimbSearchParams: (searchParams: SearchRequestPagination) => void;
   climbSearchParams: SearchRequestPagination;
+  climbSearchResults: BoulderProblem[];
+  fetchMoreClimbs: () => void;
 
-  setSuggestedQueue: (climbs: BoulderProblem[]) => void;
-  
   setCurrentClimbQueueItem: (item: ClimbQueueItem) => void;
 
   getNextClimbQueueItem: () => ClimbQueueItem | null;
   getPreviousClimbQueueItem: () => ClimbQueueItem | null;
+  hasMoreResults: boolean;
 }
 
 const QueueContext = createContext<QueueContextType | undefined>(undefined);
@@ -50,7 +62,12 @@ export const useQueueContext = () => {
   return context;
 };
 
-export const QueueProvider = ({ children }: { children: ReactNode }) => {
+export const QueueProvider = ({ 
+  parsedParams, 
+  children, 
+  initialClimbSearchResults = [], 
+  initialClimbSearchTotalCount = 0 }: QueueContextProps) => {
+
   const [queue, setQueueState] = useState<ClimbQueue>([]);
   
   const [currentClimbQueueItem, setCurrentClimbQueueItemState] = useState<ClimbQueueItem | null>(null);
@@ -121,6 +138,36 @@ export const QueueProvider = ({ children }: { children: ReactNode }) => {
     return null
   }
 
+  const getKey = (pageIndex: number, previousPageData: any) => {
+    if (previousPageData && previousPageData.boulderproblems.length === 0) return null;
+    
+    const queryString = searchParamsToUrlParams({
+      ...climbSearchParams,
+      page: pageIndex,
+    }).toString();
+
+    return constructClimbSearchUrl(parsedParams, queryString);
+  };
+
+  const { data, error, isLoading, isValidating, size, setSize } = useSWRInfinite(
+    getKey,
+    fetcher,
+    { 
+      fallbackData: [{ boulderproblems: initialClimbSearchResults, totalCount: initialClimbSearchTotalCount }],
+      revalidateOnFocus: false, 
+      revalidateFirstPage: false 
+    }
+  );
+  
+  const fetchMoreClimbs = () => {
+    setSize(size + 1);
+  };
+  
+  const hasMoreResults = true;
+  
+  // Aggregate all pages of climbs
+  const climbSearchResults = data ? data.flatMap((page) => page.boulderproblems) : [];
+
   return (
     <QueueContext.Provider
       value={{
@@ -128,6 +175,9 @@ export const QueueProvider = ({ children }: { children: ReactNode }) => {
         suggestedQueue,
         addToQueue,
         removeFromQueue,
+        climbSearchResults,
+        fetchMoreClimbs,
+        hasMoreResults,
         currentClimb: currentClimbQueueItem?.climb || null,
         setCurrentClimb,
         setClimbSearchParams,
@@ -135,8 +185,7 @@ export const QueueProvider = ({ children }: { children: ReactNode }) => {
         setCurrentClimbQueueItem,
         getNextClimbQueueItem,
         getPreviousClimbQueueItem,
-        setSuggestedQueue: (climbs: BoulderProblem[]) =>
-          setSuggestedQueueState(climbs.map((climb) => ({ climb, uuid: uuidv4(), source: 'suggestedQueue' }))),
+        
       }}
     >
       {children}
