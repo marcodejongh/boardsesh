@@ -2,7 +2,7 @@ import { PAGE_LIMIT } from "@/app/components/board-page/constants";
 import { convertLitUpHoldsStringToMap } from "@/app/components/board/util";
 import { SearchBoulderProblemResult, searchBoulderProblems } from "@/app/lib/data/queries";
 import { BoardRouteParameters, ErrorResponse, FetchResultsResponse, SearchRequest, SearchRequestPagination } from "@/app/lib/types";
-import { parseBoardRouteParams } from "@/app/lib/util";
+import { parseBoardRouteParams } from "@/app/lib/url-utils";
 import { sql } from "@vercel/postgres";
 import { NextResponse } from "next/server";
 

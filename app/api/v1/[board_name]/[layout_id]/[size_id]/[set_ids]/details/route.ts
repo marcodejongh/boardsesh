@@ -1,7 +1,7 @@
 import { getBoardDetails } from "@/app/lib/data/queries";
 import { BoardRouteParameters } from "@/app/lib/types";
 import { NextResponse } from "next/server";
-import { parseBoardRouteParams } from "@/app/lib/util";
+import { parseBoardRouteParams } from "@/app/lib/url-utils";
 
 export async function GET(req: Request, { params }: { params: BoardRouteParameters }) {
   try {

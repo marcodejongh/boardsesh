@@ -1,6 +1,7 @@
 "use client";
 
 import { BoulderProblem, SearchRequest, SearchRequestPagination } from "@/app/lib/types";
+import { urlParamsToSearchParams } from "@/app/lib/url-utils";
 import { useSearchParams } from "next/navigation";
 import { createContext, useContext, useState, ReactNode } from "react";
 import { v4 as uuidv4 } from 'uuid';
@@ -18,15 +19,15 @@ type ClimbQueue = ClimbQueueItem[];
 interface QueueContextType {
   queue: ClimbQueue;
   suggestedQueue: ClimbQueue;
-  history: ClimbQueue;
+  // history: ClimbQueue;
 
   addToQueue: (climb: BoulderProblem) => void;
-  removeFromQueue: (climb: BoulderProblem) => void;
+  removeFromQueue: (queueItem: ClimbQueueItem) => void;
 
   setCurrentClimb: (climb: BoulderProblem) => void;
   currentClimb: BoulderProblem | null;
-  nextClimb: () => void;
-  previousClimb: () => void;
+  // nextClimb: () => void;
+  // previousClimb: () => void;
 
   setClimbSearchParams: (searchParams: SearchRequestPagination) => void;
   climbSearchParams: SearchRequestPagination;
@@ -49,34 +50,14 @@ export const useQueueContext = () => {
   return context;
 };
 
-// Helper function to parse search query params
-export const parseSearchQueryParams = (searchParams: URLSearchParams): SearchRequestPagination => ({
-  gradeAccuracy: parseFloat(searchParams.get("gradeAccuracy") || "0"),
-  maxGrade: parseInt(searchParams.get("maxGrade") || "29", 10),
-  minAscents: parseInt(searchParams.get("minAscents") || "0", 10),
-  minGrade: parseInt(searchParams.get("minGrade") || "1", 10),
-  minRating: parseFloat(searchParams.get("minRating") || "0"),
-  sortBy: (searchParams.get("sortBy") || "ascents") as "ascents" | "difficulty" | "name" | "quality",
-  sortOrder: (searchParams.get("sortOrder") || "desc") as "asc" | "desc",
-  name: searchParams.get("name") || "",
-  onlyClassics: searchParams.get("onlyClassics") === "true",
-  settername: searchParams.get("settername") || "",
-  setternameSuggestion: searchParams.get("setternameSuggestion") || "",
-  holds: searchParams.get("holds") || "",
-  mirroredHolds: searchParams.get("mirroredHolds") || "",
-  page: Number(searchParams.get("page") || "0"),
-  pageSize: Number(searchParams.get("pageSize") || "20"),
-});
-
 export const QueueProvider = ({ children }: { children: ReactNode }) => {
   const [queue, setQueueState] = useState<ClimbQueue>([]);
-  
   
   const [currentClimbQueueItem, setCurrentClimbQueueItemState] = useState<ClimbQueueItem | null>(null);
   
   const [suggestedQueue, setSuggestedQueueState] = useState<ClimbQueue>([]);
   const [climbSearchParams, setClimbSearchParams] = useState<SearchRequestPagination>(
-    parseSearchQueryParams(new URLSearchParams())
+    urlParamsToSearchParams(useSearchParams())
   );
 
   const addToQueue = (climb: BoulderProblem) => {

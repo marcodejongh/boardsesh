@@ -1,3 +1,5 @@
+import { SearchRequestPagination } from "@/app/lib/types";
+
 // Default climb search parameters
 export const defaultClimbSearchParameters: SearchRequestPagination = {
   minGrade: 10,

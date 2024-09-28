@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { BoardRouteParametersWithUuid } from "@/app/lib/types";
-import { parseBoardRouteParams } from "@/app/lib/util";
+import { parseBoardRouteParams } from "@/app/lib/url-utils";
 import { fetchBoardDetails, fetchCurrentClimb } from "@/app/components/rest-api/api";
 import BoardLitupHolds from "@/app/components/board/board-litup-holds";
 

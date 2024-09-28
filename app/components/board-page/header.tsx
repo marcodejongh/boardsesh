@@ -33,8 +33,8 @@ export default function BoardSeshHeader(props: HeaderProps) {
         <Row justify="space-between" align="middle" style={{ width: "100%" }}>
           <Col xs={6} sm={4} md={4} lg={4} xl={4}>
             <Space>
-              <AngleButton angle={params.angle} layout={params.layout_id} board={params.board_name} />
-              <InfoButton angle={params.angle} layout={params.layout_id} board={params.board_name} currentClimb={null} />
+              {/* <AngleButton angle={params.angle} layout={params.layout_id} board={params.board_name} />
+              <InfoButton angle={params.angle} layout={params.layout_id} board={params.board_name} currentClimb={null} /> */}
             </Space>
           </Col>
 

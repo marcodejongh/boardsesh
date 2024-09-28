@@ -1,6 +1,6 @@
 import { PropsWithChildren } from "react";
 import { BoardRouteParametersWithUuid, ParsedBoardRouteParametersWithUuid } from "@/app/lib/types";
-import { parseBoardRouteParams } from "@/app/lib/util"; // Assume this utility helps with parsing
+import { parseBoardRouteParams } from "@/app/lib/url-utils"; // Assume this utility helps with parsing
 
 import { fetchBoardDetails, fetchCurrentClimb } from "@/app/components/rest-api/api";
 import Board from "@/app/components/board/board";

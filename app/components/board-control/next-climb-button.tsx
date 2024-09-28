@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { useQueueContext } from "./queue-context";
 import { useParams } from "next/navigation";
-import { parseBoardRouteParams } from "@/app/lib/util";
+import { parseBoardRouteParams } from "@/app/lib/url-utils";
 import { BoardRouteParametersWithUuid } from "@/app/lib/types";
 import { RightOutlined } from "@ant-design/icons";
 import Button, { ButtonProps } from "antd/es/button";

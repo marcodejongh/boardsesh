@@ -10,7 +10,7 @@ import NextClimbButton from "./next-climb-button";
 import { useParams, usePathname } from "next/navigation";
 import PreviousClimbButton from "./previous-climb-button";
 import Link from "next/link";
-import { parseBoardRouteParams } from "@/app/lib/util";
+import { parseBoardRouteParams } from "@/app/lib/url-utils";
 import { BoardName, BoardRouteParametersWithUuid, BoulderProblem, GetBoardDetailsResponse } from "@/app/lib/types";
 
 const { Title, Text } = Typography;
@@ -40,7 +40,7 @@ const HistoryControlBar: React.FC<FloatingBarProps> = ({
   
   const isViewPage = pathname.includes('/view/');
 
-  const { currentClimb, nextClimb } = useQueueContext();
+  const { currentClimb } = useQueueContext();
   return (
     <Card
       bodyStyle={{

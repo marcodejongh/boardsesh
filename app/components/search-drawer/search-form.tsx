@@ -1,11 +1,11 @@
-import React, { useState } from "react";
-import { BoulderProblem, ParsedBoardRouteParameters, SearchRequest } from "@/lib/types";
+import React from "react";
+import { BoardRouteParameters, SearchRequest } from "@/lib/types";
 import { useDebouncedCallback } from "use-debounce";
-import { Layout, Form, Slider, InputNumber, Row, Col, Select, Input, Button, Grid, Drawer } from "antd";
+import { Layout, Form, Slider, InputNumber, Row, Col, Select, Input } from "antd";
 import { ANGLES, TENSION_KILTER_GRADES } from "@/app/lib/board-data";
-import { useSearchParams, usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useParams } from "next/navigation";
 import { useQueueContext } from "../board-control/queue-context";
-import { parseBoardRouteParams } from "@/app/lib/util";
+import { parseBoardRouteParams, searchParamsToUrlParams } from "@/app/lib/url-utils";
 
 interface SearchFormProps {
   
@@ -13,16 +13,17 @@ interface SearchFormProps {
 
 const SearchForm: React.FC<SearchFormProps> = () => {
   const { climbSearchParams, setClimbSearchParams } = useQueueContext();
-  const searchParams = useSearchParams();
-  const { board_name } = parseBoardRouteParams(searchParams);
   const pathName = usePathname();
+  
+  const { board_name } = parseBoardRouteParams(useParams() as BoardRouteParameters);
+  
   const { replace } = useRouter();
 
   const grades = TENSION_KILTER_GRADES;
   const angles = ANGLES[board_name];
   
   const debouncedUpdate = useDebouncedCallback((updatedFilters) => {
-    replace(`${pathName}?${new URLSearchParams(climbSearchParams).toString()}`);
+    replace(`${pathName}?${searchParamsToUrlParams(climbSearchParams).toString()}`);
   }, 300);
 
   const updateFilters = (newFilters: Partial<SearchRequest>) => {
