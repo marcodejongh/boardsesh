@@ -154,7 +154,13 @@ export const QueueProvider = ({
   const setCurrentClimbQueueItem = (item: ClimbQueueItem) => {
     setCurrentClimbQueueItemState(item);
     if (item.suggested && !queue.find(({ uuid }) => uuid === item.uuid)) {
+      const suggestedQueueItemIndex = climbSearchResults.findIndex(({ uuid }) => uuid === currentClimbQueueItem?.climb.uuid);
+      
       setQueueState((prevQueue) => [...prevQueue, item]);
+      
+      if (suggestedQueueItemIndex >  climbSearchResults.length - 5) {
+        fetchMoreClimbs();
+      }
     }
   };
 
@@ -168,16 +174,9 @@ export const QueueProvider = ({
     const suggestedQueueItemIndex = climbSearchResults.findIndex(({ uuid }) => uuid === currentClimbQueueItem?.climb.uuid);
 
     if (queue.length === 0 || queue.length <= queueItemIndex + 1 ) {
-      if (suggestedQueueItemIndex > -1) {
-        return {
-          uuid: uuidv4(),
-          climb: climbSearchResults[suggestedQueueItemIndex + 1],
-          suggested: true,
-        }
-      }
       return {
         uuid: uuidv4(),
-        climb: climbSearchResults.filter(({uuid: searchUuid}) => !queue.find(({ climb: { uuid }}) => uuid === searchUuid))[0],
+        climb: climbSearchResults.filter(({uuid: searchUuid}, index) => index > suggestedQueueItemIndex && !queue.find(({ climb: { uuid }}) => uuid === searchUuid))[0],
         suggested: true,
       }
     }
