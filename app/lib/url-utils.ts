@@ -4,8 +4,8 @@ import {
   ParsedBoardRouteParameters,
   BoardRouteParametersWithUuid,
   SearchRequestPagination,
+  ClimbUuid,
 } from "@/app/lib/types";
-import { URLSearchParams } from "url";
 
 export function parseBoardRouteParams<T extends BoardRouteParameters | BoardRouteParametersWithUuid>(
   params: T,
@@ -75,3 +75,13 @@ export const urlParamsToSearchParams = (urlParams: URLSearchParams): SearchReque
     pageSize: Number(urlParams.get("pageSize") || "20"),
   };
 }
+
+
+export const constructClimbViewUrl = (
+  { board_name, layout_id, angle, size_id, set_ids }: ParsedBoardRouteParameters,
+  climb_uuid: ClimbUuid,
+) => `/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/view/${climb_uuid}`;
+
+export const constructClimbList = (
+  { board_name, layout_id, angle, size_id, set_ids }: ParsedBoardRouteParameters,
+) => `/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/list`;

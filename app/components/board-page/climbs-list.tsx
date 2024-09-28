@@ -1,14 +1,14 @@
 'use client';
 
 import useSWRInfinite from "swr/infinite";
-import { List, Row, Col, Typography, Skeleton, Card } from "antd";
+import { Row, Col, Typography, Skeleton } from "antd";
 import InfiniteScroll from "react-infinite-scroll-component";
-import BoardRenderer from "../board/board-renderer";
-import { SearchRequestPagination, BoulderProblem, ParsedBoardRouteParameters, GetBoardDetailsResponse } from "@/app/lib/types";
+import { SearchRequestPagination, BoulderProblem, ParsedBoardRouteParameters, GetBoardDetailsResponse, ParsedBoardRouteParametersWithUuid, ClimbUuid, BoardRouteParameters } from "@/app/lib/types";
 import { PAGE_LIMIT } from "./constants";
-import Link from "next/link";
 import { useQueueContext } from "../board-control/queue-context";
-import { SettingOutlined, PlusCircleOutlined } from "@ant-design/icons";
+import ClimbCard from "../climb-card/climb-card";
+import { parseBoardRouteParams } from "@/app/lib/url-utils";
+import { useParams } from "next/navigation";
 import BoardLitupHolds from "../board/board-litup-holds";
 
 const { Title } = Typography;
@@ -19,6 +19,13 @@ type ClimbsListProps = ParsedBoardRouteParameters & {
   searchParams: SearchRequestPagination;
   boardDetails: GetBoardDetailsResponse;
 };
+
+type BoardPreviewProps = { 
+  climb: BoulderProblem;
+  parsedParams: ParsedBoardRouteParametersWithUuid;
+  setCurrentClimb: (climb: BoulderProblem) => void;
+  boardDetails: GetBoardDetailsResponse;
+}
 
 const ClimbsList = ({
   initialClimbs,
@@ -34,7 +41,8 @@ const ClimbsList = ({
   // SWR fetcher function for client-side fetching
   const fetcher = (url: string) => fetch(url).then(res => res.json());
   const { setCurrentClimb, setSuggestedQueue, suggestedQueue } = useQueueContext();
-
+  const parsedParams = parseBoardRouteParams(useParams<BoardRouteParameters>());
+  
   const getKey = (pageIndex: number, previousPageData: any) => {
     if (previousPageData && previousPageData.boulderproblems.length === 0) return null;
 
@@ -78,14 +86,6 @@ const ClimbsList = ({
     setSuggestedQueue(allClimbs);
   }
 
-  const boardPreview = (climb: BoulderProblem) => (
-    <Link onClick={() => { setCurrentClimb(climb) }} href={`/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/view/${climb.uuid}`}>
-      <BoardRenderer boardDetails={boardDetails} board_name={board_name}>
-        <BoardLitupHolds holdsData={boardDetails.holdsData} litUpHoldsMap={climb.litUpHoldsMap} />
-      </BoardRenderer>
-    </Link>
-  );
-  
   return (
     <div id="scrollableDiv" style={{ height: "80vh", padding: "0 16px", border: "1px solid rgba(140, 140, 140, 0.35)" }}>
       <InfiniteScroll
@@ -99,19 +99,16 @@ const ClimbsList = ({
         <Row gutter={[16, 16]}>
           {allClimbs.map((climb) => (
             <Col xs={24} lg={12} xl={12} key={climb.uuid}>
-              <Card
-                size="small"
-                title={`${climb.name}`}
-                cover={boardPreview(climb)}
-                actions={[
-                  <SettingOutlined key="setting" />,
-                  <PlusCircleOutlined key="edit" />,
-                ]}
+              <ClimbCard 
+                setCurrentClimb={setCurrentClimb}
+                parsedParams={parsedParams}
+                climb={climb}
+                boardDetails={boardDetails} 
               >
-                {`Grade:  at ${climb.angle}° - ${climb.ascensionist_count} ascents, ${climb.quality_average}★`}
-              </Card>
-            </Col>
-          ))}
+                <BoardLitupHolds holdsData={boardDetails.holdsData} litUpHoldsMap={climb.litUpHoldsMap} />
+              </ClimbCard>
+            </Col>)
+          )}
         </Row>
       </InfiniteScroll>
     </div>

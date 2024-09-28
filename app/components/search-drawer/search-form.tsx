@@ -1,15 +1,13 @@
 import React from "react";
 import { BoardRouteParameters, SearchRequest } from "@/lib/types";
 import { useDebouncedCallback } from "use-debounce";
-import { Layout, Form, Slider, InputNumber, Row, Col, Select, Input } from "antd";
+import { Form, Slider, InputNumber, Row, Col, Select, Input } from "antd";
 import { ANGLES, TENSION_KILTER_GRADES } from "@/app/lib/board-data";
 import { usePathname, useRouter, useParams } from "next/navigation";
 import { useQueueContext } from "../board-control/queue-context";
 import { parseBoardRouteParams, searchParamsToUrlParams } from "@/app/lib/url-utils";
 
-interface SearchFormProps {
-  
-}
+interface SearchFormProps {}
 
 const SearchForm: React.FC<SearchFormProps> = () => {
   const { climbSearchParams, setClimbSearchParams } = useQueueContext();
