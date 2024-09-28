@@ -50,7 +50,6 @@ const ClimbsList = ({
                 parsedParams={parsedParams}
                 climb={climb}
                 boardDetails={boardDetails} 
-                clickable
               >
                 <BoardLitupHolds holdsData={boardDetails.holdsData} litUpHoldsMap={climb.litUpHoldsMap} />
               </ClimbCard>
