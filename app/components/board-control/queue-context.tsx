@@ -76,6 +76,36 @@ export const QueueProvider = ({
   const [climbSearchParams, setClimbSearchParams] = useState<SearchRequestPagination>(
     urlParamsToSearchParams(useSearchParams())
   );
+  
+  const getKey = (pageIndex: number, previousPageData: any) => {
+    if (previousPageData && previousPageData.boulderproblems.length === 0) return null;
+    
+    const queryString = searchParamsToUrlParams({
+      ...climbSearchParams,
+      page: pageIndex,
+    }).toString();
+
+    return constructClimbSearchUrl(parsedParams, queryString);
+  };
+
+  const { data, error, isLoading, isValidating, size, setSize } = useSWRInfinite(
+    getKey,
+    fetcher,
+    { 
+      fallbackData: [{ boulderproblems: initialClimbSearchResults, totalCount: initialClimbSearchTotalCount }],
+      revalidateOnFocus: false, 
+      revalidateFirstPage: false 
+    }
+  );
+  
+  const fetchMoreClimbs = () => {
+    setSize(size + 1);
+  };
+  
+  const hasMoreResults = data && data[0] && (size * PAGE_LIMIT) < data[0].resultsCount;
+  
+  // Aggregate all pages of climbs
+  const climbSearchResults = data ? data.flatMap((page) => page.boulderproblems) : [];
 
   const addToQueue = (climb: BoulderProblem) => {
     setQueueState((prevQueue) => [
@@ -137,36 +167,6 @@ export const QueueProvider = ({
 
     return null
   }
-
-  const getKey = (pageIndex: number, previousPageData: any) => {
-    if (previousPageData && previousPageData.boulderproblems.length === 0) return null;
-    
-    const queryString = searchParamsToUrlParams({
-      ...climbSearchParams,
-      page: pageIndex,
-    }).toString();
-
-    return constructClimbSearchUrl(parsedParams, queryString);
-  };
-
-  const { data, error, isLoading, isValidating, size, setSize } = useSWRInfinite(
-    getKey,
-    fetcher,
-    { 
-      fallbackData: [{ boulderproblems: initialClimbSearchResults, totalCount: initialClimbSearchTotalCount }],
-      revalidateOnFocus: false, 
-      revalidateFirstPage: false 
-    }
-  );
-  
-  const fetchMoreClimbs = () => {
-    setSize(size + 1);
-  };
-  
-  const hasMoreResults = true;
-  
-  // Aggregate all pages of climbs
-  const climbSearchResults = data ? data.flatMap((page) => page.boulderproblems) : [];
 
   return (
     <QueueContext.Provider
