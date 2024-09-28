@@ -32,7 +32,7 @@ const ClimbsList = ({
   const parsedParams = parseBoardRouteParams(useParams<BoardRouteParameters>());
   
   return (
-    <div id="scrollableDiv" style={{ height: "80vh", padding: "0 16px", border: "1px solid rgba(140, 140, 140, 0.35)" }}>
+    <div id="scrollableDiv" style={{ height: "80vh" }}>
       <InfiniteScroll
         dataLength={climbSearchResults.length}
         next={fetchMoreClimbs}
@@ -41,6 +41,7 @@ const ClimbsList = ({
         endMessage={<div style={{ textAlign: "center" }}>No more climbs 🤐</div>}
         // Probably not how this should be done in a React app, but it works and I ain't no CSS-wizard
         scrollableTarget="content-for-scrollable"
+        style={{ overflowX: 'hidden', overflowY: 'auto'}}
       >
         <Row gutter={[16, 16]}>
           {climbSearchResults.map((climb) => (
