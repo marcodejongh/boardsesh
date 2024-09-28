@@ -36,7 +36,7 @@ const ClimbCard = ({
       title={`${climb.name} ${climb.difficulty}`}
       cover={cover}
       actions={[
-        <SettingOutlined key="setting" />,
+        // <SettingOutlined key="setting" />,
         <PlusCircleOutlined key="edit" onClick={addToQueue ? () => addToQueue(climb) : undefined} />,
         <FireOutlined key="edit" onClick={setCurrentClimb ? () => setCurrentClimb(climb) : undefined} />,
       ]}
