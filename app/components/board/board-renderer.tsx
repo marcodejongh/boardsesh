@@ -19,7 +19,7 @@ const BoardRenderer = ({
     <svg
       viewBox={`0 0 ${boardWidth} ${boardHeight}`}
       preserveAspectRatio="xMidYMid meet"  // Ensures aspect ratio is maintained
-      style={{ width: "100%", height: "auto", display: "block", maxHeight: '50vh' }} // Ensures scaling
+      style={{ width: "100%", height: "auto", display: "block", maxHeight: '65vh' }} // Ensures scaling
     >
       {Object.keys(boardDetails.images_to_holds).map((imageUrl) => (
         <image

@@ -33,15 +33,15 @@ const ClimbCard = ({
   );
   return (
     <Card
-      title={`${climb.name} ${climb.difficulty}`}
+      title={`${climb.name} ${climb.difficulty} ★${climb.quality_average}`}
       cover={cover}
       actions={[
         // <SettingOutlined key="setting" />,
         <PlusCircleOutlined key="edit" onClick={addToQueue ? () => addToQueue(climb) : undefined} />,
         <FireOutlined key="edit" onClick={setCurrentClimb ? () => setCurrentClimb(climb) : undefined} />,
       ]}
+      // @ ${climb.angle}° - ${climb.ascensionist_count} ascents,
     >
-      {`Grade: ${climb.difficulty} at ${climb.angle}° - ${climb.ascensionist_count} ascents, ${climb.quality_average}★`}
     </Card>
   )
 }
