@@ -28,7 +28,7 @@ const ClimbsList = ({
   boardDetails,
 }: ClimbsListProps) => {
   // SWR fetcher function for client-side fetching
-  const { setCurrentClimb, climbSearchResults, hasMoreResults, fetchMoreClimbs } = useQueueContext();
+  const { setCurrentClimb, climbSearchResults, hasMoreResults, fetchMoreClimbs, addToQueue } = useQueueContext();
   const parsedParams = parseBoardRouteParams(useParams<BoardRouteParameters>());
   
   return (
@@ -46,6 +46,7 @@ const ClimbsList = ({
             <Col xs={24} lg={12} xl={12} key={climb.uuid}>
               <ClimbCard 
                 setCurrentClimb={setCurrentClimb}
+                addToQueue={addToQueue}
                 parsedParams={parsedParams}
                 climb={climb}
                 boardDetails={boardDetails} 
