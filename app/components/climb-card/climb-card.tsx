@@ -24,7 +24,6 @@ const ClimbCard = ({
     <ClimbCardCover 
       climb={climb}
       parsedParams={parsedParams}
-      setCurrentClimb={setCurrentClimb}
       boardDetails={boardDetails}
       clickable={clickable}>
       {children}
@@ -37,7 +36,7 @@ const ClimbCard = ({
       cover={cover}
       actions={[
         <SettingOutlined key="setting" />,
-        <PlusCircleOutlined key="edit" />,
+        <PlusCircleOutlined key="edit" onClick={setCurrentClimb ? () => setCurrentClimb(climb) : undefined} />,
       ]}
     >
       {`Grade: ${climb.difficulty} at ${climb.angle}° - ${climb.ascensionist_count} ascents, ${climb.quality_average}★`}

@@ -29,7 +29,10 @@ export default async function DynamicResultsPage({
             climb={currentClimb}
             boardDetails={boardDetails} 
           >
-            <BoardLitupHolds holdsData={boardDetails.holdsData} litUpHoldsMap={currentClimb.litUpHoldsMap} />
+            <BoardLitupHolds 
+              holdsData={boardDetails.holdsData}
+              litUpHoldsMap={currentClimb.litUpHoldsMap} 
+            />
           </ClimbCard>
         </Col>
         <Col xs={24} md={8} style={{ marginBottom: "16px" }}>

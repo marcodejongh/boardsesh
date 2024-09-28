@@ -16,11 +16,13 @@ type QueueContextProps = {
 }
 
 type UserName = string;
+
 type ClimbQueueItem = {
   addedBy?: UserName;
   tickedBy?: UserName[];
   climb: BoulderProblem;
   uuid: string;
+  suggested?: boolean;
 };
 
 const fetcher = (url: string) => fetch(url).then(res => res.json());
@@ -124,29 +126,63 @@ export const QueueProvider = ({
   };
 
   const setCurrentClimb = (climb: BoulderProblem) => {
-    setCurrentClimbQueueItemState({ 
+    const queueItem = { 
       climb,
       uuid: uuidv4(),
+    };
+    setQueueState((prevQueue) => {
+      setCurrentClimbQueueItemState(queueItem);
+      
+      if (!currentClimbQueueItem) {
+        // If no current item, append the new one to the queue
+        return [...prevQueue, queueItem];
+      }
+      
+      const index = prevQueue.findIndex(({ uuid }) => uuid === currentClimbQueueItem?.uuid);
+      if (index === -1) {
+        // If the current item is not found, append the new one
+        return [...prevQueue, queueItem];
+      }
+      
+      // Replace the current item in the queue
+      return [...prevQueue.slice(0, index), queueItem, ...prevQueue.slice(index)];
     });
-  }
+  };
+
+
 
   const setCurrentClimbQueueItem = (item: ClimbQueueItem) => {
     setCurrentClimbQueueItemState(item);
-    
-  }
+    if (item.suggested && !queue.find(({ uuid }) => uuid === item.uuid)) {
+      setQueueState((prevQueue) => [...prevQueue, item]);
+    }
+  };
+
   
   const getNextClimbQueueItem = (): ClimbQueueItem | null => {
-    const queueItemIndex = queue.findIndex(({ uuid }) => uuid === currentClimbQueueItem?.uuid);
-    const suggestedQueueItemIndex = suggestedQueue.findIndex(({ uuid }) => uuid === currentClimbQueueItem?.uuid);
+    if (queue.length === 0 && climbSearchResults.length === 0) {
+      return null;
+    }
 
-    if (queue.length === 0 || queue.length < queueItemIndex ) {
+    const queueItemIndex = queue.findIndex(({ uuid }) => uuid === currentClimbQueueItem?.uuid);
+    const suggestedQueueItemIndex = climbSearchResults.findIndex(({ uuid }) => uuid === currentClimbQueueItem?.climb.uuid);
+
+    if (queue.length === 0 || queue.length <= queueItemIndex + 1 ) {
       if (suggestedQueueItemIndex > -1) {
-        return suggestedQueue[suggestedQueueItemIndex + 1];  
+        return {
+          uuid: uuidv4(),
+          climb: climbSearchResults[suggestedQueueItemIndex + 1],
+          suggested: true,
+        }
       }
-      return suggestedQueue[0];
+      return {
+        uuid: uuidv4(),
+        climb: climbSearchResults.filter(({uuid: searchUuid}) => !queue.find(({ climb: { uuid }}) => uuid === searchUuid))[0],
+        suggested: true,
+      }
     }
     
-    if (queueItemIndex > queue.length) {
+    if (queueItemIndex > queue.length + 1) {
       return null;
     }
     
@@ -155,12 +191,7 @@ export const QueueProvider = ({
 
   const getPreviousClimbQueueItem = (): ClimbQueueItem | null => {
     const queueItemIndex = queue.findIndex(({ uuid }) => uuid === currentClimbQueueItem?.uuid);
-    const suggestedQueueItemIndex = suggestedQueue.findIndex(({ uuid }) => uuid === currentClimbQueueItem?.uuid);
 
-    if (suggestedQueueItemIndex > 0) {
-      return suggestedQueue[suggestedQueueItemIndex - 1];  
-    }
-    
     if (queueItemIndex > 0) {
       return queue[queueItemIndex - 1]
     }

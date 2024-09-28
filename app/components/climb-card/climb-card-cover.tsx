@@ -7,7 +7,6 @@ import Link from "next/link";
 type ClimbCardCoverProps = { 
   climb: BoulderProblem;
   parsedParams: ParsedBoardRouteParameters;
-  setCurrentClimb?: (climb: BoulderProblem) => void;
   boardDetails: GetBoardDetailsResponse;
   children: React.ReactNode;
   clickable?: boolean;
@@ -16,7 +15,6 @@ type ClimbCardCoverProps = {
 const ClimbCardCover = ({
   climb,
   parsedParams,
-  setCurrentClimb,
   boardDetails,
   children,
   clickable,
@@ -34,7 +32,7 @@ const ClimbCardCover = ({
     );
   }
   return (
-    <Link onClick={setCurrentClimb ? () => { setCurrentClimb(climb) } : undefined} href={constructClimbViewUrl(parsedParams, climb.uuid)}>
+    <Link href={constructClimbViewUrl(parsedParams, climb.uuid)}>
       {boardRenderer}
     </Link>
   );

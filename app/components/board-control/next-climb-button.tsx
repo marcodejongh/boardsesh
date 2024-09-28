@@ -25,13 +25,13 @@ export default function NextClimbButton ({ navigate=false }: NextClimbButtonProp
   const nextClimb = getNextClimbQueueItem();
 
   const handleClick = () => {
-    if (nextClimb) {
-      // Remove the next climb from the queue by updating the state
-      setCurrentClimbQueueItem(nextClimb);
+    if (!nextClimb) {
+      return;
     }
+    setCurrentClimbQueueItem(nextClimb);
   };
   
-  if (navigate) {
+  if (navigate && nextClimb) {
     return (
       <Link
         href={`/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/view/${nextClimb?.climb.uuid}`}
