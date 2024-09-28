@@ -64,10 +64,7 @@ export default async function DynamicResultsPage({
     return (
       <ClimbsList
         {...parsedParams}
-        initialClimbs={fetchedResults.boulderproblems}
-        resultsCount={fetchedResults.totalCount}
         boardDetails={boardDetails}
-        searchParams={searchParamsObject} // Pass the parsed searchParams
       />
     );
   } catch (error) {
