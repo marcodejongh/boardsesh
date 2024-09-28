@@ -5,6 +5,7 @@ import { fetchBoardDetails, fetchCurrentClimb } from "@/app/components/rest-api/
 import BoardLitupHolds from "@/app/components/board/board-litup-holds";
 import ClimbCard from "@/app/components/climb-card/climb-card";
 import { Col, Row } from "antd";
+import ClimbInfoColumn from "@/app/components/climb-info/climb-info-drawer";
 
 export default async function DynamicResultsPage({
   params,
@@ -32,7 +33,7 @@ export default async function DynamicResultsPage({
           </ClimbCard>
         </Col>
         <Col xs={24} md={8} style={{ marginBottom: "16px" }}>
-          <h1>Test</h1>
+          <ClimbInfoColumn />
         </Col>
       </Row>
     );

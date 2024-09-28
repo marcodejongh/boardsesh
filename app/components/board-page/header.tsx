@@ -7,6 +7,7 @@ import Title from "antd/es/typography/Title";
 import BackToClimbList from "@/app/components/board-page/back-to-climb-list-button";
 import { usePathname } from "next/navigation";
 import SearchButton from "../search-drawer/search-button";
+import ClimbInfoButton from "../climb-info/climb-info-button";
 
 interface HeaderProps {
   params: ParsedBoardRouteParameters;
@@ -43,6 +44,7 @@ export default function BoardSeshHeader(props: HeaderProps) {
         <Col xs={6} sm={4} md={4} lg={4} xl={4} style={{ textAlign: "right" }}>
           <Space>
             {isList ? <SearchButton /> : <BackToClimbList {...params}/>}
+            {!isList ? <ClimbInfoButton/> : null }
           </Space>
         </Col>
       </Row>

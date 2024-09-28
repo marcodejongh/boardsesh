@@ -9,7 +9,8 @@ type ClimbCardCoverProps = {
   parsedParams: ParsedBoardRouteParameters;
   setCurrentClimb?: (climb: BoulderProblem) => void;
   boardDetails: GetBoardDetailsResponse;
-  children: React.ReactNode
+  children: React.ReactNode;
+  clickable?: boolean;
 }
 
 const ClimbCardCover = ({
@@ -18,12 +19,25 @@ const ClimbCardCover = ({
   setCurrentClimb,
   boardDetails,
   children,
-}: ClimbCardCoverProps) => (
-  <Link onClick={setCurrentClimb ? () => { setCurrentClimb(climb) } : undefined} href={constructClimbViewUrl(parsedParams, climb.uuid)}>
+  clickable,
+}: ClimbCardCoverProps) => {
+  const boardRenderer = (
     <BoardRenderer boardDetails={boardDetails} board_name={parsedParams.board_name}>
       {children}
     </BoardRenderer>
-  </Link>
-);
+  );
+  if (!clickable) {
+    return (
+      <>
+        {boardRenderer}
+      </>
+    );
+  }
+  return (
+    <Link onClick={setCurrentClimb ? () => { setCurrentClimb(climb) } : undefined} href={constructClimbViewUrl(parsedParams, climb.uuid)}>
+      {boardRenderer}
+    </Link>
+  );
+};
 
 export default ClimbCardCover;
