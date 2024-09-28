@@ -1,8 +1,11 @@
 import { notFound } from "next/navigation";
 import { BoardRouteParametersWithUuid } from "@/app/lib/types";
-import { parseBoardRouteParams } from "@/app/lib/util";
+import { parseBoardRouteParams } from "@/app/lib/url-utils";
 import { fetchBoardDetails, fetchCurrentClimb } from "@/app/components/rest-api/api";
 import BoardLitupHolds from "@/app/components/board/board-litup-holds";
+import ClimbCard from "@/app/components/climb-card/climb-card";
+import { Col, Row } from "antd";
+import ClimbInfoColumn from "@/app/components/climb-info/climb-info-drawer";
 
 export default async function DynamicResultsPage({
   params,
@@ -17,12 +20,25 @@ export default async function DynamicResultsPage({
       fetchBoardDetails(parsedParams.board_name, parsedParams.layout_id, parsedParams.size_id, parsedParams.set_ids),
       fetchCurrentClimb(parsedParams)
     ]);
-    
+
     return (
-      <BoardLitupHolds 
-        holdsData={boardDetails.holdsData} 
-        litUpHoldsMap={currentClimb.litUpHoldsMap} 
-       />
+      <Row >
+        <Col xs={24} md={16}>
+          <ClimbCard 
+            parsedParams={parsedParams}
+            climb={currentClimb}
+            boardDetails={boardDetails} 
+          >
+            <BoardLitupHolds 
+              holdsData={boardDetails.holdsData}
+              litUpHoldsMap={currentClimb.litUpHoldsMap} 
+            />
+          </ClimbCard>
+        </Col>
+        <Col xs={24} md={8} style={{ marginBottom: "16px" }}>
+          <ClimbInfoColumn />
+        </Col>
+      </Row>
     );
   } catch (error) {
     console.error("Error fetching results or climb:", error);

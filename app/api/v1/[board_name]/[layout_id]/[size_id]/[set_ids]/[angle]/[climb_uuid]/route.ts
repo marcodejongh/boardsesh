@@ -2,7 +2,7 @@
 import { convertLitUpHoldsStringToMap } from "@/app/components/board/util";
 import { getBoulderProblem } from "@/app/lib/data/queries";
 import { BoardRouteParametersWithUuid, ErrorResponse, FetchCurrentProblemResponse } from "@/app/lib/types";
-import { parseBoardRouteParams } from "@/app/lib/util";
+import { parseBoardRouteParams } from "@/app/lib/url-utils";
 import { sql } from "@vercel/postgres";
 import { NextResponse } from "next/server";
 
