@@ -7,7 +7,7 @@ const USE_SELF_HOSTED_IMAGES = true;
 
 export const getImageUrl = (imageUrl: string, board: BoardName) => {
   if (USE_SELF_HOSTED_IMAGES) {
-    return `http://localhost:3000/images/${board}/${imageUrl}`;
+    return `${process.env.BASE_URL}/images/${board}/${imageUrl}`;
   }
 
   return `https://api.${board}boardapp${board === 'tension' ? '2' : ''}.com/img/${imageUrl}`;
