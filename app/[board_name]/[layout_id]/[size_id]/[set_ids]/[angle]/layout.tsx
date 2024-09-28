@@ -67,7 +67,18 @@ export default async function BoardLayout({ children, params, searchParams = {} 
       <Layout style={{ height: "100dvh", display: "flex", flexDirection: "column" }}>
         <QueueProvider parsedParams={parsedParams} initialClimbSearchResults={fetchedResults.boulderproblems} initialClimbSearchTotalCount={fetchedResults.totalCount}>
           <BoardSeshHeader params={parsedParams} />
-          <Content id="content-for-scrollable" style={{ flex: 1, justifyContent: "center", alignItems: "center", overflowY: "auto", overflowX: 'hidden' }}>
+          <Content id="content-for-scrollable" style={{ 
+            flex: 1, 
+            justifyContent: "center", 
+            alignItems: "center", 
+            overflowY: "auto", 
+            overflowX: 'hidden',
+            height: "80vh", 
+            paddingLeft: "18px",
+            paddingRight: "18px",
+            paddingTop: "18px",
+            
+            }}>
             {children}
           </Content>
 

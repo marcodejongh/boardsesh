@@ -26,9 +26,9 @@ const ClimbCardCover = ({
   );
   if (!clickable) {
     return (
-      <>
+      <div style={{ width: "100%", height: "auto", position: "relative" }}>
         {boardRenderer}
-      </>
+      </div>
     );
   }
   return (
