@@ -1,7 +1,5 @@
-import React, { useMemo } from "react";
-import { HoldRenderData, LitUpHolds, LitUpHoldsMap } from "./types";
-import { BoardName } from "@/app/lib/types";
-import { convertLitUpHoldsStringToMap } from "./util";
+import React from "react";
+import { HoldRenderData, LitUpHoldsMap } from "./types";
 
 interface BoardLitupHoldsProps {
   holdsData: HoldRenderData[];

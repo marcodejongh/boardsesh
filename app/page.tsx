@@ -1,4 +1,5 @@
 // app/page.tsx
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import React from "react";
 import { redirect } from "next/navigation";
 

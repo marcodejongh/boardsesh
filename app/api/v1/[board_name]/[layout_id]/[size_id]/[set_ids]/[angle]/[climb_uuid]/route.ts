@@ -3,7 +3,6 @@ import { convertLitUpHoldsStringToMap } from "@/app/components/board-renderer/ut
 import { getBoulderProblem } from "@/app/lib/data/queries";
 import { BoardRouteParametersWithUuid, ErrorResponse, FetchCurrentProblemResponse } from "@/app/lib/types";
 import { parseBoardRouteParams } from "@/app/lib/url-utils";
-import { sql } from "@vercel/postgres";
 import { NextResponse } from "next/server";
 
 export async function GET(

@@ -1,3 +1,4 @@
+import React from 'react';
 import Link from "next/link";
 import { useQueueContext } from "./queue-context";
 import { useParams } from "next/navigation";

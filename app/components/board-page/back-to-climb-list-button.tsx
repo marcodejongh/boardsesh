@@ -1,6 +1,6 @@
 import React from "react";
 
-import { ParsedBoardRouteParameters, ParsedBoardRouteParametersWithUuid } from "@/lib/types";
+import { ParsedBoardRouteParametersWithUuid } from "@/lib/types";
 import { Button } from "antd";
 import {
   LeftOutlined,

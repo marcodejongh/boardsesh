@@ -16,10 +16,9 @@ import {
   SearchRequestPagination,
   HoldTuple,
   BoardDetails,
-  ImagesToHolds,
   ImageFileName,
+  BoardName,
 } from "../types";
-import { PAGE_LIMIT } from "@/app/components/board-page/constants";
 import { HoldRenderData } from "@/app/components/board-renderer/types";
 import { getBoardImageDimensions } from "@/app/components/board-renderer/util";
 import { SetIdList } from "../board-data";
@@ -157,7 +156,25 @@ export const searchBoulderProblems = async (
   const safeSortBy = allowedSortColumns[searchParams.sortBy] || "ascensionist_count";
 
   // Initialize the where clause for climbs.name
-  const climbNameClause = searchParams.climbName ? `AND climbs.name ILIKE '%' || $12 || '%'` : "";
+  
+  const queryParameters: Array<string | number> = [
+      params.size_id,
+      params.layout_id,
+      params.size_id,
+      searchParams.minAscents,
+      searchParams.minGrade,
+      searchParams.maxGrade,
+      searchParams.minRating,
+      searchParams.gradeAccuracy,
+      searchParams.pageSize,
+      searchParams.page * searchParams.pageSize,
+      params.angle,
+    ];
+  let climbNameClause = '';
+  if (searchParams.climbName) {
+    queryParameters.push(searchParams.climbName);
+    climbNameClause  = `AND climbs.name ILIKE '%' || $12 || '%'`;
+  }
 
   const query = await sql.query({
     text: `
@@ -200,25 +217,12 @@ export const searchBoulderProblems = async (
         SELECT *, 
         (SELECT COUNT(*) FROM filtered_climbs) as total_count
         FROM filtered_climbs
-        ORDER BY ${safeSortBy} ${searchParams.sortOrder === "asc" ? "ASC" : "DESC"}
+        ORDER BY ${safeSortBy} ${searchParams.sortOrder === "asc" ? "ASC" : "DESC"}, filtered_climbs.uuid ASC
         LIMIT $9 OFFSET $10
       `,
-    values: [
-      params.size_id,
-      params.layout_id,
-      params.size_id,
-      searchParams.minAscents,
-      searchParams.minGrade,
-      searchParams.maxGrade,
-      searchParams.minRating,
-      searchParams.gradeAccuracy,
-      searchParams.pageSize,
-      searchParams.page * PAGE_LIMIT,
-      params.angle,
-      searchParams.climbName || null, // Pass climbName only if defined
-    ].filter((value) => value !== null), // Remove any null values that don't match query clauses
+    values: queryParameters, // Remove any null values that don't match query clauses
   });
-
+  
   return {
     boulderproblems: query.rows,
     totalCount: query.rows.length > 0 ? query.rows[0].total_count : 0,
@@ -284,3 +288,19 @@ function getImageUrlHoldsMapObjectEntries(
   });
 }
 
+type LayoutRow = {
+  id: number;
+  name: string;
+}
+export const getLayouts = async (board_name: BoardName) => {
+  const { rows: layouts } = await sql.query<LayoutRow>(`
+    SELECT id, name
+    FROM ${getTableName(
+            board_name,
+            "layouts",
+          )} layouts
+    WHERE is_listed = true
+    AND password IS NULL
+  `);
+  return layouts;
+}

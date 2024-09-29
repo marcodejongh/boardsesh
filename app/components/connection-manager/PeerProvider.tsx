@@ -68,6 +68,7 @@ const PeerProvider: React.FC<PeerProviderProps> = ({ children }) => {
     const newConn = peer?.connect(connectionId);
 
     if (newConn) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       newConn.on("data", (data: any) => {
         console.log("Received data:", data);
         setReceivedData(data); // Store received data in an array

@@ -9,6 +9,11 @@ type ImageDimensions = {
 
 export type SetIdList = number[]
 
+export const SUPPORTED_BOARDS = [
+  'kilter',
+  'tension'
+];
+
 export const BOARD_IMAGE_DIMENSIONS: Record<BoardName, ImageDimensions> = {
   kilter: {
     "product_sizes_layouts_sets/15_5_24.png": { width: 1080, height: 2498 },

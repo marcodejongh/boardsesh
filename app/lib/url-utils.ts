@@ -6,11 +6,12 @@ import {
   SearchRequestPagination,
   ClimbUuid,
 } from "@/app/lib/types";
+import { PAGE_LIMIT } from "../components/board-page/constants";
 
-export function parseBoardRouteParams<T extends BoardRouteParameters | BoardRouteParametersWithUuid>(
-  params: T,
+export function parseBoardRouteParams<T extends BoardRouteParameters>(
+  params: T
 ): T extends BoardRouteParametersWithUuid ? ParsedBoardRouteParametersWithUuid : ParsedBoardRouteParameters {
-  const { board_name, layout_id, size_id, set_ids, angle } = params;
+  const { board_name, layout_id, size_id, set_ids, angle, climb_uuid } = params;
 
   const parsedParams = {
     board_name,
@@ -22,17 +23,16 @@ export function parseBoardRouteParams<T extends BoardRouteParameters | BoardRout
     angle: Number(angle),
   };
 
-  // Type guard to check if `params` has the `climb_uuid` field
-  if ("climb_uuid" in params) {
-    // Since we know the type here, explicitly return the correct type
+  if (climb_uuid) {
+    // TypeScript knows climb_uuid is present, so return the correct type
     return {
       ...parsedParams,
-      climb_uuid: (params as BoardRouteParametersWithUuid).climb_uuid,
-    } as any;
+      climb_uuid,
+    } as T extends BoardRouteParametersWithUuid ? ParsedBoardRouteParametersWithUuid : never;
   }
 
-  // For the non-climb_uuid case, return as ParsedBoardRouteParameters
-  return parsedParams as any;
+  // Return parsedParams as ParsedBoardRouteParameters when climb_uuid is absent
+  return parsedParams as T extends BoardRouteParametersWithUuid ? never : ParsedBoardRouteParameters;
 }
 
 export const searchParamsToUrlParams = (params: SearchRequestPagination): URLSearchParams => {
@@ -74,7 +74,7 @@ export const urlParamsToSearchParams = (urlParams: URLSearchParams): SearchReque
     holds: urlParams.get("holds") || "",
     mirroredHolds: urlParams.get("mirroredHolds") || "",
     page: Number(urlParams.get("page") || "0"),
-    pageSize: Number(urlParams.get("pageSize") || "20"),
+    pageSize: Number(urlParams.get("pageSize") || PAGE_LIMIT),
   };
 }
 

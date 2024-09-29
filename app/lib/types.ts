@@ -188,6 +188,9 @@ export type BoardRouteParameters = {
   angle: string;
   climb_uuid?: string;
 };
+export type BoardRouteParametersWithUuid = BoardRouteParameters & {
+  climb_uuid: ClimbUuid;
+};
 
 export type ParsedBoardRouteParameters = {
   board_name: BoardName;
@@ -203,9 +206,7 @@ export type ParsedBoardRouteParametersWithUuid = ParsedBoardRouteParameters & {
 };
 
 export type ClimbUuid = string;
-export type BoardRouteParametersWithUuid = BoardRouteParameters & {
-  climb_uuid: ClimbUuid;
-};
+
 //TODO: Refactor useEffects so this page can SSR
 
 export type BoardName = 'kilter' | 'tension';

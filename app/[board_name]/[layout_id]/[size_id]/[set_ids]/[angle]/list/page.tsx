@@ -1,3 +1,5 @@
+import React from 'react';
+
 import { notFound } from "next/navigation";
 import { BoardRouteParametersWithUuid, SearchRequestPagination } from "@/app/lib/types";
 import { parseBoardRouteParams } from "@/app/lib/url-utils";

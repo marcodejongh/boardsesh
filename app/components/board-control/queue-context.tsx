@@ -1,6 +1,8 @@
 "use client";
 
-import { BoulderProblem, ParsedBoardRouteParameters, SearchRequest, SearchRequestPagination } from "@/app/lib/types";
+import React from 'react';
+
+import { BoulderProblem, ParsedBoardRouteParameters, SearchRequestPagination } from "@/app/lib/types";
 import { constructClimbSearchUrl, searchParamsToUrlParams, urlParamsToSearchParams } from "@/app/lib/url-utils";
 import { useSearchParams } from "next/navigation";
 import { createContext, useContext, useState, ReactNode } from "react";
@@ -84,6 +86,7 @@ export const QueueProvider = ({
     history.replaceState(null, '', `${pathName}?${searchParamsToUrlParams(climbSearchParams).toString()}`);
   }
   
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const getKey = (pageIndex: number, previousPageData: any) => {
     if (previousPageData && previousPageData.boulderproblems.length === 0) return null;
     
@@ -95,7 +98,7 @@ export const QueueProvider = ({
     return constructClimbSearchUrl(parsedParams, queryString);
   };
 
-  const { data, error, isLoading, isValidating, size, setSize } = useSWRInfinite(
+  const { data, size, setSize } = useSWRInfinite(
     getKey,
     fetcher,
     { 
