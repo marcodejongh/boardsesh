@@ -63,7 +63,7 @@ export const fetchBoardDetails = async (
   size: number,
   set_ids: SetIdList,
 ): Promise<BoardDetails> => {
-  const apiUrl = `${API_BASE_URL}/v1/${board}/${layout}/${size}/${set_ids.join(",")}/details?bustCache=1`;
+  const apiUrl = `${API_BASE_URL}/v1/${board}/${layout}/${size}/${set_ids.join(",")}/details?bustCache=342`;
   const response = await fetch(apiUrl);
   
   if (!response.ok) {

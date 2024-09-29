@@ -154,7 +154,8 @@ export type Hold = {
 export type HoldTuple = [number, number | null, number, number];
 
 // Ensure imagesToHolds is typed as a Record where each key maps to an array of HoldTuples
-export type ImagesToHolds = Record<string, HoldTuple[]>;
+export type ImageFileName = string;
+export type ImagesToHolds = Record<ImageFileName, HoldTuple[]>;
 export type BoardDetails = {
   images_to_holds: ImagesToHolds;
   holdsData: HoldRenderData[];
