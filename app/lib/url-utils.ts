@@ -6,6 +6,7 @@ import {
   SearchRequestPagination,
   ClimbUuid,
 } from "@/app/lib/types";
+import { PAGE_LIMIT } from "../components/board-page/constants";
 
 export function parseBoardRouteParams<T extends BoardRouteParameters>(
   params: T
@@ -73,7 +74,7 @@ export const urlParamsToSearchParams = (urlParams: URLSearchParams): SearchReque
     holds: urlParams.get("holds") || "",
     mirroredHolds: urlParams.get("mirroredHolds") || "",
     page: Number(urlParams.get("page") || "0"),
-    pageSize: Number(urlParams.get("pageSize") || "20"),
+    pageSize: Number(urlParams.get("pageSize") || PAGE_LIMIT),
   };
 }
 
