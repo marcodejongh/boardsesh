@@ -2,21 +2,20 @@ import { BoulderProblem, ClimbUuid, BoardDetails, ParsedBoardRouteParameters } f
 import { constructClimbViewUrl } from "@/app/lib/url-utils";
 import BoardRenderer from "@/app/components/board-renderer/board-renderer";
 import Link from "next/link";
-
 type ClimbCardCoverProps = { 
   climb: BoulderProblem;
   parsedParams: ParsedBoardRouteParameters;
   boardDetails: BoardDetails;
-  children: React.ReactNode;
   clickable?: boolean;
+  onClick?: () => void;
 }
 
 const ClimbCardCover = ({
   climb,
   parsedParams,
   boardDetails,
-  children,
   clickable,
+  onClick,
 }: ClimbCardCoverProps) => {
   const boardRenderer = (
     <div style={{ width: "100%", height: "auto", position: "relative" }}>
@@ -31,8 +30,9 @@ const ClimbCardCover = ({
   if (!clickable || !climb) {
     return boardRenderer;
   }
+
   return (
-    <Link href={constructClimbViewUrl(parsedParams, climb.uuid)}>
+    <Link onClick={onClick} href={constructClimbViewUrl(parsedParams, climb.uuid)}>
       {boardRenderer}
     </Link>
   );
