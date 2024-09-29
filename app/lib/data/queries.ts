@@ -19,7 +19,6 @@ import {
   ImageFileName,
   BoardName,
 } from "../types";
-import { PAGE_LIMIT } from "@/app/components/board-page/constants";
 import { HoldRenderData } from "@/app/components/board-renderer/types";
 import { getBoardImageDimensions } from "@/app/components/board-renderer/util";
 import { SetIdList } from "../board-data";
