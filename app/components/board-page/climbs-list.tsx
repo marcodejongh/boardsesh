@@ -36,28 +36,41 @@ const ClimbsList = ({
     history.replaceState(null, '', `#${climbId}`);
   };
 
-    // onScroll handler to track which climb is most visible
+  /**
+   * TODO: Figure out a better way to restore scroll position, might want to try out react-query
+   * which promises that it always restores scroll correctly. But for now this works, and as a 
+   * cool side-effect shared links will also scroll to the correct item.
+   */
   const handleScroll = () => {
     let closestClimb = null;
     let closestDistance = Infinity;
 
-    Object.keys(climbsRefs.current).forEach((uuid) => {
+    const climbUuids = Object.keys(climbsRefs.current);
+    
+    for (let i = 0; i < climbUuids.length; i++) {
+      const uuid = climbUuids[i];
       const climbElement = climbsRefs.current[uuid];
+      
       if (climbElement) {
         const rect = climbElement.getBoundingClientRect();
-        const distanceFromViewportTop = Math.abs(rect.top - 100); // You can adjust 100 to be where you want it to be considered "in view"
+        const distanceFromViewportTop = Math.abs(rect.top - 100); // Adjust 100 to your viewport reference
+
         if (distanceFromViewportTop < closestDistance) {
           closestDistance = distanceFromViewportTop;
           closestClimb = uuid;
+        } else {
+          // If distance starts to increase, no need to check further climbs
+          break;
         }
       }
-    });
+    }
 
     // If the closest climb is different from the current one, update the hash
     if (closestClimb) {
       updateHash(closestClimb);
     }
   };
+
   const debouncedHandleScroll = useDebouncedCallback(handleScroll, 100);
 
     // Function to restore scroll based on the hash in the URL
