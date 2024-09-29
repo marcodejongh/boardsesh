@@ -1,8 +1,6 @@
 import useSWRInfinite from "swr/infinite";
 import { SearchRequestPagination, ParsedBoardRouteParameters } from "@/app/lib/types";
 
-const PAGE_LIMIT = 10;
-
 // Fetcher function to call the API
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 

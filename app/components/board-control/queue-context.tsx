@@ -7,8 +7,7 @@ import { createContext, useContext, useState, ReactNode } from "react";
 import useSWRInfinite from "swr/infinite";
 import { v4 as uuidv4 } from 'uuid';
 import { PAGE_LIMIT } from "../board-page/constants";
-import { useDebouncedCallback } from "use-debounce";
-import { usePathname, useRouter, useParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 type QueueContextProps = {
   parsedParams: ParsedBoardRouteParameters;
@@ -30,16 +29,13 @@ const fetcher = (url: string) => fetch(url).then(res => res.json());
 type ClimbQueue = ClimbQueueItem[];
 
 interface QueueContextType {
-  queue: ClimbQueue;
-  // history: ClimbQueue;
+  queue: ClimbQueue
 
   addToQueue: (climb: BoulderProblem) => void;
   removeFromQueue: (queueItem: ClimbQueueItem) => void;
 
   setCurrentClimb: (climb: BoulderProblem) => void;
   currentClimb: BoulderProblem | null;
-  // nextClimb: () => void;
-  // previousClimb: () => void;
 
   setClimbSearchParams: (searchParams: SearchRequestPagination) => void;
   climbSearchParams: SearchRequestPagination;
@@ -68,8 +64,6 @@ export const QueueProvider = ({
   children, 
 }: QueueContextProps) => {
   const pathName = usePathname();
-  const { replace } = useRouter();
-
   const [queue, setQueueState] = useState<ClimbQueue>([]);
   
   const [currentClimbQueueItem, setCurrentClimbQueueItemState] = useState<ClimbQueueItem | null>(null);
@@ -79,13 +73,16 @@ export const QueueProvider = ({
   );
   
   const setClimbSearchParams = (updatedFilters: SearchRequestPagination) => {
-    setClimbSearchParamsState(updatedFilters);
-    debouncedUpdate(updatedFilters);
+    setClimbSearchParamsState(() => {
+      // Size stays at a high number if we don't update it manually.
+      setSize(updatedFilters.page + 1);
+      return updatedFilters;
+    });
+
+    // We only want to use history.replaceState for filter changes as SWR takes care of the actual
+    // fetching, and using router.replace assumes we want the result of the SSR page.tsx.
+    history.replaceState(null, '', `${pathName}?${searchParamsToUrlParams(climbSearchParams).toString()}`);
   }
-  
-  const debouncedUpdate = useDebouncedCallback((updatedFilters) => {
-    replace(`${pathName}?${searchParamsToUrlParams(climbSearchParams).toString()}`);
-  }, 300);
   
   const getKey = (pageIndex: number, previousPageData: any) => {
     if (previousPageData && previousPageData.boulderproblems.length === 0) return null;
@@ -104,12 +101,20 @@ export const QueueProvider = ({
     { 
       // fallbackData: [{ boulderproblems: initialClimbSearchResults, totalCount: initialClimbSearchResultCount }],
       revalidateOnFocus: false, 
-      revalidateFirstPage: false 
+      revalidateFirstPage: false,
+      initialSize: climbSearchParams.page ? climbSearchParams.page + 1 : 1 
     }
   );
   
   const fetchMoreClimbs = () => {
-    setSize(size + 1);
+    setSize((oldSize) => {
+      const newParams = { ...climbSearchParams, page: oldSize + 1};
+      // We persist the new page number in the URL so that the page on a hard refresh will
+      // be the same as it was before, and hopefully will restore scroll correctly.
+      history.replaceState(null, '', `${pathName}?${searchParamsToUrlParams(newParams).toString()}`, { scroll: false});
+      return oldSize + 1;
+    });
+    
   };
   
   const hasMoreResults = data && data[0] && (size * PAGE_LIMIT) < data[0].totalCount;

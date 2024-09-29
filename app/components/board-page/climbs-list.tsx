@@ -51,6 +51,7 @@ const ClimbsList = ({
                 parsedParams={parsedParams}
                 climb={climb}
                 boardDetails={boardDetails} 
+                clickable
               >
                 <BoardRenderer 
                   boardDetails={boardDetails} 

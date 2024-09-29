@@ -1,26 +1,36 @@
-import React from "react";
-import { BoardRouteParameters, SearchRequest } from "@/lib/types";
+import React, { useState } from "react";
+import { SearchRequest } from "@/lib/types";
+import { useDebouncedCallback } from "use-debounce";
 import { Form, Slider, InputNumber, Row, Col, Select, Input } from "antd";
-import { ANGLES, TENSION_KILTER_GRADES } from "@/app/lib/board-data";
-import { usePathname, useRouter, useParams } from "next/navigation";
+import { TENSION_KILTER_GRADES } from "@/app/lib/board-data";
 import { useQueueContext } from "../board-control/queue-context";
-import { parseBoardRouteParams, searchParamsToUrlParams } from "@/app/lib/url-utils";
 
 interface SearchFormProps {}
 
 const SearchForm: React.FC<SearchFormProps> = () => {
+  /**
+   * We maintain a copy of the search params so that the UI can update without hammering the rest-api.
+   * Updating the state that affects the actual search is then debounced.
+   */
   const { climbSearchParams, setClimbSearchParams } = useQueueContext();
-  
-  const { board_name } = parseBoardRouteParams(useParams() as BoardRouteParameters);
-  
-  
+  const [ uiSearchParams, setUISearchParams ] = useState(climbSearchParams);
 
   const grades = TENSION_KILTER_GRADES;
-  const angles = ANGLES[board_name];
+  
+  const debouncedUpdate = useDebouncedCallback(() => {
+    setClimbSearchParams(uiSearchParams)
+  }, 1000);
 
   const updateFilters = (newFilters: Partial<SearchRequest>) => {
-    const updatedFilters = { ...climbSearchParams, ...newFilters };
-    setClimbSearchParams(updatedFilters);
+    const updatedFilters = { 
+      ...climbSearchParams, 
+      ...newFilters, 
+      // Go back to page 0 when the search params are updated, no point in loading 10 pages
+      // of results immediately when the search has just been changed.
+      page: 0
+    };
+    setUISearchParams(updatedFilters);
+    debouncedUpdate();
   };
 
   return (
@@ -30,10 +40,10 @@ const SearchForm: React.FC<SearchFormProps> = () => {
           range
           min={grades[0].difficulty_id}
           max={grades[grades.length - 1].difficulty_id}
-          value={[climbSearchParams.minGrade, climbSearchParams.maxGrade]}
+          value={[uiSearchParams.minGrade, uiSearchParams.maxGrade]}
           marks={{
-            [climbSearchParams.minGrade]: grades.find(({ difficulty_id }) => difficulty_id === climbSearchParams.minGrade)?.difficulty_name,
-            [climbSearchParams.maxGrade]: grades.find(({ difficulty_id }) => difficulty_id === climbSearchParams.maxGrade)?.difficulty_name,
+            [uiSearchParams.minGrade]: grades.find(({ difficulty_id }) => difficulty_id === uiSearchParams.minGrade)?.difficulty_name,
+            [uiSearchParams.maxGrade]: grades.find(({ difficulty_id }) => difficulty_id === uiSearchParams.maxGrade)?.difficulty_name,
           }}
           onChange={(value) => updateFilters({ minGrade: value[0], maxGrade: value[1] })}
           tooltip={{
@@ -45,7 +55,7 @@ const SearchForm: React.FC<SearchFormProps> = () => {
       <Form.Item label="Min Ascents">
         <InputNumber
           min={1}
-          value={climbSearchParams.minAscents}
+          value={uiSearchParams.minAscents}
           onChange={(value) => updateFilters({ minAscents: value || 10 })}
           style={{ width: "100%" }}
         />
@@ -55,7 +65,7 @@ const SearchForm: React.FC<SearchFormProps> = () => {
         <Row gutter={8}>
           <Col span={16}>
             <Select
-              value={climbSearchParams.sortBy}
+              value={uiSearchParams.sortBy}
               onChange={(value) => updateFilters({ sortBy: value })}
               style={{ width: "100%" }}
             >
@@ -67,7 +77,7 @@ const SearchForm: React.FC<SearchFormProps> = () => {
           </Col>
           <Col span={8}>
             <Select
-              value={climbSearchParams.sortOrder}
+              value={uiSearchParams.sortOrder}
               onChange={(value) => updateFilters({ sortOrder: value })}
               style={{ width: "100%" }}
             >
@@ -83,7 +93,7 @@ const SearchForm: React.FC<SearchFormProps> = () => {
           min={1.0}
           max={3.0}
           step={0.1}
-          value={climbSearchParams.minRating}
+          value={uiSearchParams.minRating}
           onChange={(value) => updateFilters({ minRating: value || 1 })}
           style={{ width: "100%" }}
         />
@@ -91,7 +101,7 @@ const SearchForm: React.FC<SearchFormProps> = () => {
 
       <Form.Item label="Classics Only">
         <Select
-          value={climbSearchParams.onlyClassics}
+          value={uiSearchParams.onlyClassics}
           onChange={(value) => updateFilters({ onlyClassics: value })}
           style={{ width: "100%" }}
         >
@@ -102,7 +112,7 @@ const SearchForm: React.FC<SearchFormProps> = () => {
 
       <Form.Item label="Grade Accuracy">
         <Select
-          value={climbSearchParams.gradeAccuracy}
+          value={uiSearchParams.gradeAccuracy}
           onChange={(value) => updateFilters({ gradeAccuracy: value })}
           style={{ width: "100%" }}
         >
@@ -115,7 +125,7 @@ const SearchForm: React.FC<SearchFormProps> = () => {
 
       <Form.Item label="Setter Name">
         <Input
-          value={climbSearchParams.settername}
+          value={uiSearchParams.settername}
           onChange={(e) => updateFilters({ settername: e.target.value })}
         />
       </Form.Item>
