@@ -19,7 +19,7 @@ const NextButton = (props: ButtonProps) => (
     />);
 
 export default function NextClimbButton ({ navigate=false }: NextClimbButtonProps) {
-  const { suggestedQueue, setCurrentClimbQueueItem, getNextClimbQueueItem } = useQueueContext(); // Assuming setSuggestedQueue is available
+  const { setCurrentClimbQueueItem, getNextClimbQueueItem } = useQueueContext(); // Assuming setSuggestedQueue is available
   const { board_name, layout_id, size_id, set_ids, angle } = parseBoardRouteParams(useParams<BoardRouteParametersWithUuid>());
 
   const nextClimb = getNextClimbQueueItem();
