@@ -5,7 +5,7 @@ import { SearchBoulderProblemResult } from "@/app/lib/data/queries";
 import {
   BoardRouteParametersWithUuid,
   FetchCurrentProblemResponse,
-  GetBoardDetailsResponse,
+  BoardDetails,
   SearchRequest,
   ParsedBoardRouteParameters,
   ParsedBoardRouteParametersWithUuid,
@@ -62,7 +62,7 @@ export const fetchBoardDetails = async (
   layout: number,
   size: number,
   set_ids: SetIdList,
-): Promise<GetBoardDetailsResponse> => {
+): Promise<BoardDetails> => {
   const apiUrl = `${API_BASE_URL}/v1/${board}/${layout}/${size}/${set_ids.join(",")}/details?bustCache=1`;
   const response = await fetch(apiUrl);
   

@@ -15,7 +15,7 @@ import {
   SearchRequest,
   SearchRequestPagination,
   HoldTuple,
-  GetBoardDetailsResponse,
+  BoardDetails,
 } from "../types";
 import { PAGE_LIMIT } from "@/app/components/board-page/constants";
 import { HoldRenderData } from "@/app/components/board-renderer/types";
@@ -37,7 +37,7 @@ export const getBoardDetails = async ({
   layout_id,
   size_id,
   set_ids,
-}: ParsedBoardRouteParameters): Promise<GetBoardDetailsResponse> => {
+}: ParsedBoardRouteParameters): Promise<BoardDetails> => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const imagesToHolds: Record<string, any> = {};
   
@@ -132,6 +132,10 @@ export const getBoardDetails = async ({
     edge_top: sizeDimensions[0].edge_top,
     boardHeight,
     boardWidth,
+    board_name,
+    layout_id,
+    size_id,
+    set_ids,
   };
 };
 

@@ -10,14 +10,14 @@ import { useParams, usePathname } from "next/navigation";
 import PreviousClimbButton from "./previous-climb-button";
 import Link from "next/link";
 import { parseBoardRouteParams } from "@/app/lib/url-utils";
-import { BoardName, BoardRouteParametersWithUuid, BoulderProblem, GetBoardDetailsResponse } from "@/app/lib/types";
+import { BoardName, BoardRouteParametersWithUuid, BoulderProblem, BoardDetails } from "@/app/lib/types";
 
 const { Title, Text } = Typography;
 
 type BoardPreviewProps = {
   board: BoardName; 
   currentClimb: BoulderProblem | null;
-  boardDetails: GetBoardDetailsResponse;
+  boardDetails: BoardDetails;
   
 }
 

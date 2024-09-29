@@ -1,11 +1,11 @@
 import React from "react";
 import { getImageUrl } from "./util";
-import { BoardName, GetBoardDetailsResponse } from "@/app/lib/types";
+import { BoardName, BoardDetails } from "@/app/lib/types";
 import { HoldRenderData, LitUpHoldsMap } from "./types";
 import BoardLitupHolds from "./board-litup-holds";
 
 export type BoardProps = {
-  boardDetails: GetBoardDetailsResponse;
+  boardDetails: BoardDetails;
   board_name: BoardName;
   holdsData: HoldRenderData[];
   litUpHoldsMap?: LitUpHoldsMap;

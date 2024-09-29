@@ -3,7 +3,7 @@
 import useSWRInfinite from "swr/infinite";
 import { Row, Col, Typography, Skeleton } from "antd";
 import InfiniteScroll from "react-infinite-scroll-component";
-import { SearchRequestPagination, BoulderProblem, ParsedBoardRouteParameters, GetBoardDetailsResponse, ParsedBoardRouteParametersWithUuid, ClimbUuid, BoardRouteParameters } from "@/app/lib/types";
+import { SearchRequestPagination, BoulderProblem, ParsedBoardRouteParameters, BoardDetails, ParsedBoardRouteParametersWithUuid, ClimbUuid, BoardRouteParameters } from "@/app/lib/types";
 import { PAGE_LIMIT } from "./constants";
 import { useQueueContext } from "../board-control/queue-context";
 import ClimbCard from "../climb-card/climb-card";
@@ -15,14 +15,14 @@ import BoardRenderer from "../board-renderer/board-renderer";
 const { Title } = Typography;
 
 type ClimbsListProps = ParsedBoardRouteParameters & {
-  boardDetails: GetBoardDetailsResponse;
+  boardDetails: BoardDetails;
 };
 
 type BoardPreviewProps = { 
   climb: BoulderProblem;
   parsedParams: ParsedBoardRouteParametersWithUuid;
   setCurrentClimb: (climb: BoulderProblem) => void;
-  boardDetails: GetBoardDetailsResponse;
+  boardDetails: BoardDetails;
 }
 
 const ClimbsList = ({
