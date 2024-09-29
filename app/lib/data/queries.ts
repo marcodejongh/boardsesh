@@ -156,6 +156,9 @@ export const searchBoulderProblems = async (
 
   const safeSortBy = allowedSortColumns[searchParams.sortBy] || "ascensionist_count";
 
+  // Initialize the where clause for climbs.name
+  const climbNameClause = searchParams.climbName ? `AND climbs.name ILIKE '%' || $12 || '%'` : "";
+
   const query = await sql.query({
     text: `
         WITH filtered_climbs AS (
@@ -192,6 +195,7 @@ export const searchBoulderProblems = async (
           }
           AND climb_stats.quality_average >= $7
           AND ABS(ROUND(climb_stats.display_difficulty::numeric, 0) - climb_stats.difficulty_average::numeric) <= $8
+          ${climbNameClause} -- Conditionally add the name filter
         )
         SELECT *, 
         (SELECT COUNT(*) FROM filtered_climbs) as total_count
@@ -211,7 +215,8 @@ export const searchBoulderProblems = async (
       searchParams.pageSize,
       searchParams.page * PAGE_LIMIT,
       params.angle,
-    ],
+      searchParams.climbName || null, // Pass climbName only if defined
+    ].filter((value) => value !== null), // Remove any null values that don't match query clauses
   });
 
   return {

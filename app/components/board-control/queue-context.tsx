@@ -11,8 +11,6 @@ import { PAGE_LIMIT } from "../board-page/constants";
 type QueueContextProps = {
   parsedParams: ParsedBoardRouteParameters;
   children: ReactNode;
-  initialClimbSearchResults: BoulderProblem[];
-  initialClimbSearchTotalCount: number;
 }
 
 type UserName = string;
@@ -31,7 +29,6 @@ type ClimbQueue = ClimbQueueItem[];
 
 interface QueueContextType {
   queue: ClimbQueue;
-  suggestedQueue: ClimbQueue;
   // history: ClimbQueue;
 
   addToQueue: (climb: BoulderProblem) => void;
@@ -44,7 +41,7 @@ interface QueueContextType {
 
   setClimbSearchParams: (searchParams: SearchRequestPagination) => void;
   climbSearchParams: SearchRequestPagination;
-  climbSearchResults: BoulderProblem[];
+  climbSearchResults: BoulderProblem[] | null;
   fetchMoreClimbs: () => void;
 
   setCurrentClimbQueueItem: (item: ClimbQueueItem) => void;
@@ -67,14 +64,12 @@ export const useQueueContext = () => {
 export const QueueProvider = ({ 
   parsedParams, 
   children, 
-  initialClimbSearchResults = [], 
-  initialClimbSearchTotalCount = 0 }: QueueContextProps) => {
+}: QueueContextProps) => {
 
   const [queue, setQueueState] = useState<ClimbQueue>([]);
   
   const [currentClimbQueueItem, setCurrentClimbQueueItemState] = useState<ClimbQueueItem | null>(null);
   
-  const [suggestedQueue, setSuggestedQueueState] = useState<ClimbQueue>([]);
   const [climbSearchParams, setClimbSearchParams] = useState<SearchRequestPagination>(
     urlParamsToSearchParams(useSearchParams())
   );
@@ -94,7 +89,7 @@ export const QueueProvider = ({
     getKey,
     fetcher,
     { 
-      fallbackData: [{ boulderproblems: initialClimbSearchResults, totalCount: initialClimbSearchTotalCount }],
+      // fallbackData: [{ boulderproblems: initialClimbSearchResults, totalCount: initialClimbSearchResultCount }],
       revalidateOnFocus: false, 
       revalidateFirstPage: false 
     }
@@ -107,7 +102,7 @@ export const QueueProvider = ({
   const hasMoreResults = data && data[0] && (size * PAGE_LIMIT) < data[0].totalCount;
   
   // Aggregate all pages of climbs
-  const climbSearchResults = data ? data.flatMap((page) => page.boulderproblems) : [];
+  const climbSearchResults = data ? data.flatMap((page) => page.boulderproblems) : null;
 
   const addToQueue = (climb: BoulderProblem) => {
     setQueueState((prevQueue) => [
@@ -158,7 +153,7 @@ export const QueueProvider = ({
 
   const setCurrentClimbQueueItem = (item: ClimbQueueItem) => {
     setCurrentClimbQueueItemState(item);
-    if (item.suggested && !queue.find(({ uuid }) => uuid === item.uuid)) {
+    if (item.suggested && !queue.find(({ uuid }) => uuid === item.uuid) && climbSearchResults && climbSearchResults.length) {
       const suggestedQueueItemIndex = climbSearchResults.findIndex(({ uuid }) => uuid === currentClimbQueueItem?.climb.uuid);
       
       setQueueState((prevQueue) => [...prevQueue, item]);
@@ -171,27 +166,41 @@ export const QueueProvider = ({
 
   
   const getNextClimbQueueItem = (): ClimbQueueItem | null => {
-    if (queue.length === 0 && climbSearchResults.length === 0) {
+    if (queue.length === 0 && (!climbSearchResults || climbSearchResults.length === 0)) {
       return null;
     }
 
     const queueItemIndex = queue.findIndex(({ uuid }) => uuid === currentClimbQueueItem?.uuid);
-    const suggestedQueueItemIndex = climbSearchResults.findIndex(({ uuid }) => uuid === currentClimbQueueItem?.climb.uuid);
 
-    if (queue.length === 0 || queue.length <= queueItemIndex + 1 ) {
+    // Handle the case where climbSearchResults is null or empty
+    if ((queue.length === 0 || queue.length <= queueItemIndex + 1) && climbSearchResults && climbSearchResults.length > 0) {
+      const suggestedQueueItemIndex = climbSearchResults.findIndex(({ uuid }) => uuid === currentClimbQueueItem?.climb.uuid);
+
+      const nextClimb = climbSearchResults
+        .filter(({ uuid: searchUuid }, index) => 
+          index > suggestedQueueItemIndex && 
+          !queue.find(({ climb: { uuid } }) => uuid === searchUuid)
+        )[0];
+
+      // If there is no next climb found, return null
+      if (!nextClimb) {
+        return null;
+      }
+
       return {
         uuid: uuidv4(),
-        climb: climbSearchResults.filter(({uuid: searchUuid}, index) => index > suggestedQueueItemIndex && !queue.find(({ climb: { uuid }}) => uuid === searchUuid))[0],
+        climb: nextClimb,
         suggested: true,
-      }
+      };
     }
-    
-    if (queueItemIndex > queue.length + 1) {
+
+    if (queueItemIndex >= queue.length - 1) {
       return null;
     }
-    
+
     return queue[queueItemIndex + 1];
-  }
+  };
+
 
   const getPreviousClimbQueueItem = (): ClimbQueueItem | null => {
     const queueItemIndex = queue.findIndex(({ uuid }) => uuid === currentClimbQueueItem?.uuid);
@@ -207,7 +216,6 @@ export const QueueProvider = ({
     <QueueContext.Provider
       value={{
         queue,
-        suggestedQueue,
         addToQueue,
         removeFromQueue,
         climbSearchResults,
@@ -220,7 +228,6 @@ export const QueueProvider = ({
         setCurrentClimbQueueItem,
         getNextClimbQueueItem,
         getPreviousClimbQueueItem,
-        
       }}
     >
       {children}

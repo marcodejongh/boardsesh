@@ -16,7 +16,7 @@ const FilterColumn = () => {
     <>
       <Button type="default" icon={<SearchOutlined />} onClick={() => setIsOpen(true)} />
       <Drawer
-        title="Advanced Filters"
+        title="Search"
         placement="right"
         width={"80%"}
         open={isOpen}

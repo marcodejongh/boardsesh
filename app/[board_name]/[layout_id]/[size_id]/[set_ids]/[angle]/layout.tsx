@@ -38,34 +38,15 @@ export default async function BoardLayout({ children, params, searchParams = {} 
 
   const { board_name, layout_id, size_id, set_ids, angle, uuid } = parsedParams;
    
-  // TODO: Unduplicate this code
-  const searchParamsObject: SearchRequestPagination = {
-      gradeAccuracy: parseFloat(searchParams.gradeAccuracy || "0"),
-      maxGrade: parseInt(searchParams.maxGrade || "29", 10),
-      minAscents: parseInt(searchParams.minAscents || "0", 10),
-      minGrade: parseInt(searchParams.minGrade || "1", 10),
-      minRating: parseFloat(searchParams.minRating || "0"),
-      sortBy: (searchParams.sortBy || "ascents") as "ascents" | "difficulty" | "name" | "quality",
-      sortOrder: (searchParams.sortOrder || "desc") as "asc" | "desc",
-      name: searchParams.name || "",
-      onlyClassics: searchParams.onlyClassics === "true",
-      settername: searchParams.settername || "",
-      setternameSuggestion: searchParams.setternameSuggestion || "",
-      holds: searchParams.holds || "",
-      mirroredHolds: searchParams.mirroredHolds || "",
-      pageSize: Number(searchParams.pageSize || PAGE_LIMIT),
-      page: Number(searchParams.page || 0),
-    };
   // Fetch the climbs and board details server-side
-  const [fetchedResults, boardDetails] = await Promise.all([
-      fetchResults(searchParamsObject, parsedParams),
+  const [ boardDetails ] = await Promise.all([
       fetchBoardDetails(parsedParams.board_name, parsedParams.layout_id, parsedParams.size_id, parsedParams.set_ids),
     ]);
   return (
     <>
       <title>{`Boardsesh on ${board_name} - Layout ${layout_id}`}</title>
       <Layout style={{ height: "100dvh", display: "flex", flexDirection: "column" }}>
-        <QueueProvider parsedParams={parsedParams} initialClimbSearchResults={fetchedResults.boulderproblems} initialClimbSearchTotalCount={fetchedResults.totalCount}>
+        <QueueProvider parsedParams={parsedParams}>
           <BoardSeshHeader params={parsedParams} />
           <Content id="content-for-scrollable" style={{ 
             flex: 1, 
