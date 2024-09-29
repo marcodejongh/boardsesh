@@ -3,7 +3,7 @@
 import useSWRInfinite from "swr/infinite";
 import { Row, Col, Typography, Skeleton } from "antd";
 import InfiniteScroll from "react-infinite-scroll-component";
-import { SearchRequestPagination, BoulderProblem, ParsedBoardRouteParameters, GetBoardDetailsResponse, ParsedBoardRouteParametersWithUuid, ClimbUuid, BoardRouteParameters } from "@/app/lib/types";
+import { SearchRequestPagination, BoulderProblem, ParsedBoardRouteParameters, BoardDetails, ParsedBoardRouteParametersWithUuid, ClimbUuid, BoardRouteParameters } from "@/app/lib/types";
 import { PAGE_LIMIT } from "./constants";
 import { useQueueContext } from "../board-control/queue-context";
 import ClimbCard from "../climb-card/climb-card";
@@ -15,26 +15,26 @@ import BoardRenderer from "../board-renderer/board-renderer";
 const { Title } = Typography;
 
 type ClimbsListProps = ParsedBoardRouteParameters & {
-  boardDetails: GetBoardDetailsResponse;
+  boardDetails: BoardDetails;
+  initialClimbs: BoulderProblem[];
 };
-
-type BoardPreviewProps = { 
-  climb: BoulderProblem;
-  parsedParams: ParsedBoardRouteParametersWithUuid;
-  setCurrentClimb: (climb: BoulderProblem) => void;
-  boardDetails: GetBoardDetailsResponse;
-}
 
 const ClimbsList = ({
   boardDetails,
+  initialClimbs,
 }: ClimbsListProps) => {
-  // SWR fetcher function for client-side fetching
   const { setCurrentClimb, climbSearchResults, hasMoreResults, fetchMoreClimbs, addToQueue } = useQueueContext();
   const parsedParams = parseBoardRouteParams(useParams<BoardRouteParameters>());
   
+  // Queue Context provider uses SWR infinite to fetch results, which can only happen clientside.
+  // That data equals null at the start, so when its null we use the initialClimbs array which we
+  // fill on the server side in the page component. This way the user never sees a loading state for
+  // the climb list.
+  const climbs = climbSearchResults === null ? initialClimbs : climbSearchResults;
+
   return (
       <InfiniteScroll
-        dataLength={climbSearchResults.length}
+        dataLength={climbs.length}
         next={fetchMoreClimbs}
         hasMore={hasMoreResults}
         loader={<Skeleton active />}
@@ -43,7 +43,7 @@ const ClimbsList = ({
         scrollableTarget="content-for-scrollable"
       >
         <Row gutter={[16, 16]}>
-          {climbSearchResults.map((climb) => (
+          {climbs.map((climb) => (
             <Col xs={24} lg={12} xl={12} key={climb.uuid}>
               <ClimbCard 
                 setCurrentClimb={setCurrentClimb}

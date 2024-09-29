@@ -15,11 +15,14 @@ import {
   SearchRequest,
   SearchRequestPagination,
   HoldTuple,
-  GetBoardDetailsResponse,
+  BoardDetails,
+  ImagesToHolds,
+  ImageFileName,
 } from "../types";
 import { PAGE_LIMIT } from "@/app/components/board-page/constants";
 import { HoldRenderData } from "@/app/components/board-renderer/types";
 import { getBoardImageDimensions } from "@/app/components/board-renderer/util";
+import { SetIdList } from "../board-data";
 
 const getTableName = (board_name: string, table_name: string) => {
   switch (board_name) {
@@ -31,76 +34,43 @@ const getTableName = (board_name: string, table_name: string) => {
   }
 };
 
+type ImageFileNameRow = { image_filename: string };
+type HoldsRow = { 
+  placement_id: number;
+  mirrored_placement_id: number;
+  x: number;
+  y: number;
+};
+
+type ProductSizeRow = { 
+  edge_left: number; 
+  edge_right: number;
+  edge_bottom: number;
+  edge_top: number;
+}
+
 // Collect data for each set_id
 export const getBoardDetails = async ({
   board_name,
   layout_id,
   size_id,
   set_ids,
-}: ParsedBoardRouteParameters): Promise<GetBoardDetailsResponse> => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const imagesToHolds: Record<string, any> = {};
-  
-  for (const set_id of set_ids) {
-    // Get image filename
-    const { rows } = await sql.query(
+}: ParsedBoardRouteParameters): Promise<BoardDetails> => {
+  const imageUrlHoldsMapEntriesPromises = 
+    getImageUrlHoldsMapObjectEntries(set_ids, board_name, layout_id, size_id);
+
+  const [ { rows: sizeDimensions }, ...imgUrlMapEntries ] = await Promise.all([
+    sql.query<ProductSizeRow>(
       `
-        SELECT image_filename
-        FROM ${getTableName(board_name, "product_sizes_layouts_sets")} product_sizes_layouts_sets
-        WHERE layout_id = $1
-        AND product_size_id = $2
-        AND set_id = $3
-      `,
-      [layout_id, size_id, set_id],
-    );
-
-    if (rows.length === 0)
-      throw new Error(`Could not find set_id ${set_id} for layout_id: ${layout_id} and size_id: ${size_id}`);
-
-    const imageFilename = rows[0].image_filename;
-
-    // Extract image filename
-    const image_url = imageFilename;
-    // Get holds data
-    const { rows: holds } = await sql.query(
-      `
-        SELECT 
-          placements.id AS placement_id, 
-          mirrored_placements.id AS mirrored_placement_id, 
-          holes.x, holes.y
-        FROM ${getTableName(board_name, "holes")} holes
-        INNER JOIN ${getTableName(board_name, "placements")} placements ON placements.hole_id = holes.id
-        AND placements.set_id = $1
-        AND placements.layout_id = $2
-        LEFT JOIN ${getTableName(
-          board_name,
-          "placements",
-        )} mirrored_placements ON mirrored_placements.hole_id = holes.mirrored_hole_id
-        AND mirrored_placements.set_id = $1
-        AND mirrored_placements.layout_id = $2
-      `,
-      [set_id, layout_id],
-    );
-
-    if (holds.length > 0) {
-      imagesToHolds[image_url] = holds.map((hold) => [
-        hold.placement_id, // First position: regular placement ID
-        hold.mirrored_placement_id || null, // Second position: mirrored placement ID (or null)
-        hold.x, // Third position: x coordinate
-        hold.y, // Fourth position: y coordinate
-      ]);
-    }
-  }
-
-  // Get size dimensions
-  const { rows: sizeDimensions } = await sql.query(
-    `
     SELECT edge_left, edge_right, edge_bottom, edge_top
     FROM ${getTableName(board_name, "product_sizes")}
     WHERE id = $1
   `,
-    [size_id],
-  );
+      [size_id],
+    ), ...imageUrlHoldsMapEntriesPromises
+  ]);
+  const imagesToHolds = Object.fromEntries(imgUrlMapEntries);
+
 
   if (sizeDimensions.length === 0) {
     throw new Error("Size dimensions not found");
@@ -132,6 +102,10 @@ export const getBoardDetails = async ({
     edge_top: sizeDimensions[0].edge_top,
     boardHeight,
     boardWidth,
+    board_name,
+    layout_id,
+    size_id,
+    set_ids,
   };
 };
 
@@ -182,6 +156,9 @@ export const searchBoulderProblems = async (
 
   const safeSortBy = allowedSortColumns[searchParams.sortBy] || "ascensionist_count";
 
+  // Initialize the where clause for climbs.name
+  const climbNameClause = searchParams.climbName ? `AND climbs.name ILIKE '%' || $12 || '%'` : "";
+
   const query = await sql.query({
     text: `
         WITH filtered_climbs AS (
@@ -218,6 +195,7 @@ export const searchBoulderProblems = async (
           }
           AND climb_stats.quality_average >= $7
           AND ABS(ROUND(climb_stats.display_difficulty::numeric, 0) - climb_stats.difficulty_average::numeric) <= $8
+          ${climbNameClause} -- Conditionally add the name filter
         )
         SELECT *, 
         (SELECT COUNT(*) FROM filtered_climbs) as total_count
@@ -237,7 +215,8 @@ export const searchBoulderProblems = async (
       searchParams.pageSize,
       searchParams.page * PAGE_LIMIT,
       params.angle,
-    ],
+      searchParams.climbName || null, // Pass climbName only if defined
+    ].filter((value) => value !== null), // Remove any null values that don't match query clauses
   });
 
   return {
@@ -245,3 +224,63 @@ export const searchBoulderProblems = async (
     totalCount: query.rows.length > 0 ? query.rows[0].total_count : 0,
   };
 };
+
+function getImageUrlHoldsMapObjectEntries(
+  set_ids: SetIdList,
+  board_name: string,
+  layout_id: number,
+  size_id: number,
+): Promise<[ImageFileName, HoldTuple[]]>[] {
+  return set_ids.map(async (set_id): Promise<[ImageFileName, HoldTuple[]]> => {
+    const [{ rows: imageRows }, { rows: holds }] = await Promise.all([
+      sql.query<ImageFileNameRow>(
+        `
+        SELECT image_filename
+        FROM ${getTableName(board_name, "product_sizes_layouts_sets")} product_sizes_layouts_sets
+        WHERE layout_id = $1
+        AND product_size_id = $2
+        AND set_id = $3
+      `,
+        [layout_id, size_id, set_id],
+      ),
+      sql.query<HoldsRow>(
+        `
+          SELECT 
+            placements.id AS placement_id, 
+            mirrored_placements.id AS mirrored_placement_id, 
+            holes.x, holes.y
+          FROM ${getTableName(board_name, "holes")} holes
+          INNER JOIN ${getTableName(board_name, "placements")} placements ON placements.hole_id = holes.id
+          AND placements.set_id = $1
+          AND placements.layout_id = $2
+          LEFT JOIN ${getTableName(
+            board_name,
+            "placements",
+          )} mirrored_placements ON mirrored_placements.hole_id = holes.mirrored_hole_id
+          AND mirrored_placements.set_id = $1
+          AND mirrored_placements.layout_id = $2
+        `,
+        [set_id, layout_id],
+      ),
+    ]);
+
+    if (imageRows.length === 0) {
+      throw new Error(`Could not find set_id ${set_id} for layout_id: ${layout_id} and size_id: ${size_id}`);
+    }
+    const { image_filename } = imageRows[0]
+    if (holds.length === 0) {
+      return [image_filename, []];
+    }
+
+    return [
+      image_filename,
+      holds.map((hold) => [
+        hold.placement_id, // First position: regular placement ID
+        hold.mirrored_placement_id || null, // Second position: mirrored placement ID (or null)
+        hold.x, // Third position: x coordinate
+        hold.y,
+      ]),
+    ];
+  });
+}
+

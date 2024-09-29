@@ -3,10 +3,8 @@
 import { SetIdList } from "@/app/lib/board-data";
 import { SearchBoulderProblemResult } from "@/app/lib/data/queries";
 import {
-  BoardRouteParametersWithUuid,
   FetchCurrentProblemResponse,
-  GetBoardDetailsResponse,
-  SearchRequest,
+  BoardDetails,
   ParsedBoardRouteParameters,
   ParsedBoardRouteParametersWithUuid,
   SearchRequestPagination,
@@ -29,7 +27,7 @@ export const fetchResults = async (
       return acc;
     }, {} as Record<string, string>),
   );
-
+  
   // Build the URL using the new route structure
   const response = await fetch(
     `${API_BASE_URL}/v1/${routeParameters.board_name}/${routeParameters.layout_id}/${routeParameters.size_id}/${routeParameters.set_ids}/${routeParameters.angle}/search?${urlParams}&bustCache=1`,
@@ -62,8 +60,8 @@ export const fetchBoardDetails = async (
   layout: number,
   size: number,
   set_ids: SetIdList,
-): Promise<GetBoardDetailsResponse> => {
-  const apiUrl = `${API_BASE_URL}/v1/${board}/${layout}/${size}/${set_ids.join(",")}/details?bustCache=1`;
+): Promise<BoardDetails> => {
+  const apiUrl = `${API_BASE_URL}/v1/${board}/${layout}/${size}/${set_ids.join(",")}/details?bustCache=342`;
   const response = await fetch(apiUrl);
   
   if (!response.ok) {

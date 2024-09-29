@@ -54,6 +54,7 @@ export type SetsResponse = {
 
 // Search Request Type
 export type SearchRequest = {
+  climbName?: string;
   gradeAccuracy: number;
   maxGrade: number;
   minAscents: number;
@@ -154,8 +155,9 @@ export type Hold = {
 export type HoldTuple = [number, number | null, number, number];
 
 // Ensure imagesToHolds is typed as a Record where each key maps to an array of HoldTuples
-export type ImagesToHolds = Record<string, HoldTuple[]>;
-export type GetBoardDetailsResponse = {
+export type ImageFileName = string;
+export type ImagesToHolds = Record<ImageFileName, HoldTuple[]>;
+export type BoardDetails = {
   images_to_holds: ImagesToHolds;
   holdsData: HoldRenderData[];
   edge_left: number;
@@ -164,6 +166,10 @@ export type GetBoardDetailsResponse = {
   edge_top: number;
   boardHeight: number;
   boardWidth: number;
+  board_name: BoardName;
+  layout_id: number;
+  size_id: number;
+  set_ids: SetIdList;
 };
 
 export type GetLedColorsResponse = LedColor;

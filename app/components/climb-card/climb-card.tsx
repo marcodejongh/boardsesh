@@ -1,11 +1,11 @@
 import Card from "antd/es/card";
 import { SettingOutlined, PlusCircleOutlined, FireOutlined } from "@ant-design/icons";
 import ClimbCardCover from "./climb-card-cover";
-import { BoulderProblem, GetBoardDetailsResponse, ParsedBoardRouteParameters } from "@/app/lib/types";
+import { BoulderProblem, BoardDetails, ParsedBoardRouteParameters } from "@/app/lib/types";
 
 type ClimbCardProps = { 
   climb: BoulderProblem;
-  boardDetails: GetBoardDetailsResponse;
+  boardDetails: BoardDetails;
   setCurrentClimb?: (climb: BoulderProblem) => void; 
   addToQueue?: (climb: BoulderProblem) => void; 
   parsedParams: ParsedBoardRouteParameters;

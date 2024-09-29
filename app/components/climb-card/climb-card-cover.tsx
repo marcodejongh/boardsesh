@@ -1,4 +1,4 @@
-import { BoulderProblem, ClimbUuid, GetBoardDetailsResponse, ParsedBoardRouteParameters } from "@/app/lib/types";
+import { BoulderProblem, ClimbUuid, BoardDetails, ParsedBoardRouteParameters } from "@/app/lib/types";
 import { constructClimbViewUrl } from "@/app/lib/url-utils";
 import BoardRenderer from "@/app/components/board-renderer/board-renderer";
 import Link from "next/link";
@@ -6,7 +6,7 @@ import Link from "next/link";
 type ClimbCardCoverProps = { 
   climb: BoulderProblem;
   parsedParams: ParsedBoardRouteParameters;
-  boardDetails: GetBoardDetailsResponse;
+  boardDetails: BoardDetails;
   children: React.ReactNode;
   clickable?: boolean;
 }

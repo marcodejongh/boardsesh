@@ -31,10 +31,11 @@ export default async function DynamicResultsPage({
   }
 }) {
   const parsedParams = parseBoardRouteParams(params);
-
+  
   try {
     // Create searchParams object from the passed query parameters
     const searchParamsObject: SearchRequestPagination = {
+      ...searchParams,
       gradeAccuracy: parseFloat(searchParams.gradeAccuracy || "0"),
       maxGrade: parseInt(searchParams.maxGrade || "29", 10),
       minAscents: parseInt(searchParams.minAscents || "0", 10),
@@ -51,6 +52,7 @@ export default async function DynamicResultsPage({
       pageSize: Number(searchParams.pageSize || PAGE_LIMIT),
       page: Number(searchParams.page || 0),
     };
+    
     // Fetch the climbs and board details server-side
     const [fetchedResults, boardDetails] = await Promise.all([
       fetchResults(searchParamsObject, parsedParams),
@@ -62,10 +64,13 @@ export default async function DynamicResultsPage({
     }
 
     return (
-      <ClimbsList
-        {...parsedParams}
-        boardDetails={boardDetails}
-      />
+      <>
+        <ClimbsList
+          {...parsedParams}
+          boardDetails={boardDetails}
+          initialClimbs={fetchedResults.boulderproblems}
+        />
+      </>
     );
   } catch (error) {
     console.error("Error fetching results or climb:", error);
