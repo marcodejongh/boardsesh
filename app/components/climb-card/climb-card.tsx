@@ -9,8 +9,8 @@ type ClimbCardProps = {
   setCurrentClimb?: (climb: BoulderProblem) => void; 
   addToQueue?: (climb: BoulderProblem) => void; 
   parsedParams: ParsedBoardRouteParameters;
-  children: React.ReactNode;
   clickable?: boolean;
+  onCoverClick?: () => void;
 }
 
 const ClimbCard = ({
@@ -19,17 +19,17 @@ const ClimbCard = ({
   setCurrentClimb,
   addToQueue,
   parsedParams,
-  children,
   clickable,
+  onCoverClick,
 }: ClimbCardProps) => {
   const cover = (
     <ClimbCardCover 
       climb={climb}
       parsedParams={parsedParams}
       boardDetails={boardDetails}
-      clickable={clickable}>
-      {children}
-    </ClimbCardCover>
+      clickable={clickable}
+      onClick={onCoverClick}
+      />
   );
   return (
     <Card

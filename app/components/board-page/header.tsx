@@ -43,7 +43,7 @@ export default function BoardSeshHeader(props: HeaderProps) {
 
         <Col xs={6} sm={4} md={4} lg={4} xl={4} style={{ textAlign: "right" }}>
           <Space>
-            {isList ? <SearchButton /> : <BackToClimbList {...params}/>}
+            {isList ? <SearchButton /> : null}
             {!isList ? <ClimbInfoButton/> : null }
           </Space>
         </Col>

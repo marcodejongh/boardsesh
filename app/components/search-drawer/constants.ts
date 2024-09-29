@@ -1,4 +1,5 @@
 import { SearchRequestPagination } from "@/app/lib/types";
+import { PAGE_LIMIT } from "../board-page/constants";
 
 // Default climb search parameters
 export const defaultClimbSearchParameters: SearchRequestPagination = {
@@ -15,6 +16,6 @@ export const defaultClimbSearchParameters: SearchRequestPagination = {
   setternameSuggestion: "",
   holds: "",
   mirroredHolds: "",
-  pageSize: 20, // Assuming PAGE_LIMIT is 20
+  pageSize: PAGE_LIMIT,
   page: 0,
 };

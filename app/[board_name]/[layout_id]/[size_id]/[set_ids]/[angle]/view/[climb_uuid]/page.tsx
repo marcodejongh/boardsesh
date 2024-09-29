@@ -28,14 +28,7 @@ export default async function DynamicResultsPage({
             parsedParams={parsedParams}
             climb={currentClimb}
             boardDetails={boardDetails} 
-          >
-            <BoardRenderer
-              holdsData={boardDetails.holdsData}
-              litUpHoldsMap={currentClimb.litUpHoldsMap}
-              boardDetails={boardDetails} 
-              board_name={parsedParams.board_name}
-              />
-          </ClimbCard>
+          />
         </Col>
         <Col xs={24} md={8} style={{ marginBottom: "16px" }}>
           <ClimbInfoColumn />

@@ -3,8 +3,7 @@ import { BoardRouteParametersWithUuid, SearchRequestPagination } from "@/app/lib
 import { parseBoardRouteParams } from "@/app/lib/url-utils";
 import ClimbsList from "@/app/components/board-page/climbs-list";
 import { fetchBoardDetails, fetchResults } from "@/app/components/rest-api/api";
-
-const PAGE_LIMIT = 20; // Set your page limit here or import it from elsewhere
+import { PAGE_LIMIT } from "@/app/components/board-page/constants";
 
 export default async function DynamicResultsPage({
   params,
@@ -49,8 +48,9 @@ export default async function DynamicResultsPage({
       setternameSuggestion: searchParams.setternameSuggestion || "",
       holds: searchParams.holds || "",
       mirroredHolds: searchParams.mirroredHolds || "",
-      pageSize: Number(searchParams.pageSize || PAGE_LIMIT),
-      page: Number(searchParams.page || 0),
+      pageSize: (Number(searchParams.pageSize || PAGE_LIMIT) * ((Number(searchParams.page) || 0) + 1)),
+      // We always render from page 0, but we increase the size when the page > 0
+      page: 0,
     };
     
     // Fetch the climbs and board details server-side

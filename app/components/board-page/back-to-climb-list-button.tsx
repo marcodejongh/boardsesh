@@ -1,6 +1,6 @@
 import React from "react";
 
-import { ParsedBoardRouteParameters } from "@/lib/types";
+import { ParsedBoardRouteParameters, ParsedBoardRouteParametersWithUuid } from "@/lib/types";
 import { Button } from "antd";
 import {
   LeftOutlined,
@@ -15,11 +15,12 @@ const BackToClimbList = ({
   size_id,
   set_ids,
   angle,
-}: ParsedBoardRouteParameters) => {
+  climb_uuid
+}: ParsedBoardRouteParametersWithUuid) => {
   const { climbSearchParams } = useQueueContext()
   
   return (
-    <Link href={`/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/list?${searchParamsToUrlParams(climbSearchParams).toString()}`}>
+    <Link href={`/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/list?${searchParamsToUrlParams(climbSearchParams).toString()}#${climb_uuid}`}>
       <Button type="default" icon={(<LeftOutlined />)} />
     </Link>
   )
