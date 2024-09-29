@@ -94,7 +94,7 @@ const ClimbsList = ({
         <Row gutter={[16, 16]}>
           {climbs.map((climb) => (
             <Col xs={24} lg={12} xl={12} key={climb.uuid}>
-              <div ref={(el) => climbsRefs.current[climb.uuid] = el}>
+              <div ref={(el) => { climbsRefs.current[climb.uuid] = el; }}>
                 <ClimbCard 
                   setCurrentClimb={setCurrentClimb}
                   addToQueue={addToQueue}
