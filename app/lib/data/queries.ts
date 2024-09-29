@@ -31,6 +31,21 @@ const getTableName = (board_name: string, table_name: string) => {
   }
 };
 
+type ImageFileNameRow = { image_filename: string };
+type HoldsRow = { 
+  placement_id: number;
+  mirrored_placement_id: number;
+  x: number;
+  y: number;
+};
+
+type ProductSizeRow = { 
+  edge_left: number; 
+  edge_right: number;
+  edge_bottom: number;
+  edge_top: number;
+}
+
 // Collect data for each set_id
 export const getBoardDetails = async ({
   board_name,
@@ -43,7 +58,7 @@ export const getBoardDetails = async ({
   
   for (const set_id of set_ids) {
     // Get image filename
-    const { rows } = await sql.query(
+    const { rows: imageRows } = await sql.query<ImageFileNameRow>(
       `
         SELECT image_filename
         FROM ${getTableName(board_name, "product_sizes_layouts_sets")} product_sizes_layouts_sets
@@ -54,15 +69,15 @@ export const getBoardDetails = async ({
       [layout_id, size_id, set_id],
     );
 
-    if (rows.length === 0)
+    if (imageRows.length === 0)
       throw new Error(`Could not find set_id ${set_id} for layout_id: ${layout_id} and size_id: ${size_id}`);
 
-    const imageFilename = rows[0].image_filename;
+    const imageFilename = imageRows[0].image_filename;
 
     // Extract image filename
     const image_url = imageFilename;
     // Get holds data
-    const { rows: holds } = await sql.query(
+    const { rows: holds } = await sql.query<HoldsRow>(
       `
         SELECT 
           placements.id AS placement_id, 
@@ -93,14 +108,15 @@ export const getBoardDetails = async ({
   }
 
   // Get size dimensions
-  const { rows: sizeDimensions } = await sql.query(
-    `
+  const { rows: sizeDimensions } =
+    await sql.query<ProductSizeRow>(
+      `
     SELECT edge_left, edge_right, edge_bottom, edge_top
     FROM ${getTableName(board_name, "product_sizes")}
     WHERE id = $1
   `,
-    [size_id],
-  );
+      [size_id],
+    );
 
   if (sizeDimensions.length === 0) {
     throw new Error("Size dimensions not found");
