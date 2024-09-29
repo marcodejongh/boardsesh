@@ -7,6 +7,8 @@ import { createContext, useContext, useState, ReactNode } from "react";
 import useSWRInfinite from "swr/infinite";
 import { v4 as uuidv4 } from 'uuid';
 import { PAGE_LIMIT } from "../board-page/constants";
+import { useDebouncedCallback } from "use-debounce";
+import { usePathname, useRouter, useParams } from "next/navigation";
 
 type QueueContextProps = {
   parsedParams: ParsedBoardRouteParameters;
@@ -65,14 +67,25 @@ export const QueueProvider = ({
   parsedParams, 
   children, 
 }: QueueContextProps) => {
+  const pathName = usePathname();
+  const { replace } = useRouter();
 
   const [queue, setQueueState] = useState<ClimbQueue>([]);
   
   const [currentClimbQueueItem, setCurrentClimbQueueItemState] = useState<ClimbQueueItem | null>(null);
   
-  const [climbSearchParams, setClimbSearchParams] = useState<SearchRequestPagination>(
+  const [climbSearchParams, setClimbSearchParamsState] = useState<SearchRequestPagination>(
     urlParamsToSearchParams(useSearchParams())
   );
+  
+  const setClimbSearchParams = (updatedFilters: SearchRequestPagination) => {
+    setClimbSearchParamsState(updatedFilters);
+    debouncedUpdate(updatedFilters);
+  }
+  
+  const debouncedUpdate = useDebouncedCallback((updatedFilters) => {
+    replace(`${pathName}?${searchParamsToUrlParams(climbSearchParams).toString()}`);
+  }, 300);
   
   const getKey = (pageIndex: number, previousPageData: any) => {
     if (previousPageData && previousPageData.boulderproblems.length === 0) return null;

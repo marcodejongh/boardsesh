@@ -1,6 +1,5 @@
 import React from "react";
 import { BoardRouteParameters, SearchRequest } from "@/lib/types";
-import { useDebouncedCallback } from "use-debounce";
 import { Form, Slider, InputNumber, Row, Col, Select, Input } from "antd";
 import { ANGLES, TENSION_KILTER_GRADES } from "@/app/lib/board-data";
 import { usePathname, useRouter, useParams } from "next/navigation";
@@ -11,23 +10,17 @@ interface SearchFormProps {}
 
 const SearchForm: React.FC<SearchFormProps> = () => {
   const { climbSearchParams, setClimbSearchParams } = useQueueContext();
-  const pathName = usePathname();
   
   const { board_name } = parseBoardRouteParams(useParams() as BoardRouteParameters);
   
-  const { replace } = useRouter();
+  
 
   const grades = TENSION_KILTER_GRADES;
   const angles = ANGLES[board_name];
-  
-  const debouncedUpdate = useDebouncedCallback((updatedFilters) => {
-    replace(`${pathName}?${searchParamsToUrlParams(climbSearchParams).toString()}`);
-  }, 300);
 
   const updateFilters = (newFilters: Partial<SearchRequest>) => {
     const updatedFilters = { ...climbSearchParams, ...newFilters };
     setClimbSearchParams(updatedFilters);
-    debouncedUpdate(updatedFilters);
   };
 
   return (
