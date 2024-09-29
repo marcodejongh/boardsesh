@@ -111,7 +111,7 @@ export const QueueProvider = ({
       const newParams = { ...climbSearchParams, page: oldSize + 1};
       // We persist the new page number in the URL so that the page on a hard refresh will
       // be the same as it was before, and hopefully will restore scroll correctly.
-      history.replaceState(null, '', `${pathName}?${searchParamsToUrlParams(newParams).toString()}`, { scroll: false});
+      history.replaceState(null, '', `${pathName}?${searchParamsToUrlParams(newParams).toString()}`);
       return oldSize + 1;
     });
     
