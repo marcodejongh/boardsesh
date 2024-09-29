@@ -1,22 +1,16 @@
 "use client";
-import { ParsedBoardRouteParameters } from "@/app/lib/types";
+import React from 'react';
+
 import { Col, Row, Space } from "antd";
 
 import { Header } from "antd/es/layout/layout";
 import Title from "antd/es/typography/Title";
-import BackToClimbList from "@/app/components/board-page/back-to-climb-list-button";
 import { usePathname } from "next/navigation";
 import SearchButton from "../search-drawer/search-button";
 import ClimbInfoButton from "../climb-info/climb-info-button";
 
-interface HeaderProps {
-  params: ParsedBoardRouteParameters;
-}
-
-
-export default function BoardSeshHeader(props: HeaderProps) {
+export default function BoardSeshHeader() {
   const pathname = usePathname();
-  const { params } = props;
   const isList = pathname.endsWith('/list');
 
   return (

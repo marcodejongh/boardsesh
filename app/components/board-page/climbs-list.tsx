@@ -1,17 +1,15 @@
 'use client';
+import React from 'react';
 
-import { Row, Col, Typography, Skeleton } from "antd";
+import { Row, Col, Skeleton } from "antd";
 import InfiniteScroll from "react-infinite-scroll-component";
-import { BoulderProblem, ParsedBoardRouteParameters, BoardDetails, ParsedBoardRouteParametersWithUuid, ClimbUuid, BoardRouteParameters } from "@/app/lib/types";
+import { BoulderProblem, ParsedBoardRouteParameters, BoardDetails, BoardRouteParameters } from "@/app/lib/types";
 import { useQueueContext } from "../board-control/queue-context";
 import ClimbCard from "../climb-card/climb-card";
-import { parseBoardRouteParams, urlParamsToSearchParams } from "@/app/lib/url-utils";
-import { useParams, usePathname, useSearchParams } from "next/navigation";
-import BoardRenderer from "../board-renderer/board-renderer";
-import { useEffect, useRef, useState } from "react";
+import { parseBoardRouteParams } from "@/app/lib/url-utils";
+import { useParams } from "next/navigation";
+import { useEffect, useRef } from "react";
 import { useDebouncedCallback } from "use-debounce";
-
-const { Title } = Typography;
 
 type ClimbsListProps = ParsedBoardRouteParameters & {
   boardDetails: BoardDetails;

@@ -16,8 +16,8 @@ import {
   SearchRequestPagination,
   HoldTuple,
   BoardDetails,
-  ImagesToHolds,
   ImageFileName,
+  BoardName,
 } from "../types";
 import { PAGE_LIMIT } from "@/app/components/board-page/constants";
 import { HoldRenderData } from "@/app/components/board-renderer/types";
@@ -284,3 +284,19 @@ function getImageUrlHoldsMapObjectEntries(
   });
 }
 
+type LayoutRow = {
+  id: number;
+  name: string;
+}
+export const getLayouts = async (board_name: BoardName) => {
+  const { rows: layouts } = await sql.query<LayoutRow>(`
+    SELECT id, name
+    FROM ${getTableName(
+            board_name,
+            "layouts",
+          )} layouts
+    WHERE is_listed = true
+    AND password IS NULL
+  `);
+  return layouts;
+}

@@ -5,6 +5,7 @@ import { SearchRequestPagination, ParsedBoardRouteParameters } from "@/app/lib/t
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export const useBoulderProblems = (params: ParsedBoardRouteParameters, searchParams: SearchRequestPagination) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const getKey = (pageIndex: number, previousPageData: any) => {
     if (previousPageData && previousPageData.boulderproblems.length === 0) return null;
 

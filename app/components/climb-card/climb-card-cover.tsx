@@ -1,4 +1,5 @@
-import { BoulderProblem, ClimbUuid, BoardDetails, ParsedBoardRouteParameters } from "@/app/lib/types";
+import React from 'react';
+import { BoulderProblem, BoardDetails, ParsedBoardRouteParameters } from "@/app/lib/types";
 import { constructClimbViewUrl } from "@/app/lib/url-utils";
 import BoardRenderer from "@/app/components/board-renderer/board-renderer";
 import Link from "next/link";

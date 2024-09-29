@@ -1,4 +1,4 @@
-import { BoardName, BoardDetails } from "@/lib/types";
+import { BoardName } from "@/lib/types";
 
 export type LitUpHolds = string;
 

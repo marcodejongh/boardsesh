@@ -1,5 +1,6 @@
+import React from 'react';
 import Card from "antd/es/card";
-import { SettingOutlined, PlusCircleOutlined, FireOutlined } from "@ant-design/icons";
+import { PlusCircleOutlined, FireOutlined } from "@ant-design/icons";
 import ClimbCardCover from "./climb-card-cover";
 import { BoulderProblem, BoardDetails, ParsedBoardRouteParameters } from "@/app/lib/types";
 

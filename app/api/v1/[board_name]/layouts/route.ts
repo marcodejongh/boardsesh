@@ -1,17 +1,14 @@
-import { sql } from "@vercel/postgres";
+import { getLayouts } from "@/app/lib/data/queries";
+import { BoardRouteParameters } from "@/app/lib/types";
+import { parseBoardRouteParams } from "@/app/lib/url-utils";
 import { NextResponse } from "next/server";
 
 // Correct typing for the parameters
-export async function GET(req: Request, { params }: { params: { board_name: string } }) {
-  const { board_name } = params;
+export async function GET(req: Request, { params }: { params: BoardRouteParameters }) {
+  const { board_name } = parseBoardRouteParams(params);
 
   try {
-    const { rows: layouts } = await sql`
-      SELECT id, name
-      FROM layouts
-      WHERE is_listed = true
-      AND password IS NULL
-    `;
+    const layouts = await getLayouts(board_name)
 
     return NextResponse.json(layouts);
   } catch (error) {

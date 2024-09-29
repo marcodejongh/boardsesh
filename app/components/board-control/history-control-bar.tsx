@@ -1,8 +1,7 @@
 "use client";
 import React from "react";
 import { Button, Typography, Row, Col, Card } from "antd";
-import { LeftOutlined, RightOutlined, BulbOutlined } from "@ant-design/icons";
-import { FloatingBarProps } from "../board-page/types";
+import { BulbOutlined } from "@ant-design/icons";
 import BoardRenderer from "../board-renderer/board-renderer";
 import { useQueueContext } from "./queue-context";
 import NextClimbButton from "./next-climb-button";
@@ -13,6 +12,11 @@ import { parseBoardRouteParams } from "@/app/lib/url-utils";
 import { BoardName, BoardRouteParametersWithUuid, BoulderProblem, BoardDetails } from "@/app/lib/types";
 
 const { Title, Text } = Typography;
+
+export interface HistoryControlBar {
+  boardDetails: BoardDetails;
+  board: BoardName;
+}
 
 type BoardPreviewProps = {
   board: BoardName; 
@@ -31,10 +35,10 @@ const BoardPreview = ({ boardDetails, board, currentClimb}: BoardPreviewProps) =
     />
 )
 
-const HistoryControlBar: React.FC<FloatingBarProps> = ({
+const HistoryControlBar: React.FC<HistoryControlBar> = ({
   boardDetails,
   board,
-}: FloatingBarProps) => {
+}: HistoryControlBar) => {
   const pathname = usePathname();
   const { board_name, layout_id, size_id, set_ids, angle } = parseBoardRouteParams(useParams<BoardRouteParametersWithUuid>());
   
