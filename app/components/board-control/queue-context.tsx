@@ -125,6 +125,11 @@ export const QueueProvider = ({
     });
   };
 
+  /***
+   * Immediately sets current climb, and inserts it into the queue.
+   * If there is an active queue, we insert the new climb
+   * after the old climb.
+   */
   const setCurrentClimb = (climb: BoulderProblem) => {
     const queueItem = { 
       climb,
@@ -145,7 +150,7 @@ export const QueueProvider = ({
       }
       
       // Replace the current item in the queue
-      return [...prevQueue.slice(0, index), queueItem, ...prevQueue.slice(index)];
+      return [...prevQueue.slice(0, index + 1), queueItem, ...prevQueue.slice(index + 1)];
     });
   };
 
