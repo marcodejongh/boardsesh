@@ -2,10 +2,10 @@ import { notFound } from "next/navigation";
 import { BoardRouteParametersWithUuid } from "@/app/lib/types";
 import { parseBoardRouteParams } from "@/app/lib/url-utils";
 import { fetchBoardDetails, fetchCurrentClimb } from "@/app/components/rest-api/api";
-import BoardLitupHolds from "@/app/components/board/board-litup-holds";
 import ClimbCard from "@/app/components/climb-card/climb-card";
 import { Col, Row } from "antd";
 import ClimbInfoColumn from "@/app/components/climb-info/climb-info-drawer";
+import BoardRenderer from "@/app/components/board-renderer/board-renderer";
 
 export default async function DynamicResultsPage({
   params,
@@ -29,10 +29,12 @@ export default async function DynamicResultsPage({
             climb={currentClimb}
             boardDetails={boardDetails} 
           >
-            <BoardLitupHolds 
+            <BoardRenderer
               holdsData={boardDetails.holdsData}
-              litUpHoldsMap={currentClimb.litUpHoldsMap} 
-            />
+              litUpHoldsMap={currentClimb.litUpHoldsMap}
+              boardDetails={boardDetails} 
+              board_name={parsedParams.board_name}
+              />
           </ClimbCard>
         </Col>
         <Col xs={24} md={8} style={{ marginBottom: "16px" }}>

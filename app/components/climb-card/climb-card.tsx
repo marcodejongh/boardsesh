@@ -38,7 +38,7 @@ const ClimbCard = ({
       actions={[
         // <SettingOutlined key="setting" />,
         <PlusCircleOutlined key="edit" onClick={addToQueue ? () => addToQueue(climb) : undefined} />,
-        <FireOutlined key="edit" onClick={setCurrentClimb ? () => setCurrentClimb(climb) : undefined} />,
+        <FireOutlined key="set-active" onClick={setCurrentClimb ? () => setCurrentClimb(climb) : undefined} />,
       ]}
       
     >

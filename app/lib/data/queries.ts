@@ -18,8 +18,8 @@ import {
   GetBoardDetailsResponse,
 } from "../types";
 import { PAGE_LIMIT } from "@/app/components/board-page/constants";
-import { HoldRenderData } from "@/app/components/board/types";
-import { getBoardImageDimensions } from "@/app/components/board/util";
+import { HoldRenderData } from "@/app/components/board-renderer/types";
+import { getBoardImageDimensions } from "@/app/components/board-renderer/util";
 
 const getTableName = (board_name: string, table_name: string) => {
   switch (board_name) {

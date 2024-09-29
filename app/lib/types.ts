@@ -1,4 +1,4 @@
-import { HoldRenderData, LitUpHoldsMap } from "../components/board/types";
+import { HoldRenderData, LitUpHoldsMap } from "../components/board-renderer/types";
 import { SetIdList } from "./board-data";
 
 export type BoulderProblem = {

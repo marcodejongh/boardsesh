@@ -3,9 +3,8 @@ import React from "react";
 import { Button, Typography, Row, Col, Card } from "antd";
 import { LeftOutlined, RightOutlined, BulbOutlined } from "@ant-design/icons";
 import { FloatingBarProps } from "../board-page/types";
-import BoardRenderer from "../board/board-renderer";
+import BoardRenderer from "../board-renderer/board-renderer";
 import { useQueueContext } from "./queue-context";
-import BoardLitupHolds from "../board/board-litup-holds";
 import NextClimbButton from "./next-climb-button";
 import { useParams, usePathname } from "next/navigation";
 import PreviousClimbButton from "./previous-climb-button";
@@ -24,11 +23,12 @@ type BoardPreviewProps = {
 
 const BoardPreview = ({ boardDetails, board, currentClimb}: BoardPreviewProps) => (
    <BoardRenderer
-    boardDetails={boardDetails}
-    board_name={board}
-  >
-    {currentClimb && <BoardLitupHolds holdsData={boardDetails.holdsData} litUpHoldsMap={currentClimb.litUpHoldsMap} thumbnail />}
-  </BoardRenderer>
+      holdsData={boardDetails.holdsData}
+      litUpHoldsMap={currentClimb ? currentClimb.litUpHoldsMap : undefined}
+      boardDetails={boardDetails} 
+      board_name={board}
+      thumbnail
+    />
 )
 
 const HistoryControlBar: React.FC<FloatingBarProps> = ({

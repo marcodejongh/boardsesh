@@ -9,7 +9,8 @@ import { useQueueContext } from "../board-control/queue-context";
 import ClimbCard from "../climb-card/climb-card";
 import { parseBoardRouteParams } from "@/app/lib/url-utils";
 import { useParams } from "next/navigation";
-import BoardLitupHolds from "../board/board-litup-holds";
+import BoardLitupHolds from "../board-renderer/board-litup-holds";
+import BoardRenderer from "../board-renderer/board-renderer";
 
 const { Title } = Typography;
 
@@ -51,7 +52,11 @@ const ClimbsList = ({
                 climb={climb}
                 boardDetails={boardDetails} 
               >
-                <BoardLitupHolds holdsData={boardDetails.holdsData} litUpHoldsMap={climb.litUpHoldsMap} />
+                <BoardRenderer 
+                  boardDetails={boardDetails} 
+                  board_name={parsedParams.board_name} 
+                  holdsData={boardDetails.holdsData} 
+                  litUpHoldsMap={climb.litUpHoldsMap}  />
               </ClimbCard>
             </Col>
             )

@@ -1,7 +1,6 @@
-import { BoulderProblem, GetBoardDetailsResponse, ParsedBoardRouteParameters } from "@/app/lib/types";
+import { BoulderProblem, ClimbUuid, GetBoardDetailsResponse, ParsedBoardRouteParameters } from "@/app/lib/types";
 import { constructClimbViewUrl } from "@/app/lib/url-utils";
-import BoardRenderer from "@/app/components/board/board-renderer";
-import BoardLitupHolds from "@/app/components/board/board-litup-holds";
+import BoardRenderer from "@/app/components/board-renderer/board-renderer";
 import Link from "next/link";
 
 type ClimbCardCoverProps = { 
@@ -20,16 +19,17 @@ const ClimbCardCover = ({
   clickable,
 }: ClimbCardCoverProps) => {
   const boardRenderer = (
-    <BoardRenderer boardDetails={boardDetails} board_name={parsedParams.board_name}>
-      {children}
-    </BoardRenderer>
+    <div style={{ width: "100%", height: "auto", position: "relative" }}>
+      <BoardRenderer 
+        boardDetails={boardDetails}
+        board_name={parsedParams.board_name} 
+        holdsData={boardDetails.holdsData}
+        litUpHoldsMap={climb.litUpHoldsMap}
+        />
+    </div>
   );
-  if (!clickable) {
-    return (
-      <div style={{ width: "100%", height: "auto", position: "relative" }}>
-        {boardRenderer}
-      </div>
-    );
+  if (!clickable || !climb) {
+    return boardRenderer;
   }
   return (
     <Link href={constructClimbViewUrl(parsedParams, climb.uuid)}>
