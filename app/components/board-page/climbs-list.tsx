@@ -38,47 +38,47 @@ const ClimbsList = ({
     history.replaceState(null, '', `#${climbId}`);
   };
 
-    // onScroll handler to track which climb is most visible
-  const handleScroll = () => {
-    let closestClimb = null;
-    let closestDistance = Infinity;
+  // // onScroll handler to track which climb is most visible
+  // const handleScroll = () => {
+  //   let closestClimb = null;
+  //   let closestDistance = Infinity;
 
-    Object.keys(climbsRefs.current).forEach((uuid) => {
-      const climbElement = climbsRefs.current[uuid];
-      if (climbElement) {
-        const rect = climbElement.getBoundingClientRect();
-        const distanceFromViewportTop = Math.abs(rect.top - 100); // You can adjust 100 to be where you want it to be considered "in view"
-        if (distanceFromViewportTop < closestDistance) {
-          closestDistance = distanceFromViewportTop;
-          closestClimb = uuid;
-        }
-      }
-    });
+  //   Object.keys(climbsRefs.current).forEach((uuid) => {
+  //     const climbElement = climbsRefs.current[uuid];
+  //     if (climbElement) {
+  //       const rect = climbElement.getBoundingClientRect();
+  //       const distanceFromViewportTop = Math.abs(rect.top - 100); // You can adjust 100 to be where you want it to be considered "in view"
+  //       if (distanceFromViewportTop < closestDistance) {
+  //         closestDistance = distanceFromViewportTop;
+  //         closestClimb = uuid;
+  //       }
+  //     }
+  //   });
 
-    // If the closest climb is different from the current one, update the hash
-    if (closestClimb) {
-      updateHash(closestClimb);
-    }
-  };
-  const debouncedHandleScroll = useDebouncedCallback(handleScroll, 300);
+  //   // If the closest climb is different from the current one, update the hash
+  //   if (closestClimb) {
+  //     updateHash(closestClimb);
+  //   }
+  // };
+  // const debouncedHandleScroll = useDebouncedCallback(handleScroll, 300);
 
-    // Function to restore scroll based on the hash in the URL
-  const restoreScrollFromHash = () => {
-    const hash = window.location.hash;
-    if (hash) {
-      const climbId = hash.substring(1);
-      const climbElement = climbsRefs.current[climbId];
+  // // Function to restore scroll based on the hash in the URL
+  // const restoreScrollFromHash = () => {
+  //   const hash = window.location.hash;
+  //   if (hash) {
+  //     const climbId = hash.substring(1);
+  //     const climbElement = climbsRefs.current[climbId];
 
-      if (climbElement) {
-        climbElement.scrollIntoView({ behavior: 'instant', block: 'start' });
-      }
-    }
-  };
+  //     if (climbElement) {
+  //       climbElement.scrollIntoView({ behavior: 'instant', block: 'start' });
+  //     }
+  //   }
+  // };
 
   // When the component mounts, restore the scroll position based on the hash
-  useEffect(() => {
-    restoreScrollFromHash();
-  }, []); 
+  // useEffect(() => {
+  //   restoreScrollFromHash();
+  // }, []); 
   
   return (
       <InfiniteScroll
@@ -89,7 +89,7 @@ const ClimbsList = ({
         endMessage={<div style={{ textAlign: "center" }}>No more climbs 🤐</div>}
         // Probably not how this should be done in a React app, but it works and I ain't no CSS-wizard
         scrollableTarget="content-for-scrollable"
-        onScroll={debouncedHandleScroll}
+        // onScroll={debouncedHandleScroll}
       >
         <Row gutter={[16, 16]}>
           {climbs.map((climb) => (
