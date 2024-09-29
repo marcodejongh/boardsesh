@@ -104,7 +104,7 @@ export const QueueProvider = ({
     setSize(size + 1);
   };
   
-  const hasMoreResults = data && data[0] && (size * PAGE_LIMIT) < data[0].resultsCount;
+  const hasMoreResults = data && data[0] && (size * PAGE_LIMIT) < data[0].totalCount;
   
   // Aggregate all pages of climbs
   const climbSearchResults = data ? data.flatMap((page) => page.boulderproblems) : [];
