@@ -2,10 +2,12 @@ import React, { createContext, useContext, useState } from "react";
 import { SearchRequestPagination } from "@/lib/types";
 import { useDebouncedCallback } from "use-debounce";
 import { useQueueContext } from "./queue-context";
+import { DEFAULT_SEARCH_PARAMS } from "@/app/lib/url-utils";
 
 interface UISearchParamsContextType {
   uiSearchParams: SearchRequestPagination;
   updateFilters: (newFilters: Partial<SearchRequestPagination>) => void;
+  clearClimbSearchParams: () => void;
 }
 
 const UISearchParamsContext = createContext<UISearchParamsContextType | undefined>(undefined);
@@ -22,18 +24,27 @@ export const UISearchParamsProvider: React.FC<{ children: React.ReactNode }> = (
     setClimbSearchParams(uiSearchParams);
   }, 500);
 
-  const updateFilters = (newFilters: Partial<SearchRequestPagination>) => {
+  const updateFilters = (newFilters: Partial<SearchRequestPagination>, instant?: boolean) => {
     const updatedFilters = {
       ...uiSearchParams,
       ...newFilters,
       page: 0, // Reset to page 0 when filters are updated
     };
+
     setUISearchParams(updatedFilters);
-    debouncedUpdate();
+
+    if (instant) {
+      setClimbSearchParams(updatedFilters);
+    } else {
+      debouncedUpdate();
+    }
+    
   };
 
+  const clearClimbSearchParams = () => updateFilters(DEFAULT_SEARCH_PARAMS, true)
+
   return (
-    <UISearchParamsContext.Provider value={{ uiSearchParams, updateFilters }}>
+    <UISearchParamsContext.Provider value={{ uiSearchParams, updateFilters, clearClimbSearchParams }}>
       {children}
     </UISearchParamsContext.Provider>
   );

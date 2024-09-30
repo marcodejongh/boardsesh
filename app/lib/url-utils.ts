@@ -55,27 +55,44 @@ export const searchParamsToUrlParams = (params: SearchRequestPagination): URLSea
   });
 };
 
-// Helper function to parse search query params
+export const DEFAULT_SEARCH_PARAMS: SearchRequestPagination = {
+  gradeAccuracy: 0,
+  maxGrade: 33,
+  minGrade: 1,
+  minRating: 0,
+  minAscents: 0,
+  sortBy: 'ascents',
+  sortOrder: 'desc',
+  name: '',
+  onlyClassics: false,
+  settername: '',
+  setternameSuggestion: '',
+  holds: '',
+  mirroredHolds: '',
+  page: 0,
+  pageSize: PAGE_LIMIT,
+};
+
 export const urlParamsToSearchParams = (urlParams: URLSearchParams): SearchRequestPagination => {
   return {
-    gradeAccuracy: parseFloat(urlParams.get("gradeAccuracy") || "0"),
-    maxGrade: parseInt(urlParams.get("maxGrade") || "29", 10),
-    minAscents: parseInt(urlParams.get("minAscents") || "0", 10),
-    minGrade: parseInt(urlParams.get("minGrade") || "1", 10),
-    minRating: parseFloat(urlParams.get("minRating") || "0"),
-    sortBy: (urlParams.get("sortBy") || "ascents") as "ascents" | "difficulty" | "name" | "quality",
-    sortOrder: (urlParams.get("sortOrder") || "desc") as "asc" | "desc",
-    name: urlParams.get("name") || "",
-    onlyClassics: urlParams.get("onlyClassics") === "true",
-    settername: urlParams.get("settername") || "",
-    setternameSuggestion: urlParams.get("setternameSuggestion") || "",
-    holds: urlParams.get("holds") || "",
-    mirroredHolds: urlParams.get("mirroredHolds") || "",
-    page: Number(urlParams.get("page") || "0"),
-    pageSize: Number(urlParams.get("pageSize") || PAGE_LIMIT),
+    ...DEFAULT_SEARCH_PARAMS,
+    gradeAccuracy: Number(urlParams.get('gradeAccuracy') ?? DEFAULT_SEARCH_PARAMS.gradeAccuracy),
+    maxGrade: Number(urlParams.get('maxGrade') ?? DEFAULT_SEARCH_PARAMS.maxGrade),
+    minAscents: Number(urlParams.get('minAscents') ?? DEFAULT_SEARCH_PARAMS.minAscents),
+    minGrade: Number(urlParams.get('minGrade') ?? DEFAULT_SEARCH_PARAMS.minGrade),
+    minRating: Number(urlParams.get('minRating') ?? DEFAULT_SEARCH_PARAMS.minRating),
+    sortBy: (urlParams.get('sortBy') ?? DEFAULT_SEARCH_PARAMS.sortBy) as 'ascents' | 'difficulty' | 'name' | 'quality',
+    sortOrder: (urlParams.get('sortOrder') ?? DEFAULT_SEARCH_PARAMS.sortOrder) as 'asc' | 'desc',
+    name: urlParams.get('name') ?? DEFAULT_SEARCH_PARAMS.name,
+    onlyClassics: urlParams.get('onlyClassics') === 'true' ?? DEFAULT_SEARCH_PARAMS.onlyClassics,
+    settername: urlParams.get('settername') ?? DEFAULT_SEARCH_PARAMS.settername,
+    setternameSuggestion: urlParams.get('setternameSuggestion') ?? DEFAULT_SEARCH_PARAMS.setternameSuggestion,
+    holds: urlParams.get('holds') ?? DEFAULT_SEARCH_PARAMS.holds,
+    mirroredHolds: urlParams.get('mirroredHolds') ?? DEFAULT_SEARCH_PARAMS.mirroredHolds,
+    page: Number(urlParams.get('page') ?? DEFAULT_SEARCH_PARAMS.page),
+    pageSize: Number(urlParams.get('pageSize') ?? DEFAULT_SEARCH_PARAMS.pageSize),
   };
-}
-
+};
 
 export const constructClimbViewUrl = (
   { board_name, layout_id, angle, size_id, set_ids }: ParsedBoardRouteParameters,

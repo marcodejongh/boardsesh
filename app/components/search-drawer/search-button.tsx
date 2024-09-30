@@ -1,26 +1,44 @@
 'use client';
 
 import React, { useState } from "react";
-import { Button, Grid, Drawer } from "antd";
+import { Button, Grid, Drawer, Badge, Space, Typography, Spin } from "antd";
 import { SearchOutlined } from "@ant-design/icons";
 import SearchForm from "./search-form";
+import { useQueueContext } from "@/c/board-control/queue-context";
+import ClearButton from "./clear-button";
 
 const { useBreakpoint } = Grid;
+const { Text } = Typography;
 
 const FilterColumn = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const { totalSearchResultCount, isFetchingClimbs } = useQueueContext();
   const screens = useBreakpoint();
 
   // Drawer for mobile view
   const mobileDrawer = (
     <>
-      <Button type="default" icon={<SearchOutlined />} onClick={() => setIsOpen(true)} />
+      <Badge count={totalSearchResultCount} overflowCount={999} showZero color="cyan">
+        <Button type="default" icon={<SearchOutlined />} onClick={() => setIsOpen(true)} />
+      </Badge>
+      
       <Drawer
         title="Search"
         placement="right"
-        width={"80%"}
+        width={"70%"}
         open={isOpen}
         onClose={() => setIsOpen(false)}
+        footer={
+          <Space style={{ display: "flex", justifyContent: "space-between" }}>  
+            <div style={{ textAlign: 'left' }}>
+              {isFetchingClimbs ? (
+                <Spin size="small" />
+              ) : (
+                <Text type="secondary">Total Results: {totalSearchResultCount}</Text>
+              )}
+            </div>
+            <ClearButton />
+          </Space>}
       >
         <SearchForm />
       </Drawer>

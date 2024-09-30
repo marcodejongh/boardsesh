@@ -3,7 +3,7 @@
 import React from 'react';
 
 import { BoulderProblem, ParsedBoardRouteParameters, SearchRequestPagination } from "@/app/lib/types";
-import { constructClimbSearchUrl, searchParamsToUrlParams, urlParamsToSearchParams } from "@/app/lib/url-utils";
+import { constructClimbSearchUrl, DEFAULT_SEARCH_PARAMS, searchParamsToUrlParams, urlParamsToSearchParams } from "@/app/lib/url-utils";
 import { useSearchParams } from "next/navigation";
 import { createContext, useContext, useState, ReactNode } from "react";
 import useSWRInfinite from "swr/infinite";
@@ -39,8 +39,11 @@ interface QueueContextType {
   currentClimb: BoulderProblem | null;
 
   setClimbSearchParams: (searchParams: SearchRequestPagination) => void;
+  
   climbSearchParams: SearchRequestPagination;
   climbSearchResults: BoulderProblem[] | null;
+  totalSearchResultCount: number;
+
   fetchMoreClimbs: () => void;
 
   setCurrentClimbQueueItem: (item: ClimbQueueItem) => void;
@@ -48,6 +51,7 @@ interface QueueContextType {
   getNextClimbQueueItem: () => ClimbQueueItem | null;
   getPreviousClimbQueueItem: () => ClimbQueueItem | null;
   hasMoreResults: boolean;
+  isFetchingClimbs: boolean;
 }
 
 const QueueContext = createContext<QueueContextType | undefined>(undefined);
@@ -96,7 +100,7 @@ export const QueueProvider = ({
     return constructClimbSearchUrl(parsedParams, queryString);
   };
 
-  const { data, size, setSize } = useSWRInfinite(
+  const { data, size, setSize, isLoading: isFetchingClimbs } = useSWRInfinite(
     getKey,
     fetcher,
     { 
@@ -119,7 +123,8 @@ export const QueueProvider = ({
   };
   
   const hasMoreResults = data && data[0] && (size * PAGE_LIMIT) < data[0].totalCount;
-  
+  const totalSearchResultCount = data && data[0] && data[0].totalCount || 0;
+
   // Aggregate all pages of climbs
   const climbSearchResults = data ? data.flatMap((page) => page.boulderproblems) : null;
 
@@ -238,6 +243,7 @@ export const QueueProvider = ({
         addToQueue,
         removeFromQueue,
         climbSearchResults,
+        totalSearchResultCount,
         fetchMoreClimbs,
         hasMoreResults,
         currentClimb: currentClimbQueueItem?.climb || null,
@@ -247,6 +253,7 @@ export const QueueProvider = ({
         setCurrentClimbQueueItem,
         getNextClimbQueueItem,
         getPreviousClimbQueueItem,
+        isFetchingClimbs,
       }}
     >
       {children}
