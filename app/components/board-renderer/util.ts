@@ -24,7 +24,7 @@ export const convertLitUpHoldsStringToMap = (litUpHolds: string, board: BoardNam
             `HOLD_STATE_MAP is missing values for ${board} its missing statuscode: ${stateCode}. 
             You probably need to update that mapping after adding support for more boards`,
           );
-        } 
+        }
         const { name, color } = HOLD_STATE_MAP[board][stateCode];
         return [holdId, { state: name, color }];
       }),

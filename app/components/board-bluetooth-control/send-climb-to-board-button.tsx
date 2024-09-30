@@ -6,7 +6,13 @@ import { Button } from 'antd';
 import { useQueueContext } from '../queue-control/queue-context';
 import { BoardDetails } from '@/app/lib/types';
 import './send-climb-to-board-button.css'; // Import your custom styles
-import { getBluetoothPacket, getCharacteristic, requestDevice, splitMessages, writeCharacteristicSeries } from './bluetooth';
+import {
+  getBluetoothPacket,
+  getCharacteristic,
+  requestDevice,
+  splitMessages,
+  writeCharacteristicSeries,
+} from './bluetooth';
 
 type SendClimbToBoardButtonProps = { boardDetails: BoardDetails };
 

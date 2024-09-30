@@ -1,5 +1,5 @@
-import { LedPlacements } from "@/app/lib/types";
-import { HOLD_STATE_MAP } from "../board-renderer/types";
+import { LedPlacements } from '@/app/lib/types';
+import { HOLD_STATE_MAP } from '../board-renderer/types';
 
 // Bluetooth constants
 const MAX_BLUETOOTH_MESSAGE_SIZE = 20;
@@ -68,7 +68,10 @@ export const splitMessages = (buffer: Uint8Array) =>
     buffer.slice(i * MAX_BLUETOOTH_MESSAGE_SIZE, (i + 1) * MAX_BLUETOOTH_MESSAGE_SIZE),
   );
 
-export const writeCharacteristicSeries = async (characteristic: BluetoothRemoteGATTCharacteristic, messages: Uint8Array[]) => {
+export const writeCharacteristicSeries = async (
+  characteristic: BluetoothRemoteGATTCharacteristic,
+  messages: Uint8Array[],
+) => {
   for (const message of messages) {
     await characteristic.writeValue(message);
   }

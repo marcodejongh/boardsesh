@@ -1,18 +1,17 @@
 import React from 'react';
 import { getImageUrl } from './util';
-import { BoardName, BoardDetails } from '@/app/lib/types';
+import { BoardDetails } from '@/app/lib/types';
 import { HoldRenderData, LitUpHoldsMap } from './types';
 import BoardLitupHolds from './board-litup-holds';
 
 export type BoardProps = {
   boardDetails: BoardDetails;
-  board_name: BoardName;
   holdsData: HoldRenderData[];
   litUpHoldsMap?: LitUpHoldsMap;
   thumbnail?: boolean;
 };
 
-const BoardRenderer = ({ boardDetails, board_name, litUpHoldsMap, holdsData, thumbnail }: BoardProps) => {
+const BoardRenderer = ({ boardDetails, litUpHoldsMap, holdsData, thumbnail }: BoardProps) => {
   const { boardWidth, boardHeight } = boardDetails;
 
   return (
@@ -27,7 +26,7 @@ const BoardRenderer = ({ boardDetails, board_name, litUpHoldsMap, holdsData, thu
       }} // Ensures scaling
     >
       {Object.keys(boardDetails.images_to_holds).map((imageUrl) => (
-        <image key={imageUrl} href={getImageUrl(imageUrl, board_name)} width="100%" height="100%" />
+        <image key={imageUrl} href={getImageUrl(imageUrl, boardDetails.board_name)} width="100%" height="100%" />
       ))}
       {litUpHoldsMap && <BoardLitupHolds holdsData={holdsData} litUpHoldsMap={litUpHoldsMap} />}
     </svg>

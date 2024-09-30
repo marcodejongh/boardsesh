@@ -78,9 +78,7 @@ export const fetchBoardDetails = async (
 };
 
 // Fetch board details
-export const fetchLayouts = async (
-  board_name: BoardName,
-): Promise<LayoutRow[]> => {
+export const fetchLayouts = async (board_name: BoardName): Promise<LayoutRow[]> => {
   //TODO: Fix type definition
   const apiUrl = `${API_BASE_URL}/v1/${board_name}/layouts`;
   const response = await fetch(apiUrl);
@@ -93,10 +91,8 @@ export const fetchLayouts = async (
 };
 
 // Fetch board details
-export const fetchSizes = async (
-  board_name: BoardName,
-  layout_id: LayoutId,
-): Promise<SizeRow[]> => { //TODO: Fix type definition
+export const fetchSizes = async (board_name: BoardName, layout_id: LayoutId): Promise<SizeRow[]> => {
+  //TODO: Fix type definition
   const apiUrl = `${API_BASE_URL}/v1/${board_name}/${layout_id}/sizes`;
   const response = await fetch(apiUrl);
 
@@ -108,11 +104,7 @@ export const fetchSizes = async (
 };
 
 // Fetch board details
-export const fetchSets = async (
-  board_name: BoardName,
-  layout_id: LayoutId,
-  size_id: Size
-): Promise<SetRow[]> => {
+export const fetchSets = async (board_name: BoardName, layout_id: LayoutId, size_id: Size): Promise<SetRow[]> => {
   const apiUrl = `${API_BASE_URL}/v1/${board_name}/${layout_id}/${size_id}/sets`;
   const response = await fetch(apiUrl);
 

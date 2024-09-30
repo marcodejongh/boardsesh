@@ -3,11 +3,9 @@ import React from 'react';
 
 import { Row, Col, Skeleton } from 'antd';
 import InfiniteScroll from 'react-infinite-scroll-component';
-import { BoulderProblem, ParsedBoardRouteParameters, BoardDetails, BoardRouteParameters } from '@/app/lib/types';
+import { BoulderProblem, ParsedBoardRouteParameters, BoardDetails } from '@/app/lib/types';
 import { useQueueContext } from '../queue-control/queue-context';
 import ClimbCard from '../climb-card/climb-card';
-import { parseBoardRouteParams } from '@/app/lib/url-utils';
-import { useParams } from 'next/navigation';
 import { useEffect, useRef } from 'react';
 import { useDebouncedCallback } from 'use-debounce';
 
@@ -17,9 +15,8 @@ type ClimbsListProps = ParsedBoardRouteParameters & {
 };
 
 const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
-  const { setCurrentClimb, climbSearchResults, hasMoreResults, fetchMoreClimbs, addToQueue, currentClimb } =
+  const { setCurrentClimb, climbSearchResults, hasMoreResults, fetchMoreClimbs, currentClimb } =
     useQueueContext();
-  const parsedParams = parseBoardRouteParams(useParams<BoardRouteParameters>());
 
   // Queue Context provider uses SWR infinite to fetch results, which can only happen clientside.
   // That data equals null at the start, so when its null we use the initialClimbs array which we
@@ -109,9 +106,6 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
               }}
             >
               <ClimbCard
-                setCurrentClimb={setCurrentClimb}
-                addToQueue={addToQueue}
-                parsedParams={parsedParams}
                 climb={climb}
                 boardDetails={boardDetails}
                 selected={currentClimb?.uuid === climb.uuid}

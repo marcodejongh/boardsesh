@@ -1,20 +1,19 @@
 'use client';
 import React from 'react';
 import { List, Row, Col, Typography, Divider } from 'antd';
-import { BoardName, BoulderProblem, BoardDetails } from '@/app/lib/types';
-import { BoardPreview } from './history-control-bar';
+import { BoulderProblem, BoardDetails } from '@/app/lib/types';
 import { ClimbQueueItem, useQueueContext } from './queue-context';
+import ClimbThumbnail from '../climb-card/climb-thumbnail';
 
 const { Text } = Typography;
 
 type QueueListProps = {
-  board: BoardName;
   boardDetails: BoardDetails;
 };
 
-const QueueList: React.FC<QueueListProps> = ({ board, boardDetails }) => {
+const QueueList: React.FC<QueueListProps> = ({ boardDetails }) => {
   const { currentClimbQueueItem, queue, climbSearchResults } = useQueueContext(); // Include climbSearchResults from context
-  
+
   const currentItemPositionInSearchResults = (climbSearchResults || []).findIndex(
     ({ uuid }) => uuid === currentClimbQueueItem?.climb.uuid,
   );
@@ -40,7 +39,7 @@ const QueueList: React.FC<QueueListProps> = ({ board, boardDetails }) => {
               <Row style={{ width: '100%' }} gutter={16}>
                 {/* Column for the BoardPreview */}
                 <Col xs={6}>
-                  <BoardPreview boardDetails={boardDetails} board={board} currentClimb={climb} />
+                  <ClimbThumbnail boardDetails={boardDetails} currentClimb={climb} />
                 </Col>
 
                 {/* Column for the metadata */}
@@ -83,15 +82,13 @@ const QueueList: React.FC<QueueListProps> = ({ board, boardDetails }) => {
 
       {/* Render Suggested Items (climbSearchResults) */}
       <List
-        dataSource={(climbSearchResults || []).filter((item, index) => 
-          index > currentItemPositionInSearchResults
-        )} // Assuming climbSearchResults contains BoulderProblems
+        dataSource={(climbSearchResults || []).filter((item, index) => index > currentItemPositionInSearchResults)} // Assuming climbSearchResults contains BoulderProblems
         renderItem={(climb: BoulderProblem) => (
           <List.Item>
             <Row style={{ width: '100%' }} gutter={16}>
               {/* Column for the BoardPreview */}
               <Col xs={6}>
-                <BoardPreview boardDetails={boardDetails} board={board} currentClimb={climb} />
+                <ClimbThumbnail boardDetails={boardDetails} currentClimb={climb} />
               </Col>
 
               {/* Column for the metadata */}

@@ -8,7 +8,7 @@ export async function GET(req: Request, { params }: { params: { board_name: Boar
 
   try {
     // Fetch sizes based on layout_id
-    const result = await getSizes(board_name, layout_id)
+    const result = await getSizes(board_name, layout_id);
 
     // Return the sizes as JSON response
     return NextResponse.json(result);

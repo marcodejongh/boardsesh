@@ -9,7 +9,7 @@ export async function GET(
   const { board_name, layout_id, size_id } = params;
 
   try {
-    const sets = await getSets(board_name, layout_id, size_id)
+    const sets = await getSets(board_name, layout_id, size_id);
 
     return NextResponse.json(sets);
   } catch (error) {

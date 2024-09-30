@@ -20,7 +20,7 @@ export default async function DynamicResultsPage({ params }: { params: BoardRout
     return (
       <Row>
         <Col xs={24} md={16}>
-          <ClimbCard parsedParams={parsedParams} climb={currentClimb} boardDetails={boardDetails} />
+          <ClimbCard climb={currentClimb} boardDetails={boardDetails} />
         </Col>
         <Col xs={24} md={8} style={{ marginBottom: '16px' }}>
           <ClimbInfoColumn />
