@@ -1,9 +1,9 @@
 "use client";
 import React, { useState } from "react";
-import { Button, Typography, Row, Col, Card, Drawer, List, Space } from "antd";
+import { Button, Typography, Row, Col, Card, Drawer, Space } from "antd";
 import { CheckCircleOutlined } from "@ant-design/icons";
 import BoardRenderer from "../board-renderer/board-renderer";
-import { ClimbQueueItem, useQueueContext } from "./queue-context";
+import { useQueueContext } from "./queue-context";
 import NextClimbButton from "./next-climb-button";
 import { useParams, usePathname } from "next/navigation";
 import PreviousClimbButton from "./previous-climb-button";

@@ -84,7 +84,7 @@ export const urlParamsToSearchParams = (urlParams: URLSearchParams): SearchReque
     sortBy: (urlParams.get('sortBy') ?? DEFAULT_SEARCH_PARAMS.sortBy) as 'ascents' | 'difficulty' | 'name' | 'quality',
     sortOrder: (urlParams.get('sortOrder') ?? DEFAULT_SEARCH_PARAMS.sortOrder) as 'asc' | 'desc',
     name: urlParams.get('name') ?? DEFAULT_SEARCH_PARAMS.name,
-    onlyClassics: urlParams.get('onlyClassics') === 'true' ?? DEFAULT_SEARCH_PARAMS.onlyClassics,
+    onlyClassics: urlParams.get('onlyClassics') === 'true',
     settername: urlParams.get('settername') ?? DEFAULT_SEARCH_PARAMS.settername,
     setternameSuggestion: urlParams.get('setternameSuggestion') ?? DEFAULT_SEARCH_PARAMS.setternameSuggestion,
     holds: urlParams.get('holds') ?? DEFAULT_SEARCH_PARAMS.holds,

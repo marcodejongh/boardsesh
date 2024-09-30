@@ -8,17 +8,8 @@ import { ClimbQueueItem, useQueueContext } from "./queue-context";
 const { Text } = Typography;
 
 type QueueListProps = {
-  queue: ClimbQueueItem[]; // Updated to ClimbQueueItem[]
   board: BoardName;
   boardDetails: BoardDetails;
-};
-
-export type ClimbQueueItem = {
-  addedBy?: UserName;
-  tickedBy?: UserName[];
-  climb: BoulderProblem;
-  uuid: string;
-  suggested?: boolean;
 };
 
 const QueueList: React.FC<QueueListProps> = ({ board, boardDetails }) => {
@@ -55,7 +46,7 @@ const QueueList: React.FC<QueueListProps> = ({ board, boardDetails }) => {
                           whiteSpace: "nowrap",
                           overflow: "hidden",
                           textOverflow: "ellipsis",
-                          fontWeight: isCurrent ? "bold" : "normal", // Bold title for current climb
+                          fontWeight: isCurrent ? "bold" : "normal",
                         }}
                       >
                         {climb.name}
@@ -63,7 +54,7 @@ const QueueList: React.FC<QueueListProps> = ({ board, boardDetails }) => {
                     }
                     description={
                       <Text
-                        type={isHistory ? "secondary" : "default"} // Grey text for historical items
+                        type={isHistory ? "secondary" : undefined}
                         style={{
                           whiteSpace: "nowrap",
                           overflow: "hidden",
