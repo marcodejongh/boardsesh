@@ -6,7 +6,7 @@ import { parseBoardRouteParams } from '@/app/lib/url-utils'; // Assume this util
 import '@/c/index.css';
 
 import { Content } from 'antd/es/layout/layout';
-import HistoryControlBar from '@/app/components/queue-control/history-control-bar';
+import QueueControlBar from '@/app/components/queue-control/queue-control-bar';
 import { fetchBoardDetails } from '@/app/components/rest-api/api';
 import BoardSeshHeader from '@/app/components/board-page/header';
 import { QueueProvider } from '@/app/components/queue-control/queue-context';
@@ -36,13 +36,14 @@ interface LayoutProps {
 export default async function BoardLayout({ children, params }: PropsWithChildren<LayoutProps>) {
   // Parse the route parameters
   const parsedParams: ParsedBoardRouteParameters = parseBoardRouteParams(params);
-
+  
   const { board_name, layout_id } = parsedParams;
 
   // Fetch the climbs and board details server-side
   const [boardDetails] = await Promise.all([
     fetchBoardDetails(parsedParams.board_name, parsedParams.layout_id, parsedParams.size_id, parsedParams.set_ids),
   ]);
+
   return (
     <>
       <title>{`Boardsesh on ${board_name} - Layout ${layout_id}`}</title>
@@ -68,7 +69,7 @@ export default async function BoardLayout({ children, params }: PropsWithChildre
 
           <Affix offsetBottom={0}>
             <div style={{ width: '100%', backgroundColor: '#fff', boxShadow: '0 -2px 8px rgba(0, 0, 0, 0.15)' }}>
-              <HistoryControlBar board={board_name} boardDetails={boardDetails} />
+              <QueueControlBar board={board_name} boardDetails={boardDetails} />
             </div>
           </Affix>
         </QueueProvider>

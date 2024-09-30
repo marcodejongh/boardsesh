@@ -36,7 +36,8 @@ export const fetchResults = async (
 
   // Build the URL using the new route structure
   const response = await fetch(
-    `${API_BASE_URL}/v1/${routeParameters.board_name}/${routeParameters.layout_id}/${routeParameters.size_id}/${routeParameters.set_ids}/${routeParameters.angle}/search?${urlParams}&bustCache=3`,
+    `${API_BASE_URL}/v1/${routeParameters.board_name}/${routeParameters.layout_id}/${routeParameters.size_id}/${routeParameters.set_ids}/${routeParameters.angle}/search?${urlParams}&bustCache=32`,
+    {next: {revalidate:1}}
   );
 
   const rawResults = await response.json();

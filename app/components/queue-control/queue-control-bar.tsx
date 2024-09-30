@@ -12,12 +12,12 @@ import ClimbThumbnail from '../climb-card/climb-thumbnail';
 
 const { Title, Text } = Typography;
 
-export interface HistoryControlBar {
+export interface QueueControlBar {
   boardDetails: BoardDetails;
   board: BoardName;
 }
 
-const HistoryControlBar: React.FC<HistoryControlBar> = ({ boardDetails }: HistoryControlBar) => {
+const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails }: QueueControlBar) => {
   const [isQueueOpen, setIsQueueOpen] = useState(false);
   const pathname = usePathname();
 
@@ -113,4 +113,4 @@ const boardPreviewContainerStyle = {
   overflow: 'hidden',
 };
 
-export default HistoryControlBar;
+export default QueueControlBar;
