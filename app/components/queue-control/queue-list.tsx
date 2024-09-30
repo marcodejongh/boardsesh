@@ -14,6 +14,10 @@ type QueueListProps = {
 
 const QueueList: React.FC<QueueListProps> = ({ board, boardDetails }) => {
   const { currentClimbQueueItem, queue, climbSearchResults } = useQueueContext(); // Include climbSearchResults from context
+  
+  const currentItemPositionInSearchResults = (climbSearchResults || []).findIndex(
+    ({ uuid }) => uuid === currentClimbQueueItem?.climb.uuid,
+  );
 
   return (
     <>
@@ -79,7 +83,9 @@ const QueueList: React.FC<QueueListProps> = ({ board, boardDetails }) => {
 
       {/* Render Suggested Items (climbSearchResults) */}
       <List
-        dataSource={climbSearchResults || []} // Assuming climbSearchResults contains BoulderProblems
+        dataSource={(climbSearchResults || []).filter((item, index) => 
+          index > currentItemPositionInSearchResults
+        )} // Assuming climbSearchResults contains BoulderProblems
         renderItem={(climb: BoulderProblem) => (
           <List.Item>
             <Row style={{ width: '100%' }} gutter={16}>
