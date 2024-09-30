@@ -18,13 +18,12 @@ export interface HistoryControlBar {
 }
 
 const HistoryControlBar: React.FC<HistoryControlBar> = ({ boardDetails }: HistoryControlBar) => {
-  const [isQueueOpen, setIsQueueOpen] = useState(false); // State to control drawer
+  const [isQueueOpen, setIsQueueOpen] = useState(false);
   const pathname = usePathname();
 
   const isViewPage = pathname.includes('/view/');
-  const { currentClimb } = useQueueContext(); // Assuming `queue` exists in context
+  const { currentClimb } = useQueueContext();
 
-  // Function to toggle drawer visibility
   const toggleQueueDrawer = () => setIsQueueOpen(!isQueueOpen);
 
   return (
