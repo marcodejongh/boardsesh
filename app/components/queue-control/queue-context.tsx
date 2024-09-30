@@ -43,6 +43,7 @@ interface QueueContextType {
 
   climbSearchParams: SearchRequestPagination;
   climbSearchResults: Climb[] | null;
+  suggestedClimbs: Climb[];
   totalSearchResultCount: number | null;
 
   fetchMoreClimbs: () => void;
@@ -124,9 +125,9 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
   const hasMoreResults = data && data[0] && size * PAGE_LIMIT < data[0].totalCount;
   const totalSearchResultCount = (data && data[0] && data[0].totalCount) || null;
 
-  // Aggregate all pages of climbs
-  const climbSearchResults = data ? data.flatMap((page) => page.climbs) : null;
-
+  const climbSearchResults = data ? data.flatMap((page: { climbs: Climb[]}) => page.climbs) : null;
+  const suggestedClimbs = (climbSearchResults || []).filter((item) => !queue.find(({ climb: { uuid }}) => item.uuid === uuid ) );
+  
   const addToQueue = (climb: Climb) => {
     setQueueState((prevQueue) => [...prevQueue, { climb, uuid: uuidv4() }]);
   };
@@ -181,13 +182,9 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
       climbSearchResults &&
       climbSearchResults.length
     ) {
-      const suggestedQueueItemIndex = climbSearchResults.findIndex(
-        ({ uuid }) => uuid === currentClimbQueueItem?.climb.uuid,
-      );
-
       setQueueState((prevQueue) => [...prevQueue, item]);
 
-      if (suggestedQueueItemIndex > climbSearchResults.length - 5) {
+      if (!isFetchingClimbs && suggestedClimbs.length < 5) {
         fetchMoreClimbs();
       }
     }
@@ -206,14 +203,7 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
       climbSearchResults &&
       climbSearchResults.length > 0
     ) {
-      const suggestedQueueItemIndex = climbSearchResults.findIndex(
-        ({ uuid }) => uuid === currentClimbQueueItem?.climb.uuid,
-      );
-
-      const nextClimb = climbSearchResults.filter(
-        ({ uuid: searchUuid }, index) =>
-          index > suggestedQueueItemIndex && !queue.find(({ climb: { uuid } }) => uuid === searchUuid),
-      )[0];
+      const nextClimb = suggestedClimbs[0]
 
       // If there is no next climb found, return null
       if (!nextClimb) {
@@ -264,6 +254,7 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
         getPreviousClimbQueueItem,
         isFetchingClimbs,
         hasDoneFirstFetch,
+        suggestedClimbs,
       }}
     >
       {children}

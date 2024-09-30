@@ -12,7 +12,7 @@ type QueueListProps = {
 };
 
 const QueueList: React.FC<QueueListProps> = ({ boardDetails }) => {
-  const { currentClimbQueueItem, queue, climbSearchResults } = useQueueContext(); // Include climbSearchResults from context
+  const { currentClimbQueueItem, queue, climbSearchResults, setCurrentClimbQueueItem, setCurrentClimb, fetchMoreClimbs } = useQueueContext(); // Include climbSearchResults from context
 
   const currentItemPositionInSearchResults = (climbSearchResults || []).findIndex(
     ({ uuid }) => uuid === currentClimbQueueItem?.climb.uuid,
@@ -23,7 +23,8 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails }) => {
       {/* Render Queue Items */}
       <List
         dataSource={queue} // Assuming `queue` is an array of ClimbQueueItem
-        renderItem={({ uuid, climb }: ClimbQueueItem) => {
+        renderItem={(climbQueueItem: ClimbQueueItem) => {
+          const { uuid, climb } = climbQueueItem;
           const isCurrent = currentClimbQueueItem?.uuid === uuid;
           const isHistory =
             queue.findIndex((item) => item.uuid === currentClimbQueueItem?.uuid) >
@@ -33,8 +34,10 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails }) => {
             <List.Item
               style={{
                 backgroundColor: isCurrent ? '#eeffff' : isHistory ? '#f5f5f5' : 'inherit', // Blue for current, grey for history
-                opacity: isHistory ? 0.6 : 1, // Slightly reduce opacity for historical items
+                opacity: isHistory ? 0.6 : 1, 
+                cursor: 'pointer'
               }}
+              onClick={() => setCurrentClimbQueueItem(climbQueueItem)}
             >
               <Row style={{ width: '100%' }} gutter={16}>
                 {/* Column for the BoardPreview */}
@@ -82,9 +85,9 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails }) => {
 
       {/* Render Suggested Items (climbSearchResults) */}
       <List
-        dataSource={(climbSearchResults || []).filter((item, index) => index > currentItemPositionInSearchResults)} // Assuming climbSearchResults contains Climbs
+        dataSource={(climbSearchResults || []).filter((item) => !queue.find(({ climb: { uuid }}) => item.uuid === uuid ) )} 
         renderItem={(climb: Climb) => (
-          <List.Item>
+          <List.Item style={{ cursor: 'pointer' }} onClick={() => { setCurrentClimb(climb) }}>
             <Row style={{ width: '100%' }} gutter={16}>
               {/* Column for the BoardPreview */}
               <Col xs={6}>
