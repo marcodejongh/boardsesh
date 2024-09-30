@@ -55,9 +55,9 @@ export default async function BoardLayout({ children, params }: PropsWithChildre
             overflowY: "auto", 
             overflowX: 'hidden',
             height: "80vh", 
-            paddingLeft: "18px",
-            paddingRight: "18px",
-            paddingTop: "18px",
+            paddingLeft: "10px",
+            paddingRight: "10px",
+            paddingTop: "10px",
             
             }}>
             {children}
