@@ -56,7 +56,7 @@ export const searchParamsToUrlParams = (params: SearchRequestPagination): URLSea
 };
 
 export const DEFAULT_SEARCH_PARAMS: SearchRequestPagination = {
-  gradeAccuracy: 0,
+  gradeAccuracy: 1,
   maxGrade: 33,
   minGrade: 1,
   minRating: 0,

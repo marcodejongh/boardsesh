@@ -10,7 +10,7 @@ import ClearButton from "./clear-button";
 const { useBreakpoint } = Grid;
 const { Text } = Typography;
 
-const FilterColumn = () => {
+const SearchButton = () => {
   const [isOpen, setIsOpen] = useState(false);
   const { totalSearchResultCount, isFetchingClimbs } = useQueueContext();
   const screens = useBreakpoint();
@@ -18,7 +18,7 @@ const FilterColumn = () => {
   // Drawer for mobile view
   const mobileDrawer = (
     <>
-      <Badge count={totalSearchResultCount} overflowCount={9999} showZero color="cyan">
+      <Badge count={totalSearchResultCount} overflowCount={9999} showZero={totalSearchResultCount !== null} color="cyan">
         <Button type="default" icon={<SearchOutlined />} onClick={() => setIsOpen(true)} />
       </Badge>
       
@@ -49,4 +49,4 @@ const FilterColumn = () => {
   return screens.md ? null : mobileDrawer;
 };
 
-export default FilterColumn;
+export default SearchButton;

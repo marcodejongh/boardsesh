@@ -206,16 +206,16 @@ export const searchBoulderProblems = async (
             ROUND(climb_stats.quality_average::numeric, 2) as quality_average,
             ROUND(climb_stats.difficulty_average::numeric - climb_stats.display_difficulty::numeric, 2) AS difficulty_error,
             climb_stats.benchmark_difficulty
-          FROM ${getTableName(params.board_name, "climbs")} climbs
+          FROM ${getTableName(params.board_name, 'climbs')} climbs
           LEFT JOIN ${getTableName(
             params.board_name,
-            "climb_stats",
+            'climb_stats',
           )} climb_stats ON climb_stats.climb_uuid = climbs.uuid
           LEFT JOIN ${getTableName(
             params.board_name,
-            "difficulty_grades",
+            'difficulty_grades',
           )} dg on dg.difficulty = ROUND(climb_stats.display_difficulty::numeric)
-          INNER JOIN ${getTableName(params.board_name, "product_sizes")} product_sizes ON product_sizes.id = $1
+          INNER JOIN ${getTableName(params.board_name, 'product_sizes')} product_sizes ON product_sizes.id = $1
           WHERE climbs.layout_id = $2
           AND climbs.is_listed = true
           AND climbs.is_draft = false
@@ -225,10 +225,15 @@ export const searchBoulderProblems = async (
           AND product_sizes.id = $3
           AND climb_stats.angle = $11
           AND climb_stats.ascensionist_count >= $4
+
+          AND climbs.edge_left > product_sizes.edge_left
+          AND climbs.edge_right < product_sizes.edge_right
+          AND climbs.edge_bottom > product_sizes.edge_bottom
+          AND climbs.edge_top < product_sizes.edge_top
           ${
             searchParams.minGrade && searchParams.maxGrade
-              ? "AND ROUND(climb_stats.display_difficulty::numeric, 0) BETWEEN $5 AND $6"
-              : ""
+              ? 'AND ROUND(climb_stats.display_difficulty::numeric, 0) BETWEEN $5 AND $6'
+              : ''
           }
           AND climb_stats.quality_average >= $7
           AND ABS(ROUND(climb_stats.display_difficulty::numeric, 0) - climb_stats.difficulty_average::numeric) <= $8
@@ -237,7 +242,7 @@ export const searchBoulderProblems = async (
         SELECT *, 
         (SELECT COUNT(*) FROM filtered_climbs) as total_count
         FROM filtered_climbs
-        ORDER BY ${safeSortBy} ${searchParams.sortOrder === "asc" ? "ASC" : "DESC"}, filtered_climbs.uuid ASC
+        ORDER BY ${safeSortBy} ${searchParams.sortOrder === 'asc' ? 'ASC' : 'DESC'}, filtered_climbs.uuid ASC
         LIMIT $9 OFFSET $10
       `,
     values: queryParameters, // Remove any null values that don't match query clauses

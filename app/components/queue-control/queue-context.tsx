@@ -43,7 +43,7 @@ interface QueueContextType {
   
   climbSearchParams: SearchRequestPagination;
   climbSearchResults: BoulderProblem[] | null;
-  totalSearchResultCount: number;
+  totalSearchResultCount: number | null;
 
   fetchMoreClimbs: () => void;
 
@@ -124,7 +124,7 @@ export const QueueProvider = ({
   };
   
   const hasMoreResults = data && data[0] && (size * PAGE_LIMIT) < data[0].totalCount;
-  const totalSearchResultCount = data && data[0] && data[0].totalCount || 0;
+  const totalSearchResultCount = data && data[0] && data[0].totalCount || null;
 
   // Aggregate all pages of climbs
   const climbSearchResults = data ? data.flatMap((page) => page.boulderproblems) : null;
