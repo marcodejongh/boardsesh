@@ -8,21 +8,34 @@ import { useQueueContext } from '../queue-control/queue-context';
 import ClimbCard from '../climb-card/climb-card';
 import { useEffect, useRef } from 'react';
 import { useDebouncedCallback } from 'use-debounce';
+import { PlusCircleOutlined, FireOutlined } from '@ant-design/icons';
 
 type ClimbsListProps = ParsedBoardRouteParameters & {
   boardDetails: BoardDetails;
   initialClimbs: BoulderProblem[];
 };
 
+const ClimbCardSkeletons = ({ boardDetails }: { boardDetails: BoardDetails}) => {
+  return (
+    <Col xs={24} lg={12} xl={12}>
+      <ClimbCard boardDetails={boardDetails} actions={[ <PlusCircleOutlined/>, <FireOutlined/> ]} />
+    </Col>
+  );
+}
+
+const ClimbsListSkeleton = ({ boardDetails }: { boardDetails: BoardDetails}) => {
+  return ( Array.from({ length: 10 }, (_, i) => i + 1)).map(() => (<ClimbCardSkeletons boardDetails={boardDetails} />));
+};
+
 const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
-  const { setCurrentClimb, climbSearchResults, hasMoreResults, fetchMoreClimbs, currentClimb } =
+  const { setCurrentClimb, climbSearchResults, hasMoreResults, fetchMoreClimbs, currentClimb, hasDoneFirstFetch, isFetchingClimbs } =
     useQueueContext();
 
   // Queue Context provider uses SWR infinite to fetch results, which can only happen clientside.
   // That data equals null at the start, so when its null we use the initialClimbs array which we
   // fill on the server side in the page component. This way the user never sees a loading state for
   // the climb list.
-  const climbs = climbSearchResults === null ? initialClimbs : climbSearchResults;
+  const climbs = !hasDoneFirstFetch ? initialClimbs : (climbSearchResults || []);
 
   // A ref to store each climb's DOM element position for easier scroll tracking
   const climbsRefs = useRef<{ [uuid: string]: HTMLDivElement | null }>({});
@@ -114,6 +127,7 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
             </div>
           </Col>
         ))}
+        {isFetchingClimbs && (!climbs || climbs.length === 0) ? <ClimbsListSkeleton boardDetails={boardDetails}/> : null}
       </Row>
     </InfiniteScroll>
   );

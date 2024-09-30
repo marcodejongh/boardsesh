@@ -6,7 +6,7 @@ import { BoulderProblem, BoardDetails } from '@/app/lib/types';
 import ClimbCardActions from './climb-card-actions';
 
 type ClimbCardProps = {
-  climb: BoulderProblem;
+  climb?: BoulderProblem;
   boardDetails: BoardDetails;
   coverLinkToClimb?: boolean;
   onCoverClick?: () => void;
@@ -18,7 +18,7 @@ const ClimbCard = ({ climb, boardDetails, onCoverClick, selected, actions }: Cli
   const cover = <ClimbCardCover climb={climb} boardDetails={boardDetails} onClick={onCoverClick} />;
   return (
     <Card
-      title={`${climb.name} ${climb.difficulty} ★${climb.quality_average}`}
+      title={climb ? `${climb.name} ${climb.difficulty} ★${climb.quality_average}` : 'Loading...'}
       size="small"
       style={{ backgroundColor: selected ? '#eeffff' : '#FFF' }}
       actions={actions || ClimbCardActions({ climb })}

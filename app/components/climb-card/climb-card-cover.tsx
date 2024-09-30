@@ -5,7 +5,7 @@ import BoardRenderer from '@/app/components/board-renderer/board-renderer';
 import ClimbCardModal from './climb-card-modal';
 
 type ClimbCardCoverProps = {
-  climb: BoulderProblem;
+  climb?: BoulderProblem;
   boardDetails: BoardDetails;
   onClick?: () => void;
 };

@@ -53,6 +53,7 @@ interface QueueContextType {
   getPreviousClimbQueueItem: () => ClimbQueueItem | null;
   hasMoreResults: boolean;
   isFetchingClimbs: boolean;
+  hasDoneFirstFetch: boolean;
 }
 
 const QueueContext = createContext<QueueContextType | undefined>(undefined);
@@ -67,6 +68,7 @@ export const useQueueContext = () => {
 
 export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => {
   const [queue, setQueueState] = useState<ClimbQueue>([]);
+  const [hasDoneFirstFetch, setHasDoneFirstFetch] = useState<boolean>(false);
 
   const [currentClimbQueueItem, setCurrentClimbQueueItemState] = useState<ClimbQueueItem | null>(null);
 
@@ -138,6 +140,10 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
       return prevQueue.filter((item) => item.uuid !== climbQueueItem.uuid);
     });
   };
+  
+  if (climbSearchResults && climbSearchResults.length > 0 && !hasDoneFirstFetch) {
+    setHasDoneFirstFetch(true);
+  }
 
   /***
    * Immediately sets current climb, and inserts it into the queue.
@@ -258,6 +264,7 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
         getNextClimbQueueItem,
         getPreviousClimbQueueItem,
         isFetchingClimbs,
+        hasDoneFirstFetch,
       }}
     >
       {children}
