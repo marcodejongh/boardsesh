@@ -1,4 +1,4 @@
-import React from "react";
+import React from 'react';
 
 interface ClimbInfo {}
 
@@ -8,6 +8,6 @@ const ClimbInfo: React.FC<ClimbInfo> = () => {
       <h1>TODO: Implement</h1>
     </>
   );
-}
-  
-  export default ClimbInfo;
+};
+
+export default ClimbInfo;

@@ -5,9 +5,7 @@ import { useUISearchParams } from '@/app/components/queue-control/ui-searchparam
 const ClearButton = () => {
   const { clearClimbSearchParams } = useUISearchParams();
 
-  return (
-    <Button onClick={clearClimbSearchParams} >Clear Filter</Button>
-  );
-}
+  return <Button onClick={clearClimbSearchParams}>Clear Filter</Button>;
+};
 
 export default ClearButton;

@@ -1,26 +1,24 @@
 'use client';
 import React from 'react';
 
-import { Row, Col, Skeleton } from "antd";
-import InfiniteScroll from "react-infinite-scroll-component";
-import { BoulderProblem, ParsedBoardRouteParameters, BoardDetails, BoardRouteParameters } from "@/app/lib/types";
-import { useQueueContext } from "../queue-control/queue-context";
-import ClimbCard from "../climb-card/climb-card";
-import { parseBoardRouteParams } from "@/app/lib/url-utils";
-import { useParams } from "next/navigation";
-import { useEffect, useRef } from "react";
-import { useDebouncedCallback } from "use-debounce";
+import { Row, Col, Skeleton } from 'antd';
+import InfiniteScroll from 'react-infinite-scroll-component';
+import { BoulderProblem, ParsedBoardRouteParameters, BoardDetails, BoardRouteParameters } from '@/app/lib/types';
+import { useQueueContext } from '../queue-control/queue-context';
+import ClimbCard from '../climb-card/climb-card';
+import { parseBoardRouteParams } from '@/app/lib/url-utils';
+import { useParams } from 'next/navigation';
+import { useEffect, useRef } from 'react';
+import { useDebouncedCallback } from 'use-debounce';
 
 type ClimbsListProps = ParsedBoardRouteParameters & {
   boardDetails: BoardDetails;
   initialClimbs: BoulderProblem[];
 };
 
-const ClimbsList = ({
-  boardDetails,
-  initialClimbs,
-}: ClimbsListProps) => {
-  const { setCurrentClimb, climbSearchResults, hasMoreResults, fetchMoreClimbs, addToQueue, currentClimb } = useQueueContext();
+const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
+  const { setCurrentClimb, climbSearchResults, hasMoreResults, fetchMoreClimbs, addToQueue, currentClimb } =
+    useQueueContext();
   const parsedParams = parseBoardRouteParams(useParams<BoardRouteParameters>());
 
   // Queue Context provider uses SWR infinite to fetch results, which can only happen clientside.
@@ -28,7 +26,7 @@ const ClimbsList = ({
   // fill on the server side in the page component. This way the user never sees a loading state for
   // the climb list.
   const climbs = climbSearchResults === null ? initialClimbs : climbSearchResults;
-  
+
   // A ref to store each climb's DOM element position for easier scroll tracking
   const climbsRefs = useRef<{ [uuid: string]: HTMLDivElement | null }>({});
 
@@ -38,7 +36,7 @@ const ClimbsList = ({
 
   /**
    * TODO: Figure out a better way to restore scroll position, might want to try out react-query
-   * which promises that it always restores scroll correctly. But for now this works, and as a 
+   * which promises that it always restores scroll correctly. But for now this works, and as a
    * cool side-effect shared links will also scroll to the correct item.
    */
   const handleScroll = () => {
@@ -46,11 +44,11 @@ const ClimbsList = ({
     let closestDistance = Infinity;
 
     const climbUuids = Object.keys(climbsRefs.current);
-    
+
     for (let i = 0; i < climbUuids.length; i++) {
       const uuid = climbUuids[i];
       const climbElement = climbsRefs.current[uuid];
-      
+
       if (climbElement) {
         const rect = climbElement.getBoundingClientRect();
         const distanceFromViewportTop = Math.abs(rect.top - 100); // Adjust 100 to your viewport reference
@@ -73,7 +71,7 @@ const ClimbsList = ({
 
   const debouncedHandleScroll = useDebouncedCallback(handleScroll, 500);
 
-    // Function to restore scroll based on the hash in the URL
+  // Function to restore scroll based on the hash in the URL
   const restoreScrollFromHash = () => {
     const hash = window.location.hash;
     if (hash) {
@@ -89,39 +87,41 @@ const ClimbsList = ({
   // When the component mounts, restore the scroll position based on the hash
   useEffect(() => {
     restoreScrollFromHash();
-  }, []); 
-  
+  }, []);
+
   return (
-      <InfiniteScroll
-        dataLength={climbs.length}
-        next={fetchMoreClimbs}
-        hasMore={hasMoreResults}
-        loader={<Skeleton active />}
-        endMessage={<div style={{ textAlign: "center" }}>No more climbs 🤐</div>}
-        // Probably not how this should be done in a React app, but it works and I ain't no CSS-wizard
-        scrollableTarget="content-for-scrollable"
-        onScroll={debouncedHandleScroll}
-      >
-        <Row gutter={[16, 16]}>
-          {climbs.map((climb) => (
-            <Col xs={24} lg={12} xl={12} key={climb.uuid}>
-              <div ref={(el) => { climbsRefs.current[climb.uuid] = el; }}>
-                <ClimbCard 
-                  setCurrentClimb={setCurrentClimb}
-                  addToQueue={addToQueue}
-                  parsedParams={parsedParams}
-                  climb={climb}
-                  boardDetails={boardDetails} 
-                  selected={currentClimb?.uuid === climb.uuid}
-                  onCoverClick={() => setCurrentClimb(climb)}
-                />
-              </div>
-              
-            </Col>
-            )
-          )}
-        </Row>
-      </InfiniteScroll>
+    <InfiniteScroll
+      dataLength={climbs.length}
+      next={fetchMoreClimbs}
+      hasMore={hasMoreResults}
+      loader={<Skeleton active />}
+      endMessage={<div style={{ textAlign: 'center' }}>No more climbs 🤐</div>}
+      // Probably not how this should be done in a React app, but it works and I ain't no CSS-wizard
+      scrollableTarget="content-for-scrollable"
+      onScroll={debouncedHandleScroll}
+    >
+      <Row gutter={[16, 16]}>
+        {climbs.map((climb) => (
+          <Col xs={24} lg={12} xl={12} key={climb.uuid}>
+            <div
+              ref={(el) => {
+                climbsRefs.current[climb.uuid] = el;
+              }}
+            >
+              <ClimbCard
+                setCurrentClimb={setCurrentClimb}
+                addToQueue={addToQueue}
+                parsedParams={parsedParams}
+                climb={climb}
+                boardDetails={boardDetails}
+                selected={currentClimb?.uuid === climb.uuid}
+                onCoverClick={() => setCurrentClimb(climb)}
+              />
+            </div>
+          </Col>
+        ))}
+      </Row>
+    </InfiniteScroll>
   );
 };
 

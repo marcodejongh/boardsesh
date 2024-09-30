@@ -1,27 +1,24 @@
 import React from 'react';
-import Link from "next/link";
-import { useQueueContext } from "./queue-context";
-import { useParams } from "next/navigation";
-import { parseBoardRouteParams } from "@/app/lib/url-utils";
-import { BoardRouteParametersWithUuid } from "@/app/lib/types";
-import { FastForwardOutlined } from "@ant-design/icons";
-import Button, { ButtonProps } from "antd/es/button";
+import Link from 'next/link';
+import { useQueueContext } from './queue-context';
+import { useParams } from 'next/navigation';
+import { parseBoardRouteParams } from '@/app/lib/url-utils';
+import { BoardRouteParametersWithUuid } from '@/app/lib/types';
+import { FastForwardOutlined } from '@ant-design/icons';
+import Button, { ButtonProps } from 'antd/es/button';
 
 type NextClimbButtonProps = {
   navigate: boolean;
 };
 
 const NextButton = (props: ButtonProps) => (
-    <Button
-        {...props}
-        type="default"
-        icon={<FastForwardOutlined />}
-        aria-label="Next climb"
-    />);
+  <Button {...props} type="default" icon={<FastForwardOutlined />} aria-label="Next climb" />
+);
 
-export default function NextClimbButton ({ navigate=false }: NextClimbButtonProps) {
+export default function NextClimbButton({ navigate = false }: NextClimbButtonProps) {
   const { setCurrentClimbQueueItem, getNextClimbQueueItem } = useQueueContext(); // Assuming setSuggestedQueue is available
-  const { board_name, layout_id, size_id, set_ids, angle } = parseBoardRouteParams(useParams<BoardRouteParametersWithUuid>());
+  const { board_name, layout_id, size_id, set_ids, angle } =
+    parseBoardRouteParams(useParams<BoardRouteParametersWithUuid>());
 
   const nextClimb = getNextClimbQueueItem();
 
@@ -31,7 +28,7 @@ export default function NextClimbButton ({ navigate=false }: NextClimbButtonProp
     }
     setCurrentClimbQueueItem(nextClimb);
   };
-  
+
   if (navigate && nextClimb) {
     return (
       <Link
@@ -42,5 +39,5 @@ export default function NextClimbButton ({ navigate=false }: NextClimbButtonProp
       </Link>
     );
   }
-  return (<NextButton onClick={handleClick} disabled={!nextClimb} />) 
-};
+  return <NextButton onClick={handleClick} disabled={!nextClimb} />;
+}

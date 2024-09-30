@@ -1,5 +1,5 @@
-import { sql } from "@vercel/postgres";
-import { NextResponse } from "next/server";
+import { sql } from '@vercel/postgres';
+import { NextResponse } from 'next/server';
 
 export async function GET(req: Request, { params }: { params: { board_name: string; layout_id: string } }) {
   const { /*board_name,*/ layout_id } = params;
@@ -14,6 +14,6 @@ export async function GET(req: Request, { params }: { params: { board_name: stri
     `;
     return NextResponse.json(angles);
   } catch (error) {
-    return NextResponse.json({ error: "Failed to fetch angles" }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to fetch angles' }, { status: 500 });
   }
 }

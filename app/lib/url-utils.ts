@@ -5,11 +5,11 @@ import {
   BoardRouteParametersWithUuid,
   SearchRequestPagination,
   ClimbUuid,
-} from "@/app/lib/types";
-import { PAGE_LIMIT } from "../components/board-page/constants";
+} from '@/app/lib/types';
+import { PAGE_LIMIT } from '../components/board-page/constants';
 
 export function parseBoardRouteParams<T extends BoardRouteParameters>(
-  params: T
+  params: T,
 ): T extends BoardRouteParametersWithUuid ? ParsedBoardRouteParametersWithUuid : ParsedBoardRouteParameters {
   const { board_name, layout_id, size_id, set_ids, angle, climb_uuid } = params;
 
@@ -18,7 +18,7 @@ export function parseBoardRouteParams<T extends BoardRouteParameters>(
     layout_id: Number(layout_id),
     size_id: Number(size_id),
     set_ids: decodeURIComponent(set_ids)
-      .split(",")
+      .split(',')
       .map((str) => Number(str)),
     angle: Number(angle),
   };
@@ -99,9 +99,10 @@ export const constructClimbViewUrl = (
   climb_uuid: ClimbUuid,
 ) => `/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/view/${climb_uuid}`;
 
-export const constructClimbList = (
-  { board_name, layout_id, angle, size_id, set_ids }: ParsedBoardRouteParameters,
-) => `/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/list`;
+export const constructClimbList = ({ board_name, layout_id, angle, size_id, set_ids }: ParsedBoardRouteParameters) =>
+  `/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/list`;
 
-export const constructClimbSearchUrl = ({ board_name, layout_id, angle, size_id, set_ids }: ParsedBoardRouteParameters, queryString: string) =>
-  `/api/v1/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/search?${queryString}`;
+export const constructClimbSearchUrl = (
+  { board_name, layout_id, angle, size_id, set_ids }: ParsedBoardRouteParameters,
+  queryString: string,
+) => `/api/v1/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/search?${queryString}`;

@@ -1,10 +1,9 @@
 'use client';
 
-import React from "react";
-import SearchForm from "./search-form";
-import { Grid } from "antd";
-import { UISearchParamsProvider } from "../queue-control/ui-searchparams-provider";
-
+import React from 'react';
+import SearchForm from './search-form';
+import { Grid } from 'antd';
+import { UISearchParamsProvider } from '../queue-control/ui-searchparams-provider';
 
 const { useBreakpoint } = Grid;
 
@@ -16,7 +15,6 @@ const FilterColumn = () => {
     <UISearchParamsProvider>
       <SearchForm />
     </UISearchParamsProvider>
-    
   );
 
   // Conditionally render based on screen size

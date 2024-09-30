@@ -1,10 +1,10 @@
-import React, { useState } from "react";
-import { ShareAltOutlined, CopyOutlined } from "@ant-design/icons";
-import { Button, Input, Modal, QRCode, Flex, message } from "antd";
+import React, { useState } from 'react';
+import { ShareAltOutlined, CopyOutlined } from '@ant-design/icons';
+import { Button, Input, Modal, QRCode, Flex, message } from 'antd';
 
 const getShareUrl = (pathname: string, search: string, peerId: string) => {
   const params = new URLSearchParams(search);
-  params.set("hostId", peerId);
+  params.set('hostId', peerId);
 
   return `${window.location.origin}${pathname}?${params.toString()}`;
 };
@@ -13,7 +13,7 @@ export type ShareButtonProps = {
   hostId: string;
   pathname: string;
   search: string;
-}
+};
 export const ShareBoardButton = ({ peerId, hostId, pathname, search }: ShareButtonProps) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -31,11 +31,11 @@ export const ShareBoardButton = ({ peerId, hostId, pathname, search }: ShareButt
     navigator.clipboard
       .writeText(shareUrl)
       .then(() => {
-        message.success("Share URL copied to clipboard!");
+        message.success('Share URL copied to clipboard!');
         handleOk();
       })
       .catch(() => {
-        message.error("Failed to copy URL.");
+        message.error('Failed to copy URL.');
       });
   };
 
@@ -54,14 +54,12 @@ export const ShareBoardButton = ({ peerId, hostId, pathname, search }: ShareButt
         onOk={handleOk}
       >
         <Flex gap="middle" align="start" vertical>
-          <Flex style={{ width: "100%" }} justify="center" align="center">
+          <Flex style={{ width: '100%' }} justify="center" align="center">
             <Input
               width="100%"
               value={shareUrl}
               readOnly
-              addonAfter={
-                <Button icon={<CopyOutlined />} onClick={copyToClipboard} />
-              }
+              addonAfter={<Button icon={<CopyOutlined />} onClick={copyToClipboard} />}
             />
           </Flex>
           <Flex justify="center" align="center">

@@ -1,31 +1,25 @@
 import React from 'react';
 
-import Link from "next/link";
-import { useQueueContext } from "./queue-context";
-import { useParams } from "next/navigation";
-import { parseBoardRouteParams } from "@/app/lib/url-utils";
-import { BoardRouteParametersWithUuid } from "@/app/lib/types";
-import { FastBackwardOutlined } from "@ant-design/icons";
-import Button, { ButtonProps } from "antd/es/button";
+import Link from 'next/link';
+import { useQueueContext } from './queue-context';
+import { useParams } from 'next/navigation';
+import { parseBoardRouteParams } from '@/app/lib/url-utils';
+import { BoardRouteParametersWithUuid } from '@/app/lib/types';
+import { FastBackwardOutlined } from '@ant-design/icons';
+import Button, { ButtonProps } from 'antd/es/button';
 
 type PreviousClimbButtonProps = {
   navigate: boolean;
 };
 
 const PreviousButton = (props: ButtonProps) => (
-    <Button
-        {...props}
-        type="default"
-        icon={<FastBackwardOutlined />}
-        aria-label="Next climb"
-    />);
+  <Button {...props} type="default" icon={<FastBackwardOutlined />} aria-label="Next climb" />
+);
 
-export default function PreviousClimbButton ({ navigate=false }: PreviousClimbButtonProps) {
-  const { 
-    getPreviousClimbQueueItem,
-    setCurrentClimbQueueItem,
-  } = useQueueContext();
-  const { board_name, layout_id, size_id, set_ids, angle } = parseBoardRouteParams(useParams<BoardRouteParametersWithUuid>());
+export default function PreviousClimbButton({ navigate = false }: PreviousClimbButtonProps) {
+  const { getPreviousClimbQueueItem, setCurrentClimbQueueItem } = useQueueContext();
+  const { board_name, layout_id, size_id, set_ids, angle } =
+    parseBoardRouteParams(useParams<BoardRouteParametersWithUuid>());
 
   const previousClimb = getPreviousClimbQueueItem();
 
@@ -35,7 +29,7 @@ export default function PreviousClimbButton ({ navigate=false }: PreviousClimbBu
       setCurrentClimbQueueItem(previousClimb);
     }
   };
-  
+
   if (navigate && previousClimb) {
     return (
       <Link
@@ -46,5 +40,5 @@ export default function PreviousClimbButton ({ navigate=false }: PreviousClimbBu
       </Link>
     );
   }
-  return (<PreviousButton onClick={handleClick} disabled={!previousClimb} />) 
-};
+  return <PreviousButton onClick={handleClick} disabled={!previousClimb} />;
+}

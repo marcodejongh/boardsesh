@@ -1,5 +1,5 @@
-import React from "react";
-import { HoldRenderData, LitUpHoldsMap } from "./types";
+import React from 'react';
+import { HoldRenderData, LitUpHoldsMap } from './types';
 
 interface BoardLitupHoldsProps {
   holdsData: HoldRenderData[];
@@ -8,7 +8,7 @@ interface BoardLitupHoldsProps {
 }
 
 const BoardLitupHolds: React.FC<BoardLitupHoldsProps> = ({ holdsData, litUpHoldsMap, thumbnail }) => {
-  if(!holdsData) return null
+  if (!holdsData) return null;
   return (
     <>
       {holdsData
@@ -24,7 +24,7 @@ const BoardLitupHolds: React.FC<BoardLitupHoldsProps> = ({ holdsData, litUpHolds
             stroke={litUpHoldsMap[hold.id].color}
             strokeWidth={thumbnail ? 8 : 6}
             fillOpacity={thumbnail ? 1 : 0}
-            fill={ thumbnail ? litUpHoldsMap[hold.id].color : undefined }
+            fill={thumbnail ? litUpHoldsMap[hold.id].color : undefined}
           />
         ))}
     </>

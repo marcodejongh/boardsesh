@@ -1,8 +1,8 @@
-import React, { createContext, useContext, useState } from "react";
-import { SearchRequestPagination } from "@/lib/types";
-import { useDebouncedCallback } from "use-debounce";
-import { useQueueContext } from "./queue-context";
-import { DEFAULT_SEARCH_PARAMS } from "@/app/lib/url-utils";
+import React, { createContext, useContext, useState } from 'react';
+import { SearchRequestPagination } from '@/lib/types';
+import { useDebouncedCallback } from 'use-debounce';
+import { useQueueContext } from './queue-context';
+import { DEFAULT_SEARCH_PARAMS } from '@/app/lib/url-utils';
 
 interface UISearchParamsContextType {
   uiSearchParams: SearchRequestPagination;
@@ -17,7 +17,7 @@ const UISearchParamsContext = createContext<UISearchParamsContextType | undefine
  * and never directly through the queue-provider. The ui provider implements UI concerns.
  * For example it maintains a copy of the search params so that the UI can update without hammering the rest-api.
  * Updating the state that affects the actual search is then debounced.
- * 
+ *
  */
 export const UISearchParamsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { climbSearchParams, setClimbSearchParams } = useQueueContext();
@@ -41,10 +41,9 @@ export const UISearchParamsProvider: React.FC<{ children: React.ReactNode }> = (
     } else {
       debouncedUpdate();
     }
-    
   };
 
-  const clearClimbSearchParams = () => updateFilters(DEFAULT_SEARCH_PARAMS, true)
+  const clearClimbSearchParams = () => updateFilters(DEFAULT_SEARCH_PARAMS, true);
 
   return (
     <UISearchParamsContext.Provider value={{ uiSearchParams, updateFilters, clearClimbSearchParams }}>
@@ -57,7 +56,7 @@ export const UISearchParamsProvider: React.FC<{ children: React.ReactNode }> = (
 export const useUISearchParams = () => {
   const context = useContext(UISearchParamsContext);
   if (!context) {
-    throw new Error("useUISearchParams must be used within a SearchParamsProvider");
+    throw new Error('useUISearchParams must be used within a SearchParamsProvider');
   }
   return context;
 };

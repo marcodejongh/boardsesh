@@ -1,14 +1,14 @@
 // api.ts
 
-import { SetIdList } from "@/app/lib/board-data";
-import { SearchBoulderProblemResult } from "@/app/lib/data/queries";
+import { SetIdList } from '@/app/lib/board-data';
+import { SearchBoulderProblemResult } from '@/app/lib/data/queries';
 import {
   FetchCurrentProblemResponse,
   BoardDetails,
   ParsedBoardRouteParameters,
   ParsedBoardRouteParametersWithUuid,
   SearchRequestPagination,
-} from "@/app/lib/types";
+} from '@/app/lib/types';
 
 const API_BASE_URL = `${process.env.BASE_URL || 'https://www.boardsesh.com'}/api`;
 
@@ -19,15 +19,18 @@ export const fetchResults = async (
   const urlParams = new URLSearchParams(
     Object.entries({
       ...queryParameters,
-      onlyClassics: queryParameters.onlyClassics ? "1" : "0",
-    }).reduce((acc, [key, value]) => {
-      if (value !== undefined) {
-        acc[key] = String(value);
-      }
-      return acc;
-    }, {} as Record<string, string>),
+      onlyClassics: queryParameters.onlyClassics ? '1' : '0',
+    }).reduce(
+      (acc, [key, value]) => {
+        if (value !== undefined) {
+          acc[key] = String(value);
+        }
+        return acc;
+      },
+      {} as Record<string, string>,
+    ),
   );
-  
+
   // Build the URL using the new route structure
   const response = await fetch(
     `${API_BASE_URL}/v1/${routeParameters.board_name}/${routeParameters.layout_id}/${routeParameters.size_id}/${routeParameters.set_ids}/${routeParameters.angle}/search?${urlParams}&bustCache=3`,
@@ -61,12 +64,12 @@ export const fetchBoardDetails = async (
   size: number,
   set_ids: SetIdList,
 ): Promise<BoardDetails> => {
-  const apiUrl = `${API_BASE_URL}/v1/${board}/${layout}/${size}/${set_ids.join(",")}/details?bustCache=100`;
+  const apiUrl = `${API_BASE_URL}/v1/${board}/${layout}/${size}/${set_ids.join(',')}/details?bustCache=100`;
   const response = await fetch(apiUrl);
-  
+
   if (!response.ok) {
     throw new Error(`HTTP error! status: ${response.status}`);
   }
-  
+
   return response.json();
 };

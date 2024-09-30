@@ -15,8 +15,8 @@ const PACKET_MIDDLE = 81;
 const PACKET_FIRST = 82;
 const PACKET_LAST = 83;
 const PACKET_ONLY = 84;
-const SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
-const CHARACTERISTIC_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
+const SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+const CHARACTERISTIC_UUID = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
 
 // Helper functions (same as before)
 const checksum = (data: number[]) => data.reduce((acc, value) => (acc + value) & 255, 0) ^ 255;
@@ -35,8 +35,10 @@ const encodeColor = (color: string) => {
   return parsedColor;
 };
 
-const encodePositionAndColor = (position: number, ledColor: string) =>
-  [...encodePosition(position), encodeColor(ledColor)];
+const encodePositionAndColor = (position: number, ledColor: string) => [
+  ...encodePosition(position),
+  encodeColor(ledColor),
+];
 
 const getBluetoothPacket = (frames: string, placementPositions: LedPlacements) => {
   const resultArray: number[][] = [];
@@ -48,7 +50,7 @@ const getBluetoothPacket = (frames: string, placementPositions: LedPlacements) =
     const [placement, role] = frame.split('r');
     const encodedFrame = encodePositionAndColor(
       Number(placementPositions[Number(placement)]),
-      holdStateMapping['kilter'][Number(role)].color.replace('#', '')
+      holdStateMapping['kilter'][Number(role)].color.replace('#', ''),
     );
 
     if (tempArray.length + encodedFrame.length > MESSAGE_BODY_MAX_LENGTH) {
@@ -70,13 +72,10 @@ const getBluetoothPacket = (frames: string, placementPositions: LedPlacements) =
 
 const splitMessages = (buffer: Uint8Array) =>
   Array.from({ length: Math.ceil(buffer.length / MAX_BLUETOOTH_MESSAGE_SIZE) }, (_, i) =>
-    buffer.slice(i * MAX_BLUETOOTH_MESSAGE_SIZE, (i + 1) * MAX_BLUETOOTH_MESSAGE_SIZE)
+    buffer.slice(i * MAX_BLUETOOTH_MESSAGE_SIZE, (i + 1) * MAX_BLUETOOTH_MESSAGE_SIZE),
   );
 
-const writeCharacteristicSeries = async (
-  characteristic: BluetoothRemoteGATTCharacteristic,
-  messages: Uint8Array[]
-) => {
+const writeCharacteristicSeries = async (characteristic: BluetoothRemoteGATTCharacteristic, messages: Uint8Array[]) => {
   for (const message of messages) {
     await characteristic.writeValue(message);
   }

@@ -1,5 +1,5 @@
-import { sql } from "@vercel/postgres";
-import { NextResponse } from "next/server";
+import { sql } from '@vercel/postgres';
+import { NextResponse } from 'next/server';
 
 // Dynamic handler for fetching sizes related to a specific layout
 export async function GET(req: Request, { params }: { params: { board_name: string; layout_id: string } }) {
@@ -17,7 +17,7 @@ export async function GET(req: Request, { params }: { params: { board_name: stri
     // Return the sizes as JSON response
     return NextResponse.json(result.rows);
   } catch (error) {
-    console.error("Error fetching sizes:", error);
-    return NextResponse.json({ error: "Failed to fetch sizes" }, { status: 500 });
+    console.error('Error fetching sizes:', error);
+    return NextResponse.json({ error: 'Failed to fetch sizes' }, { status: 500 });
   }
 }

@@ -1,5 +1,5 @@
-import { HoldRenderData, LitUpHoldsMap } from "../components/board-renderer/types";
-import { SetIdList } from "./board-data";
+import { HoldRenderData, LitUpHoldsMap } from '../components/board-renderer/types';
+import { SetIdList } from './board-data';
 
 export type BoulderProblem = {
   uuid: string;
@@ -59,8 +59,8 @@ export type SearchRequest = {
   minAscents: number;
   minGrade: number;
   minRating: number;
-  sortBy: "ascents" | "difficulty" | "name" | "quality";
-  sortOrder: "asc" | "desc";
+  sortBy: 'ascents' | 'difficulty' | 'name' | 'quality';
+  sortOrder: 'asc' | 'desc';
   name: string;
   onlyClassics: boolean;
   settername: string;
@@ -173,7 +173,7 @@ export type BoardDetails = {
   layout_id: number;
   size_id: number;
   set_ids: SetIdList;
-  ledPlacements: LedPlacements
+  ledPlacements: LedPlacements;
 };
 
 export type GetLedColorsResponse = LedColor;

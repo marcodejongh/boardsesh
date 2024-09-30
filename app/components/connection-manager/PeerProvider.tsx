@@ -1,9 +1,9 @@
-"use client"
+'use client';
 
-import React, { useState, useEffect, createContext } from "react";
-import Peer, { DataConnection } from "peerjs";
-import { PeerContextType, PeerProviderProps, PeerConnectionState, PeerData } from "./types"; // Assuming your types are in a file named types.ts
-import { message } from "antd";
+import React, { useState, useEffect, createContext } from 'react';
+import Peer, { DataConnection } from 'peerjs';
+import { PeerContextType, PeerProviderProps, PeerConnectionState, PeerData } from './types'; // Assuming your types are in a file named types.ts
+import { message } from 'antd';
 export const PeerContext = createContext<PeerContextType | undefined>(undefined);
 let peerInstance: Peer | undefined;
 
@@ -18,20 +18,20 @@ const PeerProvider: React.FC<PeerProviderProps> = ({ children }) => {
     if (!peerInstance) {
       peerInstance = new Peer({ debug: 1 });
       const p = peerInstance;
-      p.on("open", (id: string) => {
-        console.log("My peer ID is:", id);
+      p.on('open', (id: string) => {
+        console.log('My peer ID is:', id);
         setPeerId(id);
         setReadyToConnect(true);
       });
 
-      p.on("connection", (newConn: DataConnection) => {
-        console.log("New Connection established");
+      p.on('connection', (newConn: DataConnection) => {
+        console.log('New Connection established');
 
-        newConn.on("data", (data) => {
-          console.log("Received data:", data);
+        newConn.on('data', (data) => {
+          console.log('Received data:', data);
           setReceivedData(data as PeerData); // Store received data in an array
         });
-        
+
         setConnections((prevConnections) => {
           const connections = [...prevConnections, newConn];
           message.info(`A user connected, now have ${connections.length} users connected`);
@@ -69,8 +69,8 @@ const PeerProvider: React.FC<PeerProviderProps> = ({ children }) => {
 
     if (newConn) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      newConn.on("data", (data: any) => {
-        console.log("Received data:", data);
+      newConn.on('data', (data: any) => {
+        console.log('Received data:', data);
         setReceivedData(data); // Store received data in an array
       });
 

@@ -1,9 +1,8 @@
 'use client';
 
-import React from "react";
-import { Input } from "antd";
-import { useUISearchParams } from "../queue-control/ui-searchparams-provider";
-
+import React from 'react';
+import { Input } from 'antd';
+import { useUISearchParams } from '../queue-control/ui-searchparams-provider';
 
 const SearchClimbNameInput = () => {
   const { uiSearchParams, updateFilters } = useUISearchParams();
@@ -13,10 +12,10 @@ const SearchClimbNameInput = () => {
     <>
       <Input
         placeholder="Filter climbs..."
-        style={{ width: "100%" }}
+        style={{ width: '100%' }}
         onChange={(e) => {
           updateFilters({
-            name: e.target.value
+            name: e.target.value,
           });
         }}
         value={uiSearchParams.name}

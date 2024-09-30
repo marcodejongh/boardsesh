@@ -1,7 +1,6 @@
-import { BoardName } from "@/lib/types";
+import { BoardName } from '@/lib/types';
 
 export type LitUpHolds = string;
-
 
 export type HoldState = 'OFF' | 'STARTING' | 'FINISH' | 'HAND' | 'FOOT';
 export type HoldsArray = Array<HoldRenderData>;
@@ -15,10 +14,10 @@ export type HoldRenderData = {
   cy: number;
   r: number;
 };
-export type LitUpHoldsMap = Record<HoldCode, { state: HoldState; color: string; }>;
+export type LitUpHoldsMap = Record<HoldCode, { state: HoldState; color: string }>;
 
 // Mapping object for board-specific hold states
-export const holdStateMapping: Record<BoardName, Record<HoldCode, { name: HoldState; color: HoldColor; }>> = {
+export const holdStateMapping: Record<BoardName, Record<HoldCode, { name: HoldState; color: HoldColor }>> = {
   kilter: {
     42: { name: 'STARTING', color: '#00DD00' },
     43: { name: 'HAND', color: '#00FFFF' },

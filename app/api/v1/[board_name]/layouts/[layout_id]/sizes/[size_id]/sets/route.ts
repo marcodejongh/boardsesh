@@ -1,5 +1,5 @@
-import { sql } from "@vercel/postgres";
-import { NextResponse } from "next/server";
+import { sql } from '@vercel/postgres';
+import { NextResponse } from 'next/server';
 
 export async function GET(
   request: Request,
@@ -20,6 +20,6 @@ export async function GET(
     return NextResponse.json(sets);
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ error: "Failed to fetch sets" }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to fetch sets' }, { status: 500 });
   }
 }

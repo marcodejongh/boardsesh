@@ -1,4 +1,3 @@
-
 // // bluetooth.js
 // export const drawBoard = (svgId, imagesToHolds, edgeLeft, edgeRight, edgeBottom, edgeTop) => {
 //   // Your drawBoard logic

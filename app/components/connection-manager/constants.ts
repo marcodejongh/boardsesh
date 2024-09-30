@@ -1,3 +1,3 @@
 export const messageTypes = {
-    CHANGE_CLIMB: 'change_climb'
-}
+  CHANGE_CLIMB: 'change_climb',
+};

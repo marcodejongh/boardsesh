@@ -1,16 +1,16 @@
-"use client";
-import React, { useState } from "react";
-import { Button, Typography, Row, Col, Card, Drawer, Space } from "antd";
-import { CheckCircleOutlined } from "@ant-design/icons";
-import BoardRenderer from "../board-renderer/board-renderer";
-import { useQueueContext } from "./queue-context";
-import NextClimbButton from "./next-climb-button";
-import { useParams, usePathname } from "next/navigation";
-import PreviousClimbButton from "./previous-climb-button";
-import Link from "next/link";
-import { parseBoardRouteParams } from "@/app/lib/url-utils";
-import { BoardName, BoardRouteParametersWithUuid, BoulderProblem, BoardDetails } from "@/app/lib/types";
-import QueueList from "./queue-list";
+'use client';
+import React, { useState } from 'react';
+import { Button, Typography, Row, Col, Card, Drawer, Space } from 'antd';
+import { CheckCircleOutlined } from '@ant-design/icons';
+import BoardRenderer from '../board-renderer/board-renderer';
+import { useQueueContext } from './queue-context';
+import NextClimbButton from './next-climb-button';
+import { useParams, usePathname } from 'next/navigation';
+import PreviousClimbButton from './previous-climb-button';
+import Link from 'next/link';
+import { parseBoardRouteParams } from '@/app/lib/url-utils';
+import { BoardName, BoardRouteParametersWithUuid, BoulderProblem, BoardDetails } from '@/app/lib/types';
+import QueueList from './queue-list';
 
 const { Title, Text } = Typography;
 
@@ -20,32 +20,30 @@ export interface HistoryControlBar {
 }
 
 type BoardPreviewProps = {
-  board: BoardName; 
+  board: BoardName;
   currentClimb: BoulderProblem | null;
   boardDetails: BoardDetails;
-}
+};
 
 export const BoardPreview = ({ boardDetails, board, currentClimb }: BoardPreviewProps) => (
-   <BoardRenderer
-      holdsData={boardDetails.holdsData}
-      litUpHoldsMap={currentClimb ? currentClimb.litUpHoldsMap : undefined}
-      boardDetails={boardDetails} 
-      board_name={board}
-      thumbnail
-    />
-)
+  <BoardRenderer
+    holdsData={boardDetails.holdsData}
+    litUpHoldsMap={currentClimb ? currentClimb.litUpHoldsMap : undefined}
+    boardDetails={boardDetails}
+    board_name={board}
+    thumbnail
+  />
+);
 
-const HistoryControlBar: React.FC<HistoryControlBar> = ({
-  boardDetails,
-  board,
-}: HistoryControlBar) => {
+const HistoryControlBar: React.FC<HistoryControlBar> = ({ boardDetails, board }: HistoryControlBar) => {
   const [isQueueOpen, setIsQueueOpen] = useState(false); // State to control drawer
   const pathname = usePathname();
-  const { board_name, layout_id, size_id, set_ids, angle } = parseBoardRouteParams(useParams<BoardRouteParametersWithUuid>());
-  
+  const { board_name, layout_id, size_id, set_ids, angle } =
+    parseBoardRouteParams(useParams<BoardRouteParametersWithUuid>());
+
   const isViewPage = pathname.includes('/view/');
   const { currentClimb } = useQueueContext(); // Assuming `queue` exists in context
-  
+
   // Function to toggle drawer visibility
   const toggleQueueDrawer = () => setIsQueueOpen(!isQueueOpen);
 
@@ -54,7 +52,7 @@ const HistoryControlBar: React.FC<HistoryControlBar> = ({
       {/* Main Control Bar */}
       <Card
         bodyStyle={{
-          padding: '0', 
+          padding: '0',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -68,16 +66,16 @@ const HistoryControlBar: React.FC<HistoryControlBar> = ({
           <Col xs={4}>
             {/* Board preview */}
             <div style={boardPreviewContainerStyle}>
-              { currentClimb ? (
+              {currentClimb ? (
                 <Link href={`/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/view/${currentClimb.uuid}`}>
-                  <BoardPreview boardDetails={boardDetails} board={board} currentClimb={currentClimb}/>
+                  <BoardPreview boardDetails={boardDetails} board={board} currentClimb={currentClimb} />
                 </Link>
               ) : (
-                <BoardPreview boardDetails={boardDetails} board={board} currentClimb={currentClimb}/>
+                <BoardPreview boardDetails={boardDetails} board={board} currentClimb={currentClimb} />
               )}
             </div>
           </Col>
-          
+
           {/* Clickable main body for opening the queue */}
           <Col xs={10} style={{ textAlign: 'center' }}>
             <div onClick={toggleQueueDrawer} style={{ cursor: 'pointer' }}>
@@ -101,13 +99,15 @@ const HistoryControlBar: React.FC<HistoryControlBar> = ({
                   textOverflow: 'ellipsis',
                 }}
               >
-                {currentClimb ? `${currentClimb.difficulty} ${currentClimb.quality_average}★ @ ${currentClimb.angle}°` : 'No climb selected'}
+                {currentClimb
+                  ? `${currentClimb.difficulty} ${currentClimb.quality_average}★ @ ${currentClimb.angle}°`
+                  : 'No climb selected'}
               </Text>
             </div>
           </Col>
 
           {/* Button cluster */}
-          <Col xs={10} style={{ textAlign: "right" }}>
+          <Col xs={10} style={{ textAlign: 'right' }}>
             <Space>
               <PreviousClimbButton navigate={isViewPage} />
               <NextClimbButton navigate={isViewPage} />
@@ -132,12 +132,12 @@ const HistoryControlBar: React.FC<HistoryControlBar> = ({
 };
 
 const boardPreviewContainerStyle = {
-  width: "100%", // Using 100% width for flexibility
-  height: "auto", // Auto height to maintain aspect ratio
-  display: "flex",
-  justifyContent: "center",
-  alignItems: "center",
-  overflow: "hidden",
+  width: '100%', // Using 100% width for flexibility
+  height: 'auto', // Auto height to maintain aspect ratio
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+  overflow: 'hidden',
 };
 
 export default HistoryControlBar;

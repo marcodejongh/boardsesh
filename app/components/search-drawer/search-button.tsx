@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState } from "react";
-import { Button, Grid, Drawer, Badge, Space, Typography, Spin } from "antd";
-import { SearchOutlined } from "@ant-design/icons";
-import SearchForm from "./search-form";
-import { useQueueContext } from "@/app/components/queue-control/queue-context";
-import ClearButton from "./clear-button";
+import React, { useState } from 'react';
+import { Button, Grid, Drawer, Badge, Space, Typography, Spin } from 'antd';
+import { SearchOutlined } from '@ant-design/icons';
+import SearchForm from './search-form';
+import { useQueueContext } from '@/app/components/queue-control/queue-context';
+import ClearButton from './clear-button';
 
 const { useBreakpoint } = Grid;
 const { Text } = Typography;
@@ -18,18 +18,23 @@ const SearchButton = () => {
   // Drawer for mobile view
   const mobileDrawer = (
     <>
-      <Badge count={totalSearchResultCount} overflowCount={9999} showZero={totalSearchResultCount !== null} color="cyan">
+      <Badge
+        count={totalSearchResultCount}
+        overflowCount={9999}
+        showZero={totalSearchResultCount !== null}
+        color="cyan"
+      >
         <Button type="default" icon={<SearchOutlined />} onClick={() => setIsOpen(true)} />
       </Badge>
-      
+
       <Drawer
         title="Search"
         placement="right"
-        width={"70%"}
+        width={'70%'}
         open={isOpen}
         onClose={() => setIsOpen(false)}
         footer={
-          <Space style={{ display: "flex", justifyContent: "space-between" }}>  
+          <Space style={{ display: 'flex', justifyContent: 'space-between' }}>
             <div style={{ textAlign: 'left' }}>
               {isFetchingClimbs ? (
                 <Spin size="small" />
@@ -38,7 +43,8 @@ const SearchButton = () => {
               )}
             </div>
             <ClearButton />
-          </Space>}
+          </Space>
+        }
       >
         <SearchForm />
       </Drawer>

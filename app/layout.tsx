@@ -2,14 +2,10 @@
 import React from 'react';
 import { AntdRegistry } from '@ant-design/nextjs-registry';
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body style={{ margin: 0}}>
+      <body style={{ margin: 0 }}>
         <AntdRegistry>{children}</AntdRegistry>
       </body>
     </html>
