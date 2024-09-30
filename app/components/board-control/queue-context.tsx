@@ -9,7 +9,6 @@ import { createContext, useContext, useState, ReactNode } from "react";
 import useSWRInfinite from "swr/infinite";
 import { v4 as uuidv4 } from 'uuid';
 import { PAGE_LIMIT } from "../board-page/constants";
-import { usePathname } from "next/navigation";
 
 type QueueContextProps = {
   parsedParams: ParsedBoardRouteParameters;
@@ -65,7 +64,6 @@ export const QueueProvider = ({
   parsedParams, 
   children, 
 }: QueueContextProps) => {
-  const pathName = usePathname();
   const [queue, setQueueState] = useState<ClimbQueue>([]);
   
   const [currentClimbQueueItem, setCurrentClimbQueueItemState] = useState<ClimbQueueItem | null>(null);
@@ -83,7 +81,7 @@ export const QueueProvider = ({
     
     // We only want to use history.replaceState for filter changes as SWR takes care of the actual
     // fetching, and using router.replace assumes we want the result of the SSR page.tsx.
-    history.replaceState(null, '', `${pathName}?${searchParamsToUrlParams(updatedFilters).toString()}`);
+    history.replaceState(null, '', `${window.location.pathname}?${searchParamsToUrlParams(updatedFilters).toString()}`);
   }
   
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -114,7 +112,7 @@ export const QueueProvider = ({
       const newParams = { ...climbSearchParams, page: oldSize + 1};
       // We persist the new page number in the URL so that the page on a hard refresh will
       // be the same as it was before, and hopefully will restore scroll correctly.
-      history.replaceState(null, '', `${pathName}?${searchParamsToUrlParams(newParams).toString()}`);
+      history.replaceState(null, '', `${window.location.pathname}?${searchParamsToUrlParams(newParams).toString()}`);
       return oldSize + 1;
     });
     
