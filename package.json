@@ -15,6 +15,7 @@
     "@neondatabase/serverless": "^0.9.5",
     "@vercel/postgres": "^0.10.0",
     "antd": "^5.20.2",
+    "idb": "^8.0.0",
     "next": "14.2.11",
     "nouislider": "^15.8.1",
     "peerjs": "^1.5.4",
