@@ -110,7 +110,8 @@ export const constructClimbViewUrl = (
 
 export const constructClimbInfoUrl = (
   { board_name, layout_id, size_id, set_ids }: BoardDetails,
-  climb_uuid: ClimbUuid, angle: Angle
+  climb_uuid: ClimbUuid,
+  angle: Angle,
 ) => `/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/info/${climb_uuid}`;
 
 export const constructClimbList = ({ board_name, layout_id, angle, size_id, set_ids }: ParsedBoardRouteParameters) =>

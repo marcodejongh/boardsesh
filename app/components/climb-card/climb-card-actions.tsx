@@ -21,9 +21,9 @@ const ClimbCardActions = ({ climb, boardDetails }: ClimbCardActionsProps) => {
     // <SettingOutlined key="setting" />,
     <TickClimbButton />,
     <Link href={constructClimbInfoUrl(boardDetails, climb.uuid, climb.angle)}>
-      <InfoCircleOutlined onClick={()=> message.info('TODO: Implement')} />
+      <InfoCircleOutlined onClick={() => message.info('TODO: Implement')} />
     </Link>,
-    <HeartOutlined onClick={()=> message.info('TODO: Implement')} />,
+    <HeartOutlined onClick={() => message.info('TODO: Implement')} />,
     <PlusCircleOutlined key="edit" onClick={addToQueue ? () => addToQueue(climb) : undefined} />,
   ];
 };
