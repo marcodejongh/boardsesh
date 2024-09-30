@@ -112,7 +112,6 @@ const ClimbsList = ({
                   parsedParams={parsedParams}
                   climb={climb}
                   boardDetails={boardDetails} 
-                  clickable
                 />
               </div>
               
