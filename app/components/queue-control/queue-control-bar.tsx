@@ -1,7 +1,7 @@
 'use client';
 import React, { useState } from 'react';
 import { Button, Typography, Row, Col, Card, Drawer, Space } from 'antd';
-import { CheckCircleOutlined } from '@ant-design/icons';
+import { CheckOutlined } from '@ant-design/icons';
 import { useQueueContext } from './queue-context';
 import NextClimbButton from './next-climb-button';
 import { usePathname } from 'next/navigation';
@@ -84,7 +84,7 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails }: QueueContr
             <Space>
               <PreviousClimbButton navigate={isViewPage} />
               <NextClimbButton navigate={isViewPage} />
-              <Button id="button-tick" type="default" icon={<CheckCircleOutlined />} />
+              <Button id="button-tick" type="default" icon={<CheckOutlined />} />
             </Space>
           </Col>
         </Row>

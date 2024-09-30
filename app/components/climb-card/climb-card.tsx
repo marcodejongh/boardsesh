@@ -21,7 +21,7 @@ const ClimbCard = ({ climb, boardDetails, onCoverClick, selected, actions }: Cli
       title={climb ? `${climb.name} ${climb.difficulty} ★${climb.quality_average}` : 'Loading...'}
       size="small"
       style={{ backgroundColor: selected ? '#eeffff' : '#FFF' }}
-      actions={actions || ClimbCardActions({ climb })}
+      actions={actions || ClimbCardActions({ climb, boardDetails })}
     >
       {/* // @ ${climb.angle}° - ${climb.ascensionist_count} ascents, */}
       {cover}

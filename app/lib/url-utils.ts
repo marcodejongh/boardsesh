@@ -5,6 +5,8 @@ import {
   BoardRouteParametersWithUuid,
   SearchRequestPagination,
   ClimbUuid,
+  BoardDetails,
+  Angle,
 } from '@/app/lib/types';
 import { PAGE_LIMIT } from '../components/board-page/constants';
 
@@ -105,6 +107,11 @@ export const constructClimbViewUrl = (
   { board_name, layout_id, angle, size_id, set_ids }: ParsedBoardRouteParameters,
   climb_uuid: ClimbUuid,
 ) => `/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/view/${climb_uuid}`;
+
+export const constructClimbInfoUrl = (
+  { board_name, layout_id, size_id, set_ids }: BoardDetails,
+  climb_uuid: ClimbUuid, angle: Angle
+) => `/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/info/${climb_uuid}`;
 
 export const constructClimbList = ({ board_name, layout_id, angle, size_id, set_ids }: ParsedBoardRouteParameters) =>
   `/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/list`;

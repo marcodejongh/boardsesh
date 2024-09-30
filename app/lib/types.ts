@@ -107,27 +107,6 @@ export type BetaLink = {
   link: string;
 };
 
-// Login Request Type
-export type LoginRequest = {
-  board: string;
-  username: string;
-  password: string;
-};
-
-// Login Response Type
-export type LoginResponse = {
-  token: string;
-  user_id: number;
-};
-
-// Responses
-
-export type GetLayoutsResponse = LayoutsResponse[];
-
-export type GetSizesResponse = SizesResponse[];
-
-export type GetSetsResponse = SetsResponse[];
-
 export type SearchCountRequest = {
   gradeAccuracy: number;
   layout: string;
@@ -176,14 +155,6 @@ export type BoardDetails = {
   ledPlacements: LedPlacements;
 };
 
-export type GetLedColorsResponse = LedColor;
-
-export type GetAnglesResponse = { angle: number }[];
-
-export type GetGradesResponse = Grade[];
-
-export type GetBetaResponse = BetaLink[];
-
 export type BoardRouteParameters = {
   board_name: string;
   layout_id: string;
@@ -210,8 +181,6 @@ export type ParsedBoardRouteParametersWithUuid = ParsedBoardRouteParameters & {
 };
 
 export type ClimbUuid = string;
-
-//TODO: Refactor useEffects so this page can SSR
 
 export type BoardName = 'kilter' | 'tension';
 export type LayoutId = number;

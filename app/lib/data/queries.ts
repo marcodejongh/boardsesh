@@ -4,7 +4,6 @@
  * when fetching data in server components, as it will leverage the next cache and be more
  * performant.
  */
-
 import 'server-only';
 import { sql } from '@/lib/db';
 

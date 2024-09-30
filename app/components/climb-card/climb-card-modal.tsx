@@ -17,11 +17,7 @@ const ClimbCardModal = ({ isVisible, onClose, climb, boardDetails }: ClimbPrevie
   return (
     <Modal visible={isVisible} onCancel={onClose} footer={null} height="100%" width="100%" bodyStyle={{ padding: 0 }}>
       {/* Large version of the BoardRenderer */}
-      <ClimbCard actions={[
-        <HeartOutlined onClick={()=> message.info('TODO: Implement')} />,
-        <CheckOutlined onClick={()=> message.info('TODO: Implement')} />,
-        
-      ]} climb={climb} boardDetails={boardDetails} onCoverClick={onClose} />
+      <ClimbCard climb={climb} boardDetails={boardDetails} onCoverClick={onClose} />
     </Modal>
   );
 };
