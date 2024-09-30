@@ -8,7 +8,7 @@ import {
   urlParamsToSearchParams,
 } from '@/app/lib/url-utils';
 import ClimbsList from '@/app/components/board-page/climbs-list';
-import { fetchBoardDetails, fetchResults } from '@/app/components/rest-api/api';
+import { fetchBoardDetails, fetchClimbs } from '@/app/components/rest-api/api';
 
 export default async function DynamicResultsPage({
   params,
@@ -29,17 +29,17 @@ export default async function DynamicResultsPage({
     searchParamsObject.page = 0;
 
     const [fetchedResults, boardDetails] = await Promise.all([
-      fetchResults(searchParamsObject, parsedParams),
+      fetchClimbs(searchParamsObject, parsedParams),
       fetchBoardDetails(parsedParams.board_name, parsedParams.layout_id, parsedParams.size_id, parsedParams.set_ids),
     ]);
 
-    if (!fetchedResults || fetchedResults.boulderproblems.length === 0) {
+    if (!fetchedResults || fetchedResults.climbs.length === 0) {
       notFound();
     }
 
     return (
       <>
-        <ClimbsList {...parsedParams} boardDetails={boardDetails} initialClimbs={fetchedResults.boulderproblems} />
+        <ClimbsList {...parsedParams} boardDetails={boardDetails} initialClimbs={fetchedResults.climbs} />
       </>
     );
   } catch (error) {

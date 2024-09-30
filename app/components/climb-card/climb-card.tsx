@@ -2,11 +2,11 @@ import React from 'react';
 import Card from 'antd/es/card';
 
 import ClimbCardCover from './climb-card-cover';
-import { BoulderProblem, BoardDetails } from '@/app/lib/types';
+import { Climb, BoardDetails } from '@/app/lib/types';
 import ClimbCardActions from './climb-card-actions';
 
 type ClimbCardProps = {
-  climb?: BoulderProblem;
+  climb?: Climb;
   boardDetails: BoardDetails;
   coverLinkToClimb?: boolean;
   onCoverClick?: () => void;

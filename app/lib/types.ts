@@ -1,7 +1,7 @@
 import { HoldRenderData, LitUpHoldsMap } from '../components/board-renderer/types';
 import { SetIdList } from './board-data';
 
-export type BoulderProblem = {
+export type Climb = {
   uuid: string;
   setter_username: string;
   name: string;
@@ -218,11 +218,11 @@ export type LayoutId = number;
 export type Angle = number;
 export type Size = number;
 export type FetchResultsResponse = {
-  rows: BoulderProblem[];
+  rows: Climb[];
   totalCount: number;
 };
 
-export type FetchCurrentProblemResponse = BoulderProblem;
+export type FetchCurrentProblemResponse = Climb;
 
 export interface ErrorResponse {
   error: string;

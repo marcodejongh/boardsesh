@@ -1,6 +1,6 @@
 import React from 'react';
 import Modal from 'antd/es/modal';
-import { BoulderProblem, BoardDetails } from '@/app/lib/types';
+import { Climb, BoardDetails } from '@/app/lib/types';
 import ClimbCard from './climb-card';
 import { CheckOutlined, HeartOutlined } from '@ant-design/icons';
 import Button from 'antd/es/button';
@@ -9,7 +9,7 @@ import { message } from 'antd';
 type ClimbPreviewModalProps = {
   isVisible: boolean;
   onClose: () => void;
-  climb?: BoulderProblem;
+  climb?: Climb;
   boardDetails: BoardDetails;
 };
 

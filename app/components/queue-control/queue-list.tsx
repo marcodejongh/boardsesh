@@ -1,7 +1,7 @@
 'use client';
 import React from 'react';
 import { List, Row, Col, Typography, Divider } from 'antd';
-import { BoulderProblem, BoardDetails } from '@/app/lib/types';
+import { Climb, BoardDetails } from '@/app/lib/types';
 import { ClimbQueueItem, useQueueContext } from './queue-context';
 import ClimbThumbnail from '../climb-card/climb-thumbnail';
 
@@ -82,8 +82,8 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails }) => {
 
       {/* Render Suggested Items (climbSearchResults) */}
       <List
-        dataSource={(climbSearchResults || []).filter((item, index) => index > currentItemPositionInSearchResults)} // Assuming climbSearchResults contains BoulderProblems
-        renderItem={(climb: BoulderProblem) => (
+        dataSource={(climbSearchResults || []).filter((item, index) => index > currentItemPositionInSearchResults)} // Assuming climbSearchResults contains Climbs
+        renderItem={(climb: Climb) => (
           <List.Item>
             <Row style={{ width: '100%' }} gutter={16}>
               {/* Column for the BoardPreview */}

@@ -1,7 +1,7 @@
 // api.ts
 
 import { SetIdList } from '@/app/lib/board-data';
-import { LayoutRow, SearchBoulderProblemResult, SetRow, SizeRow } from '@/app/lib/data/queries';
+import { LayoutRow, SearchClimbsResult, SetRow, SizeRow } from '@/app/lib/data/queries';
 import {
   FetchCurrentProblemResponse,
   BoardDetails,
@@ -15,10 +15,10 @@ import {
 
 const API_BASE_URL = `${process.env.BASE_URL || 'https://www.boardsesh.com'}/api`;
 
-export const fetchResults = async (
+export const fetchClimbs = async (
   queryParameters: SearchRequestPagination,
   routeParameters: ParsedBoardRouteParameters,
-): Promise<SearchBoulderProblemResult> => {
+): Promise<SearchClimbsResult> => {
   const urlParams = new URLSearchParams(
     Object.entries({
       ...queryParameters,
@@ -36,7 +36,7 @@ export const fetchResults = async (
 
   // Build the URL using the new route structure
   const response = await fetch(
-    `${API_BASE_URL}/v1/${routeParameters.board_name}/${routeParameters.layout_id}/${routeParameters.size_id}/${routeParameters.set_ids}/${routeParameters.angle}/search?${urlParams}&bustCache=32`,
+    `${API_BASE_URL}/v1/${routeParameters.board_name}/${routeParameters.layout_id}/${routeParameters.size_id}/${routeParameters.set_ids}/${routeParameters.angle}/search?${urlParams}&bustCache=34`,
   );
 
   const rawResults = await response.json();

@@ -3,7 +3,7 @@ import React from 'react';
 
 import { Row, Col, Skeleton } from 'antd';
 import InfiniteScroll from 'react-infinite-scroll-component';
-import { BoulderProblem, ParsedBoardRouteParameters, BoardDetails } from '@/app/lib/types';
+import { Climb, ParsedBoardRouteParameters, BoardDetails } from '@/app/lib/types';
 import { useQueueContext } from '../queue-control/queue-context';
 import ClimbCard from '../climb-card/climb-card';
 import { useEffect, useRef } from 'react';
@@ -12,7 +12,7 @@ import { PlusCircleOutlined, FireOutlined } from '@ant-design/icons';
 
 type ClimbsListProps = ParsedBoardRouteParameters & {
   boardDetails: BoardDetails;
-  initialClimbs: BoulderProblem[];
+  initialClimbs: Climb[];
 };
 
 const ClimbCardSkeletons = ({ boardDetails }: { boardDetails: BoardDetails }) => {

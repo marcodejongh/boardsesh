@@ -1,11 +1,11 @@
 'use client';
 import React from 'react';
 import { useQueueContext } from '../queue-control/queue-context';
-import { BoulderProblem } from '@/app/lib/types';
+import { Climb } from '@/app/lib/types';
 import { PlusCircleOutlined, FireOutlined } from '@ant-design/icons';
 
 type ClimbCardActionsProps = {
-  climb?: BoulderProblem;
+  climb?: Climb;
 };
 const ClimbCardActions = ({ climb }: ClimbCardActionsProps) => {
   const { addToQueue, setCurrentClimb } = useQueueContext();

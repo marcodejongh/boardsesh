@@ -1,11 +1,11 @@
 'use client';
 import React, { useState } from 'react';
-import { BoulderProblem, BoardDetails } from '@/app/lib/types';
+import { Climb, BoardDetails } from '@/app/lib/types';
 import BoardRenderer from '@/app/components/board-renderer/board-renderer';
 import ClimbCardModal from './climb-card-modal';
 
 type ClimbCardCoverProps = {
-  climb?: BoulderProblem;
+  climb?: Climb;
   boardDetails: BoardDetails;
   onClick?: () => void;
 };

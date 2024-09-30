@@ -11,7 +11,7 @@ export default async function DynamicResultsPage({ params }: { params: BoardRout
   const parsedParams = parseBoardRouteParams(params);
 
   try {
-    // Fetch the search results using searchBoulderProblems
+    // Fetch the search results using searchCLimbs
     const [boardDetails, currentClimb] = await Promise.all([
       fetchBoardDetails(parsedParams.board_name, parsedParams.layout_id, parsedParams.size_id, parsedParams.set_ids),
       fetchCurrentClimb(parsedParams),

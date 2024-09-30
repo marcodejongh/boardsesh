@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 
-import { BoardDetails, BoulderProblem } from '@/app/lib/types';
+import { BoardDetails, Climb } from '@/app/lib/types';
 import BoardRenderer from '../board-renderer/board-renderer';
 import ClimbCardModal from './climb-card-modal';
 
 type ClimbThumbnailProps = {
-  currentClimb: BoulderProblem | null;
+  currentClimb: Climb | null;
   boardDetails: BoardDetails;
 };
 

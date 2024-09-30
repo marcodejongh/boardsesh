@@ -9,7 +9,7 @@ import 'server-only';
 import { sql } from '@/lib/db';
 
 import {
-  BoulderProblem,
+  Climb,
   ParsedBoardRouteParametersWithUuid,
   ParsedBoardRouteParameters,
   SearchRequest,
@@ -127,7 +127,7 @@ export const getBoardDetails = async ({
   };
 };
 
-export const getBoulderProblem = async (params: ParsedBoardRouteParametersWithUuid): Promise<BoulderProblem> => {
+export const getClimb = async (params: ParsedBoardRouteParametersWithUuid): Promise<Climb> => {
   return (
     await sql.query({
       text: `
@@ -156,15 +156,15 @@ export const getBoulderProblem = async (params: ParsedBoardRouteParametersWithUu
   ).rows[0];
 };
 
-export type SearchBoulderProblemResult = {
-  boulderproblems: BoulderProblem[];
+export type SearchClimbsResult = {
+  climbs: Climb[];
   totalCount: number;
 };
 
-export const searchBoulderProblems = async (
+export const searchClimbs = async (
   params: ParsedBoardRouteParameters,
   searchParams: SearchRequestPagination,
-): Promise<SearchBoulderProblemResult> => {
+): Promise<SearchClimbsResult> => {
   const allowedSortColumns: Record<SearchRequest['sortBy'], string> = {
     ascents: 'ascensionist_count',
     difficulty: 'display_difficulty',
@@ -247,7 +247,7 @@ export const searchBoulderProblems = async (
   });
 
   return {
-    boulderproblems: query.rows,
+    climbs: query.rows,
     totalCount: query.rows.length > 0 ? query.rows[0].total_count : 0,
   };
 };

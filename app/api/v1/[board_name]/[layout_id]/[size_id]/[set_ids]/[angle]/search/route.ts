@@ -1,5 +1,5 @@
 import { convertLitUpHoldsStringToMap } from '@/app/components/board-renderer/util';
-import { SearchBoulderProblemResult, searchBoulderProblems } from '@/app/lib/data/queries';
+import { SearchClimbsResult, searchClimbs } from '@/app/lib/data/queries';
 import { BoardRouteParameters, ErrorResponse, SearchRequestPagination } from '@/app/lib/types';
 import { parseBoardRouteParams, urlParamsToSearchParams } from '@/app/lib/url-utils';
 import { NextResponse } from 'next/server';
@@ -8,7 +8,7 @@ import { NextResponse } from 'next/server';
 export async function GET(
   req: Request,
   { params }: { params: BoardRouteParameters },
-): Promise<NextResponse<SearchBoulderProblemResult | ErrorResponse>> {
+): Promise<NextResponse<SearchClimbsResult | ErrorResponse>> {
   // Extract search parameters from query string
   const query = new URL(req.url).searchParams;
   const parsedParams = parseBoardRouteParams(params);
@@ -17,14 +17,14 @@ export async function GET(
 
   try {
     // Call the separate function to perform the search
-    const result = await searchBoulderProblems(parsedParams, searchParams);
+    const result = await searchClimbs(parsedParams, searchParams);
 
     // Return response
     return NextResponse.json({
       totalCount: result.totalCount,
-      boulderproblems: result.boulderproblems.map((boulderProblem) => ({
-        ...boulderProblem,
-        litUpHoldsMap: convertLitUpHoldsStringToMap(boulderProblem.frames, parsedParams.board_name),
+      climbs: result.climbs.map((climb) => ({
+        ...climb,
+        litUpHoldsMap: convertLitUpHoldsStringToMap(climb.frames, parsedParams.board_name),
       })),
     });
   } catch (error) {
