@@ -18,6 +18,8 @@ import {
   BoardDetails,
   ImageFileName,
   BoardName,
+  LayoutId,
+  Size,
 } from '../types';
 import { HoldRenderData } from '@/app/components/board-renderer/types';
 import { getBoardImageDimensions } from '@/app/components/board-renderer/util';
@@ -33,22 +35,22 @@ const getTableName = (board_name: string, table_name: string) => {
   }
 };
 
-type ImageFileNameRow = { image_filename: string };
-type HoldsRow = {
+export type ImageFileNameRow = { image_filename: string };
+export type HoldsRow = {
   placement_id: number;
   mirrored_placement_id: number;
   x: number;
   y: number;
 };
 
-type ProductSizeRow = {
+export type ProductSizeRow = {
   edge_left: number;
   edge_right: number;
   edge_bottom: number;
   edge_top: number;
 };
 
-type LedPlacementRow = {
+export type LedPlacementRow = {
   id: number;
   position: number;
 };
@@ -171,8 +173,6 @@ export const searchBoulderProblems = async (
   };
 
   const safeSortBy = allowedSortColumns[searchParams.sortBy] || 'ascensionist_count';
-
-  // Initialize the where clause for climbs.name
 
   const queryParameters: Array<string | number> = [
     params.size_id,
@@ -311,10 +311,11 @@ function getImageUrlHoldsMapObjectEntries(
   });
 }
 
-type LayoutRow = {
+export type LayoutRow = {
   id: number;
   name: string;
 };
+
 export const getLayouts = async (board_name: BoardName) => {
   const { rows: layouts } = await sql.query<LayoutRow>(`
     SELECT id, name
@@ -322,5 +323,45 @@ export const getLayouts = async (board_name: BoardName) => {
     WHERE is_listed = true
     AND password IS NULL
   `);
+  return layouts;
+};
+
+export type SizeRow = {
+  id: number;
+  name: string;
+  description: string;
+};
+
+export const getSizes = async (board_name: BoardName, layout_id: LayoutId) => {
+  const { rows: layouts } = await sql.query<SizeRow>(
+    `
+    SELECT product_sizes.id, product_sizes.name, product_sizes.description
+    FROM ${getTableName(board_name, 'product_sizes')} product_sizes
+    INNER JOIN ${getTableName(board_name, 'layouts')} layouts ON product_sizes.product_id = layouts.product_id
+    WHERE layouts.id = $1
+  `,
+    [layout_id],
+  );
+  return layouts;
+};
+
+export type SetRow = {
+  id: number;
+  name: string;
+};
+
+export const getSets = async (board_name: BoardName, layout_id: LayoutId, size_id: Size) => {
+  const { rows: layouts } = await sql.query<SetRow>(
+    `
+    SELECT sets.id, sets.name
+      FROM ${getTableName(board_name, 'sets')} sets
+      INNER JOIN ${getTableName(board_name, 'product_sizes_layouts_sets')} psls 
+      ON sets.id = psls.set_id
+      WHERE psls.product_size_id = $1
+      AND psls.layout_id = $2
+  `,
+    [size_id, layout_id],
+  );
+
   return layouts;
 };

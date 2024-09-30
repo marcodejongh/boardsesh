@@ -1,5 +1,5 @@
 import { LedPlacements } from "@/app/lib/types";
-import { holdStateMapping } from "../board-renderer/types";
+import { HOLD_STATE_MAP } from "../board-renderer/types";
 
 // Bluetooth constants
 const MAX_BLUETOOTH_MESSAGE_SIZE = 20;
@@ -43,7 +43,7 @@ export const getBluetoothPacket = (frames: string, placementPositions: LedPlacem
     const [placement, role] = frame.split('r');
     const encodedFrame = encodePositionAndColor(
       Number(placementPositions[Number(placement)]),
-      holdStateMapping['kilter'][Number(role)].color.replace('#', ''),
+      HOLD_STATE_MAP['kilter'][Number(role)].color.replace('#', ''),
     );
 
     if (tempArray.length + encodedFrame.length > MESSAGE_BODY_MAX_LENGTH) {

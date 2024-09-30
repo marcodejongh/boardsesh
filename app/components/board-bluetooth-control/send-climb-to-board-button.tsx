@@ -4,8 +4,7 @@ import React, { useCallback, useRef, useState } from 'react';
 import { BulbOutlined, BulbFilled } from '@ant-design/icons';
 import { Button } from 'antd';
 import { useQueueContext } from '../queue-control/queue-context';
-import { BoardDetails, LedPlacements } from '@/app/lib/types';
-import { holdStateMapping } from '../board-renderer/types';
+import { BoardDetails } from '@/app/lib/types';
 import './send-climb-to-board-button.css'; // Import your custom styles
 import { getBluetoothPacket, getCharacteristic, requestDevice, splitMessages, writeCharacteristicSeries } from './bluetooth';
 

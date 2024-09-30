@@ -1,6 +1,6 @@
 import { BoardName } from '@/app/lib/types';
 import { BOARD_IMAGE_DIMENSIONS } from '../../lib/board-data';
-import { LitUpHoldsMap, holdStateMapping } from './types';
+import { LitUpHoldsMap, HOLD_STATE_MAP } from './types';
 
 const USE_SELF_HOSTED_IMAGES = true;
 
@@ -19,7 +19,13 @@ export const convertLitUpHoldsStringToMap = (litUpHolds: string, board: BoardNam
       .filter((hold) => hold)
       .map((holdData) => holdData.split('r').map((str) => Number(str)))
       .map(([holdId, stateCode]) => {
-        const { name, color } = holdStateMapping[board][stateCode];
+        if (!HOLD_STATE_MAP[board][stateCode]) {
+          throw new Error(
+            `HOLD_STATE_MAP is missing values for ${board} its missing statuscode: ${stateCode}. 
+            You probably need to update that mapping after adding support for more boards`,
+          );
+        } 
+        const { name, color } = HOLD_STATE_MAP[board][stateCode];
         return [holdId, { state: name, color }];
       }),
   );
