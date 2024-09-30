@@ -71,7 +71,7 @@ const ClimbsList = ({
     }
   };
 
-  const debouncedHandleScroll = useDebouncedCallback(handleScroll, 100);
+  const debouncedHandleScroll = useDebouncedCallback(handleScroll, 500);
 
     // Function to restore scroll based on the hash in the URL
   const restoreScrollFromHash = () => {
