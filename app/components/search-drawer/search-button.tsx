@@ -18,7 +18,7 @@ const FilterColumn = () => {
   // Drawer for mobile view
   const mobileDrawer = (
     <>
-      <Badge count={totalSearchResultCount} overflowCount={999} showZero color="cyan">
+      <Badge count={totalSearchResultCount} overflowCount={9999} showZero color="cyan">
         <Button type="default" icon={<SearchOutlined />} onClick={() => setIsOpen(true)} />
       </Badge>
       

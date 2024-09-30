@@ -13,8 +13,11 @@ interface UISearchParamsContextType {
 const UISearchParamsContext = createContext<UISearchParamsContextType | undefined>(undefined);
 
 /**
- * We maintain a copy of the search params so that the UI can update without hammering the rest-api.
+ * UI interacting with the search paramaters should always go through the ui-search-params-provider
+ * and never directly through the queue-provider. The ui provider implements UI concerns.
+ * For example it maintains a copy of the search params so that the UI can update without hammering the rest-api.
  * Updating the state that affects the actual search is then debounced.
+ * 
  */
 export const UISearchParamsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { climbSearchParams, setClimbSearchParams } = useQueueContext();
@@ -28,7 +31,7 @@ export const UISearchParamsProvider: React.FC<{ children: React.ReactNode }> = (
     const updatedFilters = {
       ...uiSearchParams,
       ...newFilters,
-      page: 0, // Reset to page 0 when filters are updated
+      page: 0,
     };
 
     setUISearchParams(updatedFilters);
