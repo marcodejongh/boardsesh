@@ -7,7 +7,7 @@ type ClimbCardCoverProps = {
   climb: BoulderProblem;
   parsedParams: ParsedBoardRouteParameters;
   boardDetails: BoardDetails;
-  clickable?: boolean;
+  linkToClimb?: boolean;
   onClick?: () => void;
 }
 
@@ -15,11 +15,16 @@ const ClimbCardCover = ({
   climb,
   parsedParams,
   boardDetails,
-  clickable,
   onClick,
+  linkToClimb,
 }: ClimbCardCoverProps) => {
   const boardRenderer = (
-    <div style={{ width: "100%", height: "auto", position: "relative" }}>
+    <div onClick={!linkToClimb ? onClick : undefined} style={{ 
+      width: "100%",
+      height: "auto",
+      position: "relative",
+      cursor: !linkToClimb && onClick ? "pointer" : undefined
+      }}>
       <BoardRenderer 
         boardDetails={boardDetails}
         board_name={parsedParams.board_name} 
@@ -28,15 +33,14 @@ const ClimbCardCover = ({
         />
     </div>
   );
-  if (!clickable || !climb) {
-    return boardRenderer;
-  }
-
-  return (
-    <Link onClick={onClick} href={constructClimbViewUrl(parsedParams, climb.uuid)}>
-      {boardRenderer}
-    </Link>
-  );
+  if(linkToClimb) {
+    return (
+      <Link onClick={onClick} href={constructClimbViewUrl(parsedParams, climb.uuid)}>
+        {boardRenderer}
+      </Link>
+    );
+  }  
+  return boardRenderer;
 };
 
 export default ClimbCardCover;

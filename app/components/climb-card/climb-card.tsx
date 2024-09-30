@@ -11,7 +11,9 @@ type ClimbCardProps = {
   addToQueue?: (climb: BoulderProblem) => void; 
   parsedParams: ParsedBoardRouteParameters;
   clickable?: boolean;
+  coverLinkToClimb?: boolean;
   onCoverClick?: () => void;
+  selected?: boolean;
 }
 
 const ClimbCard = ({
@@ -20,22 +22,24 @@ const ClimbCard = ({
   setCurrentClimb,
   addToQueue,
   parsedParams,
-  clickable,
   onCoverClick,
+  coverLinkToClimb,
+  selected,
 }: ClimbCardProps) => {
   const cover = (
     <ClimbCardCover 
       climb={climb}
       parsedParams={parsedParams}
       boardDetails={boardDetails}
-      clickable={clickable}
       onClick={onCoverClick}
+      linkToClimb={coverLinkToClimb}
       />
   );
   return (
     <Card
       title={`${climb.name} ${climb.difficulty} ★${climb.quality_average}`}
       size="small"
+      style={{ backgroundColor: selected ? "#eeffff" : "#FFF" }}
       actions={[
         // <SettingOutlined key="setting" />,
         <PlusCircleOutlined key="edit" onClick={addToQueue ? () => addToQueue(climb) : undefined} />,

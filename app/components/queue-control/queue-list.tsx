@@ -27,7 +27,7 @@ const QueueList: React.FC<QueueListProps> = ({ board, boardDetails }) => {
           return (
             <List.Item
               style={{
-                backgroundColor: isCurrent ? "#e6f7ff" : isHistory ? "#f5f5f5" : "inherit", // Blue for current, grey for history
+                backgroundColor: isCurrent ? "#eeffff" : isHistory ? "#f5f5f5" : "inherit", // Blue for current, grey for history
                 opacity: isHistory ? 0.6 : 1, // Slightly reduce opacity for historical items
               }}
             >

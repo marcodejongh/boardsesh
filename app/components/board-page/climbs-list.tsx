@@ -20,7 +20,7 @@ const ClimbsList = ({
   boardDetails,
   initialClimbs,
 }: ClimbsListProps) => {
-  const { setCurrentClimb, climbSearchResults, hasMoreResults, fetchMoreClimbs, addToQueue } = useQueueContext();
+  const { setCurrentClimb, climbSearchResults, hasMoreResults, fetchMoreClimbs, addToQueue, currentClimb } = useQueueContext();
   const parsedParams = parseBoardRouteParams(useParams<BoardRouteParameters>());
 
   // Queue Context provider uses SWR infinite to fetch results, which can only happen clientside.
@@ -112,6 +112,8 @@ const ClimbsList = ({
                   parsedParams={parsedParams}
                   climb={climb}
                   boardDetails={boardDetails} 
+                  selected={currentClimb?.uuid === climb.uuid}
+                  onCoverClick={() => setCurrentClimb(climb)}
                 />
               </div>
               
