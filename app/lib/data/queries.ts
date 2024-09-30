@@ -48,6 +48,11 @@ type ProductSizeRow = {
   edge_top: number;
 }
 
+type LedPlacementRow = { 
+  id: number,
+  position: number,
+}
+
 // Collect data for each set_id
 export const getBoardDetails = async ({
   board_name,
@@ -58,15 +63,28 @@ export const getBoardDetails = async ({
   const imageUrlHoldsMapEntriesPromises = 
     getImageUrlHoldsMapObjectEntries(set_ids, board_name, layout_id, size_id);
 
-  const [ { rows: sizeDimensions }, ...imgUrlMapEntries ] = await Promise.all([
+  const [{ rows: ledPlacements }, { rows: sizeDimensions }, ...imgUrlMapEntries] = await Promise.all([
+    sql.query<LedPlacementRow>(
+      `
+        SELECT 
+            placements.id,
+            leds.position
+        FROM ${getTableName(board_name, 'placements')} placements
+        INNER JOIN ${getTableName(board_name, 'leds')} leds ON placements.hole_id = leds.hole_id
+        WHERE placements.layout_id = $1
+        AND leds.product_size_id = $2
+  `,
+      [layout_id, size_id],
+    ),
     sql.query<ProductSizeRow>(
       `
     SELECT edge_left, edge_right, edge_bottom, edge_top
-    FROM ${getTableName(board_name, "product_sizes")}
+    FROM ${getTableName(board_name, 'product_sizes')}
     WHERE id = $1
   `,
       [size_id],
-    ), ...imageUrlHoldsMapEntriesPromises
+    ),
+    ...imageUrlHoldsMapEntriesPromises,
   ]);
   const imagesToHolds = Object.fromEntries(imgUrlMapEntries);
 
@@ -105,6 +123,7 @@ export const getBoardDetails = async ({
     layout_id,
     size_id,
     set_ids,
+    ledPlacements: Object.fromEntries(ledPlacements.map(({id, position})=> [id, position]))
   };
 };
 

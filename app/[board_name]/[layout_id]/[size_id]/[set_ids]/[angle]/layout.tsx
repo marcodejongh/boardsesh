@@ -47,7 +47,7 @@ export default async function BoardLayout({ children, params }: PropsWithChildre
       <title>{`Boardsesh on ${board_name} - Layout ${layout_id}`}</title>
       <Layout style={{ height: "100dvh", display: "flex", flexDirection: "column" }}>
         <QueueProvider parsedParams={parsedParams}>
-          <BoardSeshHeader />
+          <BoardSeshHeader boardDetails={boardDetails} />
           <Content id="content-for-scrollable" style={{ 
             flex: 1, 
             justifyContent: "center", 

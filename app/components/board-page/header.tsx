@@ -1,6 +1,6 @@
 "use client";
 import React from 'react';
-import { Col, Row, Space, Grid, Button } from "antd";
+import { Col, Row, Space, Grid } from "antd";
 import { Header } from "antd/es/layout/layout";
 import Title from "antd/es/typography/Title";
 import { usePathname } from "next/navigation";
@@ -8,11 +8,16 @@ import SearchButton from "../search-drawer/search-button";
 import ClimbInfoButton from "../climb-info/climb-info-button";
 import SearchClimbNameInput from '../search-drawer/search-climb-name-input';
 import { UISearchParamsProvider } from '../queue-control/ui-searchparams-provider';
-import { BulbOutlined } from "@ant-design/icons";
+import SendClimbToBoardButton from '../board-bluetooth-control/send-climb-to-board-button';
+import { BoardDetails } from '@/app/lib/types';
+
 
 const { useBreakpoint } = Grid;
 
-export default function BoardSeshHeader() {
+type BoardSeshHeaderProps = {
+  boardDetails: BoardDetails;
+}
+export default function BoardSeshHeader({ boardDetails }: BoardSeshHeaderProps) {
   const pathname = usePathname();
   const isList = pathname.endsWith('/list');
   const screens = useBreakpoint();
@@ -41,7 +46,7 @@ export default function BoardSeshHeader() {
 
           <Col xs={6} sm={6} md={6} lg={6} xl={6} style={{ textAlign: "right" }}>
             <Space>
-              <Button id="button-illuminate" type="default" icon={<BulbOutlined />} />
+              <SendClimbToBoardButton boardDetails={boardDetails} />
               {isList ? <SearchButton /> : null}
               {!isList ? <ClimbInfoButton /> : null}
               

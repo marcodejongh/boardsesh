@@ -15,6 +15,7 @@
     "@atlaskit/pragmatic-drag-and-drop": "^1.3.1",
     "@atlaskit/pragmatic-drag-and-drop-hitbox": "^1.0.3",
     "@neondatabase/serverless": "^0.9.5",
+    "@types/web-bluetooth": "^0.0.20",
     "@vercel/postgres": "^0.10.0",
     "antd": "^5.20.2",
     "idb": "^8.0.0",

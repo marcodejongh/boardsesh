@@ -153,12 +153,16 @@ export type Hold = {
 // Define a tuple type for each hold
 export type HoldTuple = [number, number | null, number, number];
 
+export type PlacementsMap = HoldRenderData[];
+
 // Ensure imagesToHolds is typed as a Record where each key maps to an array of HoldTuples
 export type ImageFileName = string;
 export type ImagesToHolds = Record<ImageFileName, HoldTuple[]>;
+export type LedPlacements = Record<number, number>;
+
 export type BoardDetails = {
   images_to_holds: ImagesToHolds;
-  holdsData: HoldRenderData[];
+  holdsData: PlacementsMap;
   edge_left: number;
   edge_right: number;
   edge_bottom: number;
@@ -169,6 +173,7 @@ export type BoardDetails = {
   layout_id: number;
   size_id: number;
   set_ids: SetIdList;
+  ledPlacements: LedPlacements
 };
 
 export type GetLedColorsResponse = LedColor;
