@@ -6,7 +6,7 @@ import {
   LeftOutlined,
 } from "@ant-design/icons";
 import Link from 'next/link'
-import { useQueueContext } from "../board-control/queue-context";
+import { useQueueContext } from "../queue-control/queue-context";
 import { searchParamsToUrlParams } from "@/app/lib/url-utils";
 
 const BackToClimbList = ({

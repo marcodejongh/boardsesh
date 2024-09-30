@@ -3,7 +3,7 @@
 import React from "react";
 import SearchForm from "./search-form";
 import { Grid } from "antd";
-import { UISearchParamsProvider } from "../board-control/ui-searchparams-provider";
+import { UISearchParamsProvider } from "../queue-control/ui-searchparams-provider";
 
 
 const { useBreakpoint } = Grid;

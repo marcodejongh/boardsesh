@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Input } from "antd";
-import { useUISearchParams } from "../board-control/ui-searchparams-provider";
+import { useUISearchParams } from "../queue-control/ui-searchparams-provider";
 
 
 const SearchClimbNameInput = () => {

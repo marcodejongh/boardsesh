@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { Button, Grid, Drawer, Badge, Space, Typography, Spin } from "antd";
 import { SearchOutlined } from "@ant-design/icons";
 import SearchForm from "./search-form";
-import { useQueueContext } from "@/c/board-control/queue-context";
+import { useQueueContext } from "@/app/components/queue-control/queue-context";
 import ClearButton from "./clear-button";
 
 const { useBreakpoint } = Grid;

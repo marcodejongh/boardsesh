@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 import SearchButton from "../search-drawer/search-button";
 import ClimbInfoButton from "../climb-info/climb-info-button";
 import SearchClimbNameInput from '../search-drawer/search-climb-name-input';
-import { UISearchParamsProvider } from '../board-control/ui-searchparams-provider';
+import { UISearchParamsProvider } from '../queue-control/ui-searchparams-provider';
 import { BulbOutlined } from "@ant-design/icons";
 
 const { useBreakpoint } = Grid;

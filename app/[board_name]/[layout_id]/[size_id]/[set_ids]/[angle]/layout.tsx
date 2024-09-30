@@ -5,10 +5,10 @@ import { ParsedBoardRouteParameters, BoardRouteParametersWithUuid } from "@/app/
 import { parseBoardRouteParams } from "@/app/lib/url-utils"; // Assume this utility helps with parsing
 
 import { Content } from "antd/es/layout/layout";
-import HistoryControlBar from "@/app/components/board-control/history-control-bar";
+import HistoryControlBar from "@/app/components/queue-control/history-control-bar";
 import { fetchBoardDetails } from "@/app/components/rest-api/api";
 import BoardSeshHeader from "@/app/components/board-page/header";
-import { QueueProvider } from "@/app/components/board-control/queue-context";
+import { QueueProvider } from "@/app/components/queue-control/queue-context";
 
 interface LayoutProps {
   params: BoardRouteParametersWithUuid;

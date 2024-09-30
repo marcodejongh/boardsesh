@@ -4,7 +4,7 @@ import React from 'react';
 import { Row, Col, Skeleton } from "antd";
 import InfiniteScroll from "react-infinite-scroll-component";
 import { BoulderProblem, ParsedBoardRouteParameters, BoardDetails, BoardRouteParameters } from "@/app/lib/types";
-import { useQueueContext } from "../board-control/queue-context";
+import { useQueueContext } from "../queue-control/queue-context";
 import ClimbCard from "../climb-card/climb-card";
 import { parseBoardRouteParams } from "@/app/lib/url-utils";
 import { useParams } from "next/navigation";

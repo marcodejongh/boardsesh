@@ -1,7 +1,7 @@
 import React from "react";
 import { Form, Slider, InputNumber, Row, Col, Select, Input } from "antd";
 import { TENSION_KILTER_GRADES } from "@/app/lib/board-data";
-import { useUISearchParams } from "@/app/components/board-control/ui-searchparams-provider";
+import { useUISearchParams } from "@/app/components/queue-control/ui-searchparams-provider";
 import SearchClimbNameInput from "./search-climb-name-input";
 
 interface SearchFormProps {}

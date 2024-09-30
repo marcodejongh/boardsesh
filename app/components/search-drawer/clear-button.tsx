@@ -1,6 +1,6 @@
 import React from 'react';
 import Button from 'antd/es/button';
-import { useUISearchParams } from '@/c/board-control/ui-searchparams-provider';
+import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
 
 const ClearButton = () => {
   const { clearClimbSearchParams } = useUISearchParams();
