@@ -3,7 +3,7 @@
 import React from 'react';
 
 import { BoulderProblem, ParsedBoardRouteParameters, SearchRequestPagination } from "@/app/lib/types";
-import { constructClimbSearchUrl, DEFAULT_SEARCH_PARAMS, searchParamsToUrlParams, urlParamsToSearchParams } from "@/app/lib/url-utils";
+import { constructClimbSearchUrl, searchParamsToUrlParams, urlParamsToSearchParams } from "@/app/lib/url-utils";
 import { useSearchParams } from "next/navigation";
 import { createContext, useContext, useState, ReactNode } from "react";
 import useSWRInfinite from "swr/infinite";
@@ -17,7 +17,7 @@ type QueueContextProps = {
 
 type UserName = string;
 
-type ClimbQueueItem = {
+export type ClimbQueueItem = {
   addedBy?: UserName;
   tickedBy?: UserName[];
   climb: BoulderProblem;
@@ -37,6 +37,7 @@ interface QueueContextType {
 
   setCurrentClimb: (climb: BoulderProblem) => void;
   currentClimb: BoulderProblem | null;
+  currentClimbQueueItem: ClimbQueueItem | null;
 
   setClimbSearchParams: (searchParams: SearchRequestPagination) => void;
   
@@ -247,6 +248,7 @@ export const QueueProvider = ({
         fetchMoreClimbs,
         hasMoreResults,
         currentClimb: currentClimbQueueItem?.climb || null,
+        currentClimbQueueItem: currentClimbQueueItem,
         setCurrentClimb,
         setClimbSearchParams,
         climbSearchParams,

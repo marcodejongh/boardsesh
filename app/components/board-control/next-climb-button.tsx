@@ -4,7 +4,7 @@ import { useQueueContext } from "./queue-context";
 import { useParams } from "next/navigation";
 import { parseBoardRouteParams } from "@/app/lib/url-utils";
 import { BoardRouteParametersWithUuid } from "@/app/lib/types";
-import { RightOutlined } from "@ant-design/icons";
+import { FastForwardOutlined } from "@ant-design/icons";
 import Button, { ButtonProps } from "antd/es/button";
 
 type NextClimbButtonProps = {
@@ -15,7 +15,7 @@ const NextButton = (props: ButtonProps) => (
     <Button
         {...props}
         type="default"
-        icon={<RightOutlined />}
+        icon={<FastForwardOutlined />}
         aria-label="Next climb"
     />);
 
