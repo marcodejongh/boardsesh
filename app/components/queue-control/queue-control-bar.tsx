@@ -31,7 +31,7 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails }: QueueContr
       {/* Main Control Bar */}
       <Card
         bodyStyle={{
-          padding: '0',
+          padding: '5px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
