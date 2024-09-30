@@ -2,20 +2,17 @@ import React from 'react';
 import Modal from 'antd/es/modal';
 import { Climb, BoardDetails } from '@/app/lib/types';
 import ClimbCard from './climb-card';
-import { CheckOutlined, HeartOutlined } from '@ant-design/icons';
-import Button from 'antd/es/button';
-import { message } from 'antd';
 
 type ClimbPreviewModalProps = {
-  isVisible: boolean;
+  isOpen: boolean;
   onClose: () => void;
   climb?: Climb;
   boardDetails: BoardDetails;
 };
 
-const ClimbCardModal = ({ isVisible, onClose, climb, boardDetails }: ClimbPreviewModalProps) => {
+const ClimbCardModal = ({ isOpen, onClose, climb, boardDetails }: ClimbPreviewModalProps) => {
   return (
-    <Modal visible={isVisible} onCancel={onClose} footer={null} height="100%" width="100%" bodyStyle={{ padding: 0 }}>
+    <Modal open={isOpen} onCancel={onClose} footer={null} height="100%" width="100%" bodyStyle={{ padding: 0 }}>
       {/* Large version of the BoardRenderer */}
       <ClimbCard climb={climb} boardDetails={boardDetails} onCoverClick={onClose} />
     </Modal>

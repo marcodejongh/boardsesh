@@ -24,7 +24,7 @@ const ClimbThumbnail = ({ boardDetails, currentClimb }: ClimbThumbnailProps) => 
       </a>
       {currentClimb && (
         <ClimbCardModal
-          isVisible={modalOpen}
+          isOpen={modalOpen}
           onClose={() => setModalOpen(false)}
           climb={currentClimb}
           boardDetails={boardDetails}
