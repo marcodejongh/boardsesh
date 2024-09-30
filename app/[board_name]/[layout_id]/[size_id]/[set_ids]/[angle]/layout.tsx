@@ -3,6 +3,8 @@ import { PropsWithChildren } from "react";
 import { Affix, Layout } from "antd";
 import { ParsedBoardRouteParameters, BoardRouteParametersWithUuid } from "@/app/lib/types";
 import { parseBoardRouteParams } from "@/app/lib/url-utils"; // Assume this utility helps with parsing
+import '@/c/index.css'
+
 
 import { Content } from "antd/es/layout/layout";
 import HistoryControlBar from "@/app/components/queue-control/history-control-bar";
