@@ -16,7 +16,8 @@ const BoardRenderer = ({
   boardDetails,
   board_name,
   litUpHoldsMap,
-  holdsData
+  holdsData,
+  thumbnail
 }: BoardProps) => {
   const { boardWidth, boardHeight} = boardDetails;
 
@@ -25,7 +26,7 @@ const BoardRenderer = ({
       viewBox={`0 0 ${boardWidth} ${boardHeight}`}
       preserveAspectRatio="xMidYMid meet"  // Ensures aspect ratio is maintained
       style={{ width: "100%", height: "auto", display: "block", 
-        maxHeight: '55vh' // TODO: Find better size
+        maxHeight: thumbnail ? '10vh' : '55vh' // TODO: Find better size
        }} // Ensures scaling
     >
       {Object.keys(boardDetails.images_to_holds).map((imageUrl) => (

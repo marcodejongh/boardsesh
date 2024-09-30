@@ -46,7 +46,7 @@ const QueueList: React.FC<QueueListProps> = ({ board, boardDetails }) => {
                           whiteSpace: "nowrap",
                           overflow: "hidden",
                           textOverflow: "ellipsis",
-                          fontWeight: isCurrent ? "bold" : "normal",
+                          fontWeight: "bold",
                         }}
                       >
                         {climb.name}
