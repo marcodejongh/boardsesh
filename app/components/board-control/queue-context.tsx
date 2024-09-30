@@ -80,10 +80,10 @@ export const QueueProvider = ({
       setSize(updatedFilters.page + 1);
       return updatedFilters;
     });
-
+    
     // We only want to use history.replaceState for filter changes as SWR takes care of the actual
     // fetching, and using router.replace assumes we want the result of the SSR page.tsx.
-    history.replaceState(null, '', `${pathName}?${searchParamsToUrlParams(climbSearchParams).toString()}`);
+    history.replaceState(null, '', `${pathName}?${searchParamsToUrlParams(updatedFilters).toString()}`);
   }
   
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -38,7 +38,6 @@ export function parseBoardRouteParams<T extends BoardRouteParameters>(
 export const searchParamsToUrlParams = (params: SearchRequestPagination): URLSearchParams => {
   return new URLSearchParams({
     gradeAccuracy: params.gradeAccuracy.toString(),
-    climbName: (params.climbName || '').toString(),
     maxGrade: params.maxGrade.toString(),
     minAscents: params.minAscents.toString(),
     minGrade: params.minGrade.toString(),
@@ -60,7 +59,6 @@ export const searchParamsToUrlParams = (params: SearchRequestPagination): URLSea
 export const urlParamsToSearchParams = (urlParams: URLSearchParams): SearchRequestPagination => {
   return {
     gradeAccuracy: parseFloat(urlParams.get("gradeAccuracy") || "0"),
-    climbName: urlParams.get("climbName") || "",
     maxGrade: parseInt(urlParams.get("maxGrade") || "29", 10),
     minAscents: parseInt(urlParams.get("minAscents") || "0", 10),
     minGrade: parseInt(urlParams.get("minGrade") || "1", 10),

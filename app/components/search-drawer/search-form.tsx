@@ -1,41 +1,20 @@
-import React, { useState } from "react";
-import { SearchRequest } from "@/lib/types";
-import { useDebouncedCallback } from "use-debounce";
+import React from "react";
 import { Form, Slider, InputNumber, Row, Col, Select, Input } from "antd";
 import { TENSION_KILTER_GRADES } from "@/app/lib/board-data";
-import { useQueueContext } from "../board-control/queue-context";
+import { useUISearchParams } from "@/app/components/board-control/ui-searchparams-provider";
+import SearchClimbNameInput from "./search-climb-name-input";
 
 interface SearchFormProps {}
 
 const SearchForm: React.FC<SearchFormProps> = () => {
-  /**
-   * We maintain a copy of the search params so that the UI can update without hammering the rest-api.
-   * Updating the state that affects the actual search is then debounced.
-   */
-  const { climbSearchParams, setClimbSearchParams } = useQueueContext();
-  const [ uiSearchParams, setUISearchParams ] = useState(climbSearchParams);
-
-  const grades = TENSION_KILTER_GRADES;
+  const { uiSearchParams, updateFilters } = useUISearchParams();
   
-  const debouncedUpdate = useDebouncedCallback(() => {
-    setClimbSearchParams(uiSearchParams)
-  }, 1000);
-
-  const updateFilters = (newFilters: Partial<SearchRequest>) => {
-    const updatedFilters = { 
-      ...climbSearchParams, 
-      ...newFilters, 
-      // Go back to page 0 when the search params are updated, no point in loading 10 pages
-      // of results immediately when the search has just been changed.
-      page: 0
-    };
-    setUISearchParams(updatedFilters);
-    debouncedUpdate();
-  };
+  const grades = TENSION_KILTER_GRADES;
 
   return (
     <>
       <Form.Item label="Grade Range">
+        <SearchClimbNameInput />
         <Slider
           range
           min={grades[0].difficulty_id}

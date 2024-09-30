@@ -54,7 +54,6 @@ export type SetsResponse = {
 
 // Search Request Type
 export type SearchRequest = {
-  climbName?: string;
   gradeAccuracy: number;
   maxGrade: number;
   minAscents: number;

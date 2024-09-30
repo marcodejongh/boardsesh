@@ -3,6 +3,7 @@
 import React from "react";
 import SearchForm from "./search-form";
 import { Grid } from "antd";
+import { UISearchParamsProvider } from "../board-control/ui-searchparams-provider";
 
 
 const { useBreakpoint } = Grid;
@@ -12,7 +13,10 @@ const FilterColumn = () => {
 
   // Sidebar for desktop view
   const desktopSidebar = (
-    <SearchForm />
+    <UISearchParamsProvider>
+      <SearchForm />
+    </UISearchParamsProvider>
+    
   );
 
   // Conditionally render based on screen size

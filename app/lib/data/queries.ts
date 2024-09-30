@@ -170,9 +170,10 @@ export const searchBoulderProblems = async (
       searchParams.page * searchParams.pageSize,
       params.angle,
     ];
-  let climbNameClause = '';
-  if (searchParams.climbName) {
-    queryParameters.push(searchParams.climbName);
+  
+    let climbNameClause = '';
+  if (searchParams.name) {
+    queryParameters.push(searchParams.name);
     climbNameClause  = `AND climbs.name ILIKE '%' || $12 || '%'`;
   }
 
