@@ -24,10 +24,14 @@ const SearchForm: React.FC<SearchFormProps> = () => {
             max={grades[grades.length - 1].difficulty_id}
             value={[uiSearchParams.minGrade, uiSearchParams.maxGrade]}
             marks={{
-              [uiSearchParams.minGrade]: grades.find(({ difficulty_id }) => difficulty_id === uiSearchParams.minGrade)
-                ?.difficulty_name,
-              [uiSearchParams.maxGrade]: grades.find(({ difficulty_id }) => difficulty_id === uiSearchParams.maxGrade)
-                ?.difficulty_name,
+              [uiSearchParams.minGrade]: {
+                style: { transform: 'translate(-5px, 0px);' }, // Push the label below the slider
+                label: grades.find(({ difficulty_id }) => difficulty_id === uiSearchParams.minGrade)?.difficulty_name,
+              },
+              [uiSearchParams.maxGrade]: {
+                style: { transform: 'translate(-5px, -30px)' }, // Push the label above the slider
+                label: grades.find(({ difficulty_id }) => difficulty_id === uiSearchParams.maxGrade)?.difficulty_name,
+              },
             }}
             onChange={(value) => updateFilters({ minGrade: value[0], maxGrade: value[1] })}
             tooltip={{

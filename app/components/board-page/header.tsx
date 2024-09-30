@@ -31,22 +31,24 @@ export default function BoardSeshHeader({ boardDetails }: BoardSeshHeaderProps) 
     >
       <Row justify="space-between" align="middle" style={{ width: '100%' }}>
         {/* Column for the "BS" logo (25% width) */}
-        <Col xs={6} sm={6} md={6} lg={6} xl={6}>
+        <Col xs={4} sm={4} md={4} lg={4} xl={4}>
           <Title level={4} style={{ margin: 0, lineHeight: '1.2' }}>
             BS
           </Title>
         </Col>
 
         <UISearchParamsProvider>
-          <Col xs={12} sm={12} md={12} lg={12} xl={12}>
-            {screens.md ? null : <SearchClimbNameInput />}
+          <Col xs={14} sm={14} md={14} lg={14} xl={14}>
+            <Space>
+              {screens.md ? null : <SearchClimbNameInput />}
+              {isList ? <SearchButton /> : null}
+            </Space>
           </Col>
 
           <Col xs={6} sm={6} md={6} lg={6} xl={6} style={{ textAlign: 'right' }}>
             <Space>
-              <SendClimbToBoardButton boardDetails={boardDetails} />
-              {isList ? <SearchButton /> : null}
               {!isList ? <ClimbInfoButton /> : null}
+              <SendClimbToBoardButton boardDetails={boardDetails} />
             </Space>
           </Col>
         </UISearchParamsProvider>
