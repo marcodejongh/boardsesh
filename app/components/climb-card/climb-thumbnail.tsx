@@ -14,7 +14,7 @@ const ClimbThumbnail = ({ boardDetails, currentClimb }: ClimbThumbnailProps) => 
 
   return (
     <>
-      <a onClick={() => setModalOpen(true)}>
+      <a onClick={currentClimb ? () => setModalOpen(true) : undefined}>
         <BoardRenderer
           holdsData={boardDetails.holdsData}
           litUpHoldsMap={currentClimb ? currentClimb.litUpHoldsMap : undefined}
