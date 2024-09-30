@@ -12,9 +12,10 @@ type ClimbPreviewModalProps = {
 
 const ClimbCardModal = ({ isOpen, onClose, climb, boardDetails }: ClimbPreviewModalProps) => {
   return (
-    <Modal open={isOpen} onCancel={onClose} footer={null} height="100%" width="100%" bodyStyle={{ padding: 0 }}>
-      {/* Large version of the BoardRenderer */}
-      <ClimbCard climb={climb} boardDetails={boardDetails} onCoverClick={onClose} />
+    <Modal open={isOpen} onCancel={onClose} footer={null} height="100%" width="100%">
+      <div style={{ padding: 0 }}>
+        <ClimbCard climb={climb} boardDetails={boardDetails} onCoverClick={onClose} />  
+      </div>
     </Modal>
   );
 };
