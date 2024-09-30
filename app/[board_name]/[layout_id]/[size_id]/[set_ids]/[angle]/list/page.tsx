@@ -2,7 +2,11 @@ import React from 'react';
 
 import { notFound } from 'next/navigation';
 import { BoardRouteParametersWithUuid, SearchRequestPagination } from '@/app/lib/types';
-import { parseBoardRouteParams, parsedRouteSearchParamsToSearchParams, urlParamsToSearchParams } from '@/app/lib/url-utils';
+import {
+  parseBoardRouteParams,
+  parsedRouteSearchParamsToSearchParams,
+  urlParamsToSearchParams,
+} from '@/app/lib/url-utils';
 import ClimbsList from '@/app/components/board-page/climbs-list';
 import { fetchBoardDetails, fetchResults } from '@/app/components/rest-api/api';
 
@@ -11,13 +15,13 @@ export default async function DynamicResultsPage({
   searchParams,
 }: {
   params: BoardRouteParametersWithUuid;
-  searchParams: SearchRequestPagination
+  searchParams: SearchRequestPagination;
 }) {
   const parsedParams = parseBoardRouteParams(params);
 
   try {
-    const searchParamsObject: SearchRequestPagination = parsedRouteSearchParamsToSearchParams(searchParams)
-    
+    const searchParamsObject: SearchRequestPagination = parsedRouteSearchParamsToSearchParams(searchParams);
+
     // For the SSR version we increase the pageSize so it also gets whatever page number
     // is in the search params. Without this, it would load the SSR version of the page on page 2
     // which would then flicker once SWR runs on the client.

@@ -140,7 +140,7 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
       return prevQueue.filter((item) => item.uuid !== climbQueueItem.uuid);
     });
   };
-  
+
   if (climbSearchResults && climbSearchResults.length > 0 && !hasDoneFirstFetch) {
     setHasDoneFirstFetch(true);
   }

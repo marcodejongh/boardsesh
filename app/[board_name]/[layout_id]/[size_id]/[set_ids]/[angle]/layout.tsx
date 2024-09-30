@@ -36,7 +36,7 @@ interface LayoutProps {
 export default async function BoardLayout({ children, params }: PropsWithChildren<LayoutProps>) {
   // Parse the route parameters
   const parsedParams: ParsedBoardRouteParameters = parseBoardRouteParams(params);
-  
+
   const { board_name, layout_id } = parsedParams;
 
   // Fetch the climbs and board details server-side
