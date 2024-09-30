@@ -2,60 +2,22 @@ import React from 'react';
 
 import { notFound } from 'next/navigation';
 import { BoardRouteParametersWithUuid, SearchRequestPagination } from '@/app/lib/types';
-import { parseBoardRouteParams } from '@/app/lib/url-utils';
+import { parseBoardRouteParams, parsedRouteSearchParamsToSearchParams, urlParamsToSearchParams } from '@/app/lib/url-utils';
 import ClimbsList from '@/app/components/board-page/climbs-list';
 import { fetchBoardDetails, fetchResults } from '@/app/components/rest-api/api';
-import { PAGE_LIMIT } from '@/app/components/board-page/constants';
 
 export default async function DynamicResultsPage({
   params,
   searchParams,
 }: {
   params: BoardRouteParametersWithUuid;
-  searchParams: {
-    query?: string;
-    page?: string;
-    gradeAccuracy?: string;
-    maxGrade?: string;
-    minAscents?: string;
-    minGrade?: string;
-    minRating?: string;
-    sortBy?: string;
-    sortOrder?: string;
-    name?: string;
-    onlyClassics?: string;
-    settername?: string;
-    setternameSuggestion?: string;
-    holds?: string;
-    mirroredHolds?: string;
-    pageSize?: string;
-  };
+  searchParams: SearchRequestPagination
 }) {
   const parsedParams = parseBoardRouteParams(params);
 
   try {
-    // Create searchParams object from the passed query parameters
-    const searchParamsObject: SearchRequestPagination = {
-      ...searchParams,
-      gradeAccuracy: parseFloat(searchParams.gradeAccuracy || '0'),
-      maxGrade: parseInt(searchParams.maxGrade || '29', 10),
-      minAscents: parseInt(searchParams.minAscents || '0', 10),
-      minGrade: parseInt(searchParams.minGrade || '1', 10),
-      minRating: parseFloat(searchParams.minRating || '0'),
-      sortBy: (searchParams.sortBy || 'ascents') as 'ascents' | 'difficulty' | 'name' | 'quality',
-      sortOrder: (searchParams.sortOrder || 'desc') as 'asc' | 'desc',
-      name: searchParams.name || '',
-      onlyClassics: searchParams.onlyClassics === 'true',
-      settername: searchParams.settername || '',
-      setternameSuggestion: searchParams.setternameSuggestion || '',
-      holds: searchParams.holds || '',
-      mirroredHolds: searchParams.mirroredHolds || '',
-      pageSize: Number(searchParams.pageSize || PAGE_LIMIT) * ((Number(searchParams.page) || 0) + 1),
-      // We always render from page 0, but we increase the size when the page > 0
-      page: 0,
-    };
+    const searchParamsObject: SearchRequestPagination = parsedRouteSearchParamsToSearchParams(searchParams)
 
-    // Fetch the climbs and board details server-side
     const [fetchedResults, boardDetails] = await Promise.all([
       fetchResults(searchParamsObject, parsedParams),
       fetchBoardDetails(parsedParams.board_name, parsedParams.layout_id, parsedParams.size_id, parsedParams.set_ids),

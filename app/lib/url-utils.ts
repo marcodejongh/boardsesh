@@ -94,6 +94,13 @@ export const urlParamsToSearchParams = (urlParams: URLSearchParams): SearchReque
   };
 };
 
+export const parsedRouteSearchParamsToSearchParams = (urlParams: SearchRequestPagination): SearchRequestPagination => {
+  return {
+    ...DEFAULT_SEARCH_PARAMS,
+    ...urlParams,
+  };
+};
+
 export const constructClimbViewUrl = (
   { board_name, layout_id, angle, size_id, set_ids }: ParsedBoardRouteParameters,
   climb_uuid: ClimbUuid,
