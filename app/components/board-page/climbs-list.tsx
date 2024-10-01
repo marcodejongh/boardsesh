@@ -7,7 +7,6 @@ import { Climb, ParsedBoardRouteParameters, BoardDetails } from '@/app/lib/types
 import { useQueueContext } from '../queue-control/queue-context';
 import ClimbCard from '../climb-card/climb-card';
 import { useEffect, useRef } from 'react';
-import { useDebouncedCallback } from 'use-debounce';
 import { PlusCircleOutlined, FireOutlined } from '@ant-design/icons';
 import { useSearchParams } from 'next/navigation';
 

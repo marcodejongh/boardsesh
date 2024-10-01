@@ -18,13 +18,15 @@ const ClimbCard = ({ climb, boardDetails, onCoverClick, selected, actions }: Cli
   const cover = <ClimbCardCover climb={climb} boardDetails={boardDetails} onClick={onCoverClick} />;
   return (
     <Card
-      title={climb ? `${climb.name} ${climb.difficulty} ★${climb.quality_average}` : 'Loading...'}
+      title={climb ? `${climb.name} @ ${climb.angle}° ${climb.difficulty} ★${climb.quality_average}` : 'Loading...'}
       size="small"
       style={{ backgroundColor: selected ? '#eeffff' : '#FFF' }}
       actions={actions || ClimbCardActions({ climb, boardDetails })}
     >
-      {/* // @ ${climb.angle}° - ${climb.ascensionist_count} ascents, */}
+      {/* TODO: Make a link to the list with the setter_name filter  */}
+      {climb ? `By ${climb.setter_username} - ${climb.ascensionist_count} ascents.` : null}
       {cover}
+      
     </Card>
   );
 };
