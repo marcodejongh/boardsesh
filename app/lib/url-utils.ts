@@ -5,11 +5,13 @@ import {
   BoardRouteParametersWithUuid,
   SearchRequestPagination,
   ClimbUuid,
-} from "@/app/lib/types";
-import { PAGE_LIMIT } from "../components/board-page/constants";
+  BoardDetails,
+  Angle,
+} from '@/app/lib/types';
+import { PAGE_LIMIT } from '../components/board-page/constants';
 
 export function parseBoardRouteParams<T extends BoardRouteParameters>(
-  params: T
+  params: T,
 ): T extends BoardRouteParametersWithUuid ? ParsedBoardRouteParametersWithUuid : ParsedBoardRouteParameters {
   const { board_name, layout_id, size_id, set_ids, angle, climb_uuid } = params;
 
@@ -18,7 +20,7 @@ export function parseBoardRouteParams<T extends BoardRouteParameters>(
     layout_id: Number(layout_id),
     size_id: Number(size_id),
     set_ids: decodeURIComponent(set_ids)
-      .split(",")
+      .split(',')
       .map((str) => Number(str)),
     angle: Number(angle),
   };
@@ -55,36 +57,67 @@ export const searchParamsToUrlParams = (params: SearchRequestPagination): URLSea
   });
 };
 
-// Helper function to parse search query params
+export const DEFAULT_SEARCH_PARAMS: SearchRequestPagination = {
+  gradeAccuracy: 1,
+  maxGrade: 33,
+  minGrade: 1,
+  minRating: 0,
+  minAscents: 0,
+  sortBy: 'ascents',
+  sortOrder: 'desc',
+  name: '',
+  onlyClassics: false,
+  settername: '',
+  setternameSuggestion: '',
+  holds: '',
+  mirroredHolds: '',
+  page: 0,
+  pageSize: PAGE_LIMIT,
+};
+
 export const urlParamsToSearchParams = (urlParams: URLSearchParams): SearchRequestPagination => {
   return {
-    gradeAccuracy: parseFloat(urlParams.get("gradeAccuracy") || "0"),
-    maxGrade: parseInt(urlParams.get("maxGrade") || "29", 10),
-    minAscents: parseInt(urlParams.get("minAscents") || "0", 10),
-    minGrade: parseInt(urlParams.get("minGrade") || "1", 10),
-    minRating: parseFloat(urlParams.get("minRating") || "0"),
-    sortBy: (urlParams.get("sortBy") || "ascents") as "ascents" | "difficulty" | "name" | "quality",
-    sortOrder: (urlParams.get("sortOrder") || "desc") as "asc" | "desc",
-    name: urlParams.get("name") || "",
-    onlyClassics: urlParams.get("onlyClassics") === "true",
-    settername: urlParams.get("settername") || "",
-    setternameSuggestion: urlParams.get("setternameSuggestion") || "",
-    holds: urlParams.get("holds") || "",
-    mirroredHolds: urlParams.get("mirroredHolds") || "",
-    page: Number(urlParams.get("page") || "0"),
-    pageSize: Number(urlParams.get("pageSize") || PAGE_LIMIT),
+    ...DEFAULT_SEARCH_PARAMS,
+    gradeAccuracy: Number(urlParams.get('gradeAccuracy') ?? DEFAULT_SEARCH_PARAMS.gradeAccuracy),
+    maxGrade: Number(urlParams.get('maxGrade') ?? DEFAULT_SEARCH_PARAMS.maxGrade),
+    minAscents: Number(urlParams.get('minAscents') ?? DEFAULT_SEARCH_PARAMS.minAscents),
+    minGrade: Number(urlParams.get('minGrade') ?? DEFAULT_SEARCH_PARAMS.minGrade),
+    minRating: Number(urlParams.get('minRating') ?? DEFAULT_SEARCH_PARAMS.minRating),
+    sortBy: (urlParams.get('sortBy') ?? DEFAULT_SEARCH_PARAMS.sortBy) as 'ascents' | 'difficulty' | 'name' | 'quality',
+    sortOrder: (urlParams.get('sortOrder') ?? DEFAULT_SEARCH_PARAMS.sortOrder) as 'asc' | 'desc',
+    name: urlParams.get('name') ?? DEFAULT_SEARCH_PARAMS.name,
+    onlyClassics: urlParams.get('onlyClassics') === 'true',
+    settername: urlParams.get('settername') ?? DEFAULT_SEARCH_PARAMS.settername,
+    setternameSuggestion: urlParams.get('setternameSuggestion') ?? DEFAULT_SEARCH_PARAMS.setternameSuggestion,
+    holds: urlParams.get('holds') ?? DEFAULT_SEARCH_PARAMS.holds,
+    mirroredHolds: urlParams.get('mirroredHolds') ?? DEFAULT_SEARCH_PARAMS.mirroredHolds,
+    page: Number(urlParams.get('page') ?? DEFAULT_SEARCH_PARAMS.page),
+    pageSize: Number(urlParams.get('pageSize') ?? DEFAULT_SEARCH_PARAMS.pageSize),
   };
-}
+};
 
+export const parsedRouteSearchParamsToSearchParams = (urlParams: SearchRequestPagination): SearchRequestPagination => {
+  return {
+    ...DEFAULT_SEARCH_PARAMS,
+    ...urlParams,
+  };
+};
 
 export const constructClimbViewUrl = (
   { board_name, layout_id, angle, size_id, set_ids }: ParsedBoardRouteParameters,
   climb_uuid: ClimbUuid,
 ) => `/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/view/${climb_uuid}`;
 
-export const constructClimbList = (
-  { board_name, layout_id, angle, size_id, set_ids }: ParsedBoardRouteParameters,
-) => `/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/list`;
+export const constructClimbInfoUrl = (
+  { board_name, layout_id, size_id, set_ids }: BoardDetails,
+  climb_uuid: ClimbUuid,
+  angle: Angle,
+) => `/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/info/${climb_uuid}`;
 
-export const constructClimbSearchUrl = ({ board_name, layout_id, angle, size_id, set_ids }: ParsedBoardRouteParameters, queryString: string) =>
-  `/api/v1/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/search?${queryString}`;
+export const constructClimbList = ({ board_name, layout_id, angle, size_id, set_ids }: ParsedBoardRouteParameters) =>
+  `/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/list`;
+
+export const constructClimbSearchUrl = (
+  { board_name, layout_id, angle, size_id, set_ids }: ParsedBoardRouteParameters,
+  queryString: string,
+) => `/api/v1/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/search?${queryString}`;

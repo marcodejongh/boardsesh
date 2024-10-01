@@ -1,0 +1,19 @@
+.connect-button-glow {
+  animation: glow 1.5s infinite alternate;
+  color: rgba(255, 215, 0, 0.4) !important;
+}
+
+@keyframes glow {
+  from {
+    box-shadow:
+      0 0 5px rgba(255, 215, 0, 0.4),
+      0 0 10px rgba(255, 215, 0, 0.2),
+      0 0 15px rgba(255, 215, 0, 0.1);
+  }
+  to {
+    box-shadow:
+      0 0 10px rgba(255, 215, 0, 0.8),
+      0 0 20px rgba(255, 215, 0, 0.6),
+      0 0 30px rgba(255, 215, 0, 0.4);
+  }
+}

@@ -1,81 +1,48 @@
 import React from 'react';
 
-import { notFound } from "next/navigation";
-import { BoardRouteParametersWithUuid, SearchRequestPagination } from "@/app/lib/types";
-import { parseBoardRouteParams } from "@/app/lib/url-utils";
-import ClimbsList from "@/app/components/board-page/climbs-list";
-import { fetchBoardDetails, fetchResults } from "@/app/components/rest-api/api";
-import { PAGE_LIMIT } from "@/app/components/board-page/constants";
+import { notFound } from 'next/navigation';
+import { BoardRouteParametersWithUuid, SearchRequestPagination } from '@/app/lib/types';
+import {
+  parseBoardRouteParams,
+  parsedRouteSearchParamsToSearchParams,
+} from '@/app/lib/url-utils';
+import ClimbsList from '@/app/components/board-page/climbs-list';
+import { fetchBoardDetails, fetchClimbs } from '@/app/components/rest-api/api';
 
 export default async function DynamicResultsPage({
   params,
-  searchParams
+  searchParams,
 }: {
   params: BoardRouteParametersWithUuid;
-  searchParams: {
-    query?: string;
-    page?: string;
-    gradeAccuracy?: string;
-    maxGrade?: string;
-    minAscents?: string;
-    minGrade?: string;
-    minRating?: string;
-    sortBy?: string;
-    sortOrder?: string;
-    name?: string;
-    onlyClassics?: string;
-    settername?: string;
-    setternameSuggestion?: string;
-    holds?: string;
-    mirroredHolds?: string;
-    pageSize?: string;
-  }
+  searchParams: SearchRequestPagination;
 }) {
   const parsedParams = parseBoardRouteParams(params);
-  
+
   try {
-    // Create searchParams object from the passed query parameters
-    const searchParamsObject: SearchRequestPagination = {
-      ...searchParams,
-      gradeAccuracy: parseFloat(searchParams.gradeAccuracy || "0"),
-      maxGrade: parseInt(searchParams.maxGrade || "29", 10),
-      minAscents: parseInt(searchParams.minAscents || "0", 10),
-      minGrade: parseInt(searchParams.minGrade || "1", 10),
-      minRating: parseFloat(searchParams.minRating || "0"),
-      sortBy: (searchParams.sortBy || "ascents") as "ascents" | "difficulty" | "name" | "quality",
-      sortOrder: (searchParams.sortOrder || "desc") as "asc" | "desc",
-      name: searchParams.name || "",
-      onlyClassics: searchParams.onlyClassics === "true",
-      settername: searchParams.settername || "",
-      setternameSuggestion: searchParams.setternameSuggestion || "",
-      holds: searchParams.holds || "",
-      mirroredHolds: searchParams.mirroredHolds || "",
-      pageSize: (Number(searchParams.pageSize || PAGE_LIMIT) * ((Number(searchParams.page) || 0) + 1)),
-      // We always render from page 0, but we increase the size when the page > 0
-      page: 0,
-    };
-    
-    // Fetch the climbs and board details server-side
+    const searchParamsObject: SearchRequestPagination = parsedRouteSearchParamsToSearchParams(searchParams);
+
+    // For the SSR version we increase the pageSize so it also gets whatever page number
+    // is in the search params. Without this, it would load the SSR version of the page on page 2
+    // which would then flicker once SWR runs on the client.
+    searchParamsObject.pageSize = (searchParamsObject.page + 1) * searchParamsObject.pageSize;
+    searchParamsObject.page = 0;
+
     const [fetchedResults, boardDetails] = await Promise.all([
-      fetchResults(searchParamsObject, parsedParams),
+      fetchClimbs(searchParamsObject, parsedParams),
       fetchBoardDetails(parsedParams.board_name, parsedParams.layout_id, parsedParams.size_id, parsedParams.set_ids),
     ]);
 
-    if (!fetchedResults || fetchedResults.boulderproblems.length === 0) {
+    if (!fetchedResults || fetchedResults.climbs.length === 0) {
       notFound();
     }
 
     return (
       <>
-        <ClimbsList
-          {...parsedParams}
-          boardDetails={boardDetails}
-          initialClimbs={fetchedResults.boulderproblems}
-        />
+        <ClimbsList {...parsedParams} boardDetails={boardDetails} initialClimbs={fetchedResults.climbs} />
       </>
     );
   } catch (error) {
-    console.error("Error fetching results or climb:", error);
+    console.error('Error fetching results or climb:', error);
     notFound(); // or show a 500 error page
   }
 }

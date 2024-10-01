@@ -1,51 +1,33 @@
 import React from 'react';
-import Card from "antd/es/card";
-import { PlusCircleOutlined, FireOutlined } from "@ant-design/icons";
-import ClimbCardCover from "./climb-card-cover";
-import { BoulderProblem, BoardDetails, ParsedBoardRouteParameters } from "@/app/lib/types";
+import Card from 'antd/es/card';
 
-type ClimbCardProps = { 
-  climb: BoulderProblem;
+import ClimbCardCover from './climb-card-cover';
+import { Climb, BoardDetails } from '@/app/lib/types';
+import ClimbCardActions from './climb-card-actions';
+
+type ClimbCardProps = {
+  climb?: Climb;
   boardDetails: BoardDetails;
-  setCurrentClimb?: (climb: BoulderProblem) => void; 
-  addToQueue?: (climb: BoulderProblem) => void; 
-  parsedParams: ParsedBoardRouteParameters;
-  clickable?: boolean;
+  coverLinkToClimb?: boolean;
   onCoverClick?: () => void;
-}
+  selected?: boolean;
+  actions?: React.JSX.Element[];
+};
 
-const ClimbCard = ({
-  climb,
-  boardDetails,
-  setCurrentClimb,
-  addToQueue,
-  parsedParams,
-  clickable,
-  onCoverClick,
-}: ClimbCardProps) => {
-  const cover = (
-    <ClimbCardCover 
-      climb={climb}
-      parsedParams={parsedParams}
-      boardDetails={boardDetails}
-      clickable={clickable}
-      onClick={onCoverClick}
-      />
-  );
+const ClimbCard = ({ climb, boardDetails, onCoverClick, selected, actions }: ClimbCardProps) => {
+  const cover = <ClimbCardCover climb={climb} boardDetails={boardDetails} onClick={onCoverClick} />;
   return (
     <Card
-      title={`${climb.name} ${climb.difficulty} ★${climb.quality_average}`}
+      title={climb ? `${climb.name} @ ${climb.angle}° ${climb.difficulty} ★${climb.quality_average}` : 'Loading...'}
       size="small"
-      actions={[
-        // <SettingOutlined key="setting" />,
-        <PlusCircleOutlined key="edit" onClick={addToQueue ? () => addToQueue(climb) : undefined} />,
-        <FireOutlined key="set-active" onClick={setCurrentClimb ? () => setCurrentClimb(climb) : undefined} />,
-      ]}
-      
+      style={{ backgroundColor: selected ? '#eeffff' : '#FFF' }}
+      actions={actions || ClimbCardActions({ climb, boardDetails })}
     >
-      {/* // @ ${climb.angle}° - ${climb.ascensionist_count} ascents, */}
+      {/* TODO: Make a link to the list with the setter_name filter  */}
+      {climb ? `By ${climb.setter_username} - ${climb.ascensionist_count} ascents.` : null}
       {cover}
+      
     </Card>
-  )
-}
+  );
+};
 export default ClimbCard;

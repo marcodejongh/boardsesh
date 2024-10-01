@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState } from "react";
-import { Button, Grid, Drawer } from "antd";
-import { InfoCircleOutlined } from "@ant-design/icons";
-import ClimbInfo from "./climb-info";
+import React, { useState } from 'react';
+import { Button, Grid, Drawer } from 'antd';
+import { InfoCircleOutlined } from '@ant-design/icons';
+import ClimbInfo from './climb-info';
 
 const { useBreakpoint } = Grid;
 
@@ -15,13 +15,7 @@ const ClimbInfoButton = () => {
   const mobileDrawer = (
     <>
       <Button type="default" icon={<InfoCircleOutlined />} onClick={() => setIsOpen(true)} />
-      <Drawer
-        title="Climb Info"
-        placement="right"
-        width={"80%"}
-        open={isOpen}
-        onClose={() => setIsOpen(false)}
-      >
+      <Drawer title="Climb Info" placement="right" width={'80%'} open={isOpen} onClose={() => setIsOpen(false)}>
         <ClimbInfo />
       </Drawer>
     </>

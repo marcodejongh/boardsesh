@@ -1,4 +1,4 @@
-import { DataConnection } from "peerjs";
+import { DataConnection } from 'peerjs';
 
 export type PeerData = {
   type: string;

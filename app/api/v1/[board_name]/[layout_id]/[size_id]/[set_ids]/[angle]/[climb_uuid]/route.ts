@@ -1,9 +1,9 @@
 // api/v1/[board_name]/[layout_id]/[size_id]/[set_ids]/[climb_uuid]
-import { convertLitUpHoldsStringToMap } from "@/app/components/board-renderer/util";
-import { getBoulderProblem } from "@/app/lib/data/queries";
-import { BoardRouteParametersWithUuid, ErrorResponse, FetchCurrentProblemResponse } from "@/app/lib/types";
-import { parseBoardRouteParams } from "@/app/lib/url-utils";
-import { NextResponse } from "next/server";
+import { convertLitUpHoldsStringToMap } from '@/app/components/board-renderer/util';
+import { getClimb } from '@/app/lib/data/queries';
+import { BoardRouteParametersWithUuid, ErrorResponse, FetchCurrentProblemResponse } from '@/app/lib/types';
+import { parseBoardRouteParams } from '@/app/lib/url-utils';
+import { NextResponse } from 'next/server';
 
 export async function GET(
   req: Request,
@@ -11,8 +11,8 @@ export async function GET(
 ): Promise<NextResponse<FetchCurrentProblemResponse | ErrorResponse>> {
   try {
     const parsedParams = parseBoardRouteParams(params);
-    const result = await getBoulderProblem(parsedParams)
-    
+    const result = await getClimb(parsedParams);
+
     const litUpHoldsMap = convertLitUpHoldsStringToMap(result.frames, parsedParams.board_name);
 
     if (!result) {
@@ -21,7 +21,7 @@ export async function GET(
     // Include both the rows and the total count in the response
     return NextResponse.json({ ...result, litUpHoldsMap });
   } catch (error) {
-    console.error("Error fetching data:", error);
-    return NextResponse.json({ error: "Failed to fetch board details" }, { status: 500 });
+    console.error('Error fetching data:', error);
+    return NextResponse.json({ error: 'Failed to fetch board details' }, { status: 500 });
   }
 }

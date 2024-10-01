@@ -1,7 +1,7 @@
-import { HoldRenderData, LitUpHoldsMap } from "../components/board-renderer/types";
-import { SetIdList } from "./board-data";
+import { HoldRenderData, LitUpHoldsMap } from '../components/board-renderer/types';
+import { SetIdList } from './board-data';
 
-export type BoulderProblem = {
+export type Climb = {
   uuid: string;
   setter_username: string;
   name: string;
@@ -59,8 +59,8 @@ export type SearchRequest = {
   minAscents: number;
   minGrade: number;
   minRating: number;
-  sortBy: "ascents" | "difficulty" | "name" | "quality";
-  sortOrder: "asc" | "desc";
+  sortBy: 'ascents' | 'difficulty' | 'name' | 'quality';
+  sortOrder: 'asc' | 'desc';
   name: string;
   onlyClassics: boolean;
   settername: string;
@@ -107,27 +107,6 @@ export type BetaLink = {
   link: string;
 };
 
-// Login Request Type
-export type LoginRequest = {
-  board: string;
-  username: string;
-  password: string;
-};
-
-// Login Response Type
-export type LoginResponse = {
-  token: string;
-  user_id: number;
-};
-
-// Responses
-
-export type GetLayoutsResponse = LayoutsResponse[];
-
-export type GetSizesResponse = SizesResponse[];
-
-export type GetSetsResponse = SetsResponse[];
-
 export type SearchCountRequest = {
   gradeAccuracy: number;
   layout: string;
@@ -153,12 +132,16 @@ export type Hold = {
 // Define a tuple type for each hold
 export type HoldTuple = [number, number | null, number, number];
 
+export type PlacementsMap = HoldRenderData[];
+
 // Ensure imagesToHolds is typed as a Record where each key maps to an array of HoldTuples
 export type ImageFileName = string;
 export type ImagesToHolds = Record<ImageFileName, HoldTuple[]>;
+export type LedPlacements = Record<number, number>;
+
 export type BoardDetails = {
   images_to_holds: ImagesToHolds;
-  holdsData: HoldRenderData[];
+  holdsData: PlacementsMap;
   edge_left: number;
   edge_right: number;
   edge_bottom: number;
@@ -169,15 +152,8 @@ export type BoardDetails = {
   layout_id: number;
   size_id: number;
   set_ids: SetIdList;
+  ledPlacements: LedPlacements;
 };
-
-export type GetLedColorsResponse = LedColor;
-
-export type GetAnglesResponse = { angle: number }[];
-
-export type GetGradesResponse = Grade[];
-
-export type GetBetaResponse = BetaLink[];
 
 export type BoardRouteParameters = {
   board_name: string;
@@ -206,18 +182,16 @@ export type ParsedBoardRouteParametersWithUuid = ParsedBoardRouteParameters & {
 
 export type ClimbUuid = string;
 
-//TODO: Refactor useEffects so this page can SSR
-
 export type BoardName = 'kilter' | 'tension';
 export type LayoutId = number;
 export type Angle = number;
 export type Size = number;
 export type FetchResultsResponse = {
-  rows: BoulderProblem[];
+  rows: Climb[];
   totalCount: number;
 };
 
-export type FetchCurrentProblemResponse = BoulderProblem;
+export type FetchCurrentProblemResponse = Climb;
 
 export interface ErrorResponse {
   error: string;

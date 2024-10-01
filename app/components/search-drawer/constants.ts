@@ -1,21 +1,21 @@
-import { SearchRequestPagination } from "@/app/lib/types";
-import { PAGE_LIMIT } from "../board-page/constants";
+import { SearchRequestPagination } from '@/app/lib/types';
+import { PAGE_LIMIT } from '../board-page/constants';
 
 // Default climb search parameters
 export const defaultClimbSearchParameters: SearchRequestPagination = {
   minGrade: 10,
   maxGrade: 33,
-  name: "",
+  name: '',
   minAscents: 1,
-  sortBy: "ascents",
-  sortOrder: "desc",
+  sortBy: 'ascents',
+  sortOrder: 'desc',
   minRating: 1.0,
   onlyClassics: false,
   gradeAccuracy: 1,
-  settername: "",
-  setternameSuggestion: "",
-  holds: "",
-  mirroredHolds: "",
+  settername: '',
+  setternameSuggestion: '',
+  holds: '',
+  mirroredHolds: '',
   pageSize: PAGE_LIMIT,
   page: 0,
 };
