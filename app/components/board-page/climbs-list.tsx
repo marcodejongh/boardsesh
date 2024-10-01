@@ -61,44 +61,44 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
    * which promises that it always restores scroll correctly. But for now this works, and as a
    * cool side-effect shared links will also scroll to the correct item.
    */
-  const handleScroll = () => {
-    let closestClimb = null;
-    let closestDistance = Infinity;
+  // const handleScroll = () => {
+  //   let closestClimb = null;
+  //   let closestDistance = Infinity;
 
-    const climbUuids = Object.keys(climbsRefs.current);
+  //   const climbUuids = Object.keys(climbsRefs.current);
 
-    for (let i = 0; i < climbUuids.length; i++) {
-      const uuid = climbUuids[i];
-      const climbElement = climbsRefs.current[uuid];
+  //   for (let i = 0; i < climbUuids.length; i++) {
+  //     const uuid = climbUuids[i];
+  //     const climbElement = climbsRefs.current[uuid];
 
-      if (climbElement) {
-        const rect = climbElement.getBoundingClientRect();
-        const distanceFromViewportTop = Math.abs(rect.top - 100); // Adjust 100 to your viewport reference
+  //     if (climbElement) {
+  //       const rect = climbElement.getBoundingClientRect();
+  //       const distanceFromViewportTop = Math.abs(rect.top - 100); // Adjust 100 to your viewport reference
 
-        if (distanceFromViewportTop < closestDistance) {
-          closestDistance = distanceFromViewportTop;
-          closestClimb = uuid;
-        } else {
-          // If distance starts to increase, no need to check further climbs
-          break;
-        }
-      }
-    }
+  //       if (distanceFromViewportTop < closestDistance) {
+  //         closestDistance = distanceFromViewportTop;
+  //         closestClimb = uuid;
+  //       } else {
+  //         // If distance starts to increase, no need to check further climbs
+  //         break;
+  //       }
+  //     }
+  //   }
 
-    // If the closest climb is different from the current one, update the hash
-    if (closestClimb) {
-      updateHash(closestClimb);
-    }
-  };
+  //   // If the closest climb is different from the current one, update the hash
+  //   if (closestClimb) {
+  //     updateHash(closestClimb);
+  //   }
+  // };
 
-  const debouncedHandleScroll = useDebouncedCallback(handleScroll, 500);
+  // const debouncedHandleScroll = useDebouncedCallback(handleScroll, 500);
 
   // Function to restore scroll based on the hash in the URL
   const restoreScrollFromHash = () => {
     const hash = window.location.hash;
     if (hash) {
       const climbId = hash.substring(1);
-      const climbElement = climbsRefs.current[climbId];
+      const climbElement = document.getElementById(climbId);
 
       if (climbElement) {
         climbElement.scrollIntoView({ behavior: 'instant', block: 'start' });
@@ -130,11 +130,10 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
       endMessage={<div style={{ textAlign: 'center' }}>No more climbs 🤐</div>}
       // Probably not how this should be done in a React app, but it works and I ain't no CSS-wizard
       scrollableTarget="content-for-scrollable"
-      onScroll={debouncedHandleScroll}
     >
       <Row gutter={[16, 16]}>
         {climbs.map((climb) => (
-          <Col xs={24} lg={12} xl={12} key={climb.uuid}>
+          <Col xs={24} lg={12} xl={12} id={climb.uuid} key={climb.uuid}>
             <div
               ref={(el) => {
                 climbsRefs.current[climb.uuid] = el;
@@ -144,7 +143,10 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
                 climb={climb}
                 boardDetails={boardDetails}
                 selected={currentClimb?.uuid === climb.uuid}
-                onCoverClick={() => setCurrentClimb(climb)}
+                onCoverClick={() => {
+                  updateHash(climb.uuid); 
+                  setCurrentClimb(climb);
+                }}
               />
             </div>
           </Col>
