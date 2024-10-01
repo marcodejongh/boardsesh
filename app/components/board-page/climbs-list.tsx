@@ -9,6 +9,7 @@ import ClimbCard from '../climb-card/climb-card';
 import { useEffect, useRef } from 'react';
 import { useDebouncedCallback } from 'use-debounce';
 import { PlusCircleOutlined, FireOutlined } from '@ant-design/icons';
+import { useSearchParams } from 'next/navigation';
 
 type ClimbsListProps = ParsedBoardRouteParameters & {
   boardDetails: BoardDetails;
@@ -38,6 +39,9 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
     hasDoneFirstFetch,
     isFetchingClimbs,
   } = useQueueContext();
+
+  const searchParams = useSearchParams();
+  const page = searchParams.get('page');
 
   // Queue Context provider uses SWR infinite to fetch results, which can only happen clientside.
   // That data equals null at the start, so when its null we use the initialClimbs array which we
@@ -106,6 +110,16 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
   useEffect(() => {
     restoreScrollFromHash();
   }, []);
+
+  useEffect(() => {
+    if (page === '0' && hasDoneFirstFetch && isFetchingClimbs) {
+      const scrollContainer = document.getElementById('content-for-scrollable');
+      if (scrollContainer) {
+        scrollContainer.scrollTo({ top: 0, behavior: 'instant' });
+      }
+      climbsRefs.current = {};
+    }
+  }, [page, hasDoneFirstFetch, isFetchingClimbs]); // Depend on the page query parameter
 
   return (
     <InfiniteScroll
