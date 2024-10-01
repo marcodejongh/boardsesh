@@ -15,17 +15,18 @@ type ClimbsListProps = ParsedBoardRouteParameters & {
   initialClimbs: Climb[];
 };
 
-const ClimbCardSkeletons = ({ boardDetails }: { boardDetails: BoardDetails }) => {
+const ClimbCardSkeletons = ({ boardDetails, id }: { boardDetails: BoardDetails, id: number }) => {
   return (
-    <Col xs={24} lg={12} xl={12}>
-      <ClimbCard boardDetails={boardDetails} actions={[<PlusCircleOutlined />, <FireOutlined />]} />
+    <Col xs={24} lg={12} xl={12} key={id.toString()}>
+      <ClimbCard key={id.toString()} boardDetails={boardDetails} actions={[<PlusCircleOutlined key="plus"/>, <FireOutlined key="fire"/>]} />
     </Col>
   );
 };
 
 const ClimbsListSkeleton = ({ boardDetails }: { boardDetails: BoardDetails }) => {
-  return Array.from({ length: 10 }, (_, i) => i + 1).map(() => <ClimbCardSkeletons boardDetails={boardDetails} />);
+  return Array.from({ length: 10 }, (_, i) => i + 1).map((val) => <ClimbCardSkeletons id={val} key={val.toString()} boardDetails={boardDetails} />);
 };
+
 
 const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
   const {

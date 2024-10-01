@@ -12,11 +12,7 @@ type QueueListProps = {
 };
 
 const QueueList: React.FC<QueueListProps> = ({ boardDetails }) => {
-  const { currentClimbQueueItem, queue, climbSearchResults, setCurrentClimbQueueItem, setCurrentClimb, fetchMoreClimbs } = useQueueContext(); // Include climbSearchResults from context
-
-  const currentItemPositionInSearchResults = (climbSearchResults || []).findIndex(
-    ({ uuid }) => uuid === currentClimbQueueItem?.climb.uuid,
-  );
+  const { currentClimbQueueItem, queue, climbSearchResults, setCurrentClimbQueueItem, setCurrentClimb } = useQueueContext(); // Include climbSearchResults from context
 
   return (
     <>

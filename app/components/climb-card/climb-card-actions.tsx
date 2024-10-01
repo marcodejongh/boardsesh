@@ -19,11 +19,11 @@ const ClimbCardActions = ({ climb, boardDetails }: ClimbCardActionsProps) => {
   }
   return [
     // <SettingOutlined key="setting" />,
-    <TickClimbButton />,
-    <Link href={constructClimbInfoUrl(boardDetails, climb.uuid, climb.angle)}>
+    <TickClimbButton key="tickclimbbutton" />,
+    <Link key="infocircle" href={constructClimbInfoUrl(boardDetails, climb.uuid, climb.angle)}>
       <InfoCircleOutlined onClick={() => message.info('TODO: Implement')} />
     </Link>,
-    <HeartOutlined onClick={() => message.info('TODO: Implement')} />,
+    <HeartOutlined key="heart" onClick={() => message.info('TODO: Implement')} />,
     <PlusCircleOutlined key="edit" onClick={addToQueue ? () => addToQueue(climb) : undefined} />,
   ];
 };

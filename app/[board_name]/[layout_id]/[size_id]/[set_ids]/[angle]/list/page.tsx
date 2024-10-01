@@ -5,7 +5,6 @@ import { BoardRouteParametersWithUuid, SearchRequestPagination } from '@/app/lib
 import {
   parseBoardRouteParams,
   parsedRouteSearchParamsToSearchParams,
-  urlParamsToSearchParams,
 } from '@/app/lib/url-utils';
 import ClimbsList from '@/app/components/board-page/climbs-list';
 import { fetchBoardDetails, fetchClimbs } from '@/app/components/rest-api/api';

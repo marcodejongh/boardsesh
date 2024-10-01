@@ -11,7 +11,7 @@ import { fetchBoardDetails } from '@/app/components/rest-api/api';
 import BoardSeshHeader from '@/app/components/board-page/header';
 import { QueueProvider } from '@/app/components/queue-control/queue-context';
 
-interface LayoutProps {
+interface BoardLayoutProps {
   params: BoardRouteParametersWithUuid;
   searchParams: {
     query?: string;
@@ -33,7 +33,7 @@ interface LayoutProps {
   };
 }
 
-export default async function BoardLayout({ children, params }: PropsWithChildren<LayoutProps>) {
+export default async function BoardLayout({ children, params }: PropsWithChildren<BoardLayoutProps>) {
   // Parse the route parameters
   const parsedParams: ParsedBoardRouteParameters = parseBoardRouteParams(params);
 
