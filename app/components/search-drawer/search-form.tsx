@@ -34,9 +34,9 @@ const SearchForm: React.FC<SearchFormProps> = () => {
               },
             }}
             onChange={(value) => updateFilters({ minGrade: value[0], maxGrade: value[1] })}
-            tooltip={{
-              formatter: (value) => grades.find(({ difficulty_id }) => difficulty_id === value)?.difficulty_name,
-            }}
+            // tooltip={{
+            //   formatter: (value) => grades.find(({ difficulty_id }) => difficulty_id === value)?.difficulty_name,
+            // }}
           />
         </Form.Item>
 
