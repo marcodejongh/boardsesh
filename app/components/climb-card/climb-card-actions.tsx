@@ -6,7 +6,7 @@ import { PlusCircleOutlined, HeartOutlined, InfoCircleOutlined } from '@ant-desi
 import Link from 'next/link';
 import { constructClimbInfoUrl } from '@/app/lib/url-utils';
 import { message } from 'antd';
-import TickClimbButton from '@/c/tick-climb/tick-climb-button';
+// import TickClimbButton from '@/c/tick-climb/tick-climb-button';
 
 type ClimbCardActionsProps = {
   climb?: Climb;
