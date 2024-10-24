@@ -109,10 +109,13 @@ export const constructClimbViewUrl = (
 ) => `/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/view/${climb_uuid}`;
 
 export const constructClimbInfoUrl = (
-  { board_name, layout_id, size_id, set_ids }: BoardDetails,
+  { board_name }: BoardDetails,
   climb_uuid: ClimbUuid,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   angle: Angle,
-) => `/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/info/${climb_uuid}`;
+) => `https://${board_name}boardapp.com/climbs/${climb_uuid}`;
+  
+  //`/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/info/${climb_uuid}`;
 
 export const constructClimbList = ({ board_name, layout_id, angle, size_id, set_ids }: ParsedBoardRouteParameters) =>
   `/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/list`;

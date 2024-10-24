@@ -19,7 +19,7 @@ const ClimbCardActions = ({ climb, boardDetails }: ClimbCardActionsProps) => {
   }
   return [
     // <SettingOutlined key="setting" />,
-    <TickClimbButton key="tickclimbbutton" />,
+    // <TickClimbButton key="tickclimbbutton" />,
     <Link key="infocircle" href={constructClimbInfoUrl(boardDetails, climb.uuid, climb.angle)}>
       <InfoCircleOutlined onClick={() => message.info('TODO: Implement')} />
     </Link>,
