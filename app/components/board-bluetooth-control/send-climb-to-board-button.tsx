@@ -37,7 +37,8 @@ const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({ boardDe
     const bluetoothPacket = getBluetoothPacket(frames, placementPositions);
 
     try {
-      const device = await requestDevice('kilterboard');
+      const bluetoothboardname = boardDetails.board_name[0].toUpperCase() + boardDetails.board_name.slice(1);
+      const device = await requestDevice(bluetoothboardname);
       const characteristic = await getCharacteristic(device);
 
       if (characteristic) {
