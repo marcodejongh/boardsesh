@@ -11,6 +11,11 @@ This app was originally started as a fork of https://github.com/lemeryfertitta/C
 We also use https://github.com/lemeryfertitta/BoardLib for creating the database.
 Many thanks to @lemeryfertitta for making this project possible!!
 
+## IOS support
+Unfortunately mobile safari doesn't support web bluetooth. So to use this website on your phone you could install a ios browser that does have web ble support, for example: https://apps.apple.com/us/app/bluefy-web-ble-browser/id1492822055
+
+Bluefy is what I tested boardsesh in on my iphone and it worked like expected.
+
 ## Current status
 
 Basic board use works, and the app already has queue controls, open to feedback and contributions!
