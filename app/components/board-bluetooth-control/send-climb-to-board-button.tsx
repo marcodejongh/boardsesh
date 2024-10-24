@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { BulbOutlined, BulbFilled } from '@ant-design/icons';
 import { Button } from 'antd';
 import { useQueueContext } from '../queue-control/queue-context';
@@ -26,10 +26,9 @@ const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({ boardDe
   const bluetoothDeviceRef = useRef<BluetoothDevice | null>(null);
   const characteristicRef = useRef<BluetoothRemoteGATTCharacteristic | null>(null);
 
-  const handleClick = useCallback(async () => {
-    if (!currentClimbQueueItem) return;
-
-    setLoading(true);
+  // Function to send climb data to the board
+  const sendClimbToBoard = useCallback(async () => {
+    if (!currentClimbQueueItem || !characteristicRef.current) return;
 
     const { frames } = currentClimbQueueItem.climb;
     const placementPositions = boardDetails.ledPlacements;
@@ -37,26 +36,50 @@ const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({ boardDe
     const bluetoothPacket = getBluetoothPacket(frames, placementPositions);
 
     try {
-      const bluetoothboardname = boardDetails.board_name[0].toUpperCase() + boardDetails.board_name.slice(1);
-      const device = await requestDevice(bluetoothboardname);
-      const characteristic = await getCharacteristic(device);
-
-      if (characteristic) {
-        bluetoothDeviceRef.current = device;
-        characteristicRef.current = characteristic;
-        setIsConnected(true); // Mark as connected
-      }
-
       if (characteristicRef.current) {
         await writeCharacteristicSeries(characteristicRef.current, splitMessages(bluetoothPacket));
       }
     } catch (error) {
-      console.error('Error illuminating climb:', error);
+      console.error('Error sending climb to board:', error);
+    }
+  }, [currentClimbQueueItem, boardDetails]);
+
+  // Handle button click to initiate Bluetooth connection
+  const handleClick = useCallback(async () => {
+    setLoading(true);
+
+    try {
+      // Request Bluetooth connection if not already connected
+      if (!bluetoothDeviceRef.current || !characteristicRef.current) {
+        const bluetoothboardname = boardDetails.board_name[0].toUpperCase() + boardDetails.board_name.slice(1);
+        const device = await requestDevice(bluetoothboardname);
+        const characteristic = await getCharacteristic(device);
+
+        if (characteristic) {
+          bluetoothDeviceRef.current = device;
+          characteristicRef.current = characteristic;
+          setIsConnected(true); // Mark as connected
+        }
+      }
+
+      // Immediately send the climb after connecting
+      if (characteristicRef.current) {
+        await sendClimbToBoard();
+      }
+    } catch (error) {
+      console.error('Error connecting to Bluetooth:', error);
       setIsConnected(false); // Mark as disconnected if an error occurs
     } finally {
       setLoading(false);
     }
-  }, [currentClimbQueueItem, boardDetails]);
+  }, [sendClimbToBoard, boardDetails]);
+
+  // Automatically send climb when currentClimbQueueItem changes (only if connected)
+  useEffect(() => {
+    if (isConnected) {
+      sendClimbToBoard();
+    }
+  }, [currentClimbQueueItem, isConnected, sendClimbToBoard]);
 
   return (
     <Button
