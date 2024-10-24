@@ -1,38 +1,19 @@
 'use client';
-import React, { useState } from 'react';
-import { Button, Form, Select, Typography } from 'antd';
-import { useRouter } from 'next/navigation';
+
+import React from 'react';
 import { SizeRow } from '@/app/lib/data/queries';
+import { ParsedBoardRouteParameters } from '@/app/lib/types';
+import SelectionFormItem from './selection-form-item';
 
-const { Option } = Select;
-const { Title } = Typography;
+export type SizeSelectionProps = { boardRouteParameters: ParsedBoardRouteParameters, sizes: SizeRow[] };
 
-const SizeSelection = ({ sizes = [] }: { sizes: SizeRow[] }) => {
-  const router = useRouter();
-  const [selectedSize, setSelectedSize] = useState<number>();
-
-  const handleNext = () => {
-    router.push(`${window.location.pathname}/${selectedSize}`);
-  };
-
+const SizeSelection = ({ sizes = [], boardRouteParameters: {board_name, layout_id } }: SizeSelectionProps) => {
   return (
-    <div style={{ padding: '24px', background: '#f7f7f7', borderRadius: '8px' }}>
-      <Title level={4}>Select a size</Title>
-      <Form layout="vertical">
-        <Form.Item label="Size">
-          <Select value={selectedSize} onChange={(value) => setSelectedSize(value)}>
-            {sizes.map(({ id, name, description }) => (
-              <Option key={id} value={id}>
-                {`${name} ${description}`}
-              </Option>
-            ))}
-          </Select>
-        </Form.Item>
-        <Button type="primary" block style={{ marginTop: '16px' }} onClick={handleNext}>
-          Next
-        </Button>
-      </Form>
-    </div>
+    <SelectionFormItem 
+      entityName={'Size'} 
+      label={'Size'}
+      items={sizes.map(({ id: value, name, description }) => ({value, label: `${name} ${description}`}))}
+      urlPrefix={`/s/${board_name}/${layout_id}`} />
   );
 };
 

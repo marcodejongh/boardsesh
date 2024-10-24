@@ -13,6 +13,7 @@ import {
   Size,
 } from '@/app/lib/types';
 
+//  TODO: Figure out how to set these base urls up correctly
 const API_BASE_URL = `${process.env.BASE_URL || 'https://www.boardsesh.com'}/api`;
 
 export const fetchClimbs = async (
