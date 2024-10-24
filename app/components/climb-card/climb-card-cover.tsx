@@ -15,7 +15,8 @@ const ClimbCardCover = ({ climb, boardDetails, onClick }: ClimbCardCoverProps) =
 
   const boardRenderer = (
     <div
-      onClick={onClick ? onClick : () => setModalOpen(true)}
+      onClick={onClick ? undefined : () => setModalOpen(true)}
+      onDoubleClick={onClick ? onClick : undefined}
       style={{
         width: '100%',
         height: 'auto',
