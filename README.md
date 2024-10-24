@@ -13,14 +13,11 @@ Many thanks to @lemeryfertitta for making this project possible!!
 
 ## Current status
 
-This project is currently in a pretty early alpha phase.
-The intention of this app is to eventually be able to support all the features the official apps
-support, but initially we're focussing on the missing features that make the missed functionality possible.
-Currently planned features in order of priority :
+Basic board use works, and the app already has queue controls, open to feedback and contributions!
 
 - Improved multi-user support. Spotify Jams like functionality for using the board in groups.
 - Faster beta video uploads. Current process for beta videos is manual, and as a result new beta videos are almost never added. We'll implement our own Instagram integration to get beta videos faster.
-- Hold filtering. Similar to Climbdex search by hold feature
+
 
 # Getting Started
 
