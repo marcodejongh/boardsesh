@@ -2,6 +2,7 @@
 import React from 'react';
 import { AntdRegistry } from '@ant-design/nextjs-registry';
 import { App } from 'antd';
+import WebBluetoothWarning from './components/board-bluetooth-control/web-bluetooth-warning';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -9,9 +10,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body style={{ margin: 0 }}>
         <AntdRegistry>
           <App>
+            <WebBluetoothWarning />
             {children}
           </App>
-          
         </AntdRegistry>
       </body>
     </html>

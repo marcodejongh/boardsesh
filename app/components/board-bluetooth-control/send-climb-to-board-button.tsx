@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { BulbOutlined, BulbFilled } from '@ant-design/icons';
-import { Button } from 'antd';
+import { Button, message } from 'antd';
 import { useQueueContext } from '../queue-control/queue-context';
 import { BoardDetails } from '@/app/lib/types';
 import './send-climb-to-board-button.css'; // Import your custom styles
@@ -46,6 +46,10 @@ const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({ boardDe
 
   // Handle button click to initiate Bluetooth connection
   const handleClick = useCallback(async () => {
+    if (!navigator.bluetooth) {
+      return message.error('Current browser does not support Web Bluetooth.');
+    }
+
     setLoading(true);
 
     try {
