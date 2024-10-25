@@ -33,7 +33,7 @@ const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({ boardDe
     const { frames } = currentClimbQueueItem.climb;
     const placementPositions = boardDetails.ledPlacements;
 
-    const bluetoothPacket = getBluetoothPacket(frames, placementPositions);
+    const bluetoothPacket = getBluetoothPacket(frames, placementPositions, boardDetails.board_name);
 
     try {
       if (characteristicRef.current) {

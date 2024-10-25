@@ -1,4 +1,4 @@
-import { LedPlacements } from '@/app/lib/types';
+import { BoardName, LedPlacements } from '@/app/lib/types';
 import { HOLD_STATE_MAP } from '../board-renderer/types';
 
 // Bluetooth constants
@@ -33,7 +33,7 @@ const encodePositionAndColor = (position: number, ledColor: string) => [
   encodeColor(ledColor),
 ];
 
-export const getBluetoothPacket = (frames: string, placementPositions: LedPlacements) => {
+export const getBluetoothPacket = (frames: string, placementPositions: LedPlacements, board_name: BoardName) => {
   const resultArray: number[][] = [];
   let tempArray = [PACKET_MIDDLE];
 
@@ -43,7 +43,7 @@ export const getBluetoothPacket = (frames: string, placementPositions: LedPlacem
     const [placement, role] = frame.split('r');
     const encodedFrame = encodePositionAndColor(
       Number(placementPositions[Number(placement)]),
-      HOLD_STATE_MAP['kilter'][Number(role)].color.replace('#', ''),
+      HOLD_STATE_MAP[board_name][Number(role)].color.replace('#', ''),
     );
 
     if (tempArray.length + encodedFrame.length > MESSAGE_BODY_MAX_LENGTH) {
