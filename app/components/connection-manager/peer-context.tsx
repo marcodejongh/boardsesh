@@ -27,6 +27,9 @@ const PeerProvider: React.FC<PeerProviderProps> = ({ children }) => {
     if (!peerInstance) {
       peerInstance = new Peer({ debug: 1 });
       const p = peerInstance;
+      
+      //@ts-expect-error Debugging
+      window.peerInstance = p;
 
       p.on('open', (id: string) => {
         console.log('My peer ID is:', id);
