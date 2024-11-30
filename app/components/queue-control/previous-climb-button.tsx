@@ -17,7 +17,7 @@ const PreviousButton = (props: ButtonProps) => (
 );
 
 export default function PreviousClimbButton({ navigate = false }: PreviousClimbButtonProps) {
-  const { getPreviousClimbQueueItem, setCurrentClimbQueueItem } = useQueueContext();
+  const { getPreviousClimbQueueItem, setCurrentClimbQueueItem, viewOnlyMode } = useQueueContext();
   const { board_name, layout_id, size_id, set_ids, angle } =
     parseBoardRouteParams(useParams<BoardRouteParametersWithUuid>());
 
@@ -30,7 +30,7 @@ export default function PreviousClimbButton({ navigate = false }: PreviousClimbB
     }
   };
 
-  if (navigate && previousClimb) {
+  if (!viewOnlyMode && navigate && previousClimb) {
     return (
       <Link
         href={`/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/view/${previousClimb?.climb.uuid}`}
@@ -40,5 +40,5 @@ export default function PreviousClimbButton({ navigate = false }: PreviousClimbB
       </Link>
     );
   }
-  return <PreviousButton onClick={handleClick} disabled={!previousClimb} />;
+  return <PreviousButton onClick={handleClick} disabled={!previousClimb || viewOnlyMode} />;
 }

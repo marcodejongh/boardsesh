@@ -2,10 +2,7 @@ import React from 'react';
 
 import { notFound } from 'next/navigation';
 import { BoardRouteParametersWithUuid, SearchRequestPagination } from '@/app/lib/types';
-import {
-  parseBoardRouteParams,
-  parsedRouteSearchParamsToSearchParams,
-} from '@/app/lib/url-utils';
+import { parseBoardRouteParams, parsedRouteSearchParamsToSearchParams } from '@/app/lib/url-utils';
 import ClimbsList from '@/app/components/board-page/climbs-list';
 import { fetchBoardDetails, fetchClimbs } from '@/app/components/rest-api/api';
 

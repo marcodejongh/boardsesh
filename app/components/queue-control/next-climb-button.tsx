@@ -16,7 +16,7 @@ const NextButton = (props: ButtonProps) => (
 );
 
 export default function NextClimbButton({ navigate = false }: NextClimbButtonProps) {
-  const { setCurrentClimbQueueItem, getNextClimbQueueItem } = useQueueContext(); // Assuming setSuggestedQueue is available
+  const { setCurrentClimbQueueItem, getNextClimbQueueItem, viewOnlyMode } = useQueueContext(); // Assuming setSuggestedQueue is available
   const { board_name, layout_id, size_id, set_ids, angle } =
     parseBoardRouteParams(useParams<BoardRouteParametersWithUuid>());
 
@@ -29,7 +29,7 @@ export default function NextClimbButton({ navigate = false }: NextClimbButtonPro
     setCurrentClimbQueueItem(nextClimb);
   };
 
-  if (navigate && nextClimb) {
+  if (!viewOnlyMode && navigate && nextClimb) {
     return (
       <Link
         href={`/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/view/${nextClimb?.climb.uuid}`}
@@ -39,5 +39,5 @@ export default function NextClimbButton({ navigate = false }: NextClimbButtonPro
       </Link>
     );
   }
-  return <NextButton onClick={handleClick} disabled={!nextClimb} />;
+  return <NextButton onClick={handleClick} disabled={!nextClimb || viewOnlyMode} />;
 }

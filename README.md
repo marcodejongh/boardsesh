@@ -12,6 +12,7 @@ We also use https://github.com/lemeryfertitta/BoardLib for creating the database
 Many thanks to @lemeryfertitta for making this project possible!!
 
 ## IOS support
+
 Unfortunately mobile safari doesn't support web bluetooth. So to use this website on your phone you could install a ios browser that does have web ble support, for example: https://apps.apple.com/us/app/bluefy-web-ble-browser/id1492822055
 
 Bluefy is what I tested boardsesh in on my iphone and it worked like expected.
@@ -22,7 +23,6 @@ Basic board use works, and the app already has queue controls, open to feedback 
 
 - Improved multi-user support. Spotify Jams like functionality for using the board in groups.
 - Faster beta video uploads. Current process for beta videos is manual, and as a result new beta videos are almost never added. We'll implement our own Instagram integration to get beta videos faster.
-
 
 # Getting Started
 

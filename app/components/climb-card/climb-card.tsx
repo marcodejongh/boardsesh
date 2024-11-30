@@ -26,7 +26,6 @@ const ClimbCard = ({ climb, boardDetails, onCoverClick, selected, actions }: Cli
       {/* TODO: Make a link to the list with the setter_name filter  */}
       {climb ? `By ${climb.setter_username} - ${climb.ascensionist_count} ascents.` : null}
       {cover}
-      
     </Card>
   );
 };

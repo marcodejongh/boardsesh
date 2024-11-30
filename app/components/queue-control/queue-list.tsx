@@ -12,7 +12,8 @@ type QueueListProps = {
 };
 
 const QueueList: React.FC<QueueListProps> = ({ boardDetails }) => {
-  const { currentClimbQueueItem, queue, climbSearchResults, setCurrentClimbQueueItem, setCurrentClimb } = useQueueContext(); // Include climbSearchResults from context
+  const { viewOnlyMode, currentClimbQueueItem, queue, climbSearchResults, setCurrentClimbQueueItem, setCurrentClimb } =
+    useQueueContext(); // Include climbSearchResults from context
 
   return (
     <>
@@ -30,8 +31,8 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails }) => {
             <List.Item
               style={{
                 backgroundColor: isCurrent ? '#eeffff' : isHistory ? '#f5f5f5' : 'inherit', // Blue for current, grey for history
-                opacity: isHistory ? 0.6 : 1, 
-                cursor: 'pointer'
+                opacity: isHistory ? 0.6 : 1,
+                cursor: 'pointer',
               }}
               onClick={() => setCurrentClimbQueueItem(climbQueueItem)}
             >
@@ -75,49 +76,59 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails }) => {
           );
         }}
       />
+      {viewOnlyMode ? null : (
+        <>
+          {/* Divider between queue and suggestions */}
+          <Divider>Suggested Items</Divider>
 
-      {/* Divider between queue and suggestions */}
-      <Divider>Suggested Items</Divider>
+          {/* Render Suggested Items (climbSearchResults) */}
+          <List
+            dataSource={(climbSearchResults || []).filter(
+              (item) => !queue.find(({ climb: { uuid } }) => item.uuid === uuid),
+            )}
+            renderItem={(climb: Climb) => (
+              <List.Item
+                style={{ cursor: 'pointer' }}
+                onClick={() => {
+                  setCurrentClimb(climb);
+                }}
+              >
+                <Row style={{ width: '100%' }} gutter={16}>
+                  {/* Column for the BoardPreview */}
+                  <Col xs={6}>
+                    <ClimbThumbnail boardDetails={boardDetails} currentClimb={climb} />
+                  </Col>
 
-      {/* Render Suggested Items (climbSearchResults) */}
-      <List
-        dataSource={(climbSearchResults || []).filter((item) => !queue.find(({ climb: { uuid }}) => item.uuid === uuid ) )} 
-        renderItem={(climb: Climb) => (
-          <List.Item style={{ cursor: 'pointer' }} onClick={() => { setCurrentClimb(climb) }}>
-            <Row style={{ width: '100%' }} gutter={16}>
-              {/* Column for the BoardPreview */}
-              <Col xs={6}>
-                <ClimbThumbnail boardDetails={boardDetails} currentClimb={climb} />
-              </Col>
-
-              {/* Column for the metadata */}
-              <Col xs={18}>
-                <List.Item.Meta
-                  title={
-                    <Text
-                      style={{
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                      }}
-                    >
-                      {climb.name}
-                    </Text>
-                  }
-                  description={
-                    <Text
-                      type="secondary"
-                      style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
-                    >
-                      {`${climb.difficulty} ${climb.quality_average}★`}
-                    </Text>
-                  }
-                />
-              </Col>
-            </Row>
-          </List.Item>
-        )}
-      />
+                  {/* Column for the metadata */}
+                  <Col xs={18}>
+                    <List.Item.Meta
+                      title={
+                        <Text
+                          style={{
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}
+                        >
+                          {climb.name}
+                        </Text>
+                      }
+                      description={
+                        <Text
+                          type="secondary"
+                          style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                        >
+                          {`${climb.difficulty} ${climb.quality_average}★`}
+                        </Text>
+                      }
+                    />
+                  </Col>
+                </Row>
+              </List.Item>
+            )}
+          />
+        </>
+      )}
     </>
   );
 };

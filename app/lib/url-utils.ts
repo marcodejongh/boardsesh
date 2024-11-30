@@ -114,8 +114,8 @@ export const constructClimbInfoUrl = (
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   angle: Angle,
 ) => `https://${board_name}boardapp${board_name === 'tension' ? '2' : ''}.com/climbs/${climb_uuid}`;
-  
-  //`/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/info/${climb_uuid}`;
+
+//`/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/info/${climb_uuid}`;
 
 export const constructClimbList = ({ board_name, layout_id, angle, size_id, set_ids }: ParsedBoardRouteParameters) =>
   `/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/list`;

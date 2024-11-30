@@ -22,7 +22,7 @@ const ClimbCardActions = ({ climb, boardDetails }: ClimbCardActionsProps) => {
     // <TickClimbButton key="tickclimbbutton" />,
     // TODO: Keeping htis Link component here since we do have a info screen inside this app too
     // it's just not as useful currently as the offical one
-    <Link key="infocircle" target='_blank' href={constructClimbInfoUrl(boardDetails, climb.uuid, climb.angle)}>
+    <Link key="infocircle" target="_blank" href={constructClimbInfoUrl(boardDetails, climb.uuid, climb.angle)}>
       <InfoCircleOutlined />
     </Link>,
     <HeartOutlined key="heart" onClick={() => message.info('TODO: Implement')} />,

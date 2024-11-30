@@ -4,6 +4,9 @@ export type PeerData = {
   type: string;
   data: object;
 };
+export type SendData = (data: object) => void;
+export type ConnectionInitialiser = (sendData: SendData) => void;
+
 // Type for the Peer Context
 export type PeerContextType = {
   readyToConnect: boolean;
@@ -11,6 +14,10 @@ export type PeerContextType = {
   sendData: (data: PeerData, connectionId?: string | null) => void;
   connectToPeer: (connectionId: string) => void;
   peerId: string | null;
+  hostId: string | null;
+  addConnectionInitialiser: (connectionInitialiser: ConnectionInitialiser) => void;
+  connections: DataConnection[];
+  setReceivedData: object | null;
 };
 
 // Type for the PeerProvider Props
