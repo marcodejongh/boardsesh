@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { ShareAltOutlined, CopyOutlined } from '@ant-design/icons';
 import { Button, Input, Modal, QRCode, Flex, message } from 'antd';
-import { usePeerContext } from '../connection-manager/peer-context';
 import { usePathname, useSearchParams } from 'next/navigation';
+import { useQueueContext } from '../queue-control/queue-context';
 
 const getShareUrl = (pathname: string, searchParams: URLSearchParams, peerId: string) => {
   const params = new URLSearchParams(searchParams.toString());
@@ -17,7 +17,7 @@ export type ShareButtonProps = {
   search: string;
 };
 export const ShareBoardButton = () => {
-  const { peerId } = usePeerContext();
+  const { peerId } = useQueueContext();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const searchParams = useSearchParams();
