@@ -30,7 +30,7 @@ export const ShareBoardButton = () => {
   const handleOk = () => {
     setIsModalOpen(false);
   };
-  
+
   // Add hostId || back at some point
   const shareUrl = getShareUrl(pathname, searchParams, peerId || '');
 

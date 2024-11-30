@@ -49,10 +49,10 @@ export default async function BoardLayout({ children, params }: PropsWithChildre
     <>
       <title>{`Boardsesh on ${board_name} - Layout ${layout_id}`}</title>
       <Layout style={{ height: '100dvh', display: 'flex', flexDirection: 'column' }}>
-        <QueueProvider parsedParams={parsedParams}>
-          <PeerProvider>
+        <PeerProvider>
+          <QueueProvider parsedParams={parsedParams}>
             <BoardSeshHeader boardDetails={boardDetails} />
-            
+
             <Content
               id="content-for-scrollable"
               style={{
@@ -75,8 +75,8 @@ export default async function BoardLayout({ children, params }: PropsWithChildre
                 <QueueControlBar board={board_name} boardDetails={boardDetails} />
               </div>
             </Affix>
-          </PeerProvider>
-        </QueueProvider>
+          </QueueProvider>
+        </PeerProvider>
       </Layout>
     </>
   );
