@@ -4,6 +4,7 @@ import React, { useState, useEffect, createContext, useContext } from 'react';
 import Peer, { DataConnection } from 'peerjs';
 import { PeerContextType, PeerProviderProps, PeerConnectionState, PeerData } from './types'; // Assuming your types are in a file named types.ts
 import { message } from 'antd';
+import { useSearchParams } from 'next/navigation';
 
 export const PeerContext = createContext<PeerContextType | undefined>(undefined);
 let peerInstance: Peer | undefined;
@@ -22,6 +23,7 @@ const PeerProvider: React.FC<PeerProviderProps> = ({ children }) => {
   const [receivedData, setReceivedData] = useState<PeerData | null>(null);
   const [peerId, setPeerId] = useState<string | null>(null);
   const [readyToConnect, setReadyToConnect] = useState(false);
+  const hostId = useSearchParams().get('hostId');
 
   useEffect(() => {
     if (!peerInstance) {
@@ -90,6 +92,10 @@ const PeerProvider: React.FC<PeerProviderProps> = ({ children }) => {
       setConnections((prevConnections) => [...prevConnections, newConn]);
     }
   };
+  
+  if (readyToConnect && hostId) {
+    connectToPeer(hostId)
+  }
 
   return (
     <PeerContext.Provider value={{ readyToConnect, receivedData, sendData, connectToPeer, peerId }}>
