@@ -29,7 +29,7 @@ const WebBluetoothWarning: React.FC = () => {
           message="Web Bluetooth Unsupported"
           description={
             <div>
-              <p>Your browser does not support Web Bluetooth, this means you wont be able to set routes on the board.
+              <p>Your browser does not support Web Bluetooth, this means you wont be able to set routes on the board. 
               {isIOS ? (
                 <>
                   To fix this you can install bluefy on your iOS device:
