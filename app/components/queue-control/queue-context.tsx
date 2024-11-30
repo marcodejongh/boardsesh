@@ -9,7 +9,6 @@ import { createContext, useContext, useState, ReactNode } from 'react';
 import useSWRInfinite from 'swr/infinite';
 import { v4 as uuidv4 } from 'uuid';
 import { PAGE_LIMIT } from '../board-page/constants';
-import { usePeerContext } from '../connection-manager/peer-context';
 import { PeerConnectionState, PeerData } from '../connection-manager/types';
 import Peer, { DataConnection } from 'peerjs';
 
@@ -19,6 +18,7 @@ type QueueContextProps = {
 };
 
 type UserName = string;
+type PeerId = string | null;
 
 export type ClimbQueueItem = {
   addedBy?: UserName;
@@ -32,7 +32,7 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 type ClimbQueue = ClimbQueueItem[];
 
- const sendData = (connections: DataConnection[], peerId: string | null, data: PeerData, connectionId: string | null = null) => {
+ const sendData = (connections: DataConnection[], peerId: PeerId, data: PeerData, connectionId: string | null = null) => {
     if(!peerId) {
       return;
     }
@@ -241,26 +241,19 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
         );
         break;
       case 'update-queue':
-        setQueueState(() => {
+        if (!receivedData.queue && receivedData.currentClimbQueueItem) {
           setCurrentClimbQueueItemState(receivedData.currentClimbQueueItem);
+        }
+        setQueueState(() => {
+          if (receivedData.currentClimbQueueItem) {
+            setCurrentClimbQueueItemState(receivedData.currentClimbQueueItem);
+          }
+          
           return receivedData.queue;
         });
         break;
     }
   }, [receivedData]);
-
-  useEffect(() => {
-    if (!hostId) {
-      sendData(
-        connections,
-        peerId,
-        {
-        type: 'update-queue',
-        queue,
-        currentClimbQueueItem, // Send the queue data from QueueProvider
-      });
-    }
-  }, [currentClimbQueueItem, queue, hostId, connections, peerId]);
 
   const {
     data,
@@ -288,11 +281,21 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
 
   const climbSearchResults = data ? data.flatMap((page: { climbs: Climb[] }) => page.climbs) : null;
   const suggestedClimbs = (climbSearchResults || []).filter(
-    (item) => !queue.find(({ climb: { uuid } }) => item.uuid === uuid),
+    (item) => !(queue || []).find(({ climb: { uuid } }) => item.uuid === uuid),
   );
 
   const addToQueue = (climb: Climb) => {
-    setQueueState((prevQueue) => [...prevQueue, { climb, uuid: uuidv4() }]);
+    setQueueState((prevQueue) => {
+      const newQueue = [...prevQueue, { climb, addedBy: peerId, uuid: uuidv4(), source: { type: 'local' } }];
+      
+      // This is an antipattern
+      sendData(connections, peerId, {
+        type: 'update-queue',
+        queue: newQueue
+      });
+
+      return [...prevQueue, { climb, uuid: uuidv4() }];
+    });
   };
 
   const removeFromQueue = (climbQueueItem: ClimbQueueItem) => {
@@ -301,6 +304,13 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
         return prevQueue;
       }
       const newQueue = prevQueue.filter((item) => item.uuid !== climbQueueItem.uuid);
+      
+      // This is an antipattenr
+      sendData(connections, peerId, {
+        type: 'update-queue',
+        queue: newQueue
+      });
+
       return newQueue;
     });
   };
@@ -329,14 +339,31 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
 
       if (!currentClimbQueueItem) {
         // If no current item, append the new one to the queue
+        // This is an antipattern
+        sendData(connections, peerId, {
+          type: 'update-queue',
+          queue: [...prevQueue, queueItem],
+          currentClimbQueueItem: queueItem,
+        });
         return [...prevQueue, queueItem];
       }
 
       const index = prevQueue.findIndex(({ uuid }) => uuid === currentClimbQueueItem?.uuid);
       if (index === -1) {
         // If the current item is not found, append the new one
+        sendData(connections, peerId, {
+          type: 'update-queue',
+          queue: [...prevQueue, queueItem],
+          currentClimbQueueItem: queueItem,
+        });
         return [...prevQueue, queueItem];
       }
+ 
+      sendData(connections, peerId, {
+        type: 'update-queue',
+        queue: [...prevQueue.slice(0, index + 1), queueItem, ...prevQueue.slice(index + 1)],
+        currentClimbQueueItem: queueItem,
+      });
 
       // Replace the current item in the queue
       return [...prevQueue.slice(0, index + 1), queueItem, ...prevQueue.slice(index + 1)];
@@ -360,11 +387,25 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
       climbSearchResults &&
       climbSearchResults.length
     ) {
-      setQueueState((prevQueue) => [...prevQueue, item]);
+      setQueueState((prevQueue) => {
+        sendData(connections, peerId, {
+          type: 'update-queue',
+          queue: [...prevQueue, item],
+          currentClimbQueueItem: item,
+        });
+
+        return [...prevQueue, item];
+      });
 
       if (!isFetchingClimbs && suggestedClimbs.length < 5) {
         fetchMoreClimbs();
       }
+    } else {
+      sendData(connections, peerId, {
+          type: 'update-queue',
+          currentClimbQueueItem: item,
+          queue,
+        });
     }
   };
 
@@ -412,7 +453,6 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
     return null;
   };
 
-  const viewOnlyMode = hostId && hostId.length > 1;
   const mirrorClimb = () => {
     console.log('mirrored!')
 
@@ -426,6 +466,7 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
       }
     })
   }
+  const viewOnlyMode = false;
 
   return (
     <QueueContext.Provider
