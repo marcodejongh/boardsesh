@@ -10,6 +10,7 @@ import SearchClimbNameInput from '../search-drawer/search-climb-name-input';
 import { UISearchParamsProvider } from '../queue-control/ui-searchparams-provider';
 import SendClimbToBoardButton from '../board-bluetooth-control/send-climb-to-board-button';
 import { BoardDetails } from '@/app/lib/types';
+import { ShareBoardButton } from './share-button';
 
 const { useBreakpoint } = Grid;
 
@@ -48,6 +49,7 @@ export default function BoardSeshHeader({ boardDetails }: BoardSeshHeaderProps) 
           <Col xs={6} sm={6} md={6} lg={6} xl={6} style={{ textAlign: 'right' }}>
             <Space>
               {!isList ? <ClimbInfoButton /> : null}
+              <ShareBoardButton />
               <SendClimbToBoardButton boardDetails={boardDetails} />
             </Space>
           </Col>

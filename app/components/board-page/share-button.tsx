@@ -1,21 +1,27 @@
 import React, { useState } from 'react';
 import { ShareAltOutlined, CopyOutlined } from '@ant-design/icons';
 import { Button, Input, Modal, QRCode, Flex, message } from 'antd';
+import { usePeerContext } from '../connection-manager/peer-context';
+import { usePathname, useSearchParams } from 'next/navigation';
 
-const getShareUrl = (pathname: string, search: string, peerId: string) => {
-  const params = new URLSearchParams(search);
+const getShareUrl = (pathname: string, searchParams: URLSearchParams, peerId: string) => {
+  const params = new URLSearchParams(searchParams.toString());
   params.set('hostId', peerId);
-
   return `${window.location.origin}${pathname}?${params.toString()}`;
 };
+
 export type ShareButtonProps = {
   peerId: string;
   hostId: string;
   pathname: string;
   search: string;
 };
-export const ShareBoardButton = ({ peerId, hostId, pathname, search }: ShareButtonProps) => {
+export const ShareBoardButton = () => {
+  const { peerId } = usePeerContext();
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
 
   const showModal = () => {
     setIsModalOpen(true);
@@ -24,8 +30,9 @@ export const ShareBoardButton = ({ peerId, hostId, pathname, search }: ShareButt
   const handleOk = () => {
     setIsModalOpen(false);
   };
-
-  const shareUrl = getShareUrl(pathname, search, hostId || peerId);
+  
+  // Add hostId || back at some point
+  const shareUrl = getShareUrl(pathname, searchParams, peerId || '');
 
   const copyToClipboard = () => {
     navigator.clipboard

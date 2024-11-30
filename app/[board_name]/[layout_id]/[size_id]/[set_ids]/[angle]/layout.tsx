@@ -10,6 +10,7 @@ import QueueControlBar from '@/app/components/queue-control/queue-control-bar';
 import { fetchBoardDetails } from '@/app/components/rest-api/api';
 import BoardSeshHeader from '@/app/components/board-page/header';
 import { QueueProvider } from '@/app/components/queue-control/queue-context';
+import PeerProvider from '@/app/components/connection-manager/peer-context';
 
 interface BoardLayoutProps {
   params: BoardRouteParametersWithUuid;
@@ -49,29 +50,32 @@ export default async function BoardLayout({ children, params }: PropsWithChildre
       <title>{`Boardsesh on ${board_name} - Layout ${layout_id}`}</title>
       <Layout style={{ height: '100dvh', display: 'flex', flexDirection: 'column' }}>
         <QueueProvider parsedParams={parsedParams}>
-          <BoardSeshHeader boardDetails={boardDetails} />
-          <Content
-            id="content-for-scrollable"
-            style={{
-              flex: 1,
-              justifyContent: 'center',
-              alignItems: 'center',
-              overflowY: 'auto',
-              overflowX: 'hidden',
-              height: '80vh',
-              paddingLeft: '10px',
-              paddingRight: '10px',
-              paddingTop: '10px',
-            }}
-          >
-            {children}
-          </Content>
+          <PeerProvider>
+            <BoardSeshHeader boardDetails={boardDetails} />
+            
+            <Content
+              id="content-for-scrollable"
+              style={{
+                flex: 1,
+                justifyContent: 'center',
+                alignItems: 'center',
+                overflowY: 'auto',
+                overflowX: 'hidden',
+                height: '80vh',
+                paddingLeft: '10px',
+                paddingRight: '10px',
+                paddingTop: '10px',
+              }}
+            >
+              {children}
+            </Content>
 
-          <Affix offsetBottom={0}>
-            <div style={{ width: '100%', backgroundColor: '#fff', boxShadow: '0 -2px 8px rgba(0, 0, 0, 0.15)' }}>
-              <QueueControlBar board={board_name} boardDetails={boardDetails} />
-            </div>
-          </Affix>
+            <Affix offsetBottom={0}>
+              <div style={{ width: '100%', backgroundColor: '#fff', boxShadow: '0 -2px 8px rgba(0, 0, 0, 0.15)' }}>
+                <QueueControlBar board={board_name} boardDetails={boardDetails} />
+              </div>
+            </Affix>
+          </PeerProvider>
         </QueueProvider>
       </Layout>
     </>

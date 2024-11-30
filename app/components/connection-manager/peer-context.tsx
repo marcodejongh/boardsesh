@@ -1,12 +1,20 @@
 'use client';
 
-import React, { useState, useEffect, createContext } from 'react';
+import React, { useState, useEffect, createContext, useContext } from 'react';
 import Peer, { DataConnection } from 'peerjs';
 import { PeerContextType, PeerProviderProps, PeerConnectionState, PeerData } from './types'; // Assuming your types are in a file named types.ts
 import { message } from 'antd';
 
 export const PeerContext = createContext<PeerContextType | undefined>(undefined);
 let peerInstance: Peer | undefined;
+
+export const usePeerContext = () => {
+  const context = useContext(PeerContext);
+  if (!context) {
+    throw new Error('useQueueContext must be used within a QueueProvider');
+  }
+  return context;
+};
 
 const PeerProvider: React.FC<PeerProviderProps> = ({ children }) => {
   const [peer, setPeer] = useState<Peer | null>(null);
@@ -19,6 +27,7 @@ const PeerProvider: React.FC<PeerProviderProps> = ({ children }) => {
     if (!peerInstance) {
       peerInstance = new Peer({ debug: 1 });
       const p = peerInstance;
+
       p.on('open', (id: string) => {
         console.log('My peer ID is:', id);
         setPeerId(id);
