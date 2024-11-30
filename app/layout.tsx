@@ -9,15 +9,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body style={{ margin: 0 }}>
-        <Analytics>
-          <AntdRegistry>
-            <App>
-              <WebBluetoothWarning />
-              {children}
-            </App>
-        </AntdRegistry>
-        </Analytics>
-        
+        <Analytics/>
+        <AntdRegistry>
+          <App>
+            <WebBluetoothWarning />
+            {children}
+          </App>
+      </AntdRegistry>
       </body>
     </html>
   );
