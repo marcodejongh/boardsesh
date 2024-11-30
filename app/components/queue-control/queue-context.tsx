@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 
 import { Climb, ParsedBoardRouteParameters, SearchRequestPagination } from '@/app/lib/types';
 import { constructClimbSearchUrl, searchParamsToUrlParams, urlParamsToSearchParams } from '@/app/lib/url-utils';
@@ -10,6 +10,8 @@ import useSWRInfinite from 'swr/infinite';
 import { v4 as uuidv4 } from 'uuid';
 import { PAGE_LIMIT } from '../board-page/constants';
 import { usePeerContext } from '../connection-manager/peer-context';
+import { PeerConnectionState, PeerData } from '../connection-manager/types';
+import Peer, { DataConnection } from 'peerjs';
 
 type QueueContextProps = {
   parsedParams: ParsedBoardRouteParameters;
@@ -29,6 +31,26 @@ export type ClimbQueueItem = {
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 type ClimbQueue = ClimbQueueItem[];
+
+ const sendData = (connections: DataConnection[], peerId: string | null, data: PeerData, connectionId: string | null = null) => {
+    if(!peerId) {
+      return;
+    }
+
+    console.log(`Sending `, data);
+    const message = { ...data, source: peerId, messageId: uuidv4() };
+    if (connectionId) {
+      const connection = connections.find((conn) => conn.peer === connectionId);
+      if (connection) {
+        connection.send(message);
+      } else {
+        console.error(`No active connection with ID ${connectionId}`);
+      }
+    } else {
+      // Broadcast to all connections
+      connections.forEach((conn) => conn.send(message));
+    }
+  };
 
 interface QueueContextType {
   queue: ClimbQueue;
@@ -60,6 +82,7 @@ interface QueueContextType {
 }
 
 const QueueContext = createContext<QueueContextType | undefined>(undefined);
+let peerInstance: Peer | undefined;
 
 export const useQueueContext = () => {
   const context = useContext(QueueContext);
@@ -70,7 +93,12 @@ export const useQueueContext = () => {
 };
 
 export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => {
-  const { connections, hostId, receivedData, sendData } = usePeerContext();
+  const [peer, setPeer] = useState<Peer | null>(null);
+  const [connections, setConnections] = useState<PeerConnectionState>([]);
+  const [receivedData, setReceivedData] = useState<PeerData | null>(null);
+
+  const [peerId, setPeerId] = useState<string | null>(null);
+  const [readyToConnect, setReadyToConnect] = useState(false);
   const [queue, setQueueState] = useState<ClimbQueue>([]);
   const [hasDoneFirstFetch, setHasDoneFirstFetch] = useState<boolean>(false);
 
@@ -80,6 +108,86 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
     urlParamsToSearchParams(useSearchParams()),
   );
 
+
+  const receiveDataRef = useRef((data: PeerData) => {
+    setReceivedData(data);
+  });
+
+  // Scrappy way to check if this browser is the host
+  const hostId = useSearchParams().get('hostId');
+
+  useEffect(() => {
+    // Iterate over connections whenever they change
+    connections.forEach((conn) => {
+      if (!conn.open) {
+        conn.on('open', () => {
+          console.log(`Connection opened with peer ${conn.peer}`);
+        });
+      }
+
+      conn.on('data', (data: any) => {
+        console.log('Received data:', data);
+        receiveDataRef.current(data);
+      });
+
+      conn.on('close', () => {
+        console.log(`Connection closed with peer ${conn.peer}`);
+        setConnections((prevConnections) => prevConnections.filter((connection) => connection.peer !== conn.peer));
+      });
+
+      conn.on('error', (err) => {
+        console.error(`Error with peer ${conn.peer}:`, err);
+      });
+    });
+  }, [connections]);
+
+  useEffect(() => {
+    if (!peerInstance) {
+      peerInstance = new Peer({ debug: 1 });
+      const p = peerInstance;
+
+      p.on('open', (id: string) => {
+        console.log('My peer ID is:', id);
+        setPeerId(id);
+        setReadyToConnect(true);
+      });
+
+      p.on('connection', (newConn: DataConnection) => {
+        console.log('New Connection established');
+        setConnections((prevConnections) => [...prevConnections, newConn]);
+      });
+
+      setPeer(p);
+    }
+
+    return () => {
+      if (peer) {
+        peer.destroy();
+      }
+    };
+  }, [peer]);
+
+  const connectToPeer = useCallback(
+    (connectionId: string) => {
+      const newConn = peer?.connect(connectionId);
+      if (!newConn) return;
+
+      setConnections((prevConnections) => [...prevConnections, newConn]);
+    },
+    [peer],
+  );
+
+  useEffect(() => {
+    // Attempt to connect when ready and hostId is available
+    if (readyToConnect && hostId) {
+      const connectionExists = connections.some((conn) => conn.peer === hostId);
+      if (!connectionExists) {
+        console.log('Attempting to connect to hostId:', hostId);
+        connectToPeer(hostId);
+      }
+    }
+  }, [readyToConnect, hostId, connectToPeer, connections]);
+  
   const setClimbSearchParams = (updatedFilters: SearchRequestPagination) => {
     setClimbSearchParamsState(() => {
       // Size stays at a high number if we don't update it manually.
@@ -120,6 +228,8 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
     switch (receivedData?.type) {
       case 'request-update-queue':
         sendData(
+          connections,
+          peerId,
           {
             type: 'update-queue',
             queue,
@@ -139,13 +249,16 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
 
   useEffect(() => {
     if (!hostId) {
-      sendData({
+      sendData(
+        connections,
+        peerId,
+        {
         type: 'update-queue',
         queue,
         currentClimbQueueItem, // Send the queue data from QueueProvider
       });
     }
-  }, [currentClimbQueueItem, queue, sendData, hostId]);
+  }, [currentClimbQueueItem, queue, hostId, connections, peerId]);
 
   const {
     data,
@@ -316,6 +429,7 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
         hasDoneFirstFetch,
         suggestedClimbs,
         viewOnlyMode,
+        peerId
       }}
     >
       {children}
