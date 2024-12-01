@@ -1,32 +1,40 @@
 import React from 'react';
-import { HoldRenderData, LitUpHoldsMap } from './types';
+import { HoldRenderData } from './types';
+import { Climb } from '@/app/lib/types';
 
 interface BoardLitupHoldsProps {
   holdsData: HoldRenderData[];
-  litUpHoldsMap: LitUpHoldsMap;
+  climb: Climb;
   thumbnail?: boolean;
 }
 
-const BoardLitupHolds: React.FC<BoardLitupHoldsProps> = ({ holdsData, litUpHoldsMap, thumbnail }) => {
+const BoardLitupHolds: React.FC<BoardLitupHoldsProps> = ({ holdsData, climb: { litUpHoldsMap, mirrored }, thumbnail }) => {
   if (!holdsData) return null;
+  
   return (
     <>
       {holdsData
         .filter(({ id }) => litUpHoldsMap[id]?.state && litUpHoldsMap[id].state !== 'OFF') // Apply the lit-up state
-        .map((hold) => (
-          <circle
-            key={hold.id}
-            id={`hold-${hold.id}`}
-            data-mirror-id={hold.mirroredHoldId || undefined}
-            cx={hold.cx}
-            cy={hold.cy}
-            r={hold.r}
-            stroke={litUpHoldsMap[hold.id].color}
-            strokeWidth={thumbnail ? 8 : 6}
-            fillOpacity={thumbnail ? 1 : 0}
-            fill={thumbnail ? litUpHoldsMap[hold.id].color : undefined}
-          />
-        ))}
+        .map((hold) => { 
+          const color = litUpHoldsMap[hold.id].color;
+          if (mirrored) {
+            hold = holdsData.find(({id}) => id === hold.mirroredHoldId);
+          }
+
+          return (
+            <circle
+              key={hold.id}
+              id={`hold-${hold.id}`}
+              data-mirror-id={hold.mirroredHoldId || undefined}
+              cx={hold.cx}
+              cy={hold.cy}
+              r={hold.r}
+              stroke={color}
+              strokeWidth={thumbnail ? 8 : 6}
+              fillOpacity={thumbnail ? 1 : 0}
+              fill={thumbnail ? color : undefined}
+            />
+        )})}
     </>
   );
 };

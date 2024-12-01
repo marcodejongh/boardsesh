@@ -1,18 +1,16 @@
 import React from 'react';
 import { getImageUrl } from './util';
-import { BoardDetails } from '@/app/lib/types';
-import { HoldRenderData, LitUpHoldsMap } from './types';
+import { BoardDetails, Climb } from '@/app/lib/types';
 import BoardLitupHolds from './board-litup-holds';
 
 export type BoardProps = {
   boardDetails: BoardDetails;
-  holdsData: HoldRenderData[];
-  litUpHoldsMap?: LitUpHoldsMap;
+  climb?: Climb;
   thumbnail?: boolean;
 };
 
-const BoardRenderer = ({ boardDetails, litUpHoldsMap, holdsData, thumbnail }: BoardProps) => {
-  const { boardWidth, boardHeight } = boardDetails;
+const BoardRenderer = ({ boardDetails, thumbnail, climb }: BoardProps) => {
+  const { boardWidth, boardHeight, holdsData } = boardDetails;
 
   return (
     <svg
@@ -28,7 +26,7 @@ const BoardRenderer = ({ boardDetails, litUpHoldsMap, holdsData, thumbnail }: Bo
       {Object.keys(boardDetails.images_to_holds).map((imageUrl) => (
         <image key={imageUrl} href={getImageUrl(imageUrl, boardDetails.board_name)} width="100%" height="100%" />
       ))}
-      {litUpHoldsMap && <BoardLitupHolds holdsData={holdsData} litUpHoldsMap={litUpHoldsMap} />}
+      {climb && climb.litUpHoldsMap && <BoardLitupHolds holdsData={holdsData} climb={climb} />}
     </svg>
   );
 };

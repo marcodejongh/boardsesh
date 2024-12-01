@@ -53,6 +53,8 @@ interface QueueContextType {
 
   getNextClimbQueueItem: () => ClimbQueueItem | null;
   getPreviousClimbQueueItem: () => ClimbQueueItem | null;
+  mirrorClimb: (mirror: boolean) => void;
+  
   hasMoreResults: boolean;
   isFetchingClimbs: boolean;
   hasDoneFirstFetch: boolean;
@@ -227,7 +229,12 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
       return [...prevQueue.slice(0, index + 1), queueItem, ...prevQueue.slice(index + 1)];
     });
   };
-
+  
+  /**
+   * Wrapper around the state setter that also fetches more climbs if we're
+   * towards the end of the list.
+   * @param item The new climbqueue item
+   */
   const setCurrentClimbQueueItem = (item: ClimbQueueItem) => {
     if (viewOnlyMode) {
       return;
@@ -292,7 +299,23 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
     return null;
   };
 
+<<<<<<< HEAD
   const viewOnlyMode = hostId && hostId.length > 1;
+=======
+  const mirrorClimb = () => {
+    console.log('mirrored!')
+
+    setCurrentClimbQueueItemState((prevClimbQueueItem) => {
+      return { 
+        ...prevClimbQueueItem,
+        climb: {
+          ...prevClimbQueueItem?.climb,
+          mirrored: !prevClimbQueueItem?.climb.mirrored
+        }
+      }
+    })
+  }
+>>>>>>> d848d93 (Add Tension board mirror button fixes #16)
 
   return (
     <QueueContext.Provider
@@ -315,7 +338,11 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
         isFetchingClimbs,
         hasDoneFirstFetch,
         suggestedClimbs,
+<<<<<<< HEAD
         viewOnlyMode,
+=======
+        mirrorClimb,
+>>>>>>> d848d93 (Add Tension board mirror button fixes #16)
       }}
     >
       {children}

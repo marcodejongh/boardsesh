@@ -1,7 +1,7 @@
 'use client';
 import React, { useState } from 'react';
 import { Button, Typography, Row, Col, Card, Drawer, Space } from 'antd';
-import { CheckOutlined } from '@ant-design/icons';
+import { CheckOutlined, SyncOutlined } from '@ant-design/icons';
 import { useQueueContext } from './queue-context';
 import NextClimbButton from './next-climb-button';
 import { usePathname } from 'next/navigation';
@@ -22,7 +22,7 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails }: QueueContr
   const pathname = usePathname();
 
   const isViewPage = pathname.includes('/view/');
-  const { currentClimb } = useQueueContext();
+  const { currentClimb, mirrorClimb } = useQueueContext();
 
   const toggleQueueDrawer = () => setIsQueueOpen(!isQueueOpen);
 
@@ -82,6 +82,7 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails }: QueueContr
           {/* Button cluster */}
           <Col xs={10} style={{ textAlign: 'right' }}>
             <Space>
+              { boardDetails.board_name === 'tension' ? <Button id="button-tick" onClick={mirrorClimb} type="default" icon={<SyncOutlined />} /> : null }
               <PreviousClimbButton navigate={isViewPage} />
               <NextClimbButton navigate={isViewPage} />
               <Button id="button-tick" type="default" icon={<CheckOutlined />} />

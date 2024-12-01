@@ -26,8 +26,7 @@ const ClimbCardCover = ({ climb, boardDetails, onClick }: ClimbCardCoverProps) =
     >
       <BoardRenderer
         boardDetails={boardDetails}
-        holdsData={boardDetails.holdsData}
-        litUpHoldsMap={climb && climb.litUpHoldsMap}
+        climb={climb}
       />
       <ClimbCardModal
         isOpen={modalOpen}
