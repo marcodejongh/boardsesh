@@ -299,9 +299,7 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
     return null;
   };
 
-<<<<<<< HEAD
   const viewOnlyMode = hostId && hostId.length > 1;
-=======
   const mirrorClimb = () => {
     console.log('mirrored!')
 
@@ -315,7 +313,6 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
       }
     })
   }
->>>>>>> d848d93 (Add Tension board mirror button fixes #16)
 
   return (
     <QueueContext.Provider
@@ -338,11 +335,8 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
         isFetchingClimbs,
         hasDoneFirstFetch,
         suggestedClimbs,
-<<<<<<< HEAD
         viewOnlyMode,
-=======
         mirrorClimb,
->>>>>>> d848d93 (Add Tension board mirror button fixes #16)
       }}
     >
       {children}
