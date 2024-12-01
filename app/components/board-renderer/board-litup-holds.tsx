@@ -25,7 +25,6 @@ const BoardLitupHolds: React.FC<BoardLitupHoldsProps> = ({
             const mirroredHold = holdsData.find(({ id }) => id === hold.mirroredHoldId);
             if (!mirroredHold) {
               throw new Error("Couldn't find mirrored hold");
-              return;
             }
             hold = mirroredHold;
           }
@@ -43,8 +42,12 @@ const BoardLitupHolds: React.FC<BoardLitupHoldsProps> = ({
               fillOpacity={thumbnail ? 1 : 0}
               fill={thumbnail ? color : undefined}
             />
+<<<<<<< HEAD
           );
         })}
+=======
+        )})}
+>>>>>>> 0e3e621 (Add Tension board mirror button fixes #16)
     </>
   );
 };

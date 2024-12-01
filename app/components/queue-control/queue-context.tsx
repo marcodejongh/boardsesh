@@ -17,12 +17,58 @@ type QueueContextProps = {
   children: ReactNode;
 };
 
+<<<<<<< HEAD
 const createClimbQueueItem = (climb: Climb, addedBy: UserName, suggested?: boolean) => ({
   climb,
   addedBy,
   uuid: uuidv4(),
   suggested: !!suggested,
 });
+=======
+type UserName = string;
+
+export type ClimbQueueItem = {
+  addedBy?: UserName;
+  tickedBy?: UserName[];
+  climb: Climb;
+  uuid: string;
+  suggested?: boolean;
+};
+
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
+
+type ClimbQueue = ClimbQueueItem[];
+
+interface QueueContextType {
+  queue: ClimbQueue;
+
+  addToQueue: (climb: Climb) => void;
+  removeFromQueue: (queueItem: ClimbQueueItem) => void;
+
+  setCurrentClimb: (climb: Climb) => void;
+  currentClimb: Climb | null;
+  currentClimbQueueItem: ClimbQueueItem | null;
+
+  setClimbSearchParams: (searchParams: SearchRequestPagination) => void;
+
+  climbSearchParams: SearchRequestPagination;
+  climbSearchResults: Climb[] | null;
+  suggestedClimbs: Climb[];
+  totalSearchResultCount: number | null;
+
+  fetchMoreClimbs: () => void;
+
+  setCurrentClimbQueueItem: (item: ClimbQueueItem) => void;
+
+  getNextClimbQueueItem: () => ClimbQueueItem | null;
+  getPreviousClimbQueueItem: () => ClimbQueueItem | null;
+  mirrorClimb: (mirror: boolean) => void;
+  
+  hasMoreResults: boolean;
+  isFetchingClimbs: boolean;
+  hasDoneFirstFetch: boolean;
+}
+>>>>>>> 0e3e621 (Add Tension board mirror button fixes #16)
 
 const QueueContext = createContext<QueueContextType | undefined>(undefined);
 
