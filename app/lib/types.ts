@@ -14,6 +14,7 @@ export type Climb = {
   stars: number;
   difficulty_error: string;
   litUpHoldsMap: LitUpHoldsMap;
+  mirrored?: boolean;
 };
 
 export type ClimbQueryResult = {
