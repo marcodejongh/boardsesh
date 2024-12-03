@@ -1,6 +1,7 @@
 import { useReducer } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { QueueState, QueueAction, SearchRequestPagination } from './types';
+import { QueueState, QueueAction } from './types';
+import { SearchRequestPagination } from '@/app/lib/types';
 
 const initialState = (initialSearchParams: SearchRequestPagination): QueueState => ({
   queue: [],

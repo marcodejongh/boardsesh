@@ -3,12 +3,8 @@ import { useCallback } from 'react';
 import useSWRInfinite from 'swr/infinite';
 import { constructClimbSearchUrl, searchParamsToUrlParams } from '@/app/lib/url-utils';
 import { PAGE_LIMIT } from '../../board-page/constants';
-import { 
-  SearchRequestPagination, 
-  ParsedBoardRouteParameters, 
-  Climb,
-  ClimbQueue 
-} from '../types';
+import { ClimbQueue } from '../types';
+import { Climb, ParsedBoardRouteParameters, SearchRequestPagination } from '@/app/lib/types';
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -18,12 +14,8 @@ interface UseQueueDataFetchingProps {
   parsedParams: ParsedBoardRouteParameters;
 }
 
-export const useQueueDataFetching = ({
-  searchParams,
-  queue,
-  parsedParams
-}: UseQueueDataFetchingProps) => {
-  const getKey = (pageIndex: number, previousPageData: any) => {
+export const useQueueDataFetching = ({ searchParams, queue, parsedParams }: UseQueueDataFetchingProps) => {
+  const getKey = (pageIndex: number, previousPageData: { climbs: Climb[] }) => {
     if (previousPageData && previousPageData.climbs.length === 0) return null;
 
     const queryString = searchParamsToUrlParams({
@@ -55,11 +47,7 @@ export const useQueueDataFetching = ({
   const fetchMoreClimbs = useCallback(() => {
     setSize((oldSize) => {
       const newParams = { ...searchParams, page: oldSize + 1 };
-      history.replaceState(
-        null,
-        '',
-        `${window.location.pathname}?${searchParamsToUrlParams(newParams).toString()}`
-      );
+      history.replaceState(null, '', `${window.location.pathname}?${searchParamsToUrlParams(newParams).toString()}`);
       return oldSize + 1;
     });
   }, [searchParams, setSize]);

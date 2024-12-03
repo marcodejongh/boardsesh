@@ -32,7 +32,7 @@ export type PeerConnectionState = DataConnection[]; // Array of PeerJS DataConne
 export type PeerConnection = {
   connection: DataConnection;
   username?: string;
-  state: 'CONNECTING' | 'CONNECTED';
+  state: 'CONNECTING' | 'CONNECTED' | 'READY';
 };
 
 export interface PeerState {

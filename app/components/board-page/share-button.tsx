@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState } from 'react';
 import { ShareAltOutlined, CopyOutlined } from '@ant-design/icons';
 import { Button, Input, Modal, QRCode, Flex, message } from 'antd';

@@ -9,6 +9,11 @@ import { v4 as uuidv4 } from 'uuid';
 const PeerContext = createContext<PeerContextType | undefined>(undefined);
 let peerInstance: Peer | undefined;
 
+type DataHandler = {
+  id: string;
+  callback: (data: PeerData) => void;
+};
+
 const initialPeerState: PeerState = {
   peer: null,
   peerId: null,
@@ -27,16 +32,17 @@ function peerReducer(state: PeerState, action: PeerAction): PeerState {
     case 'UPDATE_CONNECTIONS':
       return { ...state, connections: action.payload };
     case 'ADD_CONNECTION':
+      if (state.connections.some((conn) => conn.connection.peer === action.payload.connection.peer)) {
+        return state;
+      }
       return { ...state, connections: [...state.connections, action.payload] };
-    case 'OPENED_CONNECTION': 
-  return {
-    ...state,
-    connections: state.connections.map(conn => 
-      conn.connection.peer === action.payload
-        ? { ...conn, state: 'CONNECTED' } // Update the state flag for the opened connection
-        : conn
-    ),
-  };
+    case 'OPENED_CONNECTION':
+      return {
+        ...state,
+        connections: state.connections.map((conn) =>
+          conn.connection.peer === action.payload ? { ...conn, state: 'CONNECTED' } : conn,
+        ),
+      };
     default:
       return state;
   }
@@ -45,21 +51,115 @@ function peerReducer(state: PeerState, action: PeerAction): PeerState {
 export const PeerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(peerReducer, initialPeerState);
   const hostId = useSearchParams().get('hostId');
-  const onQueueUpdateRef = useRef<(data: PeerData) => void>(() => {});
+  const dataHandlers = useRef<DataHandler[]>([]);
+  const stateRef = useRef(state);
 
-  // New method to set the queue update handler
-  const setQueueUpdateHandler = useCallback((handler: (data: PeerData) => void) => {
-    onQueueUpdateRef.current = handler;
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
+
+  const subscribeToData = useCallback((callback: (data: PeerData) => void) => {
+    const handlerId = uuidv4();
+    dataHandlers.current.push({ id: handlerId, callback });
+
+    return () => {
+      dataHandlers.current = dataHandlers.current.filter((handler) => handler.id !== handlerId);
+    };
+  }, []);
+
+  const notifySubscribers = useCallback((data: PeerData) => {
+    dataHandlers.current.forEach((handler) => {
+      try {
+        handler.callback(data);
+      } catch (error) {
+        console.error('Error in data handler:', error);
+      }
+    });
+  }, []);
+
+  const sendData = useCallback((data: PeerData, connectionId: string | null = null) => {
+    const currentState = stateRef.current;
+    const message = { ...data, source: currentState.peerId, messageId: uuidv4() };
+
+    if (connectionId) {
+      const connection = currentState.connections.find(
+        ({ connection: conn }) => conn.peer === connectionId,
+      )?.connection;
+      if (connection) {
+        connection.send(message);
+      } else {
+        console.error(`No active connection with ID ${connectionId}`);
+      }
+    } else {
+      currentState.connections.forEach(({ connection }) => {
+        console.log(`Sending to ${connection.peer}`, message);
+        connection.send(message);
+      });
+    }
+  }, []);
+
+  const connectToPeer = useCallback((connectionId: string) => {
+    console.log('Connecting to peer:', connectionId);
+    const currentState = stateRef.current;
+
+    if (!currentState.peer) {
+      console.error('Peer not initialized');
+      return;
+    }
+
+    if (connectionId === currentState.peerId) {
+      console.log('Skipping self-connection');
+      return;
+    }
+
+    const existingConnection = currentState.connections.find((conn) => conn.connection.peer === connectionId);
+
+    if (existingConnection) {
+      console.log('Connection already exists:', connectionId);
+      return;
+    }
+
+    const newConn = currentState.peer.connect(connectionId);
+    if (!newConn) {
+      console.error('Failed to create connection');
+      return;
+    }
+
+    console.log('Created new connection:', connectionId);
+    dispatch({
+      type: 'ADD_CONNECTION',
+      payload: {
+        connection: newConn,
+        state: 'CONNECTING',
+      },
+    });
+
+    setupHandlers(newConn, dispatch, receivedDataRef, stateRef);
   }, []);
 
   const receivedDataRef = useRef((data: PeerData) => {
+    const currentState = stateRef.current;
+
     switch (data.type) {
+      case 'broadcast-other-peers':
+        console.log('Received peer broadcast:', data.peers);
+        if (Array.isArray(data.peers)) {
+          let newConnectionMade = false;
+          data.peers.forEach((peerId) => {
+            const hasConnection = currentState.connections.some((conn) => conn.connection.peer === peerId);
+            if (!hasConnection && peerId !== currentState.peerId) {
+              console.log('Connecting to new peer from broadcast:', peerId);
+              connectToPeer(peerId);
+              newConnectionMade = true;
+            }
+          });
+        }
+        break;
       case 'request-update-queue':
-        // This case remains the same
         break;
       case 'update-queue':
-        // Forward queue updates to the queue context
-        onQueueUpdateRef.current(data);
+      default:
+        notifySubscribers(data);
         break;
     }
   });
@@ -75,43 +175,29 @@ export const PeerProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       p.on('connection', (newConn: DataConnection) => {
-        console.log('Receiving connection ', newConn.peer)
-        setupHandlers(newConn, dispatch, receivedDataRef, state)
+        console.log('Receiving connection ', newConn.peer);
+        const currentState = stateRef.current;
+
+        setupHandlers(newConn, dispatch, receivedDataRef, stateRef);
       });
 
       dispatch({ type: 'SET_PEER', payload: p });
     }
-
-    // return () => {
-    //   if (state.peer) {
-    //     state.peer.destroy();
-    //   }
-    // };
-  });
+  }, []);
 
   useEffect(() => {
-    state.connections.filter(con => con && con.state === 'CONNECTING' && !con.connection.open).forEach(({ connection: conn }) => {
-      setupHandlers(conn, dispatch, receivedDataRef, state);
-    });
-  }, [state.connections]);
-
-  const connectToPeer = useCallback(
-    (connectionId: string) => {
-      if (!state.peer) return;
-
-      const newConn = state.peer.connect(connectionId);
-      if (!newConn) return;
-
-      dispatch({
-        type: 'UPDATE_CONNECTIONS',
-        payload: [...state.connections, {
-          connection: newConn,
-          state: 'CONNECTING'
-        }],
+    const connectedPeers = state.connections
+      .filter((con) => con && con.state === 'CONNECTED')
+      .forEach((conn) => {
+        sendData(
+          {
+            type: 'broadcast-other-peers',
+            peers: state.connections.map((conn) => conn.connection.peer),
+          },
+          conn.connection.peer,
+        );
       });
-    },
-    [state.peer, state.connections],
-  );
+  }, [state.connections, sendData]);
 
   useEffect(() => {
     if (state.readyToConnect && hostId) {
@@ -121,33 +207,85 @@ export const PeerProvider: React.FC<{ children: React.ReactNode }> = ({ children
         connectToPeer(hostId);
       }
     }
-  }, [state.readyToConnect, hostId, connectToPeer, state.connections]);
+  }, [state.readyToConnect, hostId, connectToPeer]);
 
-  const sendData = 
-    (data: PeerData, connectionId: string | null = null) => {
-      const message = { ...data, source: state.peerId, messageId: uuidv4() };
-
-      if (connectionId) {
-        const connection = state.connections.find(({connection: conn}) => conn.peer === connectionId)?.connection;
-        if (connection) {
-          connection.send(message);
-        } else {
-          console.error(`No active connection with ID ${connectionId}`);
-        }
-      } else {
-        state.connections.forEach(({ connection }) => connection.send(message));
-      }
-    };
-
-    const contextValue: PeerContextType = {
+  const contextValue: PeerContextType = {
     peerId: state.peerId,
     connections: state.connections,
     sendData,
     connectToPeer,
-    setQueueUpdateHandler, // Add this to the context value
+    subscribeToData,
   };
 
   return <PeerContext.Provider value={contextValue}>{children}</PeerContext.Provider>;
+};
+
+function setupHandlers(
+  conn: DataConnection,
+  dispatch: React.Dispatch<PeerAction>,
+  receivedDataRef: React.MutableRefObject<(data: PeerData) => void>,
+  stateRef: React.MutableRefObject<PeerState>,
+) {
+  if ((conn as any)._handlersSetup) {
+    console.log('Handlers already setup for:', conn.peer);
+    return;
+  }
+
+  console.log('Setting up listeners for', conn.peer);
+  (conn as any)._handlersSetup = true;
+
+  // Always set up data, close, and error handlers immediately
+  setupDataHandlers(conn, receivedDataRef, dispatch, stateRef);
+
+  // Handle the open event separately
+  if (!conn.open) {
+    conn.on('open', () => {
+      console.log(`Connection opened with peer ${conn.peer}`);
+      dispatch({
+        type: 'ADD_CONNECTION',
+        payload: { connection: conn, state: 'CONNECTED' } as PeerConnection,
+      });
+    });
+  } else {
+    // If already open, dispatch the connection immediately
+    dispatch({
+      type: 'ADD_CONNECTION',
+      payload: { connection: conn, state: 'CONNECTED' } as PeerConnection,
+    });
+  }
+}
+
+function setupDataHandlers(
+  conn: DataConnection,
+  receivedDataRef: React.MutableRefObject<(data: PeerData) => void>,
+  dispatch: React.Dispatch<PeerAction>,
+  stateRef: React.MutableRefObject<PeerState>,
+) {
+  conn.on('data', (data: any) => {
+    console.log('Received data from peer:', conn.peer, data);
+    receivedDataRef.current(data);
+  });
+
+  conn.on('close', () => {
+    console.log(`Connection closed with peer ${conn.peer}`);
+    dispatch({
+      type: 'UPDATE_CONNECTIONS',
+      payload: stateRef.current.connections.filter(({ connection }) => connection.peer !== conn.peer),
+    });
+  });
+
+  conn.on('error', (err) => {
+    console.error(`Error with peer ${conn.peer}:`, err);
+  });
+}
+
+export const usePeerData = (callback: (data: PeerData) => void) => {
+  const { subscribeToData } = usePeerContext();
+
+  useEffect(() => {
+    const unsubscribe = subscribeToData(callback);
+    return () => unsubscribe();
+  }, [callback, subscribeToData]);
 };
 
 export const usePeerContext = () => {
@@ -158,34 +296,4 @@ export const usePeerContext = () => {
   return context;
 };
 
-function setupHandlers(conn: DataConnection, dispatch: React.Dispatch<PeerAction>, receivedDataRef: React.MutableRefObject<(data: PeerData) => void>, state: PeerState) {
-  console.log('Setting up listeners for', conn.peer);
-
-  conn.on('open', () => {
-    console.log(`Connection opened with peer ${conn.peer}`);
-    dispatch({
-      type: 'ADD_CONNECTION',
-      payload: ({ connection: conn, state: 'CONNECTED' } as PeerConnection),
-    });
-
-    conn.on('data', (data: any) => {
-    console.log('Received data:', data);
-    receivedDataRef.current(data);
-  });
-
-  conn.on('close', () => {
-    console.log(`Connection closed with peer ${conn.peer}`);
-    dispatch({
-      type: 'UPDATE_CONNECTIONS',
-      payload: state.connections.filter(({ connection }) => connection.peer !== conn.peer),
-    });
-  });
-
-  conn.on('error', (err) => {
-    console.error(`Error with peer ${conn.peer}:`, err);
-  });
-  });
-
-  
-}
-
+export default PeerProvider;
