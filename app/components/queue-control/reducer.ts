@@ -12,24 +12,18 @@ const initialState = (initialSearchParams: SearchRequestPagination): QueueState 
 
 export function queueReducer(state: QueueState, action: QueueAction): QueueState {
   switch (action.type) {
-    // ... previous cases
-
     case 'SET_CURRENT_CLIMB':
-      const newItem = {
-        climb: action.payload,
-        uuid: uuidv4(),
-      };
       const currentIndex = state.currentClimbQueueItem
         ? state.queue.findIndex(({ uuid }) => uuid === state.currentClimbQueueItem?.uuid)
         : -1;
 
       return {
         ...state,
-        currentClimbQueueItem: newItem,
+        currentClimbQueueItem: action.payload,
         queue:
           currentIndex === -1
-            ? [...state.queue, newItem]
-            : [...state.queue.slice(0, currentIndex + 1), newItem, ...state.queue.slice(currentIndex + 1)],
+            ? [...state.queue, action.payload]
+            : [...state.queue.slice(0, currentIndex + 1), action.payload, ...state.queue.slice(currentIndex + 1)],
       };
 
     case 'SET_CURRENT_CLIMB_QUEUE_ITEM':

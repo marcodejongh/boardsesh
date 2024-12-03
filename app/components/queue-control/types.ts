@@ -23,7 +23,7 @@ export interface QueueState {
 export type QueueAction =
   | { type: 'ADD_TO_QUEUE'; payload: ClimbQueueItem }
   | { type: 'REMOVE_FROM_QUEUE'; payload: ClimbQueueItem[] }
-  | { type: 'SET_CURRENT_CLIMB'; payload: Climb }
+  | { type: 'SET_CURRENT_CLIMB'; payload: ClimbQueueItem }
   | { type: 'SET_CURRENT_CLIMB_QUEUE_ITEM'; payload: ClimbQueueItem }
   | { type: 'SET_CLIMB_SEARCH_PARAMS'; payload: SearchRequestPagination }
   | { type: 'UPDATE_QUEUE'; payload: { queue: ClimbQueue; currentClimbQueueItem?: ClimbQueueItem | null } }

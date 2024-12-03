@@ -110,8 +110,19 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
     },
 
     setCurrentClimb: (climb: Climb) => {
-      dispatch({ type: 'SET_CURRENT_CLIMB', payload: climb });
+      /**
+       * The behaviour of setCurrentClimb is subtly different from setCurrentClimbQueueItem
+       * But I cant quite remember how, I think something about inserting the current lcimb at the current position
+       * in the queue.
+       */
       const newItem = createClimbQueueItem(climb, peerId);
+
+      dispatch({ type: 'SET_CURRENT_CLIMB', payload: newItem });
+
+      /**
+       * THe queue injecting logic is completely duplicated in the reducer, so should figure out how to reuse
+       * that somehow. Probably by having a middleware perform sideeffects, or something like that.
+       */
       const currentIndex = state.currentClimbQueueItem
         ? state.queue.findIndex(({ uuid }) => uuid === state.currentClimbQueueItem?.uuid)
         : -1;
