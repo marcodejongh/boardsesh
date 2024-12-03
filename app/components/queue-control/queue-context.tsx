@@ -79,7 +79,7 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
     // Actions
     addToQueue: (climb: Climb) => {
       const newItem = { climb, addedBy: peerId, uuid: uuidv4() };
-      dispatch({ type: 'ADD_TO_QUEUE', payload: climb });
+      dispatch({ type: 'ADD_TO_QUEUE', payload: newItem });
       sendData({
         type: 'update-queue',
         queue: [...state.queue, newItem],
@@ -88,8 +88,12 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
     },
 
     removeFromQueue: (item: ClimbQueueItem) => {
-      dispatch({ type: 'REMOVE_FROM_QUEUE', payload: item });
+      // TODO: SInce we're dispatching the full new queue, it can lead to race conditions if
+      // someone is hammering the UI. So ideally, we call sendData _after_ the state has been applied
       const newQueue = state.queue.filter((qItem) => qItem.uuid !== item.uuid);
+
+      dispatch({ type: 'REMOVE_FROM_QUEUE', payload: newQueue });
+      
       sendData({
         type: 'update-queue',
         queue: newQueue,
