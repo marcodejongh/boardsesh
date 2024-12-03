@@ -7,6 +7,8 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { useQueueContext } from '../queue-control/queue-context';
 
 const getShareUrl = (pathname: string, searchParams: URLSearchParams, peerId: string) => {
+  if (!window) { return ''};
+  
   const params = new URLSearchParams(searchParams.toString());
   params.set('hostId', peerId);
   return `${window.location.origin}${pathname}?${params.toString()}`;
