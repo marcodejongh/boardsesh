@@ -258,14 +258,14 @@ function setupDataHandlers(
   stateRef: React.MutableRefObject<PeerState>,
 ) {
   conn.on('data', ((data: unknown) => {
-  console.log('Received data from peer:', conn.peer, data);
-  
-  if (isPeerData(data)) {
-    receivedDataRef.current(data);
-  } else {
-    console.error('Received invalid data format:', data);
-  }
-}) as (data: unknown) => void);
+    console.log('Received data from peer:', conn.peer, data);
+
+    if (isPeerData(data)) {
+      receivedDataRef.current(data);
+    } else {
+      console.error('Received invalid data format:', data);
+    }
+  }) as (data: unknown) => void);
 
   conn.on('close', () => {
     console.log(`Connection closed with peer ${conn.peer}`);
