@@ -7,11 +7,15 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { useQueueContext } from '../queue-control/queue-context';
 
 const getShareUrl = (pathname: string, searchParams: URLSearchParams, peerId: string) => {
-  if (!window) { return ''};
-  
-  const params = new URLSearchParams(searchParams.toString());
-  params.set('hostId', peerId);
-  return `${window.location.origin}${pathname}?${params.toString()}`;
+  try {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('hostId', peerId);
+    return `${window.location.origin}${pathname}?${params.toString()}`;
+  } catch (e) {
+    // A bit lazy this catch, but despite the use client at the top of the file
+    // I was still getting window undefined errors...
+    return ''
+  }
 };
 
 export type ShareButtonProps = {
