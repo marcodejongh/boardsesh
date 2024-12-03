@@ -14,7 +14,7 @@ const getShareUrl = (pathname: string, searchParams: URLSearchParams, peerId: st
   } catch (e) {
     // A bit lazy this catch, but despite the use client at the top of the file
     // I was still getting window undefined errors...
-    return ''
+    return '';
   }
 };
 

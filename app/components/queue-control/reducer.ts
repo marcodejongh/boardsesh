@@ -58,13 +58,13 @@ export function queueReducer(state: QueueState, action: QueueAction): QueueState
     case 'ADD_TO_QUEUE':
       return {
         ...state,
-        queue: [ ...state.queue, action.payload],
+        queue: [...state.queue, action.payload],
       };
-    
+
     case 'REMOVE_FROM_QUEUE':
       return {
         ...state,
-        queue: [ ...action.payload ],
+        queue: [...action.payload],
       };
 
     case 'SET_FIRST_FETCH':

@@ -7,7 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { usePeerContext } from '../connection-manager/peer-context';
 import { useQueueReducer } from './reducer';
 import { useQueueDataFetching } from './hooks/use-queue-data-fetching';
-import { QueueContextType, ClimbQueueItem } from './types';
+import { QueueContextType, ClimbQueueItem, UserName } from './types';
 import { urlParamsToSearchParams } from '@/app/lib/url-utils';
 import { Climb, ParsedBoardRouteParameters } from '@/app/lib/types';
 import { PeerData } from '../connection-manager/types';
@@ -16,6 +16,13 @@ type QueueContextProps = {
   parsedParams: ParsedBoardRouteParameters;
   children: ReactNode;
 };
+
+const createClimbQueueItem = (climb: Climb, addedBy: UserName, suggested?: boolean) => ({
+  climb,
+  addedBy,
+  uuid: uuidv4(),
+  suggested: !!suggested,
+});
 
 const QueueContext = createContext<QueueContextType | undefined>(undefined);
 
@@ -78,7 +85,8 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
 
     // Actions
     addToQueue: (climb: Climb) => {
-      const newItem = { climb, addedBy: peerId, uuid: uuidv4() };
+      const newItem = createClimbQueueItem(climb, peerId);
+
       dispatch({ type: 'ADD_TO_QUEUE', payload: newItem });
       sendData({
         type: 'update-queue',
@@ -93,7 +101,7 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
       const newQueue = state.queue.filter((qItem) => qItem.uuid !== item.uuid);
 
       dispatch({ type: 'REMOVE_FROM_QUEUE', payload: newQueue });
-      
+
       sendData({
         type: 'update-queue',
         queue: newQueue,
@@ -103,7 +111,7 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
 
     setCurrentClimb: (climb: Climb) => {
       dispatch({ type: 'SET_CURRENT_CLIMB', payload: climb });
-      const newItem = { climb, uuid: uuidv4() };
+      const newItem = createClimbQueueItem(climb, peerId);
       const currentIndex = state.currentClimbQueueItem
         ? state.queue.findIndex(({ uuid }) => uuid === state.currentClimbQueueItem?.uuid)
         : -1;
@@ -146,13 +154,7 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
         climbSearchResults?.length > 0
       ) {
         const nextClimb = suggestedClimbs[0];
-        return nextClimb
-          ? {
-              uuid: uuidv4(),
-              climb: nextClimb,
-              suggested: true,
-            }
-          : null;
+        return nextClimb ? createClimbQueueItem(nextClimb, peerId, true) : null;
       }
 
       return queueItemIndex >= state.queue.length - 1 ? null : state.queue[queueItemIndex + 1];
