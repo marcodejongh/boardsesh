@@ -1,8 +1,7 @@
-import { DataConnection } from 'peerjs';
-import { Climb } from '@/app/lib/types';
+import { Climb, SearchRequestPagination } from '@/app/lib/types';
 
-export type UserName = string;
 export type PeerId = string | null;
+export type UserName = PeerId;
 
 export interface ClimbQueueItem {
   addedBy?: UserName;

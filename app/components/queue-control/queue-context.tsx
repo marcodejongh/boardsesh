@@ -77,14 +77,15 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
     peerId,
 
     // Actions
-    addToQueue: (climb: Climb) => {
-      const newItem = { climb, addedBy: peerId, uuid: uuidv4() };
-      dispatch({ type: 'ADD_TO_QUEUE', payload: climb });
-      sendData({
-        type: 'update-queue',
-        queue: [...state.queue, newItem],
-      });
-    },
+   addToQueue: (climb: Climb) => {
+    const newItem = { climb, addedBy: peerId, uuid: uuidv4() };
+    dispatch({ type: 'ADD_TO_QUEUE', payload: climb });
+    sendData({
+      type: 'update-queue',
+      queue: [...state.queue, newItem],
+      currentClimbQueueItem: state.currentClimbQueueItem
+    });
+  },
 
     removeFromQueue: (item: ClimbQueueItem) => {
       dispatch({ type: 'REMOVE_FROM_QUEUE', payload: item });
@@ -92,6 +93,7 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
       sendData({
         type: 'update-queue',
         queue: newQueue,
+        currentClimbQueueItem: state.currentClimbQueueItem
       });
     },
 

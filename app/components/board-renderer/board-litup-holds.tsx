@@ -22,7 +22,12 @@ const BoardLitupHolds: React.FC<BoardLitupHoldsProps> = ({
         .map((hold) => {
           const color = litUpHoldsMap[hold.id].color;
           if (mirrored) {
-            hold = holdsData.find(({ id }) => id === hold.mirroredHoldId);
+            const mirroredHold = holdsData.find(({ id }) => id === hold.mirroredHoldId);
+            if (!mirroredHold) {
+              throw new Error('Couldn\'t find mirrored hold')
+              return;
+            }
+            hold = mirroredHold;
           }
 
           return (
