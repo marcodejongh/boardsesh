@@ -1,7 +1,7 @@
 // File: QueueContext.tsx
 'use client';
 
-import React, { useCallback, useContext, createContext, ReactNode, useEffect } from 'react';
+import React, { useContext, createContext, ReactNode, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { v4 as uuidv4 } from 'uuid';
 import { usePeerContext } from '../connection-manager/peer-context';
@@ -9,12 +9,11 @@ import { useQueueReducer } from './reducer';
 import { useQueueDataFetching } from './hooks/use-queue-data-fetching';
 import { 
   QueueContextType, 
-  ParsedBoardRouteParameters, 
-  Climb,
   ClimbQueueItem,
-  QueueState 
 } from './types';
 import { urlParamsToSearchParams } from '@/app/lib/url-utils';
+import { Climb, ParsedBoardRouteParameters } from '@/app/lib/types';
+import { PeerData } from '../connection-manager/types';
 
 type QueueContextProps = {
   parsedParams: ParsedBoardRouteParameters;
@@ -47,10 +46,8 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
   // Request initial queue state when connecting as a client
   useEffect(() => {
     const hostId = searchParams.get('hostId');
-    if (hostId && peerId && connections.length > 0) {
+    if (hostId && peerId) {
       sendData(
-        connections,
-        peerId,
         { type: 'request-update-queue' },
         hostId
       );
@@ -90,7 +87,7 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
     addToQueue: (climb: Climb) => {
       const newItem = { climb, addedBy: peerId, uuid: uuidv4() };
       dispatch({ type: 'ADD_TO_QUEUE', payload: climb });
-      sendData(connections, peerId, {
+      sendData({
         type: 'update-queue',
         queue: [...state.queue, newItem],
       });
@@ -99,44 +96,40 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
     removeFromQueue: (item: ClimbQueueItem) => {
       dispatch({ type: 'REMOVE_FROM_QUEUE', payload: item });
       const newQueue = state.queue.filter((qItem) => qItem.uuid !== item.uuid);
-      sendData(connections, peerId, {
+      sendData({
         type: 'update-queue',
         queue: newQueue,
       });
     },
 
     setCurrentClimb: (climb: Climb) => {
-      if (!state.viewOnlyMode) {
-        dispatch({ type: 'SET_CURRENT_CLIMB', payload: climb });
-        const newItem = { climb, uuid: uuidv4() };
-        const currentIndex = state.currentClimbQueueItem
-          ? state.queue.findIndex(({ uuid }) => uuid === state.currentClimbQueueItem?.uuid)
-          : -1;
-        const newQueue =
-          currentIndex === -1
-            ? [...state.queue, newItem]
-            : [...state.queue.slice(0, currentIndex + 1), newItem, ...state.queue.slice(currentIndex + 1)];
-        sendData(connections, peerId, {
-          type: 'update-queue',
-          queue: newQueue,
-          currentClimbQueueItem: newItem,
-        });
-      }
+      dispatch({ type: 'SET_CURRENT_CLIMB', payload: climb });
+      const newItem = { climb, uuid: uuidv4() };
+      const currentIndex = state.currentClimbQueueItem
+        ? state.queue.findIndex(({ uuid }) => uuid === state.currentClimbQueueItem?.uuid)
+        : -1;
+      const newQueue =
+        currentIndex === -1
+          ? [...state.queue, newItem]
+          : [...state.queue.slice(0, currentIndex + 1), newItem, ...state.queue.slice(currentIndex + 1)];
+      sendData({
+        type: 'update-queue',
+        queue: newQueue,
+        currentClimbQueueItem: newItem,
+      });
     },
 
     setCurrentClimbQueueItem: (item: ClimbQueueItem) => {
-      if (!state.viewOnlyMode) {
-        dispatch({ type: 'SET_CURRENT_CLIMB_QUEUE_ITEM', payload: item });
-        const newQueue =
-          item.suggested && !state.queue.find(({ uuid }) => uuid === item.uuid)
-            ? [...state.queue, item]
-            : state.queue;
-        sendData(connections, peerId, {
-          type: 'update-queue',
-          queue: newQueue,
-          currentClimbQueueItem: item,
-        });
-      }
+      dispatch({ type: 'SET_CURRENT_CLIMB_QUEUE_ITEM', payload: item });
+      const newQueue =
+        item.suggested && !state.queue.find(({ uuid }) => uuid === item.uuid)
+          ? [...state.queue, item]
+          : state.queue;
+      sendData({
+        type: 'update-queue',
+        queue: newQueue,
+        currentClimbQueueItem: item,
+      });
     },
 
     setClimbSearchParams: (params) =>
@@ -151,7 +144,7 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
         ({ uuid }) => uuid === state.currentClimbQueueItem?.uuid
       );
 
-      if ((state.queue.length === 0 || state.queue.length <= queueItemIndex + 1) && climbSearchResults?.length > 0) {
+      if ((state.queue.length === 0 || state.queue.length <= queueItemIndex + 1) && climbSearchResults && climbSearchResults?.length > 0) {
         const nextClimb = suggestedClimbs[0];
         return nextClimb
           ? {
