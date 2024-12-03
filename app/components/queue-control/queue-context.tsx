@@ -1,17 +1,18 @@
 'use client';
 
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useReducer } from 'react';
+import { createContext, useContext, ReactNode } from 'react';
+import { useSearchParams } from 'next/navigation';
+import useSWRInfinite from 'swr/infinite';
+import { v4 as uuidv4 } from 'uuid';
+import Peer, { DataConnection } from 'peerjs';
 
 import { Climb, ParsedBoardRouteParameters, SearchRequestPagination } from '@/app/lib/types';
 import { constructClimbSearchUrl, searchParamsToUrlParams, urlParamsToSearchParams } from '@/app/lib/url-utils';
-import { useSearchParams } from 'next/navigation';
-import { createContext, useContext, useState, ReactNode } from 'react';
-import useSWRInfinite from 'swr/infinite';
-import { v4 as uuidv4 } from 'uuid';
 import { PAGE_LIMIT } from '../board-page/constants';
 import { PeerConnectionState, PeerData } from '../connection-manager/types';
-import Peer, { DataConnection } from 'peerjs';
 
+// Types
 type QueueContextProps = {
   parsedParams: ParsedBoardRouteParameters;
   children: ReactNode;
@@ -28,232 +29,225 @@ export type ClimbQueueItem = {
   suggested?: boolean;
 };
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
-
 type ClimbQueue = ClimbQueueItem[];
 
- const sendData = (connections: DataConnection[], peerId: PeerId, data: PeerData, connectionId: string | null = null) => {
-    if(!peerId) {
-      return;
-    }
-
-    console.log(`Sending `, data);
-    const message = { ...data, source: peerId, messageId: uuidv4() };
-    if (connectionId) {
-      const connection = connections.find((conn) => conn.peer === connectionId);
-      if (connection) {
-        connection.send(message);
-      } else {
-        console.error(`No active connection with ID ${connectionId}`);
-      }
-    } else {
-      // Broadcast to all connections
-      connections.forEach((conn) => conn.send(message));
-    }
-  };
-
-interface QueueContextType {
+// State interface
+interface QueueState {
   queue: ClimbQueue;
-
-  addToQueue: (climb: Climb) => void;
-  removeFromQueue: (queueItem: ClimbQueueItem) => void;
-
-  setCurrentClimb: (climb: Climb) => void;
-  currentClimb: Climb | null;
   currentClimbQueueItem: ClimbQueueItem | null;
-
-  setClimbSearchParams: (searchParams: SearchRequestPagination) => void;
-
   climbSearchParams: SearchRequestPagination;
-  climbSearchResults: Climb[] | null;
-  suggestedClimbs: Climb[];
-  totalSearchResultCount: number | null;
-
-  fetchMoreClimbs: () => void;
-
-  setCurrentClimbQueueItem: (item: ClimbQueueItem) => void;
-
-  getNextClimbQueueItem: () => ClimbQueueItem | null;
-  getPreviousClimbQueueItem: () => ClimbQueueItem | null;
-  mirrorClimb: (mirror: boolean) => void;
-  
-  hasMoreResults: boolean;
-  isFetchingClimbs: boolean;
+  peer: Peer | null;
+  peerId: PeerId;
+  connections: PeerConnectionState;
+  readyToConnect: boolean;
   hasDoneFirstFetch: boolean;
-  viewOnlyMode: boolean;
 }
 
+// Action types
+type QueueAction =
+  | { type: 'ADD_TO_QUEUE'; payload: Climb }
+  | { type: 'REMOVE_FROM_QUEUE'; payload: ClimbQueueItem }
+  | { type: 'SET_CURRENT_CLIMB'; payload: Climb }
+  | { type: 'SET_CURRENT_CLIMB_QUEUE_ITEM'; payload: ClimbQueueItem }
+  | { type: 'SET_CLIMB_SEARCH_PARAMS'; payload: SearchRequestPagination }
+  | { type: 'UPDATE_QUEUE'; payload: { queue: ClimbQueue; currentClimbQueueItem?: ClimbQueueItem | null } }
+  | { type: 'SET_PEER'; payload: Peer }
+  | { type: 'SET_PEER_ID'; payload: string }
+  | { type: 'SET_READY_TO_CONNECT'; payload: boolean }
+  | { type: 'UPDATE_CONNECTIONS'; payload: PeerConnectionState }
+  | { type: 'SET_FIRST_FETCH'; payload: boolean }
+  | { type: 'MIRROR_CLIMB' };
+
+// Reducer
+function queueReducer(state: QueueState, action: QueueAction): QueueState {
+  switch (action.type) {
+    case 'ADD_TO_QUEUE':
+      const newQueueItem = {
+        climb: action.payload,
+        addedBy: state.peerId,
+        uuid: uuidv4(),
+      };
+      return {
+        ...state,
+        queue: [...state.queue, newQueueItem],
+      };
+
+    case 'REMOVE_FROM_QUEUE':
+      return {
+        ...state,
+        queue: state.queue.filter((item) => item.uuid !== action.payload.uuid),
+      };
+
+    case 'SET_CURRENT_CLIMB':
+      const newItem = {
+        climb: action.payload,
+        uuid: uuidv4(),
+      };
+      const currentIndex = state.currentClimbQueueItem
+        ? state.queue.findIndex(({ uuid }) => uuid === state.currentClimbQueueItem?.uuid)
+        : -1;
+
+      return {
+        ...state,
+        currentClimbQueueItem: newItem,
+        queue:
+          currentIndex === -1
+            ? [...state.queue, newItem]
+            : [...state.queue.slice(0, currentIndex + 1), newItem, ...state.queue.slice(currentIndex + 1)],
+      };
+
+    case 'SET_CURRENT_CLIMB_QUEUE_ITEM':
+      return {
+        ...state,
+        currentClimbQueueItem: action.payload,
+        queue:
+          action.payload.suggested && !state.queue.find(({ uuid }) => uuid === action.payload.uuid)
+            ? [...state.queue, action.payload]
+            : state.queue,
+      };
+
+    case 'UPDATE_QUEUE':
+      return {
+        ...state,
+        queue: action.payload.queue,
+        currentClimbQueueItem: action.payload.currentClimbQueueItem ?? state.currentClimbQueueItem,
+      };
+
+    case 'SET_CLIMB_SEARCH_PARAMS':
+      return {
+        ...state,
+        climbSearchParams: action.payload,
+      };
+
+    case 'SET_PEER':
+      return {
+        ...state,
+        peer: action.payload,
+      };
+
+    case 'SET_PEER_ID':
+      return {
+        ...state,
+        peerId: action.payload,
+      };
+
+    case 'SET_READY_TO_CONNECT':
+      return {
+        ...state,
+        readyToConnect: action.payload,
+      };
+
+    case 'UPDATE_CONNECTIONS':
+      return {
+        ...state,
+        connections: action.payload,
+      };
+
+    case 'SET_FIRST_FETCH':
+      return {
+        ...state,
+        hasDoneFirstFetch: action.payload,
+      };
+
+    case 'MIRROR_CLIMB':
+      if (!state.currentClimbQueueItem) return state;
+      return {
+        ...state,
+        currentClimbQueueItem: {
+          ...state.currentClimbQueueItem,
+          climb: {
+            ...state.currentClimbQueueItem.climb,
+            mirrored: !state.currentClimbQueueItem.climb.mirrored,
+          },
+        },
+      };
+
+    default:
+      return state;
+  }
+}
+
+// Create a separate function for peer message handling
+const sendData = (
+  connections: DataConnection[],
+  peerId: PeerId,
+  data: PeerData,
+  connectionId: string | null = null,
+) => {
+  if (!peerId) return;
+
+  const message = { ...data, source: peerId, messageId: uuidv4() };
+
+  if (connectionId) {
+    const connection = connections.find((conn) => conn.peer === connectionId);
+    if (connection) {
+      connection.send(message);
+    } else {
+      console.error(`No active connection with ID ${connectionId}`);
+    }
+  } else {
+    connections.forEach((conn) => conn.send(message));
+  }
+};
+
+// Data fetching function
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
+
+// Context
 const QueueContext = createContext<QueueContextType | undefined>(undefined);
 let peerInstance: Peer | undefined;
 
-export const useQueueContext = () => {
-  const context = useContext(QueueContext);
-  if (!context) {
-    throw new Error('useQueueContext must be used within a QueueProvider');
-  }
-  return context;
-};
-
 export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => {
-  const [peer, setPeer] = useState<Peer | null>(null);
-  const [connections, setConnections] = useState<PeerConnectionState>([]);
-  const [receivedData, setReceivedData] = useState<PeerData | null>(null);
-
-  const [peerId, setPeerId] = useState<string | null>(null);
-  const [readyToConnect, setReadyToConnect] = useState(false);
-  const [queue, setQueueState] = useState<ClimbQueue>([]);
-  const [hasDoneFirstFetch, setHasDoneFirstFetch] = useState<boolean>(false);
-
-  const [currentClimbQueueItem, setCurrentClimbQueueItemState] = useState<ClimbQueueItem | null>(null);
-
-  const [climbSearchParams, setClimbSearchParamsState] = useState<SearchRequestPagination>(
-    urlParamsToSearchParams(useSearchParams()),
-  );
-
-
-  const receiveDataRef = useRef((data: PeerData) => {
-    setReceivedData(data);
-  });
-
-  // Scrappy way to check if this browser is the host
-  const hostId = useSearchParams().get('hostId');
-
-  useEffect(() => {
-    // Iterate over connections whenever they change
-    connections.forEach((conn) => {
-      if (!conn.open) {
-        conn.on('open', () => {
-          console.log(`Connection opened with peer ${conn.peer}`);
-        });
-      }
-
-      conn.on('data', (data: any) => {
-        console.log('Received data:', data);
-        receiveDataRef.current(data);
-      });
-
-      conn.on('close', () => {
-        console.log(`Connection closed with peer ${conn.peer}`);
-        setConnections((prevConnections) => prevConnections.filter((connection) => connection.peer !== conn.peer));
-      });
-
-      conn.on('error', (err) => {
-        console.error(`Error with peer ${conn.peer}:`, err);
-      });
-    });
-  }, [connections]);
-
-  useEffect(() => {
-    if (!peerInstance) {
-      peerInstance = new Peer({ debug: 1 });
-      const p = peerInstance;
-
-      p.on('open', (id: string) => {
-        console.log('My peer ID is:', id);
-        setPeerId(id);
-        setReadyToConnect(true);
-      });
-
-      p.on('connection', (newConn: DataConnection) => {
-        console.log('New Connection established');
-        setConnections((prevConnections) => [...prevConnections, newConn]);
-      });
-
-      setPeer(p);
-    }
-
-    return () => {
-      if (peer) {
-        peer.destroy();
-      }
-    };
-  }, [peer]);
-
-  const connectToPeer = useCallback(
-    (connectionId: string) => {
-      const newConn = peer?.connect(connectionId);
-      if (!newConn) return;
-
-      setConnections((prevConnections) => [...prevConnections, newConn]);
-    },
-    [peer],
-  );
-
-  useEffect(() => {
-    // Attempt to connect when ready and hostId is available
-    if (readyToConnect && hostId) {
-      const connectionExists = connections.some((conn) => conn.peer === hostId);
-      if (!connectionExists) {
-        console.log('Attempting to connect to hostId:', hostId);
-        connectToPeer(hostId);
-      }
-    }
-  }, [readyToConnect, hostId, connectToPeer, connections]);
-  
-  const setClimbSearchParams = (updatedFilters: SearchRequestPagination) => {
-    setClimbSearchParamsState(() => {
-      // Size stays at a high number if we don't update it manually.
-      setSize(updatedFilters.page + 1);
-      return updatedFilters;
-    });
-
-    // We only want to use history.replaceState for filter changes as SWR takes care of the actual
-    // fetching, and using router.replace assumes we want the result of the SSR page.tsx.
-    history.replaceState(null, '', `${window.location.pathname}?${searchParamsToUrlParams(updatedFilters).toString()}`);
+  const searchParams = useSearchParams();
+  const initialState: QueueState = {
+    queue: [],
+    currentClimbQueueItem: null,
+    climbSearchParams: urlParamsToSearchParams(searchParams),
+    peer: null,
+    peerId: null,
+    connections: [],
+    readyToConnect: false,
+    hasDoneFirstFetch: false,
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [state, dispatch] = useReducer(queueReducer, initialState);
+  const receivedDataRef = useRef((data: PeerData) => {
+    switch (data.type) {
+      case 'request-update-queue':
+        sendData(
+          state.connections,
+          state.peerId,
+          {
+            type: 'update-queue',
+            queue: state.queue,
+            currentClimbQueueItem: state.currentClimbQueueItem,
+          },
+          data.source,
+        );
+        break;
+      case 'update-queue':
+        dispatch({
+          type: 'UPDATE_QUEUE',
+          payload: {
+            queue: data.queue,
+            currentClimbQueueItem: data.currentClimbQueueItem,
+          },
+        });
+        break;
+    }
+  });
+
+  // SWR setup
   const getKey = (pageIndex: number, previousPageData: any) => {
     if (previousPageData && previousPageData.climbs.length === 0) return null;
 
     const queryString = searchParamsToUrlParams({
-      ...climbSearchParams,
+      ...state.climbSearchParams,
       page: pageIndex,
     }).toString();
 
     return constructClimbSearchUrl(parsedParams, queryString);
   };
-
-  useEffect(() => {
-    // Iterate over connections whenever they change
-    connections.forEach((conn) => {
-      if (!conn.open && hostId) {
-        conn.on('open', () => {
-          console.log(`Connection opened with peer ${conn.peer}`);
-          conn.send({ type: 'request-update-queue' });
-        });
-      }
-    });
-  }, [connections, hostId]);
-
-  useEffect(() => {
-    switch (receivedData?.type) {
-      case 'request-update-queue':
-        sendData(
-          connections,
-          peerId,
-          {
-            type: 'update-queue',
-            queue,
-            currentClimbQueueItem, // Send the queue data from QueueProvider
-          },
-          receivedData.source,
-        );
-        break;
-      case 'update-queue':
-        if (!receivedData.queue && receivedData.currentClimbQueueItem) {
-          setCurrentClimbQueueItemState(receivedData.currentClimbQueueItem);
-        }
-        setQueueState(() => {
-          if (receivedData.currentClimbQueueItem) {
-            setCurrentClimbQueueItemState(receivedData.currentClimbQueueItem);
-          }
-          
-          return receivedData.queue;
-        });
-        break;
-    }
-  }, [receivedData]);
 
   const {
     data,
@@ -263,238 +257,224 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
   } = useSWRInfinite(getKey, fetcher, {
     revalidateOnFocus: false,
     revalidateFirstPage: false,
-    initialSize: climbSearchParams.page ? climbSearchParams.page + 1 : 1,
+    initialSize: state.climbSearchParams.page ? state.climbSearchParams.page + 1 : 1,
   });
 
-  const fetchMoreClimbs = () => {
+  // Derived state
+  const hasMoreResults = data && data[0] && size * PAGE_LIMIT < data[0].totalCount;
+  const totalSearchResultCount = (data && data[0] && data[0].totalCount) || null;
+  const climbSearchResults = data ? data.flatMap((page: { climbs: Climb[] }) => page.climbs) : null;
+  const suggestedClimbs = (climbSearchResults || []).filter(
+    (item) => !state.queue.find(({ climb: { uuid } }) => item.uuid === uuid),
+  );
+
+  // Effects and handlers
+  useEffect(() => {
+    if (!peerInstance) {
+      peerInstance = new Peer({ debug: 1 });
+      const p = peerInstance;
+
+      p.on('open', (id: string) => {
+        dispatch({ type: 'SET_PEER_ID', payload: id });
+        dispatch({ type: 'SET_READY_TO_CONNECT', payload: true });
+      });
+
+      p.on('connection', (newConn: DataConnection) => {
+        dispatch({
+          type: 'UPDATE_CONNECTIONS',
+          payload: [...state.connections, newConn],
+        });
+      });
+
+      dispatch({ type: 'SET_PEER', payload: p });
+    }
+
+    return () => {
+      if (state.peer) {
+        state.peer.destroy();
+      }
+    };
+  }, []);
+
+  // Add connection handling effect
+  useEffect(() => {
+    // Iterate over connections whenever they change
+    state.connections.forEach((conn) => {
+      if (!conn.open) {
+        conn.on('open', () => {
+          console.log(`Connection opened with peer ${conn.peer}`);
+        });
+      }
+
+      conn.on('data', (data: any) => {
+        console.log('Received data:', data);
+        receivedDataRef.current(data);
+      });
+
+      conn.on('close', () => {
+        console.log(`Connection closed with peer ${conn.peer}`);
+        dispatch({
+          type: 'UPDATE_CONNECTIONS',
+          payload: state.connections.filter((connection) => connection.peer !== conn.peer),
+        });
+      });
+
+      conn.on('error', (err) => {
+        console.error(`Error with peer ${conn.peer}:`, err);
+      });
+    });
+  }, [state.connections]);
+
+  // Add connection initialization effect
+  const connectToPeer = useCallback(
+    (connectionId: string) => {
+      if (!state.peer) return;
+
+      const newConn = state.peer.connect(connectionId);
+      if (!newConn) return;
+
+      dispatch({
+        type: 'UPDATE_CONNECTIONS',
+        payload: [...state.connections, newConn],
+      });
+    },
+    [state.peer, state.connections],
+  );
+
+  // Add host connection effect
+  const hostId = useSearchParams().get('hostId');
+
+  useEffect(() => {
+    // Attempt to connect when ready and hostId is available
+    if (state.readyToConnect && hostId) {
+      const connectionExists = state.connections.some((conn) => conn.peer === hostId);
+      if (!connectionExists) {
+        console.log('Attempting to connect to hostId:', hostId);
+        connectToPeer(hostId);
+      }
+    }
+  }, [state.readyToConnect, hostId, connectToPeer, state.connections]);
+
+  // Request queue update when connection is established
+  useEffect(() => {
+    state.connections.forEach((conn) => {
+      if (!conn.open && hostId) {
+        conn.on('open', () => {
+          console.log(`Connection opened with peer ${conn.peer}`);
+          conn.send({ type: 'request-update-queue' });
+        });
+      }
+    });
+  }, [state.connections, hostId]);
+
+  const fetchMoreClimbs = useCallback(() => {
     setSize((oldSize) => {
-      const newParams = { ...climbSearchParams, page: oldSize + 1 };
-      // We persist the new page number in the URL so that the page on a hard refresh will
-      // be the same as it was before, and hopefully will restore scroll correctly.
+      const newParams = { ...state.climbSearchParams, page: oldSize + 1 };
       history.replaceState(null, '', `${window.location.pathname}?${searchParamsToUrlParams(newParams).toString()}`);
       return oldSize + 1;
     });
-  };
+  }, [state.climbSearchParams, setSize]);
 
-  const hasMoreResults = data && data[0] && size * PAGE_LIMIT < data[0].totalCount;
-  const totalSearchResultCount = (data && data[0] && data[0].totalCount) || null;
+  // Context value
+  const contextValue = {
+    // State
+    queue: state.queue,
+    currentClimbQueueItem: state.currentClimbQueueItem,
+    currentClimb: state.currentClimbQueueItem?.climb || null,
+    climbSearchParams: state.climbSearchParams,
+    climbSearchResults,
+    suggestedClimbs,
+    totalSearchResultCount,
+    hasMoreResults,
+    isFetchingClimbs,
+    hasDoneFirstFetch: state.hasDoneFirstFetch,
+    viewOnlyMode: false,
+    peerId: state.peerId,
 
-  const climbSearchResults = data ? data.flatMap((page: { climbs: Climb[] }) => page.climbs) : null;
-  const suggestedClimbs = (climbSearchResults || []).filter(
-    (item) => !(queue || []).find(({ climb: { uuid } }) => item.uuid === uuid),
-  );
-
-  const addToQueue = (climb: Climb) => {
-    setQueueState((prevQueue) => {
-      const newQueue = [...prevQueue, { climb, addedBy: peerId, uuid: uuidv4(), source: { type: 'local' } }];
-      
-      // This is an antipattern
-      sendData(connections, peerId, {
+    // Actions
+    addToQueue: (climb: Climb) => {
+      const newItem = { climb, addedBy: state.peerId, uuid: uuidv4() };
+      dispatch({ type: 'ADD_TO_QUEUE', payload: climb });
+      sendData(state.connections, state.peerId, {
         type: 'update-queue',
-        queue: newQueue
+        queue: [...state.queue, newItem],
       });
-
-      return [...prevQueue, { climb, uuid: uuidv4() }];
-    });
-  };
-
-  const removeFromQueue = (climbQueueItem: ClimbQueueItem) => {
-    setQueueState((prevQueue) => {
-      if (prevQueue === null) {
-        return prevQueue;
-      }
-      const newQueue = prevQueue.filter((item) => item.uuid !== climbQueueItem.uuid);
-      
-      // This is an antipattenr
-      sendData(connections, peerId, {
+    },
+    removeFromQueue: (item: ClimbQueueItem) => {
+      dispatch({ type: 'REMOVE_FROM_QUEUE', payload: item });
+      const newQueue = state.queue.filter((qItem) => qItem.uuid !== item.uuid);
+      sendData(state.connections, state.peerId, {
         type: 'update-queue',
-        queue: newQueue
+        queue: newQueue,
       });
-
-      return newQueue;
-    });
-  };
-
-  if (climbSearchResults && climbSearchResults.length > 0 && !hasDoneFirstFetch) {
-    setHasDoneFirstFetch(true);
-  }
-
-  /***
-   * Immediately sets current climb, and inserts it into the queue.
-   * If there is an active queue, we insert the new climb
-   * after the old climb.
-   */
-  const setCurrentClimb = (climb: Climb) => {
-    if (viewOnlyMode) {
-      return;
-    }
-
-    const queueItem = {
-      climb,
-      uuid: uuidv4(),
-    };
-
-    setQueueState((prevQueue) => {
-      setCurrentClimbQueueItemState(queueItem);
-
-      if (!currentClimbQueueItem) {
-        // If no current item, append the new one to the queue
-        // This is an antipattern
-        sendData(connections, peerId, {
+    },
+    setCurrentClimb: (climb: Climb) => {
+      if (!state.viewOnlyMode) {
+        dispatch({ type: 'SET_CURRENT_CLIMB', payload: climb });
+        // We'll need to calculate the new queue state here similar to the reducer
+        const newItem = { climb, uuid: uuidv4() };
+        const currentIndex = state.currentClimbQueueItem
+          ? state.queue.findIndex(({ uuid }) => uuid === state.currentClimbQueueItem?.uuid)
+          : -1;
+        const newQueue =
+          currentIndex === -1
+            ? [...state.queue, newItem]
+            : [...state.queue.slice(0, currentIndex + 1), newItem, ...state.queue.slice(currentIndex + 1)];
+        sendData(state.connections, state.peerId, {
           type: 'update-queue',
-          queue: [...prevQueue, queueItem],
-          currentClimbQueueItem: queueItem,
+          queue: newQueue,
+          currentClimbQueueItem: newItem,
         });
-        return [...prevQueue, queueItem];
       }
-
-      const index = prevQueue.findIndex(({ uuid }) => uuid === currentClimbQueueItem?.uuid);
-      if (index === -1) {
-        // If the current item is not found, append the new one
-        sendData(connections, peerId, {
+    },
+    setCurrentClimbQueueItem: (item: ClimbQueueItem) => {
+      if (!state.viewOnlyMode) {
+        dispatch({ type: 'SET_CURRENT_CLIMB_QUEUE_ITEM', payload: item });
+        const newQueue =
+          item.suggested && !state.queue.find(({ uuid }) => uuid === item.uuid) ? [...state.queue, item] : state.queue;
+        sendData(state.connections, state.peerId, {
           type: 'update-queue',
-          queue: [...prevQueue, queueItem],
-          currentClimbQueueItem: queueItem,
-        });
-        return [...prevQueue, queueItem];
-      }
- 
-      sendData(connections, peerId, {
-        type: 'update-queue',
-        queue: [...prevQueue.slice(0, index + 1), queueItem, ...prevQueue.slice(index + 1)],
-        currentClimbQueueItem: queueItem,
-      });
-
-      // Replace the current item in the queue
-      return [...prevQueue.slice(0, index + 1), queueItem, ...prevQueue.slice(index + 1)];
-    });
-  };
-  
-  /**
-   * Wrapper around the state setter that also fetches more climbs if we're
-   * towards the end of the list.
-   * @param item The new climbqueue item
-   */
-  const setCurrentClimbQueueItem = (item: ClimbQueueItem) => {
-    if (viewOnlyMode) {
-      return;
-    }
-
-    setCurrentClimbQueueItemState(item);
-    if (
-      item.suggested &&
-      !queue.find(({ uuid }) => uuid === item.uuid) &&
-      climbSearchResults &&
-      climbSearchResults.length
-    ) {
-      setQueueState((prevQueue) => {
-        sendData(connections, peerId, {
-          type: 'update-queue',
-          queue: [...prevQueue, item],
+          queue: newQueue,
           currentClimbQueueItem: item,
         });
-
-        return [...prevQueue, item];
-      });
-
-      if (!isFetchingClimbs && suggestedClimbs.length < 5) {
-        fetchMoreClimbs();
       }
-    } else {
-      sendData(connections, peerId, {
-          type: 'update-queue',
-          currentClimbQueueItem: item,
-          queue,
-        });
-    }
-  };
+    },
+    setClimbSearchParams: (params: SearchRequestPagination) =>
+      dispatch({ type: 'SET_CLIMB_SEARCH_PARAMS', payload: params }),
+    mirrorClimb: () => dispatch({ type: 'MIRROR_CLIMB' }),
+    fetchMoreClimbs,
 
-  const getNextClimbQueueItem = (): ClimbQueueItem | null => {
-    if (queue.length === 0 && (!climbSearchResults || climbSearchResults.length === 0)) {
-      return null;
-    }
+    // Navigation helpers
+    getNextClimbQueueItem: () => {
+      const queueItemIndex = state.queue.findIndex(({ uuid }) => uuid === state.currentClimbQueueItem?.uuid);
 
-    const queueItemIndex = queue.findIndex(({ uuid }) => uuid === currentClimbQueueItem?.uuid);
-
-    // Handle the case where climbSearchResults is null or empty
-    if (
-      (queue.length === 0 || queue.length <= queueItemIndex + 1) &&
-      climbSearchResults &&
-      climbSearchResults.length > 0
-    ) {
-      const nextClimb = suggestedClimbs[0];
-
-      // If there is no next climb found, return null
-      if (!nextClimb) {
-        return null;
+      if ((state.queue.length === 0 || state.queue.length <= queueItemIndex + 1) && climbSearchResults?.length > 0) {
+        const nextClimb = suggestedClimbs[0];
+        return nextClimb
+          ? {
+              uuid: uuidv4(),
+              climb: nextClimb,
+              suggested: true,
+            }
+          : null;
       }
 
-      return {
-        uuid: uuidv4(),
-        climb: nextClimb,
-        suggested: true,
-      };
-    }
+      return queueItemIndex >= state.queue.length - 1 ? null : state.queue[queueItemIndex + 1];
+    },
 
-    if (queueItemIndex >= queue.length - 1) {
-      return null;
-    }
-
-    return queue[queueItemIndex + 1];
+    getPreviousClimbQueueItem: () => {
+      const queueItemIndex = state.queue.findIndex(({ uuid }) => uuid === state.currentClimbQueueItem?.uuid);
+      return queueItemIndex > 0 ? state.queue[queueItemIndex - 1] : null;
+    },
   };
 
-  const getPreviousClimbQueueItem = (): ClimbQueueItem | null => {
-    const queueItemIndex = queue.findIndex(({ uuid }) => uuid === currentClimbQueueItem?.uuid);
+  return <QueueContext.Provider value={contextValue}>{children}</QueueContext.Provider>;
+};
 
-    if (queueItemIndex > 0) {
-      return queue[queueItemIndex - 1];
-    }
-
-    return null;
-  };
-
-  const mirrorClimb = () => {
-    console.log('mirrored!')
-
-    setCurrentClimbQueueItemState((prevClimbQueueItem) => {
-      return { 
-        ...prevClimbQueueItem,
-        climb: {
-          ...prevClimbQueueItem?.climb,
-          mirrored: !prevClimbQueueItem?.climb.mirrored
-        }
-      }
-    })
+export const useQueueContext = () => {
+  const context = useContext(QueueContext);
+  if (!context) {
+    throw new Error('useQueueContext must be used within a QueueProvider');
   }
-  const viewOnlyMode = false;
-
-  return (
-    <QueueContext.Provider
-      value={{
-        queue,
-        addToQueue,
-        removeFromQueue,
-        climbSearchResults,
-        totalSearchResultCount,
-        fetchMoreClimbs,
-        hasMoreResults,
-        currentClimb: currentClimbQueueItem?.climb || null,
-        currentClimbQueueItem: currentClimbQueueItem,
-        setCurrentClimb,
-        setClimbSearchParams,
-        climbSearchParams,
-        setCurrentClimbQueueItem,
-        getNextClimbQueueItem,
-        getPreviousClimbQueueItem,
-        isFetchingClimbs,
-        hasDoneFirstFetch,
-        suggestedClimbs,
-        viewOnlyMode,
-        mirrorClimb,
-        peerId
-      }}
-    >
-      {children}
-    </QueueContext.Provider>
-  );
+  return context;
 };

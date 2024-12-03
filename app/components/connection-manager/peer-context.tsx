@@ -8,7 +8,6 @@ import { v4 as uuidv4 } from 'uuid';
 
 export const PeerContext = createContext<PeerContextType | undefined>(undefined);
 
-
 export const usePeerContext = () => {
   const context = useContext(PeerContext);
   if (!context) {
@@ -18,10 +17,6 @@ export const usePeerContext = () => {
 };
 
 const PeerProvider: React.FC<PeerProviderProps> = ({ children }) => {
-
-
- 
-
   return (
     <PeerContext.Provider
       value={{ readyToConnect, receivedData, sendData, connectToPeer, peerId, connections, hostId }}

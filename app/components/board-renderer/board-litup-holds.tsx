@@ -8,17 +8,21 @@ interface BoardLitupHoldsProps {
   thumbnail?: boolean;
 }
 
-const BoardLitupHolds: React.FC<BoardLitupHoldsProps> = ({ holdsData, climb: { litUpHoldsMap, mirrored }, thumbnail }) => {
+const BoardLitupHolds: React.FC<BoardLitupHoldsProps> = ({
+  holdsData,
+  climb: { litUpHoldsMap, mirrored },
+  thumbnail,
+}) => {
   if (!holdsData) return null;
-  
+
   return (
     <>
       {holdsData
         .filter(({ id }) => litUpHoldsMap[id]?.state && litUpHoldsMap[id].state !== 'OFF') // Apply the lit-up state
-        .map((hold) => { 
+        .map((hold) => {
           const color = litUpHoldsMap[hold.id].color;
           if (mirrored) {
-            hold = holdsData.find(({id}) => id === hold.mirroredHoldId);
+            hold = holdsData.find(({ id }) => id === hold.mirroredHoldId);
           }
 
           return (
@@ -34,7 +38,8 @@ const BoardLitupHolds: React.FC<BoardLitupHoldsProps> = ({ holdsData, climb: { l
               fillOpacity={thumbnail ? 1 : 0}
               fill={thumbnail ? color : undefined}
             />
-        )})}
+          );
+        })}
     </>
   );
 };

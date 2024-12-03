@@ -82,7 +82,9 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails }: QueueContr
           {/* Button cluster */}
           <Col xs={10} style={{ textAlign: 'right' }}>
             <Space>
-              { boardDetails.board_name === 'tension' ? <Button id="button-tick" onClick={mirrorClimb} type="default" icon={<SyncOutlined />} /> : null }
+              {boardDetails.board_name === 'tension' ? (
+                <Button id="button-tick" onClick={mirrorClimb} type="default" icon={<SyncOutlined />} />
+              ) : null}
               <PreviousClimbButton navigate={isViewPage} />
               <NextClimbButton navigate={isViewPage} />
               <Button id="button-tick" type="default" icon={<CheckOutlined />} />
