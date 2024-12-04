@@ -24,6 +24,7 @@ Using the share button in the top right corner, users can connect to each other 
 Similar to Spotify Jams, no more "What climb was that?", "what climb was the last one?", "Mind if I change it?", questions during a sesh
 
 ## Future features:
+
 - Faster beta video uploads. Current process for beta videos is manual, and as a result new beta videos are almost never added. We'll implement our own Instagram integration to get beta videos faster.
 
 # Getting Started

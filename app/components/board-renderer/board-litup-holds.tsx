@@ -25,7 +25,6 @@ const BoardLitupHolds: React.FC<BoardLitupHoldsProps> = ({
             const mirroredHold = holdsData.find(({ id }) => id === hold.mirroredHoldId);
             if (!mirroredHold) {
               throw new Error("Couldn't find mirrored hold");
-              return;
             }
             hold = mirroredHold;
           }

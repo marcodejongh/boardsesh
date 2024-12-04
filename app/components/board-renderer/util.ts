@@ -25,8 +25,8 @@ export const convertLitUpHoldsStringToMap = (litUpHolds: string, board: BoardNam
             You probably need to update that mapping after adding support for more boards`,
           );
         }
-        const { name, color } = HOLD_STATE_MAP[board][stateCode];
-        return [holdId, { state: name, color }];
+        const { name, color, displayColor } = HOLD_STATE_MAP[board][stateCode];
+        return [holdId, { state: name, color, displayColor: displayColor || color }];
       }),
   );
 export const getBoardImageDimensions = (board: BoardName, firstImage: string) =>

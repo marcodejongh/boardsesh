@@ -1,6 +1,6 @@
 ota:
-  platform: "esphome"
-  password: "370cbf03a104575c2dd3ddebabea9005"
+  platform: 'esphome'
+  password: '370cbf03a104575c2dd3ddebabea9005'
 
 esphome:
   name: kilterproxy
@@ -29,8 +29,8 @@ wifi:
   ssid: !secret wifi_scoutmk2_ssid
   password: !secret wifi_scoutmk2_password
   ap:
-    ssid: "Kilterproxy Fallback Hotspot"
-    password: "debugger"
+    ssid: 'Kilterproxy Fallback Hotspot'
+    password: 'debugger'
 
 # BLE configuration
 esp32_ble_tracker:
@@ -91,12 +91,12 @@ output:
 light:
   - platform: monochromatic
     output: gpio38
-    name: "Backlight"
+    name: 'Backlight'
     restore_mode: RESTORE_DEFAULT_ON
 
 # Font configuration
 font:
-  - file: "gfonts://Roboto"
+  - file: 'gfonts://Roboto'
     id: roboto
     size: 30
 
@@ -110,14 +110,13 @@ custom_component:
       ESP_LOGI("main", "Component registered");
       return {(Component*) component};
     id: kilter_board_component
-
 # Add web server with REST endpoints
 # web_server:
 #   port: 80
 #   local: true  # Only allow local network access
 #   css_url: ""  # Disable CSS
 #   js_url: ""   # Disable JS
-  
+
 #   # Add REST endpoint
 #   on_web_request:
 #     - method: POST
