@@ -13,8 +13,38 @@ import {
   splitMessages,
   writeCharacteristicSeries,
 } from './bluetooth';
+import { HoldRenderData } from '../board-renderer/types';
 
 type SendClimbToBoardButtonProps = { boardDetails: BoardDetails };
+
+export const convertToMirroredFramesString = (
+  frames: string,
+  holdsData: HoldRenderData[],
+): string => {
+  // Create a map for quick lookup of mirroredHoldId
+  const holdIdToMirroredIdMap = new Map<number, number>();
+  holdsData.forEach((hold) => {
+    if (hold.mirroredHoldId !== undefined) {
+      holdIdToMirroredIdMap.set(hold.id, hold.mirroredHoldId);
+    }
+  });
+
+  return frames
+    .split('p') // Split into hold data entries
+    .filter((hold) => hold) // Remove empty entries
+    .map((holdData) => {
+      const [holdId, stateCode] = holdData.split('r').map((str) => Number(str)); // Split hold data into holdId and stateCode
+      const mirroredHoldId = holdIdToMirroredIdMap.get(holdId);
+
+      if (mirroredHoldId === undefined) {
+        throw new Error(`Mirrored hold ID is not defined for hold ID ${holdId}.`);
+      }
+
+      // Construct the mirrored hold data
+      return `p${mirroredHoldId}r${stateCode}`;
+    })
+    .join(''); // Reassemble into a single string
+};
 
 // React component
 const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({ boardDetails }) => {
@@ -28,11 +58,15 @@ const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({ boardDe
 
   // Function to send climb data to the board
   const sendClimbToBoard = useCallback(async () => {
+    
     if (!currentClimbQueueItem || !characteristicRef.current) return;
 
-    const { frames } = currentClimbQueueItem.climb;
-    const placementPositions = boardDetails.ledPlacements;
+    let { frames } = currentClimbQueueItem.climb;
 
+    const placementPositions = boardDetails.ledPlacements;
+    if (currentClimbQueueItem.climb.mirrored) {
+      frames = convertToMirroredFramesString(frames, boardDetails.holdsData)
+    }
     const bluetoothPacket = getBluetoothPacket(frames, placementPositions, boardDetails.board_name);
 
     try {
