@@ -42,12 +42,8 @@ const BoardLitupHolds: React.FC<BoardLitupHoldsProps> = ({
               fillOpacity={thumbnail ? 1 : 0}
               fill={thumbnail ? color : undefined}
             />
-<<<<<<< HEAD
           );
         })}
-=======
-        )})}
->>>>>>> 0e3e621 (Add Tension board mirror button fixes #16)
     </>
   );
 };

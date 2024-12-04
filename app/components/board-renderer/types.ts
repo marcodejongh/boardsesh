@@ -14,7 +14,7 @@ export type HoldRenderData = {
   cy: number;
   r: number;
 };
-export type LitUpHoldsMap = Record<HoldCode, { state: HoldState; color: string, displayColor: string }>;
+export type LitUpHoldsMap = Record<HoldCode, { state: HoldState; color: string; displayColor: string }>;
 
 // Mapping object for board-specific hold states
 export const HOLD_STATE_MAP: Record<

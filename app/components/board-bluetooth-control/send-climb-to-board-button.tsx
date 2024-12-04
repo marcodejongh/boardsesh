@@ -17,14 +17,11 @@ import { HoldRenderData } from '../board-renderer/types';
 
 type SendClimbToBoardButtonProps = { boardDetails: BoardDetails };
 
-export const convertToMirroredFramesString = (
-  frames: string,
-  holdsData: HoldRenderData[],
-): string => {
+export const convertToMirroredFramesString = (frames: string, holdsData: HoldRenderData[]): string => {
   // Create a map for quick lookup of mirroredHoldId
   const holdIdToMirroredIdMap = new Map<number, number>();
   holdsData.forEach((hold) => {
-    if (hold.mirroredHoldId !== undefined) {
+    if (hold.mirroredHoldId) {
       holdIdToMirroredIdMap.set(hold.id, hold.mirroredHoldId);
     }
   });
@@ -58,14 +55,13 @@ const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({ boardDe
 
   // Function to send climb data to the board
   const sendClimbToBoard = useCallback(async () => {
-    
     if (!currentClimbQueueItem || !characteristicRef.current) return;
 
     let { frames } = currentClimbQueueItem.climb;
 
     const placementPositions = boardDetails.ledPlacements;
     if (currentClimbQueueItem.climb.mirrored) {
-      frames = convertToMirroredFramesString(frames, boardDetails.holdsData)
+      frames = convertToMirroredFramesString(frames, boardDetails.holdsData);
     }
     const bluetoothPacket = getBluetoothPacket(frames, placementPositions, boardDetails.board_name);
 
