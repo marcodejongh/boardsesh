@@ -2,8 +2,9 @@
 import React from 'react';
 import { List, Row, Col, Typography, Divider } from 'antd';
 import { Climb, BoardDetails } from '@/app/lib/types';
-import { ClimbQueueItem, useQueueContext } from './queue-context';
+import { useQueueContext } from './queue-context';
 import ClimbThumbnail from '../climb-card/climb-thumbnail';
+import { ClimbQueueItem } from './types';
 
 const { Text } = Typography;
 

@@ -1,67 +1,210 @@
+// File: QueueContext.tsx
 'use client';
 
-import React, { useEffect } from 'react';
-
-import { Climb, ParsedBoardRouteParameters, SearchRequestPagination } from '@/app/lib/types';
-import { constructClimbSearchUrl, searchParamsToUrlParams, urlParamsToSearchParams } from '@/app/lib/url-utils';
+import React, { useContext, createContext, ReactNode, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { createContext, useContext, useState, ReactNode } from 'react';
-import useSWRInfinite from 'swr/infinite';
 import { v4 as uuidv4 } from 'uuid';
-import { PAGE_LIMIT } from '../board-page/constants';
 import { usePeerContext } from '../connection-manager/peer-context';
+import { useQueueReducer } from './reducer';
+import { useQueueDataFetching } from './hooks/use-queue-data-fetching';
+import { QueueContextType, ClimbQueueItem, UserName } from './types';
+import { urlParamsToSearchParams } from '@/app/lib/url-utils';
+import { Climb, ParsedBoardRouteParameters } from '@/app/lib/types';
+import { PeerData } from '../connection-manager/types';
 
 type QueueContextProps = {
   parsedParams: ParsedBoardRouteParameters;
   children: ReactNode;
 };
 
-type UserName = string;
-
-export type ClimbQueueItem = {
-  addedBy?: UserName;
-  tickedBy?: UserName[];
-  climb: Climb;
-  uuid: string;
-  suggested?: boolean;
-};
-
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
-
-type ClimbQueue = ClimbQueueItem[];
-
-interface QueueContextType {
-  queue: ClimbQueue;
-
-  addToQueue: (climb: Climb) => void;
-  removeFromQueue: (queueItem: ClimbQueueItem) => void;
-
-  setCurrentClimb: (climb: Climb) => void;
-  currentClimb: Climb | null;
-  currentClimbQueueItem: ClimbQueueItem | null;
-
-  setClimbSearchParams: (searchParams: SearchRequestPagination) => void;
-
-  climbSearchParams: SearchRequestPagination;
-  climbSearchResults: Climb[] | null;
-  suggestedClimbs: Climb[];
-  totalSearchResultCount: number | null;
-
-  fetchMoreClimbs: () => void;
-
-  setCurrentClimbQueueItem: (item: ClimbQueueItem) => void;
-
-  getNextClimbQueueItem: () => ClimbQueueItem | null;
-  getPreviousClimbQueueItem: () => ClimbQueueItem | null;
-  mirrorClimb: (mirror: boolean) => void;
-  
-  hasMoreResults: boolean;
-  isFetchingClimbs: boolean;
-  hasDoneFirstFetch: boolean;
-  viewOnlyMode: boolean;
-}
+const createClimbQueueItem = (climb: Climb, addedBy: UserName, suggested?: boolean) => ({
+  climb,
+  addedBy,
+  uuid: uuidv4(),
+  suggested: !!suggested,
+});
 
 const QueueContext = createContext<QueueContextType | undefined>(undefined);
+
+export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => {
+  const searchParams = useSearchParams();
+  const initialSearchParams = urlParamsToSearchParams(searchParams);
+  const [state, dispatch] = useQueueReducer(initialSearchParams);
+  const { sendData, peerId, subscribeToData, hostId } = usePeerContext();
+
+  // Set up queue update handler
+  const handlePeerData = useCallback(
+    (data: PeerData) => {
+      console.log(`${new Date().getTime()} Queue context received: ${data.type} from: ${data.source}`);
+
+      switch (data.type) {
+        case 'new-connection':
+          sendData(
+            {
+              type: 'initial-queue-data',
+              queue: state.queue,
+              currentClimbQueueItem: state.currentClimbQueueItem,
+            },
+            data.source,
+          );
+          break;
+        case 'initial-queue-data':
+          if (hostId !== data.source) {
+            console.log(`Ignoring queue data from ${data.source} since it's not the host.`);
+            return;
+          }
+          dispatch({
+            type: 'INITIAL_QUEUE_DATA',
+            payload: {
+              queue: data.queue,
+              currentClimbQueueItem: data.currentClimbQueueItem || null,
+            },
+          });
+          break;
+        case 'update-queue':
+          dispatch({
+            type: 'UPDATE_QUEUE',
+            payload: {
+              queue: data.queue,
+              currentClimbQueueItem: data.currentClimbQueueItem || null,
+            },
+          });
+          break;
+      }
+    },
+    [sendData, state.queue, state.currentClimbQueueItem, hostId, dispatch],
+  );
+
+  useEffect(() => {
+    const unsubscribe = subscribeToData(handlePeerData);
+    return () => unsubscribe();
+  }, [subscribeToData, handlePeerData]);
+
+  const {
+    climbSearchResults,
+    suggestedClimbs,
+    totalSearchResultCount,
+    hasMoreResults,
+    isFetchingClimbs,
+    fetchMoreClimbs,
+  } = useQueueDataFetching({
+    searchParams: state.climbSearchParams,
+    queue: state.queue,
+    parsedParams,
+    hasDoneFirstFetch: state.hasDoneFirstFetch,
+    setHasDoneFirstFetch: () => dispatch({ type: 'SET_FIRST_FETCH', payload: true }),
+  });
+
+  const contextValue: QueueContextType = {
+    // State
+    queue: state.queue,
+    currentClimbQueueItem: state.currentClimbQueueItem,
+    currentClimb: state.currentClimbQueueItem?.climb || null,
+    climbSearchParams: state.climbSearchParams,
+    climbSearchResults,
+    suggestedClimbs,
+    totalSearchResultCount,
+    hasMoreResults,
+    isFetchingClimbs,
+    hasDoneFirstFetch: state.hasDoneFirstFetch,
+    viewOnlyMode: hostId ? !state.initialQueueDataReceivedFromPeers : false,
+    peerId,
+    // Actions
+    addToQueue: (climb: Climb) => {
+      const newItem = createClimbQueueItem(climb, peerId);
+
+      dispatch({ type: 'ADD_TO_QUEUE', payload: newItem });
+      sendData({
+        type: 'update-queue',
+        queue: [...state.queue, newItem],
+        currentClimbQueueItem: state.currentClimbQueueItem,
+      });
+    },
+
+    removeFromQueue: (item: ClimbQueueItem) => {
+      // TODO: SInce we're dispatching the full new queue, it can lead to race conditions if
+      // someone is hammering the UI. So ideally, we call sendData _after_ the state has been applied
+      const newQueue = state.queue.filter((qItem) => qItem.uuid !== item.uuid);
+
+      dispatch({ type: 'REMOVE_FROM_QUEUE', payload: newQueue });
+
+      sendData({
+        type: 'update-queue',
+        queue: newQueue,
+        currentClimbQueueItem: state.currentClimbQueueItem,
+      });
+    },
+
+    setCurrentClimb: (climb: Climb) => {
+      /**
+       * The behaviour of setCurrentClimb is subtly different from setCurrentClimbQueueItem
+       * But I cant quite remember how, I think something about inserting the current lcimb at the current position
+       * in the queue.
+       */
+      const newItem = createClimbQueueItem(climb, peerId);
+
+      dispatch({ type: 'SET_CURRENT_CLIMB', payload: newItem });
+
+      /**
+       * THe queue injecting logic is completely duplicated in the reducer, so should figure out how to reuse
+       * that somehow. Probably by having a middleware perform sideeffects, or something like that.
+       */
+      const currentIndex = state.currentClimbQueueItem
+        ? state.queue.findIndex(({ uuid }) => uuid === state.currentClimbQueueItem?.uuid)
+        : -1;
+      const newQueue =
+        currentIndex === -1
+          ? [...state.queue, newItem]
+          : [...state.queue.slice(0, currentIndex + 1), newItem, ...state.queue.slice(currentIndex + 1)];
+
+      sendData({
+        type: 'update-queue',
+        queue: newQueue,
+        currentClimbQueueItem: newItem,
+      });
+    },
+
+    setCurrentClimbQueueItem: (item: ClimbQueueItem) => {
+      dispatch({ type: 'SET_CURRENT_CLIMB_QUEUE_ITEM', payload: item });
+      const newQueue =
+        item.suggested && !state.queue.find(({ uuid }) => uuid === item.uuid) ? [...state.queue, item] : state.queue;
+
+      sendData({
+        type: 'update-queue',
+        queue: newQueue,
+        currentClimbQueueItem: item,
+      });
+    },
+
+    setClimbSearchParams: (params) => dispatch({ type: 'SET_CLIMB_SEARCH_PARAMS', payload: params }),
+
+    mirrorClimb: () => dispatch({ type: 'MIRROR_CLIMB' }),
+
+    fetchMoreClimbs,
+
+    getNextClimbQueueItem: () => {
+      const queueItemIndex = state.queue.findIndex(({ uuid }) => uuid === state.currentClimbQueueItem?.uuid);
+
+      if (
+        (state.queue.length === 0 || state.queue.length <= queueItemIndex + 1) &&
+        climbSearchResults &&
+        climbSearchResults?.length > 0
+      ) {
+        const nextClimb = suggestedClimbs[0];
+        return nextClimb ? createClimbQueueItem(nextClimb, peerId, true) : null;
+      }
+
+      return queueItemIndex >= state.queue.length - 1 ? null : state.queue[queueItemIndex + 1];
+    },
+
+    getPreviousClimbQueueItem: () => {
+      const queueItemIndex = state.queue.findIndex(({ uuid }) => uuid === state.currentClimbQueueItem?.uuid);
+      return queueItemIndex > 0 ? state.queue[queueItemIndex - 1] : null;
+    },
+  };
+
+  return <QueueContext.Provider value={contextValue}>{children}</QueueContext.Provider>;
+};
 
 export const useQueueContext = () => {
   const context = useContext(QueueContext);
@@ -69,277 +212,4 @@ export const useQueueContext = () => {
     throw new Error('useQueueContext must be used within a QueueProvider');
   }
   return context;
-};
-
-export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => {
-  const { connections, hostId, receivedData, sendData } = usePeerContext();
-  const [queue, setQueueState] = useState<ClimbQueue>([]);
-  const [hasDoneFirstFetch, setHasDoneFirstFetch] = useState<boolean>(false);
-
-  const [currentClimbQueueItem, setCurrentClimbQueueItemState] = useState<ClimbQueueItem | null>(null);
-
-  const [climbSearchParams, setClimbSearchParamsState] = useState<SearchRequestPagination>(
-    urlParamsToSearchParams(useSearchParams()),
-  );
-
-  const setClimbSearchParams = (updatedFilters: SearchRequestPagination) => {
-    setClimbSearchParamsState(() => {
-      // Size stays at a high number if we don't update it manually.
-      setSize(updatedFilters.page + 1);
-      return updatedFilters;
-    });
-
-    // We only want to use history.replaceState for filter changes as SWR takes care of the actual
-    // fetching, and using router.replace assumes we want the result of the SSR page.tsx.
-    history.replaceState(null, '', `${window.location.pathname}?${searchParamsToUrlParams(updatedFilters).toString()}`);
-  };
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const getKey = (pageIndex: number, previousPageData: any) => {
-    if (previousPageData && previousPageData.climbs.length === 0) return null;
-
-    const queryString = searchParamsToUrlParams({
-      ...climbSearchParams,
-      page: pageIndex,
-    }).toString();
-
-    return constructClimbSearchUrl(parsedParams, queryString);
-  };
-
-  useEffect(() => {
-    // Iterate over connections whenever they change
-    connections.forEach((conn) => {
-      if (!conn.open && hostId) {
-        conn.on('open', () => {
-          console.log(`Connection opened with peer ${conn.peer}`);
-          conn.send({ type: 'request-update-queue' });
-        });
-      }
-    });
-  }, [connections, hostId]);
-
-  useEffect(() => {
-    switch (receivedData?.type) {
-      case 'request-update-queue':
-        sendData(
-          {
-            type: 'update-queue',
-            queue,
-            currentClimbQueueItem, // Send the queue data from QueueProvider
-          },
-          receivedData.source,
-        );
-        break;
-      case 'update-queue':
-        setQueueState(() => {
-          setCurrentClimbQueueItemState(receivedData.currentClimbQueueItem);
-          return receivedData.queue;
-        });
-        break;
-    }
-  }, [receivedData]);
-
-  useEffect(() => {
-    if (!hostId) {
-      sendData({
-        type: 'update-queue',
-        queue,
-        currentClimbQueueItem, // Send the queue data from QueueProvider
-      });
-    }
-  }, [currentClimbQueueItem, queue, sendData, hostId]);
-
-  const {
-    data,
-    size,
-    setSize,
-    isLoading: isFetchingClimbs,
-  } = useSWRInfinite(getKey, fetcher, {
-    revalidateOnFocus: false,
-    revalidateFirstPage: false,
-    initialSize: climbSearchParams.page ? climbSearchParams.page + 1 : 1,
-  });
-
-  const fetchMoreClimbs = () => {
-    setSize((oldSize) => {
-      const newParams = { ...climbSearchParams, page: oldSize + 1 };
-      // We persist the new page number in the URL so that the page on a hard refresh will
-      // be the same as it was before, and hopefully will restore scroll correctly.
-      history.replaceState(null, '', `${window.location.pathname}?${searchParamsToUrlParams(newParams).toString()}`);
-      return oldSize + 1;
-    });
-  };
-
-  const hasMoreResults = data && data[0] && size * PAGE_LIMIT < data[0].totalCount;
-  const totalSearchResultCount = (data && data[0] && data[0].totalCount) || null;
-
-  const climbSearchResults = data ? data.flatMap((page: { climbs: Climb[] }) => page.climbs) : null;
-  const suggestedClimbs = (climbSearchResults || []).filter(
-    (item) => !queue.find(({ climb: { uuid } }) => item.uuid === uuid),
-  );
-
-  const addToQueue = (climb: Climb) => {
-    setQueueState((prevQueue) => [...prevQueue, { climb, uuid: uuidv4() }]);
-  };
-
-  const removeFromQueue = (climbQueueItem: ClimbQueueItem) => {
-    setQueueState((prevQueue) => {
-      if (prevQueue === null) {
-        return prevQueue;
-      }
-      const newQueue = prevQueue.filter((item) => item.uuid !== climbQueueItem.uuid);
-      return newQueue;
-    });
-  };
-
-  if (climbSearchResults && climbSearchResults.length > 0 && !hasDoneFirstFetch) {
-    setHasDoneFirstFetch(true);
-  }
-
-  /***
-   * Immediately sets current climb, and inserts it into the queue.
-   * If there is an active queue, we insert the new climb
-   * after the old climb.
-   */
-  const setCurrentClimb = (climb: Climb) => {
-    if (viewOnlyMode) {
-      return;
-    }
-
-    const queueItem = {
-      climb,
-      uuid: uuidv4(),
-    };
-
-    setQueueState((prevQueue) => {
-      setCurrentClimbQueueItemState(queueItem);
-
-      if (!currentClimbQueueItem) {
-        // If no current item, append the new one to the queue
-        return [...prevQueue, queueItem];
-      }
-
-      const index = prevQueue.findIndex(({ uuid }) => uuid === currentClimbQueueItem?.uuid);
-      if (index === -1) {
-        // If the current item is not found, append the new one
-        return [...prevQueue, queueItem];
-      }
-
-      // Replace the current item in the queue
-      return [...prevQueue.slice(0, index + 1), queueItem, ...prevQueue.slice(index + 1)];
-    });
-  };
-  
-  /**
-   * Wrapper around the state setter that also fetches more climbs if we're
-   * towards the end of the list.
-   * @param item The new climbqueue item
-   */
-  const setCurrentClimbQueueItem = (item: ClimbQueueItem) => {
-    if (viewOnlyMode) {
-      return;
-    }
-
-    setCurrentClimbQueueItemState(item);
-    if (
-      item.suggested &&
-      !queue.find(({ uuid }) => uuid === item.uuid) &&
-      climbSearchResults &&
-      climbSearchResults.length
-    ) {
-      setQueueState((prevQueue) => [...prevQueue, item]);
-
-      if (!isFetchingClimbs && suggestedClimbs.length < 5) {
-        fetchMoreClimbs();
-      }
-    }
-  };
-
-  const getNextClimbQueueItem = (): ClimbQueueItem | null => {
-    if (queue.length === 0 && (!climbSearchResults || climbSearchResults.length === 0)) {
-      return null;
-    }
-
-    const queueItemIndex = queue.findIndex(({ uuid }) => uuid === currentClimbQueueItem?.uuid);
-
-    // Handle the case where climbSearchResults is null or empty
-    if (
-      (queue.length === 0 || queue.length <= queueItemIndex + 1) &&
-      climbSearchResults &&
-      climbSearchResults.length > 0
-    ) {
-      const nextClimb = suggestedClimbs[0];
-
-      // If there is no next climb found, return null
-      if (!nextClimb) {
-        return null;
-      }
-
-      return {
-        uuid: uuidv4(),
-        climb: nextClimb,
-        suggested: true,
-      };
-    }
-
-    if (queueItemIndex >= queue.length - 1) {
-      return null;
-    }
-
-    return queue[queueItemIndex + 1];
-  };
-
-  const getPreviousClimbQueueItem = (): ClimbQueueItem | null => {
-    const queueItemIndex = queue.findIndex(({ uuid }) => uuid === currentClimbQueueItem?.uuid);
-
-    if (queueItemIndex > 0) {
-      return queue[queueItemIndex - 1];
-    }
-
-    return null;
-  };
-
-  const viewOnlyMode = hostId && hostId.length > 1;
-  const mirrorClimb = () => {
-    console.log('mirrored!')
-
-    setCurrentClimbQueueItemState((prevClimbQueueItem) => {
-      return { 
-        ...prevClimbQueueItem,
-        climb: {
-          ...prevClimbQueueItem?.climb,
-          mirrored: !prevClimbQueueItem?.climb.mirrored
-        }
-      }
-    })
-  }
-
-  return (
-    <QueueContext.Provider
-      value={{
-        queue,
-        addToQueue,
-        removeFromQueue,
-        climbSearchResults,
-        totalSearchResultCount,
-        fetchMoreClimbs,
-        hasMoreResults,
-        currentClimb: currentClimbQueueItem?.climb || null,
-        currentClimbQueueItem: currentClimbQueueItem,
-        setCurrentClimb,
-        setClimbSearchParams,
-        climbSearchParams,
-        setCurrentClimbQueueItem,
-        getNextClimbQueueItem,
-        getPreviousClimbQueueItem,
-        isFetchingClimbs,
-        hasDoneFirstFetch,
-        suggestedClimbs,
-        viewOnlyMode,
-        mirrorClimb,
-      }}
-    >
-      {children}
-    </QueueContext.Provider>
-  );
 };

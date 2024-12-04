@@ -1,13 +1,21 @@
+'use client';
+
 import React, { useState } from 'react';
 import { ShareAltOutlined, CopyOutlined } from '@ant-design/icons';
 import { Button, Input, Modal, QRCode, Flex, message } from 'antd';
-import { usePeerContext } from '../connection-manager/peer-context';
 import { usePathname, useSearchParams } from 'next/navigation';
+import { useQueueContext } from '../queue-control/queue-context';
 
 const getShareUrl = (pathname: string, searchParams: URLSearchParams, peerId: string) => {
-  const params = new URLSearchParams(searchParams.toString());
-  params.set('hostId', peerId);
-  return `${window.location.origin}${pathname}?${params.toString()}`;
+  try {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('hostId', peerId);
+    return `${window.location.origin}${pathname}?${params.toString()}`;
+  } catch (e) {
+    // A bit lazy this catch, but despite the use client at the top of the file
+    // I was still getting window undefined errors...
+    return '';
+  }
 };
 
 export type ShareButtonProps = {
@@ -17,7 +25,7 @@ export type ShareButtonProps = {
   search: string;
 };
 export const ShareBoardButton = () => {
-  const { peerId } = usePeerContext();
+  const { peerId } = useQueueContext();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const searchParams = useSearchParams();

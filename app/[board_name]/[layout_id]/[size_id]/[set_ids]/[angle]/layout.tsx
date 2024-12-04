@@ -10,7 +10,7 @@ import QueueControlBar from '@/app/components/queue-control/queue-control-bar';
 import { fetchBoardDetails } from '@/app/components/rest-api/api';
 import BoardSeshHeader from '@/app/components/board-page/header';
 import { QueueProvider } from '@/app/components/queue-control/queue-context';
-import PeerProvider from '@/app/components/connection-manager/peer-context';
+import { PeerProvider } from '@/app/components/connection-manager/peer-context';
 
 interface BoardLayoutProps {
   params: BoardRouteParametersWithUuid;
