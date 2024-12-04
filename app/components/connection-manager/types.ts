@@ -1,7 +1,7 @@
 import Peer, { DataConnection } from 'peerjs';
 import { ClimbQueue, ClimbQueueItem, PeerId } from '../queue-control/types';
 
-export type ConnectionState = 'CONNECTING' | 'CONNECTED' | 'READY';
+export type ConnectionState = 'CONNECTING' | 'CONNECTED' | 'READY' | 'BROADCAST_SENT';
 
 export type PeerConnection = {
   connection: DataConnection;

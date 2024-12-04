@@ -3,7 +3,7 @@
 import React, { useCallback, useContext, createContext, useEffect, useRef, useReducer } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Peer, { DataConnection } from 'peerjs';
-import { PeerContextType, PeerState, PeerAction, PeerData, PeerConnection, isPeerData } from './types';
+import { PeerContextType, PeerState, PeerAction, PeerData, PeerConnection, isPeerData, ConnectionState } from './types';
 import { v4 as uuidv4 } from 'uuid';
 
 const PeerContext = createContext<PeerContextType | undefined>(undefined);
@@ -20,8 +20,6 @@ const initialPeerState: PeerState = {
   connections: [],
   readyToConnect: false,
 };
-
-type ConnectionState = 'CONNECTING' | 'CONNECTED' | 'READY' | 'BROADCAST_SENT';
 
 function peerReducer(state: PeerState, action: PeerAction): PeerState {
   switch (action.type) {
