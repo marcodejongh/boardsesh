@@ -1,7 +1,7 @@
 // File: QueueContext.tsx
 'use client';
 
-import React, { useContext, createContext, ReactNode, useEffect } from 'react';
+import React, { useContext, createContext, ReactNode, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { v4 as uuidv4 } from 'uuid';
 import { usePeerContext } from '../connection-manager/peer-context';
@@ -30,12 +30,27 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
   const searchParams = useSearchParams();
   const initialSearchParams = urlParamsToSearchParams(searchParams);
   const [state, dispatch] = useQueueReducer(initialSearchParams);
-  const { sendData, peerId, connections, subscribeToData } = usePeerContext();
+  const { sendData, peerId, connections, subscribeToData, hostId } = usePeerContext();
 
   // Set up queue update handler
-  useEffect(() => {
-    subscribeToData((data: PeerData) => {
-      if (data.type === 'update-queue' && data.queue) {
+const handlePeerData = useCallback((data: PeerData) => {
+    console.log(`${new Date().getTime()} Queue context received: ${data.type} from: ${data.source}`);
+    
+    switch(data.type) {
+      case 'new-connection':
+        sendData({
+          type: 'initial-queue-data',
+          queue: state.queue,
+          currentClimbQueueItem: state.currentClimbQueueItem,
+        }, data.source);
+        break;
+      case 'initial-queue-data': 
+        if(hostId !== data.source) {
+          console.log(`Ignoring queue data from ${data.source} since it's not the host.`)
+          return;
+        }
+        // Intentional fall through, we only want to action the update from the host
+      case 'update-queue':
         dispatch({
           type: 'UPDATE_QUEUE',
           payload: {
@@ -43,9 +58,14 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
             currentClimbQueueItem: data.currentClimbQueueItem || null,
           },
         });
-      }
-    });
-  }, [dispatch, subscribeToData]);
+        break;
+    }
+  }, [sendData, state.queue, state.currentClimbQueueItem, hostId, dispatch]);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToData(handlePeerData);
+    return () => unsubscribe();
+  }, [subscribeToData, handlePeerData]);
 
   // Request initial queue state when connecting as a client
   useEffect(() => {

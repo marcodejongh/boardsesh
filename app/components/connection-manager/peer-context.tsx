@@ -21,6 +21,8 @@ const initialPeerState: PeerState = {
   readyToConnect: false,
 };
 
+type ConnectionState = 'CONNECTING' | 'CONNECTED' | 'READY' | 'BROADCAST_SENT';
+
 function peerReducer(state: PeerState, action: PeerAction): PeerState {
   switch (action.type) {
     case 'SET_PEER':
@@ -36,17 +38,34 @@ function peerReducer(state: PeerState, action: PeerAction): PeerState {
         return state;
       }
       return { ...state, connections: [...state.connections, action.payload] };
-    case 'OPENED_CONNECTION':
+    case 'UPDATE_CONNECTION_STATE':
       return {
         ...state,
         connections: state.connections.map((conn) =>
-          conn.connection.peer === action.payload ? { ...conn, state: 'CONNECTED' } : conn,
+          conn.connection.peer === action.payload.peerId
+            ? { ...conn, state: action.payload.state as ConnectionState }
+            : conn
         ),
       };
     default:
       return state;
   }
 }
+
+const broadcastPeerList = (
+  peerId: string,
+  connections: PeerConnection[],
+  sendData: (data: PeerData, connectionId: string | null) => void
+) => {
+  const peerList = connections.map((conn) => conn.connection.peer);
+  sendData(
+    {
+      type: 'broadcast-other-peers',
+      peers: peerList,
+    },
+    peerId
+  );
+};
 
 export const PeerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(peerReducer, initialPeerState);
@@ -145,7 +164,9 @@ export const PeerProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log('Received peer broadcast:', data.peers);
         if (Array.isArray(data.peers)) {
           data.peers.forEach((peerId) => {
-            const hasConnection = currentState.connections.some((conn) => conn.connection.peer === peerId);
+            const hasConnection = currentState.connections.some(
+              (conn) => conn.connection.peer === peerId
+            );
             if (!hasConnection && peerId !== currentState.peerId) {
               console.log('Connecting to new peer from broadcast:', peerId);
               connectToPeer(peerId);
@@ -153,6 +174,7 @@ export const PeerProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
         }
         break;
+      case 'new-connection':
       case 'request-update-queue':
         break;
       case 'update-queue':
@@ -185,15 +207,27 @@ export const PeerProvider: React.FC<{ children: React.ReactNode }> = ({ children
     state.connections
       .filter((con) => con && con.state === 'CONNECTED')
       .forEach((conn) => {
-        sendData(
-          {
-            type: 'broadcast-other-peers',
-            peers: state.connections.map((conn) => conn.connection.peer),
-          },
-          conn.connection.peer,
-        );
+        const peerId = conn.connection.peer;
+        
+        // Only send broadcast and notify if this connection hasn't been processed
+        if (conn.state === 'CONNECTED') {
+          // First, broadcast peer list
+          broadcastPeerList(peerId, state.connections, sendData);
+          
+          // Then notify subscribers about the new connection
+          notifySubscribers({
+            type: 'new-connection',
+            source: peerId,
+          });
+          
+          // Update connection state to READY
+          dispatch({
+            type: 'UPDATE_CONNECTION_STATE',
+            payload: { peerId, state: 'READY' },
+          });
+        }
       });
-  }, [state.connections, sendData]);
+  }, [state.connections, sendData, notifySubscribers]);
 
   useEffect(() => {
     if (state.readyToConnect && hostId) {
@@ -211,6 +245,7 @@ export const PeerProvider: React.FC<{ children: React.ReactNode }> = ({ children
     sendData,
     connectToPeer,
     subscribeToData,
+    hostId,
   };
 
   return <PeerContext.Provider value={contextValue}>{children}</PeerContext.Provider>;
@@ -230,10 +265,8 @@ function setupHandlers(
   console.log('Setting up listeners for', conn.peer);
   conn._handlersSetup = true;
 
-  // Always set up data, close, and error handlers immediately
   setupDataHandlers(conn, receivedDataRef, dispatch, stateRef);
 
-  // Handle the open event separately
   if (!conn.open) {
     conn.on('open', () => {
       console.log(`Connection opened with peer ${conn.peer}`);
@@ -243,7 +276,6 @@ function setupHandlers(
       });
     });
   } else {
-    // If already open, dispatch the connection immediately
     dispatch({
       type: 'ADD_CONNECTION',
       payload: { connection: conn, state: 'CONNECTED' } as PeerConnection,

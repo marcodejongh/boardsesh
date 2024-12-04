@@ -27,6 +27,7 @@ export type PeerAction =
 
 export interface PeerContextType {
   peerId: PeerId;
+  hostId: PeerId;
   connections: PeerConnection[];
   sendData: (data: PeerData, connectionId?: string | null) => void;
   connectToPeer: (connectionId: string) => void;
@@ -49,7 +50,7 @@ interface RequestUpdateQueueData extends PeerDataBase {
 }
 
 interface UpdateQueueData extends PeerDataBase {
-  type: 'update-queue';
+  type: 'update-queue' | 'initial-queue-data';
   queue: ClimbQueue;
   currentClimbQueueItem: ClimbQueueItem | null;
 }
@@ -59,8 +60,12 @@ interface BroadcastOtherPeersData extends PeerDataBase {
   peers: string[];
 }
 
+interface NewConnectionData extends PeerDataBase {
+  type: 'new-connection';
+}
+
 // Union type of all possible message types
-export type PeerData = RequestUpdateQueueData | UpdateQueueData | BroadcastOtherPeersData;
+export type PeerData = RequestUpdateQueueData | UpdateQueueData | BroadcastOtherPeersData | NewConnectionData;
 
 export function isPeerData(data: unknown): data is PeerData {
   if (typeof data !== 'object' || data === null) return false;
@@ -75,7 +80,8 @@ export function isPeerData(data: unknown): data is PeerData {
   switch (msg.type) {
     case 'request-update-queue':
       return true; // No additional required fields
-
+    
+    case 'initial-queue-data':
     case 'update-queue':
       return 'queue' in msg && 'currentClimbQueueItem' in msg;
 
