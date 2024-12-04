@@ -33,41 +33,47 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
   const { sendData, peerId, subscribeToData, hostId } = usePeerContext();
 
   // Set up queue update handler
-const handlePeerData = useCallback((data: PeerData) => {
-    console.log(`${new Date().getTime()} Queue context received: ${data.type} from: ${data.source}`);
-    
-    switch(data.type) {
-      case 'new-connection':
-        sendData({
-          type: 'initial-queue-data',
-          queue: state.queue,
-          currentClimbQueueItem: state.currentClimbQueueItem,
-        }, data.source);
-        break;
-      case 'initial-queue-data': 
-        if(hostId !== data.source) {
-          console.log(`Ignoring queue data from ${data.source} since it's not the host.`)
-          return;
-        }
-        dispatch({
-          type: 'INITIAL_QUEUE_DATA',
-          payload: {
-            queue: data.queue,
-            currentClimbQueueItem: data.currentClimbQueueItem || null,
-          },
-        });
-        break;
-      case 'update-queue':
-        dispatch({
-          type: 'UPDATE_QUEUE',
-          payload: {
-            queue: data.queue,
-            currentClimbQueueItem: data.currentClimbQueueItem || null,
-          },
-        });
-        break;
-    }
-  }, [sendData, state.queue, state.currentClimbQueueItem, hostId, dispatch]);
+  const handlePeerData = useCallback(
+    (data: PeerData) => {
+      console.log(`${new Date().getTime()} Queue context received: ${data.type} from: ${data.source}`);
+
+      switch (data.type) {
+        case 'new-connection':
+          sendData(
+            {
+              type: 'initial-queue-data',
+              queue: state.queue,
+              currentClimbQueueItem: state.currentClimbQueueItem,
+            },
+            data.source,
+          );
+          break;
+        case 'initial-queue-data':
+          if (hostId !== data.source) {
+            console.log(`Ignoring queue data from ${data.source} since it's not the host.`);
+            return;
+          }
+          dispatch({
+            type: 'INITIAL_QUEUE_DATA',
+            payload: {
+              queue: data.queue,
+              currentClimbQueueItem: data.currentClimbQueueItem || null,
+            },
+          });
+          break;
+        case 'update-queue':
+          dispatch({
+            type: 'UPDATE_QUEUE',
+            payload: {
+              queue: data.queue,
+              currentClimbQueueItem: data.currentClimbQueueItem || null,
+            },
+          });
+          break;
+      }
+    },
+    [sendData, state.queue, state.currentClimbQueueItem, hostId, dispatch],
+  );
 
   useEffect(() => {
     const unsubscribe = subscribeToData(handlePeerData);
@@ -85,8 +91,10 @@ const handlePeerData = useCallback((data: PeerData) => {
     searchParams: state.climbSearchParams,
     queue: state.queue,
     parsedParams,
+    hasDoneFirstFetch: state.hasDoneFirstFetch,
+    setHasDoneFirstFetch: () => dispatch({ type: 'SET_FIRST_FETCH', payload: true }),
   });
-  
+
   const contextValue: QueueContextType = {
     // State
     queue: state.queue,

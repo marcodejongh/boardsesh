@@ -41,7 +41,7 @@ export function queueReducer(state: QueueState, action: QueueAction): QueueState
         ...state,
         climbSearchParams: action.payload,
       };
-    case 'INITIAL_QUEUE_DATA': 
+    case 'INITIAL_QUEUE_DATA':
       return {
         ...state,
         queue: action.payload.queue,

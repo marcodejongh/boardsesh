@@ -44,7 +44,7 @@ function peerReducer(state: PeerState, action: PeerAction): PeerState {
         connections: state.connections.map((conn) =>
           conn.connection.peer === action.payload.peerId
             ? { ...conn, state: action.payload.state as ConnectionState }
-            : conn
+            : conn,
         ),
       };
     default:
@@ -55,7 +55,7 @@ function peerReducer(state: PeerState, action: PeerAction): PeerState {
 const broadcastPeerList = (
   peerId: string,
   connections: PeerConnection[],
-  sendData: (data: PeerData, connectionId: string | null) => void
+  sendData: (data: PeerData, connectionId: string | null) => void,
 ) => {
   const peerList = connections.map((conn) => conn.connection.peer);
   sendData(
@@ -63,7 +63,7 @@ const broadcastPeerList = (
       type: 'broadcast-other-peers',
       peers: peerList,
     },
-    peerId
+    peerId,
   );
 };
 
@@ -164,9 +164,7 @@ export const PeerProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log('Received peer broadcast:', data.peers);
         if (Array.isArray(data.peers)) {
           data.peers.forEach((peerId) => {
-            const hasConnection = currentState.connections.some(
-              (conn) => conn.connection.peer === peerId
-            );
+            const hasConnection = currentState.connections.some((conn) => conn.connection.peer === peerId);
             if (!hasConnection && peerId !== currentState.peerId) {
               console.log('Connecting to new peer from broadcast:', peerId);
               connectToPeer(peerId);
@@ -208,18 +206,18 @@ export const PeerProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .filter((con) => con && con.state === 'CONNECTED')
       .forEach((conn) => {
         const peerId = conn.connection.peer;
-        
+
         // Only send broadcast and notify if this connection hasn't been processed
         if (conn.state === 'CONNECTED') {
           // First, broadcast peer list
           broadcastPeerList(peerId, state.connections, sendData);
-          
+
           // Then notify subscribers about the new connection
           notifySubscribers({
             type: 'new-connection',
             source: peerId,
           });
-          
+
           // Update connection state to READY
           dispatch({
             type: 'UPDATE_CONNECTION_STATE',

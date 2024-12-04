@@ -12,9 +12,17 @@ interface UseQueueDataFetchingProps {
   searchParams: SearchRequestPagination;
   queue: ClimbQueue;
   parsedParams: ParsedBoardRouteParameters;
+  hasDoneFirstFetch: boolean;
+  setHasDoneFirstFetch: () => void;
 }
 
-export const useQueueDataFetching = ({ searchParams, queue, parsedParams }: UseQueueDataFetchingProps) => {
+export const useQueueDataFetching = ({
+  searchParams,
+  queue,
+  parsedParams,
+  hasDoneFirstFetch,
+  setHasDoneFirstFetch,
+}: UseQueueDataFetchingProps) => {
   const getKey = (pageIndex: number, previousPageData: { climbs: Climb[] }) => {
     if (previousPageData && previousPageData.climbs.length === 0) return null;
 
@@ -43,6 +51,10 @@ export const useQueueDataFetching = ({ searchParams, queue, parsedParams }: UseQ
   const suggestedClimbs = (climbSearchResults || []).filter(
     (item) => !queue.find(({ climb: { uuid } }) => item.uuid === uuid),
   );
+
+  if (climbSearchResults && climbSearchResults.length > 0 && !hasDoneFirstFetch) {
+    setHasDoneFirstFetch();
+  }
 
   const fetchMoreClimbs = useCallback(() => {
     setSize((oldSize) => {

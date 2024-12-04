@@ -80,7 +80,7 @@ export function isPeerData(data: unknown): data is PeerData {
   switch (msg.type) {
     case 'request-update-queue':
       return true; // No additional required fields
-    
+
     case 'initial-queue-data':
     case 'update-queue':
       return 'queue' in msg && 'currentClimbQueueItem' in msg;
