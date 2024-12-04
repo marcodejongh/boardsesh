@@ -1,0 +1,145 @@
+ota:
+  platform: "esphome"
+  password: "370cbf03a104575c2dd3ddebabea9005"
+
+esphome:
+  name: kilterproxy
+  friendly_name: KilterProxy
+  includes:
+    - kilter_board_component.h
+  platformio_options:
+    board_build.f_flash: 80000000L
+    board_build.partitions: default_16MB.csv
+    board_build.arduino.memory_type: qio_opi
+
+esp32:
+  board: esp32-s3-devkitc-1
+  variant: esp32s3
+  framework:
+    type: arduino
+  flash_size: 16MB
+
+# Enable logging
+logger:
+  level: VERBOSE
+  baud_rate: 115200
+
+# WiFi configuration
+wifi:
+  ssid: !secret wifi_scoutmk2_ssid
+  password: !secret wifi_scoutmk2_password
+  ap:
+    ssid: "Kilterproxy Fallback Hotspot"
+    password: "debugger"
+
+# BLE configuration
+esp32_ble_tracker:
+  scan_parameters:
+    interval: 1100ms
+    window: 1100ms
+    active: true
+
+# # Button configuration
+# binary_sensor:
+#   - platform: gpio
+#     pin:
+#       number: GPIO0
+#       inverted: true
+#     name: "Button 1"
+#   - platform: gpio
+#     pin:
+#       number: GPIO14
+#       inverted: true
+#     name: "Button 2"
+
+# SPI interface for the display
+spi:
+  clk_pin: GPIO12
+  mosi_pin: GPIO11
+
+# Display configuration
+display:
+  - platform: st7789v
+    model: LILYGO_T-EMBED_170X320
+    rotation: 270
+    update_interval: 1s
+    dc_pin: GPIO9
+    reset_pin: GPIO14
+    cs_pin: GPIO10
+    lambda: |-
+      ESP_LOGI("display", "Display lambda running");
+      it.fill(Color::BLACK);
+      it.printf(10, 30, id(roboto), Color(255, 0, 0), "KilterProxy");  // Red text
+      auto *kilter = (KilterBoardComponent *) &id(kilter_board_component);
+      if (kilter != nullptr) {
+        it.printf(10, 70, id(roboto), Color::WHITE, "Climb: %s", kilter->get_climb_name().c_str());
+        it.printf(10, 110, id(roboto), Color::WHITE, "Diff: %s", kilter->get_difficulty().c_str());
+        if (kilter->is_connected()) {
+          it.printf(10, 150, id(roboto), Color(0, 255, 0), "Connected");  // Green
+        } else {
+          it.printf(10, 150, id(roboto), Color(255, 0, 0), "Disconnected");  // Red
+        }
+      }
+
+# Backlight configuration
+output:
+  - platform: ledc
+    pin: GPIO38
+    id: gpio38
+    frequency: 2000
+
+light:
+  - platform: monochromatic
+    output: gpio38
+    name: "Backlight"
+    restore_mode: RESTORE_DEFAULT_ON
+
+# Font configuration
+font:
+  - file: "gfonts://Roboto"
+    id: roboto
+    size: 30
+
+# Custom component registration
+custom_component:
+  - lambda: |-
+      ESP_LOGI("main", "Creating KilterBoard component");
+      static auto *component = new KilterBoardComponent();
+      ESP_LOGI("main", "Registering KilterBoard component");
+      App.register_component(component);
+      ESP_LOGI("main", "Component registered");
+      return {(Component*) component};
+    id: kilter_board_component
+
+# Add web server with REST endpoints
+# web_server:
+#   port: 80
+#   local: true  # Only allow local network access
+#   css_url: ""  # Disable CSS
+#   js_url: ""   # Disable JS
+  
+#   # Add REST endpoint
+#   on_web_request:
+#     - method: POST
+#       path: /set_climb
+#       username: ""  # No auth
+#       password: ""  # No auth
+#       then:
+#         - lambda: |-
+#             ESP_LOGI("web", "Received set_climb request: %s", request->body.c_str());
+#             auto json = parse_json(request->body);
+#             if (json.is_object()) {
+#               auto* kilter = (KilterBoardComponent *) &id(kilter_board_component);
+#               if (kilter != nullptr) {
+#                 kilter->update_climb(
+#                   json["climb_name"].as_string(),
+#                   json["difficulty"].as_string(),
+#                   json["frames"].as_string()
+#                 );
+#                 request->send(200, "text/plain", "OK");
+#               } else {
+#                 request->send(500, "text/plain", "Component not found");
+#               }
+#             } else {
+#               request->send(400, "text/plain", "Invalid JSON");
+#             }
