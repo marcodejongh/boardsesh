@@ -7,6 +7,7 @@ const initialState = (initialSearchParams: SearchRequestPagination): QueueState 
   currentClimbQueueItem: null,
   climbSearchParams: initialSearchParams,
   hasDoneFirstFetch: false,
+  initialQueueDataReceivedFromPeers: false,
 });
 
 export function queueReducer(state: QueueState, action: QueueAction): QueueState {
@@ -39,6 +40,13 @@ export function queueReducer(state: QueueState, action: QueueAction): QueueState
       return {
         ...state,
         climbSearchParams: action.payload,
+      };
+    case 'INITIAL_QUEUE_DATA': 
+      return {
+        ...state,
+        queue: action.payload.queue,
+        currentClimbQueueItem: action.payload.currentClimbQueueItem ?? state.currentClimbQueueItem,
+        initialQueueDataReceivedFromPeers: true,
       };
 
     case 'UPDATE_QUEUE':

@@ -30,7 +30,7 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
   const searchParams = useSearchParams();
   const initialSearchParams = urlParamsToSearchParams(searchParams);
   const [state, dispatch] = useQueueReducer(initialSearchParams);
-  const { sendData, peerId, connections, subscribeToData, hostId } = usePeerContext();
+  const { sendData, peerId, subscribeToData, hostId } = usePeerContext();
 
   // Set up queue update handler
 const handlePeerData = useCallback((data: PeerData) => {
@@ -49,7 +49,14 @@ const handlePeerData = useCallback((data: PeerData) => {
           console.log(`Ignoring queue data from ${data.source} since it's not the host.`)
           return;
         }
-        // Intentional fall through, we only want to action the update from the host
+        dispatch({
+          type: 'INITIAL_QUEUE_DATA',
+          payload: {
+            queue: data.queue,
+            currentClimbQueueItem: data.currentClimbQueueItem || null,
+          },
+        });
+        break;
       case 'update-queue':
         dispatch({
           type: 'UPDATE_QUEUE',
@@ -67,14 +74,6 @@ const handlePeerData = useCallback((data: PeerData) => {
     return () => unsubscribe();
   }, [subscribeToData, handlePeerData]);
 
-  // Request initial queue state when connecting as a client
-  useEffect(() => {
-    const hostId = searchParams.get('hostId');
-    if (hostId && peerId) {
-      sendData({ type: 'request-update-queue' }, hostId);
-    }
-  }, [connections, peerId, searchParams, sendData]);
-
   const {
     climbSearchResults,
     suggestedClimbs,
@@ -87,7 +86,7 @@ const handlePeerData = useCallback((data: PeerData) => {
     queue: state.queue,
     parsedParams,
   });
-
+  
   const contextValue: QueueContextType = {
     // State
     queue: state.queue,
@@ -100,9 +99,8 @@ const handlePeerData = useCallback((data: PeerData) => {
     hasMoreResults,
     isFetchingClimbs,
     hasDoneFirstFetch: state.hasDoneFirstFetch,
-    viewOnlyMode: false,
+    viewOnlyMode: hostId ? !state.initialQueueDataReceivedFromPeers : false,
     peerId,
-
     // Actions
     addToQueue: (climb: Climb) => {
       const newItem = createClimbQueueItem(climb, peerId);

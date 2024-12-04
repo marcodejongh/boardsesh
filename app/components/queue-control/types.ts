@@ -18,6 +18,7 @@ export interface QueueState {
   currentClimbQueueItem: ClimbQueueItem | null;
   climbSearchParams: SearchRequestPagination;
   hasDoneFirstFetch: boolean;
+  initialQueueDataReceivedFromPeers: boolean;
 }
 
 export type QueueAction =
@@ -27,6 +28,7 @@ export type QueueAction =
   | { type: 'SET_CURRENT_CLIMB_QUEUE_ITEM'; payload: ClimbQueueItem }
   | { type: 'SET_CLIMB_SEARCH_PARAMS'; payload: SearchRequestPagination }
   | { type: 'UPDATE_QUEUE'; payload: { queue: ClimbQueue; currentClimbQueueItem?: ClimbQueueItem | null } }
+  | { type: 'INITIAL_QUEUE_DATA'; payload: { queue: ClimbQueue; currentClimbQueueItem?: ClimbQueueItem | null } }
   | { type: 'SET_FIRST_FETCH'; payload: boolean }
   | { type: 'MIRROR_CLIMB' };
 
