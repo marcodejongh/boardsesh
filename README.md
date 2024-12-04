@@ -20,8 +20,10 @@ Bluefy is what I tested boardsesh in on my iphone and it worked like expected.
 ## Current status
 
 Basic board use works, and the app already has queue controls, open to feedback and contributions!
+Using the share button in the top right corner, users can connect to each other and control the board and queue together.
+Similar to Spotify Jams, no more "What climb was that?", "what climb was the last one?", "Mind if I change it?", questions during a sesh
 
-- Improved multi-user support. Spotify Jams like functionality for using the board in groups.
+## Future features:
 - Faster beta video uploads. Current process for beta videos is manual, and as a result new beta videos are almost never added. We'll implement our own Instagram integration to get beta videos faster.
 
 # Getting Started
