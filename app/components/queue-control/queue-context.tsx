@@ -178,7 +178,25 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
 
     setClimbSearchParams: (params) => dispatch({ type: 'SET_CLIMB_SEARCH_PARAMS', payload: params }),
 
-    mirrorClimb: () => dispatch({ type: 'MIRROR_CLIMB' }),
+    mirrorClimb: () => {
+      if (!state.currentClimbQueueItem?.climb) {
+        return;
+      }
+      dispatch({ type: 'MIRROR_CLIMB' });
+      
+      sendData({
+        type: 'update-queue',
+        queue: state.queue,
+        currentClimbQueueItem: {
+          ...state.currentClimbQueueItem,
+          climb: {
+            ...state.currentClimbQueueItem?.climb,
+            mirrored: !state.currentClimbQueueItem?.climb.mirrored
+          }
+        
+        },
+      });
+    },
 
     fetchMoreClimbs,
 
