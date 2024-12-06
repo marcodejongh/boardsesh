@@ -31,6 +31,7 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
   const initialSearchParams = urlParamsToSearchParams(searchParams);
   const [state, dispatch] = useQueueReducer(initialSearchParams);
   const { sendData, peerId, subscribeToData, hostId } = usePeerContext();
+  
 
   // Set up queue update handler
   const handlePeerData = useCallback(
@@ -96,7 +97,6 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
   });
 
   const contextValue: QueueContextType = {
-    // State
     queue: state.queue,
     currentClimbQueueItem: state.currentClimbQueueItem,
     currentClimb: state.currentClimbQueueItem?.climb || null,
@@ -108,7 +108,6 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
     isFetchingClimbs,
     hasDoneFirstFetch: state.hasDoneFirstFetch,
     viewOnlyMode: hostId ? !state.initialQueueDataReceivedFromPeers : false,
-    peerId,
     // Actions
     addToQueue: (climb: Climb) => {
       const newItem = createClimbQueueItem(climb, peerId);

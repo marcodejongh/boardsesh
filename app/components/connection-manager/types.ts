@@ -32,6 +32,8 @@ export interface PeerContextType {
   sendData: (data: PeerData, connectionId?: string | null) => void;
   connectToPeer: (connectionId: string) => void;
   subscribeToData: (callback: (data: PeerData) => void) => () => void;
+  isConnecting: boolean;
+  hasConnected: boolean;
 }
 
 export type PeerProviderProps = {
