@@ -1,5 +1,5 @@
 'use client';
-import { PeerState, PeerAction, ConnectionState } from "./types";
+import { PeerState, PeerAction, ConnectionState } from './types';
 
 export const initialPeerState: PeerState = {
   peer: null,
@@ -25,9 +25,10 @@ export function peerReducer(state: PeerState, action: PeerAction): PeerState {
     case 'UPDATE_CONNECTION_STATE':
       return {
         ...state,
-        connections: state.connections.map((conn) => conn.connection.peer === action.payload.peerId
-          ? { ...conn, state: action.payload.state as ConnectionState }
-          : conn
+        connections: state.connections.map((conn) =>
+          conn.connection.peer === action.payload.peerId
+            ? { ...conn, state: action.payload.state as ConnectionState }
+            : conn,
         ),
       };
     default:

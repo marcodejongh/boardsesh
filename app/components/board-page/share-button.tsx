@@ -57,29 +57,27 @@ export const ShareBoardButton = () => {
 
   return (
     <>
-      <Button type="default" onClick={showDrawer} icon={!hasConnected && isConnecting ? <LoadingOutlined /> : <TeamOutlined />} />
-      <Drawer
-        title="Party Mode"
-        placement="top"
-        onClose={handleClose}
-        open={isDrawerOpen}
-        height="70vh"
-      >
+      <Button
+        type="default"
+        onClick={showDrawer}
+        icon={!hasConnected && isConnecting ? <LoadingOutlined /> : <TeamOutlined />}
+      />
+      <Drawer title="Party Mode" placement="top" onClose={handleClose} open={isDrawerOpen} height="70vh">
         <Flex gap="middle" vertical>
           {hasConnected && connectedUsers.length > 0 && (
             <Flex vertical gap="small">
               <Text strong>Connected Users:</Text>
-              <Flex 
-                vertical 
+              <Flex
+                vertical
                 gap="small"
                 style={{
                   maxHeight: '200px',
                   overflowY: 'auto',
-                  padding: '4px'
+                  padding: '4px',
                 }}
               >
                 {connectedUsers.map((user: ConnectedUser) => (
-                  <Flex 
+                  <Flex
                     key={user.username}
                     justify="space-between"
                     align="center"
@@ -87,23 +85,19 @@ export const ShareBoardButton = () => {
                       background: '#f5f5f5',
                       padding: '8px 12px',
                       borderRadius: '8px',
-                      width: '100%'
+                      width: '100%',
                     }}
                   >
                     <Flex gap="small" align="center">
-                      <Avatar 
-                        size="small"
-                        icon={<UserOutlined />}
-                        src={user.avatar}
-                      />
+                      <Avatar size="small" icon={<UserOutlined />} src={user.avatar} />
                       <Text style={{ fontSize: '14px' }}>{user.username}</Text>
                     </Flex>
                     {user.isHost && (
-                      <CrownFilled 
-                        style={{ 
+                      <CrownFilled
+                        style={{
                           color: '#FFD700',
-                          fontSize: '16px'
-                        }} 
+                          fontSize: '16px',
+                        }}
                       />
                     )}
                   </Flex>
@@ -111,7 +105,7 @@ export const ShareBoardButton = () => {
               </Flex>
             </Flex>
           )}
-          
+
           <Flex style={{ width: '100%' }} align="center">
             <Input
               value={shareUrl}
@@ -119,7 +113,7 @@ export const ShareBoardButton = () => {
               addonAfter={<Button icon={<CopyOutlined />} onClick={copyToClipboard} />}
             />
           </Flex>
-          
+
           <Flex justify="center">
             <QRCode value={shareUrl} size={160} bordered={false} />
           </Flex>

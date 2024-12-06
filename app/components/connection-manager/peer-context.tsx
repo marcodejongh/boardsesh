@@ -207,8 +207,9 @@ export const PeerProvider: React.FC<{ children: React.ReactNode }> = ({ children
     connectToPeer,
     subscribeToData,
     hostId,
-    isConnecting: !state.peerId || (state.connections.length > 0 && state.connections.some(conn => conn.state === 'READY')),
-    hasConnected: state.connections.length > 0 && state.connections.some(conn => conn.state === 'READY'),
+    isConnecting:
+      !state.peerId || (state.connections.length > 0 && state.connections.some((conn) => conn.state === 'READY')),
+    hasConnected: state.connections.length > 0 && state.connections.some((conn) => conn.state === 'READY'),
   };
 
   return <PeerContext.Provider value={contextValue}>{children}</PeerContext.Provider>;

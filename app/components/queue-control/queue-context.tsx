@@ -31,7 +31,6 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
   const initialSearchParams = urlParamsToSearchParams(searchParams);
   const [state, dispatch] = useQueueReducer(initialSearchParams);
   const { sendData, peerId, subscribeToData, hostId } = usePeerContext();
-  
 
   // Set up queue update handler
   const handlePeerData = useCallback(
@@ -182,7 +181,7 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
         return;
       }
       dispatch({ type: 'MIRROR_CLIMB' });
-      
+
       sendData({
         type: 'update-queue',
         queue: state.queue,
@@ -190,9 +189,8 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
           ...state.currentClimbQueueItem,
           climb: {
             ...state.currentClimbQueueItem?.climb,
-            mirrored: !state.currentClimbQueueItem?.climb.mirrored
-          }
-        
+            mirrored: !state.currentClimbQueueItem?.climb.mirrored,
+          },
         },
       });
     },
