@@ -90,6 +90,34 @@ export type SearchResult = {
   benchmark_difficulty: number;
 };
 
+export type BoardRouteParametersWithUuid = BoardRouteParameters & {
+  climb_uuid: ClimbUuid;
+};
+
+export type ParsedBoardRouteParameters = {
+  board_name: BoardName;
+  layout_id: number;
+  size_id: number;
+  set_ids: SetIdList;
+  angle: number;
+  uuid?: string;
+};
+
+export type ParsedBoardRouteParametersWithUuid = ParsedBoardRouteParameters & {
+  climb_uuid: ClimbUuid;
+};
+
+export type ClimbUuid = string;
+
+export type BoardName = 'kilter' | 'tension';
+export type LayoutId = number;
+export type Angle = number;
+export type Size = number;
+export type FetchResultsResponse = {
+  rows: Climb[];
+  totalCount: number;
+};
+
 // Led Colors Type
 export type LedColor = {
   [role_id: number]: string;
@@ -163,33 +191,6 @@ export type BoardRouteParameters = {
   set_ids: string;
   angle: string;
   climb_uuid?: string;
-};
-export type BoardRouteParametersWithUuid = BoardRouteParameters & {
-  climb_uuid: ClimbUuid;
-};
-
-export type ParsedBoardRouteParameters = {
-  board_name: BoardName;
-  layout_id: number;
-  size_id: number;
-  set_ids: SetIdList;
-  angle: number;
-  uuid?: string;
-};
-
-export type ParsedBoardRouteParametersWithUuid = ParsedBoardRouteParameters & {
-  climb_uuid: ClimbUuid;
-};
-
-export type ClimbUuid = string;
-
-export type BoardName = 'kilter' | 'tension';
-export type LayoutId = number;
-export type Angle = number;
-export type Size = number;
-export type FetchResultsResponse = {
-  rows: Climb[];
-  totalCount: number;
 };
 
 export type FetchCurrentProblemResponse = Climb;

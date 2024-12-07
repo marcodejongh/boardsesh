@@ -39,7 +39,7 @@ export default async function BoardLayout({ children, params }: PropsWithChildre
   // Parse the route parameters
   const parsedParams: ParsedBoardRouteParameters = parseBoardRouteParams(params);
 
-  const { board_name, layout_id } = parsedParams;
+  const { board_name, layout_id, angle } = parsedParams;
 
   // Fetch the climbs and board details server-side
   const [boardDetails] = await Promise.all([
@@ -74,7 +74,7 @@ export default async function BoardLayout({ children, params }: PropsWithChildre
 
               <Affix offsetBottom={0}>
                 <div style={{ width: '100%', backgroundColor: '#fff', boxShadow: '0 -2px 8px rgba(0, 0, 0, 0.15)' }}>
-                  <QueueControlBar board={board_name} boardDetails={boardDetails} />
+                  <QueueControlBar board={board_name} boardDetails={boardDetails} angle={angle} />
                 </div>
               </Affix>
             </PartyProvider>

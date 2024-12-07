@@ -77,6 +77,11 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
           opacity: isHistory ? 0.6 : 1,
           cursor: 'grab',
           position: 'relative',
+          WebkitUserSelect: 'none', // Add these properties
+          MozUserSelect: 'none', // to prevent text
+          msUserSelect: 'none', // selection on
+          userSelect: 'none', // different browsers
+          touchAction: 'none', // Prevents default touch actions
         }}
         onClick={() => setCurrentClimbQueueItem(item)}
       >
