@@ -68,6 +68,7 @@ export const ShareBoardButton = () => {
           type="default"
           onClick={showDrawer}
           icon={!hasConnected && isConnecting ? <LoadingOutlined /> : <TeamOutlined />}
+          disabled={!peerId}
         />
       </Badge>
       <Drawer title="Party Mode" placement="top" onClose={handleClose} open={isDrawerOpen} height="70vh">
