@@ -1,15 +1,15 @@
 'use client';
 import React, { useState } from 'react';
-import { Button, Typography, Row, Col, Card, Drawer, Space, Badge } from 'antd';
-import { CheckOutlined, SyncOutlined } from '@ant-design/icons';
+import { Button, Typography, Row, Col, Card, Drawer, Space } from 'antd';
+import { SyncOutlined } from '@ant-design/icons';
 import { useQueueContext } from './queue-context';
 import NextClimbButton from './next-climb-button';
 import { usePathname } from 'next/navigation';
 import PreviousClimbButton from './previous-climb-button';
 import { BoardName, BoardDetails, Angle } from '@/app/lib/types';
 import QueueList from './queue-list';
+import { TickButton } from './tick-button';
 import ClimbThumbnail from '../climb-card/climb-thumbnail';
-import { useBoardProvider } from '../board-provider/board-provider-context';
 
 const { Title, Text } = Typography;
 
@@ -25,7 +25,6 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
 
   const isViewPage = pathname.includes('/view/');
   const { currentClimb, mirrorClimb } = useQueueContext();
-  const { logbook } = useBoardProvider();
 
   const toggleQueueDrawer = () => setIsQueueOpen(!isQueueOpen);
 
@@ -90,19 +89,7 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
               ) : null}
               <PreviousClimbButton navigate={isViewPage} />
               <NextClimbButton navigate={isViewPage} />
-              <Badge
-                count={
-                  logbook.length > 0
-                    ? logbook.filter((asc) => asc.climb_uuid === currentClimb?.uuid && Number(asc.angle) === angle)
-                        .length
-                    : 0
-                }
-                overflowCount={100}
-                showZero={false}
-                color="cyan"
-              >
-                <Button id="button-tick" type="default" icon={<CheckOutlined />} />
-              </Badge>
+              <TickButton currentClimb={currentClimb} angle={angle} />
             </Space>
           </Col>
         </Row>
