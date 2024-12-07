@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { TeamOutlined, CopyOutlined, UserOutlined, CrownFilled, LoadingOutlined } from '@ant-design/icons';
-import { Button, Input, Drawer, QRCode, Flex, message, Avatar, Typography } from 'antd';
+import { Button, Input, Drawer, QRCode, Flex, message, Avatar, Typography, Badge } from 'antd';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { usePeerContext } from '../connection-manager/peer-context';
 import { usePartyContext } from '../party-manager/party-context';
@@ -26,7 +26,7 @@ type ConnectedUser = {
 };
 
 export const ShareBoardButton = () => {
-  const { peerId, isConnecting, hasConnected } = usePeerContext();
+  const { peerId, isConnecting, hasConnected, connections } = usePeerContext();
   const { connectedUsers } = usePartyContext();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
@@ -57,14 +57,22 @@ export const ShareBoardButton = () => {
 
   return (
     <>
-      <Button
-        type="default"
-        onClick={showDrawer}
-        icon={!hasConnected && isConnecting ? <LoadingOutlined /> : <TeamOutlined />}
-      />
+      
+      <Badge
+        count={connections.length > 0 ? connections.length + 1 : connections.length}
+        overflowCount={100}
+        showZero={false}
+        color="cyan"
+      >
+        <Button
+          type="default"
+          onClick={showDrawer}
+          icon={!hasConnected && isConnecting ? <LoadingOutlined /> : <TeamOutlined />}
+        />
+      </Badge>
       <Drawer title="Party Mode" placement="top" onClose={handleClose} open={isDrawerOpen} height="70vh">
         <Flex gap="middle" vertical>
-          {hasConnected && connectedUsers.length > 0 && (
+          {connections.length > 0 && (
             <Flex vertical gap="small">
               <Text strong>Connected Users:</Text>
               <Flex
@@ -76,9 +84,8 @@ export const ShareBoardButton = () => {
                   padding: '4px',
                 }}
               >
-                {connectedUsers.map((user: ConnectedUser) => (
-                  <Flex
-                    key={user.username}
+                <Flex
+                    key={peerId}
                     justify="space-between"
                     align="center"
                     style={{
@@ -89,10 +96,35 @@ export const ShareBoardButton = () => {
                     }}
                   >
                     <Flex gap="small" align="center">
-                      <Avatar size="small" icon={<UserOutlined />} src={user.avatar} />
-                      <Text style={{ fontSize: '14px' }}>{user.username}</Text>
+                      {/* <Avatar size="small" icon={<UserOutlined />} src={user.avatar} /> */}
+                      <Text style={{ fontSize: '14px' }}>{peerId} (you)</Text>
                     </Flex>
-                    {user.isHost && (
+                    {/* {true === false && (
+                      <CrownFilled
+                        style={{
+                          color: '#FFD700',
+                          fontSize: '16px',
+                        }}
+                      />
+                    )} */}
+                  </Flex>
+                {connections.map((conn) => (
+                  <Flex
+                    key={conn.connection.peer}
+                    justify="space-between"
+                    align="center"
+                    style={{
+                      background: '#f5f5f5',
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      width: '100%',
+                    }}
+                  >
+                    <Flex gap="small" align="center">
+                      {/* <Avatar size="small" icon={<UserOutlined />} src={user.avatar} /> */}
+                      <Text style={{ fontSize: '14px' }}>{conn.connection.peer}</Text>
+                    </Flex>
+                    {conn.isHost && (
                       <CrownFilled
                         style={{
                           color: '#FFD700',

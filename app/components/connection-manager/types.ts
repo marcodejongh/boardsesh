@@ -7,6 +7,7 @@ export type PeerConnection = {
   connection: DataConnection;
   username?: string;
   state: ConnectionState;
+  isHost?: boolean;
 };
 
 export interface PeerState {
