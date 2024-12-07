@@ -1,10 +1,13 @@
 'use client';
-import React from 'react';
-import { List, Row, Col, Typography, Divider } from 'antd';
-import { Climb, BoardDetails } from '@/app/lib/types';
+import React, { useEffect } from 'react';
+import { List, Divider, Row, Col, Typography } from 'antd';
 import { useQueueContext } from './queue-context';
+import { Climb, BoardDetails } from '@/app/lib/types';
+import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
+import { extractClosestEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge';
+import { reorder } from '@atlaskit/pragmatic-drag-and-drop/reorder';
+import QueueListItem from './queue-list-item';
 import ClimbThumbnail from '../climb-card/climb-thumbnail';
-import { ClimbQueueItem } from './types';
 
 const { Text } = Typography;
 
@@ -13,76 +16,71 @@ type QueueListProps = {
 };
 
 const QueueList: React.FC<QueueListProps> = ({ boardDetails }) => {
-  const { viewOnlyMode, currentClimbQueueItem, queue, climbSearchResults, setCurrentClimbQueueItem, setCurrentClimb } =
-    useQueueContext(); // Include climbSearchResults from context
+  const {
+    viewOnlyMode,
+    currentClimbQueueItem,
+    queue,
+    climbSearchResults,
+    setCurrentClimbQueueItem,
+    setCurrentClimb,
+    setQueue,
+  } = useQueueContext();
+
+  // Monitor for drag-and-drop events
+  useEffect(() => {
+    const cleanup = monitorForElements({
+      onDrop({ location, source }) {
+        const target = location.current.dropTargets[0];
+        if (!target) return;
+
+        const sourceIndex = Number(source.data.index);
+        const targetIndex = Number(target.data.index);
+
+        if (isNaN(sourceIndex) || isNaN(targetIndex)) return;
+
+        const edge = extractClosestEdge(target.data);
+        const finalIndex = edge === 'bottom' ? targetIndex + 1 : targetIndex;
+
+        const newQueue = reorder({
+          list: queue,
+          startIndex: sourceIndex,
+          finishIndex: finalIndex,
+        });
+
+        setQueue(newQueue);
+      },
+    });
+
+    return cleanup; // Cleanup listener on component unmount
+  }, [queue, setQueue]);
 
   return (
     <>
-      {/* Render Queue Items */}
       <List
-        dataSource={queue} // Assuming `queue` is an array of ClimbQueueItem
-        renderItem={(climbQueueItem: ClimbQueueItem) => {
-          const { uuid, climb } = climbQueueItem;
-          const isCurrent = currentClimbQueueItem?.uuid === uuid;
+        dataSource={queue}
+        renderItem={(climbQueueItem, index) => {
+          const isCurrent = currentClimbQueueItem?.uuid === climbQueueItem.uuid;
           const isHistory =
             queue.findIndex((item) => item.uuid === currentClimbQueueItem?.uuid) >
-            queue.findIndex((item) => item.uuid === uuid);
+            queue.findIndex((item) => item.uuid === climbQueueItem.uuid);
 
           return (
-            <List.Item
-              style={{
-                backgroundColor: isCurrent ? '#eeffff' : isHistory ? '#f5f5f5' : 'inherit', // Blue for current, grey for history
-                opacity: isHistory ? 0.6 : 1,
-                cursor: 'pointer',
-              }}
-              onClick={() => setCurrentClimbQueueItem(climbQueueItem)}
-            >
-              <Row style={{ width: '100%' }} gutter={16}>
-                {/* Column for the BoardPreview */}
-                <Col xs={6}>
-                  <ClimbThumbnail boardDetails={boardDetails} currentClimb={climb} />
-                </Col>
-
-                {/* Column for the metadata */}
-                <Col xs={18}>
-                  <List.Item.Meta
-                    title={
-                      <Text
-                        style={{
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          fontWeight: 'bold',
-                        }}
-                      >
-                        {climb.name}
-                      </Text>
-                    }
-                    description={
-                      <Text
-                        type={isHistory ? 'secondary' : undefined}
-                        style={{
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                        }}
-                      >
-                        {`${climb.difficulty} ${climb.quality_average}★`}
-                      </Text>
-                    }
-                  />
-                </Col>
-              </Row>
-            </List.Item>
+            <QueueListItem
+              key={climbQueueItem.uuid}
+              item={climbQueueItem}
+              index={index}
+              isCurrent={isCurrent}
+              isHistory={isHistory}
+              viewOnlyMode={viewOnlyMode}
+              boardDetails={boardDetails}
+              setCurrentClimbQueueItem={setCurrentClimbQueueItem}
+            />
           );
         }}
       />
-      {viewOnlyMode ? null : (
+      {!viewOnlyMode && (
         <>
-          {/* Divider between queue and suggestions */}
           <Divider>Suggested Items</Divider>
-
-          {/* Render Suggested Items (climbSearchResults) */}
           <List
             dataSource={(climbSearchResults || []).filter(
               (item) => !queue.find(({ climb: { uuid } }) => item.uuid === uuid),
@@ -90,17 +88,12 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails }) => {
             renderItem={(climb: Climb) => (
               <List.Item
                 style={{ cursor: 'pointer' }}
-                onClick={() => {
-                  setCurrentClimb(climb);
-                }}
+                onClick={() => setCurrentClimb(climb)}
               >
                 <Row style={{ width: '100%' }} gutter={16}>
-                  {/* Column for the BoardPreview */}
                   <Col xs={6}>
                     <ClimbThumbnail boardDetails={boardDetails} currentClimb={climb} />
                   </Col>
-
-                  {/* Column for the metadata */}
                   <Col xs={18}>
                     <List.Item.Meta
                       title={
@@ -117,7 +110,11 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails }) => {
                       description={
                         <Text
                           type="secondary"
-                          style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                          style={{
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}
                         >
                           {`${climb.difficulty} ${climb.quality_average}★`}
                         </Text>
