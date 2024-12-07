@@ -32,7 +32,7 @@ const broadcastPeerList = (
 
 export const PeerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(peerReducer, initialPeerState);
-  const hostId = useSearchParams().get('hostId');
+  const urlHostId = useSearchParams().get('hostId');
   const dataHandlers = useRef<DataHandler[]>([]);
   const stateRef = useRef(state);
 
@@ -113,6 +113,7 @@ export const PeerProvider: React.FC<{ children: React.ReactNode }> = ({ children
       payload: {
         connection: newConn,
         state: 'CONNECTING',
+        isHost: true,
       },
     });
 
@@ -160,6 +161,15 @@ export const PeerProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setupHandlers(newConn, dispatch, receivedDataRef, stateRef);
       });
 
+      p.on('error', (error) => {
+        const failedPeerId = error.message.replace('Could not connect to peer ', '').trim();
+        dispatch({
+          type: 'REMOVE_CONNECTION',
+          payload: failedPeerId,
+        });
+        console.error(`Failed to connect to hostId ${failedPeerId}, because of`, error);
+      });
+
       dispatch({ type: 'SET_PEER', payload: p });
     }
   }, []);
@@ -191,14 +201,24 @@ export const PeerProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [state.connections, sendData, notifySubscribers]);
 
   useEffect(() => {
-    if (state.readyToConnect && hostId) {
-      const connectionExists = state.connections.some((conn) => conn.connection.peer === hostId);
+    if (state.readyToConnect && urlHostId) {
+      const connectionExists = state.connections.some((conn) => conn.connection.peer === urlHostId);
       if (!connectionExists) {
-        console.log('Attempting to connect to hostId:', hostId);
-        connectToPeer(hostId);
+        try {
+          connectToPeer(urlHostId);
+          // Remove the hostId search param
+          const url = new URL(window.location.href);
+          url.searchParams.delete('hostId');
+          window.history.replaceState(null, '', url);
+        } catch (err) {
+          // Fallback error handling
+          const url = new URL(window.location.href);
+          url.searchParams.delete('hostId');
+          window.history.replaceState(null, '', url);
+        }
       }
     }
-  }, [state.readyToConnect, hostId, connectToPeer, state.connections]);
+  }, [state.readyToConnect, urlHostId, connectToPeer, state.connections]);
 
   const contextValue: PeerContextType = {
     peerId: state.peerId,
@@ -206,7 +226,7 @@ export const PeerProvider: React.FC<{ children: React.ReactNode }> = ({ children
     sendData,
     connectToPeer,
     subscribeToData,
-    hostId,
+    hostId: state.connections.find((conn) => conn.isHost)?.connection?.peer || null,
     isConnecting:
       !state.peerId || (state.connections.length > 0 && state.connections.some((conn) => conn.state === 'READY')),
     hasConnected: state.connections.length > 0 && state.connections.some((conn) => conn.state === 'READY'),

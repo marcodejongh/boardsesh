@@ -20,7 +20,7 @@ const getShareUrl = (pathname: string, searchParams: URLSearchParams, peerId: st
 };
 
 export const ShareBoardButton = () => {
-  const { peerId, isConnecting, hasConnected, connections } = usePeerContext();
+  const { peerId, isConnecting, hasConnected, connections, hostId } = usePeerContext();
   // const { connectedUsers } = usePartyContext();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
@@ -35,7 +35,7 @@ export const ShareBoardButton = () => {
     setIsDrawerOpen(false);
   };
 
-  const shareUrl = getShareUrl(pathname, searchParams, peerId || '');
+  const shareUrl = getShareUrl(pathname, searchParams, hostId || peerId || '');
 
   const copyToClipboard = () => {
     navigator.clipboard

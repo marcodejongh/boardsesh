@@ -24,6 +24,7 @@ export type PeerAction =
   | { type: 'UPDATE_CONNECTIONS'; payload: PeerConnection[] }
   | { type: 'ADD_CONNECTION'; payload: PeerConnection }
   | { type: 'UPDATE_CONNECTION_STATE'; payload: { peerId: string; state: ConnectionState } }
+  | { type: 'REMOVE_CONNECTION'; payload: PeerId }
   | { type: 'OPENED_CONNECTION'; payload: string };
 
 export interface PeerContextType {
