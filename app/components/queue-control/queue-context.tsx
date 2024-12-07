@@ -162,17 +162,19 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
       });
     },
     setQueue: (queue) => {
-      dispatch({ type: 'UPDATE_QUEUE', payload: {
-        queue,
-        currentClimbQueueItem: state.currentClimbQueueItem
-      } });
-      
+      dispatch({
+        type: 'UPDATE_QUEUE',
+        payload: {
+          queue,
+          currentClimbQueueItem: state.currentClimbQueueItem,
+        },
+      });
+
       sendData({
         type: 'update-queue',
         queue,
-        currentClimbQueueItem: state.currentClimbQueueItem
+        currentClimbQueueItem: state.currentClimbQueueItem,
       });
-
     },
     setCurrentClimbQueueItem: (item: ClimbQueueItem) => {
       dispatch({ type: 'SET_CURRENT_CLIMB_QUEUE_ITEM', payload: item });

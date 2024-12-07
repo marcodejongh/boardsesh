@@ -1,11 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { List, Row, Col, Typography } from 'antd';
 import { HolderOutlined } from '@ant-design/icons';
-import {  BoardDetails } from '@/app/lib/types';
-import {
-  draggable,
-  dropTargetForElements,
-} from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
+import { BoardDetails } from '@/app/lib/types';
+import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { DragHandleButton } from '@atlaskit/pragmatic-drag-and-drop-react-accessibility/drag-handle-button';
 import { DropIndicator } from '@atlaskit/pragmatic-drag-and-drop-react-drop-indicator/box';
 import { attachClosestEdge, extractClosestEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge';
@@ -49,11 +46,14 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
         dropTargetForElements({
           element,
           getData: ({ input }) =>
-            attachClosestEdge({ index, id: item.uuid }, {
-              element,
-              input,
-              allowedEdges: ['top', 'bottom'],
-            }),
+            attachClosestEdge(
+              { index, id: item.uuid },
+              {
+                element,
+                input,
+                allowedEdges: ['top', 'bottom'],
+              },
+            ),
           onDrag({ self }) {
             const edge = extractClosestEdge(self.data);
             setClosestEdge(edge);
@@ -64,7 +64,7 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
           onDrop() {
             setClosestEdge(null);
           },
-        })
+        }),
       );
     }
   }, [index, item.uuid]);
@@ -81,13 +81,12 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
         onClick={() => setCurrentClimbQueueItem(item)}
       >
         <Row style={{ width: '100%' }} gutter={16} align="middle">
-          
-            <Col xs={1}>
-              <DragHandleButton label={`Reorder ${item.climb.name}`}>
-                <HolderOutlined />
-              </DragHandleButton>
-            </Col>
-          
+          <Col xs={1}>
+            <DragHandleButton label={`Reorder ${item.climb.name}`}>
+              <HolderOutlined />
+            </DragHandleButton>
+          </Col>
+
           <Col xs={5}>
             <ClimbThumbnail boardDetails={boardDetails} currentClimb={item.climb} />
           </Col>

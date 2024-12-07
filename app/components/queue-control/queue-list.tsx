@@ -86,10 +86,7 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails }) => {
               (item) => !queue.find(({ climb: { uuid } }) => item.uuid === uuid),
             )}
             renderItem={(climb: Climb) => (
-              <List.Item
-                style={{ cursor: 'pointer' }}
-                onClick={() => setCurrentClimb(climb)}
-              >
+              <List.Item style={{ cursor: 'pointer' }} onClick={() => setCurrentClimb(climb)}>
                 <Row style={{ width: '100%' }} gutter={16}>
                   <Col xs={6}>
                     <ClimbThumbnail boardDetails={boardDetails} currentClimb={climb} />
