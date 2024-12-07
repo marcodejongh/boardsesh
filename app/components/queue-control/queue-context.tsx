@@ -96,7 +96,6 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
   });
 
   const contextValue: QueueContextType = {
-    // State
     queue: state.queue,
     currentClimbQueueItem: state.currentClimbQueueItem,
     currentClimb: state.currentClimbQueueItem?.climb || null,
@@ -108,7 +107,6 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
     isFetchingClimbs,
     hasDoneFirstFetch: state.hasDoneFirstFetch,
     viewOnlyMode: hostId ? !state.initialQueueDataReceivedFromPeers : false,
-    peerId,
     // Actions
     addToQueue: (climb: Climb) => {
       const newItem = createClimbQueueItem(climb, peerId);
@@ -183,7 +181,7 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
         return;
       }
       dispatch({ type: 'MIRROR_CLIMB' });
-      
+
       sendData({
         type: 'update-queue',
         queue: state.queue,
@@ -191,9 +189,8 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
           ...state.currentClimbQueueItem,
           climb: {
             ...state.currentClimbQueueItem?.climb,
-            mirrored: !state.currentClimbQueueItem?.climb.mirrored
-          }
-        
+            mirrored: !state.currentClimbQueueItem?.climb.mirrored,
+          },
         },
       });
     },

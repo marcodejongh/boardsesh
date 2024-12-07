@@ -44,7 +44,6 @@ export interface QueueContextType {
   isFetchingClimbs: boolean;
   hasDoneFirstFetch: boolean;
   viewOnlyMode: boolean;
-  peerId: PeerId;
   addToQueue: (climb: Climb) => void;
   removeFromQueue: (item: ClimbQueueItem) => void;
   setCurrentClimb: (climb: Climb) => void;

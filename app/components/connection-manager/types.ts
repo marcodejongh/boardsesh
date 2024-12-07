@@ -7,6 +7,7 @@ export type PeerConnection = {
   connection: DataConnection;
   username?: string;
   state: ConnectionState;
+  isHost?: boolean;
 };
 
 export interface PeerState {
@@ -32,6 +33,8 @@ export interface PeerContextType {
   sendData: (data: PeerData, connectionId?: string | null) => void;
   connectToPeer: (connectionId: string) => void;
   subscribeToData: (callback: (data: PeerData) => void) => () => void;
+  isConnecting: boolean;
+  hasConnected: boolean;
 }
 
 export type PeerProviderProps = {

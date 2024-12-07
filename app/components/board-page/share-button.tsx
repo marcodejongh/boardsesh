@@ -1,10 +1,13 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ShareAltOutlined, CopyOutlined } from '@ant-design/icons';
-import { Button, Input, Modal, QRCode, Flex, message } from 'antd';
+import { TeamOutlined, CopyOutlined, UserOutlined, CrownFilled, LoadingOutlined } from '@ant-design/icons';
+import { Button, Input, Drawer, QRCode, Flex, message, Avatar, Typography, Badge } from 'antd';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { useQueueContext } from '../queue-control/queue-context';
+import { usePeerContext } from '../connection-manager/peer-context';
+import { usePartyContext } from '../party-manager/party-context';
+
+const { Text } = Typography;
 
 const getShareUrl = (pathname: string, searchParams: URLSearchParams, peerId: string) => {
   try {
@@ -12,34 +15,32 @@ const getShareUrl = (pathname: string, searchParams: URLSearchParams, peerId: st
     params.set('hostId', peerId);
     return `${window.location.origin}${pathname}?${params.toString()}`;
   } catch (e) {
-    // A bit lazy this catch, but despite the use client at the top of the file
-    // I was still getting window undefined errors...
     return '';
   }
 };
 
-export type ShareButtonProps = {
-  peerId: string;
-  hostId: string;
-  pathname: string;
-  search: string;
+type ConnectedUser = {
+  username: string;
+  avatar?: string;
+  isHost?: boolean;
 };
+
 export const ShareBoardButton = () => {
-  const { peerId } = useQueueContext();
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const { peerId, isConnecting, hasConnected, connections } = usePeerContext();
+  const { connectedUsers } = usePartyContext();
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   const searchParams = useSearchParams();
   const pathname = usePathname();
 
-  const showModal = () => {
-    setIsModalOpen(true);
+  const showDrawer = () => {
+    setIsDrawerOpen(true);
   };
 
-  const handleOk = () => {
-    setIsModalOpen(false);
+  const handleClose = () => {
+    setIsDrawerOpen(false);
   };
 
-  // Add hostId || back at some point
   const shareUrl = getShareUrl(pathname, searchParams, peerId || '');
 
   const copyToClipboard = () => {
@@ -47,7 +48,7 @@ export const ShareBoardButton = () => {
       .writeText(shareUrl)
       .then(() => {
         message.success('Share URL copied to clipboard!');
-        handleOk();
+        handleClose();
       })
       .catch(() => {
         message.error('Failed to copy URL.');
@@ -56,32 +57,101 @@ export const ShareBoardButton = () => {
 
   return (
     <>
-      <Button type="default" onClick={showModal} icon={<ShareAltOutlined />} />
-      <Modal
-        title="Share Session"
-        style={{ top: 20 }}
-        footer={[
-          <Button type="primary" key="share-modal-ok" onClick={handleOk}>
-            Ok
-          </Button>,
-        ]}
-        open={isModalOpen}
-        onOk={handleOk}
+      
+      <Badge
+        count={connections.length > 0 ? connections.length + 1 : connections.length}
+        overflowCount={100}
+        showZero={false}
+        color="cyan"
       >
-        <Flex gap="middle" align="start" vertical>
-          <Flex style={{ width: '100%' }} justify="center" align="center">
+        <Button
+          type="default"
+          onClick={showDrawer}
+          icon={!hasConnected && isConnecting ? <LoadingOutlined /> : <TeamOutlined />}
+          disabled={!peerId}
+        />
+      </Badge>
+      <Drawer title="Party Mode" placement="top" onClose={handleClose} open={isDrawerOpen} height="70vh">
+        <Flex gap="middle" vertical>
+          {connections.length > 0 && (
+            <Flex vertical gap="small">
+              <Text strong>Connected Users:</Text>
+              <Flex
+                vertical
+                gap="small"
+                style={{
+                  maxHeight: '200px',
+                  overflowY: 'auto',
+                  padding: '4px',
+                }}
+              >
+                <Flex
+                    key={peerId}
+                    justify="space-between"
+                    align="center"
+                    style={{
+                      background: '#f5f5f5',
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      width: '100%',
+                    }}
+                  >
+                    <Flex gap="small" align="center">
+                      {/* <Avatar size="small" icon={<UserOutlined />} src={user.avatar} /> */}
+                      <Text style={{ fontSize: '14px' }}>{peerId} (you)</Text>
+                    </Flex>
+                    {/* {true === false && (
+                      <CrownFilled
+                        style={{
+                          color: '#FFD700',
+                          fontSize: '16px',
+                        }}
+                      />
+                    )} */}
+                  </Flex>
+                {connections.map((conn) => (
+                  <Flex
+                    key={conn.connection.peer}
+                    justify="space-between"
+                    align="center"
+                    style={{
+                      background: '#f5f5f5',
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      width: '100%',
+                    }}
+                  >
+                    <Flex gap="small" align="center">
+                      {/* <Avatar size="small" icon={<UserOutlined />} src={user.avatar} /> */}
+                      <Text style={{ fontSize: '14px' }}>{conn.connection.peer}</Text>
+                    </Flex>
+                    {conn.isHost && (
+                      <CrownFilled
+                        style={{
+                          color: '#FFD700',
+                          fontSize: '16px',
+                        }}
+                      />
+                    )}
+                  </Flex>
+                ))}
+              </Flex>
+            </Flex>
+          )}
+
+          <Flex style={{ width: '100%' }} align="center">
             <Input
-              width="100%"
               value={shareUrl}
               readOnly
               addonAfter={<Button icon={<CopyOutlined />} onClick={copyToClipboard} />}
             />
           </Flex>
-          <Flex justify="center" align="center">
-            <QRCode value={shareUrl} size={200} bordered={false} />
+
+          <Flex justify="center">
+            <QRCode value={shareUrl} size={160} bordered={false} />
           </Flex>
         </Flex>
-      </Modal>
+      </Drawer>
     </>
   );
 };

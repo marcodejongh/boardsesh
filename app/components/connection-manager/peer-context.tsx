@@ -3,8 +3,9 @@
 import React, { useCallback, useContext, createContext, useEffect, useRef, useReducer } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Peer, { DataConnection } from 'peerjs';
-import { PeerContextType, PeerState, PeerAction, PeerData, PeerConnection, isPeerData, ConnectionState } from './types';
+import { PeerContextType, PeerState, PeerAction, PeerData, PeerConnection, isPeerData } from './types';
 import { v4 as uuidv4 } from 'uuid';
+import { peerReducer, initialPeerState } from './reducer';
 
 const PeerContext = createContext<PeerContextType | undefined>(undefined);
 let peerInstance: Peer | undefined;
@@ -13,42 +14,6 @@ type DataHandler = {
   id: string;
   callback: (data: PeerData) => void;
 };
-
-const initialPeerState: PeerState = {
-  peer: null,
-  peerId: null,
-  connections: [],
-  readyToConnect: false,
-};
-
-function peerReducer(state: PeerState, action: PeerAction): PeerState {
-  switch (action.type) {
-    case 'SET_PEER':
-      return { ...state, peer: action.payload };
-    case 'SET_PEER_ID':
-      return { ...state, peerId: action.payload };
-    case 'SET_READY_TO_CONNECT':
-      return { ...state, readyToConnect: action.payload };
-    case 'UPDATE_CONNECTIONS':
-      return { ...state, connections: action.payload };
-    case 'ADD_CONNECTION':
-      if (state.connections.some((conn) => conn.connection.peer === action.payload.connection.peer)) {
-        return state;
-      }
-      return { ...state, connections: [...state.connections, action.payload] };
-    case 'UPDATE_CONNECTION_STATE':
-      return {
-        ...state,
-        connections: state.connections.map((conn) =>
-          conn.connection.peer === action.payload.peerId
-            ? { ...conn, state: action.payload.state as ConnectionState }
-            : conn,
-        ),
-      };
-    default:
-      return state;
-  }
-}
 
 const broadcastPeerList = (
   peerId: string,
@@ -242,6 +207,9 @@ export const PeerProvider: React.FC<{ children: React.ReactNode }> = ({ children
     connectToPeer,
     subscribeToData,
     hostId,
+    isConnecting:
+      !state.peerId || (state.connections.length > 0 && state.connections.some((conn) => conn.state === 'READY')),
+    hasConnected: state.connections.length > 0 && state.connections.some((conn) => conn.state === 'READY'),
   };
 
   return <PeerContext.Provider value={contextValue}>{children}</PeerContext.Provider>;
