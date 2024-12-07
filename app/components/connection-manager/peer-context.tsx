@@ -80,7 +80,7 @@ export const PeerProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  const connectToPeer = useCallback((connectionId: string) => {
+  const connectToPeer = useCallback((connectionId: string, isHost?: boolean) => {
     console.log('Connecting to peer:', connectionId);
     const currentState = stateRef.current;
 
@@ -94,11 +94,13 @@ export const PeerProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
+    // Instead of checking for existing connection, remove it if it exists
     const existingConnection = currentState.connections.find((conn) => conn.connection.peer === connectionId);
-
     if (existingConnection) {
-      console.log('Connection already exists:', connectionId);
-      return;
+      dispatch({
+        type: 'REMOVE_CONNECTION',
+        payload: connectionId,
+      });
     }
 
     const newConn = currentState.peer.connect(connectionId);
@@ -113,7 +115,7 @@ export const PeerProvider: React.FC<{ children: React.ReactNode }> = ({ children
       payload: {
         connection: newConn,
         state: 'CONNECTING',
-        isHost: true,
+        isHost: existingConnection?.isHost || !!isHost,
       },
     });
 
@@ -162,13 +164,43 @@ export const PeerProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       p.on('error', (error) => {
-        const failedPeerId = error.message.replace('Could not connect to peer ', '').trim();
-        dispatch({
-          type: 'REMOVE_CONNECTION',
-          payload: failedPeerId,
-        });
-        console.error(`Failed to connect to hostId ${failedPeerId}, because of`, error);
+  const failedPeerId = error.message.replace('Could not connect to peer ', '').trim();
+  const failedConnection = state.connections.find(conn => conn.connection.peer === failedPeerId);
+
+  switch (error.type) {
+    case 'disconnected':
+    case 'socket-closed':
+      // First remove the old connection
+      dispatch({
+        type: 'REMOVE_CONNECTION',
+        payload: failedPeerId,
       });
+      
+      // Then attempt to reconnect after a short delay
+      setTimeout(() => {
+        if (failedConnection?.isHost) {  // Only reconnect if it was a host connection
+          console.log(`Attempting to reconnect to ${failedPeerId}`);
+          connectToPeer(failedPeerId);
+        }
+      }, 1000);
+      break;
+
+    case 'peer-unavailable':
+      // Just remove the connection, peer isn't available
+      dispatch({
+        type: 'REMOVE_CONNECTION',
+        payload: failedPeerId,
+      });
+      break;
+      
+    default:
+      console.error(`Connection error with peer ${failedPeerId}:`, error);
+      dispatch({
+        type: 'REMOVE_CONNECTION',
+        payload: failedPeerId,
+      });
+  }
+});
 
       dispatch({ type: 'SET_PEER', payload: p });
     }
@@ -205,7 +237,7 @@ export const PeerProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const connectionExists = state.connections.some((conn) => conn.connection.peer === urlHostId);
       if (!connectionExists) {
         try {
-          connectToPeer(urlHostId);
+          connectToPeer(urlHostId, true);
           // Remove the hostId search param
           const url = new URL(window.location.href);
           url.searchParams.delete('hostId');
@@ -226,7 +258,7 @@ export const PeerProvider: React.FC<{ children: React.ReactNode }> = ({ children
     sendData,
     connectToPeer,
     subscribeToData,
-    hostId: state.connections.find((conn) => conn.isHost)?.connection?.peer || null,
+    hostId: state.connections.find((conn) => conn.isHost)?.connection?.peer || urlHostId,
     isConnecting:
       !state.peerId || (state.connections.length > 0 && state.connections.some((conn) => conn.state === 'READY')),
     hasConnected: state.connections.length > 0 && state.connections.some((conn) => conn.state === 'READY'),

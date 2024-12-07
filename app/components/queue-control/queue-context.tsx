@@ -50,7 +50,7 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
           break;
         case 'initial-queue-data':
           if (hostId !== data.source) {
-            console.log(`Ignoring queue data from ${data.source} since it's not the host.`);
+            console.log(`Ignoring queue data from ${data.source} since it's not the host(${hostId}).`);
             return;
           }
           dispatch({
