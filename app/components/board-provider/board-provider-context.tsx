@@ -98,6 +98,9 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
 
   // Load saved auth state on mount
   useEffect(() => {
+    // TODO: Handle logged out status, apparently the token
+    // stays valid for quite a while, but we should still make sure
+    // we handle it being logged out
     const initializeAuth = async () => {
       try {
         const db = await initDB(boardName);
