@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import { TeamOutlined, CopyOutlined, UserOutlined, CrownFilled, LoadingOutlined } from '@ant-design/icons';
-import { Button, Input, Drawer, QRCode, Flex, message, Avatar, Typography, Badge } from 'antd';
+import { TeamOutlined, CopyOutlined, CrownFilled, LoadingOutlined } from '@ant-design/icons';
+import { Button, Input, Drawer, QRCode, Flex, message, Typography, Badge } from 'antd';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { usePeerContext } from '../connection-manager/peer-context';
-import { usePartyContext } from '../party-manager/party-context';
+// import { usePartyContext } from '../party-manager/party-context';
 
 const { Text } = Typography;
 
@@ -19,15 +19,9 @@ const getShareUrl = (pathname: string, searchParams: URLSearchParams, peerId: st
   }
 };
 
-type ConnectedUser = {
-  username: string;
-  avatar?: string;
-  isHost?: boolean;
-};
-
 export const ShareBoardButton = () => {
   const { peerId, isConnecting, hasConnected, connections } = usePeerContext();
-  const { connectedUsers } = usePartyContext();
+  // const { connectedUsers } = usePartyContext();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   const searchParams = useSearchParams();
