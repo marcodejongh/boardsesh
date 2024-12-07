@@ -81,12 +81,6 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
         onClick={() => setCurrentClimbQueueItem(item)}
       >
         <Row style={{ width: '100%' }} gutter={16} align="middle">
-          <Col xs={1}>
-            <DragHandleButton label={`Reorder ${item.climb.name}`}>
-              <HolderOutlined />
-            </DragHandleButton>
-          </Col>
-
           <Col xs={5}>
             <ClimbThumbnail boardDetails={boardDetails} currentClimb={item.climb} />
           </Col>
@@ -117,6 +111,11 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
                 </Text>
               }
             />
+          </Col>
+          <Col xs={1}>
+            <DragHandleButton label={`Reorder ${item.climb.name}`}>
+              <HolderOutlined />
+            </DragHandleButton>
           </Col>
         </Row>
         {closestEdge && <DropIndicator edge={closestEdge} gap="1px" />}
