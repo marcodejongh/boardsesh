@@ -111,7 +111,7 @@ const WebBluetoothWarning: React.FC = () => {
                 <Space size="middle" style={{ marginTop: 12 }}>
                   <Button onClick={handleDismiss}>Dismiss</Button>
                   <Button type="primary" onClick={handleDismissForever}>
-                    Don&#39;tt Show Again
+                    Don&#39;t Show Again
                   </Button>
                 </Space>
               </div>
