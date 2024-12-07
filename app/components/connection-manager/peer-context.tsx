@@ -205,7 +205,7 @@ export const PeerProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       dispatch({ type: 'SET_PEER', payload: p });
     }
-  }, []);
+  });
 
   useEffect(() => {
     state.connections
