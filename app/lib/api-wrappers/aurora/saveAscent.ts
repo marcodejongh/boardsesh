@@ -1,6 +1,5 @@
-import { BoardName, SaveAscentOptions, generateUuid } from "./util";
+import { BoardName, SaveAscentOptions, generateUuid } from './util';
 import { API_HOSTS } from './types';
-
 
 async function saveAscent(board: BoardName, token: string, options: SaveAscentOptions): Promise<any> {
   const uuid = generateUuid();

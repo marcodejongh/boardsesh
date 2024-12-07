@@ -1,4 +1,4 @@
-import { API_HOSTS } from "./types";
+import { API_HOSTS } from './types';
 
 export async function explore(board: BoardName, token: string): Promise<any> {
   const response = await fetch(`${API_HOSTS[board]}/explore`, {

@@ -118,7 +118,6 @@ export type FetchResultsResponse = {
   totalCount: number;
 };
 
-
 // Led Colors Type
 export type LedColor = {
   [role_id: number]: string;
@@ -199,4 +198,3 @@ export type FetchCurrentProblemResponse = Climb;
 export interface ErrorResponse {
   error: string;
 }
-

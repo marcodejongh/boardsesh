@@ -1,10 +1,9 @@
 import { BoardName } from '../../types';
 import { API_HOSTS, SyncOptions } from './types';
 
-
 async function sharedSync(
   board: BoardName,
-  options: Omit<SyncOptions, 'walls' | 'wallExpungements'> = {}
+  options: Omit<SyncOptions, 'walls' | 'wallExpungements'> = {},
 ): Promise<any> {
   const { tables = [], sharedSyncs = [] } = options;
 

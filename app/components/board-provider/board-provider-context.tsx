@@ -23,10 +23,10 @@ const initDB = (board_name: BoardName) => {
 
 const loadAuthState = async (db: IDBPDatabase, board_name: BoardName) => {
   return db.get(board_name, 'auth');
-}
+};
 const saveAuthState = async (db: IDBPDatabase, board_name: BoardName, value: AuthState) => {
-  return db.put(board_name, value, 'auth' );
-}
+  return db.put(board_name, value, 'auth');
+};
 
 interface BoardUser {
   id: number;
@@ -83,7 +83,7 @@ interface BoardContextType {
 
 const BoardContext = createContext<BoardContextType | undefined>(undefined);
 
-export function BoardProvider({ boardName, children }: { boardName: BoardName, children: React.ReactNode }) {
+export function BoardProvider({ boardName, children }: { boardName: BoardName; children: React.ReactNode }) {
   const [authState, setAuthState] = useState<AuthState>({
     token: null,
     user: null,
@@ -99,7 +99,6 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName, c
   // Load saved auth state on mount
   useEffect(() => {
     const initializeAuth = async () => {
-      
       try {
         const db = await initDB(boardName);
         const savedState = await loadAuthState(db, boardName);
@@ -112,7 +111,7 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName, c
             loginInfo: savedState.loginInfo,
           });
         }
-        
+
         setDb(db);
       } catch (error) {
         console.error('Failed to load auth state:', error);
@@ -168,15 +167,15 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName, c
   };
   
   const getLogbook = async () => {
-    setIsLoading(true);
-    setError(null);
-
     try {
       if (!authState.user?.id) {
         return;
       }
 
-      const { token, user: { id: userId } } = authState;
+      const {
+        token,
+        user: { id: userId },
+      } = authState;
       const response = await fetch(`/api/v1/${boardName}/proxy/getLogbook`, {
         method: 'POST',
         headers: {
@@ -186,18 +185,25 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName, c
       });
 
       const data: Ascent[] = await response.json();
-      
+
       if (!response.ok) {
         throw new Error('Couldnt fetch logbook');
       }
-      
+
       setLogbook(data);
     } catch (error) {
       // const message = error instanceof Error ? error.message : 'An error occurred';
       // setError(message);
       throw error;
-    } finally {}
+    } finally {
+    }
   };
+
+  useEffect(() => {
+    if (authState.token && logbook.length === 0) {
+      getLogbook();
+    }
+  }, [authState]);
 
   const logout = async () => {
     // Clear state and IndexedDB
@@ -209,7 +215,7 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName, c
     });
     // await clearAuthState();
   };
-  window.getLogbook = getLogbook;
+
   const value = {
     isAuthenticated: !!authState.token,
     token: authState.token,
@@ -221,6 +227,7 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName, c
     error,
     isInitialized,
     getLogbook,
+    logbook,
   };
 
   // Don't render children until we've checked for existing auth
@@ -228,11 +235,7 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName, c
     return null; // Or a loading spinner
   }
 
-  return (
-    <BoardContext.Provider value={value}>
-      {children}
-    </BoardContext.Provider>
-  );
+  return <BoardContext.Provider value={value}>{children}</BoardContext.Provider>;
 }
 
 export function useBoardProvider() {

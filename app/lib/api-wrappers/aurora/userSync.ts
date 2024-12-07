@@ -1,7 +1,12 @@
-import { BoardName, SyncOptions } from "./util";
+import { BoardName, SyncOptions } from './util';
 import { API_HOSTS } from './types';
 
-export async function userSync(board: BoardName, token: string, userId: string, options: SyncOptions = {}): Promise<any> {
+export async function userSync(
+  board: BoardName,
+  token: string,
+  userId: string,
+  options: SyncOptions = {},
+): Promise<any> {
   const { tables = [], walls = [], wallExpungements = [], sharedSyncs = [], userSyncs = [] } = options;
 
   const response = await fetch(`${API_HOSTS[board]}/v1/sync`, {

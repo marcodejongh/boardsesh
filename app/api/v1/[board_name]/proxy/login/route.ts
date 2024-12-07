@@ -8,7 +8,7 @@ const loginSchema = z.object({
   password: z.string().min(1),
 });
 
-export async function POST(request: Request, {params: { board_name }}) {
+export async function POST(request: Request, { params: { board_name } }) {
   try {
     // Parse and validate request body
     const body = await request.json();
@@ -46,4 +46,3 @@ export async function POST(request: Request, {params: { board_name }}) {
 function login(board_name: any, username: string, password: string) {
   throw new Error('Function not implemented.');
 }
-

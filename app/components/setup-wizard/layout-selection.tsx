@@ -10,7 +10,7 @@ import { BoardName } from '@/app/lib/types';
 const { Option } = Select;
 const { Title, Text } = Typography;
 
-const LayoutSelection = ({ layouts = [], boardName }: { layouts: LayoutRow[], boardName: BoardName }) => {
+const LayoutSelection = ({ layouts = [], boardName }: { layouts: LayoutRow[]; boardName: BoardName }) => {
   const router = useRouter();
   const { login, isAuthenticated } = useBoardProvider();
   const [selectedLayout, setSelectedLayout] = useState<number>();
@@ -28,7 +28,7 @@ const LayoutSelection = ({ layouts = [], boardName }: { layouts: LayoutRow[], bo
 
   const handleLogin = async () => {
     if (!username || !password) return;
-    
+
     setIsLoggingIn(true);
     try {
       await login(boardName, username, password);
@@ -43,11 +43,7 @@ const LayoutSelection = ({ layouts = [], boardName }: { layouts: LayoutRow[], bo
     <div style={{ padding: '24px', background: '#f7f7f7', borderRadius: '8px' }}>
       <Title level={4}>Select a layout</Title>
       <Form layout="vertical">
-        <Form.Item 
-          label="Layout"
-          required
-          tooltip="Choose the layout you want to work with"
-        >
+        <Form.Item label="Layout" required tooltip="Choose the layout you want to work with">
           <Select onChange={onLayoutChange}>
             {layouts.map(({ id: layoutId, name: layoutName }) => (
               <Option key={layoutId} value={layoutId}>
@@ -63,52 +59,29 @@ const LayoutSelection = ({ layouts = [], boardName }: { layouts: LayoutRow[], bo
 
         {isAuthenticated ? (
           <div style={{ marginBottom: '16px' }}>
-            <Text type="success">
-              Logged in to {boardName} board
-            </Text>
+            <Text type="success">Logged in to {boardName} board</Text>
           </div>
         ) : (
           <div>
-            <Form.Item
-              label="Username"
-              tooltip="Your board account username"
-            >
-              <Input 
-                placeholder="Enter username" 
-                value={username}
-                onChange={e => setUsername(e.target.value)}
-              />
+            <Form.Item label="Username" tooltip="Your board account username">
+              <Input placeholder="Enter username" value={username} onChange={(e) => setUsername(e.target.value)} />
             </Form.Item>
 
-            <Form.Item
-              label="Password"
-              tooltip="Your board account password"
-            >
-              <Input.Password 
-                placeholder="Enter password" 
+            <Form.Item label="Password" tooltip="Your board account password">
+              <Input.Password
+                placeholder="Enter password"
                 value={password}
-                onChange={e => setPassword(e.target.value)}
+                onChange={(e) => setPassword(e.target.value)}
               />
             </Form.Item>
 
-            <Button 
-              type="default" 
-              block 
-              loading={isLoggingIn}
-              onClick={handleLogin}
-            >
+            <Button type="default" block loading={isLoggingIn} onClick={handleLogin}>
               {isLoggingIn ? 'Logging in...' : 'Login (Optional)'}
             </Button>
           </div>
         )}
 
-        <Button 
-          type="primary" 
-          block 
-          style={{ marginTop: '16px' }} 
-          onClick={handleNext}
-          disabled={!selectedLayout}
-        >
+        <Button type="primary" block style={{ marginTop: '16px' }} onClick={handleNext} disabled={!selectedLayout}>
           Next
         </Button>
       </Form>

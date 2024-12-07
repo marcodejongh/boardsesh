@@ -15,9 +15,5 @@ export default function BoardLayout({ children, params }: PropsWithChildren<Boar
   const parsedParams: ParsedBoardRouteParameters = parseBoardRouteParams(params);
 
   const { board_name } = parsedParams;
-  return (
-    <BoardProvider boardName={board_name}>
-      {children}
-    </BoardProvider>
-  );
+  return <BoardProvider boardName={board_name}>{children}</BoardProvider>;
 }

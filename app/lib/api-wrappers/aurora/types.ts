@@ -72,12 +72,13 @@ export const HOST_BASES: Record<BoardName, string> = {
   kilter: 'kilterboardapp',
   tension: 'tensionboardapp2',
   // touchstone: 'touchstoneboardapp',
-};export const API_HOSTS: Record<BoardName, string> = Object.fromEntries(
-  Object.entries(HOST_BASES).map(([board, hostBase]) => [board, `https://api.${hostBase}.com`])
+};
+export const API_HOSTS: Record<BoardName, string> = Object.fromEntries(
+  Object.entries(HOST_BASES).map(([board, hostBase]) => [board, `https://api.${hostBase}.com`]),
 ) as Record<BoardName, string>;
 
 export const WEB_HOSTS: Record<BoardName, string> = Object.fromEntries(
-  Object.entries(HOST_BASES).map(([board, hostBase]) => [board, `https://${hostBase}.com`])
+  Object.entries(HOST_BASES).map(([board, hostBase]) => [board, `https://${hostBase}.com`]),
 ) as Record<BoardName, string>;
 
 export interface Ascent {

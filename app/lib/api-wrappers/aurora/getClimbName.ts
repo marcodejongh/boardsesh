@@ -1,6 +1,5 @@
-import { BoardName } from "./util";
+import { BoardName } from './util';
 import { WEB_HOSTS } from './types';
-
 
 async function getClimbName(board: BoardName, climbId: string): Promise<string | null> {
   const response = await fetch(`${WEB_HOSTS[board]}/climbs/${climbId}`);

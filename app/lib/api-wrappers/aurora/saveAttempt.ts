@@ -1,6 +1,5 @@
-import { BoardName, SaveAttemptOptions, generateUuid } from "./util";
+import { BoardName, SaveAttemptOptions, generateUuid } from './util';
 import { API_HOSTS } from './types';
-
 
 async function saveAttempt(board: BoardName, token: string, options: SaveAttemptOptions): Promise<any> {
   const uuid = generateUuid();

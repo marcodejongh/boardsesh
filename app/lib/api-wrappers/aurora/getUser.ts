@@ -1,6 +1,5 @@
-import { BoardName } from "./util";
+import { BoardName } from './util';
 import { API_HOSTS } from './types';
-
 
 async function getUser(board: BoardName, token: string, userId: string): Promise<any> {
   const response = await fetch(`${API_HOSTS[board]}/v2/users/${userId}`, {

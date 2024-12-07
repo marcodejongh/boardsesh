@@ -1,6 +1,5 @@
-import { BoardName } from "../../types";
-import { API_HOSTS, SaveClimbOptions } from "./types";
-
+import { BoardName } from '../../types';
+import { API_HOSTS, SaveClimbOptions } from './types';
 
 async function saveClimb(board: BoardName, token: string, options: SaveClimbOptions): Promise<any> {
   const uuid = generateUuid();
@@ -19,6 +18,5 @@ async function saveClimb(board: BoardName, token: string, options: SaveClimbOpti
   return response.json();
 }
 function generateUuid() {
-  throw new Error("Function not implemented.");
+  throw new Error('Function not implemented.');
 }
-

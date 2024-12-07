@@ -9,7 +9,7 @@ const getLogbookSchema = z.object({
   userId: z.string().min(1),
 });
 
-export async function POST(request: Request, {params: { board_name }}) {
+export async function POST(request: Request, { params: { board_name } }) {
   try {
     // Parse and validate request body
     const body = await request.json();

@@ -1,6 +1,5 @@
-import { BoardName, LoginResponse } from "./util";
+import { BoardName, LoginResponse } from './util';
 import { API_HOSTS } from './types';
-
 
 async function login(board: BoardName, username: string, password: string): Promise<LoginResponse> {
   console.log(`${API_HOSTS[board]}/v1/logins`);
