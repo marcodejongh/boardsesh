@@ -165,9 +165,9 @@ export const PeerProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const failedPeerId = error.message.replace('Could not connect to peer ', '').trim();
         dispatch({
           type: 'REMOVE_CONNECTION',
-          payload: failedPeerId
-        })
-        console.error(`Failed to connect to hostId ${failedPeerId}, because of`, error)
+          payload: failedPeerId,
+        });
+        console.error(`Failed to connect to hostId ${failedPeerId}, because of`, error);
       });
 
       dispatch({ type: 'SET_PEER', payload: p });
@@ -226,7 +226,7 @@ export const PeerProvider: React.FC<{ children: React.ReactNode }> = ({ children
     sendData,
     connectToPeer,
     subscribeToData,
-    hostId: state.connections.find(conn => conn.isHost)?.connection?.peer || null,
+    hostId: state.connections.find((conn) => conn.isHost)?.connection?.peer || null,
     isConnecting:
       !state.peerId || (state.connections.length > 0 && state.connections.some((conn) => conn.state === 'READY')),
     hasConnected: state.connections.length > 0 && state.connections.some((conn) => conn.state === 'READY'),
@@ -290,7 +290,7 @@ function setupDataHandlers(
       payload: stateRef.current.connections.filter(({ connection }) => connection.peer !== conn.peer),
     });
   });
-  
+
   conn.on('error', (err) => {
     console.error(`Error with peer ${conn.peer}:`, err);
   });

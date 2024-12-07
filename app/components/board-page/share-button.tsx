@@ -34,7 +34,7 @@ export const ShareBoardButton = () => {
   const handleClose = () => {
     setIsDrawerOpen(false);
   };
-  
+
   const shareUrl = getShareUrl(pathname, searchParams, hostId || peerId || '');
 
   const copyToClipboard = () => {

@@ -18,7 +18,7 @@ export function peerReducer(state: PeerState, action: PeerAction): PeerState {
     case 'UPDATE_CONNECTIONS':
       return { ...state, connections: action.payload };
     case 'REMOVE_CONNECTION':
-      return { ...state, connections: state.connections.filter(conn => conn.connection.peer !== action.payload) };
+      return { ...state, connections: state.connections.filter((conn) => conn.connection.peer !== action.payload) };
     case 'ADD_CONNECTION':
       if (state.connections.some((conn) => conn.connection.peer === action.payload.connection.peer)) {
         return state;
