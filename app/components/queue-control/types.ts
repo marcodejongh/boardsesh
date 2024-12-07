@@ -53,4 +53,5 @@ export interface QueueContextType {
   fetchMoreClimbs: () => void;
   getNextClimbQueueItem: () => ClimbQueueItem | null;
   getPreviousClimbQueueItem: () => ClimbQueueItem | null;
+  setQueue: (queue: ClimbQueueItem[]) => void;
 }
