@@ -20,7 +20,7 @@
     "@types/web-bluetooth": "^0.0.20",
     "@vercel/analytics": "^1.4.1",
     "@vercel/postgres": "^0.10.0",
-    "antd": "^5.20.2",
+    "antd": "^5.22.3",
     "idb": "^8.0.0",
     "next": "14.2.11",
     "peerjs": "^1.5.4",
