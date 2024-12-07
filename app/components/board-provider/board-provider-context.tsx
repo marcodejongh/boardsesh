@@ -165,7 +165,7 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
       setIsLoading(false);
     }
   };
-  
+
   const getLogbook = async () => {
     try {
       if (!authState.user?.id) {
@@ -185,6 +185,8 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
       });
 
       const data: Ascent[] = await response.json();
+
+      window.logbook = data;
 
       if (!response.ok) {
         throw new Error('Couldnt fetch logbook');

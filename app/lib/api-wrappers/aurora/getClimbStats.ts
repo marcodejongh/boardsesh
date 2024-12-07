@@ -1,7 +1,12 @@
-import { BoardName, ClimbStats } from './util';
-import { API_HOSTS } from './types';
+import { BoardName } from '../../types';
+import { API_HOSTS, ClimbStats } from './types';
 
-async function getClimbStats(board: BoardName, token: string, climbId: string, angle: number): Promise<ClimbStats> {
+export async function getClimbStats(
+  board: BoardName,
+  token: string,
+  climbId: string,
+  angle: number,
+): Promise<ClimbStats> {
   const response = await fetch(`${API_HOSTS[board]}/v1/climbs/${climbId}/info?angle=${angle}`, {
     headers: { authorization: `Bearer ${token}` },
   });

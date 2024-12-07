@@ -1,7 +1,7 @@
 import { BoardName } from '../../types';
 import { API_HOSTS, SyncOptions } from './types';
 
-async function sharedSync(
+export async function sharedSync(
   board: BoardName,
   options: Omit<SyncOptions, 'walls' | 'wallExpungements'> = {},
 ): Promise<any> {

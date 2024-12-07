@@ -1,5 +1,5 @@
-import { BoardName, SyncOptions } from './util';
-import { API_HOSTS } from './types';
+import { BoardName } from '../../types';
+import { API_HOSTS, SyncOptions } from './types';
 
 export async function userSync(
   board: BoardName,

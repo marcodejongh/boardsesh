@@ -6,7 +6,7 @@ import { useQueueContext } from './queue-context';
 import NextClimbButton from './next-climb-button';
 import { usePathname } from 'next/navigation';
 import PreviousClimbButton from './previous-climb-button';
-import { BoardName, BoardDetails } from '@/app/lib/types';
+import { BoardName, BoardDetails, Angle } from '@/app/lib/types';
 import QueueList from './queue-list';
 import ClimbThumbnail from '../climb-card/climb-thumbnail';
 import { useBoardProvider } from '../board-provider/board-provider-context';
@@ -16,9 +16,10 @@ const { Title, Text } = Typography;
 export interface QueueControlBar {
   boardDetails: BoardDetails;
   board: BoardName;
+  angle: Angle;
 }
 
-const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails }: QueueControlBar) => {
+const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: QueueControlBar) => {
   const [isQueueOpen, setIsQueueOpen] = useState(false);
   const pathname = usePathname();
 
@@ -90,7 +91,12 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails }: QueueContr
               <PreviousClimbButton navigate={isViewPage} />
               <NextClimbButton navigate={isViewPage} />
               <Badge
-                count={logbook.length > 0 ? logbook.filter((asc) => asc.climb_uuid === currentClimb?.uuid).length : 0}
+                count={
+                  logbook.length > 0
+                    ? logbook.filter((asc) => asc.climb_uuid === currentClimb?.uuid && Number(asc.angle) === angle)
+                        .length
+                    : 0
+                }
                 overflowCount={100}
                 showZero={false}
                 color="cyan"
