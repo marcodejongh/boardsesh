@@ -164,43 +164,44 @@ export const PeerProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       p.on('error', (error) => {
-  const failedPeerId = error.message.replace('Could not connect to peer ', '').trim();
-  const failedConnection = state.connections.find(conn => conn.connection.peer === failedPeerId);
+        const failedPeerId = error.message.replace('Could not connect to peer ', '').trim();
+        const failedConnection = state.connections.find((conn) => conn.connection.peer === failedPeerId);
 
-  switch (error.type) {
-    case 'disconnected':
-    case 'socket-closed':
-      // First remove the old connection
-      dispatch({
-        type: 'REMOVE_CONNECTION',
-        payload: failedPeerId,
-      });
-      
-      // Then attempt to reconnect after a short delay
-      setTimeout(() => {
-        if (failedConnection?.isHost) {  // Only reconnect if it was a host connection
-          console.log(`Attempting to reconnect to ${failedPeerId}`);
-          connectToPeer(failedPeerId);
+        switch (error.type) {
+          case 'disconnected':
+          case 'socket-closed':
+            // First remove the old connection
+            dispatch({
+              type: 'REMOVE_CONNECTION',
+              payload: failedPeerId,
+            });
+
+            // Then attempt to reconnect after a short delay
+            setTimeout(() => {
+              if (failedConnection?.isHost) {
+                // Only reconnect if it was a host connection
+                console.log(`Attempting to reconnect to ${failedPeerId}`);
+                connectToPeer(failedPeerId);
+              }
+            }, 1000);
+            break;
+
+          case 'peer-unavailable':
+            // Just remove the connection, peer isn't available
+            dispatch({
+              type: 'REMOVE_CONNECTION',
+              payload: failedPeerId,
+            });
+            break;
+
+          default:
+            console.error(`Connection error with peer ${failedPeerId}:`, error);
+            dispatch({
+              type: 'REMOVE_CONNECTION',
+              payload: failedPeerId,
+            });
         }
-      }, 1000);
-      break;
-
-    case 'peer-unavailable':
-      // Just remove the connection, peer isn't available
-      dispatch({
-        type: 'REMOVE_CONNECTION',
-        payload: failedPeerId,
       });
-      break;
-      
-    default:
-      console.error(`Connection error with peer ${failedPeerId}:`, error);
-      dispatch({
-        type: 'REMOVE_CONNECTION',
-        payload: failedPeerId,
-      });
-  }
-});
 
       dispatch({ type: 'SET_PEER', payload: p });
     }
