@@ -5,6 +5,7 @@ export interface LoginResponse {
   user: {
     id: string;
     username: string;
+    // eslint-disable-next-line  @typescript-eslint/no-explicit-any
     [key: string]: any;
   };
 }
@@ -17,12 +18,15 @@ export interface GymInfo {
 }
 export interface SyncOptions {
   tables?: string[];
+  // eslint-disable-next-line  @typescript-eslint/no-explicit-any
   walls?: any[];
+  // eslint-disable-next-line  @typescript-eslint/no-explicit-any
   wallExpungements?: any[];
   sharedSyncs?: Array<{
     table_name: string;
     last_synchronized_at: string;
   }>;
+  // eslint-disable-next-line  @typescript-eslint/no-explicit-any
   userSyncs?: any[];
 }
 export interface ClimbStats {
@@ -30,6 +34,7 @@ export interface ClimbStats {
   benchmark_difficulty: number | null;
   repeats: number;
   sends: number;
+  // eslint-disable-next-line  @typescript-eslint/no-explicit-any
   [key: string]: any;
 }
 export interface SaveAscentOptions {
@@ -60,6 +65,7 @@ export interface SaveClimbOptions {
   name: string;
   description: string;
   is_draft: boolean;
+  // eslint-disable-next-line  @typescript-eslint/no-explicit-any
   frames: any[];
   frames_count?: number;
   frames_pace?: number;

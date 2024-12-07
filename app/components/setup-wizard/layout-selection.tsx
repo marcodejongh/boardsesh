@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { Button, Form, Select, Typography, Input, Divider } from 'antd';
 import { useRouter } from 'next/navigation';
 import { LayoutRow } from '@/app/lib/data/queries';
-import { BoardType } from '@/lib/board-api';
 import { useBoardProvider } from '../board-provider/board-provider-context';
 import { BoardName } from '@/app/lib/types';
 

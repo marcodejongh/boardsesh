@@ -121,7 +121,7 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
     };
 
     initializeAuth();
-  }, []);
+  }, [boardName]);
 
   const login = async (board: BoardName, username: string, password: string) => {
     setIsLoading(true);
@@ -186,8 +186,6 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
 
       const data: Ascent[] = await response.json();
 
-      window.logbook = data;
-
       if (!response.ok) {
         throw new Error('Couldnt fetch logbook');
       }
@@ -203,9 +201,10 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
 
   useEffect(() => {
     if (authState.token && logbook.length === 0) {
+      // TODO: Move getLogbook to callback
       getLogbook();
     }
-  }, [authState]);
+  }, [authState, logbook.length]);
 
   const logout = async () => {
     // Clear state and IndexedDB

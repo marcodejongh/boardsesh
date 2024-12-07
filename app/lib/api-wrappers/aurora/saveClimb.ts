@@ -1,6 +1,7 @@
 import { BoardName } from '../../types';
 import { API_HOSTS, SaveClimbOptions } from './types';
 
+// eslint-disable-next-line  @typescript-eslint/no-explicit-any
 export async function saveClimb(board: BoardName, token: string, options: SaveClimbOptions): Promise<any> {
   const uuid = generateUuid();
   const response = await fetch(`${API_HOSTS[board]}/v2/climbs/${uuid}`, {

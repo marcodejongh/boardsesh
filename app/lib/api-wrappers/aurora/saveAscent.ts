@@ -2,7 +2,8 @@ import { BoardName } from '../../types';
 import { API_HOSTS, SaveAscentOptions } from './types';
 import { generateUuid } from './util';
 
-async function saveAscent(board: BoardName, token: string, options: SaveAscentOptions): Promise<any> {
+// eslint-disable-next-line  @typescript-eslint/no-explicit-any
+export async function saveAscent(board: BoardName, token: string, options: SaveAscentOptions): Promise<any> {
   const uuid = generateUuid();
   const response = await fetch(`${API_HOSTS[board]}/v1/ascents/${uuid}`, {
     method: 'PUT',

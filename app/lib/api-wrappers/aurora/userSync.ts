@@ -6,6 +6,7 @@ export async function userSync(
   token: string,
   userId: string,
   options: SyncOptions = {},
+  // eslint-disable-next-line  @typescript-eslint/no-explicit-any
 ): Promise<any> {
   const { tables = [], walls = [], wallExpungements = [], sharedSyncs = [], userSyncs = [] } = options;
 

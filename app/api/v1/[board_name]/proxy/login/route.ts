@@ -1,4 +1,7 @@
 // app/api/login/route.ts
+import { login } from '@/app/lib/api-wrappers/aurora/login';
+import { BoardRouteParameters, ParsedBoardRouteParameters } from '@/app/lib/types';
+import { parseBoardRouteParams } from '@/app/lib/url-utils';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -8,7 +11,8 @@ const loginSchema = z.object({
   password: z.string().min(1),
 });
 
-export async function POST(request: Request, { params: { board_name } }) {
+export async function POST(request: Request, { params }: { params: BoardRouteParameters }) {
+  const { board_name }: ParsedBoardRouteParameters = parseBoardRouteParams(params)
   try {
     // Parse and validate request body
     const body = await request.json();
@@ -42,7 +46,4 @@ export async function POST(request: Request, { params: { board_name } }) {
     console.error('Login error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
-function login(board_name: any, username: string, password: string) {
-  throw new Error('Function not implemented.');
 }

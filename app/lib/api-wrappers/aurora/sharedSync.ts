@@ -4,6 +4,7 @@ import { API_HOSTS, SyncOptions } from './types';
 export async function sharedSync(
   board: BoardName,
   options: Omit<SyncOptions, 'walls' | 'wallExpungements'> = {},
+// eslint-disable-next-line  @typescript-eslint/no-explicit-any
 ): Promise<any> {
   const { tables = [], sharedSyncs = [] } = options;
 
