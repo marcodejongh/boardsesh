@@ -5,7 +5,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { BoardName } from '@/app/lib/types';
 
 import { IDBPDatabase, openDB } from 'idb';
-import { Ascent } from '@/app/lib/api-wrappers/aurora/types';
+import { Ascent, BoardUser, LoginResponse } from '@/app/lib/api-wrappers/aurora/types';
 
 const DB_NAME = 'boardsesh';
 const DB_VERSION = 1;
@@ -27,36 +27,6 @@ const loadAuthState = async (db: IDBPDatabase, board_name: BoardName) => {
 const saveAuthState = async (db: IDBPDatabase, board_name: BoardName, value: AuthState) => {
   return db.put(board_name, value, 'auth');
 };
-
-interface BoardUser {
-  id: number;
-  username: string;
-  email_address: string;
-  created_at: string;
-  updated_at: string;
-  is_listed: boolean;
-  is_public: boolean;
-  avatar_image: string | null;
-  banner_image: string | null;
-  city: string | null;
-  country: string | null;
-  height: number | null;
-  weight: number | null;
-  wingspan: number | null;
-}
-
-interface LoginResponse {
-  error: string;
-  login: {
-    created_at: string;
-    token: string;
-    user_id: number;
-  };
-  token: string;
-  user: BoardUser;
-  user_id: number;
-  username: string;
-}
 
 interface AuthState {
   token: string | null;

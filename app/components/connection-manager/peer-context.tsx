@@ -3,7 +3,15 @@
 import React, { useCallback, useContext, createContext, useEffect, useRef, useReducer } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Peer, { DataConnection } from 'peerjs';
-import { PeerContextType, PeerState, PeerAction, PeerData, PeerConnection, isPeerData, ReceivedPeerData } from './types';
+import {
+  PeerContextType,
+  PeerState,
+  PeerAction,
+  PeerData,
+  PeerConnection,
+  isPeerData,
+  ReceivedPeerData,
+} from './types';
 import { v4 as uuidv4 } from 'uuid';
 import { peerReducer, initialPeerState } from './reducer';
 
