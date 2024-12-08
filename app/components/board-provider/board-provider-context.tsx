@@ -55,7 +55,7 @@ interface BoardContextType {
   isInitialized: boolean;
   logbook: Ascent[];
   getLogbook: () => Promise<void>;
-  saveAscent: (options: SaveAscentOptions) => Promise<void>;
+  saveAscent: (options: Omit<SaveAscentOptions, 'uuid'>) => Promise<SaveAscentResponse>;
 }
 
 const BoardContext = createContext<BoardContextType | undefined>(undefined);
@@ -174,7 +174,7 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
   };
 
   // Then update the saveAscent function
-  const saveAscent = async (options: SaveAscentOptions) => {
+  const saveAscent = async (options: Omit<SaveAscentOptions, 'uuid'>) => {
     if (!authState.token || !authState.user?.id) {
       throw new Error('Not authenticated');
     }

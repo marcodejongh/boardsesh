@@ -14,15 +14,11 @@ interface TickButtonProps {
 export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boardDetails }) => {
   const { logbook } = useBoardProvider();
   const [drawerVisible, setDrawerVisible] = useState(false);
-  const [expanded, setExpanded] = useState(false);
   const showDrawer = () => setDrawerVisible(true);
 
   const closeDrawer = () => {
     setDrawerVisible(false);
-    setExpanded(false); // Reset drawer to initial state
   };
-
-  const handleLogAscentClick = () => setExpanded(true);
 
   return (
     <>
@@ -42,8 +38,6 @@ export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boa
       <LogbookDrawer
         drawerVisible={drawerVisible}
         closeDrawer={closeDrawer}
-        expanded={expanded}
-        handleLogAscentClick={handleLogAscentClick}
         currentClimb={currentClimb}
         boardDetails={boardDetails}
       />

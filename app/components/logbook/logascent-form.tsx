@@ -1,11 +1,20 @@
 import React, { useEffect } from 'react';
-import { Button, DatePicker, Select, Input, Rate, Slider, InputNumber, Form, Space } from 'antd';
+import { Button, DatePicker, Select, Input, Rate, Slider, InputNumber, Form } from 'antd';
 import { Climb, BoardDetails } from '@/app/lib/types';
 import { useBoardProvider } from '../board-provider/board-provider-context';
 import { TENSION_KILTER_GRADES, ANGLES } from '@/app/lib/board-data';
 import dayjs from 'dayjs';
 
 const { TextArea } = Input;
+
+interface LogAscentFormValues {
+  date: dayjs.Dayjs;
+  angle: number;
+  attempts: number;
+  quality: number;
+  difficulty: string;
+  notes?: string;
+}
 
 interface LogAscentFormProps {
   currentClimb: Climb;
@@ -21,7 +30,7 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({
   const { user, saveAscent } = useBoardProvider();
   const grades = TENSION_KILTER_GRADES;
   const angleOptions = ANGLES[boardDetails.board_name];
-  const [form] = Form.useForm();
+  const [form] = Form.useForm<LogAscentFormValues>();
 
   useEffect(() => {
     // Set initial values
@@ -34,12 +43,19 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({
     });
   }, [currentClimb, form]);
 
-  const handleSubmit = async (values: any) => {
+  const handleSubmit = async (values: LogAscentFormValues) => {
     if (!currentClimb?.uuid || !user?.id) {
       return;
     }
 
     try {
+      // TODO: I suspect this is a bug in AntD Form, as I would have
+      // expected antd to return the value of the select not the label...
+      const difficulty_id = grades.find(grade => grade.difficulty_name === values.difficulty)?.difficulty_id;
+      if (!difficulty_id) {
+        throw new Error('Couldnt find difficulty_id');
+      }
+
       await saveAscent({
         user_id: parseInt(user.id.toString()),
         climb_uuid: currentClimb.uuid,
@@ -48,7 +64,7 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({
         attempt_id: 0,
         bid_count: values.attempts,
         quality: values.quality,
-        difficulty: Number(values.difficulty),
+        difficulty: difficulty_id,
         is_benchmark: false,
         comment: values.notes || '',
         climbed_at: values.date.toISOString()

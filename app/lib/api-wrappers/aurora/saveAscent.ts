@@ -26,8 +26,6 @@ export async function saveAscent(
     user_id: options.user_id,
   };
 
-  console.log('Request body:', JSON.stringify(requestBody, null, 2));
-
   const response = await fetch(`${API_HOSTS[board]}/v1/ascents/${options.uuid}`, {
     method: 'PUT',
     headers: {

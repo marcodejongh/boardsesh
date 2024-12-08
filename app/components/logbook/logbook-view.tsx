@@ -1,6 +1,6 @@
 import React from 'react';
 import { List, Card, Rate, Tag, Typography, Space } from 'antd';
-import { Ascent, Climb } from '@/app/lib/types';
+import { Climb } from '@/app/lib/types';
 import { useBoardProvider } from '../board-provider/board-provider-context';
 import dayjs from 'dayjs';
 

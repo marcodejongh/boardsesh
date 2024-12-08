@@ -85,10 +85,12 @@ export const LogbookDrawer: React.FC<LogbookDrawerProps> = ({
         </div>
       ) : (
         <>
-          {showLogbookView && (
+          {/* TODO: Make sure these buttons never become visible 
+          when there is no climb selected */}
+          {showLogbookView && currentClimb && (
             <LogbookView currentClimb={currentClimb} />
           )}
-          {showLogAscentForm && (
+          {showLogAscentForm && currentClimb && (
             <LogAscentForm
               currentClimb={currentClimb}
               boardDetails={boardDetails}
