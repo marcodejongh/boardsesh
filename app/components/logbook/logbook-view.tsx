@@ -13,13 +13,15 @@ interface LogbookViewProps {
 export const LogbookView: React.FC<LogbookViewProps> = ({ currentClimb }) => {
   const { logbook } = useBoardProvider();
 
-  // Filter ascents for current climb
-  const climbAscents = logbook.filter(
-    (ascent) => ascent.climb_uuid === currentClimb.uuid
-  ).sort((a, b) => 
-    // Sort by date, newest first
-    new Date(b.climbed_at).getTime() - new Date(a.climbed_at).getTime()
-  );
+  // Filter ascents for current climb and sort by climbed_at
+  const climbAscents = logbook
+    .filter((ascent) => ascent.climb_uuid === currentClimb.uuid)
+    .sort((a, b) => {
+      // Parse dates using dayjs and compare them
+      const dateA = dayjs(a.climbed_at);
+      const dateB = dayjs(b.climbed_at);
+      return dateB.valueOf() - dateA.valueOf(); // Descending order (newest first)
+    });
 
   return (
     <List
