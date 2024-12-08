@@ -3,6 +3,7 @@ import { BoardName } from '@/app/lib/types';
 import { IDBPDatabase, openDB } from 'idb';
 import { Ascent, BoardUser, LoginResponse } from '@/app/lib/api-wrappers/aurora/types';
 import { SaveAscentOptions } from '@/app/lib/api-wrappers/aurora/types';
+import { generateUuid } from '@/app/lib/api-wrappers/aurora/util';
 
 const DB_NAME = 'boardsesh';
 const DB_VERSION = 1;
@@ -170,17 +171,18 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
     if (!authState.token || !authState.user?.id) {
       throw new Error('Not authenticated');
     }
+    const ascentUuid = generateUuid();
 
     // Create optimistic ascent
     const optimisticAscent: Ascent = {
-      uuid: `temp-${Date.now()}`,
+      uuid: ascentUuid,
       ...options,
       user_id: authState.user.id,
       // Make sure this matches your Ascent type
     };
 
     // Optimistically update the local state
-    setLogbook((currentLogbook) => [optimisticAscent, ...currentLogbook]);
+    setLogbook((currentLogbook) => [...currentLogbook, optimisticAscent]);
 
     try {
       // Make the actual API request with the correct structure
@@ -194,6 +196,7 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
           options: {
             ...options,
             user_id: authState.user.id, // Convert to string to match API expectations
+            uuid: ascentUuid,
           },
         }),
       });
@@ -202,12 +205,7 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
         throw new Error('Failed to save ascent');
       }
 
-      const savedAscent: Ascent = await response.json();
-
-      // Update the logbook with the real ascent
-      setLogbook((currentLogbook) =>
-        currentLogbook.map((ascent) => (ascent.uuid === optimisticAscent.uuid ? savedAscent : ascent)),
-      );
+      await response.json();
     } catch (error) {
       // Rollback on error
       setLogbook((currentLogbook) => currentLogbook.filter((ascent) => ascent.uuid !== optimisticAscent.uuid));

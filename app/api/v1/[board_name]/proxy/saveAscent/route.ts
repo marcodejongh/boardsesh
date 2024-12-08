@@ -9,6 +9,7 @@ const saveAscentSchema = z.object({
   token: z.string().min(1),
   options: z
     .object({
+      uuid: z.string(),
       user_id: z.number(), // Changed from z.string() to z.number()
       climb_uuid: z.string(),
       angle: z.number(),

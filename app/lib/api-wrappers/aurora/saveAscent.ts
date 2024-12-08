@@ -1,17 +1,14 @@
 import { BoardName } from '../../types';
 import { API_HOSTS, SaveAscentOptions } from './types';
-import { generateUuid } from './util';
 
 // eslint-disable-next-line  @typescript-eslint/no-explicit-any
 export async function saveAscent(board: BoardName, token: string, options: SaveAscentOptions): Promise<any> {
-  const uuid = generateUuid();
-
   // Convert ISO date to the simpler format
   const date = new Date(options.climbed_at);
   const formattedDate = date.toISOString().replace('T', ' ').split('.')[0];
 
   const requestBody = {
-    uuid,
+    uuid: options.uuid,
     angle: options.angle,
     attempt_id: options.attempt_id,
     bid_count: options.bid_count,
@@ -27,7 +24,7 @@ export async function saveAscent(board: BoardName, token: string, options: SaveA
 
   console.log('Request body:', JSON.stringify(requestBody, null, 2));
 
-  const response = await fetch(`${API_HOSTS[board]}/v1/ascents/${uuid}`, {
+  const response = await fetch(`${API_HOSTS[board]}/v1/ascents/${options.uuid}`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
