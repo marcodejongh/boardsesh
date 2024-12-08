@@ -1,9 +1,9 @@
-import Button from "antd/es/button";
-import Drawer from "antd/es/drawer";
-import React, { useState } from "react";
-import { LogAscentForm } from "./logascent-form";
-import { LogbookView } from "./logbook-view";
-import { BoardDetails, Climb } from "@/app/lib/types";
+import Button from 'antd/es/button';
+import Drawer from 'antd/es/drawer';
+import React, { useState } from 'react';
+import { LogAscentForm } from './logascent-form';
+import { LogbookView } from './logbook-view';
+import { BoardDetails, Climb } from '@/app/lib/types';
 
 interface LogbookDrawerProps {
   drawerVisible: boolean;
@@ -16,7 +16,7 @@ export const LogbookDrawer: React.FC<LogbookDrawerProps> = ({
   drawerVisible,
   closeDrawer,
   currentClimb,
-  boardDetails
+  boardDetails,
 }) => {
   const [expanded, setExpanded] = useState(false);
   const [showLogbookView, setShowLogbookView] = useState(false);
@@ -31,13 +31,9 @@ export const LogbookDrawer: React.FC<LogbookDrawerProps> = ({
 
   return (
     <Drawer
-      title={expanded 
-        ? showLogbookView 
-          ? 'Logbook' 
-          : showLogAscentForm 
-            ? 'Log Ascent' 
-            : 'Log Options' 
-        : 'Log Options'}
+      title={
+        expanded ? (showLogbookView ? 'Logbook' : showLogAscentForm ? 'Log Ascent' : 'Log Options') : 'Log Options'
+      }
       placement="bottom"
       onClose={handleClose}
       open={drawerVisible}
@@ -71,10 +67,10 @@ export const LogbookDrawer: React.FC<LogbookDrawerProps> = ({
           >
             Log Attempt
           </Button> */}
-          <Button 
-            type="primary" 
-            block 
-            style={{ maxWidth: '400px', width: '100%' }} 
+          <Button
+            type="primary"
+            block
+            style={{ maxWidth: '400px', width: '100%' }}
             onClick={() => {
               setShowLogAscentForm(true);
               setExpanded(true);
@@ -87,15 +83,9 @@ export const LogbookDrawer: React.FC<LogbookDrawerProps> = ({
         <>
           {/* TODO: Make sure these buttons never become visible 
           when there is no climb selected */}
-          {showLogbookView && currentClimb && (
-            <LogbookView currentClimb={currentClimb} />
-          )}
+          {showLogbookView && currentClimb && <LogbookView currentClimb={currentClimb} />}
           {showLogAscentForm && currentClimb && (
-            <LogAscentForm
-              currentClimb={currentClimb}
-              boardDetails={boardDetails}
-              onClose={handleClose}
-            />
+            <LogAscentForm currentClimb={currentClimb} boardDetails={boardDetails} onClose={handleClose} />
           )}
         </>
       )}

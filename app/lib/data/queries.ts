@@ -123,6 +123,7 @@ export const getBoardDetails = async ({
     size_id,
     set_ids,
     ledPlacements: Object.fromEntries(ledPlacements.map(({ id, position }) => [id, position])),
+    supportsMirroring: board_name === 'tension' && layout_id !== 11,
   };
 };
 

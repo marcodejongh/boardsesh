@@ -1,5 +1,6 @@
-import React, { useEffect } from 'react';
-import { Button, DatePicker, Select, Input, Rate, Slider, InputNumber, Form } from 'antd';
+import React, { useEffect, useState } from 'react';
+import { Button, DatePicker, Select, Input, Rate, Slider, InputNumber, Form, Space, Tag, Tooltip } from 'antd';
+import { InfoCircleOutlined } from '@ant-design/icons';
 import { Climb, BoardDetails } from '@/app/lib/types';
 import { useBoardProvider } from '../board-provider/board-provider-context';
 import { TENSION_KILTER_GRADES, ANGLES } from '@/app/lib/board-data';
@@ -22,26 +23,30 @@ interface LogAscentFormProps {
   onClose: () => void;
 }
 
-export const LogAscentForm: React.FC<LogAscentFormProps> = ({
-  currentClimb,
-  boardDetails,
-  onClose,
-}) => {
+export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boardDetails, onClose }) => {
   const { user, saveAscent } = useBoardProvider();
   const grades = TENSION_KILTER_GRADES;
   const angleOptions = ANGLES[boardDetails.board_name];
   const [form] = Form.useForm<LogAscentFormValues>();
+  const [isMirrored, setIsMirrored] = useState(!!currentClimb?.mirrored);
+
+  // TODO: Tension spray doesnt support mirroring
+  const showMirrorTag = boardDetails.supportsMirroring;
 
   useEffect(() => {
-    // Set initial values
     form.setFieldsValue({
       date: dayjs(),
       angle: currentClimb?.angle,
       difficulty: currentClimb?.difficulty,
       attempts: 1,
-      quality: 3
+      quality: 3,
     });
+    setIsMirrored(!!currentClimb?.mirrored);
   }, [currentClimb, form]);
+
+  const handleMirrorToggle = () => {
+    setIsMirrored((prev) => !prev);
+  };
 
   const handleSubmit = async (values: LogAscentFormValues) => {
     if (!currentClimb?.uuid || !user?.id) {
@@ -51,7 +56,7 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({
     try {
       // TODO: I suspect this is a bug in AntD Form, as I would have
       // expected antd to return the value of the select not the label...
-      const difficulty_id = grades.find(grade => grade.difficulty_name === values.difficulty)?.difficulty_id;
+      const difficulty_id = grades.find((grade) => grade.difficulty_name === values.difficulty)?.difficulty_id;
       if (!difficulty_id) {
         throw new Error('Couldnt find difficulty_id');
       }
@@ -60,14 +65,14 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({
         user_id: parseInt(user.id.toString()),
         climb_uuid: currentClimb.uuid,
         angle: Number(values.angle),
-        is_mirror: false,
+        is_mirror: isMirrored,
         attempt_id: 0,
         bid_count: values.attempts,
         quality: values.quality,
         difficulty: difficulty_id,
         is_benchmark: false,
         comment: values.notes || '',
-        climbed_at: values.date.toISOString()
+        climbed_at: values.date.toISOString(),
       });
 
       form.resetFields();
@@ -80,32 +85,36 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({
   const formItemLayout = {
     labelCol: { flex: '120px' },
     wrapperCol: { flex: 'auto' },
-    style: { marginBottom: '12px' }
+    style: { marginBottom: '12px' },
   };
 
   return (
-    <Form
-      form={form}
-      layout="horizontal"
-      onFinish={handleSubmit}
-    >
+    <Form form={form} layout="horizontal" onFinish={handleSubmit}>
       <Form.Item label="Boulder" {...formItemLayout}>
-        <strong>{currentClimb?.name || 'N/A'}</strong>
+        <Space>
+          <strong>{currentClimb?.name || 'N/A'}</strong>
+          {showMirrorTag && (
+            <Space size={4}>
+              <Tag
+                color={isMirrored ? 'purple' : 'default'}
+                style={{ cursor: 'pointer', margin: 0 }}
+                onClick={handleMirrorToggle}
+              >
+                Mirrored
+              </Tag>
+              <Tooltip title="Click the tag to toggle whether you completed this climb on the mirrored side">
+                <InfoCircleOutlined style={{ color: '#8c8c8c', cursor: 'pointer' }} />
+              </Tooltip>
+            </Space>
+          )}
+        </Space>
       </Form.Item>
 
-      <Form.Item
-        name="date"
-        label="Date and Time"
-        {...formItemLayout}
-      >
+      <Form.Item name="date" label="Date and Time" {...formItemLayout}>
         <DatePicker showTime showSecond={false} />
       </Form.Item>
 
-      <Form.Item
-        name="angle"
-        label="Angle"
-        {...formItemLayout}
-      >
+      <Form.Item name="angle" label="Angle" {...formItemLayout}>
         <Select
           options={angleOptions.map((angle) => ({
             label: `${angle}°`,
@@ -115,42 +124,22 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({
         />
       </Form.Item>
 
-      <Form.Item
-        name="attempts"
-        label="Attempts"
-        {...formItemLayout}
-      >
+      <Form.Item name="attempts" label="Attempts" {...formItemLayout}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <Form.Item name="attempts" noStyle>
-            <InputNumber
-              min={1}
-              max={999}
-              style={{ width: '80px' }}
-            />
+            <InputNumber min={1} max={999} style={{ width: '80px' }} />
           </Form.Item>
           <Form.Item name="attempts" noStyle>
-            <Slider
-              min={1}
-              max={100}
-              tooltip={{ formatter: value => `${value} attempts` }}
-            />
+            <Slider min={1} max={100} tooltip={{ formatter: (value) => `${value} attempts` }} />
           </Form.Item>
         </div>
       </Form.Item>
 
-      <Form.Item
-        name="quality"
-        label="Quality"
-        {...formItemLayout}
-      >
+      <Form.Item name="quality" label="Quality" {...formItemLayout}>
         <Rate allowClear={false} count={3} />
       </Form.Item>
 
-      <Form.Item
-        name="difficulty"
-        label="Difficulty"
-        {...formItemLayout}
-      >
+      <Form.Item name="difficulty" label="Difficulty" {...formItemLayout}>
         <Select
           options={grades.map((grade) => ({
             label: grade.difficulty_name,
@@ -160,11 +149,7 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({
         />
       </Form.Item>
 
-      <Form.Item
-        name="notes"
-        label="Notes"
-        {...formItemLayout}
-      >
+      <Form.Item name="notes" label="Notes" {...formItemLayout}>
         <TextArea rows={3} />
       </Form.Item>
 
@@ -173,7 +158,7 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({
           Submit
         </Button>
       </Form.Item>
-      
+
       <Form.Item wrapperCol={{ offset: 0, span: 24 }}>
         <Button block size="large" onClick={onClose}>
           Cancel

@@ -11,7 +11,7 @@ interface LogbookViewProps {
 }
 
 export const LogbookView: React.FC<LogbookViewProps> = ({ currentClimb }) => {
-  const { logbook } = useBoardProvider();
+  const { logbook, boardName } = useBoardProvider();
 
   // Filter ascents for current climb and sort by climbed_at
   const climbAscents = logbook
@@ -23,37 +23,27 @@ export const LogbookView: React.FC<LogbookViewProps> = ({ currentClimb }) => {
       return dateB.valueOf() - dateA.valueOf(); // Descending order (newest first)
     });
 
+  const showMirrorTag = boardName === 'tension';
+
   return (
     <List
       dataSource={climbAscents}
       renderItem={(ascent) => (
         <List.Item>
-          <Card 
-            style={{ width: '100%' }}
-            size="small"
-          >
+          <Card style={{ width: '100%' }} size="small">
             <Space direction="vertical" style={{ width: '100%' }}>
               <Space wrap>
-                <Text strong>
-                  {dayjs(ascent.climbed_at).format('MMM D, YYYY h:mm A')}
-                </Text>
+                <Text strong>{dayjs(ascent.climbed_at).format('MMM D, YYYY h:mm A')}</Text>
                 <Tag color={ascent.is_benchmark ? 'gold' : 'default'}>
                   {ascent.is_benchmark ? 'Benchmark' : 'Regular'}
                 </Tag>
-                {ascent.angle !== currentClimb.angle && (
-                  <Tag color="blue">{ascent.angle}°</Tag>
-                )}
-                {ascent.is_mirror && <Tag color="purple">Mirror</Tag>}
+                {ascent.angle !== currentClimb.angle && <Tag color="blue">{ascent.angle}°</Tag>}
+                {showMirrorTag && ascent.is_mirror && <Tag color="purple">Mirrored</Tag>}
               </Space>
 
               <Space>
                 <Text>Attempts: {ascent.bid_count}</Text>
-                <Rate 
-                  disabled 
-                  value={ascent.quality} 
-                  count={3}
-                  style={{ fontSize: 14 }}
-                />
+                <Rate disabled value={ascent.quality} count={3} style={{ fontSize: 14 }} />
               </Space>
 
               {ascent.comment && (

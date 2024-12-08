@@ -182,6 +182,7 @@ export type BoardDetails = {
   size_id: number;
   set_ids: SetIdList;
   ledPlacements: LedPlacements;
+  supportsMirroring?: boolean;
 };
 
 export type BoardRouteParameters = {

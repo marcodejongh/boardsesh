@@ -84,8 +84,14 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
           {/* Button cluster */}
           <Col xs={10} style={{ textAlign: 'right' }}>
             <Space>
-              {boardDetails.board_name === 'tension' ? (
-                <Button id="button-mirror" onClick={mirrorClimb} type="default" icon={<SyncOutlined />} />
+              {boardDetails.supportsMirroring ? (
+                <Button
+                  id="button-mirror"
+                  onClick={mirrorClimb}
+                  type={currentClimb?.mirrored ? 'primary' : 'default'}
+                  style={currentClimb?.mirrored ? { backgroundColor: '#722ed1', borderColor: '#722ed1' } : undefined}
+                  icon={<SyncOutlined />}
+                />
               ) : null}
               <PreviousClimbButton navigate={isViewPage} />
               <NextClimbButton navigate={isViewPage} />
