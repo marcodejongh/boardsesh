@@ -33,10 +33,8 @@ export async function POST(request: Request, { params }: { params: BoardRoutePar
     const validatedData = saveAscentSchema.parse(body);
 
     const response = await saveAscent(board_name, validatedData.token, validatedData.options);
-    console.log(response)
     return NextResponse.json(response);
   } catch (error) {
-    console.log(error)
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: 'Invalid request data', details: error.errors }, { status: 400 });
     }
@@ -55,7 +53,6 @@ export async function POST(request: Request, { params }: { params: BoardRoutePar
       }
     }
 
-    console.error('Save ascent error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

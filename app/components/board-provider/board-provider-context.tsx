@@ -1,7 +1,13 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { BoardName } from '@/app/lib/types';
 import { IDBPDatabase, openDB } from 'idb';
-import { Ascent, AscentSavedEvent, BoardUser, LoginResponse, SaveAscentResponse } from '@/app/lib/api-wrappers/aurora/types';
+import {
+  Ascent,
+  AscentSavedEvent,
+  BoardUser,
+  LoginResponse,
+  SaveAscentResponse,
+} from '@/app/lib/api-wrappers/aurora/types';
 import { SaveAscentOptions } from '@/app/lib/api-wrappers/aurora/types';
 import { generateUuid } from '@/app/lib/api-wrappers/aurora/util';
 
@@ -167,72 +173,66 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
     }
   };
 
-// Then update the saveAscent function
-const saveAscent = async (options: SaveAscentOptions) => {
-  if (!authState.token || !authState.user?.id) {
-    throw new Error('Not authenticated');
-  }
-  const ascentUuid = generateUuid();
+  // Then update the saveAscent function
+  const saveAscent = async (options: SaveAscentOptions) => {
+    if (!authState.token || !authState.user?.id) {
+      throw new Error('Not authenticated');
+    }
+    const ascentUuid = generateUuid();
 
-  const optimisticAscent: AscentSavedEvent['ascent'] = {
-    ...options,
-    attempt_id: 0,
-    user_id: authState.user.id,
-    wall_uuid: null, // Add the nullable wall_uuid
-    is_listed: true,
-    created_at: new Date().toISOString().replace('T', ' ').split('.')[0],
-    updated_at: new Date().toISOString().replace('T', ' ').split('.')[0],
-    uuid: ascentUuid,
-  };
+    const optimisticAscent: AscentSavedEvent['ascent'] = {
+      ...options,
+      attempt_id: 0,
+      user_id: authState.user.id,
+      wall_uuid: null, // Add the nullable wall_uuid
+      is_listed: true,
+      created_at: new Date().toISOString().replace('T', ' ').split('.')[0],
+      updated_at: new Date().toISOString().replace('T', ' ').split('.')[0],
+      uuid: ascentUuid,
+    };
 
-  // Optimistically update the local state
-  setLogbook(currentLogbook => [optimisticAscent, ...currentLogbook]);
+    // Optimistically update the local state
+    setLogbook((currentLogbook) => [optimisticAscent, ...currentLogbook]);
 
-  try {
-    const response = await fetch(`/api/v1/${boardName}/proxy/saveAscent`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        token: authState.token,
-        options: {
-          ...options,
-          user_id: authState.user.id,
-          uuid: ascentUuid,
+    try {
+      const response = await fetch(`/api/v1/${boardName}/proxy/saveAscent`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-      }),
-    });
+        body: JSON.stringify({
+          token: authState.token,
+          options: {
+            ...options,
+            user_id: authState.user.id,
+            uuid: ascentUuid,
+          },
+        }),
+      });
 
-    if (!response.ok) {
-      throw new Error('Failed to save ascent');
+      if (!response.ok) {
+        throw new Error('Failed to save ascent');
+      }
+
+      const data: SaveAscentResponse = await response.json();
+
+      // Find the saved ascent from the response
+      const savedAscentEvent = data.events.find((event): event is AscentSavedEvent => event._type === 'ascent_saved');
+
+      if (savedAscentEvent) {
+        // Update the logbook with the real ascent data
+        setLogbook((currentLogbook) =>
+          currentLogbook.map((ascent) => (ascent.uuid === ascentUuid ? savedAscentEvent.ascent : ascent)),
+        );
+      }
+
+      return data;
+    } catch (error) {
+      // Rollback on error
+      setLogbook((currentLogbook) => currentLogbook.filter((ascent) => ascent.uuid !== ascentUuid));
+      throw error;
     }
-
-    const data: SaveAscentResponse = await response.json();
-    
-    // Find the saved ascent from the response
-    const savedAscentEvent = data.events.find((event): event is AscentSavedEvent => 
-      event._type === 'ascent_saved'
-    );
-
-    if (savedAscentEvent) {
-      // Update the logbook with the real ascent data
-      setLogbook(currentLogbook =>
-        currentLogbook.map(ascent =>
-          ascent.uuid === ascentUuid ? savedAscentEvent.ascent : ascent
-        )
-      );
-    }
-
-    return data;
-  } catch (error) {
-    // Rollback on error
-    setLogbook(currentLogbook =>
-      currentLogbook.filter(ascent => ascent.uuid !== ascentUuid)
-    );
-    throw error;
-  }
-};
+  };
 
   useEffect(() => {
     if (authState.token && logbook.length === 0) {

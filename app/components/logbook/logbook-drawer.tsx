@@ -46,7 +46,7 @@ export const LogbookDrawer: React.FC<LogbookDrawerProps> = ({
         attempt_id: 0,
         quality: values.quality,
         // TODO: Certainly this find is not actually necessary
-        difficulty: Number(grades.find(grade => grade.difficulty_name === values.difficulty)?.difficulty_id), // Convert to number
+        difficulty: Number(grades.find((grade) => grade.difficulty_name === values.difficulty)?.difficulty_id), // Convert to number
         is_benchmark: false,
         comment: values.notes || '',
         climbed_at: values.date.toISOString(),
