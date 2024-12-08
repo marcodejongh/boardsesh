@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import { Angle, Climb, BoardName, BoardDetails } from '@/app/lib/types';
+import { Angle, Climb, BoardDetails } from '@/app/lib/types';
 import { useBoardProvider } from '../board-provider/board-provider-context';
 import { Button, Badge, Drawer, DatePicker, Select, Input, Rate, InputNumber } from 'antd';
 import { CheckOutlined } from '@ant-design/icons';
 import { TENSION_KILTER_GRADES, ANGLES } from '@/app/lib/board-data';
-import { useSearchParams } from 'next/navigation';
 
 const { TextArea } = Input;
 
@@ -74,12 +73,7 @@ export const TickButton = ({
             >
               Logbook
             </Button>
-            <Button
-              type="primary"
-              block
-              style={{ maxWidth: '400px', width: '100%' }}
-              onClick={handleLogAscentClick}
-            >
+            <Button type="primary" block style={{ maxWidth: '400px', width: '100%' }} onClick={handleLogAscentClick}>
               Log Ascent
             </Button>
             <Button
@@ -99,11 +93,7 @@ export const TickButton = ({
             <div>
               <strong>User:</strong> {user?.username}
             </div>
-            <DatePicker
-              showTime
-              placeholder="Select Date and Time"
-              style={{ width: '100%' }}
-            />
+            <DatePicker showTime placeholder="Select Date and Time" style={{ width: '100%' }} />
             <Select
               placeholder="Select Angle"
               options={angleOptions.map((angle) => ({
@@ -113,15 +103,10 @@ export const TickButton = ({
               defaultValue={currentClimb?.angle}
               style={{ width: '100%' }}
             />
-            <InputNumber
-              placeholder="Attempts"
-              defaultValue="1"
-              type="number"
-              style={{ width: '100%' }}
-            />
+            <InputNumber placeholder="Attempts" defaultValue="1" type="number" style={{ width: '100%' }} />
             <div>
               <strong>Quality:</strong>
-              <Rate allowClear={false} count={3} defaultValue={3}  style={{ marginLeft: '10px' }} />
+              <Rate allowClear={false} count={3} defaultValue={3} style={{ marginLeft: '10px' }} />
             </div>
             <Select
               placeholder="Select Difficulty"
@@ -131,11 +116,7 @@ export const TickButton = ({
               }))}
               style={{ width: '100%' }}
             />
-            <TextArea
-              placeholder="Notes"
-              rows={3}
-              style={{ width: '100%' }}
-            />
+            <TextArea placeholder="Notes" rows={3} style={{ width: '100%' }} />
             <Button type="primary" block style={{ marginTop: '10px' }}>
               Submit
             </Button>
