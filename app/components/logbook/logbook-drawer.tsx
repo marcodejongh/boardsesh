@@ -24,16 +24,41 @@ export const LogbookDrawer: React.FC<LogbookDrawerProps> = ({
   expanded,
   handleLogAscentClick,
   currentClimb,
-  boardDetails
+  boardDetails,
 }) => {
-  const { user } = useBoardProvider();
+  const { user, saveAscent } = useBoardProvider();
   const grades = TENSION_KILTER_GRADES;
   const angleOptions = ANGLES[boardDetails.board_name];
   const [form] = Form.useForm();
 
-  const handleSubmit = (values: any) => {
-    console.log('Form submitted:', values);
-    // Handle form submission
+  const handleSubmit = async (values: any) => {
+    if (!currentClimb?.uuid || !user?.id) {
+      return;
+    }
+
+    try {
+      await saveAscent({
+        user_id: Number(user.id),
+        climb_uuid: currentClimb.uuid,
+        angle: Number(values.angle), // Convert to number
+        is_mirror: false,
+        bid_count: values.attempts,
+        attempt_id: 0,
+        quality: values.quality,
+        // TODO: Certainly this find is not actually necessary
+        difficulty: Number(grades.find(grade => grade.difficulty_name === values.difficulty)?.difficulty_id), // Convert to number
+        is_benchmark: false,
+        comment: values.notes || '',
+        climbed_at: values.date.toISOString(),
+      });
+
+      // Close drawer and reset form on success
+      form.resetFields();
+      closeDrawer();
+    } catch (error) {
+      // You might want to add error handling UI here
+      console.error('Failed to save ascent:', error);
+    }
   };
 
   const handleClose = () => {
@@ -49,7 +74,7 @@ export const LogbookDrawer: React.FC<LogbookDrawerProps> = ({
         angle: currentClimb?.angle,
         difficulty: currentClimb?.difficulty,
         attempts: 1,
-        quality: 3
+        quality: 3,
       });
     }
   }, [drawerVisible, expanded, currentClimb, form]);
@@ -57,7 +82,7 @@ export const LogbookDrawer: React.FC<LogbookDrawerProps> = ({
   const formItemLayout = {
     labelCol: { flex: '120px' },
     wrapperCol: { flex: 'auto' },
-    style: { marginBottom: '12px' }
+    style: { marginBottom: '12px' },
   };
 
   return (
@@ -98,74 +123,42 @@ export const LogbookDrawer: React.FC<LogbookDrawerProps> = ({
           </Button>
         </div>
       ) : (
-        <Form
-          form={form}
-          layout="horizontal"
-          onFinish={handleSubmit}
-        >
+        <Form form={form} layout="horizontal" onFinish={handleSubmit}>
           {/* Rest of the form items remain the same */}
           <Form.Item label="Boulder" {...formItemLayout}>
             <strong>{currentClimb?.name || 'N/A'}</strong>
           </Form.Item>
 
-          <Form.Item
-            name="date"
-            label="Date and Time"
-            {...formItemLayout}
-          >
+          <Form.Item name="date" label="Date and Time" {...formItemLayout}>
             <DatePicker showTime showSecond={false} />
           </Form.Item>
 
-          <Form.Item
-            name="angle"
-            label="Angle"
-            {...formItemLayout}
-          >
+          <Form.Item name="angle" label="Angle" {...formItemLayout}>
             <Select
-              options={angleOptions.map((angle) => ({
-                label: `${angle}°`,
-                value: angle,
+              options={grades.map((grade) => ({
+                label: grade.difficulty_name,
+                value: grade.difficulty_id, // The value is already a number
               }))}
-              style={{ width: '80px' }}
+              style={{ width: '120px' }}
             />
           </Form.Item>
 
-          <Form.Item
-            name="attempts"
-            label="Attempts"
-            {...formItemLayout}
-          >
+          <Form.Item name="attempts" label="Attempts" {...formItemLayout}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <Form.Item name="attempts" noStyle>
-                <InputNumber
-                  min={1}
-                  max={999}
-                  style={{ width: '80px' }}
-                />
+                <InputNumber min={1} max={999} style={{ width: '80px' }} />
               </Form.Item>
               <Form.Item name="attempts" noStyle>
-                <Slider
-                  min={1}
-                  max={100}
-                  tooltip={{ formatter: value => `${value} attempts` }}
-                />
+                <Slider min={1} max={100} tooltip={{ formatter: (value) => `${value} attempts` }} />
               </Form.Item>
             </div>
           </Form.Item>
 
-          <Form.Item
-            name="quality"
-            label="Quality"
-            {...formItemLayout}
-          >
+          <Form.Item name="quality" label="Quality" {...formItemLayout}>
             <Rate allowClear={false} count={3} />
           </Form.Item>
 
-          <Form.Item
-            name="difficulty"
-            label="Difficulty"
-            {...formItemLayout}
-          >
+          <Form.Item name="difficulty" label="Difficulty" {...formItemLayout}>
             <Select
               options={grades.map((grade) => ({
                 label: grade.difficulty_name,
@@ -175,11 +168,7 @@ export const LogbookDrawer: React.FC<LogbookDrawerProps> = ({
             />
           </Form.Item>
 
-          <Form.Item
-            name="notes"
-            label="Notes"
-            {...formItemLayout}
-          >
+          <Form.Item name="notes" label="Notes" {...formItemLayout}>
             <TextArea rows={3} />
           </Form.Item>
 
@@ -188,7 +177,7 @@ export const LogbookDrawer: React.FC<LogbookDrawerProps> = ({
               Submit
             </Button>
           </Form.Item>
-          
+
           <Form.Item wrapperCol={{ offset: 0, span: 24 }}>
             <Button block size="large" onClick={handleClose}>
               Cancel

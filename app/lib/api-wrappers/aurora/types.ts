@@ -59,7 +59,7 @@ export interface ClimbStats {
   [key: string]: any;
 }
 export interface SaveAscentOptions {
-  user_id: string;
+  user_id: number;
   climb_uuid: string;
   angle: number;
   is_mirror: boolean;

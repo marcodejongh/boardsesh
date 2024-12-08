@@ -5,18 +5,13 @@ import { Button, Badge } from 'antd';
 import { CheckOutlined } from '@ant-design/icons';
 import { LogbookDrawer } from './logbook-drawer';
 
-
 interface TickButtonProps {
   angle: Angle;
   currentClimb: Climb | null;
   boardDetails: BoardDetails;
 }
 
-export const TickButton: React.FC<TickButtonProps> = ({
-  currentClimb,
-  angle,
-  boardDetails,
-}) => {
+export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boardDetails }) => {
   const { logbook } = useBoardProvider();
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -43,7 +38,7 @@ export const TickButton: React.FC<TickButtonProps> = ({
       >
         <Button id="button-tick" type="default" icon={<CheckOutlined />} onClick={showDrawer} />
       </Badge>
-      
+
       <LogbookDrawer
         drawerVisible={drawerVisible}
         closeDrawer={closeDrawer}

@@ -1,11 +1,8 @@
-// contexts/BoardProvider.tsx
-'use client';
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { BoardName } from '@/app/lib/types';
-
 import { IDBPDatabase, openDB } from 'idb';
 import { Ascent, BoardUser, LoginResponse } from '@/app/lib/api-wrappers/aurora/types';
+import { SaveAscentOptions } from '@/app/lib/api-wrappers/aurora/types';
 
 const DB_NAME = 'boardsesh';
 const DB_VERSION = 1;
@@ -24,6 +21,7 @@ const initDB = (board_name: BoardName) => {
 const loadAuthState = async (db: IDBPDatabase, board_name: BoardName) => {
   return db.get(board_name, 'auth');
 };
+
 const saveAuthState = async (db: IDBPDatabase, board_name: BoardName, value: AuthState) => {
   return db.put(board_name, value, 'auth');
 };
@@ -49,6 +47,8 @@ interface BoardContextType {
   error: string | null;
   isInitialized: boolean;
   logbook: Ascent[];
+  getLogbook: () => Promise<void>;
+  saveAscent: (options: SaveAscentOptions) => Promise<void>;
 }
 
 const BoardContext = createContext<BoardContextType | undefined>(undefined);
@@ -68,9 +68,6 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
 
   // Load saved auth state on mount
   useEffect(() => {
-    // TODO: Handle logged out status, apparently the token
-    // stays valid for quite a while, but we should still make sure
-    // we handle it being logged out
     const initializeAuth = async () => {
       try {
         const db = await initDB(boardName);
@@ -165,29 +162,72 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
 
       setLogbook(data);
     } catch (error) {
-      // const message = error instanceof Error ? error.message : 'An error occurred';
-      // setError(message);
       throw error;
-    } finally {
+    }
+  };
+
+  const saveAscent = async (options: SaveAscentOptions) => {
+    if (!authState.token || !authState.user?.id) {
+      throw new Error('Not authenticated');
+    }
+
+    // Create optimistic ascent
+    const optimisticAscent: Ascent = {
+      uuid: `temp-${Date.now()}`,
+      ...options,
+      user_id: authState.user.id,
+      // Make sure this matches your Ascent type
+    };
+
+    // Optimistically update the local state
+    setLogbook((currentLogbook) => [optimisticAscent, ...currentLogbook]);
+
+    try {
+      // Make the actual API request with the correct structure
+      const response = await fetch(`/api/v1/${boardName}/proxy/saveAscent`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          token: authState.token,
+          options: {
+            ...options,
+            user_id: authState.user.id, // Convert to string to match API expectations
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save ascent');
+      }
+
+      const savedAscent: Ascent = await response.json();
+
+      // Update the logbook with the real ascent
+      setLogbook((currentLogbook) =>
+        currentLogbook.map((ascent) => (ascent.uuid === optimisticAscent.uuid ? savedAscent : ascent)),
+      );
+    } catch (error) {
+      // Rollback on error
+      setLogbook((currentLogbook) => currentLogbook.filter((ascent) => ascent.uuid !== optimisticAscent.uuid));
+      throw error;
     }
   };
 
   useEffect(() => {
     if (authState.token && logbook.length === 0) {
-      // TODO: Move getLogbook to callback
       getLogbook();
     }
   }, [authState, logbook.length]);
 
   const logout = async () => {
-    // Clear state and IndexedDB
     setAuthState({
       token: null,
       user: null,
       board: null,
       loginInfo: null,
     });
-    // await clearAuthState();
   };
 
   const value = {
@@ -202,11 +242,12 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
     isInitialized,
     getLogbook,
     logbook,
+    saveAscent,
   };
 
   // Don't render children until we've checked for existing auth
   if (!isInitialized) {
-    return null; // Or a loading spinner
+    return null;
   }
 
   return <BoardContext.Provider value={value}>{children}</BoardContext.Provider>;
