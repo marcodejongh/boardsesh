@@ -1,11 +1,15 @@
-// contexts/BoardProvider.tsx
-'use client';
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { BoardName } from '@/app/lib/types';
-
 import { IDBPDatabase, openDB } from 'idb';
-import { Ascent } from '@/app/lib/api-wrappers/aurora/types';
+import {
+  Ascent,
+  AscentSavedEvent,
+  BoardUser,
+  LoginResponse,
+  SaveAscentResponse,
+} from '@/app/lib/api-wrappers/aurora/types';
+import { SaveAscentOptions } from '@/app/lib/api-wrappers/aurora/types';
+import { generateUuid } from '@/app/lib/api-wrappers/aurora/util';
 
 const DB_NAME = 'boardsesh';
 const DB_VERSION = 1;
@@ -24,39 +28,10 @@ const initDB = (board_name: BoardName) => {
 const loadAuthState = async (db: IDBPDatabase, board_name: BoardName) => {
   return db.get(board_name, 'auth');
 };
+
 const saveAuthState = async (db: IDBPDatabase, board_name: BoardName, value: AuthState) => {
   return db.put(board_name, value, 'auth');
 };
-
-interface BoardUser {
-  id: number;
-  username: string;
-  email_address: string;
-  created_at: string;
-  updated_at: string;
-  is_listed: boolean;
-  is_public: boolean;
-  avatar_image: string | null;
-  banner_image: string | null;
-  city: string | null;
-  country: string | null;
-  height: number | null;
-  weight: number | null;
-  wingspan: number | null;
-}
-
-interface LoginResponse {
-  error: string;
-  login: {
-    created_at: string;
-    token: string;
-    user_id: number;
-  };
-  token: string;
-  user: BoardUser;
-  user_id: number;
-  username: string;
-}
 
 interface AuthState {
   token: string | null;
@@ -79,6 +54,8 @@ interface BoardContextType {
   error: string | null;
   isInitialized: boolean;
   logbook: Ascent[];
+  getLogbook: () => Promise<void>;
+  saveAscent: (options: Omit<SaveAscentOptions, 'uuid'>) => Promise<SaveAscentResponse>;
 }
 
 const BoardContext = createContext<BoardContextType | undefined>(undefined);
@@ -98,9 +75,6 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
 
   // Load saved auth state on mount
   useEffect(() => {
-    // TODO: Handle logged out status, apparently the token
-    // stays valid for quite a while, but we should still make sure
-    // we handle it being logged out
     const initializeAuth = async () => {
       try {
         const db = await initDB(boardName);
@@ -195,29 +169,84 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
 
       setLogbook(data);
     } catch (error) {
-      // const message = error instanceof Error ? error.message : 'An error occurred';
-      // setError(message);
       throw error;
-    } finally {
+    }
+  };
+
+  // Then update the saveAscent function
+  const saveAscent = async (options: Omit<SaveAscentOptions, 'uuid'>) => {
+    if (!authState.token || !authState.user?.id) {
+      throw new Error('Not authenticated');
+    }
+    const ascentUuid = generateUuid();
+
+    const optimisticAscent: AscentSavedEvent['ascent'] = {
+      ...options,
+      attempt_id: 0,
+      user_id: authState.user.id,
+      wall_uuid: null, // Add the nullable wall_uuid
+      is_listed: true,
+      created_at: new Date().toISOString().replace('T', ' ').split('.')[0],
+      updated_at: new Date().toISOString().replace('T', ' ').split('.')[0],
+      uuid: ascentUuid,
+    };
+
+    // Optimistically update the local state
+    setLogbook((currentLogbook) => [optimisticAscent, ...currentLogbook]);
+
+    try {
+      const response = await fetch(`/api/v1/${boardName}/proxy/saveAscent`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          token: authState.token,
+          options: {
+            ...options,
+            user_id: authState.user.id,
+            uuid: ascentUuid,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save ascent');
+      }
+
+      const data: SaveAscentResponse = await response.json();
+
+      // Find the saved ascent from the response
+      const savedAscentEvent = data.events.find((event): event is AscentSavedEvent => event._type === 'ascent_saved');
+
+      if (savedAscentEvent) {
+        // Update the logbook with the real ascent data
+        setLogbook((currentLogbook) =>
+          currentLogbook.map((ascent) => (ascent.uuid === ascentUuid ? savedAscentEvent.ascent : ascent)),
+        );
+      }
+
+      return data;
+    } catch (error) {
+      // Rollback on error
+      setLogbook((currentLogbook) => currentLogbook.filter((ascent) => ascent.uuid !== ascentUuid));
+      throw error;
     }
   };
 
   useEffect(() => {
     if (authState.token && logbook.length === 0) {
-      // TODO: Move getLogbook to callback
       getLogbook();
     }
   }, [authState, logbook.length]);
 
   const logout = async () => {
-    // Clear state and IndexedDB
     setAuthState({
       token: null,
       user: null,
       board: null,
       loginInfo: null,
     });
-    // await clearAuthState();
   };
 
   const value = {
@@ -232,11 +261,12 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
     isInitialized,
     getLogbook,
     logbook,
+    saveAscent,
   };
 
   // Don't render children until we've checked for existing auth
   if (!isInitialized) {
-    return null; // Or a loading spinner
+    return null;
   }
 
   return <BoardContext.Provider value={value}>{children}</BoardContext.Provider>;

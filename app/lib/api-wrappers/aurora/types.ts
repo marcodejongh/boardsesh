@@ -1,14 +1,35 @@
 import { BoardName } from '../../types';
 
-export interface LoginResponse {
-  token: string;
-  user: {
-    id: string;
-    username: string;
-    // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-    [key: string]: any;
-  };
+export interface BoardUser {
+  id: number;
+  username: string;
+  email_address: string;
+  created_at: string;
+  updated_at: string;
+  is_listed: boolean;
+  is_public: boolean;
+  avatar_image: string | null;
+  banner_image: string | null;
+  city: string | null;
+  country: string | null;
+  height: number | null;
+  weight: number | null;
+  wingspan: number | null;
 }
+
+export interface LoginResponse {
+  error: string;
+  login: {
+    created_at: string;
+    token: string;
+    user_id: number;
+  };
+  token: string;
+  user: BoardUser;
+  user_id: number;
+  username: string;
+}
+
 export interface GymInfo {
   id: number;
   username: string;
@@ -38,7 +59,8 @@ export interface ClimbStats {
   [key: string]: any;
 }
 export interface SaveAscentOptions {
-  user_id: string;
+  uuid: string;
+  user_id: number;
   climb_uuid: string;
   angle: number;
   is_mirror: boolean;
@@ -79,6 +101,8 @@ export const HOST_BASES: Record<BoardName, string> = {
   tension: 'tensionboardapp2',
   // touchstone: 'touchstoneboardapp',
 };
+
+//
 export const API_HOSTS: Record<BoardName, string> = Object.fromEntries(
   Object.entries(HOST_BASES).map(([board, hostBase]) => [board, `https://api.${hostBase}.com`]),
 ) as Record<BoardName, string>;
@@ -105,3 +129,34 @@ export interface Ascent {
   created_at: string;
   updated_at: string;
 }
+
+export interface ClimbStat {
+  climb_uuid: string;
+  angle: number;
+  ascensionist_count: number;
+  difficulty_average: number;
+  quality_average: number;
+  fa_uid: number;
+  fa_username: string;
+  fa_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AscentSavedEvent {
+  _type: 'ascent_saved';
+  ascent: Ascent & {
+    is_listed: boolean;
+    created_at: string;
+    updated_at: string;
+  };
+}
+
+export interface ClimbStatSavedEvent {
+  _type: 'climb_stat_saved';
+  climb_stat: ClimbStat;
+}
+
+export type SaveAscentResponse = {
+  events: (AscentSavedEvent | ClimbStatSavedEvent)[];
+};
