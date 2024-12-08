@@ -33,7 +33,7 @@ export interface PeerContextType {
   connections: PeerConnection[];
   sendData: (data: PeerData, connectionId?: string | null) => void;
   connectToPeer: (connectionId: string) => void;
-  subscribeToData: (callback: (data: PeerData) => void) => () => void;
+  subscribeToData: (callback: (data: ReceivedPeerData) => void) => () => void;
   isConnecting: boolean;
   hasConnected: boolean;
 }
@@ -44,34 +44,45 @@ export type PeerProviderProps = {
 
 // Base interface for common properties all messages should have
 interface PeerDataBase {
-  source?: string;
+  source: string;
   messageId?: string;
 }
 
 // Specific message types
-interface RequestUpdateQueueData extends PeerDataBase {
+interface RequestUpdateQueueData {
   type: 'request-update-queue';
 }
 
-interface UpdateQueueData extends PeerDataBase {
+interface UpdateQueueData {
   type: 'update-queue' | 'initial-queue-data';
   queue: ClimbQueue;
   currentClimbQueueItem: ClimbQueueItem | null;
 }
 
-interface BroadcastOtherPeersData extends PeerDataBase {
+interface BroadcastOtherPeersData {
   type: 'broadcast-other-peers';
   peers: string[];
 }
 
-interface NewConnectionData extends PeerDataBase {
+interface NewConnectionData {
   type: 'new-connection';
+  source: string;
+}
+
+export interface SendPeerInfo {
+  type: 'send-peer-info';
+  username: string;
 }
 
 // Union type of all possible message types
-export type PeerData = RequestUpdateQueueData | UpdateQueueData | BroadcastOtherPeersData | NewConnectionData;
-
-export function isPeerData(data: unknown): data is PeerData {
+export type PeerData =
+  | RequestUpdateQueueData
+  | UpdateQueueData
+  | BroadcastOtherPeersData
+  | NewConnectionData
+  | SendPeerInfo;
+export type ReceivedPeerData = PeerData & PeerDataBase;
+export function isPeerData(data: unknown): data is ReceivedPeerData {
   if (typeof data !== 'object' || data === null) return false;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -84,7 +95,8 @@ export function isPeerData(data: unknown): data is PeerData {
   switch (msg.type) {
     case 'request-update-queue':
       return true; // No additional required fields
-
+    case 'send-peer-info':
+      return msg.username;
     case 'initial-queue-data':
     case 'update-queue':
       return 'queue' in msg && 'currentClimbQueueItem' in msg;

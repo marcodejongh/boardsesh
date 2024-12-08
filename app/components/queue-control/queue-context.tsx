@@ -10,7 +10,7 @@ import { useQueueDataFetching } from './hooks/use-queue-data-fetching';
 import { QueueContextType, ClimbQueueItem, UserName } from './types';
 import { urlParamsToSearchParams } from '@/app/lib/url-utils';
 import { Climb, ParsedBoardRouteParameters } from '@/app/lib/types';
-import { PeerData } from '../connection-manager/types';
+import { ReceivedPeerData } from '../connection-manager/types';
 
 type QueueContextProps = {
   parsedParams: ParsedBoardRouteParameters;
@@ -34,9 +34,7 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
 
   // Set up queue update handler
   const handlePeerData = useCallback(
-    (data: PeerData) => {
-      console.log(`${new Date().getTime()} Queue context received: ${data.type} from: ${data.source}`);
-
+    (data: ReceivedPeerData) => {
       switch (data.type) {
         case 'new-connection':
           sendData(

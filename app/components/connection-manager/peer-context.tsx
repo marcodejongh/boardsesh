@@ -3,7 +3,7 @@
 import React, { useCallback, useContext, createContext, useEffect, useRef, useReducer } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Peer, { DataConnection } from 'peerjs';
-import { PeerContextType, PeerState, PeerAction, PeerData, PeerConnection, isPeerData } from './types';
+import { PeerContextType, PeerState, PeerAction, PeerData, PeerConnection, isPeerData, ReceivedPeerData } from './types';
 import { v4 as uuidv4 } from 'uuid';
 import { peerReducer, initialPeerState } from './reducer';
 
@@ -12,7 +12,7 @@ let peerInstance: Peer | undefined;
 
 type DataHandler = {
   id: string;
-  callback: (data: PeerData) => void;
+  callback: (data: ReceivedPeerData) => void;
 };
 
 const broadcastPeerList = (
@@ -40,7 +40,7 @@ export const PeerProvider: React.FC<{ children: React.ReactNode }> = ({ children
     stateRef.current = state;
   }, [state]);
 
-  const subscribeToData = useCallback((callback: (data: PeerData) => void) => {
+  const subscribeToData = useCallback((callback: (data: ReceivedPeerData) => void) => {
     const handlerId = uuidv4();
     dataHandlers.current.push({ id: handlerId, callback });
 
@@ -49,7 +49,7 @@ export const PeerProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  const notifySubscribers = useCallback((data: PeerData) => {
+  const notifySubscribers = useCallback((data: ReceivedPeerData) => {
     dataHandlers.current.forEach((handler) => {
       try {
         handler.callback(data);
@@ -67,6 +67,7 @@ export const PeerProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const connection = currentState.connections.find(
         ({ connection: conn }) => conn.peer === connectionId,
       )?.connection;
+
       if (connection) {
         connection.send(message);
       } else {
@@ -122,7 +123,7 @@ export const PeerProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setupHandlers(newConn, dispatch, receivedDataRef, stateRef);
   }, []);
 
-  const receivedDataRef = useRef((data: PeerData) => {
+  const receivedDataRef = useRef((data: ReceivedPeerData) => {
     const currentState = stateRef.current;
 
     switch (data.type) {
@@ -140,7 +141,6 @@ export const PeerProvider: React.FC<{ children: React.ReactNode }> = ({ children
         break;
       case 'new-connection':
       case 'request-update-queue':
-        break;
       case 'update-queue':
       default:
         notifySubscribers(data);
@@ -271,7 +271,7 @@ export const PeerProvider: React.FC<{ children: React.ReactNode }> = ({ children
 function setupHandlers(
   conn: DataConnection & { _handlersSetup?: boolean },
   dispatch: React.Dispatch<PeerAction>,
-  receivedDataRef: React.MutableRefObject<(data: PeerData) => void>,
+  receivedDataRef: React.MutableRefObject<(data: ReceivedPeerData) => void>,
   stateRef: React.MutableRefObject<PeerState>,
 ) {
   if (conn._handlersSetup) {
@@ -302,7 +302,7 @@ function setupHandlers(
 
 function setupDataHandlers(
   conn: DataConnection,
-  receivedDataRef: React.MutableRefObject<(data: PeerData) => void>,
+  receivedDataRef: React.MutableRefObject<(data: ReceivedPeerData) => void>,
   dispatch: React.Dispatch<PeerAction>,
   stateRef: React.MutableRefObject<PeerState>,
 ) {

@@ -1,6 +1,9 @@
 'use client';
 
-import React, { useContext, createContext } from 'react';
+import React, { useContext, createContext, useEffect, useCallback, useState, useMemo } from 'react';
+import { useBoardProvider } from '../board-provider/board-provider-context';
+import { usePeerContext } from '../connection-manager/peer-context';
+import { ReceivedPeerData, SendPeerInfo } from '../connection-manager/types';
 
 type ConnectedUser = {
   username: string;
@@ -14,40 +17,81 @@ type PartyContextType = {
   connectedUsers: ConnectedUser[];
 };
 
-// Create some dummy users for development
-const dummyUsers: ConnectedUser[] = [
-  {
-    id: '1',
-    username: 'Alice Smith',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Alice',
-    isHost: true,
-  },
-  {
-    id: '2',
-    username: 'Bob Johnson',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Bob',
-  },
-  {
-    id: '3',
-    username: 'Carol Wilson',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Carol',
-  },
-  {
-    id: '4',
-    username: 'David Brown',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=David',
-    isHost: true,
-  },
-];
+type WebSocketData = Pick<SendPeerInfo, 'username'>;
 
 const PartyContext = createContext<PartyContextType | undefined>(undefined);
 
 export const PartyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { sendData, peerId, subscribeToData, connections } = usePeerContext();
+  const { user } = useBoardProvider();
+
+  let username = '';
+  if (user) {
+    username = user.username;
+  }
+
+  const [webSocketData, setWebSocketData] = useState<Record<string, WebSocketData>>({});
+
+  // Derive party from both connections and webSocketData
+  const party: ConnectedUser[] = useMemo(
+    () =>
+      connections.map((connection) => ({
+        ...(webSocketData[connection.connection.peer] || {}),
+        id: connection.connection.peer,
+      })),
+    [connections, webSocketData],
+  );
+
+  useEffect(() => {
+    const handleWebSocketMessage = (data: ReceivedPeerData) => {
+      switch (data.type) {
+        case 'send-peer-info':
+          setWebSocketData((prev) => ({
+            ...prev,
+            [data.source]: { username: data.username },
+          }));
+          break;
+        case 'new-connection':
+          sendData({ type: 'send-peer-info', username }, data.source);
+      }
+    };
+
+    // Subscribe to websocket
+    const unsubscribe = subscribeToData(handleWebSocketMessage);
+    return () => unsubscribe();
+  }, [subscribeToData]);
+
+  const handlePeerData = useCallback(
+    (data: ReceivedPeerData) => {
+      console.log(`${new Date().getTime()} Party context received: ${data.type} from: ${data.source}`);
+
+      switch (data.type) {
+        case 'new-connection':
+          sendData(
+            {
+              type: 'send-peer-info',
+              username,
+            },
+            data.source,
+          );
+          break;
+        case 'send-peer-info':
+          data.username;
+      }
+    },
+    [sendData, username],
+  );
+
+  useEffect(() => {
+    const unsubscribe = subscribeToData(handlePeerData);
+    return () => unsubscribe();
+  }, [subscribeToData, handlePeerData]);
+
   // In a real implementation, this would likely use useState and be updated
   // based on peer connections/disconnections
   const contextValue: PartyContextType = {
-    userName: 'Current User',
-    connectedUsers: dummyUsers,
+    userName: username || peerId || '',
+    connectedUsers: party,
   };
 
   return <PartyContext.Provider value={contextValue}>{children}</PartyContext.Provider>;

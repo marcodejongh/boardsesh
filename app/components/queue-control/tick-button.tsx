@@ -6,7 +6,7 @@ import Button from 'antd/es/button';
 import Badge from 'antd/es/badge';
 import { CheckOutlined } from '@ant-design/icons';
 
-export const TickButton = ({ currentClimb, angle }: { angle: Angle, currentClimb: Climb | null }) => {
+export const TickButton = ({ currentClimb, angle }: { angle: Angle; currentClimb: Climb | null }) => {
   const { logbook } = useBoardProvider();
   return (
     <Badge
