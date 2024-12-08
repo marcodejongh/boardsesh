@@ -8,7 +8,7 @@ import { usePathname } from 'next/navigation';
 import PreviousClimbButton from './previous-climb-button';
 import { BoardName, BoardDetails, Angle } from '@/app/lib/types';
 import QueueList from './queue-list';
-import { TickButton } from './tick-button';
+import { TickButton } from '../logbook/tick-button';
 import ClimbThumbnail from '../climb-card/climb-thumbnail';
 
 const { Title, Text } = Typography;

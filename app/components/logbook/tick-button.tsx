@@ -54,7 +54,7 @@ export const TickButton = ({
         placement="bottom"
         onClose={closeDrawer}
         open={drawerVisible}
-        height={expanded ? '70%' : '40%'} // Adjust drawer height dynamically
+        height={expanded ? '70%' : '30%'} // Adjust drawer height dynamically
       >
         {!expanded ? (
           <div
