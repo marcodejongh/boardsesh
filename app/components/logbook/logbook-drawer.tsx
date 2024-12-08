@@ -63,6 +63,14 @@ export const LogbookDrawer: React.FC<LogbookDrawerProps> = ({
           >
             Logbook
           </Button>
+          {/* <Button
+            type="primary"
+            block
+            style={{ maxWidth: '400px', width: '100%' }}
+            onClick={() => console.log('Log Attempt clicked')}
+          >
+            Log Attempt
+          </Button> */}
           <Button 
             type="primary" 
             block 
@@ -73,14 +81,6 @@ export const LogbookDrawer: React.FC<LogbookDrawerProps> = ({
             }}
           >
             Log Ascent
-          </Button>
-          <Button
-            type="primary"
-            block
-            style={{ maxWidth: '400px', width: '100%' }}
-            onClick={() => console.log('Log Attempt clicked')}
-          >
-            Log Attempt
           </Button>
         </div>
       ) : (
