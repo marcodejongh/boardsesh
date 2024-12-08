@@ -1,14 +1,35 @@
 import { BoardName } from '../../types';
 
-export interface LoginResponse {
-  token: string;
-  user: {
-    id: string;
-    username: string;
-    // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-    [key: string]: any;
-  };
+export interface BoardUser {
+  id: number;
+  username: string;
+  email_address: string;
+  created_at: string;
+  updated_at: string;
+  is_listed: boolean;
+  is_public: boolean;
+  avatar_image: string | null;
+  banner_image: string | null;
+  city: string | null;
+  country: string | null;
+  height: number | null;
+  weight: number | null;
+  wingspan: number | null;
 }
+
+export interface LoginResponse {
+  error: string;
+  login: {
+    created_at: string;
+    token: string;
+    user_id: number;
+  };
+  token: string;
+  user: BoardUser;
+  user_id: number;
+  username: string;
+}
+
 export interface GymInfo {
   id: number;
   username: string;
@@ -79,6 +100,8 @@ export const HOST_BASES: Record<BoardName, string> = {
   tension: 'tensionboardapp2',
   // touchstone: 'touchstoneboardapp',
 };
+
+//
 export const API_HOSTS: Record<BoardName, string> = Object.fromEntries(
   Object.entries(HOST_BASES).map(([board, hostBase]) => [board, `https://api.${hostBase}.com`]),
 ) as Record<BoardName, string>;
