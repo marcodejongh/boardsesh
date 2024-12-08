@@ -5,6 +5,7 @@ import { TeamOutlined, CopyOutlined, CrownFilled, LoadingOutlined } from '@ant-d
 import { Button, Input, Drawer, QRCode, Flex, message, Typography, Badge } from 'antd';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { usePeerContext } from '../connection-manager/peer-context';
+import { usePartyContext } from '../party-manager/party-context';
 // import { usePartyContext } from '../party-manager/party-context';
 
 const { Text } = Typography;
@@ -21,6 +22,8 @@ const getShareUrl = (pathname: string, searchParams: URLSearchParams, peerId: st
 
 export const ShareBoardButton = () => {
   const { peerId, isConnecting, hasConnected, connections, hostId } = usePeerContext();
+  const { connectedUsers, userName } = usePartyContext();
+
   // const { connectedUsers } = usePartyContext();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
@@ -66,7 +69,7 @@ export const ShareBoardButton = () => {
       </Badge>
       <Drawer title="Party Mode" placement="top" onClose={handleClose} open={isDrawerOpen} height="70vh">
         <Flex gap="middle" vertical>
-          {connections.length > 0 && (
+          {connectedUsers.length > 0 && (
             <Flex vertical gap="small">
               <Text strong>Connected Users:</Text>
               <Flex
@@ -91,7 +94,7 @@ export const ShareBoardButton = () => {
                 >
                   <Flex gap="small" align="center">
                     {/* <Avatar size="small" icon={<UserOutlined />} src={user.avatar} /> */}
-                    <Text style={{ fontSize: '14px' }}>{peerId} (you)</Text>
+                    <Text style={{ fontSize: '14px' }}>{userName} (you)</Text>
                   </Flex>
                   {/* {true === false && (
                       <CrownFilled
@@ -102,9 +105,9 @@ export const ShareBoardButton = () => {
                       />
                     )} */}
                 </Flex>
-                {connections.map((conn) => (
+                {connectedUsers.map((conn) => (
                   <Flex
-                    key={conn.connection.peer}
+                    key={conn.id}
                     justify="space-between"
                     align="center"
                     style={{
@@ -116,7 +119,7 @@ export const ShareBoardButton = () => {
                   >
                     <Flex gap="small" align="center">
                       {/* <Avatar size="small" icon={<UserOutlined />} src={user.avatar} /> */}
-                      <Text style={{ fontSize: '14px' }}>{conn.connection.peer}</Text>
+                      <Text style={{ fontSize: '14px' }}>{conn.username || conn.id}</Text>
                     </Flex>
                     {conn.isHost && (
                       <CrownFilled
