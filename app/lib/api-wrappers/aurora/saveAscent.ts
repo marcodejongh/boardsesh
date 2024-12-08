@@ -1,8 +1,8 @@
 import { BoardName } from '../../types';
-import { API_HOSTS, SaveAscentOptions } from './types';
+import { API_HOSTS, SaveAscentOptions, SaveAscentResponse } from './types';
 
 // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-export async function saveAscent(board: BoardName, token: string, options: SaveAscentOptions): Promise<any> {
+export async function saveAscent(board: BoardName, token: string, options: SaveAscentOptions): Promise<SaveAscentResponse> {
   // Convert ISO date to the simpler format
   const date = new Date(options.climbed_at);
   const formattedDate = date.toISOString().replace('T', ' ').split('.')[0];

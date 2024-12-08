@@ -129,3 +129,34 @@ export interface Ascent {
   created_at: string;
   updated_at: string;
 }
+
+export interface ClimbStat {
+  climb_uuid: string;
+  angle: number;
+  ascensionist_count: number;
+  difficulty_average: number;
+  quality_average: number;
+  fa_uid: number;
+  fa_username: string;
+  fa_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AscentSavedEvent {
+  _type: 'ascent_saved';
+  ascent: Ascent & {
+    is_listed: boolean;
+    created_at: string;
+    updated_at: string;
+  };
+}
+
+export interface ClimbStatSavedEvent {
+  _type: 'climb_stat_saved';
+  climb_stat: ClimbStat;
+}
+
+export type SaveAscentResponse = {
+  events: (AscentSavedEvent | ClimbStatSavedEvent)[];
+};
