@@ -81,7 +81,6 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
           MozUserSelect: 'none', // to prevent text
           msUserSelect: 'none', // selection on
           userSelect: 'none', // different browsers
-          touchAction: 'none', // Prevents default touch actions
         }}
         onClick={() => setCurrentClimbQueueItem(item)}
       >
