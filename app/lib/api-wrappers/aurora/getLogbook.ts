@@ -1,18 +1,39 @@
 import { sql } from '@/lib/db';
 import { BoardName } from '../../types';
 import { Ascent } from './types';
-import { getTableName, syncUserData } from './syncAllUserData';
+import { getLastSyncTimes, getTableName, syncUserData } from './syncAllUserData';
 
 export async function getLogbook(board: BoardName, token: string, userId: string): Promise<Ascent[]> {
-  // First sync the ascents
-  try {
-    await syncUserData(board, token, userId, ['ascents']);
-  } catch(err) {
-    console.warn("Failed to sync tables with Aurora")
-  }
-  
+  // Fetch the last sync time for the 'ascents' table
+  const lastSync = await getLastSyncTimes(board, userId, ['ascents']);
 
-  // Then fetch from our database
+  // Check if 'last_synchronized_at' for 'ascents' is more than a day ago
+  const now = new Date();
+  let shouldSync = true; // Default to syncing if we don't have a timestamp
+
+  if (lastSync.length > 0) {
+    const ascentsSyncTime = lastSync.find((sync) => sync.table_name === 'ascents')?.last_synchronized_at;
+    if (ascentsSyncTime) {
+      const lastSyncDate = new Date(ascentsSyncTime);
+      const tenMinutesAgo = new Date(now.getTime() - 10 * 60 * 1000); // 24 hours ago
+
+      // Only sync if the last sync was more than a day ago
+      shouldSync = lastSyncDate < tenMinutesAgo;
+    }
+  }
+
+  if (shouldSync) {
+    try {
+      console.log(`Syncing ascents table with Aurora`);
+      await syncUserData(board, token, userId, ['ascents']);
+    } catch (err) {
+      console.warn('Failed to sync tables with Aurora:', err);
+    }
+  } else {
+    console.log('Sync not required for ascents. Last sync was within the last 24 hours.');
+  }
+
+  // Fetch data from the database
   const tableName = getTableName(board, 'ascents');
 
   const result = await sql.query<Ascent>(

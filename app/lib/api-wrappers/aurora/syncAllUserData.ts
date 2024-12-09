@@ -334,7 +334,7 @@ async function updateUserSyncs(boardName: BoardName, userId: string, tables: str
   );
 }
 
-async function getLastSyncTimes(boardName: BoardName, userId: string, tableNames: string[]): Promise<SyncData[]> {
+export async function getLastSyncTimes(boardName: BoardName, userId: string, tableNames: string[]): Promise<SyncData[]> {
   const userSyncsTable = getTableName(boardName, 'user_syncs');
 
   // Generate placeholders for the `IN` clause
