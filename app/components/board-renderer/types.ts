@@ -16,6 +16,9 @@ export type HoldRenderData = {
 };
 export type LitUpHoldsMap = Record<HoldCode, { state: HoldState; color: string; displayColor: string }>;
 
+// If adding mroe boards be sure to increment the DB version number for indexeddb
+export const supported_boards: BoardName[] = [ 'kilter', 'tension']
+
 // Mapping object for board-specific hold states
 export const HOLD_STATE_MAP: Record<
   BoardName,
