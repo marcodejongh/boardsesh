@@ -134,7 +134,7 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
           userSelect: 'none',
 >>>>>>> c510862 (Implement checkboxes in queuelist)
         }}
-        onClick={() => setCurrentClimbQueueItem(item)}
+        onDoubleClick={() => setCurrentClimbQueueItem(item)}
       >
         <Row style={{ width: '100%' }} gutter={16} align="middle">
           <Col xs={5}>
