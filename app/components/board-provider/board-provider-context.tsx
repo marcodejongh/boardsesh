@@ -99,9 +99,9 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
       try {
         const database = await initDB();
         if (!mounted) return;
-        
+
         setDb(database);
-        
+
         const savedState = await loadAuthState(database, boardName);
         if (!mounted) return;
 
@@ -212,7 +212,7 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
   const getLogbook = async (climbUuids: ClimbUuid[]) => {
     try {
       setCurrentClimbUuids(climbUuids); // Store the current climb UUIDs
-      
+
       if (!authState.user?.id) {
         setLogbook([]); // Clear logbook if not authenticated
         return;

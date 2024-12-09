@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { List, Row, Col, Typography } from 'antd';
-import { HolderOutlined } from '@ant-design/icons';
-import { BoardDetails } from '@/app/lib/types';
+import { HolderOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { BoardDetails, ClimbUuid } from '@/app/lib/types';
 import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { DragHandleButton } from '@atlaskit/pragmatic-drag-and-drop-react-accessibility/drag-handle-button';
 import { DropIndicator } from '@atlaskit/pragmatic-drag-and-drop-react-drop-indicator/box';
@@ -10,6 +10,7 @@ import type { Edge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/types';
 import { combine } from '@atlaskit/pragmatic-drag-and-drop/combine';
 import { ClimbQueueItem } from './types';
 import ClimbThumbnail from '../climb-card/climb-thumbnail';
+import { useBoardProvider } from '../board-provider/board-provider-context';
 
 const { Text } = Typography;
 
@@ -21,6 +22,53 @@ type QueueListItemProps = {
   viewOnlyMode: boolean;
   boardDetails: BoardDetails;
   setCurrentClimbQueueItem: (item: ClimbQueueItem) => void;
+};
+
+export const AscentStatus = ({ climbUuid }: { climbUuid: ClimbUuid }) => {
+  const { logbook, boardName } = useBoardProvider();
+
+  const ascentsForClimb = logbook.filter((ascent) => ascent.climb_uuid === climbUuid);
+
+  const hasSuccessfulAscent = ascentsForClimb.some(({ is_ascent, is_mirror }) => is_ascent && !is_mirror);
+  const hasSuccessfulMirroredAscent = ascentsForClimb.some(({ is_ascent, is_mirror }) => is_ascent && is_mirror);
+  const hasAttempts = ascentsForClimb.length > 0;
+  const supportsMirroring = boardName === 'tension';
+
+  if (!hasAttempts) return null;
+
+  if (supportsMirroring) {
+    return (
+      <div style={{ position: 'relative', width: '16px', height: '16px', display: 'flex', alignItems: 'center' }}>
+        {/* Regular ascent icon */}
+        {hasSuccessfulAscent ? (
+          <div style={{ position: 'absolute', left: 0 }}>
+            <CheckOutlined style={{ color: '#52c41a' }} />
+          </div>
+        ) : null}
+        {/* Mirrored ascent icon */}
+        {hasSuccessfulMirroredAscent ? (
+          <div
+            style={{
+              position: 'absolute',
+              transform: 'scaleX(-1)',
+            }}
+          >
+            <CheckOutlined style={{ color: '#52c41a' }} />
+          </div>
+        ) : null}
+        {!hasSuccessfulMirroredAscent && !hasSuccessfulAscent ? (
+          <CloseOutlined style={{ color: '#ff4d4f', position: 'absolute', left: 0 }} />
+        ) : null}
+      </div>
+    );
+  }
+
+  // Single icon for non-mirroring boards
+  return hasSuccessfulAscent ? (
+    <CheckOutlined style={{ color: '#52c41a' }} />
+  ) : (
+    <CloseOutlined style={{ color: '#ff4d4f' }} />
+  );
 };
 
 const QueueListItem: React.FC<QueueListItemProps> = ({
@@ -77,30 +125,33 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
           opacity: isHistory ? 0.6 : 1,
           cursor: 'grab',
           position: 'relative',
-          WebkitUserSelect: 'none', // Add these properties
-          MozUserSelect: 'none', // to prevent text
-          msUserSelect: 'none', // selection on
-          userSelect: 'none', // different browsers
+          WebkitUserSelect: 'none',
+          MozUserSelect: 'none',
+          msUserSelect: 'none',
+          userSelect: 'none',
         }}
-        onClick={() => setCurrentClimbQueueItem(item)}
+        onDoubleClick={() => setCurrentClimbQueueItem(item)}
       >
         <Row style={{ width: '100%' }} gutter={16} align="middle">
           <Col xs={5}>
             <ClimbThumbnail boardDetails={boardDetails} currentClimb={item.climb} />
           </Col>
-          <Col xs={17}>
+          <Col xs={16}>
             <List.Item.Meta
               title={
-                <Text
-                  style={{
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    fontWeight: 'bold',
-                  }}
-                >
-                  {item.climb.name}
-                </Text>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Text
+                    style={{
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      fontWeight: 'bold',
+                    }}
+                  >
+                    {item.climb.name}
+                  </Text>
+                  <AscentStatus climbUuid={item.climb.uuid} />
+                </div>
               }
               description={
                 <Text

@@ -11,7 +11,13 @@ interface TickButtonProps {
   boardDetails: BoardDetails;
 }
 
-const LoginForm = ({ onLogin, isLoggingIn }: { onLogin: (username: string, password: string) => Promise<void>; isLoggingIn: boolean }) => {
+const LoginForm = ({
+  onLogin,
+  isLoggingIn,
+}: {
+  onLogin: (username: string, password: string) => Promise<void>;
+  isLoggingIn: boolean;
+}) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
@@ -24,27 +30,14 @@ const LoginForm = ({ onLogin, isLoggingIn }: { onLogin: (username: string, passw
   return (
     <Form layout="vertical">
       <Form.Item label="Username" required tooltip="Your board account username">
-        <Input
-          placeholder="Enter username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-        />
+        <Input placeholder="Enter username" value={username} onChange={(e) => setUsername(e.target.value)} />
       </Form.Item>
 
       <Form.Item label="Password" required tooltip="Your board account password">
-        <Input.Password
-          placeholder="Enter password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
+        <Input.Password placeholder="Enter password" value={password} onChange={(e) => setPassword(e.target.value)} />
       </Form.Item>
 
-      <Button
-        type="primary"
-        block
-        loading={isLoggingIn}
-        onClick={handleSubmit}
-      >
+      <Button type="primary" block loading={isLoggingIn} onClick={handleSubmit}>
         {isLoggingIn ? 'Logging in...' : 'Login to Record Ascent'}
       </Button>
     </Form>
@@ -94,13 +87,7 @@ export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boa
           boardDetails={boardDetails}
         />
       ) : (
-        <Drawer
-          title="Login Required"
-          placement="bottom"
-          onClose={closeDrawer}
-          open={drawerVisible}
-          height="50%"
-        >
+        <Drawer title="Login Required" placement="bottom" onClose={closeDrawer} open={drawerVisible} height="50%">
           <LoginForm onLogin={handleLogin} isLoggingIn={isLoggingIn} />
         </Drawer>
       )}
