@@ -10,6 +10,7 @@ import { BoardName, BoardDetails, Angle } from '@/app/lib/types';
 import QueueList from './queue-list';
 import { TickButton } from '../logbook/tick-button';
 import ClimbThumbnail from '../climb-card/climb-thumbnail';
+import { AscentStatus } from './queue-list-item';
 
 const { Title, Text } = Typography;
 
@@ -54,31 +55,41 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
           {/* Clickable main body for opening the queue */}
           <Col xs={11} style={{ textAlign: 'center' }}>
             <div onClick={toggleQueueDrawer} style={{ cursor: 'pointer' }}>
-              <Title
-                level={5}
-                style={{
-                  marginBottom: 0,
-                  fontSize: '14px',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                }}
-              >
-                {currentClimb && currentClimb.name ? currentClimb.name : 'No climb selected'}
-              </Title>
-              <Text
-                style={{
-                  fontSize: '12px',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                }}
-              >
-                {currentClimb
-                  ? `${currentClimb.difficulty} ${currentClimb.quality_average}★ @ ${currentClimb.angle}°`
-                  : 'No climb selected'}
-              </Text>
-            </div>
+  <div style={{ 
+    display: 'flex', 
+    alignItems: 'center', 
+    justifyContent: 'center',
+    gap: '4px'
+  }}>
+    <Title
+      level={5}
+      style={{
+        marginBottom: 0,
+        fontSize: '14px',
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+      }}
+    >
+      {currentClimb && currentClimb.name ? currentClimb.name : 'No climb selected'}
+    </Title>
+    {currentClimb && currentClimb.name && (
+      <AscentStatus climbUuid={currentClimb.uuid} />
+    )}
+  </div>
+  <Text
+    style={{
+      fontSize: '12px',
+      whiteSpace: 'nowrap',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+    }}
+  >
+    {currentClimb
+      ? `${currentClimb.difficulty} ${currentClimb.quality_average}★ @ ${currentClimb.angle}°`
+      : null}
+  </Text>
+</div>
           </Col>
 
           {/* Button cluster */}

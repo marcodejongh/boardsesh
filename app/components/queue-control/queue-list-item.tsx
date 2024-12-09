@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { List, Row, Col, Typography } from 'antd';
 import { HolderOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { BoardDetails } from '@/app/lib/types';
+import { BoardDetails, ClimbUuid } from '@/app/lib/types';
 import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { DragHandleButton } from '@atlaskit/pragmatic-drag-and-drop-react-accessibility/drag-handle-button';
 import { DropIndicator } from '@atlaskit/pragmatic-drag-and-drop-react-drop-indicator/box';
@@ -24,6 +24,54 @@ type QueueListItemProps = {
   setCurrentClimbQueueItem: (item: ClimbQueueItem) => void;
 };
 
+  export const AscentStatus = ({ climbUuid }: { climbUuid: ClimbUuid }) => {
+    const { logbook, boardName } = useBoardProvider();
+
+    const ascentsForClimb = logbook.filter((ascent) => ascent.climb_uuid === climbUuid);
+
+    const hasSuccessfulAscent = ascentsForClimb.some(({ is_ascent, is_mirror }) => is_ascent && !is_mirror);
+    const hasSuccessfulMirroredAscent = ascentsForClimb.some(({ is_ascent, is_mirror }) => is_ascent && is_mirror);
+    const hasAttempts = ascentsForClimb.length > 0;
+    const supportsMirroring = boardName === 'tension';
+
+    if (!hasAttempts) return null;
+
+    if (supportsMirroring) {
+      return (
+        <div style={{ position: 'relative', width: '16px', height: '16px', display: 'flex', alignItems: 'center' }}>
+          {/* Regular ascent icon */}
+          {hasSuccessfulAscent ? (
+            <div
+              style={{ position: 'absolute', left: 0 }}>
+            <CheckOutlined style={{ color: '#52c41a' }} />
+            </div>
+          ) : null}
+          {/* Mirrored ascent icon */}
+          {hasSuccessfulMirroredAscent ? (
+            <div
+              style={{
+                position: 'absolute',
+                transform: 'scaleX(-1)',
+              }}
+            >
+              <CheckOutlined style={{ color: '#52c41a' }} />
+            </div>
+          ) : null}
+          {!hasSuccessfulMirroredAscent && !hasSuccessfulAscent ? (
+            <CloseOutlined style={{ color: '#ff4d4f', position: 'absolute', left: 0 }} />
+          ) : null}
+        </div>
+      );
+    }
+
+    // Single icon for non-mirroring boards
+    return hasSuccessfulAscent ? (
+      <CheckOutlined style={{ color: '#52c41a' }} />
+    ) : (
+      <CloseOutlined style={{ color: '#ff4d4f' }} />
+    );
+};
+
 const QueueListItem: React.FC<QueueListItemProps> = ({
   item,
   index,
@@ -34,15 +82,7 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
 }) => {
   const [closestEdge, setClosestEdge] = useState<Edge | null>(null);
   const itemRef = useRef<HTMLDivElement>(null);
-  const { logbook, boardName } = useBoardProvider();
-
-  const ascentsForClimb = logbook.filter((ascent) => ascent.climb_uuid === item.climb.uuid);
-
-  const hasSuccessfulAscent = ascentsForClimb.some(({ is_ascent, is_mirror }) => is_ascent && !is_mirror);
-  const hasSuccessfulMirroredAscent = ascentsForClimb.some(({ is_ascent, is_mirror }) => is_ascent && is_mirror);
-  const hasAttempts = ascentsForClimb.length > 0;
-  const supportsMirroring = boardName === 'tension';
-
+  
   useEffect(() => {
     const element = itemRef.current;
 
@@ -78,42 +118,6 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
     }
   }, [index, item.uuid]);
 
-  const renderAscentStatus = () => {
-    if (!hasAttempts) return null;
-
-    if (supportsMirroring) {
-      return (
-        <div style={{ position: 'relative', width: '16px', height: '16px' }}>
-          {/* Regular ascent icon */}
-          {hasSuccessfulAscent ? <CheckOutlined style={{ color: '#52c41a', position: 'absolute' }} /> : null}
-          {/* Mirrored ascent icon */}
-          {hasSuccessfulMirroredAscent ? (
-            <div
-              style={{
-                position: 'absolute',
-                transform: 'scaleX(-1)',
-                left: '2px',
-                top: '-4px',
-              }}
-            >
-              <CheckOutlined style={{ color: '#52c41a' }} />
-            </div>
-          ) : null}
-          {!hasSuccessfulMirroredAscent && !hasSuccessfulAscent ? (
-            <CloseOutlined style={{ color: '#ff4d4f', position: 'absolute' }} />
-          ) : null}
-        </div>
-      );
-    }
-
-    // Single icon for non-mirroring boards
-    return hasSuccessfulAscent ? (
-      <CheckOutlined style={{ color: '#52c41a' }} />
-    ) : (
-      <CloseOutlined style={{ color: '#ff4d4f' }} />
-    );
-  };
-
   return (
     <div ref={itemRef}>
       <List.Item
@@ -122,17 +126,10 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
           opacity: isHistory ? 0.6 : 1,
           cursor: 'grab',
           position: 'relative',
-<<<<<<< HEAD
-          WebkitUserSelect: 'none', // Add these properties
-          MozUserSelect: 'none', // to prevent text
-          msUserSelect: 'none', // selection on
-          userSelect: 'none', // different browsers
-=======
           WebkitUserSelect: 'none',
           MozUserSelect: 'none',
           msUserSelect: 'none',
           userSelect: 'none',
->>>>>>> c510862 (Implement checkboxes in queuelist)
         }}
         onDoubleClick={() => setCurrentClimbQueueItem(item)}
       >
@@ -154,7 +151,7 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
                   >
                     {item.climb.name}
                   </Text>
-                  {renderAscentStatus()}
+                  <AscentStatus climbUuid={item.climb.uuid} />
                 </div>
               }
               description={
