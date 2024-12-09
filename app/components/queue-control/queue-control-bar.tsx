@@ -11,6 +11,7 @@ import QueueList from './queue-list';
 import { TickButton } from '../logbook/tick-button';
 import ClimbThumbnail from '../climb-card/climb-thumbnail';
 import { AscentStatus } from './queue-list-item';
+import { CopyrightOutlined } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
 
@@ -85,9 +86,12 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
                   textOverflow: 'ellipsis',
                 }}
               >
-                {currentClimb
-                  ? `${currentClimb.difficulty} ${currentClimb.quality_average}★ @ ${currentClimb.angle}°`
-                  : null}
+                {currentClimb ? (
+                  <>
+                    {`${currentClimb.difficulty} ${currentClimb.quality_average}★ @ ${currentClimb.angle}°`}
+                    {currentClimb.benchmark_difficulty && <CopyrightOutlined style={{ marginLeft: 4 }} />}
+                  </>
+                ) : null}
               </Text>
             </div>
           </Col>

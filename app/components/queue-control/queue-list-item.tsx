@@ -11,6 +11,7 @@ import { combine } from '@atlaskit/pragmatic-drag-and-drop/combine';
 import { ClimbQueueItem } from './types';
 import ClimbThumbnail from '../climb-card/climb-thumbnail';
 import { useBoardProvider } from '../board-provider/board-provider-context';
+import { CopyrightOutlined } from '@ant-design/icons';
 
 const { Text } = Typography;
 
@@ -163,6 +164,7 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
                   }}
                 >
                   {`${item.climb.difficulty} ${item.climb.quality_average}★`}
+                  {item.climb.benchmark_difficulty && <CopyrightOutlined style={{ marginLeft: 4 }} />}
                 </Text>
               }
             />

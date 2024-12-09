@@ -15,6 +15,7 @@ export type Climb = {
   difficulty_error: string;
   litUpHoldsMap: LitUpHoldsMap;
   mirrored?: boolean;
+  benchmark_difficulty: string | null; // Benchmark difficulty, can be null
 };
 
 export type ClimbQueryResult = {
