@@ -39,18 +39,16 @@ export async function login(board: BoardName, username: string, password: string
     );
 
     // If it's a new user, perform full sync
-    if (!userExists) {
-      try {
-        await syncUserData(
-          board,
-          loginResponse.token,
-          loginResponse.user_id.toString(),
-          undefined, // undefined means sync all tables
-        );
-      } catch (error) {
-        console.error('Initial sync error:', error);
-        // We don't throw here as login was successful
-      }
+    try {
+      await syncUserData(
+        board,
+        loginResponse.token,
+        loginResponse.user_id.toString(),
+        undefined, // undefined means sync all tables
+      );
+    } catch (error) {
+      console.error('Initial sync error:', error);
+      // We don't throw here as login was successful
     }
   }
 
