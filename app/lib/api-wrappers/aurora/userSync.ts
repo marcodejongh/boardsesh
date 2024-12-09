@@ -9,7 +9,7 @@ export async function userSync(
   // eslint-disable-next-line  @typescript-eslint/no-explicit-any
 ): Promise<any> {
   const { tables = [], walls = [], wallExpungements = [], sharedSyncs = [], userSyncs = [] } = options;
-  console.log(userSyncs);
+  
   const response = await fetch(`${API_HOSTS[board]}/v1/sync`, {
     method: 'POST',
     headers: {

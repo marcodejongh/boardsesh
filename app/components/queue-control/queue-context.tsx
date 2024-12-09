@@ -78,7 +78,7 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
     return () => unsubscribe();
   }, [subscribeToData, handlePeerData]);
 
-    const {
+  const {
     climbSearchResults,
     suggestedClimbs,
     totalSearchResultCount,

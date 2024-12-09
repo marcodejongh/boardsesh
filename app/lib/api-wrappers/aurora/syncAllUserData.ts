@@ -7,7 +7,7 @@ export const USER_TABLES = ['walls', 'wall_expungements', 'draft_climbs', 'ascen
 
 export const getTableName = (boardName: BoardName, tableName: string) => {
   if (!boardName) {
-    throw new Error("Boardname is required, but received falsey")
+    throw new Error('Boardname is required, but received falsey');
   }
   switch (boardName) {
     case 'tension':
