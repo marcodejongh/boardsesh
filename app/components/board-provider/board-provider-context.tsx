@@ -14,11 +14,18 @@ import { supported_boards } from '../board-renderer/types';
 import { message } from 'antd';
 
 const DB_NAME = 'boardsesh';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 const initDB = () => {
   return openDB(DB_NAME, DB_VERSION, {
-    upgrade(db) {
+    upgrade(db, oldVersion) {
+      // If coming from a version older than 3, delete all data
+      if (oldVersion < 3) {
+        // Delete existing object stores
+        Array.from(db.objectStoreNames).forEach(storeName => db.deleteObjectStore(storeName));
+      }
+      
+      // Recreate stores as needed
       supported_boards.forEach((boardName) => {
         if (!db.objectStoreNames.contains(boardName)) {
           db.createObjectStore(boardName);
