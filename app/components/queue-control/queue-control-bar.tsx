@@ -55,41 +55,41 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
           {/* Clickable main body for opening the queue */}
           <Col xs={11} style={{ textAlign: 'center' }}>
             <div onClick={toggleQueueDrawer} style={{ cursor: 'pointer' }}>
-  <div style={{ 
-    display: 'flex', 
-    alignItems: 'center', 
-    justifyContent: 'center',
-    gap: '4px'
-  }}>
-    <Title
-      level={5}
-      style={{
-        marginBottom: 0,
-        fontSize: '14px',
-        whiteSpace: 'nowrap',
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-      }}
-    >
-      {currentClimb && currentClimb.name ? currentClimb.name : 'No climb selected'}
-    </Title>
-    {currentClimb && currentClimb.name && (
-      <AscentStatus climbUuid={currentClimb.uuid} />
-    )}
-  </div>
-  <Text
-    style={{
-      fontSize: '12px',
-      whiteSpace: 'nowrap',
-      overflow: 'hidden',
-      textOverflow: 'ellipsis',
-    }}
-  >
-    {currentClimb
-      ? `${currentClimb.difficulty} ${currentClimb.quality_average}★ @ ${currentClimb.angle}°`
-      : null}
-  </Text>
-</div>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '4px',
+                }}
+              >
+                <Title
+                  level={5}
+                  style={{
+                    marginBottom: 0,
+                    fontSize: '14px',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  {currentClimb && currentClimb.name ? currentClimb.name : 'No climb selected'}
+                </Title>
+                {currentClimb && currentClimb.name && <AscentStatus climbUuid={currentClimb.uuid} />}
+              </div>
+              <Text
+                style={{
+                  fontSize: '12px',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {currentClimb
+                  ? `${currentClimb.difficulty} ${currentClimb.quality_average}★ @ ${currentClimb.angle}°`
+                  : null}
+              </Text>
+            </div>
           </Col>
 
           {/* Button cluster */}
