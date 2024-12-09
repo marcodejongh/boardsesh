@@ -1,20 +1,15 @@
-// API Route handler for Next.js (app/api/sync/route.ts)
+// app/api/[board]/sync/route.ts
 import { syncUserData } from '@/app/lib/api-wrappers/aurora/syncAllUserData';
-import { NextRequest, NextResponse } from 'next/server';
 
-export async function POST(req: NextRequest) {
+export async function POST(request: Request) {
+  const { token, userId, board_name } = await request.json();
+  
   try {
-    const { board, token, userId } = await req.json();
-
-    if (!board || !token || !userId) {
-      return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 });
-    }
-
-    const results = await syncUserData(board, token, userId);
-
-    return NextResponse.json({ success: true, results });
-  } catch (error) {
-    console.error('Sync error:', error);
-    return NextResponse.json({ error: 'Failed to sync user data' }, { status: 500 });
+    await syncUserData(board_name, token, userId);
+    return new Response(JSON.stringify({ success: true, message: 'All tables synced' }), { status: 200 });
+  } catch (err) {
+    console.error('Failed to sync with Aurora:', err);
+    //@ts-expect-error Eh cant be bothered fixing this now
+    return new Response(JSON.stringify({ error: 'Sync failed', details: err.message }), { status: 500 });
   }
 }

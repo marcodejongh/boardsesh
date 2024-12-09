@@ -49,14 +49,14 @@ export async function saveAscent(
 
   const ascent: SaveAscentResponse = await response.json();
   const savedAscentEvent = ascent.events.find((event): event is AscentSavedEvent => event._type === 'ascent_saved');
-  
+
   if (!savedAscentEvent) {
     throw new Error('Failed to save ascent');
   }
-  
-    // Insert into the intermediate database
+
+  // Insert into the intermediate database
   const fullTableName = getTableName(board, 'ascents'); // Replace with your actual table name
-  
+
   const params = [
     requestBody.uuid,
     requestBody.climb_uuid,

@@ -132,6 +132,11 @@ export interface Ascent {
   updated_at: string;
 }
 
+export type LogbookEntry = Omit<Ascent, 'bid_count'> & {
+  tries: number;
+  is_ascent: boolean;
+};
+
 export interface ClimbStat {
   climb_uuid: string;
   angle: number;

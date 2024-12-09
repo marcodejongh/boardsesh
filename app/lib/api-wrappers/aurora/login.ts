@@ -3,14 +3,6 @@ import { BoardName } from '../../types';
 import { API_HOSTS, LoginResponse } from './types';
 import { syncUserData } from './syncAllUserData';
 
-async function checkUserExists(board: BoardName, userId: number): Promise<boolean> {
-  const tableName = board === 'tension' || board === 'kilter' ? `${board}_users` : 'users';
-
-  const result = await sql.query(`SELECT 1 FROM ${tableName} WHERE id = $1 LIMIT 1`, [userId]);
-
-  return result.rows.length > 0;
-}
-
 export async function login(board: BoardName, username: string, password: string): Promise<LoginResponse> {
   // First perform the API login
   const response = await fetch(`${API_HOSTS[board]}/v1/logins`, {
@@ -25,7 +17,6 @@ export async function login(board: BoardName, username: string, password: string
 
   if (loginResponse.user_id) {
     const tableName = board === 'tension' || board === 'kilter' ? `${board}_users` : 'users';
-    const userExists = await checkUserExists(board, loginResponse.user_id);
 
     // Insert/update user in our database
     await sql.query(

@@ -1,5 +1,6 @@
 import React from 'react';
 import { List, Card, Rate, Tag, Typography, Space } from 'antd';
+import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Climb } from '@/app/lib/types';
 import { useBoardProvider } from '../board-provider/board-provider-context';
 import dayjs from 'dayjs';
@@ -34,16 +35,27 @@ export const LogbookView: React.FC<LogbookViewProps> = ({ currentClimb }) => {
             <Space direction="vertical" style={{ width: '100%' }}>
               <Space wrap>
                 <Text strong>{dayjs(ascent.climbed_at).format('MMM D, YYYY h:mm A')}</Text>
-                <Tag color={ascent.is_benchmark ? 'gold' : 'default'}>
-                  {ascent.is_benchmark ? 'Benchmark' : 'Regular'}
-                </Tag>
-                {ascent.angle !== currentClimb.angle && <Tag color="blue">{ascent.angle}°</Tag>}
+                {ascent.angle !== currentClimb.angle && (
+                  <>
+                    <Tag color="blue">{ascent.angle}°</Tag>
+                    {ascent.is_ascent ? (
+                      <CheckOutlined style={{ color: '#52c41a' }} />
+                    ) : (
+                      <CloseOutlined style={{ color: '#ff4d4f' }} />
+                    )}
+                  </>
+                )}
                 {showMirrorTag && ascent.is_mirror && <Tag color="purple">Mirrored</Tag>}
               </Space>
-
+              {ascent.is_ascent && (
+                <>
+                  <Space>
+                    <Rate disabled value={ascent.quality} count={3} style={{ fontSize: 14 }} />
+                  </Space>
+                </>
+              )}
               <Space>
-                <Text>Attempts: {ascent.bid_count}</Text>
-                <Rate disabled value={ascent.quality} count={3} style={{ fontSize: 14 }} />
+                <Text>Attempts: {ascent.tries}</Text>
               </Space>
 
               {ascent.comment && (

@@ -1,42 +1,14 @@
 import { sql } from '@/lib/db';
-import { BoardName } from '../../types';
-import { Ascent } from './types';
-import { getLastSyncTimes, getTableName, syncUserData } from './syncAllUserData';
+import { BoardName, ClimbUuid } from '../../types';
+import { LogbookEntry } from './types';
+import { getTableName } from './syncAllUserData';
 
-export async function getLogbook(board: BoardName, token: string, userId: string): Promise<Ascent[]> {
-  // Fetch the last sync time for the 'ascents' table
-  const lastSync = await getLastSyncTimes(board, userId, ['ascents']);
+export async function getLogbook(board: BoardName, userId: string, climbUuids: ClimbUuid[]): Promise<LogbookEntry[]> {
+  const ascentsTable = getTableName(board, 'ascents');
+  const bidsTable = getTableName(board, 'bids');
 
-  // Check if 'last_synchronized_at' for 'ascents' is more than a day ago
-  const now = new Date();
-  let shouldSync = true; // Default to syncing if we don't have a timestamp
-
-  if (lastSync.length > 0) {
-    const ascentsSyncTime = lastSync.find((sync) => sync.table_name === 'ascents')?.last_synchronized_at;
-    if (ascentsSyncTime) {
-      const lastSyncDate = new Date(ascentsSyncTime);
-      const tenMinutesAgo = new Date(now.getTime() - 10 * 60 * 1000); // 24 hours ago
-
-      // Only sync if the last sync was more than a day ago
-      shouldSync = lastSyncDate < tenMinutesAgo;
-    }
-  }
-
-  if (shouldSync) {
-    try {
-      console.log(`Syncing ascents table with Aurora`);
-      await syncUserData(board, token, userId, ['ascents']);
-    } catch (err) {
-      console.warn('Failed to sync tables with Aurora:', err);
-    }
-  } else {
-    console.log('Sync not required for ascents. Last sync was within the last 24 hours.');
-  }
-
-  // Fetch data from the database
-  const tableName = getTableName(board, 'ascents');
-
-  const result = await sql.query<Ascent>(
+  // Single query using UNION ALL with proper type casting and IN clause
+  const combinedLogbook = await sql.query<LogbookEntry>(
     `
     SELECT 
       uuid,
@@ -45,19 +17,43 @@ export async function getLogbook(board: BoardName, token: string, userId: string
       is_mirror,
       user_id,
       attempt_id,
-      bid_count,
+      bid_count AS tries,
       quality,
       difficulty,
-      is_benchmark,
+      is_benchmark::boolean,
       comment,
       climbed_at,
-      created_at
-    FROM ${tableName}
+      created_at,
+      TRUE::boolean AS is_ascent
+    FROM ${ascentsTable}
     WHERE user_id = $1
-    ORDER BY created_at DESC
-  `,
-    [userId],
+    AND climb_uuid = ANY($2)
+
+    UNION ALL
+
+    SELECT 
+      uuid,
+      climb_uuid,
+      angle,
+      is_mirror,
+      user_id,
+      NULL AS attempt_id,
+      bid_count AS tries,
+      NULL AS quality,
+      NULL AS difficulty,
+      FALSE::boolean AS is_benchmark,
+      comment,
+      climbed_at,
+      created_at,
+      FALSE::boolean AS is_ascent
+    FROM ${bidsTable}
+    WHERE user_id = $1
+    AND climb_uuid = ANY($2)
+
+    ORDER BY climbed_at DESC
+    `,
+    [userId, climbUuids],
   );
 
-  return result.rows;
+  return combinedLogbook.rows;
 }

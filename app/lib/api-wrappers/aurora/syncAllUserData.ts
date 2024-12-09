@@ -3,9 +3,12 @@ import { BoardName } from '../../types';
 import { userSync } from './userSync';
 import { SyncOptions } from './types';
 
-const USER_TABLES = ['walls', 'wall_expungements', 'draft_climbs', 'ascents', 'bids', 'tags', 'circuits'];
+export const USER_TABLES = ['walls', 'wall_expungements', 'draft_climbs', 'ascents', 'bids', 'tags', 'circuits'];
 
 export const getTableName = (boardName: BoardName, tableName: string) => {
+  if (!boardName) {
+    throw new Error("Boardname is required, but received falsey")
+  }
   switch (boardName) {
     case 'tension':
     case 'kilter':
@@ -322,7 +325,6 @@ async function updateUserSyncs(boardName: BoardName, userId: string, tables: str
   // Batch insert/update for all tables synced
   const values = tables.map((_, i) => `($${i * 3 + 1}, $${i * 3 + 2}, $${i * 3 + 3})`).join(',');
   const params = tables.flatMap((table) => [userId, table, now]);
-
   await sql.query(
     `
     INSERT INTO ${userSyncsTable} (user_id, table_name, last_synchronized_at)
@@ -334,12 +336,15 @@ async function updateUserSyncs(boardName: BoardName, userId: string, tables: str
   );
 }
 
-export async function getLastSyncTimes(boardName: BoardName, userId: string, tableNames: string[]): Promise<SyncData[]> {
+export async function getLastSyncTimes(
+  boardName: BoardName,
+  userId: string,
+  tableNames: string[],
+): Promise<SyncData[]> {
   const userSyncsTable = getTableName(boardName, 'user_syncs');
 
   // Generate placeholders for the `IN` clause
   const tablePlaceholders = tableNames.map((_, index) => `$${index + 2}`).join(', ');
-
   const result = await sql.query(
     `
     SELECT table_name, last_synchronized_at
@@ -351,7 +356,6 @@ export async function getLastSyncTimes(boardName: BoardName, userId: string, tab
 
   return result.rows;
 }
-
 
 // async function checkSharedSyncs(boardName: BoardName, tableName: string): Promise<[string, string] | null> {
 //   const sharedSyncsTable = getTableName(boardName, 'shared_syncs');
@@ -383,26 +387,13 @@ export async function syncUserData(
       tables,
     };
 
-    // If we're syncing climbs, we need to include the shared_syncs param
-    // if (tables.includes('climbs')) {
-    //   const lastSharedSync = await checkSharedSyncs(board, 'climbs');
-    //   if (lastSharedSync) {
-    //     syncParams.sharedSyncs = [
-    //       {
-    //         table_name: 'climbs',
-    //         last_synchronized_at: lastSharedSync,
-    //       },
-    //     ];
-    //   }
-    // }
     const allSyncTimes = await getLastSyncTimes(board, userId, tables);
-    
+
     syncParams.userSyncs = allSyncTimes.map((syncTime) => ({
       table_name: syncTime.table_name,
       last_synchronized_at: syncTime.last_synchronized_at,
-    }))
-    
-     
+    }));
+
     const syncResults = await userSync(board, token, userId, syncParams);
 
     // Process each table

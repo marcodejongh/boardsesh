@@ -78,7 +78,7 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
     return () => unsubscribe();
   }, [subscribeToData, handlePeerData]);
 
-  const {
+    const {
     climbSearchResults,
     suggestedClimbs,
     totalSearchResultCount,
@@ -92,6 +92,8 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
     hasDoneFirstFetch: state.hasDoneFirstFetch,
     setHasDoneFirstFetch: () => dispatch({ type: 'SET_FIRST_FETCH', payload: true }),
   });
+
+  // Add this to ensure we get logbook entries even when there are no search results
 
   const contextValue: QueueContextType = {
     queue: state.queue,

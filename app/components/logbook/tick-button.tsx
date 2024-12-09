@@ -20,17 +20,18 @@ export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boa
     setDrawerVisible(false);
   };
 
+  const filteredLogbook = logbook.filter((asc) => asc.climb_uuid === currentClimb?.uuid && Number(asc.angle) === angle);
+
+  const hasSuccessfulAscent = filteredLogbook.some((asc) => asc.is_ascent);
+  const badgeCount = filteredLogbook.length;
+
   return (
     <>
       <Badge
-        count={
-          logbook.length > 0
-            ? logbook.filter((asc) => asc.climb_uuid === currentClimb?.uuid && Number(asc.angle) === angle).length
-            : 0
-        }
+        count={badgeCount > 0 ? badgeCount : 0}
         overflowCount={100}
         showZero={false}
-        color="cyan"
+        color={hasSuccessfulAscent ? 'cyan' : 'red'}
       >
         <Button id="button-tick" type="default" icon={<CheckOutlined />} onClick={showDrawer} />
       </Badge>
