@@ -12,10 +12,21 @@ import { SaveAscentOptions } from '@/app/lib/api-wrappers/aurora/types';
 import { generateUuid } from '@/app/lib/api-wrappers/aurora/util';
 
 const DB_NAME = 'boardsesh';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 const initDB = () => {
-  return openDB(DB_NAME, DB_VERSION);
+  return openDB(DB_NAME, DB_VERSION, {
+    
+    upgrade(db) {
+      // Create the store if it doesn't exist
+      if (!db.objectStoreNames.contains('kilter')) {
+        db.createObjectStore('kilter');
+      }
+      if (!db.objectStoreNames.contains('tension')) {
+        db.createObjectStore('tension');
+      }
+    },
+  });
 };
 
 const loadAuthState = async (db: IDBPDatabase, board_name: BoardName) => {
@@ -71,11 +82,7 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        const db = await initDB();
-        if (!db.objectStoreNames.contains(boardName)) {
-          db.createObjectStore(boardName);
-        }
-
+        const db = await initDB(boardName);
         const savedState = await loadAuthState(db, boardName);
 
         if (savedState) {
