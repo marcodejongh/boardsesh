@@ -52,7 +52,7 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
           </Col>
 
           {/* Clickable main body for opening the queue */}
-          <Col xs={10} style={{ textAlign: 'center' }}>
+          <Col xs={11} style={{ textAlign: 'center' }}>
             <div onClick={toggleQueueDrawer} style={{ cursor: 'pointer' }}>
               <Title
                 level={5}
@@ -82,7 +82,7 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
           </Col>
 
           {/* Button cluster */}
-          <Col xs={10} style={{ textAlign: 'right' }}>
+          <Col xs={9} style={{ textAlign: 'right', paddingRight: '10px' }}>
             <Space>
               {boardDetails.supportsMirroring ? (
                 <Button
