@@ -1,23 +1,23 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { BoardName } from '@/app/lib/types';
+import { BoardName, ClimbUuid } from '@/app/lib/types';
 import { IDBPDatabase, openDB } from 'idb';
 import {
-  Ascent,
   AscentSavedEvent,
   BoardUser,
+  LogbookEntry,
   LoginResponse,
   SaveAscentResponse,
 } from '@/app/lib/api-wrappers/aurora/types';
 import { SaveAscentOptions } from '@/app/lib/api-wrappers/aurora/types';
 import { generateUuid } from '@/app/lib/api-wrappers/aurora/util';
 import { supported_boards } from '../board-renderer/types';
+import { message } from 'antd';
 
 const DB_NAME = 'boardsesh';
 const DB_VERSION = 2;
 
 const initDB = () => {
   return openDB(DB_NAME, DB_VERSION, {
-    
     upgrade(db) {
       supported_boards.forEach((boardName) => {
         if (!db.objectStoreNames.contains(boardName)) {
@@ -57,8 +57,8 @@ interface BoardContextType {
   isLoading: boolean;
   error: string | null;
   isInitialized: boolean;
-  logbook: Ascent[];
-  getLogbook: () => Promise<void>;
+  logbook: LogbookEntry[];
+  getLogbook: (climbUuids: ClimbUuid[]) => Promise<void>;
   saveAscent: (options: Omit<SaveAscentOptions, 'uuid'>) => Promise<SaveAscentResponse>;
 }
 
@@ -75,7 +75,7 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
   const [error, setError] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [db, setDb] = useState<IDBPDatabase | null>(null);
-  const [logbook, setLogbook] = useState<Ascent[]>([]);
+  const [logbook, setLogbook] = useState<LogbookEntry[]>([]);
 
   // Load saved auth state on mount
   useEffect(() => {
@@ -103,6 +103,35 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
 
     initializeAuth();
   }, [boardName]);
+
+  useEffect(() => {
+    const syncUserData = async () => {
+      if (!authState.token || !authState.user?.id || !boardName) {
+        return;
+      }
+
+      try {
+        await fetch(`/api/v1/${boardName}/proxy/user-sync`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ 
+            token: authState.token, 
+            userId: authState.user.id.toString(),
+            board_name: boardName,
+          }),
+        });
+      } catch (error) {
+        console.error('Failed to sync user data:', error);
+        // Don't surface this error to the user since it's a background sync
+      }
+    };
+
+    if (authState.token && boardName && authState.user?.id) {
+      syncUserData();
+    }
+  }, [authState.token, authState.user?.id, boardName]);
 
   const login = async (board: BoardName, username: string, password: string) => {
     setIsLoading(true);
@@ -147,7 +176,7 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
     }
   };
 
-  const getLogbook = async () => {
+  const getLogbook = async (climbUuids: ClimbUuid[]) => {
     try {
       if (!authState.user?.id) {
         return;
@@ -162,10 +191,14 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ token, userId: userId.toString() }),
+        body: JSON.stringify({ 
+          token,
+          userId: userId.toString(),
+          climbUuids: climbUuids
+        }),
       });
 
-      const data: Ascent[] = await response.json();
+      const data: LogbookEntry[] = await response.json();
 
       if (!response.ok) {
         throw new Error('Couldnt fetch logbook');
@@ -184,7 +217,7 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
     }
     const ascentUuid = generateUuid();
 
-    const optimisticAscent: AscentSavedEvent['ascent'] = {
+    const optimisticAscent: AscentSavedEvent['ascent'] & LogbookEntry = {
       ...options,
       attempt_id: 0,
       user_id: authState.user.id,
@@ -193,6 +226,8 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
       created_at: new Date().toISOString().replace('T', ' ').split('.')[0],
       updated_at: new Date().toISOString().replace('T', ' ').split('.')[0],
       uuid: ascentUuid,
+      is_ascent: true,
+      tries: options.bid_count
     };
 
     // Optimistically update the local state
@@ -215,7 +250,7 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
       });
 
       if (!response.ok) {
-        throw new Error('Failed to save ascent');
+        throw new Error(`Unexpected response from backend, failed to save ascent`);
       }
 
       const data: SaveAscentResponse = await response.json();
@@ -226,23 +261,22 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
       if (savedAscentEvent) {
         // Update the logbook with the real ascent data
         setLogbook((currentLogbook) =>
-          currentLogbook.map((ascent) => (ascent.uuid === ascentUuid ? savedAscentEvent.ascent : ascent)),
+          currentLogbook.map((ascent) => (ascent.uuid === ascentUuid ? {
+            ...savedAscentEvent.ascent,
+            tries: savedAscentEvent.ascent.bid_count,
+            is_ascent: true
+          } : ascent)),
         );
       }
 
       return data;
     } catch (error) {
+      message.error('Failed to save ascent');
       // Rollback on error
       setLogbook((currentLogbook) => currentLogbook.filter((ascent) => ascent.uuid !== ascentUuid));
       throw error;
     }
   };
-
-  useEffect(() => {
-    if (authState.token && logbook.length === 0) {
-      getLogbook();
-    }
-  }, [authState, logbook.length]);
 
   const logout = async () => {
     setAuthState({
@@ -268,11 +302,6 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
     saveAscent,
     boardName,
   };
-
-  // Don't render children until we've checked for existing auth
-  if (!isInitialized) {
-    return null;
-  }
 
   return <BoardContext.Provider value={value}>{children}</BoardContext.Provider>;
 }

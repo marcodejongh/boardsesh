@@ -47,8 +47,10 @@ export interface SyncOptions {
     table_name: string;
     last_synchronized_at: string;
   }>;
-  // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-  userSyncs?: any[];
+  userSyncs?: Array<{
+    table_name: string;
+    last_synchronized_at: string;
+  }>;
 }
 export interface ClimbStats {
   display_difficulty: number;
@@ -129,6 +131,11 @@ export interface Ascent {
   created_at: string;
   updated_at: string;
 }
+
+export type LogbookEntry = Omit<Ascent, 'bid_count'> & {
+  tries: number;
+  is_ascent: boolean;
+};
 
 export interface ClimbStat {
   climb_uuid: string;

@@ -5,21 +5,13 @@ import { parseBoardRouteParams } from '@/app/lib/url-utils';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
-// Input validation schema
-const getLogbookSchema = z.object({
-  token: z.string().min(1),
-  userId: z.string().min(1),
-});
-
 export async function POST(request: Request, { params }: { params: BoardRouteParameters }) {
   const { board_name }: ParsedBoardRouteParameters = parseBoardRouteParams(params);
   try {
     // Parse and validate request body
-    const body = await request.json();
-    const validatedData = getLogbookSchema.parse(body);
-
+    const validatedData = await request.json();
     // Call the board API
-    const response = await getLogbook(board_name, validatedData.token, validatedData.userId);
+    const response = await getLogbook(board_name, validatedData.userId, validatedData.climbUuids);
 
     return NextResponse.json(response);
   } catch (error) {
