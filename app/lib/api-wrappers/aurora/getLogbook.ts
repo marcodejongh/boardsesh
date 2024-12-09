@@ -1,7 +1,7 @@
 import { sql } from '@/lib/db';
 import { BoardName } from '../../types';
 import { Ascent } from './types';
-import { syncUserData } from './syncAllUserData';
+import { getTableName, syncUserData } from './syncAllUserData';
 
 export async function getLogbook(board: BoardName, token: string, userId: string): Promise<Ascent[]> {
   // First sync the ascents
@@ -13,7 +13,7 @@ export async function getLogbook(board: BoardName, token: string, userId: string
   
 
   // Then fetch from our database
-  const tableName = `${board}_ascents`;
+  const tableName = getTableName(board, 'ascents');
 
   const result = await sql.query<Ascent>(
     `
