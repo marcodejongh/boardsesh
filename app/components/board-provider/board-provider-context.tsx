@@ -11,6 +11,7 @@ import {
 import { SaveAscentOptions } from '@/app/lib/api-wrappers/aurora/types';
 import { generateUuid } from '@/app/lib/api-wrappers/aurora/util';
 import { supported_boards } from '../board-renderer/types';
+import { message } from 'antd';
 
 const DB_NAME = 'boardsesh';
 const DB_VERSION = 2;
@@ -215,7 +216,7 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
       });
 
       if (!response.ok) {
-        throw new Error('Failed to save ascent');
+        throw new Error(`Unexpected response from backend, failed to save ascent`);
       }
 
       const data: SaveAscentResponse = await response.json();
@@ -232,6 +233,7 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
 
       return data;
     } catch (error) {
+      message.error('Failed to save ascent');
       // Rollback on error
       setLogbook((currentLogbook) => currentLogbook.filter((ascent) => ascent.uuid !== ascentUuid));
       throw error;

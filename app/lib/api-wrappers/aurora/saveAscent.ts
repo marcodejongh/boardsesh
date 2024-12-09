@@ -1,6 +1,8 @@
 import { BoardName } from '../../types';
-import { API_HOSTS, SaveAscentOptions, SaveAscentResponse } from './types';
+import { API_HOSTS, AscentSavedEvent, SaveAscentOptions, SaveAscentResponse } from './types';
 import dayjs from 'dayjs';
+import { sql } from '@/lib/db';
+import { getTableName } from './syncAllUserData';
 
 export async function saveAscent(
   board: BoardName,
@@ -25,6 +27,7 @@ export async function saveAscent(
     user_id: options.user_id,
   };
 
+  // Make the upstream API request
   const response = await fetch(`${API_HOSTS[board]}/v1/ascents/${options.uuid}`, {
     method: 'PUT',
     headers: {
@@ -44,5 +47,56 @@ export async function saveAscent(
     throw new Error(`HTTP error! status: ${response.status}, details: ${JSON.stringify(errorData)}`);
   }
 
-  return response.json();
+  const ascent: SaveAscentResponse = await response.json();
+  const savedAscentEvent = ascent.events.find((event): event is AscentSavedEvent => event._type === 'ascent_saved');
+  
+  if (!savedAscentEvent) {
+    throw new Error('Failed to save ascent');
+  }
+  
+    // Insert into the intermediate database
+  const fullTableName = getTableName(board, 'ascents'); // Replace with your actual table name
+  
+  const params = [
+    requestBody.uuid,
+    requestBody.climb_uuid,
+    requestBody.angle,
+    requestBody.is_mirror,
+    requestBody.user_id,
+    requestBody.attempt_id,
+    requestBody.bid_count || 1,
+    requestBody.quality,
+    requestBody.difficulty,
+    requestBody.is_benchmark || 0,
+    requestBody.comment || '',
+    requestBody.climbed_at,
+    savedAscentEvent.ascent.created_at, // Assuming `created_at` is now
+  ];
+
+  await sql.query(
+    `
+    INSERT INTO ${fullTableName} (
+      uuid, climb_uuid, angle, is_mirror, user_id, attempt_id, 
+      bid_count, quality, difficulty, is_benchmark, comment, 
+      climbed_at, created_at
+    )
+    VALUES (
+      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
+    )
+    ON CONFLICT (uuid) DO UPDATE SET
+      climb_uuid = EXCLUDED.climb_uuid,
+      angle = EXCLUDED.angle,
+      is_mirror = EXCLUDED.is_mirror,
+      attempt_id = EXCLUDED.attempt_id,
+      bid_count = EXCLUDED.bid_count,
+      quality = EXCLUDED.quality,
+      difficulty = EXCLUDED.difficulty,
+      is_benchmark = EXCLUDED.is_benchmark,
+      comment = EXCLUDED.comment,
+      climbed_at = EXCLUDED.climbed_at;
+    `,
+    params,
+  );
+
+  return ascent;
 }

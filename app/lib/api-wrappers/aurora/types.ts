@@ -47,8 +47,10 @@ export interface SyncOptions {
     table_name: string;
     last_synchronized_at: string;
   }>;
-  // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-  userSyncs?: any[];
+  userSyncs?: Array<{
+    table_name: string;
+    last_synchronized_at: string;
+  }>;
 }
 export interface ClimbStats {
   display_difficulty: number;
