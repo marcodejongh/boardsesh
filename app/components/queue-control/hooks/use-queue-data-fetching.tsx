@@ -51,21 +51,21 @@ export const useQueueDataFetching = ({
 
   const hasMoreResults = data && data[0] && size * PAGE_LIMIT < data[0].totalCount;
   const totalSearchResultCount = (data && data[0] && data[0].totalCount) || null;
-  
-  const climbSearchResults = useMemo(() => 
-    data ? data.flatMap((page: { climbs: Climb[] }) => page.climbs) : null
-  , [data]);
-  
-  const suggestedClimbs = useMemo(() => 
-    (climbSearchResults || []).filter(
-      (item) => !queue.find(({ climb: { uuid } }) => item.uuid === uuid)
-    )
-  , [climbSearchResults, queue]);
+
+  const climbSearchResults = useMemo(
+    () => (data ? data.flatMap((page: { climbs: Climb[] }) => page.climbs) : null),
+    [data],
+  );
+
+  const suggestedClimbs = useMemo(
+    () => (climbSearchResults || []).filter((item) => !queue.find(({ climb: { uuid } }) => item.uuid === uuid)),
+    [climbSearchResults, queue],
+  );
 
   // Combine and deduplicate climb UUIDs from both sources
   const climbUuidsString = useMemo(() => {
-    const searchUuids = climbSearchResults?.map(climb => climb.uuid) || [];
-    const queueUuids = queue.map(item => item.climb.uuid);
+    const searchUuids = climbSearchResults?.map((climb) => climb.uuid) || [];
+    const queueUuids = queue.map((item) => item.climb.uuid);
     const uniqueUuids = Array.from(new Set([...searchUuids, ...queueUuids]));
     return JSON.stringify(uniqueUuids.sort());
   }, [climbSearchResults, queue]);

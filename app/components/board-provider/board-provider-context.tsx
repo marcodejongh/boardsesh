@@ -22,9 +22,9 @@ const initDB = () => {
       // If coming from a version older than 3, delete all data
       if (oldVersion < 3) {
         // Delete existing object stores
-        Array.from(db.objectStoreNames).forEach(storeName => db.deleteObjectStore(storeName));
+        Array.from(db.objectStoreNames).forEach((storeName) => db.deleteObjectStore(storeName));
       }
-      
+
       // Recreate stores as needed
       supported_boards.forEach((boardName) => {
         if (!db.objectStoreNames.contains(boardName)) {
@@ -123,8 +123,8 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ 
-            token: authState.token, 
+          body: JSON.stringify({
+            token: authState.token,
             userId: authState.user.id.toString(),
             board_name: boardName,
           }),
@@ -198,10 +198,10 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           token,
           userId: userId.toString(),
-          climbUuids: climbUuids
+          climbUuids: climbUuids,
         }),
       });
 
@@ -234,7 +234,7 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
       updated_at: new Date().toISOString().replace('T', ' ').split('.')[0],
       uuid: ascentUuid,
       is_ascent: true,
-      tries: options.bid_count
+      tries: options.bid_count,
     };
 
     // Optimistically update the local state
@@ -268,11 +268,15 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
       if (savedAscentEvent) {
         // Update the logbook with the real ascent data
         setLogbook((currentLogbook) =>
-          currentLogbook.map((ascent) => (ascent.uuid === ascentUuid ? {
-            ...savedAscentEvent.ascent,
-            tries: savedAscentEvent.ascent.bid_count,
-            is_ascent: true
-          } : ascent)),
+          currentLogbook.map((ascent) =>
+            ascent.uuid === ascentUuid
+              ? {
+                  ...savedAscentEvent.ascent,
+                  tries: savedAscentEvent.ascent.bid_count,
+                  is_ascent: true,
+                }
+              : ascent,
+          ),
         );
       }
 

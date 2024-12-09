@@ -3,7 +3,7 @@ import { syncUserData } from '@/app/lib/api-wrappers/aurora/syncAllUserData';
 
 export async function POST(request: Request) {
   const { token, userId, board_name } = await request.json();
-  
+
   try {
     await syncUserData(board_name, token, userId);
     return new Response(JSON.stringify({ success: true, message: 'All tables synced' }), { status: 200 });
