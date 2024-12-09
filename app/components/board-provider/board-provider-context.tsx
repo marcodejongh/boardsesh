@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { BoardName, ClimbUuid } from '@/app/lib/types';
-import { deleteDB, IDBPDatabase, openDB } from 'idb';
+import { IDBPDatabase, openDB } from 'idb';
 import {
   AscentSavedEvent,
   BoardUser,
