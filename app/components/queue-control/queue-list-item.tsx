@@ -51,6 +51,7 @@ export const AscentStatus = ({ climbUuid }: { climbUuid: ClimbUuid }) => {
             style={{
               position: 'absolute',
               transform: 'scaleX(-1)',
+              left: '2px',
             }}
           >
             <CheckOutlined style={{ color: '#52c41a' }} />

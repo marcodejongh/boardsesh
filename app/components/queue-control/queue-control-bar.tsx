@@ -58,7 +58,7 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
               <div
                 style={{
                   display: 'flex',
-                  alignItems: 'center',
+                  alignItems: 'baseline',
                   justifyContent: 'center',
                   gap: '4px',
                 }}
