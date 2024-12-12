@@ -3,9 +3,9 @@ import { API_HOSTS, SyncOptions } from './types';
 
 export async function userSync(
   board: BoardName,
-  token: string,
   userId: string,
   options: SyncOptions = {},
+  token: string,
   // eslint-disable-next-line  @typescript-eslint/no-explicit-any
 ): Promise<any> {
   const { tables = [], walls = [], wallExpungements = [], sharedSyncs = [], userSyncs = [] } = options;

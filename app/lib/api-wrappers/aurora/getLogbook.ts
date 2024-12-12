@@ -1,7 +1,7 @@
 import { sql } from '@/lib/db';
 import { BoardName, ClimbUuid } from '../../types';
 import { LogbookEntry } from './types';
-import { getTableName } from './syncAllUserData';
+import { getTableName } from '../../data-sync/aurora/getTableName';
 
 export async function getLogbook(board: BoardName, userId: string, climbUuids: ClimbUuid[]): Promise<LogbookEntry[]> {
   const ascentsTable = getTableName(board, 'ascents');

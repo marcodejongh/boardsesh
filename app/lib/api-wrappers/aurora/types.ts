@@ -168,4 +168,24 @@ export type SyncData = {
 
 export type UserSyncData = SyncData & {
   user_id: number;
-};
+};export const USER_TABLES = ['walls', 'wall_expungements', 'draft_climbs', 'ascents', 'bids', 'tags', 'circuits'];
+export const SHARED_SYNC_TABLES = [
+  'gyms',
+  'boards',
+  'attempts',
+  'kits',
+  'products',
+  'product_sizes',
+  'holes',
+  'leds',
+  'sets',
+  'products_angles',
+  'layouts',
+  'product_sizes_layouts_sets',
+  'placement_roles',
+  'placements',
+  'climbs',
+  'climb_stats',
+  'beta_links',
+];
+

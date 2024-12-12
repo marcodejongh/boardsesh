@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/app/lib/data-sync/aurora/shared-sync-cron.ts",
+      "schedule": "0 */2 * * *"
+    }
+  ]
+}
