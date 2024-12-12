@@ -1,7 +1,7 @@
 import { sql } from '@/lib/db';
 import { BoardName } from '../../types';
 import { API_HOSTS, LoginResponse } from './types';
-import { syncUserData } from './syncAllUserData';
+import { syncUserData } from '../../data-sync/aurora/user-sync';
 
 export async function login(board: BoardName, username: string, password: string): Promise<LoginResponse> {
   // First perform the API login

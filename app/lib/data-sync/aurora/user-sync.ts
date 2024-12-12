@@ -1,22 +1,9 @@
 import { sql } from '@/lib/db';
 import { BoardName } from '../../types';
-import { userSync } from './userSync';
-import { SyncData, SyncOptions, UserSyncData } from './types';
+import { userSync } from '../../api-wrappers/aurora/userSync';
+import { SyncData, SyncOptions, USER_TABLES, UserSyncData } from '../../api-wrappers/aurora/types';
+import { getTableName } from './getTableName';
 
-export const USER_TABLES = ['walls', 'wall_expungements', 'draft_climbs', 'ascents', 'bids', 'tags', 'circuits'];
-
-export const getTableName = (boardName: BoardName, tableName: string) => {
-  if (!boardName) {
-    throw new Error('Boardname is required, but received falsey');
-  }
-  switch (boardName) {
-    case 'tension':
-    case 'kilter':
-      return `${boardName}_${tableName}`;
-    default:
-      return tableName;
-  }
-};
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function upsertTableData(boardName: BoardName, tableName: string, userId: string, data: any[]) {
   if (data.length === 0) return;
@@ -389,7 +376,7 @@ export async function syncUserData(
       user_id: Number(userId),
     }));
 
-    const syncResults = await userSync(board, token, userId, syncParams);
+    const syncResults = await userSync(board, userId, syncParams, token);
 
     // Process each table
     for (const tableName of tables) {

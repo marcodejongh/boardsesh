@@ -1,5 +1,5 @@
 // app/api/[board]/sync/route.ts
-import { syncUserData } from '@/app/lib/api-wrappers/aurora/syncAllUserData';
+import { syncUserData } from '@/app/lib/data-sync/aurora/user-sync';
 
 export async function POST(request: Request) {
   const { token, userId, board_name } = await request.json();
