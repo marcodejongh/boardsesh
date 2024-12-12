@@ -43,14 +43,8 @@ export interface SyncOptions {
   walls?: any[];
   // eslint-disable-next-line  @typescript-eslint/no-explicit-any
   wallExpungements?: any[];
-  sharedSyncs?: Array<{
-    table_name: string;
-    last_synchronized_at: string;
-  }>;
-  userSyncs?: Array<{
-    table_name: string;
-    last_synchronized_at: string;
-  }>;
+  sharedSyncs?: Array<SyncData>;
+  userSyncs?: Array<UserSyncData>;
 }
 export interface ClimbStats {
   display_difficulty: number;
@@ -166,4 +160,12 @@ export interface ClimbStatSavedEvent {
 
 export type SaveAscentResponse = {
   events: (AscentSavedEvent | ClimbStatSavedEvent)[];
+};
+export type SyncData = {
+  table_name: string;
+  last_synchronized_at: string;
+};
+
+export type UserSyncData = SyncData & {
+  user_id: number;
 };

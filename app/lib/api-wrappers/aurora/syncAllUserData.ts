@@ -1,7 +1,7 @@
 import { sql } from '@/lib/db';
 import { BoardName } from '../../types';
 import { userSync } from './userSync';
-import { SyncOptions } from './types';
+import { SyncData, SyncOptions, UserSyncData } from './types';
 
 export const USER_TABLES = ['walls', 'wall_expungements', 'draft_climbs', 'ascents', 'bids', 'tags', 'circuits'];
 
@@ -313,25 +313,19 @@ async function upsertTableData(boardName: BoardName, tableName: string, userId: 
   }
 }
 
-export type SyncData = {
-  table_name: string;
-  last_synchronized_at: string;
-};
-
-async function updateUserSyncs(boardName: BoardName, userId: string, tables: string[]) {
+async function updateUserSyncs(boardName: BoardName, userSyncs: UserSyncData[]) {
   const userSyncsTable = getTableName(boardName, 'user_syncs');
-  const now = new Date().toISOString();
 
-  // Batch insert/update for all tables synced
-  const values = tables.map((_, i) => `($${i * 3 + 1}, $${i * 3 + 2}, $${i * 3 + 3})`).join(',');
-  const params = tables.flatMap((table) => [userId, table, now]);
+  const values = userSyncs.map((_, i) => `($${i * 3 + 1}, $${i * 3 + 2}, $${i * 3 + 3})`).join(',');
+  const params = userSyncs.flatMap((sync) => [sync.user_id, sync.table_name, sync.last_synchronized_at]);
+
   await sql.query(
     `
-    INSERT INTO ${userSyncsTable} (user_id, table_name, last_synchronized_at)
-    VALUES ${values}
-    ON CONFLICT (user_id, table_name) DO UPDATE SET
-      last_synchronized_at = EXCLUDED.last_synchronized_at;
-  `,
+      INSERT INTO ${userSyncsTable} (user_id, table_name, last_synchronized_at)
+      VALUES ${values}
+      ON CONFLICT (user_id, table_name) DO UPDATE SET
+        last_synchronized_at = EXCLUDED.last_synchronized_at;
+      `,
     params,
   );
 }
@@ -392,6 +386,7 @@ export async function syncUserData(
     syncParams.userSyncs = allSyncTimes.map((syncTime) => ({
       table_name: syncTime.table_name,
       last_synchronized_at: syncTime.last_synchronized_at,
+      user_id: Number(userId),
     }));
 
     const syncResults = await userSync(board, token, userId, syncParams);
@@ -408,7 +403,9 @@ export async function syncUserData(
     }
 
     // Update user_syncs table with new sync times
-    await updateUserSyncs(board, userId, tables);
+    if (syncResults.PUT['user_syncs']) {
+      await updateUserSyncs(board, syncResults.PUT['user_syncs']);
+    }
 
     return results;
   } catch (error) {
