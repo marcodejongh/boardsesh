@@ -13,7 +13,7 @@ interface LogAscentFormValues {
   angle: number;
   attempts: number;
   quality: number;
-  difficulty: string;
+  difficulty: number;
   notes?: string;
 }
 
@@ -29,6 +29,7 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boar
   const angleOptions = ANGLES[boardDetails.board_name];
   const [form] = Form.useForm<LogAscentFormValues>();
   const [isMirrored, setIsMirrored] = useState(!!currentClimb?.mirrored);
+  const [isSaving, setIsSaving] = useState(false);
 
   // TODO: Tension spray doesnt support mirroring
   const showMirrorTag = boardDetails.supportsMirroring;
@@ -37,7 +38,7 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boar
     form.setFieldsValue({
       date: dayjs(),
       angle: currentClimb?.angle,
-      difficulty: currentClimb?.difficulty,
+      difficulty: grades.find((grade) => grade.difficulty_name === currentClimb?.difficulty)?.difficulty_id,
       attempts: 1,
       quality: 3,
     });
@@ -53,14 +54,9 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boar
       return;
     }
 
-    try {
-      // TODO: I suspect this is a bug in AntD Form, as I would have
-      // expected antd to return the value of the select not the label...
-      const difficulty_id = grades.find((grade) => grade.difficulty_name === values.difficulty)?.difficulty_id;
-      if (!difficulty_id) {
-        throw new Error('Couldnt find difficulty_id');
-      }
+    setIsSaving(true);
 
+    try {
       await saveAscent({
         user_id: parseInt(user.id.toString()),
         climb_uuid: currentClimb.uuid,
@@ -69,7 +65,7 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boar
         attempt_id: 0,
         bid_count: values.attempts,
         quality: values.quality,
-        difficulty: difficulty_id,
+        difficulty: values.difficulty,
         is_benchmark: false,
         comment: values.notes || '',
         climbed_at: values.date.toISOString(),
@@ -79,6 +75,8 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boar
       onClose();
     } catch (error) {
       console.error('Failed to save ascent:', error);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -154,13 +152,13 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boar
       </Form.Item>
 
       <Form.Item wrapperCol={{ offset: 0, span: 24 }} style={{ marginBottom: '8px' }}>
-        <Button type="primary" htmlType="submit" block size="large">
+        <Button type="primary" htmlType="submit" loading={isSaving} disabled={isSaving} block size="large">
           Submit
         </Button>
       </Form.Item>
 
       <Form.Item wrapperCol={{ offset: 0, span: 24 }}>
-        <Button block size="large" onClick={onClose}>
+        <Button block size="large" onClick={onClose} disabled={isSaving}>
           Cancel
         </Button>
       </Form.Item>
