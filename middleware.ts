@@ -1,25 +1,46 @@
 // middleware.ts
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { SUPPORTED_BOARDS } from './app/lib/board-data';
+
+const SPECIAL_ROUTES = ['angles', 'grades']; // routes that don't need board validation
 
 export function middleware(request: NextRequest) {
-  // Get the pathname from the URL
-  const { pathname } = request.nextUrl
+  const { pathname } = request.nextUrl;
 
-  // Check if the pathname contains .php
+  // Block PHP requests
   if (pathname.includes('.php')) {
-    // Return 404 for any PHP requests
     return new NextResponse(null, {
       status: 404,
-      statusText: 'Not Found'
-    })
+      statusText: 'Not Found',
+    });
   }
 
-  // Continue with the request if no PHP is detected
-  return NextResponse.next()
+  // Check API routes
+  if (pathname.startsWith('/api/v1/')) {
+    const pathParts = pathname.split('/');
+    if (pathParts.length >= 4) {
+      const routeIdentifier = pathParts[3].toLowerCase(); // either a board name or special route
+
+      // Allow special routes to pass through
+      if (SPECIAL_ROUTES.includes(routeIdentifier)) {
+        return NextResponse.next();
+      }
+
+      // For all other routes, validate board name
+      if (!SUPPORTED_BOARDS.includes(routeIdentifier)) {
+        console.info('Middleware board_name check returned 404');
+        return new NextResponse(null, {
+          status: 404,
+          statusText: 'Not Found',
+        });
+      }
+    }
+  }
+
+  return NextResponse.next();
 }
 
-// Configure which paths the middleware should run on
 export const config = {
-  matcher: '/:path*'
-}
+  matcher: ['/api/v1/:path*', '/:path*'],
+};
