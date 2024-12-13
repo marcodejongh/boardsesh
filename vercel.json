@@ -1,7 +1,7 @@
 {
   "crons": [
     {
-      "path": "/app/lib/data-sync/aurora/shared-sync-cron.ts",
+      "path": "/api/internal/shared-sync/",
       "schedule": "0 */2 * * *"
     }
   ]
