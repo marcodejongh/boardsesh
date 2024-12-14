@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 // This is a simple way to secure the endpoint, should be replaced with a better solution
 const CRON_SECRET = process.env.CRON_SECRET;
 
-export async function POST(request: Request) {
+export async function GET(request: Request) {
   try {
     // Basic auth check
     const authHeader = request.headers.get('authorization');
