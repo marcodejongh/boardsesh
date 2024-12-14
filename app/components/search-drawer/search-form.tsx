@@ -134,15 +134,12 @@ const SearchForm: React.FC<SearchFormProps> = () => {
         />
       </Form.Item>
 
-      <Form.Item label="Classics Only">
-        <Select
-          value={uiSearchParams.onlyClassics}
-          onChange={(value) => updateFilters({ onlyClassics: value })}
-          style={{ width: '100%' }}
-        >
-          <Select.Option value="0">No</Select.Option>
-          <Select.Option value="1">Yes</Select.Option>
-        </Select>
+      <Form.Item label="Classics Only" valuePropName="checked">
+        <Switch
+          style={{ float: 'right' }}
+          checked={uiSearchParams.onlyClassics}
+          onChange={(checked) => updateFilters({ onlyClassics: checked })}
+        />
       </Form.Item>
 
       <Form.Item label="Grade Accuracy">
