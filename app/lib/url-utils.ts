@@ -90,6 +90,27 @@ export const DEFAULT_SEARCH_PARAMS: SearchRequestPagination = {
   holdsFilter: {},
   page: 0,
   pageSize: PAGE_LIMIT,
+
+  // New filter defaults
+  // Logbook defaults - start with everything visible
+  showDone: true,
+  showAttempted: true,
+  showNotAttempted: true,
+  showOnlyLiked: false,
+  onlyWithBeta: false,
+
+  // Climb Type defaults - show all types initially
+  showBoulders: true,
+  showRoutes: true,
+
+  // Climb Status defaults - show established climbs by default
+  showEstablished: true,
+  showProjects: false,
+  showDrafts: false,
+
+  // Climb Size & Shape defaults - show all climbs initially
+  onlyTall: false,
+  onlySide: false,
 };
 
 export const urlParamsToSearchParams = (urlParams: URLSearchParams): SearchRequestPagination => {

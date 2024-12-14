@@ -349,7 +349,7 @@ export async function syncSharedData(board: BoardName): Promise<Record<string, {
 }
 
 const upsertAllSharedTableData = async (board: BoardName, syncResults: SyncData) => {
-  const results: Record<string, { synced: number }> = {};
+  let results: Record<string, { synced: number }> = {};
 
   await db.transaction(
     async (
@@ -372,9 +372,10 @@ const upsertAllSharedTableData = async (board: BoardName, syncResults: SyncData)
             console.log(`Updated ${tableName} with ${data.length} rows`);
             return [tableName, { synced: data.length }];
           });
-        const results = Object.fromEntries(await Promise.all(promises));
+        
+        results = Object.fromEntries(await Promise.all(promises));
       } catch (error) {
-        //@ts-expect-error
+        //@ts-expect-error TODO Fix later
         console.error('Failed to commit sync database transaction ', error.toString());
         tx.rollback();
       }
