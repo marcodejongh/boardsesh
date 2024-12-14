@@ -53,14 +53,13 @@ export type SetsResponse = {
   id: number;
   name: string;
 };
-
-// Search Request Type
+// Update the base SearchRequest type
 export type SearchRequest = {
   gradeAccuracy: number;
   maxGrade: number;
-  minAscents: number;
   minGrade: number;
   minRating: number;
+  minAscents: number;
   sortBy: 'ascents' | 'difficulty' | 'name' | 'quality';
   sortOrder: 'asc' | 'desc';
   name: string;
@@ -69,8 +68,29 @@ export type SearchRequest = {
   setternameSuggestion: string;
   holds: string;
   mirroredHolds: string;
+
+  // Logbook filters
+  showDone: boolean;
+  showAttempted: boolean;
+  showNotAttempted: boolean;
+  showOnlyLiked: boolean;
+  onlyWithBeta: boolean;
+
+  // Climb Type filters
+  showBoulders: boolean;
+  showRoutes: boolean;
+
+  // Climb Status filters
+  showEstablished: boolean;
+  showProjects: boolean;
+  showDrafts: boolean;
+
+  // Climb Size & Shape filters
+  onlyTall: boolean;
+  onlySide: boolean;
 };
 
+// SearchRequestPagination remains the same structure
 export type SearchRequestPagination = SearchRequest & {
   page: number;
   pageSize: number;

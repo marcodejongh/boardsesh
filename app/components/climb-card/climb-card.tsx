@@ -17,7 +17,7 @@ type ClimbCardProps = {
 
 const ClimbCard = ({ climb, boardDetails, onCoverClick, selected, actions }: ClimbCardProps) => {
   const cover = <ClimbCardCover climb={climb} boardDetails={boardDetails} onClick={onCoverClick} />;
-  
+
   const cardTitle = climb ? (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
       {/* LEFT: Name, Angle, Benchmark */}

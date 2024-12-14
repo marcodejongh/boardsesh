@@ -12,24 +12,24 @@ export const SHARED_SYNC_TABLES = [
   'attempts',
   'kits',
   'products',
-  
+
   // Tables with dependencies on products
   'product_sizes',
   'holes',
   'leds',
   'sets',
   'products_angles',
-  
+
   // Tables depending on product_sizes
   'layouts',
   'product_sizes_layouts_sets',
   'placement_roles',
   'placements',
-  
+
   // Climbs and related tables last (in order)
-  'climbs',           // Must come before stats and beta_links
-  'climb_stats',      // Depends on climbs
-  'beta_links'        // Depends on climbs
+  'climbs', // Must come before stats and beta_links
+  'climb_stats', // Depends on climbs
+  'beta_links', // Depends on climbs
 ];
 
 const BATCH_SIZE = 100;
@@ -169,13 +169,13 @@ async function upsertSharedTableData(boardName: BoardName, tableName: string, da
     // I'll show one more example and you can follow the same pattern:
 
     case 'climb_stats': {
-        await sql.query(
-          `ALTER TABLE IF EXISTS ${fullTableName}
+      await sql.query(
+        `ALTER TABLE IF EXISTS ${fullTableName}
            DROP CONSTRAINT IF EXISTS climb_stats_climb_uuid_fkey1;
            ALTER TABLE IF EXISTS ${fullTableName}
            DROP CONSTRAINT IF EXISTS climb_stats_climb_uuid_fkey;
            `,
-        );
+      );
 
       await processBatch(
         data,

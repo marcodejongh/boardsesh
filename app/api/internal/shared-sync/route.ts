@@ -16,10 +16,7 @@ export async function GET(request: Request) {
     }
 
     // Sync both board types
-    const results = await Promise.all([
-      syncSharedData('tension'), 
-      syncSharedData('kilter')
-    ]);
+    const results = await Promise.all([syncSharedData('tension'), syncSharedData('kilter')]);
 
     return NextResponse.json({
       success: true,
