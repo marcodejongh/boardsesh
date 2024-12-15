@@ -23,6 +23,7 @@ services:
     image: python:3.9
     volumes:
       - ./:/db
+      - ./../drizzle:/drizzle
     build:
       context: .
     environment:
@@ -33,8 +34,8 @@ services:
       /bin/sh -c "
       if [ ! -f /db/tmp/db-setup-complete.flag ]; then
         apt-get update &&
-        apt-get install -y pgloader postgresql-client sqlite3 &&
-        pip install boardlib &&
+        apt-get install -y pgloader postgresql-client sqlite3 ca-certificates &&
+        update-ca-certificates &&
         /db/setup-development-db.sh &&
         touch /db/tmp/db-setup-complete.flag
       else
