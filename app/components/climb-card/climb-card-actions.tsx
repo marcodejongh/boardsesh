@@ -1,5 +1,5 @@
 'use client';
-import React from 'react';
+import React, { useState } from 'react';
 import { useQueueContext } from '../queue-control/queue-context';
 import { BoardDetails, Climb } from '@/app/lib/types';
 import { PlusCircleOutlined, HeartOutlined, InfoCircleOutlined } from '@ant-design/icons';
@@ -14,9 +14,28 @@ type ClimbCardActionsProps = {
 };
 const ClimbCardActions = ({ climb, boardDetails }: ClimbCardActionsProps) => {
   const { addToQueue } = useQueueContext();
+  const [isAdded, setIsAdded] = useState(false);
+
   if (!climb) {
     return [];
   }
+
+  const handleAddToQueue = () => {
+    if (addToQueue && !isAdded) {
+      addToQueue(climb);
+
+      const climbName = climb.name || '';
+      message.info(`Successfully added ${climbName} to the queue`);
+
+      setIsAdded(true);
+
+      // Reset the isAdded state after 3 seconds
+      setTimeout(() => {
+        setIsAdded(false);
+      }, 3000);
+    }
+  };
+
   return [
     // <SettingOutlined key="setting" />,
     // <TickClimbButton key="tickclimbbutton" />,
@@ -26,7 +45,11 @@ const ClimbCardActions = ({ climb, boardDetails }: ClimbCardActionsProps) => {
       <InfoCircleOutlined />
     </Link>,
     <HeartOutlined key="heart" onClick={() => message.info('TODO: Implement')} />,
-    <PlusCircleOutlined key="edit" onClick={addToQueue ? () => addToQueue(climb) : undefined} />,
+    <PlusCircleOutlined
+      key="edit"
+      onClick={handleAddToQueue}
+      style={{ color: isAdded ? 'gray' : 'inherit', cursor: isAdded ? 'not-allowed' : 'pointer' }}
+    />,
   ];
 };
 
