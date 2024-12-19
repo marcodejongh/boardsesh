@@ -167,10 +167,10 @@ export const LogBookStats: React.FC<{ boardName: string; userId: string }> = ({ 
     const fetchLogbook = async () => {
       if (!boardName || !userId) return;
       try {
-        const response = await fetch(`/api/v1/${boardName}/proxy/getUserLogbook`, {
+        const response = await fetch(`/api/v1/${boardName}/proxy/getLogbook`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId }),
+          body: JSON.stringify({ userId, climbUuids: "", }),
         });
         const data = await response.json();
         setLogbook(data);
