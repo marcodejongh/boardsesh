@@ -12,15 +12,25 @@ const SizeSelection = ({ sizes = [] }: { sizes: SizeRow[] }) => {
   const [selectedSize, setSelectedSize] = useState<number>();
 
   const handleNext = () => {
-    router.push(`${window.location.pathname}/${selectedSize}`);
+    if (selectedSize) {
+      router.push(`${window.location.pathname}/${selectedSize}`);
+    }
   };
 
   return (
     <div style={{ padding: '24px', background: '#f7f7f7', borderRadius: '8px' }}>
       <Title level={4}>Select a size</Title>
       <Form layout="vertical">
-        <Form.Item label="Size">
-          <Select value={selectedSize} onChange={(value) => setSelectedSize(value)}>
+        <Form.Item
+          label="Size"
+          required 
+          tooltip="Choose your current board size"
+        >
+          <Select
+            placeholder="Choose a size"
+            value={selectedSize}
+            onChange={(value) => setSelectedSize(value)}
+          >
             {sizes.map(({ id, name, description }) => (
               <Option key={id} value={id}>
                 {`${name} ${description}`}
@@ -28,7 +38,13 @@ const SizeSelection = ({ sizes = [] }: { sizes: SizeRow[] }) => {
             ))}
           </Select>
         </Form.Item>
-        <Button type="primary" block style={{ marginTop: '16px' }} onClick={handleNext}>
+        <Button
+          type="primary"
+          block
+          style={{ marginTop: '16px' }}
+          onClick={handleNext}
+          disabled={!selectedSize} // Disable the button if no size is selected
+        >
           Next
         </Button>
       </Form>
