@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Bar, Pie } from 'react-chartjs-2';
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement } from 'chart.js';
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, TooltipItem } from 'chart.js';
 import dayjs from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
 dayjs.extend(isoWeek);
@@ -55,21 +55,21 @@ const optionsWeeklyBar = {
     },
     tooltip: {
       callbacks: {
-        label: function (context) {
+        label: function (context: TooltipItem<'bar'>) {
           const label = context.dataset.label || '';
-          const value = context.raw || 0;
-          return value > 0 ? `${label}: ${value}` : null;
+          const value = (context.raw as number) || 0;
+          return value > 0 ? `${label}: ${value}` : '';
         },
-        footer: function (tooltipItems) {
+        footer: function (tooltipItems: TooltipItem<'bar'>[]) {
           let total = 0;
           tooltipItems.forEach((tooltipItem) => {
-            total += tooltipItem.raw || 0;
+            total += (tooltipItem.raw as number) || 0;
           });
           return `Total: ${total}`;
         },
       },
-      mode: 'index', // This ensures the tooltip shows all items for the hovered index
-      intersect: false, // This allows the tooltip to show even if not directly over a bar
+      mode: 'index' as const,
+      intersect: false,
     },
   },
   scales: {
@@ -136,11 +136,29 @@ const gradeColors: Record<string, string> = {
   '8c+': 'rgba(51,0,102,1)',      // Deep Violet
 };
 
+// Define types for logbook entries
+interface LogbookEntry {
+  climbed_at: string;
+  difficulty: number;
+  tries: number;
+  angle: number;
+}
+
+// Define types for chart data
+interface ChartData {
+  labels: string[];
+  datasets: {
+    label: string;
+    data: number[];
+    backgroundColor: string | string[];
+  }[];
+}
+
 export const LogBookStats: React.FC<{ boardName: string; userId: string }> = ({ boardName, userId }) => {
-  const [logbook, setLogbook] = useState<any[]>([]);
-  const [chartDataBar, setChartDataBar] = useState<any>(null);
-  const [chartDataPie, setChartDataPie] = useState<any>(null);
-  const [chartDataWeeklyBar, setChartDataWeeklyBar] = useState<any>(null);
+  const [logbook, setLogbook] = useState<LogbookEntry[]>([]);
+  const [chartDataBar, setChartDataBar] = useState<ChartData | null>(null);
+  const [chartDataPie, setChartDataPie] = useState<ChartData | null>(null);
+  const [chartDataWeeklyBar, setChartDataWeeklyBar] = useState<ChartData | null>(null);
   const [timeframe, setTimeframe] = useState<string>('all');
   const [fromDate, setFromDate] = useState<string>('');
   const [toDate, setToDate] = useState<string>('');
@@ -163,7 +181,7 @@ export const LogBookStats: React.FC<{ boardName: string; userId: string }> = ({ 
     fetchLogbook();
   }, [boardName, userId]);
 
-  const filterLogbookByTimeframe = (logbook: any[]) => {
+  const filterLogbookByTimeframe = (logbook: LogbookEntry[]) => {
     const now = dayjs();
     switch (timeframe) {
       case 'lastWeek':
@@ -223,12 +241,14 @@ export const LogBookStats: React.FC<{ boardName: string; userId: string }> = ({ 
         acc[angle] = (acc[angle] || 0) + 1;
         return acc;
       }, {});
+
       setChartDataPie({
         labels: Object.keys(angles),
         datasets: [
           {
+            label: 'Routes by Angle',
             data: Object.values(angles),
-            backgroundColor: Object.keys(angles).map((angle) => {
+            backgroundColor: Object.keys(angles).map((_, index) => {
               const angleColors = [
                 'rgba(255,77,77,0.7)',    // Red
                 'rgba(51,0,102,1)',       // Deep Violet
@@ -244,7 +264,7 @@ export const LogBookStats: React.FC<{ boardName: string; userId: string }> = ({ 
                 'rgba(102,51,153,1)',     // Dark Purple
                 'rgba(179,255,128,0.7)',  // Soft Green-Yellow
               ];
-              return angleColors[Object.keys(angles).indexOf(angle)] || 'rgba(200,200,200,0.7)';
+              return angleColors[index] || 'rgba(200,200,200,0.7)';
             }),
           },
         ],
