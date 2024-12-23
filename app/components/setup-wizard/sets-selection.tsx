@@ -19,7 +19,10 @@ const SetsSelection = ({ sets = [] }: { sets: SetRow[] }) => {
     <div style={{ padding: '24px', background: '#f7f7f7', borderRadius: '8px' }}>
       <Title level={4}>Select Hold Sets</Title>
       <Form layout="vertical">
-        <Form.Item label="Sets">
+        <Form.Item 
+          label="Sets" 
+          required 
+          tooltip="Select hold types">
           <Select mode="multiple" value={selectedSize} onChange={(value) => setSelectedSize(value)}>
             {sets.map(({ id, name }) => (
               <Option key={id} value={id}>
@@ -28,7 +31,13 @@ const SetsSelection = ({ sets = [] }: { sets: SetRow[] }) => {
             ))}
           </Select>
         </Form.Item>
-        <Button type="primary" block style={{ marginTop: '16px' }} onClick={handleNext}>
+        <Button
+          type="primary"
+          block
+          style={{ marginTop: '16px' }}
+          onClick={handleNext}
+          disabled={!selectedSize} // Disable the button if no size is selected
+        >
           Next
         </Button>
       </Form>
