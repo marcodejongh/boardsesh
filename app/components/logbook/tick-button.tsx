@@ -45,7 +45,7 @@ const LoginForm = ({
 };
 
 export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boardDetails }) => {
-  const { logbook, login, isAuthenticated } = useBoardProvider();
+  const { logbook, login, isAuthenticated, user } = useBoardProvider(); // Assuming 'user' is available in the context
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
@@ -56,7 +56,6 @@ export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boa
     setIsLoggingIn(true);
     try {
       await login(boardDetails.board_name, username, password);
-      // Drawer content will automatically update once isAuthenticated changes
     } catch (error) {
       console.error('Login failed:', error);
     } finally {
@@ -67,6 +66,9 @@ export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boa
   const filteredLogbook = logbook.filter((asc) => asc.climb_uuid === currentClimb?.uuid && Number(asc.angle) === angle);
   const hasSuccessfulAscent = filteredLogbook.some((asc) => asc.is_ascent);
   const badgeCount = filteredLogbook.length;
+
+  const boardName = boardDetails.board_name;
+  const userId = String(user?.id || '');
 
   return (
     <>
@@ -85,6 +87,8 @@ export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boa
           closeDrawer={closeDrawer}
           currentClimb={currentClimb}
           boardDetails={boardDetails}
+          boardName={boardName}
+          userId={userId}
         />
       ) : (
         <Drawer title="Login Required" placement="bottom" onClose={closeDrawer} open={drawerVisible} height="50%">

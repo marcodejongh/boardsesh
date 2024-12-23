@@ -333,7 +333,6 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
       loginInfo: null,
     });
   };
-
   const value = {
     isAuthenticated: !!authState.token,
     token: authState.token,
