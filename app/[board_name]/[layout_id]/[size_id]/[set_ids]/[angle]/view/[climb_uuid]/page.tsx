@@ -8,7 +8,7 @@ import { Col, Row } from 'antd';
 import ClimbInfoColumn from '@/app/components/climb-info/climb-info-drawer';
 
 export default async function DynamicResultsPage({ params }: { params: BoardRouteParametersWithUuid }) {
-  const parsedParams = parseBoardRouteParams(params);
+  const parsedParams = await parseBoardRouteParams(params);
 
   try {
     // Fetch the search results using searchCLimbs

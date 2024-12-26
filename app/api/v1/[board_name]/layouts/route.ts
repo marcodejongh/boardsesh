@@ -5,7 +5,7 @@ import { NextResponse } from 'next/server';
 
 // Correct typing for the parameters
 export async function GET(req: Request, { params }: { params: BoardRouteParameters }) {
-  const { board_name } = parseBoardRouteParams(params);
+  const { board_name } = await parseBoardRouteParams(params);
 
   try {
     const layouts = await getLayouts(board_name);

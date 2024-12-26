@@ -37,7 +37,7 @@ interface BoardLayoutProps {
 
 export default async function BoardLayout({ children, params }: PropsWithChildren<BoardLayoutProps>) {
   // Parse the route parameters
-  const parsedParams: ParsedBoardRouteParameters = parseBoardRouteParams(params);
+  const parsedParams: ParsedBoardRouteParameters = await parseBoardRouteParams(params);
 
   const { board_name, layout_id, angle } = parsedParams;
 

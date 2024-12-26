@@ -11,7 +11,7 @@ export async function GET(
 ): Promise<NextResponse<SearchClimbsResult | ErrorResponse>> {
   // Extract search parameters from query string
   const query = new URL(req.url).searchParams;
-  const parsedParams = parseBoardRouteParams(params);
+  const parsedParams = await parseBoardRouteParams(params);
 
   const searchParams: SearchRequestPagination = urlParamsToSearchParams(query);
 

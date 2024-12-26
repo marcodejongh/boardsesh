@@ -5,7 +5,7 @@ import { parseBoardRouteParams } from '@/app/lib/url-utils';
 
 export async function GET(req: Request, { params }: { params: BoardRouteParameters }) {
   try {
-    const parsedParams = parseBoardRouteParams(params);
+    const parsedParams = await parseBoardRouteParams(params);
     const boardDetails = await getBoardDetails(parsedParams);
 
     // Return the combined result
