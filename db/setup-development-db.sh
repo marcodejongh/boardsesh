@@ -21,11 +21,18 @@ psql postgres -c "CREATE DATABASE verceldb"
 psql $DB_URL -f ./drizzle/0000_cloudy_carlie_cooper.sql
 
 # echo "Using boardlib to download database"
-curl -o kilterboard.apk -L -A "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36" "https://d.apkpure.net/b/APK/com.auroraclimbing.kilterboard?version=latest"
-curl -o tensionboard.apk -L -A "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36" "https://d.apkpure.net/b/APK/com.auroraclimbing.tensionboard2?version=latest"
+if [ ! -f "/db/tmp/kilter.db" ]; then
+  echo "Downloading Kilterboard APK..."
+  curl -o kilterboard.apk -L -A "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36" "https://d.apkpure.net/b/APK/com.auroraclimbing.kilterboard?version=latest"
+  unzip -j kilterboard.apk assets/db.sqlite3 -d /db/tmp/ -n kilter.db
+fi
 
-unzip -j kilterboard.apk assets/db.sqlite3 -d tmp/ -n kilter.db
-unzip -j tensionboard.apk assets/db.sqlite3 -d tmp/ -n tension.db
+# Check for tension database
+if [ ! -f "/db/tmp/tension.db" ]; then
+  echo "Downloading Tensionboard APK..."
+  curl -o tensionboard.apk -L -A "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36" "https://d.apkpure.net/b/APK/com.auroraclimbing.tensionboard2?version=latest"
+  unzip -j tensionboard.apk assets/db.sqlite3 -d /db/tmp/ -n tension.db
+fi
 
 export TENSION_DB_FILE="/db/tmp/tension.modified.db"
 export KILTER_DB_FILE="/db/tmp/kilter.modified.db"

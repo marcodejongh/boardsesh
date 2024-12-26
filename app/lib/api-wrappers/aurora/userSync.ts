@@ -42,6 +42,8 @@ export async function userSync(
       },
     }),
   });
+  console.log(userSyncs);
   if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+  
   return response.json();
 }

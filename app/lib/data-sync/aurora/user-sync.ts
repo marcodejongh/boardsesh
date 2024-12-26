@@ -361,6 +361,8 @@ export async function syncUserData(
   tables: string[] = USER_TABLES,
 ): Promise<Record<string, { synced: number }>> {
   const results: Record<string, { synced: number }> = {};
+  
+  // userId = '118678';
 
   try {
     // For large tables like 'climbs', check shared_syncs first
@@ -369,15 +371,16 @@ export async function syncUserData(
     };
 
     const allSyncTimes = await getLastSyncTimes(board, userId, tables);
-
+    console.log(allSyncTimes);
     syncParams.userSyncs = allSyncTimes.map((syncTime) => ({
       table_name: syncTime.table_name,
       last_synchronized_at: syncTime.last_synchronized_at,
       user_id: Number(userId),
     }));
+    console.log(syncParams.userSyncs);
 
     const syncResults = await userSync(board, userId, syncParams, token);
-
+    console.log(syncResults);
     // Process each table
     for (const tableName of tables) {
       if (syncResults.PUT && syncResults.PUT[tableName]) {
@@ -390,7 +393,7 @@ export async function syncUserData(
     }
 
     // Update user_syncs table with new sync times
-    if (syncResults.PUT['user_syncs']) {
+    if (syncResults && syncResults.PUT && syncResults.PUT['user_syncs']) {
       await updateUserSyncs(board, syncResults.PUT['user_syncs']);
     }
 

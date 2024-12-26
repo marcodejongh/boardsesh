@@ -169,14 +169,30 @@ async function upsertSharedTableData(boardName: BoardName, tableName: string, da
     // I'll show one more example and you can follow the same pattern:
 
     case 'climb_stats': {
-        await sql.query(
-          `ALTER TABLE IF EXISTS ${fullTableName}
-           DROP CONSTRAINT IF EXISTS climb_stats_climb_uuid_fkey1;
-           ALTER TABLE IF EXISTS ${fullTableName}
-           DROP CONSTRAINT IF EXISTS climb_stats_climb_uuid_fkey;
-           `,
-        );
+      // First, modify the table - only drop foreign key constraints and add unique constraint if it doesn't exist
+      // First clean up any duplicates and then add the constraint
+    //   await sql.query(`
+    //     -- Clean up duplicates first
+    //     WITH latest_ids AS (
+    //         SELECT MAX(id) as max_id
+    //         FROM ${fullTableName}
+    //         GROUP BY climb_uuid, angle
+    //     )
+    //     DELETE FROM ${fullTableName}
+    //     WHERE id NOT IN (SELECT max_id FROM latest_ids);
 
+    //     -- Now it's safe to add the constraint
+    //     DO $$ 
+    //     BEGIN 
+    //         IF NOT EXISTS (
+    //             SELECT 1 FROM pg_constraint 
+    //             WHERE conname = 'unique_climb_angle'
+    //         ) THEN
+    //             ALTER TABLE ${fullTableName}
+    //             ADD CONSTRAINT unique_climb_angle UNIQUE (climb_uuid, angle);
+    //         END IF;
+    //     END $$;
+    // `);
       await processBatch(
         data,
         fullTableName,
@@ -184,12 +200,11 @@ async function upsertSharedTableData(boardName: BoardName, tableName: string, da
           batch
             .map((_, i) => {
               const offset = i * 9;
-              return `(nextval('climb_stats_id_seq'), 
-                    $${offset + 1}::text, $${offset + 2}::bigint, 
-                    $${offset + 3}::double precision, $${offset + 4}::double precision,
-                    $${offset + 5}::bigint, $${offset + 6}::double precision,
-                    $${offset + 7}::double precision, $${offset + 8}::text,
-                    $${offset + 9}::timestamp)`;
+              return `($${offset + 1}::text, $${offset + 2}::bigint, 
+                        $${offset + 3}::double precision, $${offset + 4}::double precision,
+                        $${offset + 5}::bigint, $${offset + 6}::double precision,
+                        $${offset + 7}::double precision, $${offset + 8}::text,
+                        $${offset + 9}::timestamp)`;
             })
             .join(','),
         (batch) =>
@@ -205,22 +220,20 @@ async function upsertSharedTableData(boardName: BoardName, tableName: string, da
             item.fa_at,
           ]),
         (values, table) => `
-          INSERT INTO ${table} (
-            id, climb_uuid, angle, display_difficulty, benchmark_difficulty,
-            ascensionist_count, difficulty_average, quality_average,
-            fa_username, fa_at
-          )
-          VALUES ${values}
-          ON CONFLICT (id) DO UPDATE SET
-            climb_uuid = EXCLUDED.climb_uuid,
-            angle = EXCLUDED.angle,
-            display_difficulty = EXCLUDED.display_difficulty,
-            benchmark_difficulty = EXCLUDED.benchmark_difficulty,
-            ascensionist_count = EXCLUDED.ascensionist_count,
-            difficulty_average = EXCLUDED.difficulty_average,
-            quality_average = EXCLUDED.quality_average,
-            fa_username = EXCLUDED.fa_username,
-            fa_at = EXCLUDED.fa_at;
+            INSERT INTO ${table} (
+                climb_uuid, angle, display_difficulty, benchmark_difficulty,
+                ascensionist_count, difficulty_average, quality_average,
+                fa_username, fa_at
+            )
+            VALUES ${values}
+            ON CONFLICT (climb_uuid, angle) DO UPDATE SET
+                display_difficulty = EXCLUDED.display_difficulty,
+                benchmark_difficulty = EXCLUDED.benchmark_difficulty,
+                ascensionist_count = EXCLUDED.ascensionist_count,
+                difficulty_average = EXCLUDED.difficulty_average,
+                quality_average = EXCLUDED.quality_average,
+                fa_username = EXCLUDED.fa_username,
+                fa_at = EXCLUDED.fa_at;
         `,
       );
       break;

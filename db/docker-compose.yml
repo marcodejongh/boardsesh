@@ -3,6 +3,8 @@ services:
     image: postgres
     environment:
       POSTGRES_PASSWORD: password
+      POSTGRES_USER: postgres
+      POSTGRES_DB: verceldb
     ports:
       - '54320:5432'
     volumes:
@@ -27,7 +29,12 @@ services:
     build:
       context: .
     environment:
-      - POSTGRES_PASSWORD=password
+        - POSTGRES_URL=postgres://postgres:password@postgres:5432/verceldb
+        - POSTGRES_USER=postgres
+        - POSTGRES_PASSWORD=password
+        - POSTGRES_HOST=postgres
+        - POSTGRES_DATABASE=verceldb
+        - POSTGRES_URL_NON_POOLING=postgres://postgres:password@postgres:5432/verceldb
     depends_on:
       - postgres
     entrypoint: |
