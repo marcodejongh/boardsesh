@@ -10,7 +10,7 @@ export async function GET(
   { params }: { params: BoardRouteParametersWithUuid },
 ): Promise<NextResponse<FetchCurrentProblemResponse | ErrorResponse>> {
   try {
-    const parsedParams = parseBoardRouteParams(params);
+    const parsedParams = await parseBoardRouteParams(params);
     const result = await getClimb(parsedParams);
 
     const litUpHoldsMap = convertLitUpHoldsStringToMap(result.frames, parsedParams.board_name);
