@@ -3,6 +3,8 @@ services:
     image: postgres
     environment:
       POSTGRES_PASSWORD: password
+      POSTGRES_USER: postgres
+      POSTGRES_DB: verceldb
     ports:
       - '54320:5432'
     volumes:
@@ -23,18 +25,24 @@ services:
     image: python:3.9
     volumes:
       - ./:/db
+      - ./../drizzle:/drizzle
     build:
       context: .
     environment:
-      - POSTGRES_PASSWORD=password
+        - POSTGRES_URL=postgres://postgres:password@postgres:5432/verceldb
+        - POSTGRES_USER=postgres
+        - POSTGRES_PASSWORD=password
+        - POSTGRES_HOST=postgres
+        - POSTGRES_DATABASE=verceldb
+        - POSTGRES_URL_NON_POOLING=postgres://postgres:password@postgres:5432/verceldb
     depends_on:
       - postgres
     entrypoint: |
       /bin/sh -c "
       if [ ! -f /db/tmp/db-setup-complete.flag ]; then
         apt-get update &&
-        apt-get install -y pgloader postgresql-client sqlite3 &&
-        pip install boardlib &&
+        apt-get install -y pgloader postgresql-client sqlite3 ca-certificates &&
+        update-ca-certificates &&
         /db/setup-development-db.sh &&
         touch /db/tmp/db-setup-complete.flag
       else

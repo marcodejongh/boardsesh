@@ -142,6 +142,7 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
           body: JSON.stringify({
             token: authState.token,
             userId: authState.user.id.toString(),
+            username: authState.user.username.toString(),
             board_name: boardName,
           }),
         });

@@ -1,5 +1,5 @@
 // app/api/login/route.ts
-import { getLogbook } from '@/app/lib/api-wrappers/aurora/getLogbook';
+import { getLogbook } from '@/app/lib/data/get-logbook';
 import { BoardRouteParameters, ParsedBoardRouteParameters } from '@/app/lib/types';
 import { parseBoardRouteParams } from '@/app/lib/url-utils';
 import { NextResponse } from 'next/server';

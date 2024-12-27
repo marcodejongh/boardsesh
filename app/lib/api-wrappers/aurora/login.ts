@@ -35,7 +35,7 @@ export async function login(board: BoardName, username: string, password: string
         board,
         loginResponse.token,
         loginResponse.user_id.toString(),
-        undefined, // undefined means sync all tables
+        loginResponse.username.toString(), // undefined means sync all tables
       );
     } catch (error) {
       console.error('Initial sync error:', error);
