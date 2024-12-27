@@ -8,8 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "lint-fix": "eslint --fix .",
-    "format": "prettier --write .",
-    "postinstall": "npm install --legacy-peer-deps"
+    "format": "prettier --write ."
   },
   "dependencies": {
     "@ant-design/nextjs-registry": "^1.0.2",

@@ -2,7 +2,7 @@ import { dbz as db } from '@/lib/db';
 import { BoardName } from '../../types';
 import { SyncData, SyncOptions } from '../../api-wrappers/aurora/types';
 import { sharedSync } from '../../api-wrappers/aurora/sharedSync';
-import { eq, inArray } from 'drizzle-orm';
+import { inArray } from 'drizzle-orm';
 import { sql } from 'drizzle-orm';
 import {
   kilterAttempts,
