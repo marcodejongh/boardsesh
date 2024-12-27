@@ -11,6 +11,7 @@ export async function sharedSync(
   const response = await fetch(`${API_HOSTS[board]}/v1/sync`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    cache: 'no-store',
     body: JSON.stringify({
       client: {
         enforces_product_passwords: 1,
