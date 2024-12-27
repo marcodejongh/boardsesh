@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useQueueContext } from '../queue-control/queue-context';
 import { BoardDetails, Climb } from '@/app/lib/types';
-import { PlusCircleOutlined, HeartOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import { PlusCircleOutlined, HeartOutlined, InfoCircleOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import Link from 'next/link';
 import { constructClimbInfoUrl } from '@/app/lib/url-utils';
 import { message } from 'antd';
@@ -13,25 +13,26 @@ type ClimbCardActionsProps = {
   boardDetails: BoardDetails;
 };
 const ClimbCardActions = ({ climb, boardDetails }: ClimbCardActionsProps) => {
-  const { addToQueue } = useQueueContext();
-  const [isAdded, setIsAdded] = useState(false);
+  const { addToQueue, queue } = useQueueContext();
+  const [isDuplicate, setDuplicateTimer] = useState(false);
 
   if (!climb) {
     return [];
   }
 
+  const isAlreadyInQueue = queue.some((item) => item.climb.uuid === climb.uuid);
+
   const handleAddToQueue = () => {
-    if (addToQueue && !isAdded) {
+    if (addToQueue && !isDuplicate) {
       addToQueue(climb);
 
       const climbName = climb.name || '';
       message.info(`Successfully added ${climbName} to the queue`);
 
-      setIsAdded(true);
+      setDuplicateTimer(true);
 
-      // Reset the isAdded state after 3 seconds
       setTimeout(() => {
-        setIsAdded(false);
+        setDuplicateTimer(false);
       }, 3000);
     }
   };
@@ -45,11 +46,19 @@ const ClimbCardActions = ({ climb, boardDetails }: ClimbCardActionsProps) => {
       <InfoCircleOutlined />
     </Link>,
     <HeartOutlined key="heart" onClick={() => message.info('TODO: Implement')} />,
-    <PlusCircleOutlined
-      key="edit"
-      onClick={handleAddToQueue}
-      style={{ color: isAdded ? 'gray' : 'inherit', cursor: isAdded ? 'not-allowed' : 'pointer' }}
-    />,
+    isAlreadyInQueue ? (
+      <CheckCircleOutlined
+        key="edit"
+        onClick={handleAddToQueue}
+        style={{ color: '#52c41a', cursor: isDuplicate ? 'not-allowed' : 'pointer' }}
+      />
+    ) : (
+      <PlusCircleOutlined
+        key="edit"
+        onClick={handleAddToQueue}
+        style={{ color: 'inherit', cursor: isDuplicate ? 'not-allowed' : 'pointer' }}
+      />
+    ),
   ];
 };
 
