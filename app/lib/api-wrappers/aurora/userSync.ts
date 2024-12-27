@@ -12,6 +12,7 @@ export async function userSync(
 
   const response = await fetch(`${API_HOSTS[board]}/v1/sync`, {
     method: 'POST',
+    cache: 'no-store',
     headers: {
       'Content-Type': 'application/json',
       authorization: `Bearer ${token}`,
