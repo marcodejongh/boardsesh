@@ -259,10 +259,7 @@ async function updateSharedSyncs(boardName: BoardName, sharedSyncs: SyncData[]) 
   });
 }
 
-export async function getLastSharedSyncTimes(
-  boardName: BoardName,
-  tableNames = SHARED_SYNC_TABLES,
-) {
+export async function getLastSharedSyncTimes(boardName: BoardName, tableNames = SHARED_SYNC_TABLES) {
   const schemas = getSharedSchemas(boardName);
 
   const result = await db
@@ -278,41 +275,43 @@ export async function getLastSharedSyncTimes(
 
 export async function syncSharedData(
   board: BoardName,
-  tables = SHARED_SYNC_TABLES,
-) {
+  tables: string[] = SHARED_SYNC_TABLES,
+): Promise<Record<string, { synced: number }>> {
   const results: Record<string, { synced: number }> = {};
 
   try {
-    const allSyncTimes = await getLastSharedSyncTimes(board, tables);
+    await db.transaction(async (tx) => {
+      const allSyncTimes = await getLastSharedSyncTimes(board, tables);
 
-    const syncParams = {
-      tables,
-      sharedSyncs: allSyncTimes.map((syncTime) => ({
-        table_name: syncTime.table_name || '',
-        last_synchronized_at: syncTime.last_synchronized_at || '',
-      })),
-    };
+      const syncParams: SyncOptions = {
+        tables: [...tables],
+        sharedSyncs: allSyncTimes.map((syncTime) => ({
+          table_name: syncTime.table_name || '',
+          last_synchronized_at: syncTime.last_synchronized_at || '',
+        })),
+      };
 
-    const syncResults = await sharedSync(board, syncParams);
+      const syncResults = await sharedSync(board, syncParams);
 
-    // Process each table in the specified order
-    for (const tableName of SHARED_SYNC_TABLES) {
-      // Skip if table wasn't requested
-      if (!tables.includes(tableName)) continue;
+      // Process each table in the specified order
+      for (const tableName of SHARED_SYNC_TABLES) {
+        // Skip if table wasn't requested
+        if (!tables.includes(tableName)) continue;
 
-      if (syncResults.PUT && syncResults.PUT[tableName]) {
-        const data = syncResults.PUT[tableName];
-        await upsertSharedTableData(board, tableName, data);
-        results[tableName] = { synced: data.length };
-        console.log(`Updated ${tableName} with ${data.length} rows`);
-      } else {
-        results[tableName] = { synced: 0 };
+        if (syncResults.PUT && syncResults.PUT[tableName]) {
+          const data = syncResults.PUT[tableName];
+          await upsertSharedTableData(board, tableName, data);
+          results[tableName] = { synced: data.length };
+          console.log(`Updated ${tableName} with ${data.length} rows`);
+        } else {
+          results[tableName] = { synced: 0 };
+        }
       }
-    }
 
-    if (syncResults.PUT?.shared_syncs) {
-      await updateSharedSyncs(board, syncResults.PUT.shared_syncs);
-    }
+      if (syncResults.PUT?.shared_syncs) {
+        await updateSharedSyncs(board, syncResults.PUT.shared_syncs);
+      }
+    });
 
     return results;
   } catch (error) {
