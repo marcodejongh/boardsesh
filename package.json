@@ -8,8 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "lint-fix": "eslint --fix .",
-    "format": "prettier --write .",
-    "postbuild": "prisma migrate deploy"
+    "format": "prettier --write ."
   },
   "dependencies": {
     "@ant-design/nextjs-registry": "^1.0.2",
@@ -24,6 +23,7 @@
     "antd": "^5.22.3",
     "chart.js": "^4.4.7",
     "dotenv": "^16.4.7",
+    "drizzle-kit": "^0.30.1",
     "drizzle-orm": "^0.38.2",
     "idb": "^8.0.0",
     "next": "14.2.11",

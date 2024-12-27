@@ -47,6 +47,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error('Connection error:', error);
+    // @ts-expect-error
     return NextResponse.json({ error: error.message });
   }
 }

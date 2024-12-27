@@ -159,7 +159,7 @@ export const kilterBids = pgTable("kilter_bids", {
 	angle: integer(),
 	isMirror: boolean("is_mirror"),
 	bidCount: integer("bid_count").default(1),
-	comment: text().default('),
+	comment: text().default(''),
 	climbedAt: text("climbed_at"),
 	createdAt: text("created_at"),
 }, (table) => [
@@ -252,7 +252,7 @@ export const kilterClimbs = pgTable("kilter_climbs", {
 	setterId: integer("setter_id"),
 	setterUsername: text("setter_username"),
 	name: text(),
-	description: text().default('),
+	description: text().default(''),
 	hsm: integer(),
 	edgeLeft: integer("edge_left"),
 	edgeRight: integer("edge_right"),
@@ -377,7 +377,7 @@ export const tensionBids = pgTable("tension_bids", {
 	angle: integer(),
 	isMirror: boolean("is_mirror"),
 	bidCount: integer("bid_count").default(1),
-	comment: text().default('),
+	comment: text().default(''),
 	climbedAt: text("climbed_at"),
 	createdAt: text("created_at"),
 }, (table) => [
@@ -447,7 +447,7 @@ export const tensionClimbs = pgTable("tension_climbs", {
 	setterId: integer("setter_id"),
 	setterUsername: text("setter_username"),
 	name: text(),
-	description: text().default('),
+	description: text().default(''),
 	hsm: integer(),
 	edgeLeft: integer("edge_left"),
 	edgeRight: integer("edge_right"),
@@ -618,7 +618,7 @@ export const kilterAscents = pgTable("kilter_ascents", {
 	quality: integer(),
 	difficulty: integer(),
 	isBenchmark: integer("is_benchmark").default(0),
-	comment: text().default('),
+	comment: text().default(''),
 	climbedAt: text("climbed_at"),
 	createdAt: text("created_at"),
 }, (table) => [
@@ -706,7 +706,7 @@ export const tensionAscents = pgTable("tension_ascents", {
 	quality: integer(),
 	difficulty: integer(),
 	isBenchmark: integer("is_benchmark").default(0),
-	comment: text().default('),
+	comment: text().default(''),
 	climbedAt: text("climbed_at"),
 	createdAt: text("created_at"),
 }, (table) => [

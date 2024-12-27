@@ -10,10 +10,10 @@ import {
 } from '@/app/lib/types';
 import { PAGE_LIMIT } from '../components/board-page/constants';
 
-export async function parseBoardRouteParams<T extends BoardRouteParameters>(
-  params: Promise<T>,
-): Promise<T extends BoardRouteParametersWithUuid ? ParsedBoardRouteParametersWithUuid : ParsedBoardRouteParameters> {
-  const { board_name, layout_id, size_id, set_ids, angle, climb_uuid } = await params;
+export function parseBoardRouteParams<T extends BoardRouteParameters>(
+  params: T,
+): T extends BoardRouteParametersWithUuid ? ParsedBoardRouteParametersWithUuid : ParsedBoardRouteParameters {
+  const { board_name, layout_id, size_id, set_ids, angle, climb_uuid } = params;
 
   const parsedParams = {
     board_name,

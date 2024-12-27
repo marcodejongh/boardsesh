@@ -2,10 +2,10 @@
 import { syncUserData } from '@/app/lib/data-sync/aurora/user-sync';
 
 export async function POST(request: Request) {
-  const { token, userId, board_name } = await request.json();
+  const { token, userId, board_name, username } = await request.json();
 
   try {
-    await syncUserData(board_name, token, userId);
+    await syncUserData(board_name, token, userId, username);
     return new Response(JSON.stringify({ success: true, message: 'All tables synced' }), { status: 200 });
   } catch (err) {
     console.error('Failed to sync with Aurora:', err);
