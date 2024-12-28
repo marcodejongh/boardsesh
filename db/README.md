@@ -20,4 +20,3 @@ docker-compose up
 ```
 
 This starts up a docker container that uses Boardlib to download the databases and then loads them into postgres with an db update script and pgloader.
-

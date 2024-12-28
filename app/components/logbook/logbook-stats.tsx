@@ -1,6 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { Bar, Pie } from 'react-chartjs-2';
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, TooltipItem } from 'chart.js';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement,
+  TooltipItem,
+} from 'chart.js';
 import dayjs from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
 dayjs.extend(isoWeek);
@@ -110,30 +120,30 @@ const difficultyMapping: Record<number, string> = {
 };
 
 const gradeColors: Record<string, string> = {
-  '4a': 'rgba(153,255,153,0.7)',  // Light Green
-  '4b': 'rgba(179,255,128,0.7)',  // Soft Green-Yellow
-  '4c': 'rgba(204,255,102,0.7)',  // Yellow-Green
-  '5a': 'rgba(230,255,77,0.7)',   // Yellowish
-  '5b': 'rgba(255,255,51,0.7)',   // Yellow
-  '5c': 'rgba(255,230,25,0.7)',   // Dark Yellow
-  '6a': 'rgba(255,204,51,0.7)',   // Golden Yellow
-  '6a+': 'rgba(255,179,77,0.7)',  // Light Orange
-  '6b': 'rgba(255,153,102,0.7)',  // Orange
+  '4a': 'rgba(153,255,153,0.7)', // Light Green
+  '4b': 'rgba(179,255,128,0.7)', // Soft Green-Yellow
+  '4c': 'rgba(204,255,102,0.7)', // Yellow-Green
+  '5a': 'rgba(230,255,77,0.7)', // Yellowish
+  '5b': 'rgba(255,255,51,0.7)', // Yellow
+  '5c': 'rgba(255,230,25,0.7)', // Dark Yellow
+  '6a': 'rgba(255,204,51,0.7)', // Golden Yellow
+  '6a+': 'rgba(255,179,77,0.7)', // Light Orange
+  '6b': 'rgba(255,153,102,0.7)', // Orange
   '6b+': 'rgba(255,128,128,0.7)', // Peachy Red
-  '6c': 'rgba(204,102,204,0.7)',  // Light Violet
+  '6c': 'rgba(204,102,204,0.7)', // Light Violet
   '6c+': 'rgba(153,102,255,0.7)', // Indigo
-  '7a': 'rgba(102,102,255,0.7)',  // Blue
-  '7a+': 'rgba(77,128,255,0.7)',  // Light Blue
-  '7b': 'rgba(51,153,255,0.7)',   // Sky Blue
-  '7b+': 'rgba(25,179,255,0.7)',  // Cyan
-  '7c': 'rgba(25,204,230,0.7)',   // Light Cyan
-  '7c+': 'rgba(51,204,204,0.7)',  // Blue-Green
-  '8a': 'rgba(255,77,77,0.7)',    // Red
-  '8a+': 'rgba(204,51,153,0.7)',  // Deep Magenta
-  '8b': 'rgba(153,51,204,0.9)',   // Purple
-  '8b+': 'rgba(102,51,153,1)',    // Dark Purple
-  '8c': 'rgba(77,25,128,1)',      // Very Dark Purple
-  '8c+': 'rgba(51,0,102,1)',      // Deep Violet
+  '7a': 'rgba(102,102,255,0.7)', // Blue
+  '7a+': 'rgba(77,128,255,0.7)', // Light Blue
+  '7b': 'rgba(51,153,255,0.7)', // Sky Blue
+  '7b+': 'rgba(25,179,255,0.7)', // Cyan
+  '7c': 'rgba(25,204,230,0.7)', // Light Cyan
+  '7c+': 'rgba(51,204,204,0.7)', // Blue-Green
+  '8a': 'rgba(255,77,77,0.7)', // Red
+  '8a+': 'rgba(204,51,153,0.7)', // Deep Magenta
+  '8b': 'rgba(153,51,204,0.9)', // Purple
+  '8b+': 'rgba(102,51,153,1)', // Dark Purple
+  '8c': 'rgba(77,25,128,1)', // Very Dark Purple
+  '8c+': 'rgba(51,0,102,1)', // Deep Violet
 };
 
 // Define types for logbook entries
@@ -170,7 +180,7 @@ export const LogBookStats: React.FC<{ boardName: string; userId: string }> = ({ 
         const response = await fetch(`/api/v1/${boardName}/proxy/getLogbook`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId, climbUuids: "", }),
+          body: JSON.stringify({ userId, climbUuids: '' }),
         });
         const data = await response.json();
         setLogbook(data);
@@ -185,13 +195,13 @@ export const LogBookStats: React.FC<{ boardName: string; userId: string }> = ({ 
     const now = dayjs();
     switch (timeframe) {
       case 'lastWeek':
-        return logbook.filter(entry => dayjs(entry.climbed_at).isAfter(now.subtract(1, 'week')));
+        return logbook.filter((entry) => dayjs(entry.climbed_at).isAfter(now.subtract(1, 'week')));
       case 'lastMonth':
-        return logbook.filter(entry => dayjs(entry.climbed_at).isAfter(now.subtract(1, 'month')));
+        return logbook.filter((entry) => dayjs(entry.climbed_at).isAfter(now.subtract(1, 'month')));
       case 'lastYear':
-        return logbook.filter(entry => dayjs(entry.climbed_at).isAfter(now.subtract(1, 'year')));
+        return logbook.filter((entry) => dayjs(entry.climbed_at).isAfter(now.subtract(1, 'year')));
       case 'custom':
-        return logbook.filter(entry => {
+        return logbook.filter((entry) => {
           const climbedAt = dayjs(entry.climbed_at);
           return climbedAt.isAfter(dayjs(fromDate)) && climbedAt.isBefore(dayjs(toDate));
         });
@@ -250,19 +260,19 @@ export const LogBookStats: React.FC<{ boardName: string; userId: string }> = ({ 
             data: Object.values(angles),
             backgroundColor: Object.keys(angles).map((_, index) => {
               const angleColors = [
-                'rgba(255,77,77,0.7)',    // Red
-                'rgba(51,0,102,1)',       // Deep Violet
-                'rgba(77,128,255,0.7)',   // Light Blue
-                'rgba(255,204,51,0.7)',   // Golden Yellow
-                'rgba(204,51,153,0.7)',   // Deep Magenta
-                'rgba(51,204,204,0.7)',   // Blue-Green
-                'rgba(255,230,25,0.7)',   // Dark Yellow
-                'rgba(102,102,255,0.7)',  // Blue
-                'rgba(51,153,255,0.7)',   // Sky Blue
-                'rgba(25,179,255,0.7)',   // Cyan
-                'rgba(255,255,51,0.7)',   // Yellow
-                'rgba(102,51,153,1)',     // Dark Purple
-                'rgba(179,255,128,0.7)',  // Soft Green-Yellow
+                'rgba(255,77,77,0.7)', // Red
+                'rgba(51,0,102,1)', // Deep Violet
+                'rgba(77,128,255,0.7)', // Light Blue
+                'rgba(255,204,51,0.7)', // Golden Yellow
+                'rgba(204,51,153,0.7)', // Deep Magenta
+                'rgba(51,204,204,0.7)', // Blue-Green
+                'rgba(255,230,25,0.7)', // Dark Yellow
+                'rgba(102,102,255,0.7)', // Blue
+                'rgba(51,153,255,0.7)', // Sky Blue
+                'rgba(25,179,255,0.7)', // Cyan
+                'rgba(255,255,51,0.7)', // Yellow
+                'rgba(102,51,153,1)', // Dark Purple
+                'rgba(179,255,128,0.7)', // Soft Green-Yellow
               ];
               return angleColors[index] || 'rgba(200,200,200,0.7)';
             }),
@@ -291,14 +301,16 @@ export const LogBookStats: React.FC<{ boardName: string; userId: string }> = ({ 
           [difficulty]: (weeklyData[week]?.[difficulty] || 0) + 1,
         };
       });
-      const datasets = Object.values(difficultyMapping).map((difficulty) => {
-        const data = weeks.map((week) => weeklyData[week]?.[difficulty] || 0);
-        return {
-          label: difficulty,
-          data,
-          backgroundColor: gradeColors[difficulty],
-        };
-      }).filter(dataset => dataset.data.some(value => value > 0)); // Ensure datasets with all zero values are filtered out
+      const datasets = Object.values(difficultyMapping)
+        .map((difficulty) => {
+          const data = weeks.map((week) => weeklyData[week]?.[difficulty] || 0);
+          return {
+            label: difficulty,
+            data,
+            backgroundColor: gradeColors[difficulty],
+          };
+        })
+        .filter((dataset) => dataset.data.some((value) => value > 0)); // Ensure datasets with all zero values are filtered out
 
       setChartDataWeeklyBar({
         labels: weeks,
@@ -306,7 +318,7 @@ export const LogBookStats: React.FC<{ boardName: string; userId: string }> = ({ 
       });
     }
   }, [filteredLogbook]);
-  
+
   const buttonStyle = (btnTimeframe: string) => ({
     marginRight: '10px',
     backgroundColor: timeframe === btnTimeframe ? '#007bff' : '#f8f9fa',
@@ -320,11 +332,21 @@ export const LogBookStats: React.FC<{ boardName: string; userId: string }> = ({ 
     <div style={{ width: '80%', margin: '0 auto', padding: '20px' }}>
       <h3>LogBook Stats</h3>
       <div style={{ marginBottom: '20px' }}>
-        <button onClick={() => setTimeframe('all')} style={buttonStyle('all')}>All</button>
-        <button onClick={() => setTimeframe('lastYear')} style={buttonStyle('lastYear')}>Last Year</button>
-        <button onClick={() => setTimeframe('lastMonth')} style={buttonStyle('lastMonth')}>Last Month</button>
-        <button onClick={() => setTimeframe('lastWeek')} style={buttonStyle('lastWeek')}>Last Week</button>
-        <button onClick={() => setTimeframe('custom')} style={buttonStyle('custom')}>Select Timeframe</button>
+        <button onClick={() => setTimeframe('all')} style={buttonStyle('all')}>
+          All
+        </button>
+        <button onClick={() => setTimeframe('lastYear')} style={buttonStyle('lastYear')}>
+          Last Year
+        </button>
+        <button onClick={() => setTimeframe('lastMonth')} style={buttonStyle('lastMonth')}>
+          Last Month
+        </button>
+        <button onClick={() => setTimeframe('lastWeek')} style={buttonStyle('lastWeek')}>
+          Last Week
+        </button>
+        <button onClick={() => setTimeframe('custom')} style={buttonStyle('custom')}>
+          Select Timeframe
+        </button>
         {timeframe === 'custom' && (
           <div style={{ marginTop: '10px' }}>
             <label>

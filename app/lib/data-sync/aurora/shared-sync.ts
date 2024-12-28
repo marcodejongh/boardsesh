@@ -35,7 +35,9 @@ import {
   tensionPlacements,
   tensionClimbs,
   tensionBetaLinks,
-} from '@/drizzle/schema';
+  tensionClimbStatsHistory,
+  kilterClimbStatsHistory,
+} from '@/app/lib/db/schema';
 import { PgQueryResultHKT, PgTransaction } from 'drizzle-orm/pg-core';
 import { VercelPgQueryResultHKT } from 'drizzle-orm/vercel-postgres';
 
@@ -77,6 +79,7 @@ function getSharedSchemas(board: BoardName) {
       climbStats: kilterClimbStats,
       betaLinks: kilterBetaLinks,
       sharedSyncs: kilterSharedSyncs,
+      climbStatsHistory: kilterClimbStatsHistory,
     };
   } else if (board === 'tension') {
     return {
@@ -95,6 +98,7 @@ function getSharedSchemas(board: BoardName) {
       climbStats: tensionClimbStats,
       betaLinks: tensionBetaLinks,
       sharedSyncs: tensionSharedSyncs,
+      climbStatsHistory: tensionClimbStatsHistory,
     };
   }
   throw new Error(`Unsupported board type: ${board}`);
@@ -201,31 +205,38 @@ async function upsertSharedTableData(
     }
 
     case 'climb_stats': {
-      // Drop constraints if they exist (using raw SQL since Drizzle doesn't have a direct way)
-      await db.execute(sql`
-        ALTER TABLE IF EXISTS ${sql.identifier(boardName + '_climb_stats')}
-        DROP CONSTRAINT IF EXISTS climb_stats_climb_uuid_fkey1;
-        ALTER TABLE IF EXISTS ${sql.identifier(boardName + '_climb_stats')}
-        DROP CONSTRAINT IF EXISTS climb_stats_climb_uuid_fkey;
-      `);
+      await Promise.all(
+        data.map((item) =>
+          Promise.all([
+            // Update current stats
+            db
+              .insert(schemas.climbStats)
+              .values({
+                climbUuid: item.climb_uuid,
+                angle: Number(item.angle),
+                displayDifficulty: Number(item.display_difficulty || item.difficulty_average),
+                benchmarkDifficulty: Number(item.benchmark_difficulty),
+                ascensionistCount: Number(item.ascensionist_count),
+                difficultyAverage: Number(item.difficulty_average),
+                qualityAverage: Number(item.quality_average),
+                faUsername: item.fa_username,
+                faAt: item.fa_at,
+              })
+              .onConflictDoUpdate({
+                target: [schemas.climbStats.climbUuid, schemas.climbStats.angle], // Updated to use new unique constraint
+                set: {
+                  displayDifficulty: Number(item.display_difficulty || item.difficulty_average),
+                  benchmarkDifficulty: Number(item.benchmark_difficulty),
+                  ascensionistCount: Number(item.ascensionist_count),
+                  difficultyAverage: Number(item.difficulty_average),
+                  qualityAverage: Number(item.quality_average),
+                  faUsername: item.fa_username,
+                  faAt: item.fa_at,
+                },
+              }),
 
-      await processBatch(data, async (item) => {
-        await db
-          .insert(schemas.climbStats)
-          .values({
-            climbUuid: item.climb_uuid,
-            angle: Number(item.angle),
-            displayDifficulty: Number(item.display_difficulty || item.difficulty_average),
-            benchmarkDifficulty: Number(item.benchmark_difficulty),
-            ascensionistCount: Number(item.ascensionist_count),
-            difficultyAverage: Number(item.difficulty_average),
-            qualityAverage: Number(item.quality_average),
-            faUsername: item.fa_username,
-            faAt: item.fa_at,
-          })
-          .onConflictDoUpdate({
-            target: schemas.climbStats.id,
-            set: {
+            // Also insert into history table
+            db.insert(schemas.climbStatsHistory).values({
               climbUuid: item.climb_uuid,
               angle: Number(item.angle),
               displayDifficulty: Number(item.display_difficulty || item.difficulty_average),
@@ -235,9 +246,10 @@ async function upsertSharedTableData(
               qualityAverage: Number(item.quality_average),
               faUsername: item.fa_username,
               faAt: item.fa_at,
-            },
-          });
-      });
+            }),
+          ]),
+        ),
+      );
       break;
     }
 

@@ -8,10 +8,7 @@ export function generateUuid(): string {
   return uuidv4().replace(/-/g, '').toUpperCase();
 }
 
-export async function auroraGetApi<T>(
-  url: string,
-  token: string,
-): Promise<T> {
+export async function auroraGetApi<T>(url: string, token: string): Promise<T> {
   // Default headers
   const headers: Record<string, string> = {
     Accept: '*/*', // Accept any content type
