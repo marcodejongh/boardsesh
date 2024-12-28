@@ -196,26 +196,23 @@ export const searchClimbs = async (
 
   const query = await sql.query({
     text: `
-        WITH latest_stats AS (
-          SELECT DISTINCT ON (climb_uuid) *
-          FROM ${getTableName(params.board_name, 'climb_stats')}
-          WHERE angle = $11
-          ORDER BY climb_uuid, id DESC
-        ),
-        filtered_climbs AS (
+        WITH filtered_climbs AS (
           SELECT
             climbs.uuid, climbs.setter_username, climbs.name, climbs.description,
-            climbs.frames, latest_stats.angle, latest_stats.ascensionist_count,
+            climbs.frames, climb_stats.angle, climb_stats.ascensionist_count,
             dg.boulder_name as difficulty,
-            ROUND(latest_stats.quality_average::numeric, 2) as quality_average,
-            ROUND(latest_stats.difficulty_average::numeric - latest_stats.display_difficulty::numeric, 2) AS difficulty_error,
-            latest_stats.benchmark_difficulty
+            ROUND(climb_stats.quality_average::numeric, 2) as quality_average,
+            ROUND(climb_stats.difficulty_average::numeric - climb_stats.display_difficulty::numeric, 2) AS difficulty_error,
+            climb_stats.benchmark_difficulty
           FROM ${getTableName(params.board_name, 'climbs')} climbs
-          LEFT JOIN latest_stats ON latest_stats.climb_uuid = climbs.uuid
+          LEFT JOIN ${getTableName(
+            params.board_name,
+            'climb_stats',
+          )} climb_stats ON climb_stats.climb_uuid = climbs.uuid
           LEFT JOIN ${getTableName(
             params.board_name,
             'difficulty_grades',
-          )} dg on dg.difficulty = ROUND(latest_stats.display_difficulty::numeric)
+          )} dg on dg.difficulty = ROUND(climb_stats.display_difficulty::numeric)
           INNER JOIN ${getTableName(params.board_name, 'product_sizes')} product_sizes ON product_sizes.id = $1
           WHERE climbs.layout_id = $2
           AND climbs.is_listed = true
@@ -224,8 +221,8 @@ export const searchClimbs = async (
           -- Ensures only boulder problems are found and not routes
           AND climbs.frames_count = 1
           AND product_sizes.id = $3
-          AND latest_stats.angle = $11
-          AND latest_stats.ascensionist_count >= $4
+          AND climb_stats.angle = $11
+          AND climb_stats.ascensionist_count >= $4
 
           AND climbs.edge_left > product_sizes.edge_left
           AND climbs.edge_right < product_sizes.edge_right
@@ -233,12 +230,12 @@ export const searchClimbs = async (
           AND climbs.edge_top < product_sizes.edge_top
           ${
             searchParams.minGrade && searchParams.maxGrade
-              ? 'AND ROUND(latest_stats.display_difficulty::numeric, 0) BETWEEN $5 AND $6'
+              ? 'AND ROUND(climb_stats.display_difficulty::numeric, 0) BETWEEN $5 AND $6'
               : ''
           }
-          AND latest_stats.quality_average >= $7
-          AND ABS(ROUND(latest_stats.display_difficulty::numeric, 0) - latest_stats.difficulty_average::numeric) <= $8
-          ${climbNameClause}
+          AND climb_stats.quality_average >= $7
+          AND ABS(ROUND(climb_stats.display_difficulty::numeric, 0) - climb_stats.difficulty_average::numeric) <= $8
+          ${climbNameClause} -- Conditionally add the name filter
         )
         SELECT *, 
         (SELECT COUNT(*) FROM filtered_climbs) as total_count
@@ -246,7 +243,7 @@ export const searchClimbs = async (
         ORDER BY ${safeSortBy} ${searchParams.sortOrder === 'asc' ? 'ASC' : 'DESC'}, filtered_climbs.uuid ASC
         LIMIT $9 OFFSET $10
       `,
-    values: queryParameters,
+    values: queryParameters, // Remove any null values that don't match query clauses
   });
 
   return {
