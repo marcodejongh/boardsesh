@@ -8,6 +8,13 @@
       "when": 1734255307302,
       "tag": "0000_cloudy_carlie_cooper",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1735369313427,
+      "tag": "0001_unique_climbstats",
+      "breakpoints": true
     }
   ]
 }

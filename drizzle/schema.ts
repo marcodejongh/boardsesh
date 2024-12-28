@@ -1,7 +1,5 @@
-import { pgTable, foreignKey, bigserial, text, integer, doublePrecision, boolean, bigint, timestamp, uniqueIndex, primaryKey } from "drizzle-orm/pg-core"
+import { pgTable, foreignKey, bigserial, text, integer, doublePrecision, boolean, bigint, timestamp, uniqueIndex, primaryKey } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm"
-
-
 
 export const kilterClimbCacheFields = pgTable("kilter_climb_cache_fields", {
 	id: bigserial({ mode: "bigint" }).primaryKey().notNull(),
@@ -60,19 +58,36 @@ export const kilterCircuits = pgTable("kilter_circuits", {
 	updatedAt: text("updated_at"),
 });
 
+// Update existing tables with unique constraints
 export const tensionClimbStats = pgTable("tension_climb_stats", {
-	id: bigserial({ mode: "bigint" }).primaryKey().notNull(),
-	climbUuid: text("climb_uuid"),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	angle: bigint({ mode: "number" }),
-	displayDifficulty: doublePrecision("display_difficulty"),
-	benchmarkDifficulty: doublePrecision("benchmark_difficulty"),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	ascensionistCount: bigint("ascensionist_count", { mode: "number" }),
-	difficultyAverage: doublePrecision("difficulty_average"),
-	qualityAverage: doublePrecision("quality_average"),
-	faUsername: text("fa_username"),
-	faAt: timestamp("fa_at", { mode: 'string' }),
+  id: bigserial({ mode: "bigint" }).primaryKey().notNull(),
+  climbUuid: text("climb_uuid").notNull(),
+  angle: bigint({ mode: "number" }).notNull(),
+  displayDifficulty: doublePrecision("display_difficulty"),
+  benchmarkDifficulty: doublePrecision("benchmark_difficulty"),
+  ascensionistCount: bigint("ascensionist_count", { mode: "number" }),
+  difficultyAverage: doublePrecision("difficulty_average"),
+  qualityAverage: doublePrecision("quality_average"),
+  faUsername: text("fa_username"),
+  faAt: timestamp("fa_at", { mode: 'string' }),
+}, (table) => ({
+  climbAngleIdx: uniqueIndex("tension_climb_angle_idx").on(table.climbUuid, table.angle),
+}));
+
+
+// Add new history tables
+export const tensionClimbStatsHistory = pgTable("tension_climb_stats_history", {
+  id: bigserial({ mode: "bigint" }).primaryKey().notNull(),
+  climbUuid: text("climb_uuid").notNull(),
+  angle: bigint({ mode: "number" }).notNull(),
+  displayDifficulty: doublePrecision("display_difficulty"),
+  benchmarkDifficulty: doublePrecision("benchmark_difficulty"),
+  ascensionistCount: bigint("ascensionist_count", { mode: "number" }),
+  difficultyAverage: doublePrecision("difficulty_average"),
+  qualityAverage: doublePrecision("quality_average"),
+  faUsername: text("fa_username"),
+  faAt: timestamp("fa_at", { mode: 'string' }),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
 });
 
 export const tensionClimbCacheFields = pgTable("tension_climb_cache_fields", {
@@ -109,18 +124,32 @@ export const kilterLeds = pgTable("kilter_leds", {
 ]);
 
 export const kilterClimbStats = pgTable("kilter_climb_stats", {
-	id: bigserial({ mode: "bigint" }).primaryKey().notNull(),
-	climbUuid: text("climb_uuid"),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	angle: bigint({ mode: "number" }),
-	displayDifficulty: doublePrecision("display_difficulty"),
-	benchmarkDifficulty: doublePrecision("benchmark_difficulty"),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	ascensionistCount: bigint("ascensionist_count", { mode: "number" }),
-	difficultyAverage: doublePrecision("difficulty_average"),
-	qualityAverage: doublePrecision("quality_average"),
-	faUsername: text("fa_username"),
-	faAt: timestamp("fa_at", { mode: 'string' }),
+  id: bigserial({ mode: "bigint" }).primaryKey().notNull(),
+  climbUuid: text("climb_uuid").notNull(),
+  angle: bigint({ mode: "number" }).notNull(),
+  displayDifficulty: doublePrecision("display_difficulty"),
+  benchmarkDifficulty: doublePrecision("benchmark_difficulty"),
+  ascensionistCount: bigint("ascensionist_count", { mode: "number" }),
+  difficultyAverage: doublePrecision("difficulty_average"),
+  qualityAverage: doublePrecision("quality_average"),
+  faUsername: text("fa_username"),
+  faAt: timestamp("fa_at", { mode: 'string' }),
+}, (table) => ({
+  climbAngleIdx: uniqueIndex("kilter_climb_angle_idx").on(table.climbUuid, table.angle),
+}));
+
+export const kilterClimbStatsHistory = pgTable("kilter_climb_stats_history", {
+  id: bigserial({ mode: "bigint" }).primaryKey().notNull(),
+  climbUuid: text("climb_uuid").notNull(),
+  angle: bigint({ mode: "number" }).notNull(),
+  displayDifficulty: doublePrecision("display_difficulty"),
+  benchmarkDifficulty: doublePrecision("benchmark_difficulty"),
+  ascensionistCount: bigint("ascensionist_count", { mode: "number" }),
+  difficultyAverage: doublePrecision("difficulty_average"),
+  qualityAverage: doublePrecision("quality_average"),
+  faUsername: text("fa_username"),
+  faAt: timestamp("fa_at", { mode: 'string' }),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
 });
 
 export const kilterProductSizes = pgTable("kilter_product_sizes", {
