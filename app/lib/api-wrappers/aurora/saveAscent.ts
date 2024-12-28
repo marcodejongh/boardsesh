@@ -1,7 +1,7 @@
 import { BoardName } from '../../types';
 import { API_HOSTS, AscentSavedEvent, SaveAscentOptions, SaveAscentResponse } from './types';
 import dayjs from 'dayjs';
-import { sql } from '@/lib/db';
+import { sql } from '@/app/lib/db/db';
 import { getTableName } from '../../data-sync/aurora/getTableName';
 
 export async function saveAscent(

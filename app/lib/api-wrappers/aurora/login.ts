@@ -1,4 +1,4 @@
-import { sql } from '@/lib/db';
+import { sql } from '@/app/lib/db/db';
 import { BoardName } from '../../types';
 import { API_HOSTS, LoginResponse } from './types';
 import { syncUserData } from '../../data-sync/aurora/user-sync';
