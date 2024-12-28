@@ -1,7 +1,7 @@
 // api.ts
 
 import { SetIdList } from '@/app/lib/board-data';
-import { LayoutRow, SearchClimbsResult, SetRow, SizeRow } from '@/app/lib/data/queries';
+import { LayoutRow, SetRow, SizeRow } from '@/app/lib/data/queries';
 import {
   FetchCurrentProblemResponse,
   BoardDetails,
@@ -11,6 +11,7 @@ import {
   BoardName,
   LayoutId,
   Size,
+  SearchClimbsResult,
 } from '@/app/lib/types';
 
 const API_BASE_URL = `${process.env.BASE_URL || 'https://www.boardsesh.com'}/api`;
