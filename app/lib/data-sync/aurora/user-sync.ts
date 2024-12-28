@@ -268,7 +268,7 @@ async function upsertTableData(
             updatedAt: item.updated_at,
           })
           .onConflictDoUpdate({
-            target: schemas.circuits.uuid,
+            target: [schemas.circuits.uuid], // Specify as array of columns
             set: {
               name: item.name,
               description: item.description,
@@ -359,6 +359,7 @@ export async function syncUserData(
         try {
           // Process each table
           for (const tableName of tables) {
+            console.log(`Syncing ${tableName} for user ${userId}`)
             if (syncResults.PUT && syncResults.PUT[tableName]) {
               const data = syncResults.PUT[tableName];
               await upsertTableData(tx, board, tableName, userId, data);

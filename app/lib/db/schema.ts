@@ -1113,6 +1113,7 @@ export const kilterUserSyncs = pgTable(
     lastSynchronizedAt: text('last_synchronized_at'),
   },
   (table) => [
+		primaryKey({ name: 'kilter_user_sync_pk', columns: [table.userId, table.tableName] }),
     foreignKey({
       columns: [table.userId],
       foreignColumns: [kilterUsers.id],
@@ -1141,6 +1142,7 @@ export const tensionUserSyncs = pgTable(
     lastSynchronizedAt: text('last_synchronized_at'),
   },
   (table) => [
+    primaryKey({ name: 'tension_user_sync_pk', columns: [table.userId, table.tableName] }),
     foreignKey({
       columns: [table.userId],
       foreignColumns: [tensionUsers.id],

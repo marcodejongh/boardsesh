@@ -170,16 +170,7 @@ export type UserSyncData = LastSyncData & {
   user_id: number;
 };
 
-export const USER_TABLES = [
-  'walls',
-  'wall_expungements',
-  'draft_climbs',
-  'ascents',
-  'bids',
-  'tags',
-  'circuits',
-  'users',
-];
+export const USER_TABLES = ['users', 'walls', 'wall_expungements', 'draft_climbs', 'ascents', 'bids', 'tags', 'circuits'];
 export const SHARED_SYNC_TABLES = [
   'gyms',
   'boards',
