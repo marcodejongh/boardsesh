@@ -1,13 +1,14 @@
 import { BoardName } from '../../types';
+import { SyncData } from '../sync-api-types';
 import { API_HOSTS, SyncOptions } from './types';
 
+//TODO: Can probably be consolidated with sharedSync
 export async function userSync(
   board: BoardName,
   userId: string,
   options: SyncOptions = {},
   token: string,
-  // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-): Promise<any> {
+): Promise<SyncData> {
   const { tables = [], walls = [], wallExpungements = [], sharedSyncs = [], userSyncs = [] } = options;
 
   const response = await fetch(`${API_HOSTS[board]}/v1/sync`, {
@@ -43,8 +44,8 @@ export async function userSync(
       },
     }),
   });
-  console.log(userSyncs);
+
   if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-  
+
   return response.json();
 }
