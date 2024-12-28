@@ -96,7 +96,7 @@ export const searchClimbs = async (
   }));
 
   return {
-    rows: climbs,
+    climbs: climbs,
     totalCount: results.length > 0 ? Number(results[0].totalCount) : 0,
   };
 };
