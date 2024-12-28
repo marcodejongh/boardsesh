@@ -63,66 +63,86 @@ async function upsertTableData(
 
   const schemas = getSchemas(boardName);
 
-  return db.transaction(async (tx) => {
-    switch (tableName) {
-      case 'users': {
-        for (const item of data) {
-          await tx
-            .insert(schemas.users)
-            .values({
-              id: Number(item.id),
+  switch (tableName) {
+    case 'users': {
+      for (const item of data) {
+        await db
+          .insert(schemas.users)
+          .values({
+            id: Number(item.id),
+            username: item.username,
+            createdAt: item.created_at,
+          })
+          .onConflictDoUpdate({
+            target: schemas.users.id,
+            set: {
               username: item.username,
-              createdAt: item.created_at,
-            })
-            .onConflictDoUpdate({
-              target: schemas.users.id,
-              set: {
-                username: item.username,
-              },
-            });
-        }
-        break;
+            },
+          });
       }
+      break;
+    }
 
-      case 'walls': {
-        for (const item of data) {
-          await tx
-            .insert(schemas.walls)
-            .values({
-              uuid: item.uuid,
-              userId: Number(userId),
+    case 'walls': {
+      for (const item of data) {
+        await db
+          .insert(schemas.walls)
+          .values({
+            uuid: item.uuid,
+            userId: Number(userId),
+            name: item.name,
+            productId: Number(item.product_id),
+            isAdjustable: Boolean(item.is_adjustable),
+            angle: Number(item.angle),
+            layoutId: Number(item.layout_id),
+            productSizeId: Number(item.product_size_id),
+            hsm: Number(item.hsm),
+            serialNumber: item.serial_number,
+            createdAt: item.created_at,
+          })
+          .onConflictDoUpdate({
+            target: schemas.walls.uuid,
+            set: {
               name: item.name,
-              productId: Number(item.product_id),
               isAdjustable: Boolean(item.is_adjustable),
               angle: Number(item.angle),
               layoutId: Number(item.layout_id),
               productSizeId: Number(item.product_size_id),
               hsm: Number(item.hsm),
               serialNumber: item.serial_number,
-              createdAt: item.created_at,
-            })
-            .onConflictDoUpdate({
-              target: schemas.walls.uuid,
-              set: {
-                name: item.name,
-                isAdjustable: Boolean(item.is_adjustable),
-                angle: Number(item.angle),
-                layoutId: Number(item.layout_id),
-                productSizeId: Number(item.product_size_id),
-                hsm: Number(item.hsm),
-                serialNumber: item.serial_number,
-              },
-            });
-        }
-        break;
+            },
+          });
       }
+      break;
+    }
 
-      case 'draft_climbs': {
-        for (const item of data) {
-          await tx
-            .insert(schemas.climbs)
-            .values({
-              uuid: item.uuid,
+    case 'draft_climbs': {
+      for (const item of data) {
+        await db
+          .insert(schemas.climbs)
+          .values({
+            uuid: item.uuid,
+            layoutId: Number(item.layout_id),
+            setterId: Number(userId),
+            setterUsername: item.setter_username || '',
+            name: item.name || 'Untitled Draft',
+            description: item.description || '',
+            hsm: Number(item.hsm),
+            edgeLeft: Number(item.edge_left),
+            edgeRight: Number(item.edge_right),
+            edgeBottom: Number(item.edge_bottom),
+            edgeTop: Number(item.edge_top),
+            angle: Number(item.angle),
+            framesCount: Number(item.frames_count || 1),
+            framesPace: Number(item.frames_pace || 0),
+            frames: item.frames || '',
+            isDraft: true,
+            isListed: false,
+            createdAt: item.created_at || new Date().toISOString(),
+          })
+          .onConflictDoUpdate({
+            target: schemas.climbs.uuid,
+            set: {
               layoutId: Number(item.layout_id),
               setterId: Number(userId),
               setterUsername: item.setter_username || '',
@@ -139,43 +159,37 @@ async function upsertTableData(
               frames: item.frames || '',
               isDraft: true,
               isListed: false,
-              createdAt: item.created_at || new Date().toISOString(),
-            })
-            .onConflictDoUpdate({
-              target: schemas.climbs.uuid,
-              set: {
-                layoutId: Number(item.layout_id),
-                setterId: Number(userId),
-                setterUsername: item.setter_username || '',
-                name: item.name || 'Untitled Draft',
-                description: item.description || '',
-                hsm: Number(item.hsm),
-                edgeLeft: Number(item.edge_left),
-                edgeRight: Number(item.edge_right),
-                edgeBottom: Number(item.edge_bottom),
-                edgeTop: Number(item.edge_top),
-                angle: Number(item.angle),
-                framesCount: Number(item.frames_count || 1),
-                framesPace: Number(item.frames_pace || 0),
-                frames: item.frames || '',
-                isDraft: true,
-                isListed: false,
-              },
-            });
-        }
-        break;
+            },
+          });
       }
+      break;
+    }
 
-      case 'ascents': {
-        for (const item of data) {
-          await tx
-            .insert(schemas.ascents)
-            .values({
-              uuid: item.uuid,
+    case 'ascents': {
+      for (const item of data) {
+        await db
+          .insert(schemas.ascents)
+          .values({
+            uuid: item.uuid,
+            climbUuid: item.climb_uuid,
+            angle: Number(item.angle),
+            isMirror: Boolean(item.is_mirror),
+            userId: Number(userId),
+            attemptId: Number(item.attempt_id),
+            bidCount: Number(item.bid_count || 1),
+            quality: Number(item.quality),
+            difficulty: Number(item.difficulty),
+            isBenchmark: Number(item.is_benchmark || 0),
+            comment: item.comment || '',
+            climbedAt: item.climbed_at,
+            createdAt: item.created_at,
+          })
+          .onConflictDoUpdate({
+            target: schemas.ascents.uuid,
+            set: {
               climbUuid: item.climb_uuid,
               angle: Number(item.angle),
               isMirror: Boolean(item.is_mirror),
-              userId: Number(userId),
               attemptId: Number(item.attempt_id),
               bidCount: Number(item.bid_count || 1),
               quality: Number(item.quality),
@@ -183,110 +197,94 @@ async function upsertTableData(
               isBenchmark: Number(item.is_benchmark || 0),
               comment: item.comment || '',
               climbedAt: item.climbed_at,
-              createdAt: item.created_at,
-            })
-            .onConflictDoUpdate({
-              target: schemas.ascents.uuid,
-              set: {
-                climbUuid: item.climb_uuid,
-                angle: Number(item.angle),
-                isMirror: Boolean(item.is_mirror),
-                attemptId: Number(item.attempt_id),
-                bidCount: Number(item.bid_count || 1),
-                quality: Number(item.quality),
-                difficulty: Number(item.difficulty),
-                isBenchmark: Number(item.is_benchmark || 0),
-                comment: item.comment || '',
-                climbedAt: item.climbed_at,
-              },
-            });
-        }
-        break;
+            },
+          });
       }
+      break;
+    }
 
-      case 'bids': {
-        for (const item of data) {
-          await tx
-            .insert(schemas.bids)
-            .values({
-              uuid: item.uuid,
-              userId: Number(userId),
+    case 'bids': {
+      for (const item of data) {
+        await db
+          .insert(schemas.bids)
+          .values({
+            uuid: item.uuid,
+            userId: Number(userId),
+            climbUuid: item.climb_uuid,
+            angle: Number(item.angle),
+            isMirror: Boolean(item.is_mirror),
+            bidCount: Number(item.bid_count || 1),
+            comment: item.comment || '',
+            climbedAt: item.climbed_at,
+            createdAt: item.created_at,
+          })
+          .onConflictDoUpdate({
+            target: schemas.bids.uuid,
+            set: {
               climbUuid: item.climb_uuid,
               angle: Number(item.angle),
               isMirror: Boolean(item.is_mirror),
               bidCount: Number(item.bid_count || 1),
               comment: item.comment || '',
               climbedAt: item.climbed_at,
-              createdAt: item.created_at,
-            })
-            .onConflictDoUpdate({
-              target: schemas.bids.uuid,
-              set: {
-                climbUuid: item.climb_uuid,
-                angle: Number(item.angle),
-                isMirror: Boolean(item.is_mirror),
-                bidCount: Number(item.bid_count || 1),
-                comment: item.comment || '',
-                climbedAt: item.climbed_at,
-              },
-            });
-        }
-        break;
+            },
+          });
       }
+      break;
+    }
 
-      case 'tags': {
-        for (const item of data) {
-          await tx
-            .insert(schemas.tags)
-            .values({
-              entityUuid: item.entity_uuid,
-              userId: Number(userId),
-              name: item.name,
+    case 'tags': {
+      for (const item of data) {
+        await db
+          .insert(schemas.tags)
+          .values({
+            entityUuid: item.entity_uuid,
+            userId: Number(userId),
+            name: item.name,
+            isListed: Boolean(item.is_listed),
+          })
+          .onConflictDoUpdate({
+            target: [schemas.tags.entityUuid, schemas.tags.userId, schemas.tags.name],
+            set: {
               isListed: Boolean(item.is_listed),
-            })
-            .onConflictDoUpdate({
-              target: [schemas.tags.entityUuid, schemas.tags.userId, schemas.tags.name],
-              set: {
-                isListed: Boolean(item.is_listed),
-              },
-            });
-        }
-        break;
+            },
+          });
       }
+      break;
+    }
 
-      case 'circuits': {
-        for (const item of data) {
-          await tx
-            .insert(schemas.circuits)
-            .values({
-              uuid: item.uuid,
+    case 'circuits': {
+      for (const item of data) {
+        await db
+          .insert(schemas.circuits)
+          .values({
+            uuid: item.uuid,
+            name: item.name,
+            description: item.description,
+            color: item.color,
+            userId: Number(userId),
+            isPublic: Boolean(item.is_public),
+            createdAt: item.created_at,
+            updatedAt: item.updated_at,
+          })
+          .onConflictDoUpdate({
+            target: [schemas.circuits.uuid], // Specify as array of columns
+            set: {
               name: item.name,
               description: item.description,
               color: item.color,
-              userId: Number(userId),
               isPublic: Boolean(item.is_public),
-              createdAt: item.created_at,
               updatedAt: item.updated_at,
-            })
-            .onConflictDoUpdate({
-              target: schemas.circuits.uuid,
-              set: {
-                name: item.name,
-                description: item.description,
-                color: item.color,
-                isPublic: Boolean(item.is_public),
-                updatedAt: item.updated_at,
-              },
-            });
-        }
-        break;
+            },
+          });
       }
-
-      default:
-        console.warn(`No specific upsert logic for table: ${tableName}`);
-        break;
+      break;
     }
-  });
+
+    default:
+      console.warn(`No specific upsert logic for table: ${tableName}`);
+      break;
+  }
 }
 
 async function updateUserSyncs(
@@ -361,6 +359,7 @@ export async function syncUserData(
         try {
           // Process each table
           for (const tableName of tables) {
+            console.log(`Syncing ${tableName} for user ${userId}`)
             if (syncResults.PUT && syncResults.PUT[tableName]) {
               const data = syncResults.PUT[tableName];
               await upsertTableData(tx, board, tableName, userId, data);

@@ -10,4 +10,6 @@ if (process.env.VERCEL_ENV === 'development') {
 
 export * from '@vercel/postgres';
 
-export const dbz = drizzle();
+export const dbz = drizzle({
+  logger: process.env.NODE_ENV === 'development'
+});
