@@ -248,6 +248,7 @@ export const searchClimbs = async (
       `,
     values: queryParameters,
   });
+
   return {
     climbs: query.rows,
     totalCount: query.rows.length > 0 ? query.rows[0].total_count : 0,

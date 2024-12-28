@@ -1,8 +1,8 @@
 import { dbz as db } from '@/lib/db';
 import { BoardName } from '../../types';
-import { SyncData, SyncOptions } from '../../api-wrappers/aurora/types';
+import { LastSyncData, SyncOptions } from '../../api-wrappers/aurora/types';
 import { sharedSync } from '../../api-wrappers/aurora/sharedSync';
-import { inArray } from 'drizzle-orm';
+import { ExtractTablesWithRelations, inArray } from 'drizzle-orm';
 import { sql } from 'drizzle-orm';
 import {
   kilterAttempts,
@@ -36,6 +36,8 @@ import {
   tensionClimbs,
   tensionBetaLinks,
 } from '@/drizzle/schema';
+import { PgQueryResultHKT, PgTransaction } from 'drizzle-orm/pg-core';
+import { VercelPgQueryResultHKT } from 'drizzle-orm/vercel-postgres';
 
 // Define shared sync tables in correct dependency order
 export const SHARED_SYNC_TABLES: string[] = [
@@ -105,7 +107,12 @@ async function processBatch<T>(items: T[], insertFn: (item: T) => Promise<void>)
   }
 }
 
-async function upsertSharedTableData(boardName: BoardName, tableName: string, data: any[]) {
+async function upsertSharedTableData(
+  db: PgTransaction<VercelPgQueryResultHKT, Record<string, never>, ExtractTablesWithRelations<Record<string, never>>>,
+  boardName: BoardName,
+  tableName: string,
+  data: any[],
+) {
   if (data.length === 0) return;
 
   const schemas = getSharedSchemas(boardName);
@@ -238,25 +245,27 @@ async function upsertSharedTableData(boardName: BoardName, tableName: string, da
   }
 }
 
-async function updateSharedSyncs(boardName: BoardName, sharedSyncs: SyncData[]) {
+async function updateSharedSyncs(
+  tx: PgTransaction<VercelPgQueryResultHKT, Record<string, never>, ExtractTablesWithRelations<Record<string, never>>>,
+  boardName: BoardName,
+  sharedSyncs: LastSyncData[],
+) {
   const schemas = getSharedSchemas(boardName);
 
-  await db.transaction(async (tx) => {
-    for (const sync of sharedSyncs) {
-      await tx
-        .insert(schemas.sharedSyncs)
-        .values({
-          tableName: sync.table_name,
+  for (const sync of sharedSyncs) {
+    await tx
+      .insert(schemas.sharedSyncs)
+      .values({
+        tableName: sync.table_name,
+        lastSynchronizedAt: sync.last_synchronized_at,
+      })
+      .onConflictDoUpdate({
+        target: schemas.sharedSyncs.tableName,
+        set: {
           lastSynchronizedAt: sync.last_synchronized_at,
-        })
-        .onConflictDoUpdate({
-          target: schemas.sharedSyncs.tableName,
-          set: {
-            lastSynchronizedAt: sync.last_synchronized_at,
-          },
-        });
-    }
-  });
+        },
+      });
+  }
 }
 
 export async function getLastSharedSyncTimes(boardName: BoardName, tableNames = SHARED_SYNC_TABLES) {
@@ -280,38 +289,53 @@ export async function syncSharedData(
   const results: Record<string, { synced: number }> = {};
 
   try {
-    await db.transaction(async (tx) => {
-      const allSyncTimes = await getLastSharedSyncTimes(board, tables);
+    await db.transaction(
+      async (
+        tx: PgTransaction<
+          VercelPgQueryResultHKT,
+          Record<string, never>,
+          ExtractTablesWithRelations<Record<string, never>>
+        >,
+      ) => {
+        try {
+          const allSyncTimes = await getLastSharedSyncTimes(board, tables);
 
-      const syncParams: SyncOptions = {
-        tables: [...tables],
-        sharedSyncs: allSyncTimes.map((syncTime) => ({
-          table_name: syncTime.table_name || '',
-          last_synchronized_at: syncTime.last_synchronized_at || '',
-        })),
-      };
+          const syncParams: SyncOptions = {
+            tables: [...tables],
+            sharedSyncs: allSyncTimes.map((syncTime) => ({
+              table_name: syncTime.table_name || '',
+              last_synchronized_at: syncTime.last_synchronized_at || '',
+            })),
+          };
+          // TODO: Move rest api call out of DB transaction to make error messages
+          // easier to interpret
+          const syncResults = await sharedSync(board, syncParams);
 
-      const syncResults = await sharedSync(board, syncParams);
+          // Process each table in the specified order
+          for (const tableName of SHARED_SYNC_TABLES) {
+            // Skip if table wasn't requested
+            if (!tables.includes(tableName)) continue;
 
-      // Process each table in the specified order
-      for (const tableName of SHARED_SYNC_TABLES) {
-        // Skip if table wasn't requested
-        if (!tables.includes(tableName)) continue;
+            if (syncResults.PUT && syncResults.PUT[tableName]) {
+              const data = syncResults.PUT[tableName];
+              await upsertSharedTableData(tx, board, tableName, data);
+              results[tableName] = { synced: data.length };
+              console.log(`Updated ${tableName} with ${data.length} rows`);
+            } else {
+              results[tableName] = { synced: 0 };
+            }
+          }
 
-        if (syncResults.PUT && syncResults.PUT[tableName]) {
-          const data = syncResults.PUT[tableName];
-          await upsertSharedTableData(board, tableName, data);
-          results[tableName] = { synced: data.length };
-          console.log(`Updated ${tableName} with ${data.length} rows`);
-        } else {
-          results[tableName] = { synced: 0 };
+          if (syncResults.PUT?.shared_syncs) {
+            await updateSharedSyncs(tx, board, syncResults.PUT.shared_syncs);
+          }
+        } catch (error) {
+          //@ts-expect-error
+          console.error('Failed to commit sync database transaction ', error.toString());
+          tx.rollback();
         }
-      }
-
-      if (syncResults.PUT?.shared_syncs) {
-        await updateSharedSyncs(board, syncResults.PUT.shared_syncs);
-      }
-    });
+      },
+    );
 
     return results;
   } catch (error) {

@@ -1,8 +1,8 @@
 import { dbz as db } from '@/lib/db';
 import { BoardName } from '../../types';
 import { userSync } from '../../api-wrappers/aurora/userSync';
-import { SyncData, SyncOptions, USER_TABLES, UserSyncData } from '../../api-wrappers/aurora/types';
-import { eq, and, inArray } from 'drizzle-orm';
+import { LastSyncData, SyncOptions, USER_TABLES, UserSyncData } from '../../api-wrappers/aurora/types';
+import { eq, and, inArray, ExtractTablesWithRelations } from 'drizzle-orm';
 import {
   kilterUsers,
   kilterWalls,
@@ -21,6 +21,8 @@ import {
   tensionCircuits,
   tensionUserSyncs,
 } from '@/drizzle/schema';
+import { PgTransaction } from 'drizzle-orm/pg-core';
+import { VercelPgQueryResultHKT } from 'drizzle-orm/vercel-postgres';
 
 // Helper to get the correct schema based on board type
 function getSchemas(board: BoardName) {
@@ -50,7 +52,13 @@ function getSchemas(board: BoardName) {
   throw new Error(`Unsupported board type: ${board}`);
 }
 
-async function upsertTableData(boardName: BoardName, tableName: string, userId: string, data: any[]) {
+async function upsertTableData(
+  db: PgTransaction<VercelPgQueryResultHKT, Record<string, never>, ExtractTablesWithRelations<Record<string, never>>>,
+  boardName: BoardName,
+  tableName: string,
+  userId: string,
+  data: any[],
+) {
   if (data.length === 0) return;
 
   const schemas = getSchemas(boardName);
@@ -281,10 +289,13 @@ async function upsertTableData(boardName: BoardName, tableName: string, userId: 
   });
 }
 
-async function updateUserSyncs(boardName: BoardName, userSyncs: UserSyncData[]) {
+async function updateUserSyncs(
+  tx: PgTransaction<VercelPgQueryResultHKT, Record<string, never>, ExtractTablesWithRelations<Record<string, never>>>,
+  boardName: BoardName,
+  userSyncs: UserSyncData[],
+) {
   const schemas = getSchemas(boardName);
 
-  await db.transaction(async (tx) => {
     for (const sync of userSyncs) {
       await tx
         .insert(schemas.userSyncs)
@@ -300,7 +311,6 @@ async function updateUserSyncs(boardName: BoardName, userSyncs: UserSyncData[]) 
           },
         });
     }
-  });
 }
 
 export async function getLastSyncTimes(
@@ -309,8 +319,7 @@ export async function getLastSyncTimes(
   tableNames: string[],
 ) {
   const schemas = getSchemas(boardName);
-  console.log(userId);
-  console.log(tableNames);
+
   const result = await db
     .select()
     .from(schemas.userSyncs)
@@ -340,27 +349,43 @@ export async function syncUserData(
       last_synchronized_at: syncTime.lastSynchronizedAt || '',
       user_id: Number(userId),
     }));
-
+    // TODO: Move rest api call out of DB transaction to make error messages
+    // easier to interpret
     const syncResults = await userSync(board, userId, syncParams, token);
-    
-    // Process each table in a single transaction
-    await db.transaction(async (tx) => {
-      // Process each table
-      for (const tableName of tables) {
-        if (syncResults.PUT && syncResults.PUT[tableName]) {
-          const data = syncResults.PUT[tableName];
-          await upsertTableData(board, tableName, userId, data);
-          results[tableName] = { synced: data.length };
-        } else {
-          results[tableName] = { synced: 0 };
-        }
-      }
 
-      // Update user_syncs table with new sync times
-      if (syncResults && syncResults.PUT && syncResults.PUT['user_syncs']) {
-        await updateUserSyncs(board, syncResults.PUT['user_syncs']);
-      }
-    });
+    // Process each table in a single transaction
+    await db.transaction(
+      async (
+        tx: PgTransaction<
+          VercelPgQueryResultHKT,
+          Record<string, never>,
+          ExtractTablesWithRelations<Record<string, never>>
+        >,
+      ) => {
+        try {
+          // Process each table
+          for (const tableName of tables) {
+            if (syncResults.PUT && syncResults.PUT[tableName]) {
+              const data = syncResults.PUT[tableName];
+              await upsertTableData(tx, board, tableName, userId, data);
+              results[tableName] = { synced: data.length };
+            } else {
+              results[tableName] = { synced: 0 };
+            }
+          }
+
+          // Update user_syncs table with new sync times
+          if (syncResults && syncResults.PUT && syncResults.PUT['user_syncs']) {
+            //TODO handle user syncs in other method
+            await updateUserSyncs(tx, board, syncResults.PUT['user_syncs']);
+          }
+        } catch (error) {
+          //@ts-expect-error
+          console.error("Failed to commit sync database transaction ", error.toString());
+          tx.rollback();
+        }        
+      },
+    );
 
     return results;
   } catch (error) {
