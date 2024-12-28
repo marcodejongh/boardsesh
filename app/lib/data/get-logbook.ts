@@ -1,4 +1,4 @@
-import { sql } from '@/lib/db';
+import { sql } from '@/app/lib/db/db';
 import { BoardName, ClimbUuid } from '../types';
 import { LogbookEntry } from '../api-wrappers/aurora/types';
 import { getTableName } from '../data-sync/aurora/getTableName';

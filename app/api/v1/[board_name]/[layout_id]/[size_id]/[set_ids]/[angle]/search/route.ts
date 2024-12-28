@@ -1,6 +1,5 @@
-import { convertLitUpHoldsStringToMap } from '@/app/components/board-renderer/util';
-import { SearchClimbsResult, searchClimbs } from '@/app/lib/data/queries';
-import { BoardRouteParameters, ErrorResponse, SearchRequestPagination } from '@/app/lib/types';
+import { searchClimbs } from '@/app/lib/db/queries/search-climbs';
+import { BoardRouteParameters, ErrorResponse, SearchClimbsResult, SearchRequestPagination } from '@/app/lib/types';
 import { parseBoardRouteParams, urlParamsToSearchParams } from '@/app/lib/url-utils';
 import { NextResponse } from 'next/server';
 
@@ -22,10 +21,7 @@ export async function GET(
     // Return response
     return NextResponse.json({
       totalCount: result.totalCount,
-      climbs: result.climbs.map((climb) => ({
-        ...climb,
-        litUpHoldsMap: convertLitUpHoldsStringToMap(climb.frames, parsedParams.board_name),
-      })),
+      climbs: result.climbs,
     });
   } catch (error) {
     console.error('Error fetching data:', error);

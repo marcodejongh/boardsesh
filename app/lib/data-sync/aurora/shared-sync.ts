@@ -1,4 +1,4 @@
-import { dbz as db } from '@/lib/db';
+import { dbz as db } from '@/app/lib/db/db';
 import { BoardName } from '../../types';
 import { LastSyncData, SyncOptions } from '../../api-wrappers/aurora/types';
 import { sharedSync } from '../../api-wrappers/aurora/sharedSync';

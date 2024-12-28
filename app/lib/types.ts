@@ -119,6 +119,12 @@ export type FetchResultsResponse = {
   totalCount: number;
 };
 
+export type SearchClimbsResult = {
+  climbs: Climb[];
+  totalCount: number;
+};
+
+
 // Led Colors Type
 export type LedColor = {
   [role_id: number]: string;
