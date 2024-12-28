@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "drizzle-kit push:pg && next build",
+    "build": "drizzle-kit migrate && next build",
     "start": "next start",
     "lint": "next lint",
     "lint-fix": "eslint --fix .",

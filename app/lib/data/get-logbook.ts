@@ -53,7 +53,7 @@ export async function getLogbook(board: BoardName, userId: string, climbUuids?: 
 
       ORDER BY climbed_at DESC
       `,
-      [userId, climbUuids]
+      [userId, climbUuids],
     );
 
     return combinedLogbook.rows;
@@ -104,7 +104,7 @@ export async function getLogbook(board: BoardName, userId: string, climbUuids?: 
       ) subquery
       WHERE difficulty IS NOT NULL;
       `,
-      [userId]
+      [userId],
     );
 
     return combinedLogbook.rows;

@@ -24,14 +24,14 @@ export interface Circuit {
   uuid: string;
   name: string;
   description: string;
-  color: string; 
-  user_id: number; 
+  color: string;
+  user_id: number;
   is_public: boolean;
   is_listed: boolean;
   created_at: string;
   updated_at: string;
   user: CircuitUser;
-  count: number; 
+  count: number;
 }
 
 export interface User {

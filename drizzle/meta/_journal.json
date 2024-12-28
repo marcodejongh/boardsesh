@@ -15,6 +15,20 @@
       "when": 1735369313427,
       "tag": "0001_unique_climbstats",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1735420640429,
+      "tag": "0002_unique_climbstats",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1735422473281,
+      "tag": "0003_add_climbs_indexes",
+      "breakpoints": true
     }
   ]
 }

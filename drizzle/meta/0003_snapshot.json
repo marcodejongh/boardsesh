@@ -1,5 +1,5 @@
 {
-  "id": "b5d3052c-b0d5-4aa1-98e7-aa987fcbf458",
+  "id": "75553571-efd9-49dd-93d2-2e6f6de78204",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -264,15 +264,7 @@
           "onUpdate": "cascade"
         }
       },
-      "compositePrimaryKeys": {
-        "idx_16883_sqlite_autoindex_beta_links_1": {
-          "name": "idx_16883_sqlite_autoindex_beta_links_1",
-          "columns": [
-            "climb_uuid",
-            "link"
-          ]
-        }
-      },
+      "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -460,15 +452,7 @@
       },
       "indexes": {},
       "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "idx_16868_sqlite_autoindex_circuits_climbs_1": {
-          "name": "idx_16868_sqlite_autoindex_circuits_climbs_1",
-          "columns": [
-            "circuit_uuid",
-            "climb_uuid"
-          ]
-        }
-      },
+      "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -574,7 +558,7 @@
         },
         "angle": {
           "name": "angle",
-          "type": "bigint",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true
         },
@@ -621,31 +605,17 @@
           "notNull": false
         }
       },
-      "indexes": {
-        "kilter_climb_angle_idx": {
-          "name": "kilter_climb_angle_idx",
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "kilter_climb_stats_pk": {
+          "name": "kilter_climb_stats_pk",
           "columns": [
-            {
-              "expression": "climb_uuid",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "angle",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
+            "climb_uuid",
+            "angle"
+          ]
         }
       },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -669,7 +639,7 @@
         },
         "angle": {
           "name": "angle",
-          "type": "bigint",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true
         },
@@ -848,7 +818,74 @@
           "notNull": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "kilter_climbs_layout_filter_idx": {
+          "name": "kilter_climbs_layout_filter_idx",
+          "columns": [
+            {
+              "expression": "layout_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "is_listed",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "is_draft",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "frames_count",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "kilter_climbs_edges_idx": {
+          "name": "kilter_climbs_edges_idx",
+          "columns": [
+            {
+              "expression": "edge_left",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "edge_right",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "edge_bottom",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "edge_top",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "climbs_layout_id_fkey1": {
           "name": "climbs_layout_id_fkey1",
@@ -955,61 +992,7 @@
           "default": 0
         }
       },
-      "indexes": {
-        "idx_16791_sqlite_autoindex_holes_2": {
-          "name": "idx_16791_sqlite_autoindex_holes_2",
-          "columns": [
-            {
-              "expression": "product_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last",
-              "opclass": "text_ops"
-            },
-            {
-              "expression": "name",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last",
-              "opclass": "text_ops"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "idx_16791_sqlite_autoindex_holes_3": {
-          "name": "idx_16791_sqlite_autoindex_holes_3",
-          "columns": [
-            {
-              "expression": "product_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last",
-              "opclass": "int4_ops"
-            },
-            {
-              "expression": "x",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last",
-              "opclass": "int4_ops"
-            },
-            {
-              "expression": "y",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last",
-              "opclass": "int4_ops"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
+      "indexes": {},
       "foreignKeys": {
         "holes_product_id_fkey1": {
           "name": "holes_product_id_fkey1",
@@ -1184,31 +1167,7 @@
           "notNull": false
         }
       },
-      "indexes": {
-        "idx_16797_sqlite_autoindex_leds_2": {
-          "name": "idx_16797_sqlite_autoindex_leds_2",
-          "columns": [
-            {
-              "expression": "product_size_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last",
-              "opclass": "int4_ops"
-            },
-            {
-              "expression": "position",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last",
-              "opclass": "int4_ops"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
+      "indexes": {},
       "foreignKeys": {
         "leds_hole_id_fkey1": {
           "name": "leds_hole_id_fkey1",
@@ -1347,31 +1306,7 @@
           "notNull": false
         }
       },
-      "indexes": {
-        "idx_16904_sqlite_autoindex_placements_2": {
-          "name": "idx_16904_sqlite_autoindex_placements_2",
-          "columns": [
-            {
-              "expression": "layout_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last",
-              "opclass": "int4_ops"
-            },
-            {
-              "expression": "hole_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last",
-              "opclass": "int4_ops"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
+      "indexes": {},
       "foreignKeys": {
         "placements_default_placement_role_id_fkey1": {
           "name": "placements_default_placement_role_id_fkey1",
@@ -1566,38 +1501,7 @@
           "notNull": false
         }
       },
-      "indexes": {
-        "idx_16813_sqlite_autoindex_product_sizes_layouts_sets_2": {
-          "name": "idx_16813_sqlite_autoindex_product_sizes_layouts_sets_2",
-          "columns": [
-            {
-              "expression": "product_size_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last",
-              "opclass": "int4_ops"
-            },
-            {
-              "expression": "layout_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last",
-              "opclass": "int4_ops"
-            },
-            {
-              "expression": "set_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last",
-              "opclass": "int4_ops"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
+      "indexes": {},
       "foreignKeys": {
         "product_sizes_layouts_sets_layout_id_fkey1": {
           "name": "product_sizes_layouts_sets_layout_id_fkey1",
@@ -1727,15 +1631,7 @@
           "onUpdate": "cascade"
         }
       },
-      "compositePrimaryKeys": {
-        "idx_16800_sqlite_autoindex_products_angles_1": {
-          "name": "idx_16800_sqlite_autoindex_products_angles_1",
-          "columns": [
-            "product_id",
-            "angle"
-          ]
-        }
-      },
+      "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -1828,16 +1724,7 @@
       },
       "indexes": {},
       "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "idx_16853_sqlite_autoindex_tags_1": {
-          "name": "idx_16853_sqlite_autoindex_tags_1",
-          "columns": [
-            "entity_uuid",
-            "user_id",
-            "name"
-          ]
-        }
-      },
+      "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -1862,15 +1749,7 @@
       },
       "indexes": {},
       "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "idx_16828_sqlite_autoindex_user_permissions_1": {
-          "name": "idx_16828_sqlite_autoindex_user_permissions_1",
-          "columns": [
-            "user_id",
-            "name"
-          ]
-        }
-      },
+      "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -1915,15 +1794,7 @@
           "onUpdate": "cascade"
         }
       },
-      "compositePrimaryKeys": {
-        "idx_16833_sqlite_autoindex_user_syncs_1": {
-          "name": "idx_16833_sqlite_autoindex_user_syncs_1",
-          "columns": [
-            "user_id",
-            "table_name"
-          ]
-        }
-      },
+      "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -2138,15 +2009,7 @@
           "onUpdate": "cascade"
         }
       },
-      "compositePrimaryKeys": {
-        "idx_16838_sqlite_autoindex_walls_sets_1": {
-          "name": "idx_16838_sqlite_autoindex_walls_sets_1",
-          "columns": [
-            "wall_uuid",
-            "set_id"
-          ]
-        }
-      },
+      "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -2412,15 +2275,7 @@
           "onUpdate": "cascade"
         }
       },
-      "compositePrimaryKeys": {
-        "idx_16497_sqlite_autoindex_beta_links_1": {
-          "name": "idx_16497_sqlite_autoindex_beta_links_1",
-          "columns": [
-            "climb_uuid",
-            "link"
-          ]
-        }
-      },
+      "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -2608,15 +2463,7 @@
       },
       "indexes": {},
       "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "idx_16482_sqlite_autoindex_circuits_climbs_1": {
-          "name": "idx_16482_sqlite_autoindex_circuits_climbs_1",
-          "columns": [
-            "circuit_uuid",
-            "climb_uuid"
-          ]
-        }
-      },
+      "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -2711,7 +2558,7 @@
         "id": {
           "name": "id",
           "type": "bigserial",
-          "primaryKey": true,
+          "primaryKey": false,
           "notNull": true
         },
         "climb_uuid": {
@@ -2722,7 +2569,7 @@
         },
         "angle": {
           "name": "angle",
-          "type": "bigint",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true
         },
@@ -2769,31 +2616,17 @@
           "notNull": false
         }
       },
-      "indexes": {
-        "tension_climb_angle_idx": {
-          "name": "tension_climb_angle_idx",
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "tension_climb_stats_pk": {
+          "name": "tension_climb_stats_pk",
           "columns": [
-            {
-              "expression": "climb_uuid",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "angle",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
+            "climb_uuid",
+            "angle"
+          ]
         }
       },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -2817,7 +2650,7 @@
         },
         "angle": {
           "name": "angle",
-          "type": "bigint",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true
         },
@@ -2996,7 +2829,74 @@
           "notNull": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "tension_climbs_layout_filter_idx": {
+          "name": "tension_climbs_layout_filter_idx",
+          "columns": [
+            {
+              "expression": "layout_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "is_listed",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "is_draft",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "frames_count",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "tension_climbs_edges_idx": {
+          "name": "tension_climbs_edges_idx",
+          "columns": [
+            {
+              "expression": "edge_left",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "edge_right",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "edge_bottom",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "edge_top",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "climbs_layout_id_fkey": {
           "name": "climbs_layout_id_fkey",
@@ -3103,61 +3003,7 @@
           "default": 0
         }
       },
-      "indexes": {
-        "idx_16405_sqlite_autoindex_holes_2": {
-          "name": "idx_16405_sqlite_autoindex_holes_2",
-          "columns": [
-            {
-              "expression": "product_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last",
-              "opclass": "text_ops"
-            },
-            {
-              "expression": "name",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last",
-              "opclass": "text_ops"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "idx_16405_sqlite_autoindex_holes_3": {
-          "name": "idx_16405_sqlite_autoindex_holes_3",
-          "columns": [
-            {
-              "expression": "product_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last",
-              "opclass": "int4_ops"
-            },
-            {
-              "expression": "x",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last",
-              "opclass": "int4_ops"
-            },
-            {
-              "expression": "y",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last",
-              "opclass": "int4_ops"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
+      "indexes": {},
       "foreignKeys": {
         "holes_mirrored_hole_id_fkey": {
           "name": "holes_mirrored_hole_id_fkey",
@@ -3345,31 +3191,7 @@
           "notNull": false
         }
       },
-      "indexes": {
-        "idx_16411_sqlite_autoindex_leds_2": {
-          "name": "idx_16411_sqlite_autoindex_leds_2",
-          "columns": [
-            {
-              "expression": "product_size_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last",
-              "opclass": "int4_ops"
-            },
-            {
-              "expression": "position",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last",
-              "opclass": "int4_ops"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
+      "indexes": {},
       "foreignKeys": {
         "leds_hole_id_fkey": {
           "name": "leds_hole_id_fkey",
@@ -3508,31 +3330,7 @@
           "notNull": false
         }
       },
-      "indexes": {
-        "idx_16518_sqlite_autoindex_placements_2": {
-          "name": "idx_16518_sqlite_autoindex_placements_2",
-          "columns": [
-            {
-              "expression": "layout_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last",
-              "opclass": "int4_ops"
-            },
-            {
-              "expression": "hole_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last",
-              "opclass": "int4_ops"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
+      "indexes": {},
       "foreignKeys": {
         "placements_default_placement_role_id_fkey": {
           "name": "placements_default_placement_role_id_fkey",
@@ -3727,38 +3525,7 @@
           "notNull": false
         }
       },
-      "indexes": {
-        "idx_16427_sqlite_autoindex_product_sizes_layouts_sets_2": {
-          "name": "idx_16427_sqlite_autoindex_product_sizes_layouts_sets_2",
-          "columns": [
-            {
-              "expression": "product_size_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last",
-              "opclass": "int4_ops"
-            },
-            {
-              "expression": "layout_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last",
-              "opclass": "int4_ops"
-            },
-            {
-              "expression": "set_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last",
-              "opclass": "int4_ops"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
+      "indexes": {},
       "foreignKeys": {
         "product_sizes_layouts_sets_layout_id_fkey": {
           "name": "product_sizes_layouts_sets_layout_id_fkey",
@@ -3888,15 +3655,7 @@
           "onUpdate": "cascade"
         }
       },
-      "compositePrimaryKeys": {
-        "idx_16414_sqlite_autoindex_products_angles_1": {
-          "name": "idx_16414_sqlite_autoindex_products_angles_1",
-          "columns": [
-            "product_id",
-            "angle"
-          ]
-        }
-      },
+      "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -3989,16 +3748,7 @@
       },
       "indexes": {},
       "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "idx_16472_sqlite_autoindex_tags_1": {
-          "name": "idx_16472_sqlite_autoindex_tags_1",
-          "columns": [
-            "entity_uuid",
-            "user_id",
-            "name"
-          ]
-        }
-      },
+      "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -4023,15 +3773,7 @@
       },
       "indexes": {},
       "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "idx_16447_sqlite_autoindex_user_permissions_1": {
-          "name": "idx_16447_sqlite_autoindex_user_permissions_1",
-          "columns": [
-            "user_id",
-            "name"
-          ]
-        }
-      },
+      "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -4076,15 +3818,7 @@
           "onUpdate": "cascade"
         }
       },
-      "compositePrimaryKeys": {
-        "idx_16452_sqlite_autoindex_user_syncs_1": {
-          "name": "idx_16452_sqlite_autoindex_user_syncs_1",
-          "columns": [
-            "user_id",
-            "table_name"
-          ]
-        }
-      },
+      "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -4299,15 +4033,7 @@
           "onUpdate": "cascade"
         }
       },
-      "compositePrimaryKeys": {
-        "idx_16457_sqlite_autoindex_walls_sets_1": {
-          "name": "idx_16457_sqlite_autoindex_walls_sets_1",
-          "columns": [
-            "wall_uuid",
-            "set_id"
-          ]
-        }
-      },
+      "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},

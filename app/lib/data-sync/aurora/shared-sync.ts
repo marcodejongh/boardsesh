@@ -37,7 +37,7 @@ import {
   tensionBetaLinks,
   tensionClimbStatsHistory,
   kilterClimbStatsHistory,
-} from '@/drizzle/schema';
+} from '@/app/lib/db/schema';
 import { PgQueryResultHKT, PgTransaction } from 'drizzle-orm/pg-core';
 import { VercelPgQueryResultHKT } from 'drizzle-orm/vercel-postgres';
 

@@ -1,4 +1,4 @@
-import { BoardName } from "../../types";
+import { BoardName } from '../../types';
 
 export const getTableName = (boardName: BoardName, tableName: string) => {
   if (!boardName) {

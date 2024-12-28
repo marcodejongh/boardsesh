@@ -199,4 +199,3 @@ export const SHARED_SYNC_TABLES = [
   'climb_stats',
   'beta_links',
 ];
-

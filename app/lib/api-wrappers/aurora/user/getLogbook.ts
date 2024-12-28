@@ -6,8 +6,6 @@
 // accept-encoding: gzip, deflate, br
 // cookie: token=XXXX
 
-
-
 // Common fields for all logbook entries
 interface BaseLogbookEntry {
   _type: 'bid' | 'ascent'; // Discriminator type, e.g., "bid" or "ascent"

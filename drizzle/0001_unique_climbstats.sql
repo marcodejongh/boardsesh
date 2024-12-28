@@ -1,7 +1,13 @@
+ALTER TABLE "kilter_climb_stats" ALTER COLUMN "angle" SET DATA TYPE integer;
+--> statement-breakpoint
+ALTER TABLE "tension_climb_stats" ALTER COLUMN "angle" SET DATA TYPE integer;
+
+--> statement-breakpoin
+
 CREATE TABLE "kilter_climb_stats_history" (
    "id" bigserial PRIMARY KEY NOT NULL,
    "climb_uuid" text NOT NULL,
-   "angle" bigint NOT NULL,
+   "angle" integer NOT NULL,
    "display_difficulty" double precision,
    "benchmark_difficulty" double precision,
    "ascensionist_count" bigint,
@@ -15,7 +21,7 @@ CREATE TABLE "kilter_climb_stats_history" (
 CREATE TABLE "tension_climb_stats_history" (
    "id" bigserial PRIMARY KEY NOT NULL,
    "climb_uuid" text NOT NULL,
-   "angle" bigint NOT NULL,
+   "angle" integer NOT NULL,
    "display_difficulty" double precision,
    "benchmark_difficulty" double precision,
    "ascensionist_count" bigint,
@@ -25,15 +31,7 @@ CREATE TABLE "tension_climb_stats_history" (
    "fa_at" timestamp,
    "created_at" timestamp DEFAULT now() NOT NULL
 );
---> statement-breakpoint
-ALTER TABLE "tension_climb_stats" ALTER COLUMN "climb_uuid" SET NOT NULL;
---> statement-breakpoint
-ALTER TABLE "tension_climb_stats" ALTER COLUMN "angle" SET NOT NULL;
---> statement-breakpoint
-ALTER TABLE "kilter_climb_stats" ALTER COLUMN "climb_uuid" SET NOT NULL;
---> statement-breakpoint
-ALTER TABLE "kilter_climb_stats" ALTER COLUMN "angle" SET NOT NULL;
---> statement-breakpoint
+
 
 -- Copy existing records into history tables
 INSERT INTO tension_climb_stats_history (
@@ -80,8 +78,3 @@ WHERE a.climb_uuid = b.climb_uuid
 AND a.angle = b.angle 
 AND a.id < b.max_id;
 --> statement-breakpoint
-
--- Add unique constraints
-CREATE UNIQUE INDEX "tension_climb_angle_idx" ON "tension_climb_stats" USING btree ("climb_uuid","angle");
---> statement-breakpoint
-CREATE UNIQUE INDEX "kilter_climb_angle_idx" ON "kilter_climb_stats" USING btree ("climb_uuid","angle");

@@ -20,7 +20,7 @@ import {
   tensionTags,
   tensionCircuits,
   tensionUserSyncs,
-} from '@/drizzle/schema';
+} from '@/app/lib/db/schema';
 import { PgTransaction } from 'drizzle-orm/pg-core';
 import { VercelPgQueryResultHKT } from 'drizzle-orm/vercel-postgres';
 
@@ -296,28 +296,24 @@ async function updateUserSyncs(
 ) {
   const schemas = getSchemas(boardName);
 
-    for (const sync of userSyncs) {
-      await tx
-        .insert(schemas.userSyncs)
-        .values({
-          userId: Number(sync.user_id),
-          tableName: sync.table_name,
+  for (const sync of userSyncs) {
+    await tx
+      .insert(schemas.userSyncs)
+      .values({
+        userId: Number(sync.user_id),
+        tableName: sync.table_name,
+        lastSynchronizedAt: sync.last_synchronized_at,
+      })
+      .onConflictDoUpdate({
+        target: [schemas.userSyncs.userId, schemas.userSyncs.tableName],
+        set: {
           lastSynchronizedAt: sync.last_synchronized_at,
-        })
-        .onConflictDoUpdate({
-          target: [schemas.userSyncs.userId, schemas.userSyncs.tableName],
-          set: {
-            lastSynchronizedAt: sync.last_synchronized_at,
-          },
-        });
-    }
+        },
+      });
+  }
 }
 
-export async function getLastSyncTimes(
-  boardName: BoardName,
-  userId: string,
-  tableNames: string[],
-) {
+export async function getLastSyncTimes(boardName: BoardName, userId: string, tableNames: string[]) {
   const schemas = getSchemas(boardName);
 
   const result = await db
@@ -336,7 +332,7 @@ export async function syncUserData(
   tables: string[] = USER_TABLES,
 ): Promise<Record<string, { synced: number }>> {
   const results: Record<string, { synced: number }> = {};
-  
+
   try {
     const syncParams: SyncOptions = {
       tables,
@@ -381,9 +377,9 @@ export async function syncUserData(
           }
         } catch (error) {
           //@ts-expect-error
-          console.error("Failed to commit sync database transaction ", error.toString());
+          console.error('Failed to commit sync database transaction ', error.toString());
           tx.rollback();
-        }        
+        }
       },
     );
 
