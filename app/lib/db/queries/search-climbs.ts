@@ -1,4 +1,4 @@
-import { and, eq, between, gte, sql, is } from 'drizzle-orm';
+import { and, eq, between, gte, sql, is, desc, asc } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { dbz as db } from '../db';
 import { convertLitUpHoldsStringToMap } from '@/app/components/board-renderer/util';
@@ -15,16 +15,20 @@ export const searchClimbs = async (
   params: ParsedBoardRouteParameters,
   searchParams: SearchRequestPagination,
 ): Promise<SearchClimbsResult> => {
-  const allowedSortColumns: Record<SearchRequest['sortBy'], string> = {
-    ascents: 'ascensionist_count',
-    difficulty: 'display_difficulty',
-    name: 'name',
-    quality: 'quality_average',
+  // TODO: use nicer table abstraction from shared syncs here
+  const tables = getBoardTables(params.board_name);
+  
+  // Define sort columns with explicit SQL expressions where needed
+  const allowedSortColumns: Record<SearchRequest['sortBy'], any> = {
+    ascents: tables.climbStats.ascensionistCount,
+    difficulty: sql`ROUND(${tables.climbStats.displayDifficulty}::numeric, 0)`,
+    name: tables.climbs.name,
+    quality: tables.climbStats.qualityAverage,
   };
 
-  const safeSortBy = allowedSortColumns[searchParams.sortBy] || 'ascensionist_count';
-
-  const tables = getBoardTables(params.board_name);
+  // Get the selected sort column or fall back to ascensionist_count
+  const sortColumn = allowedSortColumns[searchParams.sortBy] || tables.climbStats.ascensionistCount;
+  
   const ps = alias(tables.productSizes, 'ps');
 
   // Build where conditions array dynamically
@@ -99,7 +103,11 @@ export const searchClimbs = async (
     )
     .innerJoin(ps, eq(ps.id, params.size_id))
     .where(and(...whereConditions))
-    .orderBy(sql`${safeSortBy} ${searchParams.sortOrder === 'asc' ? sql`ASC` : sql`DESC`}`, tables.climbs.uuid)
+    .orderBy(
+      searchParams.sortOrder === 'asc' ? sql`${sortColumn} ASC NULLS FIRST` : sql`${sortColumn} DESC NULLS LAST`,
+      // Add secondary sort to ensure consistent ordering
+      desc(tables.climbs.uuid),
+    )
     .limit(searchParams.pageSize)
     .offset(searchParams.page * searchParams.pageSize);
 
