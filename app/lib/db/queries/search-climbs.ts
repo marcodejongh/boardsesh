@@ -1,4 +1,4 @@
-import { and, eq, between, gte, sql } from 'drizzle-orm';
+import { and, eq, between, gte, sql, is } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { dbz as db } from '../db';
 import { convertLitUpHoldsStringToMap } from '@/app/components/board-renderer/util';
@@ -27,6 +27,52 @@ export const searchClimbs = async (
   const tables = getBoardTables(params.board_name);
   const ps = alias(tables.productSizes, 'ps');
 
+  // Build where conditions array dynamically
+  const whereConditions = [
+    eq(tables.climbs.layoutId, params.layout_id),
+    eq(tables.climbs.isListed, true),
+    eq(tables.climbs.isDraft, false),
+    eq(tables.climbs.framesCount, 1),
+    eq(ps.id, params.size_id),
+    sql`${tables.climbs.edgeLeft} > ${ps.edgeLeft}`,
+    sql`${tables.climbs.edgeRight} < ${ps.edgeRight}`,
+    sql`${tables.climbs.edgeBottom} > ${ps.edgeBottom}`,
+    sql`${tables.climbs.edgeTop} < ${ps.edgeTop}`,
+  ];
+
+  // Add optional conditions only if the parameters are defined
+  if (searchParams.minAscents) {
+    whereConditions.push(gte(tables.climbStats.ascensionistCount, searchParams.minAscents));
+  }
+
+  if (searchParams.minGrade && searchParams.maxGrade) {
+    whereConditions.push(
+      sql`ROUND(${tables.climbStats.displayDifficulty}::numeric, 0) BETWEEN ${searchParams.minGrade} AND ${searchParams.maxGrade}`,
+    );
+  } else if (searchParams.minGrade) {
+    whereConditions.push(
+      sql`ROUND(${tables.climbStats.displayDifficulty}::numeric, 0) >= ${searchParams.minGrade}`,
+    );
+  } else if (searchParams.maxGrade) {
+    whereConditions.push(
+      sql`ROUND(${tables.climbStats.displayDifficulty}::numeric, 0) <= ${searchParams.maxGrade}`,
+    );
+  }
+
+  if (searchParams.minRating) {
+    whereConditions.push(sql`${tables.climbStats.qualityAverage} >= ${searchParams.minRating}`);
+  }
+
+  if (searchParams.gradeAccuracy) {
+    whereConditions.push(
+      sql`ABS(ROUND(${tables.climbStats.displayDifficulty}::numeric, 0) - ${tables.climbStats.difficultyAverage}::numeric) <= ${searchParams.gradeAccuracy}`,
+    );
+  }
+
+  if (searchParams.name) {
+    whereConditions.push(sql`${tables.climbs.name} ILIKE ${`%${searchParams.name}%`}`);
+  }
+
   const baseQuery = db
     .select({
       uuid: tables.climbs.uuid,
@@ -43,35 +89,16 @@ export const searchClimbs = async (
       totalCount: sql<number>`count(*) over()`,
     })
     .from(tables.climbs)
-    .leftJoin(tables.climbStats, eq(tables.climbStats.climbUuid, tables.climbs.uuid))
+    .leftJoin(
+      tables.climbStats,
+      and(eq(tables.climbStats.climbUuid, tables.climbs.uuid), eq(tables.climbStats.angle, params.angle)),
+    )
     .leftJoin(
       tables.difficultyGrades,
       eq(tables.difficultyGrades.difficulty, sql`ROUND(${tables.climbStats.displayDifficulty}::numeric)`),
     )
     .innerJoin(ps, eq(ps.id, params.size_id))
-    .where(
-      and(
-        eq(tables.climbs.layoutId, params.layout_id),
-        eq(tables.climbs.isListed, true),
-        eq(tables.climbs.isDraft, false),
-        eq(tables.climbs.framesCount, 1),
-        eq(ps.id, params.size_id),
-        eq(tables.climbStats.angle, params.angle),
-        gte(tables.climbStats.ascensionistCount, searchParams.minAscents),
-        sql`${tables.climbs.edgeLeft} > ${ps.edgeLeft}`,
-        sql`${tables.climbs.edgeRight} < ${ps.edgeRight}`,
-        sql`${tables.climbs.edgeBottom} > ${ps.edgeBottom}`,
-        sql`${tables.climbs.edgeTop} < ${ps.edgeTop}`,
-        ...(searchParams.minGrade && searchParams.maxGrade
-          ? [
-              sql`ROUND(${tables.climbStats.displayDifficulty}::numeric, 0) BETWEEN ${searchParams.minGrade} AND ${searchParams.maxGrade}`,
-            ]
-          : []),
-        sql`${tables.climbStats.qualityAverage} >= ${searchParams.minRating}`,
-        sql`ABS(ROUND(${tables.climbStats.displayDifficulty}::numeric, 0) - ${tables.climbStats.difficultyAverage}::numeric) <= ${searchParams.gradeAccuracy}`,
-        ...(searchParams.name ? [sql`${tables.climbs.name} ILIKE ${`%${searchParams.name}%`}`] : []),
-      ),
-    )
+    .where(and(...whereConditions))
     .orderBy(sql`${safeSortBy} ${searchParams.sortOrder === 'asc' ? sql`ASC` : sql`DESC`}`, tables.climbs.uuid)
     .limit(searchParams.pageSize)
     .offset(searchParams.page * searchParams.pageSize);
@@ -85,12 +112,12 @@ export const searchClimbs = async (
     name: result.name || '',
     description: result.description || '',
     frames: result.frames || '',
-    angle: Number(result.angle),
+    angle: Number(params.angle),
     ascensionist_count: Number(result.ascensionist_count),
     difficulty: result.difficulty || '',
-    quality_average: result.quality_average.toString(),
-    stars: Math.round(result.quality_average * 5),
-    difficulty_error: result.difficulty_error.toString(),
+    quality_average: result.quality_average?.toString(),
+    stars: Math.round((result.quality_average || 0) * 5),
+    difficulty_error: result.difficulty_error?.toString(),
     benchmark_difficulty: result.benchmark_difficulty?.toString() || null,
     litUpHoldsMap: convertLitUpHoldsStringToMap(result.frames || '', params.board_name),
   }));

@@ -1,121 +1,146 @@
 import React from 'react';
-import { Form, Slider, InputNumber, Row, Col, Select, Input } from 'antd';
+import { Form, InputNumber, Row, Col, Select, Input } from 'antd';
 import { TENSION_KILTER_GRADES } from '@/app/lib/board-data';
 import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
 import SearchClimbNameInput from './search-climb-name-input';
 
-interface SearchFormProps {}
-
-const SearchForm: React.FC<SearchFormProps> = () => {
+const SearchForm = () => {
   const { uiSearchParams, updateFilters } = useUISearchParams();
-
   const grades = TENSION_KILTER_GRADES;
 
+  const handleGradeChange = (type: 'min' | 'max', value: number | undefined) => {
+    if (type === 'min') {
+      updateFilters({ minGrade: value });
+    } else {
+      updateFilters({ maxGrade: value });
+    }
+  };
+
   return (
-    <>
-      <Form labelCol={{ span: 8 }} wrapperCol={{ span: 16 }}>
-        <Form.Item label="Climb Name">
-          <SearchClimbNameInput />
-        </Form.Item>
-        <Form.Item label="Grade Range">
-          <Slider
-            range
-            min={grades[0].difficulty_id}
-            max={grades[grades.length - 1].difficulty_id}
-            value={[uiSearchParams.minGrade, uiSearchParams.maxGrade]}
-            marks={{
-              [uiSearchParams.minGrade]: {
-                style: { transform: 'translate(-5px, 0px);' }, // Push the label below the slider
-                label: grades.find(({ difficulty_id }) => difficulty_id === uiSearchParams.minGrade)?.difficulty_name,
-              },
-              [uiSearchParams.maxGrade]: {
-                style: { transform: 'translate(-5px, -30px)' }, // Push the label above the slider
-                label: grades.find(({ difficulty_id }) => difficulty_id === uiSearchParams.maxGrade)?.difficulty_name,
-              },
-            }}
-            onChange={(value) => updateFilters({ minGrade: value[0], maxGrade: value[1] })}
-            // tooltip={{
-            //   formatter: (value) => grades.find(({ difficulty_id }) => difficulty_id === value)?.difficulty_name,
-            // }}
-          />
-        </Form.Item>
+    <Form labelCol={{ span: 8 }} wrapperCol={{ span: 16 }}>
+      <Form.Item label="Climb Name">
+        <SearchClimbNameInput />
+      </Form.Item>
 
-        <Form.Item label="Min Ascents">
-          <InputNumber
-            min={1}
-            value={uiSearchParams.minAscents}
-            onChange={(value) => updateFilters({ minAscents: value || 10 })}
-            style={{ width: '100%' }}
-          />
-        </Form.Item>
-
-        <Form.Item label="Sort By">
-          <Row gutter={8}>
-            <Col span={16}>
+      <Form.Item label="Grade Range">
+        <Row gutter={8}>
+          <Col span={12}>
+            <Form.Item label="Min" noStyle>
               <Select
-                value={uiSearchParams.sortBy}
-                onChange={(value) => updateFilters({ sortBy: value })}
+                value={uiSearchParams.minGrade || 0}
+                defaultValue={0}
+                onChange={(value) => handleGradeChange('min', value)}
                 style={{ width: '100%' }}
               >
-                <Select.Option value="ascents">Ascents</Select.Option>
-                <Select.Option value="difficulty">Difficulty</Select.Option>
-                <Select.Option value="name">Name</Select.Option>
-                <Select.Option value="quality">Quality</Select.Option>
+                <Select.Option value={0}>Any</Select.Option>
+                {grades.map((grade) => (
+                  <Select.Option key={grade.difficulty_id} value={grade.difficulty_id}>
+                    {grade.difficulty_name}
+                  </Select.Option>
+                ))}
               </Select>
-            </Col>
-            <Col span={8}>
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item label="Max" noStyle>
               <Select
-                value={uiSearchParams.sortOrder}
-                onChange={(value) => updateFilters({ sortOrder: value })}
+                value={uiSearchParams.maxGrade || 0}
+                defaultValue={0}
+                onChange={(value) => handleGradeChange('max', value)}
                 style={{ width: '100%' }}
               >
-                <Select.Option value="desc">Descending</Select.Option>
-                <Select.Option value="asc">Ascending</Select.Option>
+                <Select.Option value={0}>Any</Select.Option>
+                {grades.map((grade) => (
+                  <Select.Option key={grade.difficulty_id} value={grade.difficulty_id}>
+                    {grade.difficulty_name}
+                  </Select.Option>
+                ))}
               </Select>
-            </Col>
-          </Row>
-        </Form.Item>
+            </Form.Item>
+          </Col>
+        </Row>
+      </Form.Item>
 
-        <Form.Item label="Min Rating">
-          <InputNumber
-            min={1.0}
-            max={3.0}
-            step={0.1}
-            value={uiSearchParams.minRating}
-            onChange={(value) => updateFilters({ minRating: value || 1 })}
-            style={{ width: '100%' }}
-          />
-        </Form.Item>
+      <Form.Item label="Min Ascents">
+        <InputNumber
+          min={1}
+          value={uiSearchParams.minAscents}
+          onChange={(value) => updateFilters({ minAscents: value || undefined })}
+          style={{ width: '100%' }}
+          placeholder="Any"
+        />
+      </Form.Item>
 
-        <Form.Item label="Classics Only">
-          <Select
-            value={uiSearchParams.onlyClassics}
-            onChange={(value) => updateFilters({ onlyClassics: value })}
-            style={{ width: '100%' }}
-          >
-            <Select.Option value="0">No</Select.Option>
-            <Select.Option value="1">Yes</Select.Option>
-          </Select>
-        </Form.Item>
+      <Form.Item label="Sort By">
+        <Row gutter={8}>
+          <Col span={16}>
+            <Select
+              value={uiSearchParams.sortBy}
+              onChange={(value) => updateFilters({ sortBy: value })}
+              style={{ width: '100%' }}
+            >
+              <Select.Option value="ascents">Ascents</Select.Option>
+              <Select.Option value="difficulty">Difficulty</Select.Option>
+              <Select.Option value="name">Name</Select.Option>
+              <Select.Option value="quality">Quality</Select.Option>
+            </Select>
+          </Col>
+          <Col span={8}>
+            <Select
+              value={uiSearchParams.sortOrder}
+              onChange={(value) => updateFilters({ sortOrder: value })}
+              style={{ width: '100%' }}
+            >
+              <Select.Option value="desc">Descending</Select.Option>
+              <Select.Option value="asc">Ascending</Select.Option>
+            </Select>
+          </Col>
+        </Row>
+      </Form.Item>
 
-        <Form.Item label="Grade Accuracy">
-          <Select
-            value={uiSearchParams.gradeAccuracy}
-            onChange={(value) => updateFilters({ gradeAccuracy: value })}
-            style={{ width: '100%' }}
-          >
-            <Select.Option value={1}>Any</Select.Option>
-            <Select.Option value={0.2}>Somewhat Accurate (&lt;0.2)</Select.Option>
-            <Select.Option value={0.1}>Very Accurate (&lt;0.1)</Select.Option>
-            <Select.Option value={0.05}>Extremely Accurate (&lt;0.05)</Select.Option>
-          </Select>
-        </Form.Item>
+      <Form.Item label="Min Rating">
+        <InputNumber
+          min={1.0}
+          max={3.0}
+          step={0.1}
+          value={uiSearchParams.minRating}
+          onChange={(value) => updateFilters({ minRating: value || undefined })}
+          style={{ width: '100%' }}
+          placeholder="Any"
+        />
+      </Form.Item>
 
-        <Form.Item label="Setter Name">
-          <Input value={uiSearchParams.settername} onChange={(e) => updateFilters({ settername: e.target.value })} />
-        </Form.Item>
-      </Form>
-    </>
+      <Form.Item label="Classics Only">
+        <Select
+          value={uiSearchParams.onlyClassics}
+          onChange={(value) => updateFilters({ onlyClassics: value })}
+          style={{ width: '100%' }}
+        >
+          <Select.Option value="0">No</Select.Option>
+          <Select.Option value="1">Yes</Select.Option>
+        </Select>
+      </Form.Item>
+
+      <Form.Item label="Grade Accuracy">
+        <Select
+          value={uiSearchParams.gradeAccuracy}
+          onChange={(value) => updateFilters({ gradeAccuracy: value || undefined })}
+          style={{ width: '100%' }}
+        >
+          <Select.Option value={undefined}>Any</Select.Option>
+          <Select.Option value={0.2}>Somewhat Accurate (&lt;0.2)</Select.Option>
+          <Select.Option value={0.1}>Very Accurate (&lt;0.1)</Select.Option>
+          <Select.Option value={0.05}>Extremely Accurate (&lt;0.05)</Select.Option>
+        </Select>
+      </Form.Item>
+
+      <Form.Item label="Setter Name">
+        <Input 
+          value={uiSearchParams.settername} 
+          onChange={(e) => updateFilters({ settername: e.target.value })} 
+        />
+      </Form.Item>
+    </Form>
   );
 };
 
