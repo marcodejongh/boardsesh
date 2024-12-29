@@ -37,26 +37,41 @@ export function parseBoardRouteParams<T extends BoardRouteParameters>(
   return parsedParams as T extends BoardRouteParametersWithUuid ? never : ParsedBoardRouteParameters;
 }
 
-export const searchParamsToUrlParams = (params: SearchRequestPagination): URLSearchParams => {
-  return new URLSearchParams({
-    gradeAccuracy: params.gradeAccuracy.toString(),
-    maxGrade: params.maxGrade.toString(),
-    minAscents: params.minAscents.toString(),
-    minGrade: params.minGrade.toString(),
-    minRating: params.minRating.toString(),
-    sortBy: params.sortBy,
-    sortOrder: params.sortOrder,
-    name: params.name,
-    onlyClassics: params.onlyClassics.toString(),
-    settername: params.settername,
-    setternameSuggestion: params.setternameSuggestion,
-    holds: params.holds,
-    mirroredHolds: params.mirroredHolds,
-    page: params.page.toString(),
-    pageSize: params.pageSize.toString(),
-  });
+export const searchParamsToUrlParams = ({ 
+ gradeAccuracy = DEFAULT_SEARCH_PARAMS.gradeAccuracy,
+ maxGrade = DEFAULT_SEARCH_PARAMS.maxGrade,
+ minGrade = DEFAULT_SEARCH_PARAMS.minGrade,
+ minAscents = DEFAULT_SEARCH_PARAMS.minAscents,
+ minRating = DEFAULT_SEARCH_PARAMS.minRating,
+ sortBy,
+ sortOrder, 
+ name,
+ onlyClassics,
+ settername,
+ setternameSuggestion,
+ holds,
+ mirroredHolds,
+ page,
+ pageSize
+}: SearchRequestPagination): URLSearchParams => {
+ return new URLSearchParams({
+   gradeAccuracy: gradeAccuracy.toString(),
+   maxGrade: maxGrade.toString(), 
+   minAscents: minAscents.toString(),
+   minGrade: minGrade.toString(),
+   minRating: minRating.toString(),
+   sortBy,
+   sortOrder,
+   name,
+   onlyClassics: onlyClassics.toString(),
+   settername,
+   setternameSuggestion,
+   holds,
+   mirroredHolds,
+   page: page.toString(),
+   pageSize: pageSize.toString(),
+ });
 };
-
 export const DEFAULT_SEARCH_PARAMS: SearchRequestPagination = {
   gradeAccuracy: 0,
   maxGrade: 0,

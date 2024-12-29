@@ -56,11 +56,11 @@ export type SetsResponse = {
 
 // Search Request Type
 export type SearchRequest = {
-  gradeAccuracy?: number;
-  maxGrade?: number;
-  minAscents?: number;
-  minGrade?: number;
-  minRating?: number;
+  gradeAccuracy: number;
+  maxGrade: number;
+  minAscents: number;
+  minGrade: number;
+  minRating: number;
   sortBy: 'ascents' | 'difficulty' | 'name' | 'quality';
   sortOrder: 'asc' | 'desc';
   name: string;
