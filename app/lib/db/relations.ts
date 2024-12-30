@@ -42,7 +42,25 @@ import {
   tensionUserSyncs,
   kilterBetaLinks,
   tensionBetaLinks,
+	tensionClimbStats,
+	kilterClimbStats,
 } from './schema';
+
+export const tensionClimbStatsRelations = relations(tensionClimbStats, ({ one }) => ({
+  climb: one(tensionClimbs, {
+    fields: [tensionClimbStats.climbUuid],
+    references: [tensionClimbs.uuid],
+    relationName: 'climb_stats_climb_uuid_fkey',
+  }),
+}));
+
+export const kilterClimbStatsRelations = relations(kilterClimbStats, ({ one }) => ({
+  climb: one(kilterClimbs, {
+    fields: [kilterClimbStats.climbUuid],
+    references: [kilterClimbs.uuid],
+    relationName: 'climb_stats_climb_uuid_fkey',
+  }),
+}));
 
 export const kilterClimbCacheFieldsRelations = relations(kilterClimbCacheFields, ({ one }) => ({
   kilterClimb: one(kilterClimbs, {
