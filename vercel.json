@@ -2,8 +2,12 @@
   "installCommand": "npm install --legacy-peer-deps",
   "crons": [
     {
-      "path": "/api/internal/shared-sync",
+      "path": "/api/internal/shared-sync/tension",
       "schedule": "0 */2 * * *"
+    },
+    {
+      "path": "/api/internal/shared-sync/kilter",
+      "schedule": "15 */2 * * *"
     }
   ]
 }
