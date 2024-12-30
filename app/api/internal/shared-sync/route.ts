@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { syncSharedData } from '@/lib/data-sync/aurora/shared-sync';
 
 export const dynamic = 'force-dynamic';
-
+export const maxDuration = 300;
 // This is a simple way to secure the endpoint, should be replaced with a better solution
 const CRON_SECRET = process.env.CRON_SECRET;
 
