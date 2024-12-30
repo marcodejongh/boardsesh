@@ -323,8 +323,6 @@ export async function syncSharedData(
     })),
   };
 
-  console.log(syncParams.);
-
   const syncResults = await sharedSync(board, syncParams);
 
   console.log(`Received ${syncResults.PUT.climbs.length} climbs and ${syncResults.PUT.climb_stats.length} climb_stats`);
