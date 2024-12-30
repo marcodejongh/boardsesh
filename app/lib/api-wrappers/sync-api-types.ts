@@ -1,4 +1,4 @@
-interface User {
+export interface User {
   id: number;
   username: string;
   email_address: string;
@@ -19,7 +19,7 @@ interface User {
   permissions: string[];
 }
 
-interface Wall {
+export interface Wall {
   uuid: string;
   name: string;
   user_id: number;
@@ -36,13 +36,13 @@ interface Wall {
   updated_at: string;
 }
 
-interface WallExpungement {
+export interface WallExpungement {
   wall_uuid: string;
   created_at: string;
   updated_at: string;
 }
 
-interface Ascent {
+export interface Ascent {
   uuid: string;
   wall_uuid: string | null;
   climb_uuid: string;
@@ -61,19 +61,19 @@ interface Ascent {
   updated_at: string;
 }
 
-interface UserSync {
+export interface UserSync {
   user_id: number;
   table_name: string;
   last_synchronized_at: string;
 }
 
-interface Attempt {
+export interface Attempt {
   id: number;
   position: number;
   name: string;
 }
 
-interface Product {
+export interface Product {
   id: number;
   name: string;
   is_listed: boolean;
@@ -82,7 +82,7 @@ interface Product {
   max_count_in_frame: number;
 }
 
-interface ProductSize {
+export interface ProductSize {
   id: number;
   product_id: number;
   edge_left: number;
@@ -96,7 +96,7 @@ interface ProductSize {
   is_listed: boolean;
 }
 
-interface ClimbStats {
+export interface ClimbStats {
   climb_uuid: string;
   angle: number;
   display_difficulty: number;
@@ -108,7 +108,7 @@ interface ClimbStats {
   fa_at: string;
 }
 
-interface Hole {
+export interface Hole {
   id: number;
   product_id: number;
   name: string;
@@ -118,14 +118,14 @@ interface Hole {
   mirror_group: number;
 }
 
-interface Led {
+export interface Led {
   id: number;
   product_size_id: number;
   hole_id: number;
   position: number;
 }
 
-interface Layout {
+export interface Layout {
   id: number;
   product_id: number;
   name: string;
@@ -136,7 +136,7 @@ interface Layout {
   created_at: string;
 }
 
-interface PlacementRole {
+export interface PlacementRole {
   id: number;
   product_id: number;
   position: number;
@@ -146,18 +146,18 @@ interface PlacementRole {
   screen_color: string;
 }
 
-interface Set {
+export interface Set {
   id: number;
   name: string;
   hsm: number;
 }
 
-interface ProductsAngle {
+export interface ProductsAngle {
   product_id: number;
   angle: number;
 }
 
-interface BetaLink {
+export interface BetaLink {
   climb_uuid: string;
   link: string;
   foreign_username: string | null;
@@ -167,7 +167,7 @@ interface BetaLink {
   created_at: string;
 }
 
-interface ProductSizesLayoutsSet {
+export interface ProductSizesLayoutsSet {
   id: number;
   product_size_id: number;
   layout_id: number;
@@ -176,16 +176,11 @@ interface ProductSizesLayoutsSet {
   is_listed: boolean;
 }
 
-interface SharedSync {
+export interface SharedSync {
   table_name: string;
   last_synchronized_at: string;
 }
-
-export interface SyncDataPUT
-  extends Record<
-    string,
-    Array<
-      | User
+export type SyncPutFields = User
       | Wall
       | WallExpungement
       | Ascent
@@ -203,9 +198,9 @@ export interface SyncDataPUT
       | Set
       | ProductsAngle
       | BetaLink
-      | ProductSizesLayoutsSet
-    >
-  > {
+      | ProductSizesLayoutsSet;
+      
+export interface SyncDataPUT extends Record<string, Array<SyncPutFields>> {
   users: User[];
   walls: Wall[];
   wall_expungements: WallExpungement[];
@@ -227,7 +222,7 @@ export interface SyncDataPUT
   product_sizes_layouts_sets: ProductSizesLayoutsSet[];
 }
 
-interface Climb {
+export interface Climb {
   uuid: string;
   name: string;
   description: string;

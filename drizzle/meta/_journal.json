@@ -50,6 +50,34 @@
       "when": 1735427971317,
       "tag": "0006_remove_unnecessary_unique",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1735440124885,
+      "tag": "0007_remove_climbstats_id_column",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1735440793114,
+      "tag": "0008_stats_foreign_keys",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1735526188118,
+      "tag": "0009_nullable_stats",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1735526364141,
+      "tag": "0010_remove_stats_foreignkeys",
+      "breakpoints": true
     }
   ]
 }

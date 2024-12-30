@@ -87,7 +87,6 @@ export const kilterCircuits = pgTable('kilter_circuits', {
 export const tensionClimbStats = pgTable(
   'tension_climb_stats',
   {
-    id: bigserial({ mode: 'bigint' }).notNull(),
     climbUuid: text('climb_uuid').notNull(),
     angle: integer('angle').notNull(),
     displayDifficulty: doublePrecision('display_difficulty'),
@@ -167,7 +166,6 @@ export const kilterLeds = pgTable(
 export const kilterClimbStats = pgTable(
   'kilter_climb_stats',
   {
-    id: bigserial({ mode: 'bigint' }).primaryKey().notNull(),
     climbUuid: text('climb_uuid').notNull(),
     angle: integer('angle').notNull(),
     displayDifficulty: doublePrecision('display_difficulty'),
