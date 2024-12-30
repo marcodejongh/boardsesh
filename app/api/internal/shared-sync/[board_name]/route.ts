@@ -1,13 +1,17 @@
 // app/api/cron/sync-shared-data/route.ts
 import { NextResponse } from 'next/server';
 import { syncSharedData } from '@/lib/data-sync/aurora/shared-sync';
+import { BoardRouteParameters, ParsedBoardRouteParameters } from '@/app/lib/types';
+import { parseBoardRouteParams } from '@/app/lib/url-utils';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 // This is a simple way to secure the endpoint, should be replaced with a better solution
 const CRON_SECRET = process.env.CRON_SECRET;
 
-export async function GET(request: Request) {
+export async function GET(request: Request, { params }: { params: BoardRouteParameters }) {
+  const { board_name }: ParsedBoardRouteParameters = parseBoardRouteParams(params);
+
   try {
     // Basic auth check
     const authHeader = request.headers.get('authorization');
@@ -15,18 +19,11 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Sync both board types
-    const results = await Promise.all([
-      syncSharedData('tension'), 
-      syncSharedData('kilter')
-    ]);
+    const result = syncSharedData(board_name);
 
     return NextResponse.json({
       success: true,
-      results: {
-        tension: results[0],
-        kilter: results[1],
-      },
+      results: result,
     });
   } catch (error) {
     console.error('Cron job failed:', error);
