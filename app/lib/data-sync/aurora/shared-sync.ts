@@ -296,7 +296,7 @@ async function updateSharedSyncs(
   }
 }
 
-export async function getLastSharedSyncTimes(boardName: BoardName, tableNames = SHARED_SYNC_TABLES) {
+export async function getLastSharedSyncTimes(boardName: BoardName) {
   const sharedSyncsSchema = getTable('sharedSyncs', boardName);
 
   const result = await db
@@ -304,8 +304,7 @@ export async function getLastSharedSyncTimes(boardName: BoardName, tableNames = 
       table_name: sharedSyncsSchema.tableName,
       last_synchronized_at: sharedSyncsSchema.lastSynchronizedAt,
     })
-    .from(sharedSyncsSchema)
-    .where(inArray(sharedSyncsSchema.tableName, tableNames as unknown as Array<string>));
+    .from(sharedSyncsSchema);
 
   return result;
 }
@@ -313,8 +312,9 @@ export async function getLastSharedSyncTimes(boardName: BoardName, tableNames = 
 export async function syncSharedData(
   board: BoardName,
 ): Promise<Record<string, { synced: number }>> {
-  const allSyncTimes = await getLastSharedSyncTimes(board, SHARED_SYNC_TABLES);
-
+  console.log('Entered sync shared data');
+  const allSyncTimes = await getLastSharedSyncTimes(board);
+  console.log('Fetched previous sync times');
   const syncParams: SyncOptions = {
     tables: [...SHARED_SYNC_TABLES],
     sharedSyncs: allSyncTimes.map((syncTime) => ({
@@ -326,6 +326,7 @@ export async function syncSharedData(
   const syncResults = await sharedSync(board, syncParams);
 
   console.log(`Received ${syncResults.PUT.climbs.length} climbs and ${syncResults.PUT.climb_stats.length} climb_stats`);
+  
   return upsertAllSharedTableData(board, syncResults);
 }
 

@@ -20,7 +20,7 @@ export async function GET(request: Request, { params }: { params: BoardRoutePara
     }
     console.log(`Passed auth for ${board_name}`);
 
-    const result = syncSharedData(board_name);
+    const result = await syncSharedData(board_name);
 
     return NextResponse.json({
       success: true,
