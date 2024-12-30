@@ -342,7 +342,7 @@ const upsertAllSharedTableData = async (board: BoardName, syncResults: SyncData)
         await tx.execute(sql`SET CONSTRAINTS ALL DEFERRED`);
         // TODO: Move rest api call out of DB transaction to make error messages
         // easier to interpret
-        const promises = SHARED_SYNC_TABLES
+        const promises = [...SHARED_SYNC_TABLES, 'shared_syncs']
         .filter(name => syncResults.PUT[name])
         .map(async (tableName) => {
           const data = syncResults.PUT[tableName];
