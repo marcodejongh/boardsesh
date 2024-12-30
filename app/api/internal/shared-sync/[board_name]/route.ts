@@ -10,14 +10,15 @@ export const maxDuration = 300;
 const CRON_SECRET = process.env.CRON_SECRET;
 
 export async function GET(request: Request, { params }: { params: BoardRouteParameters }) {
-  const { board_name }: ParsedBoardRouteParameters = parseBoardRouteParams(params);
-
   try {
+    const { board_name }: ParsedBoardRouteParameters = parseBoardRouteParams(params);
+    console.log(`Starting shared sync for ${board_name}`);
     // Basic auth check
     const authHeader = request.headers.get('authorization');
     if (process.env.VERCEL_ENV !== 'development' && authHeader !== `Bearer ${CRON_SECRET}`) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    console.log(`Passed auth for ${board_name}`);
 
     const result = syncSharedData(board_name);
 
