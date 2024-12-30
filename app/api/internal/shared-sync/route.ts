@@ -11,12 +11,15 @@ export async function GET(request: Request) {
   try {
     // Basic auth check
     const authHeader = request.headers.get('authorization');
-    if (authHeader !== `Bearer ${CRON_SECRET}`) {
+    if (process.env.VERCEL_ENV !== 'development' && authHeader !== `Bearer ${CRON_SECRET}`) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Sync both board types
-    const results = await Promise.all([syncSharedData('tension'), syncSharedData('kilter')]);
+    const results = await Promise.all([
+      syncSharedData('tension'), 
+      syncSharedData('kilter')
+    ]);
 
     return NextResponse.json({
       success: true,
