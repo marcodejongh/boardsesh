@@ -642,6 +642,60 @@ export const tensionClimbs = pgTable(
   }),
 );
 
+export const kilterClimbHolds = pgTable(
+  'kilter_climb_holds',
+  {
+    climbUuid: text('climb_uuid').notNull(),
+    holdId: integer('hold_id').notNull(),
+    frameNumber: integer('frame_number').notNull(),
+    holdState: text('hold_state').notNull(), // STARTING, HAND, FINISH, FOOT
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => ({
+    // Primary key on both columns to ensure no duplicate holds per climb
+    pk: primaryKey({ columns: [table.climbUuid, table.holdId] }),
+
+    // Index for efficient hold searches
+    holdSearchIdx: index('kilter_climb_holds_search_idx').on(table.holdId, table.holdState),
+
+    // Foreign key to climbs table
+    climbFkey: foreignKey({
+      columns: [table.climbUuid],
+      foreignColumns: [kilterClimbs.uuid],
+      name: 'kilter_climb_holds_climb_uuid_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('cascade'),
+  }),
+);
+
+export const tensionClimbHolds = pgTable(
+  'tension_climb_holds',
+  {
+    climbUuid: text('climb_uuid').notNull(),
+    holdId: integer('hold_id').notNull(),
+    frameNumber: integer('frame_number').notNull(),
+    holdState: text('hold_state').notNull(), // STARTING, HAND, FINISH, FOOT
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => ({
+    // Primary key on both columns to ensure no duplicate holds per climb
+    pk: primaryKey({ columns: [table.climbUuid, table.holdId] }),
+
+    // Index for efficient hold searches
+    holdSearchIdx: index('tension_climb_holds_search_idx').on(table.holdId, table.holdState),
+
+    // Foreign key to climbs table
+    climbFkey: foreignKey({
+      columns: [table.climbUuid],
+      foreignColumns: [tensionClimbs.uuid],
+      name: 'tension_climb_holds_climb_uuid_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('cascade'),
+  }),
+);
+
 export const tensionSets = pgTable('tension_sets', {
   id: integer().primaryKey().notNull(),
   name: text(),

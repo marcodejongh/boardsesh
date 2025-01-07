@@ -114,7 +114,7 @@ export const searchClimbs = async (
   const results = await baseQuery;
 
   // Transform the results into the complete Climb type
-  const climbs: Climb[] = results.map(({ totalCount, ...result }) => ({
+  const climbs: Climb[] = results.map((result) => ({
     uuid: result.uuid,
     setter_username: result.setter_username || '',
     name: result.name || '',
@@ -127,7 +127,8 @@ export const searchClimbs = async (
     stars: Math.round((result.quality_average || 0) * 5),
     difficulty_error: result.difficulty_error?.toString(),
     benchmark_difficulty: result.benchmark_difficulty?.toString() || null,
-    litUpHoldsMap: convertLitUpHoldsStringToMap(result.frames || '', params.board_name),
+    // TODO: Multiframe support should remove the hardcoded [0]
+    litUpHoldsMap: convertLitUpHoldsStringToMap(result.frames || '', params.board_name)[0],
   }));
 
   return {

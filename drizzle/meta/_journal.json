@@ -78,6 +78,13 @@
       "when": 1735526364141,
       "tag": "0010_remove_stats_foreignkeys",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1735770051923,
+      "tag": "0011_add_holds_map_table",
+      "breakpoints": true
     }
   ]
 }
