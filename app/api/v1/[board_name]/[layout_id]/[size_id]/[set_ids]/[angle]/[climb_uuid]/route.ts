@@ -13,7 +13,8 @@ export async function GET(
     const parsedParams = parseBoardRouteParams(params);
     const result = await getClimb(parsedParams);
 
-    const litUpHoldsMap = convertLitUpHoldsStringToMap(result.frames, parsedParams.board_name);
+    // TODO: Multiframe support should remove the hardcoded [0]
+    const litUpHoldsMap = convertLitUpHoldsStringToMap(result.frames, parsedParams.board_name)[0]; 
 
     if (!result) {
       return NextResponse.json({ error: `Failed to find problem ${params.climb_uuid}` }, { status: 404 });

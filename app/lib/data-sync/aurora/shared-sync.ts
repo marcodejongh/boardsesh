@@ -17,6 +17,7 @@ import {
   SyncPutFields,
 } from '../../api-wrappers/sync-api-types';
 import { getTable } from '../../db/queries/util/table-select';
+import { convertLitUpHoldsStringToMap } from '@/app/components/board-renderer/util';
 
 // Define shared sync tables in correct dependency order
 export const SHARED_SYNC_TABLES: string[] = [
@@ -196,9 +197,12 @@ async function upsertClimbs(
   data: Climb[],
 ) {
   await Promise.all(
-    data.map((item: Climb) => {
+    data.map(async (item: Climb) => {
       const climbsSchema = getTable('climbs', board);
-      return db
+      const climbHoldsSchema = getTable('climbHolds', board);
+
+      // Insert or update the climb
+      await db
         .insert(climbsSchema)
         .values({
           uuid: item.uuid,
@@ -242,9 +246,24 @@ async function upsertClimbs(
             angle: item.angle,
           },
         });
+
+      const holdsByFrame = convertLitUpHoldsStringToMap(item.frames, board);
+
+      const holdsToInsert = Object.entries(holdsByFrame).flatMap(([frameNumber, holds]) =>
+        Object.entries(holds).map(([holdId, { state, color }]) => ({
+          climbUuid: item.uuid,
+          frameNumber: Number(frameNumber),
+          holdId: Number(holdId),
+          holdState: state,
+          color,
+        })),
+      );
+
+      await db.insert(climbHoldsSchema).values(holdsToInsert).onConflictDoNothing(); // Avoid duplicate inserts
     }),
   );
 }
+
 
 async function upsertSharedTableData(
   db: PgTransaction<VercelPgQueryResultHKT, Record<string, never>, ExtractTablesWithRelations<Record<string, never>>>,
@@ -325,7 +344,7 @@ export async function syncSharedData(
 
   const syncResults = await sharedSync(board, syncParams);
 
-  console.log(`Received ${syncResults.PUT.climbs.length} climbs and ${syncResults.PUT.climb_stats.length} climb_stats`);
+  console.log(`Received ${syncResults.PUT?.climbs?.length} climbs and ${syncResults.PUT?.climb_stats?.length} climb_stats`);
   
   return upsertAllSharedTableData(board, syncResults);
 }

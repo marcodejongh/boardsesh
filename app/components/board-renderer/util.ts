@@ -12,22 +12,36 @@ export const getImageUrl = (imageUrl: string, board: BoardName) => {
   return `https://api.${board}boardapp${board === 'tension' ? '2' : ''}.com/img/${imageUrl}`;
 };
 
-export const convertLitUpHoldsStringToMap = (litUpHolds: string, board: BoardName): LitUpHoldsMap =>
-  Object.fromEntries(
-    litUpHolds
-      .split('p')
-      .filter((hold) => hold)
-      .map((holdData) => holdData.split('r').map((str) => Number(str)))
-      .map(([holdId, stateCode]) => {
-        if (!HOLD_STATE_MAP[board][stateCode]) {
-          throw new Error(
-            `HOLD_STATE_MAP is missing values for ${board} its missing statuscode: ${stateCode}. 
-            You probably need to update that mapping after adding support for more boards`,
-          );
-        }
-        const { name, color, displayColor } = HOLD_STATE_MAP[board][stateCode];
-        return [holdId, { state: name, color, displayColor: displayColor || color }];
-      }),
-  );
+export const convertLitUpHoldsStringToMap = (litUpHolds: string, board: BoardName): Record<number, LitUpHoldsMap> => {
+  // Split the litUpHolds string by frame delimiter (`,`), process each frame
+  return litUpHolds
+    .split(',')
+    .filter((frame) => frame) // Filter out empty frames
+    .reduce(
+      (frameMap, frameString, frameIndex) => {
+        // Convert each frame to a LitUpHoldsMap
+        const frameHoldsMap = Object.fromEntries(
+          frameString
+            .split('p')
+            .filter((hold) => hold) // Filter out empty hold data
+            .map((holdData) => holdData.split('r').map((str) => Number(str))) // Extract holdId and stateCode
+            .map(([holdId, stateCode]) => {
+              if (!HOLD_STATE_MAP[board][stateCode]) {
+                throw new Error(
+                  `HOLD_STATE_MAP is missing values for ${board}. Missing status code: ${stateCode}.
+                You probably need to update that mapping after adding support for more boards`,
+                );
+              }
+              const { name, color, displayColor } = HOLD_STATE_MAP[board][stateCode];
+              return [holdId, { state: name, color, displayColor: displayColor || color }];
+            }),
+        );
+        frameMap[frameIndex] = frameHoldsMap; // Map each frame's holds
+        return frameMap;
+      },
+      {} as Record<number, LitUpHoldsMap>,
+    );
+};
+
 export const getBoardImageDimensions = (board: BoardName, firstImage: string) =>
   BOARD_IMAGE_DIMENSIONS[board][firstImage];
