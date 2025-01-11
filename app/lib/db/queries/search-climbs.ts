@@ -1,4 +1,4 @@
-import { and, eq, between, gte, sql, is, desc, asc } from 'drizzle-orm';
+import { and, eq, between, gte, sql, is, desc, asc, inArray, exists, like, notLike } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { dbz as db } from '../db';
 import { convertLitUpHoldsStringToMap } from '@/app/components/board-renderer/util';
@@ -11,13 +11,19 @@ import {
 } from '../../types';
 import { getBoardTables } from './util/table-select';
 
+const getFramesLikeClause = (holds: number[]) => {
+  // We want to match ANY frame that contains ALL of these holds
+  // So we create a pattern like '%1r2p2r1p%' for holds [1,2]
+  return `%${holds.map((holdId) => `${holdId}r`).join('%')}%`;
+};
+
 export const searchClimbs = async (
   params: ParsedBoardRouteParameters,
   searchParams: SearchRequestPagination,
 ): Promise<SearchClimbsResult> => {
   // TODO: use nicer table abstraction from shared syncs here
   const tables = getBoardTables(params.board_name);
-  
+
   // Define sort columns with explicit SQL expressions where needed
   const allowedSortColumns: Record<SearchRequest['sortBy'], any> = {
     ascents: tables.climbStats.ascensionistCount,
@@ -26,9 +32,14 @@ export const searchClimbs = async (
     quality: tables.climbStats.qualityAverage,
   };
 
+  const holdsToFilter = Object.entries(searchParams.holdsFilter).map(([key, state]) => [
+    key.replace('hold_', ''),
+    state,
+  ]);
+
   // Get the selected sort column or fall back to ascensionist_count
   const sortColumn = allowedSortColumns[searchParams.sortBy] || tables.climbStats.ascensionistCount;
-  
+
   const ps = alias(tables.productSizes, 'ps');
 
   // Build where conditions array dynamically
@@ -54,13 +65,9 @@ export const searchClimbs = async (
       sql`ROUND(${tables.climbStats.displayDifficulty}::numeric, 0) BETWEEN ${searchParams.minGrade} AND ${searchParams.maxGrade}`,
     );
   } else if (searchParams.minGrade) {
-    whereConditions.push(
-      sql`ROUND(${tables.climbStats.displayDifficulty}::numeric, 0) >= ${searchParams.minGrade}`,
-    );
+    whereConditions.push(sql`ROUND(${tables.climbStats.displayDifficulty}::numeric, 0) >= ${searchParams.minGrade}`);
   } else if (searchParams.maxGrade) {
-    whereConditions.push(
-      sql`ROUND(${tables.climbStats.displayDifficulty}::numeric, 0) <= ${searchParams.maxGrade}`,
-    );
+    whereConditions.push(sql`ROUND(${tables.climbStats.displayDifficulty}::numeric, 0) <= ${searchParams.maxGrade}`);
   }
 
   if (searchParams.minRating) {
@@ -76,6 +83,8 @@ export const searchClimbs = async (
   if (searchParams.name) {
     whereConditions.push(sql`${tables.climbs.name} ILIKE ${`%${searchParams.name}%`}`);
   }
+  const anyHolds = holdsToFilter.filter(([, value]) => value === 'ANY').map(([key]) => Number(key));
+  const notHolds = holdsToFilter.filter(([, value]) => value === 'NOT').map(([key]) => Number(key));
 
   const baseQuery = db
     .select({
@@ -102,7 +111,13 @@ export const searchClimbs = async (
       eq(tables.difficultyGrades.difficulty, sql`ROUND(${tables.climbStats.displayDifficulty}::numeric)`),
     )
     .innerJoin(ps, eq(ps.id, params.size_id))
-    .where(and(...whereConditions))
+    .where(
+      and(
+        ...whereConditions,
+        ...anyHolds.map((holdId) => like(tables.climbs.frames, `%${holdId}r%`)),
+        ...notHolds.map((holdId) => notLike(tables.climbs.frames, `%${holdId}r%`)),
+      ),
+    )
     .orderBy(
       searchParams.sortOrder === 'asc' ? sql`${sortColumn} ASC NULLS FIRST` : sql`${sortColumn} DESC NULLS LAST`,
       // Add secondary sort to ensure consistent ordering

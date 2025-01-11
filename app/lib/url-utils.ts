@@ -37,40 +37,42 @@ export function parseBoardRouteParams<T extends BoardRouteParameters>(
   return parsedParams as T extends BoardRouteParametersWithUuid ? never : ParsedBoardRouteParameters;
 }
 
-export const searchParamsToUrlParams = ({ 
- gradeAccuracy = DEFAULT_SEARCH_PARAMS.gradeAccuracy,
- maxGrade = DEFAULT_SEARCH_PARAMS.maxGrade,
- minGrade = DEFAULT_SEARCH_PARAMS.minGrade,
- minAscents = DEFAULT_SEARCH_PARAMS.minAscents,
- minRating = DEFAULT_SEARCH_PARAMS.minRating,
- sortBy,
- sortOrder, 
- name,
- onlyClassics,
- settername,
- setternameSuggestion,
- holds,
- mirroredHolds,
- page,
- pageSize
+export const searchParamsToUrlParams = ({
+  gradeAccuracy = DEFAULT_SEARCH_PARAMS.gradeAccuracy,
+  maxGrade = DEFAULT_SEARCH_PARAMS.maxGrade,
+  minGrade = DEFAULT_SEARCH_PARAMS.minGrade,
+  minAscents = DEFAULT_SEARCH_PARAMS.minAscents,
+  minRating = DEFAULT_SEARCH_PARAMS.minRating,
+  sortBy,
+  sortOrder,
+  name,
+  onlyClassics,
+  settername,
+  setternameSuggestion,
+  holdsFilter,
+  page,
+  pageSize,
 }: SearchRequestPagination): URLSearchParams => {
- return new URLSearchParams({
-   gradeAccuracy: gradeAccuracy.toString(),
-   maxGrade: maxGrade.toString(), 
-   minAscents: minAscents.toString(),
-   minGrade: minGrade.toString(),
-   minRating: minRating.toString(),
-   sortBy,
-   sortOrder,
-   name,
-   onlyClassics: onlyClassics.toString(),
-   settername,
-   setternameSuggestion,
-   holds,
-   mirroredHolds,
-   page: page.toString(),
-   pageSize: pageSize.toString(),
- });
+  return new URLSearchParams({
+    gradeAccuracy: gradeAccuracy.toString(),
+    maxGrade: maxGrade.toString(),
+    minAscents: minAscents.toString(),
+    minGrade: minGrade.toString(),
+    minRating: minRating.toString(),
+    sortBy,
+    sortOrder,
+    name,
+    onlyClassics: onlyClassics.toString(),
+    settername,
+    setternameSuggestion,
+    page: page.toString(),
+    pageSize: pageSize.toString(),
+    ...Object.fromEntries(
+      Object.entries(holdsFilter).map(([key, value]) => {
+        return [`hold_${key}`, value.state];
+      }),
+    ),
+  });
 };
 export const DEFAULT_SEARCH_PARAMS: SearchRequestPagination = {
   gradeAccuracy: 0,
@@ -84,13 +86,18 @@ export const DEFAULT_SEARCH_PARAMS: SearchRequestPagination = {
   onlyClassics: false,
   settername: '',
   setternameSuggestion: '',
-  holds: '',
-  mirroredHolds: '',
+  holdsFilter: {},
   page: 0,
   pageSize: PAGE_LIMIT,
 };
 
 export const urlParamsToSearchParams = (urlParams: URLSearchParams): SearchRequestPagination => {
+  const holdsFilter = Object.fromEntries(
+    Array.from(urlParams.entries())
+      .filter(([key]) => key.startsWith('hold_'))
+      .map(([key, value]) => [key.replace('hold_', ''), value]),
+  );
+
   return {
     ...DEFAULT_SEARCH_PARAMS,
     gradeAccuracy: Number(urlParams.get('gradeAccuracy') ?? DEFAULT_SEARCH_PARAMS.gradeAccuracy),
@@ -104,8 +111,7 @@ export const urlParamsToSearchParams = (urlParams: URLSearchParams): SearchReque
     onlyClassics: urlParams.get('onlyClassics') === 'true',
     settername: urlParams.get('settername') ?? DEFAULT_SEARCH_PARAMS.settername,
     setternameSuggestion: urlParams.get('setternameSuggestion') ?? DEFAULT_SEARCH_PARAMS.setternameSuggestion,
-    holds: urlParams.get('holds') ?? DEFAULT_SEARCH_PARAMS.holds,
-    mirroredHolds: urlParams.get('mirroredHolds') ?? DEFAULT_SEARCH_PARAMS.mirroredHolds,
+    holdsFilter: holdsFilter ?? DEFAULT_SEARCH_PARAMS.holdsFilter,
     page: Number(urlParams.get('page') ?? DEFAULT_SEARCH_PARAMS.page),
     pageSize: Number(urlParams.get('pageSize') ?? DEFAULT_SEARCH_PARAMS.pageSize),
   };

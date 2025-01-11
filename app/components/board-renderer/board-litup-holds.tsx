@@ -14,7 +14,7 @@ const BoardLitupHolds: React.FC<BoardLitupHoldsProps> = ({
   litUpHoldsMap,
   mirrored,
   thumbnail,
-  onHoldClick
+  onHoldClick,
 }) => {
   if (!holdsData) return null;
 
@@ -23,7 +23,7 @@ const BoardLitupHolds: React.FC<BoardLitupHoldsProps> = ({
       {holdsData.map((hold) => {
         const isLitUp = litUpHoldsMap[hold.id]?.state && litUpHoldsMap[hold.id].state !== 'OFF';
         const color = isLitUp ? litUpHoldsMap[hold.id].color : 'transparent';
-        
+
         let renderHold = hold;
         if (mirrored && hold.mirroredHoldId) {
           const mirroredHold = holdsData.find(({ id }) => id === hold.mirroredHoldId);

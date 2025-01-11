@@ -264,7 +264,6 @@ async function upsertClimbs(
   );
 }
 
-
 async function upsertSharedTableData(
   db: PgTransaction<VercelPgQueryResultHKT, Record<string, never>, ExtractTablesWithRelations<Record<string, never>>>,
   boardName: BoardName,
@@ -328,9 +327,7 @@ export async function getLastSharedSyncTimes(boardName: BoardName) {
   return result;
 }
 
-export async function syncSharedData(
-  board: BoardName,
-): Promise<Record<string, { synced: number }>> {
+export async function syncSharedData(board: BoardName): Promise<Record<string, { synced: number }>> {
   console.log('Entered sync shared data');
   const allSyncTimes = await getLastSharedSyncTimes(board);
   console.log('Fetched previous sync times');
@@ -344,8 +341,10 @@ export async function syncSharedData(
 
   const syncResults = await sharedSync(board, syncParams);
 
-  console.log(`Received ${syncResults.PUT?.climbs?.length} climbs and ${syncResults.PUT?.climb_stats?.length} climb_stats`);
-  
+  console.log(
+    `Received ${syncResults.PUT?.climbs?.length} climbs and ${syncResults.PUT?.climb_stats?.length} climb_stats`,
+  );
+
   return upsertAllSharedTableData(board, syncResults);
 }
 
@@ -365,14 +364,14 @@ const upsertAllSharedTableData = async (board: BoardName, syncResults: SyncData)
         // TODO: Move rest api call out of DB transaction to make error messages
         // easier to interpret
         const promises = [...SHARED_SYNC_TABLES, 'shared_syncs']
-        .filter(name => syncResults.PUT[name])
-        .map(async (tableName) => {
-          const data = syncResults.PUT[tableName];
+          .filter((name) => syncResults.PUT[name])
+          .map(async (tableName) => {
+            const data = syncResults.PUT[tableName];
 
-          await upsertSharedTableData(tx, board, tableName, data);
-          console.log(`Updated ${tableName} with ${data.length} rows`);
-          return [tableName, { synced: data.length }];
-        });
+            await upsertSharedTableData(tx, board, tableName, data);
+            console.log(`Updated ${tableName} with ${data.length} rows`);
+            return [tableName, { synced: data.length }];
+          });
         const results = Object.fromEntries(await Promise.all(promises));
       } catch (error) {
         //@ts-expect-error

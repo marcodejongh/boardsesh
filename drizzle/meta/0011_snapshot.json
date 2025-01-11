@@ -115,12 +115,8 @@
           "name": "ascents_attempt_id_fkey1",
           "tableFrom": "kilter_ascents",
           "tableTo": "kilter_attempts",
-          "columnsFrom": [
-            "attempt_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["attempt_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "cascade"
         },
@@ -128,12 +124,8 @@
           "name": "ascents_climb_uuid_fkey1",
           "tableFrom": "kilter_ascents",
           "tableTo": "kilter_climbs",
-          "columnsFrom": [
-            "climb_uuid"
-          ],
-          "columnsTo": [
-            "uuid"
-          ],
+          "columnsFrom": ["climb_uuid"],
+          "columnsTo": ["uuid"],
           "onDelete": "restrict",
           "onUpdate": "cascade"
         },
@@ -141,12 +133,8 @@
           "name": "ascents_difficulty_fkey1",
           "tableFrom": "kilter_ascents",
           "tableTo": "kilter_difficulty_grades",
-          "columnsFrom": [
-            "difficulty"
-          ],
-          "columnsTo": [
-            "difficulty"
-          ],
+          "columnsFrom": ["difficulty"],
+          "columnsTo": ["difficulty"],
           "onDelete": "restrict",
           "onUpdate": "cascade"
         },
@@ -154,12 +142,8 @@
           "name": "ascents_user_id_fkey1",
           "tableFrom": "kilter_ascents",
           "tableTo": "kilter_users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -254,12 +238,8 @@
           "name": "beta_links_climb_uuid_fkey1",
           "tableFrom": "kilter_beta_links",
           "tableTo": "kilter_climbs",
-          "columnsFrom": [
-            "climb_uuid"
-          ],
-          "columnsTo": [
-            "uuid"
-          ],
+          "columnsFrom": ["climb_uuid"],
+          "columnsTo": ["uuid"],
           "onDelete": "restrict",
           "onUpdate": "cascade"
         }
@@ -337,12 +317,8 @@
           "name": "bids_climb_uuid_fkey1",
           "tableFrom": "kilter_bids",
           "tableTo": "kilter_climbs",
-          "columnsFrom": [
-            "climb_uuid"
-          ],
-          "columnsTo": [
-            "uuid"
-          ],
+          "columnsFrom": ["climb_uuid"],
+          "columnsTo": ["uuid"],
           "onDelete": "restrict",
           "onUpdate": "cascade"
         },
@@ -350,12 +326,8 @@
           "name": "bids_user_id_fkey1",
           "tableFrom": "kilter_bids",
           "tableTo": "kilter_users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -499,12 +471,8 @@
           "name": "climb_cache_fields_climb_uuid_fkey1",
           "tableFrom": "kilter_climb_cache_fields",
           "tableTo": "kilter_climbs",
-          "columnsFrom": [
-            "climb_uuid"
-          ],
-          "columnsTo": [
-            "uuid"
-          ],
+          "columnsFrom": ["climb_uuid"],
+          "columnsTo": ["uuid"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -573,12 +541,8 @@
           "name": "kilter_climb_holds_climb_uuid_fkey",
           "tableFrom": "kilter_climb_holds",
           "tableTo": "kilter_climbs",
-          "columnsFrom": [
-            "climb_uuid"
-          ],
-          "columnsTo": [
-            "uuid"
-          ],
+          "columnsFrom": ["climb_uuid"],
+          "columnsTo": ["uuid"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -586,10 +550,7 @@
       "compositePrimaryKeys": {
         "kilter_climb_holds_climb_uuid_hold_id_pk": {
           "name": "kilter_climb_holds_climb_uuid_hold_id_pk",
-          "columns": [
-            "climb_uuid",
-            "hold_id"
-          ]
+          "columns": ["climb_uuid", "hold_id"]
         }
       },
       "uniqueConstraints": {},
@@ -686,10 +647,7 @@
       "compositePrimaryKeys": {
         "kilter_climb_stats_pk": {
           "name": "kilter_climb_stats_pk",
-          "columns": [
-            "climb_uuid",
-            "angle"
-          ]
+          "columns": ["climb_uuid", "angle"]
         }
       },
       "uniqueConstraints": {},
@@ -967,12 +925,8 @@
           "name": "climbs_layout_id_fkey1",
           "tableFrom": "kilter_climbs",
           "tableTo": "kilter_layouts",
-          "columnsFrom": [
-            "layout_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["layout_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -1074,12 +1028,8 @@
           "name": "holes_product_id_fkey1",
           "tableFrom": "kilter_holes",
           "tableTo": "kilter_products",
-          "columnsFrom": [
-            "product_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["product_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -1198,12 +1148,8 @@
           "name": "layouts_product_id_fkey1",
           "tableFrom": "kilter_layouts",
           "tableTo": "kilter_products",
-          "columnsFrom": [
-            "product_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["product_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -1249,12 +1195,8 @@
           "name": "leds_hole_id_fkey1",
           "tableFrom": "kilter_leds",
           "tableTo": "kilter_holes",
-          "columnsFrom": [
-            "hole_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["hole_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -1262,12 +1204,8 @@
           "name": "leds_product_size_id_fkey1",
           "tableFrom": "kilter_leds",
           "tableTo": "kilter_product_sizes",
-          "columnsFrom": [
-            "product_size_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["product_size_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -1331,12 +1269,8 @@
           "name": "placement_roles_product_id_fkey1",
           "tableFrom": "kilter_placement_roles",
           "tableTo": "kilter_products",
-          "columnsFrom": [
-            "product_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["product_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -1388,12 +1322,8 @@
           "name": "placements_default_placement_role_id_fkey1",
           "tableFrom": "kilter_placements",
           "tableTo": "kilter_placement_roles",
-          "columnsFrom": [
-            "default_placement_role_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["default_placement_role_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "cascade"
         },
@@ -1401,12 +1331,8 @@
           "name": "placements_hole_id_fkey1",
           "tableFrom": "kilter_placements",
           "tableTo": "kilter_holes",
-          "columnsFrom": [
-            "hole_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["hole_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -1414,12 +1340,8 @@
           "name": "placements_layout_id_fkey1",
           "tableFrom": "kilter_placements",
           "tableTo": "kilter_layouts",
-          "columnsFrom": [
-            "layout_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["layout_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -1427,12 +1349,8 @@
           "name": "placements_set_id_fkey1",
           "tableFrom": "kilter_placements",
           "tableTo": "kilter_sets",
-          "columnsFrom": [
-            "set_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["set_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -1520,12 +1438,8 @@
           "name": "product_sizes_product_id_fkey1",
           "tableFrom": "kilter_product_sizes",
           "tableTo": "kilter_products",
-          "columnsFrom": [
-            "product_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["product_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -1583,12 +1497,8 @@
           "name": "product_sizes_layouts_sets_layout_id_fkey1",
           "tableFrom": "kilter_product_sizes_layouts_sets",
           "tableTo": "kilter_layouts",
-          "columnsFrom": [
-            "layout_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["layout_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -1596,12 +1506,8 @@
           "name": "product_sizes_layouts_sets_product_size_id_fkey1",
           "tableFrom": "kilter_product_sizes_layouts_sets",
           "tableTo": "kilter_product_sizes",
-          "columnsFrom": [
-            "product_size_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["product_size_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -1609,12 +1515,8 @@
           "name": "product_sizes_layouts_sets_set_id_fkey1",
           "tableFrom": "kilter_product_sizes_layouts_sets",
           "tableTo": "kilter_sets",
-          "columnsFrom": [
-            "set_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["set_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -1697,12 +1599,8 @@
           "name": "products_angles_product_id_fkey1",
           "tableFrom": "kilter_products_angles",
           "tableTo": "kilter_products",
-          "columnsFrom": [
-            "product_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["product_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -1860,12 +1758,8 @@
           "name": "user_syncs_user_id_fkey1",
           "tableFrom": "kilter_user_syncs",
           "tableTo": "kilter_users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -1873,10 +1767,7 @@
       "compositePrimaryKeys": {
         "kilter_user_sync_pk": {
           "name": "kilter_user_sync_pk",
-          "columns": [
-            "user_id",
-            "table_name"
-          ]
+          "columns": ["user_id", "table_name"]
         }
       },
       "uniqueConstraints": {},
@@ -1992,12 +1883,8 @@
           "name": "walls_layout_id_fkey1",
           "tableFrom": "kilter_walls",
           "tableTo": "kilter_layouts",
-          "columnsFrom": [
-            "layout_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["layout_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "cascade"
         },
@@ -2005,12 +1892,8 @@
           "name": "walls_product_id_fkey1",
           "tableFrom": "kilter_walls",
           "tableTo": "kilter_products",
-          "columnsFrom": [
-            "product_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["product_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "cascade"
         },
@@ -2018,12 +1901,8 @@
           "name": "walls_product_size_id_fkey1",
           "tableFrom": "kilter_walls",
           "tableTo": "kilter_product_sizes",
-          "columnsFrom": [
-            "product_size_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["product_size_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "cascade"
         },
@@ -2031,12 +1910,8 @@
           "name": "walls_user_id_fkey1",
           "tableFrom": "kilter_walls",
           "tableTo": "kilter_users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -2070,12 +1945,8 @@
           "name": "walls_sets_set_id_fkey1",
           "tableFrom": "kilter_walls_sets",
           "tableTo": "kilter_sets",
-          "columnsFrom": [
-            "set_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["set_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "cascade"
         },
@@ -2083,12 +1954,8 @@
           "name": "walls_sets_wall_uuid_fkey1",
           "tableFrom": "kilter_walls_sets",
           "tableTo": "kilter_walls",
-          "columnsFrom": [
-            "wall_uuid"
-          ],
-          "columnsTo": [
-            "uuid"
-          ],
+          "columnsFrom": ["wall_uuid"],
+          "columnsTo": ["uuid"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -2210,12 +2077,8 @@
           "name": "ascents_attempt_id_fkey",
           "tableFrom": "tension_ascents",
           "tableTo": "tension_attempts",
-          "columnsFrom": [
-            "attempt_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["attempt_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "cascade"
         },
@@ -2223,12 +2086,8 @@
           "name": "ascents_climb_uuid_fkey",
           "tableFrom": "tension_ascents",
           "tableTo": "tension_climbs",
-          "columnsFrom": [
-            "climb_uuid"
-          ],
-          "columnsTo": [
-            "uuid"
-          ],
+          "columnsFrom": ["climb_uuid"],
+          "columnsTo": ["uuid"],
           "onDelete": "restrict",
           "onUpdate": "cascade"
         },
@@ -2236,12 +2095,8 @@
           "name": "ascents_difficulty_fkey",
           "tableFrom": "tension_ascents",
           "tableTo": "tension_difficulty_grades",
-          "columnsFrom": [
-            "difficulty"
-          ],
-          "columnsTo": [
-            "difficulty"
-          ],
+          "columnsFrom": ["difficulty"],
+          "columnsTo": ["difficulty"],
           "onDelete": "restrict",
           "onUpdate": "cascade"
         },
@@ -2249,12 +2104,8 @@
           "name": "ascents_user_id_fkey",
           "tableFrom": "tension_ascents",
           "tableTo": "tension_users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -2349,12 +2200,8 @@
           "name": "beta_links_climb_uuid_fkey",
           "tableFrom": "tension_beta_links",
           "tableTo": "tension_climbs",
-          "columnsFrom": [
-            "climb_uuid"
-          ],
-          "columnsTo": [
-            "uuid"
-          ],
+          "columnsFrom": ["climb_uuid"],
+          "columnsTo": ["uuid"],
           "onDelete": "restrict",
           "onUpdate": "cascade"
         }
@@ -2432,12 +2279,8 @@
           "name": "bids_climb_uuid_fkey",
           "tableFrom": "tension_bids",
           "tableTo": "tension_climbs",
-          "columnsFrom": [
-            "climb_uuid"
-          ],
-          "columnsTo": [
-            "uuid"
-          ],
+          "columnsFrom": ["climb_uuid"],
+          "columnsTo": ["uuid"],
           "onDelete": "restrict",
           "onUpdate": "cascade"
         },
@@ -2445,12 +2288,8 @@
           "name": "bids_user_id_fkey",
           "tableFrom": "tension_bids",
           "tableTo": "tension_users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -2594,12 +2433,8 @@
           "name": "climb_cache_fields_climb_uuid_fkey",
           "tableFrom": "tension_climb_cache_fields",
           "tableTo": "tension_climbs",
-          "columnsFrom": [
-            "climb_uuid"
-          ],
-          "columnsTo": [
-            "uuid"
-          ],
+          "columnsFrom": ["climb_uuid"],
+          "columnsTo": ["uuid"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -2668,12 +2503,8 @@
           "name": "tension_climb_holds_climb_uuid_fkey",
           "tableFrom": "tension_climb_holds",
           "tableTo": "tension_climbs",
-          "columnsFrom": [
-            "climb_uuid"
-          ],
-          "columnsTo": [
-            "uuid"
-          ],
+          "columnsFrom": ["climb_uuid"],
+          "columnsTo": ["uuid"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -2681,10 +2512,7 @@
       "compositePrimaryKeys": {
         "tension_climb_holds_climb_uuid_hold_id_pk": {
           "name": "tension_climb_holds_climb_uuid_hold_id_pk",
-          "columns": [
-            "climb_uuid",
-            "hold_id"
-          ]
+          "columns": ["climb_uuid", "hold_id"]
         }
       },
       "uniqueConstraints": {},
@@ -2781,10 +2609,7 @@
       "compositePrimaryKeys": {
         "tension_climb_stats_pk": {
           "name": "tension_climb_stats_pk",
-          "columns": [
-            "climb_uuid",
-            "angle"
-          ]
+          "columns": ["climb_uuid", "angle"]
         }
       },
       "uniqueConstraints": {},
@@ -3062,12 +2887,8 @@
           "name": "climbs_layout_id_fkey",
           "tableFrom": "tension_climbs",
           "tableTo": "tension_layouts",
-          "columnsFrom": [
-            "layout_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["layout_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -3169,12 +2990,8 @@
           "name": "holes_mirrored_hole_id_fkey",
           "tableFrom": "tension_holes",
           "tableTo": "tension_holes",
-          "columnsFrom": [
-            "mirrored_hole_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["mirrored_hole_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "cascade"
         },
@@ -3182,12 +2999,8 @@
           "name": "holes_product_id_fkey",
           "tableFrom": "tension_holes",
           "tableTo": "tension_products",
-          "columnsFrom": [
-            "product_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["product_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -3306,12 +3119,8 @@
           "name": "layouts_product_id_fkey",
           "tableFrom": "tension_layouts",
           "tableTo": "tension_products",
-          "columnsFrom": [
-            "product_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["product_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -3357,12 +3166,8 @@
           "name": "leds_hole_id_fkey",
           "tableFrom": "tension_leds",
           "tableTo": "tension_holes",
-          "columnsFrom": [
-            "hole_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["hole_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -3370,12 +3175,8 @@
           "name": "leds_product_size_id_fkey",
           "tableFrom": "tension_leds",
           "tableTo": "tension_product_sizes",
-          "columnsFrom": [
-            "product_size_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["product_size_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -3439,12 +3240,8 @@
           "name": "placement_roles_product_id_fkey",
           "tableFrom": "tension_placement_roles",
           "tableTo": "tension_products",
-          "columnsFrom": [
-            "product_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["product_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -3496,12 +3293,8 @@
           "name": "placements_default_placement_role_id_fkey",
           "tableFrom": "tension_placements",
           "tableTo": "tension_placement_roles",
-          "columnsFrom": [
-            "default_placement_role_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["default_placement_role_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "cascade"
         },
@@ -3509,12 +3302,8 @@
           "name": "placements_hole_id_fkey",
           "tableFrom": "tension_placements",
           "tableTo": "tension_holes",
-          "columnsFrom": [
-            "hole_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["hole_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -3522,12 +3311,8 @@
           "name": "placements_layout_id_fkey",
           "tableFrom": "tension_placements",
           "tableTo": "tension_layouts",
-          "columnsFrom": [
-            "layout_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["layout_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -3535,12 +3320,8 @@
           "name": "placements_set_id_fkey",
           "tableFrom": "tension_placements",
           "tableTo": "tension_sets",
-          "columnsFrom": [
-            "set_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["set_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -3628,12 +3409,8 @@
           "name": "product_sizes_product_id_fkey",
           "tableFrom": "tension_product_sizes",
           "tableTo": "tension_products",
-          "columnsFrom": [
-            "product_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["product_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -3691,12 +3468,8 @@
           "name": "product_sizes_layouts_sets_layout_id_fkey",
           "tableFrom": "tension_product_sizes_layouts_sets",
           "tableTo": "tension_layouts",
-          "columnsFrom": [
-            "layout_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["layout_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -3704,12 +3477,8 @@
           "name": "product_sizes_layouts_sets_product_size_id_fkey",
           "tableFrom": "tension_product_sizes_layouts_sets",
           "tableTo": "tension_product_sizes",
-          "columnsFrom": [
-            "product_size_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["product_size_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -3717,12 +3486,8 @@
           "name": "product_sizes_layouts_sets_set_id_fkey",
           "tableFrom": "tension_product_sizes_layouts_sets",
           "tableTo": "tension_sets",
-          "columnsFrom": [
-            "set_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["set_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -3805,12 +3570,8 @@
           "name": "products_angles_product_id_fkey",
           "tableFrom": "tension_products_angles",
           "tableTo": "tension_products",
-          "columnsFrom": [
-            "product_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["product_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -3968,12 +3729,8 @@
           "name": "user_syncs_user_id_fkey",
           "tableFrom": "tension_user_syncs",
           "tableTo": "tension_users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -3981,10 +3738,7 @@
       "compositePrimaryKeys": {
         "tension_user_sync_pk": {
           "name": "tension_user_sync_pk",
-          "columns": [
-            "user_id",
-            "table_name"
-          ]
+          "columns": ["user_id", "table_name"]
         }
       },
       "uniqueConstraints": {},
@@ -4100,12 +3854,8 @@
           "name": "walls_layout_id_fkey",
           "tableFrom": "tension_walls",
           "tableTo": "tension_layouts",
-          "columnsFrom": [
-            "layout_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["layout_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "cascade"
         },
@@ -4113,12 +3863,8 @@
           "name": "walls_product_id_fkey",
           "tableFrom": "tension_walls",
           "tableTo": "tension_products",
-          "columnsFrom": [
-            "product_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["product_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "cascade"
         },
@@ -4126,12 +3872,8 @@
           "name": "walls_product_size_id_fkey",
           "tableFrom": "tension_walls",
           "tableTo": "tension_product_sizes",
-          "columnsFrom": [
-            "product_size_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["product_size_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "cascade"
         },
@@ -4139,12 +3881,8 @@
           "name": "walls_user_id_fkey",
           "tableFrom": "tension_walls",
           "tableTo": "tension_users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -4178,12 +3916,8 @@
           "name": "walls_sets_set_id_fkey",
           "tableFrom": "tension_walls_sets",
           "tableTo": "tension_sets",
-          "columnsFrom": [
-            "set_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["set_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "cascade"
         },
@@ -4191,12 +3925,8 @@
           "name": "walls_sets_wall_uuid_fkey",
           "tableFrom": "tension_walls_sets",
           "tableTo": "tension_walls",
-          "columnsFrom": [
-            "wall_uuid"
-          ],
-          "columnsTo": [
-            "uuid"
-          ],
+          "columnsFrom": ["wall_uuid"],
+          "columnsTo": ["uuid"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }

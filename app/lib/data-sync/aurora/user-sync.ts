@@ -359,7 +359,7 @@ export async function syncUserData(
         try {
           // Process each table
           for (const tableName of tables) {
-            console.log(`Syncing ${tableName} for user ${userId}`)
+            console.log(`Syncing ${tableName} for user ${userId}`);
             if (syncResults.PUT && syncResults.PUT[tableName]) {
               const data = syncResults.PUT[tableName];
               await upsertTableData(tx, board, tableName, userId, data);

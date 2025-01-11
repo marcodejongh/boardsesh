@@ -55,6 +55,14 @@ export type SetsResponse = {
 };
 
 // Search Request Type
+export type HoldCode = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 42 | 43 | 44 | 45 | 12 | 13 | 14 | 15;
+export type HoldState = 'STARTING' | 'HAND' | 'FOOT' | 'FINISH' | 'OFF' | 'ANY';
+
+export type HoldStateFilter = {
+  holdId: string;
+  stateCode: HoldCode;
+};
+
 export type SearchRequest = {
   gradeAccuracy: number;
   maxGrade: number;
@@ -67,8 +75,7 @@ export type SearchRequest = {
   onlyClassics: boolean;
   settername: string;
   setternameSuggestion: string;
-  holds: string;
-  mirroredHolds: string;
+  holdsFilter: HoldStateFilter;
 };
 
 export type SearchRequestPagination = SearchRequest & {
@@ -123,7 +130,6 @@ export type SearchClimbsResult = {
   climbs: Climb[];
   totalCount: number;
 };
-
 
 // Led Colors Type
 export type LedColor = {

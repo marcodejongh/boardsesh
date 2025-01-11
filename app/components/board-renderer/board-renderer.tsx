@@ -14,7 +14,7 @@ export type BoardProps = {
 
 const BoardRenderer = ({ boardDetails, thumbnail, litUpHoldsMap, mirrored, onHoldClick }: BoardProps) => {
   const { boardWidth, boardHeight, holdsData } = boardDetails;
-  
+
   return (
     <svg
       viewBox={`0 0 ${boardWidth} ${boardHeight}`}
@@ -29,7 +29,14 @@ const BoardRenderer = ({ boardDetails, thumbnail, litUpHoldsMap, mirrored, onHol
       {Object.keys(boardDetails.images_to_holds).map((imageUrl) => (
         <image key={imageUrl} href={getImageUrl(imageUrl, boardDetails.board_name)} width="100%" height="100%" />
       ))}
-      {litUpHoldsMap && <BoardLitupHolds onHoldClick={onHoldClick} holdsData={holdsData} litUpHoldsMap={litUpHoldsMap} mirrored={mirrored}/>}
+      {litUpHoldsMap && (
+        <BoardLitupHolds
+          onHoldClick={onHoldClick}
+          holdsData={holdsData}
+          litUpHoldsMap={litUpHoldsMap}
+          mirrored={mirrored}
+        />
+      )}
     </svg>
   );
 };
