@@ -6,11 +6,12 @@ import { SearchOutlined } from '@ant-design/icons';
 import SearchForm from './search-form';
 import { useQueueContext } from '@/app/components/queue-control/queue-context';
 import ClearButton from './clear-button';
+import { BoardDetails } from '@/app/lib/types';
 
 const { useBreakpoint } = Grid;
 const { Text } = Typography;
 
-const SearchButton = () => {
+const SearchButton = ({ boardDetails }: { boardDetails: BoardDetails }) => {
   const [isOpen, setIsOpen] = useState(false);
   const { totalSearchResultCount, isFetchingClimbs } = useQueueContext();
   const screens = useBreakpoint();
@@ -46,7 +47,7 @@ const SearchButton = () => {
           </Space>
         }
       >
-        <SearchForm />
+        <SearchForm boardDetails={boardDetails} />
       </Drawer>
     </>
   );

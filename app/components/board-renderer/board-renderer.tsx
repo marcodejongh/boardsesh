@@ -1,15 +1,18 @@
 import React from 'react';
 import { getImageUrl } from './util';
-import { BoardDetails, Climb } from '@/app/lib/types';
+import { BoardDetails } from '@/app/lib/types';
 import BoardLitupHolds from './board-litup-holds';
+import { LitUpHoldsMap } from './types';
 
 export type BoardProps = {
   boardDetails: BoardDetails;
-  climb?: Climb;
+  litUpHoldsMap?: LitUpHoldsMap;
+  mirrored: boolean;
   thumbnail?: boolean;
+  onHoldClick?: (holdId: number) => void;
 };
 
-const BoardRenderer = ({ boardDetails, thumbnail, climb }: BoardProps) => {
+const BoardRenderer = ({ boardDetails, thumbnail, litUpHoldsMap, mirrored, onHoldClick }: BoardProps) => {
   const { boardWidth, boardHeight, holdsData } = boardDetails;
 
   return (
@@ -26,7 +29,14 @@ const BoardRenderer = ({ boardDetails, thumbnail, climb }: BoardProps) => {
       {Object.keys(boardDetails.images_to_holds).map((imageUrl) => (
         <image key={imageUrl} href={getImageUrl(imageUrl, boardDetails.board_name)} width="100%" height="100%" />
       ))}
-      {climb && climb.litUpHoldsMap && <BoardLitupHolds holdsData={holdsData} climb={climb} />}
+      {litUpHoldsMap && (
+        <BoardLitupHolds
+          onHoldClick={onHoldClick}
+          holdsData={holdsData}
+          litUpHoldsMap={litUpHoldsMap}
+          mirrored={mirrored}
+        />
+      )}
     </svg>
   );
 };

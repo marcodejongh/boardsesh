@@ -42,7 +42,7 @@ export default function BoardSeshHeader({ boardDetails }: BoardSeshHeaderProps) 
           <Col xs={14} sm={14} md={14} lg={14} xl={14}>
             <Space>
               {screens.md ? null : <SearchClimbNameInput />}
-              {isList ? <SearchButton /> : null}
+              {isList ? <SearchButton boardDetails={boardDetails} /> : null}
             </Space>
           </Col>
 

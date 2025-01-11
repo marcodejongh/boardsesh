@@ -10,7 +10,7 @@ import {
   timestamp,
   uniqueIndex,
   primaryKey,
-	index,
+  index,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
@@ -657,15 +657,6 @@ export const kilterClimbHolds = pgTable(
 
     // Index for efficient hold searches
     holdSearchIdx: index('kilter_climb_holds_search_idx').on(table.holdId, table.holdState),
-
-    // Foreign key to climbs table
-    climbFkey: foreignKey({
-      columns: [table.climbUuid],
-      foreignColumns: [kilterClimbs.uuid],
-      name: 'kilter_climb_holds_climb_uuid_fkey',
-    })
-      .onUpdate('cascade')
-      .onDelete('cascade'),
   }),
 );
 
@@ -684,15 +675,6 @@ export const tensionClimbHolds = pgTable(
 
     // Index for efficient hold searches
     holdSearchIdx: index('tension_climb_holds_search_idx').on(table.holdId, table.holdState),
-
-    // Foreign key to climbs table
-    climbFkey: foreignKey({
-      columns: [table.climbUuid],
-      foreignColumns: [tensionClimbs.uuid],
-      name: 'tension_climb_holds_climb_uuid_fkey',
-    })
-      .onUpdate('cascade')
-      .onDelete('cascade'),
   }),
 );
 
@@ -1165,7 +1147,7 @@ export const kilterUserSyncs = pgTable(
     lastSynchronizedAt: text('last_synchronized_at'),
   },
   (table) => [
-		primaryKey({ name: 'kilter_user_sync_pk', columns: [table.userId, table.tableName] }),
+    primaryKey({ name: 'kilter_user_sync_pk', columns: [table.userId, table.tableName] }),
     foreignKey({
       columns: [table.userId],
       foreignColumns: [kilterUsers.id],

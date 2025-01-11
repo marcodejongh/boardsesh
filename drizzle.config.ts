@@ -14,7 +14,7 @@ export default defineConfig({
     database: process.env.POSTGRES_DATABASE!,
     port: Number(process.env.POSTGRES_PORT || 5432),
     user: process.env.POSTGRES_USER,
-    password: process.env.POSTGRES_PASSWORD, 
-    ssl: process.env.VERCEL_ENV !== 'development', 
+    password: process.env.POSTGRES_PASSWORD,
+    ssl: process.env.VERCEL_ENV !== 'development',
   },
 });

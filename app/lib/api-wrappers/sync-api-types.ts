@@ -180,26 +180,27 @@ export interface SharedSync {
   table_name: string;
   last_synchronized_at: string;
 }
-export type SyncPutFields = User
-      | Wall
-      | WallExpungement
-      | Ascent
-      | UserSync
-      | Climb
-      | ClimbStats
-      | SharedSync
-      | Attempt
-      | Product
-      | ProductSize
-      | Hole
-      | Led
-      | Layout
-      | PlacementRole
-      | Set
-      | ProductsAngle
-      | BetaLink
-      | ProductSizesLayoutsSet;
-      
+export type SyncPutFields =
+  | User
+  | Wall
+  | WallExpungement
+  | Ascent
+  | UserSync
+  | Climb
+  | ClimbStats
+  | SharedSync
+  | Attempt
+  | Product
+  | ProductSize
+  | Hole
+  | Led
+  | Layout
+  | PlacementRole
+  | Set
+  | ProductsAngle
+  | BetaLink
+  | ProductSizesLayoutsSet;
+
 export interface SyncDataPUT extends Record<string, Array<SyncPutFields>> {
   users: User[];
   walls: Wall[];

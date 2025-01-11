@@ -24,7 +24,7 @@ const ClimbCardCover = ({ climb, boardDetails, onClick }: ClimbCardCoverProps) =
         cursor: 'pointer',
       }}
     >
-      <BoardRenderer boardDetails={boardDetails} climb={climb} />
+      <BoardRenderer boardDetails={boardDetails} litUpHoldsMap={climb?.litUpHoldsMap} mirrored={!!climb?.mirrored} />
       <ClimbCardModal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}

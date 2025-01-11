@@ -4,16 +4,17 @@ import React from 'react';
 import SearchForm from './search-form';
 import { Grid } from 'antd';
 import { UISearchParamsProvider } from '../queue-control/ui-searchparams-provider';
+import { BoardDetails } from '@/app/lib/types';
 
 const { useBreakpoint } = Grid;
 
-const FilterColumn = () => {
+const FilterColumn = ({ boardDetails }: { boardDetails: BoardDetails }) => {
   const screens = useBreakpoint();
 
   // Sidebar for desktop view
   const desktopSidebar = (
     <UISearchParamsProvider>
-      <SearchForm />
+      <SearchForm boardDetails={boardDetails} />
     </UISearchParamsProvider>
   );
 

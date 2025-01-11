@@ -14,7 +14,8 @@ export const defaultClimbSearchParameters: SearchRequestPagination = {
   gradeAccuracy: 1,
   settername: '',
   setternameSuggestion: '',
-  holds: '',
+  //@ts-expect-error TODO fix later
+  holdsFilter: '',
   mirroredHolds: '',
   pageSize: PAGE_LIMIT,
   page: 0,

@@ -1,6 +1,6 @@
 {
-  "id": "9995a5b2-65ad-459d-b297-9809b0a23f51",
-  "prevId": "679ab2c3-652e-4ae3-9d30-d2d4bfe4efe7",
+  "id": "7184f721-6b48-4e6c-845a-9804359d0a02",
+  "prevId": "b372ecf4-d48f-49a7-9dab-77ab69e42854",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -483,6 +483,77 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.kilter_climb_holds": {
+      "name": "kilter_climb_holds",
+      "schema": "",
+      "columns": {
+        "climb_uuid": {
+          "name": "climb_uuid",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "hold_id": {
+          "name": "hold_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "frame_number": {
+          "name": "frame_number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "hold_state": {
+          "name": "hold_state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "kilter_climb_holds_search_idx": {
+          "name": "kilter_climb_holds_search_idx",
+          "columns": [
+            {
+              "expression": "hold_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "hold_state",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "kilter_climb_holds_climb_uuid_hold_id_pk": {
+          "name": "kilter_climb_holds_climb_uuid_hold_id_pk",
+          "columns": ["climb_uuid", "hold_id"]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.kilter_climb_random_positions": {
       "name": "kilter_climb_random_positions",
       "schema": "",
@@ -516,7 +587,7 @@
           "name": "climb_uuid",
           "type": "text",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "angle": {
           "name": "angle",
@@ -568,17 +639,7 @@
         }
       },
       "indexes": {},
-      "foreignKeys": {
-        "kilter_climb_stats_climb_uuid_kilter_climbs_uuid_fk": {
-          "name": "kilter_climb_stats_climb_uuid_kilter_climbs_uuid_fk",
-          "tableFrom": "kilter_climb_stats",
-          "tableTo": "kilter_climbs",
-          "columnsFrom": ["climb_uuid"],
-          "columnsTo": ["uuid"],
-          "onDelete": "cascade",
-          "onUpdate": "cascade"
-        }
-      },
+      "foreignKeys": {},
       "compositePrimaryKeys": {
         "kilter_climb_stats_pk": {
           "name": "kilter_climb_stats_pk",
@@ -2380,6 +2441,77 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.tension_climb_holds": {
+      "name": "tension_climb_holds",
+      "schema": "",
+      "columns": {
+        "climb_uuid": {
+          "name": "climb_uuid",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "hold_id": {
+          "name": "hold_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "frame_number": {
+          "name": "frame_number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "hold_state": {
+          "name": "hold_state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "tension_climb_holds_search_idx": {
+          "name": "tension_climb_holds_search_idx",
+          "columns": [
+            {
+              "expression": "hold_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "hold_state",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "tension_climb_holds_climb_uuid_hold_id_pk": {
+          "name": "tension_climb_holds_climb_uuid_hold_id_pk",
+          "columns": ["climb_uuid", "hold_id"]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.tension_climb_random_positions": {
       "name": "tension_climb_random_positions",
       "schema": "",
@@ -2413,7 +2545,7 @@
           "name": "climb_uuid",
           "type": "text",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "angle": {
           "name": "angle",
@@ -2465,17 +2597,7 @@
         }
       },
       "indexes": {},
-      "foreignKeys": {
-        "tension_climb_stats_climb_uuid_tension_climbs_uuid_fk": {
-          "name": "tension_climb_stats_climb_uuid_tension_climbs_uuid_fk",
-          "tableFrom": "tension_climb_stats",
-          "tableTo": "tension_climbs",
-          "columnsFrom": ["climb_uuid"],
-          "columnsTo": ["uuid"],
-          "onDelete": "cascade",
-          "onUpdate": "cascade"
-        }
-      },
+      "foreignKeys": {},
       "compositePrimaryKeys": {
         "tension_climb_stats_pk": {
           "name": "tension_climb_stats_pk",

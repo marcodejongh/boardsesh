@@ -42,8 +42,8 @@ import {
   tensionUserSyncs,
   kilterBetaLinks,
   tensionBetaLinks,
-	tensionClimbStats,
-	kilterClimbStats,
+  tensionClimbStats,
+  kilterClimbStats,
 } from './schema';
 
 export const tensionClimbStatsRelations = relations(tensionClimbStats, ({ one }) => ({
