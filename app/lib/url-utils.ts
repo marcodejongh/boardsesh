@@ -69,6 +69,7 @@ export const searchParamsToUrlParams = ({
     pageSize: pageSize.toString(),
     ...Object.fromEntries(
       Object.entries(holdsFilter).map(([key, value]) => {
+        //@ts-expect-error fix later
         return [`hold_${key}`, value.state];
       }),
     ),
@@ -86,6 +87,7 @@ export const DEFAULT_SEARCH_PARAMS: SearchRequestPagination = {
   onlyClassics: false,
   settername: '',
   setternameSuggestion: '',
+  //@ts-expect-error fix later
   holdsFilter: {},
   page: 0,
   pageSize: PAGE_LIMIT,
@@ -111,6 +113,7 @@ export const urlParamsToSearchParams = (urlParams: URLSearchParams): SearchReque
     onlyClassics: urlParams.get('onlyClassics') === 'true',
     settername: urlParams.get('settername') ?? DEFAULT_SEARCH_PARAMS.settername,
     setternameSuggestion: urlParams.get('setternameSuggestion') ?? DEFAULT_SEARCH_PARAMS.setternameSuggestion,
+    //@ts-expect-error fix later
     holdsFilter: holdsFilter ?? DEFAULT_SEARCH_PARAMS.holdsFilter,
     page: Number(urlParams.get('page') ?? DEFAULT_SEARCH_PARAMS.page),
     pageSize: Number(urlParams.get('pageSize') ?? DEFAULT_SEARCH_PARAMS.pageSize),

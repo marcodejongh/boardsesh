@@ -17,7 +17,7 @@ const ClimbThumbnail = ({ boardDetails, currentClimb }: ClimbThumbnailProps) => 
       <a onClick={currentClimb ? () => setModalOpen(true) : undefined}>
         <BoardRenderer
           litUpHoldsMap={currentClimb?.litUpHoldsMap}
-          mirrored={currentClimb?.mirrored}
+          mirrored={!!currentClimb?.mirrored}
           boardDetails={boardDetails}
           thumbnail
         />
