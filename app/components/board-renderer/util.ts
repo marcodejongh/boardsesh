@@ -28,10 +28,10 @@ export const convertLitUpHoldsStringToMap = (litUpHolds: string, board: BoardNam
             .map(([holdId, stateCode]) => {
               if (!HOLD_STATE_MAP[board][stateCode]) {
                 console.warn(
-                  `HOLD_STATE_MAP is missing values for ${board}. Missing status code: ${stateCode}.
+                  `HOLD_STATE_MAP is missing values for ${board} hold id: ${holdId}, missing status code: ${stateCode}.
                 You probably need to update that mapping after adding support for more boards`,
                 );
-                return [holdId, { state: stateCode, color: '#FFF', displayColor: '#FFF' }];
+                return [holdId || 0, { state: `${hold_id}=`${stateCode}`, color: '#FFF', displayColor: '#FFF' }];
               }
               const { name, color, displayColor } = HOLD_STATE_MAP[board][stateCode];
               return [holdId, { state: name, color, displayColor: displayColor || color }];
