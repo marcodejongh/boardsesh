@@ -37,6 +37,7 @@ export const convertLitUpHoldsStringToMap = (litUpHolds: string, board: BoardNam
               return [holdId, { state: name, color, displayColor: displayColor || color }];
             }),
         );
+        //@ts-expect-error TODO: The warning state above is not compatible with statesmap, so we just expect error here, will deal with this later
         frameMap[frameIndex] = frameHoldsMap; // Map each frame's holds
         return frameMap;
       },
