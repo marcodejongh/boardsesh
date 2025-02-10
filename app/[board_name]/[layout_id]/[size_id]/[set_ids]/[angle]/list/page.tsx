@@ -13,7 +13,7 @@ export default async function DynamicResultsPage({
   params: BoardRouteParametersWithUuid;
   searchParams: SearchRequestPagination;
 }) {
-  const parsedParams = parseBoardRouteParams(params);
+  const parsedParams = await parseBoardRouteParams(params);
 
   try {
     const searchParamsObject: SearchRequestPagination = parsedRouteSearchParamsToSearchParams(searchParams);
