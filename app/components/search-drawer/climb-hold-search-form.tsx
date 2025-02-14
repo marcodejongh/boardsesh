@@ -56,6 +56,8 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
     // Handle mirrored hold
     const hold = boardDetails.holdsData.find((h) => h.id === holdId);
     if (hold?.mirroredHoldId) {
+      //TODO: When on a board with mirrored holds, we should search an OR for the
+      // two possible hold ids
       const mirrorKey = `hold_${hold.mirroredHoldId}`;
       updates[mirrorKey] = updates[holdKey];
     }
@@ -77,19 +79,24 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
       } else if (selectedState === 'ANY') {
         displayInfo = {
           state: 'ANY',
-          color: '#b76e79',
+          color: '#00CCCC',
         };
       } else if (stateCode !== null) {
+        // This branch is needed for when adding search by foot/hand/etc
         const stateInfo = HOLD_STATE_MAP[boardDetails.board_name as BoardName][stateCode];
         displayInfo = {
           state: stateInfo.name,
           color: stateInfo.displayColor || stateInfo.color,
         };
       }
+      
 
       if (displayInfo) {
-        //@ts-expect-error cbf
-        newSelectedHolds[holdId] = displayInfo;
+        if (!newSelectedHolds[holdId] || newSelectedHolds[holdId].state !== displayInfo.state) {
+          newSelectedHolds[holdId] = displayInfo;
+        } else {
+          delete newSelectedHolds[holdId];
+        }
       }
     }
 
