@@ -1,14 +1,10 @@
 'use client';
 import React from 'react';
-import { BoardDetails } from '@/app/lib/types';
-import { HOLD_STATE_MAP, LitUpHoldsMap } from '../board-renderer/types';
+import { BoardDetails, BoardName, HoldCode, HoldFilterKey, HoldState } from '@/app/lib/types';
+import { HOLD_STATE_MAP, LitupHold, LitUpHoldsMap } from '../board-renderer/types';
 import BoardRenderer from '../board-renderer/board-renderer';
 import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
 import { Select } from 'antd';
-
-export type HoldCode = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 42 | 43 | 44 | 45 | 12 | 13 | 14 | 15;
-export type BoardName = 'tension' | 'kilter';
-export type HoldState = 'STARTING' | 'HAND' | 'FOOT' | 'FINISH' | 'OFF' | 'ANY' | 'NOT';
 
 interface ClimbHoldSearchFormProps {
   boardDetails: BoardDetails;
@@ -31,9 +27,9 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
 
   const handleHoldClick = (holdId: number) => {
     const stateCode = getStateCode(selectedState, boardDetails.board_name as BoardName);
-    const updates: Record<string, any> = {};
-    const holdKey = `hold_${holdId}`;
-
+    const updates: Record<string, HoldState | null> = {};
+    const holdKey: HoldFilterKey = `hold_${holdId}`;
+    let displayInfo: LitupHold | null = null;
     // Handle ANY state (remove filter)
     if (selectedState === 'ANY') {
       updates[holdKey] = 'ANY';
@@ -41,21 +37,22 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
     // Handle NOT state
     else if (selectedState === 'NOT') {
       updates[holdKey] = 'NOT';
-    }
-    // Handle other states
-    else {
-      //@ts-expect-error fix later
+    } else {
       const currentValue = uiSearchParams[holdKey];
       if (currentValue === stateCode?.toString()) {
-        updates[holdKey] = undefined;
-      } else {
-        updates[holdKey] = stateCode;
+        updates[holdKey] = null;
+      } else if (stateCode !== null) {
+        const stateInfo = HOLD_STATE_MAP[boardDetails.board_name][stateCode];
+        const holdState: HoldState = stateInfo.name;  
+        updates[holdKey] = holdState;
       }
     }
-
+    
     // Handle mirrored hold
     const hold = boardDetails.holdsData.find((h) => h.id === holdId);
     if (hold?.mirroredHoldId) {
+      //TODO: When on a board with mirrored holds, we should search an OR for the
+      // two possible hold ids
       const mirrorKey = `hold_${hold.mirroredHoldId}`;
       updates[mirrorKey] = updates[holdKey];
     }
@@ -68,42 +65,45 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
         delete newSelectedHolds[hold.mirroredHoldId];
       }
     } else {
-      let displayInfo;
       if (selectedState === 'NOT') {
         displayInfo = {
           state: 'NOT',
           color: '#FF0000', // Red color for NOT state
+          displayColor: '#FF0000', // Red color for NOT state
         };
       } else if (selectedState === 'ANY') {
         displayInfo = {
           state: 'ANY',
-          color: '#b76e79',
+          color: '#00CCCC',
+          displayColor: '#00CCCC',
         };
       } else if (stateCode !== null) {
+        // This branch is needed for when adding search by foot/hand/etc
         const stateInfo = HOLD_STATE_MAP[boardDetails.board_name as BoardName][stateCode];
         displayInfo = {
           state: stateInfo.name,
-          color: stateInfo.displayColor || stateInfo.color,
+          color: stateInfo.color,
+          displayColor: stateInfo.displayColor || stateInfo.color,
         };
       }
+      
 
       if (displayInfo) {
-        //@ts-expect-error cbf
-        newSelectedHolds[holdId] = displayInfo;
+        if (!newSelectedHolds[holdId] || newSelectedHolds[holdId].state !== displayInfo.state) {
+          newSelectedHolds[holdId] = displayInfo;
+        } else {
+          delete newSelectedHolds[holdId];
+        }
       }
     }
 
     updateFilters({
-      //@ts-expect-error will fix later
       holdsFilter: newSelectedHolds,
     });
   };
 
   const clearAllHolds = () => {
-    const updates: Record<string, undefined> = {};
-
     updateFilters({
-      //@ts-expect-error
       holdsFilter: {},
     });
   };

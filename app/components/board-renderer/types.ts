@@ -2,7 +2,7 @@ import { BoardName } from '@/lib/types';
 
 export type LitUpHolds = string;
 
-export type HoldState = 'OFF' | 'STARTING' | 'FINISH' | 'HAND' | 'FOOT';
+export type HoldState = 'OFF' | 'STARTING' | 'FINISH' | 'HAND' | 'FOOT' | 'ANY' | 'NOT';
 export type HoldsArray = Array<HoldRenderData>;
 
 export type HoldColor = string;
@@ -14,7 +14,8 @@ export type HoldRenderData = {
   cy: number;
   r: number;
 };
-export type LitUpHoldsMap = Record<HoldCode, { state: HoldState; color: string; displayColor: string }>;
+export type LitupHold = { state: HoldState; color: string; displayColor: string };
+export type LitUpHoldsMap = Record<HoldCode, LitupHold>;
 
 // If adding mroe boards be sure to increment the DB version number for indexeddb
 export const supported_boards: BoardName[] = ['kilter', 'tension'];

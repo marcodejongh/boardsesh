@@ -87,7 +87,6 @@ export const DEFAULT_SEARCH_PARAMS: SearchRequestPagination = {
   onlyClassics: false,
   settername: '',
   setternameSuggestion: '',
-  //@ts-expect-error fix later
   holdsFilter: {},
   page: 0,
   pageSize: PAGE_LIMIT,

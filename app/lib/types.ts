@@ -56,12 +56,16 @@ export type SetsResponse = {
 
 // Search Request Type
 export type HoldCode = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 42 | 43 | 44 | 45 | 12 | 13 | 14 | 15;
-export type HoldState = 'STARTING' | 'HAND' | 'FOOT' | 'FINISH' | 'OFF' | 'ANY';
+export type HoldState = 'STARTING' | 'HAND' | 'FOOT' | 'FINISH' | 'OFF' | 'ANY' | 'NOT';
 
 export type HoldStateFilter = {
   holdId: string;
   stateCode: HoldCode;
 };
+
+export type HoldFilterKey = `hold_${number}`;
+export type HoldFilterValue = HoldState | null;
+export type HoldsFilter = Partial<Record<HoldFilterKey, HoldFilterValue>>;
 
 export type SearchRequest = {
   gradeAccuracy: number;
@@ -75,7 +79,8 @@ export type SearchRequest = {
   onlyClassics: boolean;
   settername: string;
   setternameSuggestion: string;
-  holdsFilter: HoldStateFilter;
+  holdsFilter: HoldsFilter;
+  [key: `hold_${number}`]: HoldFilterValue; // Allow dynamic hold keys directly in the search params
 };
 
 export type SearchRequestPagination = SearchRequest & {
