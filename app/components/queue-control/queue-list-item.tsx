@@ -9,6 +9,7 @@ import { attachClosestEdge, extractClosestEdge } from '@atlaskit/pragmatic-drag-
 import type { Edge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/types';
 import { combine } from '@atlaskit/pragmatic-drag-and-drop/combine';
 import { ClimbQueueItem } from './types';
+import { TickButton } from '../logbook/tick-button';
 import ClimbThumbnail from '../climb-card/climb-thumbnail';
 import { useBoardProvider } from '../board-provider/board-provider-context';
 import { CopyrightOutlined } from '@ant-design/icons';
@@ -169,6 +170,9 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
                 </Text>
               }
             />
+          </Col>
+          <Col xs={2}>
+            <TickButton currentClimb={item.climb} angle={item.climb.angle} boardDetails={boardDetails} />
           </Col>
           <Col xs={1}>
             <DragHandleButton label={`Reorder ${item.climb.name}`}>
