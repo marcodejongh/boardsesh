@@ -70,19 +70,42 @@ export type HoldsFilter = Partial<Record<HoldFilterKey, HoldFilterValue>>;
 export type SearchRequest = {
   gradeAccuracy: number;
   maxGrade: number;
-  minAscents: number;
   minGrade: number;
   minRating: number;
+  minAscents: number;
   sortBy: 'ascents' | 'difficulty' | 'name' | 'quality';
   sortOrder: 'asc' | 'desc';
   name: string;
   onlyClassics: boolean;
   settername: string;
   setternameSuggestion: string;
-  holdsFilter: HoldsFilter;
   [key: `hold_${number}`]: HoldFilterValue; // Allow dynamic hold keys directly in the search params
+  holdsFilter: HoldStateFilter;
+  holds: string;
+  mirroredHolds: string;
+
+  // Logbook filters
+  showDone: boolean;
+  showAttempted: boolean;
+  showNotAttempted: boolean;
+  showOnlyLiked: boolean;
+  onlyWithBeta: boolean;
+
+  // Climb Type filters
+  showBoulders: boolean;
+  showRoutes: boolean;
+
+  // Climb Status filters
+  showEstablished: boolean;
+  showProjects: boolean;
+  showDrafts: boolean;
+
+  // Climb Size & Shape filters
+  onlyTall: boolean;
+  onlySide: boolean;
 };
 
+// SearchRequestPagination remains the same structure
 export type SearchRequestPagination = SearchRequest & {
   page: number;
   pageSize: number;
