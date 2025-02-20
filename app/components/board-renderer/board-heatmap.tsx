@@ -34,14 +34,14 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
 
   const heatmapMap = useMemo(() => new Map(heatmapData.map(data => [data.holdId, data])), [heatmapData]);
 
-  const getValue = (data: HoldHeatmapData | undefined) => {
+  const getValue = (data: HoldHeatmapData | undefined): number => {
     if (!data) return 0;
     switch (colorMode) {
       case 'starting': return data.startingUses;
       case 'hand': return data.handUses;
       case 'foot': return data.footUses;
       case 'finish': return data.finishUses;
-      case 'difficulty': return data.averageDifficulty;
+      case 'difficulty': return data.averageDifficulty || 0;
       default: return data.totalUses;
     }
   };
@@ -51,7 +51,7 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
     const values = heatmapData
       .filter(data => !litUpHoldsMap[data.holdId])
       .map(data => getValue(data))
-      .filter(val => val >= threshold)
+      .filter((val) => val && val >= threshold)
       .sort((a, b) => a - b);
 
     if (values.length === 0) {
@@ -67,6 +67,9 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
 
     const getColorScale = () => {
       return (value: number) => {
+        if (!maxValue || !minValue) {
+          return;
+        }
         const cappedValue = Math.min(value, maxValue);
         const normalized = (cappedValue - minValue) / (maxValue - minValue);
         // Direct interpolation from blue to green

@@ -1,4 +1,3 @@
-// File: app/lib/db/queries/holds-heatmap.ts
 import { and, eq, between, gte, sql, like, notLike } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { dbz as db } from '../db';
@@ -24,63 +23,32 @@ export const getHoldHeatmapData = async (
   const climbHolds = tables.climbHolds;
 
   // Process holds filters
-  const holdsToFilter = Object.entries(searchParams.holdsFilter).map(([key, state]) => [
-    key.replace('hold_', ''),
-    state,
-  ]);
-  const anyHolds = holdsToFilter.filter(([, value]) => value === 'ANY').map(([key]) => Number(key));
-  const notHolds = holdsToFilter.filter(([, value]) => value === 'NOT').map(([key]) => Number(key));
-
-  // Build where conditions array dynamically
-  const whereConditions = [
-    eq(tables.climbs.layoutId, params.layout_id),
-    eq(tables.climbs.isListed, true),
-    eq(tables.climbs.isDraft, false),
-    eq(tables.climbs.framesCount, 1),
-    eq(ps.id, params.size_id),
-    sql`${tables.climbs.edgeLeft} > ${ps.edgeLeft}`,
-    sql`${tables.climbs.edgeRight} < ${ps.edgeRight}`,
-    sql`${tables.climbs.edgeBottom} > ${ps.edgeBottom}`,
-    sql`${tables.climbs.edgeTop} < ${ps.edgeTop}`,
-  ];
-
-  // Add optional conditions
-  if (searchParams.minAscents) {
-    whereConditions.push(gte(tables.climbStats.ascensionistCount, searchParams.minAscents));
-  }
-
-  if (searchParams.minGrade && searchParams.maxGrade) {
-    whereConditions.push(
-      sql`ROUND(${tables.climbStats.displayDifficulty}::numeric, 0) BETWEEN ${searchParams.minGrade} AND ${searchParams.maxGrade}`,
-    );
-  } else if (searchParams.minGrade) {
-    whereConditions.push(sql`ROUND(${tables.climbStats.displayDifficulty}::numeric, 0) >= ${searchParams.minGrade}`);
-  } else if (searchParams.maxGrade) {
-    whereConditions.push(sql`ROUND(${tables.climbStats.displayDifficulty}::numeric, 0) <= ${searchParams.maxGrade}`);
-  }
-
-  if (searchParams.minRating) {
-    whereConditions.push(sql`${tables.climbStats.qualityAverage} >= ${searchParams.minRating}`);
-  }
-
-  if (searchParams.gradeAccuracy) {
-    whereConditions.push(
-      sql`ABS(ROUND(${tables.climbStats.displayDifficulty}::numeric, 0) - ${tables.climbStats.difficultyAverage}::numeric) <= ${searchParams.gradeAccuracy}`,
-    );
-  }
-
-  if (searchParams.name) {
-    whereConditions.push(sql`${tables.climbs.name} ILIKE ${`%${searchParams.name}%`}`);
-  }
-
-  // Add hold filters
-  whereConditions.push(
-    ...anyHolds.map((holdId) => like(tables.climbs.frames, `%${holdId}r%`)),
-    ...notHolds.map((holdId) => notLike(tables.climbs.frames, `%${holdId}r%`)),
-  );
+  const { anyHolds, notHolds } = processHoldFilters(searchParams.holdsFilter);
 
   try {
-    const baseQuery = db
+    // First get the filtered climbs subquery
+    const filteredClimbsSubquery = db
+      .select({ uuid: tables.climbs.uuid })
+      .from(tables.climbs)
+      .innerJoin(ps, eq(ps.id, params.size_id))
+      .where(
+        and(
+          eq(tables.climbs.layoutId, params.layout_id),
+          eq(tables.climbs.isListed, true),
+          eq(tables.climbs.isDraft, false),
+          eq(tables.climbs.framesCount, 1),
+          sql`${tables.climbs.edgeLeft} > ${ps.edgeLeft}`,
+          sql`${tables.climbs.edgeRight} < ${ps.edgeRight}`,
+          sql`${tables.climbs.edgeBottom} > ${ps.edgeBottom}`,
+          sql`${tables.climbs.edgeTop} < ${ps.edgeTop}`,
+          ...anyHolds.map((holdId) => like(tables.climbs.frames, `%${holdId}r%`)),
+          ...notHolds.map((holdId) => notLike(tables.climbs.frames, `%${holdId}r%`)),
+        ),
+      )
+      .as('filtered_climbs');
+
+    // Main query using the filtered climbs
+    const holdStats = await db
       .select({
         holdId: climbHolds.holdId,
         totalUses: sql<number>`count(*)`,
@@ -91,32 +59,75 @@ export const getHoldHeatmapData = async (
         averageDifficulty: sql<number>`avg(${tables.climbStats.displayDifficulty})`,
       })
       .from(climbHolds)
-      .innerJoin(tables.climbs, eq(tables.climbs.uuid, climbHolds.climbUuid))
+      .innerJoin(filteredClimbsSubquery, eq(filteredClimbsSubquery.uuid, climbHolds.climbUuid))
       .leftJoin(
         tables.climbStats,
-        and(eq(tables.climbStats.climbUuid, climbHolds.climbUuid), eq(tables.climbStats.angle, params.angle)),
+        and(
+          eq(tables.climbStats.climbUuid, climbHolds.climbUuid), 
+          eq(tables.climbStats.angle, params.angle),
+          ...buildClimbStatsSearchConditions(tables, searchParams)
+        ),
       )
-      .leftJoin(
-        tables.difficultyGrades,
-        eq(tables.difficultyGrades.difficulty, sql`ROUND(${tables.climbStats.displayDifficulty}::numeric)`),
-      )
-      .innerJoin(ps, eq(ps.id, params.size_id))
-      .where(and(...whereConditions))
       .groupBy(climbHolds.holdId);
 
-    const holdStats = await baseQuery;
-
-    return holdStats.map((stats) => ({
-      holdId: Number(stats.holdId),
-      totalUses: Number(stats.totalUses || 0),
-      startingUses: Number(stats.startingUses || 0),
-      handUses: Number(stats.handUses || 0),
-      footUses: Number(stats.footUses || 0),
-      finishUses: Number(stats.finishUses || 0),
-      averageDifficulty: stats.averageDifficulty ? Number(stats.averageDifficulty) : null,
-    }));
+    return holdStats.map(normalizeStats);
   } catch (error) {
     console.error('Error in getHoldHeatmapData:', error);
     throw error;
   }
 };
+
+// Helper functions
+function processHoldFilters(holdsFilter: Record<string, string>) {
+  return Object.entries(holdsFilter).reduce(
+    (acc, [key, state]) => {
+      const holdId = Number(key.replace('hold_', ''));
+      if (state === 'ANY') acc.anyHolds.push(holdId);
+      if (state === 'NOT') acc.notHolds.push(holdId);
+      return acc;
+    },
+    { anyHolds: [] as number[], notHolds: [] as number[] },
+  );
+}
+
+function buildClimbStatsSearchConditions(tables: any, searchParams: SearchRequestPagination) {
+  const conditions = [];
+
+  if (searchParams.minAscents) {
+    conditions.push(gte(tables.climbStats.ascensionistCount, searchParams.minAscents));
+  }
+
+  if (searchParams.minGrade && searchParams.maxGrade) {
+    conditions.push(
+      sql`ROUND(${tables.climbStats.displayDifficulty}::numeric, 0) BETWEEN ${searchParams.minGrade} AND ${searchParams.maxGrade}`,
+    );
+  } else if (searchParams.minGrade) {
+    conditions.push(sql`ROUND(${tables.climbStats.displayDifficulty}::numeric, 0) >= ${searchParams.minGrade}`);
+  } else if (searchParams.maxGrade) {
+    conditions.push(sql`ROUND(${tables.climbStats.displayDifficulty}::numeric, 0) <= ${searchParams.maxGrade}`);
+  }
+
+  if (searchParams.minRating) {
+    conditions.push(sql`${tables.climbStats.qualityAverage} >= ${searchParams.minRating}`);
+  }
+
+  if (searchParams.gradeAccuracy) {
+    conditions.push(
+      sql`ABS(ROUND(${tables.climbStats.displayDifficulty}::numeric, 0) - ${tables.climbStats.difficultyAverage}::numeric) <= ${searchParams.gradeAccuracy}`,
+    );
+  }
+
+  return conditions;
+}
+
+function normalizeStats(stats: any): HoldHeatmapData {
+  return {
+    holdId: Number(stats.holdId),
+    totalUses: Number(stats.totalUses || 0),
+    startingUses: Number(stats.startingUses || 0),
+    handUses: Number(stats.handUses || 0),
+    footUses: Number(stats.footUses || 0),
+    finishUses: Number(stats.finishUses || 0),
+    averageDifficulty: stats.averageDifficulty ? Number(stats.averageDifficulty) : null,
+  };
+}
