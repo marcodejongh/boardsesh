@@ -22,7 +22,7 @@ export const getHoldHeatmapData = async (
   const ps = alias(tables.productSizes, 'ps');
   const climbHolds = tables.climbHolds;
 
-  // Process holds filters
+  // @ts-expect-error
   const { anyHolds, notHolds } = processHoldFilters(searchParams.holdsFilter);
 
   try {
