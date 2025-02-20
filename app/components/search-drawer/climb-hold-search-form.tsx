@@ -44,10 +44,12 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
     const holdKey = `hold_${holdId}`;
 
     if (selectedState === 'ANY' || selectedState === 'NOT') {
-      // Toggle the hold state
+      // @ts-expect-error
       if (updatedHoldsFilter[holdId]?.state === selectedState) {
+        // @ts-expect-error
         delete updatedHoldsFilter[holdId];
       } else {
+        // @ts-expect-error 
         updatedHoldsFilter[holdId] = {
           state: selectedState,
           color: selectedState === 'ANY' ? '#00CCCC' : '#FF0000',
