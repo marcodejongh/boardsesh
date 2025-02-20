@@ -30,6 +30,7 @@ export default function useHeatmapData({
               
         // Use the same URL structure as your search endpoint
         const response = await fetch(
+          //@ts-expect-error
           `/api/v1/${boardName}/${layoutId}/${sizeId}/${setIds}/${angle}/heatmap?${searchParamsToUrlParams(filters).toString()}`
         );
         
