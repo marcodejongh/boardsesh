@@ -31,7 +31,7 @@ const SearchButton = ({ boardDetails }: { boardDetails: BoardDetails }) => {
       <Drawer
         title="Search"
         placement="right"
-        width={'70%'}
+        width={'90%'}
         open={isOpen}
         onClose={() => setIsOpen(false)}
         footer={
