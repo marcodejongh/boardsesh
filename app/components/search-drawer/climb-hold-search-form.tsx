@@ -1,10 +1,12 @@
-'use client';
-import React from 'react';
-import { BoardDetails, BoardName, HoldCode, HoldFilterKey, HoldState } from '@/app/lib/types';
-import { HOLD_STATE_MAP, LitupHold, LitUpHoldsMap } from '../board-renderer/types';
-import BoardRenderer from '../board-renderer/board-renderer';
+import React, { useEffect } from 'react';
+import { BoardDetails, HoldState } from '@/app/lib/types';
 import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
 import { Select } from 'antd';
+
+import BoardRenderer from '../board-renderer/board-renderer';
+import useHeatmapData from './use-heatmap';
+import BoardHeatmap from '../board-renderer/board-heatmap';
+import { usePathname, useSearchParams } from 'next/navigation';
 
 interface ClimbHoldSearchFormProps {
   boardDetails: BoardDetails;
@@ -12,110 +14,55 @@ interface ClimbHoldSearchFormProps {
 
 const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails }) => {
   const { uiSearchParams, updateFilters } = useUISearchParams();
-  const [selectedState, setSelectedState] = React.useState<HoldState>('ANY');
-
-  const getStateCode = (state: HoldState, boardName: BoardName): HoldCode | null => {
-    if (state === 'ANY' || state === 'NOT') return null;
-
-    const stateMap = HOLD_STATE_MAP[boardName];
-    const entry = Object.entries(stateMap).find(([, value]) => value.name === state);
-    if (!entry) {
-      throw new Error(`No code found for state ${state} on board ${boardName}`);
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  
+  useEffect(() => {
+    const path = pathname.split('/');
+    const angle = Number(path[path.length - 2]);
+    if (typeof angle === 'number') {
+      setAngle(angle);
     }
-    return parseInt(entry[0]) as HoldCode;
-  };
+  }, [pathname, searchParams])
+  
+  const [selectedState, setSelectedState] = React.useState<HoldState>('ANY');
+  const [showHeatmap, setShowHeatmap] = React.useState(false);
+  const [angle, setAngle] = React.useState(40);
+  
+  const { data: heatmapData, loading } = useHeatmapData({
+  boardName: boardDetails.board_name,
+  layoutId: boardDetails.layout_id,
+  sizeId: boardDetails.size_id,
+  setIds: boardDetails.set_ids.join(','),
+  angle,
+  filters: uiSearchParams
+});
+
 
   const handleHoldClick = (holdId: number) => {
-    const stateCode = getStateCode(selectedState, boardDetails.board_name as BoardName);
-    const updates: Record<string, HoldState | null> = {};
-    const holdKey: HoldFilterKey = `hold_${holdId}`;
-    let displayInfo: LitupHold | null = null;
-    // Handle ANY state (remove filter)
-    if (selectedState === 'ANY') {
-      updates[holdKey] = 'ANY';
-    }
-    // Handle NOT state
-    else if (selectedState === 'NOT') {
-      updates[holdKey] = 'NOT';
-    } else {
-      const currentValue = uiSearchParams[holdKey];
-      if (currentValue === stateCode?.toString()) {
-        updates[holdKey] = null;
-      } else if (stateCode !== null) {
-        const stateInfo = HOLD_STATE_MAP[boardDetails.board_name][stateCode];
-        const holdState: HoldState = stateInfo.name;  
-        updates[holdKey] = holdState;
-      }
-    }
-    
-    // Handle mirrored hold
-    const hold = boardDetails.holdsData.find((h) => h.id === holdId);
-    if (hold?.mirroredHoldId) {
-      //TODO: When on a board with mirrored holds, we should search an OR for the
-      // two possible hold ids
-      const mirrorKey = `hold_${hold.mirroredHoldId}`;
-      updates[mirrorKey] = updates[holdKey];
-    }
+    const updatedHoldsFilter = { ...uiSearchParams.holdsFilter };
+    const holdKey = `hold_${holdId}`;
 
-    // Create visual hold map for UI
-    const newSelectedHolds: LitUpHoldsMap = { ...(uiSearchParams.holdsFilter || {}) };
-    if (updates[holdKey] === undefined) {
-      delete newSelectedHolds[holdId];
-      if (hold?.mirroredHoldId) {
-        delete newSelectedHolds[hold.mirroredHoldId];
-      }
-    } else {
-      if (selectedState === 'NOT') {
-        displayInfo = {
-          state: 'NOT',
-          color: '#FF0000', // Red color for NOT state
-          displayColor: '#FF0000', // Red color for NOT state
+    if (selectedState === 'ANY' || selectedState === 'NOT') {
+      // Toggle the hold state
+      if (updatedHoldsFilter[holdId]?.state === selectedState) {
+        delete updatedHoldsFilter[holdId];
+      } else {
+        updatedHoldsFilter[holdId] = {
+          state: selectedState,
+          color: selectedState === 'ANY' ? '#00CCCC' : '#FF0000',
+          displayColor: selectedState === 'ANY' ? '#00CCCC' : '#FF0000',
         };
-      } else if (selectedState === 'ANY') {
-        displayInfo = {
-          state: 'ANY',
-          color: '#00CCCC',
-          displayColor: '#00CCCC',
-        };
-      } else if (stateCode !== null) {
-        // This branch is needed for when adding search by foot/hand/etc
-        const stateInfo = HOLD_STATE_MAP[boardDetails.board_name as BoardName][stateCode];
-        displayInfo = {
-          state: stateInfo.name,
-          color: stateInfo.color,
-          displayColor: stateInfo.displayColor || stateInfo.color,
-        };
-      }
-      
-
-      if (displayInfo) {
-        if (!newSelectedHolds[holdId] || newSelectedHolds[holdId].state !== displayInfo.state) {
-          newSelectedHolds[holdId] = displayInfo;
-        } else {
-          delete newSelectedHolds[holdId];
-        }
       }
     }
 
     updateFilters({
-      holdsFilter: newSelectedHolds,
-    });
-  };
-
-  const clearAllHolds = () => {
-    updateFilters({
-      holdsFilter: {},
+      holdsFilter: updatedHoldsFilter
     });
   };
 
   const stateItems = [
     { value: 'ANY', label: 'Any Hold' },
-    // TODO: Shouldn't be hard to implement the other hold states
-    // But not sure yet if I see the point in adding those
-    // { value: 'STARTING', label: 'Starting Hold' },
-    // { value: 'HAND', label: 'Hand Hold' },
-    // { value: 'FOOT', label: 'Foot Hold' },
-    // { value: 'FINISH', label: 'Finish Hold' },
     { value: 'NOT', label: 'Not This Hold' },
   ];
 
@@ -129,18 +76,39 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
           style={{ width: 200 }}
           options={stateItems}
         />
+        <button
+          onClick={() => setShowHeatmap(!showHeatmap)}
+          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+        >
+          {showHeatmap ? 'Hide Heatmap' : 'Show Heatmap'}
+        </button>
       </div>
+      
       <p className="mb-4">Click on holds to set them to the selected type</p>
+      
       <div className="w-full max-w-2xl mx-auto">
-        <BoardRenderer
-          boardDetails={boardDetails}
-          litUpHoldsMap={uiSearchParams.holdsFilter || {}}
-          mirrored={false}
-          onHoldClick={handleHoldClick}
-        />
+        {showHeatmap ? (
+          <BoardHeatmap
+            boardDetails={boardDetails}
+            heatmapData={heatmapData || []}
+            litUpHoldsMap={uiSearchParams.holdsFilter || {}}
+            onHoldClick={handleHoldClick}
+          />
+        ) : (
+          <BoardRenderer
+            boardDetails={boardDetails}
+            litUpHoldsMap={uiSearchParams.holdsFilter || {}}
+            mirrored={false}
+            onHoldClick={handleHoldClick}
+          />
+        )}
       </div>
+
       {Object.keys(uiSearchParams.holdsFilter || {}).length > 0 && (
-        <button onClick={clearAllHolds} className="mt-4 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">
+        <button 
+          onClick={() => updateFilters({ holdsFilter: {} })} 
+          className="mt-4 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+        >
           Clear Selected Holds
         </button>
       )}
