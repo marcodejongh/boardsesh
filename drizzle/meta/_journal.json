@@ -92,6 +92,13 @@
       "when": 1736553172493,
       "tag": "0012_drop_climb_holds_fk",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1740054525189,
+      "tag": "0013_add_heatmap_indexes",
+      "breakpoints": true
     }
   ]
 }
