@@ -29,7 +29,7 @@ export default async function DynamicResultsPage({
       fetchBoardDetails(parsedParams.board_name, parsedParams.layout_id, parsedParams.size_id, parsedParams.set_ids),
     ]);
 
-    if (!fetchedResults || fetchedResults.climbs.length === 0) {
+    if (!fetchedResults || fetchedResults.climbs?.length === 0) {
       notFound();
     }
 
