@@ -10,12 +10,22 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
 
 const LEGEND_HEIGHT = 80;
-const BLUR_RADIUS = 8;
-const HEAT_RADIUS_MULTIPLIER = 2;
+const BLUR_RADIUS = 12; // Increased blur radius
+const HEAT_RADIUS_MULTIPLIER = 2.5; // Increased radius multiplier
 
-// Changed colors to go from blue to green
-const LOW_COLOR = '#4444ff';    // Blue for low values
-const HIGH_COLOR = '#44ff44';   // Green for high values
+// Updated color constants for better visibility
+const HEATMAP_COLORS = [
+  '#313695', // Deep blue
+  '#4575b4', // Blue
+  '#67a9cf', // Light blue
+  '#1a9850', // Green
+  '#91cf60', // Light green
+  '#fee08b', // Yellow
+  '#fc8d59', // Orange
+  '#e6550d', // Dark orange
+  '#de2d26', // Red
+  '#a50026'  // Deep red
+];
 
 interface BoardHeatmapProps {
   boardDetails: BoardDetails;
@@ -78,34 +88,33 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
       .filter((val) => val && val >= threshold)
       .sort((a, b) => a - b);
 
-    if (values.length === 0) {
-      return {
-        colorScale: () => '#eee',
-        opacityScale: () => 0.1
-      };
-    }
-
-    const p90Index = Math.floor(values.length * 0.90);
-    const maxValue = values[p90Index] || values[values.length - 1];
-    const minValue = values[0];
+    // Instead of checking for empty values, we'll set minimum values
+    const p95Index = Math.floor(values.length * 0.95);
+    const maxValue = values[p95Index] || values[values.length - 1] || 1;
+    const minValue = values[0] || 0;
 
     const getColorScale = () => {
       return (value: number) => {
-        if (!maxValue || !minValue) {
-          return;
-        }
-        const cappedValue = Math.min(value, maxValue);
-        const normalized = (cappedValue - minValue) / (maxValue - minValue);
-        // Direct interpolation from blue to green
-        return interpolateRgb(LOW_COLOR, HIGH_COLOR)(normalized);
+        if (!value || value === 0) return 'transparent';
+        // Ensure we always have a valid range
+        const normalizedValue = (value - minValue) / (maxValue - minValue || 1);
+        const index = Math.floor(normalizedValue * (HEATMAP_COLORS.length - 1));
+        return HEATMAP_COLORS[Math.max(0, Math.min(index, HEATMAP_COLORS.length - 1))];
       };
+
     };
 
     const getOpacityScale = () => {
-      return scaleLinear()
-        .domain([minValue, maxValue])
-        .range([0.1, 0.3]) // Reduced opacity range
-        .clamp(true);
+      return (value: number) => {
+        if (!value || value === 0) return 0;
+        // Always maintain a visible opacity for non-zero values
+        return Math.max(0.2, Math.min(0.8, 
+          scaleLinear()
+            .domain([minValue, maxValue])
+            .range([0.2, 0.8])
+            .clamp(true)(value)
+        ));
+      };
     };
 
     return {
@@ -125,8 +134,13 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
       <g transform={`translate(${x}, ${y})`}>
         <defs>
           <linearGradient id={gradientId}>
-            <stop offset="0%" stopColor={LOW_COLOR} />
-            <stop offset="100%" stopColor={HIGH_COLOR} />
+            {HEATMAP_COLORS.map((color, index) => (
+              <stop 
+                key={color} 
+                offset={`${(index / (HEATMAP_COLORS.length - 1)) * 100}%`} 
+                stopColor={color} 
+              />
+            ))}
           </linearGradient>
         </defs>
         <rect
@@ -189,7 +203,7 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
                 const data = heatmapMap.get(hold.id);
                 const value = getValue(data);
                 
-                if (value < threshold) return null;
+                if (value === 0 || value < threshold) return null;
                 
                 return (
                   <circle
