@@ -304,6 +304,7 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
 
           {/* Selected holds overlay */}
           {holdsData.map((hold) => {
+            if (!litUpHoldsMap) return null;
             const litUpHold = litUpHoldsMap[hold.id];
             if (!litUpHold) return null;
             return (
