@@ -8,6 +8,7 @@ import { interpolateRgb } from 'd3-interpolate';
 import useHeatmapData from '../search-drawer/use-heatmap';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
+import { HeatmapData } from './types';
 
 const LEGEND_HEIGHT = 80;
 const BLUR_RADIUS = 10; // Increased blur radius
