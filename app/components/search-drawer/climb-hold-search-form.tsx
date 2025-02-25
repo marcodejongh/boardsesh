@@ -1,12 +1,10 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { BoardDetails, HoldState } from '@/app/lib/types';
 import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
 import { Select } from 'antd';
 
 import BoardRenderer from '../board-renderer/board-renderer';
-import useHeatmapData from './use-heatmap';
 import BoardHeatmap from '../board-renderer/board-heatmap';
-import { usePathname, useSearchParams } from 'next/navigation';
 
 interface ClimbHoldSearchFormProps {
   boardDetails: BoardDetails;
@@ -69,13 +67,15 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
         {showHeatmap ? (
           <BoardHeatmap
             boardDetails={boardDetails}
-            litUpHoldsMap={uiSearchParams.holdsFilter || {}}
+            //@ts-expect-error cbf
+            litUpHoldsMap={uiSearchParams.holdsFilter}
             onHoldClick={handleHoldClick}
           />
         ) : (
           <BoardRenderer
             boardDetails={boardDetails}
-            litUpHoldsMap={uiSearchParams.holdsFilter || {}}
+            //@ts-expect-error cbf
+            litUpHoldsMap={uiSearchParams.holdsFilter}
             mirrored={false}
             onHoldClick={handleHoldClick}
           />

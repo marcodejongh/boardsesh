@@ -36,7 +36,7 @@ const getPercentileValue = (values: number[], percentile: number) => {
 
 interface BoardHeatmapProps {
   boardDetails: BoardDetails;
-  litUpHoldsMap: LitUpHoldsMap;
+  litUpHoldsMap?: LitUpHoldsMap;
   onHoldClick?: (holdId: number) => void;
   colorMode?: 'total' | 'starting' | 'hand' | 'foot' | 'finish' | 'difficulty';
 }
@@ -92,7 +92,7 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
   // Create scales for better distribution of colors
   const { colorScale, opacityScale } = useMemo(() => {
     const values = heatmapData
-      .filter(data => !litUpHoldsMap[data.holdId])
+      .filter(data => !(litUpHoldsMap?.[data.holdId]))
       .map(data => getValue(data))
       .filter((val) => val && val >= threshold)
       .sort((a, b) => a - b);
