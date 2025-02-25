@@ -10,26 +10,31 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
 
 const LEGEND_HEIGHT = 80;
-const BLUR_RADIUS = 12; // Increased blur radius
-const HEAT_RADIUS_MULTIPLIER = 2.5; // Increased radius multiplier
+const BLUR_RADIUS = 10; // Increased blur radius
+const HEAT_RADIUS_MULTIPLIER = 2; // Increased radius multiplier
 
-// Updated color constants for better visibility
+// Updated color constants with more yellow/orange for middle values
 const HEATMAP_COLORS = [
-  '#313695', // Deep blue
-  '#4575b4', // Blue
-  '#67a9cf', // Light blue
-  '#1a9850', // Green
-  '#91cf60', // Light green
-  '#fee08b', // Yellow
-  '#fc8d59', // Orange
-  '#e6550d', // Dark orange
-  '#de2d26', // Red
-  '#a50026'  // Deep red
+  '#4caf50', // Light green
+  '#8bc34a', // Lime green
+  '#cddc39', // Lime
+  '#ffeb3b', // Yellow
+  '#ffc107', // Amber
+  '#ff9800', // Orange
+  '#ff7043', // Deep Orange
+  '#ff5722', // Darker Orange
+  '#f44336', // Light Red
+  '#d32f2f'  // Deep Red
 ];
+
+// Helper function to get value at percentile
+const getPercentileValue = (values: number[], percentile: number) => {
+  const index = Math.floor(values.length * (percentile / 100));
+  return values[index];
+};
 
 interface BoardHeatmapProps {
   boardDetails: BoardDetails;
-  heatmapData: HoldHeatmapData[];
   litUpHoldsMap: LitUpHoldsMap;
   onHoldClick?: (holdId: number) => void;
   colorMode?: 'total' | 'starting' | 'hand' | 'foot' | 'finish' | 'difficulty';
@@ -54,7 +59,7 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
     }, [pathname, searchParams])
     const [angle, setAngle] = React.useState(40);
     
-  const { data: heatmapData } = useHeatmapData({
+  const { data: heatmapData = [] } = useHeatmapData({
     boardName: boardDetails.board_name,
     layoutId: boardDetails.layout_id,
     sizeId: boardDetails.size_id, // Add this line
@@ -66,7 +71,10 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
   const [threshold, setThreshold] = useState(1);
   const { boardWidth, boardHeight, holdsData } = boardDetails;
 
-  const heatmapMap = useMemo(() => new Map(heatmapData.map(data => [data.holdId, data])), [heatmapData]);
+  const heatmapMap = useMemo(() => 
+    new Map(heatmapData?.map(data => [data.holdId, data]) || []), 
+    [heatmapData]
+  );
 
   const getValue = (data: HoldHeatmapData | undefined): number => {
     if (!data) return 0;
@@ -88,29 +96,54 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
       .filter((val) => val && val >= threshold)
       .sort((a, b) => a - b);
 
-    // Instead of checking for empty values, we'll set minimum values
-    const p95Index = Math.floor(values.length * 0.95);
-    const maxValue = values[p95Index] || values[values.length - 1] || 1;
-    const minValue = values[0] || 0;
+    if (values.length === 0) {
+      return {
+        colorScale: () => 'transparent',
+        opacityScale: () => 0
+      };
+    }
+
+    // Create breakpoints at different percentiles for more even distribution
+    const percentileValues = {
+      min: values[0],
+      p20: getPercentileValue(values, 20),
+      p40: getPercentileValue(values, 40),
+      p60: getPercentileValue(values, 60),
+      p80: getPercentileValue(values, 80),
+      p95: getPercentileValue(values, 95),
+      max: values[values.length - 1]
+    };
 
     const getColorScale = () => {
       return (value: number) => {
         if (!value || value === 0) return 'transparent';
-        // Ensure we always have a valid range
-        const normalizedValue = (value - minValue) / (maxValue - minValue || 1);
-        const index = Math.floor(normalizedValue * (HEATMAP_COLORS.length - 1));
+        
+        // Map the value to color index based on which percentile bucket it falls into
+        let normalizedIndex;
+        if (value <= percentileValues.p20) {
+          normalizedIndex = (value - percentileValues.min) / (percentileValues.p20 - percentileValues.min);
+        } else if (value <= percentileValues.p40) {
+          normalizedIndex = 2 + (value - percentileValues.p20) / (percentileValues.p40 - percentileValues.p20);
+        } else if (value <= percentileValues.p60) {
+          normalizedIndex = 4 + (value - percentileValues.p40) / (percentileValues.p60 - percentileValues.p40);
+        } else if (value <= percentileValues.p80) {
+          normalizedIndex = 6 + (value - percentileValues.p60) / (percentileValues.p80 - percentileValues.p60);
+        } else {
+          normalizedIndex = 8 + (value - percentileValues.p80) / (percentileValues.p95 - percentileValues.p80);
+        }
+
+        const index = Math.floor(normalizedIndex);
         return HEATMAP_COLORS[Math.max(0, Math.min(index, HEATMAP_COLORS.length - 1))];
       };
-
     };
 
     const getOpacityScale = () => {
       return (value: number) => {
         if (!value || value === 0) return 0;
-        // Always maintain a visible opacity for non-zero values
-        return Math.max(0.2, Math.min(0.8, 
+        // Use percentile values for opacity scaling
+        return Math.max(0.2, Math.min(0.8,
           scaleLinear()
-            .domain([minValue, maxValue])
+            .domain([percentileValues.min, percentileValues.p95])
             .range([0.2, 0.8])
             .clamp(true)(value)
         ));
@@ -233,8 +266,7 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
                   <circle
                     cx={hold.cx}
                     cy={hold.cy}
-                    r={hold.r * 1.4}
-                    
+                    r={hold.r}
                     fill={colorScale(value)}
                     opacity={opacityScale(value)}
                     filter="url(#blurMe)"
