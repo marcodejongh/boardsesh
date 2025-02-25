@@ -1,10 +1,13 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { getImageUrl } from './util';
 import { BoardDetails } from '@/app/lib/types';
 import { HoldHeatmapData } from '@/app/lib/db/queries/holds-heatmap';
 import { LitUpHoldsMap } from './types';
 import { scaleLinear } from 'd3-scale';
 import { interpolateRgb } from 'd3-interpolate';
+import useHeatmapData from '../search-drawer/use-heatmap';
+import { usePathname, useSearchParams } from 'next/navigation';
+import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
 
 const LEGEND_HEIGHT = 80;
 const BLUR_RADIUS = 8;
@@ -24,11 +27,32 @@ interface BoardHeatmapProps {
 
 const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
   boardDetails,
-  heatmapData,
   litUpHoldsMap,
   onHoldClick,
   colorMode = 'total'
 }) => {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const { uiSearchParams } = useUISearchParams();
+  
+  useEffect(() => {
+      const path = pathname.split('/');
+      const angle = Number(path[path.length - 2]);
+      if (typeof angle === 'number') {
+        setAngle(angle);
+      }
+    }, [pathname, searchParams])
+    const [angle, setAngle] = React.useState(40);
+    
+  const { data: heatmapData } = useHeatmapData({
+    boardName: boardDetails.board_name,
+    layoutId: boardDetails.layout_id,
+    sizeId: boardDetails.size_id, // Add this line
+    setIds: boardDetails.set_ids.join(','),
+    angle,
+    filters: uiSearchParams
+  });
+
   const [threshold, setThreshold] = useState(1);
   const { boardWidth, boardHeight, holdsData } = boardDetails;
 

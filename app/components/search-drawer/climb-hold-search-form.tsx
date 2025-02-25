@@ -14,42 +14,19 @@ interface ClimbHoldSearchFormProps {
 
 const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails }) => {
   const { uiSearchParams, updateFilters } = useUISearchParams();
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
   
-  useEffect(() => {
-    const path = pathname.split('/');
-    const angle = Number(path[path.length - 2]);
-    if (typeof angle === 'number') {
-      setAngle(angle);
-    }
-  }, [pathname, searchParams])
   
   const [selectedState, setSelectedState] = React.useState<HoldState>('ANY');
   const [showHeatmap, setShowHeatmap] = React.useState(false);
-  const [angle, setAngle] = React.useState(40);
   
-  const { data: heatmapData, loading } = useHeatmapData({
-  boardName: boardDetails.board_name,
-  layoutId: boardDetails.layout_id,
-  sizeId: boardDetails.size_id,
-  setIds: boardDetails.set_ids.join(','),
-  angle,
-  filters: uiSearchParams
-});
-
 
   const handleHoldClick = (holdId: number) => {
     const updatedHoldsFilter = { ...uiSearchParams.holdsFilter };
-    const holdKey = `hold_${holdId}`;
 
     if (selectedState === 'ANY' || selectedState === 'NOT') {
-      // @ts-expect-error
       if (updatedHoldsFilter[holdId]?.state === selectedState) {
-        // @ts-expect-error
         delete updatedHoldsFilter[holdId];
       } else {
-        // @ts-expect-error 
         updatedHoldsFilter[holdId] = {
           state: selectedState,
           color: selectedState === 'ANY' ? '#00CCCC' : '#FF0000',
@@ -92,7 +69,6 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
         {showHeatmap ? (
           <BoardHeatmap
             boardDetails={boardDetails}
-            heatmapData={heatmapData || []}
             litUpHoldsMap={uiSearchParams.holdsFilter || {}}
             onHoldClick={handleHoldClick}
           />
