@@ -7,8 +7,9 @@ import { scaleLinear } from 'd3-scale';
 import useHeatmapData from '../search-drawer/use-heatmap';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
+import { Button, Select, Form, Space, Switch } from 'antd';
 
-const LEGEND_HEIGHT = 80;
+const LEGEND_HEIGHT = 96; // Increased from 80
 const BLUR_RADIUS = 10; // Increased blur radius
 const HEAT_RADIUS_MULTIPLIER = 2; // Increased radius multiplier
 
@@ -36,18 +37,18 @@ interface BoardHeatmapProps {
   boardDetails: BoardDetails;
   litUpHoldsMap?: LitUpHoldsMap;
   onHoldClick?: (holdId: number) => void;
-  colorMode?: 'total' | 'starting' | 'hand' | 'foot' | 'finish' | 'difficulty';
 }
 
 const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
   boardDetails,
   litUpHoldsMap,
   onHoldClick,
-  colorMode = 'total'
 }) => {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { uiSearchParams } = useUISearchParams();
+  const [colorMode, setColorMode] = useState<'total' | 'starting' | 'hand' | 'foot' | 'finish' | 'difficulty' | 'ascents'>('ascents');
+  const [showNumbers, setShowNumbers] = useState(false);
   
   useEffect(() => {
       const path = pathname.split('/');
@@ -83,6 +84,7 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
       case 'foot': return data.footUses;
       case 'finish': return data.finishUses;
       case 'difficulty': return data.averageDifficulty || 0;
+      case 'ascents': return data.totalAscents || 0;
       default: return data.totalUses;
     }
   };
@@ -157,10 +159,20 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
 
   const ColorLegend = () => {
     const gradientId = "heatmap-gradient";
-    const legendWidth = 200;
-    const legendHeight = 20;
+    const legendWidth = boardWidth * 0.8; // Make legend 80% of board width
+    const legendHeight = 36; // Increased from 30
     const x = (boardWidth - legendWidth) / 2;
-    const y = boardHeight + 20;
+    const y = boardHeight + 24; // Increased spacing
+
+    // Get the min, max, and middle values from the heatmap data
+    const values = heatmapData
+      .map(data => getValue(data))
+      .filter(val => val > 0)
+      .sort((a, b) => a - b);
+    
+    const minValue = values[0] || 0;
+    const maxValue = values[values.length - 1] || 0;
+    const midValue = values[Math.floor(values.length / 2)] || 0;
 
     return (
       <g transform={`translate(${x}, ${y})`}>
@@ -179,32 +191,36 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
           width={legendWidth}
           height={legendHeight}
           fill={`url(#${gradientId})`}
-          rx={4}
+          rx={8}
         />
-        <text x="0" y="-5" fontSize="12" textAnchor="start">Low Usage</text>
-        <text x={legendWidth} y="-5" fontSize="12" textAnchor="end">High Usage</text>
+        <text x="0" y="-10" fontSize="28" textAnchor="start" fontWeight="500">Low ({minValue})</text>
+        <text x={legendWidth/2} y="-10" fontSize="28" textAnchor="middle" fontWeight="500">Mid ({midValue})</text>
+        <text x={legendWidth} y="-10" fontSize="28" textAnchor="end" fontWeight="500">High ({maxValue})</text>
       </g>
     );
   };
 
+  const [showHeatmap, setShowHeatmap] = useState(false);
+
+  const colorModeOptions = [
+    { value: 'ascents', label: 'Ascents' },
+    { value: 'total', label: 'Total Problems' },
+    { value: 'starting', label: 'Starting Holds' },
+    { value: 'hand', label: 'Hand Holds' },
+    { value: 'foot', label: 'Foot Holds' },
+    { value: 'finish', label: 'Finish Holds' },
+    { value: 'difficulty', label: 'Difficulty' },
+  ];
+
+  const thresholdOptions = [
+    { value: 1, label: 'Show All' },
+    { value: 2, label: 'At Least 2 Uses' },
+    { value: 5, label: 'At Least 5 Uses' },
+    { value: 10, label: 'At Least 10 Uses' },
+  ];
+
   return (
-    <div className="w-full">
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Filter holds by minimum usage:
-        </label>
-        <select
-          value={threshold}
-          onChange={(e) => setThreshold(Number(e.target.value))}
-          className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-        >
-          <option value={1}>Show All</option>
-          <option value={2}>At Least 2 Uses</option>
-          <option value={5}>At Least 5 Uses</option>
-          <option value={10}>At Least 10 Uses</option>
-        </select>
-      </div>
-      
+    <div className="w-full">      
       <svg
         viewBox={`0 0 ${boardWidth} ${boardHeight + LEGEND_HEIGHT}`}
         preserveAspectRatio="xMidYMid meet"
@@ -228,64 +244,68 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
           ))}
 
           {/* Heat overlay with blur effect */}
-          <g style={{ mixBlendMode: 'multiply' }}>
-            {/* Blurred background layer */}
-            <g filter="url(#blur)">
+          {showHeatmap && (
+            <>
+              {/* Blurred background layer */}
+              <g filter="url(#blur)">
+                {holdsData.map((hold) => {
+                  const data = heatmapMap.get(hold.id);
+                  const value = getValue(data);
+                  
+                  if (value === 0 || value < threshold) return null;
+                  
+                  return (
+                    <circle
+                      key={`heat-blur-${hold.id}`}
+                      cx={hold.cx}
+                      cy={hold.cy}
+                      r={hold.r * HEAT_RADIUS_MULTIPLIER}
+                      fill={colorScale(value)}
+                      opacity={opacityScale(value) * 0.5}
+                    />
+                  );
+                })}
+              </g>
+              <filter id="blurMe">
+                <feGaussianBlur in="SourceGraphic" stdDeviation="20" />
+              </filter>
+
+              {/* Sharp circles with numbers */}
               {holdsData.map((hold) => {
                 const data = heatmapMap.get(hold.id);
                 const value = getValue(data);
                 
-                if (value === 0 || value < threshold) return null;
+                if (value < threshold) return null;
                 
                 return (
-                  <circle
-                    key={`heat-blur-${hold.id}`}
-                    cx={hold.cx}
-                    cy={hold.cy}
-                    r={hold.r * HEAT_RADIUS_MULTIPLIER}
-                    fill={colorScale(value)}
-                    opacity={opacityScale(value) * 0.7}
-                  />
+                  <g key={`heat-sharp-${hold.id}`}>
+                    <circle
+                      cx={hold.cx}
+                      cy={hold.cy}
+                      r={hold.r}
+                      fill={colorScale(value)}
+                      opacity={opacityScale(value)}
+                      filter="url(#blurMe)"
+                    />
+                    {showNumbers && (
+                      <text
+                        x={hold.cx}
+                        y={hold.cy}
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                        fontSize={Math.max(8, hold.r * 0.6)}
+                        fontWeight="bold"
+                        fill={'#000'}
+                        style={{ userSelect: 'none' }}
+                      >
+                        {value}
+                      </text>
+                    )}
+                  </g>
                 );
               })}
-            </g>
-            <filter id="blurMe">
-              <feGaussianBlur in="SourceGraphic" stdDeviation="20" />
-            </filter>
-
-            {/* Sharp circles with numbers */}
-            {holdsData.map((hold) => {
-              const data = heatmapMap.get(hold.id);
-              const value = getValue(data);
-              
-              if (value < threshold) return null;
-              
-              return (
-                <g key={`heat-sharp-${hold.id}`}>
-                  <circle
-                    cx={hold.cx}
-                    cy={hold.cy}
-                    r={hold.r}
-                    fill={colorScale(value)}
-                    opacity={opacityScale(value)}
-                    filter="url(#blurMe)"
-                  />
-                  <text
-                    x={hold.cx}
-                    y={hold.cy}
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    fontSize={Math.max(8, hold.r * 0.6)}
-                    fontWeight="bold"
-                    fill={'#000'}
-                    style={{ userSelect: 'none' }}
-                  >
-                    {value}
-                  </text>
-                </g>
-              );
-            })}
-          </g>
+            </>
+          )}
 
           {/* Interaction layer */}
           {holdsData.map((hold) => (
@@ -318,9 +338,46 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
             );
           })}
 
-          <ColorLegend />
+          {showHeatmap && <ColorLegend />}
         </g>
       </svg>
+      <Form layout="inline" className="mb-4">
+        <Form.Item>
+          <Button
+            type={showHeatmap ? "primary" : "default"}
+            onClick={() => setShowHeatmap(!showHeatmap)}
+          >
+            {showHeatmap ? 'Hide Heatmap' : 'Show Heatmap'}
+          </Button>
+        </Form.Item>
+        
+        {showHeatmap && (
+          <>
+            <Form.Item label="View Mode">
+              <Select
+                value={colorMode}
+                onChange={(value) => setColorMode(value)}
+                style={{ width: 200 }}
+                options={colorModeOptions}
+              />
+            </Form.Item>
+            <Form.Item label="Minimum Usage">
+              <Select
+                value={threshold}
+                onChange={(value) => setThreshold(value)}
+                style={{ width: 200 }}
+                options={thresholdOptions}
+              />
+            </Form.Item>
+            <Form.Item label="Show Numbers">
+              <Switch 
+                checked={showNumbers}
+                onChange={setShowNumbers}
+              />
+            </Form.Item>
+          </>
+        )}
+      </Form>
     </div>
   );
 };

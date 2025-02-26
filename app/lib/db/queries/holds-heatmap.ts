@@ -8,6 +8,7 @@ export interface HoldHeatmapData {
   holdId: number;
   totalUses: number;
   startingUses: number;
+  totalAscents: number;
   handUses: number;
   footUses: number;
   finishUses: number;
@@ -51,6 +52,7 @@ export const getHoldHeatmapData = async (
       .select({
         holdId: climbHolds.holdId,
         totalUses: sql<number>`count(*)`,
+        totalAscents: sql<number>`sum(${tables.climbStats.ascensionistCount})`,
         startingUses: sql<number>`sum(case when ${climbHolds.holdState} = 'STARTING' then 1 else 0 end)`,
         handUses: sql<number>`sum(case when ${climbHolds.holdState} = 'HAND' then 1 else 0 end)`,
         footUses: sql<number>`sum(case when ${climbHolds.holdState} = 'FOOT' then 1 else 0 end)`,
@@ -83,8 +85,10 @@ function processHoldFilters(holdsFilter: HoldsFilter) {
     .reduce(
       (acc, [key, state ]) => {
         const holdId = Number(key.replace('hold_', ''));
-        if (state && state.state === 'ANY') acc.anyHolds.push(holdId);
-        if (state && state.state === 'NOT') acc.notHolds.push(holdId);
+        //@ts-expect-error broken
+        if (state && state === 'ANY') acc.anyHolds.push(holdId);
+        //@ts-expect-error broken
+        if (state && state === 'NOT') acc.notHolds.push(holdId);
         return acc;
       },
       { anyHolds: [] as number[], notHolds: [] as number[] },
@@ -125,6 +129,7 @@ function normalizeStats(stats: any): HoldHeatmapData {
   return {
     holdId: Number(stats.holdId),
     totalUses: Number(stats.totalUses || 0),
+    totalAscents: Number(stats.totalAscents || 0),
     startingUses: Number(stats.startingUses || 0),
     handUses: Number(stats.handUses || 0),
     footUses: Number(stats.footUses || 0),
