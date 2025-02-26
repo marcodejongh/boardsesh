@@ -65,7 +65,14 @@ export type HoldStateFilter = {
 
 export type HoldFilterKey = `hold_${number}`;
 export type HoldFilterValue = HoldState | null;
-export type HoldsFilter = Partial<Record<HoldFilterKey, HoldFilterValue>>;
+
+export type HoldStateWithColor = {
+  state: HoldState;
+  color: string;
+  displayColor: string;
+};
+
+export type HoldsFilter = Partial<Record<number, HoldStateWithColor>>;
 
 export type SearchRequest = {
   gradeAccuracy: number;
@@ -79,7 +86,7 @@ export type SearchRequest = {
   onlyClassics: boolean;
   settername: string;
   setternameSuggestion: string;
-  holdsFilter: HoldsFilter;
+  holdsFilter: LitUpHoldsMap;
   [key: `hold_${number}`]: HoldFilterValue; // Allow dynamic hold keys directly in the search params
 };
 

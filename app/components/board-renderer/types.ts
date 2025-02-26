@@ -17,6 +17,16 @@ export type HoldRenderData = {
 export type LitupHold = { state: HoldState; color: string; displayColor: string };
 export type LitUpHoldsMap = Record<HoldCode, LitupHold>;
 
+export interface HeatmapData {
+  holdId: number;
+  totalUses: number;
+  startingUses: number;
+  handUses: number;
+  footUses: number;
+  finishUses: number;
+  averageDifficulty: number;
+}
+
 // If adding mroe boards be sure to increment the DB version number for indexeddb
 export const supported_boards: BoardName[] = ['kilter', 'tension'];
 
