@@ -28,7 +28,7 @@ const ClimbCard = ({ climb, boardDetails, onCoverClick, selected, actions }: Cli
 
       {/* RIGHT: Difficulty, Quality */}
       <div>
-        {climb.difficulty} ★{climb.quality_average}
+        {climb.difficulty || climb.quality_average ? `${climb.difficulty} ★${climb.quality_average}` : <span style={{ fontWeight: 400, fontStyle: 'italic' }}>project</span>}
       </div>
     </div>
   ) : (

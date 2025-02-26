@@ -88,7 +88,7 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
               >
                 {currentClimb ? (
                   <>
-                    {`${currentClimb.difficulty} ${currentClimb.quality_average}★ @ ${currentClimb.angle}°`}
+                    {currentClimb.difficulty && currentClimb.quality_average ? `${currentClimb.difficulty} ${currentClimb.quality_average}★ @ ${currentClimb.angle}°` : <span style={{ fontWeight: 400, fontStyle: 'italic' }}>project @ {currentClimb.angle}°</span>}
                     {currentClimb.benchmark_difficulty && <CopyrightOutlined style={{ marginLeft: 4 }} />}
                   </>
                 ) : null}
