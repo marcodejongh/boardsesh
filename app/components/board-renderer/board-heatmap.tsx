@@ -9,7 +9,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
 import { Button, Select, Form, Space, Switch } from 'antd';
 
-const LEGEND_HEIGHT = 80;
+const LEGEND_HEIGHT = 96; // Increased from 80
 const BLUR_RADIUS = 10; // Increased blur radius
 const HEAT_RADIUS_MULTIPLIER = 2; // Increased radius multiplier
 
@@ -159,10 +159,20 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
 
   const ColorLegend = () => {
     const gradientId = "heatmap-gradient";
-    const legendWidth = 200;
-    const legendHeight = 20;
+    const legendWidth = boardWidth * 0.8; // Make legend 80% of board width
+    const legendHeight = 36; // Increased from 30
     const x = (boardWidth - legendWidth) / 2;
-    const y = boardHeight + 20;
+    const y = boardHeight + 24; // Increased spacing
+
+    // Get the min, max, and middle values from the heatmap data
+    const values = heatmapData
+      .map(data => getValue(data))
+      .filter(val => val > 0)
+      .sort((a, b) => a - b);
+    
+    const minValue = values[0] || 0;
+    const maxValue = values[values.length - 1] || 0;
+    const midValue = values[Math.floor(values.length / 2)] || 0;
 
     return (
       <g transform={`translate(${x}, ${y})`}>
@@ -181,10 +191,11 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
           width={legendWidth}
           height={legendHeight}
           fill={`url(#${gradientId})`}
-          rx={4}
+          rx={8}
         />
-        <text x="0" y="-5" fontSize="12" textAnchor="start">Low Usage</text>
-        <text x={legendWidth} y="-5" fontSize="12" textAnchor="end">High Usage</text>
+        <text x="0" y="-10" fontSize="28" textAnchor="start" fontWeight="500">Low ({minValue})</text>
+        <text x={legendWidth/2} y="-10" fontSize="28" textAnchor="middle" fontWeight="500">Mid ({midValue})</text>
+        <text x={legendWidth} y="-10" fontSize="28" textAnchor="end" fontWeight="500">High ({maxValue})</text>
       </g>
     );
   };
