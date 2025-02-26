@@ -7,7 +7,7 @@ import { scaleLinear } from 'd3-scale';
 import useHeatmapData from '../search-drawer/use-heatmap';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
-import { Button, Select, Form, Space } from 'antd';
+import { Button, Select, Form, Space, Switch } from 'antd';
 
 const LEGEND_HEIGHT = 80;
 const BLUR_RADIUS = 10; // Increased blur radius
@@ -48,6 +48,7 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
   const searchParams = useSearchParams();
   const { uiSearchParams } = useUISearchParams();
   const [colorMode, setColorMode] = useState<'total' | 'starting' | 'hand' | 'foot' | 'finish' | 'difficulty' | 'ascents'>('ascents');
+  const [showNumbers, setShowNumbers] = useState(false);
   
   useEffect(() => {
       const path = pathname.split('/');
@@ -275,18 +276,20 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
                       opacity={opacityScale(value)}
                       filter="url(#blurMe)"
                     />
-                    <text
-                      x={hold.cx}
-                      y={hold.cy}
-                      textAnchor="middle"
-                      dominantBaseline="middle"
-                      fontSize={Math.max(8, hold.r * 0.6)}
-                      fontWeight="bold"
-                      fill={'#000'}
-                      style={{ userSelect: 'none' }}
-                    >
-                      {value}
-                    </text>
+                    {showNumbers && (
+                      <text
+                        x={hold.cx}
+                        y={hold.cy}
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                        fontSize={Math.max(8, hold.r * 0.6)}
+                        fontWeight="bold"
+                        fill={'#000'}
+                        style={{ userSelect: 'none' }}
+                      >
+                        {value}
+                      </text>
+                    )}
                   </g>
                 );
               })}
@@ -353,6 +356,12 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
                 onChange={(value) => setThreshold(value)}
                 style={{ width: 200 }}
                 options={thresholdOptions}
+              />
+            </Form.Item>
+            <Form.Item label="Show Numbers">
+              <Switch 
+                checked={showNumbers}
+                onChange={setShowNumbers}
               />
             </Form.Item>
           </>
