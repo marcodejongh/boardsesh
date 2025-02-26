@@ -86,7 +86,7 @@ export type SearchRequest = {
   onlyClassics: boolean;
   settername: string;
   setternameSuggestion: string;
-  holdsFilter: HoldsFilter;
+  holdsFilter: LitUpHoldsMap;
   [key: `hold_${number}`]: HoldFilterValue; // Allow dynamic hold keys directly in the search params
 };
 

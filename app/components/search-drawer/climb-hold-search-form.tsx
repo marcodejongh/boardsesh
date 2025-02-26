@@ -67,14 +67,12 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
         {showHeatmap ? (
           <BoardHeatmap
             boardDetails={boardDetails}
-            //@ts-expect-error cbf
             litUpHoldsMap={uiSearchParams.holdsFilter}
             onHoldClick={handleHoldClick}
           />
         ) : (
           <BoardRenderer
             boardDetails={boardDetails}
-            //@ts-expect-error cbf
             litUpHoldsMap={uiSearchParams.holdsFilter}
             mirrored={false}
             onHoldClick={handleHoldClick}

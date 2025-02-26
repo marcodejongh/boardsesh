@@ -4,11 +4,9 @@ import { BoardDetails } from '@/app/lib/types';
 import { HoldHeatmapData } from '@/app/lib/db/queries/holds-heatmap';
 import { LitUpHoldsMap } from './types';
 import { scaleLinear } from 'd3-scale';
-import { interpolateRgb } from 'd3-interpolate';
 import useHeatmapData from '../search-drawer/use-heatmap';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
-import { HeatmapData } from './types';
 
 const LEGEND_HEIGHT = 80;
 const BLUR_RADIUS = 10; // Increased blur radius
@@ -304,8 +302,7 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
 
           {/* Selected holds overlay */}
           {holdsData.map((hold) => {
-            if (!litUpHoldsMap) return null;
-            const litUpHold = litUpHoldsMap[hold.id];
+            const litUpHold = litUpHoldsMap?.[hold.id];
             if (!litUpHold) return null;
             return (
               <circle
