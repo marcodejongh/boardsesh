@@ -1,7 +1,7 @@
 import { and, eq, between, gte, sql, like, notLike } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { dbz as db } from '../db';
-import { ParsedBoardRouteParameters, SearchRequestPagination } from '../../types';
+import { ParsedBoardRouteParameters, SearchRequestPagination, HoldsFilter, HoldStateWithColor } from '../../types';
 import { getBoardTables } from './util/table-select';
 
 export interface HoldHeatmapData {
@@ -22,7 +22,6 @@ export const getHoldHeatmapData = async (
   const ps = alias(tables.productSizes, 'ps');
   const climbHolds = tables.climbHolds;
 
-  // @ts-expect-error
   const { anyHolds, notHolds } = processHoldFilters(searchParams.holdsFilter);
 
   try {
@@ -78,16 +77,18 @@ export const getHoldHeatmapData = async (
 };
 
 // Helper functions
-function processHoldFilters(holdsFilter: Record<string, string>) {
-  return Object.entries(holdsFilter).reduce(
-    (acc, [key, state]) => {
-      const holdId = Number(key.replace('hold_', ''));
-      if (state === 'ANY') acc.anyHolds.push(holdId);
-      if (state === 'NOT') acc.notHolds.push(holdId);
-      return acc;
-    },
-    { anyHolds: [] as number[], notHolds: [] as number[] },
-  );
+function processHoldFilters(holdsFilter: HoldsFilter) {
+  return Object.entries(holdsFilter)
+    .filter((entry) => entry[1] !== null)
+    .reduce(
+      (acc, [key, state ]) => {
+        const holdId = Number(key.replace('hold_', ''));
+        if (state && state.state === 'ANY') acc.anyHolds.push(holdId);
+        if (state && state.state === 'NOT') acc.notHolds.push(holdId);
+        return acc;
+      },
+      { anyHolds: [] as number[], notHolds: [] as number[] },
+    );
 }
 
 function buildClimbStatsSearchConditions(tables: any, searchParams: SearchRequestPagination) {
