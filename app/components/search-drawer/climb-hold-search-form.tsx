@@ -2,8 +2,6 @@ import React from 'react';
 import { BoardDetails, HoldState } from '@/app/lib/types';
 import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
 import { Select } from 'antd';
-
-import BoardRenderer from '../board-renderer/board-renderer';
 import BoardHeatmap from '../board-renderer/board-heatmap';
 
 interface ClimbHoldSearchFormProps {
@@ -12,11 +10,7 @@ interface ClimbHoldSearchFormProps {
 
 const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails }) => {
   const { uiSearchParams, updateFilters } = useUISearchParams();
-  
-  
   const [selectedState, setSelectedState] = React.useState<HoldState>('ANY');
-  const [showHeatmap, setShowHeatmap] = React.useState(false);
-  
 
   const handleHoldClick = (holdId: number) => {
     const updatedHoldsFilter = { ...uiSearchParams.holdsFilter };
@@ -53,31 +47,16 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
           style={{ width: 200 }}
           options={stateItems}
         />
-        <button
-          onClick={() => setShowHeatmap(!showHeatmap)}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
-          {showHeatmap ? 'Hide Heatmap' : 'Show Heatmap'}
-        </button>
       </div>
       
       <p className="mb-4">Click on holds to set them to the selected type</p>
       
       <div className="w-full max-w-2xl mx-auto">
-        {showHeatmap ? (
-          <BoardHeatmap
-            boardDetails={boardDetails}
-            litUpHoldsMap={uiSearchParams.holdsFilter}
-            onHoldClick={handleHoldClick}
-          />
-        ) : (
-          <BoardRenderer
-            boardDetails={boardDetails}
-            litUpHoldsMap={uiSearchParams.holdsFilter}
-            mirrored={false}
-            onHoldClick={handleHoldClick}
-          />
-        )}
+        <BoardHeatmap
+          boardDetails={boardDetails}
+          litUpHoldsMap={uiSearchParams.holdsFilter}
+          onHoldClick={handleHoldClick}
+        />
       </div>
 
       {Object.keys(uiSearchParams.holdsFilter || {}).length > 0 && (
