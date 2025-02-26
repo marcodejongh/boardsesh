@@ -1,38 +1,79 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { getImageUrl } from './util';
 import { BoardDetails } from '@/app/lib/types';
 import { HoldHeatmapData } from '@/app/lib/db/queries/holds-heatmap';
 import { LitUpHoldsMap } from './types';
 import { scaleLinear } from 'd3-scale';
-import { interpolateRgb } from 'd3-interpolate';
+import useHeatmapData from '../search-drawer/use-heatmap';
+import { usePathname, useSearchParams } from 'next/navigation';
+import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
 
 const LEGEND_HEIGHT = 80;
-const BLUR_RADIUS = 8;
-const HEAT_RADIUS_MULTIPLIER = 2;
+const BLUR_RADIUS = 10; // Increased blur radius
+const HEAT_RADIUS_MULTIPLIER = 2; // Increased radius multiplier
 
-// Changed colors to go from blue to green
-const LOW_COLOR = '#4444ff';    // Blue for low values
-const HIGH_COLOR = '#44ff44';   // Green for high values
+// Updated color constants with more yellow/orange for middle values
+const HEATMAP_COLORS = [
+  '#4caf50', // Light green
+  '#8bc34a', // Lime green
+  '#cddc39', // Lime
+  '#ffeb3b', // Yellow
+  '#ffc107', // Amber
+  '#ff9800', // Orange
+  '#ff7043', // Deep Orange
+  '#ff5722', // Darker Orange
+  '#f44336', // Light Red
+  '#d32f2f'  // Deep Red
+];
+
+// Helper function to get value at percentile
+const getPercentileValue = (values: number[], percentile: number) => {
+  const index = Math.floor(values.length * (percentile / 100));
+  return values[index];
+};
 
 interface BoardHeatmapProps {
   boardDetails: BoardDetails;
-  heatmapData: HoldHeatmapData[];
-  litUpHoldsMap: LitUpHoldsMap;
+  litUpHoldsMap?: LitUpHoldsMap;
   onHoldClick?: (holdId: number) => void;
   colorMode?: 'total' | 'starting' | 'hand' | 'foot' | 'finish' | 'difficulty';
 }
 
 const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
   boardDetails,
-  heatmapData,
   litUpHoldsMap,
   onHoldClick,
   colorMode = 'total'
 }) => {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const { uiSearchParams } = useUISearchParams();
+  
+  useEffect(() => {
+      const path = pathname.split('/');
+      const angle = Number(path[path.length - 2]);
+      if (typeof angle === 'number') {
+        setAngle(angle);
+      }
+    }, [pathname, searchParams])
+    const [angle, setAngle] = React.useState(40);
+    
+  const { data: heatmapData = [] } = useHeatmapData({
+    boardName: boardDetails.board_name,
+    layoutId: boardDetails.layout_id,
+    sizeId: boardDetails.size_id, // Add this line
+    setIds: boardDetails.set_ids.join(','),
+    angle,
+    filters: uiSearchParams
+  });
+
   const [threshold, setThreshold] = useState(1);
   const { boardWidth, boardHeight, holdsData } = boardDetails;
 
-  const heatmapMap = useMemo(() => new Map(heatmapData.map(data => [data.holdId, data])), [heatmapData]);
+  const heatmapMap = useMemo(() => 
+    new Map(heatmapData?.map(data => [data.holdId, data]) || []), 
+    [heatmapData]
+  );
 
   const getValue = (data: HoldHeatmapData | undefined): number => {
     if (!data) return 0;
@@ -49,39 +90,63 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
   // Create scales for better distribution of colors
   const { colorScale, opacityScale } = useMemo(() => {
     const values = heatmapData
-      .filter(data => !litUpHoldsMap[data.holdId])
+      .filter(data => !(litUpHoldsMap?.[data.holdId]))
       .map(data => getValue(data))
       .filter((val) => val && val >= threshold)
       .sort((a, b) => a - b);
 
     if (values.length === 0) {
       return {
-        colorScale: () => '#eee',
-        opacityScale: () => 0.1
+        colorScale: () => 'transparent',
+        opacityScale: () => 0
       };
     }
 
-    const p90Index = Math.floor(values.length * 0.90);
-    const maxValue = values[p90Index] || values[values.length - 1];
-    const minValue = values[0];
+    // Create breakpoints at different percentiles for more even distribution
+    const percentileValues = {
+      min: values[0],
+      p20: getPercentileValue(values, 20),
+      p40: getPercentileValue(values, 40),
+      p60: getPercentileValue(values, 60),
+      p80: getPercentileValue(values, 80),
+      p95: getPercentileValue(values, 95),
+      max: values[values.length - 1]
+    };
 
     const getColorScale = () => {
       return (value: number) => {
-        if (!maxValue || !minValue) {
-          return;
+        if (!value || value === 0) return 'transparent';
+        
+        // Map the value to color index based on which percentile bucket it falls into
+        let normalizedIndex;
+        if (value <= percentileValues.p20) {
+          normalizedIndex = (value - percentileValues.min) / (percentileValues.p20 - percentileValues.min);
+        } else if (value <= percentileValues.p40) {
+          normalizedIndex = 2 + (value - percentileValues.p20) / (percentileValues.p40 - percentileValues.p20);
+        } else if (value <= percentileValues.p60) {
+          normalizedIndex = 4 + (value - percentileValues.p40) / (percentileValues.p60 - percentileValues.p40);
+        } else if (value <= percentileValues.p80) {
+          normalizedIndex = 6 + (value - percentileValues.p60) / (percentileValues.p80 - percentileValues.p60);
+        } else {
+          normalizedIndex = 8 + (value - percentileValues.p80) / (percentileValues.p95 - percentileValues.p80);
         }
-        const cappedValue = Math.min(value, maxValue);
-        const normalized = (cappedValue - minValue) / (maxValue - minValue);
-        // Direct interpolation from blue to green
-        return interpolateRgb(LOW_COLOR, HIGH_COLOR)(normalized);
+
+        const index = Math.floor(normalizedIndex);
+        return HEATMAP_COLORS[Math.max(0, Math.min(index, HEATMAP_COLORS.length - 1))];
       };
     };
 
     const getOpacityScale = () => {
-      return scaleLinear()
-        .domain([minValue, maxValue])
-        .range([0.1, 0.3]) // Reduced opacity range
-        .clamp(true);
+      return (value: number) => {
+        if (!value || value === 0) return 0;
+        // Use percentile values for opacity scaling
+        return Math.max(0.2, Math.min(0.8,
+          scaleLinear()
+            .domain([percentileValues.min, percentileValues.p95])
+            .range([0.2, 0.8])
+            .clamp(true)(value)
+        ));
+      };
     };
 
     return {
@@ -101,8 +166,13 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
       <g transform={`translate(${x}, ${y})`}>
         <defs>
           <linearGradient id={gradientId}>
-            <stop offset="0%" stopColor={LOW_COLOR} />
-            <stop offset="100%" stopColor={HIGH_COLOR} />
+            {HEATMAP_COLORS.map((color, index) => (
+              <stop 
+                key={color} 
+                offset={`${(index / (HEATMAP_COLORS.length - 1)) * 100}%`} 
+                stopColor={color} 
+              />
+            ))}
           </linearGradient>
         </defs>
         <rect
@@ -165,7 +235,7 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
                 const data = heatmapMap.get(hold.id);
                 const value = getValue(data);
                 
-                if (value < threshold) return null;
+                if (value === 0 || value < threshold) return null;
                 
                 return (
                   <circle
@@ -195,8 +265,7 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
                   <circle
                     cx={hold.cx}
                     cy={hold.cy}
-                    r={hold.r * 1.4}
-                    
+                    r={hold.r}
                     fill={colorScale(value)}
                     opacity={opacityScale(value)}
                     filter="url(#blurMe)"
@@ -233,7 +302,7 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
 
           {/* Selected holds overlay */}
           {holdsData.map((hold) => {
-            const litUpHold = litUpHoldsMap[hold.id];
+            const litUpHold = litUpHoldsMap?.[hold.id];
             if (!litUpHold) return null;
             return (
               <circle
