@@ -7,6 +7,7 @@ import { scaleLinear } from 'd3-scale';
 import useHeatmapData from '../search-drawer/use-heatmap';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
+import { Button, Select, Form, Space } from 'antd';
 
 const LEGEND_HEIGHT = 80;
 const BLUR_RADIUS = 10; // Increased blur radius
@@ -189,34 +190,25 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
 
   const [showHeatmap, setShowHeatmap] = useState(false);
 
+  const colorModeOptions = [
+    { value: 'ascents', label: 'Ascents' },
+    { value: 'total', label: 'Total Problems' },
+    { value: 'starting', label: 'Starting Holds' },
+    { value: 'hand', label: 'Hand Holds' },
+    { value: 'foot', label: 'Foot Holds' },
+    { value: 'finish', label: 'Finish Holds' },
+    { value: 'difficulty', label: 'Difficulty' },
+  ];
+
+  const thresholdOptions = [
+    { value: 1, label: 'Show All' },
+    { value: 2, label: 'At Least 2 Uses' },
+    { value: 5, label: 'At Least 5 Uses' },
+    { value: 10, label: 'At Least 10 Uses' },
+  ];
+
   return (
-    <div className="w-full">
-      <div className="mb-4 flex items-center gap-4">
-        <button
-          onClick={() => setShowHeatmap(!showHeatmap)}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
-          {showHeatmap ? 'Hide Heatmap' : 'Show Heatmap'}
-        </button>
-        {showHeatmap && (
-          <>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Filter holds by minimum usage:
-            </label>
-            <select
-              value={threshold}
-              onChange={(e) => setThreshold(Number(e.target.value))}
-              className="block rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-            >
-              <option value={1}>Show All</option>
-              <option value={2}>At Least 2 Uses</option>
-              <option value={5}>At Least 5 Uses</option>
-              <option value={10}>At Least 10 Uses</option>
-            </select>
-          </>
-        )}
-      </div>
-      
+    <div className="w-full">      
       <svg
         viewBox={`0 0 ${boardWidth} ${boardHeight + LEGEND_HEIGHT}`}
         preserveAspectRatio="xMidYMid meet"
@@ -335,6 +327,37 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
           {showHeatmap && <ColorLegend />}
         </g>
       </svg>
+      <Form layout="inline" className="mb-4">
+        <Form.Item>
+          <Button
+            type={showHeatmap ? "primary" : "default"}
+            onClick={() => setShowHeatmap(!showHeatmap)}
+          >
+            {showHeatmap ? 'Hide Heatmap' : 'Show Heatmap'}
+          </Button>
+        </Form.Item>
+        
+        {showHeatmap && (
+          <>
+            <Form.Item label="View Mode">
+              <Select
+                value={colorMode}
+                onChange={(value) => setColorMode(value)}
+                style={{ width: 200 }}
+                options={colorModeOptions}
+              />
+            </Form.Item>
+            <Form.Item label="Minimum Usage">
+              <Select
+                value={threshold}
+                onChange={(value) => setThreshold(value)}
+                style={{ width: 200 }}
+                options={thresholdOptions}
+              />
+            </Form.Item>
+          </>
+        )}
+      </Form>
     </div>
   );
 };
