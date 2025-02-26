@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { BoardName } from '@/app/lib/types';
+import { BoardName, SearchRequestPagination } from '@/app/lib/types';
+import { HeatmapData } from '../board-renderer/types';
 import { searchParamsToUrlParams } from '@/app/lib/url-utils';
 
 interface UseHeatmapDataProps {
@@ -8,7 +9,7 @@ interface UseHeatmapDataProps {
   sizeId: number;
   setIds: string;
   angle: number;
-  filters: Record<string, any>;
+  filters: SearchRequestPagination;
 }
 
 export default function useHeatmapData({ 
@@ -19,7 +20,7 @@ export default function useHeatmapData({
   angle, 
   filters 
 }: UseHeatmapDataProps) {
-  const [heatmapData, setHeatmapData] = useState([]);
+  const [heatmapData, setHeatmapData] = useState<HeatmapData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -27,10 +28,7 @@ export default function useHeatmapData({
     const fetchHeatmapData = async () => {
       try {
         setLoading(true);
-              
-        // Use the same URL structure as your search endpoint
         const response = await fetch(
-          //@ts-expect-error
           `/api/v1/${boardName}/${layoutId}/${sizeId}/${setIds}/${angle}/heatmap?${searchParamsToUrlParams(filters).toString()}`
         );
         

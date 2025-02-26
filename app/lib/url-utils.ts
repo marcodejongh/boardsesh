@@ -69,7 +69,6 @@ export const searchParamsToUrlParams = ({
     pageSize: pageSize.toString(),
     ...Object.fromEntries(
       Object.entries(holdsFilter).map(([key, value]) => {
-        //@ts-expect-error fix later
         return [`hold_${key}`, value.state];
       }),
     ),
