@@ -25,6 +25,7 @@ export interface HeatmapData {
   footUses: number;
   finishUses: number;
   averageDifficulty: number;
+  totalAscents: number;
 }
 
 // If adding mroe boards be sure to increment the DB version number for indexeddb
