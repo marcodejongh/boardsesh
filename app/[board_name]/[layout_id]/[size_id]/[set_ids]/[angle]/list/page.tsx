@@ -6,13 +6,14 @@ import { parseBoardRouteParams, parsedRouteSearchParamsToSearchParams } from '@/
 import ClimbsList from '@/app/components/board-page/climbs-list';
 import { fetchBoardDetails, fetchClimbs } from '@/app/components/rest-api/api';
 
-export default async function DynamicResultsPage({
-  params,
-  searchParams,
-}: {
-  params: BoardRouteParametersWithUuid;
-  searchParams: SearchRequestPagination;
-}) {
+export default async function DynamicResultsPage(
+  props: {
+    params: Promise<BoardRouteParametersWithUuid>;
+    searchParams: Promise<SearchRequestPagination>;
+  }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const parsedParams = parseBoardRouteParams(params);
 
   try {

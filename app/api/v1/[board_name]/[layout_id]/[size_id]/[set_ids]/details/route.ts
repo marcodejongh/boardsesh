@@ -3,7 +3,8 @@ import { BoardRouteParameters } from '@/app/lib/types';
 import { NextResponse } from 'next/server';
 import { parseBoardRouteParams } from '@/app/lib/url-utils';
 
-export async function GET(req: Request, { params }: { params: BoardRouteParameters }) {
+export async function GET(req: Request, props: { params: Promise<BoardRouteParameters> }) {
+  const params = await props.params;
   try {
     const parsedParams = parseBoardRouteParams(params);
     const boardDetails = await getBoardDetails(parsedParams);

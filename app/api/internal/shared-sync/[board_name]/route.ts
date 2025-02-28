@@ -9,7 +9,8 @@ export const maxDuration = 300;
 // This is a simple way to secure the endpoint, should be replaced with a better solution
 const CRON_SECRET = process.env.CRON_SECRET;
 
-export async function GET(request: Request, { params }: { params: BoardRouteParameters }) {
+export async function GET(request: Request, props: { params: Promise<BoardRouteParameters> }) {
+  const params = await props.params;
   try {
     const { board_name }: ParsedBoardRouteParameters = parseBoardRouteParams(params);
     console.log(`Starting shared sync for ${board_name}`);

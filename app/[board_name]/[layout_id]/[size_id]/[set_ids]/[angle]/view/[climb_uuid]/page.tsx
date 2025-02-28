@@ -7,7 +7,8 @@ import ClimbCard from '@/app/components/climb-card/climb-card';
 import { Col, Row } from 'antd';
 import ClimbInfoColumn from '@/app/components/climb-info/climb-info-drawer';
 
-export default async function DynamicResultsPage({ params }: { params: BoardRouteParametersWithUuid }) {
+export default async function DynamicResultsPage(props: { params: Promise<BoardRouteParametersWithUuid> }) {
+  const params = await props.params;
   const parsedParams = parseBoardRouteParams(params);
 
   try {

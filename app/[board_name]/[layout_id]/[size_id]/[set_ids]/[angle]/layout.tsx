@@ -14,7 +14,7 @@ import { PeerProvider } from '@/app/components/connection-manager/peer-context';
 import { PartyProvider } from '@/app/components/party-manager/party-context';
 
 interface BoardLayoutProps {
-  params: BoardRouteParametersWithUuid;
+  params: Promise<BoardRouteParametersWithUuid>;
   searchParams: {
     query?: string;
     page?: string;
@@ -35,7 +35,13 @@ interface BoardLayoutProps {
   };
 }
 
-export default async function BoardLayout({ children, params }: PropsWithChildren<BoardLayoutProps>) {
+export default async function BoardLayout(props: PropsWithChildren<BoardLayoutProps>) {
+  const params = await props.params;
+
+  const {
+    children
+  } = props;
+
   // Parse the route parameters
   const parsedParams: ParsedBoardRouteParameters = parseBoardRouteParams(params);
 

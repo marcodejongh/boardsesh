@@ -16,10 +16,8 @@ export interface HoldHeatmapResponse {
   }>;
 }
 
-export async function GET(
-  req: Request,
-  { params }: { params: BoardRouteParameters },
-): Promise<NextResponse<HoldHeatmapResponse | ErrorResponse>> {
+export async function GET(req: Request, props: { params: Promise<BoardRouteParameters> }): Promise<NextResponse<HoldHeatmapResponse | ErrorResponse>> {
+  const params = await props.params;
   // Extract search parameters from query string
   const query = new URL(req.url).searchParams;
   const parsedParams = parseBoardRouteParams(params);

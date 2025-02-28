@@ -11,7 +11,8 @@ const loginSchema = z.object({
   password: z.string().min(1),
 });
 
-export async function POST(request: Request, { params }: { params: BoardRouteParameters }) {
+export async function POST(request: Request, props: { params: Promise<BoardRouteParameters> }) {
+  const params = await props.params;
   const { board_name }: ParsedBoardRouteParameters = parseBoardRouteParams(params);
   try {
     // Parse and validate request body

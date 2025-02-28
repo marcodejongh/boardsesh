@@ -5,10 +5,8 @@ import { BoardRouteParametersWithUuid, ErrorResponse, FetchCurrentProblemRespons
 import { parseBoardRouteParams } from '@/app/lib/url-utils';
 import { NextResponse } from 'next/server';
 
-export async function GET(
-  req: Request,
-  { params }: { params: BoardRouteParametersWithUuid },
-): Promise<NextResponse<FetchCurrentProblemResponse | ErrorResponse>> {
+export async function GET(req: Request, props: { params: Promise<BoardRouteParametersWithUuid> }): Promise<NextResponse<FetchCurrentProblemResponse | ErrorResponse>> {
+  const params = await props.params;
   try {
     const parsedParams = parseBoardRouteParams(params);
     const result = await getClimb(parsedParams);
