@@ -1,3 +1,4 @@
+'use client';
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { BoardName, ClimbUuid } from '@/app/lib/types';
 import { IDBPDatabase, openDB } from 'idb';
