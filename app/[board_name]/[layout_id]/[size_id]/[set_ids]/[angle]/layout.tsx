@@ -14,7 +14,7 @@ import { PeerProvider } from '@/app/components/connection-manager/peer-context';
 import { PartyProvider } from '@/app/components/party-manager/party-context';
 
 interface BoardLayoutProps {
-  params: BoardRouteParametersWithUuid;
+  params: Promise<BoardRouteParametersWithUuid>;
   searchParams: {
     query?: string;
     page?: string;

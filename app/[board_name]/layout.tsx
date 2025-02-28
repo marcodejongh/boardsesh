@@ -7,11 +7,11 @@ import { parseBoardRouteParams } from '@/app/lib/url-utils'; // Assume this util
 import { BoardProvider } from '../components/board-provider/board-provider-context';
 
 interface BoardLayoutProps {
-  params: BoardRouteParametersWithUuid;
+  params: Promise<BoardRouteParametersWithUuid>;
 }
 
-export default function BoardLayout(props: PropsWithChildren<BoardLayoutProps>) {
-  const params = use(props.params);
+export default async function BoardLayout(props: PropsWithChildren<BoardLayoutProps>) {
+  const params = await props.params;
 
   const {
     children

@@ -11,7 +11,7 @@ import { parseBoardRouteParams } from '@/app/lib/url-utils';
 import { fetchBoardDetails } from '@/app/components/rest-api/api';
 
 interface LayoutProps {
-  params: BoardRouteParametersWithUuid;
+  params: Promise<BoardRouteParametersWithUuid>;
 }
 
 export default async function ListLayout(props: PropsWithChildren<LayoutProps>) {
