@@ -57,11 +57,7 @@ export const getHoldHeatmapData = async (
           // Add product size-specific conditions
           ...filters.getSizeConditions(),
           // Apply the climb stats conditions in WHERE clause
-          ...filters.getClimbStatsConditions().map(
-            (condition) =>
-              // Handle the case where climb_stats might be NULL
-              sql`(${tables.climbStats.climbUuid} IS NOT NULL AND ${condition})`,
-          ),
+          ...filters.getClimbStatsConditions(),
         ),
       )
       .groupBy(climbHolds.holdId);

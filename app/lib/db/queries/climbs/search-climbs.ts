@@ -34,11 +34,7 @@ export const searchClimbs = async (
     ...filters.getClimbWhereConditions(),
     ...filters.getSizeConditions(),
     // Apply climb stats filters in WHERE clause rather than in the JOIN condition
-    ...filters.getClimbStatsConditions().map(
-      (condition) =>
-        // Handle the case where climb_stats might be NULL
-        sql`(${tables.climbStats.climbUuid} IS NOT NULL AND ${condition})`,
-    ),
+    ...filters.getClimbStatsConditions(),
   ];
 
   try {
