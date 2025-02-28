@@ -3,7 +3,7 @@ import { getImageUrl } from './util';
 import { BoardDetails } from '@/app/lib/types';
 import { HoldHeatmapData } from '@/app/lib/db/queries/holds-heatmap';
 import { LitUpHoldsMap } from './types';
-import { scaleLinear } from 'd3-scale';
+import { scaleLinear, scaleLog } from 'd3-scale';
 import useHeatmapData from '../search-drawer/use-heatmap';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
@@ -104,50 +104,27 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
       };
     }
 
-    // Create breakpoints at different percentiles for more even distribution
-    const percentileValues = {
-      min: values[0],
-      p20: getPercentileValue(values, 20),
-      p40: getPercentileValue(values, 40),
-      p60: getPercentileValue(values, 60),
-      p80: getPercentileValue(values, 80),
-      p95: getPercentileValue(values, 95),
-      max: values[values.length - 1]
-    };
+    const min = Math.max(1, values[0]);
+    const max = values[values.length - 1];
+    
+    // Use log scale for better distribution of values
+    const logScale = scaleLog()
+      .domain([min, max])
+      .range([0, HEATMAP_COLORS.length - 1])
+      .clamp(true);
 
     const getColorScale = () => {
       return (value: number) => {
-        if (!value || value === 0) return 'transparent';
-        
-        // Map the value to color index based on which percentile bucket it falls into
-        let normalizedIndex;
-        if (value <= percentileValues.p20) {
-          normalizedIndex = (value - percentileValues.min) / (percentileValues.p20 - percentileValues.min);
-        } else if (value <= percentileValues.p40) {
-          normalizedIndex = 2 + (value - percentileValues.p20) / (percentileValues.p40 - percentileValues.p20);
-        } else if (value <= percentileValues.p60) {
-          normalizedIndex = 4 + (value - percentileValues.p40) / (percentileValues.p60 - percentileValues.p40);
-        } else if (value <= percentileValues.p80) {
-          normalizedIndex = 6 + (value - percentileValues.p60) / (percentileValues.p80 - percentileValues.p60);
-        } else {
-          normalizedIndex = 8 + (value - percentileValues.p80) / (percentileValues.p95 - percentileValues.p80);
-        }
-
-        const index = Math.floor(normalizedIndex);
-        return HEATMAP_COLORS[Math.max(0, Math.min(index, HEATMAP_COLORS.length - 1))];
+        if (!value || value < threshold) return 'transparent';
+        const index = Math.floor(logScale(value));
+        return HEATMAP_COLORS[index];
       };
     };
 
     const getOpacityScale = () => {
       return (value: number) => {
-        if (!value || value === 0) return 0;
-        // Use percentile values for opacity scaling
-        return Math.max(0.2, Math.min(0.8,
-          scaleLinear()
-            .domain([percentileValues.min, percentileValues.p95])
-            .range([0.2, 0.8])
-            .clamp(true)(value)
-        ));
+        if (!value || value < threshold) return 0;
+        return Math.max(0.3, Math.min(0.8, logScale(value) / HEATMAP_COLORS.length));
       };
     };
 
