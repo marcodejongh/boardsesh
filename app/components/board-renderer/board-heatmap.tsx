@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { getImageUrl } from './util';
 import { BoardDetails } from '@/app/lib/types';
-import { HoldHeatmapData } from '@/app/lib/db/queries/holds-heatmap';
+import { HoldHeatmapData } from '@/app/lib/db/queries/climbs/holds-heatmap';
 import { LitUpHoldsMap } from './types';
 import { scaleLinear, scaleLog } from 'd3-scale';
 import useHeatmapData from '../search-drawer/use-heatmap';
