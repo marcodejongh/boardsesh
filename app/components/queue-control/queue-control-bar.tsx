@@ -34,11 +34,13 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
     <>
       {/* Main Control Bar */}
       <Card
-        bodyStyle={{
-          padding: '5px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
+        styles={{
+          body: {
+            padding: '5px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }
         }}
         style={{
           width: '100%',
@@ -138,5 +140,6 @@ const boardPreviewContainerStyle = {
   alignItems: 'center',
   overflow: 'hidden',
 };
+
 
 export default QueueControlBar;

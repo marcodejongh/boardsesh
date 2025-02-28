@@ -1,5 +1,4 @@
-'use client';
-import React, { use } from 'react';
+import React from 'react';
 import { PropsWithChildren } from 'react';
 import { ParsedBoardRouteParameters, BoardRouteParametersWithUuid } from '@/app/lib/types';
 import { parseBoardRouteParams } from '@/app/lib/url-utils'; // Assume this utility helps with parsing

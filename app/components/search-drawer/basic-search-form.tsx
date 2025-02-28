@@ -129,7 +129,7 @@ const BasicSearchForm: React.FC = () => {
           onChange={(value) => updateFilters({ gradeAccuracy: value || undefined })}
           style={{ width: '100%' }}
         >
-          <Select.Option value={undefined}>Any</Select.Option>
+          <Select.Option value={0}>Any</Select.Option>
           <Select.Option value={0.2}>Somewhat Accurate (&lt;0.2)</Select.Option>
           <Select.Option value={0.1}>Very Accurate (&lt;0.1)</Select.Option>
           <Select.Option value={0.05}>Extremely Accurate (&lt;0.05)</Select.Option>

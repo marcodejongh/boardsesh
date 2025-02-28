@@ -4,23 +4,25 @@ import { BoardDetails } from '@/app/lib/types';
 import BasicSearchForm from './basic-search-form';
 import ClimbHoldSearchForm from './climb-hold-search-form';
 
-const { TabPane } = Tabs;
-
 interface SearchFormProps {
   boardDetails: BoardDetails;
 }
 
 const SearchForm: React.FC<SearchFormProps> = ({ boardDetails }) => {
-  return (
-    <Tabs defaultActiveKey="filters">
-      <TabPane tab="Filters" key="filters">
-        <BasicSearchForm />
-      </TabPane>
-      <TabPane tab="Search by Hold" key="holds">
-        <ClimbHoldSearchForm boardDetails={boardDetails} />
-      </TabPane>
-    </Tabs>
-  );
+  const items = [
+    {
+      key: 'filters',
+      label: 'Filters',
+      children: <BasicSearchForm />
+    },
+    {
+      key: 'holds',
+      label: 'Search by Hold',
+      children: <ClimbHoldSearchForm boardDetails={boardDetails} />
+    }
+  ];
+
+  return <Tabs defaultActiveKey="filters" items={items} />;
 };
 
 export default SearchForm;
