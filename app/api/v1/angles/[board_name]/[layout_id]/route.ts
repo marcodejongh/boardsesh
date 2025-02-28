@@ -1,7 +1,11 @@
 import { sql } from '@vercel/postgres';
 import { NextResponse } from 'next/server';
 
-export async function GET(req: Request, { params }: { params: { board_name: string; layout_id: string } }) {
+export async function GET(
+  req: Request,
+  props: { params: Promise<{ board_name: string; layout_id: string }> }
+) {
+  const params = await props.params;
   const { /*board_name,*/ layout_id } = params;
 
   try {

@@ -4,7 +4,8 @@ import { parseBoardRouteParams } from '@/app/lib/url-utils';
 import { NextResponse } from 'next/server';
 
 // Correct typing for the parameters
-export async function GET(req: Request, { params }: { params: BoardRouteParameters }) {
+export async function GET(req: Request, props: { params: Promise<BoardRouteParameters> }) {
+  const params = await props.params;
   const { board_name } = parseBoardRouteParams(params);
 
   try {

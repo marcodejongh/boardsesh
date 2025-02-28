@@ -1,5 +1,5 @@
 'use client';
-import React from 'react';
+import React, { use } from 'react';
 import { PropsWithChildren } from 'react';
 import { ParsedBoardRouteParameters, BoardRouteParametersWithUuid } from '@/app/lib/types';
 import { parseBoardRouteParams } from '@/app/lib/url-utils'; // Assume this utility helps with parsing
@@ -10,7 +10,13 @@ interface BoardLayoutProps {
   params: BoardRouteParametersWithUuid;
 }
 
-export default function BoardLayout({ children, params }: PropsWithChildren<BoardLayoutProps>) {
+export default function BoardLayout(props: PropsWithChildren<BoardLayoutProps>) {
+  const params = use(props.params);
+
+  const {
+    children
+  } = props;
+
   // Parse the route parameters
   const parsedParams: ParsedBoardRouteParameters = parseBoardRouteParams(params);
 

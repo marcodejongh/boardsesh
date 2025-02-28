@@ -14,7 +14,13 @@ interface LayoutProps {
   params: BoardRouteParametersWithUuid;
 }
 
-export default async function ListLayout({ children, params }: PropsWithChildren<LayoutProps>) {
+export default async function ListLayout(props: PropsWithChildren<LayoutProps>) {
+  const params = await props.params;
+
+  const {
+    children
+  } = props;
+
   const parsedParams: ParsedBoardRouteParameters = parseBoardRouteParams(params);
 
   const { board_name, layout_id, set_ids, size_id } = parsedParams;

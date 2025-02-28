@@ -25,7 +25,8 @@ const saveAscentSchema = z.object({
     .strict(),
 });
 
-export async function POST(request: Request, { params }: { params: BoardRouteParameters }) {
+export async function POST(request: Request, props: { params: Promise<BoardRouteParameters> }) {
+  const params = await props.params;
   const { board_name }: ParsedBoardRouteParameters = parseBoardRouteParams(params);
 
   try {
