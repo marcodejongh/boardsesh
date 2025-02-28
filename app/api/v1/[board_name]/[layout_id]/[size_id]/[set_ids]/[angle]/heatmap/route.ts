@@ -1,5 +1,5 @@
 
-import { getHoldHeatmapData } from '@/app/lib/db/queries/holds-heatmap';
+import { getHoldHeatmapData } from '@/app/lib/db/queries/climbs/holds-heatmap';
 import { BoardRouteParameters, ErrorResponse, SearchRequestPagination } from '@/app/lib/types';
 import { parseBoardRouteParams, urlParamsToSearchParams } from '@/app/lib/url-utils';
 import { NextResponse } from 'next/server';
