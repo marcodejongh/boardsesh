@@ -5,7 +5,7 @@ import { API_HOSTS, SyncOptions } from './types';
 //TODO: Can probably be consolidated with sharedSync
 export async function userSync(
   board: BoardName,
-  userId: string,
+  userId: number,
   options: SyncOptions = {},
   token: string,
 ): Promise<SyncData> {
