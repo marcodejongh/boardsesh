@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { getImageUrl } from './util';
 import { BoardDetails } from '@/app/lib/types';
-import { HoldHeatmapData } from '@/app/lib/db/queries/climbs/holds-heatmap';
+import { HeatmapData } from './types';
 import { LitUpHoldsMap } from './types';
 import { scaleLinear, scaleLog } from 'd3-scale';
 import useHeatmapData from '../search-drawer/use-heatmap';
@@ -33,11 +33,21 @@ const getPercentileValue = (values: number[], percentile: number) => {
   return values[index];
 };
 
+// Helper function to extract angle from pathname
+const getAngleFromPath = (pathname: string): number => {
+  const path = pathname.split('/');
+  const angle = Number(path[path.length - 2]);
+  return isNaN(angle) ? 40 : angle; // Default to 40 if not valid
+};
+
 interface BoardHeatmapProps {
   boardDetails: BoardDetails;
   litUpHoldsMap?: LitUpHoldsMap;
   onHoldClick?: (holdId: number) => void;
 }
+
+// Define the color mode type including user-specific modes
+type ColorMode = 'total' | 'starting' | 'hand' | 'foot' | 'finish' | 'difficulty' | 'ascents' | 'userAscents' | 'userAttempts';
 
 const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
   boardDetails,
@@ -47,25 +57,29 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { uiSearchParams } = useUISearchParams();
-  const [colorMode, setColorMode] = useState<'total' | 'starting' | 'hand' | 'foot' | 'finish' | 'difficulty' | 'ascents'>('ascents');
+  
+  const [colorMode, setColorMode] = useState<ColorMode>('ascents');
   const [showNumbers, setShowNumbers] = useState(false);
   
+  // Get angle from pathname immediately
+  const [angle, setAngle] = useState(() => getAngleFromPath(pathname));
+  
+  // Update angle if pathname changes
   useEffect(() => {
-      const path = pathname.split('/');
-      const angle = Number(path[path.length - 2]);
-      if (typeof angle === 'number') {
-        setAngle(angle);
-      }
-    }, [pathname, searchParams])
-    const [angle, setAngle] = React.useState(40);
+    const newAngle = getAngleFromPath(pathname);
+    if (newAngle !== angle) {
+      setAngle(newAngle);
+    }
+  }, [pathname, searchParams, angle]);
     
   const { data: heatmapData = [] } = useHeatmapData({
     boardName: boardDetails.board_name,
     layoutId: boardDetails.layout_id,
-    sizeId: boardDetails.size_id, // Add this line
+    sizeId: boardDetails.size_id,
     setIds: boardDetails.set_ids.join(','),
     angle,
     filters: uiSearchParams
+    // No need to pass userId - it's handled server-side from the session
   });
 
   const [threshold, setThreshold] = useState(1);
@@ -76,7 +90,8 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
     [heatmapData]
   );
 
-  const getValue = (data: HoldHeatmapData | undefined): number => {
+  // Updated getValue function to handle user-specific data
+  const getValue = (data: HeatmapData | undefined): number => {
     if (!data) return 0;
     switch (colorMode) {
       case 'starting': return data.startingUses;
@@ -85,6 +100,8 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
       case 'finish': return data.finishUses;
       case 'difficulty': return data.averageDifficulty || 0;
       case 'ascents': return data.totalAscents || 0;
+      case 'userAscents': return data.userAscents || 0;
+      case 'userAttempts': return data.userAttempts || 0;
       default: return data.totalUses;
     }
   };
@@ -179,6 +196,7 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
 
   const [showHeatmap, setShowHeatmap] = useState(false);
 
+  // Updated color mode options to include user-specific options
   const colorModeOptions = [
     { value: 'ascents', label: 'Ascents' },
     { value: 'total', label: 'Total Problems' },
@@ -187,6 +205,9 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
     { value: 'foot', label: 'Foot Holds' },
     { value: 'finish', label: 'Finish Holds' },
     { value: 'difficulty', label: 'Difficulty' },
+    // Always include user options since auth is handled server-side
+    { value: 'userAscents', label: 'Your Ascents' },
+    { value: 'userAttempts', label: 'Your Attempts' }
   ];
 
   const thresholdOptions = [
@@ -333,7 +354,7 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
             <Form.Item label="View Mode">
               <Select
                 value={colorMode}
-                onChange={(value) => setColorMode(value)}
+                onChange={(value) => setColorMode(value as ColorMode)}
                 style={{ width: 200 }}
                 options={colorModeOptions}
               />

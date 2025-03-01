@@ -2,6 +2,7 @@ import { and, eq, between, gte, sql, like, notLike, SQL } from 'drizzle-orm';
 import { alias, PgTableWithColumns } from 'drizzle-orm/pg-core';
 import { ParsedBoardRouteParameters, SearchRequestPagination } from '@/app/lib/types';
 import { TableSet } from '@/lib/db/queries/util/table-select';
+import { getTableName } from '@/app/lib/data-sync/aurora/getTableName';
 
 /**
  * Creates a shared filtering object that can be used by both search climbs and heatmap queries
@@ -9,12 +10,14 @@ import { TableSet } from '@/lib/db/queries/util/table-select';
  * @param params The route parameters
  * @param searchParams The search parameters
  * @param productSizeAlias Optional alias for the product sizes table. If provided, size conditions will use this alias.
+ * @param userId Optional user ID to include user-specific ascent and attempt data
  */
 export const createClimbFilters = (
   tables: TableSet,
   params: ParsedBoardRouteParameters,
   searchParams: SearchRequestPagination,
   productSizeAlias?: PgTableWithColumns<any>,
+  userId?: number,
 ) => {
   // Process hold filters
   const holdsToFilter = Object.entries(searchParams.holdsFilter || {}).map(([key, state]) => [
@@ -85,6 +88,52 @@ export const createClimbFilters = (
     ...notHolds.map((holdId) => notLike(tables.climbs.frames, `%${holdId}r%`)),
   ];
 
+  // User-specific logbook data selectors
+  const getUserLogbookSelects = () => {
+    const ascentsTable = getTableName(params.board_name, 'ascents');
+    const bidsTable = getTableName(params.board_name, 'bids');
+
+    return {
+      userAscents: sql<number>`(
+        SELECT COUNT(*) 
+        FROM ${sql.identifier(ascentsTable)} 
+        WHERE climb_uuid = ${tables.climbs.uuid} 
+        AND user_id = ${userId || ''} 
+        AND angle = ${params.angle}
+      )`,
+      userAttempts: sql<number>`(
+        SELECT COUNT(*) 
+        FROM ${sql.identifier(bidsTable)} 
+        WHERE climb_uuid = ${tables.climbs.uuid} 
+        AND user_id = ${userId || ''} 
+        AND angle = ${params.angle}
+      )`,
+    };
+  };
+
+  // Hold-specific user data selectors for heatmap
+  const getHoldUserLogbookSelects = (climbHoldsTable: typeof tables.climbHolds) => {
+    const ascentsTable = getTableName(params.board_name, 'ascents');
+    const bidsTable = getTableName(params.board_name, 'bids');
+
+    return {
+      userAscents: sql<number>`(
+        SELECT COUNT(*) 
+        FROM ${sql.identifier(ascentsTable)} a
+        WHERE a.climb_uuid = ${climbHoldsTable.climbUuid}
+        AND a.user_id = ${userId || ''} 
+        AND a.angle = ${params.angle}
+      )`,
+      userAttempts: sql<number>`(
+        SELECT COUNT(*) 
+        FROM ${sql.identifier(bidsTable)} b
+        WHERE b.climb_uuid = ${climbHoldsTable.climbUuid}
+        AND b.user_id = ${userId || ''} 
+        AND b.angle = ${params.angle}
+      )`,
+    };
+  };
+
   return {
     // Helper function to get all climb filtering conditions
     getClimbWhereConditions: () => [...baseConditions, ...nameCondition, ...holdConditions],
@@ -106,6 +155,12 @@ export const createClimbFilters = (
       eq(tables.climbStats.climbUuid, climbHoldsTable.climbUuid),
       eq(tables.climbStats.angle, params.angle),
     ],
+
+    // User-specific logbook data selectors
+    getUserLogbookSelects,
+
+    // Hold-specific user data selectors for heatmap
+    getHoldUserLogbookSelects,
 
     // Raw parts, in case you need direct access to these
     baseConditions,

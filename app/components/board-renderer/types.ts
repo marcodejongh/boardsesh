@@ -21,11 +21,13 @@ export interface HeatmapData {
   holdId: number;
   totalUses: number;
   startingUses: number;
+  totalAscents: number;
   handUses: number;
   footUses: number;
   finishUses: number;
-  averageDifficulty: number;
-  totalAscents: number;
+  averageDifficulty: number | null;
+  userAscents?: number; // Added for user-specific ascent data
+  userAttempts?: number; // Added for user-specific attempt data
 }
 
 // If adding mroe boards be sure to increment the DB version number for indexeddb

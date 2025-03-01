@@ -1,7 +1,7 @@
 import { HoldRenderData, LitUpHoldsMap } from '../components/board-renderer/types';
 import { SetIdList } from './board-data';
 
-export type Climb = {
+export interface Climb {
   uuid: string;
   setter_username: string;
   name: string;
@@ -10,13 +10,15 @@ export type Climb = {
   angle: number;
   ascensionist_count: number;
   difficulty: string;
-  quality_average: string;
+  quality_average: number;
   stars: number;
   difficulty_error: string;
-  litUpHoldsMap: LitUpHoldsMap;
-  mirrored?: boolean;
-  benchmark_difficulty: string | null; // Benchmark difficulty, can be null
-};
+  benchmark_difficulty: string | null;
+  litUpHoldsMap: Record<string, string>;
+  // New fields for user-specific data
+  userAscents?: number;
+  userAttempts?: number;
+}
 
 export type ClimbQueryResult = {
   uuid: string; // UUID of the climb
