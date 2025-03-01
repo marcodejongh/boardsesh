@@ -1,7 +1,9 @@
 // app/api/login/route.ts
+import AuroraClimbingClient from '@/app/lib/api-wrappers/aurora-rest-client/aurora-rest-client';
 import { getLogbook } from '@/app/lib/data/get-logbook';
 import { BoardRouteParameters, ParsedBoardRouteParameters } from '@/app/lib/types';
 import { parseBoardRouteParams } from '@/app/lib/url-utils';
+import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -12,6 +14,20 @@ export async function POST(request: Request, props: { params: Promise<BoardRoute
     // Parse and validate request body
     const validatedData = await request.json();
     // Call the board API
+    const cookieStore = await cookies();
+    const token = cookieStore.get(`${board_name}_token`)?.value;
+    const username = cookieStore.get(`${board_name}_username`)?.value;
+    const password = cookieStore.get(`${board_name}_password`)?.value;
+    
+    if (!token) {
+      throw new Error('401: Unauthorized');
+    }
+     
+    const auroraClient = new AuroraClimbingClient({ token, boardName: board_name });
+    const loginTest = await auroraClient.signIn(username, password);
+    console.log(loginTest);
+    const test = await auroraClient.getFollowers(118684);
+    console.log(test);
     const response = await getLogbook(board_name, validatedData.userId, validatedData.climbUuids);
 
     return NextResponse.json(response);

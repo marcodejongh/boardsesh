@@ -1,16 +1,32 @@
+export const HOST_BASES: Record<BoardName, string> = {
+  // aurora: 'auroraboardapp',
+  // decoy: 'decoyboardapp',
+  // grasshopper: 'grasshopperboardapp',
+  kilter: 'kilterboardapp',
+  tension: 'tensionboardapp2',
+  // touchstone: 'touchstoneboardapp',
+};
+
+export type BoardName = 'kilter' | 'tension';
+
 /**
  * User Profile interface
  */
 export interface UserProfile {
   id: number;
   username: string;
-  name: string;
-  email_address?: string;
-  instagram_username?: string;
-  is_public: boolean;
-  avatar_url?: string;
+  email_address: string;
   created_at: string;
   updated_at: string;
+  is_listed: boolean;
+  is_public: boolean;
+  avatar_image: string | null;
+  banner_image: string | null;
+  city: string | null;
+  country: string | null;
+  height: number | null;
+  weight: number | null;
+  wingspan: number | null;
 }
 
 /**
@@ -142,7 +158,7 @@ export enum FollowState {
  * Client configuration options
  */
 export interface ClientOptions {
-  domain: string;
+  boardName: BoardName;
   token?: string | null;
   apiVersion?: string;
 }
@@ -150,12 +166,28 @@ export interface ClientOptions {
 /**
  * Session data interface
  */
-export interface Session {
-  token: string;
-  user_id?: number;
-  userId?: number;
-  username?: string;
+export interface SessionResponse {
+  session: Session;
 }
+
+export interface Session {
+  user_id: number;
+  token: string;
+};
+
+export interface LoginResponse {
+  error: string;
+  login: {
+    created_at: string;
+    token: string;
+    user_id: number;
+  };
+  token: string;
+  user: UserProfile;
+  user_id: number;
+  username: string;
+}
+
 
 /**
  * Follow relationship interface

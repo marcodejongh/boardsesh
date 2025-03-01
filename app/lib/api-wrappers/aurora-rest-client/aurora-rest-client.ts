@@ -1,6 +1,6 @@
 // aurora-api-client.ts
 
-import { AscentDetails, BidDetails, CircuitDetails, ClientOptions, ClimbDetails, ClimbReport, ClimbSummary, DeleteUserValidationErrors, Exhibit, ExhibitsFilter, Follow, FollowState, GymPin, Leaderboard, LeaderboardScore, NotificationsFilter, ProfileDetails, SearchResult, Session, SharedSync, SignUpDetails, SyncResponse, Tag, UserProfile, UserSync, WallDetails } from "./types";
+import { AscentDetails, BidDetails, CircuitDetails, ClientOptions, ClimbDetails, ClimbReport, ClimbSummary, DeleteUserValidationErrors, Exhibit, ExhibitsFilter, Follow, FollowState, GymPin, HOST_BASES, Leaderboard, LeaderboardScore, LoginResponse, NotificationsFilter, ProfileDetails, SearchResult, Session, SessionResponse, SharedSync, SignUpDetails, SyncResponse, Tag, UserProfile, UserSync, WallDetails } from "./types";
 
 
 
@@ -8,28 +8,33 @@ import { AscentDetails, BidDetails, CircuitDetails, ClientOptions, ClimbDetails,
  * Aurora Climbing API Client
  */
 class AuroraClimbingClient {
-  private domain: string;
   private baseURL: string;
+  private token: string | null;
+  private session: Session | null;
   private apiVersion: string;
-  token: string | null;
 
   /**
    * Create a new API client instance
    * @param options - Configuration options
    */
-  constructor({ domain, token = null, apiVersion = '' }: ClientOptions) {
-    this.domain = domain;
+  constructor({ boardName, token = null, apiVersion = 'v1' }: ClientOptions) {
     this.token = token;
+    this.session = null;
     this.apiVersion = apiVersion;
-    this.baseURL = `https://${domain}${apiVersion ? `/${apiVersion}` : ''}`;
+    this.baseURL = `${HOST_BASES[boardName]}.com`;
   }
 
   /**
    * Set the authentication token
    * @param token - The authentication token
    */
-  setToken(token: string): void {
-    this.token = token;
+  setSession(session: Session): void {
+    this.session = session;
+    this.token = session.token;
+  }
+
+  getUserId(): number | null {
+    return this.session?.user_id || null;
   }
 
   /**
@@ -66,28 +71,32 @@ class AuroraClimbingClient {
 
     return headers;
   }
-
+  private constructUrl() {}
   /**
    * Make an API request
    * @param endpoint - API endpoint
-   * @param options - Fetch options
+   * @param fetchOptions - Fetch options
    * @returns Response data
    */
-  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const url = `${this.baseURL}${endpoint}`;
+  private async request<T>(
+    endpoint: string,
+    fetchOptions: RequestInit = {},
+    options: { apiUrl: boolean } = { apiUrl: false },
+  ): Promise<T> {
+    const url = `https://${options.apiUrl ? 'api.' : ''}${this.baseURL}${options.apiUrl ? `/${this.apiVersion}` : ''}${endpoint}`;
 
     try {
-      const contentType = options.headers && 
-        typeof options.headers === 'object' && 
-        !Array.isArray(options.headers) ? 
-        (options.headers as Record<string, string>)['Content-Type'] : 
-        undefined;
-        
+      const contentType =
+        fetchOptions.headers && typeof fetchOptions.headers === 'object' && !Array.isArray(fetchOptions.headers)
+          ? (fetchOptions.headers as Record<string, string>)['Content-Type']
+          : undefined;
+      console.log(`Fetching ${url}`);
+
       const response = await fetch(url, {
-        ...options,
+        ...fetchOptions,
         headers: {
           ...this.createHeaders(contentType),
-          ...(options.headers || {}),
+          ...(fetchOptions.headers || {}),
         },
       });
 
@@ -109,7 +118,6 @@ class AuroraClimbingClient {
     }
   }
 
-
   // #region Authentication
 
   /**
@@ -117,7 +125,7 @@ class AuroraClimbingClient {
    * @param signUpDetails - Sign up details
    * @returns Session data including token
    */
-  async signUp(signUpDetails: SignUpDetails): Promise<Session> {
+  async signUp(signUpDetails: SignUpDetails): Promise<SessionResponse> {
     try {
       const formData = this.encodeFormData({
         username: signUpDetails.username,
@@ -139,7 +147,7 @@ class AuroraClimbingClient {
 
       // Store the token for future requests
       if (response.session && response.session.token) {
-        this.setToken(response.session.token);
+        this.setSession(response.session);
       }
 
       return response.session;
@@ -162,50 +170,60 @@ class AuroraClimbingClient {
   }
 
   /**
-   * Sign in to the Aurora Climbing API
+   * Continue an existing session
+   * @returns Session data
+   * @throws Error if no existing token
+   */
+  async verifySession(username: string, password: string): Promise<Session> {
+    if (!this.token) {
+      throw new Error('No session token available');
+    }
+
+    const formData = this.encodeFormData({
+      username,
+      password,
+      tou: 'accepted',
+      pp: 'accepted',
+      ua: 'app',
+    });
+
+    const data = await this.request<SessionResponse>('/sessions', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (data.session) {
+      this.setSession(data.session);
+      return data.session;
+    }
+
+    throw new Error('Failed to continue session');
+  }
+
+  /**
+   * Sign in to the Aurora Climbing API with username and password
    * @param username - Username
    * @param password - Password
    * @returns Session data including token
    */
-  async signIn(username: string, password: string): Promise<Session> {
+  async signIn(username: string, password: string): Promise<LoginResponse> {
     try {
-      // Based on the Java implementation, we need to send these parameters
-      const formData = this.encodeFormData({
-        username,
-        password,
-        tou: 'accepted',
-        pp: 'accepted',
-        ua: 'app',
-      });
-
-      try {
-        // Try the primary endpoint from Java code first
-        const data = await this.request<{ session: Session }>('/sessions', {
-          method: 'POST',
-          body: formData,
-        });
-
-        // Store the token for future requests
-        if (data.session && data.session.token) {
-          this.setToken(data.session.token);
-        }
-
-        return data.session;
-      } catch (error) {
-        // Try alternate endpoint from your Node.js example
-        const data = await this.request<Session>('/logins', {
+      // If continuing session fails, try fresh login
+      const data = await this.request<LoginResponse>(
+        '/logins',
+        {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username, password }),
-        });
+        },
+        { apiUrl: true },
+      );
 
-        // Store the token for future requests
-        if (data.token) {
-          this.setToken(data.token);
-        }
-
+      if (data.token) {
+        this.setSession({ token: data.token, user_id: data.user_id });
         return data;
       }
+      throw new Error('Login failed');
     } catch (error) {
       // Parse error message
       if (typeof error === 'object' && error !== null && 'message' in error) {
@@ -890,12 +908,23 @@ class AuroraClimbingClient {
   }
 
   /**
-   * Get user's logbook (ascents)
+   * Get a user's logbook (ascents), primarily used for getting the ascents
+   * of people the current user followed. The ascents of the current user should
+   * be synced to the db using the user sync.
+   *
    * @param userId - User ID
    * @param types - Types of ascents to include
    * @returns List of logbook items
    */
-  async getLogbook(userId: number, types: string[]): Promise<AscentDetails[]> {
+  async getLogbook(userId: number, ascents: boolean = true, attempts: boolean = true): Promise<AscentDetails[]> {
+    const types = [];
+    if (ascents) {
+      types.push('ascents');
+    }
+    if (attempts) {
+      types.push('bids');
+    }
+
     if (!this.token) {
       throw new Error('Authentication required. Call signIn() first.');
     }
