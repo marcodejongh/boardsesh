@@ -235,20 +235,30 @@ async function upsertTableData(
 
     case 'tags': {
       for (const item of data) {
-        await db
-          .insert(schemas.tags)
-          .values({
-            entityUuid: item.entity_uuid,
-            userId: Number(userId),
-            name: item.name,
+        // First try to update existing record
+        const result = await db
+          .update(schemas.tags)
+          .set({
             isListed: Boolean(item.is_listed),
           })
-          .onConflictDoUpdate({
-            target: [schemas.tags.entityUuid, schemas.tags.userId, schemas.tags.name],
-            set: {
+          .where(and(
+            eq(schemas.tags.entityUuid, item.entity_uuid),
+            eq(schemas.tags.userId, Number(userId)),
+            eq(schemas.tags.name, item.name)
+          ))
+          .returning();
+
+        // If no record was updated, insert a new one
+        if (result.length === 0) {
+          await db
+            .insert(schemas.tags)
+            .values({
+              entityUuid: item.entity_uuid,
+              userId: Number(userId),
+              name: item.name,
               isListed: Boolean(item.is_listed),
-            },
-          });
+            });
+        }
       }
       break;
     }
@@ -268,7 +278,7 @@ async function upsertTableData(
             updatedAt: item.updated_at,
           })
           .onConflictDoUpdate({
-            target: [schemas.circuits.uuid], // Specify as array of columns
+            target: schemas.circuits.uuid,
             set: {
               name: item.name,
               description: item.description,
@@ -348,39 +358,30 @@ export async function syncUserData(
     const syncResults = await userSync(board, userId, syncParams, token);
 
     // Process each table in a single transaction
-    await db.transaction(
-      async (
-        tx: PgTransaction<
-          VercelPgQueryResultHKT,
-          Record<string, never>,
-          ExtractTablesWithRelations<Record<string, never>>
-        >,
-      ) => {
-        try {
-          // Process each table
-          for (const tableName of tables) {
-            console.log(`Syncing ${tableName} for user ${userId}`);
-            if (syncResults.PUT && syncResults.PUT[tableName]) {
-              const data = syncResults.PUT[tableName];
-              await upsertTableData(tx, board, tableName, userId, data);
-              results[tableName] = { synced: data.length };
-            } else {
-              results[tableName] = { synced: 0 };
-            }
+    await db.transaction(async (tx) => {
+      try {
+        // Process each table
+        for (const tableName of tables) {
+          console.log(`Syncing ${tableName} for user ${userId}`);
+          if (syncResults.PUT && syncResults.PUT[tableName]) {
+            const data = syncResults.PUT[tableName];
+            await upsertTableData(tx, board, tableName, userId, data);
+            results[tableName] = { synced: data.length };
+          } else {
+            results[tableName] = { synced: 0 };
           }
-
-          // Update user_syncs table with new sync times
-          if (syncResults && syncResults.PUT && syncResults.PUT['user_syncs']) {
-            //TODO handle user syncs in other method
-            await updateUserSyncs(tx, board, syncResults.PUT['user_syncs']);
-          }
-        } catch (error) {
-          //@ts-expect-error
-          console.error('Failed to commit sync database transaction ', error.toString());
-          tx.rollback();
         }
-      },
-    );
+
+        // Update user_syncs table with new sync times
+        if (syncResults && syncResults.PUT && syncResults.PUT['user_syncs']) {
+          //TODO handle user syncs in other method
+          await updateUserSyncs(tx, board, syncResults.PUT['user_syncs']);
+        }
+      } catch (error) {
+        console.error('Failed to commit sync database transaction:', error);
+        throw error; // Let the transaction handle the rollback
+      }
+    });
 
     return results;
   } catch (error) {
