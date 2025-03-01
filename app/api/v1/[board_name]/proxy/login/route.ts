@@ -6,6 +6,10 @@ import { BoardName, BoardRouteParameters, ParsedBoardRouteParameters } from '@/a
 import { parseBoardRouteParams } from '@/app/lib/url-utils';
 import { syncUserData } from '@/app/lib/data-sync/aurora/user-sync';
 import { Session } from '@/app/lib/api-wrappers/aurora-rest-client/types';
+import { cookies } from 'next/headers';
+import { getIronSession, IronSessionData } from 'iron-session';
+import { getSession } from '@/app/lib/session';
+
 
 // Input validation schema
 const loginSchema = z.object({
@@ -55,6 +59,7 @@ async function login(boardName: BoardName, username: string, password: string): 
   return loginResponse;
 }
 
+
 /**
  * Route handler for login POST requests
  * @param request - Incoming HTTP request
@@ -74,9 +79,13 @@ export async function POST(request: Request, props: { params: Promise<BoardRoute
     const loginResponse = await login(board_name, validatedData.username, validatedData.password);
 
     const response = NextResponse.json(loginResponse);
-    response.cookies.set(`${board_name}_token`, loginResponse.token, { secure: true, httpOnly: true });
-    response.cookies.set(`${board_name}_username`, validatedData.username, { secure: true, httpOnly: true });
-    response.cookies.set(`${board_name}_password`, validatedData.password, { secure: true, httpOnly: true });
+
+    const session = await getSession(response.cookies, board_name);
+    session.token = loginResponse.token;
+    session.username = validatedData.username;
+    session.password = validatedData.password;
+    session.userId = loginResponse.user_id;
+    await session.save();
 
     return response;
   } catch (error) {

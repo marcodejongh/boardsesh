@@ -56,7 +56,7 @@ async function upsertTableData(
   db: PgTransaction<VercelPgQueryResultHKT, Record<string, never>, ExtractTablesWithRelations<Record<string, never>>>,
   boardName: BoardName,
   tableName: string,
-  userId: string,
+  userId: number,
   data: any[],
 ) {
   if (data.length === 0) return;
@@ -321,7 +321,7 @@ async function updateUserSyncs(
   }
 }
 
-export async function getLastSyncTimes(boardName: BoardName, userId: string, tableNames: string[]) {
+export async function getLastSyncTimes(boardName: BoardName, userId: number, tableNames: string[]) {
   const schemas = getSchemas(boardName);
 
   const result = await db
@@ -335,8 +335,7 @@ export async function getLastSyncTimes(boardName: BoardName, userId: string, tab
 export async function syncUserData(
   board: BoardName,
   token: string,
-  userId: string,
-  username: string,
+  userId: number,
   tables: string[] = USER_TABLES,
 ): Promise<Record<string, { synced: number }>> {
   const results: Record<string, { synced: number }> = {};
