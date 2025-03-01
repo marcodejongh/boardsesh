@@ -150,7 +150,7 @@ class AuroraClimbingClient {
         this.setSession(response.session);
       }
 
-      return response.session;
+      return response;
     } catch (error) {
       // Parse error message
       if (typeof error === 'object' && error !== null && 'message' in error) {
