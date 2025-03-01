@@ -10,7 +10,7 @@ import { createClimbFilters } from './create-climb-filters';
 export const searchClimbs = async (
   params: ParsedBoardRouteParameters,
   searchParams: SearchRequestPagination,
-  userId?: string,
+  userId?: number,
 ): Promise<SearchClimbsResult> => {
   const tables = getBoardTables(params.board_name);
 
@@ -101,8 +101,10 @@ export const searchClimbs = async (
       // TODO: Multiframe support should remove the hardcoded [0]
       litUpHoldsMap: convertLitUpHoldsStringToMap(result.frames || '', params.board_name)[0],
       // Add user-specific fields if they exist
-      userAscents: userId ? Number(result.userAscents || 0) : undefined,
-      userAttempts: userId ? Number(result.userAttempts || 0) : undefined,
+      //@ts-expect-error Stupid typescript
+      userAscents: userId ? Number(result?.userAscents || 0) : undefined,
+      //@ts-expect-error Stupid typescript
+      userAttempts: userId ? Number(result?.userAttempts || 0) : undefined,
     }));
 
     return {

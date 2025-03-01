@@ -22,7 +22,7 @@ export interface HoldHeatmapData {
 export const getHoldHeatmapData = async (
   params: ParsedBoardRouteParameters,
   searchParams: SearchRequestPagination,
-  userId?: string,
+  userId?: number,
 ): Promise<HoldHeatmapData[]> => {
   const tables = getBoardTables(params.board_name);
   const climbHolds = tables.climbHolds;
@@ -125,7 +125,7 @@ export const getHoldHeatmapData = async (
   }
 };
 
-function normalizeStats(stats: Record<string, any>, userId?: string): HoldHeatmapData {
+function normalizeStats(stats: Record<string, any>, userId?: number): HoldHeatmapData {
   // For numeric fields, ensure we're returning a number and handle null/undefined properly
   const result: HoldHeatmapData = {
     holdId: Number(stats.holdId),
