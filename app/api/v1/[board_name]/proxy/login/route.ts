@@ -7,7 +7,6 @@ import { parseBoardRouteParams } from '@/app/lib/url-utils';
 import { syncUserData } from '@/app/lib/data-sync/aurora/user-sync';
 import { Session } from '@/app/lib/api-wrappers/aurora-rest-client/types';
 import { cookies } from 'next/headers';
-import { getIronSession, IronSessionData } from 'iron-session';
 import { getSession } from '@/app/lib/session';
 
 
@@ -47,8 +46,7 @@ async function login(boardName: BoardName, username: string, password: string): 
       await syncUserData(
         boardName,
         loginResponse.token,
-        loginResponse.user_id.toString(),
-        (loginResponse.username ?? '').toString(),
+        loginResponse.user_id,
       );
     } catch (error) {
       console.error('Initial sync error:', error);
