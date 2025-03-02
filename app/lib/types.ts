@@ -16,7 +16,10 @@ export type Climb = {
   litUpHoldsMap: LitUpHoldsMap;
   mirrored?: boolean;
   benchmark_difficulty: string | null; // Benchmark difficulty, can be null
+  userAscents?: number;
+  userAttempts?: number;
 };
+
 
 export type ClimbQueryResult = {
   uuid: string; // UUID of the climb

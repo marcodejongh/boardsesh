@@ -1,7 +1,9 @@
 
 import { getHoldHeatmapData } from '@/app/lib/db/queries/climbs/holds-heatmap';
+import { getSession } from '@/app/lib/session';
 import { BoardRouteParameters, ErrorResponse, SearchRequestPagination } from '@/app/lib/types';
 import { parseBoardRouteParams, urlParamsToSearchParams } from '@/app/lib/url-utils';
+import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 
 export interface HoldHeatmapResponse {
@@ -9,10 +11,13 @@ export interface HoldHeatmapResponse {
     holdId: number;
     totalUses: number;
     startingUses: number;
+    totalAscents: number;
     handUses: number;
     footUses: number;
     finishUses: number;
     averageDifficulty: number | null;
+    userAscents?: number; // Added for user-specific ascent data
+    userAttempts?: number; // Added for user-specific attempt data
   }>;
 }
 
@@ -22,10 +27,14 @@ export async function GET(req: Request, props: { params: Promise<BoardRouteParam
   const query = new URL(req.url).searchParams;
   const parsedParams = parseBoardRouteParams(params);
   const searchParams: SearchRequestPagination = urlParamsToSearchParams(query);
-
+  
+  const cookieStore = await cookies();
+  const session = await getSession(cookieStore, parsedParams.board_name);
+    console.log(parsedParams);
+    console.log(params);
   try {
     // Get the heatmap data using the query function
-    const holdStats = await getHoldHeatmapData(parsedParams, searchParams);
+    const holdStats = await getHoldHeatmapData(parsedParams, searchParams, session.userId);
 
     // Return response
     return NextResponse.json({
