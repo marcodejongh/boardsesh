@@ -1,7 +1,7 @@
 import { dbz as db } from '@/app/lib/db/db';
 import { BoardName } from '../../types';
 import { userSync } from '../../api-wrappers/aurora/userSync';
-import { LastSyncData, SyncOptions, USER_TABLES, UserSyncData } from '../../api-wrappers/aurora/types';
+import { LastSyncData, SyncOptions, USER_TABLES, UserSyncData, SHARED_SYNC_TABLES } from '../../api-wrappers/aurora/types';
 import { eq, and, inArray, ExtractTablesWithRelations } from 'drizzle-orm';
 import {
   kilterUsers,
@@ -12,6 +12,7 @@ import {
   kilterTags,
   kilterCircuits,
   kilterUserSyncs,
+  kilterSharedSyncs,
   tensionUsers,
   tensionWalls,
   tensionClimbs,
@@ -20,6 +21,7 @@ import {
   tensionTags,
   tensionCircuits,
   tensionUserSyncs,
+  tensionSharedSyncs,
 } from '@/app/lib/db/schema';
 import { PgTransaction } from 'drizzle-orm/pg-core';
 import { VercelPgQueryResultHKT } from 'drizzle-orm/vercel-postgres';
@@ -36,6 +38,7 @@ function getSchemas(board: BoardName) {
       tags: kilterTags,
       circuits: kilterCircuits,
       userSyncs: kilterUserSyncs,
+      sharedSyncs: kilterSharedSyncs,
     };
   } else if (board === 'tension') {
     return {
@@ -47,6 +50,7 @@ function getSchemas(board: BoardName) {
       tags: tensionTags,
       circuits: tensionCircuits,
       userSyncs: tensionUserSyncs,
+      sharedSyncs: tensionSharedSyncs,
     };
   }
   throw new Error(`Unsupported board type: ${board}`);
@@ -332,6 +336,17 @@ export async function getLastSyncTimes(boardName: BoardName, userId: number, tab
   return result;
 }
 
+export async function getLastSharedSyncTimes(boardName: BoardName, tableNames: string[]) {
+  const schemas = getSchemas(boardName);
+
+  const result = await db
+    .select()
+    .from(schemas.sharedSyncs)
+    .where(inArray(schemas.sharedSyncs.tableName, tableNames));
+
+  return result;
+}
+
 export async function syncUserData(
   board: BoardName,
   token: string,
@@ -345,25 +360,38 @@ export async function syncUserData(
       tables,
     };
 
+    // Get user sync times
     const allSyncTimes = await getLastSyncTimes(board, userId, tables);
-
-    syncParams.userSyncs = allSyncTimes.map((syncTime) => ({
-      table_name: syncTime.tableName || '',
-      last_synchronized_at: syncTime.lastSynchronizedAt || '',
+    
+    // Create a map of existing sync times
+    const userSyncMap = new Map(
+      allSyncTimes.map(sync => [sync.tableName, sync.lastSynchronizedAt])
+    );
+    
+    // Ensure all user tables have a sync entry (default to 30 days ago if not synced)
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const defaultTimestamp = thirtyDaysAgo.toISOString().replace('T', ' ').replace('Z', '');
+    
+    syncParams.userSyncs = tables.map((tableName) => ({
+      table_name: tableName,
+      last_synchronized_at: userSyncMap.get(tableName) || defaultTimestamp,
       user_id: Number(userId),
     }));
+
+    console.log('syncParams', syncParams);
+
     // TODO: Move rest api call out of DB transaction to make error messages
     // easier to interpret
     const syncResults = await userSync(board, userId, syncParams, token);
-
+    console.log('syncResults', syncResults);
     // Process each table in a single transaction
     await db.transaction(async (tx) => {
       try {
-        // Process each table
+        // Process each table - new API returns data directly under table name keys
         for (const tableName of tables) {
           console.log(`Syncing ${tableName} for user ${userId}`);
-          if (syncResults.PUT && syncResults.PUT[tableName]) {
-            const data = syncResults.PUT[tableName];
+          if (syncResults[tableName] && Array.isArray(syncResults[tableName])) {
+            const data = syncResults[tableName];
             await upsertTableData(tx, board, tableName, userId, data);
             results[tableName] = { synced: data.length };
           } else {
@@ -372,9 +400,9 @@ export async function syncUserData(
         }
 
         // Update user_syncs table with new sync times
-        if (syncResults && syncResults.PUT && syncResults.PUT['user_syncs']) {
+        if (syncResults && syncResults['user_syncs']) {
           //TODO handle user syncs in other method
-          await updateUserSyncs(tx, board, syncResults.PUT['user_syncs']);
+          await updateUserSyncs(tx, board, syncResults['user_syncs']);
         }
       } catch (error) {
         console.error('Failed to commit sync database transaction:', error);

@@ -30,7 +30,11 @@ async function login(boardName: BoardName, username: string, password: string): 
   if (loginResponse.user_id) {
     const tableName = boardName === 'tension' || boardName === 'kilter' ? `${boardName}_users` : 'users';
 
-    // Insert/update user in our database
+    // Insert/update user in our database - handle missing user object
+    const createdAt = loginResponse.user?.created_at 
+      ? new Date(loginResponse.user.created_at)
+      : new Date(); // Fallback to current time if not available
+
     await sql.query(
       `
       INSERT INTO ${tableName} (id, username, created_at)
@@ -38,7 +42,7 @@ async function login(boardName: BoardName, username: string, password: string): 
       ON CONFLICT (id) DO UPDATE SET
       username = EXCLUDED.username
       `,
-      [loginResponse.user_id, loginResponse.username, new Date(loginResponse.user.created_at)],
+      [loginResponse.user_id, loginResponse.username || username, createdAt],
     );
 
     // If it's a new user, perform full sync

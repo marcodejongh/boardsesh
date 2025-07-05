@@ -61,8 +61,12 @@ class AuroraClimbingClient {
    */
   private createHeaders(contentType?: string): HeadersInit {
     const headers: HeadersInit = {
-      Accept: 'application/json',
+      'Accept': 'application/json',
       'Content-Type': contentType || 'application/x-www-form-urlencoded',
+      'Connection': 'keep-alive',
+      'Accept-Language': 'en-AU,en;q=0.9',
+      'Accept-Encoding': 'gzip, deflate, br',
+      'User-Agent': 'Kilter%20Board/202 CFNetwork/1568.100.1 Darwin/24.0.0'
     };
 
     if (this.token) {
@@ -71,6 +75,7 @@ class AuroraClimbingClient {
 
     return headers;
   }
+  
   private constructUrl() {}
   /**
    * Make an API request
@@ -91,6 +96,8 @@ class AuroraClimbingClient {
           ? (fetchOptions.headers as Record<string, string>)['Content-Type']
           : undefined;
       console.log(`Fetching ${url}`);
+      console.log(`Headers:`, this.createHeaders(contentType));
+      console.log(`Request body:`, fetchOptions.body);
 
       const response = await fetch(url, {
         ...fetchOptions,
@@ -98,15 +105,36 @@ class AuroraClimbingClient {
           ...this.createHeaders(contentType),
           ...(fetchOptions.headers || {}),
         },
+        // Add timeout to prevent hanging requests
+        signal: AbortSignal.timeout(30000), // 30 second timeout
       });
 
+      console.log(`Response status: ${response.status} ${response.statusText}`);
+      console.log(`Response headers:`, Object.fromEntries(response.headers.entries()));
+
       if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
+        const responseClone = response.clone();
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch (parseError) {
+          try {
+            errorData = await responseClone.text();
+          } catch (textError) {
+            errorData = 'Could not read error response';
+          }
+        }
+        console.error(`API Error - ${url}:`, {
+          status: response.status,
+          statusText: response.statusText,
+          data: errorData,
+        });
         throw new Error(
           JSON.stringify({
             status: response.status,
             statusText: response.statusText,
             data: errorData,
+            url: url,
           }),
         );
       }
@@ -114,6 +142,20 @@ class AuroraClimbingClient {
       return (await response.json()) as T;
     } catch (error) {
       console.error(`API request failed: ${endpoint}`, error);
+      
+      // Enhance error messages for common issues
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          throw new Error(`Request timeout: ${url} took longer than 30 seconds`);
+        }
+        if (error.message.includes('fetch')) {
+          throw new Error(`Network error: Unable to connect to ${url}. Check internet connection and Aurora API status.`);
+        }
+        if (error.message.includes('Failed to fetch')) {
+          throw new Error(`DNS/Connection error: Cannot resolve ${url}. Aurora servers may be unavailable.`);
+        }
+      }
+      
       throw error;
     }
   }
@@ -208,18 +250,91 @@ class AuroraClimbingClient {
    */
   async signIn(username: string, password: string): Promise<LoginResponse> {
     try {
-      // If continuing session fails, try fresh login
-      const data = await this.request<LoginResponse>(
-        '/logins',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password }),
-        },
-        { apiUrl: true },
-      );
+      // Try multiple endpoints to find the working one
+      let data: LoginResponse;
+      
+      try {
+        // First try /sessions on web host
+        data = await this.request<LoginResponse>(
+          '/sessions',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              username, 
+              password,
+              tou: "accepted",
+              pp: "accepted",
+              ua: "app"
+            }),
+          },
+          { apiUrl: false }, // Use web host instead of API host
+        );
+      } catch (error) {
+        // If /sessions fails, try /v1/sessions on web host
+        try {
+          data = await this.request<LoginResponse>(
+            '/v1/sessions',
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                username, 
+                password,
+                tou: "accepted",
+                pp: "accepted",
+                ua: "app"
+              }),
+            },
+            { apiUrl: false },
+          );
+        } catch (error2) {
+          // If that fails, try original /logins on API host as fallback
+          data = await this.request<LoginResponse>(
+            '/logins',
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ username, password }),
+            },
+            { apiUrl: true },
+          );
+        }
+      }
 
-      if (data.token) {
+      // Handle session extraction - response might have a session object
+      if (data.session) {
+        this.setSession({ token: data.session.token, user_id: data.session.user_id });
+        
+        // Construct a response that matches the UI expectations
+        return { 
+          token: data.session.token, 
+          user_id: data.session.user_id,
+          username: username, // Use the provided username since API doesn't return it
+          error: '', // No error
+          login: {
+            created_at: new Date().toISOString(), // Use current time since API doesn't provide it
+            token: data.session.token,
+            user_id: data.session.user_id,
+          },
+          user: {
+            id: data.session.user_id,
+            username: username,
+            email_address: '', // These will be filled by subsequent API calls
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            is_listed: true,
+            is_public: true,
+            avatar_image: null,
+            banner_image: null,
+            city: null,
+            country: null,
+            height: null,
+            weight: null,
+            wingspan: null,
+          }
+        };
+      } else if (data.token) {
         this.setSession({ token: data.token, user_id: data.user_id });
         return data;
       }
@@ -274,10 +389,10 @@ class AuroraClimbingClient {
     // Build sync parameters
     const params: string[] = [];
 
-    // Process shared syncs
+    // Process shared syncs - match APK database schema order
     const sharedTables = [
       'products',
-      'product_sizes',
+      'product_sizes', 
       'holes',
       'leds',
       'products_angles',
@@ -307,7 +422,7 @@ class AuroraClimbingClient {
 
     // If authenticated, add user sync parameters
     if (this.token && userSyncs) {
-      const userTables = ['users', 'walls', 'draft_climbs', 'ascents', 'bids', 'tags', 'circuits'];
+      const userTables = ['users', 'walls', 'wall_expungements', 'draft_climbs', 'ascents', 'bids', 'tags', 'circuits'];
 
       // Map of table names to last sync timestamps
       const userSyncsMap: Record<string, string> = {};
