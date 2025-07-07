@@ -95,9 +95,6 @@ class AuroraClimbingClient {
         fetchOptions.headers && typeof fetchOptions.headers === 'object' && !Array.isArray(fetchOptions.headers)
           ? (fetchOptions.headers as Record<string, string>)['Content-Type']
           : undefined;
-      console.log(`Fetching ${url}`);
-      console.log(`Headers:`, this.createHeaders(contentType));
-      console.log(`Request body:`, fetchOptions.body);
 
       const response = await fetch(url, {
         ...fetchOptions,

@@ -1,6 +1,6 @@
 import { BoardName } from '../../types';
 import { SyncData } from '../sync-api-types';
-import { API_HOSTS, WEB_HOSTS, SyncOptions } from './types';
+import { WEB_HOSTS, SyncOptions } from './types';
 
 //TODO: Can probably be consolidated with sharedSync
 export async function userSync(
@@ -30,47 +30,19 @@ export async function userSync(
   const requestBody = params.join('&');
   console.log('requestBody', requestBody);
 
-  try {
-    // First try /sync on web host (no v1 prefix)
-    response = await fetch(`${WEB_HOSTS[board]}/sync`, {
-      method: 'POST',
-      cache: 'no-store',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'User-Agent': 'Kilter%20Board/202 CFNetwork/1568.100.1 Darwin/24.0.0',
-        'Cookie': `token=${token}`,
-      },
-      body: requestBody,
-    });
-
-    // If web host returns 404, try API host with /v1/sync
-    if (response.status === 404) {
-      console.log(`Web host sync failed with 404, falling back to API host`);
-      response = await fetch(`${API_HOSTS[board]}/v1/sync`, {
-        method: 'POST',
-        cache: 'no-store',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'User-Agent': 'Kilter%20Board/202 CFNetwork/1568.100.1 Darwin/24.0.0',
-          'Cookie': `token=${token}`,
-        },
-        body: requestBody,
-      });
-    }
-  } catch (error) {
-    // If web host fetch fails completely, try API host as fallback
-    console.log(`Web host sync failed with error, falling back to API host`);
-    response = await fetch(`${API_HOSTS[board]}/v1/sync`, {
-      method: 'POST',
-      cache: 'no-store',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'User-Agent': 'Kilter%20Board/202 CFNetwork/1568.100.1 Darwin/24.0.0',
-        'Cookie': `token=${token}`,
-      },
-      body: requestBody,
-    });
-  }
+  const webUrl = `${WEB_HOSTS[board]}/sync`;
+  console.log(`Calling user sync endpoint: ${webUrl}`);
+  
+  response = await fetch(webUrl, {
+    method: 'POST',
+    cache: 'no-store',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'User-Agent': 'Kilter%20Board/202 CFNetwork/1568.100.1 Darwin/24.0.0',
+      'Cookie': `token=${token}`,
+    },
+    body: requestBody,
+  });
 
   if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
   

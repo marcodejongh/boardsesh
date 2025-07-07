@@ -1,6 +1,6 @@
 import { BoardName } from '../../types';
 import { SyncData } from '../sync-api-types';
-import { API_HOSTS, WEB_HOSTS, SyncOptions } from './types';
+import { WEB_HOSTS, SyncOptions } from './types';
 
 //TODO: Can probably be consolidated with userSync
 export async function sharedSync(
@@ -36,50 +36,19 @@ export async function sharedSync(
   const requestBody = params.join('&');
   console.log('Shared sync request body:', requestBody);
   
-  try {
-    // First try web host (no v1 prefix)
-    const webUrl = `${WEB_HOSTS[board]}/sync`;
-    console.log(`Trying web host: ${webUrl}`);
-    response = await fetch(webUrl, {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'User-Agent': 'Kilter%20Board/202 CFNetwork/1568.100.1 Darwin/24.0.0',
-        'Cookie': `token=${token}`
-      },
-      cache: 'no-store',
-      body: requestBody,
-    });
-
-    // If web host returns 404, try API host with /v1/sync
-    if (response.status === 404) {
-      const apiUrl = `${API_HOSTS[board]}/v1/sync`;
-      console.log(`Web host shared sync failed with 404, trying API host: ${apiUrl}`);
-      response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'User-Agent': 'Kilter%20Board/202 CFNetwork/1568.100.1 Darwin/24.0.0',
-          'Cookie': `token=${token}`
-        },
-        cache: 'no-store',
-        body: requestBody,
-      });
-    }
-  } catch (error) {
-    // If web host fetch fails completely, try API host as fallback
-    console.log(`Web host shared sync failed with error, trying API host`);
-    response = await fetch(`${API_HOSTS[board]}/v1/sync`, {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'User-Agent': 'Kilter%20Board/202 CFNetwork/1568.100.1 Darwin/24.0.0',
-        'Cookie': `token=${token}`
-      },
-      cache: 'no-store',
-      body: requestBody,
-    });
-  }
+  const webUrl = `${WEB_HOSTS[board]}/sync`;
+  console.log(`Calling sync endpoint: ${webUrl}`);
+  
+  response = await fetch(webUrl, {
+    method: 'POST',
+    headers: { 
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'User-Agent': 'Kilter%20Board/202 CFNetwork/1568.100.1 Darwin/24.0.0',
+      'Cookie': `token=${token}`
+    },
+    cache: 'no-store',
+    body: requestBody,
+  });
   
   if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
   
