@@ -297,11 +297,13 @@ class AuroraClimbingClient {
           }
         };
       } else if (data.token) {
+        if (data.user_id) {
         this.setSession({ token: data.token, user_id: data.user_id });
         return data;
       }
       throw new Error('Login failed');
-    } catch (error) {
+    }
+  } catch (error) {
       // Parse error message
       if (typeof error === 'object' && error !== null && 'message' in error) {
         try {
