@@ -27,6 +27,10 @@ async function login(boardName: BoardName, username: string, password: string): 
   const auroraClient = new AuroraClimbingClient({ boardName: boardName });
   const loginResponse = await auroraClient.signIn(username, password);
 
+  if (!loginResponse.token || !loginResponse.user_id) {
+    throw new Error('Invalid login response: missing token or user_id');
+  }
+
   if (loginResponse.user_id) {
     const tableName = boardName === 'tension' || boardName === 'kilter' ? `${boardName}_users` : 'users';
 
@@ -58,7 +62,11 @@ async function login(boardName: BoardName, username: string, password: string): 
     }
   }
 
-  return loginResponse;
+  // Convert LoginResponse to Session
+  return {
+    token: loginResponse.token,
+    user_id: loginResponse.user_id
+  };
 }
 
 
