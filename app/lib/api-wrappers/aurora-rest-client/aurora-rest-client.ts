@@ -247,57 +247,22 @@ class AuroraClimbingClient {
    */
   async signIn(username: string, password: string): Promise<LoginResponse> {
     try {
-      // Try multiple endpoints to find the working one
-      let data: LoginResponse;
-      
-      try {
-        // First try /sessions on web host
-        data = await this.request<LoginResponse>(
-          '/sessions',
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              username, 
-              password,
-              tou: "accepted",
-              pp: "accepted",
-              ua: "app"
-            }),
-          },
-          { apiUrl: false }, // Use web host instead of API host
-        );
-      } catch (error) {
-        // If /sessions fails, try /v1/sessions on web host
-        try {
-          data = await this.request<LoginResponse>(
-            '/v1/sessions',
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ 
-                username, 
-                password,
-                tou: "accepted",
-                pp: "accepted",
-                ua: "app"
-              }),
-            },
-            { apiUrl: false },
-          );
-        } catch (error2) {
-          // If that fails, try original /logins on API host as fallback
-          data = await this.request<LoginResponse>(
-            '/logins',
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ username, password }),
-            },
-            { apiUrl: true },
-          );
-        }
-      }
+      // Use /sessions endpoint on web host only
+      const data = await this.request<LoginResponse>(
+        '/sessions',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            username, 
+            password,
+            tou: "accepted",
+            pp: "accepted",
+            ua: "app"
+          }),
+        },
+        { apiUrl: false }, // Use web host only
+      );
 
       // Handle session extraction - response might have a session object
       if (data.session) {
