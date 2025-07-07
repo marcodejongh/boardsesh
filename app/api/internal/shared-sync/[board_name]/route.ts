@@ -22,7 +22,7 @@ export async function GET(request: Request, props: { params: Promise<BoardRouteP
     console.log(`Passed auth for ${board_name}`);
 
     // Get the token for this board
-    const token = AURORA_TOKENS[board_name];
+    const token = AURORA_TOKENS && AURORA_TOKENS[board_name];
     if (!token) {
       console.error(`No sync token configured for ${board_name}. Set ${board_name.toUpperCase()}_SYNC_TOKEN env variable.`);
       return NextResponse.json({ error: `No sync token configured for ${board_name}` }, { status: 500 });
