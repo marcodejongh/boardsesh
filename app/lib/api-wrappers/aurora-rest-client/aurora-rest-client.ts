@@ -1,6 +1,7 @@
 // aurora-api-client.ts
 
 import { AscentDetails, BidDetails, CircuitDetails, ClientOptions, ClimbDetails, ClimbReport, ClimbSummary, DeleteUserValidationErrors, Exhibit, ExhibitsFilter, Follow, FollowState, GymPin, HOST_BASES, Leaderboard, LeaderboardScore, LoginResponse, NotificationsFilter, ProfileDetails, SearchResult, Session, SessionResponse, SharedSync, SignUpDetails, SyncResponse, Tag, UserProfile, UserSync, WallDetails } from "./types";
+import { SaveAscentResponse } from "../aurora/types";
 
 
 
@@ -42,7 +43,7 @@ class AuroraClimbingClient {
    * @param data - Data to encode
    * @returns URL encoded string
    */
-  private encodeFormData(data: Record<string, any>): string {
+  private encodeFormData(data: Record<string, string | number | boolean | null | undefined>): string {
     return Object.keys(data)
       .map((key) => {
         if (data[key] === null || data[key] === undefined) {
@@ -296,14 +297,12 @@ class AuroraClimbingClient {
             wingspan: null,
           }
         };
-      } else if (data.token) {
-        if (data.user_id) {
+      } else if (data.token && data.user_id) {
         this.setSession({ token: data.token, user_id: data.user_id });
         return data;
       }
-      throw new Error('Login failed');
-    }
-  } catch (error) {
+      throw new Error('Login failed: Invalid response format');
+    } catch (error) {
       // Parse error message
       if (typeof error === 'object' && error !== null && 'message' in error) {
         try {
@@ -422,7 +421,7 @@ class AuroraClimbingClient {
    * @param tag - Tag to save
    * @returns Response data
    */
-  async saveTag(tag: Tag): Promise<any> {
+  async saveTag(tag: Tag): Promise<Tag> {
     if (!this.token) {
       throw new Error('Authentication required. Call signIn() first.');
     }
@@ -434,7 +433,7 @@ class AuroraClimbingClient {
       is_listed: tag.isListed,
     });
 
-    return await this.request<any>('/tags/save', {
+    return await this.request<Tag>('/tags/save', {
       method: 'POST',
       body: formData,
     });
@@ -861,7 +860,7 @@ class AuroraClimbingClient {
     }
 
     // Build the form data
-    const formData: Record<string, any> = {
+    const formData: Record<string, string | number | boolean | null | undefined> = {
       uuid: climbDetails.uuid,
       layout_id: climbDetails.layoutId,
       setter_id: climbDetails.setterId,
@@ -896,7 +895,7 @@ class AuroraClimbingClient {
    * @param climbUUID - UUID of the climb to delete
    * @returns Response data
    */
-  async deleteClimb(climbUUID: string): Promise<any> {
+  async deleteClimb(climbUUID: string): Promise<void> {
     if (!this.token) {
       throw new Error('Authentication required. Call signIn() first.');
     }
@@ -905,7 +904,7 @@ class AuroraClimbingClient {
       uuid: climbUUID,
     });
 
-    return await this.request<any>('/climbs/delete', {
+    await this.request<void>('/climbs/delete', {
       method: 'POST',
       body: formData,
     });
@@ -941,7 +940,7 @@ class AuroraClimbingClient {
    * @param ascentDetails - Ascent details to save
    * @returns Response data
    */
-  async saveAscent(ascentDetails: AscentDetails): Promise<any> {
+  async saveAscent(ascentDetails: AscentDetails): Promise<SaveAscentResponse> {
     if (!this.token) {
       throw new Error('Authentication required. Call signIn() first.');
     }
@@ -960,7 +959,7 @@ class AuroraClimbingClient {
       climbed_at: ascentDetails.climbedAt,
     });
 
-    return await this.request<any>('/ascents/save', {
+    return await this.request<SaveAscentResponse>('/ascents/save', {
       method: 'POST',
       body: formData,
     });
@@ -971,7 +970,7 @@ class AuroraClimbingClient {
    * @param ascentUUID - UUID of the ascent to delete
    * @returns Response data
    */
-  async deleteAscent(ascentUUID: string): Promise<any> {
+  async deleteAscent(ascentUUID: string): Promise<void> {
     if (!this.token) {
       throw new Error('Authentication required. Call signIn() first.');
     }
@@ -980,7 +979,7 @@ class AuroraClimbingClient {
       uuid: ascentUUID,
     });
 
-    return await this.request<any>('/ascents/delete', {
+    await this.request<void>('/ascents/delete', {
       method: 'POST',
       body: formData,
     });
@@ -1026,7 +1025,7 @@ class AuroraClimbingClient {
    * @param bidDetails - Bid details to save
    * @returns Response data
    */
-  async saveBid(bidDetails: BidDetails): Promise<any> {
+  async saveBid(bidDetails: BidDetails): Promise<void> {
     if (!this.token) {
       throw new Error('Authentication required. Call signIn() first.');
     }
@@ -1042,7 +1041,7 @@ class AuroraClimbingClient {
       climbed_at: bidDetails.climbedAt,
     });
 
-    return await this.request<any>('/bids/save', {
+    await this.request<void>('/bids/save', {
       method: 'POST',
       body: formData,
     });
@@ -1053,7 +1052,7 @@ class AuroraClimbingClient {
    * @param bidUUID - UUID of the bid to delete
    * @returns Response data
    */
-  async deleteBid(bidUUID: string): Promise<any> {
+  async deleteBid(bidUUID: string): Promise<void> {
     if (!this.token) {
       throw new Error('Authentication required. Call signIn() first.');
     }
@@ -1062,7 +1061,7 @@ class AuroraClimbingClient {
       uuid: bidUUID,
     });
 
-    return await this.request<any>('/bids/delete', {
+    await this.request<void>('/bids/delete', {
       method: 'POST',
       body: formData,
     });
@@ -1077,7 +1076,7 @@ class AuroraClimbingClient {
    * @param wallDetails - Wall details to save
    * @returns Response data
    */
-  async saveWall(wallDetails: WallDetails): Promise<any> {
+  async saveWall(wallDetails: WallDetails): Promise<void> {
     if (!this.token) {
       throw new Error('Authentication required. Call signIn() first.');
     }
@@ -1107,7 +1106,7 @@ class AuroraClimbingClient {
       formData += `&set_ids[]=${encodeURIComponent(setId)}`;
     });
 
-    return await this.request<any>('/walls/save', {
+    await this.request<void>('/walls/save', {
       method: 'POST',
       body: formData,
     });
@@ -1118,7 +1117,7 @@ class AuroraClimbingClient {
    * @param wallUUID - UUID of the wall to delete
    * @returns Response data
    */
-  async deleteWall(wallUUID: string): Promise<any> {
+  async deleteWall(wallUUID: string): Promise<void> {
     if (!this.token) {
       throw new Error('Authentication required. Call signIn() first.');
     }
@@ -1127,7 +1126,7 @@ class AuroraClimbingClient {
       uuid: wallUUID,
     });
 
-    return await this.request<any>('/walls/delete', {
+    await this.request<void>('/walls/delete', {
       method: 'POST',
       body: formData,
     });
@@ -1142,7 +1141,7 @@ class AuroraClimbingClient {
    * @param circuitDetails - Circuit details to save
    * @returns Response data
    */
-  async saveCircuit(circuitDetails: CircuitDetails): Promise<any> {
+  async saveCircuit(circuitDetails: CircuitDetails): Promise<void> {
     if (!this.token) {
       throw new Error('Authentication required. Call signIn() first.');
     }
@@ -1156,7 +1155,7 @@ class AuroraClimbingClient {
       is_public: circuitDetails.isPublic,
     });
 
-    return await this.request<any>('/circuits/save', {
+    await this.request<void>('/circuits/save', {
       method: 'POST',
       body: formData,
     });
@@ -1167,7 +1166,7 @@ class AuroraClimbingClient {
    * @param circuitUUID - UUID of the circuit to delete
    * @returns Response data
    */
-  async deleteCircuit(circuitUUID: string): Promise<any> {
+  async deleteCircuit(circuitUUID: string): Promise<void> {
     if (!this.token) {
       throw new Error('Authentication required. Call signIn() first.');
     }
@@ -1176,7 +1175,7 @@ class AuroraClimbingClient {
       uuid: circuitUUID,
     });
 
-    return await this.request<any>('/circuits/delete', {
+    await this.request<void>('/circuits/delete', {
       method: 'POST',
       body: formData,
     });
@@ -1188,7 +1187,7 @@ class AuroraClimbingClient {
    * @param climbUUIDs - List of climb UUIDs to add to the circuit
    * @returns Response data
    */
-  async saveCircuitClimbs(circuitUUID: string, climbUUIDs: string[]): Promise<any> {
+  async saveCircuitClimbs(circuitUUID: string, climbUUIDs: string[]): Promise<void> {
     if (!this.token) {
       throw new Error('Authentication required. Call signIn() first.');
     }
@@ -1199,7 +1198,7 @@ class AuroraClimbingClient {
       formData += `&climb_uuids[]=${encodeURIComponent(uuid)}`;
     });
 
-    return await this.request<any>('/circuit_climbs/save', {
+    await this.request<void>('/circuit_climbs/save', {
       method: 'POST',
       body: formData,
     });
@@ -1211,7 +1210,7 @@ class AuroraClimbingClient {
    * @param circuitUUIDs - Set of circuit UUIDs to add the climb to
    * @returns Response data
    */
-  async saveClimbCircuits(climbUUID: string, circuitUUIDs: Set<string>): Promise<any> {
+  async saveClimbCircuits(climbUUID: string, circuitUUIDs: Set<string>): Promise<void> {
     if (!this.token) {
       throw new Error('Authentication required. Call signIn() first.');
     }
@@ -1222,7 +1221,7 @@ class AuroraClimbingClient {
       formData += `&circuit_uuids[]=${encodeURIComponent(uuid)}`;
     });
 
-    return await this.request<any>('/climb_circuits/save', {
+    await this.request<void>('/climb_circuits/save', {
       method: 'POST',
       body: formData,
     });

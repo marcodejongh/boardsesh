@@ -396,7 +396,7 @@ export async function syncUserData(
       // Process this batch in a transaction
       await db.transaction(async (tx) => {
         try {
-          // Process each table - new API returns data directly under table name keys
+          // Process each table - data is directly under table names
           for (const tableName of tables) {
             console.log(`Syncing ${tableName} for user ${userId} (batch ${syncAttempts})`);
             if (syncResults[tableName] && Array.isArray(syncResults[tableName])) {
@@ -414,7 +414,7 @@ export async function syncUserData(
           }
 
           // Update user_syncs table with new sync times from this batch
-          if (syncResults && syncResults['user_syncs']) {
+          if (syncResults['user_syncs']) {
             await updateUserSyncs(tx, board, syncResults['user_syncs']);
             
             // Update sync params for next iteration with new timestamps

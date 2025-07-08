@@ -6,7 +6,6 @@ import { BoardName, BoardRouteParameters, ParsedBoardRouteParameters } from '@/a
 import { parseBoardRouteParams } from '@/app/lib/url-utils';
 import { syncUserData } from '@/app/lib/data-sync/aurora/user-sync';
 import { Session } from '@/app/lib/api-wrappers/aurora-rest-client/types';
-import { cookies } from 'next/headers';
 import { getSession } from '@/app/lib/session';
 
 

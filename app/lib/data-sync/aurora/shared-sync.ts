@@ -370,7 +370,7 @@ export async function syncSharedData(board: BoardName, token: string, maxBatches
       // Process this batch in a transaction
       await db.transaction(async (tx) => {
         try {
-          // Process each table - like user sync, data is directly under table names
+          // Process each table - data is directly under table names
           for (const tableName of SHARED_SYNC_TABLES) {
             if (syncResults[tableName] && Array.isArray(syncResults[tableName])) {
               const data = syncResults[tableName];
