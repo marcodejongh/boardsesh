@@ -2,15 +2,13 @@ import { dbz as db } from '@/app/lib/db/db';
 import { BoardName } from '../../types';
 import { SyncOptions } from '../../api-wrappers/aurora/types';
 import { sharedSync } from '../../api-wrappers/aurora/sharedSync';
-import { ExtractTablesWithRelations } from 'drizzle-orm';
+import { ExtractTablesWithRelations, sql } from 'drizzle-orm';
 import { PgTransaction } from 'drizzle-orm/pg-core';
 import { VercelPgQueryResultHKT } from 'drizzle-orm/vercel-postgres';
 import {
   Attempt,
   Climb,
   ClimbStats,
-  Product,
-  ProductSize,
   SharedSync,
   SyncPutFields,
 } from '../../api-wrappers/sync-api-types';
@@ -18,10 +16,10 @@ import { getTable } from '../../db/queries/util/table-select';
 import { convertLitUpHoldsStringToMap } from '@/app/components/board-renderer/util';
 
 // Define shared sync tables in correct dependency order
-// Order matches what the Android app sends
+// Order matches what the Android app sends - keep full list to remain indistinguishable
 export const SHARED_SYNC_TABLES: string[] = [
   'products',
-  'product_sizes',
+  'product_sizes', 
   'holes',
   'leds',
   'products_angles',
@@ -36,6 +34,14 @@ export const SHARED_SYNC_TABLES: string[] = [
   'attempts',
   'kits',
 ];
+
+// Tables we actually want to process and store
+const TABLES_TO_PROCESS = new Set([
+  'climbs',
+  'climb_stats',
+  'attempts',
+  'shared_syncs'
+]);
 
 const upsertAttempts = (
   db: PgTransaction<VercelPgQueryResultHKT, Record<string, never>, ExtractTablesWithRelations<Record<string, never>>>,
@@ -55,84 +61,15 @@ const upsertAttempts = (
         .onConflictDoUpdate({
           target: attemptsSchema.id,
           set: {
-            position: Number(item.position),
+            // Only allow position updates if they're reasonable (0-100)
+            position: sql`CASE WHEN ${Number(item.position)} >= 0 AND ${Number(item.position)} <= 100 THEN ${Number(item.position)} ELSE ${attemptsSchema.position} END`,
+            // Allow name updates for display purposes
             name: item.name,
           },
         });
     }),
   );
 
-const upsertProducts = async (
-  db: PgTransaction<VercelPgQueryResultHKT, Record<string, never>, ExtractTablesWithRelations<Record<string, never>>>,
-  board: BoardName,
-  data: Product[],
-) =>
-  Promise.all(
-    data.map(async (item) => {
-      const productsSchema = getTable('products', board);
-      return db
-        .insert(productsSchema)
-        .values({
-          id: Number(item.id),
-          name: item.name,
-          isListed: Boolean(item.is_listed),
-          password: item.password,
-          minCountInFrame: Number(item.min_count_in_frame),
-          maxCountInFrame: Number(item.max_count_in_frame),
-        })
-        .onConflictDoUpdate({
-          target: productsSchema.id,
-          set: {
-            name: item.name,
-            isListed: Boolean(item.is_listed),
-            password: item.password,
-            minCountInFrame: Number(item.min_count_in_frame),
-            maxCountInFrame: Number(item.max_count_in_frame),
-          },
-        });
-    }),
-  );
-
-const upsertProductSizes = async (
-  db: PgTransaction<VercelPgQueryResultHKT, Record<string, never>, ExtractTablesWithRelations<Record<string, never>>>,
-  board: BoardName,
-  data: ProductSize[],
-) =>
-  Promise.all(
-    data.map(async (item) => {
-      const productSizesSchema = getTable('productSizes', board);
-      return db
-        .insert(productSizesSchema)
-        .values({
-          id: Number(item.id),
-          productId: Number(item.product_id),
-          edgeLeft: Number(item.edge_left),
-          edgeRight: Number(item.edge_right),
-          edgeBottom: Number(item.edge_bottom),
-          edgeTop: Number(item.edge_top),
-          name: item.name,
-          description: item.description,
-          imageFilename: item.image_filename,
-          position: Number(item.position),
-          isListed: Boolean(item.is_listed),
-        })
-        .onConflictDoUpdate({
-          target: productSizesSchema.id,
-          set: {
-            productId: Number(item.product_id),
-            edgeLeft: Number(item.edge_left),
-            edgeRight: Number(item.edge_right),
-            edgeBottom: Number(item.edge_bottom),
-            edgeTop: Number(item.edge_top),
-            name: item.name,
-            description: item.description,
-            imageFilename: item.image_filename,
-            position: Number(item.position),
-            isListed: Boolean(item.is_listed),
-          },
-        });
-    }),
-  );
 
 async function upsertClimbStats(
   db: PgTransaction<VercelPgQueryResultHKT, Record<string, never>, ExtractTablesWithRelations<Record<string, never>>>,
@@ -227,23 +164,26 @@ async function upsertClimbs(
         .onConflictDoUpdate({
           target: [climbsSchema.uuid],
           set: {
-            uuid: item.uuid,
+            // Only allow isDraft to change from false to true (publishing)
+            isDraft: sql`CASE WHEN ${climbsSchema.isDraft} = false AND ${item.is_draft} = true THEN true ELSE ${climbsSchema.isDraft} END`,
+            // Only allow isListed to change from false to true (making public)
+            isListed: sql`CASE WHEN ${climbsSchema.isListed} = false AND ${item.is_listed} = true THEN true ELSE ${climbsSchema.isListed} END`,
+            // Allow updates to descriptive fields
             name: item.name,
             description: item.description,
-            hsm: item.hsm,
-            edgeLeft: item.edge_left,
-            edgeRight: item.edge_right,
-            edgeBottom: item.edge_bottom,
-            edgeTop: item.edge_top,
-            framesCount: item.frames_count,
-            framesPace: item.frames_pace,
-            frames: item.frames,
-            setterId: item.setter_id,
-            setterUsername: item.setter_username,
-            layoutId: item.layout_id,
-            isDraft: item.is_draft,
-            isListed: item.is_listed,
-            angle: item.angle,
+            // Preserve all core climb data - never allow hostile updates to these critical fields
+            hsm: climbsSchema.hsm,
+            edgeLeft: climbsSchema.edgeLeft,
+            edgeRight: climbsSchema.edgeRight,
+            edgeBottom: climbsSchema.edgeBottom,
+            edgeTop: climbsSchema.edgeTop,
+            framesCount: climbsSchema.framesCount,
+            framesPace: climbsSchema.framesPace,
+            frames: climbsSchema.frames,
+            setterId: climbsSchema.setterId,
+            setterUsername: climbsSchema.setterUsername,
+            layoutId: climbsSchema.layoutId,
+            angle: climbsSchema.angle,
           },
         });
 
@@ -274,12 +214,6 @@ async function upsertSharedTableData(
     case 'attempts':
       await upsertAttempts(db, boardName, data as Attempt[]);
       break;
-    case 'products':
-      await upsertProducts(db, boardName, data as Product[]);
-      break;
-    case 'product_sizes':
-      await upsertProductSizes(db, boardName, data as ProductSize[]);
-      break;
     case 'climb_stats':
       await upsertClimbStats(db, boardName, data as ClimbStats[]);
       break;
@@ -288,6 +222,10 @@ async function upsertSharedTableData(
       break;
     case 'shared_syncs':
       await updateSharedSyncs(db, boardName, data as SharedSync[]);
+      break;
+    default:
+      // Tables not in TABLES_TO_PROCESS are handled in the main sync loop
+      console.log(`Table ${tableName} not handled in upsertSharedTableData`);
       break;
   }
 }
@@ -374,14 +312,24 @@ export async function syncSharedData(board: BoardName, token: string, maxBatches
           for (const tableName of SHARED_SYNC_TABLES) {
             if (syncResults[tableName] && Array.isArray(syncResults[tableName])) {
               const data = syncResults[tableName];
-              console.log(`Syncing ${tableName}: ${data.length} records`);
-              await upsertSharedTableData(tx, board, tableName, data);
               
-              // Accumulate results
-              if (!totalResults[tableName]) {
-                totalResults[tableName] = { synced: 0, complete: false };
+              // Only process tables we actually care about
+              if (TABLES_TO_PROCESS.has(tableName)) {
+                console.log(`Syncing ${tableName}: ${data.length} records`);
+                await upsertSharedTableData(tx, board, tableName, data);
+                
+                // Accumulate results
+                if (!totalResults[tableName]) {
+                  totalResults[tableName] = { synced: 0, complete: false };
+                }
+                totalResults[tableName].synced += data.length;
+              } else {
+                console.log(`Skipping ${tableName}: ${data.length} records (not processed)`);
+                // Still track in results but don't sync
+                if (!totalResults[tableName]) {
+                  totalResults[tableName] = { synced: 0, complete: false };
+                }
               }
-              totalResults[tableName].synced += data.length;
             } else if (!totalResults[tableName]) {
               totalResults[tableName] = { synced: 0, complete: false };
             }
