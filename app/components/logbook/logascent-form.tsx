@@ -24,7 +24,7 @@ interface LogAscentFormProps {
 }
 
 export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boardDetails, onClose }) => {
-  const { user, saveAscent } = useBoardProvider();
+  const { user_id, saveAscent } = useBoardProvider();
   const grades = TENSION_KILTER_GRADES;
   const angleOptions = ANGLES[boardDetails.board_name];
   const [form] = Form.useForm<LogAscentFormValues>();
@@ -50,7 +50,7 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boar
   };
 
   const handleSubmit = async (values: LogAscentFormValues) => {
-    if (!currentClimb?.uuid || !user?.id) {
+    if (!currentClimb?.uuid || !user_id) {
       return;
     }
 
@@ -58,7 +58,7 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boar
 
     try {
       await saveAscent({
-        user_id: parseInt(user.id.toString()),
+        user_id: user_id,
         climb_uuid: currentClimb.uuid,
         angle: Number(values.angle),
         is_mirror: isMirrored,
