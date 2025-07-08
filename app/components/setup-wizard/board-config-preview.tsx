@@ -113,12 +113,12 @@ export default function BoardConfigPreview({ config, onDelete }: BoardConfigPrev
       >
         <Space direction="vertical" size="small" align="center">
           <Text type="secondary">Preview unavailable</Text>
-          <Text strong size="sm">{config.name}</Text>
+          <Text strong>{config.name}</Text>
           <Space direction="vertical" size={2}>
-            <Tag size="small">{layoutName}</Tag>
+            <Tag>{layoutName}</Tag>
             <Space size={2}>
-              <Tag size="small">{sizeName}</Tag>
-              <Tag size="small">{config.angle || 40}°</Tag>
+              <Tag>{sizeName}</Tag>
+              <Tag>{config.angle || 40}°</Tag>
               {config.useAsDefault && <StarFilled />}
             </Space>
           </Space>
@@ -151,13 +151,13 @@ export default function BoardConfigPreview({ config, onDelete }: BoardConfigPrev
       }
     >
       <Card.Meta
-        title={<Text strong size="sm">{config.name}</Text>}
+        title={<Text strong>{config.name}</Text>}
         description={
           <Space direction="vertical" size={2}>
-            <Tag size="small">{layoutName}</Tag>
+            <Tag>{layoutName}</Tag>
             <Space size={2}>
-              <Tag size="small">{sizeName}</Tag>
-              <Tag size="small">{config.angle || 40}°</Tag>
+              <Tag>{sizeName}</Tag>
+              <Tag>{config.angle || 40}°</Tag>
               {config.useAsDefault && (
                 <Tooltip title="Default configuration">
                   <StarFilled />

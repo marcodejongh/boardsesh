@@ -214,7 +214,7 @@ const ConsolidatedBoardConfig = () => {
 
   // Load sizes when layout changes
   useEffect(() => {
-    if (!selectedLayout) return;
+    if (!selectedBoard || !selectedLayout) return;
     
     const loadSizes = async () => {
       setIsLoadingSizes(true);
@@ -236,7 +236,7 @@ const ConsolidatedBoardConfig = () => {
 
   // Load sets when size changes
   useEffect(() => {
-    if (!selectedLayout || !selectedSize) return;
+    if (!selectedBoard || !selectedLayout || !selectedSize) return;
     
     const loadSets = async () => {
       setIsLoadingSets(true);
