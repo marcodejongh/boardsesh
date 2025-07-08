@@ -261,10 +261,8 @@ const ConsolidatedBoardConfig = () => {
   }, [selectedBoard, selectedLayout, selectedSize, generateSuggestedName]);
 
   const handleFormChange = () => {
-    // When form changes, keep saved configurations visible
-    if (savedConfigurations.length > 0) {
-      setActiveCollapsePanels(['saved']);
-    }
+    // Don't automatically expand saved configurations when form changes
+    // Let user control collapse state manually
   };
 
   const handleBoardChange = (value: BoardName) => {
@@ -400,94 +398,92 @@ const ConsolidatedBoardConfig = () => {
             />
           </Form.Item>
 
-          <Row gutter={[16, 16]}>
-            <Col xs={24} sm={12}>
-              <Form.Item label="Board" required>
-                <Select value={selectedBoard} onChange={handleBoardChange} placeholder="Please select">
-                  {SUPPORTED_BOARDS.map((board_name) => (
-                    <Option key={board_name} value={board_name}>
-                      {board_name.charAt(0).toUpperCase() + board_name.slice(1)}
-                    </Option>
-                  ))}
-                </Select>
-              </Form.Item>
-            </Col>
-            
-            <Col xs={24} sm={12}>
-              <Form.Item label="Layout" required>
-                <Select 
-                  value={selectedLayout} 
-                  onChange={handleLayoutChange}
-                  loading={isLoadingLayouts}
-                  placeholder="Select layout"
-                  disabled={!selectedBoard}
-                >
-                  {layouts.map(({ id: layoutId, name: layoutName }) => (
-                    <Option key={layoutId} value={layoutId}>
-                      {layoutName}
-                    </Option>
-                  ))}
-                </Select>
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Row gutter={[16, 16]}>
-            <Col xs={24} sm={12}>
-              <Form.Item label="Size" required>
-                <Select 
-                  value={selectedSize} 
-                  onChange={handleSizeChange}
-                  loading={isLoadingSizes}
-                  placeholder="Select size"
-                  disabled={!selectedLayout}
-                >
-                  {sizes.map(({ id, name, description }) => (
-                    <Option key={id} value={id}>
-                      {`${name} ${description}`}
-                    </Option>
-                  ))}
-                </Select>
-              </Form.Item>
-            </Col>
-            
-            <Col xs={24} sm={12}>
-              <Form.Item label="Hold Sets" required>
-                <Select 
-                  mode="multiple"
-                  value={selectedSets} 
-                  onChange={handleSetsChange}
-                  loading={isLoadingSets}
-                  placeholder="Select hold sets"
-                  disabled={!selectedSize}
-                >
-                  {sets.map(({ id, name }) => (
-                    <Option key={id} value={id}>
-                      {name}
-                    </Option>
-                  ))}
-                </Select>
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Row gutter={[16, 16]}>
-            <Col xs={24} sm={12}>
-              <Form.Item label="Angle" required>
-                <Select 
-                  value={selectedAngle} 
-                  onChange={handleAngleChange}
-                  disabled={!selectedBoard}
-                >
-                  {selectedBoard && ANGLES[selectedBoard].map((angle) => (
-                    <Option key={angle} value={angle}>
-                      {angle}°
-                    </Option>
-                  ))}
-                </Select>
-              </Form.Item>
-            </Col>
-          </Row>
+          <Form.Item label="Board Configuration" required>
+            <Row gutter={[16, 16]}>
+              <Col xs={24} sm={12}>
+                <Form.Item label="Board" noStyle>
+                  <Select value={selectedBoard} onChange={handleBoardChange} placeholder="Please select">
+                    {SUPPORTED_BOARDS.map((board_name) => (
+                      <Option key={board_name} value={board_name}>
+                        {board_name.charAt(0).toUpperCase() + board_name.slice(1)}
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+              </Col>
+              
+              <Col xs={24} sm={12}>
+                <Form.Item label="Layout" noStyle>
+                  <Select 
+                    value={selectedLayout} 
+                    onChange={handleLayoutChange}
+                    loading={isLoadingLayouts}
+                    placeholder="Select layout"
+                    disabled={!selectedBoard}
+                  >
+                    {layouts.map(({ id: layoutId, name: layoutName }) => (
+                      <Option key={layoutId} value={layoutId}>
+                        {layoutName}
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+              </Col>
+              
+              <Col xs={24} sm={12}>
+                <Form.Item label="Size" noStyle>
+                  <Select 
+                    value={selectedSize} 
+                    onChange={handleSizeChange}
+                    loading={isLoadingSizes}
+                    placeholder="Select size"
+                    disabled={!selectedLayout}
+                  >
+                    {sizes.map(({ id, name, description }) => (
+                      <Option key={id} value={id}>
+                        {`${name} ${description}`}
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+              </Col>
+              
+              <Col xs={24} sm={12}>
+                <Form.Item label="Hold Sets" noStyle>
+                  <Select 
+                    mode="multiple"
+                    value={selectedSets} 
+                    onChange={handleSetsChange}
+                    loading={isLoadingSets}
+                    placeholder="Select hold sets"
+                    disabled={!selectedSize}
+                  >
+                    {sets.map(({ id, name }) => (
+                      <Option key={id} value={id}>
+                        {name}
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+              </Col>
+              
+              <Col xs={24} sm={12}>
+                <Form.Item label="Angle" noStyle>
+                  <Select 
+                    value={selectedAngle} 
+                    onChange={handleAngleChange}
+                    disabled={!selectedBoard}
+                  >
+                    {selectedBoard && ANGLES[selectedBoard].map((angle) => (
+                      <Option key={angle} value={angle}>
+                        {angle}°
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+              </Col>
+            </Row>
+          </Form.Item>
 
           <div style={{ marginBottom: '16px', textAlign: 'center' }}>
             <Text type="secondary">
