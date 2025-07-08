@@ -10,6 +10,7 @@ import { fetchLayouts, fetchSizes, fetchSets } from '../rest-api/api';
 import { LayoutRow, SizeRow, SetRow } from '@/app/lib/data/queries';
 import { BoardName } from '@/app/lib/types';
 import BoardConfigPreview from './board-config-preview';
+import BoardConfigLivePreview from './board-config-live-preview';
 
 const { Option } = Select;
 const { Title, Text } = Typography;
@@ -60,6 +61,8 @@ const ConsolidatedBoardConfig = () => {
   const [useAsDefault, setUseAsDefault] = useState(false);
   const [savedConfigurations, setSavedConfigurations] = useState<StoredBoardConfig[]>([]);
   const [suggestedName, setSuggestedName] = useState<string>('');
+  const [activeCollapsePanels, setActiveCollapsePanels] = useState<string[]>(['saved']);
+  const [isStartingClimbing, setIsStartingClimbing] = useState(false);
 
   // IndexedDB helper functions
   const initDB = async () => {
@@ -257,20 +260,34 @@ const ConsolidatedBoardConfig = () => {
     generateSuggestedName();
   }, [selectedBoard, selectedLayout, selectedSize, generateSuggestedName]);
 
+  const handleFormChange = () => {
+    // When form changes, show preview and hide saved configurations
+    setActiveCollapsePanels(['preview']);
+  };
+
   const handleBoardChange = (value: BoardName) => {
     setSelectedBoard(value);
+    handleFormChange();
   };
 
   const handleLayoutChange = (value: number) => {
     setSelectedLayout(value);
+    handleFormChange();
   };
 
   const handleSizeChange = (value: number) => {
     setSelectedSize(value);
+    handleFormChange();
   };
 
   const handleSetsChange = (value: number[]) => {
     setSelectedSets(value);
+    handleFormChange();
+  };
+
+  const handleAngleChange = (value: number) => {
+    setSelectedAngle(value);
+    handleFormChange();
   };
 
 
@@ -278,49 +295,56 @@ const ConsolidatedBoardConfig = () => {
 
   const handleStartClimbing = async () => {
     if (selectedBoard && selectedLayout && selectedSize && selectedSets.length > 0) {
-      // Generate default name if none provided
-      let configurationName = configName.trim();
-      if (!configurationName) {
-        // Get layout and size names for default name
-        try {
-          const [layoutsData, sizesData] = await Promise.all([
-            fetchLayouts(selectedBoard),
-            fetchSizes(selectedBoard, selectedLayout)
-          ]);
-          
-          const layout = layoutsData.find(l => l.id === selectedLayout);
-          const size = sizesData.find(s => s.id === selectedSize);
-          
-          const layoutName = layout?.name || `Layout ${selectedLayout}`;
-          const sizeName = size?.name || `Size ${selectedSize}`;
-          
-          configurationName = `${layoutName} ${sizeName}`;
-        } catch (error) {
-          console.error('Failed to generate default name:', error);
-          configurationName = `${selectedBoard} Configuration`;
+      setIsStartingClimbing(true);
+      
+      try {
+        // Generate default name if none provided
+        let configurationName = configName.trim();
+        if (!configurationName) {
+          // Get layout and size names for default name
+          try {
+            const [layoutsData, sizesData] = await Promise.all([
+              fetchLayouts(selectedBoard),
+              fetchSizes(selectedBoard, selectedLayout)
+            ]);
+            
+            const layout = layoutsData.find(l => l.id === selectedLayout);
+            const size = sizesData.find(s => s.id === selectedSize);
+            
+            const layoutName = layout?.name || `Layout ${selectedLayout}`;
+            const sizeName = size?.name || `Size ${selectedSize}`;
+            
+            configurationName = `${layoutName} ${sizeName}`;
+          } catch (error) {
+            console.error('Failed to generate default name:', error);
+            configurationName = `${selectedBoard} Configuration`;
+          }
         }
+        
+        // Always save configuration with either user-provided or generated name
+        const config: StoredBoardConfig = {
+          name: configurationName,
+          board: selectedBoard,
+          layoutId: selectedLayout,
+          sizeId: selectedSize,
+          setIds: selectedSets,
+          angle: selectedAngle,
+          useAsDefault,
+          createdAt: new Date().toISOString(),
+          lastUsed: new Date().toISOString(),
+        };
+        
+        await saveConfiguration(config);
+        // Refresh the saved configurations list
+        const updatedConfigs = await loadAllConfigurations();
+        setSavedConfigurations(updatedConfigs);
+        
+        const setsString = selectedSets.join(',');
+        router.push(`/${selectedBoard}/${selectedLayout}/${selectedSize}/${setsString}/${selectedAngle}/list`);
+      } catch (error) {
+        console.error('Error starting climbing session:', error);
+        setIsStartingClimbing(false);
       }
-      
-      // Always save configuration with either user-provided or generated name
-      const config: StoredBoardConfig = {
-        name: configurationName,
-        board: selectedBoard,
-        layoutId: selectedLayout,
-        sizeId: selectedSize,
-        setIds: selectedSets,
-        angle: selectedAngle,
-        useAsDefault,
-        createdAt: new Date().toISOString(),
-        lastUsed: new Date().toISOString(),
-      };
-      
-      await saveConfiguration(config);
-      // Refresh the saved configurations list
-      const updatedConfigs = await loadAllConfigurations();
-      setSavedConfigurations(updatedConfigs);
-      
-      const setsString = selectedSets.join(',');
-      router.push(`/${selectedBoard}/${selectedLayout}/${selectedSize}/${setsString}/${selectedAngle}/list`);
     }
   };
 
@@ -336,32 +360,46 @@ const ConsolidatedBoardConfig = () => {
           Configure your climbing board
         </Title>
 
-        {savedConfigurations.length > 0 && (
-          <>
-            <Collapse
-              defaultActiveKey={['1']}
-              size="small"
-              items={[
-                {
-                  key: '1',
-                  label: `Saved Configurations (${savedConfigurations.length})`,
-                  children: (
-                    <Flex gap="middle" wrap="wrap">
-                      {savedConfigurations.map((config) => (
-                        <BoardConfigPreview
-                          key={config.name}
-                          config={config}
-                          onDelete={deleteConfiguration}
-                        />
-                      ))}
-                    </Flex>
-                  ),
-                },
-              ]}
-            />
-            <Divider />
-          </>
-        )}
+        <Collapse
+          activeKey={activeCollapsePanels}
+          onChange={(keys) => setActiveCollapsePanels(keys as string[])}
+          size="small"
+          items={[
+            ...(savedConfigurations.length > 0 ? [{
+              key: 'saved',
+              label: `Saved Configurations (${savedConfigurations.length})`,
+              children: (
+                <Flex gap="middle" wrap="wrap">
+                  {savedConfigurations.map((config) => (
+                    <BoardConfigPreview
+                      key={config.name}
+                      config={config}
+                      onDelete={deleteConfiguration}
+                    />
+                  ))}
+                </Flex>
+              ),
+            }] : []),
+            {
+              key: 'preview',
+              label: 'Preview',
+              children: (
+                <Flex gap="middle" wrap="wrap">
+                  <BoardConfigLivePreview
+                    boardName={selectedBoard}
+                    layoutId={selectedLayout}
+                    sizeId={selectedSize}
+                    setIds={selectedSets}
+                    angle={selectedAngle}
+                    configName={configName || suggestedName || 'New Configuration'}
+                    useAsDefault={useAsDefault}
+                  />
+                </Flex>
+              ),
+            },
+          ]}
+        />
+        <Divider />
         
         <Form layout="vertical">
           <Form.Item label="Configuration Name (Optional)">
@@ -449,7 +487,7 @@ const ConsolidatedBoardConfig = () => {
               <Form.Item label="Angle" required>
                 <Select 
                   value={selectedAngle} 
-                  onChange={setSelectedAngle}
+                  onChange={handleAngleChange}
                   disabled={!selectedBoard}
                 >
                   {selectedBoard && ANGLES[selectedBoard].map((angle) => (
@@ -468,6 +506,7 @@ const ConsolidatedBoardConfig = () => {
             </Text>
           </div>
 
+          {/* TODO: Improve UX for default board selection
           <Form.Item>
             <Checkbox
               checked={useAsDefault}
@@ -480,15 +519,17 @@ const ConsolidatedBoardConfig = () => {
               </Tooltip>
             </Checkbox>
           </Form.Item>
+          */}
 
           <Button 
             type="primary" 
             size="large"
             block 
             onClick={handleStartClimbing} 
-            disabled={!isFormComplete}
+            disabled={!isFormComplete || isStartingClimbing}
+            loading={isStartingClimbing}
           >
-            Start Climbing
+            {isStartingClimbing ? 'Starting...' : 'Start Climbing'}
           </Button>
         </Form>
       </Card>
