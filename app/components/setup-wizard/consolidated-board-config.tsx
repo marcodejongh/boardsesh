@@ -261,8 +261,10 @@ const ConsolidatedBoardConfig = () => {
   }, [selectedBoard, selectedLayout, selectedSize, generateSuggestedName]);
 
   const handleFormChange = () => {
-    // When form changes, show preview and hide saved configurations
-    setActiveCollapsePanels(['preview']);
+    // When form changes, keep saved configurations visible
+    if (savedConfigurations.length > 0) {
+      setActiveCollapsePanels(['saved']);
+    }
   };
 
   const handleBoardChange = (value: BoardName) => {
@@ -360,46 +362,33 @@ const ConsolidatedBoardConfig = () => {
           Configure your climbing board
         </Title>
 
-        <Collapse
-          activeKey={activeCollapsePanels}
-          onChange={(keys) => setActiveCollapsePanels(keys as string[])}
-          size="small"
-          items={[
-            ...(savedConfigurations.length > 0 ? [{
-              key: 'saved',
-              label: `Saved Configurations (${savedConfigurations.length})`,
-              children: (
-                <Flex gap="middle" wrap="wrap">
-                  {savedConfigurations.map((config) => (
-                    <BoardConfigPreview
-                      key={config.name}
-                      config={config}
-                      onDelete={deleteConfiguration}
-                    />
-                  ))}
-                </Flex>
-              ),
-            }] : []),
-            {
-              key: 'preview',
-              label: 'Preview',
-              children: (
-                <Flex gap="middle" wrap="wrap">
-                  <BoardConfigLivePreview
-                    boardName={selectedBoard}
-                    layoutId={selectedLayout}
-                    sizeId={selectedSize}
-                    setIds={selectedSets}
-                    angle={selectedAngle}
-                    configName={configName || suggestedName || 'New Configuration'}
-                    useAsDefault={useAsDefault}
-                  />
-                </Flex>
-              ),
-            },
-          ]}
-        />
-        <Divider />
+        {savedConfigurations.length > 0 && (
+          <>
+            <Collapse
+              activeKey={activeCollapsePanels}
+              onChange={(keys) => setActiveCollapsePanels(keys as string[])}
+              size="small"
+              items={[
+                {
+                  key: 'saved',
+                  label: `Saved Configurations (${savedConfigurations.length})`,
+                  children: (
+                    <Flex gap="middle" wrap="wrap">
+                      {savedConfigurations.map((config) => (
+                        <BoardConfigPreview
+                          key={config.name}
+                          config={config}
+                          onDelete={deleteConfiguration}
+                        />
+                      ))}
+                    </Flex>
+                  ),
+                },
+              ]}
+            />
+            <Divider />
+          </>
+        )}
         
         <Form layout="vertical">
           <Form.Item label="Configuration Name (Optional)">
@@ -532,6 +521,43 @@ const ConsolidatedBoardConfig = () => {
             {isStartingClimbing ? 'Starting...' : 'Start Climbing'}
           </Button>
         </Form>
+
+        {isFormComplete && (
+          <>
+            <Divider />
+            <Collapse
+              activeKey={activeCollapsePanels.includes('preview') ? ['preview'] : []}
+              onChange={(keys) => {
+                const updatedKeys = keys as string[];
+                if (updatedKeys.includes('preview')) {
+                  setActiveCollapsePanels([...activeCollapsePanels.filter(k => k !== 'preview'), 'preview']);
+                } else {
+                  setActiveCollapsePanels(activeCollapsePanels.filter(k => k !== 'preview'));
+                }
+              }}
+              size="small"
+              items={[
+                {
+                  key: 'preview',
+                  label: 'Preview',
+                  children: (
+                    <Flex gap="middle" wrap="wrap">
+                      <BoardConfigLivePreview
+                        boardName={selectedBoard}
+                        layoutId={selectedLayout}
+                        sizeId={selectedSize}
+                        setIds={selectedSets}
+                        angle={selectedAngle}
+                        configName={configName || suggestedName || 'New Configuration'}
+                        useAsDefault={useAsDefault}
+                      />
+                    </Flex>
+                  ),
+                },
+              ]}
+            />
+          </>
+        )}
       </Card>
     </div>
   );
