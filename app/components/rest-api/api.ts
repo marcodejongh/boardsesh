@@ -14,7 +14,7 @@ import {
   SearchClimbsResult,
 } from '@/app/lib/types';
 
-const API_BASE_URL = `${process.env.BASE_URL || 'https://www.boardsesh.com'}/api`;
+const API_BASE_URL = `${typeof window !== 'undefined' ? window.location.origin : (process.env.BASE_URL || 'https://www.boardsesh.com')}/api`;
 
 export const fetchClimbs = async (
   queryParameters: SearchRequestPagination,

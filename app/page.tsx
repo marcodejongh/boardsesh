@@ -1,6 +1,6 @@
 import React from 'react';
-import BoardSelection from './components/setup-wizard/board-selection';
+import ConsolidatedBoardConfig from './components/setup-wizard/consolidated-board-config';
 
 export default function Home() {
-  return <BoardSelection />;
+  return <ConsolidatedBoardConfig />;
 }

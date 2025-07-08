@@ -13,13 +13,15 @@ import { BoardDetails } from '@/app/lib/types';
 import { ShareBoardButton } from './share-button';
 import { useBoardProvider } from '../board-provider/board-provider-context';
 import { UserOutlined, LogoutOutlined } from '@ant-design/icons';
+import AngleSelector from './angle-selector';
 
 const { useBreakpoint } = Grid;
 
 type BoardSeshHeaderProps = {
   boardDetails: BoardDetails;
+  angle?: number;
 };
-export default function BoardSeshHeader({ boardDetails }: BoardSeshHeaderProps) {
+export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeaderProps) {
   const pathname = usePathname();
   const isList = pathname.endsWith('/list');
   const screens = useBreakpoint();
@@ -62,6 +64,9 @@ export default function BoardSeshHeader({ boardDetails }: BoardSeshHeaderProps) 
             <Space>
               {!isList ? <ClimbInfoButton /> : null}
               <ShareBoardButton />
+              {angle !== undefined && (
+                <AngleSelector boardName={boardDetails.board_name} currentAngle={angle} />
+              )}
               <SendClimbToBoardButton boardDetails={boardDetails} />
               {isAuthenticated && username ? (
                 <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">

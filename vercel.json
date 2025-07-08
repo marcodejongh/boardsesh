@@ -3,11 +3,11 @@
   "crons": [
     {
       "path": "/api/internal/shared-sync/tension",
-      "schedule": "*/30 * * * *"
+      "schedule": "0 */2 * * *"
     },
     {
       "path": "/api/internal/shared-sync/kilter",
-      "schedule": "*/30 * * * *"
+      "schedule": "0 */2 * * *"
     }
   ]
 }
