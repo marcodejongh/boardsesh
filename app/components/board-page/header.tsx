@@ -68,13 +68,13 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
               {!isList ? <ClimbInfoButton /> : null}
               <ShareBoardButton />
               <SendClimbToBoardButton boardDetails={boardDetails} />
-              {isAuthenticated && username ? (
+              {/* {isAuthenticated && username ? (
                 <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
                   <Button icon={<UserOutlined />} type="text">
                     {username}
                   </Button>
                 </Dropdown>
-              ) : null}
+              ) : null} */}
             </Space>
           </Col>
         </UISearchParamsProvider>
