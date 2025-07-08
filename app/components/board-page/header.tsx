@@ -55,6 +55,9 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
         <UISearchParamsProvider>
           <Col xs={14} sm={14} md={14} lg={14} xl={14}>
             <Space>
+              {angle !== undefined && (
+                <AngleSelector boardName={boardDetails.board_name} currentAngle={angle} />
+              )}
               {screens.md ? null : <SearchClimbNameInput />}
               {isList ? <SearchButton boardDetails={boardDetails} /> : null}
             </Space>
@@ -64,9 +67,6 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
             <Space>
               {!isList ? <ClimbInfoButton /> : null}
               <ShareBoardButton />
-              {angle !== undefined && (
-                <AngleSelector boardName={boardDetails.board_name} currentAngle={angle} />
-              )}
               <SendClimbToBoardButton boardDetails={boardDetails} />
               {isAuthenticated && username ? (
                 <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">

@@ -33,7 +33,7 @@ export default function AngleSelector({ boardName, currentAngle }: AngleSelector
     <Select
       value={currentAngle.toString()}
       onChange={handleAngleChange}
-      style={{ width: 70 }}
+      style={{ width: 65 }}
       size="small"
       placeholder="Angle"
     >
