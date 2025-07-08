@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button, Form, Select, Typography, Input, Divider, Card, Row, Col, Checkbox, Tooltip, Space, Flex, Collapse } from 'antd';
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
@@ -59,6 +59,7 @@ const ConsolidatedBoardConfig = () => {
   // Additional states
   const [useAsDefault, setUseAsDefault] = useState(false);
   const [savedConfigurations, setSavedConfigurations] = useState<StoredBoardConfig[]>([]);
+  const [suggestedName, setSuggestedName] = useState<string>('');
 
   // IndexedDB helper functions
   const initDB = async () => {
@@ -124,6 +125,32 @@ const ConsolidatedBoardConfig = () => {
       console.error('Failed to delete configuration:', error);
     }
   };
+
+  // Generate suggested name based on current selections
+  const generateSuggestedName = useCallback(async () => {
+    if (!selectedBoard || !selectedLayout || !selectedSize) {
+      setSuggestedName('');
+      return;
+    }
+
+    try {
+      const [layoutsData, sizesData] = await Promise.all([
+        fetchLayouts(selectedBoard),
+        fetchSizes(selectedBoard, selectedLayout)
+      ]);
+      
+      const layout = layoutsData.find(l => l.id === selectedLayout);
+      const size = sizesData.find(s => s.id === selectedSize);
+      
+      const layoutName = layout?.name || `Layout ${selectedLayout}`;
+      const sizeName = size?.name || `Size ${selectedSize}`;
+      
+      setSuggestedName(`${layoutName} ${sizeName}`);
+    } catch (error) {
+      console.error('Failed to generate suggested name:', error);
+      setSuggestedName(`${selectedBoard} Configuration`);
+    }
+  }, [selectedBoard, selectedLayout, selectedSize]);
 
   // Load configurations on mount
   useEffect(() => {
@@ -225,6 +252,11 @@ const ConsolidatedBoardConfig = () => {
     setSelectedSets([]);
   }, [selectedBoard, selectedLayout, selectedSize]);
 
+  // Update suggested name when selections change
+  useEffect(() => {
+    generateSuggestedName();
+  }, [selectedBoard, selectedLayout, selectedSize, generateSuggestedName]);
+
   const handleBoardChange = (value: BoardName) => {
     setSelectedBoard(value);
   };
@@ -246,25 +278,46 @@ const ConsolidatedBoardConfig = () => {
 
   const handleStartClimbing = async () => {
     if (selectedBoard && selectedLayout && selectedSize && selectedSets.length > 0) {
-      // Save configuration if name is provided
-      if (configName.trim()) {
-        const config: StoredBoardConfig = {
-          name: configName.trim(),
-          board: selectedBoard,
-          layoutId: selectedLayout,
-          sizeId: selectedSize,
-          setIds: selectedSets,
-          angle: selectedAngle,
-          useAsDefault,
-          createdAt: new Date().toISOString(),
-          lastUsed: new Date().toISOString(),
-        };
-        
-        await saveConfiguration(config);
-        // Refresh the saved configurations list
-        const updatedConfigs = await loadAllConfigurations();
-        setSavedConfigurations(updatedConfigs);
+      // Generate default name if none provided
+      let configurationName = configName.trim();
+      if (!configurationName) {
+        // Get layout and size names for default name
+        try {
+          const [layoutsData, sizesData] = await Promise.all([
+            fetchLayouts(selectedBoard),
+            fetchSizes(selectedBoard, selectedLayout)
+          ]);
+          
+          const layout = layoutsData.find(l => l.id === selectedLayout);
+          const size = sizesData.find(s => s.id === selectedSize);
+          
+          const layoutName = layout?.name || `Layout ${selectedLayout}`;
+          const sizeName = size?.name || `Size ${selectedSize}`;
+          
+          configurationName = `${layoutName} ${sizeName}`;
+        } catch (error) {
+          console.error('Failed to generate default name:', error);
+          configurationName = `${selectedBoard} Configuration`;
+        }
       }
+      
+      // Always save configuration with either user-provided or generated name
+      const config: StoredBoardConfig = {
+        name: configurationName,
+        board: selectedBoard,
+        layoutId: selectedLayout,
+        sizeId: selectedSize,
+        setIds: selectedSets,
+        angle: selectedAngle,
+        useAsDefault,
+        createdAt: new Date().toISOString(),
+        lastUsed: new Date().toISOString(),
+      };
+      
+      await saveConfiguration(config);
+      // Refresh the saved configurations list
+      const updatedConfigs = await loadAllConfigurations();
+      setSavedConfigurations(updatedConfigs);
       
       const setsString = selectedSets.join(',');
       router.push(`/${selectedBoard}/${selectedLayout}/${selectedSize}/${setsString}/${selectedAngle}/list`);
@@ -315,7 +368,7 @@ const ConsolidatedBoardConfig = () => {
             <Input
               value={configName}
               onChange={(e) => setConfigName(e.target.value)}
-              placeholder="Enter a name for this configuration"
+              placeholder={suggestedName || "Enter a name for this configuration"}
               maxLength={50}
             />
           </Form.Item>
@@ -419,20 +472,13 @@ const ConsolidatedBoardConfig = () => {
             <Checkbox
               checked={useAsDefault}
               onChange={(e) => setUseAsDefault(e.target.checked)}
-              disabled={!isFormComplete || !configName.trim()}
+              disabled={!isFormComplete}
             >
               Use this board configuration as default
               <Tooltip title="When this option is selected, navigating to BoardSesh will always load this board configuration immediately">
                 <InfoCircleOutlined style={{ marginLeft: '4px', color: '#1890ff' }} />
               </Tooltip>
             </Checkbox>
-            {!configName.trim() && (
-              <div style={{ marginTop: '4px' }}>
-                <Text type="secondary" style={{ fontSize: '12px' }}>
-                  Enter a configuration name to save as default
-                </Text>
-              </div>
-            )}
           </Form.Item>
 
           <Button 
