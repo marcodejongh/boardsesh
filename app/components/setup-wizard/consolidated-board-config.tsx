@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Button, Form, Select, Typography, Input, Divider, Card, Row, Col, Checkbox, Tooltip, Space, Flex } from 'antd';
+import { Button, Form, Select, Typography, Input, Divider, Card, Row, Col, Checkbox, Tooltip, Space, Flex, Collapse } from 'antd';
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import { openDB } from 'idb';
@@ -284,19 +284,30 @@ const ConsolidatedBoardConfig = () => {
         </Title>
 
         {savedConfigurations.length > 0 && (
-          <Space direction="vertical" size="large" style={{ width: '100%' }}>
-            <Title level={5}>Saved Configurations</Title>
-            <Flex gap="middle" wrap="wrap" style={{ overflowX: 'auto', paddingBottom: 8 }}>
-              {savedConfigurations.map((config) => (
-                <BoardConfigPreview
-                  key={config.name}
-                  config={config}
-                  onDelete={deleteConfiguration}
-                />
-              ))}
-            </Flex>
+          <>
+            <Collapse
+              defaultActiveKey={['1']}
+              size="small"
+              items={[
+                {
+                  key: '1',
+                  label: `Saved Configurations (${savedConfigurations.length})`,
+                  children: (
+                    <Flex gap="middle" wrap="wrap" style={{ overflowX: 'auto', paddingBottom: 8 }}>
+                      {savedConfigurations.map((config) => (
+                        <BoardConfigPreview
+                          key={config.name}
+                          config={config}
+                          onDelete={deleteConfiguration}
+                        />
+                      ))}
+                    </Flex>
+                  ),
+                },
+              ]}
+            />
             <Divider />
-          </Space>
+          </>
         )}
         
         <Form layout="vertical">
