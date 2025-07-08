@@ -346,7 +346,7 @@ const ConsolidatedBoardConfig = () => {
                   key: '1',
                   label: `Saved Configurations (${savedConfigurations.length})`,
                   children: (
-                    <Flex gap="middle" wrap="wrap" style={{ overflowX: 'auto', paddingBottom: 8 }}>
+                    <Flex gap="middle" wrap="wrap">
                       {savedConfigurations.map((config) => (
                         <BoardConfigPreview
                           key={config.name}

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Card, Typography, Button, Tooltip, Tag, Space, Flex } from 'antd';
+import { Card, Typography, Button, Tooltip, Tag, Space, Flex, Skeleton } from 'antd';
 import { DeleteOutlined, StarFilled } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import { fetchBoardDetails, fetchLayouts, fetchSizes } from '../rest-api/api';
@@ -88,10 +88,9 @@ export default function BoardConfigPreview({ config, onDelete }: BoardConfigPrev
       <Card
         hoverable
         size="small"
-        loading={true}
-        styles={{ body: { width: 160, height: 160 } }}
+        style={{ width: 200 }}
       >
-        <Card.Meta title="Loading..." />
+        <Skeleton active paragraph={{ rows: 2 }} />
       </Card>
     );
   }
@@ -102,34 +101,28 @@ export default function BoardConfigPreview({ config, onDelete }: BoardConfigPrev
         hoverable
         size="small"
         onClick={handleSelect}
-        styles={{ 
-          body: { width: 160, height: 160, position: 'relative', textAlign: 'center' }
-        }}
+        extra={
+          <Button
+            type="text"
+            icon={<DeleteOutlined />}
+            onClick={handleDelete}
+            danger
+            size="small"
+          />
+        }
       >
         <Space direction="vertical" size="small" align="center">
           <Text type="secondary">Preview unavailable</Text>
           <Text strong size="sm">{config.name}</Text>
-          <Flex wrap="wrap" gap="small" justify="center">
-            <Tag size="small">{config.board}</Tag>
+          <Space direction="vertical" size={2}>
             <Tag size="small">{layoutName}</Tag>
-            <Tag size="small">{sizeName}</Tag>
-            <Tag size="small">{config.angle || 40}°</Tag>
-            {config.useAsDefault && <StarFilled style={{ color: '#faad14' }} />}
-          </Flex>
+            <Space size={2}>
+              <Tag size="small">{sizeName}</Tag>
+              <Tag size="small">{config.angle || 40}°</Tag>
+              {config.useAsDefault && <StarFilled />}
+            </Space>
+          </Space>
         </Space>
-        <Button
-          type="text"
-          icon={<DeleteOutlined />}
-          onClick={handleDelete}
-          danger
-          size="small"
-          style={{
-            position: 'absolute',
-            top: 4,
-            right: 4,
-            zIndex: 1
-          }}
-        />
       </Card>
     );
   }
@@ -139,44 +132,40 @@ export default function BoardConfigPreview({ config, onDelete }: BoardConfigPrev
       hoverable
       size="small"
       onClick={handleSelect}
-      styles={{ 
-        body: { width: 160, height: 160, position: 'relative', padding: 8 }
-      }}
+      cover={
+        <BoardRenderer
+          litUpHoldsMap={{}} // Empty holds map - just show the board
+          mirrored={false}
+          boardDetails={boardDetails}
+          thumbnail={true}
+        />
+      }
+      extra={
+        <Button
+          type="text"
+          icon={<DeleteOutlined />}
+          onClick={handleDelete}
+          danger
+          size="small"
+        />
+      }
     >
-      <Space direction="vertical" size="small" align="center">
-        <div style={{ height: '70px', overflow: 'hidden', width: '100%' }}>
-          <BoardRenderer
-            litUpHoldsMap={{}} // Empty holds map - just show the board
-            mirrored={false}
-            boardDetails={boardDetails}
-            thumbnail={true}
-          />
-        </div>
-        <Text strong size="sm">{config.name}</Text>
-        <Flex wrap="wrap" gap="small" justify="center">
-          <Tag size="small">{config.board}</Tag>
-          <Tag size="small">{layoutName}</Tag>
-          <Tag size="small">{sizeName}</Tag>
-          <Tag size="small">{config.angle || 40}°</Tag>
-          {config.useAsDefault && (
-            <Tooltip title="Default configuration">
-              <StarFilled style={{ color: '#faad14' }} />
-            </Tooltip>
-          )}
-        </Flex>
-      </Space>
-      <Button
-        type="text"
-        icon={<DeleteOutlined />}
-        onClick={handleDelete}
-        danger
-        size="small"
-        style={{
-          position: 'absolute',
-          top: 4,
-          right: 4,
-          zIndex: 1
-        }}
+      <Card.Meta
+        title={<Text strong size="sm">{config.name}</Text>}
+        description={
+          <Space direction="vertical" size={2}>
+            <Tag size="small">{layoutName}</Tag>
+            <Space size={2}>
+              <Tag size="small">{sizeName}</Tag>
+              <Tag size="small">{config.angle || 40}°</Tag>
+              {config.useAsDefault && (
+                <Tooltip title="Default configuration">
+                  <StarFilled />
+                </Tooltip>
+              )}
+            </Space>
+          </Space>
+        }
       />
     </Card>
   );
