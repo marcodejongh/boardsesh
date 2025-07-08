@@ -4,6 +4,7 @@ import { AntdRegistry } from '@ant-design/nextjs-registry';
 import { App } from 'antd';
 import { Analytics } from '@vercel/analytics/react';
 import WebBluetoothWarning from './components/board-bluetooth-control/web-bluetooth-warning';
+import AuroraWarningModal from './components/aurora-warning-modal';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -13,6 +14,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AntdRegistry>
           <App>
             <WebBluetoothWarning />
+            <AuroraWarningModal />
             {children}
           </App>
         </AntdRegistry>
