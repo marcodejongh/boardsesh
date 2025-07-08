@@ -59,7 +59,7 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
         <PeerProvider>
           <QueueProvider parsedParams={parsedParams}>
             <PartyProvider>
-              <BoardSeshHeader boardDetails={boardDetails} />
+              <BoardSeshHeader boardDetails={boardDetails} angle={angle} />
 
               <Content
                 id="content-for-scrollable"
