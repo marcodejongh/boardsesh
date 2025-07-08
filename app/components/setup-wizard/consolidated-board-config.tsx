@@ -400,8 +400,8 @@ const ConsolidatedBoardConfig = () => {
             />
           </Form.Item>
 
-          <Row gutter={16}>
-            <Col span={12}>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={12}>
               <Form.Item label="Board" required>
                 <Select value={selectedBoard} onChange={handleBoardChange} placeholder="Please select">
                   {SUPPORTED_BOARDS.map((board_name) => (
@@ -413,7 +413,7 @@ const ConsolidatedBoardConfig = () => {
               </Form.Item>
             </Col>
             
-            <Col span={12}>
+            <Col xs={24} sm={12}>
               <Form.Item label="Layout" required>
                 <Select 
                   value={selectedLayout} 
@@ -432,8 +432,8 @@ const ConsolidatedBoardConfig = () => {
             </Col>
           </Row>
 
-          <Row gutter={16}>
-            <Col span={12}>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={12}>
               <Form.Item label="Size" required>
                 <Select 
                   value={selectedSize} 
@@ -451,7 +451,7 @@ const ConsolidatedBoardConfig = () => {
               </Form.Item>
             </Col>
             
-            <Col span={12}>
+            <Col xs={24} sm={12}>
               <Form.Item label="Hold Sets" required>
                 <Select 
                   mode="multiple"
@@ -471,8 +471,8 @@ const ConsolidatedBoardConfig = () => {
             </Col>
           </Row>
 
-          <Row gutter={16}>
-            <Col span={12}>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={12}>
               <Form.Item label="Angle" required>
                 <Select 
                   value={selectedAngle} 
