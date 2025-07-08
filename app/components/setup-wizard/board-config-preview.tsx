@@ -31,7 +31,6 @@ export default function BoardConfigPreview({ config, onDelete }: BoardConfigPrev
   const router = useRouter();
   const [boardDetails, setBoardDetails] = useState<BoardDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [showDelete, setShowDelete] = useState(false);
   const [layoutName, setLayoutName] = useState<string>('');
   const [sizeName, setSizeName] = useState<string>('');
 
@@ -103,8 +102,6 @@ export default function BoardConfigPreview({ config, onDelete }: BoardConfigPrev
         hoverable
         size="small"
         onClick={handleSelect}
-        onMouseEnter={() => setShowDelete(true)}
-        onMouseLeave={() => setShowDelete(false)}
         styles={{ 
           body: { width: 160, height: 160, position: 'relative', textAlign: 'center' }
         }}
@@ -120,21 +117,19 @@ export default function BoardConfigPreview({ config, onDelete }: BoardConfigPrev
             {config.useAsDefault && <StarFilled style={{ color: '#faad14' }} />}
           </Flex>
         </Space>
-        {showDelete && (
-          <Button
-            type="text"
-            icon={<DeleteOutlined />}
-            onClick={handleDelete}
-            danger
-            size="small"
-            style={{
-              position: 'absolute',
-              top: 4,
-              right: 4,
-              zIndex: 1
-            }}
-          />
-        )}
+        <Button
+          type="text"
+          icon={<DeleteOutlined />}
+          onClick={handleDelete}
+          danger
+          size="small"
+          style={{
+            position: 'absolute',
+            top: 4,
+            right: 4,
+            zIndex: 1
+          }}
+        />
       </Card>
     );
   }
@@ -144,8 +139,6 @@ export default function BoardConfigPreview({ config, onDelete }: BoardConfigPrev
       hoverable
       size="small"
       onClick={handleSelect}
-      onMouseEnter={() => setShowDelete(true)}
-      onMouseLeave={() => setShowDelete(false)}
       styles={{ 
         body: { width: 160, height: 160, position: 'relative', padding: 8 }
       }}
@@ -172,21 +165,19 @@ export default function BoardConfigPreview({ config, onDelete }: BoardConfigPrev
           )}
         </Flex>
       </Space>
-      {showDelete && (
-        <Button
-          type="text"
-          icon={<DeleteOutlined />}
-          onClick={handleDelete}
-          danger
-          size="small"
-          style={{
-            position: 'absolute',
-            top: 4,
-            right: 4,
-            zIndex: 1
-          }}
-        />
-      )}
+      <Button
+        type="text"
+        icon={<DeleteOutlined />}
+        onClick={handleDelete}
+        danger
+        size="small"
+        style={{
+          position: 'absolute',
+          top: 4,
+          right: 4,
+          zIndex: 1
+        }}
+      />
     </Card>
   );
 }
