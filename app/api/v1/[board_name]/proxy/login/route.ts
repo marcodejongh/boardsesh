@@ -6,7 +6,6 @@ import { BoardName, BoardRouteParameters, ParsedBoardRouteParameters } from '@/a
 import { parseBoardRouteParams } from '@/app/lib/url-utils';
 import { syncUserData } from '@/app/lib/data-sync/aurora/user-sync';
 import { Session } from '@/app/lib/api-wrappers/aurora-rest-client/types';
-import { cookies } from 'next/headers';
 import { getSession } from '@/app/lib/session';
 
 
@@ -27,10 +26,18 @@ async function login(boardName: BoardName, username: string, password: string): 
   const auroraClient = new AuroraClimbingClient({ boardName: boardName });
   const loginResponse = await auroraClient.signIn(username, password);
 
+  if (!loginResponse.token || !loginResponse.user_id) {
+    throw new Error('Invalid login response: missing token or user_id');
+  }
+
   if (loginResponse.user_id) {
     const tableName = boardName === 'tension' || boardName === 'kilter' ? `${boardName}_users` : 'users';
 
-    // Insert/update user in our database
+    // Insert/update user in our database - handle missing user object
+    const createdAt = loginResponse.user?.created_at 
+      ? new Date(loginResponse.user.created_at)
+      : new Date(); // Fallback to current time if not available
+
     await sql.query(
       `
       INSERT INTO ${tableName} (id, username, created_at)
@@ -38,7 +45,7 @@ async function login(boardName: BoardName, username: string, password: string): 
       ON CONFLICT (id) DO UPDATE SET
       username = EXCLUDED.username
       `,
-      [loginResponse.user_id, loginResponse.username, new Date(loginResponse.user.created_at)],
+      [loginResponse.user_id, loginResponse.username || username, createdAt],
     );
 
     // If it's a new user, perform full sync
@@ -54,7 +61,11 @@ async function login(boardName: BoardName, username: string, password: string): 
     }
   }
 
-  return loginResponse;
+  // Convert LoginResponse to Session
+  return {
+    token: loginResponse.token,
+    user_id: loginResponse.user_id
+  };
 }
 
 

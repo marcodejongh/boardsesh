@@ -176,16 +176,20 @@ export interface Session {
 };
 
 export interface LoginResponse {
-  error: string;
-  login: {
+  error?: string;
+  login?: {
     created_at: string;
     token: string;
     user_id: number;
   };
-  token: string;
-  user: UserProfile;
-  user_id: number;
-  username: string;
+  token?: string;
+  user?: UserProfile;
+  user_id?: number;
+  username?: string;
+  session?: {
+    token: string;
+    user_id: number;
+  };
 }
 
 

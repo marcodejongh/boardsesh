@@ -245,6 +245,26 @@ export interface Climb {
   angle: number;
 }
 
-export interface SyncData {
-  PUT: SyncDataPUT;
+export interface SyncData extends Record<string, any> {
+  PUT?: SyncDataPUT;
+  _complete?: boolean;
+  climbs?: Climb[];
+  climb_stats?: ClimbStats[];
+  shared_syncs?: SharedSync[];
+  user_syncs?: UserSync[];
+  users?: User[];
+  walls?: Wall[];
+  wall_expungements?: WallExpungement[];
+  ascents?: Ascent[];
+  attempts?: Attempt[];
+  products?: Product[];
+  product_sizes?: ProductSize[];
+  holes?: Hole[];
+  leds?: Led[];
+  layouts?: Layout[];
+  placement_roles?: PlacementRole[];
+  sets?: Set[];
+  products_angles?: ProductsAngle[];
+  beta_links?: BetaLink[];
+  product_sizes_layouts_sets?: ProductSizesLayoutsSet[];
 }

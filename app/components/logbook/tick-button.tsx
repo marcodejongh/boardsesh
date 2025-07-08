@@ -45,7 +45,7 @@ const LoginForm = ({
 };
 
 export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boardDetails }) => {
-  const { logbook, login, isAuthenticated, user } = useBoardProvider(); // Assuming 'user' is available in the context
+  const { logbook, login, isAuthenticated, user_id } = useBoardProvider();
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
@@ -68,7 +68,7 @@ export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boa
   const badgeCount = filteredLogbook.length;
 
   const boardName = boardDetails.board_name;
-  const userId = String(user?.id || '');
+  const userId = String(user_id || '');
 
   return (
     <>

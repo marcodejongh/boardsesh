@@ -1,9 +1,8 @@
 import { dbz as db } from '@/app/lib/db/db';
 import { BoardName } from '../../types';
-import { LastSyncData, SyncOptions } from '../../api-wrappers/aurora/types';
+import { SyncOptions } from '../../api-wrappers/aurora/types';
 import { sharedSync } from '../../api-wrappers/aurora/sharedSync';
-import { ExtractTablesWithRelations, inArray } from 'drizzle-orm';
-import { sql } from 'drizzle-orm';
+import { ExtractTablesWithRelations } from 'drizzle-orm';
 import { PgTransaction } from 'drizzle-orm/pg-core';
 import { VercelPgQueryResultHKT } from 'drizzle-orm/vercel-postgres';
 import {
@@ -13,28 +12,29 @@ import {
   Product,
   ProductSize,
   SharedSync,
-  SyncData,
   SyncPutFields,
 } from '../../api-wrappers/sync-api-types';
 import { getTable } from '../../db/queries/util/table-select';
 import { convertLitUpHoldsStringToMap } from '@/app/components/board-renderer/util';
 
 // Define shared sync tables in correct dependency order
+// Order matches what the Android app sends
 export const SHARED_SYNC_TABLES: string[] = [
-  'climbs',
-  'attempts',
   'products',
   'product_sizes',
   'holes',
   'leds',
-  'sets',
   'products_angles',
   'layouts',
   'product_sizes_layouts_sets',
-  'placement_roles',
   'placements',
+  'sets',
+  'placement_roles',
+  'climbs',
   'climb_stats',
   'beta_links',
+  'attempts',
+  'kits',
 ];
 
 const upsertAttempts = (
@@ -294,7 +294,7 @@ async function upsertSharedTableData(
 async function updateSharedSyncs(
   tx: PgTransaction<VercelPgQueryResultHKT, Record<string, never>, ExtractTablesWithRelations<Record<string, never>>>,
   boardName: BoardName,
-  sharedSyncs: LastSyncData[],
+  sharedSyncs: SharedSync[],
 ) {
   const sharedSyncsSchema = getTable('sharedSyncs', boardName);
 
@@ -327,59 +327,122 @@ export async function getLastSharedSyncTimes(boardName: BoardName) {
   return result;
 }
 
-export async function syncSharedData(board: BoardName): Promise<Record<string, { synced: number }>> {
-  console.log('Entered sync shared data');
-  const allSyncTimes = await getLastSharedSyncTimes(board);
-  console.log('Fetched previous sync times');
-  const syncParams: SyncOptions = {
-    tables: [...SHARED_SYNC_TABLES],
-    sharedSyncs: allSyncTimes.map((syncTime) => ({
-      table_name: syncTime.table_name || '',
-      last_synchronized_at: syncTime.last_synchronized_at || '',
-    })),
-  };
+export async function syncSharedData(board: BoardName, token: string, maxBatches: number = 1): Promise<Record<string, { synced: number; complete: boolean }>> {
+  try {
+    console.log('Entered sync shared data');
+    
+    // Get shared sync times
+    const allSyncTimes = await getLastSharedSyncTimes(board);
+    console.log('Fetched previous sync times:', allSyncTimes);
+    
+    // Create a map of existing sync times
+    const sharedSyncMap = new Map(
+      allSyncTimes.map(sync => [sync.table_name, sync.last_synchronized_at])
+    );
+    
+    // Ensure all shared tables have a sync entry (default to 1970 if not synced)
+    const defaultTimestamp = '1970-01-01 00:00:00.000000';
+    
+    const syncParams: SyncOptions = {
+      tables: [...SHARED_SYNC_TABLES],
+      sharedSyncs: SHARED_SYNC_TABLES.map((tableName) => ({
+        table_name: tableName,
+        last_synchronized_at: sharedSyncMap.get(tableName) || defaultTimestamp,
+      })),
+    };
 
-  const syncResults = await sharedSync(board, syncParams);
+    console.log('syncParams', syncParams);
 
-  console.log(
-    `Received ${syncResults.PUT?.climbs?.length} climbs and ${syncResults.PUT?.climb_stats?.length} climb_stats`,
-  );
+    // Initialize results tracking
+    const totalResults: Record<string, { synced: number; complete: boolean }> = {};
+    let batchCount = 0;
+    let isComplete = false;
 
-  return upsertAllSharedTableData(board, syncResults);
+    // Process batches up to maxBatches limit
+    while (!isComplete && batchCount < maxBatches) {
+      batchCount++;
+      console.log(`Processing sync batch ${batchCount} for shared data`);
+      
+      const syncResults = await sharedSync(board, syncParams, token);
+      console.log('syncResults keys:', Object.keys(syncResults));
+      console.log('syncResults structure:', JSON.stringify(syncResults, null, 2).substring(0, 1000));
+
+      // Process this batch in a transaction
+      await db.transaction(async (tx) => {
+        try {
+          // Process each table - data is directly under table names
+          for (const tableName of SHARED_SYNC_TABLES) {
+            if (syncResults[tableName] && Array.isArray(syncResults[tableName])) {
+              const data = syncResults[tableName];
+              console.log(`Syncing ${tableName}: ${data.length} records`);
+              await upsertSharedTableData(tx, board, tableName, data);
+              
+              // Accumulate results
+              if (!totalResults[tableName]) {
+                totalResults[tableName] = { synced: 0, complete: false };
+              }
+              totalResults[tableName].synced += data.length;
+            } else if (!totalResults[tableName]) {
+              totalResults[tableName] = { synced: 0, complete: false };
+            }
+          }
+
+          // Update shared_syncs table with new sync times from this batch
+          if (syncResults['shared_syncs']) {
+            console.log('Updating shared_syncs with data:', syncResults['shared_syncs']);
+            await updateSharedSyncs(tx, board, syncResults['shared_syncs']);
+            
+            // Update sync params for next iteration with new timestamps
+            const newSharedSyncs = syncResults['shared_syncs'].map((sync: any) => ({
+              table_name: sync.table_name,
+              last_synchronized_at: sync.last_synchronized_at,
+            }));
+            
+            // Log timestamp updates for debugging
+            const climbsSync = newSharedSyncs.find((s: any) => s.table_name === 'climbs');
+            if (climbsSync) {
+              console.log(`Climbs table sync timestamp updated to: ${climbsSync.last_synchronized_at}`);
+            }
+            
+            // Update syncParams for next batch
+            syncParams.sharedSyncs = newSharedSyncs;
+          } else {
+            console.log('No shared_syncs data in sync results');
+          }
+        } catch (error) {
+          console.error('Failed to commit sync database transaction:', error);
+          throw error;
+        }
+      });
+
+      // Check if sync is complete - default to true if _complete is not present (matches Android app behavior)
+      isComplete = syncResults._complete !== false;
+      
+      console.log(`Sync batch ${batchCount} complete. _complete flag: ${syncResults._complete}, isComplete: ${isComplete}`);
+      
+      if (!isComplete && batchCount >= maxBatches) {
+        console.log(`Reached max batches (${maxBatches}), will continue in next API call`);
+      }
+    }
+
+    // Mark completion status for all tables
+    Object.keys(totalResults).forEach(table => {
+      totalResults[table].complete = isComplete;
+    });
+    
+    // Log summary of what was synced
+    console.log('Sync batch summary:');
+    Object.entries(totalResults).forEach(([table, result]) => {
+      if (result.synced > 0) {
+        console.log(`  ${table}: ${result.synced} records synced`);
+      }
+    });
+    console.log(`Sync complete: ${isComplete}`);
+
+    return totalResults;
+  } catch (error) {
+    console.error('Error syncing shared data:', error);
+    throw error;
+  }
 }
 
-const upsertAllSharedTableData = async (board: BoardName, syncResults: SyncData) => {
-  const results: Record<string, { synced: number }> = {};
-
-  await db.transaction(
-    async (
-      tx: PgTransaction<
-        VercelPgQueryResultHKT,
-        Record<string, never>,
-        ExtractTablesWithRelations<Record<string, never>>
-      >,
-    ) => {
-      try {
-        await tx.execute(sql`SET CONSTRAINTS ALL DEFERRED`);
-        // TODO: Move rest api call out of DB transaction to make error messages
-        // easier to interpret
-        const promises = [...SHARED_SYNC_TABLES, 'shared_syncs']
-          .filter((name) => syncResults.PUT[name])
-          .map(async (tableName) => {
-            const data = syncResults.PUT[tableName];
-
-            await upsertSharedTableData(tx, board, tableName, data);
-            console.log(`Updated ${tableName} with ${data.length} rows`);
-            return [tableName, { synced: data.length }];
-          });
-        const results = Object.fromEntries(await Promise.all(promises));
-      } catch (error) {
-        //@ts-expect-error
-        console.error('Failed to commit sync database transaction ', error.toString());
-        tx.rollback();
-      }
-    },
-  );
-
-  return results;
-};

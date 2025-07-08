@@ -1,7 +1,7 @@
 import { dbz as db } from '@/app/lib/db/db';
 import { BoardName } from '../../types';
 import { userSync } from '../../api-wrappers/aurora/userSync';
-import { LastSyncData, SyncOptions, USER_TABLES, UserSyncData } from '../../api-wrappers/aurora/types';
+import { LastSyncData, SyncOptions, USER_TABLES, UserSyncData, SHARED_SYNC_TABLES } from '../../api-wrappers/aurora/types';
 import { eq, and, inArray, ExtractTablesWithRelations } from 'drizzle-orm';
 import {
   kilterUsers,
@@ -12,6 +12,7 @@ import {
   kilterTags,
   kilterCircuits,
   kilterUserSyncs,
+  kilterSharedSyncs,
   tensionUsers,
   tensionWalls,
   tensionClimbs,
@@ -20,6 +21,7 @@ import {
   tensionTags,
   tensionCircuits,
   tensionUserSyncs,
+  tensionSharedSyncs,
 } from '@/app/lib/db/schema';
 import { PgTransaction } from 'drizzle-orm/pg-core';
 import { VercelPgQueryResultHKT } from 'drizzle-orm/vercel-postgres';
@@ -36,6 +38,7 @@ function getSchemas(board: BoardName) {
       tags: kilterTags,
       circuits: kilterCircuits,
       userSyncs: kilterUserSyncs,
+      sharedSyncs: kilterSharedSyncs,
     };
   } else if (board === 'tension') {
     return {
@@ -47,6 +50,7 @@ function getSchemas(board: BoardName) {
       tags: tensionTags,
       circuits: tensionCircuits,
       userSyncs: tensionUserSyncs,
+      sharedSyncs: tensionSharedSyncs,
     };
   }
   throw new Error(`Unsupported board type: ${board}`);
@@ -332,57 +336,120 @@ export async function getLastSyncTimes(boardName: BoardName, userId: number, tab
   return result;
 }
 
+export async function getLastSharedSyncTimes(boardName: BoardName, tableNames: string[]) {
+  const schemas = getSchemas(boardName);
+
+  const result = await db
+    .select()
+    .from(schemas.sharedSyncs)
+    .where(inArray(schemas.sharedSyncs.tableName, tableNames));
+
+  return result;
+}
+
 export async function syncUserData(
   board: BoardName,
   token: string,
   userId: number,
   tables: string[] = USER_TABLES,
 ): Promise<Record<string, { synced: number }>> {
-  const results: Record<string, { synced: number }> = {};
-
   try {
     const syncParams: SyncOptions = {
       tables,
     };
 
+    // Get user sync times
     const allSyncTimes = await getLastSyncTimes(board, userId, tables);
-
-    syncParams.userSyncs = allSyncTimes.map((syncTime) => ({
-      table_name: syncTime.tableName || '',
-      last_synchronized_at: syncTime.lastSynchronizedAt || '',
+    
+    // Create a map of existing sync times
+    const userSyncMap = new Map(
+      allSyncTimes.map(sync => [sync.tableName, sync.lastSynchronizedAt])
+    );
+    
+    // Ensure all user tables have a sync entry (default to 1970 if not synced)
+    const defaultTimestamp = '1970-01-01 00:00:00.000000';
+    
+    syncParams.userSyncs = tables.map((tableName) => ({
+      table_name: tableName,
+      last_synchronized_at: userSyncMap.get(tableName) || defaultTimestamp,
       user_id: Number(userId),
     }));
-    // TODO: Move rest api call out of DB transaction to make error messages
-    // easier to interpret
-    const syncResults = await userSync(board, userId, syncParams, token);
 
-    // Process each table in a single transaction
-    await db.transaction(async (tx) => {
-      try {
-        // Process each table
-        for (const tableName of tables) {
-          console.log(`Syncing ${tableName} for user ${userId}`);
-          if (syncResults.PUT && syncResults.PUT[tableName]) {
-            const data = syncResults.PUT[tableName];
-            await upsertTableData(tx, board, tableName, userId, data);
-            results[tableName] = { synced: data.length };
-          } else {
-            results[tableName] = { synced: 0 };
+    console.log('syncParams', syncParams);
+
+    // Initialize results tracking
+    const totalResults: Record<string, { synced: number }> = {};
+    
+    // Recursive sync until _complete is true
+    let currentSyncParams = syncParams;
+    let isComplete = false;
+    let syncAttempts = 0;
+    const maxSyncAttempts = 50; // Prevent infinite loops
+
+    while (!isComplete && syncAttempts < maxSyncAttempts) {
+      syncAttempts++;
+      console.log(`Sync attempt ${syncAttempts} for user ${userId}`);
+      
+      const syncResults = await userSync(board, userId, currentSyncParams, token);
+      console.log('syncResults', syncResults);
+      
+      // Process this batch in a transaction
+      await db.transaction(async (tx) => {
+        try {
+          // Process each table - data is directly under table names
+          for (const tableName of tables) {
+            console.log(`Syncing ${tableName} for user ${userId} (batch ${syncAttempts})`);
+            if (syncResults[tableName] && Array.isArray(syncResults[tableName])) {
+              const data = syncResults[tableName];
+              await upsertTableData(tx, board, tableName, userId, data);
+              
+              // Accumulate results
+              if (!totalResults[tableName]) {
+                totalResults[tableName] = { synced: 0 };
+              }
+              totalResults[tableName].synced += data.length;
+            } else if (!totalResults[tableName]) {
+              totalResults[tableName] = { synced: 0 };
+            }
           }
-        }
 
-        // Update user_syncs table with new sync times
-        if (syncResults && syncResults.PUT && syncResults.PUT['user_syncs']) {
-          //TODO handle user syncs in other method
-          await updateUserSyncs(tx, board, syncResults.PUT['user_syncs']);
+          // Update user_syncs table with new sync times from this batch
+          if (syncResults['user_syncs']) {
+            await updateUserSyncs(tx, board, syncResults['user_syncs']);
+            
+            // Update sync params for next iteration with new timestamps
+            const newUserSyncs = syncResults['user_syncs'].map((sync: any) => ({
+              table_name: sync.table_name,
+              last_synchronized_at: sync.last_synchronized_at,
+              user_id: Number(userId),
+            }));
+            
+            currentSyncParams = {
+              ...currentSyncParams,
+              userSyncs: newUserSyncs,
+            };
+          }
+        } catch (error) {
+          console.error('Failed to commit sync database transaction:', error);
+          throw error;
         }
-      } catch (error) {
-        console.error('Failed to commit sync database transaction:', error);
-        throw error; // Let the transaction handle the rollback
+      });
+
+      // Check if sync is complete
+      isComplete = syncResults._complete !== false;
+      
+      if (!isComplete) {
+        console.log(`Sync not complete for user ${userId}, continuing with next batch...`);
+      } else {
+        console.log(`Sync complete for user ${userId} after ${syncAttempts} attempts`);
       }
-    });
+    }
 
-    return results;
+    if (syncAttempts >= maxSyncAttempts) {
+      console.warn(`Sync reached maximum attempts (${maxSyncAttempts}) for user ${userId}`);
+    }
+
+    return totalResults;
   } catch (error) {
     console.error('Error syncing user data:', error);
     throw error;

@@ -29,13 +29,23 @@ export async function POST(request: Request, props: { params: Promise<BoardRoute
   const params = await props.params;
   const { board_name }: ParsedBoardRouteParameters = parseBoardRouteParams(params);
 
+  let validatedData: any = null;
+
   try {
     const body = await request.json();
-    const validatedData = saveAscentSchema.parse(body);
+    validatedData = saveAscentSchema.parse(body);
 
     const response = await saveAscent(board_name, validatedData.token, validatedData.options);
     return NextResponse.json(response);
   } catch (error) {
+    // Add detailed error logging
+    console.error('SaveAscent error details:', {
+      error: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : undefined,
+      board_name,
+      options: validatedData?.options,
+    });
+
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: 'Invalid request data', details: error.errors }, { status: 400 });
     }

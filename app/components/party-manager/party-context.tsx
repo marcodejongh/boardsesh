@@ -23,12 +23,9 @@ const PartyContext = createContext<PartyContextType | undefined>(undefined);
 
 export const PartyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { sendData, peerId, subscribeToData, connections } = usePeerContext();
-  const { user } = useBoardProvider();
+  const { username: boardUsername } = useBoardProvider();
 
-  let username = '';
-  if (user) {
-    username = user.username;
-  }
+  const username = boardUsername || '';
 
   const [webSocketData, setWebSocketData] = useState<Record<string, WebSocketData>>({});
 
