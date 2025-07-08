@@ -52,20 +52,17 @@ const saveAuthState = async (db: IDBPDatabase, board_name: BoardName, value: Aut
 
 interface AuthState {
   token: string | null;
-  user: BoardUser | null;
+  user_id: number | null;
+  username: string | null;
   board: BoardName | null;
-  loginInfo: {
-    created_at: string;
-    user_id: number;
-  } | null;
 }
 
 interface BoardContextType {
   boardName: BoardName;
   isAuthenticated: boolean;
   token: string | null;
-  user: BoardUser | null;
-  loginInfo: AuthState['loginInfo'];
+  user_id: number | null;
+  username: string | null;
   login: (board: BoardName, username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   isLoading: boolean;
@@ -81,9 +78,9 @@ const BoardContext = createContext<BoardContextType | undefined>(undefined);
 export function BoardProvider({ boardName, children }: { boardName: BoardName; children: React.ReactNode }) {
   const [authState, setAuthState] = useState<AuthState>({
     token: null,
-    user: null,
+    user_id: null,
+    username: null,
     board: null,
-    loginInfo: null,
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -130,7 +127,7 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
 
   useEffect(() => {
     const syncUserData = async () => {
-      if (!authState.token || !authState.user?.id || !boardName) {
+      if (!authState.token || !authState.user_id || !boardName) {
         return;
       }
 
@@ -150,10 +147,10 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
       }
     };
 
-    if (authState.token && boardName && authState.user?.id) {
+    if (authState.token && boardName && authState.user_id) {
       syncUserData();
     }
-  }, [authState.token, authState.user?.id, boardName]);
+  }, [authState.token, authState.user_id, boardName]);
 
   const login = async (board: BoardName, username: string, password: string) => {
     setIsLoading(true);
@@ -168,7 +165,7 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
         body: JSON.stringify({ username, password }),
       });
 
-      const data: LoginResponse = await response.json();
+      const data = await response.json();
 
       if (!response.ok) {
         throw new Error(data.error || 'Login failed');
@@ -176,21 +173,18 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
 
       const newAuthState = {
         token: data.token,
-        user: data.user,
+        user_id: data.user_id,
+        username: username,
         board,
-        loginInfo: {
-          created_at: data.login.created_at,
-          user_id: data.login.user_id,
-        },
       };
 
       // Update state
       setAuthState(newAuthState);
 
-      // Persist to IndexedDB
+      // Persist to IndexedDB - use the board parameter from login, not from context
       if (db) {
         try {
-          await saveAuthState(db, boardName, newAuthState);
+          await saveAuthState(db, board, newAuthState);
         } catch (error) {
           console.error('Failed to persist auth state:', error);
           message.warning('Login successful but failed to save session');
@@ -212,15 +206,12 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
     try {
       setCurrentClimbUuids(climbUuids); // Store the current climb UUIDs
 
-      if (!authState.user?.id) {
+      if (!authState.user_id) {
         setLogbook([]); // Clear logbook if not authenticated
         return;
       }
 
-      const {
-        token,
-        user: { id: userId },
-      } = authState;
+      const { token, user_id: userId } = authState;
       const response = await fetch(`/api/v1/${boardName}/proxy/getLogbook`, {
         method: 'POST',
         headers: {
@@ -250,11 +241,11 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
     if (currentClimbUuids.length > 0) {
       getLogbook(currentClimbUuids);
     }
-  }, [authState.token, authState.user?.id]);
+  }, [authState.token, authState.user_id]);
 
   // Then update the saveAscent function
   const saveAscent = async (options: Omit<SaveAscentOptions, 'uuid'>) => {
-    if (!authState.token || !authState.user?.id) {
+    if (!authState.token || !authState.user_id) {
       throw new Error('Not authenticated');
     }
     const ascentUuid = generateUuid();
@@ -262,7 +253,7 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
     const optimisticAscent: AscentSavedEvent['ascent'] & LogbookEntry = {
       ...options,
       attempt_id: 0,
-      user_id: authState.user.id,
+      user_id: authState.user_id,
       wall_uuid: null, // Add the nullable wall_uuid
       is_listed: true,
       created_at: new Date().toISOString().replace('T', ' ').split('.')[0],
@@ -285,7 +276,7 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
           token: authState.token,
           options: {
             ...options,
-            user_id: authState.user.id,
+            user_id: authState.user_id,
             uuid: ascentUuid,
           },
         }),
@@ -327,16 +318,16 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
   const logout = async () => {
     setAuthState({
       token: null,
-      user: null,
+      user_id: null,
+      username: null,
       board: null,
-      loginInfo: null,
     });
   };
   const value = {
     isAuthenticated: !!authState.token,
     token: authState.token,
-    user: authState.user,
-    loginInfo: authState.loginInfo,
+    user_id: authState.user_id,
+    username: authState.username,
     login,
     logout,
     isLoading,
@@ -359,5 +350,5 @@ export function useBoardProvider() {
   return context;
 }
 
-export type { BoardUser, LoginResponse, BoardContextType };
+export type { BoardContextType };
 export { BoardContext };

@@ -1,6 +1,6 @@
 'use client';
 import React from 'react';
-import { Col, Row, Space, Grid } from 'antd';
+import { Col, Row, Space, Grid, Button, Dropdown, MenuProps } from 'antd';
 import { Header } from 'antd/es/layout/layout';
 import Title from 'antd/es/typography/Title';
 import { usePathname } from 'next/navigation';
@@ -11,6 +11,8 @@ import { UISearchParamsProvider } from '../queue-control/ui-searchparams-provide
 import SendClimbToBoardButton from '../board-bluetooth-control/send-climb-to-board-button';
 import { BoardDetails } from '@/app/lib/types';
 import { ShareBoardButton } from './share-button';
+import { useBoardProvider } from '../board-provider/board-provider-context';
+import { UserOutlined, LogoutOutlined } from '@ant-design/icons';
 
 const { useBreakpoint } = Grid;
 
@@ -21,6 +23,16 @@ export default function BoardSeshHeader({ boardDetails }: BoardSeshHeaderProps) 
   const pathname = usePathname();
   const isList = pathname.endsWith('/list');
   const screens = useBreakpoint();
+  const { isAuthenticated, username, logout } = useBoardProvider();
+
+  const userMenuItems: MenuProps['items'] = [
+    {
+      key: 'logout',
+      icon: <LogoutOutlined />,
+      label: 'Logout',
+      onClick: logout,
+    },
+  ];
 
   return (
     <Header
@@ -51,6 +63,13 @@ export default function BoardSeshHeader({ boardDetails }: BoardSeshHeaderProps) 
               {!isList ? <ClimbInfoButton /> : null}
               <ShareBoardButton />
               <SendClimbToBoardButton boardDetails={boardDetails} />
+              {isAuthenticated && username ? (
+                <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
+                  <Button icon={<UserOutlined />} type="text">
+                    {username}
+                  </Button>
+                </Dropdown>
+              ) : null}
             </Space>
           </Col>
         </UISearchParamsProvider>
