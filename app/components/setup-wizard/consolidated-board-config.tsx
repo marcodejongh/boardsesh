@@ -1,24 +1,47 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Button, Form, Select, Typography, Input, Divider, Card, Row, Col } from 'antd';
+import { Button, Form, Select, Typography, Input, Divider, Card, Row, Col, Checkbox, Tooltip, Space, Flex } from 'antd';
+import { InfoCircleOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
-import { SUPPORTED_BOARDS } from '@/app/lib/board-data';
+import { openDB } from 'idb';
+import { SUPPORTED_BOARDS, ANGLES } from '@/app/lib/board-data';
 import { fetchLayouts, fetchSizes, fetchSets } from '../rest-api/api';
 import { LayoutRow, SizeRow, SetRow } from '@/app/lib/data/queries';
 import { BoardName } from '@/app/lib/types';
+import BoardConfigPreview from './board-config-preview';
 
 const { Option } = Select;
 const { Title, Text } = Typography;
+
+// IndexedDB configuration
+const DB_NAME = 'boardsesh-config';
+const DB_VERSION = 1;
+const STORE_NAME = 'board-configurations';
+
+// Types for stored configuration
+type StoredBoardConfig = {
+  name: string;
+  board: BoardName;
+  layoutId: number;
+  sizeId: number;
+  setIds: number[];
+  angle: number;
+  useAsDefault: boolean;
+  createdAt: string;
+  lastUsed?: string;
+};
 
 const ConsolidatedBoardConfig = () => {
   const router = useRouter();
   
   // Selection states
+  const [configName, setConfigName] = useState<string>('');
   const [selectedBoard, setSelectedBoard] = useState<BoardName | undefined>(undefined);
   const [selectedLayout, setSelectedLayout] = useState<number>();
   const [selectedSize, setSelectedSize] = useState<number>();
   const [selectedSets, setSelectedSets] = useState<number[]>([]);
+  const [selectedAngle, setSelectedAngle] = useState<number>(40);
   
   // Data states
   const [layouts, setLayouts] = useState<LayoutRow[]>([]);
@@ -32,6 +55,103 @@ const ConsolidatedBoardConfig = () => {
   
   // Login states - for now just skip login on setup page
   const [showLoginSection, setShowLoginSection] = useState(false);
+  
+  // Additional states
+  const [useAsDefault, setUseAsDefault] = useState(false);
+  const [savedConfigurations, setSavedConfigurations] = useState<StoredBoardConfig[]>([]);
+
+  // IndexedDB helper functions
+  const initDB = async () => {
+    return openDB(DB_NAME, DB_VERSION, {
+      upgrade(db) {
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          db.createObjectStore(STORE_NAME, { keyPath: 'name' });
+        }
+      },
+    });
+  };
+
+  const saveConfiguration = async (config: StoredBoardConfig) => {
+    try {
+      const db = await initDB();
+      await db.put(STORE_NAME, config);
+      
+      // If this is set as default, clear other defaults
+      if (config.useAsDefault) {
+        const allConfigs = await db.getAll(STORE_NAME);
+        for (const existingConfig of allConfigs) {
+          if (existingConfig.name !== config.name && existingConfig.useAsDefault) {
+            existingConfig.useAsDefault = false;
+            await db.put(STORE_NAME, existingConfig);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to save configuration:', error);
+    }
+  };
+
+  const loadDefaultConfiguration = async () => {
+    try {
+      const db = await initDB();
+      const allConfigs = await db.getAll(STORE_NAME);
+      return allConfigs.find(config => config.useAsDefault) || null;
+    } catch (error) {
+      console.error('Failed to load default configuration:', error);
+      return null;
+    }
+  };
+
+  const loadAllConfigurations = async () => {
+    try {
+      const db = await initDB();
+      const allConfigs = await db.getAll(STORE_NAME);
+      return allConfigs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    } catch (error) {
+      console.error('Failed to load configurations:', error);
+      return [];
+    }
+  };
+
+  const deleteConfiguration = async (configName: string) => {
+    try {
+      const db = await initDB();
+      await db.delete(STORE_NAME, configName);
+      // Reload configurations
+      const updatedConfigs = await loadAllConfigurations();
+      setSavedConfigurations(updatedConfigs);
+    } catch (error) {
+      console.error('Failed to delete configuration:', error);
+    }
+  };
+
+  // Load configurations on mount
+  useEffect(() => {
+    const loadConfigurations = async () => {
+      // Load all saved configurations
+      const allConfigs = await loadAllConfigurations();
+      setSavedConfigurations(allConfigs);
+      
+      // Check for default configuration
+      const defaultConfig = allConfigs.find(config => config.useAsDefault);
+      if (defaultConfig) {
+        setConfigName(defaultConfig.name);
+        setSelectedBoard(defaultConfig.board);
+        setSelectedLayout(defaultConfig.layoutId);
+        setSelectedSize(defaultConfig.sizeId);
+        setSelectedSets(defaultConfig.setIds);
+        setSelectedAngle(defaultConfig.angle || 40);
+        setUseAsDefault(defaultConfig.useAsDefault);
+        
+        // Redirect immediately if there's a default
+        const setsString = defaultConfig.setIds.join(',');
+        const savedAngle = defaultConfig.angle || 40;
+        router.push(`/${defaultConfig.board}/${defaultConfig.layoutId}/${defaultConfig.sizeId}/${setsString}/${savedAngle}/list`);
+      }
+    };
+    
+    loadConfigurations();
+  }, [router]);
 
   // Load layouts when board changes
   useEffect(() => {
@@ -121,13 +241,33 @@ const ConsolidatedBoardConfig = () => {
     setSelectedSets(value);
   };
 
+
   // Login will be handled after reaching the main board page
 
-  const handleStartClimbing = () => {
+  const handleStartClimbing = async () => {
     if (selectedBoard && selectedLayout && selectedSize && selectedSets.length > 0) {
+      // Save configuration if name is provided
+      if (configName.trim()) {
+        const config: StoredBoardConfig = {
+          name: configName.trim(),
+          board: selectedBoard,
+          layoutId: selectedLayout,
+          sizeId: selectedSize,
+          setIds: selectedSets,
+          angle: selectedAngle,
+          useAsDefault,
+          createdAt: new Date().toISOString(),
+          lastUsed: new Date().toISOString(),
+        };
+        
+        await saveConfiguration(config);
+        // Refresh the saved configurations list
+        const updatedConfigs = await loadAllConfigurations();
+        setSavedConfigurations(updatedConfigs);
+      }
+      
       const setsString = selectedSets.join(',');
-      const defaultAngle = 40; // Default angle
-      router.push(`/${selectedBoard}/${selectedLayout}/${selectedSize}/${setsString}/${defaultAngle}/list`);
+      router.push(`/${selectedBoard}/${selectedLayout}/${selectedSize}/${setsString}/${selectedAngle}/list`);
     }
   };
 
@@ -136,11 +276,39 @@ const ConsolidatedBoardConfig = () => {
   return (
     <div style={{ padding: '24px', maxWidth: '600px', margin: '0 auto' }}>
       <Card>
-        <Title level={2} style={{ textAlign: 'center', marginBottom: '32px' }}>
-          Board Configuration
+        <Title level={1} style={{ textAlign: 'center', marginBottom: '8px' }}>
+          BoardSesh
         </Title>
+        <Title level={4} style={{ textAlign: 'center', marginBottom: '32px', color: '#666' }}>
+          Configure your climbing board
+        </Title>
+
+        {savedConfigurations.length > 0 && (
+          <Space direction="vertical" size="large" style={{ width: '100%' }}>
+            <Title level={5}>Saved Configurations</Title>
+            <Flex gap="middle" wrap="wrap" style={{ overflowX: 'auto', paddingBottom: 8 }}>
+              {savedConfigurations.map((config) => (
+                <BoardConfigPreview
+                  key={config.name}
+                  config={config}
+                  onDelete={deleteConfiguration}
+                />
+              ))}
+            </Flex>
+            <Divider />
+          </Space>
+        )}
         
         <Form layout="vertical">
+          <Form.Item label="Configuration Name (Optional)">
+            <Input
+              value={configName}
+              onChange={(e) => setConfigName(e.target.value)}
+              placeholder="Enter a name for this configuration"
+              maxLength={50}
+            />
+          </Form.Item>
+
           <Row gutter={16}>
             <Col span={12}>
               <Form.Item label="Board" required>
@@ -212,11 +380,49 @@ const ConsolidatedBoardConfig = () => {
             </Col>
           </Row>
 
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item label="Angle" required>
+                <Select 
+                  value={selectedAngle} 
+                  onChange={setSelectedAngle}
+                  disabled={!selectedBoard}
+                >
+                  {selectedBoard && ANGLES[selectedBoard].map((angle) => (
+                    <Option key={angle} value={angle}>
+                      {angle}°
+                    </Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+
           <div style={{ marginBottom: '16px', textAlign: 'center' }}>
             <Text type="secondary">
               You can login after reaching the board page
             </Text>
           </div>
+
+          <Form.Item>
+            <Checkbox
+              checked={useAsDefault}
+              onChange={(e) => setUseAsDefault(e.target.checked)}
+              disabled={!isFormComplete || !configName.trim()}
+            >
+              Use this board configuration as default
+              <Tooltip title="When this option is selected, navigating to BoardSesh will always load this board configuration immediately">
+                <InfoCircleOutlined style={{ marginLeft: '4px', color: '#1890ff' }} />
+              </Tooltip>
+            </Checkbox>
+            {!configName.trim() && (
+              <div style={{ marginTop: '4px' }}>
+                <Text type="secondary" style={{ fontSize: '12px' }}>
+                  Enter a configuration name to save as default
+                </Text>
+              </div>
+            )}
+          </Form.Item>
 
           <Button 
             type="primary" 
