@@ -8,17 +8,15 @@
   flex: 0 0 auto;
 }
 
-.actionButtons {
+.mobileActions {
   display: flex;
-  gap: 8px;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
 }
 
 .desktopActions {
   display: none;
-}
-
-.mobileActions {
-  display: flex;
 }
 
 .inQueueButton {
@@ -28,6 +26,9 @@
 @media (min-width: 768px) {
   .desktopActions {
     display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
   }
   .mobileActions {
     display: none;
