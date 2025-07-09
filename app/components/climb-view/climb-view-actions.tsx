@@ -2,7 +2,8 @@
 
 import React, { useState } from 'react';
 import { Button, Space, message, Dropdown } from 'antd';
-import { HeartOutlined, PlusCircleOutlined, CheckCircleOutlined, AppstoreOutlined, MoreOutlined } from '@ant-design/icons';
+import { HeartOutlined, PlusCircleOutlined, CheckCircleOutlined, AppstoreOutlined, MoreOutlined, ArrowLeftOutlined } from '@ant-design/icons';
+import Link from 'next/link';
 import { useQueueContext } from '../queue-control/queue-context';
 import { Climb, BoardDetails } from '@/app/lib/types';
 import type { MenuProps } from 'antd';
@@ -12,9 +13,10 @@ type ClimbViewActionsProps = {
   climb: Climb;
   boardDetails: BoardDetails;
   auroraAppUrl: string;
+  angle: number;
 };
 
-const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl }: ClimbViewActionsProps) => {
+const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl, angle }: ClimbViewActionsProps) => {
   const { addToQueue, queue } = useQueueContext();
   const [isDuplicate, setDuplicateTimer] = useState(false);
 
@@ -47,6 +49,11 @@ const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl }: ClimbViewAction
     message.info('TODO: Implement tick functionality');
   };
 
+  const getBackToListUrl = () => {
+    const { board_name, layout_id, size_id, set_ids } = boardDetails;
+    return `/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/list`;
+  };
+
   // Define menu items for the meatball menu (overflow actions)
   const menuItems: MenuProps['items'] = [
     {
@@ -69,6 +76,15 @@ const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl }: ClimbViewAction
     <div className={styles.container}>
       {/* Mobile view: Show main actions + meatball menu for overflow */}
       <div className={styles.mobileActions}>
+        <Link href={getBackToListUrl()}>
+          <Button 
+            icon={<ArrowLeftOutlined />}
+            className={styles.backButton}
+          >
+            Back
+          </Button>
+        </Link>
+        
         <Space>
           <Button 
             icon={<HeartOutlined />}
@@ -99,6 +115,15 @@ const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl }: ClimbViewAction
 
       {/* Desktop view: Show all buttons */}
       <div className={styles.desktopActions}>
+        <Link href={getBackToListUrl()}>
+          <Button 
+            icon={<ArrowLeftOutlined />}
+            className={styles.backButton}
+          >
+            Back to List
+          </Button>
+        </Link>
+        
         <Space wrap>
           <Button 
             icon={<HeartOutlined />}

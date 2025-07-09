@@ -1,6 +1,10 @@
 .container {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+}
+
+.backButton {
+  margin-right: auto;
 }
 
 .desktopActions {

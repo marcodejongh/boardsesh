@@ -173,6 +173,7 @@ export default async function DynamicResultsPage(props: { params: Promise<BoardR
               climb={currentClimb} 
               boardDetails={boardDetails} 
               auroraAppUrl={auroraAppUrl}
+              angle={parsedParams.angle}
             />
           </Col>
           <Col xs={24} lg={16}>
