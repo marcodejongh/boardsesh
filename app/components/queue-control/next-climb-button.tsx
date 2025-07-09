@@ -2,20 +2,21 @@ import React from 'react';
 import Link from 'next/link';
 import { useQueueContext } from './queue-context';
 import { useParams } from 'next/navigation';
-import { parseBoardRouteParams } from '@/app/lib/url-utils';
-import { BoardRouteParametersWithUuid } from '@/app/lib/types';
+import { parseBoardRouteParams, constructClimbViewUrlWithSlugs, constructClimbViewUrl } from '@/app/lib/url-utils';
+import { BoardRouteParametersWithUuid, BoardDetails } from '@/app/lib/types';
 import { FastForwardOutlined } from '@ant-design/icons';
 import Button, { ButtonProps } from 'antd/es/button';
 
 type NextClimbButtonProps = {
   navigate: boolean;
+  boardDetails?: BoardDetails;
 };
 
 const NextButton = (props: ButtonProps) => (
   <Button {...props} type="default" icon={<FastForwardOutlined />} aria-label="Next climb" />
 );
 
-export default function NextClimbButton({ navigate = false }: NextClimbButtonProps) {
+export default function NextClimbButton({ navigate = false, boardDetails }: NextClimbButtonProps) {
   const { setCurrentClimbQueueItem, getNextClimbQueueItem, viewOnlyMode } = useQueueContext(); // Assuming setSuggestedQueue is available
   const { board_name, layout_id, size_id, set_ids, angle } =
     parseBoardRouteParams(useParams<BoardRouteParametersWithUuid>());
@@ -30,9 +31,21 @@ export default function NextClimbButton({ navigate = false }: NextClimbButtonPro
   };
 
   if (!viewOnlyMode && navigate && nextClimb) {
+    const climbViewUrl = boardDetails?.layout_name && boardDetails?.size_name && boardDetails?.set_names
+      ? constructClimbViewUrlWithSlugs(
+          boardDetails.board_name,
+          boardDetails.layout_name,
+          boardDetails.size_name,
+          boardDetails.set_names,
+          angle,
+          nextClimb.climb.uuid,
+          nextClimb.climb.name
+        )
+      : `/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/view/${nextClimb.climb.uuid}`;
+    
     return (
       <Link
-        href={`/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/view/${nextClimb?.climb.uuid}`}
+        href={climbViewUrl}
         onClick={handleClick} // Update the queue when the link is clicked
       >
         <NextButton />

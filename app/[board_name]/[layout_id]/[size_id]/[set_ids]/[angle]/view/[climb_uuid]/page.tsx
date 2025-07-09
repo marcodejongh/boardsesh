@@ -1,12 +1,11 @@
 import React from 'react';
 import { notFound, redirect } from 'next/navigation';
 import { BoardRouteParametersWithUuid } from '@/app/lib/types';
-import { parseBoardRouteParams } from '@/app/lib/url-utils';
 import { fetchBoardDetails, fetchCurrentClimb } from '@/app/components/rest-api/api';
 import ClimbCard from '@/app/components/climb-card/climb-card';
 import { Col, Row } from 'antd';
 import BetaVideos from '@/app/components/beta-videos/beta-videos';
-import { constructClimbInfoUrl, extractUuidFromSlug, constructClimbViewUrl, isUuidOnly } from '@/app/lib/url-utils';
+import { constructClimbInfoUrl, extractUuidFromSlug, constructClimbViewUrl, isUuidOnly, parseBoardRouteParamsWithSlugs, isSlugFormat, constructClimbViewUrlWithSlugs, parseBoardRouteParams } from '@/app/lib/url-utils';
 import ClimbViewActions from '@/app/components/climb-view/climb-view-actions';
 import { Metadata } from 'next';
 import { dbz } from '@/app/lib/db/db';
@@ -16,12 +15,9 @@ import { BetaLink } from '@/app/lib/api-wrappers/sync-api-types';
 
 export async function generateMetadata(props: { params: Promise<BoardRouteParametersWithUuid> }): Promise<Metadata> {
   const params = await props.params;
-  const parsedParams = parseBoardRouteParams({
-    ...params,
-    climb_uuid: extractUuidFromSlug(params.climb_uuid)
-  });
   
   try {
+    const parsedParams = await parseBoardRouteParamsWithSlugs(params);
     const [boardDetails, currentClimb] = await Promise.all([
       fetchBoardDetails(parsedParams.board_name, parsedParams.layout_id, parsedParams.size_id, parsedParams.set_ids),
       fetchCurrentClimb(parsedParams),
@@ -57,20 +53,54 @@ export async function generateMetadata(props: { params: Promise<BoardRouteParame
 
 export default async function DynamicResultsPage(props: { params: Promise<BoardRouteParametersWithUuid> }) {
   const params = await props.params;
-  const parsedParams = parseBoardRouteParams({
-    ...params,
-    climb_uuid: extractUuidFromSlug(params.climb_uuid)
-  });
-
+  
   try {
-    if (isUuidOnly(params.climb_uuid)) {
+    // Check if any parameters are in numeric format (old URLs)
+    const hasNumericParams = [params.layout_id, params.size_id, params.set_ids].some(param => 
+      param.includes(',') ? param.split(',').every(id => /^\d+$/.test(id.trim())) : /^\d+$/.test(param)
+    );
+    
+    let parsedParams;
+    
+    if (hasNumericParams) {
+      // For old URLs, use the simple parsing function first
+      parsedParams = parseBoardRouteParams({
+        ...params,
+        climb_uuid: extractUuidFromSlug(params.climb_uuid)
+      });
+    } else {
+      // For new URLs, use the slug parsing function
+      parsedParams = await parseBoardRouteParamsWithSlugs(params);
+    }
+    
+    if (hasNumericParams || isUuidOnly(params.climb_uuid)) {
+      // Need to redirect to new slug-based URL
       const [boardDetails, currentClimb] = await Promise.all([
         fetchBoardDetails(parsedParams.board_name, parsedParams.layout_id, parsedParams.size_id, parsedParams.set_ids),
         fetchCurrentClimb(parsedParams),
       ]);
       
-      const newUrl = constructClimbViewUrl(parsedParams, parsedParams.climb_uuid, currentClimb.name);
-      redirect(newUrl);
+      // Get the names for slug generation
+      const layouts = await import('@/app/lib/data/queries').then(m => m.getLayouts(parsedParams.board_name));
+      const sizes = await import('@/app/lib/data/queries').then(m => m.getSizes(parsedParams.board_name, parsedParams.layout_id));
+      const sets = await import('@/app/lib/data/queries').then(m => m.getSets(parsedParams.board_name, parsedParams.layout_id, parsedParams.size_id));
+      
+      const layout = layouts.find(l => l.id === parsedParams.layout_id);
+      const size = sizes.find(s => s.id === parsedParams.size_id);
+      const selectedSets = sets.filter(s => parsedParams.set_ids.includes(s.id));
+      
+      if (layout && size && selectedSets.length > 0) {
+        const newUrl = constructClimbViewUrlWithSlugs(
+          parsedParams.board_name,
+          layout.name,
+          size.name,
+          selectedSets.map(s => s.name),
+          parsedParams.angle,
+          parsedParams.climb_uuid,
+          currentClimb.name
+        );
+        redirect(newUrl);
+      }
     }
     // Fetch beta links server-side
     const fetchBetaLinks = async (): Promise<BetaLink[]> => {

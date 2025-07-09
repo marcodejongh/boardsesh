@@ -110,8 +110,8 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
                   icon={<SyncOutlined />}
                 />
               ) : null}
-              <PreviousClimbButton navigate={isViewPage} />
-              <NextClimbButton navigate={isViewPage} />
+              <PreviousClimbButton navigate={isViewPage} boardDetails={boardDetails} />
+              <NextClimbButton navigate={isViewPage} boardDetails={boardDetails} />
               <TickButton currentClimb={currentClimb} angle={angle} boardDetails={boardDetails} />
             </Space>
           </Col>

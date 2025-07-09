@@ -109,6 +109,17 @@ export const getBoardDetails = async ({
       })),
   );
 
+  // Fetch names for slug-based URLs
+  const [layouts, sizes, sets] = await Promise.all([
+    getLayouts(board_name),
+    getSizes(board_name, layout_id),
+    getSets(board_name, layout_id, size_id),
+  ]);
+
+  const layout = layouts.find(l => l.id === layout_id);
+  const size = sizes.find(s => s.id === size_id);
+  const selectedSets = sets.filter(s => set_ids.includes(s.id));
+
   return {
     images_to_holds: imagesToHolds,
     holdsData,
@@ -124,6 +135,10 @@ export const getBoardDetails = async ({
     set_ids,
     ledPlacements: Object.fromEntries(ledPlacements.map(({ id, position }) => [id, position])),
     supportsMirroring: board_name === 'tension' && layout_id !== 11,
+    // Added for slug-based URLs
+    layout_name: layout?.name,
+    size_name: size?.name,
+    set_names: selectedSets.map(s => s.name),
   };
 };
 
@@ -269,3 +284,4 @@ export const getSets = async (board_name: BoardName, layout_id: LayoutId, size_i
 
   return layouts;
 };
+

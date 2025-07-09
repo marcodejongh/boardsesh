@@ -7,8 +7,10 @@ import {
   ClimbUuid,
   BoardDetails,
   Angle,
+  BoardName,
 } from '@/app/lib/types';
 import { PAGE_LIMIT } from '../components/board-page/constants';
+import { getLayoutBySlug, getSizeBySlug, getSetsBySlug } from './slug-utils';
 
 export function parseBoardRouteParams<T extends BoardRouteParameters>(
   params: T,
@@ -140,6 +142,30 @@ export const constructClimbViewUrl = (
   return `${baseUrl}${climb_uuid}`;
 };
 
+// New function to construct URLs with slug-based board parameters
+export const constructClimbViewUrlWithSlugs = (
+  board_name: string,
+  layoutName: string,
+  sizeName: string,
+  setNames: string[],
+  angle: number,
+  climb_uuid: ClimbUuid,
+  climbName?: string,
+) => {
+  const layoutSlug = generateLayoutSlug(layoutName);
+  const sizeSlug = generateSizeSlug(sizeName);
+  const setSlug = generateSetSlug(setNames);
+  
+  const baseUrl = `/${board_name}/${layoutSlug}/${sizeSlug}/${setSlug}/${angle}/view/`;
+  if (climbName && climbName.trim()) {
+    const climbSlug = generateClimbSlug(climbName.trim());
+    if (climbSlug) {
+      return `${baseUrl}${climbSlug}-${climb_uuid}`;
+    }
+  }
+  return `${baseUrl}${climb_uuid}`;
+};
+
 export const constructClimbInfoUrl = (
   { board_name }: BoardDetails,
   climb_uuid: ClimbUuid,
@@ -157,6 +183,20 @@ export const constructClimbSearchUrl = (
   queryString: string,
 ) => `/api/v1/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/search?${queryString}`;
 
+// New slug-based URL construction functions
+export const constructClimbListWithSlugs = (
+  board_name: string,
+  layoutName: string,
+  sizeName: string,
+  setNames: string[],
+  angle: number,
+) => {
+  const layoutSlug = generateLayoutSlug(layoutName);
+  const sizeSlug = generateSizeSlug(sizeName);
+  const setSlug = generateSetSlug(setNames);
+  return `/${board_name}/${layoutSlug}/${sizeSlug}/${setSlug}/${angle}/list`;
+};
+
 export const generateClimbSlug = (climbName: string): string => {
   return climbName
     .toLowerCase()
@@ -165,6 +205,42 @@ export const generateClimbSlug = (climbName: string): string => {
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '');
+};
+
+export const generateLayoutSlug = (layoutName: string): string => {
+  return layoutName
+    .toLowerCase()
+    .trim()
+    .replace(/^(kilter|tension|decoy)\s+board\s+/i, '') // Remove board name prefix
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+};
+
+export const generateSizeSlug = (sizeName: string): string => {
+  // Extract size dimensions (e.g., "12 x 12 Commercial" -> "12x12")
+  const sizeMatch = sizeName.match(/(\d+)\s*x\s*(\d+)/i);
+  if (sizeMatch) {
+    return `${sizeMatch[1]}x${sizeMatch[2]}`;
+  }
+  // Fallback to general slug generation
+  return sizeName
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+};
+
+export const generateSetSlug = (setNames: string[]): string => {
+  return setNames
+    .map(name => name.toLowerCase().trim())
+    .map(name => name.replace(/\s+ons?$/i, '')) // Remove "on" or "ons" suffix
+    .map(name => name.replace(/^(bolt|screw).*/, '$1')) // Extract just "bolt" or "screw"
+    .sort() // Ensure consistent ordering
+    .join('-');
 };
 
 export const extractUuidFromSlug = (slugOrUuid: string): string => {
@@ -179,3 +255,78 @@ export const isUuidOnly = (slugOrUuid: string): boolean => {
   const uuidRegex = /^[0-9A-F]{32}$/i;
   return uuidRegex.test(slugOrUuid);
 };
+
+// Helper functions to determine if a parameter is numeric (old format) or slug (new format)
+export const isNumericId = (value: string): boolean => {
+  return /^\d+$/.test(value);
+};
+
+export const isSlugFormat = (value: string): boolean => {
+  return !isNumericId(value);
+};
+
+// Enhanced route parsing function that handles both slug and numeric formats
+export async function parseBoardRouteParamsWithSlugs<T extends BoardRouteParameters>(
+  params: T,
+): Promise<T extends BoardRouteParametersWithUuid ? ParsedBoardRouteParametersWithUuid : ParsedBoardRouteParameters> {
+  const { board_name, layout_id, size_id, set_ids, angle, climb_uuid } = params;
+
+  let parsedLayoutId: number;
+  let parsedSizeId: number;
+  let parsedSetIds: number[];
+
+  // Handle layout_id (slug or numeric)
+  if (isNumericId(layout_id)) {
+    parsedLayoutId = Number(layout_id);
+  } else {
+    const layout = await getLayoutBySlug(board_name as BoardName, layout_id);
+    if (!layout) {
+      throw new Error(`Layout not found for slug: ${layout_id}`);
+    }
+    parsedLayoutId = layout.id;
+  }
+
+  // Handle size_id (slug or numeric)
+  if (isNumericId(size_id)) {
+    parsedSizeId = Number(size_id);
+  } else {
+    const size = await getSizeBySlug(board_name as BoardName, parsedLayoutId, size_id);
+    if (!size) {
+      throw new Error(`Size not found for slug: ${size_id}`);
+    }
+    parsedSizeId = size.id;
+  }
+
+  // Handle set_ids (slug or numeric)
+  if (set_ids.includes(',') && set_ids.split(',').every(id => isNumericId(id.trim()))) {
+    // Numeric format: "26,27"
+    parsedSetIds = decodeURIComponent(set_ids).split(',').map(str => Number(str.trim()));
+  } else if (isNumericId(set_ids)) {
+    // Single numeric ID
+    parsedSetIds = [Number(set_ids)];
+  } else {
+    // Slug format: "bolt-screw"
+    const sets = await getSetsBySlug(board_name as BoardName, parsedLayoutId, parsedSizeId, set_ids);
+    if (sets.length === 0) {
+      throw new Error(`Sets not found for slug: ${set_ids}`);
+    }
+    parsedSetIds = sets.map(s => s.id);
+  }
+
+  const parsedParams = {
+    board_name,
+    layout_id: parsedLayoutId,
+    size_id: parsedSizeId,
+    set_ids: parsedSetIds,
+    angle: Number(angle),
+  };
+
+  if (climb_uuid) {
+    return {
+      ...parsedParams,
+      climb_uuid: extractUuidFromSlug(climb_uuid),
+    } as T extends BoardRouteParametersWithUuid ? ParsedBoardRouteParametersWithUuid : never;
+  }
+
+  return parsedParams as T extends BoardRouteParametersWithUuid ? never : ParsedBoardRouteParameters;
+}
