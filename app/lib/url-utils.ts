@@ -208,7 +208,7 @@ export const generateClimbSlug = (climbName: string): string => {
 };
 
 export const generateLayoutSlug = (layoutName: string): string => {
-  return layoutName
+  const baseSlug = layoutName
     .toLowerCase()
     .trim()
     .replace(/^(kilter|tension|decoy)\s+board\s+/i, '') // Remove board name prefix
@@ -216,6 +216,18 @@ export const generateLayoutSlug = (layoutName: string): string => {
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '');
+  
+  // Handle Tension board specific cases
+  if (baseSlug === 'original-layout') {
+    return 'original';
+  }
+  
+  // Replace numbers with words for better readability
+  if (baseSlug.startsWith('2-')) {
+    return baseSlug.replace('2-', 'two-');
+  }
+  
+  return baseSlug;
 };
 
 export const generateSizeSlug = (sizeName: string): string => {
@@ -236,9 +248,29 @@ export const generateSizeSlug = (sizeName: string): string => {
 
 export const generateSetSlug = (setNames: string[]): string => {
   return setNames
-    .map(name => name.toLowerCase().trim())
-    .map(name => name.replace(/\s+ons?$/i, '')) // Remove "on" or "ons" suffix
-    .map(name => name.replace(/^(bolt|screw).*/, '$1')) // Extract just "bolt" or "screw"
+    .map(name => {
+      const lowercaseName = name.toLowerCase().trim();
+      
+      // Handle homewall-specific set names
+      if (lowercaseName.includes('auxiliary') && lowercaseName.includes('kickboard')) {
+        return 'aux_kicker';
+      }
+      if (lowercaseName.includes('mainline') && lowercaseName.includes('kickboard')) {
+        return 'main_kicker';
+      }
+      if (lowercaseName.includes('auxiliary')) {
+        return 'aux';
+      }
+      if (lowercaseName.includes('mainline')) {
+        return 'main';
+      }
+      
+      // Handle original kilter/tension set names
+      return lowercaseName
+        .replace(/\s+ons?$/i, '') // Remove "on" or "ons" suffix
+        .replace(/^(bolt|screw).*/, '$1') // Extract just "bolt" or "screw"
+        .replace(/\s+/g, '_'); // Replace spaces with underscores
+    })
     .sort() // Ensure consistent ordering
     .join('-');
 };

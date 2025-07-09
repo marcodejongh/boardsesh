@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { fetchBoardDetails, fetchLayouts, fetchSizes } from '../rest-api/api';
 import { BoardDetails } from '@/app/lib/types';
 import BoardRenderer from '../board-renderer/board-renderer';
+import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
 
 const { Text } = Typography;
 
@@ -71,11 +72,31 @@ export default function BoardConfigPreview({ config, onDelete }: BoardConfigPrev
     loadBoardDetails();
   }, [config]);
 
-  const handleSelect = () => {
+  const handleSelect = async () => {
     // Navigate directly to the board using saved angle
     const setsString = config.setIds.join(',');
     const savedAngle = config.angle || 40;
-    router.push(`/${config.board}/${config.layoutId}/${config.sizeId}/${setsString}/${savedAngle}/list`);
+    
+    try {
+      // Try to use slug-based URL if board details are available
+      if (boardDetails?.layout_name && boardDetails?.size_name && boardDetails?.set_names) {
+        const slugUrl = constructClimbListWithSlugs(
+          boardDetails.board_name,
+          boardDetails.layout_name,
+          boardDetails.size_name,
+          boardDetails.set_names,
+          savedAngle
+        );
+        router.push(slugUrl);
+      } else {
+        // Fallback to old URL format
+        router.push(`/${config.board}/${config.layoutId}/${config.sizeId}/${setsString}/${savedAngle}/list`);
+      }
+    } catch (error) {
+      console.error('Error navigating to board:', error);
+      // Fallback to old URL format
+      router.push(`/${config.board}/${config.layoutId}/${config.sizeId}/${setsString}/${savedAngle}/list`);
+    }
   };
 
   const handleDelete = (e: React.MouseEvent) => {

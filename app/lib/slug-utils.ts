@@ -37,7 +37,7 @@ export const getLayoutBySlug = async (board_name: BoardName, slug: string): Prom
   `);
   
   const layout = rows.find(l => {
-    const layoutSlug = l.name
+    const baseSlug = l.name
       .toLowerCase()
       .trim()
       .replace(/^(kilter|tension|decoy)\s+board\s+/i, '') // Remove board name prefix
@@ -45,6 +45,19 @@ export const getLayoutBySlug = async (board_name: BoardName, slug: string): Prom
       .replace(/\s+/g, '-')
       .replace(/-+/g, '-')
       .replace(/^-|-$/g, '');
+    
+    let layoutSlug = baseSlug;
+    
+    // Handle Tension board specific cases
+    if (baseSlug === 'original-layout') {
+      layoutSlug = 'original';
+    }
+    
+    // Replace numbers with words for better readability
+    if (baseSlug.startsWith('2-')) {
+      layoutSlug = baseSlug.replace('2-', 'two-');
+    }
+    
     return layoutSlug === slug;
   });
   
@@ -100,9 +113,27 @@ export const getSetsBySlug = async (board_name: BoardName, layout_id: LayoutId, 
   // Parse the slug to get individual set names
   const slugParts = slug.split('-');
   const matchingSets = rows.filter(s => {
-    const setSlug = s.name.toLowerCase().trim()
+    const lowercaseName = s.name.toLowerCase().trim();
+    
+    // Handle homewall-specific set names
+    if (lowercaseName.includes('auxiliary') && lowercaseName.includes('kickboard') && slugParts.includes('aux_kicker')) {
+      return true;
+    }
+    if (lowercaseName.includes('mainline') && lowercaseName.includes('kickboard') && slugParts.includes('main_kicker')) {
+      return true;
+    }
+    if (lowercaseName.includes('auxiliary') && slugParts.includes('aux')) {
+      return true;
+    }
+    if (lowercaseName.includes('mainline') && slugParts.includes('main')) {
+      return true;
+    }
+    
+    // Handle original kilter/tension set names
+    const setSlug = lowercaseName
       .replace(/\s+ons?$/i, '') // Remove "on" or "ons" suffix
-      .replace(/^(bolt|screw).*/, '$1'); // Extract just "bolt" or "screw"
+      .replace(/^(bolt|screw).*/, '$1') // Extract just "bolt" or "screw"
+      .replace(/\s+/g, '_'); // Replace spaces with underscores
     return slugParts.includes(setSlug);
   });
   

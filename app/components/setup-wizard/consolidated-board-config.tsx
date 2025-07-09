@@ -6,11 +6,12 @@ import { InfoCircleOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import { openDB } from 'idb';
 import { SUPPORTED_BOARDS, ANGLES } from '@/app/lib/board-data';
-import { fetchLayouts, fetchSizes, fetchSets } from '../rest-api/api';
+import { fetchLayouts, fetchSizes, fetchSets, fetchBoardDetails } from '../rest-api/api';
 import { LayoutRow, SizeRow, SetRow } from '@/app/lib/data/queries';
 import { BoardName } from '@/app/lib/types';
 import BoardConfigPreview from './board-config-preview';
 import BoardConfigLivePreview from './board-config-live-preview';
+import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
 
 const { Option } = Select;
 const { Title, Text } = Typography;
@@ -176,7 +177,29 @@ const ConsolidatedBoardConfig = () => {
         // Redirect immediately if there's a default
         const setsString = defaultConfig.setIds.join(',');
         const savedAngle = defaultConfig.angle || 40;
-        router.push(`/${defaultConfig.board}/${defaultConfig.layoutId}/${defaultConfig.sizeId}/${setsString}/${savedAngle}/list`);
+        
+        try {
+          // Try to get board details for slug-based URL
+          const boardDetails = await fetchBoardDetails(defaultConfig.board, defaultConfig.layoutId, defaultConfig.sizeId, defaultConfig.setIds);
+          
+          if (boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names) {
+            const slugUrl = constructClimbListWithSlugs(
+              boardDetails.board_name,
+              boardDetails.layout_name,
+              boardDetails.size_name,
+              boardDetails.set_names,
+              savedAngle
+            );
+            router.push(slugUrl);
+          } else {
+            // Fallback to old URL format
+            router.push(`/${defaultConfig.board}/${defaultConfig.layoutId}/${defaultConfig.sizeId}/${setsString}/${savedAngle}/list`);
+          }
+        } catch (error) {
+          console.error('Error fetching board details for slug URL:', error);
+          // Fallback to old URL format
+          router.push(`/${defaultConfig.board}/${defaultConfig.layoutId}/${defaultConfig.sizeId}/${setsString}/${savedAngle}/list`);
+        }
       }
     };
     
@@ -340,7 +363,29 @@ const ConsolidatedBoardConfig = () => {
         setSavedConfigurations(updatedConfigs);
         
         const setsString = selectedSets.join(',');
-        router.push(`/${selectedBoard}/${selectedLayout}/${selectedSize}/${setsString}/${selectedAngle}/list`);
+        
+        try {
+          // Try to get board details for slug-based URL
+          const boardDetails = await fetchBoardDetails(selectedBoard!, selectedLayout!, selectedSize!, selectedSets);
+          
+          if (boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names) {
+            const slugUrl = constructClimbListWithSlugs(
+              boardDetails.board_name,
+              boardDetails.layout_name,
+              boardDetails.size_name,
+              boardDetails.set_names,
+              selectedAngle
+            );
+            router.push(slugUrl);
+          } else {
+            // Fallback to old URL format
+            router.push(`/${selectedBoard}/${selectedLayout}/${selectedSize}/${setsString}/${selectedAngle}/list`);
+          }
+        } catch (error) {
+          console.error('Error fetching board details for slug URL:', error);
+          // Fallback to old URL format
+          router.push(`/${selectedBoard}/${selectedLayout}/${selectedSize}/${setsString}/${selectedAngle}/list`);
+        }
       } catch (error) {
         console.error('Error starting climbing session:', error);
         setIsStartingClimbing(false);
