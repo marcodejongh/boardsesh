@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { notFound, redirect } from 'next/navigation';
+import { notFound, redirect, permanentRedirect } from 'next/navigation';
 import { BoardRouteParametersWithUuid, SearchRequestPagination } from '@/app/lib/types';
 import { parseBoardRouteParams, parsedRouteSearchParamsToSearchParams, parseBoardRouteParamsWithSlugs, constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import ClimbsList from '@/app/components/board-page/climbs-list';
@@ -43,7 +43,7 @@ export default async function DynamicResultsPage(
       const searchString = new URLSearchParams(searchParams as any).toString();
       const finalUrl = searchString ? `${newUrl}?${searchString}` : newUrl;
       
-      redirect(finalUrl);
+      permanentRedirect(finalUrl);
     }
   } else {
     // For new URLs, use the slug parsing function

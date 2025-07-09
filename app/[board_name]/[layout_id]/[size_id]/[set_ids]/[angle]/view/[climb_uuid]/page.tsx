@@ -1,5 +1,5 @@
 import React from 'react';
-import { notFound, redirect } from 'next/navigation';
+import { notFound, redirect, permanentRedirect } from 'next/navigation';
 import { BoardRouteParametersWithUuid } from '@/app/lib/types';
 import { fetchBoardDetails, fetchCurrentClimb } from '@/app/components/rest-api/api';
 import ClimbCard from '@/app/components/climb-card/climb-card';
@@ -99,7 +99,7 @@ export default async function DynamicResultsPage(props: { params: Promise<BoardR
           parsedParams.climb_uuid,
           currentClimb.name
         );
-        redirect(newUrl);
+        permanentRedirect(newUrl);
       }
     }
     // Fetch beta links server-side

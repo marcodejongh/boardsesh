@@ -9,7 +9,7 @@ import Row from 'antd/es/row';
 import { BoardRouteParametersWithUuid, ParsedBoardRouteParameters } from '@/app/lib/types';
 import { parseBoardRouteParams, parseBoardRouteParamsWithSlugs, constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { fetchBoardDetails } from '@/app/components/rest-api/api';
-import { redirect } from 'next/navigation';
+import { redirect, permanentRedirect } from 'next/navigation';
 
 interface LayoutProps {
   params: Promise<BoardRouteParametersWithUuid>;
@@ -47,7 +47,7 @@ export default async function ListLayout(props: PropsWithChildren<LayoutProps>) 
         parsedParams.angle
       );
       
-      redirect(newUrl);
+      permanentRedirect(newUrl);
     }
   } else {
     // For new URLs, use the slug parsing function

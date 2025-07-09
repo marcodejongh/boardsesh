@@ -253,10 +253,10 @@ export const generateSetSlug = (setNames: string[]): string => {
       
       // Handle homewall-specific set names
       if (lowercaseName.includes('auxiliary') && lowercaseName.includes('kickboard')) {
-        return 'aux_kicker';
+        return 'aux-kicker';
       }
       if (lowercaseName.includes('mainline') && lowercaseName.includes('kickboard')) {
-        return 'main_kicker';
+        return 'main-kicker';
       }
       if (lowercaseName.includes('auxiliary')) {
         return 'aux';
@@ -269,10 +269,10 @@ export const generateSetSlug = (setNames: string[]): string => {
       return lowercaseName
         .replace(/\s+ons?$/i, '') // Remove "on" or "ons" suffix
         .replace(/^(bolt|screw).*/, '$1') // Extract just "bolt" or "screw"
-        .replace(/\s+/g, '_'); // Replace spaces with underscores
+        .replace(/\s+/g, '-'); // Replace spaces with hyphens
     })
-    .sort() // Ensure consistent ordering
-    .join('-');
+    .sort((a, b) => b.localeCompare(a)) // Sort alphabetically descending
+    .join('_'); // Use underscore as delimiter between sets
 };
 
 export const extractUuidFromSlug = (slugOrUuid: string): string => {

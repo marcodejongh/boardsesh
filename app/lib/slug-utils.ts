@@ -111,15 +111,15 @@ export const getSetsBySlug = async (board_name: BoardName, layout_id: LayoutId, 
   );
   
   // Parse the slug to get individual set names
-  const slugParts = slug.split('-');
+  const slugParts = slug.split('_'); // Split by underscore now
   const matchingSets = rows.filter(s => {
     const lowercaseName = s.name.toLowerCase().trim();
     
     // Handle homewall-specific set names
-    if (lowercaseName.includes('auxiliary') && lowercaseName.includes('kickboard') && slugParts.includes('aux_kicker')) {
+    if (lowercaseName.includes('auxiliary') && lowercaseName.includes('kickboard') && slugParts.includes('aux-kicker')) {
       return true;
     }
-    if (lowercaseName.includes('mainline') && lowercaseName.includes('kickboard') && slugParts.includes('main_kicker')) {
+    if (lowercaseName.includes('mainline') && lowercaseName.includes('kickboard') && slugParts.includes('main-kicker')) {
       return true;
     }
     if (lowercaseName.includes('auxiliary') && slugParts.includes('aux')) {
@@ -133,7 +133,7 @@ export const getSetsBySlug = async (board_name: BoardName, layout_id: LayoutId, 
     const setSlug = lowercaseName
       .replace(/\s+ons?$/i, '') // Remove "on" or "ons" suffix
       .replace(/^(bolt|screw).*/, '$1') // Extract just "bolt" or "screw"
-      .replace(/\s+/g, '_'); // Replace spaces with underscores
+      .replace(/\s+/g, '-'); // Replace spaces with hyphens
     return slugParts.includes(setSlug);
   });
   
