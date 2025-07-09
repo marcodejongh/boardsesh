@@ -4,6 +4,7 @@ import { Col, Row, Space, Grid, Button, Dropdown, MenuProps } from 'antd';
 import { Header } from 'antd/es/layout/layout';
 import Title from 'antd/es/typography/Title';
 import { usePathname } from 'next/navigation';
+import Link from 'next/link';
 import SearchButton from '../search-drawer/search-button';
 import ClimbInfoButton from '../climb-info/climb-info-button';
 import SearchClimbNameInput from '../search-drawer/search-climb-name-input';
@@ -47,9 +48,11 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
       <Row justify="space-between" align="middle" style={{ width: '100%' }}>
         {/* Column for the "BS" logo (25% width) */}
         <Col xs={4} sm={4} md={4} lg={4} xl={4}>
-          <Title level={4} style={{ margin: 0, lineHeight: '1.2' }}>
-            BS
-          </Title>
+          <Link href="/">
+            <Title level={4} style={{ margin: 0, lineHeight: '1.2', cursor: 'pointer' }}>
+              BS
+            </Title>
+          </Link>
         </Col>
 
         <UISearchParamsProvider>
