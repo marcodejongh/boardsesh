@@ -3,9 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Typography, Tag, Space, Skeleton } from 'antd';
 import { StarFilled } from '@ant-design/icons';
-import { fetchBoardDetails, fetchLayouts, fetchSizes } from '../rest-api/api';
+import { fetchBoardDetails } from '../rest-api/api';
 import { BoardDetails, BoardName } from '@/app/lib/types';
 import BoardRenderer from '../board-renderer/board-renderer';
+import { BoardConfigData } from '@/app/lib/server-board-configs';
 
 const { Text } = Typography;
 
@@ -17,6 +18,7 @@ type BoardConfigLivePreviewProps = {
   angle: number;
   configName: string;
   useAsDefault: boolean;
+  boardConfigs: BoardConfigData;
 };
 
 export default function BoardConfigLivePreview({ 
@@ -26,7 +28,8 @@ export default function BoardConfigLivePreview({
   setIds, 
   angle, 
   configName,
-  useAsDefault 
+  useAsDefault,
+  boardConfigs 
 }: BoardConfigLivePreviewProps) {
   const [boardDetails, setBoardDetails] = useState<BoardDetails | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -45,19 +48,30 @@ export default function BoardConfigLivePreview({
       try {
         setIsLoading(true);
         
-        const [details, layouts, sizes] = await Promise.all([
-          fetchBoardDetails(boardName, layoutId, sizeId, setIds),
-          fetchLayouts(boardName),
-          fetchSizes(boardName, layoutId)
-        ]);
-        
-        setBoardDetails(details);
+        // Get data from boardConfigs prop
+        const layouts = boardConfigs.layouts[boardName] || [];
+        const sizes = boardConfigs.sizes[`${boardName}-${layoutId}`] || [];
+        const detailsKey = `${boardName}-${layoutId}-${sizeId}-${setIds.join(',')}`;
+        const cachedDetails = boardConfigs.details[detailsKey];
         
         const layout = layouts.find(l => l.id === layoutId);
         setLayoutName(layout?.name || `Layout ${layoutId}`);
         
         const size = sizes.find(s => s.id === sizeId);
         setSizeName(size?.name || `Size ${sizeId}`);
+        
+        // Use cached details if available, otherwise fetch
+        let details = cachedDetails;
+        if (!details) {
+          try {
+            details = await fetchBoardDetails(boardName, layoutId, sizeId, setIds);
+          } catch (error) {
+            console.error('Failed to fetch board details:', error);
+            details = null;
+          }
+        }
+        
+        setBoardDetails(details);
         
       } catch (error) {
         console.error('Failed to load preview:', error);
@@ -68,7 +82,7 @@ export default function BoardConfigLivePreview({
     };
 
     loadPreview();
-  }, [boardName, layoutId, sizeId, setIds]);
+  }, [boardName, layoutId, sizeId, setIds, boardConfigs]);
 
   if (!boardName || !layoutId || !sizeId || setIds.length === 0) {
     return (

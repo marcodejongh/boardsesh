@@ -4,10 +4,11 @@ import React, { useState, useEffect } from 'react';
 import { Card, Typography, Button, Tooltip, Tag, Space, Flex, Skeleton } from 'antd';
 import { DeleteOutlined, StarFilled } from '@ant-design/icons';
 import Link from 'next/link';
-import { fetchBoardDetails, fetchLayouts, fetchSizes } from '../rest-api/api';
-import { BoardDetails } from '@/app/lib/types';
+import { fetchBoardDetails } from '../rest-api/api';
+import { BoardDetails, BoardName } from '@/app/lib/types';
 import BoardRenderer from '../board-renderer/board-renderer';
 import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
+import { BoardConfigData } from '@/app/lib/server-board-configs';
 
 const { Text } = Typography;
 
@@ -26,9 +27,10 @@ type StoredBoardConfig = {
 type BoardConfigPreviewProps = {
   config: StoredBoardConfig;
   onDelete: (configName: string) => void;
+  boardConfigs: BoardConfigData;
 };
 
-export default function BoardConfigPreview({ config, onDelete }: BoardConfigPreviewProps) {
+export default function BoardConfigPreview({ config, onDelete, boardConfigs }: BoardConfigPreviewProps) {
   const [boardDetails, setBoardDetails] = useState<BoardDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [layoutName, setLayoutName] = useState<string>('');
@@ -40,19 +42,11 @@ export default function BoardConfigPreview({ config, onDelete }: BoardConfigPrev
       try {
         setIsLoading(true);
         
-        // Load board details, layout name, and size name in parallel
-        const [details, layouts, sizes] = await Promise.all([
-          fetchBoardDetails(
-            config.board as any,
-            config.layoutId,
-            config.sizeId,
-            config.setIds
-          ),
-          fetchLayouts(config.board as any),
-          fetchSizes(config.board as any, config.layoutId)
-        ]);
-        
-        setBoardDetails(details);
+        // Get data from boardConfigs prop
+        const layouts = boardConfigs.layouts[config.board as BoardName] || [];
+        const sizes = boardConfigs.sizes[`${config.board}-${config.layoutId}`] || [];
+        const detailsKey = `${config.board}-${config.layoutId}-${config.sizeId}-${config.setIds.join(',')}`;
+        const cachedDetails = boardConfigs.details[detailsKey];
         
         // Find layout name
         const layout = layouts.find(l => l.id === config.layoutId);
@@ -65,6 +59,24 @@ export default function BoardConfigPreview({ config, onDelete }: BoardConfigPrev
         // Generate the URL
         const savedAngle = config.angle || 40;
         let url: string;
+        
+        // Try to get board details (from cache or fetch)
+        let details = cachedDetails;
+        if (!details) {
+          try {
+            details = await fetchBoardDetails(
+              config.board as any,
+              config.layoutId,
+              config.sizeId,
+              config.setIds
+            );
+            setBoardDetails(details);
+          } catch (error) {
+            console.error('Failed to fetch board details:', error);
+          }
+        } else {
+          setBoardDetails(details);
+        }
         
         try {
           // Try to use slug-based URL if board details are available
@@ -102,7 +114,7 @@ export default function BoardConfigPreview({ config, onDelete }: BoardConfigPrev
     };
 
     loadBoardDetails();
-  }, [config]);
+  }, [config, boardConfigs]);
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
