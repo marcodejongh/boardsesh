@@ -36,7 +36,7 @@ const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl, angle }: ClimbVie
         
         // Check if document.referrer exists and is from the same origin
         const referrer = document.referrer;
-        const isSameOrigin = referrer && (
+        const isSameOrigin = referrer !== '' && (
           referrer.startsWith(window.location.origin) || 
           referrer.includes('boardsesh.com')
         );
