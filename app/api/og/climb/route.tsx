@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            background: '#1a1a1a',
+            background: '#ffffff',
             padding: '20px',
             position: 'relative',
           }}
@@ -125,7 +125,7 @@ export async function GET(request: NextRequest) {
               />
             ))}
             
-            {/* SVG overlay for holds */}
+            {/* SVG overlay for holds matching BoardLitupHolds exactly */}
             <svg
               viewBox={`0 0 ${boardWidth} ${boardHeight}`}
               preserveAspectRatio="xMidYMid meet"
@@ -137,18 +137,17 @@ export async function GET(request: NextRequest) {
                 height: '100%',
               }}
             >
-              {/* Render holds - matching BoardLitupHolds logic */}
+              {/* Render holds matching BoardLitupHolds logic exactly */}
               {holdsData.map((hold: HoldRenderData) => {
-                const holdInfo = firstFrameHolds[hold.id];
-                const isLitUp = holdInfo?.state && holdInfo.state !== 'OFF';
+                const isLitUp = litUpHoldsMap[0]?.[hold.id]?.state && litUpHoldsMap[0][hold.id].state !== 'OFF';
                 if (!isLitUp) return null;
                 
-                const color = holdInfo.displayColor || holdInfo.color;
+                const color = litUpHoldsMap[0][hold.id].color;
                 
                 // Handle mirroring like BoardLitupHolds
                 let renderHold = hold;
                 if (currentClimb?.mirrored && hold.mirroredHoldId) {
-                  const mirroredHold = holdsData.find(h => h.id === hold.mirroredHoldId);
+                  const mirroredHold = holdsData.find(({ id }) => id === hold.mirroredHoldId);
                   if (mirroredHold) {
                     renderHold = mirroredHold;
                   }
@@ -156,14 +155,16 @@ export async function GET(request: NextRequest) {
                 
                 return (
                   <circle
-                    key={hold.id}
+                    key={renderHold.id}
+                    id={`hold-${renderHold.id}`}
+                    data-mirror-id={renderHold.mirroredHoldId || undefined}
                     cx={renderHold.cx}
                     cy={renderHold.cy}
                     r={renderHold.r}
                     stroke={color}
-                    strokeWidth={8}
-                    fillOpacity={0.7}
-                    fill={color}
+                    strokeWidth={6}
+                    fillOpacity={0}
+                    fill={undefined}
                   />
                 );
               })}
