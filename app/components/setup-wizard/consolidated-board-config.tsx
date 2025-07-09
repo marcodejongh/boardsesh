@@ -6,12 +6,14 @@ import { InfoCircleOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import { openDB } from 'idb';
 import { SUPPORTED_BOARDS, ANGLES } from '@/app/lib/board-data';
-import { fetchLayouts, fetchSizes, fetchSets, fetchBoardDetails } from '../rest-api/api';
+import { fetchBoardDetails } from '../rest-api/api';
 import { LayoutRow, SizeRow, SetRow } from '@/app/lib/data/queries';
 import { BoardName } from '@/app/lib/types';
 import BoardConfigPreview from './board-config-preview';
 import BoardConfigLivePreview from './board-config-live-preview';
+import StartClimbingButton from './start-climbing-button';
 import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
+import { BoardConfigData } from '@/app/lib/server-board-configs';
 
 const { Option } = Select;
 const { Title, Text } = Typography;
@@ -34,7 +36,11 @@ type StoredBoardConfig = {
   lastUsed?: string;
 };
 
-const ConsolidatedBoardConfig = () => {
+type ConsolidatedBoardConfigProps = {
+  boardConfigs: BoardConfigData;
+};
+
+const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps) => {
   const router = useRouter();
   
   // Selection states
@@ -45,15 +51,10 @@ const ConsolidatedBoardConfig = () => {
   const [selectedSets, setSelectedSets] = useState<number[]>([]);
   const [selectedAngle, setSelectedAngle] = useState<number>(40);
   
-  // Data states
-  const [layouts, setLayouts] = useState<LayoutRow[]>([]);
-  const [sizes, setSizes] = useState<SizeRow[]>([]);
-  const [sets, setSets] = useState<SetRow[]>([]);
-  
-  // Loading states
-  const [isLoadingLayouts, setIsLoadingLayouts] = useState(false);
-  const [isLoadingSizes, setIsLoadingSizes] = useState(false);
-  const [isLoadingSets, setIsLoadingSets] = useState(false);
+  // Data states - no longer needed as we get them from props
+  const layouts = selectedBoard ? boardConfigs.layouts[selectedBoard] || [] : [];
+  const sizes = selectedBoard && selectedLayout ? boardConfigs.sizes[`${selectedBoard}-${selectedLayout}`] || [] : [];
+  const sets = selectedBoard && selectedLayout && selectedSize ? boardConfigs.sets[`${selectedBoard}-${selectedLayout}-${selectedSize}`] || [] : [];
   
   // Login states - for now just skip login on setup page
   const [showLoginSection, setShowLoginSection] = useState(false);
@@ -131,30 +132,56 @@ const ConsolidatedBoardConfig = () => {
   };
 
   // Generate suggested name based on current selections
-  const generateSuggestedName = useCallback(async () => {
+  const generateSuggestedName = useCallback(() => {
     if (!selectedBoard || !selectedLayout || !selectedSize) {
       setSuggestedName('');
       return;
     }
 
-    try {
-      const [layoutsData, sizesData] = await Promise.all([
-        fetchLayouts(selectedBoard),
-        fetchSizes(selectedBoard, selectedLayout)
-      ]);
-      
-      const layout = layoutsData.find(l => l.id === selectedLayout);
-      const size = sizesData.find(s => s.id === selectedSize);
-      
-      const layoutName = layout?.name || `Layout ${selectedLayout}`;
-      const sizeName = size?.name || `Size ${selectedSize}`;
-      
-      setSuggestedName(`${layoutName} ${sizeName}`);
-    } catch (error) {
-      console.error('Failed to generate suggested name:', error);
-      setSuggestedName(`${selectedBoard} Configuration`);
+    const layout = layouts.find(l => l.id === selectedLayout);
+    const size = sizes.find(s => s.id === selectedSize);
+    
+    const layoutName = layout?.name || `Layout ${selectedLayout}`;
+    const sizeName = size?.name || `Size ${selectedSize}`;
+    
+    setSuggestedName(`${layoutName} ${sizeName}`);
+  }, [selectedBoard, selectedLayout, selectedSize, layouts, sizes]);
+
+  // Generate climbing URL from current form selections
+  const getClimbingUrl = useCallback(async () => {
+    if (!selectedBoard || !selectedLayout || !selectedSize || selectedSets.length === 0) {
+      return null;
     }
-  }, [selectedBoard, selectedLayout, selectedSize]);
+
+    const setsString = selectedSets.join(',');
+    
+    try {
+      // Try to get board details for slug-based URL from cache first
+      const detailsKey = `${selectedBoard}-${selectedLayout}-${selectedSize}-${setsString}`;
+      let boardDetails = boardConfigs.details[detailsKey];
+      
+      if (!boardDetails) {
+        boardDetails = await fetchBoardDetails(selectedBoard, selectedLayout, selectedSize, selectedSets);
+      }
+      
+      if (boardDetails?.layout_name && boardDetails?.size_name && boardDetails?.set_names) {
+        return constructClimbListWithSlugs(
+          boardDetails.board_name,
+          boardDetails.layout_name,
+          boardDetails.size_name,
+          boardDetails.set_names,
+          selectedAngle
+        );
+      } else {
+        // Fallback to old URL format
+        return `/${selectedBoard}/${selectedLayout}/${selectedSize}/${setsString}/${selectedAngle}/list`;
+      }
+    } catch (error) {
+      console.error('Error constructing climbing URL:', error);
+      // Fallback to old URL format
+      return `/${selectedBoard}/${selectedLayout}/${selectedSize}/${setsString}/${selectedAngle}/list`;
+    }
+  }, [selectedBoard, selectedLayout, selectedSize, selectedSets, selectedAngle, boardConfigs]);
 
   // Load configurations on mount
   useEffect(() => {
@@ -179,8 +206,13 @@ const ConsolidatedBoardConfig = () => {
         const savedAngle = defaultConfig.angle || 40;
         
         try {
-          // Try to get board details for slug-based URL
-          const boardDetails = await fetchBoardDetails(defaultConfig.board, defaultConfig.layoutId, defaultConfig.sizeId, defaultConfig.setIds);
+          // Try to get board details for slug-based URL from cache first
+          const detailsKey = `${defaultConfig.board}-${defaultConfig.layoutId}-${defaultConfig.sizeId}-${defaultConfig.setIds.join(',')}`;
+          let boardDetails = boardConfigs.details[detailsKey];
+          
+          if (!boardDetails) {
+            boardDetails = await fetchBoardDetails(defaultConfig.board, defaultConfig.layoutId, defaultConfig.sizeId, defaultConfig.setIds);
+          }
           
           if (boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names) {
             const slugUrl = constructClimbListWithSlugs(
@@ -204,77 +236,29 @@ const ConsolidatedBoardConfig = () => {
     };
     
     loadConfigurations();
-  }, [router]);
+  }, [router, boardConfigs]);
 
-  // Load layouts when board changes
+  // Reset dependent selections when parent changes
   useEffect(() => {
     if (!selectedBoard) {
-      setLayouts([]);
       setSelectedLayout(undefined);
       setSelectedSize(undefined);
       setSelectedSets([]);
       return;
     }
-
-    const loadLayouts = async () => {
-      setIsLoadingLayouts(true);
-      try {
-        const layoutData = await fetchLayouts(selectedBoard);
-        setLayouts(layoutData);
-      } catch (error) {
-        console.error('Failed to load layouts:', error);
-        setLayouts([]);
-      } finally {
-        setIsLoadingLayouts(false);
-      }
-    };
-    
-    loadLayouts();
     setSelectedLayout(undefined);
     setSelectedSize(undefined);
     setSelectedSets([]);
   }, [selectedBoard]);
 
-  // Load sizes when layout changes
   useEffect(() => {
     if (!selectedBoard || !selectedLayout) return;
-    
-    const loadSizes = async () => {
-      setIsLoadingSizes(true);
-      try {
-        const sizeData = await fetchSizes(selectedBoard, selectedLayout);
-        setSizes(sizeData);
-      } catch (error) {
-        console.error('Failed to load sizes:', error);
-        setSizes([]);
-      } finally {
-        setIsLoadingSizes(false);
-      }
-    };
-    
-    loadSizes();
     setSelectedSize(undefined);
     setSelectedSets([]);
   }, [selectedBoard, selectedLayout]);
 
-  // Load sets when size changes
   useEffect(() => {
     if (!selectedBoard || !selectedLayout || !selectedSize) return;
-    
-    const loadSets = async () => {
-      setIsLoadingSets(true);
-      try {
-        const setData = await fetchSets(selectedBoard, selectedLayout, selectedSize);
-        setSets(setData);
-      } catch (error) {
-        console.error('Failed to load sets:', error);
-        setSets([]);
-      } finally {
-        setIsLoadingSets(false);
-      }
-    };
-    
-    loadSets();
     setSelectedSets([]);
   }, [selectedBoard, selectedLayout, selectedSize]);
 
@@ -324,24 +308,13 @@ const ConsolidatedBoardConfig = () => {
         // Generate default name if none provided
         let configurationName = configName.trim();
         if (!configurationName) {
-          // Get layout and size names for default name
-          try {
-            const [layoutsData, sizesData] = await Promise.all([
-              fetchLayouts(selectedBoard),
-              fetchSizes(selectedBoard, selectedLayout)
-            ]);
-            
-            const layout = layoutsData.find(l => l.id === selectedLayout);
-            const size = sizesData.find(s => s.id === selectedSize);
-            
-            const layoutName = layout?.name || `Layout ${selectedLayout}`;
-            const sizeName = size?.name || `Size ${selectedSize}`;
-            
-            configurationName = `${layoutName} ${sizeName}`;
-          } catch (error) {
-            console.error('Failed to generate default name:', error);
-            configurationName = `${selectedBoard} Configuration`;
-          }
+          const layout = layouts.find(l => l.id === selectedLayout);
+          const size = sizes.find(s => s.id === selectedSize);
+          
+          const layoutName = layout?.name || `Layout ${selectedLayout}`;
+          const sizeName = size?.name || `Size ${selectedSize}`;
+          
+          configurationName = `${layoutName} ${sizeName}`;
         }
         
         // Always save configuration with either user-provided or generated name
@@ -422,6 +395,7 @@ const ConsolidatedBoardConfig = () => {
                           key={config.name}
                           config={config}
                           onDelete={deleteConfiguration}
+                          boardConfigs={boardConfigs}
                         />
                       ))}
                     </Flex>
@@ -462,7 +436,6 @@ const ConsolidatedBoardConfig = () => {
                   <Select 
                     value={selectedLayout} 
                     onChange={handleLayoutChange}
-                    loading={isLoadingLayouts}
                     placeholder="Select layout"
                     disabled={!selectedBoard}
                   >
@@ -480,7 +453,6 @@ const ConsolidatedBoardConfig = () => {
                   <Select 
                     value={selectedSize} 
                     onChange={handleSizeChange}
-                    loading={isLoadingSizes}
                     placeholder="Select size"
                     disabled={!selectedLayout}
                   >
@@ -499,7 +471,6 @@ const ConsolidatedBoardConfig = () => {
                     mode="multiple"
                     value={selectedSets} 
                     onChange={handleSetsChange}
-                    loading={isLoadingSets}
                     placeholder="Select hold sets"
                     disabled={!selectedSize}
                   >
@@ -591,6 +562,7 @@ const ConsolidatedBoardConfig = () => {
                         angle={selectedAngle}
                         configName={configName || suggestedName || 'New Configuration'}
                         useAsDefault={useAsDefault}
+                        boardConfigs={boardConfigs}
                       />
                     </Flex>
                   ),

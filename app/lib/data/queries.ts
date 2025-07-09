@@ -285,3 +285,160 @@ export const getSets = async (board_name: BoardName, layout_id: LayoutId, size_i
   return layouts;
 };
 
+export type BoardSelectorOptions = {
+  layouts: Record<BoardName, LayoutRow[]>;
+  sizes: Record<string, SizeRow[]>;
+  sets: Record<string, SetRow[]>;
+};
+
+export const getAllBoardSelectorOptions = async (): Promise<BoardSelectorOptions> => {
+  // Single query to get all layouts, sizes, and sets for all boards
+  const query = `
+    WITH board_data AS (
+      SELECT 
+        $1::text as board_name,
+        'layouts' as type,
+        layouts.id::text as parent_id,
+        null::text as grandparent_id,
+        layouts.id,
+        layouts.name,
+        null::text as description
+      FROM ${getTableName('kilter', 'layouts')} layouts
+      WHERE layouts.is_listed = true AND layouts.password IS NULL
+      
+      UNION ALL
+      
+      SELECT 
+        $1::text as board_name,
+        'sizes' as type,
+        layouts.id::text as parent_id,
+        null::text as grandparent_id,
+        sizes.id,
+        sizes.name,
+        sizes.description
+      FROM ${getTableName('kilter', 'product_sizes')} sizes
+      INNER JOIN ${getTableName('kilter', 'layouts')} layouts ON sizes.product_id = layouts.product_id
+      WHERE layouts.is_listed = true AND layouts.password IS NULL
+      
+      UNION ALL
+      
+      SELECT 
+        $1::text as board_name,
+        'sets' as type,
+        psls.product_size_id::text as parent_id,
+        psls.layout_id::text as grandparent_id,
+        sets.id,
+        sets.name,
+        null::text as description
+      FROM ${getTableName('kilter', 'sets')} sets
+      INNER JOIN ${getTableName('kilter', 'product_sizes_layouts_sets')} psls 
+        ON psls.set_id = sets.id
+      INNER JOIN ${getTableName('kilter', 'layouts')} layouts ON psls.layout_id = layouts.id
+      WHERE layouts.is_listed = true AND layouts.password IS NULL
+      
+      UNION ALL
+      
+      SELECT 
+        $2::text as board_name,
+        'layouts' as type,
+        layouts.id::text as parent_id,
+        null::text as grandparent_id,
+        layouts.id,
+        layouts.name,
+        null::text as description
+      FROM ${getTableName('tension', 'layouts')} layouts
+      WHERE layouts.is_listed = true AND layouts.password IS NULL
+      
+      UNION ALL
+      
+      SELECT 
+        $2::text as board_name,
+        'sizes' as type,
+        layouts.id::text as parent_id,
+        null::text as grandparent_id,
+        sizes.id,
+        sizes.name,
+        sizes.description
+      FROM ${getTableName('tension', 'product_sizes')} sizes
+      INNER JOIN ${getTableName('tension', 'layouts')} layouts ON sizes.product_id = layouts.product_id
+      WHERE layouts.is_listed = true AND layouts.password IS NULL
+      
+      UNION ALL
+      
+      SELECT 
+        $2::text as board_name,
+        'sets' as type,
+        psls.product_size_id::text as parent_id,
+        psls.layout_id::text as grandparent_id,
+        sets.id,
+        sets.name,
+        null::text as description
+      FROM ${getTableName('tension', 'sets')} sets
+      INNER JOIN ${getTableName('tension', 'product_sizes_layouts_sets')} psls 
+        ON psls.set_id = sets.id
+      INNER JOIN ${getTableName('tension', 'layouts')} layouts ON psls.layout_id = layouts.id
+      WHERE layouts.is_listed = true AND layouts.password IS NULL
+    )
+    SELECT 
+      board_name,
+      type,
+      parent_id,
+      grandparent_id,
+      id,
+      name,
+      description
+    FROM board_data
+    ORDER BY board_name, type, parent_id, grandparent_id, name;
+  `;
+
+  const { rows } = await sql.query<{
+    board_name: BoardName;
+    type: 'layouts' | 'sizes' | 'sets';
+    parent_id: string | null;
+    grandparent_id: string | null;
+    id: number;
+    name: string;
+    description: string | null;
+  }>(query, ['kilter', 'tension']);
+
+  const result: BoardSelectorOptions = {
+    layouts: {} as Record<BoardName, LayoutRow[]>,
+    sizes: {},
+    sets: {}
+  };
+
+  // Process the results
+  for (const row of rows) {
+    if (row.type === 'layouts') {
+      if (!result.layouts[row.board_name]) {
+        result.layouts[row.board_name] = [];
+      }
+      result.layouts[row.board_name].push({
+        id: row.id,
+        name: row.name
+      });
+    } else if (row.type === 'sizes') {
+      const key = `${row.board_name}-${row.parent_id}`;
+      if (!result.sizes[key]) {
+        result.sizes[key] = [];
+      }
+      result.sizes[key].push({
+        id: row.id,
+        name: row.name,
+        description: row.description || ''
+      });
+    } else if (row.type === 'sets') {
+      const key = `${row.board_name}-${row.grandparent_id}-${row.parent_id}`;
+      if (!result.sets[key]) {
+        result.sets[key] = [];
+      }
+      result.sets[key].push({
+        id: row.id,
+        name: row.name
+      });
+    }
+  }
+
+  return result;
+};
+
