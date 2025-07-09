@@ -147,13 +147,13 @@ export const getClimb = async (params: ParsedBoardRouteParametersWithUuid): Prom
     await sql.query({
       text: `
         SELECT climbs.uuid, climbs.setter_username, climbs.name, climbs.description,
-        climbs.frames, climb_stats.angle, climb_stats.ascensionist_count,
+        climbs.frames, COALESCE(climb_stats.angle, $5) as angle, COALESCE(climb_stats.ascensionist_count, 0) as ascensionist_count,
         dg.boulder_name as difficulty,
         ROUND(climb_stats.quality_average::numeric, 2) as quality_average,
         ROUND(climb_stats.difficulty_average::numeric - climb_stats.display_difficulty::numeric, 2) AS difficulty_error,
         climb_stats.benchmark_difficulty
         FROM ${getTableName(params.board_name, 'climbs')} climbs
-        LEFT JOIN ${getTableName(params.board_name, 'climb_stats')} climb_stats ON climb_stats.climb_uuid = climbs.uuid
+        LEFT JOIN ${getTableName(params.board_name, 'climb_stats')} climb_stats ON climb_stats.climb_uuid = climbs.uuid AND climb_stats.angle = $5
         LEFT JOIN ${getTableName(
           params.board_name,
           'difficulty_grades',
@@ -162,7 +162,6 @@ export const getClimb = async (params: ParsedBoardRouteParametersWithUuid): Prom
         WHERE climbs.layout_id = $2
         AND product_sizes.id = $3
         AND climbs.uuid = $4
-        AND climb_stats.angle = $5
         AND climbs.frames_count = 1
         limit 1
       `,
