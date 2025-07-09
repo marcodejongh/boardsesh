@@ -210,6 +210,15 @@ export async function GET(request: NextRequest) {
             >
               {currentClimb?.name || 'Untitled Climb'}
             </h1>
+            <h2 style={{
+                fontSize: '36px',
+                fontWeight: 'bold',
+                alignItems: 'center',
+                margin: 0,
+                lineHeight: 1.2,
+              }}>
+              @{angle}°
+            </h2>
             <div
               style={{
                 display: 'flex',
@@ -221,11 +230,11 @@ export async function GET(request: NextRequest) {
             >
               <div style={{ display: 'flex' }}>
                 <span style={{ fontWeight: '600' }}>Grade:</span>
-                <span style={{ marginLeft: '12px' }}>{currentClimb?.grade || 'Unknown'}</span>
+                <span style={{ marginLeft: '12px' }}>{currentClimb?.difficulty || 'Unknown'}</span>
               </div>
               <div style={{ display: 'flex' }}>
                 <span style={{ fontWeight: '600' }}>Setter:</span>
-                <span style={{ marginLeft: '12px' }}>{currentClimb?.setter_name || 'Unknown'}</span>
+                <span style={{ marginLeft: '12px' }}>{currentClimb?.setter_username || 'Unknown'}</span>
               </div>
               <div style={{ display: 'flex' }}>
                 <span style={{ fontWeight: '600' }}>Board:</span>
