@@ -62,7 +62,14 @@ export async function GET(request: NextRequest) {
     console.log('Climb frames:', currentClimb?.frames);
 
     // Process climb holds
-    const litUpHoldsMap = convertLitUpHoldsStringToMap(currentClimb.frames, parsedParams.board_name as any);
+    const framesData = convertLitUpHoldsStringToMap(currentClimb.frames, parsedParams.board_name as any);
+    
+    // Extract the first frame's data - this should be indexed by hold ID
+    // If framesData is an array indexed by frame number, get the first frame
+    // Otherwise, it's already indexed by hold ID
+    const litUpHoldsMap = Array.isArray(framesData) || (framesData[0] !== undefined) 
+      ? framesData[0] 
+      : framesData;
 
     console.log('Lit up holds map:', litUpHoldsMap);
 
@@ -70,12 +77,12 @@ export async function GET(request: NextRequest) {
     const boardWidth = boardDetails.boardWidth || 1000;
     const boardHeight = boardDetails.boardHeight || 1000;
     const holdsData = boardDetails.holdsData || [];
-    const firstFrameHolds = litUpHoldsMap[0] || {};
     
-    // Get the first board image URL (matches BoardRenderer logic)
-    const firstImageUrl = Object.keys(boardDetails.images_to_holds)[0];
-    const relativeImageUrl = firstImageUrl ? getImageUrl(firstImageUrl, boardDetails.board_name) : null;
-    const boardImageUrl = relativeImageUrl ? `${process.env.BASE_URL || 'http://localhost:3000'}${relativeImageUrl}` : null;
+    // Get all board image URLs (matches BoardRenderer logic)
+    const imageUrls = Object.keys(boardDetails.images_to_holds).map(imageUrl => {
+      const relativeUrl = getImageUrl(imageUrl, boardDetails.board_name);
+      return `${process.env.BASE_URL || 'http://localhost:3000'}${relativeUrl}`;
+    });
 
     return new ImageResponse(
       (
@@ -86,49 +93,148 @@ export async function GET(request: NextRequest) {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            background: '#1a1a1a',
-            padding: '20px',
+            background: '#ffffff',
+            padding: '40px',
+            gap: '40px',
           }}
         >
-          <svg
-            viewBox={`0 0 ${boardWidth} ${boardHeight}`}
-            width="600"
-            height="600"
+          {/* Board container */}
+          <div
             style={{
-              background: '#333',
+              position: 'relative',
+              width: '600px',
+              height: '600px',
               borderRadius: '8px',
+              overflow: 'hidden',
+              display: 'flex',
+              flexShrink: 0,
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: '#f5f5f5',
             }}
           >
-            {/* Board background - just a solid color for now */}
-            <rect
-              x="0"
-              y="0"
-              width={boardWidth}
-              height={boardHeight}
-              fill="#2a2a2a"
-            />
-            
-            {/* Render holds */}
-            {holdsData.map((hold: HoldRenderData) => {
-              const holdInfo = firstFrameHolds[hold.id];
-              if (!holdInfo) return null;
-              
-              const holdColor = holdInfo.displayColor || holdInfo.color;
-              const cx = currentClimb?.mirrored ? boardWidth - hold.cx : hold.cx;
-              
-              return (
-                <circle
-                  key={hold.id}
-                  cx={cx}
-                  cy={hold.cy}
-                  r={Math.max(hold.r, 8)} // Ensure holds are visible
-                  fill={holdColor}
-                  stroke="#fff"
-                  strokeWidth="3"
+            {/* Inner container with exact board dimensions */}
+            <div
+              style={{
+                position: 'relative',
+                width: `${(600 * boardWidth) / Math.max(boardWidth, boardHeight)}px`,
+                height: `${(600 * boardHeight) / Math.max(boardWidth, boardHeight)}px`,
+                display: 'flex',
+              }}
+            >
+              {/* Board background images - render all layers */}
+              {imageUrls.map((imageUrl, index) => (
+                <img
+                  key={index}
+                  src={imageUrl}
+                  alt={`Board layer ${index}`}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'fill',
+                  }}
                 />
-              );
-            })}
-          </svg>
+              ))}
+              
+              {/* SVG overlay for holds matching BoardLitupHolds exactly */}
+              <svg
+                viewBox={`0 0 ${boardWidth} ${boardHeight}`}
+                preserveAspectRatio="none"
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                }}
+              >
+                {/* Render holds matching BoardLitupHolds logic exactly */}
+                {holdsData.map((hold: HoldRenderData) => {
+                  // Check if this specific hold is lit up by its ID (not by frame index)
+                  const holdData = litUpHoldsMap[hold.id];
+                  const isLitUp = holdData?.state && holdData.state !== 'OFF';
+                  
+                  if (!isLitUp) return null;
+                  
+                  const color = holdData.color;
+                  
+                  // Handle mirroring like BoardLitupHolds
+                  let renderHold = hold;
+                  if (currentClimb?.mirrored && hold.mirroredHoldId) {
+                    const mirroredHold = holdsData.find(({ id }) => id === hold.mirroredHoldId);
+                    if (mirroredHold) {
+                      renderHold = mirroredHold;
+                    }
+                  }
+                  
+                  return (
+                    <circle
+                      key={renderHold.id}
+                      id={`hold-${renderHold.id}`}
+                      data-mirror-id={renderHold.mirroredHoldId || undefined}
+                      cx={renderHold.cx}
+                      cy={renderHold.cy}
+                      r={renderHold.r}
+                      stroke={color}
+                      strokeWidth={6}
+                      fillOpacity={0}
+                      fill="transparent"
+                    />
+                  );
+                })}
+              </svg>
+            </div>
+          </div>
+          
+          {/* Climb info text */}
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              gap: '20px',
+              color: '#333',
+              maxWidth: '400px',
+            }}
+          >
+            <h1
+              style={{
+                fontSize: '48px',
+                fontWeight: 'bold',
+                margin: 0,
+                lineHeight: 1.2,
+              }}
+            >
+              {currentClimb?.name || 'Untitled Climb'}
+            </h1>
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+                fontSize: '24px',
+                color: '#666',
+              }}
+            >
+              <div style={{ display: 'flex' }}>
+                <span style={{ fontWeight: '600' }}>Grade:</span>
+                <span style={{ marginLeft: '12px' }}>{currentClimb?.grade || 'Unknown'}</span>
+              </div>
+              <div style={{ display: 'flex' }}>
+                <span style={{ fontWeight: '600' }}>Setter:</span>
+                <span style={{ marginLeft: '12px' }}>{currentClimb?.setter_name || 'Unknown'}</span>
+              </div>
+              <div style={{ display: 'flex' }}>
+                <span style={{ fontWeight: '600' }}>Board:</span>
+                <span style={{ marginLeft: '12px', textTransform: 'capitalize' }}>
+                  {board_name} • {angle}°
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
       ),
       {
