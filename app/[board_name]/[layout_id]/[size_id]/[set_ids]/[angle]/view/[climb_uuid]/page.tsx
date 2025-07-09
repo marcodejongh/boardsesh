@@ -1,12 +1,12 @@
 import React from 'react';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { BoardRouteParametersWithUuid } from '@/app/lib/types';
 import { parseBoardRouteParams } from '@/app/lib/url-utils';
 import { fetchBoardDetails, fetchCurrentClimb } from '@/app/components/rest-api/api';
 import ClimbCard from '@/app/components/climb-card/climb-card';
 import { Col, Row } from 'antd';
 import BetaVideos from '@/app/components/beta-videos/beta-videos';
-import { constructClimbInfoUrl } from '@/app/lib/url-utils';
+import { constructClimbInfoUrl, extractUuidFromSlug, constructClimbViewUrl, isUuidOnly } from '@/app/lib/url-utils';
 import ClimbViewActions from '@/app/components/climb-view/climb-view-actions';
 import { Metadata } from 'next';
 import { dbz } from '@/app/lib/db/db';
@@ -16,7 +16,10 @@ import { BetaLink } from '@/app/lib/api-wrappers/sync-api-types';
 
 export async function generateMetadata(props: { params: Promise<BoardRouteParametersWithUuid> }): Promise<Metadata> {
   const params = await props.params;
-  const parsedParams = parseBoardRouteParams(params);
+  const parsedParams = parseBoardRouteParams({
+    ...params,
+    climb_uuid: extractUuidFromSlug(params.climb_uuid)
+  });
   
   try {
     const [boardDetails, currentClimb] = await Promise.all([
@@ -36,7 +39,7 @@ export async function generateMetadata(props: { params: Promise<BoardRouteParame
         title: `${climbName} - ${climbGrade}`,
         description,
         type: 'website',
-        url: `/${parsedParams.board_name}/${parsedParams.layout_id}/${parsedParams.size_id}/${parsedParams.set_ids}/${parsedParams.angle}/view/${parsedParams.climb_uuid}`,
+        url: constructClimbViewUrl(parsedParams, parsedParams.climb_uuid, climbName),
       },
       twitter: {
         card: 'summary',
@@ -54,9 +57,21 @@ export async function generateMetadata(props: { params: Promise<BoardRouteParame
 
 export default async function DynamicResultsPage(props: { params: Promise<BoardRouteParametersWithUuid> }) {
   const params = await props.params;
-  const parsedParams = parseBoardRouteParams(params);
+  const parsedParams = parseBoardRouteParams({
+    ...params,
+    climb_uuid: extractUuidFromSlug(params.climb_uuid)
+  });
 
   try {
+    if (isUuidOnly(params.climb_uuid)) {
+      const [boardDetails, currentClimb] = await Promise.all([
+        fetchBoardDetails(parsedParams.board_name, parsedParams.layout_id, parsedParams.size_id, parsedParams.set_ids),
+        fetchCurrentClimb(parsedParams),
+      ]);
+      
+      const newUrl = constructClimbViewUrl(parsedParams, parsedParams.climb_uuid, currentClimb.name);
+      redirect(newUrl);
+    }
     // Fetch beta links server-side
     const fetchBetaLinks = async (): Promise<BetaLink[]> => {
       try {

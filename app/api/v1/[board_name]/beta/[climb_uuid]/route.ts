@@ -3,12 +3,14 @@ import { dbz } from '@/app/lib/db/db';
 import { kilterBetaLinks, tensionBetaLinks } from '@/app/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { BoardName } from '@/app/lib/types';
+import { extractUuidFromSlug } from '@/app/lib/url-utils';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ board_name: BoardName; climb_uuid: string }> }
 ) {
-  const { board_name, climb_uuid } = await params;
+  const { board_name, climb_uuid: rawClimbUuid } = await params;
+  const climb_uuid = extractUuidFromSlug(rawClimbUuid);
 
   try {
     let betaLinks;
