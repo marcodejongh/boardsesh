@@ -4,10 +4,10 @@ import { BoardRouteParametersWithUuid } from '@/app/lib/types';
 import { parseBoardRouteParams } from '@/app/lib/url-utils';
 import { fetchBoardDetails, fetchCurrentClimb } from '@/app/components/rest-api/api';
 import ClimbCard from '@/app/components/climb-card/climb-card';
-import { Col, Row, Button, Space } from 'antd';
-import { AppstoreOutlined } from '@ant-design/icons';
+import { Col, Row } from 'antd';
 import BetaVideos from '@/app/components/beta-videos/beta-videos';
 import { constructClimbInfoUrl } from '@/app/lib/url-utils';
+import ClimbViewActions from '@/app/components/climb-view/climb-view-actions';
 import { Metadata } from 'next';
 import { dbz } from '@/app/lib/db/db';
 import { kilterBetaLinks, tensionBetaLinks } from '@/app/lib/db/schema';
@@ -105,20 +105,14 @@ export default async function DynamicResultsPage(props: { params: Promise<BoardR
       <div style={{ padding: '16px' }}>
         <Row gutter={[16, 16]}>
           <Col xs={24}>
-            <Space>
-              <Button 
-                type="primary"
-                icon={<AppstoreOutlined />}
-                href={auroraAppUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Open in App
-              </Button>
-            </Space>
+            <ClimbViewActions 
+              climb={currentClimb} 
+              boardDetails={boardDetails} 
+              auroraAppUrl={auroraAppUrl}
+            />
           </Col>
           <Col xs={24} lg={16}>
-            <ClimbCard climb={currentClimb} boardDetails={boardDetails} />
+            <ClimbCard climb={currentClimb} boardDetails={boardDetails} actions={[]} />
           </Col>
           <Col xs={24} lg={8}>
             <BetaVideos betaLinks={betaLinks} />
