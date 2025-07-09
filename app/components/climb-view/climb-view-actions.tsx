@@ -9,6 +9,7 @@ import { useQueueContext } from '../queue-control/queue-context';
 import { Climb, BoardDetails } from '@/app/lib/types';
 import type { MenuProps } from 'antd';
 import styles from './climb-view-actions.module.css';
+import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
 
 type ClimbViewActionsProps = {
   climb: Climb;
@@ -52,18 +53,21 @@ const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl, angle }: ClimbVie
   };
 
   const getBackToListUrl = () => {
-    // Remove /view/[climb_uuid] from current path and replace with /list
-    const pathParts = pathname.split('/');
-    const viewIndex = pathParts.findIndex(part => part === 'view');
+    const { board_name, layout_name, size_name, set_names } = boardDetails;
     
-    if (viewIndex > 0) {
-      // Remove 'view' and everything after it, then add 'list'
-      const basePath = pathParts.slice(0, viewIndex).join('/');
-      return `${basePath}/list`;
+    // Use slug-based URL construction if slug names are available
+    if (layout_name && size_name && set_names) {
+      return constructClimbListWithSlugs(
+        board_name,
+        layout_name,
+        size_name,
+        set_names,
+        angle
+      );
     }
     
-    // Fallback if path structure is unexpected
-    return pathname.replace(/\/view\/[^\/]+$/, '/list');
+    // Fallback to numeric format
+    return `/${board_name}/${boardDetails.layout_id}/${boardDetails.size_id}/${boardDetails.set_ids.join(',')}/${angle}/list`;
   };
 
   // Define menu items for the meatball menu (overflow actions)
