@@ -1,0 +1,25 @@
+.container {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.desktopActions {
+  display: none;
+}
+
+.mobileActions {
+  display: flex;
+}
+
+.inQueueButton {
+  color: #52c41a !important;
+}
+
+@media (min-width: 768px) {
+  .desktopActions {
+    display: flex;
+  }
+  .mobileActions {
+    display: none;
+  }
+}
