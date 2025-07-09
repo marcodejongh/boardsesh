@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button, Space, message, Dropdown } from 'antd';
 import { HeartOutlined, PlusCircleOutlined, CheckCircleOutlined, AppstoreOutlined, MoreOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useQueueContext } from '../queue-control/queue-context';
 import { Climb, BoardDetails } from '@/app/lib/types';
 import type { MenuProps } from 'antd';
@@ -21,9 +21,32 @@ type ClimbViewActionsProps = {
 const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl, angle }: ClimbViewActionsProps) => {
   const { addToQueue, queue } = useQueueContext();
   const [isDuplicate, setDuplicateTimer] = useState(false);
+  const [canGoBack, setCanGoBack] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
 
   const isAlreadyInQueue = queue.some((item) => item.climb.uuid === climb.uuid);
+
+  useEffect(() => {
+    // Check if we can go back and if the previous page was on BoardSesh
+    const checkCanGoBack = () => {
+      if (typeof window !== 'undefined') {
+        // Check if there's history to go back to
+        const hasHistory = window.history.length > 1;
+        
+        // Check if document.referrer exists and is from the same origin
+        const referrer = document.referrer;
+        const isSameOrigin = referrer !== '' && (
+          referrer.startsWith(window.location.origin) || 
+          referrer.includes('boardsesh.com')
+        );
+        
+        setCanGoBack(hasHistory && isSameOrigin);
+      }
+    };
+
+    checkCanGoBack();
+  }, []);
 
   const handleAddToQueue = () => {
     if (addToQueue && !isDuplicate) {
@@ -50,6 +73,15 @@ const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl, angle }: ClimbVie
 
   const handleTick = () => {
     message.info('TODO: Implement tick functionality');
+  };
+
+  const handleBackClick = () => {
+    if (canGoBack) {
+      window.history.back();
+    } else {
+      const backUrl = getBackToListUrl();
+      router.push(backUrl);
+    }
   };
 
   const getBackToListUrl = () => {
@@ -96,14 +128,24 @@ const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl, angle }: ClimbVie
     <div className={styles.container}>
       {/* Mobile view: Show back button + key actions + overflow menu */}
       <div className={styles.mobileActions}>
-        <Link href={getBackToListUrl()}>
+        {canGoBack ? (
           <Button 
             icon={<ArrowLeftOutlined />}
             className={styles.backButton}
+            onClick={handleBackClick}
           >
             Back
           </Button>
-        </Link>
+        ) : (
+          <Link href={getBackToListUrl()}>
+            <Button 
+              icon={<ArrowLeftOutlined />}
+              className={styles.backButton}
+            >
+              Back
+            </Button>
+          </Link>
+        )}
         
         <Space>
           <Button 
@@ -140,14 +182,24 @@ const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl, angle }: ClimbVie
 
       {/* Desktop view: Show all buttons */}
       <div className={styles.desktopActions}>
-        <Link href={getBackToListUrl()}>
+        {canGoBack ? (
           <Button 
             icon={<ArrowLeftOutlined />}
             className={styles.backButton}
+            onClick={handleBackClick}
           >
             Back to List
           </Button>
-        </Link>
+        ) : (
+          <Link href={getBackToListUrl()}>
+            <Button 
+              icon={<ArrowLeftOutlined />}
+              className={styles.backButton}
+            >
+              Back to List
+            </Button>
+          </Link>
+        )}
         
         <div className={styles.actionButtons}>
           <Space wrap>
