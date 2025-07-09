@@ -9,6 +9,10 @@ import { AppstoreOutlined } from '@ant-design/icons';
 import BetaVideos from '@/app/components/beta-videos/beta-videos';
 import { constructClimbInfoUrl } from '@/app/lib/url-utils';
 import { Metadata } from 'next';
+import { dbz } from '@/app/lib/db/db';
+import { kilterBetaLinks, tensionBetaLinks } from '@/app/lib/db/schema';
+import { eq } from 'drizzle-orm';
+import { BetaLink } from '@/app/lib/api-wrappers/sync-api-types';
 
 export async function generateMetadata(props: { params: Promise<BoardRouteParametersWithUuid> }): Promise<Metadata> {
   const params = await props.params;
@@ -53,10 +57,46 @@ export default async function DynamicResultsPage(props: { params: Promise<BoardR
   const parsedParams = parseBoardRouteParams(params);
 
   try {
+    // Fetch beta links server-side
+    const fetchBetaLinks = async (): Promise<BetaLink[]> => {
+      try {
+        let betaLinks;
+        
+        if (parsedParams.board_name === 'kilter') {
+          betaLinks = await dbz
+            .select()
+            .from(kilterBetaLinks)
+            .where(eq(kilterBetaLinks.climbUuid, parsedParams.climb_uuid));
+        } else if (parsedParams.board_name === 'tension') {
+          betaLinks = await dbz
+            .select()
+            .from(tensionBetaLinks)
+            .where(eq(tensionBetaLinks.climbUuid, parsedParams.climb_uuid));
+        } else {
+          return [];
+        }
+
+        // Transform the database results to match the BetaLink interface
+        return betaLinks.map(link => ({
+          climb_uuid: link.climbUuid,
+          link: link.link,
+          foreign_username: link.foreignUsername,
+          angle: link.angle,
+          thumbnail: link.thumbnail,
+          is_listed: link.isListed,
+          created_at: link.createdAt,
+        }));
+      } catch (error) {
+        console.error('Error fetching beta links:', error);
+        return [];
+      }
+    };
+
     // Fetch the search results using searchCLimbs
-    const [boardDetails, currentClimb] = await Promise.all([
+    const [boardDetails, currentClimb, betaLinks] = await Promise.all([
       fetchBoardDetails(parsedParams.board_name, parsedParams.layout_id, parsedParams.size_id, parsedParams.set_ids),
       fetchCurrentClimb(parsedParams),
+      fetchBetaLinks(),
     ]);
 
     const auroraAppUrl = constructClimbInfoUrl(boardDetails, currentClimb.uuid, currentClimb.angle);
@@ -81,7 +121,7 @@ export default async function DynamicResultsPage(props: { params: Promise<BoardR
             <ClimbCard climb={currentClimb} boardDetails={boardDetails} />
           </Col>
           <Col xs={24} lg={8}>
-            <BetaVideos boardName={parsedParams.board_name} climbUuid={parsedParams.climb_uuid} />
+            <BetaVideos betaLinks={betaLinks} />
           </Col>
         </Row>
       </div>

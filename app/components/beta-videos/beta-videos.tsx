@@ -1,60 +1,20 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { Card, Row, Col, Typography, Empty, Spin, Modal } from 'antd';
-import { InstagramOutlined, UserOutlined, PlayCircleOutlined } from '@ant-design/icons';
+import React, { useState } from 'react';
+import { Card, Row, Col, Typography, Empty, Modal } from 'antd';
+import { InstagramOutlined, UserOutlined } from '@ant-design/icons';
 import { BetaLink } from '@/app/lib/api-wrappers/sync-api-types';
-import { fetchBetaLinks } from '@/app/components/rest-api/api';
-import { BoardName } from '@/app/lib/types';
 
 const { Title, Text } = Typography;
 
 interface BetaVideosProps {
-  boardName: BoardName;
-  climbUuid: string;
+  betaLinks: BetaLink[];
 }
 
-const BetaVideos: React.FC<BetaVideosProps> = ({ boardName, climbUuid }) => {
-  const [betaLinks, setBetaLinks] = useState<BetaLink[]>([]);
-  const [loading, setLoading] = useState(true);
+const BetaVideos: React.FC<BetaVideosProps> = ({ betaLinks }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedVideo, setSelectedVideo] = useState<BetaLink | null>(null);
   const [iframeKey, setIframeKey] = useState(0);
-
-  useEffect(() => {
-    const loadBetaLinks = async () => {
-      try {
-        const links = await fetchBetaLinks(boardName, climbUuid);
-        console.log('Fetched beta links:', links);
-        
-        // Ensure links is always an array
-        setBetaLinks(Array.isArray(links) ? links : []);
-        
-        // Add test data if no links found (for development)
-        if ((!links || links.length === 0) && process.env.NODE_ENV === 'development') {
-          const testLinks = [
-            {
-              climb_uuid: climbUuid,
-              link: 'https://www.instagram.com/p/C1234567890/',
-              foreign_username: 'test_user',
-              angle: 45,
-              thumbnail: null,
-              is_listed: true,
-              created_at: new Date().toISOString(),
-            }
-          ];
-          setBetaLinks(testLinks);
-        }
-      } catch (error) {
-        console.error('Error loading beta links:', error);
-        setBetaLinks([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadBetaLinks();
-  }, [boardName, climbUuid]);
 
   const getInstagramEmbedUrl = (link: string) => {
     // Extract Instagram post ID from the URL
@@ -81,28 +41,18 @@ const BetaVideos: React.FC<BetaVideosProps> = ({ boardName, climbUuid }) => {
     setSelectedVideo(null);
   };
 
-  if (loading) {
-    return (
-      <div style={{ textAlign: 'center', padding: '40px' }}>
-        <Spin size="large" />
-      </div>
-    );
-  }
-
-  if (betaLinks.length === 0) {
-    return (
-      <Empty
-        description="No beta videos available"
-        image={Empty.PRESENTED_IMAGE_SIMPLE}
-      />
-    );
-  }
-
   return (
     <div style={{ padding: '16px 0' }}>
       <Title level={3} style={{ marginBottom: 24 }}>
         Beta Videos
       </Title>
+      
+      {betaLinks.length === 0 ? (
+        <Empty
+          description="No beta videos available"
+          image={Empty.PRESENTED_IMAGE_SIMPLE}
+        />
+      ) : (
       <Row gutter={[16, 16]}>
         {betaLinks.map((betaLink, index) => {
           const embedUrl = getInstagramEmbedUrl(betaLink.link);
@@ -176,6 +126,7 @@ const BetaVideos: React.FC<BetaVideosProps> = ({ boardName, climbUuid }) => {
           );
         })}
       </Row>
+      )}
       
       {modalVisible && (
         <Modal
