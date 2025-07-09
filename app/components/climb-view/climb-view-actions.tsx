@@ -52,14 +52,18 @@ const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl, angle }: ClimbVie
   };
 
   const getBackToListUrl = () => {
-    const { board_name, layout_name, size_name, set_names } = boardDetails;
+    // Remove /view/[climb_uuid] from current path and replace with /list
+    const pathParts = pathname.split('/');
+    const viewIndex = pathParts.findIndex(part => part === 'view');
     
-    // Use slug format if available, otherwise fall back to numeric
-    const layout = layout_name || boardDetails.layout_id;
-    const size = size_name || boardDetails.size_id;
-    const sets = set_names?.join(',') || boardDetails.set_ids.join(',');
+    if (viewIndex > 0) {
+      // Remove 'view' and everything after it, then add 'list'
+      const basePath = pathParts.slice(0, viewIndex).join('/');
+      return `${basePath}/list`;
+    }
     
-    return `/${board_name}/${layout}/${size}/${sets}/${angle}/list`;
+    // Fallback if path structure is unexpected
+    return pathname.replace(/\/view\/[^\/]+$/, '/list');
   };
 
   // Define menu items for the meatball menu (overflow actions)
