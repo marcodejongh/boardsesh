@@ -7,8 +7,9 @@ import Col from 'antd/es/col';
 import { Content } from 'antd/es/layout/layout';
 import Row from 'antd/es/row';
 import { BoardRouteParametersWithUuid, ParsedBoardRouteParameters } from '@/app/lib/types';
-import { parseBoardRouteParams } from '@/app/lib/url-utils';
+import { parseBoardRouteParams, parseBoardRouteParamsWithSlugs, constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { fetchBoardDetails } from '@/app/components/rest-api/api';
+import { redirect, permanentRedirect } from 'next/navigation';
 
 interface LayoutProps {
   params: Promise<BoardRouteParametersWithUuid>;
@@ -21,7 +22,37 @@ export default async function ListLayout(props: PropsWithChildren<LayoutProps>) 
     children
   } = props;
 
-  const parsedParams: ParsedBoardRouteParameters = parseBoardRouteParams(params);
+  // Check if any parameters are in numeric format (old URLs)
+  const hasNumericParams = [params.layout_id, params.size_id, params.set_ids].some(param => 
+    param.includes(',') ? param.split(',').every(id => /^\d+$/.test(id.trim())) : /^\d+$/.test(param)
+  );
+  
+  let parsedParams: ParsedBoardRouteParameters;
+  
+  if (hasNumericParams) {
+    // For old URLs, use the simple parsing function first
+    parsedParams = parseBoardRouteParams(params);
+    
+    // Redirect old URLs to new slug format
+    const [boardDetails] = await Promise.all([
+      fetchBoardDetails(parsedParams.board_name, parsedParams.layout_id, parsedParams.size_id, parsedParams.set_ids)
+    ]);
+    
+    if (boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names) {
+      const newUrl = constructClimbListWithSlugs(
+        boardDetails.board_name,
+        boardDetails.layout_name,
+        boardDetails.size_name,
+        boardDetails.set_names,
+        parsedParams.angle
+      );
+      
+      permanentRedirect(newUrl);
+    }
+  } else {
+    // For new URLs, use the slug parsing function
+    parsedParams = await parseBoardRouteParamsWithSlugs(params);
+  }
 
   const { board_name, layout_id, set_ids, size_id } = parsedParams;
 

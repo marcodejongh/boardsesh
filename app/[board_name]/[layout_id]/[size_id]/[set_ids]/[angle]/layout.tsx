@@ -2,7 +2,8 @@ import React from 'react';
 import { PropsWithChildren } from 'react';
 import { Affix, Layout } from 'antd';
 import { ParsedBoardRouteParameters, BoardRouteParametersWithUuid } from '@/app/lib/types';
-import { parseBoardRouteParams } from '@/app/lib/url-utils'; // Assume this utility helps with parsing
+import { parseBoardRouteParams, parseBoardRouteParamsWithSlugs, constructClimbListWithSlugs } from '@/app/lib/url-utils'; // Assume this utility helps with parsing
+import { redirect, permanentRedirect } from 'next/navigation';
 import '@/c/index.css';
 
 import { Content } from 'antd/es/layout/layout';
@@ -43,7 +44,37 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
   } = props;
 
   // Parse the route parameters
-  const parsedParams: ParsedBoardRouteParameters = parseBoardRouteParams(params);
+  // Check if any parameters are in numeric format (old URLs)
+  const hasNumericParams = [params.layout_id, params.size_id, params.set_ids].some(param => 
+    param.includes(',') ? param.split(',').every(id => /^\d+$/.test(id.trim())) : /^\d+$/.test(param)
+  );
+  
+  let parsedParams: ParsedBoardRouteParameters;
+  
+  if (hasNumericParams) {
+    // For old URLs, use the simple parsing function first
+    parsedParams = parseBoardRouteParams(params);
+    
+    // Redirect old URLs to new slug format
+    const [boardDetails] = await Promise.all([
+      fetchBoardDetails(parsedParams.board_name, parsedParams.layout_id, parsedParams.size_id, parsedParams.set_ids)
+    ]);
+    
+    if (boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names) {
+      const newUrl = constructClimbListWithSlugs(
+        boardDetails.board_name,
+        boardDetails.layout_name,
+        boardDetails.size_name,
+        boardDetails.set_names,
+        parsedParams.angle
+      );
+      
+      permanentRedirect(newUrl);
+    }
+  } else {
+    // For new URLs, use the slug parsing function
+    parsedParams = await parseBoardRouteParamsWithSlugs(params);
+  }
 
   const { board_name, layout_id, angle } = parsedParams;
 

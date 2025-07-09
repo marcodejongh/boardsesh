@@ -211,6 +211,10 @@ export type BoardDetails = {
   set_ids: SetIdList;
   ledPlacements: LedPlacements;
   supportsMirroring?: boolean;
+  // Added for slug-based URLs
+  layout_name?: string;
+  size_name?: string;
+  set_names?: string[];
 };
 
 export type BoardRouteParameters = {

@@ -4,7 +4,7 @@ import { useQueueContext } from '../queue-control/queue-context';
 import { BoardDetails, Climb } from '@/app/lib/types';
 import { PlusCircleOutlined, HeartOutlined, InfoCircleOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import Link from 'next/link';
-import { constructClimbViewUrl } from '@/app/lib/url-utils';
+import { constructClimbViewUrl, constructClimbViewUrlWithSlugs } from '@/app/lib/url-utils';
 import { message } from 'antd';
 // import TickClimbButton from '@/c/tick-climb/tick-climb-button';
 
@@ -40,13 +40,25 @@ const ClimbCardActions = ({ climb, boardDetails }: ClimbCardActionsProps) => {
   return [
     // <SettingOutlined key="setting" />,
     // <TickClimbButton key="tickclimbbutton" />,
-    <Link key="infocircle" href={constructClimbViewUrl({
-      board_name: boardDetails.board_name,
-      layout_id: boardDetails.layout_id,
-      size_id: boardDetails.size_id,
-      set_ids: boardDetails.set_ids,
-      angle: climb.angle
-    }, climb.uuid, climb.name)}>
+    <Link key="infocircle" href={
+      boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names 
+        ? constructClimbViewUrlWithSlugs(
+            boardDetails.board_name,
+            boardDetails.layout_name,
+            boardDetails.size_name,
+            boardDetails.set_names,
+            climb.angle,
+            climb.uuid,
+            climb.name
+          )
+        : constructClimbViewUrl({
+            board_name: boardDetails.board_name,
+            layout_id: boardDetails.layout_id,
+            size_id: boardDetails.size_id,
+            set_ids: boardDetails.set_ids,
+            angle: climb.angle
+          }, climb.uuid, climb.name)
+    }>
       <InfoCircleOutlined />
     </Link>,
     <HeartOutlined key="heart" onClick={() => message.info('TODO: Implement')} />,

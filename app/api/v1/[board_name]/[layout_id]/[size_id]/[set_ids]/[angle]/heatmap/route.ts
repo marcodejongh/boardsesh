@@ -2,7 +2,7 @@
 import { getHoldHeatmapData } from '@/app/lib/db/queries/climbs/holds-heatmap';
 import { getSession } from '@/app/lib/session';
 import { BoardRouteParameters, ErrorResponse, SearchRequestPagination } from '@/app/lib/types';
-import { parseBoardRouteParams, urlParamsToSearchParams } from '@/app/lib/url-utils';
+import { parseBoardRouteParams, urlParamsToSearchParams, parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 
@@ -25,14 +25,13 @@ export async function GET(req: Request, props: { params: Promise<BoardRouteParam
   const params = await props.params;
   // Extract search parameters from query string
   const query = new URL(req.url).searchParams;
-  const parsedParams = parseBoardRouteParams(params);
-  const searchParams: SearchRequestPagination = urlParamsToSearchParams(query);
   
-  const cookieStore = await cookies();
-  const session = await getSession(cookieStore, parsedParams.board_name);
-    console.log(parsedParams);
-    console.log(params);
   try {
+    const parsedParams = await parseBoardRouteParamsWithSlugs(params);
+    const searchParams: SearchRequestPagination = urlParamsToSearchParams(query);
+    
+    const cookieStore = await cookies();
+    const session = await getSession(cookieStore, parsedParams.board_name);
     // Get the heatmap data using the query function
     const holdStats = await getHoldHeatmapData(parsedParams, searchParams, session.userId);
 
