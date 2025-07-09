@@ -27,6 +27,16 @@ export async function generateMetadata(props: { params: Promise<BoardRouteParame
     const climbGrade = currentClimb.difficulty || 'Unknown Grade';
     const setter = currentClimb.setter_username || 'Unknown Setter';
     const description = `${climbName} - ${climbGrade} by ${setter}. Quality: ${currentClimb.quality_average || 0}/5. Ascents: ${currentClimb.ascensionist_count || 0}`;
+    const climbUrl = constructClimbViewUrl(parsedParams, parsedParams.climb_uuid, climbName);
+    
+    // Generate OG image URL - use original slug parameters for better compatibility
+    const ogImageUrl = new URL('/api/og/climb', process.env.BASE_URL || 'https://boardsesh.com');
+    ogImageUrl.searchParams.set('board_name', params.board_name);
+    ogImageUrl.searchParams.set('layout_id', params.layout_id);
+    ogImageUrl.searchParams.set('size_id', params.size_id);
+    ogImageUrl.searchParams.set('set_ids', params.set_ids);
+    ogImageUrl.searchParams.set('angle', params.angle);
+    ogImageUrl.searchParams.set('climb_uuid', params.climb_uuid);
     
     return {
       title: `${climbName} - ${climbGrade} | BoardSesh`,
@@ -35,12 +45,21 @@ export async function generateMetadata(props: { params: Promise<BoardRouteParame
         title: `${climbName} - ${climbGrade}`,
         description,
         type: 'website',
-        url: constructClimbViewUrl(parsedParams, parsedParams.climb_uuid, climbName),
+        url: climbUrl,
+        images: [
+          {
+            url: ogImageUrl.toString(),
+            width: 1200,
+            height: 630,
+            alt: `${climbName} - ${climbGrade} on ${boardDetails.board_name} board`,
+          },
+        ],
       },
       twitter: {
-        card: 'summary',
+        card: 'summary_large_image',
         title: `${climbName} - ${climbGrade}`,
         description,
+        images: [ogImageUrl.toString()],
       },
     };
   } catch (error) {

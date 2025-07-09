@@ -19,6 +19,7 @@
     "@neondatabase/serverless": "0.9.5",
     "@types/web-bluetooth": "^0.0.20",
     "@vercel/analytics": "^1.4.1",
+    "@vercel/og": "^0.7.2",
     "@vercel/postgres": "^0.10.0",
     "antd": "^5.22.3",
     "chart.js": "^4.4.7",
