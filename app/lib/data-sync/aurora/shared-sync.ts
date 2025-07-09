@@ -37,6 +37,7 @@ export const SHARED_SYNC_TABLES: string[] = [
 
 // Tables we actually want to process and store
 const TABLES_TO_PROCESS = new Set([
+  // TODO: Add beta_links processing
   'climbs',
   'climb_stats',
   'attempts',

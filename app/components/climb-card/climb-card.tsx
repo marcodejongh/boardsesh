@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 import Card from 'antd/es/card';
 import { CopyrightOutlined } from '@ant-design/icons';

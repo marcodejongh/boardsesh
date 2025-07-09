@@ -13,6 +13,7 @@ import {
   Size,
   SearchClimbsResult,
 } from '@/app/lib/types';
+import { BetaLink } from '@/app/lib/api-wrappers/sync-api-types';
 
 const API_BASE_URL = `${typeof window !== 'undefined' ? window.location.origin : (process.env.BASE_URL || 'https://www.boardsesh.com')}/api`;
 
@@ -57,11 +58,16 @@ export const fetchCurrentClimb = async (
     )
   ).json();
 
-// Fetch beta count
-export const fetchBetaCount = async (board: string, uuid: string): Promise<number> => {
+// Fetch beta links
+export const fetchBetaLinks = async (board: string, uuid: string): Promise<BetaLink[]> => {
   const response = await fetch(`${API_BASE_URL}/v1/${board}/beta/${uuid}`);
+  
+  if (!response.ok) {
+    throw new Error(`Failed to fetch beta links: ${response.status}`);
+  }
+  
   const data = await response.json();
-  return data.length;
+  return Array.isArray(data) ? data : [];
 };
 
 // Fetch board details

@@ -4,7 +4,7 @@ import { useQueueContext } from '../queue-control/queue-context';
 import { BoardDetails, Climb } from '@/app/lib/types';
 import { PlusCircleOutlined, HeartOutlined, InfoCircleOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import Link from 'next/link';
-import { constructClimbInfoUrl } from '@/app/lib/url-utils';
+import { constructClimbViewUrl } from '@/app/lib/url-utils';
 import { message } from 'antd';
 // import TickClimbButton from '@/c/tick-climb/tick-climb-button';
 
@@ -40,9 +40,13 @@ const ClimbCardActions = ({ climb, boardDetails }: ClimbCardActionsProps) => {
   return [
     // <SettingOutlined key="setting" />,
     // <TickClimbButton key="tickclimbbutton" />,
-    // TODO: Keeping htis Link component here since we do have a info screen inside this app too
-    // it's just not as useful currently as the offical one
-    <Link key="infocircle" target="_blank" href={constructClimbInfoUrl(boardDetails, climb.uuid, climb.angle)}>
+    <Link key="infocircle" href={constructClimbViewUrl({
+      board_name: boardDetails.board_name,
+      layout_id: boardDetails.layout_id,
+      size_id: boardDetails.size_id,
+      set_ids: boardDetails.set_ids,
+      angle: climb.angle
+    }, climb.uuid)}>
       <InfoCircleOutlined />
     </Link>,
     <HeartOutlined key="heart" onClick={() => message.info('TODO: Implement')} />,
