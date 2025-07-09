@@ -46,7 +46,7 @@ const ClimbCardActions = ({ climb, boardDetails }: ClimbCardActionsProps) => {
       size_id: boardDetails.size_id,
       set_ids: boardDetails.set_ids,
       angle: climb.angle
-    }, climb.uuid)}>
+    }, climb.uuid, climb.name)}>
       <InfoCircleOutlined />
     </Link>,
     <HeartOutlined key="heart" onClick={() => message.info('TODO: Implement')} />,

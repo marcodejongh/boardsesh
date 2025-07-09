@@ -2,21 +2,27 @@
 import { convertLitUpHoldsStringToMap } from '@/app/components/board-renderer/util';
 import { getClimb } from '@/app/lib/data/queries';
 import { BoardRouteParametersWithUuid, ErrorResponse, FetchCurrentProblemResponse } from '@/app/lib/types';
-import { parseBoardRouteParams } from '@/app/lib/url-utils';
+import { parseBoardRouteParams, extractUuidFromSlug } from '@/app/lib/url-utils';
 import { NextResponse } from 'next/server';
 
 export async function GET(req: Request, props: { params: Promise<BoardRouteParametersWithUuid> }): Promise<NextResponse<FetchCurrentProblemResponse | ErrorResponse>> {
   const params = await props.params;
   try {
-    const parsedParams = parseBoardRouteParams(params);
+    const extractedUuid = extractUuidFromSlug(params.climb_uuid);
+    console.log('Slug:', params.climb_uuid, '-> UUID:', extractedUuid);
+    
+    const parsedParams = parseBoardRouteParams({
+      ...params,
+      climb_uuid: extractedUuid
+    });
     const result = await getClimb(parsedParams);
-
-    // TODO: Multiframe support should remove the hardcoded [0]
-    const litUpHoldsMap = convertLitUpHoldsStringToMap(result.frames, parsedParams.board_name)[0];
 
     if (!result) {
       return NextResponse.json({ error: `Failed to find problem ${params.climb_uuid}` }, { status: 404 });
     }
+
+    // TODO: Multiframe support should remove the hardcoded [0]
+    const litUpHoldsMap = convertLitUpHoldsStringToMap(result.frames, parsedParams.board_name)[0];
     // Include both the rows and the total count in the response
     return NextResponse.json({ ...result, litUpHoldsMap });
   } catch (error) {

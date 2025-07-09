@@ -128,7 +128,17 @@ export const parsedRouteSearchParamsToSearchParams = (urlParams: SearchRequestPa
 export const constructClimbViewUrl = (
   { board_name, layout_id, angle, size_id, set_ids }: ParsedBoardRouteParameters,
   climb_uuid: ClimbUuid,
-) => `/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/view/${climb_uuid}`;
+  climbName?: string,
+) => {
+  const baseUrl = `/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/view/`;
+  if (climbName && climbName.trim()) {
+    const slug = generateClimbSlug(climbName.trim());
+    if (slug) {
+      return `${baseUrl}${slug}-${climb_uuid}`;
+    }
+  }
+  return `${baseUrl}${climb_uuid}`;
+};
 
 export const constructClimbInfoUrl = (
   { board_name }: BoardDetails,
@@ -146,3 +156,26 @@ export const constructClimbSearchUrl = (
   { board_name, layout_id, angle, size_id, set_ids }: ParsedBoardRouteParameters,
   queryString: string,
 ) => `/api/v1/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/search?${queryString}`;
+
+export const generateClimbSlug = (climbName: string): string => {
+  return climbName
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+};
+
+export const extractUuidFromSlug = (slugOrUuid: string): string => {
+  // Match 32 hex characters (UUID without hyphens) - could be at end of string or standalone
+  const uuidRegex = /[0-9A-F]{32}/i;
+  const match = slugOrUuid.match(uuidRegex);
+  return match ? match[0] : slugOrUuid;
+};
+
+export const isUuidOnly = (slugOrUuid: string): boolean => {
+  // Check if it's exactly 32 hex characters (UUID format in the database)
+  const uuidRegex = /^[0-9A-F]{32}$/i;
+  return uuidRegex.test(slugOrUuid);
+};
