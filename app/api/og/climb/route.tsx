@@ -4,7 +4,6 @@ import { fetchBoardDetails, fetchCurrentClimb } from '@/app/components/rest-api/
 import { parseBoardRouteParams, parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils';
 import { convertLitUpHoldsStringToMap, getImageUrl } from '@/app/components/board-renderer/util';
 import { HoldRenderData } from '@/app/components/board-renderer/types';
-import BoardRenderer from '@/app/components/board-renderer/board-renderer';
 
 export const runtime = 'edge';
 
@@ -34,10 +33,10 @@ export async function GET(request: NextRequest) {
       // Use numeric parsing for old format
       parsedParams = parseBoardRouteParams({
         board_name,
-        layout_id: parseInt(layout_id),
-        size_id: parseInt(size_id),
-        set_ids: set_ids.split(',').map(id => parseInt(id.trim())),
-        angle: parseInt(angle),
+        layout_id: layout_id,
+        size_id: size_id,
+        set_ids: set_ids,
+        angle: angle,
         climb_uuid,
       });
     } else {
@@ -73,16 +72,10 @@ export async function GET(request: NextRequest) {
     const holdsData = boardDetails.holdsData || [];
     const firstFrameHolds = litUpHoldsMap[0] || {};
     
-    // Get all board image URLs (matches BoardRenderer logic)
-    const imageUrls = Object.keys(boardDetails.images_to_holds).map(imageUrl => {
-      const relativeUrl = getImageUrl(imageUrl, boardDetails.board_name);
-      return `${process.env.BASE_URL || 'http://localhost:3000'}${relativeUrl}`;
-    });
-
-    console.log('Board image URLs:', imageUrls);
-    console.log('Board dimensions:', boardWidth, 'x', boardHeight);
-    console.log('Holds data length:', holdsData.length);
-    console.log('images_to_holds keys:', Object.keys(boardDetails.images_to_holds));
+    // Get the first board image URL (matches BoardRenderer logic)
+    const firstImageUrl = Object.keys(boardDetails.images_to_holds)[0];
+    const relativeImageUrl = firstImageUrl ? getImageUrl(firstImageUrl, boardDetails.board_name) : null;
+    const boardImageUrl = relativeImageUrl ? `${process.env.BASE_URL || 'http://localhost:3000'}${relativeImageUrl}` : null;
 
     return new ImageResponse(
       (
@@ -93,83 +86,49 @@ export async function GET(request: NextRequest) {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            background: '#ffffff',
+            background: '#1a1a1a',
             padding: '20px',
-            position: 'relative',
           }}
         >
-          <div
+          <svg
+            viewBox={`0 0 ${boardWidth} ${boardHeight}`}
+            width="600"
+            height="600"
             style={{
-              position: 'relative',
-              width: '600px',
-              height: '600px',
+              background: '#333',
               borderRadius: '8px',
-              overflow: 'hidden',
-              display: 'flex',
             }}
           >
-            {/* Board background images - render all layers */}
-            {imageUrls.map((imageUrl, index) => (
-              <img
-                key={index}
-                src={imageUrl}
-                alt={`Board layer ${index}`}
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'contain',
-                }}
-              />
-            ))}
+            {/* Board background - just a solid color for now */}
+            <rect
+              x="0"
+              y="0"
+              width={boardWidth}
+              height={boardHeight}
+              fill="#2a2a2a"
+            />
             
-            {/* SVG overlay for holds matching BoardLitupHolds exactly */}
-            <svg
-              viewBox={`0 0 ${boardWidth} ${boardHeight}`}
-              preserveAspectRatio="xMidYMid meet"
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                height: '100%',
-              }}
-            >
-              {/* Render holds matching BoardLitupHolds logic exactly */}
-              {holdsData.map((hold: HoldRenderData) => {
-                const isLitUp = litUpHoldsMap[0]?.[hold.id]?.state && litUpHoldsMap[0][hold.id].state !== 'OFF';
-                if (!isLitUp) return null;
-                
-                const color = litUpHoldsMap[0][hold.id].color;
-                
-                // Handle mirroring like BoardLitupHolds
-                let renderHold = hold;
-                if (currentClimb?.mirrored && hold.mirroredHoldId) {
-                  const mirroredHold = holdsData.find(({ id }) => id === hold.mirroredHoldId);
-                  if (mirroredHold) {
-                    renderHold = mirroredHold;
-                  }
-                }
-                
-                return (
-                  <circle
-                    key={renderHold.id}
-                    id={`hold-${renderHold.id}`}
-                    data-mirror-id={renderHold.mirroredHoldId || undefined}
-                    cx={renderHold.cx}
-                    cy={renderHold.cy}
-                    r={renderHold.r}
-                    stroke={color}
-                    strokeWidth={6}
-                    fillOpacity={0}
-                    fill={undefined}
-                  />
-                );
-              })}
-            </svg>
-          </div>
+            {/* Render holds */}
+            {holdsData.map((hold: HoldRenderData) => {
+              const holdInfo = firstFrameHolds[hold.id];
+              if (!holdInfo) return null;
+              
+              const holdColor = holdInfo.displayColor || holdInfo.color;
+              const cx = currentClimb?.mirrored ? boardWidth - hold.cx : hold.cx;
+              
+              return (
+                <circle
+                  key={hold.id}
+                  cx={cx}
+                  cy={hold.cy}
+                  r={Math.max(hold.r, 8)} // Ensure holds are visible
+                  fill={holdColor}
+                  stroke="#fff"
+                  strokeWidth="3"
+                />
+              );
+            })}
+          </svg>
         </div>
       ),
       {
@@ -179,7 +138,7 @@ export async function GET(request: NextRequest) {
     );
   } catch (error) {
     console.error('Error generating OG image:', error);
-    return new Response(`Error generating image: ${error.message}`, { status: 500 });
+    const message = error instanceof Error ? error.message : String(error);
+    return new Response(`Error generating image: ${message}`, { status: 500 });
   }
 }
-

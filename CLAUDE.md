@@ -112,7 +112,6 @@ We are using next.js app router, it's important we try to use server side compon
 - For rendering avoid JavaScript breakpoint detection & Grid.useBreakpoint()
 - While we work together, be careful to remove any code you no longer use, so we dont end up with lots of deadcode
 
-
 ### Component Structure
 - Server Components by default
 - Client Components only when needed (interactivity, browser APIs)
