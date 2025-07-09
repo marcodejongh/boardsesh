@@ -70,15 +70,19 @@ const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl, angle }: ClimbVie
     return `/${board_name}/${boardDetails.layout_id}/${boardDetails.size_id}/${boardDetails.set_ids.join(',')}/${angle}/list`;
   };
 
-  // Define menu items for the meatball menu (overflow actions)
+  // Define menu items for the meatball menu (overflow actions on mobile)
   const menuItems: MenuProps['items'] = [
     {
-      key: 'queue',
-      label: isAlreadyInQueue ? 'In Queue' : 'Add to Queue',
-      icon: isAlreadyInQueue ? <CheckCircleOutlined /> : <PlusCircleOutlined />,
-      onClick: handleAddToQueue,
-      disabled: isDuplicate,
-      className: isAlreadyInQueue ? styles.inQueueButton : undefined,
+      key: 'addToList',
+      label: 'Add to List',
+      icon: <PlusCircleOutlined />,
+      onClick: handleAddToList,
+    },
+    {
+      key: 'tick',
+      label: 'Tick',
+      icon: <CheckCircleOutlined />,
+      onClick: handleTick,
     },
     {
       key: 'openInApp',
@@ -90,7 +94,7 @@ const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl, angle }: ClimbVie
 
   return (
     <div className={styles.container}>
-      {/* Mobile view: Show main actions + meatball menu for overflow */}
+      {/* Mobile view: Show back button + key actions + overflow menu */}
       <div className={styles.mobileActions}>
         <Link href={getBackToListUrl()}>
           <Button 
@@ -101,34 +105,37 @@ const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl, angle }: ClimbVie
           </Button>
         </Link>
         
-        <div className={styles.actionButtons}>
-          <Space>
-            <Button 
-              icon={<HeartOutlined />}
-              onClick={handleFavourite}
-            >
-              Favourite
-            </Button>
-            
-            <Button 
-              icon={<PlusCircleOutlined />}
-              onClick={handleAddToList}
-            >
-              Add to List
-            </Button>
-            
+        <Space>
+          <Button 
+            icon={<HeartOutlined />}
+            onClick={handleFavourite}
+          >
+            Favourite
+          </Button>
+          
+          {isAlreadyInQueue ? (
             <Button 
               icon={<CheckCircleOutlined />}
-              onClick={handleTick}
+              onClick={handleAddToQueue}
+              disabled={isDuplicate}
+              className={styles.inQueueButton}
             >
-              Tick
+              In Queue
             </Button>
-            
-            <Dropdown menu={{ items: menuItems }} placement="bottomRight" trigger={['click']}>
-              <Button icon={<MoreOutlined />} />
-            </Dropdown>
-          </Space>
-        </div>
+          ) : (
+            <Button 
+              icon={<PlusCircleOutlined />}
+              onClick={handleAddToQueue}
+              disabled={isDuplicate}
+            >
+              Add to Queue
+            </Button>
+          )}
+          
+          <Dropdown menu={{ items: menuItems }} placement="bottomRight" trigger={['click']}>
+            <Button icon={<MoreOutlined />} />
+          </Dropdown>
+        </Space>
       </div>
 
       {/* Desktop view: Show all buttons */}
