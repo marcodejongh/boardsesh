@@ -1,6 +1,16 @@
 .container {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.backButton {
+  flex: 0 0 auto;
+}
+
+.actionButtons {
+  display: flex;
+  gap: 8px;
 }
 
 .desktopActions {
