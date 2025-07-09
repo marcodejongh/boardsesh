@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Button, Space, message, Dropdown } from 'antd';
 import { HeartOutlined, PlusCircleOutlined, CheckCircleOutlined, AppstoreOutlined, MoreOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useQueueContext } from '../queue-control/queue-context';
 import { Climb, BoardDetails } from '@/app/lib/types';
 import type { MenuProps } from 'antd';
@@ -19,6 +20,7 @@ type ClimbViewActionsProps = {
 const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl, angle }: ClimbViewActionsProps) => {
   const { addToQueue, queue } = useQueueContext();
   const [isDuplicate, setDuplicateTimer] = useState(false);
+  const pathname = usePathname();
 
   const isAlreadyInQueue = queue.some((item) => item.climb.uuid === climb.uuid);
 
@@ -50,8 +52,14 @@ const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl, angle }: ClimbVie
   };
 
   const getBackToListUrl = () => {
-    const { board_name, layout_id, size_id, set_ids } = boardDetails;
-    return `/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/list`;
+    const { board_name, layout_name, size_name, set_names } = boardDetails;
+    
+    // Use slug format if available, otherwise fall back to numeric
+    const layout = layout_name || boardDetails.layout_id;
+    const size = size_name || boardDetails.size_id;
+    const sets = set_names?.join(',') || boardDetails.set_ids.join(',');
+    
+    return `/${board_name}/${layout}/${size}/${sets}/${angle}/list`;
   };
 
   // Define menu items for the meatball menu (overflow actions)
@@ -85,32 +93,34 @@ const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl, angle }: ClimbVie
           </Button>
         </Link>
         
-        <Space>
-          <Button 
-            icon={<HeartOutlined />}
-            onClick={handleFavourite}
-          >
-            Favourite
-          </Button>
-          
-          <Button 
-            icon={<PlusCircleOutlined />}
-            onClick={handleAddToList}
-          >
-            Add to List
-          </Button>
-          
-          <Button 
-            icon={<CheckCircleOutlined />}
-            onClick={handleTick}
-          >
-            Tick
-          </Button>
-          
-          <Dropdown menu={{ items: menuItems }} placement="bottomRight" trigger={['click']}>
-            <Button icon={<MoreOutlined />} />
-          </Dropdown>
-        </Space>
+        <div className={styles.actionButtons}>
+          <Space>
+            <Button 
+              icon={<HeartOutlined />}
+              onClick={handleFavourite}
+            >
+              Favourite
+            </Button>
+            
+            <Button 
+              icon={<PlusCircleOutlined />}
+              onClick={handleAddToList}
+            >
+              Add to List
+            </Button>
+            
+            <Button 
+              icon={<CheckCircleOutlined />}
+              onClick={handleTick}
+            >
+              Tick
+            </Button>
+            
+            <Dropdown menu={{ items: menuItems }} placement="bottomRight" trigger={['click']}>
+              <Button icon={<MoreOutlined />} />
+            </Dropdown>
+          </Space>
+        </div>
       </div>
 
       {/* Desktop view: Show all buttons */}
@@ -124,56 +134,58 @@ const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl, angle }: ClimbVie
           </Button>
         </Link>
         
-        <Space wrap>
-          <Button 
-            icon={<HeartOutlined />}
-            onClick={handleFavourite}
-          >
-            Favourite
-          </Button>
-          
-          <Button 
-            icon={<PlusCircleOutlined />}
-            onClick={handleAddToList}
-          >
-            Add to List
-          </Button>
-          
-          <Button 
-            icon={<CheckCircleOutlined />}
-            onClick={handleTick}
-          >
-            Tick
-          </Button>
-          
-          {isAlreadyInQueue ? (
+        <div className={styles.actionButtons}>
+          <Space wrap>
             <Button 
-              icon={<CheckCircleOutlined />}
-              onClick={handleAddToQueue}
-              disabled={isDuplicate}
-              className={styles.inQueueButton}
+              icon={<HeartOutlined />}
+              onClick={handleFavourite}
             >
-              In Queue
+              Favourite
             </Button>
-          ) : (
+            
             <Button 
               icon={<PlusCircleOutlined />}
-              onClick={handleAddToQueue}
-              disabled={isDuplicate}
+              onClick={handleAddToList}
             >
-              Add to Queue
+              Add to List
             </Button>
-          )}
-          
-          <Button 
-            icon={<AppstoreOutlined />}
-            href={auroraAppUrl}
-            target="_blank"
-            rel="noopener"
-          >
-            Open in App
-          </Button>
-        </Space>
+            
+            <Button 
+              icon={<CheckCircleOutlined />}
+              onClick={handleTick}
+            >
+              Tick
+            </Button>
+            
+            {isAlreadyInQueue ? (
+              <Button 
+                icon={<CheckCircleOutlined />}
+                onClick={handleAddToQueue}
+                disabled={isDuplicate}
+                className={styles.inQueueButton}
+              >
+                In Queue
+              </Button>
+            ) : (
+              <Button 
+                icon={<PlusCircleOutlined />}
+                onClick={handleAddToQueue}
+                disabled={isDuplicate}
+              >
+                Add to Queue
+              </Button>
+            )}
+            
+            <Button 
+              icon={<AppstoreOutlined />}
+              href={auroraAppUrl}
+              target="_blank"
+              rel="noopener"
+            >
+              Open in App
+            </Button>
+          </Space>
+        </div>
       </div>
     </div>
   );
