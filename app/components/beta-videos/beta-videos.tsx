@@ -153,7 +153,7 @@ const BetaVideos: React.FC<BetaVideosProps> = ({ betaLinks }) => {
             <div style={{ position: 'relative', paddingBottom: '140%', overflow: 'hidden' }}>
               <iframe
                 key={iframeKey}
-                src={getInstagramEmbedUrl(selectedVideo.link)}
+                src={getInstagramEmbedUrl(selectedVideo.link) || ''}
                 style={{
                   position: 'absolute',
                   top: 0,

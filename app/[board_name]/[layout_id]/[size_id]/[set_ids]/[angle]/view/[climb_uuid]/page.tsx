@@ -25,7 +25,7 @@ export async function generateMetadata(props: { params: Promise<BoardRouteParame
     ]);
     
     const climbName = currentClimb.name || `${boardDetails.board_name} Climb`;
-    const climbGrade = currentClimb.climb_type_hold?.difficulty || 'Unknown Grade';
+    const climbGrade = currentClimb.difficulty || 'Unknown Grade';
     const setter = currentClimb.setter_username || 'Unknown Setter';
     const description = `${climbName} - ${climbGrade} by ${setter}. Quality: ${currentClimb.quality_average || 0}/5. Ascents: ${currentClimb.ascensionist_count || 0}`;
     
@@ -83,8 +83,8 @@ export default async function DynamicResultsPage(props: { params: Promise<BoardR
           foreign_username: link.foreignUsername,
           angle: link.angle,
           thumbnail: link.thumbnail,
-          is_listed: link.isListed,
-          created_at: link.createdAt,
+          is_listed: link.isListed ?? false,
+          created_at: link.createdAt ?? new Date().toISOString(),
         }));
       } catch (error) {
         console.error('Error fetching beta links:', error);
