@@ -27,6 +27,11 @@ Similar to Spotify Jams, no more "What climb was that?", "what climb was the las
 
 - Faster beta video uploads. Current process for beta videos is manual, and as a result new beta videos are almost never added. We'll implement our own Instagram integration to get beta videos faster.
 
+# Self hosting
+We plan to eventually have official support for self hosting, but currently it's still relatively involved to setup. Basically the development setup instructions should be used
+for self-hosting too, but contributions would be very welcome.
+The app is just a standard next.js app with Postgres.
+
 # Getting Started
 
 ## Database setup
