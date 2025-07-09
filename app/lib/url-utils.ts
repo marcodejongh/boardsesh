@@ -266,10 +266,18 @@ export const generateSetSlug = (setNames: string[]): string => {
       }
       
       // Handle original kilter/tension set names
-      return lowercaseName
+      let result = lowercaseName
         .replace(/\s+ons?$/i, '') // Remove "on" or "ons" suffix
-        .replace(/^(bolt|screw).*/, '$1') // Extract just "bolt" or "screw"
         .replace(/\s+/g, '-'); // Replace spaces with hyphens
+      
+      // Extract just 'bolt' or 'screw' if it starts with those
+      if (result.startsWith('bolt')) {
+        result = 'bolt';
+      } else if (result.startsWith('screw')) {
+        result = 'screw';
+      }
+      
+      return result;
     })
     .sort((a, b) => b.localeCompare(a)) // Sort alphabetically descending
     .join('_'); // Use underscore as delimiter between sets

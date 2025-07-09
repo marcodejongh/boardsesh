@@ -163,7 +163,7 @@ export default async function DynamicResultsPage(props: { params: Promise<BoardR
       fetchBetaLinks(),
     ]);
 
-    const auroraAppUrl = constructClimbInfoUrl(boardDetails, currentClimb.uuid, currentClimb.angle);
+    const auroraAppUrl = constructClimbInfoUrl(boardDetails, currentClimb.uuid, currentClimb.angle || parsedParams.angle);
 
     return (
       <div style={{ padding: '16px' }}>
