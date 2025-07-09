@@ -19,6 +19,7 @@ const BetaVideos: React.FC<BetaVideosProps> = ({ boardName, climbUuid }) => {
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedVideo, setSelectedVideo] = useState<BetaLink | null>(null);
+  const [iframeKey, setIframeKey] = useState(0);
 
   useEffect(() => {
     const loadBetaLinks = async () => {
@@ -74,9 +75,10 @@ const BetaVideos: React.FC<BetaVideosProps> = ({ boardName, climbUuid }) => {
   };
 
   const handleModalClose = () => {
-    // Immediately clear the selected video to stop playback
-    setSelectedVideo(null);
+    // Force iframe to remount by changing key
+    setIframeKey(prev => prev + 1);
     setModalVisible(false);
+    setSelectedVideo(null);
   };
 
   if (loading) {
@@ -116,7 +118,7 @@ const BetaVideos: React.FC<BetaVideosProps> = ({ boardName, climbUuid }) => {
                   embedUrl ? (
                     <div style={{ 
                       position: 'relative', 
-                      paddingBottom: '100%', 
+                      paddingBottom: '140%', 
                       overflow: 'hidden'
                     }}>
                       <iframe
@@ -133,21 +135,6 @@ const BetaVideos: React.FC<BetaVideosProps> = ({ boardName, climbUuid }) => {
                         scrolling="no"
                         title={`Beta video ${index + 1} thumbnail`}
                       />
-                      <div style={{
-                        position: 'absolute',
-                        top: '50%',
-                        left: '50%',
-                        transform: 'translate(-50%, -50%)',
-                        zIndex: 2,
-                        backgroundColor: 'rgba(0, 0, 0, 0.6)',
-                        borderRadius: '50%',
-                        padding: '12px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                      }}>
-                        <PlayCircleOutlined style={{ fontSize: 32, color: '#fff' }} />
-                      </div>
                     </div>
                   ) : (
                     <div style={{ padding: '40px', textAlign: 'center', background: '#f0f0f0' }}>
@@ -190,44 +177,47 @@ const BetaVideos: React.FC<BetaVideosProps> = ({ boardName, climbUuid }) => {
         })}
       </Row>
       
-      <Modal
-        title={selectedVideo?.foreign_username ? `Beta by @${selectedVideo.foreign_username}` : 'Beta Video'}
-        open={modalVisible}
-        onCancel={handleModalClose}
-        footer={[
-          <a
-            key="instagram"
-            href={selectedVideo?.link}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ marginRight: 8 }}
-          >
-            <InstagramOutlined /> View on Instagram
-          </a>
-        ]}
-        width="80%"
-        style={{ maxWidth: '600px' }}
-        centered
-      >
-        {selectedVideo && (
-          <div style={{ position: 'relative', paddingBottom: '125%', overflow: 'hidden' }}>
-            <iframe
-              key={`${selectedVideo.link}-${modalVisible}`} // Force iframe to reload when modal state changes
-              src={getInstagramEmbedUrl(selectedVideo.link)}
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                height: '100%',
-                border: 'none',
-              }}
-              scrolling="no"
-              title="Beta video"
-            />
-          </div>
-        )}
-      </Modal>
+      {modalVisible && (
+        <Modal
+          title={selectedVideo?.foreign_username ? `Beta by @${selectedVideo.foreign_username}` : 'Beta Video'}
+          open={modalVisible}
+          onCancel={handleModalClose}
+          footer={[
+            <a
+              key="instagram"
+              href={selectedVideo?.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ marginRight: 8 }}
+            >
+              <InstagramOutlined /> View on Instagram
+            </a>
+          ]}
+          width="90%"
+          style={{ maxWidth: '800px', maxHeight: '90vh' }}
+          centered
+          destroyOnClose={true}
+        >
+          {selectedVideo && (
+            <div style={{ position: 'relative', paddingBottom: '140%', overflow: 'hidden' }}>
+              <iframe
+                key={iframeKey}
+                src={getInstagramEmbedUrl(selectedVideo.link)}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  border: 'none',
+                }}
+                scrolling="no"
+                title="Beta video"
+              />
+            </div>
+          )}
+        </Modal>
+      )}
     </div>
   );
 };
