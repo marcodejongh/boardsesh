@@ -39,12 +39,7 @@ export const UISearchParamsProvider: React.FC<{ children: React.ReactNode }> = (
     if (activeFilters.length > 0) {
       track('Climb Search Performed', {
         searchType: 'filters',
-        activeFilters: activeFilters.join(','),
-        sortBy: uiSearchParams.sortBy,
-        sortOrder: uiSearchParams.sortOrder,
-        hasClimbName: !!uiSearchParams.name,
-        hasGradeFilter: !!(uiSearchParams.minGrade || uiSearchParams.maxGrade),
-        hasHoldFilter: !!(uiSearchParams.holdsFilter && Object.entries(uiSearchParams.holdsFilter).length > 0)
+        activeFiltersCount: activeFilters.length,
       });
     }
     

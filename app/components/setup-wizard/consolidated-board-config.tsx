@@ -202,15 +202,6 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
         setSelectedAngle(defaultConfig.angle || 40);
         setUseAsDefault(defaultConfig.useAsDefault);
         
-        // Track default configuration load
-        track('Default Configuration Loaded', {
-          board: defaultConfig.board,
-          layoutId: defaultConfig.layoutId,
-          sizeId: defaultConfig.sizeId,
-          setCount: defaultConfig.setIds.length,
-          angle: defaultConfig.angle || 40,
-          configName: defaultConfig.name
-        });
         
         // Redirect immediately if there's a default
         const setsString = defaultConfig.setIds.join(',');
@@ -330,13 +321,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
         
         // Track board configuration completion
         track('Board Configuration Completed', {
-          board: selectedBoard,
-          layoutId: selectedLayout,
-          sizeId: selectedSize,
-          setCount: selectedSets.length,
-          setIds: selectedSets.join(','),
-          angle: selectedAngle,
-          hasCustomName: !!configName.trim(),
+          boardLayout: selectedLayout,
           setAsDefault: useAsDefault
         });
         

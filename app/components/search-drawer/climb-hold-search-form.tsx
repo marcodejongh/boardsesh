@@ -3,6 +3,7 @@ import { BoardDetails, HoldState } from '@/app/lib/types';
 import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
 import { Select, Button, Form } from 'antd';
 import BoardHeatmap from '../board-renderer/board-heatmap';
+import { track } from '@vercel/analytics';
 
 interface ClimbHoldSearchFormProps {
   boardDetails: BoardDetails;
@@ -14,9 +15,10 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
 
   const handleHoldClick = (holdId: number) => {
     const updatedHoldsFilter = { ...uiSearchParams.holdsFilter };
+    const wasSelected = updatedHoldsFilter[holdId]?.state === selectedState;
 
     if (selectedState === 'ANY' || selectedState === 'NOT') {
-      if (updatedHoldsFilter[holdId]?.state === selectedState) {
+      if (wasSelected) {
         delete updatedHoldsFilter[holdId];
       } else {
         updatedHoldsFilter[holdId] = {
@@ -43,7 +45,13 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
         <Form.Item label="Select hold type" className="mb-0">
           <Select
             value={selectedState}
-            onChange={(value) => setSelectedState(value as HoldState)}
+            onChange={(value) => {
+              setSelectedState(value as HoldState);
+              track('Search Hold State Changed', {
+                hold_state: value,
+                boardLayout: boardDetails.layout_name || '',
+              });
+            }}
             style={{ width: 200 }}
             options={stateItems}
           />
@@ -64,7 +72,14 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
         <Form.Item className="mt-4">
           <Button 
             danger
-            onClick={() => updateFilters({ holdsFilter: {} })}
+            onClick={() => {
+              const holdCount = Object.keys(uiSearchParams.holdsFilter || {}).length;
+              updateFilters({ holdsFilter: {} });
+              track('Clear Search Holds', {
+                holds_cleared: holdCount,
+                boardLayout: boardDetails.layout_name || '',
+              });
+            }}
           >
             Clear Selected Holds
           </Button>

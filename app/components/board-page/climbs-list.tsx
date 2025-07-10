@@ -134,7 +134,7 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
           currentCount: climbs.length,
           hasMore: hasMoreResults
         });
-        fetchMoreClimbs();
+        return fetchMoreClimbs();
       }}
       hasMore={hasMoreResults}
       loader={<Skeleton active />}
@@ -157,14 +157,8 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
                 onCoverClick={() => {
                   updateHash(climb.uuid);
                   setCurrentClimb(climb);
-                  track('Climb Card Clicked', {
+                  track('Climb List Card Clicked', {
                     climbUuid: climb.uuid,
-                    climbName: climb.name,
-                    difficulty: climb.difficulty,
-                    quality: climb.quality_average,
-                    setter: climb.setter_username,
-                    angle: climb.angle,
-                    ascentCount: climb.ascensionist_count
                   });
                 }}
               />

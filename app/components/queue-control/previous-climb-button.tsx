@@ -31,8 +31,7 @@ export default function PreviousClimbButton({ navigate = false, boardDetails }: 
       setCurrentClimbQueueItem(previousClimb);
       track('Queue Navigation', {
         direction: 'previous',
-        climbUuid: previousClimb.climb.uuid,
-        climbName: previousClimb.climb.name
+        boardLayout: boardDetails?.layout_name || '',
       });
     }
   };

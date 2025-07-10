@@ -53,11 +53,8 @@ export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boa
   const showDrawer = () => {
     setDrawerVisible(true);
     track('Tick Button Clicked', {
-      climbUuid: currentClimb?.uuid || '',
-      climbName: currentClimb?.name || '',
-      isAuthenticated,
+      boardLayout: boardDetails.layout_name || '',
       existingAscentCount: badgeCount,
-      hasSuccessfulAscent
     });
   };
   const closeDrawer = () => setDrawerVisible(false);
@@ -66,15 +63,13 @@ export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boa
     setIsLoggingIn(true);
     try {
       await login(boardDetails.board_name, username, password);
-      track('User Login', {
-        board: boardDetails.board_name,
-        success: true
+      track('User Login Success', {
+        boardLayout: boardDetails.layout_name || '',
       });
     } catch (error) {
       console.error('Login failed:', error);
-      track('User Login', {
-        board: boardDetails.board_name,
-        success: false
+      track('User Login Failed', {
+        boardLayout: boardDetails.layout_name || '',
       });
     } finally {
       setIsLoggingIn(false);
