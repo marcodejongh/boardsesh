@@ -34,8 +34,7 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
     setIsQueueOpen(newState);
     track('Queue Drawer Toggled', {
       action: newState ? 'opened' : 'closed',
-      currentClimbUuid: currentClimb?.uuid || '',
-      currentClimbName: currentClimb?.name || ''
+      boardLayout: boardDetails.layout_name || '',
     });
   };
 
@@ -116,8 +115,7 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
                   onClick={() => {
                     mirrorClimb();
                     track('Mirror Climb Toggled', {
-                      climbUuid: currentClimb?.uuid || '',
-                      climbName: currentClimb?.name || '',
+                      boardLayout: boardDetails.layout_name || '',
                       mirrored: !currentClimb?.mirrored
                     });
                   }}

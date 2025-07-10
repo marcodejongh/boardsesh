@@ -8,6 +8,7 @@ import useHeatmapData from '../search-drawer/use-heatmap';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
 import { Button, Select, Form, Space, Switch } from 'antd';
+import { track } from '@vercel/analytics';
 
 const LEGEND_HEIGHT = 96; // Increased from 80
 const BLUR_RADIUS = 10; // Increased blur radius
@@ -314,7 +315,13 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
               r={hold.r}
               fill="transparent"
               className="cursor-pointer"
-              onClick={onHoldClick ? () => onHoldClick(hold.id) : undefined}
+              onClick={onHoldClick ? () => {
+                onHoldClick(hold.id);
+                track('Heatmap Hold Clicked', {
+                  hold_id: hold.id,
+                  boardLayout: `${boardDetails.layout_name}`,
+                });
+              } : undefined}
             />
           ))}
 
@@ -343,7 +350,12 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
         <Form.Item>
           <Button
             type={showHeatmap ? "primary" : "default"}
-            onClick={() => setShowHeatmap(!showHeatmap)}
+            onClick={() => {
+              setShowHeatmap(!showHeatmap);
+              track(`Heatmap ${showHeatmap ? 'Shown' : 'Hidden'}`, {
+                boardLayout: boardDetails.layout_name || '',
+              });
+            }}
           >
             {showHeatmap ? 'Hide Heatmap' : 'Show Heatmap'}
           </Button>
@@ -354,7 +366,13 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
             <Form.Item label="View Mode">
               <Select
                 value={colorMode}
-                onChange={(value) => setColorMode(value as ColorMode)}
+                onChange={(value) => {
+                  setColorMode(value as ColorMode);
+                  track('Heatmap Mode Changed', {
+                    mode: value,
+                    board: boardDetails.layout_name || '',
+                  });
+                }}
                 style={{ width: 200 }}
                 options={colorModeOptions}
               />

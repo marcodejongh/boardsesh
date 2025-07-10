@@ -32,13 +32,8 @@ const ClimbCardActions = ({ climb, boardDetails }: ClimbCardActionsProps) => {
       message.info(`Successfully added ${climbName} to the queue`);
       
       track('Add to Queue', {
-        climbUuid: climb.uuid,
-        climbName: climb.name,
-        difficulty: climb.difficulty,
-        quality: climb.quality_average,
-        angle: climb.angle,
+        boardLayout: boardDetails.layout_name || '',
         queueLength: queue.length + 1,
-        isAlreadyInQueue
       });
 
       setDuplicateTimer(true);
@@ -72,10 +67,7 @@ const ClimbCardActions = ({ climb, boardDetails }: ClimbCardActionsProps) => {
           }, climb.uuid, climb.name)
     } onClick={() => {
       track('Climb Info Viewed', {
-        climbUuid: climb.uuid,
-        climbName: climb.name,
-        difficulty: climb.difficulty,
-        source: 'card_action'
+        boardLayout: boardDetails.layout_name || '',
       });
     }}>
       <InfoCircleOutlined />

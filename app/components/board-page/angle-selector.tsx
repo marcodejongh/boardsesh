@@ -20,9 +20,7 @@ export default function AngleSelector({ boardName, currentAngle }: AngleSelector
 
   const handleAngleChange = (newAngle: string) => {
     track('Angle Changed', {
-      board: boardName,
-      fromAngle: currentAngle,
-      toAngle: parseInt(newAngle)
+      angle: parseInt(newAngle)
     });
     
     // Replace the current angle in the URL with the new one

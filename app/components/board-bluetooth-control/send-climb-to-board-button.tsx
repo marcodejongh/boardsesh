@@ -69,22 +69,16 @@ const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({ boardDe
     try {
       if (characteristicRef.current) {
         await writeCharacteristicSeries(characteristicRef.current, splitMessages(bluetoothPacket));
-        track('Climb Sent to Board', {
+        track('Climb Sent to Board Success', {
           climbUuid: currentClimbQueueItem.climb.uuid,
-          climbName: currentClimbQueueItem.climb.name,
-          board: boardDetails.board_name,
-          mirrored: !!currentClimbQueueItem.climb.mirrored,
-          success: true
+          boardLayout: `${boardDetails.layout_name}`,
         });
       }
     } catch (error) {
       console.error('Error sending climb to board:', error);
-      track('Climb Sent to Board', {
+      track('Climb Sent to Board Failure', {
         climbUuid: currentClimbQueueItem.climb.uuid,
-        climbName: currentClimbQueueItem.climb.name,
-        board: boardDetails.board_name,
-        mirrored: !!currentClimbQueueItem.climb.mirrored,
-        success: false
+        boardLayout: `${boardDetails.layout_name}`,
       });
     }
   }, [currentClimbQueueItem, boardDetails]);
@@ -108,9 +102,8 @@ const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({ boardDe
           bluetoothDeviceRef.current = device;
           characteristicRef.current = characteristic;
           setIsConnected(true); // Mark as connected
-          track('Bluetooth Connection', {
-            board: boardDetails.board_name,
-            success: true
+          track('Bluetooth Connection Success', {
+            boardLayout: `${boardDetails.layout_name}`,
           });
         }
       }
@@ -122,9 +115,8 @@ const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({ boardDe
     } catch (error) {
       console.error('Error connecting to Bluetooth:', error);
       setIsConnected(false); // Mark as disconnected if an error occurs
-      track('Bluetooth Connection', {
-        board: boardDetails.board_name,
-        success: false
+      track('Bluetooth Connection Failed', {
+        boardLayout: `${boardDetails.layout_name}`,
       });
     } finally {
       setLoading(false);

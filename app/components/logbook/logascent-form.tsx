@@ -73,15 +73,7 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boar
       });
 
       track('Ascent Logged', {
-        climbUuid: currentClimb.uuid,
-        climbName: currentClimb.name,
-        angle: Number(values.angle),
-        attempts: values.attempts,
-        quality: values.quality,
-        difficulty: values.difficulty,
-        isMirrored,
-        hasNotes: !!(values.notes && values.notes.length > 0),
-        board: boardDetails.board_name
+        boardLayout: boardDetails.layout_name || '',
       });
 
       form.resetFields();
@@ -89,9 +81,7 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boar
     } catch (error) {
       console.error('Failed to save ascent:', error);
       track('Ascent Save Failed', {
-        climbUuid: currentClimb.uuid,
-        climbName: currentClimb.name,
-        board: boardDetails.board_name
+        boardLayout: boardDetails.layout_name || '',
       });
     } finally {
       setIsSaving(false);
