@@ -15,7 +15,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body style={{ margin: 0 }}>
         <Analytics />
-        <SpeedInsights />
         <AntdRegistry>
           <App>
             <WebBluetoothWarning />
@@ -23,6 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             {children}
           </App>
         </AntdRegistry>
+        <SpeedInsights />
       </body>
     </html>
   );
