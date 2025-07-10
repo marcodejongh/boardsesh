@@ -1,9 +1,10 @@
 #!/bin/bash
 
-# Update the FLOAT UNSIGNED columns to regular FLOAT in both tables
+echo "🔧 Starting SQLite database cleanup for: $DB_FILE"
+
+echo "📝 Step 1/4: Dropping triggers and starting transaction..."
 sqlite3 $DB_FILE <<EOF
 PRAGMA foreign_keys = OFF;
-
 BEGIN TRANSACTION;
 
 -- Drop any triggers that depend on climb_cache_fields
@@ -11,7 +12,10 @@ BEGIN TRANSACTION;
 DROP TRIGGER IF EXISTS climb_stats_after_insert;
 DROP TRIGGER IF EXISTS climb_stats_after_update;
 DROP TRIGGER IF EXISTS climb_stats_after_delete;
+EOF
 
+echo "🧹 Step 2/4: Cleaning up orphaned rows in all tables..."
+sqlite3 $DB_FILE <<EOF
 -- Clean up orphaned rows in product_sizes table where product_id no longer exists in products
 DELETE FROM product_sizes
 WHERE product_id NOT IN (SELECT id FROM products);
@@ -114,7 +118,10 @@ WHERE default_placement_role_id IS NOT NULL
 -- Clean up orphaned rows in walls where user_id no longer exists in users
 DELETE FROM walls
 WHERE user_id NOT IN (SELECT id FROM users);
+EOF
 
+echo "🔄 Step 3/4: Recreating climb_cache_fields table with proper FLOAT columns..."
+sqlite3 $DB_FILE <<EOF
 -- Create a new table for climb_cache_fields with regular FLOAT columns
 DROP TABLE IF EXISTS climb_cache_fields_new;
 CREATE TABLE climb_cache_fields_new (
@@ -137,7 +144,10 @@ DROP TABLE climb_cache_fields;
 
 -- Rename the new table to the original name
 ALTER TABLE climb_cache_fields_new RENAME TO climb_cache_fields;
+EOF
 
+echo "🔄 Step 4/4: Recreating climb_stats table with proper FLOAT columns..."
+sqlite3 $DB_FILE <<EOF
 DROP TABLE IF EXISTS climb_stats_new;
 -- Now do the same for climb_stats
 -- Create a new table for climb_stats with regular FLOAT columns
@@ -171,3 +181,5 @@ COMMIT;
 
 PRAGMA foreign_keys = ON;
 EOF
+
+echo "✅ SQLite database cleanup completed successfully!"
