@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState } from 'react';
 import { SearchRequestPagination } from '@/lib/types';
 import { useDebouncedCallback } from 'use-debounce';
+import { track } from '@vercel/analytics';
 import { useQueueContext } from './queue-context';
 import { DEFAULT_SEARCH_PARAMS } from '@/app/lib/url-utils';
 
@@ -24,6 +25,29 @@ export const UISearchParamsProvider: React.FC<{ children: React.ReactNode }> = (
   const [uiSearchParams, setUISearchParams] = useState<SearchRequestPagination>(climbSearchParams);
 
   const debouncedUpdate = useDebouncedCallback(() => {
+    // Track search performed
+    const activeFilters = [];
+    if (uiSearchParams.name) activeFilters.push('climbName');
+    if (uiSearchParams.minGrade || uiSearchParams.maxGrade) activeFilters.push('gradeRange');
+    if (uiSearchParams.minAscents) activeFilters.push('minAscents');
+    if (uiSearchParams.minRating) activeFilters.push('minRating');
+    if (uiSearchParams.onlyClassics) activeFilters.push('classics');
+    if (uiSearchParams.gradeAccuracy) activeFilters.push('gradeAccuracy');
+    if (uiSearchParams.settername) activeFilters.push('setter');
+    if (uiSearchParams.holdsFilter && Object.entries(uiSearchParams.holdsFilter).length > 0) activeFilters.push('holds');
+    
+    if (activeFilters.length > 0) {
+      track('Climb Search Performed', {
+        searchType: 'filters',
+        activeFilters: activeFilters.join(','),
+        sortBy: uiSearchParams.sortBy,
+        sortOrder: uiSearchParams.sortOrder,
+        hasClimbName: !!uiSearchParams.name,
+        hasGradeFilter: !!(uiSearchParams.minGrade || uiSearchParams.maxGrade),
+        hasHoldFilter: !!(uiSearchParams.holdsFilter && Object.entries(uiSearchParams.holdsFilter).length > 0)
+      });
+    }
+    
     setClimbSearchParams(uiSearchParams);
   }, 500);
 

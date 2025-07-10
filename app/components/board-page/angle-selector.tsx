@@ -3,6 +3,7 @@
 import React from 'react';
 import { Select } from 'antd';
 import { useRouter, usePathname } from 'next/navigation';
+import { track } from '@vercel/analytics';
 import { ANGLES } from '@/app/lib/board-data';
 import { BoardName } from '@/app/lib/types';
 
@@ -18,6 +19,12 @@ export default function AngleSelector({ boardName, currentAngle }: AngleSelector
   const pathname = usePathname();
 
   const handleAngleChange = (newAngle: string) => {
+    track('Angle Changed', {
+      board: boardName,
+      fromAngle: currentAngle,
+      toAngle: parseInt(newAngle)
+    });
+    
     // Replace the current angle in the URL with the new one
     const pathSegments = pathname.split('/');
     const angleIndex = pathSegments.findIndex(segment => segment === currentAngle.toString());

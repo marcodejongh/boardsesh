@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Button, DatePicker, Select, Input, Rate, Slider, InputNumber, Form, Space, Tag, Tooltip } from 'antd';
 import { InfoCircleOutlined } from '@ant-design/icons';
+import { track } from '@vercel/analytics';
 import { Climb, BoardDetails } from '@/app/lib/types';
 import { useBoardProvider } from '../board-provider/board-provider-context';
 import { TENSION_KILTER_GRADES, ANGLES } from '@/app/lib/board-data';
@@ -71,10 +72,27 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boar
         climbed_at: values.date.toISOString(),
       });
 
+      track('Ascent Logged', {
+        climbUuid: currentClimb.uuid,
+        climbName: currentClimb.name,
+        angle: Number(values.angle),
+        attempts: values.attempts,
+        quality: values.quality,
+        difficulty: values.difficulty,
+        isMirrored,
+        hasNotes: !!(values.notes && values.notes.length > 0),
+        board: boardDetails.board_name
+      });
+
       form.resetFields();
       onClose();
     } catch (error) {
       console.error('Failed to save ascent:', error);
+      track('Ascent Save Failed', {
+        climbUuid: currentClimb.uuid,
+        climbName: currentClimb.name,
+        board: boardDetails.board_name
+      });
     } finally {
       setIsSaving(false);
     }

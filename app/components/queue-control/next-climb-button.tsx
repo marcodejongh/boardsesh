@@ -2,9 +2,10 @@ import React from 'react';
 import Link from 'next/link';
 import { useQueueContext } from './queue-context';
 import { useParams } from 'next/navigation';
-import { parseBoardRouteParams, constructClimbViewUrlWithSlugs, constructClimbViewUrl } from '@/app/lib/url-utils';
+import { parseBoardRouteParams, constructClimbViewUrlWithSlugs } from '@/app/lib/url-utils';
 import { BoardRouteParametersWithUuid, BoardDetails } from '@/app/lib/types';
 import { FastForwardOutlined } from '@ant-design/icons';
+import { track } from '@vercel/analytics';
 import Button, { ButtonProps } from 'antd/es/button';
 
 type NextClimbButtonProps = {
@@ -28,6 +29,11 @@ export default function NextClimbButton({ navigate = false, boardDetails }: Next
       return;
     }
     setCurrentClimbQueueItem(nextClimb);
+    track('Queue Navigation', {
+      direction: 'next',
+      climbUuid: nextClimb.climb.uuid,
+      climbName: nextClimb.climb.name
+    });
   };
 
   if (!viewOnlyMode && navigate && nextClimb) {

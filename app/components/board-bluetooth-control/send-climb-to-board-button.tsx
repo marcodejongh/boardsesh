@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { BulbOutlined, BulbFilled } from '@ant-design/icons';
 import { Button, message } from 'antd';
+import { track } from '@vercel/analytics';
 import { useQueueContext } from '../queue-control/queue-context';
 import { BoardDetails } from '@/app/lib/types';
 import './send-climb-to-board-button.css'; // Import your custom styles
@@ -68,9 +69,23 @@ const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({ boardDe
     try {
       if (characteristicRef.current) {
         await writeCharacteristicSeries(characteristicRef.current, splitMessages(bluetoothPacket));
+        track('Climb Sent to Board', {
+          climbUuid: currentClimbQueueItem.climb.uuid,
+          climbName: currentClimbQueueItem.climb.name,
+          board: boardDetails.board_name,
+          mirrored: !!currentClimbQueueItem.climb.mirrored,
+          success: true
+        });
       }
     } catch (error) {
       console.error('Error sending climb to board:', error);
+      track('Climb Sent to Board', {
+        climbUuid: currentClimbQueueItem.climb.uuid,
+        climbName: currentClimbQueueItem.climb.name,
+        board: boardDetails.board_name,
+        mirrored: !!currentClimbQueueItem.climb.mirrored,
+        success: false
+      });
     }
   }, [currentClimbQueueItem, boardDetails]);
 
@@ -93,6 +108,10 @@ const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({ boardDe
           bluetoothDeviceRef.current = device;
           characteristicRef.current = characteristic;
           setIsConnected(true); // Mark as connected
+          track('Bluetooth Connection', {
+            board: boardDetails.board_name,
+            success: true
+          });
         }
       }
 
@@ -103,6 +122,10 @@ const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({ boardDe
     } catch (error) {
       console.error('Error connecting to Bluetooth:', error);
       setIsConnected(false); // Mark as disconnected if an error occurs
+      track('Bluetooth Connection', {
+        board: boardDetails.board_name,
+        success: false
+      });
     } finally {
       setLoading(false);
     }

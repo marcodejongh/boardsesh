@@ -5,7 +5,9 @@ import { BoardDetails, Climb } from '@/app/lib/types';
 import { PlusCircleOutlined, HeartOutlined, InfoCircleOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import Link from 'next/link';
 import { constructClimbViewUrl, constructClimbViewUrlWithSlugs } from '@/app/lib/url-utils';
+import { track } from '@vercel/analytics';
 import { message } from 'antd';
+
 // import TickClimbButton from '@/c/tick-climb/tick-climb-button';
 
 type ClimbCardActionsProps = {
@@ -28,6 +30,16 @@ const ClimbCardActions = ({ climb, boardDetails }: ClimbCardActionsProps) => {
 
       const climbName = climb.name || '';
       message.info(`Successfully added ${climbName} to the queue`);
+      
+      track('Add to Queue', {
+        climbUuid: climb.uuid,
+        climbName: climb.name,
+        difficulty: climb.difficulty,
+        quality: climb.quality_average,
+        angle: climb.angle,
+        queueLength: queue.length + 1,
+        isAlreadyInQueue
+      });
 
       setDuplicateTimer(true);
 
@@ -58,7 +70,14 @@ const ClimbCardActions = ({ climb, boardDetails }: ClimbCardActionsProps) => {
             set_ids: boardDetails.set_ids,
             angle: climb.angle
           }, climb.uuid, climb.name)
-    }>
+    } onClick={() => {
+      track('Climb Info Viewed', {
+        climbUuid: climb.uuid,
+        climbName: climb.name,
+        difficulty: climb.difficulty,
+        source: 'card_action'
+      });
+    }}>
       <InfoCircleOutlined />
     </Link>,
     <HeartOutlined key="heart" onClick={() => message.info('TODO: Implement')} />,
