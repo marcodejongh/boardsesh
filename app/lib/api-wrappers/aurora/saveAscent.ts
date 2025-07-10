@@ -1,7 +1,7 @@
 import { BoardName } from '../../types';
 import { API_HOSTS, WEB_HOSTS, AscentSavedEvent, SaveAscentOptions, SaveAscentResponse } from './types';
 import dayjs from 'dayjs';
-import { sql } from '@/app/lib/db/db';
+import { pool  } from '@/app/lib/db/db';
 import { getTableName } from '../../data-sync/aurora/getTableName';
 
 export async function saveAscent(
@@ -170,7 +170,7 @@ export async function saveAscent(
     savedAscentEvent.ascent.created_at, // Assuming `created_at` is now
   ];
 
-  await sql.query(
+  await pool.query(
     `
     INSERT INTO ${fullTableName} (
       uuid, climb_uuid, angle, is_mirror, user_id, attempt_id, 

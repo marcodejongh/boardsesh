@@ -1,4 +1,4 @@
-import { sql } from '@/app/lib/db/db';
+import { pool } from '@/app/lib/db/db';
 import { BoardName, ClimbUuid } from '../types';
 import { LogbookEntry } from '../api-wrappers/aurora/types';
 import { getTableName } from '../data-sync/aurora/getTableName';
@@ -9,7 +9,7 @@ export async function getLogbook(board: BoardName, userId: string, climbUuids?: 
 
   if (climbUuids && climbUuids.length > 0) {
     // If climbUuids are provided
-    const combinedLogbook = await sql.query<LogbookEntry>(
+    const combinedLogbook = await pool.query<LogbookEntry>(
       `
       SELECT 
         uuid,
@@ -59,7 +59,7 @@ export async function getLogbook(board: BoardName, userId: string, climbUuids?: 
     return combinedLogbook.rows;
   } else {
     // If climbUuids are not provided
-    const combinedLogbook = await sql.query<LogbookEntry>(
+    const combinedLogbook = await pool.query<LogbookEntry>(
       `
       SELECT * FROM (
         SELECT 

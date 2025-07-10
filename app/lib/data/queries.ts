@@ -5,7 +5,7 @@
  * performant.
  */
 import 'server-only';
-import { sql } from '@/app/lib/db/db';
+import { pool } from '@/app/lib/db/db';
 
 import {
   Climb,
@@ -64,7 +64,7 @@ export const getBoardDetails = async ({
   const imageUrlHoldsMapEntriesPromises = getImageUrlHoldsMapObjectEntries(set_ids, board_name, layout_id, size_id);
 
   const [{ rows: ledPlacements }, { rows: sizeDimensions }, ...imgUrlMapEntries] = await Promise.all([
-    sql.query<LedPlacementRow>(
+    pool.query<LedPlacementRow>(
       `
         SELECT 
             placements.id,
@@ -76,7 +76,7 @@ export const getBoardDetails = async ({
   `,
       [layout_id, size_id],
     ),
-    sql.query<ProductSizeRow>(
+    pool.query<ProductSizeRow>(
       `
     SELECT edge_left, edge_right, edge_bottom, edge_top
     FROM ${getTableName(board_name, 'product_sizes')}
@@ -144,7 +144,7 @@ export const getBoardDetails = async ({
 
 export const getClimb = async (params: ParsedBoardRouteParametersWithUuid): Promise<Climb> => {
   return (
-    await sql.query({
+    await pool.query({
       text: `
         SELECT climbs.uuid, climbs.setter_username, climbs.name, climbs.description,
         climbs.frames, COALESCE(climb_stats.angle, $5) as angle, COALESCE(climb_stats.ascensionist_count, 0) as ascensionist_count,
@@ -178,7 +178,7 @@ function getImageUrlHoldsMapObjectEntries(
 ): Promise<[ImageFileName, HoldTuple[]]>[] {
   return set_ids.map(async (set_id): Promise<[ImageFileName, HoldTuple[]]> => {
     const [{ rows: imageRows }, { rows: holds }] = await Promise.all([
-      sql.query<ImageFileNameRow>(
+      pool.query<ImageFileNameRow>(
         `
         SELECT image_filename
         FROM ${getTableName(board_name, 'product_sizes_layouts_sets')} product_sizes_layouts_sets
@@ -188,7 +188,7 @@ function getImageUrlHoldsMapObjectEntries(
       `,
         [layout_id, size_id, set_id],
       ),
-      sql.query<HoldsRow>(
+      pool.query<HoldsRow>(
         `
           SELECT 
             placements.id AS placement_id, 
@@ -235,7 +235,7 @@ export type LayoutRow = {
 };
 
 export const getLayouts = async (board_name: BoardName) => {
-  const { rows: layouts } = await sql.query<LayoutRow>(`
+  const { rows: layouts } = await pool.query<LayoutRow>(`
     SELECT id, name
     FROM ${getTableName(board_name, 'layouts')} layouts
     WHERE is_listed = true
@@ -251,7 +251,7 @@ export type SizeRow = {
 };
 
 export const getSizes = async (board_name: BoardName, layout_id: LayoutId) => {
-  const { rows: layouts } = await sql.query<SizeRow>(
+  const { rows: layouts } = await pool.query<SizeRow>(
     `
     SELECT product_sizes.id, product_sizes.name, product_sizes.description
     FROM ${getTableName(board_name, 'product_sizes')} product_sizes
@@ -269,7 +269,7 @@ export type SetRow = {
 };
 
 export const getSets = async (board_name: BoardName, layout_id: LayoutId, size_id: Size) => {
-  const { rows: layouts } = await sql.query<SetRow>(
+  const { rows: layouts } = await pool.query<SetRow>(
     `
     SELECT sets.id, sets.name
       FROM ${getTableName(board_name, 'sets')} sets
@@ -390,7 +390,7 @@ export const getAllBoardSelectorOptions = async (): Promise<BoardSelectorOptions
     ORDER BY board_name, type, parent_id, grandparent_id, name;
   `;
 
-  const { rows } = await sql.query<{
+  const { rows } = await pool.query<{
     board_name: BoardName;
     type: 'layouts' | 'sizes' | 'sets';
     parent_id: string | null;

@@ -307,11 +307,19 @@ export const isSlugFormat = (value: string): boolean => {
 
 // Helper functions to call the slug REST APIs
 const getApiBaseUrl = () => {
-  // For server-side calls in production, use the BASE_URL
-  if (typeof window === 'undefined' && process.env.BASE_URL) {
-    return process.env.BASE_URL;
+  // For server-side calls, always use the BASE_URL if available
+  if (typeof window === 'undefined') {
+    if (process.env.BASE_URL) {
+      return process.env.BASE_URL;
+    }
+    // Fallback for server-side when BASE_URL is not set
+    // Use VERCEL_URL for preview deployments, otherwise localhost for local dev
+    if (process.env.VERCEL_URL) {
+      return `https://${process.env.VERCEL_URL}`;
+    }
+    return 'http://localhost:3000';
   }
-  // For client-side calls or local development, use relative URLs
+  // For client-side calls, use relative URLs
   return '';
 };
 

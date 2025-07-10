@@ -5,11 +5,11 @@ services:
     volumes:
       - db_data:/var/lib/postgresql/data
     ports:
-      - '54320:5432'
+      - '5432:5432'
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: verceldb
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: main
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U postgres']
       interval: 10s
@@ -18,7 +18,8 @@ services:
   neon-proxy:
     image: ghcr.io/timowilhelm/local-neon-http-proxy:main
     environment:
-      - PG_CONNECTION_STRING=postgres://postgres:postgres@postgres:5432/verceldb
+      - PG_CONNECTION_STRING=postgres://postgres:password@postgres:5432/main
+      - POSTGRES_DB=main
     ports:
       - '4444:4444'
     depends_on:
@@ -33,12 +34,12 @@ services:
     build:
       context: .
     environment:
-      - POSTGRES_URL=postgres://postgres:postgres@postgres:5432/verceldb
+      - POSTGRES_URL=postgres://postgres:password@postgres:5432/main
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_PASSWORD=password
       - POSTGRES_HOST=postgres
-      - POSTGRES_DATABASE=verceldb
-      - POSTGRES_URL_NON_POOLING=postgres://postgres:postgres@postgres:5432/verceldb
+      - POSTGRES_DATABASE=main
+      - POSTGRES_URL_NON_POOLING=postgres://postgres:password@postgres:5432/main
     depends_on:
       - postgres
     entrypoint: |

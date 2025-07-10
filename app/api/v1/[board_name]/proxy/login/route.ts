@@ -1,4 +1,4 @@
-import { sql } from '@/app/lib/db/db';
+import { pool } from '@/app/lib/db/db';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import AuroraClimbingClient from '@/app/lib/api-wrappers/aurora-rest-client/aurora-rest-client';
@@ -38,7 +38,7 @@ async function login(boardName: BoardName, username: string, password: string): 
       ? new Date(loginResponse.user.created_at)
       : new Date(); // Fallback to current time if not available
 
-    await sql.query(
+    await pool.query(
       `
       INSERT INTO ${tableName} (id, username, created_at)
       VALUES ($1, $2, $3)

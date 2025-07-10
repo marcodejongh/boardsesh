@@ -1,4 +1,4 @@
-import { sql } from '@/app/lib/db/db';
+import { pool } from '@/app/lib/db/db';
 import { BoardName, LayoutId, Size } from '@/app/lib/types';
 
 export type LayoutRow = {
@@ -29,7 +29,7 @@ const getTableName = (board_name: string, table_name: string) => {
 
 // Reverse lookup functions for slug to ID conversion
 export const getLayoutBySlug = async (board_name: BoardName, slug: string): Promise<LayoutRow | null> => {
-  const { rows } = await sql.query<LayoutRow>(`
+  const { rows } = await pool.query<LayoutRow>(`
     SELECT id, name
     FROM ${getTableName(board_name, 'layouts')} layouts
     WHERE is_listed = true
@@ -65,7 +65,7 @@ export const getLayoutBySlug = async (board_name: BoardName, slug: string): Prom
 };
 
 export const getSizeBySlug = async (board_name: BoardName, layout_id: LayoutId, slug: string): Promise<SizeRow | null> => {
-  const { rows } = await sql.query<SizeRow>(
+  const { rows } = await pool.query<SizeRow>(
     `
     SELECT product_sizes.id, product_sizes.name, product_sizes.description
     FROM ${getTableName(board_name, 'product_sizes')} product_sizes
@@ -98,7 +98,7 @@ export const getSizeBySlug = async (board_name: BoardName, layout_id: LayoutId, 
 };
 
 export const getSetsBySlug = async (board_name: BoardName, layout_id: LayoutId, size_id: Size, slug: string): Promise<SetRow[]> => {
-  const { rows } = await sql.query<SetRow>(
+  const { rows } = await pool.query<SetRow>(
     `
     SELECT sets.id, sets.name
       FROM ${getTableName(board_name, 'sets')} sets
