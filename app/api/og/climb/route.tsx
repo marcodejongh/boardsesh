@@ -1,7 +1,7 @@
 import { ImageResponse } from '@vercel/og';
 import { NextRequest } from 'next/server';
 import { fetchBoardDetails, fetchCurrentClimb } from '@/app/components/rest-api/api';
-import { parseBoardRouteParams, parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils';
+import { parseBoardRouteParams } from '@/app/lib/url-utils';
 import { convertLitUpHoldsStringToMap, getImageUrl } from '@/app/components/board-renderer/util';
 import { HoldRenderData } from '@/app/components/board-renderer/types';
 
@@ -25,31 +25,15 @@ export async function GET(request: NextRequest) {
       return new Response('Missing required parameters', { status: 400 });
     }
 
-    // Check if parameters are numeric (old format) or slug-based (new format)
-    const isNumericFormat = !isNaN(parseInt(layout_id)) && !isNaN(parseInt(size_id));
-    
-    let parsedParams;
-    if (isNumericFormat) {
-      // Use numeric parsing for old format
-      parsedParams = parseBoardRouteParams({
-        board_name,
-        layout_id: layout_id,
-        size_id: size_id,
-        set_ids: set_ids,
-        angle: angle,
-        climb_uuid,
-      });
-    } else {
-      // Use slug parsing for new format
-      parsedParams = await parseBoardRouteParamsWithSlugs({
-        board_name,
-        layout_id,
-        size_id,
-        set_ids,
-        angle,
-        climb_uuid,
-      });
-    }
+    // Always use numeric parsing since metadata now passes numeric IDs
+    const parsedParams = parseBoardRouteParams({
+      board_name,
+      layout_id: layout_id,
+      size_id: size_id,
+      set_ids: set_ids,
+      angle: angle,
+      climb_uuid,
+    });
 
     console.log('Parsed params:', parsedParams);
 

@@ -29,14 +29,14 @@ export async function generateMetadata(props: { params: Promise<BoardRouteParame
     const description = `${climbName} - ${climbGrade} by ${setter}. Quality: ${currentClimb.quality_average || 0}/5. Ascents: ${currentClimb.ascensionist_count || 0}`;
     const climbUrl = constructClimbViewUrl(parsedParams, parsedParams.climb_uuid, climbName);
     
-    // Generate OG image URL - use original slug parameters for better compatibility
+    // Generate OG image URL - use parsed numeric IDs for better performance
     const ogImageUrl = new URL('/api/og/climb', process.env.BASE_URL || 'https://boardsesh.com');
-    ogImageUrl.searchParams.set('board_name', params.board_name);
-    ogImageUrl.searchParams.set('layout_id', params.layout_id);
-    ogImageUrl.searchParams.set('size_id', params.size_id);
-    ogImageUrl.searchParams.set('set_ids', params.set_ids);
-    ogImageUrl.searchParams.set('angle', params.angle);
-    ogImageUrl.searchParams.set('climb_uuid', params.climb_uuid);
+    ogImageUrl.searchParams.set('board_name', parsedParams.board_name);
+    ogImageUrl.searchParams.set('layout_id', parsedParams.layout_id.toString());
+    ogImageUrl.searchParams.set('size_id', parsedParams.size_id.toString());
+    ogImageUrl.searchParams.set('set_ids', parsedParams.set_ids.join(','));
+    ogImageUrl.searchParams.set('angle', parsedParams.angle.toString());
+    ogImageUrl.searchParams.set('climb_uuid', parsedParams.climb_uuid);
     
     return {
       title: `${climbName} - ${climbGrade} | BoardSesh`,
