@@ -3,6 +3,7 @@ import React from 'react';
 
 import { Row, Col, Skeleton } from 'antd';
 import InfiniteScroll from 'react-infinite-scroll-component';
+import { track } from '@vercel/analytics';
 import { Climb, ParsedBoardRouteParameters, BoardDetails } from '@/app/lib/types';
 import { useQueueContext } from '../queue-control/queue-context';
 import ClimbCard from '../climb-card/climb-card';
@@ -128,7 +129,13 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
   return (
     <InfiniteScroll
       dataLength={climbs.length}
-      next={fetchMoreClimbs}
+      next={() => {
+        track('Infinite Scroll Load More', {
+          currentCount: climbs.length,
+          hasMore: hasMoreResults
+        });
+        fetchMoreClimbs();
+      }}
       hasMore={hasMoreResults}
       loader={<Skeleton active />}
       endMessage={<div style={{ textAlign: 'center' }}>No more climbs 🤐</div>}
@@ -150,6 +157,15 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
                 onCoverClick={() => {
                   updateHash(climb.uuid);
                   setCurrentClimb(climb);
+                  track('Climb Card Clicked', {
+                    climbUuid: climb.uuid,
+                    climbName: climb.name,
+                    difficulty: climb.difficulty,
+                    quality: climb.quality_average,
+                    setter: climb.setter_username,
+                    angle: climb.angle,
+                    ascentCount: climb.ascensionist_count
+                  });
                 }}
               />
             </div>

@@ -5,6 +5,7 @@ import { Button, Form, Select, Typography, Input, Divider, Card, Row, Col, Check
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import { openDB } from 'idb';
+import { track } from '@vercel/analytics';
 import { SUPPORTED_BOARDS, ANGLES } from '@/app/lib/board-data';
 import { fetchBoardDetails } from '../rest-api/api';
 import { LayoutRow, SizeRow, SetRow } from '@/app/lib/data/queries';
@@ -201,6 +202,16 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
         setSelectedAngle(defaultConfig.angle || 40);
         setUseAsDefault(defaultConfig.useAsDefault);
         
+        // Track default configuration load
+        track('Default Configuration Loaded', {
+          board: defaultConfig.board,
+          layoutId: defaultConfig.layoutId,
+          sizeId: defaultConfig.sizeId,
+          setCount: defaultConfig.setIds.length,
+          angle: defaultConfig.angle || 40,
+          configName: defaultConfig.name
+        });
+        
         // Redirect immediately if there's a default
         const setsString = defaultConfig.setIds.join(',');
         const savedAngle = defaultConfig.angle || 40;
@@ -316,6 +327,18 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
           
           configurationName = `${layoutName} ${sizeName}`;
         }
+        
+        // Track board configuration completion
+        track('Board Configuration Completed', {
+          board: selectedBoard,
+          layoutId: selectedLayout,
+          sizeId: selectedSize,
+          setCount: selectedSets.length,
+          setIds: selectedSets.join(','),
+          angle: selectedAngle,
+          hasCustomName: !!configName.trim(),
+          setAsDefault: useAsDefault
+        });
         
         // Always save configuration with either user-provided or generated name
         const config: StoredBoardConfig = {

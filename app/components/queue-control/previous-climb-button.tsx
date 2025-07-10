@@ -5,6 +5,7 @@ import { useQueueContext } from './queue-context';
 import { useParams } from 'next/navigation';
 import { parseBoardRouteParams, constructClimbViewUrlWithSlugs } from '@/app/lib/url-utils';
 import { BoardRouteParametersWithUuid, BoardDetails } from '@/app/lib/types';
+import { track } from '@vercel/analytics';
 import { FastBackwardOutlined } from '@ant-design/icons';
 import Button, { ButtonProps } from 'antd/es/button';
 
@@ -28,6 +29,11 @@ export default function PreviousClimbButton({ navigate = false, boardDetails }: 
     if (previousClimb) {
       // Remove the next climb from the queue by updating the state
       setCurrentClimbQueueItem(previousClimb);
+      track('Queue Navigation', {
+        direction: 'previous',
+        climbUuid: previousClimb.climb.uuid,
+        climbName: previousClimb.climb.name
+      });
     }
   };
 

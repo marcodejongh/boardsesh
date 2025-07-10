@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Button, Typography, Row, Col, Card, Drawer, Space } from 'antd';
 import { SyncOutlined } from '@ant-design/icons';
+import { track } from '@vercel/analytics';
 import { useQueueContext } from './queue-context';
 import NextClimbButton from './next-climb-button';
 import { usePathname } from 'next/navigation';
@@ -28,7 +29,15 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
   const isViewPage = pathname.includes('/view/');
   const { currentClimb, mirrorClimb } = useQueueContext();
 
-  const toggleQueueDrawer = () => setIsQueueOpen(!isQueueOpen);
+  const toggleQueueDrawer = () => {
+    const newState = !isQueueOpen;
+    setIsQueueOpen(newState);
+    track('Queue Drawer Toggled', {
+      action: newState ? 'opened' : 'closed',
+      currentClimbUuid: currentClimb?.uuid || '',
+      currentClimbName: currentClimb?.name || ''
+    });
+  };
 
   return (
     <>
@@ -104,7 +113,14 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
               {boardDetails.supportsMirroring ? (
                 <Button
                   id="button-mirror"
-                  onClick={mirrorClimb}
+                  onClick={() => {
+                    mirrorClimb();
+                    track('Mirror Climb Toggled', {
+                      climbUuid: currentClimb?.uuid || '',
+                      climbName: currentClimb?.name || '',
+                      mirrored: !currentClimb?.mirrored
+                    });
+                  }}
                   type={currentClimb?.mirrored ? 'primary' : 'default'}
                   style={currentClimb?.mirrored ? { backgroundColor: '#722ed1', borderColor: '#722ed1' } : undefined}
                   icon={<SyncOutlined />}

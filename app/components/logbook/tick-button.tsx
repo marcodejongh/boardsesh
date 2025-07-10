@@ -3,6 +3,7 @@ import { Angle, Climb, BoardDetails } from '@/app/lib/types';
 import { useBoardProvider } from '../board-provider/board-provider-context';
 import { Button, Badge, Form, Input, Drawer } from 'antd';
 import { CheckOutlined } from '@ant-design/icons';
+import { track } from '@vercel/analytics';
 import { LogbookDrawer } from './logbook-drawer';
 
 interface TickButtonProps {
@@ -49,15 +50,32 @@ export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boa
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
-  const showDrawer = () => setDrawerVisible(true);
+  const showDrawer = () => {
+    setDrawerVisible(true);
+    track('Tick Button Clicked', {
+      climbUuid: currentClimb?.uuid || '',
+      climbName: currentClimb?.name || '',
+      isAuthenticated,
+      existingAscentCount: badgeCount,
+      hasSuccessfulAscent
+    });
+  };
   const closeDrawer = () => setDrawerVisible(false);
 
   const handleLogin = async (username: string, password: string) => {
     setIsLoggingIn(true);
     try {
       await login(boardDetails.board_name, username, password);
+      track('User Login', {
+        board: boardDetails.board_name,
+        success: true
+      });
     } catch (error) {
       console.error('Login failed:', error);
+      track('User Login', {
+        board: boardDetails.board_name,
+        success: false
+      });
     } finally {
       setIsLoggingIn(false);
     }
