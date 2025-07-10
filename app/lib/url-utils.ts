@@ -10,7 +10,7 @@ import {
   BoardName,
 } from '@/app/lib/types';
 import { PAGE_LIMIT } from '../components/board-page/constants';
-import { getLayoutBySlug, getSizeBySlug, getSetsBySlug } from './slug-utils';
+import { LayoutRow, SizeRow, SetRow } from './slug-utils';
 
 export function parseBoardRouteParams<T extends BoardRouteParameters>(
   params: T,
@@ -305,6 +305,79 @@ export const isSlugFormat = (value: string): boolean => {
   return !isNumericId(value);
 };
 
+// Helper functions to call the slug REST APIs
+const getApiBaseUrl = () => {
+  // For server-side calls in production, use the BASE_URL
+  if (typeof window === 'undefined' && process.env.BASE_URL) {
+    return process.env.BASE_URL;
+  }
+  // For client-side calls or local development, use relative URLs
+  return '';
+};
+
+const fetchLayoutBySlug = async (boardName: string, slug: string): Promise<LayoutRow | null> => {
+  try {
+    const baseUrl = getApiBaseUrl();
+    const response = await fetch(`${baseUrl}/api/v1/${boardName}/slugs/layout/${slug}`, {
+      next: { revalidate: 31536000 } // Cache for 1 year - layouts don't change
+    });
+    
+    if (!response.ok) {
+      if (response.status === 404) {
+        return null;
+      }
+      throw new Error(`Failed to fetch layout: ${response.statusText}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching layout by slug:', error);
+    throw error;
+  }
+};
+
+const fetchSizeBySlug = async (boardName: string, layoutId: number, slug: string): Promise<SizeRow | null> => {
+  try {
+    const baseUrl = getApiBaseUrl();
+    const response = await fetch(`${baseUrl}/api/v1/${boardName}/slugs/size/${layoutId}/${slug}`, {
+      next: { revalidate: 31536000 } // Cache for 1 year - sizes don't change
+    });
+    
+    if (!response.ok) {
+      if (response.status === 404) {
+        return null;
+      }
+      throw new Error(`Failed to fetch size: ${response.statusText}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching size by slug:', error);
+    throw error;
+  }
+};
+
+const fetchSetsBySlug = async (boardName: string, layoutId: number, sizeId: number, slug: string): Promise<SetRow[]> => {
+  try {
+    const baseUrl = getApiBaseUrl();
+    const response = await fetch(`${baseUrl}/api/v1/${boardName}/slugs/sets/${layoutId}/${sizeId}/${slug}`, {
+      next: { revalidate: 31536000 } // Cache for 1 year - sets don't change
+    });
+    
+    if (!response.ok) {
+      if (response.status === 404) {
+        return [];
+      }
+      throw new Error(`Failed to fetch sets: ${response.statusText}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching sets by slug:', error);
+    throw error;
+  }
+};
+
 // Enhanced route parsing function that handles both slug and numeric formats
 export async function parseBoardRouteParamsWithSlugs<T extends BoardRouteParameters>(
   params: T,
@@ -319,7 +392,7 @@ export async function parseBoardRouteParamsWithSlugs<T extends BoardRouteParamet
   if (isNumericId(layout_id)) {
     parsedLayoutId = Number(layout_id);
   } else {
-    const layout = await getLayoutBySlug(board_name as BoardName, layout_id);
+    const layout = await fetchLayoutBySlug(board_name, layout_id);
     if (!layout) {
       throw new Error(`Layout not found for slug: ${layout_id}`);
     }
@@ -330,7 +403,7 @@ export async function parseBoardRouteParamsWithSlugs<T extends BoardRouteParamet
   if (isNumericId(size_id)) {
     parsedSizeId = Number(size_id);
   } else {
-    const size = await getSizeBySlug(board_name as BoardName, parsedLayoutId, size_id);
+    const size = await fetchSizeBySlug(board_name, parsedLayoutId, size_id);
     if (!size) {
       throw new Error(`Size not found for slug: ${size_id}`);
     }
@@ -346,7 +419,7 @@ export async function parseBoardRouteParamsWithSlugs<T extends BoardRouteParamet
     parsedSetIds = [Number(set_ids)];
   } else {
     // Slug format: "bolt-screw"
-    const sets = await getSetsBySlug(board_name as BoardName, parsedLayoutId, parsedSizeId, set_ids);
+    const sets = await fetchSetsBySlug(board_name, parsedLayoutId, parsedSizeId, set_ids);
     if (sets.length === 0) {
       throw new Error(`Sets not found for slug: ${set_ids}`);
     }
