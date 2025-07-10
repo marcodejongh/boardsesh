@@ -4,7 +4,6 @@ import { fetchBoardDetails, fetchCurrentClimb } from '@/app/components/rest-api/
 import { parseBoardRouteParams } from '@/app/lib/url-utils';
 import { convertLitUpHoldsStringToMap, getImageUrl } from '@/app/components/board-renderer/util';
 import { HoldRenderData } from '@/app/components/board-renderer/types';
-import { getBoardImageBase64 } from '@/app/lib/og-image-cache';
 
 export const runtime = 'edge';
 
