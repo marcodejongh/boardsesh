@@ -11,7 +11,17 @@ etc...
 At some point it would be good to add support to Boardlib for syncing the postgres database.
 But for now, we just drop everything and recreated it.
 
-## Development setup
+## Development setup (easy)
+I uploaded a database dump here: https://drive.google.com/file/d/1qdHEaCqdluhTCjjTdYD84SzfwTwaFI_S/view?usp=sharing.
+But I havent gotten around to using it in the docker setup scripts, but is relatively easy to do.
+1. Download the above database backup
+2. In docker-compose.yml comment out all the entry point scripts
+3. Start docker with `docker-compose up`
+4. Now launch pgadmin, and connect to localhost:54320 user & password: postgres
+5. Now create an empty database
+6. right click empty database and select restore, restore database using the downloaded dump
+
+## Development setup (hard)
 
 Run docker to startup the development database:
 
