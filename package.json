@@ -34,7 +34,6 @@
     "iron-session": "^8.0.4",
     "next": "15.2.0",
     "peerjs": "^1.5.4",
-    "pg": "^8.16.3",
     "react": "^18",
     "react-chartjs-2": "^5.2.0",
     "react-dom": "^18",
@@ -64,6 +63,7 @@
     "eslint-plugin-prettier": "^5.2.1",
     "eslint-plugin-react": "^7.37.2",
     "prettier": "^3.4.2",
+    "pg": "^8.16.3",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "typescript": "^5.7.2"
