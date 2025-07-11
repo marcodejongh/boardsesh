@@ -15,7 +15,7 @@ import {
 } from '@/app/lib/types';
 import { BetaLink } from '@/app/lib/api-wrappers/sync-api-types';
 
-const API_BASE_URL = `${typeof window !== 'undefined' ? window.location.origin : (process.env.BASE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://www.boardsesh.com'))}/api`;
+const API_BASE_URL = `${typeof window !== 'undefined' ? window.location.origin : (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://www.boardsesh.com')}/api`;
 
 export const fetchClimbs = async (
   queryParameters: SearchRequestPagination,
