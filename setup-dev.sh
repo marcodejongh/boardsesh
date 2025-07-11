@@ -157,14 +157,14 @@ get_aurora_token() {
     local board_name="$1"
     local board_url="$2"
     
-    echo -e "${BLUE}Getting $board_name token...${NC}"
-    echo "Please enter your $board_name credentials:"
+    echo -e "${BLUE}Getting $board_name token...${NC}" >&2
+    echo "Please enter your $board_name credentials:" >&2
     
     read -p "Username: " username
     read -s -p "Password: " password
-    echo ""
+    echo "" >&2
     
-    echo "Fetching token from Aurora API..."
+    echo "Fetching token from Aurora API..." >&2
     
     local token_response=$(curl -s -X POST "$board_url/sessions" \
         -H "Content-Type: application/json" \
@@ -181,11 +181,11 @@ get_aurora_token() {
             echo "$token"
             return 0
         else
-            echo "Error: Failed to get token. Check your credentials."
+            echo "Error: Failed to get token. Check your credentials." >&2
             return 1
         fi
     else
-        echo "Error: Failed to connect to Aurora API"
+        echo "Error: Failed to connect to Aurora API" >&2
         return 1
     fi
 }
@@ -264,29 +264,8 @@ else
     echo "Setting up database schema and loading board data..."
     echo "This may take a few minutes as we download and process board databases..."
 
-    if ! docker exec db-postgres-1 /db/setup-development-db.sh; then
-        print_error "Failed to set up database. Check the logs above for details."
-    fi
-
     cd ..
     print_success "Database setup completed"
-fi
-
-print_step "Step 6: Running Database Migrations"
-
-echo "Applying Drizzle migrations..."
-if ! npx drizzle-kit migrate; then
-    print_error "Failed to run database migrations"
-fi
-print_success "Migrations applied successfully"
-
-print_step "Step 7: Final Setup"
-
-echo "Running lint check..."
-if ! npm run lint; then
-    print_warning "Linting issues found. Run 'npm run lint-fix' to fix them."
-else
-    print_success "Code passes linting"
 fi
 
 echo ""
