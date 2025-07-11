@@ -272,7 +272,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
     if (!selectedBoard && savedConfigurations.length === 0) {
       // Auto-select first board
       if (SUPPORTED_BOARDS.length > 0) {
-        setSelectedBoard(SUPPORTED_BOARDS[0]);
+        setSelectedBoard(SUPPORTED_BOARDS[0] as BoardName);
       }
       
       // Auto-select first angle (40 degrees is already the default)
