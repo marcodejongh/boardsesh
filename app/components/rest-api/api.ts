@@ -44,6 +44,10 @@ export const fetchClimbs = async (
     },
   );
 
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+
   const rawResults = await response.json();
 
   return rawResults;

@@ -9,7 +9,7 @@ import '@/c/index.css';
 
 import { Content } from 'antd/es/layout/layout';
 import QueueControlBar from '@/app/components/queue-control/queue-control-bar';
-import { fetchBoardDetails } from '@/app/components/rest-api/api';
+import { getBoardDetails } from '@/app/lib/data/queries';
 import BoardSeshHeader from '@/app/components/board-page/header';
 import { QueueProvider } from '@/app/components/queue-control/queue-context';
 import { PeerProvider } from '@/app/components/connection-manager/peer-context';
@@ -57,9 +57,7 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
     parsedParams = parseBoardRouteParams(params);
     
     // Redirect old URLs to new slug format
-    const [boardDetails] = await Promise.all([
-      fetchBoardDetails(parsedParams.board_name, parsedParams.layout_id, parsedParams.size_id, parsedParams.set_ids)
-    ]);
+    const boardDetails = await getBoardDetails(parsedParams);
     
     if (boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names) {
       const newUrl = constructClimbListWithSlugs(
@@ -81,7 +79,7 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
 
   // Fetch the climbs and board details server-side
   const [boardDetails] = await Promise.all([
-    fetchBoardDetails(parsedParams.board_name, parsedParams.layout_id, parsedParams.size_id, parsedParams.set_ids),
+    getBoardDetails(parsedParams),
   ]);
 
   return (

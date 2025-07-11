@@ -1,6 +1,6 @@
 import { ImageResponse } from '@vercel/og';
 import { NextRequest } from 'next/server';
-import { fetchBoardDetails, fetchCurrentClimb } from '@/app/components/rest-api/api';
+import { getBoardDetails, getClimb } from '@/app/lib/data/queries';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import { convertLitUpHoldsStringToMap, getImageUrl } from '@/app/components/board-renderer/util';
 import { HoldRenderData } from '@/app/components/board-renderer/types';
@@ -38,8 +38,8 @@ export async function GET(request: NextRequest) {
     console.log('Parsed params:', parsedParams);
 
     const [boardDetails, currentClimb] = await Promise.all([
-      fetchBoardDetails(parsedParams.board_name, parsedParams.layout_id, parsedParams.size_id, parsedParams.set_ids),
-      fetchCurrentClimb(parsedParams),
+      getBoardDetails(parsedParams),
+      getClimb(parsedParams),
     ]);
 
     console.log('Board details:', !!boardDetails, 'Current climb:', !!currentClimb);

@@ -1,7 +1,8 @@
 import React from 'react';
 import { notFound, redirect, permanentRedirect } from 'next/navigation';
 import { BoardRouteParametersWithUuid } from '@/app/lib/types';
-import { fetchBoardDetails, fetchCurrentClimb } from '@/app/components/rest-api/api';
+import { getBoardDetails } from '@/app/lib/data/queries';
+import { getClimb } from '@/app/lib/data/queries';
 import ClimbCard from '@/app/components/climb-card/climb-card';
 import { Col, Row } from 'antd';
 import BetaVideos from '@/app/components/beta-videos/beta-videos';
@@ -20,8 +21,8 @@ export async function generateMetadata(props: { params: Promise<BoardRouteParame
   try {
     const parsedParams = await parseBoardRouteParamsWithSlugs(params);
     const [boardDetails, currentClimb] = await Promise.all([
-      fetchBoardDetails(parsedParams.board_name, parsedParams.layout_id, parsedParams.size_id, parsedParams.set_ids),
-      fetchCurrentClimb(parsedParams),
+      getBoardDetails(parsedParams),
+      getClimb(parsedParams),
     ]);
     
     const climbName = currentClimb.name || `${boardDetails.board_name} Climb`;
@@ -159,8 +160,8 @@ export default async function DynamicResultsPage(props: { params: Promise<BoardR
 
     // Fetch the search results using searchCLimbs
     const [boardDetails, currentClimb, betaLinks] = await Promise.all([
-      fetchBoardDetails(parsedParams.board_name, parsedParams.layout_id, parsedParams.size_id, parsedParams.set_ids),
-      fetchCurrentClimb(parsedParams),
+      getBoardDetails(parsedParams),
+      getClimb(parsedParams),
       fetchBetaLinks(),
     ]);
 
