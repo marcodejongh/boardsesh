@@ -49,3 +49,26 @@ BEGIN
 (table_name);
     END IF;
 END $$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE table_name = 'tension_beta_links'
+        AND constraint_type = 'PRIMARY KEY'
+    ) THEN
+        ALTER TABLE tension_beta_links_pkey ADD PRIMARY KEY (climb_uuid, link);
+    END IF;
+END $$;
+
+-- Add primary key to tension_shared_syncs if it doesn't exist
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE table_name = 'kilter_beta_links'
+        AND constraint_type = 'PRIMARY KEY'
+    ) THEN
+        ALTER TABLE tension_shared_syncs ADD PRIMARY KEY (climb_uuid, link);
+    END IF;
+END $$;
