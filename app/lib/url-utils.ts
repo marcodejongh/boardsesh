@@ -395,6 +395,13 @@ export async function parseBoardRouteParamsWithSlugs<T extends BoardRouteParamet
   if (isNumericId(layout_id)) {
     parsedLayoutId = Number(layout_id);
   } else {
+    if (!layout_id) {
+      throw new Error(`Layout not found for slug: ${layout_id}`);
+    }
+    if (!board_name) {
+      throw new Error(`Board name not found for slug: ${layout_id}`);
+    }
+    
     const layout = await fetchLayoutBySlug(board_name, layout_id);
     if (!layout) {
       throw new Error(`Layout not found for slug: ${layout_id}`);
