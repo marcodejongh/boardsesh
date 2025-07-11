@@ -17,7 +17,7 @@ if (process.env.VERCEL_ENV === 'development' || process.env.NODE_ENV === 'develo
 }
 
 // Only configure WebSocket constructor in development or when not building
-if (!process.env.IS_NEXT_WORKER || process.env.IS_NEXT_WORKER !== 'true') {
+if (!process.env.NEXT_PHASE || process.env.NEXT_PHASE !== 'phase-production-build') {
   neonConfig.webSocketConstructor = ws;
 }
 
