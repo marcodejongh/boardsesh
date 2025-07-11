@@ -7,7 +7,8 @@ import Col from 'antd/es/col';
 import { Content } from 'antd/es/layout/layout';
 import Row from 'antd/es/row';
 import { BoardRouteParametersWithUuid, ParsedBoardRouteParameters } from '@/app/lib/types';
-import { parseBoardRouteParams, parseBoardRouteParamsWithSlugs, constructClimbListWithSlugs } from '@/app/lib/url-utils';
+import { parseBoardRouteParams, constructClimbListWithSlugs } from '@/app/lib/url-utils';
+import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import { fetchBoardDetails } from '@/app/components/rest-api/api';
 import { redirect, permanentRedirect } from 'next/navigation';
 

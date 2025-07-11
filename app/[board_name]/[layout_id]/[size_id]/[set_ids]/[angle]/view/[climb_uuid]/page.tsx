@@ -5,7 +5,8 @@ import { fetchBoardDetails, fetchCurrentClimb } from '@/app/components/rest-api/
 import ClimbCard from '@/app/components/climb-card/climb-card';
 import { Col, Row } from 'antd';
 import BetaVideos from '@/app/components/beta-videos/beta-videos';
-import { constructClimbInfoUrl, extractUuidFromSlug, constructClimbViewUrl, isUuidOnly, parseBoardRouteParamsWithSlugs, isSlugFormat, constructClimbViewUrlWithSlugs, parseBoardRouteParams } from '@/app/lib/url-utils';
+import { constructClimbInfoUrl, extractUuidFromSlug, constructClimbViewUrl, isUuidOnly, isSlugFormat, constructClimbViewUrlWithSlugs, parseBoardRouteParams } from '@/app/lib/url-utils';
+import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import ClimbViewActions from '@/app/components/climb-view/climb-view-actions';
 import { Metadata } from 'next';
 import { dbz } from '@/app/lib/db/db';

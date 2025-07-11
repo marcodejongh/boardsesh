@@ -2,7 +2,8 @@ import React from 'react';
 import { PropsWithChildren } from 'react';
 import { Affix, Layout } from 'antd';
 import { ParsedBoardRouteParameters, BoardRouteParametersWithUuid } from '@/app/lib/types';
-import { parseBoardRouteParams, parseBoardRouteParamsWithSlugs, constructClimbListWithSlugs } from '@/app/lib/url-utils'; // Assume this utility helps with parsing
+import { parseBoardRouteParams, constructClimbListWithSlugs } from '@/app/lib/url-utils';
+import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import { redirect, permanentRedirect } from 'next/navigation';
 import '@/c/index.css';
 

@@ -1,6 +1,6 @@
 import { neon, neonConfig, Pool } from '@neondatabase/serverless';
 import { drizzle as drizzleHttp } from 'drizzle-orm/neon-http';
-import 'server-only'
+import 'server-only';
 import ws from 'ws';
 
 let connectionString = process.env.DATABASE_URL;

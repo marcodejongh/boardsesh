@@ -1,7 +1,7 @@
 import { ImageResponse } from '@vercel/og';
 import { NextRequest } from 'next/server';
 import { fetchBoardDetails, fetchCurrentClimb } from '@/app/components/rest-api/api';
-import { parseBoardRouteParams } from '@/app/lib/url-utils';
+import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import { convertLitUpHoldsStringToMap, getImageUrl } from '@/app/components/board-renderer/util';
 import { HoldRenderData } from '@/app/components/board-renderer/types';
 
@@ -25,8 +25,8 @@ export async function GET(request: NextRequest) {
       return new Response('Missing required parameters', { status: 400 });
     }
 
-    // Always use numeric parsing since metadata now passes numeric IDs
-    const parsedParams = parseBoardRouteParams({
+    // Use slug-aware parsing to handle both numeric and string identifiers
+    const parsedParams = await parseBoardRouteParamsWithSlugs({
       board_name,
       layout_id: layout_id,
       size_id: size_id,

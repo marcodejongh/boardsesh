@@ -2,7 +2,8 @@ import React from 'react';
 
 import { notFound, redirect, permanentRedirect } from 'next/navigation';
 import { BoardRouteParametersWithUuid, SearchRequestPagination } from '@/app/lib/types';
-import { parseBoardRouteParams, parsedRouteSearchParamsToSearchParams, parseBoardRouteParamsWithSlugs, constructClimbListWithSlugs } from '@/app/lib/url-utils';
+import { parseBoardRouteParams, parsedRouteSearchParamsToSearchParams, constructClimbListWithSlugs } from '@/app/lib/url-utils';
+import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import ClimbsList from '@/app/components/board-page/climbs-list';
 import { fetchBoardDetails, fetchClimbs } from '@/app/components/rest-api/api';
 
