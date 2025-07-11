@@ -57,8 +57,8 @@
     "@types/d3-scale": "^4.0.9",
     "@types/jest": "^29.5.13",
     "@types/node": "^22",
-    "@types/react": "19.0.10",
-    "@types/react-dom": "19.0.4",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
     "@types/uuid": "^10.0.0",
     "@types/ws": "^8.18.1",
     "bufferutil": "^4.0.9",
@@ -68,12 +68,8 @@
     "eslint-plugin-prettier": "^5.2.1",
     "eslint-plugin-react": "^7.37.2",
     "prettier": "^3.4.2",
-    "react": "19.0.0",
-    "react-dom": "19.0.0",
+    "react": "^18",
+    "react-dom": "^18",
     "typescript": "^5.7.2"
-  },
-  "overrides": {
-    "@types/react": "19.0.10",
-    "@types/react-dom": "19.0.4"
   }
 }

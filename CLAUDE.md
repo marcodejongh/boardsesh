@@ -16,14 +16,13 @@ cd db/ && docker-compose up
 # Create .env.development.local with:
 VERCEL_ENV=development
 POSTGRES_URL=postgresql://default:password@localhost:54320/verceldb
-BASE_URL=http://localhost:3000
 
 # For shared sync to work, add Aurora API tokens:
 KILTER_SYNC_TOKEN=your_kilter_token_here
 TENSION_SYNC_TOKEN=your_tension_token_here
 
-# For sync recursion to work:
-BASE_URL=http://localhost:3000  # or your deployment URL
+# Note: VERCEL_URL is automatically set by Vercel for deployments
+# For local development, the app defaults to http://localhost:3000
 
 # Install and run
 npm install

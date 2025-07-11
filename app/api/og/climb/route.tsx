@@ -19,8 +19,6 @@ export async function GET(request: NextRequest) {
     const angle = searchParams.get('angle');
     const climb_uuid = searchParams.get('climb_uuid');
 
-    console.log('OG Image params:', { board_name, layout_id, size_id, set_ids, angle, climb_uuid });
-
     if (!board_name || !layout_id || !size_id || !set_ids || !angle || !climb_uuid) {
       return new Response('Missing required parameters', { status: 400 });
     }
@@ -35,15 +33,10 @@ export async function GET(request: NextRequest) {
       climb_uuid,
     });
 
-    console.log('Parsed params:', parsedParams);
-
     const [boardDetails, currentClimb] = await Promise.all([
       getBoardDetails(parsedParams),
       getClimb(parsedParams),
     ]);
-
-    console.log('Board details:', !!boardDetails, 'Current climb:', !!currentClimb);
-    console.log('Climb frames:', currentClimb?.frames);
 
     // Process climb holds
     const framesData = convertLitUpHoldsStringToMap(currentClimb.frames, parsedParams.board_name as any);
@@ -54,8 +47,6 @@ export async function GET(request: NextRequest) {
     const litUpHoldsMap = Array.isArray(framesData) || (framesData[0] !== undefined) 
       ? framesData[0] 
       : framesData;
-
-    console.log('Lit up holds map:', litUpHoldsMap);
 
     // Create simplified SVG board for OG image that matches BoardRenderer
     const boardWidth = boardDetails.boardWidth || 1000;
