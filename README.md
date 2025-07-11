@@ -7,32 +7,6 @@ Boardsesh is an app for controlling a ["standardized interactive climbing traini
 
 Try it out [here](https://www.boardsesh.com/)
 
-This app was originally started as a fork of https://github.com/lemeryfertitta/Climbdex.
-We also use https://github.com/lemeryfertitta/BoardLib for creating the database.
-Many thanks to @lemeryfertitta for making this project possible!!
-
-## IOS support
-
-Unfortunately mobile safari doesn't support web bluetooth. So to use this website on your phone you could install a ios browser that does have web ble support, for example: https://apps.apple.com/us/app/bluefy-web-ble-browser/id1492822055
-
-Bluefy is what I tested boardsesh in on my iphone and it worked like expected.
-
-## Current status
-
-Basic board use works, and the app already has queue controls, open to feedback and contributions!
-Using the share button in the top right corner, users can connect to each other and control the board and queue together.
-Similar to Spotify Jams, no more "What climb was that?", "what climb was the last one?", "Mind if I change it?", questions during a sesh
-
-## Future features:
-
-- Faster beta video uploads. Current process for beta videos is manual, and as a result new beta videos are almost never added. We'll implement our own Instagram integration to get beta videos faster.
-
-# Self hosting
-
-We plan to eventually have official support for self hosting, but currently it's still relatively involved to setup. Basically the development setup instructions should be used
-for self-hosting too, but contributions would be very welcome.
-The app is just a standard next.js app with Postgres.
-
 # Getting Started
 
 ## One-Command Setup
@@ -69,3 +43,31 @@ Once your server is running, you can manually trigger shared sync by visiting:
 - **Tension**: [http://localhost:3000/api/internal/shared-sync/tension](http://localhost:3000/api/internal/shared-sync/tension)
 
 This will sync the latest climbs, climb stats, beta links, and other data from Aurora's servers.
+
+# Current status
+
+Basic board use works, and the app already has queue controls, open to feedback and contributions!
+Using the share button in the top right corner, users can connect to each other and control the board and queue together.
+Similar to Spotify Jams, no more "What climb was that?", "what climb was the last one?", "Mind if I change it?", questions during a sesh
+
+## IOS support
+
+Unfortunately mobile safari doesn't support web bluetooth. So to use this website on your phone you could install a ios browser that does have web ble support, for example: https://apps.apple.com/us/app/bluefy-web-ble-browser/id1492822055
+
+Bluefy is what I tested boardsesh in on my iphone and it worked like expected.
+
+## Future features:
+
+- Faster beta video uploads. Current process for beta videos is manual, and as a result new beta videos are almost never added. We'll implement our own Instagram integration to get beta videos faster.
+
+# Self hosting
+
+We plan to eventually have official support for self hosting, but currently it's still relatively involved to setup. Basically the development setup instructions should be used
+for self-hosting too, but contributions would be very welcome.
+The app is just a standard next.js app with Postgres.
+
+# Thanks
+
+This app was originally started as a fork of https://github.com/lemeryfertitta/Climbdex.
+We also use https://github.com/lemeryfertitta/BoardLib for creating the database.
+Many thanks to @lemeryfertitta for making this project possible!!
