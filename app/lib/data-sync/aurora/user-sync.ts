@@ -1,4 +1,4 @@
-import { dbz as db } from '@/app/lib/db/db';
+import { getDb, getPool } from '@/app/lib/db/db';
 import { BoardName } from '../../types';
 import { userSync } from '../../api-wrappers/aurora/userSync';
 import {
@@ -29,8 +29,8 @@ import {
   tensionUserSyncs,
   tensionSharedSyncs,
 } from '@/app/lib/db/schema';
-import { PgTransaction } from 'drizzle-orm/pg-core';
-import { VercelPgQueryResultHKT } from 'drizzle-orm/vercel-postgres';
+import { drizzle } from 'drizzle-orm/neon-serverless';
+import { NeonDatabase, NeonTransaction } from 'drizzle-orm/neon-serverless';
 
 // Helper to get the correct schema based on board type
 function getSchemas(board: BoardName) {
@@ -63,7 +63,7 @@ function getSchemas(board: BoardName) {
 }
 
 async function upsertTableData(
-  db: PgTransaction<VercelPgQueryResultHKT, Record<string, never>, ExtractTablesWithRelations<Record<string, never>>>,
+  db: NeonDatabase<Record<string, never>>,
   boardName: BoardName,
   tableName: string,
   userId: number,
@@ -308,7 +308,7 @@ async function upsertTableData(
 }
 
 async function updateUserSyncs(
-  tx: PgTransaction<VercelPgQueryResultHKT, Record<string, never>, ExtractTablesWithRelations<Record<string, never>>>,
+  tx: NeonDatabase<Record<string, never>>,
   boardName: BoardName,
   userSyncs: UserSyncData[],
 ) {
@@ -333,21 +333,35 @@ async function updateUserSyncs(
 
 export async function getLastSyncTimes(boardName: BoardName, userId: number, tableNames: string[]) {
   const schemas = getSchemas(boardName);
+  const pool = getPool();
+  const client = await pool.connect();
+  
+  try {
+    const db = drizzle(client);
+    const result = await db
+      .select()
+      .from(schemas.userSyncs)
+      .where(and(eq(schemas.userSyncs.userId, Number(userId)), inArray(schemas.userSyncs.tableName, tableNames)));
 
-  const result = await db
-    .select()
-    .from(schemas.userSyncs)
-    .where(and(eq(schemas.userSyncs.userId, Number(userId)), inArray(schemas.userSyncs.tableName, tableNames)));
-
-  return result;
+    return result;
+  } finally {
+    client.release();
+  }
 }
 
 export async function getLastSharedSyncTimes(boardName: BoardName, tableNames: string[]) {
   const schemas = getSchemas(boardName);
+  const pool = getPool();
+  const client = await pool.connect();
+  
+  try {
+    const db = drizzle(client);
+    const result = await db.select().from(schemas.sharedSyncs).where(inArray(schemas.sharedSyncs.tableName, tableNames));
 
-  const result = await db.select().from(schemas.sharedSyncs).where(inArray(schemas.sharedSyncs.tableName, tableNames));
-
-  return result;
+    return result;
+  } finally {
+    client.release();
+  }
 }
 
 export async function syncUserData(
@@ -395,46 +409,56 @@ export async function syncUserData(
       console.log('syncResults', syncResults);
 
       // Process this batch in a transaction
-      await db.transaction(async (tx) => {
-        try {
-          // Process each table - data is directly under table names
-          for (const tableName of tables) {
-            console.log(`Syncing ${tableName} for user ${userId} (batch ${syncAttempts})`);
-            if (syncResults[tableName] && Array.isArray(syncResults[tableName])) {
-              const data = syncResults[tableName];
-              await upsertTableData(tx, board, tableName, userId, data);
+      const pool = getPool();
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        
+        // Create a drizzle instance for this transaction
+        const tx = drizzle(client);
+        
+        // Process each table - data is directly under table names
+        for (const tableName of tables) {
+          console.log(`Syncing ${tableName} for user ${userId} (batch ${syncAttempts})`);
+          if (syncResults[tableName] && Array.isArray(syncResults[tableName])) {
+            const data = syncResults[tableName];
+            await upsertTableData(tx, board, tableName, userId, data);
 
-              // Accumulate results
-              if (!totalResults[tableName]) {
-                totalResults[tableName] = { synced: 0 };
-              }
-              totalResults[tableName].synced += data.length;
-            } else if (!totalResults[tableName]) {
+            // Accumulate results
+            if (!totalResults[tableName]) {
               totalResults[tableName] = { synced: 0 };
             }
+            totalResults[tableName].synced += data.length;
+          } else if (!totalResults[tableName]) {
+            totalResults[tableName] = { synced: 0 };
           }
-
-          // Update user_syncs table with new sync times from this batch
-          if (syncResults['user_syncs']) {
-            await updateUserSyncs(tx, board, syncResults['user_syncs']);
-
-            // Update sync params for next iteration with new timestamps
-            const newUserSyncs = syncResults['user_syncs'].map((sync: any) => ({
-              table_name: sync.table_name,
-              last_synchronized_at: sync.last_synchronized_at,
-              user_id: Number(userId),
-            }));
-
-            currentSyncParams = {
-              ...currentSyncParams,
-              userSyncs: newUserSyncs,
-            };
-          }
-        } catch (error) {
-          console.error('Failed to commit sync database transaction:', error);
-          throw error;
         }
-      });
+
+        // Update user_syncs table with new sync times from this batch
+        if (syncResults['user_syncs']) {
+          await updateUserSyncs(tx, board, syncResults['user_syncs']);
+
+          // Update sync params for next iteration with new timestamps
+          const newUserSyncs = syncResults['user_syncs'].map((sync: any) => ({
+            table_name: sync.table_name,
+            last_synchronized_at: sync.last_synchronized_at,
+            user_id: Number(userId),
+          }));
+
+          currentSyncParams = {
+            ...currentSyncParams,
+            userSyncs: newUserSyncs,
+          };
+        }
+
+        await client.query('COMMIT');
+      } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Failed to commit sync database transaction:', error);
+        throw error;
+      } finally {
+        client.release();
+      }
 
       // Check if sync is complete
       isComplete = syncResults._complete !== false;

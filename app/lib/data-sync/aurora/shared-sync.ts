@@ -1,10 +1,10 @@
-import { dbz as db } from '@/app/lib/db/db';
+import { getDb, getPool } from '@/app/lib/db/db';
 import { BoardName } from '../../types';
 import { SyncOptions } from '../../api-wrappers/aurora/types';
 import { sharedSync } from '../../api-wrappers/aurora/sharedSync';
 import { ExtractTablesWithRelations, sql } from 'drizzle-orm';
-import { PgTransaction } from 'drizzle-orm/pg-core';
-import { VercelPgQueryResultHKT } from 'drizzle-orm/vercel-postgres';
+import { drizzle } from 'drizzle-orm/neon-serverless';
+import { NeonDatabase, NeonTransaction } from 'drizzle-orm/neon-serverless';
 import { Attempt, Climb, ClimbStats, SharedSync, SyncPutFields } from '../../api-wrappers/sync-api-types';
 import { getTable } from '../../db/queries/util/table-select';
 import { convertLitUpHoldsStringToMap } from '@/app/components/board-renderer/util';
@@ -39,7 +39,7 @@ const TABLES_TO_PROCESS = new Set([
 ]);
 
 const upsertAttempts = (
-  db: PgTransaction<VercelPgQueryResultHKT, Record<string, never>, ExtractTablesWithRelations<Record<string, never>>>,
+  db: NeonDatabase<Record<string, never>>,
   board: BoardName,
   data: Attempt[],
 ) =>
@@ -66,7 +66,7 @@ const upsertAttempts = (
   );
 
 async function upsertClimbStats(
-  db: PgTransaction<VercelPgQueryResultHKT, Record<string, never>, ExtractTablesWithRelations<Record<string, never>>>,
+  db: NeonDatabase<Record<string, never>>,
   board: BoardName,
   data: ClimbStats[],
 ) {
@@ -123,7 +123,7 @@ async function upsertClimbStats(
 }
 
 async function upsertClimbs(
-  db: PgTransaction<VercelPgQueryResultHKT, Record<string, never>, ExtractTablesWithRelations<Record<string, never>>>,
+  db: NeonDatabase<Record<string, never>>,
   board: BoardName,
   data: Climb[],
 ) {
@@ -199,7 +199,7 @@ async function upsertClimbs(
 }
 
 async function upsertSharedTableData(
-  db: PgTransaction<VercelPgQueryResultHKT, Record<string, never>, ExtractTablesWithRelations<Record<string, never>>>,
+  db: NeonDatabase<Record<string, never>>,
   boardName: BoardName,
   tableName: string,
   data: SyncPutFields[],
@@ -224,7 +224,7 @@ async function upsertSharedTableData(
   }
 }
 async function updateSharedSyncs(
-  tx: PgTransaction<VercelPgQueryResultHKT, Record<string, never>, ExtractTablesWithRelations<Record<string, never>>>,
+  tx: NeonDatabase<Record<string, never>>,
   boardName: BoardName,
   sharedSyncs: SharedSync[],
 ) {
@@ -248,15 +248,22 @@ async function updateSharedSyncs(
 
 export async function getLastSharedSyncTimes(boardName: BoardName) {
   const sharedSyncsSchema = getTable('sharedSyncs', boardName);
+  const pool = getPool();
+  const client = await pool.connect();
+  
+  try {
+    const db = drizzle(client);
+    const result = await db
+      .select({
+        table_name: sharedSyncsSchema.tableName,
+        last_synchronized_at: sharedSyncsSchema.lastSynchronizedAt,
+      })
+      .from(sharedSyncsSchema);
 
-  const result = await db
-    .select({
-      table_name: sharedSyncsSchema.tableName,
-      last_synchronized_at: sharedSyncsSchema.lastSynchronizedAt,
-    })
-    .from(sharedSyncsSchema);
-
-  return result;
+    return result;
+  } finally {
+    client.release();
+  }
 }
 
 export async function syncSharedData(
@@ -302,62 +309,72 @@ export async function syncSharedData(
       console.log('syncResults structure:', JSON.stringify(syncResults, null, 2).substring(0, 1000));
 
       // Process this batch in a transaction
-      await db.transaction(async (tx) => {
-        try {
-          // Process each table - data is directly under table names
-          for (const tableName of SHARED_SYNC_TABLES) {
-            if (syncResults[tableName] && Array.isArray(syncResults[tableName])) {
-              const data = syncResults[tableName];
+      const pool = getPool();
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        
+        // Create a drizzle instance for this transaction
+        const tx = drizzle(client);
+        
+        // Process each table - data is directly under table names
+        for (const tableName of SHARED_SYNC_TABLES) {
+          if (syncResults[tableName] && Array.isArray(syncResults[tableName])) {
+            const data = syncResults[tableName];
 
-              // Only process tables we actually care about
-              if (TABLES_TO_PROCESS.has(tableName)) {
-                console.log(`Syncing ${tableName}: ${data.length} records`);
-                await upsertSharedTableData(tx, board, tableName, data);
+            // Only process tables we actually care about
+            if (TABLES_TO_PROCESS.has(tableName)) {
+              console.log(`Syncing ${tableName}: ${data.length} records`);
+              await upsertSharedTableData(tx, board, tableName, data);
 
-                // Accumulate results
-                if (!totalResults[tableName]) {
-                  totalResults[tableName] = { synced: 0, complete: false };
-                }
-                totalResults[tableName].synced += data.length;
-              } else {
-                console.log(`Skipping ${tableName}: ${data.length} records (not processed)`);
-                // Still track in results but don't sync
-                if (!totalResults[tableName]) {
-                  totalResults[tableName] = { synced: 0, complete: false };
-                }
+              // Accumulate results
+              if (!totalResults[tableName]) {
+                totalResults[tableName] = { synced: 0, complete: false };
               }
-            } else if (!totalResults[tableName]) {
-              totalResults[tableName] = { synced: 0, complete: false };
+              totalResults[tableName].synced += data.length;
+            } else {
+              console.log(`Skipping ${tableName}: ${data.length} records (not processed)`);
+              // Still track in results but don't sync
+              if (!totalResults[tableName]) {
+                totalResults[tableName] = { synced: 0, complete: false };
+              }
             }
+          } else if (!totalResults[tableName]) {
+            totalResults[tableName] = { synced: 0, complete: false };
           }
-
-          // Update shared_syncs table with new sync times from this batch
-          if (syncResults['shared_syncs']) {
-            console.log('Updating shared_syncs with data:', syncResults['shared_syncs']);
-            await updateSharedSyncs(tx, board, syncResults['shared_syncs']);
-
-            // Update sync params for next iteration with new timestamps
-            const newSharedSyncs = syncResults['shared_syncs'].map((sync: any) => ({
-              table_name: sync.table_name,
-              last_synchronized_at: sync.last_synchronized_at,
-            }));
-
-            // Log timestamp updates for debugging
-            const climbsSync = newSharedSyncs.find((s: any) => s.table_name === 'climbs');
-            if (climbsSync) {
-              console.log(`Climbs table sync timestamp updated to: ${climbsSync.last_synchronized_at}`);
-            }
-
-            // Update syncParams for next batch
-            syncParams.sharedSyncs = newSharedSyncs;
-          } else {
-            console.log('No shared_syncs data in sync results');
-          }
-        } catch (error) {
-          console.error('Failed to commit sync database transaction:', error);
-          throw error;
         }
-      });
+
+        // Update shared_syncs table with new sync times from this batch
+        if (syncResults['shared_syncs']) {
+          console.log('Updating shared_syncs with data:', syncResults['shared_syncs']);
+          await updateSharedSyncs(tx, board, syncResults['shared_syncs']);
+
+          // Update sync params for next iteration with new timestamps
+          const newSharedSyncs = syncResults['shared_syncs'].map((sync: any) => ({
+            table_name: sync.table_name,
+            last_synchronized_at: sync.last_synchronized_at,
+          }));
+
+          // Log timestamp updates for debugging
+          const climbsSync = newSharedSyncs.find((s: any) => s.table_name === 'climbs');
+          if (climbsSync) {
+            console.log(`Climbs table sync timestamp updated to: ${climbsSync.last_synchronized_at}`);
+          }
+
+          // Update syncParams for next batch
+          syncParams.sharedSyncs = newSharedSyncs;
+        } else {
+          console.log('No shared_syncs data in sync results');
+        }
+
+        await client.query('COMMIT');
+      } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Failed to commit sync database transaction:', error);
+        throw error;
+      } finally {
+        client.release();
+      }
 
       // Check if sync is complete - default to true if _complete is not present (matches Android app behavior)
       isComplete = syncResults._complete !== false;
