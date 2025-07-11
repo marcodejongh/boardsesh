@@ -15,7 +15,7 @@ import {
 } from '@/app/lib/types';
 import { BetaLink } from '@/app/lib/api-wrappers/sync-api-types';
 
-const API_BASE_URL = `${process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'}/api`;
+const API_BASE_URL = ``;
 
 export const fetchClimbs = async (
   queryParameters: SearchRequestPagination,
