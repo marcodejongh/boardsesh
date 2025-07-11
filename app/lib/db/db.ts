@@ -18,7 +18,6 @@ if (process.env.VERCEL_ENV === 'development' || process.env.NODE_ENV === 'develo
 }
 
 // Only configure WebSocket constructor in development or when not building
-// neonConfig.webSocketConstructor = ws;
 
 export const pool = new Pool({ connectionString });
 
@@ -28,4 +27,4 @@ export const pool = new Pool({ connectionString });
 // - More efficient for multiple sequential queries
 // - Better for high-frequency database operations
 export const dbz = drizzleWs({ client: pool });
-
+neonConfig.webSocketConstructor = ws;
