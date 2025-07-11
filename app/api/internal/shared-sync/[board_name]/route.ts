@@ -1,13 +1,60 @@
 // app/api/cron/sync-shared-data/route.ts
 import { NextResponse } from 'next/server';
-import { syncSharedData } from '@/lib/data-sync/aurora/shared-sync';
-import { BoardRouteParameters, ParsedBoardRouteParameters } from '@/app/lib/types';
+import { syncSharedData as syncSharedDataFunction } from '@/lib/data-sync/aurora/shared-sync';
+import { BoardRouteParameters, ParsedBoardRouteParameters, BoardName } from '@/app/lib/types';
 import { parseBoardRouteParams } from '@/app/lib/url-utils';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 // This is a simple way to secure the endpoint, should be replaced with a better solution
 const CRON_SECRET = process.env.CRON_SECRET;
+
+const internalSyncSharedData = async (
+  board_name: BoardName,
+  token: string,
+  previousResults: { results: Record<string, { synced: number; complete: boolean }>, complete: boolean } = { results: {},  complete: false },
+  recursionCount = 0
+) => {
+  console.log(`Recursion count: ${recursionCount}`);
+  if (recursionCount >= 100) {
+    console.warn('Maximum recursion depth reached for shared sync');
+    return { _complete: true, _maxRecursionReached: true, ...previousResults };
+  }
+
+  const currentResult = await syncSharedDataFunction(board_name, token);
+  
+  // If this is the first run, just return the current result
+
+  // Deep merge the results, adding up synced counts
+  const mergedResults: { results: Record<string, { synced: number; complete: boolean }>, complete: boolean } = { results: {}, complete: false };
+  const categories = new Set([
+    ...Object.keys(previousResults.results),
+    ...Object.keys(currentResult.results)
+  ]);
+
+  for (const category of categories) {
+    if (category === 'complete') {
+      mergedResults.complete = currentResult.complete;
+      continue;
+    }
+
+    const prev = previousResults.results[category] || { synced: 0, complete: false };
+    const curr = currentResult.results[category] || { synced: 0, complete: false };
+
+    mergedResults.results[category] = {
+      synced: prev.synced + curr.synced,
+      complete: curr.complete
+    };
+  }
+
+  if (!currentResult.complete) {
+    console.log(`Sync not complete, recursing. Current recursion count: ${recursionCount}`);
+    return internalSyncSharedData(board_name, token, mergedResults, recursionCount + 1);
+  }
+
+  console.log(`Sync complete. Returning merged results.`, currentResult);
+  return mergedResults;
+};
 
 export async function GET(request: Request, props: { params: Promise<BoardRouteParameters> }) {
   const params = await props.params;
@@ -34,16 +81,12 @@ export async function GET(request: Request, props: { params: Promise<BoardRouteP
       return NextResponse.json({ error: `No sync token configured for ${board_name}` }, { status: 500 });
     }
 
-    // Process one batch
-    const result = await syncSharedData(board_name, token, 1);
-
-    // Check if sync is complete
-    const isComplete = Object.values(result).every((r) => r.complete);
+    const result = await internalSyncSharedData(board_name, token);
 
     return NextResponse.json({
       success: true,
       results: result,
-      complete: isComplete,
+      complete: result._complete,
     });
   } catch (error) {
     console.error('Cron job failed:', error);

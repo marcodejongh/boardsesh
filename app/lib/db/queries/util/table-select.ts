@@ -32,6 +32,8 @@ import {
   tensionUserSyncs,
   kilterClimbHolds,
   tensionClimbHolds,
+  kilterBetaLinks,
+  tensionBetaLinks,
 } from '@/lib/db/schema';
 
 export type BoardName = 'kilter' | 'tension';
@@ -54,6 +56,7 @@ export type TableSet = {
   userSyncs: typeof kilterUserSyncs | typeof tensionUserSyncs;
   sharedSyncs: typeof kilterSharedSyncs | typeof tensionSharedSyncs;
   climbHolds: typeof kilterClimbHolds | typeof tensionClimbHolds;
+  betaLinks: typeof kilterBetaLinks | typeof tensionBetaLinks;
 };
 
 // Create a complete mapping of all tables
@@ -75,6 +78,7 @@ const BOARD_TABLES: Record<BoardName, TableSet> = {
     userSyncs: kilterUserSyncs,
     sharedSyncs: kilterSharedSyncs,
     climbHolds: kilterClimbHolds,
+    betaLinks: kilterBetaLinks,
   },
   tension: {
     climbs: tensionClimbs,
@@ -93,6 +97,7 @@ const BOARD_TABLES: Record<BoardName, TableSet> = {
     userSyncs: tensionUserSyncs,
     sharedSyncs: tensionSharedSyncs,
     climbHolds: tensionClimbHolds,
+    betaLinks: tensionBetaLinks,
   },
 } as const;
 

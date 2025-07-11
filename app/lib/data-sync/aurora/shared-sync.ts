@@ -5,7 +5,7 @@ import { sharedSync } from '../../api-wrappers/aurora/sharedSync';
 import { ExtractTablesWithRelations, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/neon-serverless';
 import { NeonDatabase, NeonTransaction } from 'drizzle-orm/neon-serverless';
-import { Attempt, Climb, ClimbStats, SharedSync, SyncPutFields } from '../../api-wrappers/sync-api-types';
+import { Attempt, BetaLink, Climb, ClimbStats, SharedSync, SyncPutFields } from '../../api-wrappers/sync-api-types';
 import { getTable } from '../../db/queries/util/table-select';
 import { convertLitUpHoldsStringToMap } from '@/app/components/board-renderer/util';
 
@@ -31,9 +31,9 @@ export const SHARED_SYNC_TABLES: string[] = [
 
 // Tables we actually want to process and store
 const TABLES_TO_PROCESS = new Set([
-  // TODO: Add beta_links processing
   'climbs',
   'climb_stats',
+  'beta_links',
   'attempts',
   'shared_syncs',
 ]);
@@ -118,6 +118,39 @@ async function upsertClimbStats(
           faAt: item.fa_at,
         }),
       ]);
+    }),
+  );
+}
+
+async function upsertBetaLinks(
+  db: NeonDatabase<Record<string, never>>,
+  board: BoardName,
+  data: BetaLink[],
+) {
+  await Promise.all(
+    data.map((item) => {
+      const betaLinksSchema = getTable('betaLinks', board);
+      return db
+        .insert(betaLinksSchema)
+        .values({
+          climbUuid: item.climb_uuid,
+          link: item.link,
+          foreignUsername: item.foreign_username,
+          angle: item.angle,
+          thumbnail: item.thumbnail,
+          isListed: item.is_listed,
+          createdAt: item.created_at,
+        })
+        .onConflictDoUpdate({
+          target: [betaLinksSchema.climbUuid, betaLinksSchema.link],
+          set: {
+            foreignUsername: item.foreign_username,
+            angle: item.angle,
+            thumbnail: item.thumbnail,
+            isListed: item.is_listed,
+            createdAt: item.created_at,
+          },
+        });
     }),
   );
 }
@@ -211,6 +244,9 @@ async function upsertSharedTableData(
     case 'climb_stats':
       await upsertClimbStats(db, boardName, data as ClimbStats[]);
       break;
+    case 'beta_links':
+      await upsertBetaLinks(db, boardName, data as BetaLink[]);
+      break;
     case 'climbs':
       await upsertClimbs(db, boardName, data as Climb[]);
       break;
@@ -269,8 +305,7 @@ export async function getLastSharedSyncTimes(boardName: BoardName) {
 export async function syncSharedData(
   board: BoardName,
   token: string,
-  maxBatches: number = 1,
-): Promise<Record<string, { synced: number; complete: boolean }>> {
+): Promise<{complete: boolean, results: Record<string, { synced: number; complete: boolean }>}>  {
   try {
     console.log('Entered sync shared data');
 
@@ -296,97 +331,86 @@ export async function syncSharedData(
 
     // Initialize results tracking
     const totalResults: Record<string, { synced: number; complete: boolean }> = {};
-    let batchCount = 0;
     let isComplete = false;
 
-    // Process batches up to maxBatches limit
-    while (!isComplete && batchCount < maxBatches) {
-      batchCount++;
-      console.log(`Processing sync batch ${batchCount} for shared data`);
+    const syncResults = await sharedSync(board, syncParams, token);
+    console.log('syncResults keys:', Object.keys(syncResults));
+    console.log('syncResults structure:', JSON.stringify(syncResults, null, 2).substring(0, 1000));
 
-      const syncResults = await sharedSync(board, syncParams, token);
-      console.log('syncResults keys:', Object.keys(syncResults));
-      console.log('syncResults structure:', JSON.stringify(syncResults, null, 2).substring(0, 1000));
+    // Process this batch in a transaction
+    const pool = getPool();
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      
+      // Create a drizzle instance for this transaction
+      const tx = drizzle(client);
+      
+      // Process each table - data is directly under table names
+      for (const tableName of SHARED_SYNC_TABLES) {
+        if (syncResults[tableName] && Array.isArray(syncResults[tableName])) {
+          const data = syncResults[tableName];
 
-      // Process this batch in a transaction
-      const pool = getPool();
-      const client = await pool.connect();
-      try {
-        await client.query('BEGIN');
-        
-        // Create a drizzle instance for this transaction
-        const tx = drizzle(client);
-        
-        // Process each table - data is directly under table names
-        for (const tableName of SHARED_SYNC_TABLES) {
-          if (syncResults[tableName] && Array.isArray(syncResults[tableName])) {
-            const data = syncResults[tableName];
+          // Only process tables we actually care about
+          if (TABLES_TO_PROCESS.has(tableName)) {
+            console.log(`Syncing ${tableName}: ${data.length} records`);
+            await upsertSharedTableData(tx, board, tableName, data);
 
-            // Only process tables we actually care about
-            if (TABLES_TO_PROCESS.has(tableName)) {
-              console.log(`Syncing ${tableName}: ${data.length} records`);
-              await upsertSharedTableData(tx, board, tableName, data);
-
-              // Accumulate results
-              if (!totalResults[tableName]) {
-                totalResults[tableName] = { synced: 0, complete: false };
-              }
-              totalResults[tableName].synced += data.length;
-            } else {
-              console.log(`Skipping ${tableName}: ${data.length} records (not processed)`);
-              // Still track in results but don't sync
-              if (!totalResults[tableName]) {
-                totalResults[tableName] = { synced: 0, complete: false };
-              }
+            // Accumulate results
+            if (!totalResults[tableName]) {
+              totalResults[tableName] = { synced: 0, complete: false };
             }
-          } else if (!totalResults[tableName]) {
-            totalResults[tableName] = { synced: 0, complete: false };
+            totalResults[tableName].synced += data.length;
+          } else {
+            console.log(`Skipping ${tableName}: ${data.length} records (not processed)`);
+            // Still track in results but don't sync
+            if (!totalResults[tableName]) {
+              totalResults[tableName] = { synced: 0, complete: false };
+            }
           }
+        } else if (!totalResults[tableName]) {
+          totalResults[tableName] = { synced: 0, complete: false };
         }
-
-        // Update shared_syncs table with new sync times from this batch
-        if (syncResults['shared_syncs']) {
-          console.log('Updating shared_syncs with data:', syncResults['shared_syncs']);
-          await updateSharedSyncs(tx, board, syncResults['shared_syncs']);
-
-          // Update sync params for next iteration with new timestamps
-          const newSharedSyncs = syncResults['shared_syncs'].map((sync: any) => ({
-            table_name: sync.table_name,
-            last_synchronized_at: sync.last_synchronized_at,
-          }));
-
-          // Log timestamp updates for debugging
-          const climbsSync = newSharedSyncs.find((s: any) => s.table_name === 'climbs');
-          if (climbsSync) {
-            console.log(`Climbs table sync timestamp updated to: ${climbsSync.last_synchronized_at}`);
-          }
-
-          // Update syncParams for next batch
-          syncParams.sharedSyncs = newSharedSyncs;
-        } else {
-          console.log('No shared_syncs data in sync results');
-        }
-
-        await client.query('COMMIT');
-      } catch (error) {
-        await client.query('ROLLBACK');
-        console.error('Failed to commit sync database transaction:', error);
-        throw error;
-      } finally {
-        client.release();
       }
 
-      // Check if sync is complete - default to true if _complete is not present (matches Android app behavior)
-      isComplete = syncResults._complete !== false;
+      // Update shared_syncs table with new sync times from this batch
+      if (syncResults['shared_syncs']) {
+        console.log('Updating shared_syncs with data:', syncResults['shared_syncs']);
+        await updateSharedSyncs(tx, board, syncResults['shared_syncs']);
 
-      console.log(
-        `Sync batch ${batchCount} complete. _complete flag: ${syncResults._complete}, isComplete: ${isComplete}`,
-      );
+        // Update sync params for next iteration with new timestamps
+        const newSharedSyncs = syncResults['shared_syncs'].map((sync: any) => ({
+          table_name: sync.table_name,
+          last_synchronized_at: sync.last_synchronized_at,
+        }));
 
-      if (!isComplete && batchCount >= maxBatches) {
-        console.log(`Reached max batches (${maxBatches}), will continue in next API call`);
+        // Log timestamp updates for debugging
+        const climbsSync = newSharedSyncs.find((s: any) => s.table_name === 'climbs');
+        if (climbsSync) {
+          console.log(`Climbs table sync timestamp updated to: ${climbsSync.last_synchronized_at}`);
+        }
+
+        // Update syncParams for next batch
+        syncParams.sharedSyncs = newSharedSyncs;
+      } else {
+        console.log('No shared_syncs data in sync results');
       }
+
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      console.error('Failed to commit sync database transaction:', error);
+      throw error;
+    } finally {
+      client.release();
     }
+
+    // Check if sync is complete - default to true if _complete is not present (matches Android app behavior)
+    isComplete = syncResults._complete !== false;
+
+    console.log(
+      `Sync complete. _complete flag: ${syncResults._complete}, isComplete: ${isComplete}`,
+    );
 
     // Mark completion status for all tables
     Object.keys(totalResults).forEach((table) => {
@@ -402,7 +426,7 @@ export async function syncSharedData(
     });
     console.log(`Sync complete: ${isComplete}`);
 
-    return totalResults;
+    return { complete: isComplete, results: totalResults };
   } catch (error) {
     console.error('Error syncing shared data:', error);
     throw error;
