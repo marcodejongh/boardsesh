@@ -266,6 +266,20 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
     loadConfigurations();
   }, [router, boardConfigs]);
 
+  // Set default selections on initial load if no saved configs exist
+  useEffect(() => {
+    // Only set defaults if no board is selected and no saved configs exist
+    if (!selectedBoard && savedConfigurations.length === 0) {
+      // Auto-select first board
+      if (SUPPORTED_BOARDS.length > 0) {
+        setSelectedBoard(SUPPORTED_BOARDS[0] as BoardName);
+      }
+      
+      // Auto-select first angle (40 degrees is already the default)
+      // Keep the existing default angle of 40
+    }
+  }, [selectedBoard, savedConfigurations]);
+
   // Reset dependent selections when parent changes
   useEffect(() => {
     if (!selectedBoard) {
@@ -274,21 +288,48 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
       setSelectedSets([]);
       return;
     }
-    setSelectedLayout(undefined);
+    
+    // Auto-select first layout when board changes
+    const availableLayouts = boardConfigs.layouts[selectedBoard] || [];
+    if (availableLayouts.length > 0) {
+      setSelectedLayout(availableLayouts[0].id);
+    } else {
+      setSelectedLayout(undefined);
+    }
+    
     setSelectedSize(undefined);
     setSelectedSets([]);
-  }, [selectedBoard]);
+  }, [selectedBoard, boardConfigs]);
 
   useEffect(() => {
-    if (!selectedBoard || !selectedLayout) return;
-    setSelectedSize(undefined);
+    if (!selectedBoard || !selectedLayout) {
+      setSelectedSize(undefined);
+      setSelectedSets([]);
+      return;
+    }
+    
+    // Auto-select first size when layout changes
+    const availableSizes = boardConfigs.sizes[`${selectedBoard}-${selectedLayout}`] || [];
+    if (availableSizes.length > 0) {
+      setSelectedSize(availableSizes[0].id);
+    } else {
+      setSelectedSize(undefined);
+    }
+    
     setSelectedSets([]);
-  }, [selectedBoard, selectedLayout]);
+  }, [selectedBoard, selectedLayout, boardConfigs]);
 
   useEffect(() => {
-    if (!selectedBoard || !selectedLayout || !selectedSize) return;
-    setSelectedSets([]);
-  }, [selectedBoard, selectedLayout, selectedSize]);
+    if (!selectedBoard || !selectedLayout || !selectedSize) {
+      setSelectedSets([]);
+      return;
+    }
+    
+    // Auto-select all available sets when size is selected
+    const availableSets = boardConfigs.sets[`${selectedBoard}-${selectedLayout}-${selectedSize}`] || [];
+    const allSetIds = availableSets.map(set => set.id);
+    setSelectedSets(allSetIds);
+  }, [selectedBoard, selectedLayout, selectedSize, boardConfigs]);
 
   // Update suggested name when selections change
   useEffect(() => {

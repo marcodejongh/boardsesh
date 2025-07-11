@@ -1,5 +1,6 @@
 import { neon, neonConfig, Pool } from '@neondatabase/serverless';
 import { drizzle as drizzleHttp } from 'drizzle-orm/neon-http';
+import { drizzle as drizzleServerless } from 'drizzle-orm/neon-serverless';
 import 'server-only';
 import ws from 'ws';
 
@@ -18,15 +19,28 @@ if (process.env.VERCEL_ENV === 'development' || process.env.NODE_ENV === 'develo
   neonConfig.wsProxy = (host) => (host === 'db.localtest.me' ? `${host}:4444/v2` : `${host}/v2`);
 }
 
-// Only configure WebSocket constructor in development or when not building
+// Configure WebSocket constructor
+neonConfig.webSocketConstructor = ws;
+
+// Create a singleton pool instance
+let pool: Pool | null = null;
+
 export const getPool = () => {
-  neonConfig.webSocketConstructor = ws;
-
-  if (process.env.VERCEL_ENV === 'development' || process.env.NODE_ENV === 'development') {
-    return new Pool({ connectionString: 'postgres://postgres:password@localhost:5432/main' });
+  if (!pool) {
+    pool = new Pool({ connectionString });
   }
+  return pool;
+};
 
-  return new Pool({ connectionString });
+// Create a singleton db instance
+let db: ReturnType<typeof drizzleServerless> | null = null;
+
+export const getDb = () => {
+  if (!db) {
+    const pool = getPool();
+    db = drizzleServerless(pool);
+  }
+  return db;
 };
 
 export const sql = neon(connectionString!);
