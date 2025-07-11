@@ -26,6 +26,8 @@ This script will:
 - ✅ Run database migrations
 - ✅ Perform final checks
 
+Once you've ran setup, you will have a copy of both the Tension and Kilter climbs database on your computer!!
+
 ## Start Developing
 
 After setup completes, there will be a docker container running with the database and shared date, you can then start the development server:
