@@ -18,9 +18,7 @@ if (process.env.VERCEL_ENV === 'development' || process.env.NODE_ENV === 'develo
 }
 
 // Only configure WebSocket constructor in development or when not building
-if (!process.env.NEXT_PHASE || process.env.NEXT_PHASE !== 'phase-production-build') {
-  neonConfig.webSocketConstructor = ws;
-}
+neonConfig.webSocketConstructor = ws;
 
 export const pool = new Pool({ connectionString });
 
