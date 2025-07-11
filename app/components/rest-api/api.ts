@@ -15,7 +15,7 @@ import {
 } from '@/app/lib/types';
 import { BetaLink } from '@/app/lib/api-wrappers/sync-api-types';
 
-const API_BASE_URL = `${typeof window !== 'undefined' ? window.location.origin : (process.env.BASE_URL || 'https://www.boardsesh.com')}/api`;
+const API_BASE_URL = ``;
 
 export const fetchClimbs = async (
   queryParameters: SearchRequestPagination,
@@ -43,6 +43,10 @@ export const fetchClimbs = async (
       cache: 'no-store',
     },
   );
+
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
 
   const rawResults = await response.json();
 

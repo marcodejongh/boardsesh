@@ -10,7 +10,6 @@ import {
   BoardName,
 } from '@/app/lib/types';
 import { PAGE_LIMIT } from '../components/board-page/constants';
-import { getLayoutBySlug, getSizeBySlug, getSetsBySlug } from './slug-utils';
 
 export function parseBoardRouteParams<T extends BoardRouteParameters>(
   params: T,
@@ -305,68 +304,3 @@ export const isSlugFormat = (value: string): boolean => {
   return !isNumericId(value);
 };
 
-// Enhanced route parsing function that handles both slug and numeric formats
-export async function parseBoardRouteParamsWithSlugs<T extends BoardRouteParameters>(
-  params: T,
-): Promise<T extends BoardRouteParametersWithUuid ? ParsedBoardRouteParametersWithUuid : ParsedBoardRouteParameters> {
-  const { board_name, layout_id, size_id, set_ids, angle, climb_uuid } = params;
-
-  let parsedLayoutId: number;
-  let parsedSizeId: number;
-  let parsedSetIds: number[];
-
-  // Handle layout_id (slug or numeric)
-  if (isNumericId(layout_id)) {
-    parsedLayoutId = Number(layout_id);
-  } else {
-    const layout = await getLayoutBySlug(board_name as BoardName, layout_id);
-    if (!layout) {
-      throw new Error(`Layout not found for slug: ${layout_id}`);
-    }
-    parsedLayoutId = layout.id;
-  }
-
-  // Handle size_id (slug or numeric)
-  if (isNumericId(size_id)) {
-    parsedSizeId = Number(size_id);
-  } else {
-    const size = await getSizeBySlug(board_name as BoardName, parsedLayoutId, size_id);
-    if (!size) {
-      throw new Error(`Size not found for slug: ${size_id}`);
-    }
-    parsedSizeId = size.id;
-  }
-
-  // Handle set_ids (slug or numeric)
-  if (set_ids.includes(',') && set_ids.split(',').every(id => isNumericId(id.trim()))) {
-    // Numeric format: "26,27"
-    parsedSetIds = decodeURIComponent(set_ids).split(',').map(str => Number(str.trim()));
-  } else if (isNumericId(set_ids)) {
-    // Single numeric ID
-    parsedSetIds = [Number(set_ids)];
-  } else {
-    // Slug format: "bolt-screw"
-    const sets = await getSetsBySlug(board_name as BoardName, parsedLayoutId, parsedSizeId, set_ids);
-    if (sets.length === 0) {
-      throw new Error(`Sets not found for slug: ${set_ids}`);
-    }
-    parsedSetIds = sets.map(s => s.id);
-  }
-
-  const parsedParams = {
-    board_name,
-    layout_id: parsedLayoutId,
-    size_id: parsedSizeId,
-    set_ids: parsedSetIds,
-    angle: Number(angle),
-  };
-
-  if (climb_uuid) {
-    return {
-      ...parsedParams,
-      climb_uuid: extractUuidFromSlug(climb_uuid),
-    } as T extends BoardRouteParametersWithUuid ? ParsedBoardRouteParametersWithUuid : never;
-  }
-
-  return parsedParams as T extends BoardRouteParametersWithUuid ? never : ParsedBoardRouteParameters;
-}

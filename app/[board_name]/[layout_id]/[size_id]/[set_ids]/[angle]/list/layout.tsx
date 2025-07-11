@@ -7,8 +7,9 @@ import Col from 'antd/es/col';
 import { Content } from 'antd/es/layout/layout';
 import Row from 'antd/es/row';
 import { BoardRouteParametersWithUuid, ParsedBoardRouteParameters } from '@/app/lib/types';
-import { parseBoardRouteParams, parseBoardRouteParamsWithSlugs, constructClimbListWithSlugs } from '@/app/lib/url-utils';
-import { fetchBoardDetails } from '@/app/components/rest-api/api';
+import { parseBoardRouteParams, constructClimbListWithSlugs } from '@/app/lib/url-utils';
+import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
+import { getBoardDetails } from '@/app/lib/data/queries';
 import { redirect, permanentRedirect } from 'next/navigation';
 
 interface LayoutProps {
@@ -34,9 +35,7 @@ export default async function ListLayout(props: PropsWithChildren<LayoutProps>) 
     parsedParams = parseBoardRouteParams(params);
     
     // Redirect old URLs to new slug format
-    const [boardDetails] = await Promise.all([
-      fetchBoardDetails(parsedParams.board_name, parsedParams.layout_id, parsedParams.size_id, parsedParams.set_ids)
-    ]);
+    const boardDetails = await getBoardDetails(parsedParams);
     
     if (boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names) {
       const newUrl = constructClimbListWithSlugs(
@@ -57,7 +56,7 @@ export default async function ListLayout(props: PropsWithChildren<LayoutProps>) 
   const { board_name, layout_id, set_ids, size_id } = parsedParams;
 
   // Fetch the climbs and board details server-side
-  const [boardDetails] = await Promise.all([fetchBoardDetails(board_name, layout_id, size_id, set_ids)]);
+  const boardDetails = await getBoardDetails(parsedParams);
 
   return (
     <Row gutter={16}>

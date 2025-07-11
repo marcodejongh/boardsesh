@@ -2,7 +2,8 @@
 import { getHoldHeatmapData } from '@/app/lib/db/queries/climbs/holds-heatmap';
 import { getSession } from '@/app/lib/session';
 import { BoardRouteParameters, ErrorResponse, SearchRequestPagination } from '@/app/lib/types';
-import { parseBoardRouteParams, urlParamsToSearchParams, parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils';
+import { parseBoardRouteParams, urlParamsToSearchParams } from '@/app/lib/url-utils';
+import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 

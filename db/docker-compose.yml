@@ -1,47 +1,52 @@
 services:
   postgres:
-    image: postgres
-    environment:
-      POSTGRES_PASSWORD: password
-      POSTGRES_USER: postgres
-      POSTGRES_DB: verceldb
-    ports:
-      - '54320:5432'
+    image: postgres:17
+    command: '-d 1'
     volumes:
-      - ./db-scripts:/docker-entrypoint-initdb.d
-
-  pg_proxy:
-    image: ghcr.io/neondatabase/wsproxy:latest
-    environment:
-      APPEND_PORT: 'postgres:5432'
-      ALLOW_ADDR_REGEX: '.*'
-      LOG_TRAFFIC: 'true'
+      - db_data:/var/lib/postgresql/data
     ports:
-      - '54330:80'
+      - '5432:5432'
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: main
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  neon-proxy:
+    image: ghcr.io/timowilhelm/local-neon-http-proxy:main
+    environment:
+      - PG_CONNECTION_STRING=postgres://postgres:password@postgres:5432/main
+      - POSTGRES_DB=main
+    ports:
+      - '4444:4444'
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
 
   db_setup:
-    image: python:3.9
+    image: debian:bookworm-slim
     volumes:
       - ./:/db
       - ./../drizzle:/drizzle
     build:
       context: .
     environment:
-      - POSTGRES_URL=postgres://postgres:password@postgres:5432/verceldb
+      - POSTGRES_URL=postgres://postgres:password@postgres:5432/main
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=password
       - POSTGRES_HOST=postgres
-      - POSTGRES_DATABASE=verceldb
-      - POSTGRES_URL_NON_POOLING=postgres://postgres:password@postgres:5432/verceldb
+      - POSTGRES_DATABASE=main
+      - POSTGRES_URL_NON_POOLING=postgres://postgres:password@postgres:5432/main
     depends_on:
       - postgres
     entrypoint: |
       /bin/sh -c "
       if [ ! -f /db/tmp/db-setup-complete.flag ]; then
         apt-get update &&
-        apt-get install -y pgloader postgresql-client sqlite3 ca-certificates &&
+        apt-get install -y pgloader postgresql-client sqlite3 ca-certificates curl unzip &&
         update-ca-certificates &&
         /db/setup-development-db.sh &&
         touch /db/tmp/db-setup-complete.flag
@@ -49,3 +54,5 @@ services:
         echo 'Database setup already completed. Skipping.'
       fi
       "
+volumes:
+  db_data:

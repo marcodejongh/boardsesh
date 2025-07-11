@@ -1,11 +1,14 @@
 import React from 'react';
 import { notFound, redirect, permanentRedirect } from 'next/navigation';
 import { BoardRouteParametersWithUuid } from '@/app/lib/types';
-import { fetchBoardDetails, fetchCurrentClimb } from '@/app/components/rest-api/api';
+import { getBoardDetails } from '@/app/lib/data/queries';
+import { getClimb } from '@/app/lib/data/queries';
 import ClimbCard from '@/app/components/climb-card/climb-card';
 import { Col, Row } from 'antd';
 import BetaVideos from '@/app/components/beta-videos/beta-videos';
-import { constructClimbInfoUrl, extractUuidFromSlug, constructClimbViewUrl, isUuidOnly, parseBoardRouteParamsWithSlugs, isSlugFormat, constructClimbViewUrlWithSlugs, parseBoardRouteParams } from '@/app/lib/url-utils';
+import { constructClimbInfoUrl, extractUuidFromSlug, constructClimbViewUrl, isUuidOnly, isSlugFormat, constructClimbViewUrlWithSlugs, parseBoardRouteParams } from '@/app/lib/url-utils';
+import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
+import { convertLitUpHoldsStringToMap } from '@/app/components/board-renderer/util';
 import ClimbViewActions from '@/app/components/climb-view/climb-view-actions';
 import { Metadata } from 'next';
 import { dbz } from '@/app/lib/db/db';
@@ -19,8 +22,8 @@ export async function generateMetadata(props: { params: Promise<BoardRouteParame
   try {
     const parsedParams = await parseBoardRouteParamsWithSlugs(params);
     const [boardDetails, currentClimb] = await Promise.all([
-      fetchBoardDetails(parsedParams.board_name, parsedParams.layout_id, parsedParams.size_id, parsedParams.set_ids),
-      fetchCurrentClimb(parsedParams),
+      getBoardDetails(parsedParams),
+      getClimb(parsedParams),
     ]);
     
     const climbName = currentClimb.name || `${boardDetails.board_name} Climb`;
@@ -30,7 +33,7 @@ export async function generateMetadata(props: { params: Promise<BoardRouteParame
     const climbUrl = constructClimbViewUrl(parsedParams, parsedParams.climb_uuid, climbName);
     
     // Generate OG image URL - use parsed numeric IDs for better performance
-    const ogImageUrl = new URL('/api/og/climb', process.env.BASE_URL || 'https://boardsesh.com');
+    const ogImageUrl = new URL('/api/og/climb', process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://boardsesh.com');
     ogImageUrl.searchParams.set('board_name', parsedParams.board_name);
     ogImageUrl.searchParams.set('layout_id', parsedParams.layout_id.toString());
     ogImageUrl.searchParams.set('size_id', parsedParams.size_id.toString());
@@ -95,8 +98,8 @@ export default async function DynamicResultsPage(props: { params: Promise<BoardR
     if (hasNumericParams || isUuidOnly(params.climb_uuid)) {
       // Need to redirect to new slug-based URL
       const [boardDetails, currentClimb] = await Promise.all([
-        fetchBoardDetails(parsedParams.board_name, parsedParams.layout_id, parsedParams.size_id, parsedParams.set_ids),
-        fetchCurrentClimb(parsedParams),
+        getBoardDetails(parsedParams),
+        getClimb(parsedParams),
       ]);
       
       // Get the names for slug generation
@@ -158,10 +161,24 @@ export default async function DynamicResultsPage(props: { params: Promise<BoardR
 
     // Fetch the search results using searchCLimbs
     const [boardDetails, currentClimb, betaLinks] = await Promise.all([
-      fetchBoardDetails(parsedParams.board_name, parsedParams.layout_id, parsedParams.size_id, parsedParams.set_ids),
-      fetchCurrentClimb(parsedParams),
+      getBoardDetails(parsedParams),
+      getClimb(parsedParams),
       fetchBetaLinks(),
     ]);
+
+    if (!currentClimb) {
+      console.error('Climb not found for params:', parsedParams);
+      notFound();
+    }
+
+    console.log('Current climb frames:', currentClimb.frames);
+
+    // Process the frames to get litUpHoldsMap (same as the API does)
+    const litUpHoldsMap = convertLitUpHoldsStringToMap(currentClimb.frames, parsedParams.board_name as any)[0];
+    const climbWithProcessedData = {
+      ...currentClimb,
+      litUpHoldsMap
+    };
 
     const auroraAppUrl = constructClimbInfoUrl(boardDetails, currentClimb.uuid, currentClimb.angle || parsedParams.angle);
 
@@ -170,14 +187,14 @@ export default async function DynamicResultsPage(props: { params: Promise<BoardR
         <Row gutter={[16, 16]}>
           <Col xs={24}>
             <ClimbViewActions 
-              climb={currentClimb} 
+              climb={climbWithProcessedData} 
               boardDetails={boardDetails} 
               auroraAppUrl={auroraAppUrl}
               angle={parsedParams.angle}
             />
           </Col>
           <Col xs={24} lg={16}>
-            <ClimbCard climb={currentClimb} boardDetails={boardDetails} actions={[]} />
+            <ClimbCard climb={climbWithProcessedData} boardDetails={boardDetails} actions={[]} />
           </Col>
           <Col xs={24} lg={8}>
             <BetaVideos betaLinks={betaLinks} />

@@ -2,9 +2,12 @@ import React from 'react';
 
 import { notFound, redirect, permanentRedirect } from 'next/navigation';
 import { BoardRouteParametersWithUuid, SearchRequestPagination } from '@/app/lib/types';
-import { parseBoardRouteParams, parsedRouteSearchParamsToSearchParams, parseBoardRouteParamsWithSlugs, constructClimbListWithSlugs } from '@/app/lib/url-utils';
+import { parseBoardRouteParams, parsedRouteSearchParamsToSearchParams, constructClimbListWithSlugs } from '@/app/lib/url-utils';
+import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import ClimbsList from '@/app/components/board-page/climbs-list';
-import { fetchBoardDetails, fetchClimbs } from '@/app/components/rest-api/api';
+import { fetchBoardDetails } from '@/app/components/rest-api/api';
+import { searchClimbs } from '@/app/lib/db/queries/climbs/search-climbs';
+import { getBoardDetails } from '@/app/lib/data/queries';
 
 export default async function DynamicResultsPage(
   props: {
@@ -26,9 +29,7 @@ export default async function DynamicResultsPage(
     parsedParams = parseBoardRouteParams(params);
     
     // Redirect old URLs to new slug format
-    const [boardDetails] = await Promise.all([
-      fetchBoardDetails(parsedParams.board_name, parsedParams.layout_id, parsedParams.size_id, parsedParams.set_ids)
-    ]);
+    const boardDetails = await getBoardDetails(parsedParams);
     
     if (boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names) {
       const newUrl = constructClimbListWithSlugs(
@@ -60,8 +61,8 @@ export default async function DynamicResultsPage(
     searchParamsObject.page = 0;
 
     const [fetchedResults, boardDetails] = await Promise.all([
-      fetchClimbs(searchParamsObject, parsedParams),
-      fetchBoardDetails(parsedParams.board_name, parsedParams.layout_id, parsedParams.size_id, parsedParams.set_ids),
+      searchClimbs(parsedParams, searchParamsObject),
+      getBoardDetails(parsedParams),
     ]);
 
     if (!fetchedResults || fetchedResults.climbs.length === 0) {

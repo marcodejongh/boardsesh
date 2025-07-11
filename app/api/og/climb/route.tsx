@@ -1,7 +1,7 @@
 import { ImageResponse } from '@vercel/og';
 import { NextRequest } from 'next/server';
-import { fetchBoardDetails, fetchCurrentClimb } from '@/app/components/rest-api/api';
-import { parseBoardRouteParams } from '@/app/lib/url-utils';
+import { getBoardDetails, getClimb } from '@/app/lib/data/queries';
+import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import { convertLitUpHoldsStringToMap, getImageUrl } from '@/app/components/board-renderer/util';
 import { HoldRenderData } from '@/app/components/board-renderer/types';
 
@@ -25,8 +25,8 @@ export async function GET(request: NextRequest) {
       return new Response('Missing required parameters', { status: 400 });
     }
 
-    // Always use numeric parsing since metadata now passes numeric IDs
-    const parsedParams = parseBoardRouteParams({
+    // Use slug-aware parsing to handle both numeric and string identifiers
+    const parsedParams = await parseBoardRouteParamsWithSlugs({
       board_name,
       layout_id: layout_id,
       size_id: size_id,
@@ -38,8 +38,8 @@ export async function GET(request: NextRequest) {
     console.log('Parsed params:', parsedParams);
 
     const [boardDetails, currentClimb] = await Promise.all([
-      fetchBoardDetails(parsedParams.board_name, parsedParams.layout_id, parsedParams.size_id, parsedParams.set_ids),
-      fetchCurrentClimb(parsedParams),
+      getBoardDetails(parsedParams),
+      getClimb(parsedParams),
     ]);
 
     console.log('Board details:', !!boardDetails, 'Current climb:', !!currentClimb);
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
     // Get all board image URLs (matches BoardRenderer logic)
     const imageUrls = Object.keys(boardDetails.images_to_holds).map(imageUrl => {
       const relativeUrl = getImageUrl(imageUrl, boardDetails.board_name);
-      return `${process.env.BASE_URL || 'http://localhost:3000'}${relativeUrl}`;
+      return `${process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'}${relativeUrl}`;
     });
 
     return new ImageResponse(

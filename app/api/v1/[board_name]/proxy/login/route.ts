@@ -38,15 +38,12 @@ async function login(boardName: BoardName, username: string, password: string): 
       ? new Date(loginResponse.user.created_at)
       : new Date(); // Fallback to current time if not available
 
-    await sql.query(
-      `
-      INSERT INTO ${tableName} (id, username, created_at)
-      VALUES ($1, $2, $3)
+    await sql`
+      INSERT INTO ${sql.unsafe(tableName)} (id, username, created_at)
+      VALUES (${loginResponse.user_id}, ${loginResponse.username || username}, ${createdAt})
       ON CONFLICT (id) DO UPDATE SET
       username = EXCLUDED.username
-      `,
-      [loginResponse.user_id, loginResponse.username || username, createdAt],
-    );
+      `;
 
     // If it's a new user, perform full sync
     try {
