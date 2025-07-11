@@ -29,12 +29,12 @@ const getTableName = (board_name: string, table_name: string) => {
 
 // Reverse lookup functions for slug to ID conversion
 export const getLayoutBySlug = async (board_name: BoardName, slug: string): Promise<LayoutRow | null> => {
-  const rows = await sql<LayoutRow>`
+  const rows = await sql`
     SELECT id, name
     FROM ${sql.unsafe(getTableName(board_name, 'layouts'))} layouts
     WHERE is_listed = true
     AND password IS NULL
-  `;
+  ` as LayoutRow[];
   
   const layout = rows.find(l => {
     const baseSlug = l.name
@@ -65,12 +65,12 @@ export const getLayoutBySlug = async (board_name: BoardName, slug: string): Prom
 };
 
 export const getSizeBySlug = async (board_name: BoardName, layout_id: LayoutId, slug: string): Promise<SizeRow | null> => {
-  const rows = await sql<SizeRow>`
+  const rows = await sql`
     SELECT product_sizes.id, product_sizes.name, product_sizes.description
     FROM ${sql.unsafe(getTableName(board_name, 'product_sizes'))} product_sizes
     INNER JOIN ${sql.unsafe(getTableName(board_name, 'layouts'))} layouts ON product_sizes.product_id = layouts.product_id
     WHERE layouts.id = ${layout_id}
-  `;
+  ` as SizeRow[];
   
   const size = rows.find(s => {
     // Try to match size dimensions first (e.g., "12x12" matches "12 x 12 Commercial")
@@ -95,14 +95,14 @@ export const getSizeBySlug = async (board_name: BoardName, layout_id: LayoutId, 
 };
 
 export const getSetsBySlug = async (board_name: BoardName, layout_id: LayoutId, size_id: Size, slug: string): Promise<SetRow[]> => {
-  const rows = await sql<SetRow>`
+  const rows = await sql`
     SELECT sets.id, sets.name
       FROM ${sql.unsafe(getTableName(board_name, 'sets'))} sets
       INNER JOIN ${sql.unsafe(getTableName(board_name, 'product_sizes_layouts_sets'))} psls 
       ON sets.id = psls.set_id
       WHERE psls.product_size_id = ${size_id}
       AND psls.layout_id = ${layout_id}
-  `;
+  ` as SetRow[];
   
   // Parse the slug to get individual set names
   const slugParts = slug.split('_'); // Split by underscore now

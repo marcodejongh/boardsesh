@@ -63,8 +63,8 @@ export const getBoardDetails = async ({
 }: ParsedBoardRouteParameters): Promise<BoardDetails> => {
   const imageUrlHoldsMapEntriesPromises = getImageUrlHoldsMapObjectEntries(set_ids, board_name, layout_id, size_id);
 
-  const [ledPlacements, sizeDimensions, ...imgUrlMapEntries] = await Promise.all([
-    sql<LedPlacementRow>`
+  const [ledPlacementsResult, sizeDimensionsResult, ...imgUrlMapEntries] = await Promise.all([
+    sql`
         SELECT 
             placements.id,
             leds.position
@@ -73,13 +73,16 @@ export const getBoardDetails = async ({
         WHERE placements.layout_id = ${layout_id}
         AND leds.product_size_id = ${size_id}
     `,
-    sql<ProductSizeRow>`
+    sql`
     SELECT edge_left, edge_right, edge_bottom, edge_top
     FROM ${sql.unsafe(getTableName(board_name, 'product_sizes'))}
     WHERE id = ${size_id}
     `,
     ...imageUrlHoldsMapEntriesPromises,
   ]);
+  
+  const ledPlacements = ledPlacementsResult as LedPlacementRow[];
+  const sizeDimensions = sizeDimensionsResult as ProductSizeRow[];
   const imagesToHolds = Object.fromEntries(imgUrlMapEntries);
 
   if (sizeDimensions.length === 0) {
@@ -157,7 +160,7 @@ export const getClimb = async (params: ParsedBoardRouteParametersWithUuid): Prom
         AND climbs.frames_count = 1
         limit 1
       `;
-  return result[0];
+  return result[0] as Climb;
 };
 
 function getImageUrlHoldsMapObjectEntries(
@@ -167,15 +170,15 @@ function getImageUrlHoldsMapObjectEntries(
   size_id: number,
 ): Promise<[ImageFileName, HoldTuple[]]>[] {
   return set_ids.map(async (set_id): Promise<[ImageFileName, HoldTuple[]]> => {
-    const [imageRows, holds] = await Promise.all([
-      sql<ImageFileNameRow>`
+    const [imageRowsResult, holdsResult] = await Promise.all([
+      sql`
         SELECT image_filename
         FROM ${sql.unsafe(getTableName(board_name, 'product_sizes_layouts_sets'))} product_sizes_layouts_sets
         WHERE layout_id = ${layout_id}
         AND product_size_id = ${size_id}
         AND set_id = ${set_id}
       `,
-      sql<HoldsRow>`
+      sql`
           SELECT 
             placements.id AS placement_id, 
             mirrored_placements.id AS mirrored_placement_id, 
@@ -192,6 +195,9 @@ function getImageUrlHoldsMapObjectEntries(
           AND mirrored_placements.layout_id = ${layout_id}
         `,
     ]);
+    
+    const imageRows = imageRowsResult as ImageFileNameRow[];
+    const holds = holdsResult as HoldsRow[];
 
     if (imageRows.length === 0) {
       throw new Error(`Could not find set_id ${set_id} for layout_id: ${layout_id} and size_id: ${size_id}`);
@@ -219,13 +225,13 @@ export type LayoutRow = {
 };
 
 export const getLayouts = async (board_name: BoardName) => {
-  const layouts = await sql<LayoutRow>`
+  const layouts = await sql`
     SELECT id, name
     FROM ${sql.unsafe(getTableName(board_name, 'layouts'))} layouts
     WHERE is_listed = true
     AND password IS NULL
   `;
-  return layouts;
+  return layouts as LayoutRow[];
 };
 
 export type SizeRow = {
@@ -235,13 +241,13 @@ export type SizeRow = {
 };
 
 export const getSizes = async (board_name: BoardName, layout_id: LayoutId) => {
-  const layouts = await sql<SizeRow>`
+  const layouts = await sql`
     SELECT product_sizes.id, product_sizes.name, product_sizes.description
     FROM ${sql.unsafe(getTableName(board_name, 'product_sizes'))} product_sizes
     INNER JOIN ${sql.unsafe(getTableName(board_name, 'layouts'))} layouts ON product_sizes.product_id = layouts.product_id
     WHERE layouts.id = ${layout_id}
   `;
-  return layouts;
+  return layouts as SizeRow[];
 };
 
 export type SetRow = {
@@ -250,7 +256,7 @@ export type SetRow = {
 };
 
 export const getSets = async (board_name: BoardName, layout_id: LayoutId, size_id: Size) => {
-  const layouts = await sql<SetRow>`
+  const layouts = await sql`
     SELECT sets.id, sets.name
       FROM ${sql.unsafe(getTableName(board_name, 'sets'))} sets
       INNER JOIN ${sql.unsafe(getTableName(board_name, 'product_sizes_layouts_sets'))} psls 
@@ -259,7 +265,7 @@ export const getSets = async (board_name: BoardName, layout_id: LayoutId, size_i
       AND psls.layout_id = ${layout_id}
   `;
 
-  return layouts;
+  return layouts as SetRow[];
 };
 
 export type BoardSelectorOptions = {
@@ -368,15 +374,7 @@ export const getAllBoardSelectorOptions = async (): Promise<BoardSelectorOptions
     ORDER BY board_name, type, parent_id, grandparent_id, name;
   `;
 
-  const rows = await sql<{
-    board_name: BoardName;
-    type: 'layouts' | 'sizes' | 'sets';
-    parent_id: string | null;
-    grandparent_id: string | null;
-    id: number;
-    name: string;
-    description: string | null;
-  }>`
+  const rows = await sql`
     WITH board_data AS (
       SELECT 
         ${'kilter'}::text as board_name,
@@ -472,7 +470,15 @@ export const getAllBoardSelectorOptions = async (): Promise<BoardSelectorOptions
       description
     FROM board_data
     ORDER BY board_name, type, parent_id, grandparent_id, name
-  `;
+  ` as {
+    board_name: BoardName;
+    type: 'layouts' | 'sizes' | 'sets';
+    parent_id: string | null;
+    grandparent_id: string | null;
+    id: number;
+    name: string;
+    description: string | null;
+  }[];
 
   const result: BoardSelectorOptions = {
     layouts: {} as Record<BoardName, LayoutRow[]>,
