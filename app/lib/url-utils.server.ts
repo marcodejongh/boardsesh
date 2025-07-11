@@ -7,7 +7,7 @@ import {
   BoardName,
 } from '@/app/lib/types';
 import { getLayoutBySlug, getSizeBySlug, getSetsBySlug } from './slug-utils';
-import { isNumericId } from './url-utils';
+import { isNumericId, extractUuidFromSlug } from './url-utils';
 
 // Enhanced route parsing function that handles both slug and numeric formats
 export async function parseBoardRouteParamsWithSlugs<T extends BoardRouteParameters>(
@@ -71,7 +71,7 @@ export async function parseBoardRouteParamsWithSlugs<T extends BoardRouteParamet
   if (climb_uuid) {
     return {
       ...parsedParams,
-      climb_uuid,
+      climb_uuid: extractUuidFromSlug(climb_uuid),
     } as T extends BoardRouteParametersWithUuid ? ParsedBoardRouteParametersWithUuid : never;
   }
 

@@ -8,6 +8,7 @@ import { Col, Row } from 'antd';
 import BetaVideos from '@/app/components/beta-videos/beta-videos';
 import { constructClimbInfoUrl, extractUuidFromSlug, constructClimbViewUrl, isUuidOnly, isSlugFormat, constructClimbViewUrlWithSlugs, parseBoardRouteParams } from '@/app/lib/url-utils';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
+import { convertLitUpHoldsStringToMap } from '@/app/components/board-renderer/util';
 import ClimbViewActions from '@/app/components/climb-view/climb-view-actions';
 import { Metadata } from 'next';
 import { dbz } from '@/app/lib/db/db';
@@ -97,8 +98,8 @@ export default async function DynamicResultsPage(props: { params: Promise<BoardR
     if (hasNumericParams || isUuidOnly(params.climb_uuid)) {
       // Need to redirect to new slug-based URL
       const [boardDetails, currentClimb] = await Promise.all([
-        fetchBoardDetails(parsedParams.board_name, parsedParams.layout_id, parsedParams.size_id, parsedParams.set_ids),
-        fetchCurrentClimb(parsedParams),
+        getBoardDetails(parsedParams),
+        getClimb(parsedParams),
       ]);
       
       // Get the names for slug generation
@@ -165,6 +166,20 @@ export default async function DynamicResultsPage(props: { params: Promise<BoardR
       fetchBetaLinks(),
     ]);
 
+    if (!currentClimb) {
+      console.error('Climb not found for params:', parsedParams);
+      notFound();
+    }
+
+    console.log('Current climb frames:', currentClimb.frames);
+
+    // Process the frames to get litUpHoldsMap (same as the API does)
+    const litUpHoldsMap = convertLitUpHoldsStringToMap(currentClimb.frames, parsedParams.board_name as any)[0];
+    const climbWithProcessedData = {
+      ...currentClimb,
+      litUpHoldsMap
+    };
+
     const auroraAppUrl = constructClimbInfoUrl(boardDetails, currentClimb.uuid, currentClimb.angle || parsedParams.angle);
 
     return (
@@ -172,14 +187,14 @@ export default async function DynamicResultsPage(props: { params: Promise<BoardR
         <Row gutter={[16, 16]}>
           <Col xs={24}>
             <ClimbViewActions 
-              climb={currentClimb} 
+              climb={climbWithProcessedData} 
               boardDetails={boardDetails} 
               auroraAppUrl={auroraAppUrl}
               angle={parsedParams.angle}
             />
           </Col>
           <Col xs={24} lg={16}>
-            <ClimbCard climb={currentClimb} boardDetails={boardDetails} actions={[]} />
+            <ClimbCard climb={climbWithProcessedData} boardDetails={boardDetails} actions={[]} />
           </Col>
           <Col xs={24} lg={8}>
             <BetaVideos betaLinks={betaLinks} />
