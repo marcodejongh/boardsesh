@@ -36,8 +36,11 @@ export default function BoardConfigLivePreview({
   const [layoutName, setLayoutName] = useState<string>('');
   const [sizeName, setSizeName] = useState<string>('');
 
+  // Check if all required props are present
+  const hasRequiredProps = Boolean(boardName && layoutId && sizeId && setIds.length > 0);
+
   useEffect(() => {
-    if (!boardName || !layoutId || !sizeId || setIds.length === 0) {
+    if (!hasRequiredProps) {
       setBoardDetails(null);
       setLayoutName('');
       setSizeName('');
@@ -48,23 +51,29 @@ export default function BoardConfigLivePreview({
       try {
         setIsLoading(true);
         
+        // Type assertion is safe because we've already checked hasRequiredProps
+        const safeBoardName = boardName!;
+        const safeLayoutId = layoutId!;
+        const safeSizeId = sizeId!;
+        
         // Get data from boardConfigs prop
-        const layouts = boardConfigs.layouts[boardName] || [];
-        const sizes = boardConfigs.sizes[`${boardName}-${layoutId}`] || [];
-        const detailsKey = `${boardName}-${layoutId}-${sizeId}-${setIds.join(',')}`;
+        const layouts = boardConfigs.layouts[safeBoardName] || [];
+        const sizes = boardConfigs.sizes[`${safeBoardName}-${safeLayoutId}`] || [];
+        const detailsKey = `${safeBoardName}-${safeLayoutId}-${safeSizeId}-${setIds.join(',')}`;
         const cachedDetails = boardConfigs.details[detailsKey];
         
-        const layout = layouts.find(l => l.id === layoutId);
-        setLayoutName(layout?.name || `Layout ${layoutId}`);
+        const layout = layouts.find(l => l.id === safeLayoutId);
+        setLayoutName(layout?.name || `Layout ${safeLayoutId}`);
         
-        const size = sizes.find(s => s.id === sizeId);
-        setSizeName(size?.name || `Size ${sizeId}`);
+        const size = sizes.find(s => s.id === safeSizeId);
+        setSizeName(size?.name || `Size ${safeSizeId}`);
         
         // Use cached details if available, otherwise fetch
         let details = cachedDetails;
         if (!details) {
           try {
-            details = await fetchBoardDetails(boardName, layoutId, sizeId, setIds);
+            debugger;
+            details = await fetchBoardDetails(safeBoardName, safeLayoutId, safeSizeId, setIds);
           } catch (error) {
             console.error('Failed to fetch board details:', error);
             details = null;
@@ -82,9 +91,9 @@ export default function BoardConfigLivePreview({
     };
 
     loadPreview();
-  }, [boardName, layoutId, sizeId, setIds, boardConfigs]);
+  }, [hasRequiredProps, boardName, layoutId, sizeId, setIds, boardConfigs]);
 
-  if (!boardName || !layoutId || !sizeId || setIds.length === 0) {
+  if (!hasRequiredProps) {
     return (
       <Card style={{ width: 400, textAlign: 'center' }}>
         <Text type="secondary">Select board configuration to see preview</Text>
