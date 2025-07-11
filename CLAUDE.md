@@ -14,11 +14,11 @@ BoardSesh is a Next.js 15 application for controlling standardized interactive c
 # One-time database setup
 cd db/ && docker-compose up
 
-# Create .env.development.local with:
-VERCEL_ENV=development
-POSTGRES_URL=postgresql://default:password@localhost:54320/verceldb
+# Environment files are created automatically by setup-dev.sh
+# .env.local contains generic config (tracked in git)
+# .env.development.local contains secrets (NOT tracked in git)
 
-# For shared sync to work, add Aurora API tokens:
+# For shared sync to work, add Aurora API tokens to .env.development.local:
 KILTER_SYNC_TOKEN=your_kilter_token_here
 TENSION_SYNC_TOKEN=your_tension_token_here
 

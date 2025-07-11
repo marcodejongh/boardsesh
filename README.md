@@ -35,40 +35,37 @@ The app is just a standard next.js app with Postgres.
 
 # Getting Started
 
-## Database setup
+## One-Command Setup
 
-Before we can start developing, we need to setup a database. Start the docker container to startup the development database:
+Run the automated setup script:
 
-```
-cd db/ && docker-compose up
-```
-
-This starts up a docker container that uses Boardlib to download the databases and then loads them into postgres with an db update script and pgloader. When the postgres docker container is up,
-you can connect to the database on localhost:54320 using `default:password` as the login details.
-
-## Setup ENV variables
-
-Create the following `.env.development.local`:
-
-```
-VERCEL_ENV=development
-POSTGRES_URL=postgresql://default:password@localhost:54320/verceldb
-# Note: VERCEL_URL is automatically set by Vercel for deployments
-# For local development, the app defaults to http://localhost:3000
+```bash
+./setup-dev.sh
 ```
 
-## Running webapp
+This script will:
+- ✅ Check all prerequisites (Node.js, Docker, etc.)
+- ✅ Install dependencies
+- ✅ Set up environment files
+- ✅ Optionally collect Aurora API tokens for sync features
+- ✅ Set up and populate the database
+- ✅ Run database migrations
+- ✅ Perform final checks
 
-In root of the repo, npm install the dependencies
+## Start Developing
 
-```
-npm install
-```
-
-Now we can run the development server:
+After setup completes, there will be a docker container running with the database and shared date, you can then start the development server:
 
 ```bash
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+### Keeping local data up to date
+
+Once your server is running, you can manually trigger shared sync by visiting:
+- **Kilter**: [http://localhost:3000/api/internal/shared-sync/kilter](http://localhost:3000/api/internal/shared-sync/kilter)
+- **Tension**: [http://localhost:3000/api/internal/shared-sync/tension](http://localhost:3000/api/internal/shared-sync/tension)
+
+This will sync the latest climbs, climb stats, beta links, and other data from Aurora's servers.

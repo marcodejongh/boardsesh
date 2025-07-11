@@ -3,7 +3,7 @@ import { defineConfig } from 'drizzle-kit';
 import path from 'path';
 
 // Load .env.development.local for local dev
-config({ path: path.resolve(process.cwd(), '.env.development.local') });
+config({ path: path.resolve(process.cwd(), '.env.local') });
 
 export default defineConfig({
   out: './drizzle',
