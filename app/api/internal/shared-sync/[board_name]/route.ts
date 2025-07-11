@@ -86,7 +86,7 @@ export async function GET(request: Request, props: { params: Promise<BoardRouteP
     return NextResponse.json({
       success: true,
       results: result,
-      complete: result._complete,
+      complete: result.complete,
     });
   } catch (error) {
     console.error('Cron job failed:', error);
