@@ -5,7 +5,7 @@
  * performant.
  */
 import 'server-only';
-import { pool } from '@/app/lib/db/db';
+import { sql } from '@/app/lib/db/db';
 
 import {
   Climb,
@@ -63,27 +63,21 @@ export const getBoardDetails = async ({
 }: ParsedBoardRouteParameters): Promise<BoardDetails> => {
   const imageUrlHoldsMapEntriesPromises = getImageUrlHoldsMapObjectEntries(set_ids, board_name, layout_id, size_id);
 
-  const [{ rows: ledPlacements }, { rows: sizeDimensions }, ...imgUrlMapEntries] = await Promise.all([
-    pool.query<LedPlacementRow>(
-      `
+  const [ledPlacements, sizeDimensions, ...imgUrlMapEntries] = await Promise.all([
+    sql<LedPlacementRow>`
         SELECT 
             placements.id,
             leds.position
-        FROM ${getTableName(board_name, 'placements')} placements
-        INNER JOIN ${getTableName(board_name, 'leds')} leds ON placements.hole_id = leds.hole_id
-        WHERE placements.layout_id = $1
-        AND leds.product_size_id = $2
-  `,
-      [layout_id, size_id],
-    ),
-    pool.query<ProductSizeRow>(
-      `
+        FROM ${sql.unsafe(getTableName(board_name, 'placements'))} placements
+        INNER JOIN ${sql.unsafe(getTableName(board_name, 'leds'))} leds ON placements.hole_id = leds.hole_id
+        WHERE placements.layout_id = ${layout_id}
+        AND leds.product_size_id = ${size_id}
+    `,
+    sql<ProductSizeRow>`
     SELECT edge_left, edge_right, edge_bottom, edge_top
-    FROM ${getTableName(board_name, 'product_sizes')}
-    WHERE id = $1
-  `,
-      [size_id],
-    ),
+    FROM ${sql.unsafe(getTableName(board_name, 'product_sizes'))}
+    WHERE id = ${size_id}
+    `,
     ...imageUrlHoldsMapEntriesPromises,
   ]);
   const imagesToHolds = Object.fromEntries(imgUrlMapEntries);
@@ -143,31 +137,27 @@ export const getBoardDetails = async ({
 };
 
 export const getClimb = async (params: ParsedBoardRouteParametersWithUuid): Promise<Climb> => {
-  return (
-    await pool.query({
-      text: `
+  const result = await sql`
         SELECT climbs.uuid, climbs.setter_username, climbs.name, climbs.description,
-        climbs.frames, COALESCE(climb_stats.angle, $5) as angle, COALESCE(climb_stats.ascensionist_count, 0) as ascensionist_count,
+        climbs.frames, COALESCE(climb_stats.angle, ${params.angle}) as angle, COALESCE(climb_stats.ascensionist_count, 0) as ascensionist_count,
         dg.boulder_name as difficulty,
         ROUND(climb_stats.quality_average::numeric, 2) as quality_average,
         ROUND(climb_stats.difficulty_average::numeric - climb_stats.display_difficulty::numeric, 2) AS difficulty_error,
         climb_stats.benchmark_difficulty
-        FROM ${getTableName(params.board_name, 'climbs')} climbs
-        LEFT JOIN ${getTableName(params.board_name, 'climb_stats')} climb_stats ON climb_stats.climb_uuid = climbs.uuid AND climb_stats.angle = $5
-        LEFT JOIN ${getTableName(
+        FROM ${sql.unsafe(getTableName(params.board_name, 'climbs'))} climbs
+        LEFT JOIN ${sql.unsafe(getTableName(params.board_name, 'climb_stats'))} climb_stats ON climb_stats.climb_uuid = climbs.uuid AND climb_stats.angle = ${params.angle}
+        LEFT JOIN ${sql.unsafe(getTableName(
           params.board_name,
           'difficulty_grades',
-        )} dg on dg.difficulty = ROUND(climb_stats.display_difficulty::numeric)
-        INNER JOIN ${getTableName(params.board_name, 'product_sizes')} product_sizes ON product_sizes.id = $1
-        WHERE climbs.layout_id = $2
-        AND product_sizes.id = $3
-        AND climbs.uuid = $4
+        ))} dg on dg.difficulty = ROUND(climb_stats.display_difficulty::numeric)
+        INNER JOIN ${sql.unsafe(getTableName(params.board_name, 'product_sizes'))} product_sizes ON product_sizes.id = ${params.size_id}
+        WHERE climbs.layout_id = ${params.layout_id}
+        AND product_sizes.id = ${params.size_id}
+        AND climbs.uuid = ${params.climb_uuid}
         AND climbs.frames_count = 1
         limit 1
-      `,
-      values: [params.size_id, params.layout_id, params.size_id, params.climb_uuid, params.angle],
-    })
-  ).rows[0];
+      `;
+  return result[0];
 };
 
 function getImageUrlHoldsMapObjectEntries(
@@ -177,36 +167,30 @@ function getImageUrlHoldsMapObjectEntries(
   size_id: number,
 ): Promise<[ImageFileName, HoldTuple[]]>[] {
   return set_ids.map(async (set_id): Promise<[ImageFileName, HoldTuple[]]> => {
-    const [{ rows: imageRows }, { rows: holds }] = await Promise.all([
-      pool.query<ImageFileNameRow>(
-        `
+    const [imageRows, holds] = await Promise.all([
+      sql<ImageFileNameRow>`
         SELECT image_filename
-        FROM ${getTableName(board_name, 'product_sizes_layouts_sets')} product_sizes_layouts_sets
-        WHERE layout_id = $1
-        AND product_size_id = $2
-        AND set_id = $3
+        FROM ${sql.unsafe(getTableName(board_name, 'product_sizes_layouts_sets'))} product_sizes_layouts_sets
+        WHERE layout_id = ${layout_id}
+        AND product_size_id = ${size_id}
+        AND set_id = ${set_id}
       `,
-        [layout_id, size_id, set_id],
-      ),
-      pool.query<HoldsRow>(
-        `
+      sql<HoldsRow>`
           SELECT 
             placements.id AS placement_id, 
             mirrored_placements.id AS mirrored_placement_id, 
             holes.x, holes.y
-          FROM ${getTableName(board_name, 'holes')} holes
-          INNER JOIN ${getTableName(board_name, 'placements')} placements ON placements.hole_id = holes.id
-          AND placements.set_id = $1
-          AND placements.layout_id = $2
-          LEFT JOIN ${getTableName(
+          FROM ${sql.unsafe(getTableName(board_name, 'holes'))} holes
+          INNER JOIN ${sql.unsafe(getTableName(board_name, 'placements'))} placements ON placements.hole_id = holes.id
+          AND placements.set_id = ${set_id}
+          AND placements.layout_id = ${layout_id}
+          LEFT JOIN ${sql.unsafe(getTableName(
             board_name,
             'placements',
-          )} mirrored_placements ON mirrored_placements.hole_id = holes.mirrored_hole_id
-          AND mirrored_placements.set_id = $1
-          AND mirrored_placements.layout_id = $2
+          ))} mirrored_placements ON mirrored_placements.hole_id = holes.mirrored_hole_id
+          AND mirrored_placements.set_id = ${set_id}
+          AND mirrored_placements.layout_id = ${layout_id}
         `,
-        [set_id, layout_id],
-      ),
     ]);
 
     if (imageRows.length === 0) {
@@ -235,12 +219,12 @@ export type LayoutRow = {
 };
 
 export const getLayouts = async (board_name: BoardName) => {
-  const { rows: layouts } = await pool.query<LayoutRow>(`
+  const layouts = await sql<LayoutRow>`
     SELECT id, name
-    FROM ${getTableName(board_name, 'layouts')} layouts
+    FROM ${sql.unsafe(getTableName(board_name, 'layouts'))} layouts
     WHERE is_listed = true
     AND password IS NULL
-  `);
+  `;
   return layouts;
 };
 
@@ -251,15 +235,12 @@ export type SizeRow = {
 };
 
 export const getSizes = async (board_name: BoardName, layout_id: LayoutId) => {
-  const { rows: layouts } = await pool.query<SizeRow>(
-    `
+  const layouts = await sql<SizeRow>`
     SELECT product_sizes.id, product_sizes.name, product_sizes.description
-    FROM ${getTableName(board_name, 'product_sizes')} product_sizes
-    INNER JOIN ${getTableName(board_name, 'layouts')} layouts ON product_sizes.product_id = layouts.product_id
-    WHERE layouts.id = $1
-  `,
-    [layout_id],
-  );
+    FROM ${sql.unsafe(getTableName(board_name, 'product_sizes'))} product_sizes
+    INNER JOIN ${sql.unsafe(getTableName(board_name, 'layouts'))} layouts ON product_sizes.product_id = layouts.product_id
+    WHERE layouts.id = ${layout_id}
+  `;
   return layouts;
 };
 
@@ -269,17 +250,14 @@ export type SetRow = {
 };
 
 export const getSets = async (board_name: BoardName, layout_id: LayoutId, size_id: Size) => {
-  const { rows: layouts } = await pool.query<SetRow>(
-    `
+  const layouts = await sql<SetRow>`
     SELECT sets.id, sets.name
-      FROM ${getTableName(board_name, 'sets')} sets
-      INNER JOIN ${getTableName(board_name, 'product_sizes_layouts_sets')} psls 
+      FROM ${sql.unsafe(getTableName(board_name, 'sets'))} sets
+      INNER JOIN ${sql.unsafe(getTableName(board_name, 'product_sizes_layouts_sets'))} psls 
       ON sets.id = psls.set_id
-      WHERE psls.product_size_id = $1
-      AND psls.layout_id = $2
-  `,
-    [size_id, layout_id],
-  );
+      WHERE psls.product_size_id = ${size_id}
+      AND psls.layout_id = ${layout_id}
+  `;
 
   return layouts;
 };
@@ -390,7 +368,7 @@ export const getAllBoardSelectorOptions = async (): Promise<BoardSelectorOptions
     ORDER BY board_name, type, parent_id, grandparent_id, name;
   `;
 
-  const { rows } = await pool.query<{
+  const rows = await sql<{
     board_name: BoardName;
     type: 'layouts' | 'sizes' | 'sets';
     parent_id: string | null;
@@ -398,7 +376,103 @@ export const getAllBoardSelectorOptions = async (): Promise<BoardSelectorOptions
     id: number;
     name: string;
     description: string | null;
-  }>(query, ['kilter', 'tension']);
+  }>`
+    WITH board_data AS (
+      SELECT 
+        ${'kilter'}::text as board_name,
+        'layouts' as type,
+        layouts.id::text as parent_id,
+        null::text as grandparent_id,
+        layouts.id,
+        layouts.name,
+        null::text as description
+      FROM ${sql.unsafe(getTableName('kilter', 'layouts'))} layouts
+      WHERE layouts.is_listed = true AND layouts.password IS NULL
+      
+      UNION ALL
+      
+      SELECT 
+        ${'kilter'}::text as board_name,
+        'sizes' as type,
+        layouts.id::text as parent_id,
+        null::text as grandparent_id,
+        sizes.id,
+        sizes.name,
+        sizes.description
+      FROM ${sql.unsafe(getTableName('kilter', 'product_sizes'))} sizes
+      INNER JOIN ${sql.unsafe(getTableName('kilter', 'layouts'))} layouts ON sizes.product_id = layouts.product_id
+      WHERE layouts.is_listed = true AND layouts.password IS NULL
+      
+      UNION ALL
+      
+      SELECT 
+        ${'kilter'}::text as board_name,
+        'sets' as type,
+        psls.product_size_id::text as parent_id,
+        psls.layout_id::text as grandparent_id,
+        sets.id,
+        sets.name,
+        null::text as description
+      FROM ${sql.unsafe(getTableName('kilter', 'sets'))} sets
+      INNER JOIN ${sql.unsafe(getTableName('kilter', 'product_sizes_layouts_sets'))} psls 
+        ON psls.set_id = sets.id
+      INNER JOIN ${sql.unsafe(getTableName('kilter', 'layouts'))} layouts ON psls.layout_id = layouts.id
+      WHERE layouts.is_listed = true AND layouts.password IS NULL
+      
+      UNION ALL
+      
+      SELECT 
+        ${'tension'}::text as board_name,
+        'layouts' as type,
+        layouts.id::text as parent_id,
+        null::text as grandparent_id,
+        layouts.id,
+        layouts.name,
+        null::text as description
+      FROM ${sql.unsafe(getTableName('tension', 'layouts'))} layouts
+      WHERE layouts.is_listed = true AND layouts.password IS NULL
+      
+      UNION ALL
+      
+      SELECT 
+        ${'tension'}::text as board_name,
+        'sizes' as type,
+        layouts.id::text as parent_id,
+        null::text as grandparent_id,
+        sizes.id,
+        sizes.name,
+        sizes.description
+      FROM ${sql.unsafe(getTableName('tension', 'product_sizes'))} sizes
+      INNER JOIN ${sql.unsafe(getTableName('tension', 'layouts'))} layouts ON sizes.product_id = layouts.product_id
+      WHERE layouts.is_listed = true AND layouts.password IS NULL
+      
+      UNION ALL
+      
+      SELECT 
+        ${'tension'}::text as board_name,
+        'sets' as type,
+        psls.product_size_id::text as parent_id,
+        psls.layout_id::text as grandparent_id,
+        sets.id,
+        sets.name,
+        null::text as description
+      FROM ${sql.unsafe(getTableName('tension', 'sets'))} sets
+      INNER JOIN ${sql.unsafe(getTableName('tension', 'product_sizes_layouts_sets'))} psls 
+        ON psls.set_id = sets.id
+      INNER JOIN ${sql.unsafe(getTableName('tension', 'layouts'))} layouts ON psls.layout_id = layouts.id
+      WHERE layouts.is_listed = true AND layouts.password IS NULL
+    )
+    SELECT 
+      board_name,
+      type,
+      parent_id,
+      grandparent_id,
+      id,
+      name,
+      description
+    FROM board_data
+    ORDER BY board_name, type, parent_id, grandparent_id, name
+  `;
 
   const result: BoardSelectorOptions = {
     layouts: {} as Record<BoardName, LayoutRow[]>,

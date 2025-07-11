@@ -1,6 +1,6 @@
-import { neonConfig, Pool } from '@neondatabase/serverless';
-import { drizzle as drizzleWs } from 'drizzle-orm/neon-serverless';
-import 'server-only';
+import { neon, neonConfig, Pool } from '@neondatabase/serverless';
+import { drizzle as drizzleHttp } from 'drizzle-orm/neon-http';
+import 'server-only'
 import ws from 'ws';
 
 let connectionString = process.env.DATABASE_URL;
@@ -8,6 +8,7 @@ let connectionString = process.env.DATABASE_URL;
 // Configuring Neon for local development
 if (process.env.VERCEL_ENV === 'development' || process.env.NODE_ENV === 'development') {
   connectionString = 'postgres://postgres:password@localhost:5432/main';
+  console.log(connectionString);
   neonConfig.fetchEndpoint = (host) => {
     const [protocol, port] = host === 'db.localtest.me' ? ['http', 4444] : ['https', 443];
     return `${protocol}://${host}:${port}/sql`;
@@ -18,13 +19,16 @@ if (process.env.VERCEL_ENV === 'development' || process.env.NODE_ENV === 'develo
 }
 
 // Only configure WebSocket constructor in development or when not building
+export const getPool = () => {
+  neonConfig.webSocketConstructor = ws;
 
-export const pool = new Pool({ connectionString });
+  if (process.env.VERCEL_ENV === 'development' || process.env.NODE_ENV === 'development') {
+    return new Pool({ connectionString: 'postgres://postgres:password@localhost:5432/main' });
+  }
 
-// WebSocket Client:
-// - Best for long-running applications (like servers)
-// - Maintains a persistent connection
-// - More efficient for multiple sequential queries
-// - Better for high-frequency database operations
-export const dbz = drizzleWs({ client: pool });
-neonConfig.webSocketConstructor = ws;
+  return new Pool({ connectionString });
+}
+
+export const sql = neon(connectionString!);
+
+export const dbz = drizzleHttp({ client: sql });

@@ -1,4 +1,4 @@
-import { pool } from '@/app/lib/db/db';
+import { sql } from '@/app/lib/db/db';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import AuroraClimbingClient from '@/app/lib/api-wrappers/aurora-rest-client/aurora-rest-client';
@@ -38,15 +38,12 @@ async function login(boardName: BoardName, username: string, password: string): 
       ? new Date(loginResponse.user.created_at)
       : new Date(); // Fallback to current time if not available
 
-    await pool.query(
-      `
-      INSERT INTO ${tableName} (id, username, created_at)
-      VALUES ($1, $2, $3)
+    await sql`
+      INSERT INTO ${sql.unsafe(tableName)} (id, username, created_at)
+      VALUES (${loginResponse.user_id}, ${loginResponse.username || username}, ${createdAt})
       ON CONFLICT (id) DO UPDATE SET
       username = EXCLUDED.username
-      `,
-      [loginResponse.user_id, loginResponse.username || username, createdAt],
-    );
+      `;
 
     // If it's a new user, perform full sync
     try {

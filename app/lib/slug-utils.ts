@@ -1,4 +1,4 @@
-import { pool } from '@/app/lib/db/db';
+import { sql } from '@/app/lib/db/db';
 import { BoardName, LayoutId, Size } from '@/app/lib/types';
 
 export type LayoutRow = {
@@ -29,12 +29,12 @@ const getTableName = (board_name: string, table_name: string) => {
 
 // Reverse lookup functions for slug to ID conversion
 export const getLayoutBySlug = async (board_name: BoardName, slug: string): Promise<LayoutRow | null> => {
-  const { rows } = await pool.query<LayoutRow>(`
+  const rows = await sql<LayoutRow>`
     SELECT id, name
-    FROM ${getTableName(board_name, 'layouts')} layouts
+    FROM ${sql.unsafe(getTableName(board_name, 'layouts'))} layouts
     WHERE is_listed = true
     AND password IS NULL
-  `);
+  `;
   
   const layout = rows.find(l => {
     const baseSlug = l.name
@@ -65,15 +65,12 @@ export const getLayoutBySlug = async (board_name: BoardName, slug: string): Prom
 };
 
 export const getSizeBySlug = async (board_name: BoardName, layout_id: LayoutId, slug: string): Promise<SizeRow | null> => {
-  const { rows } = await pool.query<SizeRow>(
-    `
+  const rows = await sql<SizeRow>`
     SELECT product_sizes.id, product_sizes.name, product_sizes.description
-    FROM ${getTableName(board_name, 'product_sizes')} product_sizes
-    INNER JOIN ${getTableName(board_name, 'layouts')} layouts ON product_sizes.product_id = layouts.product_id
-    WHERE layouts.id = $1
-  `,
-    [layout_id],
-  );
+    FROM ${sql.unsafe(getTableName(board_name, 'product_sizes'))} product_sizes
+    INNER JOIN ${sql.unsafe(getTableName(board_name, 'layouts'))} layouts ON product_sizes.product_id = layouts.product_id
+    WHERE layouts.id = ${layout_id}
+  `;
   
   const size = rows.find(s => {
     // Try to match size dimensions first (e.g., "12x12" matches "12 x 12 Commercial")
@@ -98,17 +95,14 @@ export const getSizeBySlug = async (board_name: BoardName, layout_id: LayoutId, 
 };
 
 export const getSetsBySlug = async (board_name: BoardName, layout_id: LayoutId, size_id: Size, slug: string): Promise<SetRow[]> => {
-  const { rows } = await pool.query<SetRow>(
-    `
+  const rows = await sql<SetRow>`
     SELECT sets.id, sets.name
-      FROM ${getTableName(board_name, 'sets')} sets
-      INNER JOIN ${getTableName(board_name, 'product_sizes_layouts_sets')} psls 
+      FROM ${sql.unsafe(getTableName(board_name, 'sets'))} sets
+      INNER JOIN ${sql.unsafe(getTableName(board_name, 'product_sizes_layouts_sets'))} psls 
       ON sets.id = psls.set_id
-      WHERE psls.product_size_id = $1
-      AND psls.layout_id = $2
-  `,
-    [size_id, layout_id],
-  );
+      WHERE psls.product_size_id = ${size_id}
+      AND psls.layout_id = ${layout_id}
+  `;
   
   // Parse the slug to get individual set names
   const slugParts = slug.split('_'); // Split by underscore now

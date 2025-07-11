@@ -1,4 +1,4 @@
-import { pool } from '@/app/lib/db/db';
+import { sql } from '@/app/lib/db/db';
 import { BoardName, ClimbUuid } from '../types';
 import { LogbookEntry } from '../api-wrappers/aurora/types';
 import { getTableName } from '../data-sync/aurora/getTableName';
@@ -9,8 +9,7 @@ export async function getLogbook(board: BoardName, userId: string, climbUuids?: 
 
   if (climbUuids && climbUuids.length > 0) {
     // If climbUuids are provided
-    const combinedLogbook = await pool.query<LogbookEntry>(
-      `
+    const combinedLogbook = await sql<LogbookEntry>`
       SELECT 
         uuid,
         climb_uuid,
@@ -26,9 +25,9 @@ export async function getLogbook(board: BoardName, userId: string, climbUuids?: 
         climbed_at,
         created_at,
         TRUE::boolean AS is_ascent
-      FROM ${ascentsTable}
-      WHERE user_id = $1
-      AND climb_uuid = ANY($2)
+      FROM ${sql.unsafe(ascentsTable)}
+      WHERE user_id = ${userId}
+      AND climb_uuid = ANY(${climbUuids})
 
       UNION ALL
 
@@ -47,20 +46,17 @@ export async function getLogbook(board: BoardName, userId: string, climbUuids?: 
         climbed_at,
         created_at,
         FALSE::boolean AS is_ascent
-      FROM ${bidsTable}
-      WHERE user_id = $1
-      AND climb_uuid = ANY($2)
+      FROM ${sql.unsafe(bidsTable)}
+      WHERE user_id = ${userId}
+      AND climb_uuid = ANY(${climbUuids})
 
       ORDER BY climbed_at DESC
-      `,
-      [userId, climbUuids],
-    );
+      `;
 
-    return combinedLogbook.rows;
+    return combinedLogbook;
   } else {
     // If climbUuids are not provided
-    const combinedLogbook = await pool.query<LogbookEntry>(
-      `
+    const combinedLogbook = await sql<LogbookEntry>`
       SELECT * FROM (
         SELECT 
           uuid,
@@ -77,8 +73,8 @@ export async function getLogbook(board: BoardName, userId: string, climbUuids?: 
           climbed_at,
           created_at,
           TRUE AS is_ascent
-        FROM ${ascentsTable}
-        WHERE user_id = $1
+        FROM ${sql.unsafe(ascentsTable)}
+        WHERE user_id = ${userId}
 
         UNION ALL
 
@@ -97,16 +93,14 @@ export async function getLogbook(board: BoardName, userId: string, climbUuids?: 
           climbed_at,
           created_at,
           FALSE AS is_ascent
-        FROM ${bidsTable}
-        WHERE user_id = $1
+        FROM ${sql.unsafe(bidsTable)}
+        WHERE user_id = ${userId}
 
         ORDER BY climbed_at DESC
       ) subquery
       WHERE difficulty IS NOT NULL;
-      `,
-      [userId],
-    );
+      `;
 
-    return combinedLogbook.rows;
+    return combinedLogbook;
   }
 }

@@ -1,7 +1,7 @@
 import { BoardName } from '../../types';
 import { API_HOSTS, WEB_HOSTS, AscentSavedEvent, SaveAscentOptions, SaveAscentResponse } from './types';
 import dayjs from 'dayjs';
-import { pool  } from '@/app/lib/db/db';
+import { sql } from '@/app/lib/db/db';
 import { getTableName } from '../../data-sync/aurora/getTableName';
 
 export async function saveAscent(
@@ -170,15 +170,14 @@ export async function saveAscent(
     savedAscentEvent.ascent.created_at, // Assuming `created_at` is now
   ];
 
-  await pool.query(
-    `
-    INSERT INTO ${fullTableName} (
+  await sql`
+    INSERT INTO ${sql.unsafe(fullTableName)} (
       uuid, climb_uuid, angle, is_mirror, user_id, attempt_id, 
       bid_count, quality, difficulty, is_benchmark, comment, 
       climbed_at, created_at
     )
     VALUES (
-      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
+      ${requestBody.uuid}, ${requestBody.climb_uuid}, ${requestBody.angle}, ${requestBody.is_mirror}, ${requestBody.user_id}, ${requestBody.attempt_id || requestBody.bid_count}, ${requestBody.bid_count}, ${requestBody.quality}, ${requestBody.difficulty}, ${requestBody.is_benchmark ? 1 : 0}, ${requestBody.comment || ''}, ${requestBody.climbed_at}, ${savedAscentEvent.ascent.created_at}
     )
     ON CONFLICT (uuid) DO UPDATE SET
       climb_uuid = EXCLUDED.climb_uuid,
@@ -190,10 +189,8 @@ export async function saveAscent(
       difficulty = EXCLUDED.difficulty,
       is_benchmark = EXCLUDED.is_benchmark,
       comment = EXCLUDED.comment,
-      climbed_at = EXCLUDED.climbed_at;
-    `,
-    params,
-  );
+      climbed_at = EXCLUDED.climbed_at
+  `;
 
   return ascent;
 }

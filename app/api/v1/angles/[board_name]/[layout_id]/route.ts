@@ -1,4 +1,4 @@
-import { pool } from '@/app/lib/db/db';
+import { sql } from '@/app/lib/db/db';
 import { NextResponse } from 'next/server';
 
 export async function GET(req: Request, props: { params: Promise<{ board_name: string; layout_id: string }> }) {
@@ -6,13 +6,13 @@ export async function GET(req: Request, props: { params: Promise<{ board_name: s
   const { /*board_name,*/ layout_id } = params;
 
   try {
-    const { rows: angles } = await pool.query(`
+    const angles = await sql`
       SELECT angle
       FROM kilter_products_angles
       JOIN layouts ON layouts.product_id = products_angles.product_id
       WHERE layouts.id = ${layout_id}
       ORDER BY angle ASC
-    `);
+    `;
     return NextResponse.json(angles);
   } catch (error) {
     return NextResponse.json({ error: 'Failed to fetch angles' }, { status: 500 });
