@@ -329,7 +329,7 @@ const fetchLayoutBySlug = async (boardName: string, slug: string): Promise<Layou
       if (response.status === 404) {
         return null;
       }
-      throw new Error(`Failed to fetch layout: ${response.statusText}`);
+      throw new Error(`URL-utils: Failed to fetch layout: ${response.statusText}`);
     }
     
     return await response.json();

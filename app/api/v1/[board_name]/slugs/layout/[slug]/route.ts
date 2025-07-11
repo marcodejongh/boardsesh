@@ -30,7 +30,7 @@ export async function GET(
       }
     });
   } catch (error) {
-    console.error('Error fetching layout by slug:', error);
+    console.error('Route: Error fetching layout by slug:', error);
     return NextResponse.json(
       { error: 'Failed to fetch layout' },
       { status: 500 }
