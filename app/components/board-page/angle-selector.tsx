@@ -20,13 +20,13 @@ export default function AngleSelector({ boardName, currentAngle }: AngleSelector
 
   const handleAngleChange = (newAngle: string) => {
     track('Angle Changed', {
-      angle: parseInt(newAngle)
+      angle: parseInt(newAngle),
     });
-    
+
     // Replace the current angle in the URL with the new one
     const pathSegments = pathname.split('/');
-    const angleIndex = pathSegments.findIndex(segment => segment === currentAngle.toString());
-    
+    const angleIndex = pathSegments.findIndex((segment) => segment === currentAngle.toString());
+
     if (angleIndex !== -1) {
       pathSegments[angleIndex] = newAngle;
       const newPath = pathSegments.join('/');

@@ -29,7 +29,7 @@ export async function parseBoardRouteParamsWithSlugs<T extends BoardRouteParamet
     if (!board_name) {
       throw new Error(`Board name not found for slug: ${layout_id}`);
     }
-    
+
     const layout = await getLayoutBySlug(board_name as BoardName, layout_id);
     if (!layout) {
       throw new Error(`Layout not found for slug: ${layout_id}`);

@@ -12,9 +12,7 @@ interface BoardLayoutProps {
 export default async function BoardLayout(props: PropsWithChildren<BoardLayoutProps>) {
   const params = await props.params;
 
-  const {
-    children
-  } = props;
+  const { children } = props;
 
   // Parse the route parameters
   const parsedParams: ParsedBoardRouteParameters = parseBoardRouteParams(params);

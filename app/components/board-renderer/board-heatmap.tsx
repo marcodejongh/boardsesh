@@ -25,7 +25,7 @@ const HEATMAP_COLORS = [
   '#ff7043', // Deep Orange
   '#ff5722', // Darker Orange
   '#f44336', // Light Red
-  '#d32f2f'  // Deep Red
+  '#d32f2f', // Deep Red
 ];
 
 // Helper function to get value at percentile
@@ -48,23 +48,28 @@ interface BoardHeatmapProps {
 }
 
 // Define the color mode type including user-specific modes
-type ColorMode = 'total' | 'starting' | 'hand' | 'foot' | 'finish' | 'difficulty' | 'ascents' | 'userAscents' | 'userAttempts';
+type ColorMode =
+  | 'total'
+  | 'starting'
+  | 'hand'
+  | 'foot'
+  | 'finish'
+  | 'difficulty'
+  | 'ascents'
+  | 'userAscents'
+  | 'userAttempts';
 
-const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
-  boardDetails,
-  litUpHoldsMap,
-  onHoldClick,
-}) => {
+const BoardHeatmap: React.FC<BoardHeatmapProps> = ({ boardDetails, litUpHoldsMap, onHoldClick }) => {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { uiSearchParams } = useUISearchParams();
-  
+
   const [colorMode, setColorMode] = useState<ColorMode>('ascents');
   const [showNumbers, setShowNumbers] = useState(false);
-  
+
   // Get angle from pathname immediately
   const [angle, setAngle] = useState(() => getAngleFromPath(pathname));
-  
+
   // Update angle if pathname changes
   useEffect(() => {
     const newAngle = getAngleFromPath(pathname);
@@ -72,59 +77,65 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
       setAngle(newAngle);
     }
   }, [pathname, searchParams, angle]);
-    
+
   const { data: heatmapData = [] } = useHeatmapData({
     boardName: boardDetails.board_name,
     layoutId: boardDetails.layout_id,
     sizeId: boardDetails.size_id,
     setIds: boardDetails.set_ids.join(','),
     angle,
-    filters: uiSearchParams
+    filters: uiSearchParams,
     // No need to pass userId - it's handled server-side from the session
   });
 
   const [threshold, setThreshold] = useState(1);
   const { boardWidth, boardHeight, holdsData } = boardDetails;
 
-  const heatmapMap = useMemo(() => 
-    new Map(heatmapData?.map(data => [data.holdId, data]) || []), 
-    [heatmapData]
-  );
+  const heatmapMap = useMemo(() => new Map(heatmapData?.map((data) => [data.holdId, data]) || []), [heatmapData]);
 
   // Updated getValue function to handle user-specific data
   const getValue = (data: HeatmapData | undefined): number => {
     if (!data) return 0;
     switch (colorMode) {
-      case 'starting': return data.startingUses;
-      case 'hand': return data.handUses;
-      case 'foot': return data.footUses;
-      case 'finish': return data.finishUses;
-      case 'difficulty': return data.averageDifficulty || 0;
-      case 'ascents': return data.totalAscents || 0;
-      case 'userAscents': return data.userAscents || 0;
-      case 'userAttempts': return data.userAttempts || 0;
-      default: return data.totalUses;
+      case 'starting':
+        return data.startingUses;
+      case 'hand':
+        return data.handUses;
+      case 'foot':
+        return data.footUses;
+      case 'finish':
+        return data.finishUses;
+      case 'difficulty':
+        return data.averageDifficulty || 0;
+      case 'ascents':
+        return data.totalAscents || 0;
+      case 'userAscents':
+        return data.userAscents || 0;
+      case 'userAttempts':
+        return data.userAttempts || 0;
+      default:
+        return data.totalUses;
     }
   };
 
   // Create scales for better distribution of colors
   const { colorScale, opacityScale } = useMemo(() => {
     const values = heatmapData
-      .filter(data => !(litUpHoldsMap?.[data.holdId]))
-      .map(data => getValue(data))
+      .filter((data) => !litUpHoldsMap?.[data.holdId])
+      .map((data) => getValue(data))
       .filter((val) => val && val >= threshold)
       .sort((a, b) => a - b);
 
     if (values.length === 0) {
       return {
         colorScale: () => 'transparent',
-        opacityScale: () => 0
+        opacityScale: () => 0,
       };
     }
 
     const min = Math.max(1, values[0]);
     const max = values[values.length - 1];
-    
+
     // Use log scale for better distribution of values
     const logScale = scaleLog()
       .domain([min, max])
@@ -148,12 +159,12 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
 
     return {
       colorScale: getColorScale(),
-      opacityScale: getOpacityScale()
+      opacityScale: getOpacityScale(),
     };
   }, [heatmapData, colorMode, threshold, litUpHoldsMap]);
 
   const ColorLegend = () => {
-    const gradientId = "heatmap-gradient";
+    const gradientId = 'heatmap-gradient';
     const legendWidth = boardWidth * 0.8; // Make legend 80% of board width
     const legendHeight = 36; // Increased from 30
     const x = (boardWidth - legendWidth) / 2;
@@ -161,10 +172,10 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
 
     // Get the min, max, and middle values from the heatmap data
     const values = heatmapData
-      .map(data => getValue(data))
-      .filter(val => val > 0)
+      .map((data) => getValue(data))
+      .filter((val) => val > 0)
       .sort((a, b) => a - b);
-    
+
     const minValue = values[0] || 0;
     const maxValue = values[values.length - 1] || 0;
     const midValue = values[Math.floor(values.length / 2)] || 0;
@@ -174,23 +185,20 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
         <defs>
           <linearGradient id={gradientId}>
             {HEATMAP_COLORS.map((color, index) => (
-              <stop 
-                key={color} 
-                offset={`${(index / (HEATMAP_COLORS.length - 1)) * 100}%`} 
-                stopColor={color} 
-              />
+              <stop key={color} offset={`${(index / (HEATMAP_COLORS.length - 1)) * 100}%`} stopColor={color} />
             ))}
           </linearGradient>
         </defs>
-        <rect
-          width={legendWidth}
-          height={legendHeight}
-          fill={`url(#${gradientId})`}
-          rx={8}
-        />
-        <text x="0" y="-10" fontSize="28" textAnchor="start" fontWeight="500">Low ({minValue})</text>
-        <text x={legendWidth/2} y="-10" fontSize="28" textAnchor="middle" fontWeight="500">Mid ({midValue})</text>
-        <text x={legendWidth} y="-10" fontSize="28" textAnchor="end" fontWeight="500">High ({maxValue})</text>
+        <rect width={legendWidth} height={legendHeight} fill={`url(#${gradientId})`} rx={8} />
+        <text x="0" y="-10" fontSize="28" textAnchor="start" fontWeight="500">
+          Low ({minValue})
+        </text>
+        <text x={legendWidth / 2} y="-10" fontSize="28" textAnchor="middle" fontWeight="500">
+          Mid ({midValue})
+        </text>
+        <text x={legendWidth} y="-10" fontSize="28" textAnchor="end" fontWeight="500">
+          High ({maxValue})
+        </text>
       </g>
     );
   };
@@ -208,7 +216,7 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
     { value: 'difficulty', label: 'Difficulty' },
     // Always include user options since auth is handled server-side
     { value: 'userAscents', label: 'Your Ascents' },
-    { value: 'userAttempts', label: 'Your Attempts' }
+    { value: 'userAttempts', label: 'Your Attempts' },
   ];
 
   const thresholdOptions = [
@@ -219,7 +227,7 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
   ];
 
   return (
-    <div className="w-full">      
+    <div className="w-full">
       <svg
         viewBox={`0 0 ${boardWidth} ${boardHeight + LEGEND_HEIGHT}`}
         preserveAspectRatio="xMidYMid meet"
@@ -230,7 +238,7 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
             <feGaussianBlur stdDeviation={BLUR_RADIUS} />
           </filter>
         </defs>
-        
+
         <g>
           {/* Board background images */}
           {Object.keys(boardDetails.images_to_holds).map((imageUrl) => (
@@ -250,9 +258,9 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
                 {holdsData.map((hold) => {
                   const data = heatmapMap.get(hold.id);
                   const value = getValue(data);
-                  
+
                   if (value === 0 || value < threshold) return null;
-                  
+
                   return (
                     <circle
                       key={`heat-blur-${hold.id}`}
@@ -273,9 +281,9 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
               {holdsData.map((hold) => {
                 const data = heatmapMap.get(hold.id);
                 const value = getValue(data);
-                
+
                 if (value < threshold) return null;
-                
+
                 return (
                   <g key={`heat-sharp-${hold.id}`}>
                     <circle
@@ -315,13 +323,17 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
               r={hold.r}
               fill="transparent"
               className="cursor-pointer"
-              onClick={onHoldClick ? () => {
-                onHoldClick(hold.id);
-                track('Heatmap Hold Clicked', {
-                  hold_id: hold.id,
-                  boardLayout: `${boardDetails.layout_name}`,
-                });
-              } : undefined}
+              onClick={
+                onHoldClick
+                  ? () => {
+                      onHoldClick(hold.id);
+                      track('Heatmap Hold Clicked', {
+                        hold_id: hold.id,
+                        boardLayout: `${boardDetails.layout_name}`,
+                      });
+                    }
+                  : undefined
+              }
             />
           ))}
 
@@ -349,7 +361,7 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
       <Form layout="inline" className="mb-4">
         <Form.Item>
           <Button
-            type={showHeatmap ? "primary" : "default"}
+            type={showHeatmap ? 'primary' : 'default'}
             onClick={() => {
               setShowHeatmap(!showHeatmap);
               track(`Heatmap ${showHeatmap ? 'Shown' : 'Hidden'}`, {
@@ -360,7 +372,7 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
             {showHeatmap ? 'Hide Heatmap' : 'Show Heatmap'}
           </Button>
         </Form.Item>
-        
+
         {showHeatmap && (
           <>
             <Form.Item label="View Mode">
@@ -386,10 +398,7 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
               />
             </Form.Item>
             <Form.Item label="Show Numbers">
-              <Switch 
-                checked={showNumbers}
-                onChange={setShowNumbers}
-              />
+              <Switch checked={showNumbers} onChange={setShowNumbers} />
             </Form.Item>
           </>
         )}

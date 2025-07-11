@@ -10,7 +10,7 @@ export const runtime = 'edge';
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    
+
     // Extract parameters from query string
     const board_name = searchParams.get('board_name');
     const layout_id = searchParams.get('layout_id');
@@ -33,28 +33,23 @@ export async function GET(request: NextRequest) {
       climb_uuid,
     });
 
-    const [boardDetails, currentClimb] = await Promise.all([
-      getBoardDetails(parsedParams),
-      getClimb(parsedParams),
-    ]);
+    const [boardDetails, currentClimb] = await Promise.all([getBoardDetails(parsedParams), getClimb(parsedParams)]);
 
     // Process climb holds
     const framesData = convertLitUpHoldsStringToMap(currentClimb.frames, parsedParams.board_name as any);
-    
+
     // Extract the first frame's data - this should be indexed by hold ID
     // If framesData is an array indexed by frame number, get the first frame
     // Otherwise, it's already indexed by hold ID
-    const litUpHoldsMap = Array.isArray(framesData) || (framesData[0] !== undefined) 
-      ? framesData[0] 
-      : framesData;
+    const litUpHoldsMap = Array.isArray(framesData) || framesData[0] !== undefined ? framesData[0] : framesData;
 
     // Create simplified SVG board for OG image that matches BoardRenderer
     const boardWidth = boardDetails.boardWidth || 1000;
     const boardHeight = boardDetails.boardHeight || 1000;
     const holdsData = boardDetails.holdsData || [];
-    
+
     // Get all board image URLs (matches BoardRenderer logic)
-    const imageUrls = Object.keys(boardDetails.images_to_holds).map(imageUrl => {
+    const imageUrls = Object.keys(boardDetails.images_to_holds).map((imageUrl) => {
       const relativeUrl = getImageUrl(imageUrl, boardDetails.board_name);
       return `${process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'}${relativeUrl}`;
     });
@@ -113,7 +108,7 @@ export async function GET(request: NextRequest) {
                   }}
                 />
               ))}
-              
+
               {/* SVG overlay for holds matching BoardLitupHolds exactly */}
               <svg
                 viewBox={`0 0 ${boardWidth} ${boardHeight}`}
@@ -131,11 +126,11 @@ export async function GET(request: NextRequest) {
                   // Check if this specific hold is lit up by its ID (not by frame index)
                   const holdData = litUpHoldsMap[hold.id];
                   const isLitUp = holdData?.state && holdData.state !== 'OFF';
-                  
+
                   if (!isLitUp) return null;
-                  
+
                   const color = holdData.color;
-                  
+
                   // Handle mirroring like BoardLitupHolds
                   let renderHold = hold;
                   if (currentClimb?.mirrored && hold.mirroredHoldId) {
@@ -144,7 +139,7 @@ export async function GET(request: NextRequest) {
                       renderHold = mirroredHold;
                     }
                   }
-                  
+
                   return (
                     <circle
                       key={renderHold.id}
@@ -163,7 +158,7 @@ export async function GET(request: NextRequest) {
               </svg>
             </div>
           </div>
-          
+
           {/* Climb info text */}
           <div
             style={{
@@ -185,13 +180,15 @@ export async function GET(request: NextRequest) {
             >
               {currentClimb?.name || 'Untitled Climb'}
             </h1>
-            <h2 style={{
+            <h2
+              style={{
                 fontSize: '36px',
                 fontWeight: 'bold',
                 alignItems: 'center',
                 margin: 0,
                 lineHeight: 1.2,
-              }}>
+              }}
+            >
               @{angle}°
             </h2>
             <div
@@ -224,7 +221,7 @@ export async function GET(request: NextRequest) {
       {
         width: 1200,
         height: 630,
-      }
+      },
     );
   } catch (error) {
     console.error('Error generating OG image:', error);

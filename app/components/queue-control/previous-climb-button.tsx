@@ -37,18 +37,19 @@ export default function PreviousClimbButton({ navigate = false, boardDetails }: 
   };
 
   if (!viewOnlyMode && navigate && previousClimb) {
-    const climbViewUrl = boardDetails?.layout_name && boardDetails?.size_name && boardDetails?.set_names
-      ? constructClimbViewUrlWithSlugs(
-          boardDetails.board_name,
-          boardDetails.layout_name,
-          boardDetails.size_name,
-          boardDetails.set_names,
-          angle,
-          previousClimb.climb.uuid,
-          previousClimb.climb.name
-        )
-      : `/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/view/${previousClimb.climb.uuid}`;
-    
+    const climbViewUrl =
+      boardDetails?.layout_name && boardDetails?.size_name && boardDetails?.set_names
+        ? constructClimbViewUrlWithSlugs(
+            boardDetails.board_name,
+            boardDetails.layout_name,
+            boardDetails.size_name,
+            boardDetails.set_names,
+            angle,
+            previousClimb.climb.uuid,
+            previousClimb.climb.name,
+          )
+        : `/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/view/${previousClimb.climb.uuid}`;
+
     return (
       <Link
         href={climbViewUrl}

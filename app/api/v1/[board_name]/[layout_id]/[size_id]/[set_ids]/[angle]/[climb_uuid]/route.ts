@@ -6,7 +6,10 @@ import { parseBoardRouteParams, extractUuidFromSlug } from '@/app/lib/url-utils'
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import { NextResponse } from 'next/server';
 
-export async function GET(req: Request, props: { params: Promise<BoardRouteParametersWithUuid> }): Promise<NextResponse<FetchCurrentProblemResponse | ErrorResponse>> {
+export async function GET(
+  req: Request,
+  props: { params: Promise<BoardRouteParametersWithUuid> },
+): Promise<NextResponse<FetchCurrentProblemResponse | ErrorResponse>> {
   const params = await props.params;
   try {
     const parsedParams = await parseBoardRouteParamsWithSlugs(params);

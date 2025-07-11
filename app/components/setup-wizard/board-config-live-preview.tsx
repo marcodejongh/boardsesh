@@ -21,15 +21,15 @@ type BoardConfigLivePreviewProps = {
   boardConfigs: BoardConfigData;
 };
 
-export default function BoardConfigLivePreview({ 
-  boardName, 
-  layoutId, 
-  sizeId, 
-  setIds, 
-  angle, 
+export default function BoardConfigLivePreview({
+  boardName,
+  layoutId,
+  sizeId,
+  setIds,
+  angle,
   configName,
   useAsDefault,
-  boardConfigs 
+  boardConfigs,
 }: BoardConfigLivePreviewProps) {
   const [boardDetails, setBoardDetails] = useState<BoardDetails | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -50,24 +50,24 @@ export default function BoardConfigLivePreview({
     const loadPreview = async () => {
       try {
         setIsLoading(true);
-        
+
         // Type assertion is safe because we've already checked hasRequiredProps
         const safeBoardName = boardName!;
         const safeLayoutId = layoutId!;
         const safeSizeId = sizeId!;
-        
+
         // Get data from boardConfigs prop
         const layouts = boardConfigs.layouts[safeBoardName] || [];
         const sizes = boardConfigs.sizes[`${safeBoardName}-${safeLayoutId}`] || [];
         const detailsKey = `${safeBoardName}-${safeLayoutId}-${safeSizeId}-${setIds.join(',')}`;
         const cachedDetails = boardConfigs.details[detailsKey];
-        
-        const layout = layouts.find(l => l.id === safeLayoutId);
+
+        const layout = layouts.find((l) => l.id === safeLayoutId);
         setLayoutName(layout?.name || `Layout ${safeLayoutId}`);
-        
-        const size = sizes.find(s => s.id === safeSizeId);
+
+        const size = sizes.find((s) => s.id === safeSizeId);
         setSizeName(size?.name || `Size ${safeSizeId}`);
-        
+
         // Use cached details if available, otherwise fetch
         let details = cachedDetails;
         if (!details) {
@@ -79,9 +79,8 @@ export default function BoardConfigLivePreview({
             details = null;
           }
         }
-        
+
         setBoardDetails(details);
-        
       } catch (error) {
         console.error('Failed to load preview:', error);
         setBoardDetails(null);
@@ -118,16 +117,9 @@ export default function BoardConfigLivePreview({
   }
 
   return (
-    <Card 
+    <Card
       style={{ width: 400 }}
-      cover={
-        <BoardRenderer
-          litUpHoldsMap={{}}
-          mirrored={false}
-          boardDetails={boardDetails}
-          thumbnail={false}
-        />
-      }
+      cover={<BoardRenderer litUpHoldsMap={{}} mirrored={false} boardDetails={boardDetails} thumbnail={false} />}
     />
   );
 }

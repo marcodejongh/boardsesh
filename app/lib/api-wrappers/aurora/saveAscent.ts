@@ -30,18 +30,18 @@ export async function saveAscent(
 
   // Try new endpoint first, then fall back to old API
   let response: Response;
-  
+
   try {
     // Try new web host endpoint first
     const newUrl = `${WEB_HOSTS[board]}/ascents/save/${options.uuid}`;
     console.log(`Trying new ascent endpoint: ${newUrl}`);
-    
+
     response = await fetch(newUrl, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
         'User-Agent': 'Kilter%20Board/202 CFNetwork/1568.100.1 Darwin/24.0.0',
-        'Cookie': `token=${token}`,
+        Cookie: `token=${token}`,
       },
       body: JSON.stringify(requestBody),
     });
@@ -50,7 +50,7 @@ export async function saveAscent(
     if (response.status === 404) {
       console.log(`New ascent endpoint failed with 404, trying old API endpoint`);
       const oldUrl = `${API_HOSTS[board]}/v1/ascents/${options.uuid}`;
-      
+
       // Use original payload structure for old API
       const oldRequestBody = {
         uuid: options.uuid,
@@ -72,7 +72,7 @@ export async function saveAscent(
         headers: {
           'Content-Type': 'application/json',
           'User-Agent': 'Kilter%20Board/202 CFNetwork/1568.100.1 Darwin/24.0.0',
-          'Cookie': `token=${token}`,
+          Cookie: `token=${token}`,
         },
         body: JSON.stringify(oldRequestBody),
       });
@@ -81,7 +81,7 @@ export async function saveAscent(
     // If network error on new endpoint, try old endpoint
     console.log(`New ascent endpoint failed with error, trying old API endpoint`);
     const oldUrl = `${API_HOSTS[board]}/v1/ascents/${options.uuid}`;
-    
+
     const oldRequestBody = {
       uuid: options.uuid,
       angle: options.angle,
@@ -102,7 +102,7 @@ export async function saveAscent(
       headers: {
         'Content-Type': 'application/json',
         'User-Agent': 'Kilter%20Board/202 CFNetwork/1568.100.1 Darwin/24.0.0',
-        'Cookie': `token=${token}`,
+        Cookie: `token=${token}`,
       },
       body: JSON.stringify(oldRequestBody),
     });
@@ -136,7 +136,7 @@ export async function saveAscent(
   try {
     const responseText = await response.text();
     console.log(`Save ascent response body: ${responseText}`);
-    
+
     if (!responseText || responseText.trim() === '') {
       throw new Error('Empty response from API');
     }

@@ -53,7 +53,7 @@ export async function getLogbook(board: BoardName, userId: string, climbUuids?: 
       ORDER BY climbed_at DESC
       `;
 
-    return (combinedLogbook as unknown as LogbookEntry[]);
+    return combinedLogbook as unknown as LogbookEntry[];
   } else {
     // If climbUuids are not provided
     const combinedLogbook = await sql`
@@ -101,6 +101,6 @@ export async function getLogbook(board: BoardName, userId: string, climbUuids?: 
       WHERE difficulty IS NOT NULL;
       `;
 
-    return (combinedLogbook as unknown as LogbookEntry[]);
-  } 
+    return combinedLogbook as unknown as LogbookEntry[];
+  }
 }

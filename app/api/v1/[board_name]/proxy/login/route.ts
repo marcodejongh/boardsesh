@@ -8,7 +8,6 @@ import { syncUserData } from '@/app/lib/data-sync/aurora/user-sync';
 import { Session } from '@/app/lib/api-wrappers/aurora-rest-client/types';
 import { getSession } from '@/app/lib/session';
 
-
 // Input validation schema
 const loginSchema = z.object({
   username: z.string().min(1),
@@ -34,9 +33,7 @@ async function login(boardName: BoardName, username: string, password: string): 
     const tableName = boardName === 'tension' || boardName === 'kilter' ? `${boardName}_users` : 'users';
 
     // Insert/update user in our database - handle missing user object
-    const createdAt = loginResponse.user?.created_at 
-      ? new Date(loginResponse.user.created_at)
-      : new Date(); // Fallback to current time if not available
+    const createdAt = loginResponse.user?.created_at ? new Date(loginResponse.user.created_at) : new Date(); // Fallback to current time if not available
 
     await sql`
       INSERT INTO ${sql.unsafe(tableName)} (id, username, created_at)
@@ -47,11 +44,7 @@ async function login(boardName: BoardName, username: string, password: string): 
 
     // If it's a new user, perform full sync
     try {
-      await syncUserData(
-        boardName,
-        loginResponse.token,
-        loginResponse.user_id,
-      );
+      await syncUserData(boardName, loginResponse.token, loginResponse.user_id);
     } catch (error) {
       console.error('Initial sync error:', error);
       // We don't throw here as login was successful
@@ -61,10 +54,9 @@ async function login(boardName: BoardName, username: string, password: string): 
   // Convert LoginResponse to Session
   return {
     token: loginResponse.token,
-    user_id: loginResponse.user_id
+    user_id: loginResponse.user_id,
   };
 }
-
 
 /**
  * Route handler for login POST requests

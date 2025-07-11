@@ -12,12 +12,12 @@ export type BoardConfigData = {
 export async function getAllBoardConfigs(): Promise<BoardConfigData> {
   // Use the new unified query to get all data in a single database transaction
   const selectorOptions = await getAllBoardSelectorOptions();
-  
+
   const configData: BoardConfigData = {
     layouts: selectorOptions.layouts,
     sizes: selectorOptions.sizes,
     sets: selectorOptions.sets,
-    details: {}
+    details: {},
   };
 
   // Fetch board details for common configurations
@@ -26,7 +26,7 @@ export async function getAllBoardConfigs(): Promise<BoardConfigData> {
     { board: 'kilter' as BoardName, layoutId: 8, sizeId: 17, setIds: [26, 27] },
     { board: 'tension' as BoardName, layoutId: 10, sizeId: 6, setIds: [12, 13] },
     { board: 'tension' as BoardName, layoutId: 9, sizeId: 1, setIds: [8, 9, 10, 11] },
-    { board: 'tension' as BoardName, layoutId: 11, sizeId: 6, setIds: [12, 13] }
+    { board: 'tension' as BoardName, layoutId: 11, sizeId: 6, setIds: [12, 13] },
   ];
 
   const detailPromises = commonConfigs.map(async ({ board, layoutId, sizeId, setIds }) => {
@@ -37,7 +37,7 @@ export async function getAllBoardConfigs(): Promise<BoardConfigData> {
         layout_id: layoutId,
         size_id: sizeId,
         set_ids: setIds,
-        angle: 40
+        angle: 40,
       });
       configData.details[key] = details;
     } catch (error) {

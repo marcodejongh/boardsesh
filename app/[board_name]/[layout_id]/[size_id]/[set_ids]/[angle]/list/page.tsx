@@ -2,48 +2,50 @@ import React from 'react';
 
 import { notFound, redirect, permanentRedirect } from 'next/navigation';
 import { BoardRouteParametersWithUuid, SearchRequestPagination } from '@/app/lib/types';
-import { parseBoardRouteParams, parsedRouteSearchParamsToSearchParams, constructClimbListWithSlugs } from '@/app/lib/url-utils';
+import {
+  parseBoardRouteParams,
+  parsedRouteSearchParamsToSearchParams,
+  constructClimbListWithSlugs,
+} from '@/app/lib/url-utils';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import ClimbsList from '@/app/components/board-page/climbs-list';
 import { fetchBoardDetails } from '@/app/components/rest-api/api';
 import { searchClimbs } from '@/app/lib/db/queries/climbs/search-climbs';
 import { getBoardDetails } from '@/app/lib/data/queries';
 
-export default async function DynamicResultsPage(
-  props: {
-    params: Promise<BoardRouteParametersWithUuid>;
-    searchParams: Promise<SearchRequestPagination>;
-  }
-) {
+export default async function DynamicResultsPage(props: {
+  params: Promise<BoardRouteParametersWithUuid>;
+  searchParams: Promise<SearchRequestPagination>;
+}) {
   const searchParams = await props.searchParams;
   const params = await props.params;
   // Check if any parameters are in numeric format (old URLs)
-  const hasNumericParams = [params.layout_id, params.size_id, params.set_ids].some(param => 
-    param.includes(',') ? param.split(',').every(id => /^\d+$/.test(id.trim())) : /^\d+$/.test(param)
+  const hasNumericParams = [params.layout_id, params.size_id, params.set_ids].some((param) =>
+    param.includes(',') ? param.split(',').every((id) => /^\d+$/.test(id.trim())) : /^\d+$/.test(param),
   );
-  
+
   let parsedParams;
-  
+
   if (hasNumericParams) {
     // For old URLs, use the simple parsing function first
     parsedParams = parseBoardRouteParams(params);
-    
+
     // Redirect old URLs to new slug format
     const boardDetails = await getBoardDetails(parsedParams);
-    
+
     if (boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names) {
       const newUrl = constructClimbListWithSlugs(
         boardDetails.board_name,
         boardDetails.layout_name,
         boardDetails.size_name,
         boardDetails.set_names,
-        parsedParams.angle
+        parsedParams.angle,
       );
-      
+
       // Preserve search parameters
       const searchString = new URLSearchParams(searchParams as any).toString();
       const finalUrl = searchString ? `${newUrl}?${searchString}` : newUrl;
-      
+
       permanentRedirect(finalUrl);
     }
   } else {

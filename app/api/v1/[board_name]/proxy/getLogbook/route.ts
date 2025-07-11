@@ -16,13 +16,13 @@ export async function POST(request: Request, props: { params: Promise<BoardRoute
     // Call the board API
     const cookieStore = await cookies();
     const session = await getSession(cookieStore, board_name);
-    
+
     const { token, userId } = session;
-    
+
     if (!token || !userId) {
       throw new Error('401: Unauthorized');
     }
-         
+
     const response = await getLogbook(board_name, validatedData.userId, validatedData.climbUuids);
 
     return NextResponse.json(response);

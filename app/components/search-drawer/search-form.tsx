@@ -14,18 +14,18 @@ const SearchForm: React.FC<SearchFormProps> = ({ boardDetails }) => {
     {
       key: 'filters',
       label: 'Filters',
-      children: <BasicSearchForm />
+      children: <BasicSearchForm />,
     },
     {
       key: 'holds',
       label: 'Search by Hold',
-      children: <ClimbHoldSearchForm boardDetails={boardDetails} />
-    }
+      children: <ClimbHoldSearchForm boardDetails={boardDetails} />,
+    },
   ];
 
   return (
-    <Tabs 
-      defaultActiveKey="filters" 
+    <Tabs
+      defaultActiveKey="filters"
       items={items}
       onChange={(activeKey) => {
         track('Search Tab Changed', {

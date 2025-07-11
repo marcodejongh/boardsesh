@@ -170,7 +170,11 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
                     textOverflow: 'ellipsis',
                   }}
                 >
-                  {item.climb.difficulty && item.climb.quality_average ? `${item.climb.difficulty} ${item.climb.quality_average}★ @ ${item.climb.angle}°` : <span style={{ fontWeight: 400, fontStyle: 'italic' }}>project @ {item.climb.angle}°</span>}
+                  {item.climb.difficulty && item.climb.quality_average ? (
+                    `${item.climb.difficulty} ${item.climb.quality_average}★ @ ${item.climb.angle}°`
+                  ) : (
+                    <span style={{ fontWeight: 400, fontStyle: 'italic' }}>project @ {item.climb.angle}°</span>
+                  )}
                   {item.climb.benchmark_difficulty && <CopyrightOutlined style={{ marginLeft: 4 }} />}
                 </Text>
               }

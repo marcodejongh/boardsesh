@@ -18,7 +18,7 @@ export async function GET() {
       layouts: {} as Record<BoardName, any[]>,
       sizes: {},
       sets: {},
-      details: {}
+      details: {},
     };
 
     // Fetch all layouts for all boards in parallel
@@ -49,7 +49,7 @@ export async function GET() {
           configData.sizes[key] = [];
           return { board, layoutId: layout.id, sizes: [] };
         }
-      })
+      }),
     );
 
     const sizeResults = await Promise.all(sizePromises);
@@ -61,18 +61,18 @@ export async function GET() {
       { board: 'kilter' as BoardName, layoutId: 8, sizeId: 17, setIds: [26, 27] },
       { board: 'tension' as BoardName, layoutId: 10, sizeId: 6, setIds: [12, 13] },
       { board: 'tension' as BoardName, layoutId: 9, sizeId: 1, setIds: [8, 9, 10, 11] },
-      { board: 'tension' as BoardName, layoutId: 11, sizeId: 6, setIds: [12, 13] }
+      { board: 'tension' as BoardName, layoutId: 11, sizeId: 6, setIds: [12, 13] },
     ];
 
     const detailPromises = commonConfigs.map(async ({ board, layoutId, sizeId, setIds }) => {
       const setsKey = `${board}-${layoutId}-${sizeId}`;
       const detailsKey = `${board}-${layoutId}-${sizeId}-${setIds.join(',')}`;
-      
+
       try {
         // Fetch sets
         const sets = await fetchSets(board, layoutId, sizeId);
         configData.sets[setsKey] = sets;
-        
+
         // Fetch board details
         const details = await fetchBoardDetails(board, layoutId, sizeId, setIds);
         configData.details[detailsKey] = details;
@@ -88,13 +88,10 @@ export async function GET() {
     return NextResponse.json(configData, {
       headers: {
         'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
-      }
+      },
     });
   } catch (error) {
     console.error('Error fetching board configurations:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch board configurations' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to fetch board configurations' }, { status: 500 });
   }
 }

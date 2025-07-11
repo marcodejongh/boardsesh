@@ -20,7 +20,6 @@ export type Climb = {
   userAttempts?: number;
 };
 
-
 export type ClimbQueryResult = {
   uuid: string; // UUID of the climb
   setter_username: string; // Username of the setter

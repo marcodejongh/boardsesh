@@ -29,14 +29,14 @@ const getTableName = (board_name: string, table_name: string) => {
 
 // Reverse lookup functions for slug to ID conversion
 export const getLayoutBySlug = async (board_name: BoardName, slug: string): Promise<LayoutRow | null> => {
-  const rows = await sql`
+  const rows = (await sql`
     SELECT id, name
     FROM ${sql.unsafe(getTableName(board_name, 'layouts'))} layouts
     WHERE is_listed = true
     AND password IS NULL
-  ` as LayoutRow[];
-  
-  const layout = rows.find(l => {
+  `) as LayoutRow[];
+
+  const layout = rows.find((l) => {
     const baseSlug = l.name
       .toLowerCase()
       .trim()
@@ -45,41 +45,45 @@ export const getLayoutBySlug = async (board_name: BoardName, slug: string): Prom
       .replace(/\s+/g, '-')
       .replace(/-+/g, '-')
       .replace(/^-|-$/g, '');
-    
+
     let layoutSlug = baseSlug;
-    
+
     // Handle Tension board specific cases
     if (baseSlug === 'original-layout') {
       layoutSlug = 'original';
     }
-    
+
     // Replace numbers with words for better readability
     if (baseSlug.startsWith('2-')) {
       layoutSlug = baseSlug.replace('2-', 'two-');
     }
-    
+
     return layoutSlug === slug;
   });
-  
+
   return layout || null;
 };
 
-export const getSizeBySlug = async (board_name: BoardName, layout_id: LayoutId, slug: string): Promise<SizeRow | null> => {
-  const rows = await sql`
+export const getSizeBySlug = async (
+  board_name: BoardName,
+  layout_id: LayoutId,
+  slug: string,
+): Promise<SizeRow | null> => {
+  const rows = (await sql`
     SELECT product_sizes.id, product_sizes.name, product_sizes.description
     FROM ${sql.unsafe(getTableName(board_name, 'product_sizes'))} product_sizes
     INNER JOIN ${sql.unsafe(getTableName(board_name, 'layouts'))} layouts ON product_sizes.product_id = layouts.product_id
     WHERE layouts.id = ${layout_id}
-  ` as SizeRow[];
-  
-  const size = rows.find(s => {
+  `) as SizeRow[];
+
+  const size = rows.find((s) => {
     // Try to match size dimensions first (e.g., "12x12" matches "12 x 12 Commercial")
     const sizeMatch = s.name.match(/(\d+)\s*x\s*(\d+)/i);
     if (sizeMatch) {
       const expectedSlug = `${sizeMatch[1]}x${sizeMatch[2]}`;
       if (expectedSlug === slug) return true;
     }
-    
+
     // Fallback to general slug matching
     const sizeSlug = s.name
       .toLowerCase()
@@ -90,30 +94,43 @@ export const getSizeBySlug = async (board_name: BoardName, layout_id: LayoutId, 
       .replace(/^-|-$/g, '');
     return sizeSlug === slug;
   });
-  
+
   return size || null;
 };
 
-export const getSetsBySlug = async (board_name: BoardName, layout_id: LayoutId, size_id: Size, slug: string): Promise<SetRow[]> => {
-  const rows = await sql`
+export const getSetsBySlug = async (
+  board_name: BoardName,
+  layout_id: LayoutId,
+  size_id: Size,
+  slug: string,
+): Promise<SetRow[]> => {
+  const rows = (await sql`
     SELECT sets.id, sets.name
       FROM ${sql.unsafe(getTableName(board_name, 'sets'))} sets
       INNER JOIN ${sql.unsafe(getTableName(board_name, 'product_sizes_layouts_sets'))} psls 
       ON sets.id = psls.set_id
       WHERE psls.product_size_id = ${size_id}
       AND psls.layout_id = ${layout_id}
-  ` as SetRow[];
-  
+  `) as SetRow[];
+
   // Parse the slug to get individual set names
   const slugParts = slug.split('_'); // Split by underscore now
-  const matchingSets = rows.filter(s => {
+  const matchingSets = rows.filter((s) => {
     const lowercaseName = s.name.toLowerCase().trim();
-    
+
     // Handle homewall-specific set names
-    if (lowercaseName.includes('auxiliary') && lowercaseName.includes('kickboard') && slugParts.includes('aux-kicker')) {
+    if (
+      lowercaseName.includes('auxiliary') &&
+      lowercaseName.includes('kickboard') &&
+      slugParts.includes('aux-kicker')
+    ) {
       return true;
     }
-    if (lowercaseName.includes('mainline') && lowercaseName.includes('kickboard') && slugParts.includes('main-kicker')) {
+    if (
+      lowercaseName.includes('mainline') &&
+      lowercaseName.includes('kickboard') &&
+      slugParts.includes('main-kicker')
+    ) {
       return true;
     }
     if (lowercaseName.includes('auxiliary') && slugParts.includes('aux')) {
@@ -122,7 +139,7 @@ export const getSetsBySlug = async (board_name: BoardName, layout_id: LayoutId, 
     if (lowercaseName.includes('mainline') && slugParts.includes('main')) {
       return true;
     }
-    
+
     // Handle original kilter/tension set names
     const setSlug = lowercaseName
       .replace(/\s+ons?$/i, '') // Remove "on" or "ons" suffix
@@ -130,6 +147,6 @@ export const getSetsBySlug = async (board_name: BoardName, layout_id: LayoutId, 
       .replace(/\s+/g, '-'); // Replace spaces with hyphens
     return slugParts.includes(setSlug);
   });
-  
+
   return matchingSets;
 };

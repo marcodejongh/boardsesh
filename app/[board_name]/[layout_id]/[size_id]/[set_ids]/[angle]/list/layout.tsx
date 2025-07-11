@@ -19,33 +19,31 @@ interface LayoutProps {
 export default async function ListLayout(props: PropsWithChildren<LayoutProps>) {
   const params = await props.params;
 
-  const {
-    children
-  } = props;
+  const { children } = props;
 
   // Check if any parameters are in numeric format (old URLs)
-  const hasNumericParams = [params.layout_id, params.size_id, params.set_ids].some(param => 
-    param.includes(',') ? param.split(',').every(id => /^\d+$/.test(id.trim())) : /^\d+$/.test(param)
+  const hasNumericParams = [params.layout_id, params.size_id, params.set_ids].some((param) =>
+    param.includes(',') ? param.split(',').every((id) => /^\d+$/.test(id.trim())) : /^\d+$/.test(param),
   );
-  
+
   let parsedParams: ParsedBoardRouteParameters;
-  
+
   if (hasNumericParams) {
     // For old URLs, use the simple parsing function first
     parsedParams = parseBoardRouteParams(params);
-    
+
     // Redirect old URLs to new slug format
     const boardDetails = await getBoardDetails(parsedParams);
-    
+
     if (boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names) {
       const newUrl = constructClimbListWithSlugs(
         boardDetails.board_name,
         boardDetails.layout_name,
         boardDetails.size_name,
         boardDetails.set_names,
-        parsedParams.angle
+        parsedParams.angle,
       );
-      
+
       permanentRedirect(newUrl);
     }
   } else {
