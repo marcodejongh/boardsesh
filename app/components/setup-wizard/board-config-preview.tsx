@@ -45,6 +45,7 @@ export default function BoardConfigPreview({ config, onDelete, boardConfigs }: B
         // Get data from boardConfigs prop
         const layouts = boardConfigs.layouts[config.board as BoardName] || [];
         const sizes = boardConfigs.sizes[`${config.board}-${config.layoutId}`] || [];
+        const sets = boardConfigs.sets[`${config.board}-${config.layoutId}-${config.sizeId}`] || [];
         const detailsKey = `${config.board}-${config.layoutId}-${config.sizeId}-${config.setIds.join(',')}`;
         const cachedDetails = boardConfigs.details[detailsKey];
         
@@ -56,13 +57,18 @@ export default function BoardConfigPreview({ config, onDelete, boardConfigs }: B
         const size = sizes.find(s => s.id === config.sizeId);
         setSizeName(size?.name || `Size ${config.sizeId}`);
         
+        // Validate that the saved configuration is still valid
+        const isValidConfig = layout && size && config.setIds.every(setId => 
+          sets.some(set => set.id === setId)
+        );
+        
         // Generate the URL
         const savedAngle = config.angle || 40;
         let url: string;
         
-        // Try to get board details (from cache or fetch)
+        // Only try to get board details if we have cached details or if the config is valid
         let details = cachedDetails;
-        if (!details) {
+        if (!details && isValidConfig) {
           try {
             details = await fetchBoardDetails(
               config.board as any,
@@ -74,7 +80,7 @@ export default function BoardConfigPreview({ config, onDelete, boardConfigs }: B
           } catch (error) {
             console.error('Failed to fetch board details:', error);
           }
-        } else {
+        } else if (cachedDetails) {
           setBoardDetails(details);
         }
         

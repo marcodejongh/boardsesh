@@ -15,7 +15,7 @@ import {
 } from '@/app/lib/types';
 import { BetaLink } from '@/app/lib/api-wrappers/sync-api-types';
 
-const API_BASE_URL = ``;
+const API_BASE_URL = `/api/v1`;
 
 export const fetchClimbs = async (
   queryParameters: SearchRequestPagination,
@@ -38,7 +38,7 @@ export const fetchClimbs = async (
 
   // Build the URL using the new route structure
   const response = await fetch(
-    `${API_BASE_URL}/v1/${routeParameters.board_name}/${routeParameters.layout_id}/${routeParameters.size_id}/${routeParameters.set_ids}/${routeParameters.angle}/search?${urlParams}`,
+    `${API_BASE_URL}/${routeParameters.board_name}/${routeParameters.layout_id}/${routeParameters.size_id}/${routeParameters.set_ids}/${routeParameters.angle}/search?${urlParams}`,
     {
       cache: 'no-store',
     },
@@ -58,13 +58,13 @@ export const fetchCurrentClimb = async (
 ): Promise<FetchCurrentProblemResponse> =>
   (
     await fetch(
-      `${API_BASE_URL}/v1/${routeParameters.board_name}/${routeParameters.layout_id}/${routeParameters.size_id}/${routeParameters.set_ids}/${routeParameters.angle}/${routeParameters.climb_uuid}?bustCache=1`,
+      `${API_BASE_URL}/${routeParameters.board_name}/${routeParameters.layout_id}/${routeParameters.size_id}/${routeParameters.set_ids}/${routeParameters.angle}/${routeParameters.climb_uuid}?bustCache=1`,
     )
   ).json();
 
 // Fetch beta links
 export const fetchBetaLinks = async (board: string, uuid: string): Promise<BetaLink[]> => {
-  const response = await fetch(`${API_BASE_URL}/v1/${board}/beta/${uuid}`);
+  const response = await fetch(`${API_BASE_URL}/${board}/beta/${uuid}`);
   
   if (!response.ok) {
     throw new Error(`Failed to fetch beta links: ${response.status}`);
@@ -81,7 +81,7 @@ export const fetchBoardDetails = async (
   size: number,
   set_ids: SetIdList,
 ): Promise<BoardDetails> => {
-  const apiUrl = `${API_BASE_URL}/v1/${board}/${layout}/${size}/${set_ids.join(',')}/details?bustCache=101`;
+  const apiUrl = `${API_BASE_URL}/${board}/${layout}/${size}/${set_ids.join(',')}/details?bustCache=101`;
   const response = await fetch(apiUrl);
 
   if (!response.ok) {
@@ -94,7 +94,7 @@ export const fetchBoardDetails = async (
 // Fetch board details
 export const fetchLayouts = async (board_name: BoardName): Promise<LayoutRow[]> => {
   //TODO: Fix type definition
-  const apiUrl = `${API_BASE_URL}/v1/${board_name}/layouts`;
+  const apiUrl = `${API_BASE_URL}/${board_name}/layouts`;
   const response = await fetch(apiUrl);
 
   if (!response.ok) {
@@ -107,7 +107,7 @@ export const fetchLayouts = async (board_name: BoardName): Promise<LayoutRow[]> 
 // Fetch board details
 export const fetchSizes = async (board_name: BoardName, layout_id: LayoutId): Promise<SizeRow[]> => {
   //TODO: Fix type definition
-  const apiUrl = `${API_BASE_URL}/v1/${board_name}/${layout_id}/sizes`;
+  const apiUrl = `${API_BASE_URL}/${board_name}/${layout_id}/sizes`;
   const response = await fetch(apiUrl);
 
   if (!response.ok) {
@@ -119,7 +119,7 @@ export const fetchSizes = async (board_name: BoardName, layout_id: LayoutId): Pr
 
 // Fetch board details
 export const fetchSets = async (board_name: BoardName, layout_id: LayoutId, size_id: Size): Promise<SetRow[]> => {
-  const apiUrl = `${API_BASE_URL}/v1/${board_name}/${layout_id}/${size_id}/sets`;
+  const apiUrl = `${API_BASE_URL}/${board_name}/${layout_id}/${size_id}/sets`;
   const response = await fetch(apiUrl);
 
   if (!response.ok) {
