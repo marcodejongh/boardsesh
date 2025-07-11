@@ -171,8 +171,6 @@ export default async function DynamicResultsPage(props: { params: Promise<BoardR
       notFound();
     }
 
-    console.log('Current climb frames:', currentClimb.frames);
-
     // Process the frames to get litUpHoldsMap (same as the API does)
     const litUpHoldsMap = convertLitUpHoldsStringToMap(currentClimb.frames, parsedParams.board_name as any)[0];
     const climbWithProcessedData = {

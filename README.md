@@ -52,7 +52,8 @@ Create the following `.env.development.local`:
 ```
 VERCEL_ENV=development
 POSTGRES_URL=postgresql://default:password@localhost:54320/verceldb
-BASE_URL=http://localhost:3000
+# Note: VERCEL_URL is automatically set by Vercel for deployments
+# For local development, the app defaults to http://localhost:3000
 ```
 
 ## Running webapp

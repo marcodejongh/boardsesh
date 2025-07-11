@@ -27,32 +27,27 @@ services:
         condition: service_healthy
 
   db_setup:
-    image: debian:bookworm-slim
+    build:
+      context: ..
+      dockerfile: ./db/Dockerfile
     volumes:
       - ./:/db
-      - ./../drizzle:/drizzle
-    build:
-      context: .
+      - ./../drizzle:/app/drizzle
+      - ./../drizzle.config.ts:/app/drizzle.config.ts
+      - ./../app/lib/db/schema.ts:/app/app/lib/db/schema.ts
+      - ./../package.json:/app/package.json
+      - ./../package-lock.json:/app/package-lock.json
     environment:
       - POSTGRES_URL=postgres://postgres:password@postgres:5432/main
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=password
       - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
       - POSTGRES_DATABASE=main
       - POSTGRES_URL_NON_POOLING=postgres://postgres:password@postgres:5432/main
     depends_on:
-      - postgres
-    entrypoint: |
-      /bin/sh -c "
-      if [ ! -f /db/tmp/db-setup-complete.flag ]; then
-        apt-get update &&
-        apt-get install -y pgloader postgresql-client sqlite3 ca-certificates curl unzip &&
-        update-ca-certificates &&
-        /db/setup-development-db.sh &&
-        touch /db/tmp/db-setup-complete.flag
-      else
-        echo 'Database setup already completed. Skipping.'
-      fi
-      "
+      postgres:
+        condition: service_healthy
+    command: /db/setup-development-db.sh
 volumes:
   db_data:
