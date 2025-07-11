@@ -40,7 +40,7 @@ export async function generateMetadata(props: { params: Promise<BoardRouteParame
     // Generate OG image URL - use parsed numeric IDs for better performance
     const ogImageUrl = new URL(
       '/api/og/climb',
-      process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://boardsesh.com',
+      'https://boardsesh.com'
     );
     ogImageUrl.searchParams.set('board_name', parsedParams.board_name);
     ogImageUrl.searchParams.set('layout_id', parsedParams.layout_id.toString());
