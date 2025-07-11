@@ -1,7 +1,7 @@
 import { getIronSession } from 'iron-session';
 import 'server-only';
-import { SerializeOptions as CookieSerializeOptions } from 'cookie';
 import { BoardName } from './types';
+import { CookieSerializeOptions } from 'cookie';
 
 /**
  * {@link https://wicg.github.io/cookie-store/#dictdef-cookielistitem CookieListItem}

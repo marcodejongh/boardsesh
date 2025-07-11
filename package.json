@@ -52,6 +52,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@types/cookie": "^0.6.0",
     "@types/d3-interpolate": "^3.0.4",
     "@types/d3-scale": "^4.0.9",
     "@types/jest": "^29.5.13",
