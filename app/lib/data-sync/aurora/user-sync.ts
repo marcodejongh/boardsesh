@@ -1,7 +1,13 @@
 import { dbz as db } from '@/app/lib/db/db';
 import { BoardName } from '../../types';
 import { userSync } from '../../api-wrappers/aurora/userSync';
-import { LastSyncData, SyncOptions, USER_TABLES, UserSyncData, SHARED_SYNC_TABLES } from '../../api-wrappers/aurora/types';
+import {
+  LastSyncData,
+  SyncOptions,
+  USER_TABLES,
+  UserSyncData,
+  SHARED_SYNC_TABLES,
+} from '../../api-wrappers/aurora/types';
 import { eq, and, inArray, ExtractTablesWithRelations } from 'drizzle-orm';
 import {
   kilterUsers,
@@ -245,23 +251,23 @@ async function upsertTableData(
           .set({
             isListed: Boolean(item.is_listed),
           })
-          .where(and(
-            eq(schemas.tags.entityUuid, item.entity_uuid),
-            eq(schemas.tags.userId, Number(userId)),
-            eq(schemas.tags.name, item.name)
-          ))
+          .where(
+            and(
+              eq(schemas.tags.entityUuid, item.entity_uuid),
+              eq(schemas.tags.userId, Number(userId)),
+              eq(schemas.tags.name, item.name),
+            ),
+          )
           .returning();
 
         // If no record was updated, insert a new one
         if (result.length === 0) {
-          await db
-            .insert(schemas.tags)
-            .values({
-              entityUuid: item.entity_uuid,
-              userId: Number(userId),
-              name: item.name,
-              isListed: Boolean(item.is_listed),
-            });
+          await db.insert(schemas.tags).values({
+            entityUuid: item.entity_uuid,
+            userId: Number(userId),
+            name: item.name,
+            isListed: Boolean(item.is_listed),
+          });
         }
       }
       break;
@@ -339,10 +345,7 @@ export async function getLastSyncTimes(boardName: BoardName, userId: number, tab
 export async function getLastSharedSyncTimes(boardName: BoardName, tableNames: string[]) {
   const schemas = getSchemas(boardName);
 
-  const result = await db
-    .select()
-    .from(schemas.sharedSyncs)
-    .where(inArray(schemas.sharedSyncs.tableName, tableNames));
+  const result = await db.select().from(schemas.sharedSyncs).where(inArray(schemas.sharedSyncs.tableName, tableNames));
 
   return result;
 }
@@ -360,15 +363,13 @@ export async function syncUserData(
 
     // Get user sync times
     const allSyncTimes = await getLastSyncTimes(board, userId, tables);
-    
+
     // Create a map of existing sync times
-    const userSyncMap = new Map(
-      allSyncTimes.map(sync => [sync.tableName, sync.lastSynchronizedAt])
-    );
-    
+    const userSyncMap = new Map(allSyncTimes.map((sync) => [sync.tableName, sync.lastSynchronizedAt]));
+
     // Ensure all user tables have a sync entry (default to 1970 if not synced)
     const defaultTimestamp = '1970-01-01 00:00:00.000000';
-    
+
     syncParams.userSyncs = tables.map((tableName) => ({
       table_name: tableName,
       last_synchronized_at: userSyncMap.get(tableName) || defaultTimestamp,
@@ -379,7 +380,7 @@ export async function syncUserData(
 
     // Initialize results tracking
     const totalResults: Record<string, { synced: number }> = {};
-    
+
     // Recursive sync until _complete is true
     let currentSyncParams = syncParams;
     let isComplete = false;
@@ -389,10 +390,10 @@ export async function syncUserData(
     while (!isComplete && syncAttempts < maxSyncAttempts) {
       syncAttempts++;
       console.log(`Sync attempt ${syncAttempts} for user ${userId}`);
-      
+
       const syncResults = await userSync(board, userId, currentSyncParams, token);
       console.log('syncResults', syncResults);
-      
+
       // Process this batch in a transaction
       await db.transaction(async (tx) => {
         try {
@@ -402,7 +403,7 @@ export async function syncUserData(
             if (syncResults[tableName] && Array.isArray(syncResults[tableName])) {
               const data = syncResults[tableName];
               await upsertTableData(tx, board, tableName, userId, data);
-              
+
               // Accumulate results
               if (!totalResults[tableName]) {
                 totalResults[tableName] = { synced: 0 };
@@ -416,14 +417,14 @@ export async function syncUserData(
           // Update user_syncs table with new sync times from this batch
           if (syncResults['user_syncs']) {
             await updateUserSyncs(tx, board, syncResults['user_syncs']);
-            
+
             // Update sync params for next iteration with new timestamps
             const newUserSyncs = syncResults['user_syncs'].map((sync: any) => ({
               table_name: sync.table_name,
               last_synchronized_at: sync.last_synchronized_at,
               user_id: Number(userId),
             }));
-            
+
             currentSyncParams = {
               ...currentSyncParams,
               userSyncs: newUserSyncs,
@@ -437,7 +438,7 @@ export async function syncUserData(
 
       // Check if sync is complete
       isComplete = syncResults._complete !== false;
-      
+
       if (!isComplete) {
         console.log(`Sync not complete for user ${userId}, continuing with next batch...`);
       } else {

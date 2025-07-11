@@ -52,7 +52,7 @@ export default function StartClimbingButton({
   boardConfigs,
   saveConfiguration,
   loadAllConfigurations,
-  setSavedConfigurations
+  setSavedConfigurations,
 }: StartClimbingButtonProps) {
   const [isGeneratingUrl, setIsGeneratingUrl] = useState(false);
   const [climbingUrl, setClimbingUrl] = useState<string | null>(null);
@@ -65,20 +65,20 @@ export default function StartClimbingButton({
     }
 
     setIsGeneratingUrl(true);
-    
+
     try {
       // Generate default name if none provided
       let configurationName = configName.trim();
       if (!configurationName) {
-        const layout = layouts.find(l => l.id === selectedLayout);
-        const size = sizes.find(s => s.id === selectedSize);
-        
+        const layout = layouts.find((l) => l.id === selectedLayout);
+        const size = sizes.find((s) => s.id === selectedSize);
+
         const layoutName = layout?.name || `Layout ${selectedLayout}`;
         const sizeName = size?.name || `Size ${selectedSize}`;
-        
+
         configurationName = suggestedName || `${layoutName} ${sizeName}`;
       }
-      
+
       // Save configuration
       const config: StoredBoardConfig = {
         name: configurationName,
@@ -91,29 +91,29 @@ export default function StartClimbingButton({
         createdAt: new Date().toISOString(),
         lastUsed: new Date().toISOString(),
       };
-      
+
       await saveConfiguration(config);
       // Refresh the saved configurations list
       const updatedConfigs = await loadAllConfigurations();
       setSavedConfigurations(updatedConfigs);
-      
+
       const setsString = selectedSets.join(',');
-      
+
       // Try to get board details for slug-based URL from cache first
       const detailsKey = `${selectedBoard}-${selectedLayout}-${selectedSize}-${setsString}`;
       let boardDetails = boardConfigs.details[detailsKey];
-      
+
       if (!boardDetails) {
         boardDetails = await fetchBoardDetails(selectedBoard, selectedLayout, selectedSize, selectedSets);
       }
-      
+
       if (boardDetails?.layout_name && boardDetails?.size_name && boardDetails?.set_names) {
         return constructClimbListWithSlugs(
           boardDetails.board_name,
           boardDetails.layout_name,
           boardDetails.size_name,
           boardDetails.set_names,
-          selectedAngle
+          selectedAngle,
         );
       } else {
         // Fallback to old URL format
@@ -127,14 +127,29 @@ export default function StartClimbingButton({
     } finally {
       setIsGeneratingUrl(false);
     }
-  }, [selectedBoard, selectedLayout, selectedSize, selectedSets, selectedAngle, configName, suggestedName, useAsDefault, layouts, sizes, boardConfigs, saveConfiguration, loadAllConfigurations, setSavedConfigurations]);
+  }, [
+    selectedBoard,
+    selectedLayout,
+    selectedSize,
+    selectedSets,
+    selectedAngle,
+    configName,
+    suggestedName,
+    useAsDefault,
+    layouts,
+    sizes,
+    boardConfigs,
+    saveConfiguration,
+    loadAllConfigurations,
+    setSavedConfigurations,
+  ]);
 
   const handleClick = async () => {
     if (climbingUrl) {
       // URL already generated, just navigate
       return;
     }
-    
+
     const url = await generateClimbingUrl();
     if (url) {
       setClimbingUrl(url);
@@ -153,13 +168,7 @@ export default function StartClimbingButton({
   if (isFormComplete && climbingUrl) {
     return (
       <Link href={climbingUrl} style={{ textDecoration: 'none' }}>
-        <Button 
-          type="primary" 
-          size="large"
-          block 
-          disabled={isGeneratingUrl}
-          loading={isGeneratingUrl}
-        >
+        <Button type="primary" size="large" block disabled={isGeneratingUrl} loading={isGeneratingUrl}>
           {isGeneratingUrl ? 'Starting...' : 'Start Climbing'}
         </Button>
       </Link>
@@ -167,10 +176,10 @@ export default function StartClimbingButton({
   }
 
   return (
-    <Button 
-      type="primary" 
+    <Button
+      type="primary"
       size="large"
-      block 
+      block
       onClick={handleClick}
       disabled={!isFormComplete || isGeneratingUrl}
       loading={isGeneratingUrl}

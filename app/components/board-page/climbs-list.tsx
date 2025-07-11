@@ -132,7 +132,7 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
       next={() => {
         track('Infinite Scroll Load More', {
           currentCount: climbs.length,
-          hasMore: hasMoreResults
+          hasMore: hasMoreResults,
         });
         return fetchMoreClimbs();
       }}

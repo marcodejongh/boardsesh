@@ -1,7 +1,22 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Button, Form, Select, Typography, Input, Divider, Card, Row, Col, Checkbox, Tooltip, Space, Flex, Collapse } from 'antd';
+import {
+  Button,
+  Form,
+  Select,
+  Typography,
+  Input,
+  Divider,
+  Card,
+  Row,
+  Col,
+  Checkbox,
+  Tooltip,
+  Space,
+  Flex,
+  Collapse,
+} from 'antd';
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import { openDB } from 'idb';
@@ -43,7 +58,7 @@ type ConsolidatedBoardConfigProps = {
 
 const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps) => {
   const router = useRouter();
-  
+
   // Selection states
   const [configName, setConfigName] = useState<string>('');
   const [selectedBoard, setSelectedBoard] = useState<BoardName | undefined>(undefined);
@@ -51,15 +66,18 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
   const [selectedSize, setSelectedSize] = useState<number>();
   const [selectedSets, setSelectedSets] = useState<number[]>([]);
   const [selectedAngle, setSelectedAngle] = useState<number>(40);
-  
+
   // Data states - no longer needed as we get them from props
   const layouts = selectedBoard ? boardConfigs.layouts[selectedBoard] || [] : [];
   const sizes = selectedBoard && selectedLayout ? boardConfigs.sizes[`${selectedBoard}-${selectedLayout}`] || [] : [];
-  const sets = selectedBoard && selectedLayout && selectedSize ? boardConfigs.sets[`${selectedBoard}-${selectedLayout}-${selectedSize}`] || [] : [];
-  
+  const sets =
+    selectedBoard && selectedLayout && selectedSize
+      ? boardConfigs.sets[`${selectedBoard}-${selectedLayout}-${selectedSize}`] || []
+      : [];
+
   // Login states - for now just skip login on setup page
   const [showLoginSection, setShowLoginSection] = useState(false);
-  
+
   // Additional states
   const [useAsDefault, setUseAsDefault] = useState(false);
   const [savedConfigurations, setSavedConfigurations] = useState<StoredBoardConfig[]>([]);
@@ -82,7 +100,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
     try {
       const db = await initDB();
       await db.put(STORE_NAME, config);
-      
+
       // If this is set as default, clear other defaults
       if (config.useAsDefault) {
         const allConfigs = await db.getAll(STORE_NAME);
@@ -102,7 +120,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
     try {
       const db = await initDB();
       const allConfigs = await db.getAll(STORE_NAME);
-      return allConfigs.find(config => config.useAsDefault) || null;
+      return allConfigs.find((config) => config.useAsDefault) || null;
     } catch (error) {
       console.error('Failed to load default configuration:', error);
       return null;
@@ -139,12 +157,12 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
       return;
     }
 
-    const layout = layouts.find(l => l.id === selectedLayout);
-    const size = sizes.find(s => s.id === selectedSize);
-    
+    const layout = layouts.find((l) => l.id === selectedLayout);
+    const size = sizes.find((s) => s.id === selectedSize);
+
     const layoutName = layout?.name || `Layout ${selectedLayout}`;
     const sizeName = size?.name || `Size ${selectedSize}`;
-    
+
     setSuggestedName(`${layoutName} ${sizeName}`);
   }, [selectedBoard, selectedLayout, selectedSize, layouts, sizes]);
 
@@ -155,23 +173,23 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
     }
 
     const setsString = selectedSets.join(',');
-    
+
     try {
       // Try to get board details for slug-based URL from cache first
       const detailsKey = `${selectedBoard}-${selectedLayout}-${selectedSize}-${setsString}`;
       let boardDetails = boardConfigs.details[detailsKey];
-      
+
       if (!boardDetails) {
         boardDetails = await fetchBoardDetails(selectedBoard, selectedLayout, selectedSize, selectedSets);
       }
-      
+
       if (boardDetails?.layout_name && boardDetails?.size_name && boardDetails?.set_names) {
         return constructClimbListWithSlugs(
           boardDetails.board_name,
           boardDetails.layout_name,
           boardDetails.size_name,
           boardDetails.set_names,
-          selectedAngle
+          selectedAngle,
         );
       } else {
         // Fallback to old URL format
@@ -190,9 +208,9 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
       // Load all saved configurations
       const allConfigs = await loadAllConfigurations();
       setSavedConfigurations(allConfigs);
-      
+
       // Check for default configuration
-      const defaultConfig = allConfigs.find(config => config.useAsDefault);
+      const defaultConfig = allConfigs.find((config) => config.useAsDefault);
       if (defaultConfig) {
         setConfigName(defaultConfig.name);
         setSelectedBoard(defaultConfig.board);
@@ -201,42 +219,50 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
         setSelectedSets(defaultConfig.setIds);
         setSelectedAngle(defaultConfig.angle || 40);
         setUseAsDefault(defaultConfig.useAsDefault);
-        
-        
+
         // Redirect immediately if there's a default
         const setsString = defaultConfig.setIds.join(',');
         const savedAngle = defaultConfig.angle || 40;
-        
+
         try {
           // Try to get board details for slug-based URL from cache first
           const detailsKey = `${defaultConfig.board}-${defaultConfig.layoutId}-${defaultConfig.sizeId}-${defaultConfig.setIds.join(',')}`;
           let boardDetails = boardConfigs.details[detailsKey];
-          
+
           if (!boardDetails) {
-            boardDetails = await fetchBoardDetails(defaultConfig.board, defaultConfig.layoutId, defaultConfig.sizeId, defaultConfig.setIds);
+            boardDetails = await fetchBoardDetails(
+              defaultConfig.board,
+              defaultConfig.layoutId,
+              defaultConfig.sizeId,
+              defaultConfig.setIds,
+            );
           }
-          
+
           if (boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names) {
             const slugUrl = constructClimbListWithSlugs(
               boardDetails.board_name,
               boardDetails.layout_name,
               boardDetails.size_name,
               boardDetails.set_names,
-              savedAngle
+              savedAngle,
             );
             router.push(slugUrl);
           } else {
             // Fallback to old URL format
-            router.push(`/${defaultConfig.board}/${defaultConfig.layoutId}/${defaultConfig.sizeId}/${setsString}/${savedAngle}/list`);
+            router.push(
+              `/${defaultConfig.board}/${defaultConfig.layoutId}/${defaultConfig.sizeId}/${setsString}/${savedAngle}/list`,
+            );
           }
         } catch (error) {
           console.error('Error fetching board details for slug URL:', error);
           // Fallback to old URL format
-          router.push(`/${defaultConfig.board}/${defaultConfig.layoutId}/${defaultConfig.sizeId}/${setsString}/${savedAngle}/list`);
+          router.push(
+            `/${defaultConfig.board}/${defaultConfig.layoutId}/${defaultConfig.sizeId}/${setsString}/${savedAngle}/list`,
+          );
         }
       }
     };
-    
+
     loadConfigurations();
   }, [router, boardConfigs]);
 
@@ -299,32 +325,31 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
     handleFormChange();
   };
 
-
   // Login will be handled after reaching the main board page
 
   const handleStartClimbing = async () => {
     if (selectedBoard && selectedLayout && selectedSize && selectedSets.length > 0) {
       setIsStartingClimbing(true);
-      
+
       try {
         // Generate default name if none provided
         let configurationName = configName.trim();
         if (!configurationName) {
-          const layout = layouts.find(l => l.id === selectedLayout);
-          const size = sizes.find(s => s.id === selectedSize);
-          
+          const layout = layouts.find((l) => l.id === selectedLayout);
+          const size = sizes.find((s) => s.id === selectedSize);
+
           const layoutName = layout?.name || `Layout ${selectedLayout}`;
           const sizeName = size?.name || `Size ${selectedSize}`;
-          
+
           configurationName = `${layoutName} ${sizeName}`;
         }
-        
+
         // Track board configuration completion
         track('Board Configuration Completed', {
           boardLayout: selectedLayout,
-          setAsDefault: useAsDefault
+          setAsDefault: useAsDefault,
         });
-        
+
         // Always save configuration with either user-provided or generated name
         const config: StoredBoardConfig = {
           name: configurationName,
@@ -337,25 +362,25 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
           createdAt: new Date().toISOString(),
           lastUsed: new Date().toISOString(),
         };
-        
+
         await saveConfiguration(config);
         // Refresh the saved configurations list
         const updatedConfigs = await loadAllConfigurations();
         setSavedConfigurations(updatedConfigs);
-        
+
         const setsString = selectedSets.join(',');
-        
+
         try {
           // Try to get board details for slug-based URL
           const boardDetails = await fetchBoardDetails(selectedBoard!, selectedLayout!, selectedSize!, selectedSets);
-          
+
           if (boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names) {
             const slugUrl = constructClimbListWithSlugs(
               boardDetails.board_name,
               boardDetails.layout_name,
               boardDetails.size_name,
               boardDetails.set_names,
-              selectedAngle
+              selectedAngle,
             );
             router.push(slugUrl);
           } else {
@@ -414,13 +439,13 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
             <Divider />
           </>
         )}
-        
+
         <Form layout="vertical">
           <Form.Item label="Configuration Name (Optional)">
             <Input
               value={configName}
               onChange={(e) => setConfigName(e.target.value)}
-              placeholder={suggestedName || "Enter a name for this configuration"}
+              placeholder={suggestedName || 'Enter a name for this configuration'}
               maxLength={50}
             />
           </Form.Item>
@@ -438,11 +463,11 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
                   </Select>
                 </Form.Item>
               </Col>
-              
+
               <Col xs={24} sm={12}>
                 <Form.Item label="Layout" noStyle>
-                  <Select 
-                    value={selectedLayout} 
+                  <Select
+                    value={selectedLayout}
                     onChange={handleLayoutChange}
                     placeholder="Select layout"
                     disabled={!selectedBoard}
@@ -455,11 +480,11 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
                   </Select>
                 </Form.Item>
               </Col>
-              
+
               <Col xs={24} sm={12}>
                 <Form.Item label="Size" noStyle>
-                  <Select 
-                    value={selectedSize} 
+                  <Select
+                    value={selectedSize}
                     onChange={handleSizeChange}
                     placeholder="Select size"
                     disabled={!selectedLayout}
@@ -472,12 +497,12 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
                   </Select>
                 </Form.Item>
               </Col>
-              
+
               <Col xs={24} sm={12}>
                 <Form.Item label="Hold Sets" noStyle>
-                  <Select 
+                  <Select
                     mode="multiple"
-                    value={selectedSets} 
+                    value={selectedSets}
                     onChange={handleSetsChange}
                     placeholder="Select hold sets"
                     disabled={!selectedSize}
@@ -490,19 +515,16 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
                   </Select>
                 </Form.Item>
               </Col>
-              
+
               <Col xs={24} sm={12}>
                 <Form.Item label="Angle" noStyle>
-                  <Select 
-                    value={selectedAngle} 
-                    onChange={handleAngleChange}
-                    disabled={!selectedBoard}
-                  >
-                    {selectedBoard && ANGLES[selectedBoard].map((angle) => (
-                      <Option key={angle} value={angle}>
-                        {angle}°
-                      </Option>
-                    ))}
+                  <Select value={selectedAngle} onChange={handleAngleChange} disabled={!selectedBoard}>
+                    {selectedBoard &&
+                      ANGLES[selectedBoard].map((angle) => (
+                        <Option key={angle} value={angle}>
+                          {angle}°
+                        </Option>
+                      ))}
                   </Select>
                 </Form.Item>
               </Col>
@@ -510,9 +532,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
           </Form.Item>
 
           <div style={{ marginBottom: '16px', textAlign: 'center' }}>
-            <Text type="secondary">
-              You can login after reaching the board page
-            </Text>
+            <Text type="secondary">You can login after reaching the board page</Text>
           </div>
 
           {/* TODO: Improve UX for default board selection
@@ -530,11 +550,11 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
           </Form.Item>
           */}
 
-          <Button 
-            type="primary" 
+          <Button
+            type="primary"
             size="large"
-            block 
-            onClick={handleStartClimbing} 
+            block
+            onClick={handleStartClimbing}
             disabled={!isFormComplete || isStartingClimbing}
             loading={isStartingClimbing}
           >
@@ -550,9 +570,9 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
               onChange={(keys) => {
                 const updatedKeys = keys as string[];
                 if (updatedKeys.includes('preview')) {
-                  setActiveCollapsePanels([...activeCollapsePanels.filter(k => k !== 'preview'), 'preview']);
+                  setActiveCollapsePanels([...activeCollapsePanels.filter((k) => k !== 'preview'), 'preview']);
                 } else {
-                  setActiveCollapsePanels(activeCollapsePanels.filter(k => k !== 'preview'));
+                  setActiveCollapsePanels(activeCollapsePanels.filter((k) => k !== 'preview'));
                 }
               }}
               size="small"

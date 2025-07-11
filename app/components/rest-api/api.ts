@@ -65,11 +65,11 @@ export const fetchCurrentClimb = async (
 // Fetch beta links
 export const fetchBetaLinks = async (board: string, uuid: string): Promise<BetaLink[]> => {
   const response = await fetch(`${API_BASE_URL}/${board}/beta/${uuid}`);
-  
+
   if (!response.ok) {
     throw new Error(`Failed to fetch beta links: ${response.status}`);
   }
-  
+
   const data = await response.json();
   return Array.isArray(data) ? data : [];
 };

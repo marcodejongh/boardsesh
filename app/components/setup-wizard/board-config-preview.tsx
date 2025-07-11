@@ -41,41 +41,34 @@ export default function BoardConfigPreview({ config, onDelete, boardConfigs }: B
     const loadBoardDetails = async () => {
       try {
         setIsLoading(true);
-        
+
         // Get data from boardConfigs prop
         const layouts = boardConfigs.layouts[config.board as BoardName] || [];
         const sizes = boardConfigs.sizes[`${config.board}-${config.layoutId}`] || [];
         const sets = boardConfigs.sets[`${config.board}-${config.layoutId}-${config.sizeId}`] || [];
         const detailsKey = `${config.board}-${config.layoutId}-${config.sizeId}-${config.setIds.join(',')}`;
         const cachedDetails = boardConfigs.details[detailsKey];
-        
+
         // Find layout name
-        const layout = layouts.find(l => l.id === config.layoutId);
+        const layout = layouts.find((l) => l.id === config.layoutId);
         setLayoutName(layout?.name || `Layout ${config.layoutId}`);
-        
+
         // Find size name
-        const size = sizes.find(s => s.id === config.sizeId);
+        const size = sizes.find((s) => s.id === config.sizeId);
         setSizeName(size?.name || `Size ${config.sizeId}`);
-        
+
         // Validate that the saved configuration is still valid
-        const isValidConfig = layout && size && config.setIds.every(setId => 
-          sets.some(set => set.id === setId)
-        );
-        
+        const isValidConfig = layout && size && config.setIds.every((setId) => sets.some((set) => set.id === setId));
+
         // Generate the URL
         const savedAngle = config.angle || 40;
         let url: string;
-        
+
         // Only try to get board details if we have cached details or if the config is valid
         let details = cachedDetails;
         if (!details && isValidConfig) {
           try {
-            details = await fetchBoardDetails(
-              config.board as any,
-              config.layoutId,
-              config.sizeId,
-              config.setIds
-            );
+            details = await fetchBoardDetails(config.board as any, config.layoutId, config.sizeId, config.setIds);
             setBoardDetails(details);
           } catch (error) {
             console.error('Failed to fetch board details:', error);
@@ -83,7 +76,7 @@ export default function BoardConfigPreview({ config, onDelete, boardConfigs }: B
         } else if (cachedDetails) {
           setBoardDetails(details);
         }
-        
+
         try {
           // Try to use slug-based URL if board details are available
           if (details?.layout_name && details?.size_name && details?.set_names) {
@@ -92,7 +85,7 @@ export default function BoardConfigPreview({ config, onDelete, boardConfigs }: B
               details.layout_name,
               details.size_name,
               details.set_names,
-              savedAngle
+              savedAngle,
             );
           } else {
             // Fallback to old URL format
@@ -105,9 +98,8 @@ export default function BoardConfigPreview({ config, onDelete, boardConfigs }: B
           const setsString = config.setIds.join(',');
           url = `/${config.board}/${config.layoutId}/${config.sizeId}/${setsString}/${savedAngle}/list`;
         }
-        
+
         setBoardUrl(url);
-        
       } catch (error) {
         console.error('Failed to load board details for preview:', error);
         // Set fallback URL even if loading fails
@@ -129,11 +121,7 @@ export default function BoardConfigPreview({ config, onDelete, boardConfigs }: B
 
   if (isLoading) {
     return (
-      <Card
-        hoverable
-        size="small"
-        style={{ width: 200 }}
-      >
+      <Card hoverable size="small" style={{ width: 200 }}>
         <Skeleton active paragraph={{ rows: 2 }} />
       </Card>
     );
@@ -145,15 +133,7 @@ export default function BoardConfigPreview({ config, onDelete, boardConfigs }: B
         <Card
           hoverable
           size="small"
-          extra={
-            <Button
-              type="text"
-              icon={<DeleteOutlined />}
-              onClick={handleDelete}
-              danger
-              size="small"
-            />
-          }
+          extra={<Button type="text" icon={<DeleteOutlined />} onClick={handleDelete} danger size="small" />}
         >
           <Space direction="vertical" size="small" align="center">
             <Text type="secondary">Preview unavailable</Text>
@@ -185,15 +165,7 @@ export default function BoardConfigPreview({ config, onDelete, boardConfigs }: B
             thumbnail={true}
           />
         }
-        extra={
-          <Button
-            type="text"
-            icon={<DeleteOutlined />}
-            onClick={handleDelete}
-            danger
-            size="small"
-          />
-        }
+        extra={<Button type="text" icon={<DeleteOutlined />} onClick={handleDelete} danger size="small" />}
       >
         <Card.Meta
           title={<Text strong>{config.name}</Text>}

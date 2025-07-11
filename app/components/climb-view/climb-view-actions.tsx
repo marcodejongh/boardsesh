@@ -2,7 +2,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { Button, Space, message, Dropdown } from 'antd';
-import { HeartOutlined, PlusCircleOutlined, CheckCircleOutlined, AppstoreOutlined, MoreOutlined, ArrowLeftOutlined } from '@ant-design/icons';
+import {
+  HeartOutlined,
+  PlusCircleOutlined,
+  CheckCircleOutlined,
+  AppstoreOutlined,
+  MoreOutlined,
+  ArrowLeftOutlined,
+} from '@ant-design/icons';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useQueueContext } from '../queue-control/queue-context';
@@ -33,14 +40,12 @@ const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl, angle }: ClimbVie
       if (typeof window !== 'undefined') {
         // Check if there's history to go back to
         const hasHistory = window.history.length > 1;
-        
+
         // Check if document.referrer exists and is from the same origin
         const referrer = document.referrer;
-        const isSameOrigin = referrer !== '' && (
-          referrer.startsWith(window.location.origin) || 
-          referrer.includes('boardsesh.com')
-        );
-        
+        const isSameOrigin =
+          referrer !== '' && (referrer.startsWith(window.location.origin) || referrer.includes('boardsesh.com'));
+
         setCanGoBack(hasHistory && isSameOrigin);
       }
     };
@@ -86,18 +91,12 @@ const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl, angle }: ClimbVie
 
   const getBackToListUrl = () => {
     const { board_name, layout_name, size_name, set_names } = boardDetails;
-    
+
     // Use slug-based URL construction if slug names are available
     if (layout_name && size_name && set_names) {
-      return constructClimbListWithSlugs(
-        board_name,
-        layout_name,
-        size_name,
-        set_names,
-        angle
-      );
+      return constructClimbListWithSlugs(board_name, layout_name, size_name, set_names, angle);
     }
-    
+
     // Fallback to numeric format
     return `/${board_name}/${boardDetails.layout_id}/${boardDetails.size_id}/${boardDetails.set_ids.join(',')}/${angle}/list`;
   };
@@ -129,34 +128,24 @@ const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl, angle }: ClimbVie
       {/* Mobile view: Show back button + key actions + overflow menu */}
       <div className={styles.mobileActions}>
         {canGoBack ? (
-          <Button 
-            icon={<ArrowLeftOutlined />}
-            className={styles.backButton}
-            onClick={handleBackClick}
-          >
+          <Button icon={<ArrowLeftOutlined />} className={styles.backButton} onClick={handleBackClick}>
             Back
           </Button>
         ) : (
           <Link href={getBackToListUrl()}>
-            <Button 
-              icon={<ArrowLeftOutlined />}
-              className={styles.backButton}
-            >
+            <Button icon={<ArrowLeftOutlined />} className={styles.backButton}>
               Back
             </Button>
           </Link>
         )}
-        
+
         <Space>
-          <Button 
-            icon={<HeartOutlined />}
-            onClick={handleFavourite}
-          >
+          <Button icon={<HeartOutlined />} onClick={handleFavourite}>
             Favourite
           </Button>
-          
+
           {isAlreadyInQueue ? (
-            <Button 
+            <Button
               icon={<CheckCircleOutlined />}
               onClick={handleAddToQueue}
               disabled={isDuplicate}
@@ -165,15 +154,11 @@ const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl, angle }: ClimbVie
               In Queue
             </Button>
           ) : (
-            <Button 
-              icon={<PlusCircleOutlined />}
-              onClick={handleAddToQueue}
-              disabled={isDuplicate}
-            >
+            <Button icon={<PlusCircleOutlined />} onClick={handleAddToQueue} disabled={isDuplicate}>
               Add to Queue
             </Button>
           )}
-          
+
           <Dropdown menu={{ items: menuItems }} placement="bottomRight" trigger={['click']}>
             <Button icon={<MoreOutlined />} />
           </Dropdown>
@@ -183,49 +168,33 @@ const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl, angle }: ClimbVie
       {/* Desktop view: Show all buttons */}
       <div className={styles.desktopActions}>
         {canGoBack ? (
-          <Button 
-            icon={<ArrowLeftOutlined />}
-            className={styles.backButton}
-            onClick={handleBackClick}
-          >
+          <Button icon={<ArrowLeftOutlined />} className={styles.backButton} onClick={handleBackClick}>
             Back to List
           </Button>
         ) : (
           <Link href={getBackToListUrl()}>
-            <Button 
-              icon={<ArrowLeftOutlined />}
-              className={styles.backButton}
-            >
+            <Button icon={<ArrowLeftOutlined />} className={styles.backButton}>
               Back to List
             </Button>
           </Link>
         )}
-        
+
         <div className={styles.actionButtons}>
           <Space wrap>
-            <Button 
-              icon={<HeartOutlined />}
-              onClick={handleFavourite}
-            >
+            <Button icon={<HeartOutlined />} onClick={handleFavourite}>
               Favourite
             </Button>
-            
-            <Button 
-              icon={<PlusCircleOutlined />}
-              onClick={handleAddToList}
-            >
+
+            <Button icon={<PlusCircleOutlined />} onClick={handleAddToList}>
               Add to List
             </Button>
-            
-            <Button 
-              icon={<CheckCircleOutlined />}
-              onClick={handleTick}
-            >
+
+            <Button icon={<CheckCircleOutlined />} onClick={handleTick}>
               Tick
             </Button>
-            
+
             {isAlreadyInQueue ? (
-              <Button 
+              <Button
                 icon={<CheckCircleOutlined />}
                 onClick={handleAddToQueue}
                 disabled={isDuplicate}
@@ -234,21 +203,12 @@ const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl, angle }: ClimbVie
                 In Queue
               </Button>
             ) : (
-              <Button 
-                icon={<PlusCircleOutlined />}
-                onClick={handleAddToQueue}
-                disabled={isDuplicate}
-              >
+              <Button icon={<PlusCircleOutlined />} onClick={handleAddToQueue} disabled={isDuplicate}>
                 Add to Queue
               </Button>
             )}
-            
-            <Button 
-              icon={<AppstoreOutlined />}
-              href={auroraAppUrl}
-              target="_blank"
-              rel="noopener"
-            >
+
+            <Button icon={<AppstoreOutlined />} href={auroraAppUrl} target="_blank" rel="noopener">
               Open in App
             </Button>
           </Space>

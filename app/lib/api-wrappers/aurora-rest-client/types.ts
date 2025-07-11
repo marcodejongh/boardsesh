@@ -173,7 +173,7 @@ export interface SessionResponse {
 export interface Session {
   user_id: number;
   token: string;
-};
+}
 
 export interface LoginResponse {
   error?: string;
@@ -191,7 +191,6 @@ export interface LoginResponse {
     user_id: number;
   };
 }
-
 
 /**
  * Follow relationship interface

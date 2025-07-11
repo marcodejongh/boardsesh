@@ -34,15 +34,16 @@ export const UISearchParamsProvider: React.FC<{ children: React.ReactNode }> = (
     if (uiSearchParams.onlyClassics) activeFilters.push('classics');
     if (uiSearchParams.gradeAccuracy) activeFilters.push('gradeAccuracy');
     if (uiSearchParams.settername) activeFilters.push('setter');
-    if (uiSearchParams.holdsFilter && Object.entries(uiSearchParams.holdsFilter).length > 0) activeFilters.push('holds');
-    
+    if (uiSearchParams.holdsFilter && Object.entries(uiSearchParams.holdsFilter).length > 0)
+      activeFilters.push('holds');
+
     if (activeFilters.length > 0) {
       track('Climb Search Performed', {
         searchType: 'filters',
         activeFiltersCount: activeFilters.length,
       });
     }
-    
+
     setClimbSearchParams(uiSearchParams);
   }, 500);
 

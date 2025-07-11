@@ -80,7 +80,7 @@ export const getBoardDetails = async ({
     `,
     ...imageUrlHoldsMapEntriesPromises,
   ]);
-  
+
   const ledPlacements = ledPlacementsResult as LedPlacementRow[];
   const sizeDimensions = sizeDimensionsResult as ProductSizeRow[];
   const imagesToHolds = Object.fromEntries(imgUrlMapEntries);
@@ -113,9 +113,9 @@ export const getBoardDetails = async ({
     getSets(board_name, layout_id, size_id),
   ]);
 
-  const layout = layouts.find(l => l.id === layout_id);
-  const size = sizes.find(s => s.id === size_id);
-  const selectedSets = sets.filter(s => set_ids.includes(s.id));
+  const layout = layouts.find((l) => l.id === layout_id);
+  const size = sizes.find((s) => s.id === size_id);
+  const selectedSets = sets.filter((s) => set_ids.includes(s.id));
 
   return {
     images_to_holds: imagesToHolds,
@@ -135,7 +135,7 @@ export const getBoardDetails = async ({
     // Added for slug-based URLs
     layout_name: layout?.name,
     size_name: size?.name,
-    set_names: selectedSets.map(s => s.name),
+    set_names: selectedSets.map((s) => s.name),
   };
 };
 
@@ -149,10 +149,9 @@ export const getClimb = async (params: ParsedBoardRouteParametersWithUuid): Prom
         climb_stats.benchmark_difficulty
         FROM ${sql.unsafe(getTableName(params.board_name, 'climbs'))} climbs
         LEFT JOIN ${sql.unsafe(getTableName(params.board_name, 'climb_stats'))} climb_stats ON climb_stats.climb_uuid = climbs.uuid AND climb_stats.angle = ${params.angle}
-        LEFT JOIN ${sql.unsafe(getTableName(
-          params.board_name,
-          'difficulty_grades',
-        ))} dg on dg.difficulty = ROUND(climb_stats.display_difficulty::numeric)
+        LEFT JOIN ${sql.unsafe(
+          getTableName(params.board_name, 'difficulty_grades'),
+        )} dg on dg.difficulty = ROUND(climb_stats.display_difficulty::numeric)
         INNER JOIN ${sql.unsafe(getTableName(params.board_name, 'product_sizes'))} product_sizes ON product_sizes.id = ${params.size_id}
         WHERE climbs.layout_id = ${params.layout_id}
         AND product_sizes.id = ${params.size_id}
@@ -187,15 +186,14 @@ function getImageUrlHoldsMapObjectEntries(
           INNER JOIN ${sql.unsafe(getTableName(board_name, 'placements'))} placements ON placements.hole_id = holes.id
           AND placements.set_id = ${set_id}
           AND placements.layout_id = ${layout_id}
-          LEFT JOIN ${sql.unsafe(getTableName(
-            board_name,
-            'placements',
-          ))} mirrored_placements ON mirrored_placements.hole_id = holes.mirrored_hole_id
+          LEFT JOIN ${sql.unsafe(
+            getTableName(board_name, 'placements'),
+          )} mirrored_placements ON mirrored_placements.hole_id = holes.mirrored_hole_id
           AND mirrored_placements.set_id = ${set_id}
           AND mirrored_placements.layout_id = ${layout_id}
         `,
     ]);
-    
+
     const imageRows = imageRowsResult as ImageFileNameRow[];
     const holds = holdsResult as HoldsRow[];
 
@@ -374,7 +372,7 @@ export const getAllBoardSelectorOptions = async (): Promise<BoardSelectorOptions
     ORDER BY board_name, type, parent_id, grandparent_id, name;
   `;
 
-  const rows = await sql`
+  const rows = (await sql`
     WITH board_data AS (
       SELECT 
         ${'kilter'}::text as board_name,
@@ -470,7 +468,7 @@ export const getAllBoardSelectorOptions = async (): Promise<BoardSelectorOptions
       description
     FROM board_data
     ORDER BY board_name, type, parent_id, grandparent_id, name
-  ` as {
+  `) as {
     board_name: BoardName;
     type: 'layouts' | 'sizes' | 'sets';
     parent_id: string | null;
@@ -483,7 +481,7 @@ export const getAllBoardSelectorOptions = async (): Promise<BoardSelectorOptions
   const result: BoardSelectorOptions = {
     layouts: {} as Record<BoardName, LayoutRow[]>,
     sizes: {},
-    sets: {}
+    sets: {},
   };
 
   // Process the results
@@ -494,7 +492,7 @@ export const getAllBoardSelectorOptions = async (): Promise<BoardSelectorOptions
       }
       result.layouts[row.board_name].push({
         id: row.id,
-        name: row.name
+        name: row.name,
       });
     } else if (row.type === 'sizes') {
       const key = `${row.board_name}-${row.parent_id}`;
@@ -504,7 +502,7 @@ export const getAllBoardSelectorOptions = async (): Promise<BoardSelectorOptions
       result.sizes[key].push({
         id: row.id,
         name: row.name,
-        description: row.description || ''
+        description: row.description || '',
       });
     } else if (row.type === 'sets') {
       const key = `${row.board_name}-${row.grandparent_id}-${row.parent_id}`;
@@ -513,11 +511,10 @@ export const getAllBoardSelectorOptions = async (): Promise<BoardSelectorOptions
       }
       result.sets[key].push({
         id: row.id,
-        name: row.name
+        name: row.name,
       });
     }
   }
 
   return result;
 };
-

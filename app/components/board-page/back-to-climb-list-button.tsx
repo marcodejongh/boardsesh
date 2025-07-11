@@ -18,20 +18,19 @@ const BackToClimbList = ({
 }: ParsedBoardRouteParametersWithUuid & { boardDetails?: BoardDetails }) => {
   const { climbSearchParams } = useQueueContext();
 
-  const climbListUrl = boardDetails?.layout_name && boardDetails?.size_name && boardDetails?.set_names
-    ? constructClimbListWithSlugs(
-        boardDetails.board_name,
-        boardDetails.layout_name,
-        boardDetails.size_name,
-        boardDetails.set_names,
-        angle
-      )
-    : `/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/list`;
+  const climbListUrl =
+    boardDetails?.layout_name && boardDetails?.size_name && boardDetails?.set_names
+      ? constructClimbListWithSlugs(
+          boardDetails.board_name,
+          boardDetails.layout_name,
+          boardDetails.size_name,
+          boardDetails.set_names,
+          angle,
+        )
+      : `/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/list`;
 
   return (
-    <Link
-      href={`${climbListUrl}?${searchParamsToUrlParams(climbSearchParams).toString()}#${climb_uuid}`}
-    >
+    <Link href={`${climbListUrl}?${searchParamsToUrlParams(climbSearchParams).toString()}#${climb_uuid}`}>
       <Button type="default" icon={<LeftOutlined />} />
     </Link>
   );

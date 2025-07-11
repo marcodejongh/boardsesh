@@ -40,34 +40,32 @@ interface BoardLayoutProps {
 export default async function BoardLayout(props: PropsWithChildren<BoardLayoutProps>) {
   const params = await props.params;
 
-  const {
-    children
-  } = props;
+  const { children } = props;
 
   // Parse the route parameters
   // Check if any parameters are in numeric format (old URLs)
-  const hasNumericParams = [params.layout_id, params.size_id, params.set_ids].some(param => 
-    param.includes(',') ? param.split(',').every(id => /^\d+$/.test(id.trim())) : /^\d+$/.test(param)
+  const hasNumericParams = [params.layout_id, params.size_id, params.set_ids].some((param) =>
+    param.includes(',') ? param.split(',').every((id) => /^\d+$/.test(id.trim())) : /^\d+$/.test(param),
   );
-  
+
   let parsedParams: ParsedBoardRouteParameters;
-  
+
   if (hasNumericParams) {
     // For old URLs, use the simple parsing function first
     parsedParams = parseBoardRouteParams(params);
-    
+
     // Redirect old URLs to new slug format
     const boardDetails = await getBoardDetails(parsedParams);
-    
+
     if (boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names) {
       const newUrl = constructClimbListWithSlugs(
         boardDetails.board_name,
         boardDetails.layout_name,
         boardDetails.size_name,
         boardDetails.set_names,
-        parsedParams.angle
+        parsedParams.angle,
       );
-      
+
       permanentRedirect(newUrl);
     }
   } else {
@@ -78,9 +76,7 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
   const { board_name, layout_id, angle } = parsedParams;
 
   // Fetch the climbs and board details server-side
-  const [boardDetails] = await Promise.all([
-    getBoardDetails(parsedParams),
-  ]);
+  const [boardDetails] = await Promise.all([getBoardDetails(parsedParams)]);
 
   return (
     <>

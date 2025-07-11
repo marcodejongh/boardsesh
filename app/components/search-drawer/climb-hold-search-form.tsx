@@ -30,7 +30,7 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
     }
 
     updateFilters({
-      holdsFilter: updatedHoldsFilter
+      holdsFilter: updatedHoldsFilter,
     });
   };
 
@@ -57,9 +57,9 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
           />
         </Form.Item>
       </Form>
-      
+
       <p className="mb-4">Click on holds to set them to the selected type</p>
-      
+
       <div className="w-full max-w-2xl mx-auto">
         <BoardHeatmap
           boardDetails={boardDetails}
@@ -70,7 +70,7 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
 
       {Object.keys(uiSearchParams.holdsFilter || {}).length > 0 && (
         <Form.Item className="mt-4">
-          <Button 
+          <Button
             danger
             onClick={() => {
               const holdCount = Object.keys(uiSearchParams.holdsFilter || {}).length;

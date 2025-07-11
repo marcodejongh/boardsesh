@@ -22,13 +22,13 @@ async function fetchBoardConfigs(): Promise<BoardConfigCache> {
   }
 
   fetchPromise = fetch('/api/internal/board-configs')
-    .then(res => res.json())
-    .then(data => {
+    .then((res) => res.json())
+    .then((data) => {
       globalCache = data;
       fetchPromise = null;
       return data;
     })
-    .catch(error => {
+    .catch((error) => {
       console.error('Failed to fetch board configs:', error);
       fetchPromise = null;
       throw error;
@@ -81,6 +81,6 @@ export function useBoardConfigs() {
     getLayouts,
     getSizes,
     getSets,
-    getBoardDetails
+    getBoardDetails,
   };
 }

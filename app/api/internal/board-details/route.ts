@@ -16,17 +16,14 @@ export async function GET(request: NextRequest) {
     if (!board_name || isNaN(layout_id) || isNaN(size_id) || !set_ids_param) {
       return NextResponse.json(
         { error: 'Missing required parameters: board_name, layout_id, size_id, set_ids' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    const set_ids = set_ids_param.split(',').map(id => parseInt(id.trim()));
-    
-    if (set_ids.some(id => isNaN(id))) {
-      return NextResponse.json(
-        { error: 'Invalid set_ids format' },
-        { status: 400 }
-      );
+    const set_ids = set_ids_param.split(',').map((id) => parseInt(id.trim()));
+
+    if (set_ids.some((id) => isNaN(id))) {
+      return NextResponse.json({ error: 'Invalid set_ids format' }, { status: 400 });
     }
 
     const details = await getBoardDetails({
@@ -34,19 +31,16 @@ export async function GET(request: NextRequest) {
       layout_id,
       size_id,
       set_ids,
-      angle
+      angle,
     });
 
     return NextResponse.json(details, {
       headers: {
         'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
-      }
+      },
     });
   } catch (error) {
     console.error('Error fetching board details:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch board details' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to fetch board details' }, { status: 500 });
   }
 }

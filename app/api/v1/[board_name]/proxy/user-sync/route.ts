@@ -8,7 +8,7 @@ export async function POST(request: Request) {
 
   try {
     const cookieStore = await cookies();
-    const session = await getSession(cookieStore, board_name); 
+    const session = await getSession(cookieStore, board_name);
     if (!session) {
       throw new Error('401: Unauthorized');
     }

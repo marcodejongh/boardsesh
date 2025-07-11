@@ -1,9 +1,37 @@
 // aurora-api-client.ts
 
-import { AscentDetails, BidDetails, CircuitDetails, ClientOptions, ClimbDetails, ClimbReport, ClimbSummary, DeleteUserValidationErrors, Exhibit, ExhibitsFilter, Follow, FollowState, GymPin, HOST_BASES, Leaderboard, LeaderboardScore, LoginResponse, NotificationsFilter, ProfileDetails, SearchResult, Session, SessionResponse, SharedSync, SignUpDetails, SyncResponse, Tag, UserProfile, UserSync, WallDetails } from "./types";
-import { SaveAscentResponse } from "../aurora/types";
-
-
+import {
+  AscentDetails,
+  BidDetails,
+  CircuitDetails,
+  ClientOptions,
+  ClimbDetails,
+  ClimbReport,
+  ClimbSummary,
+  DeleteUserValidationErrors,
+  Exhibit,
+  ExhibitsFilter,
+  Follow,
+  FollowState,
+  GymPin,
+  HOST_BASES,
+  Leaderboard,
+  LeaderboardScore,
+  LoginResponse,
+  NotificationsFilter,
+  ProfileDetails,
+  SearchResult,
+  Session,
+  SessionResponse,
+  SharedSync,
+  SignUpDetails,
+  SyncResponse,
+  Tag,
+  UserProfile,
+  UserSync,
+  WallDetails,
+} from './types';
+import { SaveAscentResponse } from '../aurora/types';
 
 /**
  * Aurora Climbing API Client
@@ -62,12 +90,12 @@ class AuroraClimbingClient {
    */
   private createHeaders(contentType?: string): HeadersInit {
     const headers: HeadersInit = {
-      'Accept': 'application/json',
+      Accept: 'application/json',
       'Content-Type': contentType || 'application/x-www-form-urlencoded',
-      'Connection': 'keep-alive',
+      Connection: 'keep-alive',
       'Accept-Language': 'en-AU,en;q=0.9',
       'Accept-Encoding': 'gzip, deflate, br',
-      'User-Agent': 'Kilter%20Board/202 CFNetwork/1568.100.1 Darwin/24.0.0'
+      'User-Agent': 'Kilter%20Board/202 CFNetwork/1568.100.1 Darwin/24.0.0',
     };
 
     if (this.token) {
@@ -76,7 +104,7 @@ class AuroraClimbingClient {
 
     return headers;
   }
-  
+
   private constructUrl() {}
   /**
    * Make an API request
@@ -140,20 +168,22 @@ class AuroraClimbingClient {
       return (await response.json()) as T;
     } catch (error) {
       console.error(`API request failed: ${endpoint}`, error);
-      
+
       // Enhance error messages for common issues
       if (error instanceof Error) {
         if (error.name === 'AbortError') {
           throw new Error(`Request timeout: ${url} took longer than 30 seconds`);
         }
         if (error.message.includes('fetch')) {
-          throw new Error(`Network error: Unable to connect to ${url}. Check internet connection and Aurora API status.`);
+          throw new Error(
+            `Network error: Unable to connect to ${url}. Check internet connection and Aurora API status.`,
+          );
         }
         if (error.message.includes('Failed to fetch')) {
           throw new Error(`DNS/Connection error: Cannot resolve ${url}. Aurora servers may be unavailable.`);
         }
       }
-      
+
       throw error;
     }
   }
@@ -254,12 +284,12 @@ class AuroraClimbingClient {
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            username, 
+          body: JSON.stringify({
+            username,
             password,
-            tou: "accepted",
-            pp: "accepted",
-            ua: "app"
+            tou: 'accepted',
+            pp: 'accepted',
+            ua: 'app',
           }),
         },
         { apiUrl: false }, // Use web host only
@@ -268,10 +298,10 @@ class AuroraClimbingClient {
       // Handle session extraction - response might have a session object
       if (data.session) {
         this.setSession({ token: data.session.token, user_id: data.session.user_id });
-        
+
         // Construct a response that matches the UI expectations
-        return { 
-          token: data.session.token, 
+        return {
+          token: data.session.token,
           user_id: data.session.user_id,
           username: username, // Use the provided username since API doesn't return it
           error: '', // No error
@@ -295,7 +325,7 @@ class AuroraClimbingClient {
             height: null,
             weight: null,
             wingspan: null,
-          }
+          },
         };
       } else if (data.token && data.user_id) {
         this.setSession({ token: data.token, user_id: data.user_id });
@@ -355,7 +385,7 @@ class AuroraClimbingClient {
     // Process shared syncs - match APK database schema order
     const sharedTables = [
       'products',
-      'product_sizes', 
+      'product_sizes',
       'holes',
       'leds',
       'products_angles',

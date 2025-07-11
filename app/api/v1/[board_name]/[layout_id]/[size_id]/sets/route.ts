@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 
 export async function GET(
   request: Request,
-  props: { params: Promise<{ board_name: BoardName; layout_id: LayoutId; size_id: Size }> }
+  props: { params: Promise<{ board_name: BoardName; layout_id: LayoutId; size_id: Size }> },
 ) {
   const params = await props.params;
   const { board_name, layout_id, size_id } = params;

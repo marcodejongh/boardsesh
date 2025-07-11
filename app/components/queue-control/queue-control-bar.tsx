@@ -48,7 +48,7 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-          }
+          },
         }}
         style={{
           width: '100%',
@@ -98,7 +98,11 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
               >
                 {currentClimb ? (
                   <>
-                    {currentClimb.difficulty && currentClimb.quality_average ? `${currentClimb.difficulty} ${currentClimb.quality_average}★ @ ${currentClimb.angle}°` : <span style={{ fontWeight: 400, fontStyle: 'italic' }}>project @ {currentClimb.angle}°</span>}
+                    {currentClimb.difficulty && currentClimb.quality_average ? (
+                      `${currentClimb.difficulty} ${currentClimb.quality_average}★ @ ${currentClimb.angle}°`
+                    ) : (
+                      <span style={{ fontWeight: 400, fontStyle: 'italic' }}>project @ {currentClimb.angle}°</span>
+                    )}
                     {currentClimb.benchmark_difficulty && <CopyrightOutlined style={{ marginLeft: 4 }} />}
                   </>
                 ) : null}
@@ -116,7 +120,7 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
                     mirrorClimb();
                     track('Mirror Climb Toggled', {
                       boardLayout: boardDetails.layout_name || '',
-                      mirrored: !currentClimb?.mirrored
+                      mirrored: !currentClimb?.mirrored,
                     });
                   }}
                   type={currentClimb?.mirrored ? 'primary' : 'default'}
@@ -154,6 +158,5 @@ const boardPreviewContainerStyle = {
   alignItems: 'center',
   overflow: 'hidden',
 };
-
 
 export default QueueControlBar;

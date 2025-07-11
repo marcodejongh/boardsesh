@@ -41,7 +41,7 @@ import AuroraClimbingClient from 'aurora-climbing-api';
 // Initialize the client
 const client = new AuroraClimbingClient({
   domain: 'api.auroraclimbing.com',
-  apiVersion: 'v1' // Optional API version
+  apiVersion: 'v1', // Optional API version
 });
 ```
 
@@ -54,7 +54,7 @@ const signUpDetails = {
   username: 'newuser',
   password: 'securepassword',
   emailAddress: 'user@example.com',
-  mailingListOptIn: true
+  mailingListOptIn: true,
 };
 
 try {
@@ -113,14 +113,14 @@ const profileDetails = {
   // Optional avatar update
   avatarAction: {
     type: 'upload',
-    data: imageBlob // A Blob or File object
+    data: imageBlob, // A Blob or File object
   },
   // Optional gym details
   gymDetails: {
     name: 'My Home Gym',
     address: '123 Main St',
     // Other gym properties...
-  }
+  },
 };
 
 try {
@@ -173,9 +173,9 @@ import { FollowState } from 'aurora-climbing-api';
 
 try {
   const result = await client.saveFollow(
-    targetUserId,  // Who to follow
+    targetUserId, // Who to follow
     currentUserId, // Your user ID
-    FollowState.PENDING
+    FollowState.PENDING,
   );
   console.log('Follow request sent:', result);
 } catch (error) {
@@ -192,8 +192,8 @@ import { FollowState } from 'aurora-climbing-api';
 try {
   const result = await client.saveFollow(
     currentUserId, // Your user ID
-    targetUserId,  // User who requested to follow you
-    FollowState.ACCEPTED
+    targetUserId, // User who requested to follow you
+    FollowState.ACCEPTED,
   );
   console.log('Follow request accepted:', result);
 } catch (error) {
@@ -216,7 +216,7 @@ const climbDetails = {
   framesCount: 1,
   framesPace: 0,
   placements: [], // Array of hold placements
-  angle: 40 // Optional angle
+  angle: 40, // Optional angle
 };
 
 try {
@@ -244,7 +244,7 @@ try {
 const report = {
   userID: currentUserId,
   climbUUID: 'climb-uuid',
-  message: 'This climb has inappropriate content'
+  message: 'This climb has inappropriate content',
 };
 
 try {
@@ -271,7 +271,7 @@ const ascentDetails = {
   difficulty: 3, // Difficulty rating
   isBenchmark: false,
   comment: 'Great climb, crux is at the top',
-  climbedAt: new Date().toISOString()
+  climbedAt: new Date().toISOString(),
 };
 
 try {
@@ -317,7 +317,7 @@ const bidDetails = {
   isMirror: false,
   bidCount: 1,
   comment: 'Almost got it, need more tries',
-  climbedAt: new Date().toISOString()
+  climbedAt: new Date().toISOString(),
 };
 
 try {
@@ -350,7 +350,7 @@ const circuitDetails = {
   name: 'Endurance Training',
   description: 'A circuit designed for building endurance',
   color: '#FF5733',
-  isPublic: true
+  isPublic: true,
 };
 
 try {
@@ -410,7 +410,7 @@ const wallDetails = {
   layoutId: 1,
   productSizeId: 2,
   serialNumber: 'WALL123', // Optional
-  holdSetIds: [1, 3, 5] // IDs of hold sets on the wall
+  holdSetIds: [1, 3, 5], // IDs of hold sets on the wall
 };
 
 try {
@@ -441,7 +441,7 @@ const tag = {
   entityUUID: 'climb-uuid', // UUID of the entity being tagged
   userID: currentUserId,
   name: 'Dynamic',
-  isListed: true
+  isListed: true,
 };
 
 try {
@@ -461,7 +461,7 @@ try {
   await client.saveExhibit(
     currentUserId,
     'climb-uuid',
-    'SERIAL123' // Optional serial number
+    'SERIAL123', // Optional serial number
   );
   console.log('Exhibit saved successfully');
 } catch (error) {
@@ -475,7 +475,7 @@ try {
 const filter = {
   serialNumber: 'SERIAL123',
   before: '2023-01-01T00:00:00Z', // Optional timestamp
-  after: '2022-01-01T00:00:00Z'   // Optional timestamp
+  after: '2022-01-01T00:00:00Z', // Optional timestamp
 };
 
 try {
@@ -495,7 +495,7 @@ try {
   // Search with a query
   const results = await client.explore('crimpy problems');
   console.log('Search results:', results);
-  
+
   // Search with a type filter
   const boulderResults = await client.explore('crimpy', 'boulder');
   console.log('Boulder results:', boulderResults);
@@ -511,7 +511,7 @@ try {
 ```typescript
 const filter = {
   types: ['user', 'climb', 'follow'],
-  before: '2023-01-01T00:00:00Z' // Optional timestamp for pagination
+  before: '2023-01-01T00:00:00Z', // Optional timestamp for pagination
 };
 
 try {
@@ -542,7 +542,7 @@ try {
   // Get first page of scores
   const scores = await client.getLeaderboardScores(leaderboardId);
   console.log('Leaderboard scores:', scores);
-  
+
   // Get next page (pagination)
   const nextPageScores = await client.getLeaderboardScores(leaderboardId, 20);
   console.log('Next page scores:', nextPageScores);
@@ -572,20 +572,20 @@ try {
 // Define shared sync tables with timestamps
 const sharedSyncs = [
   { tableName: 'climbs', lastSynchronizedAt: '2023-01-01T00:00:00.000000' },
-  { tableName: 'sets', lastSynchronizedAt: '2023-01-01T00:00:00.000000' }
+  { tableName: 'sets', lastSynchronizedAt: '2023-01-01T00:00:00.000000' },
 ];
 
 // Define user sync tables with timestamps (only if authenticated)
 const userSyncs = [
   { tableName: 'ascents', lastSynchronizedAt: '2023-01-01T00:00:00.000000' },
-  { tableName: 'walls', lastSynchronizedAt: '2023-01-01T00:00:00.000000' }
+  { tableName: 'walls', lastSynchronizedAt: '2023-01-01T00:00:00.000000' },
 ];
 
 try {
   // Sync both shared and user data
   const syncResult = await client.sync(sharedSyncs, userSyncs);
   console.log('Sync completed:', syncResult);
-  
+
   // Or sync only shared data (no authentication required)
   const publicSyncResult = await client.sync(sharedSyncs);
   console.log('Public sync completed:', publicSyncResult);

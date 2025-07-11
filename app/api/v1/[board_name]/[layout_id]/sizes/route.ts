@@ -3,10 +3,7 @@ import { BoardName, LayoutId } from '@/app/lib/types';
 import { NextResponse } from 'next/server';
 
 // Dynamic handler for fetching sizes related to a specific layout
-export async function GET(
-  req: Request,
-  props: { params: Promise<{ board_name: BoardName; layout_id: LayoutId }> }
-) {
+export async function GET(req: Request, props: { params: Promise<{ board_name: BoardName; layout_id: LayoutId }> }) {
   const params = await props.params;
   const { board_name, layout_id } = params;
 

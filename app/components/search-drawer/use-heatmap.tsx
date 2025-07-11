@@ -12,14 +12,7 @@ interface UseHeatmapDataProps {
   filters: SearchRequestPagination;
 }
 
-export default function useHeatmapData({ 
-  boardName, 
-  layoutId, 
-  sizeId, 
-  setIds,
-  angle, 
-  filters 
-}: UseHeatmapDataProps) {
+export default function useHeatmapData({ boardName, layoutId, sizeId, setIds, angle, filters }: UseHeatmapDataProps) {
   const [heatmapData, setHeatmapData] = useState<HeatmapData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -29,13 +22,13 @@ export default function useHeatmapData({
       try {
         setLoading(true);
         const response = await fetch(
-          `/api/v1/${boardName}/${layoutId}/${sizeId}/${setIds}/${angle}/heatmap?${searchParamsToUrlParams(filters).toString()}`
+          `/api/v1/${boardName}/${layoutId}/${sizeId}/${setIds}/${angle}/heatmap?${searchParamsToUrlParams(filters).toString()}`,
         );
-        
+
         if (!response.ok) {
           throw new Error('Failed to fetch heatmap data');
         }
-        
+
         const data = await response.json();
         setHeatmapData(data.holdStats);
         setError(null);

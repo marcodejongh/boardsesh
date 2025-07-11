@@ -154,7 +154,7 @@ export const constructClimbViewUrlWithSlugs = (
   const layoutSlug = generateLayoutSlug(layoutName);
   const sizeSlug = generateSizeSlug(sizeName);
   const setSlug = generateSetSlug(setNames);
-  
+
   const baseUrl = `/${board_name}/${layoutSlug}/${sizeSlug}/${setSlug}/${angle}/view/`;
   if (climbName && climbName.trim()) {
     const climbSlug = generateClimbSlug(climbName.trim());
@@ -215,17 +215,17 @@ export const generateLayoutSlug = (layoutName: string): string => {
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '');
-  
+
   // Handle Tension board specific cases
   if (baseSlug === 'original-layout') {
     return 'original';
   }
-  
+
   // Replace numbers with words for better readability
   if (baseSlug.startsWith('2-')) {
     return baseSlug.replace('2-', 'two-');
   }
-  
+
   return baseSlug;
 };
 
@@ -247,9 +247,9 @@ export const generateSizeSlug = (sizeName: string): string => {
 
 export const generateSetSlug = (setNames: string[]): string => {
   return setNames
-    .map(name => {
+    .map((name) => {
       const lowercaseName = name.toLowerCase().trim();
-      
+
       // Handle homewall-specific set names
       if (lowercaseName.includes('auxiliary') && lowercaseName.includes('kickboard')) {
         return 'aux-kicker';
@@ -263,19 +263,19 @@ export const generateSetSlug = (setNames: string[]): string => {
       if (lowercaseName.includes('mainline')) {
         return 'main';
       }
-      
+
       // Handle original kilter/tension set names
       let result = lowercaseName
         .replace(/\s+ons?$/i, '') // Remove "on" or "ons" suffix
         .replace(/\s+/g, '-'); // Replace spaces with hyphens
-      
+
       // Extract just 'bolt' or 'screw' if it starts with those
       if (result.startsWith('bolt')) {
         result = 'bolt';
       } else if (result.startsWith('screw')) {
         result = 'screw';
       }
-      
+
       return result;
     })
     .sort((a, b) => b.localeCompare(a)) // Sort alphabetically descending
@@ -303,4 +303,3 @@ export const isNumericId = (value: string): boolean => {
 export const isSlugFormat = (value: string): boolean => {
   return !isNumericId(value);
 };
-

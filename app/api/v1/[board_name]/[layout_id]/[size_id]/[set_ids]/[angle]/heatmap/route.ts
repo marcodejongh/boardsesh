@@ -1,4 +1,3 @@
-
 import { getHoldHeatmapData } from '@/app/lib/db/queries/climbs/holds-heatmap';
 import { getSession } from '@/app/lib/session';
 import { BoardRouteParameters, ErrorResponse, SearchRequestPagination } from '@/app/lib/types';
@@ -22,15 +21,18 @@ export interface HoldHeatmapResponse {
   }>;
 }
 
-export async function GET(req: Request, props: { params: Promise<BoardRouteParameters> }): Promise<NextResponse<HoldHeatmapResponse | ErrorResponse>> {
+export async function GET(
+  req: Request,
+  props: { params: Promise<BoardRouteParameters> },
+): Promise<NextResponse<HoldHeatmapResponse | ErrorResponse>> {
   const params = await props.params;
   // Extract search parameters from query string
   const query = new URL(req.url).searchParams;
-  
+
   try {
     const parsedParams = await parseBoardRouteParamsWithSlugs(params);
     const searchParams: SearchRequestPagination = urlParamsToSearchParams(query);
-    
+
     const cookieStore = await cookies();
     const session = await getSession(cookieStore, parsedParams.board_name);
     // Get the heatmap data using the query function

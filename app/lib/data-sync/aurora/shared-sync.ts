@@ -5,13 +5,7 @@ import { sharedSync } from '../../api-wrappers/aurora/sharedSync';
 import { ExtractTablesWithRelations, sql } from 'drizzle-orm';
 import { PgTransaction } from 'drizzle-orm/pg-core';
 import { VercelPgQueryResultHKT } from 'drizzle-orm/vercel-postgres';
-import {
-  Attempt,
-  Climb,
-  ClimbStats,
-  SharedSync,
-  SyncPutFields,
-} from '../../api-wrappers/sync-api-types';
+import { Attempt, Climb, ClimbStats, SharedSync, SyncPutFields } from '../../api-wrappers/sync-api-types';
 import { getTable } from '../../db/queries/util/table-select';
 import { convertLitUpHoldsStringToMap } from '@/app/components/board-renderer/util';
 
@@ -19,7 +13,7 @@ import { convertLitUpHoldsStringToMap } from '@/app/components/board-renderer/ut
 // Order matches what the Android app sends - keep full list to remain indistinguishable
 export const SHARED_SYNC_TABLES: string[] = [
   'products',
-  'product_sizes', 
+  'product_sizes',
   'holes',
   'leds',
   'products_angles',
@@ -41,7 +35,7 @@ const TABLES_TO_PROCESS = new Set([
   'climbs',
   'climb_stats',
   'attempts',
-  'shared_syncs'
+  'shared_syncs',
 ]);
 
 const upsertAttempts = (
@@ -70,7 +64,6 @@ const upsertAttempts = (
         });
     }),
   );
-
 
 async function upsertClimbStats(
   db: PgTransaction<VercelPgQueryResultHKT, Record<string, never>, ExtractTablesWithRelations<Record<string, never>>>,
@@ -266,22 +259,24 @@ export async function getLastSharedSyncTimes(boardName: BoardName) {
   return result;
 }
 
-export async function syncSharedData(board: BoardName, token: string, maxBatches: number = 1): Promise<Record<string, { synced: number; complete: boolean }>> {
+export async function syncSharedData(
+  board: BoardName,
+  token: string,
+  maxBatches: number = 1,
+): Promise<Record<string, { synced: number; complete: boolean }>> {
   try {
     console.log('Entered sync shared data');
-    
+
     // Get shared sync times
     const allSyncTimes = await getLastSharedSyncTimes(board);
     console.log('Fetched previous sync times:', allSyncTimes);
-    
+
     // Create a map of existing sync times
-    const sharedSyncMap = new Map(
-      allSyncTimes.map(sync => [sync.table_name, sync.last_synchronized_at])
-    );
-    
+    const sharedSyncMap = new Map(allSyncTimes.map((sync) => [sync.table_name, sync.last_synchronized_at]));
+
     // Ensure all shared tables have a sync entry (default to 1970 if not synced)
     const defaultTimestamp = '1970-01-01 00:00:00.000000';
-    
+
     const syncParams: SyncOptions = {
       tables: [...SHARED_SYNC_TABLES],
       sharedSyncs: SHARED_SYNC_TABLES.map((tableName) => ({
@@ -301,7 +296,7 @@ export async function syncSharedData(board: BoardName, token: string, maxBatches
     while (!isComplete && batchCount < maxBatches) {
       batchCount++;
       console.log(`Processing sync batch ${batchCount} for shared data`);
-      
+
       const syncResults = await sharedSync(board, syncParams, token);
       console.log('syncResults keys:', Object.keys(syncResults));
       console.log('syncResults structure:', JSON.stringify(syncResults, null, 2).substring(0, 1000));
@@ -313,12 +308,12 @@ export async function syncSharedData(board: BoardName, token: string, maxBatches
           for (const tableName of SHARED_SYNC_TABLES) {
             if (syncResults[tableName] && Array.isArray(syncResults[tableName])) {
               const data = syncResults[tableName];
-              
+
               // Only process tables we actually care about
               if (TABLES_TO_PROCESS.has(tableName)) {
                 console.log(`Syncing ${tableName}: ${data.length} records`);
                 await upsertSharedTableData(tx, board, tableName, data);
-                
+
                 // Accumulate results
                 if (!totalResults[tableName]) {
                   totalResults[tableName] = { synced: 0, complete: false };
@@ -340,19 +335,19 @@ export async function syncSharedData(board: BoardName, token: string, maxBatches
           if (syncResults['shared_syncs']) {
             console.log('Updating shared_syncs with data:', syncResults['shared_syncs']);
             await updateSharedSyncs(tx, board, syncResults['shared_syncs']);
-            
+
             // Update sync params for next iteration with new timestamps
             const newSharedSyncs = syncResults['shared_syncs'].map((sync: any) => ({
               table_name: sync.table_name,
               last_synchronized_at: sync.last_synchronized_at,
             }));
-            
+
             // Log timestamp updates for debugging
             const climbsSync = newSharedSyncs.find((s: any) => s.table_name === 'climbs');
             if (climbsSync) {
               console.log(`Climbs table sync timestamp updated to: ${climbsSync.last_synchronized_at}`);
             }
-            
+
             // Update syncParams for next batch
             syncParams.sharedSyncs = newSharedSyncs;
           } else {
@@ -366,19 +361,21 @@ export async function syncSharedData(board: BoardName, token: string, maxBatches
 
       // Check if sync is complete - default to true if _complete is not present (matches Android app behavior)
       isComplete = syncResults._complete !== false;
-      
-      console.log(`Sync batch ${batchCount} complete. _complete flag: ${syncResults._complete}, isComplete: ${isComplete}`);
-      
+
+      console.log(
+        `Sync batch ${batchCount} complete. _complete flag: ${syncResults._complete}, isComplete: ${isComplete}`,
+      );
+
       if (!isComplete && batchCount >= maxBatches) {
         console.log(`Reached max batches (${maxBatches}), will continue in next API call`);
       }
     }
 
     // Mark completion status for all tables
-    Object.keys(totalResults).forEach(table => {
+    Object.keys(totalResults).forEach((table) => {
       totalResults[table].complete = isComplete;
     });
-    
+
     // Log summary of what was synced
     console.log('Sync batch summary:');
     Object.entries(totalResults).forEach(([table, result]) => {
@@ -394,4 +391,3 @@ export async function syncSharedData(board: BoardName, token: string, maxBatches
     throw error;
   }
 }
-
