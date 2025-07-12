@@ -24,6 +24,7 @@ type QueueListItemProps = {
   viewOnlyMode: boolean;
   boardDetails: BoardDetails;
   setCurrentClimbQueueItem: (item: ClimbQueueItem) => void;
+  onClimbNavigate?: () => void;
 };
 
 export const AscentStatus = ({ climbUuid }: { climbUuid: ClimbUuid }) => {
@@ -81,6 +82,7 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
   isHistory,
   boardDetails,
   setCurrentClimbQueueItem,
+  onClimbNavigate,
 }) => {
   const [closestEdge, setClosestEdge] = useState<Edge | null>(null);
   const itemRef = useRef<HTMLDivElement>(null);
@@ -135,52 +137,41 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
         }}
         onDoubleClick={() => setCurrentClimbQueueItem(item)}
       >
-        <Row style={{ width: '100%' }} gutter={16} align="middle">
-          <Col xs={1}>
+        <Row gutter={8} align="middle" wrap={false}>
+          <Col xs={2} sm={1}>
             <DragHandleButton label={`Reorder ${item.climb.name}`}>
               <HolderOutlined />
             </DragHandleButton>
           </Col>
-          <Col xs={5}>
-            <ClimbThumbnail boardDetails={boardDetails} currentClimb={item.climb} />
+          <Col xs={5} sm={4}>
+            <ClimbThumbnail 
+              boardDetails={boardDetails} 
+              currentClimb={item.climb} 
+              enableNavigation={true}
+              onNavigate={onClimbNavigate}
+            />
           </Col>
-          <Col xs={16}>
+          <Col xs={14} sm={16}>
             <List.Item.Meta
               title={
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Text
-                    style={{
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      fontWeight: 'bold',
-                    }}
-                  >
-                    {item.climb.name}
-                  </Text>
+                <Text ellipsis strong>
+                  {item.climb.name}
                   <AscentStatus climbUuid={item.climb.uuid} />
-                </div>
+                </Text>
               }
               description={
-                <Text
-                  type={isHistory ? 'secondary' : undefined}
-                  style={{
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }}
-                >
+                <Text type={isHistory ? 'secondary' : undefined} ellipsis>
                   {item.climb.difficulty && item.climb.quality_average ? (
                     `${item.climb.difficulty} ${item.climb.quality_average}★ @ ${item.climb.angle}°`
                   ) : (
-                    <span style={{ fontWeight: 400, fontStyle: 'italic' }}>project @ {item.climb.angle}°</span>
+                    `project @ ${item.climb.angle}°`
                   )}
-                  {item.climb.benchmark_difficulty && <CopyrightOutlined style={{ marginLeft: 4 }} />}
+                  {item.climb.benchmark_difficulty && <CopyrightOutlined />}
                 </Text>
               }
             />
           </Col>
-          <Col xs={2}>
+          <Col xs={3} sm={3}>
             <TickButton currentClimb={item.climb} angle={item.climb.angle} boardDetails={boardDetails} />
           </Col>
         </Row>

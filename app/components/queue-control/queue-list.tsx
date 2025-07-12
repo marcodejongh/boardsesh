@@ -1,11 +1,13 @@
 'use client';
 import React, { useEffect } from 'react';
-import { List, Divider, Row, Col, Typography } from 'antd';
+import { List, Divider, Row, Col, Typography, Button } from 'antd';
+import { HolderOutlined, PlusOutlined } from '@ant-design/icons';
 import { useQueueContext } from './queue-context';
 import { Climb, BoardDetails } from '@/app/lib/types';
 import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { extractClosestEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge';
 import { reorder } from '@atlaskit/pragmatic-drag-and-drop/reorder';
+import { DragHandleButton } from '@atlaskit/pragmatic-drag-and-drop-react-accessibility/drag-handle-button';
 import QueueListItem from './queue-list-item';
 import ClimbThumbnail from '../climb-card/climb-thumbnail';
 
@@ -13,9 +15,10 @@ const { Text } = Typography;
 
 type QueueListProps = {
   boardDetails: BoardDetails;
+  onClimbNavigate?: () => void;
 };
 
-const QueueList: React.FC<QueueListProps> = ({ boardDetails }) => {
+const QueueList: React.FC<QueueListProps> = ({ boardDetails, onClimbNavigate }) => {
   const {
     viewOnlyMode,
     currentClimbQueueItem,
@@ -24,6 +27,7 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails }) => {
     setCurrentClimbQueueItem,
     setCurrentClimb,
     setQueue,
+    addToQueue,
   } = useQueueContext();
 
   // Monitor for drag-and-drop events
@@ -74,6 +78,7 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails }) => {
               viewOnlyMode={viewOnlyMode}
               boardDetails={boardDetails}
               setCurrentClimbQueueItem={setCurrentClimbQueueItem}
+              onClimbNavigate={onClimbNavigate}
             />
           );
         }}
@@ -86,36 +91,38 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails }) => {
               (item) => !queue.find(({ climb: { uuid } }) => item.uuid === uuid),
             )}
             renderItem={(climb: Climb) => (
-              <List.Item style={{ cursor: 'pointer' }} onClick={() => setCurrentClimb(climb)}>
-                <Row style={{ width: '100%' }} gutter={16}>
-                  <Col xs={6}>
-                    <ClimbThumbnail boardDetails={boardDetails} currentClimb={climb} />
+              <List.Item>
+                <Row gutter={8} align="middle" wrap={false}>
+                  <Col xs={2} sm={1}>
+                    {/* Empty space to maintain layout consistency */}
                   </Col>
-                  <Col xs={18}>
+                  <Col xs={5} sm={4}>
+                    <ClimbThumbnail 
+                      boardDetails={boardDetails} 
+                      currentClimb={climb} 
+                      enableNavigation={true}
+                      onNavigate={onClimbNavigate}
+                    />
+                  </Col>
+                  <Col xs={14} sm={16}>
                     <List.Item.Meta
-                      title={
-                        <Text
-                          style={{
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                          }}
-                        >
-                          {climb.name}
-                        </Text>
-                      }
+                      title={<Text ellipsis strong>{climb.name}</Text>}
                       description={
-                        <Text
-                          type="secondary"
-                          style={{
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                          }}
-                        >
-                          {`${climb.difficulty} ${climb.quality_average}★`}
+                        <Text type="secondary" ellipsis>
+                          {climb.difficulty && climb.quality_average ? (
+                            `${climb.difficulty} ${climb.quality_average}★ @ ${climb.angle}°`
+                          ) : (
+                            `project @ ${climb.angle}°`
+                          )}
                         </Text>
                       }
+                    />
+                  </Col>
+                  <Col xs={3} sm={3}>
+                    <Button
+                      type="default"
+                      icon={<PlusOutlined />}
+                      onClick={() => addToQueue(climb)}
                     />
                   </Col>
                 </Row>
