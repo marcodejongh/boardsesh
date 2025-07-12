@@ -68,9 +68,6 @@ export const getSetsBySlug = async (
   // Parse the slug to get individual set slugs
   const slugParts = slug.split('_'); // Split by underscore
   
-  // Create SQL for matching any of the slug parts
-  const placeholders = slugParts.map(() => '?').join(',');
-  
   const rows = (await sql`
     SELECT sets.id, sets.name, sets.slug
       FROM ${sql.unsafe(getTableName(board_name, 'sets'))} sets

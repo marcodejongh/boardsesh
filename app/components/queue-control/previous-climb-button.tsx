@@ -20,8 +20,7 @@ const PreviousButton = (props: ButtonProps) => (
 
 export default function PreviousClimbButton({ navigate = false, boardDetails }: PreviousClimbButtonProps) {
   const { getPreviousClimbQueueItem, setCurrentClimbQueueItem, viewOnlyMode } = useQueueContext();
-  const { board_name, layout_id, size_id, set_ids, angle } =
-    parseBoardRouteParams(useParams<BoardRouteParametersWithUuid>());
+  const { angle } = parseBoardRouteParams(useParams<BoardRouteParametersWithUuid>());
 
   const previousClimb = getPreviousClimbQueueItem();
 

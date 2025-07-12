@@ -8,14 +8,10 @@ import { useQueueContext } from '../queue-control/queue-context';
 import { searchParamsToUrlParams, constructClimbListWithSlugs } from '@/app/lib/url-utils';
 
 const BackToClimbList = ({
-  board_name,
-  layout_id,
-  size_id,
-  set_ids,
   angle,
   climb_uuid,
   boardDetails,
-}: ParsedBoardRouteParametersWithUuid & { boardDetails?: BoardDetails }) => {
+}: Pick<ParsedBoardRouteParametersWithUuid, 'angle' | 'climb_uuid'> & { boardDetails?: BoardDetails }) => {
   const { climbSearchParams } = useQueueContext();
 
   const climbListUrl =

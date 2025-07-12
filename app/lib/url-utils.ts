@@ -6,7 +6,6 @@ import {
   SearchRequestPagination,
   ClimbUuid,
   BoardDetails,
-  Angle,
 } from '@/app/lib/types';
 import { PAGE_LIMIT } from '../components/board-page/constants';
 
@@ -126,11 +125,7 @@ export const parsedRouteSearchParamsToSearchParams = (urlParams: SearchRequestPa
 };
 
 // DEPRECATED: Use constructClimbViewUrlWithSlugs instead
-export const constructClimbViewUrl = (
-  { board_name, layout_id, angle, size_id, set_ids }: ParsedBoardRouteParameters,
-  climb_uuid: ClimbUuid,
-  climbName?: string,
-) => {
+export const constructClimbViewUrl = () => {
   throw new Error('constructClimbViewUrl is deprecated. Use constructClimbViewUrlWithSlugs instead.');
 };
 
@@ -174,14 +169,12 @@ export const constructClimbViewUrlWithSlugs = (
 export const constructClimbInfoUrl = (
   { board_name }: BoardDetails,
   climb_uuid: ClimbUuid,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  angle: Angle,
 ) => `https://${board_name}boardapp${board_name === 'tension' ? '2' : ''}.com/climbs/${climb_uuid}`;
 
 //`/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/info/${climb_uuid}`;
 
 // DEPRECATED: Use constructClimbListWithSlugs instead
-export const constructClimbList = ({ board_name, layout_id, angle, size_id, set_ids }: ParsedBoardRouteParameters) => {
+export const constructClimbList = () => {
   throw new Error('constructClimbList is deprecated. Use constructClimbListWithSlugs instead.');
 };
 
