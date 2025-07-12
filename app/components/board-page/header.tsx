@@ -1,10 +1,11 @@
 'use client';
 import React from 'react';
-import { Col, Row, Space, Grid, Button, Dropdown, MenuProps } from 'antd';
+import { Col, Row, Space, Grid, Button, Dropdown, MenuProps, Avatar } from 'antd';
 import { Header } from 'antd/es/layout/layout';
 import Title from 'antd/es/typography/Title';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
+import { useSession, signIn, signOut } from 'next-auth/react';
 import SearchButton from '../search-drawer/search-button';
 import ClimbInfoButton from '../climb-info/climb-info-button';
 import SearchClimbNameInput from '../search-drawer/search-climb-name-input';
@@ -13,7 +14,7 @@ import SendClimbToBoardButton from '../board-bluetooth-control/send-climb-to-boa
 import { BoardDetails } from '@/app/lib/types';
 import { ShareBoardButton } from './share-button';
 import { useBoardProvider } from '../board-provider/board-provider-context';
-import { UserOutlined, LogoutOutlined } from '@ant-design/icons';
+import { UserOutlined, LogoutOutlined, LoginOutlined } from '@ant-design/icons';
 import AngleSelector from './angle-selector';
 
 const { useBreakpoint } = Grid;
@@ -26,14 +27,20 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
   const pathname = usePathname();
   const isList = pathname.endsWith('/list');
   const screens = useBreakpoint();
+  const { data: session, status } = useSession();
   const { isAuthenticated, username, logout } = useBoardProvider();
+
+  const handleSignOut = () => {
+    signOut();
+    logout(); // Also logout from board provider
+  };
 
   const userMenuItems: MenuProps['items'] = [
     {
       key: 'logout',
       icon: <LogoutOutlined />,
       label: 'Logout',
-      onClick: logout,
+      onClick: handleSignOut,
     },
   ];
 
@@ -69,13 +76,22 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
               {!isList ? <ClimbInfoButton /> : null}
               <ShareBoardButton />
               <SendClimbToBoardButton boardDetails={boardDetails} />
-              {/* {isAuthenticated && username ? (
+              {session?.user ? (
                 <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
                   <Button icon={<UserOutlined />} type="text">
-                    {username}
+                    {session.user.name || session.user.email}
                   </Button>
                 </Dropdown>
-              ) : null} */}
+              ) : (
+                <Button 
+                  icon={<LoginOutlined />} 
+                  type="text" 
+                  onClick={() => signIn()}
+                  size={screens.xs ? 'small' : 'middle'}
+                >
+                  {screens.xs ? '' : 'Login'}
+                </Button>
+              )}
             </Space>
           </Col>
         </UISearchParamsProvider>
