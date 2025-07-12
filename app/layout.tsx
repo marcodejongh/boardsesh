@@ -4,6 +4,7 @@ import { AntdRegistry } from '@ant-design/nextjs-registry';
 import { App } from 'antd';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/next';
+import SessionProviderWrapper from './components/providers/session-provider';
 import WebBluetoothWarning from './components/board-bluetooth-control/web-bluetooth-warning';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -14,12 +15,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body style={{ margin: 0 }}>
         <Analytics />
-        <AntdRegistry>
-          <App>
-            <WebBluetoothWarning />
-            {children}
-          </App>
-        </AntdRegistry>
+        <SessionProviderWrapper>
+          <AntdRegistry>
+            <App>
+              <WebBluetoothWarning />
+              {children}
+            </App>
+          </AntdRegistry>
+        </SessionProviderWrapper>
         <SpeedInsights />
       </body>
     </html>
