@@ -1,8 +1,19 @@
 import { BoardName } from '../../types';
 import { userSync } from './userSync';
 
-// eslint-disable-next-line  @typescript-eslint/no-explicit-any
-export async function getBidsLogbook(board: BoardName, token: string, userId: string): Promise<any[]> {
+interface Bid {
+  uuid: string;
+  user_id: number;
+  climb_uuid: string;
+  angle: number;
+  is_mirror: boolean;
+  bid_count: number;
+  comment: string;
+  climbed_at: string;
+  created_at: string;
+}
+
+export async function getBidsLogbook(board: BoardName, token: string, userId: string): Promise<Bid[]> {
   const syncResults = await userSync(board, Number(userId), { tables: ['bids'] }, token);
-  return syncResults.bids || [];
+  return (syncResults.bids as Bid[]) || [];
 }

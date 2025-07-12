@@ -1,21 +1,22 @@
 import { NextResponse } from 'next/server';
-import { BoardName } from '@/app/lib/types';
+import { BoardName, BoardDetails } from '@/app/lib/types';
 import { fetchLayouts, fetchSizes, fetchSets, fetchBoardDetails } from '@/app/components/rest-api/api';
+import { LayoutRow, SizeRow, SetRow } from '@/app/lib/data/queries';
 
 export const runtime = 'nodejs';
 
 type BoardConfigData = {
-  layouts: Record<BoardName, any[]>;
-  sizes: Record<string, any[]>;
-  sets: Record<string, any[]>;
-  details: Record<string, any>;
+  layouts: Record<BoardName, LayoutRow[]>;
+  sizes: Record<string, SizeRow[]>;
+  sets: Record<string, SetRow[]>;
+  details: Record<string, BoardDetails | null>;
 };
 
 export async function GET() {
   try {
     const boards: BoardName[] = ['kilter', 'tension'];
     const configData: BoardConfigData = {
-      layouts: {} as Record<BoardName, any[]>,
+      layouts: {} as Record<BoardName, LayoutRow[]>,
       sizes: {},
       sets: {},
       details: {},
@@ -52,7 +53,7 @@ export async function GET() {
       }),
     );
 
-    const sizeResults = await Promise.all(sizePromises);
+    await Promise.all(sizePromises);
 
     // For common board configurations, also fetch sets and details
     // This helps with the most common requests on the board selector page

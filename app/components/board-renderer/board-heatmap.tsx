@@ -3,11 +3,11 @@ import { getImageUrl } from './util';
 import { BoardDetails } from '@/app/lib/types';
 import { HeatmapData } from './types';
 import { LitUpHoldsMap } from './types';
-import { scaleLinear, scaleLog } from 'd3-scale';
+import { scaleLog } from 'd3-scale';
 import useHeatmapData from '../search-drawer/use-heatmap';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
-import { Button, Select, Form, Space, Switch } from 'antd';
+import { Button, Select, Form, Switch } from 'antd';
 import { track } from '@vercel/analytics';
 
 const LEGEND_HEIGHT = 96; // Increased from 80
@@ -28,11 +28,6 @@ const HEATMAP_COLORS = [
   '#d32f2f', // Deep Red
 ];
 
-// Helper function to get value at percentile
-const getPercentileValue = (values: number[], percentile: number) => {
-  const index = Math.floor(values.length * (percentile / 100));
-  return values[index];
-};
 
 // Helper function to extract angle from pathname
 const getAngleFromPath = (pathname: string): number => {

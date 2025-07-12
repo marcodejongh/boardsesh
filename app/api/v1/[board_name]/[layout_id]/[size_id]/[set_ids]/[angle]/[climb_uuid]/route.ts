@@ -2,7 +2,6 @@
 import { convertLitUpHoldsStringToMap } from '@/app/components/board-renderer/util';
 import { getClimb } from '@/app/lib/data/queries';
 import { BoardRouteParametersWithUuid, ErrorResponse, FetchCurrentProblemResponse } from '@/app/lib/types';
-import { parseBoardRouteParams, extractUuidFromSlug } from '@/app/lib/url-utils';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import { NextResponse } from 'next/server';
 

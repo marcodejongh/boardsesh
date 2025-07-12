@@ -1,4 +1,4 @@
-import { BoardName } from '@/app/lib/types';
+import { BoardName, BoardDetails } from '@/app/lib/types';
 import { LayoutRow, SizeRow, SetRow } from '@/app/lib/data/queries';
 import { getAllBoardSelectorOptions, getBoardDetails } from '@/app/lib/data/queries';
 
@@ -6,7 +6,7 @@ export type BoardConfigData = {
   layouts: Record<BoardName, LayoutRow[]>;
   sizes: Record<string, SizeRow[]>;
   sets: Record<string, SetRow[]>;
-  details: Record<string, any>;
+  details: Record<string, BoardDetails | null>;
 };
 
 export async function getAllBoardConfigs(): Promise<BoardConfigData> {

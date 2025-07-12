@@ -11,8 +11,6 @@ import {
   Climb,
   ParsedBoardRouteParametersWithUuid,
   ParsedBoardRouteParameters,
-  SearchRequest,
-  SearchRequestPagination,
   HoldTuple,
   BoardDetails,
   ImageFileName,
@@ -274,7 +272,7 @@ export type BoardSelectorOptions = {
 
 export const getAllBoardSelectorOptions = async (): Promise<BoardSelectorOptions> => {
   // Single query to get all layouts, sizes, and sets for all boards
-  const query = `
+  /*
     WITH board_data AS (
       SELECT 
         $1::text as board_name,
@@ -370,7 +368,7 @@ export const getAllBoardSelectorOptions = async (): Promise<BoardSelectorOptions
       description
     FROM board_data
     ORDER BY board_name, type, parent_id, grandparent_id, name;
-  `;
+  */
 
   const rows = (await sql`
     WITH board_data AS (

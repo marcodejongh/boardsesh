@@ -73,7 +73,7 @@ export const PartyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           );
           break;
         case 'send-peer-info':
-          data.username;
+          break;
       }
     },
     [sendData, username],

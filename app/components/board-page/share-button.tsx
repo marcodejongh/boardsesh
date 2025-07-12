@@ -15,7 +15,7 @@ const getShareUrl = (pathname: string, searchParams: URLSearchParams, peerId: st
     const params = new URLSearchParams(searchParams.toString());
     params.set('hostId', peerId);
     return `${window.location.origin}${pathname}?${params.toString()}`;
-  } catch (e) {
+  } catch {
     return '';
   }
 };

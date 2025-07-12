@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Card, Typography, Button, Tooltip, Tag, Space, Flex, Skeleton } from 'antd';
+import { Card, Typography, Button, Tooltip, Tag, Space, Skeleton } from 'antd';
 import { DeleteOutlined, StarFilled } from '@ant-design/icons';
 import Link from 'next/link';
 import { fetchBoardDetails } from '../rest-api/api';
@@ -68,7 +68,7 @@ export default function BoardConfigPreview({ config, onDelete, boardConfigs }: B
         let details = cachedDetails;
         if (!details && isValidConfig) {
           try {
-            details = await fetchBoardDetails(config.board as any, config.layoutId, config.sizeId, config.setIds);
+            details = await fetchBoardDetails(config.board as BoardName, config.layoutId, config.sizeId, config.setIds);
             setBoardDetails(details);
           } catch (error) {
             console.error('Failed to fetch board details:', error);

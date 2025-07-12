@@ -39,10 +39,27 @@ export interface GymInfo {
 }
 export interface SyncOptions {
   tables?: string[];
-  // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-  walls?: any[];
-  // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-  wallExpungements?: any[];
+  walls?: Array<{
+    uuid: string;
+    name: string;
+    user_id: number;
+    product_id: number;
+    is_adjustable: boolean;
+    angle: number;
+    layout_id: number;
+    product_size_id: number;
+    hsm: number;
+    serial_number: string | null;
+    set_ids: number[];
+    is_listed: boolean;
+    created_at: string;
+    updated_at: string;
+  }>;
+  wallExpungements?: Array<{
+    wall_uuid: string;
+    created_at: string;
+    updated_at: string;
+  }>;
   sharedSyncs?: Array<LastSyncData>;
   userSyncs?: Array<UserSyncData>;
 }
@@ -51,8 +68,11 @@ export interface ClimbStats {
   benchmark_difficulty: number | null;
   repeats: number;
   sends: number;
-  // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-  [key: string]: any;
+  ascensionist_count?: number;
+  difficulty_average?: number;
+  quality_average?: number;
+  fa_username?: string;
+  fa_at?: string;
 }
 export interface SaveAscentOptions {
   uuid: string;
@@ -83,8 +103,10 @@ export interface SaveClimbOptions {
   name: string;
   description: string;
   is_draft: boolean;
-  // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-  frames: any[];
+  frames: Array<{
+    role: number;
+    position: number;
+  }>;
   frames_count?: number;
   frames_pace?: number;
   angle?: number;

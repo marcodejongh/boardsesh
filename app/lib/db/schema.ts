@@ -8,11 +8,9 @@ import {
   boolean,
   bigint,
   timestamp,
-  uniqueIndex,
   primaryKey,
   index,
 } from 'drizzle-orm/pg-core';
-import { sql } from 'drizzle-orm';
 
 export const kilterClimbCacheFields = pgTable(
   'kilter_climb_cache_fields',
@@ -1076,7 +1074,7 @@ export const kilterUserPermissions = pgTable(
     userId: integer('user_id').notNull(),
     name: text().notNull(),
   },
-  (table) => [],
+  () => [],
 );
 
 export const tensionUserPermissions = pgTable(
@@ -1085,7 +1083,7 @@ export const tensionUserPermissions = pgTable(
     userId: integer('user_id').notNull(),
     name: text().notNull(),
   },
-  (table) => [],
+  () => [],
 );
 
 export const tensionWallsSets = pgTable(
@@ -1119,7 +1117,7 @@ export const kilterCircuitsClimbs = pgTable(
     climbUuid: text('climb_uuid').notNull(),
     position: integer(),
   },
-  (table) => [],
+  () => [],
 );
 
 export const tensionProductsAngles = pgTable(
@@ -1165,7 +1163,7 @@ export const tensionCircuitsClimbs = pgTable(
     climbUuid: text('climb_uuid').notNull(),
     position: integer(),
   },
-  (table) => [],
+  () => [],
 );
 
 export const tensionUserSyncs = pgTable(
@@ -1195,7 +1193,7 @@ export const kilterTags = pgTable(
     name: text().notNull(),
     isListed: boolean('is_listed'),
   },
-  (table) => [],
+  () => [],
 );
 
 export const tensionTags = pgTable(
@@ -1206,7 +1204,7 @@ export const tensionTags = pgTable(
     name: text().notNull(),
     isListed: boolean('is_listed'),
   },
-  (table) => [],
+  () => [],
 );
 
 export const kilterBetaLinks = pgTable(

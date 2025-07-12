@@ -5,7 +5,6 @@ import {
   HOST_BASES,
   LoginResponse,
   Session,
-  SessionResponse,
 } from './types';
 
 /**
@@ -117,10 +116,10 @@ class AuroraClimbingClient {
         let errorData;
         try {
           errorData = await response.json();
-        } catch (parseError) {
+        } catch {
           try {
             errorData = await responseClone.text();
-          } catch (textError) {
+          } catch {
             errorData = 'Could not read error response';
           }
         }
@@ -236,7 +235,7 @@ class AuroraClimbingClient {
           } else if (errorObj.status === 429) {
             throw new Error('Too many login attempts. Please try again later.');
           }
-        } catch (e) {
+        } catch {
           // If parsing fails, just throw the original error
         }
       }
