@@ -116,14 +116,13 @@ export default function StartClimbingButton({
           selectedAngle,
         );
       } else {
-        // Fallback to old URL format
-        return `/${selectedBoard}/${selectedLayout}/${selectedSize}/${setsString}/${selectedAngle}/list`;
+        // This should not happen as boardDetails should always have the necessary fields
+        throw new Error('Board details are missing required slug information');
       }
     } catch (error) {
       console.error('Error generating climbing URL:', error);
-      // Fallback to old URL format
-      const setsString = selectedSets.join(',');
-      return `/${selectedBoard}/${selectedLayout}/${selectedSize}/${setsString}/${selectedAngle}/list`;
+      // Re-throw error instead of falling back to old URL format
+      throw error;
     } finally {
       setIsGeneratingUrl(false);
     }

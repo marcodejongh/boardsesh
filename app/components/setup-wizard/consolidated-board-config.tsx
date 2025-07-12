@@ -169,7 +169,6 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
         setUseAsDefault(defaultConfig.useAsDefault);
 
         // Redirect immediately if there's a default
-        const setsString = defaultConfig.setIds.join(',');
         const savedAngle = defaultConfig.angle || 40;
 
         try {
@@ -196,17 +195,13 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
             );
             router.push(slugUrl);
           } else {
-            // Fallback to old URL format
-            router.push(
-              `/${defaultConfig.board}/${defaultConfig.layoutId}/${defaultConfig.sizeId}/${setsString}/${savedAngle}/list`,
-            );
+            // This should not happen as boardDetails should always have the necessary fields
+            throw new Error('Board details are missing required slug information for default config');
           }
         } catch (error) {
           console.error('Error fetching board details for slug URL:', error);
-          // Fallback to old URL format
-          router.push(
-            `/${defaultConfig.board}/${defaultConfig.layoutId}/${defaultConfig.sizeId}/${setsString}/${savedAngle}/list`,
-          );
+          // Re-throw error instead of falling back to old URL format
+          throw error;
         }
       }
     };
@@ -357,7 +352,6 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
         const updatedConfigs = await loadAllConfigurations();
         setSavedConfigurations(updatedConfigs);
 
-        const setsString = selectedSets.join(',');
 
         try {
           // Try to get board details for slug-based URL
@@ -373,13 +367,13 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
             );
             router.push(slugUrl);
           } else {
-            // Fallback to old URL format
-            router.push(`/${selectedBoard}/${selectedLayout}/${selectedSize}/${setsString}/${selectedAngle}/list`);
+            // This should not happen as boardDetails should always have the necessary fields
+            throw new Error('Board details are missing required slug information');
           }
         } catch (error) {
           console.error('Error fetching board details for slug URL:', error);
-          // Fallback to old URL format
-          router.push(`/${selectedBoard}/${selectedLayout}/${selectedSize}/${setsString}/${selectedAngle}/list`);
+          // Re-throw error instead of falling back to old URL format
+          throw error;
         }
       } catch (error) {
         console.error('Error starting climbing session:', error);

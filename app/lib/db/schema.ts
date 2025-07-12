@@ -49,21 +49,25 @@ export const kilterLayouts = pgTable(
     id: integer().primaryKey().notNull(),
     productId: integer('product_id'),
     name: text(),
+    slug: text(),
     instagramCaption: text('instagram_caption'),
     isMirrored: boolean('is_mirrored'),
     isListed: boolean('is_listed'),
     password: text(),
     createdAt: text('created_at'),
   },
-  (table) => [
-    foreignKey({
+  (table) => ({
+    // Indexes
+    slugIdx: index('kilter_layouts_slug_idx').on(table.slug),
+    // Foreign Keys
+    productFk: foreignKey({
       columns: [table.productId],
       foreignColumns: [kilterProducts.id],
       name: 'layouts_product_id_fkey1',
     })
       .onUpdate('cascade')
       .onDelete('cascade'),
-  ],
+  }),
 );
 
 export const kilterAndroidMetadata = pgTable('kilter_android_metadata', {
@@ -203,20 +207,24 @@ export const kilterProductSizes = pgTable(
     edgeBottom: integer('edge_bottom'),
     edgeTop: integer('edge_top'),
     name: text(),
+    slug: text(),
     description: text(),
     imageFilename: text('image_filename'),
     position: integer(),
     isListed: boolean('is_listed'),
   },
-  (table) => [
-    foreignKey({
+  (table) => ({
+    // Indexes
+    slugIdx: index('kilter_product_sizes_slug_idx').on(table.slug),
+    // Foreign Keys
+    productFk: foreignKey({
       columns: [table.productId],
       foreignColumns: [kilterProducts.id],
       name: 'product_sizes_product_id_fkey1',
     })
       .onUpdate('cascade')
       .onDelete('cascade'),
-  ],
+  }),
 );
 
 export const kilterKits = pgTable('kilter_kits', {
@@ -452,8 +460,12 @@ export const kilterProducts = pgTable('kilter_products', {
 export const kilterSets = pgTable('kilter_sets', {
   id: integer().primaryKey().notNull(),
   name: text(),
+  slug: text(),
   hsm: integer(),
-});
+}, (table) => ({
+  // Indexes
+  slugIdx: index('kilter_sets_slug_idx').on(table.slug),
+}));
 
 export const kilterWalls = pgTable(
   'kilter_walls',
@@ -679,8 +691,12 @@ export const tensionClimbHolds = pgTable(
 export const tensionSets = pgTable('tension_sets', {
   id: integer().primaryKey().notNull(),
   name: text(),
+  slug: text(),
   hsm: integer(),
-});
+}, (table) => ({
+  // Indexes
+  slugIdx: index('tension_sets_slug_idx').on(table.slug),
+}));
 
 export const tensionPlacements = pgTable(
   'tension_placements',
@@ -777,21 +793,25 @@ export const tensionLayouts = pgTable(
     id: integer().primaryKey().notNull(),
     productId: integer('product_id'),
     name: text(),
+    slug: text(),
     instagramCaption: text('instagram_caption'),
     isMirrored: boolean('is_mirrored'),
     isListed: boolean('is_listed'),
     password: text(),
     createdAt: text('created_at'),
   },
-  (table) => [
-    foreignKey({
+  (table) => ({
+    // Indexes
+    slugIdx: index('tension_layouts_slug_idx').on(table.slug),
+    // Foreign Keys
+    productFk: foreignKey({
       columns: [table.productId],
       foreignColumns: [tensionProducts.id],
       name: 'layouts_product_id_fkey',
     })
       .onUpdate('cascade')
       .onDelete('cascade'),
-  ],
+  }),
 );
 
 export const tensionSharedSyncs = pgTable('tension_shared_syncs', {
@@ -844,20 +864,24 @@ export const tensionProductSizes = pgTable(
     edgeBottom: integer('edge_bottom'),
     edgeTop: integer('edge_top'),
     name: text(),
+    slug: text(),
     description: text(),
     imageFilename: text('image_filename'),
     position: integer(),
     isListed: boolean('is_listed'),
   },
-  (table) => [
-    foreignKey({
+  (table) => ({
+    // Indexes
+    slugIdx: index('tension_product_sizes_slug_idx').on(table.slug),
+    // Foreign Keys
+    productFk: foreignKey({
       columns: [table.productId],
       foreignColumns: [tensionProducts.id],
       name: 'product_sizes_product_id_fkey',
     })
       .onUpdate('cascade')
       .onDelete('cascade'),
-  ],
+  }),
 );
 
 export const kilterAscents = pgTable(

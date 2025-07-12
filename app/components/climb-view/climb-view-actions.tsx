@@ -96,8 +96,8 @@ const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl, angle }: ClimbVie
       return constructClimbListWithSlugs(board_name, layout_name, size_name, set_names, angle);
     }
 
-    // Fallback to numeric format
-    return `/${board_name}/${boardDetails.layout_id}/${boardDetails.size_id}/${boardDetails.set_ids.join(',')}/${angle}/list`;
+    // This should not happen as boardDetails should always have the necessary fields
+    throw new Error('Board details are missing required slug information');
   };
 
   // Define menu items for the meatball menu (overflow actions on mobile)

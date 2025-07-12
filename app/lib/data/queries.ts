@@ -218,11 +218,12 @@ function getImageUrlHoldsMapObjectEntries(
 export type LayoutRow = {
   id: number;
   name: string;
+  slug: string;
 };
 
 export const getLayouts = async (board_name: BoardName) => {
   const layouts = await sql`
-    SELECT id, name
+    SELECT id, name, slug
     FROM ${sql.unsafe(getTableName(board_name, 'layouts'))} layouts
     WHERE is_listed = true
     AND password IS NULL
@@ -234,11 +235,12 @@ export type SizeRow = {
   id: number;
   name: string;
   description: string;
+  slug: string;
 };
 
 export const getSizes = async (board_name: BoardName, layout_id: LayoutId) => {
   const layouts = await sql`
-    SELECT product_sizes.id, product_sizes.name, product_sizes.description
+    SELECT product_sizes.id, product_sizes.name, product_sizes.description, product_sizes.slug
     FROM ${sql.unsafe(getTableName(board_name, 'product_sizes'))} product_sizes
     INNER JOIN ${sql.unsafe(getTableName(board_name, 'layouts'))} layouts ON product_sizes.product_id = layouts.product_id
     WHERE layouts.id = ${layout_id}
@@ -249,11 +251,12 @@ export const getSizes = async (board_name: BoardName, layout_id: LayoutId) => {
 export type SetRow = {
   id: number;
   name: string;
+  slug: string;
 };
 
 export const getSets = async (board_name: BoardName, layout_id: LayoutId, size_id: Size) => {
   const layouts = await sql`
-    SELECT sets.id, sets.name
+    SELECT sets.id, sets.name, sets.slug
       FROM ${sql.unsafe(getTableName(board_name, 'sets'))} sets
       INNER JOIN ${sql.unsafe(getTableName(board_name, 'product_sizes_layouts_sets'))} psls 
       ON sets.id = psls.set_id
