@@ -16,7 +16,8 @@ export const createClimbFilters = (
   tables: TableSet,
   params: ParsedBoardRouteParameters,
   searchParams: SearchRequestPagination,
-  productSizeAlias?: PgTableWithColumns<Record<string, unknown>>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  productSizeAlias?: PgTableWithColumns<any>,
   userId?: number,
 ) => {
   // Process hold filters

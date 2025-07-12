@@ -4,7 +4,6 @@ import { NextRequest } from 'next/server';
 import { getBoardDetails, getClimb } from '@/app/lib/data/queries';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import { convertLitUpHoldsStringToMap, getImageUrl } from '@/app/components/board-renderer/util';
-import { BoardName } from '@/app/lib/types';
 import { HoldRenderData } from '@/app/components/board-renderer/types';
 
 export const runtime = 'edge';
@@ -38,7 +37,7 @@ export async function GET(request: NextRequest) {
     const [boardDetails, currentClimb] = await Promise.all([getBoardDetails(parsedParams), getClimb(parsedParams)]);
 
     // Process climb holds
-    const framesData = convertLitUpHoldsStringToMap(currentClimb.frames, parsedParams.board_name as BoardName);
+    const framesData = convertLitUpHoldsStringToMap(currentClimb.frames, parsedParams.board_name);
 
     // Extract the first frame's data - this should be indexed by hold ID
     // If framesData is an array indexed by frame number, get the first frame

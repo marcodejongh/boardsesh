@@ -17,7 +17,8 @@ async function upsertTableData(
   boardName: BoardName,
   tableName: string,
   userId: number,
-  data: unknown[],
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  data: any[],
 ) {
   if (data.length === 0) return;
 

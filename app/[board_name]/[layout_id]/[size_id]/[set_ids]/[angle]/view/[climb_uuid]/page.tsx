@@ -1,6 +1,6 @@
 import React from 'react';
 import { notFound, permanentRedirect } from 'next/navigation';
-import { BoardRouteParametersWithUuid, BoardName } from '@/app/lib/types';
+import { BoardRouteParametersWithUuid } from '@/app/lib/types';
 import { getBoardDetails } from '@/app/lib/data/queries';
 import { getClimb } from '@/app/lib/data/queries';
 import ClimbCard from '@/app/components/climb-card/climb-card';
@@ -180,7 +180,7 @@ export default async function DynamicResultsPage(props: { params: Promise<BoardR
     }
 
     // Process the frames to get litUpHoldsMap (same as the API does)
-    const litUpHoldsMap = convertLitUpHoldsStringToMap(currentClimb.frames, parsedParams.board_name as BoardName)[0];
+    const litUpHoldsMap = convertLitUpHoldsStringToMap(currentClimb.frames, parsedParams.board_name)[0];
     const climbWithProcessedData = {
       ...currentClimb,
       litUpHoldsMap,
