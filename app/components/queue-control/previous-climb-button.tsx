@@ -48,7 +48,7 @@ export default function PreviousClimbButton({ navigate = false, boardDetails }: 
             previousClimb.climb.uuid,
             previousClimb.climb.name,
           )
-        : `/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/view/${previousClimb.climb.uuid}`;
+        : (() => { throw new Error('Board details are missing required slug information'); })();
 
     return (
       <Link

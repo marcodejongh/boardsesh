@@ -27,7 +27,7 @@ const BackToClimbList = ({
           boardDetails.set_names,
           angle,
         )
-      : `/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/list`;
+      : (() => { throw new Error('Board details are missing required slug information'); })();
 
   return (
     <Link href={`${climbListUrl}?${searchParamsToUrlParams(climbSearchParams).toString()}#${climb_uuid}`}>

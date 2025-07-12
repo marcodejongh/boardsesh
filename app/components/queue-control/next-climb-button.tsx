@@ -47,7 +47,7 @@ export default function NextClimbButton({ navigate = false, boardDetails }: Next
             nextClimb.climb.uuid,
             nextClimb.climb.name,
           )
-        : `/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/view/${nextClimb.climb.uuid}`;
+        : (() => { throw new Error('Board details are missing required slug information'); })();
 
     return (
       <Link
