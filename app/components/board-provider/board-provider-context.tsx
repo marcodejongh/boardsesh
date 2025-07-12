@@ -4,9 +4,7 @@ import { BoardName, ClimbUuid } from '@/app/lib/types';
 import { IDBPDatabase, openDB } from 'idb';
 import {
   AscentSavedEvent,
-  BoardUser,
   LogbookEntry,
-  LoginResponse,
   SaveAscentResponse,
 } from '@/app/lib/api-wrappers/aurora/types';
 import { SaveAscentOptions } from '@/app/lib/api-wrappers/aurora/types';

@@ -1,5 +1,5 @@
 import { BoardName } from '../../types';
-import { API_HOSTS, WEB_HOSTS, AscentSavedEvent, SaveAscentOptions, SaveAscentResponse } from './types';
+import { WEB_HOSTS, SaveAscentOptions, SaveAscentResponse } from './types';
 import dayjs from 'dayjs';
 import { sql } from '@/app/lib/db/db';
 import { getTableName } from '../../data-sync/aurora/getTableName';
@@ -56,10 +56,10 @@ export async function saveAscent(
     let errorData;
     try {
       errorData = await response.json();
-    } catch (parseError) {
+    } catch {
       try {
         errorData = await responseClone.text();
-      } catch (textError) {
+      } catch {
         errorData = 'Could not read error response';
       }
     }
@@ -72,7 +72,7 @@ export async function saveAscent(
   }
 
   // Handle potentially empty response body
-  let responseData: any;
+  let responseData: unknown;
   try {
     const responseText = await response.text();
     console.log(`Save ascent response body: ${responseText}`);
@@ -96,21 +96,6 @@ export async function saveAscent(
   // Insert into the intermediate database
   const fullTableName = getTableName(board, 'ascents'); // Replace with your actual table name
 
-  const params = [
-    requestData.uuid,
-    requestData.climb_uuid,
-    requestData.angle,
-    requestData.is_mirror,
-    requestData.user_id,
-    requestData.attempt_id || requestData.bid_count,
-    requestData.bid_count,
-    requestData.quality,
-    requestData.difficulty,
-    requestData.is_benchmark ? 1 : 0,
-    requestData.comment || '',
-    requestData.climbed_at,
-    savedAscent.created_at, // Use created_at from the saved ascent
-  ];
 
   await sql`
     INSERT INTO ${sql.unsafe(fullTableName)} (

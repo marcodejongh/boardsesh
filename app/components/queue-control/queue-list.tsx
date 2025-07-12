@@ -1,13 +1,12 @@
 'use client';
 import React, { useEffect } from 'react';
 import { List, Divider, Row, Col, Typography, Button } from 'antd';
-import { HolderOutlined, PlusOutlined } from '@ant-design/icons';
+import { PlusOutlined } from '@ant-design/icons';
 import { useQueueContext } from './queue-context';
 import { Climb, BoardDetails } from '@/app/lib/types';
 import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { extractClosestEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge';
 import { reorder } from '@atlaskit/pragmatic-drag-and-drop/reorder';
-import { DragHandleButton } from '@atlaskit/pragmatic-drag-and-drop-react-accessibility/drag-handle-button';
 import QueueListItem from './queue-list-item';
 import ClimbThumbnail from '../climb-card/climb-thumbnail';
 
@@ -25,7 +24,6 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails, onClimbNavigate }) 
     queue,
     climbSearchResults,
     setCurrentClimbQueueItem,
-    setCurrentClimb,
     setQueue,
     addToQueue,
   } = useQueueContext();

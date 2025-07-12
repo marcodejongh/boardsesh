@@ -11,7 +11,7 @@ export async function GET(req: Request, props: { params: Promise<BoardRouteParam
 
     // Return the combined result
     return NextResponse.json(boardDetails);
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Failed to fetch board details' }, { status: 500 });
   }
 }

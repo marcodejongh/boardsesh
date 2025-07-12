@@ -6,7 +6,7 @@ type BoardConfigCache = {
   layouts: Record<BoardName, LayoutRow[]>;
   sizes: Record<string, SizeRow[]>;
   sets: Record<string, SetRow[]>;
-  details: Record<string, any>;
+  details: Record<string, unknown>;
 };
 
 let globalCache: BoardConfigCache | null = null;

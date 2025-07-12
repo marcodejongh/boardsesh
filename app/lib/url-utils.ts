@@ -7,7 +7,6 @@ import {
   ClimbUuid,
   BoardDetails,
   Angle,
-  BoardName,
 } from '@/app/lib/types';
 import { PAGE_LIMIT } from '../components/board-page/constants';
 

@@ -12,7 +12,6 @@ export async function sharedSync(
   const { sharedSyncs = [] } = options;
 
   // Try multiple sync endpoints for shared sync
-  let response: Response;
 
   // Build URL-encoded form data - Aurora expects this format!
   const params: string[] = [];
@@ -51,7 +50,7 @@ export async function sharedSync(
   const webUrl = `${WEB_HOSTS[board]}/sync`;
   console.log(`Calling sync endpoint: ${webUrl}`);
 
-  response = await fetch(webUrl, {
+  const response = await fetch(webUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',

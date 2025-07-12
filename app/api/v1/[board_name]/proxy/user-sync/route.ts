@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     if (!session) {
       throw new Error('401: Unauthorized');
     }
-    const { token, userId, username } = session;
+    const { token, userId } = session;
     await syncUserData(board_name, token, userId);
     return new Response(JSON.stringify({ success: true, message: 'All tables synced' }), { status: 200 });
   } catch (err) {

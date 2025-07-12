@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { notFound, redirect, permanentRedirect } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import { BoardRouteParametersWithUuid, SearchRequestPagination } from '@/app/lib/types';
 import {
   parseBoardRouteParams,
@@ -9,7 +9,6 @@ import {
 } from '@/app/lib/url-utils';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import ClimbsList from '@/app/components/board-page/climbs-list';
-import { fetchBoardDetails } from '@/app/components/rest-api/api';
 import { searchClimbs } from '@/app/lib/db/queries/climbs/search-climbs';
 import { getBoardDetails } from '@/app/lib/data/queries';
 
@@ -43,7 +42,14 @@ export default async function DynamicResultsPage(props: {
       );
 
       // Preserve search parameters
-      const searchString = new URLSearchParams(searchParams as any).toString();
+      const searchString = new URLSearchParams(
+        Object.entries(searchParams).reduce((acc, [key, value]) => {
+          if (value !== undefined) {
+            acc[key] = String(value);
+          }
+          return acc;
+        }, {} as Record<string, string>)
+      ).toString();
       const finalUrl = searchString ? `${newUrl}?${searchString}` : newUrl;
 
       permanentRedirect(finalUrl);

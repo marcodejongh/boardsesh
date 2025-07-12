@@ -1,16 +1,14 @@
-import { getDb, getPool } from '@/app/lib/db/db';
+import { getPool } from '@/app/lib/db/db';
 import { BoardName } from '../../types';
 import { userSync } from '../../api-wrappers/aurora/userSync';
 import {
-  LastSyncData,
   SyncOptions,
   USER_TABLES,
   UserSyncData,
-  SHARED_SYNC_TABLES,
 } from '../../api-wrappers/aurora/types';
-import { eq, and, inArray, ExtractTablesWithRelations } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/neon-serverless';
-import { NeonDatabase, NeonTransaction } from 'drizzle-orm/neon-serverless';
+import { NeonDatabase } from 'drizzle-orm/neon-serverless';
 import { getTable } from '../../db/queries/util/table-select';
 
 
@@ -19,7 +17,7 @@ async function upsertTableData(
   boardName: BoardName,
   tableName: string,
   userId: number,
-  data: any[],
+  data: unknown[],
 ) {
   if (data.length === 0) return;
 
@@ -396,7 +394,7 @@ export async function syncUserData(
           await updateUserSyncs(tx, board, syncResults['user_syncs']);
 
           // Update sync params for next iteration with new timestamps
-          const newUserSyncs = syncResults['user_syncs'].map((sync: any) => ({
+          const newUserSyncs = syncResults['user_syncs'].map((sync: {table_name: string; last_synchronized_at: string}) => ({
             table_name: sync.table_name,
             last_synchronized_at: sync.last_synchronized_at,
             user_id: Number(userId),

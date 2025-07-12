@@ -11,23 +11,17 @@ import {
   Card,
   Row,
   Col,
-  Checkbox,
-  Tooltip,
-  Space,
   Flex,
   Collapse,
 } from 'antd';
-import { InfoCircleOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import { openDB } from 'idb';
 import { track } from '@vercel/analytics';
 import { SUPPORTED_BOARDS, ANGLES } from '@/app/lib/board-data';
 import { fetchBoardDetails } from '../rest-api/api';
-import { LayoutRow, SizeRow, SetRow } from '@/app/lib/data/queries';
 import { BoardName } from '@/app/lib/types';
 import BoardConfigPreview from './board-config-preview';
 import BoardConfigLivePreview from './board-config-live-preview';
-import StartClimbingButton from './start-climbing-button';
 import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { BoardConfigData } from '@/app/lib/server-board-configs';
 
@@ -76,7 +70,6 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
       : [];
 
   // Login states - for now just skip login on setup page
-  const [showLoginSection, setShowLoginSection] = useState(false);
 
   // Additional states
   const [useAsDefault, setUseAsDefault] = useState(false);
@@ -116,16 +109,6 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
     }
   };
 
-  const loadDefaultConfiguration = async () => {
-    try {
-      const db = await initDB();
-      const allConfigs = await db.getAll(STORE_NAME);
-      return allConfigs.find((config) => config.useAsDefault) || null;
-    } catch (error) {
-      console.error('Failed to load default configuration:', error);
-      return null;
-    }
-  };
 
   const loadAllConfigurations = async () => {
     try {
@@ -166,41 +149,6 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
     setSuggestedName(`${layoutName} ${sizeName}`);
   }, [selectedBoard, selectedLayout, selectedSize, layouts, sizes]);
 
-  // Generate climbing URL from current form selections
-  const getClimbingUrl = useCallback(async () => {
-    if (!selectedBoard || !selectedLayout || !selectedSize || selectedSets.length === 0) {
-      return null;
-    }
-
-    const setsString = selectedSets.join(',');
-
-    try {
-      // Try to get board details for slug-based URL from cache first
-      const detailsKey = `${selectedBoard}-${selectedLayout}-${selectedSize}-${setsString}`;
-      let boardDetails = boardConfigs.details[detailsKey];
-
-      if (!boardDetails) {
-        boardDetails = await fetchBoardDetails(selectedBoard, selectedLayout, selectedSize, selectedSets);
-      }
-
-      if (boardDetails?.layout_name && boardDetails?.size_name && boardDetails?.set_names) {
-        return constructClimbListWithSlugs(
-          boardDetails.board_name,
-          boardDetails.layout_name,
-          boardDetails.size_name,
-          boardDetails.set_names,
-          selectedAngle,
-        );
-      } else {
-        // Fallback to old URL format
-        return `/${selectedBoard}/${selectedLayout}/${selectedSize}/${setsString}/${selectedAngle}/list`;
-      }
-    } catch (error) {
-      console.error('Error constructing climbing URL:', error);
-      // Fallback to old URL format
-      return `/${selectedBoard}/${selectedLayout}/${selectedSize}/${setsString}/${selectedAngle}/list`;
-    }
-  }, [selectedBoard, selectedLayout, selectedSize, selectedSets, selectedAngle, boardConfigs]);
 
   // Load configurations on mount
   useEffect(() => {

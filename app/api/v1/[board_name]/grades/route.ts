@@ -10,7 +10,7 @@ export async function GET() {
       ORDER BY difficulty ASC
     `;
     return NextResponse.json(grades);
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Failed to fetch grades' }, { status: 500 });
   }
 }

@@ -9,10 +9,9 @@ export async function userSync(
   options: SyncOptions = {},
   token: string,
 ): Promise<SyncData> {
-  const { tables = [], walls = [], wallExpungements = [], sharedSyncs = [], userSyncs = [] } = options;
+  const { sharedSyncs = [], userSyncs = [] } = options;
 
   // Try multiple sync endpoints
-  let response: Response;
 
   // Build URL-encoded form data - Aurora expects this format!
   const params: string[] = [];
@@ -33,7 +32,7 @@ export async function userSync(
   const webUrl = `${WEB_HOSTS[board]}/sync`;
   console.log(`Calling user sync endpoint: ${webUrl}`);
 
-  response = await fetch(webUrl, {
+  const response = await fetch(webUrl, {
     method: 'POST',
     cache: 'no-store',
     headers: {

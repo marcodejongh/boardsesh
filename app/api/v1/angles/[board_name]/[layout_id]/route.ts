@@ -14,7 +14,7 @@ export async function GET(req: Request, props: { params: Promise<{ board_name: s
       ORDER BY angle ASC
     `;
     return NextResponse.json(angles);
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Failed to fetch angles' }, { status: 500 });
   }
 }

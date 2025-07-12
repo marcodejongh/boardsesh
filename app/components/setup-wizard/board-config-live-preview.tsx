@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Card, Typography, Tag, Space, Skeleton } from 'antd';
-import { StarFilled } from '@ant-design/icons';
+import { Card, Typography, Skeleton } from 'antd';
 import { fetchBoardDetails } from '../rest-api/api';
 import { BoardDetails, BoardName } from '@/app/lib/types';
 import BoardRenderer from '../board-renderer/board-renderer';
@@ -26,15 +25,10 @@ export default function BoardConfigLivePreview({
   layoutId,
   sizeId,
   setIds,
-  angle,
-  configName,
-  useAsDefault,
   boardConfigs,
 }: BoardConfigLivePreviewProps) {
   const [boardDetails, setBoardDetails] = useState<BoardDetails | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [layoutName, setLayoutName] = useState<string>('');
-  const [sizeName, setSizeName] = useState<string>('');
 
   // Check if all required props are present
   const hasRequiredProps = Boolean(boardName && layoutId && sizeId && setIds.length > 0);
@@ -42,8 +36,6 @@ export default function BoardConfigLivePreview({
   useEffect(() => {
     if (!hasRequiredProps) {
       setBoardDetails(null);
-      setLayoutName('');
-      setSizeName('');
       return;
     }
 
@@ -57,16 +49,9 @@ export default function BoardConfigLivePreview({
         const safeSizeId = sizeId!;
 
         // Get data from boardConfigs prop
-        const layouts = boardConfigs.layouts[safeBoardName] || [];
-        const sizes = boardConfigs.sizes[`${safeBoardName}-${safeLayoutId}`] || [];
         const detailsKey = `${safeBoardName}-${safeLayoutId}-${safeSizeId}-${setIds.join(',')}`;
         const cachedDetails = boardConfigs.details[detailsKey];
 
-        const layout = layouts.find((l) => l.id === safeLayoutId);
-        setLayoutName(layout?.name || `Layout ${safeLayoutId}`);
-
-        const size = sizes.find((s) => s.id === safeSizeId);
-        setSizeName(size?.name || `Size ${safeSizeId}`);
 
         // Use cached details if available, otherwise fetch
         let details = cachedDetails;

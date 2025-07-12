@@ -1,10 +1,10 @@
-import { getDb, getPool } from '@/app/lib/db/db';
+import { getPool } from '@/app/lib/db/db';
 import { BoardName } from '../../types';
 import { SyncOptions } from '../../api-wrappers/aurora/types';
 import { sharedSync } from '../../api-wrappers/aurora/sharedSync';
-import { ExtractTablesWithRelations, sql } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/neon-serverless';
-import { NeonDatabase, NeonTransaction } from 'drizzle-orm/neon-serverless';
+import { NeonDatabase } from 'drizzle-orm/neon-serverless';
 import { Attempt, BetaLink, Climb, ClimbStats, SharedSync, SyncPutFields } from '../../api-wrappers/sync-api-types';
 import { getTable } from '../../db/queries/util/table-select';
 import { convertLitUpHoldsStringToMap } from '@/app/components/board-renderer/util';
@@ -379,13 +379,13 @@ export async function syncSharedData(
         await updateSharedSyncs(tx, board, syncResults['shared_syncs']);
 
         // Update sync params for next iteration with new timestamps
-        const newSharedSyncs = syncResults['shared_syncs'].map((sync: any) => ({
+        const newSharedSyncs = syncResults['shared_syncs'].map((sync: {table_name: string; last_synchronized_at: string}) => ({
           table_name: sync.table_name,
           last_synchronized_at: sync.last_synchronized_at,
         }));
 
         // Log timestamp updates for debugging
-        const climbsSync = newSharedSyncs.find((s: any) => s.table_name === 'climbs');
+        const climbsSync = newSharedSyncs.find((s: {table_name: string}) => s.table_name === 'climbs');
         if (climbsSync) {
           console.log(`Climbs table sync timestamp updated to: ${climbsSync.last_synchronized_at}`);
         }

@@ -5,17 +5,17 @@ import { fetchLayouts, fetchSizes, fetchSets, fetchBoardDetails } from '@/app/co
 export const runtime = 'nodejs';
 
 type BoardConfigData = {
-  layouts: Record<BoardName, any[]>;
-  sizes: Record<string, any[]>;
-  sets: Record<string, any[]>;
-  details: Record<string, any>;
+  layouts: Record<BoardName, unknown[]>;
+  sizes: Record<string, unknown[]>;
+  sets: Record<string, unknown[]>;
+  details: Record<string, unknown>;
 };
 
 export async function GET() {
   try {
     const boards: BoardName[] = ['kilter', 'tension'];
     const configData: BoardConfigData = {
-      layouts: {} as Record<BoardName, any[]>,
+      layouts: {} as Record<BoardName, unknown[]>,
       sizes: {},
       sets: {},
       details: {},
@@ -52,7 +52,7 @@ export async function GET() {
       }),
     );
 
-    const sizeResults = await Promise.all(sizePromises);
+    await Promise.all(sizePromises);
 
     // For common board configurations, also fetch sets and details
     // This helps with the most common requests on the board selector page

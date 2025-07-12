@@ -129,7 +129,7 @@ export interface GymPin {
  */
 export interface SyncTable {
   table_name: string;
-  records: any[]; // These could be typed more specifically per table
+  records: unknown[]; // These could be typed more specifically per table
   last_synced_at: string;
 }
 
@@ -262,7 +262,7 @@ export interface AvatarClear {
 /**
  * Gym details interface
  */
-export interface GymDetails {}
+export type GymDetails = Record<string, never>
 
 /**
  * Wall details interface
@@ -301,7 +301,7 @@ export interface ClimbDetails {
   isDraft: boolean;
   framesCount: number;
   framesPace: number;
-  placements: any[];
+  placements: unknown[];
   angle?: number | null;
 }
 

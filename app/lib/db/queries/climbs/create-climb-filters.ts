@@ -1,5 +1,5 @@
-import { and, eq, between, gte, sql, like, notLike, SQL } from 'drizzle-orm';
-import { alias, PgTableWithColumns } from 'drizzle-orm/pg-core';
+import { eq, gte, sql, like, notLike, SQL } from 'drizzle-orm';
+import { PgTableWithColumns } from 'drizzle-orm/pg-core';
 import { ParsedBoardRouteParameters, SearchRequestPagination } from '@/app/lib/types';
 import { TableSet } from '@/lib/db/queries/util/table-select';
 import { getTableName } from '@/app/lib/data-sync/aurora/getTableName';
@@ -16,7 +16,7 @@ export const createClimbFilters = (
   tables: TableSet,
   params: ParsedBoardRouteParameters,
   searchParams: SearchRequestPagination,
-  productSizeAlias?: PgTableWithColumns<any>,
+  productSizeAlias?: PgTableWithColumns<Record<string, unknown>>,
   userId?: number,
 ) => {
   // Process hold filters

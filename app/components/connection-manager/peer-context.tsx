@@ -251,7 +251,7 @@ export const PeerProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const url = new URL(window.location.href);
           url.searchParams.delete('hostId');
           window.history.replaceState(null, '', url);
-        } catch (err) {
+        } catch {
           // Fallback error handling
           const url = new URL(window.location.href);
           url.searchParams.delete('hostId');

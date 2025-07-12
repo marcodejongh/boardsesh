@@ -245,7 +245,7 @@ export interface Climb {
   angle: number;
 }
 
-export interface SyncData extends Record<string, any> {
+export interface SyncData extends Record<string, unknown> {
   PUT?: SyncDataPUT;
   _complete?: boolean;
   climbs?: Climb[];

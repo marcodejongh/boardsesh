@@ -29,7 +29,7 @@ export async function POST(request: Request, props: { params: Promise<BoardRoute
   const params = await props.params;
   const { board_name }: ParsedBoardRouteParameters = parseBoardRouteParams(params);
 
-  let validatedData: any = null;
+  let validatedData: z.infer<typeof saveAscentSchema> | null = null;
 
   try {
     const body = await request.json();

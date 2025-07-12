@@ -10,7 +10,7 @@ import { BoardRouteParametersWithUuid, ParsedBoardRouteParameters } from '@/app/
 import { parseBoardRouteParams, constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import { getBoardDetails } from '@/app/lib/data/queries';
-import { redirect, permanentRedirect } from 'next/navigation';
+import { permanentRedirect } from 'next/navigation';
 
 interface LayoutProps {
   params: Promise<BoardRouteParametersWithUuid>;
@@ -51,7 +51,7 @@ export default async function ListLayout(props: PropsWithChildren<LayoutProps>) 
     parsedParams = await parseBoardRouteParamsWithSlugs(params);
   }
 
-  const { board_name, layout_id, set_ids, size_id } = parsedParams;
+  const { } = parsedParams;
 
   // Fetch the climbs and board details server-side
   const boardDetails = await getBoardDetails(parsedParams);
