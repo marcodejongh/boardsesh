@@ -92,11 +92,11 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails, onClimbNavigate }) 
             )}
             renderItem={(climb: Climb) => (
               <List.Item>
-                <Row gutter={8} align="middle" wrap={false}>
+                <Row style={{ width: '100%' }} gutter={[8, 8]} align="middle" wrap={false}>
                   <Col xs={2} sm={1}>
                     {/* Empty space to maintain layout consistency */}
                   </Col>
-                  <Col xs={5} sm={4}>
+                  <Col xs={5} sm={5}>
                     <ClimbThumbnail 
                       boardDetails={boardDetails} 
                       currentClimb={climb} 
@@ -118,7 +118,7 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails, onClimbNavigate }) 
                       }
                     />
                   </Col>
-                  <Col xs={3} sm={3}>
+                  <Col xs={3} sm={2}>
                     <Button
                       type="default"
                       icon={<PlusOutlined />}
