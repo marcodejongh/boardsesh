@@ -87,11 +87,12 @@ export async function saveAscent(
   }
 
   // Handle the new response format
-  if (!responseData.ascents || responseData.ascents.length === 0) {
+  const typedResponse = responseData as { ascents?: unknown[] };
+  if (!typedResponse.ascents || typedResponse.ascents.length === 0) {
     throw new Error('No ascent data in response');
   }
 
-  const savedAscent = responseData.ascents[0];
+  const savedAscent = typedResponse.ascents[0];
 
   // Insert into the intermediate database
   const fullTableName = getTableName(board, 'ascents'); // Replace with your actual table name
@@ -104,7 +105,7 @@ export async function saveAscent(
       climbed_at, created_at
     )
     VALUES (
-      ${requestData.uuid}, ${requestData.climb_uuid}, ${requestData.angle}, ${requestData.is_mirror}, ${requestData.user_id}, ${requestData.attempt_id || requestData.bid_count}, ${requestData.bid_count}, ${requestData.quality}, ${requestData.difficulty}, ${requestData.is_benchmark ? 1 : 0}, ${requestData.comment || ''}, ${requestData.climbed_at}, ${savedAscent.created_at}
+      ${requestData.uuid}, ${requestData.climb_uuid}, ${requestData.angle}, ${requestData.is_mirror}, ${requestData.user_id}, ${requestData.attempt_id || requestData.bid_count}, ${requestData.bid_count}, ${requestData.quality}, ${requestData.difficulty}, ${requestData.is_benchmark ? 1 : 0}, ${requestData.comment || ''}, ${requestData.climbed_at}, ${(savedAscent as { created_at: string }).created_at}
     )
     ON CONFLICT (uuid) DO UPDATE SET
       climb_uuid = EXCLUDED.climb_uuid,
@@ -124,7 +125,7 @@ export async function saveAscent(
     events: [
       {
         _type: 'ascent_saved' as const,
-        ascent: savedAscent
+        ascent: savedAscent as never
       }
     ]
   };

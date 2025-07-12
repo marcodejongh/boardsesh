@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
-import { BoardName } from '@/app/lib/types';
+import { BoardName, BoardDetails } from '@/app/lib/types';
 import { LayoutRow, SizeRow, SetRow } from '@/app/lib/data/queries';
 
 type BoardConfigCache = {
   layouts: Record<BoardName, LayoutRow[]>;
   sizes: Record<string, SizeRow[]>;
   sets: Record<string, SetRow[]>;
-  details: Record<string, unknown>;
+  details: Record<string, BoardDetails | null>;
 };
 
 let globalCache: BoardConfigCache | null = null;

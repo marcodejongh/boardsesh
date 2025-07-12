@@ -1,21 +1,22 @@
 import { NextResponse } from 'next/server';
-import { BoardName } from '@/app/lib/types';
+import { BoardName, BoardDetails } from '@/app/lib/types';
 import { fetchLayouts, fetchSizes, fetchSets, fetchBoardDetails } from '@/app/components/rest-api/api';
+import { LayoutRow, SizeRow, SetRow } from '@/app/lib/data/queries';
 
 export const runtime = 'nodejs';
 
 type BoardConfigData = {
-  layouts: Record<BoardName, unknown[]>;
-  sizes: Record<string, unknown[]>;
-  sets: Record<string, unknown[]>;
-  details: Record<string, unknown>;
+  layouts: Record<BoardName, LayoutRow[]>;
+  sizes: Record<string, SizeRow[]>;
+  sets: Record<string, SetRow[]>;
+  details: Record<string, BoardDetails | null>;
 };
 
 export async function GET() {
   try {
     const boards: BoardName[] = ['kilter', 'tension'];
     const configData: BoardConfigData = {
-      layouts: {} as Record<BoardName, unknown[]>,
+      layouts: {} as Record<BoardName, LayoutRow[]>,
       sizes: {},
       sets: {},
       details: {},
