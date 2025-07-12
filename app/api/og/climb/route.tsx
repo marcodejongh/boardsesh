@@ -51,7 +51,8 @@ export async function GET(request: NextRequest) {
     // Get all board image URLs (matches BoardRenderer logic)
     const imageUrls = Object.keys(boardDetails.images_to_holds).map((imageUrl) => {
       const relativeUrl = getImageUrl(imageUrl, boardDetails.board_name);
-      return `${process.env.VERCEL_URL ? `https://www.boardsesh.com/${relativeUrl}` : 'http://localhost:3000'}${relativeUrl}`;
+      // getImageUrl already returns the path with leading slash, so we don't need to add it again
+      return `${process.env.VERCEL_URL ? 'https://www.boardsesh.com' : 'http://localhost:3000'}${relativeUrl}`;
     });
 
     return new ImageResponse(
