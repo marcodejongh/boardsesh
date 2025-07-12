@@ -1,5 +1,5 @@
--- Current sql file was generated after introspecting the database
--- Defensive migration to add missing primary key constraints
+-- Defensive migration to add missing primary key constraints for user sync tables
+-- This ensures ON CONFLICT clauses work properly for upsert operations
 
 -- Add primary key to kilter_climbs.uuid if it doesn't exist
 DO $$ 
@@ -25,6 +25,7 @@ BEGIN
     END IF;
 END $$;
 
+-- Add primary key to kilter_shared_syncs if it doesn't exist
 DO $$
 BEGIN
     IF NOT EXISTS (
@@ -32,8 +33,7 @@ BEGIN
         WHERE table_name = 'kilter_shared_syncs'
         AND constraint_type = 'PRIMARY KEY'
     ) THEN
-        ALTER TABLE kilter_shared_syncs ADD PRIMARY KEY
-(table_name);
+        ALTER TABLE kilter_shared_syncs ADD PRIMARY KEY (table_name);
     END IF;
 END $$;
 
@@ -45,8 +45,7 @@ BEGIN
         WHERE table_name = 'tension_shared_syncs'
         AND constraint_type = 'PRIMARY KEY'
     ) THEN
-        ALTER TABLE tension_shared_syncs ADD PRIMARY KEY
-(table_name);
+        ALTER TABLE tension_shared_syncs ADD PRIMARY KEY (table_name);
     END IF;
 END $$;
 
@@ -74,7 +73,7 @@ BEGIN
     END IF;
 END $$;
 
--- Add primary key to tension_shared_syncs if it doesn't exist
+-- Add primary key to tension_users if it doesn't exist
 DO $$
 BEGIN
     IF NOT EXISTS (
@@ -86,6 +85,7 @@ BEGIN
     END IF;
 END $$;
 
+-- Add primary key to kilter_users if it doesn't exist
 DO $$
 BEGIN
     IF NOT EXISTS (

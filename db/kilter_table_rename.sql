@@ -18,17 +18,17 @@ BEGIN
 END $$;
 
 -- Clean up SQLite autoindex constraints that may have been imported
-DO $$
-DECLARE
-    r RECORD;
-BEGIN
-    FOR r IN
-        SELECT conname, conrelid::regclass AS table_name
-        FROM pg_constraint
-        WHERE conname LIKE '%sqlite_autoindex%'
-        AND conrelid::regclass::text LIKE 'kilter_%'
-    LOOP
-        EXECUTE 'ALTER TABLE ' || r.table_name || ' DROP CONSTRAINT IF EXISTS ' || quote_ident(r.conname);
-        RAISE NOTICE 'Dropped SQLite constraint % from table %', r.conname, r.table_name;
-    END LOOP;
-END $$;
+-- DO $$
+-- DECLARE
+--     r RECORD;
+-- BEGIN
+--     FOR r IN
+--         SELECT conname, conrelid::regclass AS table_name
+--         FROM pg_constraint
+--         WHERE conname LIKE '%sqlite_autoindex%'
+--         AND conrelid::regclass::text LIKE 'kilter_%'
+--     LOOP
+--         EXECUTE 'ALTER TABLE ' || r.table_name || ' DROP CONSTRAINT IF EXISTS ' || quote_ident(r.conname);
+--         RAISE NOTICE 'Dropped SQLite constraint % from table %', r.conname, r.table_name;
+--     END LOOP;
+-- END $$;

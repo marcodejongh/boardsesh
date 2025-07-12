@@ -9,58 +9,10 @@ import {
   SHARED_SYNC_TABLES,
 } from '../../api-wrappers/aurora/types';
 import { eq, and, inArray, ExtractTablesWithRelations } from 'drizzle-orm';
-import {
-  kilterUsers,
-  kilterWalls,
-  kilterClimbs,
-  kilterAscents,
-  kilterBids,
-  kilterTags,
-  kilterCircuits,
-  kilterUserSyncs,
-  kilterSharedSyncs,
-  tensionUsers,
-  tensionWalls,
-  tensionClimbs,
-  tensionAscents,
-  tensionBids,
-  tensionTags,
-  tensionCircuits,
-  tensionUserSyncs,
-  tensionSharedSyncs,
-} from '@/app/lib/db/schema';
 import { drizzle } from 'drizzle-orm/neon-serverless';
 import { NeonDatabase, NeonTransaction } from 'drizzle-orm/neon-serverless';
+import { getTable } from '../../db/queries/util/table-select';
 
-// Helper to get the correct schema based on board type
-function getSchemas(board: BoardName) {
-  if (board === 'kilter') {
-    return {
-      users: kilterUsers,
-      walls: kilterWalls,
-      climbs: kilterClimbs,
-      ascents: kilterAscents,
-      bids: kilterBids,
-      tags: kilterTags,
-      circuits: kilterCircuits,
-      userSyncs: kilterUserSyncs,
-      sharedSyncs: kilterSharedSyncs,
-    };
-  } else if (board === 'tension') {
-    return {
-      users: tensionUsers,
-      walls: tensionWalls,
-      climbs: tensionClimbs,
-      ascents: tensionAscents,
-      bids: tensionBids,
-      tags: tensionTags,
-      circuits: tensionCircuits,
-      userSyncs: tensionUserSyncs,
-      sharedSyncs: tensionSharedSyncs,
-    };
-  }
-  throw new Error(`Unsupported board type: ${board}`);
-}
 
 async function upsertTableData(
   db: NeonDatabase<Record<string, never>>,
@@ -71,20 +23,19 @@ async function upsertTableData(
 ) {
   if (data.length === 0) return;
 
-  const schemas = getSchemas(boardName);
-
   switch (tableName) {
     case 'users': {
+      const usersSchema = getTable('users', boardName);
       for (const item of data) {
         await db
-          .insert(schemas.users)
+          .insert(usersSchema)
           .values({
             id: Number(item.id),
             username: item.username,
             createdAt: item.created_at,
           })
           .onConflictDoUpdate({
-            target: schemas.users.id,
+            target: usersSchema.id,
             set: {
               username: item.username,
             },
@@ -94,9 +45,10 @@ async function upsertTableData(
     }
 
     case 'walls': {
+      const wallsSchema = getTable('walls', boardName);
       for (const item of data) {
         await db
-          .insert(schemas.walls)
+          .insert(wallsSchema)
           .values({
             uuid: item.uuid,
             userId: Number(userId),
@@ -111,7 +63,7 @@ async function upsertTableData(
             createdAt: item.created_at,
           })
           .onConflictDoUpdate({
-            target: schemas.walls.uuid,
+            target: wallsSchema.uuid,
             set: {
               name: item.name,
               isAdjustable: Boolean(item.is_adjustable),
@@ -127,9 +79,10 @@ async function upsertTableData(
     }
 
     case 'draft_climbs': {
+      const climbsSchema = getTable('climbs', boardName);
       for (const item of data) {
         await db
-          .insert(schemas.climbs)
+          .insert(climbsSchema)
           .values({
             uuid: item.uuid,
             layoutId: Number(item.layout_id),
@@ -151,7 +104,7 @@ async function upsertTableData(
             createdAt: item.created_at || new Date().toISOString(),
           })
           .onConflictDoUpdate({
-            target: schemas.climbs.uuid,
+            target: climbsSchema.uuid,
             set: {
               layoutId: Number(item.layout_id),
               setterId: Number(userId),
@@ -176,9 +129,10 @@ async function upsertTableData(
     }
 
     case 'ascents': {
+      const ascentsSchema = getTable('ascents', boardName);
       for (const item of data) {
         await db
-          .insert(schemas.ascents)
+          .insert(ascentsSchema)
           .values({
             uuid: item.uuid,
             climbUuid: item.climb_uuid,
@@ -195,7 +149,7 @@ async function upsertTableData(
             createdAt: item.created_at,
           })
           .onConflictDoUpdate({
-            target: schemas.ascents.uuid,
+            target: ascentsSchema.uuid,
             set: {
               climbUuid: item.climb_uuid,
               angle: Number(item.angle),
@@ -214,9 +168,10 @@ async function upsertTableData(
     }
 
     case 'bids': {
+      const bidsSchema = getTable('bids', boardName);
       for (const item of data) {
         await db
-          .insert(schemas.bids)
+          .insert(bidsSchema)
           .values({
             uuid: item.uuid,
             userId: Number(userId),
@@ -229,7 +184,7 @@ async function upsertTableData(
             createdAt: item.created_at,
           })
           .onConflictDoUpdate({
-            target: schemas.bids.uuid,
+            target: bidsSchema.uuid,
             set: {
               climbUuid: item.climb_uuid,
               angle: Number(item.angle),
@@ -244,25 +199,26 @@ async function upsertTableData(
     }
 
     case 'tags': {
+      const tagsSchema = getTable('tags', boardName);
       for (const item of data) {
         // First try to update existing record
         const result = await db
-          .update(schemas.tags)
+          .update(tagsSchema)
           .set({
             isListed: Boolean(item.is_listed),
           })
           .where(
             and(
-              eq(schemas.tags.entityUuid, item.entity_uuid),
-              eq(schemas.tags.userId, Number(userId)),
-              eq(schemas.tags.name, item.name),
+              eq(tagsSchema.entityUuid, item.entity_uuid),
+              eq(tagsSchema.userId, Number(userId)),
+              eq(tagsSchema.name, item.name),
             ),
           )
           .returning();
 
         // If no record was updated, insert a new one
         if (result.length === 0) {
-          await db.insert(schemas.tags).values({
+          await db.insert(tagsSchema).values({
             entityUuid: item.entity_uuid,
             userId: Number(userId),
             name: item.name,
@@ -274,9 +230,10 @@ async function upsertTableData(
     }
 
     case 'circuits': {
+      const circuitsSchema = getTable('circuits', boardName);
       for (const item of data) {
         await db
-          .insert(schemas.circuits)
+          .insert(circuitsSchema)
           .values({
             uuid: item.uuid,
             name: item.name,
@@ -288,7 +245,7 @@ async function upsertTableData(
             updatedAt: item.updated_at,
           })
           .onConflictDoUpdate({
-            target: schemas.circuits.uuid,
+            target: circuitsSchema.uuid,
             set: {
               name: item.name,
               description: item.description,
@@ -312,18 +269,18 @@ async function updateUserSyncs(
   boardName: BoardName,
   userSyncs: UserSyncData[],
 ) {
-  const schemas = getSchemas(boardName);
+  const userSyncsSchema = getTable('userSyncs', boardName);
 
   for (const sync of userSyncs) {
     await tx
-      .insert(schemas.userSyncs)
+      .insert(userSyncsSchema)
       .values({
         userId: Number(sync.user_id),
         tableName: sync.table_name,
         lastSynchronizedAt: sync.last_synchronized_at,
       })
       .onConflictDoUpdate({
-        target: [schemas.userSyncs.userId, schemas.userSyncs.tableName],
+        target: [userSyncsSchema.userId, userSyncsSchema.tableName],
         set: {
           lastSynchronizedAt: sync.last_synchronized_at,
         },
@@ -332,7 +289,7 @@ async function updateUserSyncs(
 }
 
 export async function getLastSyncTimes(boardName: BoardName, userId: number, tableNames: string[]) {
-  const schemas = getSchemas(boardName);
+  const userSyncsSchema = getTable('userSyncs', boardName);
   const pool = getPool();
   const client = await pool.connect();
   
@@ -340,8 +297,8 @@ export async function getLastSyncTimes(boardName: BoardName, userId: number, tab
     const db = drizzle(client);
     const result = await db
       .select()
-      .from(schemas.userSyncs)
-      .where(and(eq(schemas.userSyncs.userId, Number(userId)), inArray(schemas.userSyncs.tableName, tableNames)));
+      .from(userSyncsSchema)
+      .where(and(eq(userSyncsSchema.userId, Number(userId)), inArray(userSyncsSchema.tableName, tableNames)));
 
     return result;
   } finally {
@@ -350,13 +307,13 @@ export async function getLastSyncTimes(boardName: BoardName, userId: number, tab
 }
 
 export async function getLastSharedSyncTimes(boardName: BoardName, tableNames: string[]) {
-  const schemas = getSchemas(boardName);
+  const sharedSyncsSchema = getTable('sharedSyncs', boardName);
   const pool = getPool();
   const client = await pool.connect();
   
   try {
     const db = drizzle(client);
-    const result = await db.select().from(schemas.sharedSyncs).where(inArray(schemas.sharedSyncs.tableName, tableNames));
+    const result = await db.select().from(sharedSyncsSchema).where(inArray(sharedSyncsSchema.tableName, tableNames));
 
     return result;
   } finally {

@@ -99,6 +99,13 @@
       "when": 1740054525189,
       "tag": "0013_add_heatmap_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1741938194000,
+      "tag": "0014_add_missing_primary_keys",
+      "breakpoints": true
     }
   ]
 }
