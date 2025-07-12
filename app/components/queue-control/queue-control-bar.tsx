@@ -59,7 +59,12 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
           <Col xs={4}>
             {/* Board preview */}
             <div style={boardPreviewContainerStyle}>
-              <ClimbThumbnail boardDetails={boardDetails} currentClimb={currentClimb} />
+              <ClimbThumbnail 
+                boardDetails={boardDetails} 
+                currentClimb={currentClimb} 
+                enableNavigation={true}
+                onNavigate={() => setIsQueueOpen(false)}
+              />
             </div>
           </Col>
 
@@ -144,7 +149,7 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
         open={isQueueOpen}
         onClose={toggleQueueDrawer}
       >
-        <QueueList boardDetails={boardDetails} />
+        <QueueList boardDetails={boardDetails} onClimbNavigate={() => setIsQueueOpen(false)} />
       </Drawer>
     </>
   );
