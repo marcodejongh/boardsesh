@@ -10,7 +10,6 @@ import {
   kilterAscents,
   kilterBids,
   kilterClimbStatsHistory,
-  kilterClimbCacheFields,
   tensionClimbs,
   tensionClimbStats,
   tensionDifficultyGrades,
@@ -21,7 +20,6 @@ import {
   tensionAscents,
   tensionBids,
   tensionClimbStatsHistory,
-  tensionClimbCacheFields,
   kilterAttempts,
   tensionAttempts,
   tensionProducts,
@@ -36,8 +34,6 @@ import {
   tensionBetaLinks,
   kilterWalls,
   tensionWalls,
-  kilterWallsSets,
-  tensionWallsSets,
   kilterTags,
   tensionTags,
 } from '@/lib/db/schema';
@@ -56,7 +52,6 @@ export type TableSet = {
   ascents: typeof kilterAscents | typeof tensionAscents;
   bids: typeof kilterBids | typeof tensionBids;
   climbStatsHistory: typeof kilterClimbStatsHistory | typeof tensionClimbStatsHistory;
-  climbCacheFields: typeof kilterClimbCacheFields | typeof tensionClimbCacheFields;
   attempts: typeof kilterAttempts | typeof tensionAttempts;
   products: typeof kilterProducts | typeof tensionProducts;
   userSyncs: typeof kilterUserSyncs | typeof tensionUserSyncs;
@@ -64,7 +59,6 @@ export type TableSet = {
   climbHolds: typeof kilterClimbHolds | typeof tensionClimbHolds;
   betaLinks: typeof kilterBetaLinks | typeof tensionBetaLinks;
   walls: typeof kilterWalls | typeof tensionWalls;
-  wallsSets: typeof kilterWallsSets | typeof tensionWallsSets;
   tags: typeof kilterTags | typeof tensionTags;
 };
 
@@ -81,7 +75,6 @@ const BOARD_TABLES: Record<BoardName, TableSet> = {
     ascents: kilterAscents,
     bids: kilterBids,
     climbStatsHistory: kilterClimbStatsHistory,
-    climbCacheFields: kilterClimbCacheFields,
     attempts: kilterAttempts,
     products: kilterProducts,
     userSyncs: kilterUserSyncs,
@@ -89,7 +82,6 @@ const BOARD_TABLES: Record<BoardName, TableSet> = {
     climbHolds: kilterClimbHolds,
     betaLinks: kilterBetaLinks,
     walls: kilterWalls,
-    wallsSets: kilterWallsSets,
     tags: kilterTags,
   },
   tension: {
@@ -103,7 +95,6 @@ const BOARD_TABLES: Record<BoardName, TableSet> = {
     ascents: tensionAscents,
     bids: tensionBids,
     climbStatsHistory: tensionClimbStatsHistory,
-    climbCacheFields: tensionClimbCacheFields,
     attempts: tensionAttempts,
     products: tensionProducts,
     userSyncs: tensionUserSyncs,
@@ -111,7 +102,6 @@ const BOARD_TABLES: Record<BoardName, TableSet> = {
     climbHolds: tensionClimbHolds,
     betaLinks: tensionBetaLinks,
     walls: tensionWalls,
-    wallsSets: tensionWallsSets,
     tags: tensionTags,
   },
 } as const;
