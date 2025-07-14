@@ -1,11 +1,9 @@
 import { relations } from 'drizzle-orm/relations';
 import {
   kilterClimbs,
-  kilterClimbCacheFields,
   kilterProducts,
   kilterLayouts,
   tensionClimbs,
-  tensionClimbCacheFields,
   kilterHoles,
   kilterLeds,
   kilterProductSizes,
@@ -34,10 +32,6 @@ import {
   tensionAttempts,
   tensionAscents,
   tensionDifficultyGrades,
-  kilterProductsAngles,
-  kilterWallsSets,
-  tensionWallsSets,
-  tensionProductsAngles,
   kilterUserSyncs,
   tensionUserSyncs,
   kilterBetaLinks,
@@ -62,15 +56,8 @@ export const kilterClimbStatsRelations = relations(kilterClimbStats, ({ one }) =
   }),
 }));
 
-export const kilterClimbCacheFieldsRelations = relations(kilterClimbCacheFields, ({ one }) => ({
-  kilterClimb: one(kilterClimbs, {
-    fields: [kilterClimbCacheFields.climbUuid],
-    references: [kilterClimbs.uuid],
-  }),
-}));
 
 export const kilterClimbsRelations = relations(kilterClimbs, ({ one, many }) => ({
-  kilterClimbCacheFields: many(kilterClimbCacheFields),
   kilterBids: many(kilterBids),
   kilterLayout: one(kilterLayouts, {
     fields: [kilterClimbs.layoutId],
@@ -97,18 +84,10 @@ export const kilterProductsRelations = relations(kilterProducts, ({ many }) => (
   kilterHoles: many(kilterHoles),
   kilterPlacementRoles: many(kilterPlacementRoles),
   kilterWalls: many(kilterWalls),
-  kilterProductsAngles: many(kilterProductsAngles),
 }));
 
-export const tensionClimbCacheFieldsRelations = relations(tensionClimbCacheFields, ({ one }) => ({
-  tensionClimb: one(tensionClimbs, {
-    fields: [tensionClimbCacheFields.climbUuid],
-    references: [tensionClimbs.uuid],
-  }),
-}));
 
 export const tensionClimbsRelations = relations(tensionClimbs, ({ one, many }) => ({
-  tensionClimbCacheFields: many(tensionClimbCacheFields),
   tensionBids: many(tensionBids),
   tensionLayout: one(tensionLayouts, {
     fields: [tensionClimbs.layoutId],
@@ -196,7 +175,6 @@ export const kilterPlacementsRelations = relations(kilterPlacements, ({ one }) =
 export const kilterSetsRelations = relations(kilterSets, ({ many }) => ({
   kilterPlacements: many(kilterPlacements),
   kilterProductSizesLayoutsSets: many(kilterProductSizesLayoutsSets),
-  kilterWallsSets: many(kilterWallsSets),
 }));
 
 export const kilterProductSizesLayoutsSetsRelations = relations(kilterProductSizesLayoutsSets, ({ one }) => ({
@@ -214,7 +192,7 @@ export const kilterProductSizesLayoutsSetsRelations = relations(kilterProductSiz
   }),
 }));
 
-export const kilterWallsRelations = relations(kilterWalls, ({ one, many }) => ({
+export const kilterWallsRelations = relations(kilterWalls, ({ one }) => ({
   kilterLayout: one(kilterLayouts, {
     fields: [kilterWalls.layoutId],
     references: [kilterLayouts.id],
@@ -231,7 +209,6 @@ export const kilterWallsRelations = relations(kilterWalls, ({ one, many }) => ({
     fields: [kilterWalls.userId],
     references: [kilterUsers.id],
   }),
-  kilterWallsSets: many(kilterWallsSets),
 }));
 
 export const tensionBidsRelations = relations(tensionBids, ({ one }) => ({
@@ -275,7 +252,6 @@ export const tensionProductsRelations = relations(tensionProducts, ({ many }) =>
   tensionLayouts: many(tensionLayouts),
   tensionProductSizes: many(tensionProductSizes),
   tensionWalls: many(tensionWalls),
-  tensionProductsAngles: many(tensionProductsAngles),
 }));
 
 export const tensionLayoutsRelations = relations(tensionLayouts, ({ one, many }) => ({
@@ -319,7 +295,6 @@ export const tensionPlacementRolesRelations = relations(tensionPlacementRoles, (
 export const tensionSetsRelations = relations(tensionSets, ({ many }) => ({
   tensionPlacements: many(tensionPlacements),
   tensionProductSizesLayoutsSets: many(tensionProductSizesLayoutsSets),
-  tensionWallsSets: many(tensionWallsSets),
 }));
 
 export const tensionLedsRelations = relations(tensionLeds, ({ one }) => ({
@@ -385,7 +360,7 @@ export const kilterDifficultyGradesRelations = relations(kilterDifficultyGrades,
   kilterAscents: many(kilterAscents),
 }));
 
-export const tensionWallsRelations = relations(tensionWalls, ({ one, many }) => ({
+export const tensionWallsRelations = relations(tensionWalls, ({ one }) => ({
   tensionLayout: one(tensionLayouts, {
     fields: [tensionWalls.layoutId],
     references: [tensionLayouts.id],
@@ -402,7 +377,6 @@ export const tensionWallsRelations = relations(tensionWalls, ({ one, many }) => 
     fields: [tensionWalls.userId],
     references: [tensionUsers.id],
   }),
-  tensionWallsSets: many(tensionWallsSets),
 }));
 
 export const tensionAscentsRelations = relations(tensionAscents, ({ one }) => ({
@@ -432,41 +406,9 @@ export const tensionDifficultyGradesRelations = relations(tensionDifficultyGrade
   tensionAscents: many(tensionAscents),
 }));
 
-export const kilterProductsAnglesRelations = relations(kilterProductsAngles, ({ one }) => ({
-  kilterProduct: one(kilterProducts, {
-    fields: [kilterProductsAngles.productId],
-    references: [kilterProducts.id],
-  }),
-}));
 
-export const kilterWallsSetsRelations = relations(kilterWallsSets, ({ one }) => ({
-  kilterSet: one(kilterSets, {
-    fields: [kilterWallsSets.setId],
-    references: [kilterSets.id],
-  }),
-  kilterWall: one(kilterWalls, {
-    fields: [kilterWallsSets.wallUuid],
-    references: [kilterWalls.uuid],
-  }),
-}));
 
-export const tensionWallsSetsRelations = relations(tensionWallsSets, ({ one }) => ({
-  tensionSet: one(tensionSets, {
-    fields: [tensionWallsSets.setId],
-    references: [tensionSets.id],
-  }),
-  tensionWall: one(tensionWalls, {
-    fields: [tensionWallsSets.wallUuid],
-    references: [tensionWalls.uuid],
-  }),
-}));
 
-export const tensionProductsAnglesRelations = relations(tensionProductsAngles, ({ one }) => ({
-  tensionProduct: one(tensionProducts, {
-    fields: [tensionProductsAngles.productId],
-    references: [tensionProducts.id],
-  }),
-}));
 
 export const kilterUserSyncsRelations = relations(kilterUserSyncs, ({ one }) => ({
   kilterUser: one(kilterUsers, {
