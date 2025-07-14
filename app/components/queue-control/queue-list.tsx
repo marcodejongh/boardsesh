@@ -41,7 +41,12 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails, onClimbNavigate }) 
         if (isNaN(sourceIndex) || isNaN(targetIndex)) return;
 
         const edge = extractClosestEdge(target.data);
-        const finalIndex = edge === 'bottom' ? targetIndex + 1 : targetIndex;
+        let finalIndex = edge === 'bottom' ? targetIndex + 1 : targetIndex;
+        
+        // Adjust for the fact that removing the source item shifts indices
+        if (sourceIndex < finalIndex) {
+          finalIndex = finalIndex - 1;
+        }
 
         const newQueue = reorder({
           list: queue,
