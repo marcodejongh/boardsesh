@@ -6,7 +6,6 @@ import {
   SearchRequestPagination,
   ClimbUuid,
   BoardDetails,
-  Angle,
 } from '@/app/lib/types';
 import { PAGE_LIMIT } from '../components/board-page/constants';
 
@@ -125,22 +124,32 @@ export const parsedRouteSearchParamsToSearchParams = (urlParams: SearchRequestPa
   };
 };
 
-export const constructClimbViewUrl = (
-  { board_name, layout_id, angle, size_id, set_ids }: ParsedBoardRouteParameters,
+// DEPRECATED: Use constructClimbViewUrlWithSlugs instead
+export const constructClimbViewUrl = () => {
+  throw new Error('constructClimbViewUrl is deprecated. Use constructClimbViewUrlWithSlugs instead.');
+};
+
+// Direct slug-based URL construction (when slugs are already available from database)
+export const constructClimbViewUrlWithDatabaseSlugs = (
+  board_name: string,
+  layoutSlug: string,
+  sizeSlug: string,
+  setSlug: string,
+  angle: number,
   climb_uuid: ClimbUuid,
   climbName?: string,
 ) => {
-  const baseUrl = `/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/view/`;
+  const baseUrl = `/${board_name}/${layoutSlug}/${sizeSlug}/${setSlug}/${angle}/view/`;
   if (climbName && climbName.trim()) {
-    const slug = generateClimbSlug(climbName.trim());
-    if (slug) {
-      return `${baseUrl}${slug}-${climb_uuid}`;
+    const climbSlug = generateClimbSlug(climbName.trim());
+    if (climbSlug) {
+      return `${baseUrl}${climbSlug}-${climb_uuid}`;
     }
   }
   return `${baseUrl}${climb_uuid}`;
 };
 
-// New function to construct URLs with slug-based board parameters
+// Legacy function to construct URLs with slug-based board parameters (generates slugs from names)
 export const constructClimbViewUrlWithSlugs = (
   board_name: string,
   layoutName: string,
@@ -154,34 +163,38 @@ export const constructClimbViewUrlWithSlugs = (
   const sizeSlug = generateSizeSlug(sizeName);
   const setSlug = generateSetSlug(setNames);
 
-  const baseUrl = `/${board_name}/${layoutSlug}/${sizeSlug}/${setSlug}/${angle}/view/`;
-  if (climbName && climbName.trim()) {
-    const climbSlug = generateClimbSlug(climbName.trim());
-    if (climbSlug) {
-      return `${baseUrl}${climbSlug}-${climb_uuid}`;
-    }
-  }
-  return `${baseUrl}${climb_uuid}`;
+  return constructClimbViewUrlWithDatabaseSlugs(board_name, layoutSlug, sizeSlug, setSlug, angle, climb_uuid, climbName);
 };
 
 export const constructClimbInfoUrl = (
   { board_name }: BoardDetails,
   climb_uuid: ClimbUuid,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  angle: Angle,
 ) => `https://${board_name}boardapp${board_name === 'tension' ? '2' : ''}.com/climbs/${climb_uuid}`;
 
 //`/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/info/${climb_uuid}`;
 
-export const constructClimbList = ({ board_name, layout_id, angle, size_id, set_ids }: ParsedBoardRouteParameters) =>
-  `/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/list`;
+// DEPRECATED: Use constructClimbListWithSlugs instead
+export const constructClimbList = () => {
+  throw new Error('constructClimbList is deprecated. Use constructClimbListWithSlugs instead.');
+};
 
 export const constructClimbSearchUrl = (
   { board_name, layout_id, angle, size_id, set_ids }: ParsedBoardRouteParameters,
   queryString: string,
 ) => `/api/v1/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/search?${queryString}`;
 
-// New slug-based URL construction functions
+// Direct slug-based URL construction (when slugs are already available from database)
+export const constructClimbListWithDatabaseSlugs = (
+  board_name: string,
+  layoutSlug: string,
+  sizeSlug: string,
+  setSlug: string,
+  angle: number,
+) => {
+  return `/${board_name}/${layoutSlug}/${sizeSlug}/${setSlug}/${angle}/list`;
+};
+
+// Legacy slug-based URL construction functions (generates slugs from names)
 export const constructClimbListWithSlugs = (
   board_name: string,
   layoutName: string,
@@ -192,7 +205,7 @@ export const constructClimbListWithSlugs = (
   const layoutSlug = generateLayoutSlug(layoutName);
   const sizeSlug = generateSizeSlug(sizeName);
   const setSlug = generateSetSlug(setNames);
-  return `/${board_name}/${layoutSlug}/${sizeSlug}/${setSlug}/${angle}/list`;
+  return constructClimbListWithDatabaseSlugs(board_name, layoutSlug, sizeSlug, setSlug, angle);
 };
 
 export const generateClimbSlug = (climbName: string): string => {

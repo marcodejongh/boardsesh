@@ -88,24 +88,20 @@ export default function BoardConfigPreview({ config, onDelete, boardConfigs }: B
               savedAngle,
             );
           } else {
-            // Fallback to old URL format
-            const setsString = config.setIds.join(',');
-            url = `/${config.board}/${config.layoutId}/${config.sizeId}/${setsString}/${savedAngle}/list`;
+            // This should not happen as boardDetails should always have the necessary fields
+            throw new Error('Board details are missing required slug information');
           }
         } catch (error) {
           console.error('Error generating board URL:', error);
-          // Fallback to old URL format
-          const setsString = config.setIds.join(',');
-          url = `/${config.board}/${config.layoutId}/${config.sizeId}/${setsString}/${savedAngle}/list`;
+          // Re-throw error instead of falling back to old URL format
+          throw error;
         }
 
         setBoardUrl(url);
       } catch (error) {
         console.error('Failed to load board details for preview:', error);
-        // Set fallback URL even if loading fails
-        const setsString = config.setIds.join(',');
-        const savedAngle = config.angle || 40;
-        setBoardUrl(`/${config.board}/${config.layoutId}/${config.sizeId}/${setsString}/${savedAngle}/list`);
+        // Re-throw error instead of falling back to old URL format
+        throw error;
       } finally {
         setIsLoading(false);
       }

@@ -106,6 +106,27 @@
       "when": 1741938194000,
       "tag": "0014_add_missing_primary_keys",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1752328357970,
+      "tag": "0015_burly_longshot",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1752328667394,
+      "tag": "0016_serious_madrox",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1752328800000,
+      "tag": "0017_populate_slugs",
+      "breakpoints": true
     }
   ]
 }
