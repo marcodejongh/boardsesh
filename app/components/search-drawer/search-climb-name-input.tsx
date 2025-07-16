@@ -12,7 +12,6 @@ const SearchClimbNameInput = () => {
     <>
       <Input
         placeholder="Filter climbs..."
-        style={{ width: '100%' }}
         onChange={(e) => {
           updateFilters({
             name: e.target.value,
