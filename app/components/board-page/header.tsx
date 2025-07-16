@@ -1,6 +1,6 @@
 'use client';
 import React from 'react';
-import { Space, Row, Col } from 'antd';
+import { Flex, Space } from 'antd';
 import { Header } from 'antd/es/layout/layout';
 import Title from 'antd/es/typography/Title';
 import { usePathname } from 'next/navigation';
@@ -24,40 +24,43 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
   const isList = pathname.endsWith('/list');
 
   return (
-    <Header style={{ background: '#fff', height: '8dvh' }} className={styles.header}>
-      <UISearchParamsProvider>
-        <Row align="middle" style={{ height: '100%', paddingLeft: '16px', paddingRight: '16px' }} wrap={false}>
-          {/* Spacer */}
-          <Col span={1}>
-            <div style={{ width: '100%' }}>&nbsp;</div>
-          </Col>
-          
-          {/* Logo */}
-          <Col style={{ marginLeft: 0, paddingLeft: 0 }}>
-            <Link href="/" style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
-              <Title level={4} style={{ margin: 0, lineHeight: '1.2', whiteSpace: 'nowrap', paddingLeft: 0 }}>
+    <Header
+      style={{
+        background: '#fff',
+        height: '8dvh',
+        display: 'flex',
+        padding: '0 8px',
+      }}
+    >
+      <Flex justify="flex-start" align="center" gap={1}>
+        <UISearchParamsProvider>
+          {/* Logo - Fixed to left */}
+          <Flex justify="flex-start" align="center">
+            <Link href="/" style={{ textDecoration: 'none', color: 'inherit' }}>
+              <Title level={4} style={{ margin: 0, lineHeight: '1.2', whiteSpace: 'nowrap' }}>
                 BS
               </Title>
             </Link>
-          </Col>
+          </Flex>
 
-          {/* Center Section */}
-          <Col flex="1" style={{ textAlign: 'center', minWidth: 0 }}>
-            <Space size={8}>
-              <div className={styles.mobileOnly}>
-                <SearchClimbNameInput />
-              </div>
-              {isList && (
+          {/* Flexible content area */}
+          <Flex
+            justify="flex-start"
+            align="center"
+            style={{ minWidth: 0, marginLeft: '8px' }}
+          >
+            {/* Center Section */}
+            <Flex justify="flex-start" align="flex-start" gap={1}>
+                <div className={styles.mobileOnly}>
+                  <SearchClimbNameInput />
+                </div>
                 <div className={styles.mobileOnly}>
                   <SearchButton boardDetails={boardDetails} />
                 </div>
-              )}
-            </Space>
-          </Col>
+            </Flex>
 
-          {/* Right Section */}
-          <Col>
-            <Space size={4}>
+            {/* Right Section */}
+            <Flex gap={1} align="center" justify="flex-end">
               {!isList && (
                 <div className={styles.mobileOnly}>
                   <ClimbInfoButton />
@@ -66,10 +69,11 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
               {angle !== undefined && <AngleSelector boardName={boardDetails.board_name} currentAngle={angle} />}
               <ShareBoardButton />
               <SendClimbToBoardButton boardDetails={boardDetails} />
-            </Space>
-          </Col>
-        </Row>
-      </UISearchParamsProvider>
+            </Flex>
+          </Flex>
+        </UISearchParamsProvider>
+      </Flex>
+      
     </Header>
   );
 }

@@ -40,6 +40,7 @@ export default function AngleSelector({ boardName, currentAngle }: AngleSelector
       <Button 
         type="default"
         onClick={() => setIsDrawerOpen(true)}
+        style={{ minWidth: '45px', padding: '4px 8px' }}
       >
         {currentAngle}°
       </Button>
