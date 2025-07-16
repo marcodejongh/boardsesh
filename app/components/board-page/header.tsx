@@ -29,50 +29,41 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
         background: '#fff',
         height: '8dvh',
         display: 'flex',
-        padding: '0 8px',
+        padding: '0 4px',
       }}
     >
-      <Flex justify="flex-start" align="center" gap={1}>
-        <UISearchParamsProvider>
+      <UISearchParamsProvider>
+        <Flex justify="space-between" align="center" style={{ width: '100%' }} gap={7}> 
           {/* Logo - Fixed to left */}
-          <Flex justify="flex-start" align="center">
-            <Link href="/" style={{ textDecoration: 'none', color: 'inherit' }}>
+          <Flex>
               <Title level={4} style={{ margin: 0, lineHeight: '1.2', whiteSpace: 'nowrap' }}>
-                BS
+                <Link href="/" style={{ textDecoration: 'none', color: 'inherit' }}>
+                  BS
+                </Link>
               </Title>
-            </Link>
+            </Flex>   
+            
+            
+
+          {/* Center Section - Mobile only */}
+          <Flex justify="center" gap={2}>
+            <div className={styles.mobileOnly}>
+              <SearchClimbNameInput />
+            </div>
+            <div className={styles.mobileOnly}>
+              <SearchButton boardDetails={boardDetails} />
+            </div>
           </Flex>
 
-          {/* Flexible content area */}
-          <Flex
-            justify="flex-start"
-            align="center"
-            style={{ minWidth: 0, marginLeft: '8px' }}
-          >
-            {/* Center Section */}
-            <Flex justify="flex-start" align="flex-start" gap={1}>
-                <div className={styles.mobileOnly}>
-                  <SearchClimbNameInput />
-                </div>
-                <div className={styles.mobileOnly}>
-                  <SearchButton boardDetails={boardDetails} />
-                </div>
-            </Flex>
-
-            {/* Right Section */}
-            <Flex gap={1} align="center" justify="flex-end">
-              {!isList && (
-                <div className={styles.mobileOnly}>
-                  <ClimbInfoButton />
-                </div>
-              )}
-              {angle !== undefined && <AngleSelector boardName={boardDetails.board_name} currentAngle={angle} />}
-              <ShareBoardButton />
-              <SendClimbToBoardButton boardDetails={boardDetails} />
-            </Flex>
+          {/* Right Section */}
+          <Flex gap={4} align="center">
+            
+            {angle !== undefined && <AngleSelector boardName={boardDetails.board_name} currentAngle={angle} />}
+            <ShareBoardButton />
+            <SendClimbToBoardButton boardDetails={boardDetails} />
           </Flex>
-        </UISearchParamsProvider>
-      </Flex>
+        </Flex>
+      </UISearchParamsProvider>
       
     </Header>
   );
