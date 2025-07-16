@@ -1,23 +1,20 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Button, Grid, Drawer, Badge, Space, Typography, Spin } from 'antd';
+import { Button, Drawer, Badge, Space, Typography, Spin } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 import SearchForm from './search-form';
 import { useQueueContext } from '@/app/components/queue-control/queue-context';
 import ClearButton from './clear-button';
 import { BoardDetails } from '@/app/lib/types';
 
-const { useBreakpoint } = Grid;
 const { Text } = Typography;
 
 const SearchButton = ({ boardDetails }: { boardDetails: BoardDetails }) => {
   const [isOpen, setIsOpen] = useState(false);
   const { totalSearchResultCount, isFetchingClimbs } = useQueueContext();
-  const screens = useBreakpoint();
 
-  // Drawer for mobile view
-  const mobileDrawer = (
+  return (
     <>
       <Badge
         count={totalSearchResultCount}
@@ -51,9 +48,6 @@ const SearchButton = ({ boardDetails }: { boardDetails: BoardDetails }) => {
       </Drawer>
     </>
   );
-
-  // Conditionally render based on screen size
-  return screens.md ? null : mobileDrawer;
 };
 
 export default SearchButton;
