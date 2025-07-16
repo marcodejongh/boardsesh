@@ -1,12 +1,10 @@
 'use client';
 import React from 'react';
-import { Flex, Space } from 'antd';
+import { Flex } from 'antd';
 import { Header } from 'antd/es/layout/layout';
 import Title from 'antd/es/typography/Title';
-import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import SearchButton from '../search-drawer/search-button';
-import ClimbInfoButton from '../climb-info/climb-info-button';
 import SearchClimbNameInput from '../search-drawer/search-climb-name-input';
 import { UISearchParamsProvider } from '../queue-control/ui-searchparams-provider';
 import SendClimbToBoardButton from '../board-bluetooth-control/send-climb-to-board-button';
@@ -20,9 +18,6 @@ type BoardSeshHeaderProps = {
   angle?: number;
 };
 export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeaderProps) {
-  const pathname = usePathname();
-  const isList = pathname.endsWith('/list');
-
   return (
     <Header
       style={{
