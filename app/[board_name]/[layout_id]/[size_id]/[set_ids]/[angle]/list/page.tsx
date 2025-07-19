@@ -61,11 +61,11 @@ export default async function DynamicResultsPage(props: {
 
   try {
     const searchParamsObject: SearchRequestPagination = parsedRouteSearchParamsToSearchParams(searchParams);
-
+    
     // For the SSR version we increase the pageSize so it also gets whatever page number
     // is in the search params. Without this, it would load the SSR version of the page on page 2
     // which would then flicker once SWR runs on the client.
-    searchParamsObject.pageSize = (searchParamsObject.page + 1) * searchParamsObject.pageSize;
+    searchParamsObject.pageSize = (Number(searchParamsObject.page) + 1) * Number(searchParamsObject.pageSize);
     searchParamsObject.page = 0;
 
     const [fetchedResults, boardDetails] = await Promise.all([

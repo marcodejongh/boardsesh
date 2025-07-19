@@ -2,15 +2,12 @@ import React from 'react';
 
 import { PropsWithChildren } from 'react';
 
-import SearchColumn from '@/app/components/search-drawer/search-drawer';
-import Col from 'antd/es/col';
-import { Content } from 'antd/es/layout/layout';
-import Row from 'antd/es/row';
 import { BoardRouteParametersWithUuid, ParsedBoardRouteParameters } from '@/app/lib/types';
 import { parseBoardRouteParams, constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import { getBoardDetails } from '@/app/lib/data/queries';
 import { permanentRedirect } from 'next/navigation';
+import ListLayoutClient from './layout-client';
 
 interface LayoutProps {
   params: Promise<BoardRouteParametersWithUuid>;
@@ -55,14 +52,5 @@ export default async function ListLayout(props: PropsWithChildren<LayoutProps>) 
   // Fetch the climbs and board details server-side
   const boardDetails = await getBoardDetails(parsedParams);
 
-  return (
-    <Row gutter={16}>
-      <Col xs={24} md={16}>
-        <Content>{children}</Content>
-      </Col>
-      <Col xs={24} md={8} style={{ marginBottom: '16px' }}>
-        <SearchColumn boardDetails={boardDetails} />
-      </Col>
-    </Row>
-  );
+  return <ListLayoutClient boardDetails={boardDetails}>{children}</ListLayoutClient>;
 }

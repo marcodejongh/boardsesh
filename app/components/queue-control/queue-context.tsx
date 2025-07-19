@@ -2,13 +2,13 @@
 'use client';
 
 import React, { useContext, createContext, ReactNode, useEffect, useCallback } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { v4 as uuidv4 } from 'uuid';
 import { usePeerContext } from '../connection-manager/peer-context';
 import { useQueueReducer } from './reducer';
 import { useQueueDataFetching } from './hooks/use-queue-data-fetching';
 import { QueueContextType, ClimbQueueItem, UserName } from './types';
-import { urlParamsToSearchParams } from '@/app/lib/url-utils';
+import { urlParamsToSearchParams, searchParamsToUrlParams } from '@/app/lib/url-utils';
 import { Climb, ParsedBoardRouteParameters } from '@/app/lib/types';
 import { ReceivedPeerData } from '../connection-manager/types';
 
@@ -28,6 +28,7 @@ const QueueContext = createContext<QueueContextType | undefined>(undefined);
 
 export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const initialSearchParams = urlParamsToSearchParams(searchParams);
   const [state, dispatch] = useQueueReducer(initialSearchParams);
   const { sendData, peerId, subscribeToData, hostId } = usePeerContext();
@@ -188,7 +189,14 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
       });
     },
 
-    setClimbSearchParams: (params) => dispatch({ type: 'SET_CLIMB_SEARCH_PARAMS', payload: params }),
+    setClimbSearchParams: (params) => {
+      dispatch({ type: 'SET_CLIMB_SEARCH_PARAMS', payload: params });
+      
+      // Update URL with new search parameters
+      const urlParams = searchParamsToUrlParams(params);
+      const currentPath = window.location.pathname;
+      router.replace(`${currentPath}?${urlParams.toString()}`);
+    },
 
     mirrorClimb: () => {
       if (!state.currentClimbQueueItem?.climb) {

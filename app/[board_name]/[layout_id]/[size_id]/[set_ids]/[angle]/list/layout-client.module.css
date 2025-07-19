@@ -1,0 +1,47 @@
+.listLayout {
+  background: transparent;
+  height: 100%;
+  position: relative;
+}
+
+.mainContent {
+  background: transparent;
+  padding: 0;
+  margin-right: 0;
+  transition: margin-right 0.2s;
+}
+
+.sider {
+  position: fixed !important;
+  right: 0;
+  top: 8vh; /* Below the header */
+  height: calc(92vh - 64px); /* Full height minus header and queue bar */
+  overflow-y: auto;
+  background: #fff;
+  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.08);
+  display: none;
+}
+
+.siderTabs {
+  padding: 16px;
+}
+
+/* Only show sider on desktop */
+@media (min-width: 768px) {
+  .sider {
+    display: block;
+  }
+  
+  .mainContent {
+    margin-right: 320px; /* Same as sider width */
+  }
+}
+
+/* Ensure tabs fill the sider properly */
+.siderTabs .ant-tabs-content {
+  padding: 0;
+}
+
+.siderTabs .ant-tabs-tabpane {
+  padding-top: 16px;
+}
