@@ -97,7 +97,6 @@ export async function saveAscent(
   // Insert into the intermediate database
   const fullTableName = getTableName(board, 'ascents'); // Replace with your actual table name
 
-
   await sql`
     INSERT INTO ${sql.unsafe(fullTableName)} (
       uuid, climb_uuid, angle, is_mirror, user_id, attempt_id, 
@@ -125,8 +124,8 @@ export async function saveAscent(
     events: [
       {
         _type: 'ascent_saved' as const,
-        ascent: savedAscent
-      }
-    ]
+        ascent: savedAscent,
+      },
+    ],
   };
 }

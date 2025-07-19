@@ -56,7 +56,6 @@ export const kilterClimbStatsRelations = relations(kilterClimbStats, ({ one }) =
   }),
 }));
 
-
 export const kilterClimbsRelations = relations(kilterClimbs, ({ one, many }) => ({
   kilterBids: many(kilterBids),
   kilterLayout: one(kilterLayouts, {
@@ -85,7 +84,6 @@ export const kilterProductsRelations = relations(kilterProducts, ({ many }) => (
   kilterPlacementRoles: many(kilterPlacementRoles),
   kilterWalls: many(kilterWalls),
 }));
-
 
 export const tensionClimbsRelations = relations(tensionClimbs, ({ one, many }) => ({
   tensionBids: many(tensionBids),
@@ -405,10 +403,6 @@ export const tensionAttemptsRelations = relations(tensionAttempts, ({ many }) =>
 export const tensionDifficultyGradesRelations = relations(tensionDifficultyGrades, ({ many }) => ({
   tensionAscents: many(tensionAscents),
 }));
-
-
-
-
 
 export const kilterUserSyncsRelations = relations(kilterUserSyncs, ({ one }) => ({
   kilterUser: one(kilterUsers, {

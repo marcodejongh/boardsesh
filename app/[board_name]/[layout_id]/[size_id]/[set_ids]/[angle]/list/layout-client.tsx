@@ -36,16 +36,8 @@ const ListLayoutClient: React.FC<PropsWithChildren<ListLayoutClientProps>> = ({ 
   return (
     <Layout className={styles.listLayout}>
       <Content className={styles.mainContent}>{children}</Content>
-      <Sider 
-        width={320} 
-        className={styles.sider}
-        theme="light"
-      >
-        <Tabs 
-          defaultActiveKey="search" 
-          items={tabItems} 
-          className={styles.siderTabs}
-        />
+      <Sider width={320} className={styles.sider} theme="light">
+        <Tabs defaultActiveKey="search" items={tabItems} className={styles.siderTabs} />
       </Sider>
     </Layout>
   );

@@ -48,7 +48,6 @@ export default async function ListLayout(props: PropsWithChildren<LayoutProps>) 
     parsedParams = await parseBoardRouteParamsWithSlugs(params);
   }
 
-
   // Fetch the climbs and board details server-side
   const boardDetails = await getBoardDetails(parsedParams);
 

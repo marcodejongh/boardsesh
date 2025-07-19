@@ -28,7 +28,6 @@ const HEATMAP_COLORS = [
   '#d32f2f', // Deep Red
 ];
 
-
 // Helper function to extract angle from pathname
 const getAngleFromPath = (pathname: string): number => {
   const path = pathname.split('/');

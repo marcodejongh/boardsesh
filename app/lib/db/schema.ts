@@ -12,13 +12,11 @@ import {
   index,
 } from 'drizzle-orm/pg-core';
 
-
 export const kilterAttempts = pgTable('kilter_attempts', {
   id: integer().primaryKey().notNull(),
   position: integer(),
   name: text(),
 });
-
 
 export const kilterLayouts = pgTable(
   'kilter_layouts',
@@ -42,7 +40,6 @@ export const kilterLayouts = pgTable(
       .onDelete('cascade'),
   ],
 );
-
 
 export const kilterCircuits = pgTable('kilter_circuits', {
   uuid: text().primaryKey().notNull(),
@@ -88,7 +85,6 @@ export const tensionClimbStatsHistory = pgTable('tension_climb_stats_history', {
   faAt: timestamp('fa_at', { mode: 'string' }),
   createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
 });
-
 
 export const kilterLeds = pgTable(
   'kilter_leds',
@@ -174,7 +170,6 @@ export const kilterProductSizes = pgTable(
   ],
 );
 
-
 export const kilterBids = pgTable(
   'kilter_bids',
   {
@@ -227,7 +222,6 @@ export const kilterHoles = pgTable(
       .onDelete('cascade'),
   ],
 );
-
 
 export const kilterDifficultyGrades = pgTable('kilter_difficulty_grades', {
   difficulty: integer().primaryKey().notNull(),
@@ -366,7 +360,6 @@ export const kilterUsers = pgTable('kilter_users', {
   createdAt: text('created_at'),
 });
 
-
 export const kilterSets = pgTable('kilter_sets', {
   id: integer().primaryKey().notNull(),
   name: text(),
@@ -451,7 +444,6 @@ export const kilterWalls = pgTable(
   ],
 );
 
-
 export const tensionAttempts = pgTable('tension_attempts', {
   id: integer().primaryKey().notNull(),
   position: integer(),
@@ -528,8 +520,6 @@ export const tensionCircuits = pgTable('tension_circuits', {
   createdAt: text('created_at'),
   updatedAt: text('updated_at'),
 });
-
-
 
 export const tensionClimbs = pgTable(
   'tension_climbs',
@@ -687,7 +677,6 @@ export const tensionPlacements = pgTable(
       .onDelete('cascade'),
   ],
 );
-
 
 export const tensionLeds = pgTable(
   'tension_leds',
@@ -900,7 +889,6 @@ export const tensionWalls = pgTable(
   ],
 );
 
-
 export const tensionDifficultyGrades = pgTable('tension_difficulty_grades', {
   difficulty: integer().primaryKey().notNull(),
   boulderName: text('boulder_name'),
@@ -963,11 +951,6 @@ export const tensionUsers = pgTable('tension_users', {
   createdAt: text('created_at'),
 });
 
-
-
-
-
-
 export const kilterCircuitsClimbs = pgTable(
   'kilter_circuits_climbs',
   {
@@ -977,7 +960,6 @@ export const kilterCircuitsClimbs = pgTable(
   },
   () => [],
 );
-
 
 export const kilterUserSyncs = pgTable(
   'kilter_user_syncs',

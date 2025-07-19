@@ -1,11 +1,6 @@
 // aurora-api-client.ts
 
-import {
-  ClientOptions,
-  HOST_BASES,
-  LoginResponse,
-  Session,
-} from './types';
+import { ClientOptions, HOST_BASES, LoginResponse, Session } from './types';
 
 /**
  * Aurora Climbing API Client

@@ -1,6 +1,6 @@
 import React from 'react';
 
-type ClimbInfo = Record<string, never>
+type ClimbInfo = Record<string, never>;
 
 const ClimbInfo: React.FC<ClimbInfo> = () => {
   return (

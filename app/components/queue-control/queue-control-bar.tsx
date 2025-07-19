@@ -36,7 +36,7 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
     if (isListPage && typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches) {
       return;
     }
-    
+
     const newState = !isQueueOpen;
     setIsQueueOpen(newState);
     track('Queue Drawer Toggled', {
@@ -66,9 +66,9 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
           <Col xs={4}>
             {/* Board preview */}
             <div style={boardPreviewContainerStyle}>
-              <ClimbThumbnail 
-                boardDetails={boardDetails} 
-                currentClimb={currentClimb} 
+              <ClimbThumbnail
+                boardDetails={boardDetails}
+                currentClimb={currentClimb}
                 enableNavigation={true}
                 onNavigate={() => setIsQueueOpen(false)}
               />
@@ -77,10 +77,7 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
 
           {/* Clickable main body for opening the queue */}
           <Col xs={11} style={{ textAlign: 'center' }}>
-            <div 
-              onClick={toggleQueueDrawer} 
-              className={`${styles.queueToggle} ${isListPage ? styles.listPage : ''}`}
-            >
+            <div onClick={toggleQueueDrawer} className={`${styles.queueToggle} ${isListPage ? styles.listPage : ''}`}>
               <div
                 style={{
                   display: 'flex',

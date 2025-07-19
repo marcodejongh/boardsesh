@@ -191,7 +191,7 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
 
     setClimbSearchParams: (params) => {
       dispatch({ type: 'SET_CLIMB_SEARCH_PARAMS', payload: params });
-      
+
       // Update URL with new search parameters
       const urlParams = searchParamsToUrlParams(params);
       const currentPath = window.location.pathname;

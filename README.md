@@ -18,6 +18,7 @@ Run the automated setup script:
 ```
 
 This script will:
+
 - ✅ Check all prerequisites (Node.js, Docker, etc.)
 - ✅ Install dependencies
 - ✅ Set up environment files
@@ -41,6 +42,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 ### Keeping local data up to date
 
 Once your server is running, you can manually trigger shared sync by visiting:
+
 - **Kilter**: [http://localhost:3000/api/internal/shared-sync/kilter](http://localhost:3000/api/internal/shared-sync/kilter)
 - **Tension**: [http://localhost:3000/api/internal/shared-sync/tension](http://localhost:3000/api/internal/shared-sync/tension)
 
