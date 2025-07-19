@@ -13,6 +13,7 @@ import { TickButton } from '../logbook/tick-button';
 import ClimbThumbnail from '../climb-card/climb-thumbnail';
 import { AscentStatus } from './queue-list-item';
 import { CopyrightOutlined } from '@ant-design/icons';
+import styles from './queue-control-bar.module.css';
 
 const { Title, Text } = Typography;
 
@@ -27,9 +28,15 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
   const pathname = usePathname();
 
   const isViewPage = pathname.includes('/view/');
+  const isListPage = pathname.includes('/list');
   const { currentClimb, mirrorClimb } = useQueueContext();
 
   const toggleQueueDrawer = () => {
+    // Don't open drawer on desktop when on list page (queue is in sidebar)
+    if (isListPage && typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches) {
+      return;
+    }
+
     const newState = !isQueueOpen;
     setIsQueueOpen(newState);
     track('Queue Drawer Toggled', {
@@ -59,9 +66,9 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
           <Col xs={4}>
             {/* Board preview */}
             <div style={boardPreviewContainerStyle}>
-              <ClimbThumbnail 
-                boardDetails={boardDetails} 
-                currentClimb={currentClimb} 
+              <ClimbThumbnail
+                boardDetails={boardDetails}
+                currentClimb={currentClimb}
                 enableNavigation={true}
                 onNavigate={() => setIsQueueOpen(false)}
               />
@@ -70,7 +77,7 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
 
           {/* Clickable main body for opening the queue */}
           <Col xs={11} style={{ textAlign: 'center' }}>
-            <div onClick={toggleQueueDrawer} style={{ cursor: 'pointer' }}>
+            <div onClick={toggleQueueDrawer} className={`${styles.queueToggle} ${isListPage ? styles.listPage : ''}`}>
               <div
                 style={{
                   display: 'flex',

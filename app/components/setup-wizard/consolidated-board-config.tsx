@@ -1,19 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import {
-  Button,
-  Form,
-  Select,
-  Typography,
-  Input,
-  Divider,
-  Card,
-  Row,
-  Col,
-  Flex,
-  Collapse,
-} from 'antd';
+import { Button, Form, Select, Typography, Input, Divider, Card, Row, Col, Flex, Collapse } from 'antd';
 import { useRouter } from 'next/navigation';
 import { openDB } from 'idb';
 import { track } from '@vercel/analytics';
@@ -109,7 +97,6 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
     }
   };
 
-
   const loadAllConfigurations = async () => {
     try {
       const db = await initDB();
@@ -148,7 +135,6 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
 
     setSuggestedName(`${layoutName} ${sizeName}`);
   }, [selectedBoard, selectedLayout, selectedSize, layouts, sizes]);
-
 
   // Load configurations on mount
   useEffect(() => {
@@ -222,7 +208,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
       if (SUPPORTED_BOARDS.length > 0) {
         setSelectedBoard(SUPPORTED_BOARDS[0] as BoardName);
       }
-      
+
       // Auto-select first angle (40 degrees is already the default)
       // Keep the existing default angle of 40
     }
@@ -236,7 +222,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
       setSelectedSets([]);
       return;
     }
-    
+
     // Auto-select first layout when board changes
     const availableLayouts = boardConfigs.layouts[selectedBoard] || [];
     if (availableLayouts.length > 0) {
@@ -244,7 +230,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
     } else {
       setSelectedLayout(undefined);
     }
-    
+
     setSelectedSize(undefined);
     setSelectedSets([]);
   }, [selectedBoard, boardConfigs]);
@@ -255,7 +241,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
       setSelectedSets([]);
       return;
     }
-    
+
     // Auto-select first size when layout changes
     const availableSizes = boardConfigs.sizes[`${selectedBoard}-${selectedLayout}`] || [];
     if (availableSizes.length > 0) {
@@ -263,7 +249,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
     } else {
       setSelectedSize(undefined);
     }
-    
+
     setSelectedSets([]);
   }, [selectedBoard, selectedLayout, boardConfigs]);
 
@@ -272,10 +258,10 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
       setSelectedSets([]);
       return;
     }
-    
+
     // Auto-select all available sets when size is selected
     const availableSets = boardConfigs.sets[`${selectedBoard}-${selectedLayout}-${selectedSize}`] || [];
-    const allSetIds = availableSets.map(set => set.id);
+    const allSetIds = availableSets.map((set) => set.id);
     setSelectedSets(allSetIds);
   }, [selectedBoard, selectedLayout, selectedSize, boardConfigs]);
 

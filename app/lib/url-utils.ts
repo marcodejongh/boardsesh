@@ -122,6 +122,13 @@ export const parsedRouteSearchParamsToSearchParams = (urlParams: SearchRequestPa
   return {
     ...DEFAULT_SEARCH_PARAMS,
     ...urlParams,
+    gradeAccuracy: Number(urlParams.gradeAccuracy ?? DEFAULT_SEARCH_PARAMS.gradeAccuracy),
+    maxGrade: Number(urlParams.maxGrade ?? DEFAULT_SEARCH_PARAMS.maxGrade),
+    minAscents: Number(urlParams.minAscents ?? DEFAULT_SEARCH_PARAMS.minAscents),
+    minGrade: Number(urlParams.minGrade ?? DEFAULT_SEARCH_PARAMS.minGrade),
+    minRating: Number(urlParams.minRating ?? DEFAULT_SEARCH_PARAMS.minRating),
+    page: Number(urlParams.page ?? DEFAULT_SEARCH_PARAMS.page),
+    pageSize: Number(urlParams.pageSize ?? DEFAULT_SEARCH_PARAMS.pageSize),
   };
 };
 

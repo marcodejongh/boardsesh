@@ -262,7 +262,7 @@ export interface AvatarClear {
 /**
  * Gym details interface
  */
-export type GymDetails = Record<string, never>
+export type GymDetails = Record<string, never>;
 
 /**
  * Wall details interface

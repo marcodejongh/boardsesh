@@ -2,11 +2,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { BoardName, ClimbUuid } from '@/app/lib/types';
 import { IDBPDatabase, openDB } from 'idb';
-import {
-  AscentSavedEvent,
-  LogbookEntry,
-  SaveAscentResponse,
-} from '@/app/lib/api-wrappers/aurora/types';
+import { AscentSavedEvent, LogbookEntry, SaveAscentResponse } from '@/app/lib/api-wrappers/aurora/types';
 import { SaveAscentOptions } from '@/app/lib/api-wrappers/aurora/types';
 import { generateUuid } from '@/app/lib/api-wrappers/aurora/util';
 import { supported_boards } from '../board-renderer/types';

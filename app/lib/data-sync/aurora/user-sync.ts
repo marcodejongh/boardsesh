@@ -1,16 +1,11 @@
 import { getPool } from '@/app/lib/db/db';
 import { BoardName } from '../../types';
 import { userSync } from '../../api-wrappers/aurora/userSync';
-import {
-  SyncOptions,
-  USER_TABLES,
-  UserSyncData,
-} from '../../api-wrappers/aurora/types';
+import { SyncOptions, USER_TABLES, UserSyncData } from '../../api-wrappers/aurora/types';
 import { eq, and, inArray } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/neon-serverless';
 import { NeonDatabase } from 'drizzle-orm/neon-serverless';
 import { getTable } from '../../db/queries/util/table-select';
-
 
 async function upsertTableData(
   db: NeonDatabase<Record<string, never>>,
@@ -291,7 +286,7 @@ export async function getLastSyncTimes(boardName: BoardName, userId: number, tab
   const userSyncsSchema = getTable('userSyncs', boardName);
   const pool = getPool();
   const client = await pool.connect();
-  
+
   try {
     const db = drizzle(client);
     const result = await db
@@ -309,7 +304,7 @@ export async function getLastSharedSyncTimes(boardName: BoardName, tableNames: s
   const sharedSyncsSchema = getTable('sharedSyncs', boardName);
   const pool = getPool();
   const client = await pool.connect();
-  
+
   try {
     const db = drizzle(client);
     const result = await db.select().from(sharedSyncsSchema).where(inArray(sharedSyncsSchema.tableName, tableNames));
@@ -369,10 +364,10 @@ export async function syncUserData(
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
-        
+
         // Create a drizzle instance for this transaction
         const tx = drizzle(client);
-        
+
         // Process each table - data is directly under table names
         for (const tableName of tables) {
           console.log(`Syncing ${tableName} for user ${userId} (batch ${syncAttempts})`);
@@ -395,11 +390,13 @@ export async function syncUserData(
           await updateUserSyncs(tx, board, syncResults['user_syncs']);
 
           // Update sync params for next iteration with new timestamps
-          const newUserSyncs = syncResults['user_syncs'].map((sync: {table_name: string; last_synchronized_at: string}) => ({
-            table_name: sync.table_name,
-            last_synchronized_at: sync.last_synchronized_at,
-            user_id: Number(userId),
-          }));
+          const newUserSyncs = syncResults['user_syncs'].map(
+            (sync: { table_name: string; last_synchronized_at: string }) => ({
+              table_name: sync.table_name,
+              last_synchronized_at: sync.last_synchronized_at,
+              user_id: Number(userId),
+            }),
+          );
 
           currentSyncParams = {
             ...currentSyncParams,

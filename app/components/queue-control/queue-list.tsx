@@ -42,7 +42,7 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails, onClimbNavigate }) 
 
         const edge = extractClosestEdge(target.data);
         let finalIndex = edge === 'bottom' ? targetIndex + 1 : targetIndex;
-        
+
         // Adjust for the fact that removing the source item shifts indices
         if (sourceIndex < finalIndex) {
           finalIndex = finalIndex - 1;
@@ -100,33 +100,31 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails, onClimbNavigate }) 
                     {/* Empty space to maintain layout consistency */}
                   </Col>
                   <Col xs={5} sm={5}>
-                    <ClimbThumbnail 
-                      boardDetails={boardDetails} 
-                      currentClimb={climb} 
+                    <ClimbThumbnail
+                      boardDetails={boardDetails}
+                      currentClimb={climb}
                       enableNavigation={true}
                       onNavigate={onClimbNavigate}
                     />
                   </Col>
                   <Col xs={14} sm={16}>
                     <List.Item.Meta
-                      title={<Text ellipsis strong>{climb.name}</Text>}
+                      title={
+                        <Text ellipsis strong>
+                          {climb.name}
+                        </Text>
+                      }
                       description={
                         <Text type="secondary" ellipsis>
-                          {climb.difficulty && climb.quality_average ? (
-                            `${climb.difficulty} ${climb.quality_average}★ @ ${climb.angle}°`
-                          ) : (
-                            `project @ ${climb.angle}°`
-                          )}
+                          {climb.difficulty && climb.quality_average
+                            ? `${climb.difficulty} ${climb.quality_average}★ @ ${climb.angle}°`
+                            : `project @ ${climb.angle}°`}
                         </Text>
                       }
                     />
                   </Col>
                   <Col xs={3} sm={2}>
-                    <Button
-                      type="default"
-                      icon={<PlusOutlined />}
-                      onClick={() => addToQueue(climb)}
-                    />
+                    <Button type="default" icon={<PlusOutlined />} onClick={() => addToQueue(climb)} />
                   </Col>
                 </Row>
               </List.Item>

@@ -37,14 +37,10 @@ export default function AngleSelector({ boardName, currentAngle }: AngleSelector
 
   return (
     <>
-      <Button 
-        type="default"
-        onClick={() => setIsDrawerOpen(true)}
-        style={{ minWidth: '45px', padding: '4px 8px' }}
-      >
+      <Button type="default" onClick={() => setIsDrawerOpen(true)} style={{ minWidth: '45px', padding: '4px 8px' }}>
         {currentAngle}°
       </Button>
-      
+
       <Drawer
         title="Select Angle"
         placement="right"
@@ -63,10 +59,7 @@ export default function AngleSelector({ boardName, currentAngle }: AngleSelector
                   borderColor: angle === currentAngle ? '#1890ff' : undefined,
                 }}
               >
-                <Card.Meta
-                  title={`${angle}°`}
-                  description="Click to select this angle"
-                />
+                <Card.Meta title={`${angle}°`} description="Click to select this angle" />
               </Card>
             </Col>
           ))}

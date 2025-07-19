@@ -28,17 +28,15 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
       }}
     >
       <UISearchParamsProvider>
-        <Flex justify="space-between" align="center" style={{ width: '100%' }} gap={7}> 
+        <Flex justify="space-between" align="center" style={{ width: '100%' }} gap={7}>
           {/* Logo - Fixed to left */}
           <Flex>
-              <Title level={4} style={{ margin: 0, lineHeight: '1.2', whiteSpace: 'nowrap' }}>
-                <Link href="/" style={{ textDecoration: 'none', color: 'inherit' }}>
-                  BS
-                </Link>
-              </Title>
-            </Flex>   
-            
-            
+            <Title level={4} style={{ margin: 0, lineHeight: '1.2', whiteSpace: 'nowrap' }}>
+              <Link href="/" style={{ textDecoration: 'none', color: 'inherit' }}>
+                BS
+              </Link>
+            </Title>
+          </Flex>
 
           {/* Center Section - Mobile only */}
           <Flex justify="center" gap={2}>
@@ -52,14 +50,12 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
 
           {/* Right Section */}
           <Flex gap={4} align="center">
-            
             {angle !== undefined && <AngleSelector boardName={boardDetails.board_name} currentAngle={angle} />}
             <ShareBoardButton />
             <SendClimbToBoardButton boardDetails={boardDetails} />
           </Flex>
         </Flex>
       </UISearchParamsProvider>
-      
     </Header>
   );
 }

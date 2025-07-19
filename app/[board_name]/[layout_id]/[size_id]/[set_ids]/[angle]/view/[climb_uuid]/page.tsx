@@ -37,10 +37,7 @@ export async function generateMetadata(props: { params: Promise<BoardRouteParame
     const climbUrl = constructClimbViewUrl(parsedParams, parsedParams.climb_uuid, climbName);
 
     // Generate OG image URL - use parsed numeric IDs for better performance
-    const ogImageUrl = new URL(
-      '/api/og/climb',
-      'https://boardsesh.com'
-    );
+    const ogImageUrl = new URL('/api/og/climb', 'https://boardsesh.com');
     ogImageUrl.searchParams.set('board_name', parsedParams.board_name);
     ogImageUrl.searchParams.set('layout_id', parsedParams.layout_id.toString());
     ogImageUrl.searchParams.set('size_id', parsedParams.size_id.toString());

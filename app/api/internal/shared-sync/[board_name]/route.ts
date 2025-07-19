@@ -12,8 +12,11 @@ const CRON_SECRET = process.env.CRON_SECRET;
 const internalSyncSharedData = async (
   board_name: BoardName,
   token: string,
-  previousResults: { results: Record<string, { synced: number; complete: boolean }>, complete: boolean } = { results: {},  complete: false },
-  recursionCount = 0
+  previousResults: { results: Record<string, { synced: number; complete: boolean }>; complete: boolean } = {
+    results: {},
+    complete: false,
+  },
+  recursionCount = 0,
 ) => {
   console.log(`Recursion count: ${recursionCount}`);
   if (recursionCount >= 100) {
@@ -22,15 +25,15 @@ const internalSyncSharedData = async (
   }
 
   const currentResult = await syncSharedDataFunction(board_name, token);
-  
+
   // If this is the first run, just return the current result
 
   // Deep merge the results, adding up synced counts
-  const mergedResults: { results: Record<string, { synced: number; complete: boolean }>, complete: boolean } = { results: {}, complete: false };
-  const categories = new Set([
-    ...Object.keys(previousResults.results),
-    ...Object.keys(currentResult.results)
-  ]);
+  const mergedResults: { results: Record<string, { synced: number; complete: boolean }>; complete: boolean } = {
+    results: {},
+    complete: false,
+  };
+  const categories = new Set([...Object.keys(previousResults.results), ...Object.keys(currentResult.results)]);
 
   for (const category of categories) {
     if (category === 'complete') {
@@ -43,7 +46,7 @@ const internalSyncSharedData = async (
 
     mergedResults.results[category] = {
       synced: prev.synced + curr.synced,
-      complete: curr.complete
+      complete: curr.complete,
     };
   }
 

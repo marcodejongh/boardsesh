@@ -144,9 +144,9 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
             </DragHandleButton>
           </Col>
           <Col xs={5} sm={5}>
-            <ClimbThumbnail 
-              boardDetails={boardDetails} 
-              currentClimb={item.climb} 
+            <ClimbThumbnail
+              boardDetails={boardDetails}
+              currentClimb={item.climb}
               enableNavigation={true}
               onNavigate={onClimbNavigate}
             />
@@ -177,11 +177,9 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
                     textOverflow: 'ellipsis',
                   }}
                 >
-                  {item.climb.difficulty && item.climb.quality_average ? (
-                    `${item.climb.difficulty} ${item.climb.quality_average}★ @ ${item.climb.angle}°`
-                  ) : (
-                    `project @ ${item.climb.angle}°`
-                  )}
+                  {item.climb.difficulty && item.climb.quality_average
+                    ? `${item.climb.difficulty} ${item.climb.quality_average}★ @ ${item.climb.angle}°`
+                    : `project @ ${item.climb.angle}°`}
                   {item.climb.benchmark_difficulty && <CopyrightOutlined style={{ marginLeft: 4 }} />}
                 </Text>
               }

@@ -52,7 +52,6 @@ export default function BoardConfigLivePreview({
         const detailsKey = `${safeBoardName}-${safeLayoutId}-${safeSizeId}-${setIds.join(',')}`;
         const cachedDetails = boardConfigs.details[detailsKey];
 
-
         // Use cached details if available, otherwise fetch
         let details = cachedDetails;
         if (!details) {
