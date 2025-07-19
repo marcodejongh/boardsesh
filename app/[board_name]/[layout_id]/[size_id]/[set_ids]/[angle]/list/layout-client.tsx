@@ -2,11 +2,14 @@
 
 import React from 'react';
 import { PropsWithChildren } from 'react';
-import { Layout, Tabs } from 'antd';
+import { Layout, Tabs, Badge } from 'antd';
 import { BoardDetails } from '@/app/lib/types';
-import SearchForm from '@/app/components/search-drawer/search-form';
+import BasicSearchForm from '@/app/components/search-drawer/basic-search-form';
+import ClimbHoldSearchForm from '@/app/components/search-drawer/climb-hold-search-form';
+import SearchResultsFooter from '@/app/components/search-drawer/search-results-footer';
 import QueueList from '@/app/components/queue-control/queue-list';
 import { UISearchParamsProvider } from '@/app/components/queue-control/ui-searchparams-provider';
+import { useQueueContext } from '@/app/components/queue-control/queue-context';
 import styles from './layout-client.module.css';
 
 const { Content, Sider } = Layout;
@@ -15,29 +18,63 @@ interface ListLayoutClientProps {
   boardDetails: BoardDetails;
 }
 
-const ListLayoutClient: React.FC<PropsWithChildren<ListLayoutClientProps>> = ({ boardDetails, children }) => {
+const TabsWrapper: React.FC<{ boardDetails: BoardDetails }> = ({ boardDetails }) => {
+  const { queue } = useQueueContext();
+
   const tabItems = [
+    {
+      key: 'queue',
+      label: (
+        <Badge
+          count={queue.length}
+          overflowCount={99}
+          showZero={false}
+          size="small"
+          color="cyan"
+          offset={[8, -2]}
+        >
+          Queue
+        </Badge>
+      ),
+      children: <QueueList boardDetails={boardDetails} />,
+    },
     {
       key: 'search',
       label: 'Search',
       children: (
-        <UISearchParamsProvider>
-          <SearchForm boardDetails={boardDetails} />
-        </UISearchParamsProvider>
+        <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ flex: 1, overflow: 'auto' }}>
+            <BasicSearchForm />
+          </div>
+          <SearchResultsFooter />
+        </div>
       ),
     },
     {
-      key: 'queue',
-      label: 'Queue',
-      children: <QueueList boardDetails={boardDetails} />,
+      key: 'holds',
+      label: 'Search by Hold',
+      children: (
+        <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ flex: 1, overflow: 'auto' }}>
+            <ClimbHoldSearchForm boardDetails={boardDetails} />
+          </div>
+          <SearchResultsFooter />
+        </div>
+      ),
     },
   ];
 
+  return <Tabs defaultActiveKey="queue" items={tabItems} className={styles.siderTabs} />;
+};
+
+const ListLayoutClient: React.FC<PropsWithChildren<ListLayoutClientProps>> = ({ boardDetails, children }) => {
   return (
     <Layout className={styles.listLayout}>
       <Content className={styles.mainContent}>{children}</Content>
-      <Sider width={320} className={styles.sider} theme="light">
-        <Tabs defaultActiveKey="search" items={tabItems} className={styles.siderTabs} />
+      <Sider width={400} className={styles.sider} theme="light" style={{ padding: '20px'}}>
+        <UISearchParamsProvider>
+          <TabsWrapper boardDetails={boardDetails} />
+        </UISearchParamsProvider>
       </Sider>
     </Layout>
   );

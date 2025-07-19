@@ -13,7 +13,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ boardDetails }) => {
   const items = [
     {
       key: 'filters',
-      label: 'Filters',
+      label: 'Search',
       children: <BasicSearchForm />,
     },
     {

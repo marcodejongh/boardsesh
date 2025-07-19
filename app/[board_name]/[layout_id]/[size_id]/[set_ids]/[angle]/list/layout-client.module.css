@@ -23,7 +23,16 @@
 }
 
 .siderTabs {
-  padding: 16px;
+  padding: 0;
+}
+
+.siderTabs .ant-tabs-nav {
+  padding: 0 16px;
+  margin-bottom: 0;
+}
+
+.siderTabs .ant-tabs-content-holder {
+  padding: 0 16px 16px 16px;
 }
 
 /* Only show sider on desktop */
@@ -33,7 +42,7 @@
   }
 
   .mainContent {
-    margin-right: 320px; /* Same as sider width */
+    margin-right: 400px; /* Same as sider width */
   }
 }
 
@@ -43,5 +52,6 @@
 }
 
 .siderTabs .ant-tabs-tabpane {
-  padding-top: 16px;
+  padding: 0;
+  height: 100%;
 }

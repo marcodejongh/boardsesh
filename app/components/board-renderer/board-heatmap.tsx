@@ -1,3 +1,4 @@
+'use client';
 import React, { useEffect, useMemo, useState } from 'react';
 import { getImageUrl } from './util';
 import { BoardDetails } from '@/app/lib/types';
