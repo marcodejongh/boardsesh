@@ -6,9 +6,9 @@ import { SearchRequestPagination, Climb } from '@/app/lib/types';
 const mockClimb: Climb = {
   uuid: 'climb-1',
   board_name: 'kilter',
-  layout_id: 1,
-  size_id: 1,
-  set_ids: [1],
+  layout_id: '1',
+  size_id: '1',
+  set_ids: ['1'],
   angle: 40,
   name: 'Test Climb',
   description: 'A test climb',
@@ -45,7 +45,7 @@ const mockClimbQueueItem: ClimbQueueItem = {
 const mockSearchParams: SearchRequestPagination = {
   page: 1,
   pageSize: 20,
-  sortBy: 'quality_average',
+  sortBy: 'quality',
   sortDirection: 'desc'
 };
 

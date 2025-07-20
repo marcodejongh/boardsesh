@@ -60,18 +60,18 @@ const mockUsePeerContext = vi.mocked(usePeerContext);
 
 const mockParsedParams: ParsedBoardRouteParameters = {
   board_name: 'kilter',
-  layout_id: 1,
-  size_id: 1,
-  set_ids: [1],
+  layout_id: '1',
+  size_id: '1',
+  set_ids: ['1'],
   angle: 40
 };
 
 const mockClimb: Climb = {
   uuid: 'climb-1',
   board_name: 'kilter',
-  layout_id: 1,
-  size_id: 1,
-  set_ids: [1],
+  layout_id: '1',
+  size_id: '1',
+  set_ids: ['1'],
   angle: 40,
   name: 'Test Climb',
   description: 'A test climb',
