@@ -20,7 +20,7 @@ const createMockDataConnection = (peer: string): DataConnection => ({
   reliable: true,
   label: 'data',
   type: 'data'
-} as DataConnection);
+} as unknown as DataConnection);
 
 // Helper to create a proper mock PeerConnection with all required fields
 const createMockPeerConnection = (
@@ -78,7 +78,7 @@ describe('peerReducer', () => {
     it('should set the peer instance', () => {
       const action: PeerAction = {
         type: 'SET_PEER',
-        payload: mockPeer
+        payload: mockPeer as unknown as boolean
       };
 
       const result = peerReducer(initialPeerState, action);
@@ -543,7 +543,7 @@ describe('peerReducer', () => {
 
   describe('unknown action', () => {
     it('should return unchanged state for unknown action', () => {
-      const unknownAction = { type: 'UNKNOWN_ACTION' } as PeerAction;
+      const unknownAction = { type: 'UNKNOWN_ACTION', payload: null } as unknown as PeerAction;
 
       const result = peerReducer(initialPeerState, unknownAction);
 

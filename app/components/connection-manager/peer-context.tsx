@@ -403,7 +403,7 @@ export const PeerProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (proposedLeader === currentState.peerId) {
           sendData({
             type: 'leader-announcement',
-            leaderId: currentState.peerId,
+            leaderId: currentState.peerId || '',
             timestamp: Date.now(),
           });
         }

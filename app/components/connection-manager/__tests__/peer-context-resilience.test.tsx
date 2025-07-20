@@ -41,7 +41,7 @@ const mockDataConnection = (peerId: string): Partial<DataConnection> => ({
   metadata: {},
   connectionId: `conn-${peerId}`,
   label: 'data',
-  type: 'data'
+  type: 'data' as const
 });
 
 vi.mock('peerjs', () => {
