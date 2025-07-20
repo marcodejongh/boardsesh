@@ -1,5 +1,5 @@
 'use client';
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { BoardName, ClimbUuid } from '@/app/lib/types';
 import { IDBPDatabase, openDB } from 'idb';
 import { AscentSavedEvent, LogbookEntry, SaveAscentResponse } from '@/app/lib/api-wrappers/aurora/types';
@@ -196,7 +196,7 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
     }
   };
 
-  const getLogbook = async (climbUuids: ClimbUuid[]) => {
+  const getLogbook = useCallback(async (climbUuids: ClimbUuid[]) => {
     try {
       setCurrentClimbUuids(climbUuids); // Store the current climb UUIDs
 
@@ -229,13 +229,13 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
       setLogbook([]); // Clear logbook on error
       throw error;
     }
-  };
+  }, [authState, boardName]);
 
   useEffect(() => {
     if (currentClimbUuids.length > 0) {
       getLogbook(currentClimbUuids);
     }
-  }, [authState.token, authState.user_id]);
+  }, [authState.token, authState.user_id, currentClimbUuids, getLogbook]);
 
   // Then update the saveAscent function
   const saveAscent = async (options: Omit<SaveAscentOptions, 'uuid'>) => {

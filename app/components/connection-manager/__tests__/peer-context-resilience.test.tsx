@@ -300,7 +300,7 @@ describe('PeerContext Resilience Tests', () => {
 
   describe('Reconnection Logic', () => {
     it('should attempt reconnection with exponential backoff', async () => {
-      const { result } = renderHook(() => usePeerContext(), {
+      renderHook(() => usePeerContext(), {
         wrapper: ({ children }) => <PeerProvider>{children}</PeerProvider>
       });
 
@@ -345,7 +345,7 @@ describe('PeerContext Resilience Tests', () => {
     });
 
     it('should stop reconnection attempts after max retries', async () => {
-      const { result } = renderHook(() => usePeerContext(), {
+      renderHook(() => usePeerContext(), {
         wrapper: ({ children }) => <PeerProvider>{children}</PeerProvider>
       });
 
@@ -412,7 +412,7 @@ describe('PeerContext Resilience Tests', () => {
 
       // Add peer-2
       const mockConn2 = mockDataConnection('peer-2') as DataConnection;
-      mockConn2.on = vi.fn().mockImplementation((event: string, cb: any) => {
+      mockConn2.on = vi.fn().mockImplementation((event: string, cb: (data?: unknown) => void) => {
         if (event === 'open') cb();
       });
 
@@ -422,7 +422,7 @@ describe('PeerContext Resilience Tests', () => {
 
       // Add peer-3
       const mockConn3 = mockDataConnection('peer-3') as DataConnection;
-      mockConn3.on = vi.fn().mockImplementation((event: string, cb: any) => {
+      mockConn3.on = vi.fn().mockImplementation((event: string, cb: (data?: unknown) => void) => {
         if (event === 'open') cb();
       });
 

@@ -44,7 +44,7 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boar
       quality: 3,
     });
     setIsMirrored(!!currentClimb?.mirrored);
-  }, [currentClimb, form]);
+  }, [currentClimb, form, grades]);
 
   const handleMirrorToggle = () => {
     setIsMirrored((prev) => !prev);

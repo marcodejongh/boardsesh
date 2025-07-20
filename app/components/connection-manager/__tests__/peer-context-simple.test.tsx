@@ -141,7 +141,7 @@ describe('PeerProvider Basic Tests', () => {
       const [subscribed, setSubscribed] = React.useState(false);
       
       React.useEffect(() => {
-        const unsubscribe = context.subscribeToData((data) => {
+        const unsubscribe = context.subscribeToData(() => {
           // Mock callback
         });
         
