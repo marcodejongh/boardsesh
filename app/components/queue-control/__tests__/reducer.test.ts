@@ -5,34 +5,21 @@ import { SearchRequestPagination, Climb } from '@/app/lib/types';
 
 const mockClimb: Climb = {
   uuid: 'climb-1',
-  board_name: 'kilter',
-  layout_id: '1',
-  size_id: '1',
-  set_ids: ['1'],
-  angle: 40,
+  setter_username: 'setter1',
   name: 'Test Climb',
   description: 'A test climb',
-  fa: 'Test FA',
-  fa_at: '2023-01-01',
-  frames: [],
-  difficulty: 7,
-  quality_average: 3.5,
-  quality_ratings: [3, 4],
-  quality_count: 2,
+  frames: '',
+  angle: 40,
   ascensionist_count: 5,
-  difficulty_average: 7.2,
-  is_benchmark: false,
-  is_listed: true,
+  difficulty: '7',
+  quality_average: '3.5',
+  stars: 3,
+  difficulty_error: '',
+  litUpHoldsMap: {},
   mirrored: false,
-  created_at: '2023-01-01',
-  setter_username: 'setter1',
-  climb_stats: null,
-  climb_hold_positions: [],
-  setter_id: 1,
-  edge_left: 0,
-  edge_right: 12,
-  edge_bottom: 0,
-  edge_top: 18
+  benchmark_difficulty: null,
+  userAscents: 0,
+  userAttempts: 0
 };
 
 const mockClimbQueueItem: ClimbQueueItem = {
@@ -45,8 +32,18 @@ const mockClimbQueueItem: ClimbQueueItem = {
 const mockSearchParams: SearchRequestPagination = {
   page: 1,
   pageSize: 20,
+  gradeAccuracy: 1,
+  maxGrade: 18,
+  minAscents: 1,
+  minGrade: 1,
+  minRating: 1,
   sortBy: 'quality',
-  sortOrder: 'desc'
+  sortOrder: 'desc',
+  name: '',
+  onlyClassics: false,
+  settername: '',
+  setternameSuggestion: '',
+  holdsFilter: {}
 };
 
 const initialState: QueueState = {
@@ -276,8 +273,18 @@ describe('queueReducer', () => {
       const newParams: SearchRequestPagination = {
         page: 2,
         pageSize: 10,
+        gradeAccuracy: 1,
+        maxGrade: 18,
+        minAscents: 1,
+        minGrade: 1,
+        minRating: 1,
         sortBy: 'difficulty',
-        sortOrder: 'asc'
+        sortOrder: 'asc',
+        name: '',
+        onlyClassics: false,
+        settername: '',
+        setternameSuggestion: '',
+        holdsFilter: {}
       };
 
       const action: QueueAction = {
@@ -439,7 +446,7 @@ describe('queueReducer', () => {
 
   describe('default case', () => {
     it('should return unchanged state for unknown action', () => {
-      const unknownAction = { type: 'UNKNOWN_ACTION' } as QueueAction;
+      const unknownAction = { type: 'UNKNOWN_ACTION' } as unknown as QueueAction;
 
       const result = queueReducer(initialState, unknownAction);
 

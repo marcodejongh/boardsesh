@@ -78,7 +78,7 @@ describe('peerReducer', () => {
     it('should set the peer instance', () => {
       const action: PeerAction = {
         type: 'SET_PEER',
-        payload: mockPeer as unknown as boolean
+        payload: mockPeer as any
       };
 
       const result = peerReducer(initialPeerState, action);
@@ -292,7 +292,9 @@ describe('peerReducer', () => {
       const connection: PeerConnection = {
         connection: createMockDataConnection('target-peer'),
         state: 'CONNECTING',
-        isHost: false
+        isHost: false,
+        health: 'HEALTHY',
+        reconnectAttempts: 0
       };
 
       const stateWithConnection: PeerState = {

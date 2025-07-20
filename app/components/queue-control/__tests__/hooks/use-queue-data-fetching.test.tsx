@@ -46,48 +46,45 @@ const mockUseBoardProvider = vi.mocked(useBoardProvider);
 
 const mockClimb: Climb = {
   uuid: 'climb-1',
-  board_name: 'kilter',
-  layout_id: '1',
-  size_id: '1',
-  set_ids: ['1'],
-  angle: 40,
+  setter_username: 'setter1',
   name: 'Test Climb',
   description: 'A test climb',
-  fa: 'Test FA',
-  fa_at: '2023-01-01',
   frames: '',
+  angle: 40,
+  ascensionist_count: 5,
   difficulty: '7',
   quality_average: '3.5',
-  quality_ratings: [3, 4],
-  quality_count: 2,
-  ascensionist_count: 5,
-  difficulty_average: 7.2,
-  is_benchmark: false,
-  is_listed: true,
+  stars: 3,
+  difficulty_error: '',
+  litUpHoldsMap: {},
   mirrored: false,
-  created_at: '2023-01-01',
-  setter_username: 'setter1',
-  climb_stats: null,
-  climb_hold_positions: [],
-  setter_id: 1,
-  edge_left: 0,
-  edge_right: 12,
-  edge_bottom: 0,
-  edge_top: 18
+  benchmark_difficulty: null,
+  userAscents: 0,
+  userAttempts: 0
 };
 
 const mockSearchParams: SearchRequestPagination = {
   page: 1,
   pageSize: 20,
+  gradeAccuracy: 1,
+  maxGrade: 18,
+  minAscents: 1,
+  minGrade: 1,
+  minRating: 1,
   sortBy: 'quality',
-  sortDirection: 'desc'
+  sortOrder: 'desc',
+  name: '',
+  onlyClassics: false,
+  settername: '',
+  setternameSuggestion: '',
+  holdsFilter: {}
 };
 
 const mockParsedParams: ParsedBoardRouteParameters = {
-  board_name: 'kilter',
-  layout_id: '1',
-  size_id: '1',
-  set_ids: ['1'],
+  board_name: 'kilter' as any,
+  layout_id: 1,
+  size_id: 1,
+  set_ids: [1] as any,
   angle: 40
 };
 
@@ -227,10 +224,13 @@ describe('useQueueDataFetching', () => {
 
   it('should handle empty search results', () => {
     mockUseSWRInfinite.mockReturnValue({
-      data: null,
+      data: undefined,
       size: 1,
       setSize: mockSetSize,
-      isLoading: false
+      isLoading: false,
+      mutate: vi.fn(),
+      error: undefined,
+      isValidating: false
     });
 
     const { result } = renderHook(() =>
@@ -276,7 +276,10 @@ describe('useQueueDataFetching', () => {
       ],
       size: 1,
       setSize: mockSetSize,
-      isLoading: false
+      isLoading: false,
+      mutate: vi.fn(),
+      error: undefined,
+      isValidating: false
     });
 
     const { result } = renderHook(() =>
@@ -302,7 +305,10 @@ describe('useQueueDataFetching', () => {
       ],
       size: 1,
       setSize: mockSetSize,
-      isLoading: false
+      isLoading: false,
+      mutate: vi.fn(),
+      error: undefined,
+      isValidating: false
     });
 
     const { result } = renderHook(() =>

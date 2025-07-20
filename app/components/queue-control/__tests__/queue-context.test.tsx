@@ -59,43 +59,30 @@ const mockRouter = {
 const mockUsePeerContext = vi.mocked(usePeerContext);
 
 const mockParsedParams: ParsedBoardRouteParameters = {
-  board_name: 'kilter',
-  layout_id: '1',
-  size_id: '1',
-  set_ids: ['1'],
+  board_name: 'kilter' as any,
+  layout_id: 1,
+  size_id: 1,
+  set_ids: [1] as any,
   angle: 40
 };
 
 const mockClimb: Climb = {
   uuid: 'climb-1',
-  board_name: 'kilter',
-  layout_id: '1',
-  size_id: '1',
-  set_ids: ['1'],
-  angle: 40,
+  setter_username: 'setter1',
   name: 'Test Climb',
   description: 'A test climb',
-  fa: 'Test FA',
-  fa_at: '2023-01-01',
-  frames: [],
-  difficulty: 7,
-  quality_average: 3.5,
-  quality_ratings: [3, 4],
-  quality_count: 2,
+  frames: '',
+  angle: 40,
   ascensionist_count: 5,
-  difficulty_average: 7.2,
-  is_benchmark: false,
-  is_listed: true,
+  difficulty: '7',
+  quality_average: '3.5',
+  stars: 3,
+  difficulty_error: '',
+  litUpHoldsMap: {},
   mirrored: false,
-  created_at: '2023-01-01',
-  setter_username: 'setter1',
-  climb_stats: null,
-  climb_hold_positions: [],
-  setter_id: 1,
-  edge_left: 0,
-  edge_right: 12,
-  edge_bottom: 0,
-  edge_top: 18
+  benchmark_difficulty: null,
+  userAscents: 0,
+  userAttempts: 0
 };
 
 const TestComponent = () => {
@@ -140,7 +127,14 @@ describe('QueueProvider', () => {
       sendData: vi.fn(),
       peerId: 'test-peer-id',
       subscribeToData: vi.fn(() => vi.fn()),
-      hostId: null
+      hostId: null,
+      connections: [],
+      connectToPeer: vi.fn(),
+      isConnecting: false,
+      hasConnected: false,
+      currentLeader: null,
+      isLeader: false,
+      initiateLeaderElection: vi.fn()
     });
   });
 
@@ -241,7 +235,14 @@ describe('QueueProvider with peer functionality', () => {
       sendData: mockSendData,
       peerId: 'test-peer-id',
       subscribeToData: mockSubscribeToData,
-      hostId: 'host-id'
+      hostId: 'host-id',
+      connections: [],
+      connectToPeer: vi.fn(),
+      isConnecting: false,
+      hasConnected: false,
+      currentLeader: null,
+      isLeader: false,
+      initiateLeaderElection: vi.fn()
     });
   });
 
@@ -346,7 +347,14 @@ describe('QueueProvider utility functions', () => {
       sendData: vi.fn(),
       peerId: 'test-peer-id',
       subscribeToData: vi.fn(() => vi.fn()),
-      hostId: null
+      hostId: null,
+      connections: [],
+      connectToPeer: vi.fn(),
+      isConnecting: false,
+      hasConnected: false,
+      currentLeader: null,
+      isLeader: false,
+      initiateLeaderElection: vi.fn()
     });
   });
 
