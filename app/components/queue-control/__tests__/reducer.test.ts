@@ -46,7 +46,7 @@ const mockSearchParams: SearchRequestPagination = {
   page: 1,
   pageSize: 20,
   sortBy: 'quality',
-  sortDirection: 'desc'
+  sortOrder: 'desc'
 };
 
 const initialState: QueueState = {
@@ -277,7 +277,7 @@ describe('queueReducer', () => {
         page: 2,
         pageSize: 10,
         sortBy: 'difficulty',
-        sortDirection: 'asc'
+        sortOrder: 'asc'
       };
 
       const action: QueueAction = {
