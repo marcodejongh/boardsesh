@@ -38,6 +38,13 @@ jobs:
         SKIP_ENV_VALIDATION: true
         # Required for Next.js build
         NODE_ENV: production
+        # Mock database credentials for build
+        POSTGRES_HOST: localhost
+        POSTGRES_PORT: 5432
+        POSTGRES_USER: test
+        POSTGRES_PASSWORD: test
+        POSTGRES_DATABASE: test
+        IS_CI: true
 
   test-coverage:
     runs-on: ubuntu-latest
@@ -57,6 +64,14 @@ jobs:
     
     - name: Run tests with coverage
       run: npm run test:run -- --coverage
+      env:
+        # Mock database credentials for tests
+        POSTGRES_HOST: localhost
+        POSTGRES_PORT: 5432
+        POSTGRES_USER: test
+        POSTGRES_PASSWORD: test
+        POSTGRES_DATABASE: test
+        IS_CI: true
     
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
