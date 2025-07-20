@@ -47,17 +47,17 @@ const mockUseBoardProvider = vi.mocked(useBoardProvider);
 const mockClimb: Climb = {
   uuid: 'climb-1',
   board_name: 'kilter',
-  layout_id: 1,
-  size_id: 1,
-  set_ids: [1],
+  layout_id: '1',
+  size_id: '1',
+  set_ids: ['1'],
   angle: 40,
   name: 'Test Climb',
   description: 'A test climb',
   fa: 'Test FA',
   fa_at: '2023-01-01',
-  frames: [],
-  difficulty: 7,
-  quality_average: 3.5,
+  frames: '',
+  difficulty: '7',
+  quality_average: '3.5',
   quality_ratings: [3, 4],
   quality_count: 2,
   ascensionist_count: 5,
@@ -79,15 +79,15 @@ const mockClimb: Climb = {
 const mockSearchParams: SearchRequestPagination = {
   page: 1,
   pageSize: 20,
-  sortBy: 'quality_average',
+  sortBy: 'quality',
   sortDirection: 'desc'
 };
 
 const mockParsedParams: ParsedBoardRouteParameters = {
   board_name: 'kilter',
-  layout_id: 1,
-  size_id: 1,
-  set_ids: [1],
+  layout_id: '1',
+  size_id: '1',
+  set_ids: ['1'],
   angle: 40
 };
 
@@ -102,7 +102,19 @@ describe('useQueueDataFetching', () => {
     vi.clearAllMocks();
     
     mockUseBoardProvider.mockReturnValue({
-      getLogbook: mockGetLogbook
+      isAuthenticated: true,
+      token: 'mock-token',
+      user_id: 123,
+      username: 'testuser',
+      login: vi.fn(),
+      logout: vi.fn(),
+      isLoading: false,
+      error: null,
+      isInitialized: true,
+      getLogbook: mockGetLogbook,
+      logbook: [],
+      saveAscent: vi.fn(),
+      boardName: 'kilter'
     });
 
     mockUseSWRInfinite.mockReturnValue({
@@ -114,7 +126,10 @@ describe('useQueueDataFetching', () => {
       ],
       size: 1,
       setSize: mockSetSize,
-      isLoading: false
+      isLoading: false,
+      mutate: vi.fn(),
+      error: undefined,
+      isValidating: false
     });
   });
 
