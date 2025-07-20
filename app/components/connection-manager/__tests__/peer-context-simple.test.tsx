@@ -62,7 +62,7 @@ const TestComponent = () => {
 describe('PeerProvider Basic Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (useSearchParams as any).mockReturnValue(mockSearchParams);
+    (useSearchParams as ReturnType<typeof vi.fn>).mockReturnValue(mockSearchParams);
     mockSearchParams.get.mockReturnValue(null);
   });
 
@@ -80,7 +80,7 @@ describe('PeerProvider Basic Tests', () => {
   });
 
   it('should handle hostId from URL params', () => {
-    mockSearchParams.get.mockImplementation((key) => {
+    mockSearchParams.get.mockImplementation((key: string) => {
       if (key === 'hostId') return 'url-host-id';
       return null;
     });

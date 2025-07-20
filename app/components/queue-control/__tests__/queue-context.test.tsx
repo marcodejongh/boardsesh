@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import React from 'react';
 import { render, screen, act, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -133,8 +134,8 @@ const TestComponent = () => {
 describe('QueueProvider', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (useSearchParams as any).mockReturnValue(mockSearchParams);
-    (useRouter as any).mockReturnValue(mockRouter);
+    (useSearchParams as ReturnType<typeof vi.fn>).mockReturnValue(mockSearchParams);
+    (useRouter as ReturnType<typeof vi.fn>).mockReturnValue(mockRouter);
     mockUsePeerContext.mockReturnValue({
       sendData: vi.fn(),
       peerId: 'test-peer-id',
@@ -231,8 +232,8 @@ describe('QueueProvider with peer functionality', () => {
   
   beforeEach(() => {
     vi.clearAllMocks();
-    (useSearchParams as any).mockReturnValue(mockSearchParams);
-    (useRouter as any).mockReturnValue(mockRouter);
+    (useSearchParams as ReturnType<typeof vi.fn>).mockReturnValue(mockSearchParams);
+    (useRouter as ReturnType<typeof vi.fn>).mockReturnValue(mockRouter);
     
     // Mock peer context with host
     mockSubscribeToData.mockReturnValue(vi.fn()); // Return unsubscribe function
@@ -339,8 +340,8 @@ describe('QueueProvider utility functions', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    (useSearchParams as any).mockReturnValue(mockSearchParams);
-    (useRouter as any).mockReturnValue(mockRouter);
+    (useSearchParams as ReturnType<typeof vi.fn>).mockReturnValue(mockSearchParams);
+    (useRouter as ReturnType<typeof vi.fn>).mockReturnValue(mockRouter);
     mockUsePeerContext.mockReturnValue({
       sendData: vi.fn(),
       peerId: 'test-peer-id',

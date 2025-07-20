@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, act, renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import React from 'react';
 import { PeerProvider, usePeerContext } from '../peer-context';
 import { DataConnection } from 'peerjs';
@@ -53,14 +53,14 @@ vi.mock('peerjs', () => {
 describe('PeerContext Resilience Tests', () => {
   let openCallback: ((id: string) => void) | undefined;
   let connectionCallback: ((conn: DataConnection) => void) | undefined;
-  let errorCallback: ((error: any) => void) | undefined;
+  let errorCallback: ((error: Record<string, unknown>) => void) | undefined;
 
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();
     
     // Capture callbacks
-    mockPeerInstance.on.mockImplementation((event: string, cb: any) => {
+    mockPeerInstance.on.mockImplementation((event: string, cb: (data?: unknown) => void) => {
       if (event === 'open') openCallback = cb;
       if (event === 'connection') connectionCallback = cb;
       if (event === 'error') errorCallback = cb;
@@ -105,9 +105,9 @@ describe('PeerContext Resilience Tests', () => {
 
       // Simulate incoming connection from 'peer-1'
       const mockConn = mockDataConnection('peer-1') as DataConnection;
-      let dataHandler: ((data: any) => void) | undefined;
+      let dataHandler: ((data: Record<string, unknown>) => void) | undefined;
       
-      mockConn.on = vi.fn().mockImplementation((event: string, cb: any) => {
+      mockConn.on = vi.fn().mockImplementation((event: string, cb: (data?: unknown) => void) => {
         if (event === 'data') dataHandler = cb;
         if (event === 'open') {
           cb();
@@ -147,7 +147,7 @@ describe('PeerContext Resilience Tests', () => {
       const mockConn = mockDataConnection('peer-1') as DataConnection;
       let closeHandler: (() => void) | undefined;
       
-      mockConn.on = vi.fn().mockImplementation((event: string, cb: any) => {
+      mockConn.on = vi.fn().mockImplementation((event: string, cb: (data?: unknown) => void) => {
         if (event === 'close') closeHandler = cb;
         if (event === 'open') cb();
       });
@@ -194,7 +194,7 @@ describe('PeerContext Resilience Tests', () => {
       });
 
       const mockConn = mockDataConnection('peer-2') as DataConnection;
-      mockConn.on = vi.fn().mockImplementation((event: string, cb: any) => {
+      mockConn.on = vi.fn().mockImplementation((event: string, cb: (data?: unknown) => void) => {
         if (event === 'open') cb();
       });
 
@@ -235,9 +235,9 @@ describe('PeerContext Resilience Tests', () => {
       });
 
       const mockConn = mockDataConnection('peer-2') as DataConnection;
-      let dataHandler: ((data: any) => void) | undefined;
+      let dataHandler: ((data: Record<string, unknown>) => void) | undefined;
       
-      mockConn.on = vi.fn().mockImplementation((event: string, cb: any) => {
+      mockConn.on = vi.fn().mockImplementation((event: string, cb: (data?: unknown) => void) => {
         if (event === 'data') dataHandler = cb;
         if (event === 'open') cb();
       });
@@ -274,7 +274,7 @@ describe('PeerContext Resilience Tests', () => {
       });
 
       const mockConn = mockDataConnection('peer-2') as DataConnection;
-      mockConn.on = vi.fn().mockImplementation((event: string, cb: any) => {
+      mockConn.on = vi.fn().mockImplementation((event: string, cb: (data?: unknown) => void) => {
         if (event === 'open') cb();
       });
 
@@ -355,7 +355,7 @@ describe('PeerContext Resilience Tests', () => {
 
       // Setup initial connection that will fail
       const mockConn = mockDataConnection('peer-2') as DataConnection;
-      mockConn.on = vi.fn().mockImplementation((event: string, cb: any) => {
+      mockConn.on = vi.fn().mockImplementation((event: string, cb: (data?: unknown) => void) => {
         if (event === 'open') cb();
       });
 

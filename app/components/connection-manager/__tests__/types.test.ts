@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isPeerData, ReceivedPeerData } from '../types';
+import { isPeerData } from '../types';
 
 describe('isPeerData', () => {
   describe('request-update-queue type', () => {

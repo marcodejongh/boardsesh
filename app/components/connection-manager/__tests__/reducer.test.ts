@@ -15,7 +15,7 @@ const createMockDataConnection = (peer: string): DataConnection => ({
   connectionId: `conn-${peer}`,
   dataChannel: {} as RTCDataChannel,
   peerConnection: {} as RTCPeerConnection,
-  provider: {} as any,
+  provider: {} as unknown,
   serialization: 'json',
   reliable: true,
   label: 'data',
@@ -57,7 +57,7 @@ const mockPeer = {
   connections: {},
   disconnected: false,
   destroyed: false
-} as any;
+} as unknown;
 
 describe('peerReducer', () => {
   describe('initialPeerState', () => {
@@ -543,7 +543,7 @@ describe('peerReducer', () => {
 
   describe('unknown action', () => {
     it('should return unchanged state for unknown action', () => {
-      const unknownAction = { type: 'UNKNOWN_ACTION' } as any;
+      const unknownAction = { type: 'UNKNOWN_ACTION' } as PeerAction;
 
       const result = peerReducer(initialPeerState, unknownAction);
 

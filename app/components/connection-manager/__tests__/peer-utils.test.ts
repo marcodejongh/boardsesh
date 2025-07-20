@@ -55,7 +55,7 @@ const createMockDataConnection = (peer: string): DataConnection => ({
   connectionId: `conn-${peer}`,
   label: 'data',
   type: 'data'
-} as any);
+} as DataConnection);
 
 const createMockPeerConnection = (
   peer: string,

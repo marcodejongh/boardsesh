@@ -439,7 +439,7 @@ describe('queueReducer', () => {
 
   describe('default case', () => {
     it('should return unchanged state for unknown action', () => {
-      const unknownAction = { type: 'UNKNOWN_ACTION' } as any;
+      const unknownAction = { type: 'UNKNOWN_ACTION' } as QueueAction;
 
       const result = queueReducer(initialState, unknownAction);
 
