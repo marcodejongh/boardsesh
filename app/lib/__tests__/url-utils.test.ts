@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect } from 'vitest';
 import { 
   searchParamsToUrlParams, 
@@ -5,11 +6,9 @@ import {
   urlParamsToSearchParams,
   parseBoardRouteParams,
   constructClimbViewUrl,
-  constructClimbViewUrlWithSlugs,
   constructClimbInfoUrl,
   constructClimbList,
   constructClimbSearchUrl,
-  constructClimbListWithSlugs,
   generateClimbSlug,
   generateLayoutSlug,
   generateSizeSlug,

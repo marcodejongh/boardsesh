@@ -1,5 +1,6 @@
 {
   "installCommand": "npm install --legacy-peer-deps",
+  "buildCommand": "npm run lint && npm run test:run && npm run build",
   "crons": [
     {
       "path": "/api/internal/shared-sync/tension",

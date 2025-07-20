@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 // Simple focused tests for the server utilities without complex mocking
 describe('url-utils.server concepts', () => {
@@ -27,16 +27,16 @@ describe('url-utils.server concepts', () => {
 
     it('should handle mixed format detection scenarios', () => {
       const mockParams = [
-        { type: 'numeric', value: '123', expected: true },
-        { type: 'slug', value: 'kilter-board', expected: false },
-        { type: 'dimension', value: '12x12', expected: false },
-        { type: 'set-slug', value: 'bolt_screw', expected: false },
-        { type: 'numeric-list', value: '1,2,3', expected: false }, // first part is numeric but contains comma
+        { value: '123', expected: true },
+        { value: 'kilter-board', expected: false },
+        { value: '12x12', expected: false },
+        { value: 'bolt_screw', expected: false },
+        { value: '1,2,3', expected: false }, // first part is numeric but contains comma
       ];
 
       const isNumericId = (value: string): boolean => /^\d+$/.test(value);
       
-      mockParams.forEach(({ type, value, expected }) => {
+      mockParams.forEach(({ value, expected }) => {
         expect(isNumericId(value)).toBe(expected);
       });
     });
@@ -72,7 +72,7 @@ describe('url-utils.server concepts', () => {
     });
 
     it('should handle error case patterns', () => {
-      const validateRequired = (value: any, fieldName: string) => {
+      const validateRequired = (value: unknown, fieldName: string) => {
         if (!value) {
           throw new Error(`${fieldName} not found for slug: ${value}`);
         }
@@ -108,7 +108,7 @@ describe('url-utils.server concepts', () => {
     });
 
     it('should handle climb_uuid addition conditionally', () => {
-      const addClimbUuidIfPresent = (params: any, climb_uuid?: string) => {
+      const addClimbUuidIfPresent = (params: Record<string, unknown>, climb_uuid?: string) => {
         if (climb_uuid) {
           return { ...params, climb_uuid };
         }
