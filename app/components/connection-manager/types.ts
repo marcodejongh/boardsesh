@@ -59,6 +59,42 @@ interface UpdateQueueData {
   currentClimbQueueItem: ClimbQueueItem | null;
 }
 
+// Delta message types for efficient synchronization
+interface AddQueueItemData {
+  type: 'add-queue-item';
+  item: ClimbQueueItem;
+  position?: number; // If not provided, add to end
+}
+
+interface RemoveQueueItemData {
+  type: 'remove-queue-item';
+  uuid: string;
+}
+
+interface ReorderQueueItemData {
+  type: 'reorder-queue-item';
+  uuid: string;
+  oldIndex: number;
+  newIndex: number;
+}
+
+interface UpdateCurrentClimbData {
+  type: 'update-current-climb';
+  item: ClimbQueueItem | null;
+  shouldAddToQueue?: boolean; // Whether to add item to queue if not present
+}
+
+interface MirrorCurrentClimbData {
+  type: 'mirror-current-climb';
+  mirrored: boolean;
+}
+
+interface ReplaceQueueItemData {
+  type: 'replace-queue-item';
+  uuid: string;
+  item: ClimbQueueItem;
+}
+
 interface BroadcastOtherPeersData {
   type: 'broadcast-other-peers';
   peers: string[];
@@ -80,7 +116,13 @@ export type PeerData =
   | UpdateQueueData
   | BroadcastOtherPeersData
   | NewConnectionData
-  | SendPeerInfo;
+  | SendPeerInfo
+  | AddQueueItemData
+  | RemoveQueueItemData
+  | ReorderQueueItemData
+  | UpdateCurrentClimbData
+  | MirrorCurrentClimbData
+  | ReplaceQueueItemData;
 export type ReceivedPeerData = PeerData & PeerDataBase;
 export function isPeerData(data: unknown): data is ReceivedPeerData {
   if (typeof data !== 'object' || data === null) return false;
@@ -100,10 +142,21 @@ export function isPeerData(data: unknown): data is ReceivedPeerData {
     case 'initial-queue-data':
     case 'update-queue':
       return 'queue' in msg && 'currentClimbQueueItem' in msg;
-
     case 'broadcast-other-peers':
       return Array.isArray(msg.peers);
-
+    case 'add-queue-item':
+      return 'item' in msg && typeof msg.item === 'object';
+    case 'remove-queue-item':
+      return 'uuid' in msg && typeof msg.uuid === 'string';
+    case 'reorder-queue-item':
+      return 'uuid' in msg && 'oldIndex' in msg && 'newIndex' in msg &&
+             typeof msg.uuid === 'string' && typeof msg.oldIndex === 'number' && typeof msg.newIndex === 'number';
+    case 'update-current-climb':
+      return 'item' in msg; // item can be null
+    case 'mirror-current-climb':
+      return 'mirrored' in msg && typeof msg.mirrored === 'boolean';
+    case 'replace-queue-item':
+      return 'uuid' in msg && 'item' in msg && typeof msg.uuid === 'string' && typeof msg.item === 'object';
     default:
       return false;
   }
