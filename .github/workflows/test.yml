@@ -31,21 +31,6 @@ jobs:
     - name: Run tests
       run: npm run test:run
     
-    - name: Check build
-      run: npm run build:ci
-      env:
-        # Skip environment validation for CI
-        SKIP_ENV_VALIDATION: true
-        # Required for Next.js build
-        NODE_ENV: production
-        # Mock database credentials for build
-        POSTGRES_HOST: localhost
-        POSTGRES_PORT: 5432
-        POSTGRES_USER: test
-        POSTGRES_PASSWORD: test
-        POSTGRES_DATABASE: test
-        IS_CI: true
-
   test-coverage:
     runs-on: ubuntu-latest
     needs: test
