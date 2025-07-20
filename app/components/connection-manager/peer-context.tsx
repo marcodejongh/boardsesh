@@ -232,6 +232,51 @@ export const PeerProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
+  const connectToPeer = useCallback((connectionId: string, isHost?: boolean) => {
+    console.log('Connecting to peer:', connectionId);
+    const currentState = stateRef.current;
+
+    if (!currentState.peer) {
+      console.error('Peer not initialized');
+      return;
+    }
+
+    if (connectionId === currentState.peerId) {
+      console.log('Skipping self-connection');
+      return;
+    }
+
+    // Instead of checking for existing connection, remove it if it exists
+    const existingConnection = currentState.connections.find((conn) => conn.connection.peer === connectionId);
+    if (existingConnection) {
+      dispatch({
+        type: 'REMOVE_CONNECTION',
+        payload: connectionId,
+      });
+    }
+
+    const newConn = currentState.peer.connect(connectionId);
+    if (!newConn) {
+      console.error('Failed to create connection');
+      return;
+    }
+
+    console.log('Created new connection:', connectionId);
+    dispatch({
+      type: 'ADD_CONNECTION',
+      payload: {
+        connection: newConn,
+        state: 'CONNECTING',
+        isHost: existingConnection?.isHost || !!isHost,
+        health: 'HEALTHY',
+        reconnectAttempts: 0,
+        lastHeartbeat: Date.now(),
+      },
+    });
+
+    setupHandlers(newConn, dispatch, receivedDataRef, stateRef);
+  }, []);
+
   // Enhanced connection failure handling with exponential backoff
   const handleConnectionFailure = useCallback((failedPeerId: string, failedConnection: PeerConnection | undefined, isPermanent: boolean) => {
     const currentState = stateRef.current;
@@ -304,48 +349,6 @@ export const PeerProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }, 2000);
     }
   }, [connectToPeer, initiateLeaderElection, sendData]);
-
-  const connectToPeer = useCallback((connectionId: string, isHost?: boolean) => {
-    console.log('Connecting to peer:', connectionId);
-    const currentState = stateRef.current;
-
-    if (!currentState.peer) {
-      console.error('Peer not initialized');
-      return;
-    }
-
-    if (connectionId === currentState.peerId) {
-      console.log('Skipping self-connection');
-      return;
-    }
-
-    // Instead of checking for existing connection, remove it if it exists
-    const existingConnection = currentState.connections.find((conn) => conn.connection.peer === connectionId);
-    if (existingConnection) {
-      dispatch({
-        type: 'REMOVE_CONNECTION',
-        payload: connectionId,
-      });
-    }
-
-    const newConn = currentState.peer.connect(connectionId);
-    if (!newConn) {
-      console.error('Failed to create connection');
-      return;
-    }
-
-    console.log('Created new connection:', connectionId);
-    dispatch({
-      type: 'ADD_CONNECTION',
-      payload: {
-        connection: newConn,
-        state: 'CONNECTING',
-        isHost: existingConnection?.isHost || !!isHost,
-      },
-    });
-
-    setupHandlers(newConn, dispatch, receivedDataRef, stateRef);
-  }, []);
 
   const receivedDataRef = useRef((data: ReceivedPeerData) => {
     const currentState = stateRef.current;
