@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { BoardDetails, Climb } from '@/app/lib/types';
 import BoardRenderer from '../board-renderer/board-renderer';
 import ClimbCardModal from './climb-card-modal';
-import { constructClimbViewUrl, constructClimbViewUrlWithSlugs, parseBoardRouteParams } from '@/app/lib/url-utils';
+import { constructClimbViewUrlWithSlugs } from '@/app/lib/url-utils';
 
 type ClimbThumbnailProps = {
   currentClimb: Climb | null;
@@ -28,26 +28,16 @@ const ClimbThumbnail = ({ boardDetails, currentClimb, enableNavigation = false, 
 
   if (enableNavigation && currentClimb) {
     // Use slug-based URL construction if slug names are available
-    const climbViewUrl = boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names
-      ? constructClimbViewUrlWithSlugs(
+    const climbViewUrl = constructClimbViewUrlWithSlugs(
           boardDetails.board_name,
-          boardDetails.layout_name,
-          boardDetails.size_name,
-          boardDetails.set_names,
+          boardDetails.layout_name || '',
+          boardDetails.size_name || '',
+          boardDetails.set_names || [],
           currentClimb.angle,
           currentClimb.uuid,
           currentClimb.name
-        )
-      : (() => {
-          const routeParams = parseBoardRouteParams({
-            board_name: boardDetails.board_name,
-            layout_id: boardDetails.layout_id.toString(),
-            size_id: boardDetails.size_id.toString(),
-            set_ids: boardDetails.set_ids.join(','),
-            angle: currentClimb.angle.toString(),
-          });
-          return constructClimbViewUrl(routeParams, currentClimb.uuid, currentClimb.name);
-        })();
+        );
+      
 
     return (
       <Link href={climbViewUrl} onClick={handleLinkClick}>

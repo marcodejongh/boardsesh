@@ -28,9 +28,9 @@ export async function GET(request: NextRequest) {
 
     const details = await getBoardDetails({
       board_name: board_name as BoardName,
-      layout_id,
-      size_id,
-      set_ids,
+      layout_id: layout_id.toString(),
+      size_id: size_id.toString(),
+      set_ids: set_ids.map(String).join(','),
       angle,
     });
 

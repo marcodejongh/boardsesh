@@ -4,7 +4,9 @@ import { useQueueContext } from '../queue-control/queue-context';
 import { BoardDetails, Climb } from '@/app/lib/types';
 import { PlusCircleOutlined, HeartOutlined, InfoCircleOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import Link from 'next/link';
-import { constructClimbViewUrl, constructClimbViewUrlWithSlugs } from '@/app/lib/url-utils';
+import {
+  constructClimbViewUrlWithSlugs,
+} from '@/app/lib/url-utils';
 import { track } from '@vercel/analytics';
 import { message } from 'antd';
 
@@ -50,27 +52,16 @@ const ClimbCardActions = ({ climb, boardDetails }: ClimbCardActionsProps) => {
     <Link
       key="infocircle"
       href={
-        boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names
-          ? constructClimbViewUrlWithSlugs(
+         constructClimbViewUrlWithSlugs(
               boardDetails.board_name,
-              boardDetails.layout_name,
-              boardDetails.size_name,
-              boardDetails.set_names,
+              boardDetails.layout_name || '',
+              boardDetails.size_name || '',
+              boardDetails.set_names || [],
               climb.angle,
               climb.uuid,
               climb.name,
             )
-          : constructClimbViewUrl(
-              {
-                board_name: boardDetails.board_name,
-                layout_id: boardDetails.layout_id,
-                size_id: boardDetails.size_id,
-                set_ids: boardDetails.set_ids,
-                angle: climb.angle,
-              },
-              climb.uuid,
-              climb.name,
-            )
+          
       }
       onClick={() => {
         track('Climb Info Viewed', {

@@ -9,10 +9,10 @@ import BetaVideos from '@/app/components/beta-videos/beta-videos';
 import {
   constructClimbInfoUrl,
   extractUuidFromSlug,
-  constructClimbViewUrl,
   isUuidOnly,
   constructClimbViewUrlWithSlugs,
   parseBoardRouteParams,
+  constructClimbViewUrlWithDatabaseSlugs,
 } from '@/app/lib/url-utils';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import { convertLitUpHoldsStringToMap } from '@/app/components/board-renderer/util';
@@ -34,7 +34,15 @@ export async function generateMetadata(props: { params: Promise<BoardRouteParame
     const climbGrade = currentClimb.difficulty || 'Unknown Grade';
     const setter = currentClimb.setter_username || 'Unknown Setter';
     const description = `${climbName} - ${climbGrade} by ${setter}. Quality: ${currentClimb.quality_average || 0}/5. Ascents: ${currentClimb.ascensionist_count || 0}`;
-    const climbUrl = constructClimbViewUrl(parsedParams, parsedParams.climb_uuid, climbName);
+    const climbUrl = constructClimbViewUrlWithDatabaseSlugs(
+      parsedParams.board_name,
+      parsedParams.layout_id,
+      parsedParams.size_id,
+      parsedParams.set_ids,
+      parsedParams.angle,
+      parsedParams.climb_uuid,
+      climbName,
+    );
 
     // Generate OG image URL - use parsed numeric IDs for better performance
     const ogImageUrl = new URL(
@@ -44,7 +52,7 @@ export async function generateMetadata(props: { params: Promise<BoardRouteParame
     ogImageUrl.searchParams.set('board_name', parsedParams.board_name);
     ogImageUrl.searchParams.set('layout_id', parsedParams.layout_id.toString());
     ogImageUrl.searchParams.set('size_id', parsedParams.size_id.toString());
-    ogImageUrl.searchParams.set('set_ids', parsedParams.set_ids.join(','));
+    ogImageUrl.searchParams.set('set_ids', parsedParams.set_ids);
     ogImageUrl.searchParams.set('angle', parsedParams.angle.toString());
     ogImageUrl.searchParams.set('climb_uuid', parsedParams.climb_uuid);
 
@@ -109,15 +117,15 @@ export default async function DynamicResultsPage(props: { params: Promise<BoardR
       // Get the names for slug generation
       const layouts = await import('@/app/lib/data/queries').then((m) => m.getLayouts(parsedParams.board_name));
       const sizes = await import('@/app/lib/data/queries').then((m) =>
-        m.getSizes(parsedParams.board_name, parsedParams.layout_id),
+        m.getSizes(parsedParams.board_name, parseInt(parsedParams.layout_id)),
       );
       const sets = await import('@/app/lib/data/queries').then((m) =>
-        m.getSets(parsedParams.board_name, parsedParams.layout_id, parsedParams.size_id),
+        m.getSets(parsedParams.board_name, parseInt(parsedParams.layout_id), parseInt(parsedParams.size_id)),
       );
 
-      const layout = layouts.find((l) => l.id === parsedParams.layout_id);
-      const size = sizes.find((s) => s.id === parsedParams.size_id);
-      const selectedSets = sets.filter((s) => parsedParams.set_ids.includes(s.id));
+      const layout = layouts.find((l) => l.id === parseInt(parsedParams.layout_id));
+      const size = sizes.find((s) => s.id === parseInt(parsedParams.size_id));
+      const selectedSets = sets.filter((s) => parsedParams.set_ids.includes(s.id.toString()));
 
       if (layout && size && selectedSets.length > 0) {
         const newUrl = constructClimbViewUrlWithSlugs(
@@ -189,7 +197,6 @@ export default async function DynamicResultsPage(props: { params: Promise<BoardR
     const auroraAppUrl = constructClimbInfoUrl(
       boardDetails,
       currentClimb.uuid,
-      currentClimb.angle || parsedParams.angle,
     );
 
     return (

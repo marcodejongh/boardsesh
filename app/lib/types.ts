@@ -118,9 +118,9 @@ export type BoardRouteParametersWithUuid = BoardRouteParameters & {
 
 export type ParsedBoardRouteParameters = {
   board_name: BoardName;
-  layout_id: number;
-  size_id: number;
-  set_ids: SetIdList;
+  layout_id: string;
+  size_id: string;
+  set_ids: string;
   angle: number;
   uuid?: string;
 };

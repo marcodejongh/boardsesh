@@ -31,18 +31,18 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
       style={{
         height: '8dvh',
         background: '#fff',
-        padding: '0 16px',
       }}
     >
-      <Row justify="space-between" align="middle" style={{ width: '100%' }}>
+      <Row>
         {/* Column for the "BS" logo (25% width) */}
-        <Col xs={4} sm={4} md={4} lg={4} xl={4}>
+        <Col xs={3} sm={3} md={3} lg={3} xl={3} >
           <Link href="/">
-            <Title level={4} style={{ margin: 0, lineHeight: '1.2', cursor: 'pointer' }}>
+            <Title level={4} align="left" style={{ cursor: 'pointer' }}>
               BS
             </Title>
           </Link>
         </Col>
+        <Col xs={1} sm={1} md={1} lg={1} xl={1} ></Col>
 
         <UISearchParamsProvider>
           <Col xs={14} sm={14} md={14} lg={14} xl={14}>
