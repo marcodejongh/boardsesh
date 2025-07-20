@@ -78,7 +78,7 @@ describe('searchParamsToUrlParams', () => {
       holdsFilter: {
         'red': { state: 'include' },
         'blue': { state: 'exclude' },
-      },
+      } as any,
     });
     
     const params = result.toString();
@@ -348,7 +348,7 @@ describe('parseBoardRouteParams', () => {
 
 describe('URL construction functions', () => {
   const mockRouteParams = {
-    board_name: 'kilter',
+    board_name: 'kilter' as const,
     layout_id: 1,
     size_id: 2,
     set_ids: [3, 4],
@@ -388,13 +388,13 @@ describe('URL construction functions', () => {
 
   describe('constructClimbInfoUrl', () => {
     it('should construct external info URL for kilter', () => {
-      const boardDetails = { board_name: 'kilter' };
+      const boardDetails = { board_name: 'kilter' as const };
       const result = constructClimbInfoUrl(boardDetails as any, 'abc123', 45);
       expect(result).toBe('https://kilterboardapp.com/climbs/abc123');
     });
 
     it('should construct external info URL for tension', () => {
-      const boardDetails = { board_name: 'tension' };
+      const boardDetails = { board_name: 'tension' as const };
       const result = constructClimbInfoUrl(boardDetails as any, 'def456', 30);
       expect(result).toBe('https://tensionboardapp2.com/climbs/def456');
     });

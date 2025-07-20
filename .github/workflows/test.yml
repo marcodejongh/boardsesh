@@ -32,7 +32,7 @@ jobs:
       run: npm run test:run
     
     - name: Check build
-      run: npm run build
+      run: npm run build:ci
       env:
         # Skip environment validation for CI
         SKIP_ENV_VALIDATION: true
