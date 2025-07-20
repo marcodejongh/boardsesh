@@ -53,26 +53,57 @@ export const searchParamsToUrlParams = ({
   page,
   pageSize,
 }: SearchRequestPagination): URLSearchParams => {
-  return new URLSearchParams({
-    gradeAccuracy: gradeAccuracy.toString(),
-    maxGrade: maxGrade.toString(),
-    minAscents: minAscents.toString(),
-    minGrade: minGrade.toString(),
-    minRating: minRating.toString(),
-    sortBy,
-    sortOrder,
-    name,
-    onlyClassics: onlyClassics.toString(),
-    settername,
-    setternameSuggestion,
-    page: page.toString(),
-    pageSize: pageSize.toString(),
-    ...Object.fromEntries(
-      Object.entries(holdsFilter).map(([key, value]) => {
-        return [`hold_${key}`, value.state];
-      }),
-    ),
-  });
+  const params: Record<string, string> = {};
+
+  // Only add parameters that differ from defaults
+  if (gradeAccuracy !== DEFAULT_SEARCH_PARAMS.gradeAccuracy) {
+    params.gradeAccuracy = gradeAccuracy.toString();
+  }
+  if (maxGrade !== DEFAULT_SEARCH_PARAMS.maxGrade) {
+    params.maxGrade = maxGrade.toString();
+  }
+  if (minGrade !== DEFAULT_SEARCH_PARAMS.minGrade) {
+    params.minGrade = minGrade.toString();
+  }
+  if (minAscents !== DEFAULT_SEARCH_PARAMS.minAscents) {
+    params.minAscents = minAscents.toString();
+  }
+  if (minRating !== DEFAULT_SEARCH_PARAMS.minRating) {
+    params.minRating = minRating.toString();
+  }
+  if (sortBy !== DEFAULT_SEARCH_PARAMS.sortBy) {
+    params.sortBy = sortBy;
+  }
+  if (sortOrder !== DEFAULT_SEARCH_PARAMS.sortOrder) {
+    params.sortOrder = sortOrder;
+  }
+  if (name && name !== DEFAULT_SEARCH_PARAMS.name) {
+    params.name = name;
+  }
+  if (onlyClassics !== DEFAULT_SEARCH_PARAMS.onlyClassics) {
+    params.onlyClassics = onlyClassics.toString();
+  }
+  if (settername && settername !== DEFAULT_SEARCH_PARAMS.settername) {
+    params.settername = settername;
+  }
+  if (setternameSuggestion && setternameSuggestion !== DEFAULT_SEARCH_PARAMS.setternameSuggestion) {
+    params.setternameSuggestion = setternameSuggestion;
+  }
+  if (page !== DEFAULT_SEARCH_PARAMS.page) {
+    params.page = page.toString();
+  }
+  if (pageSize !== DEFAULT_SEARCH_PARAMS.pageSize) {
+    params.pageSize = pageSize.toString();
+  }
+
+  // Add holds filter entries only if they exist
+  if (holdsFilter && Object.keys(holdsFilter).length > 0) {
+    Object.entries(holdsFilter).forEach(([key, value]) => {
+      params[`hold_${key}`] = value.state;
+    });
+  }
+
+  return new URLSearchParams(params);
 };
 export const DEFAULT_SEARCH_PARAMS: SearchRequestPagination = {
   gradeAccuracy: 0,
