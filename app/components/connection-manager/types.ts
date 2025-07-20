@@ -96,7 +96,7 @@ export function isPeerData(data: unknown): data is ReceivedPeerData {
     case 'request-update-queue':
       return true; // No additional required fields
     case 'send-peer-info':
-      return msg.username;
+      return !!msg.username;
     case 'initial-queue-data':
     case 'update-queue':
       return 'queue' in msg && 'currentClimbQueueItem' in msg;
