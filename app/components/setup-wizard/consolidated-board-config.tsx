@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button, Form, Select, Typography, Input, Divider, Card, Row, Col, Flex, Collapse } from 'antd';
 import { useRouter } from 'next/navigation';
 import { openDB } from 'idb';
@@ -50,12 +50,12 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
   const [selectedAngle, setSelectedAngle] = useState<number>(40);
 
   // Data states - no longer needed as we get them from props
-  const layouts = selectedBoard ? boardConfigs.layouts[selectedBoard] || [] : [];
-  const sizes = selectedBoard && selectedLayout ? boardConfigs.sizes[`${selectedBoard}-${selectedLayout}`] || [] : [];
-  const sets =
+  const layouts = useMemo(() => selectedBoard ? boardConfigs.layouts[selectedBoard] || [] : [], [selectedBoard, boardConfigs.layouts]);
+  const sizes = useMemo(() => selectedBoard && selectedLayout ? boardConfigs.sizes[`${selectedBoard}-${selectedLayout}`] || [] : [], [selectedBoard, selectedLayout, boardConfigs.sizes]);
+  const sets = useMemo(() =>
     selectedBoard && selectedLayout && selectedSize
       ? boardConfigs.sets[`${selectedBoard}-${selectedLayout}-${selectedSize}`] || []
-      : [];
+      : [], [selectedBoard, selectedLayout, selectedSize, boardConfigs.sets]);
 
   // Login states - for now just skip login on setup page
 
@@ -97,7 +97,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
     }
   };
 
-  const loadAllConfigurations = async () => {
+  const loadAllConfigurations = useCallback(async () => {
     try {
       const db = await initDB();
       const allConfigs = await db.getAll(STORE_NAME);
@@ -106,7 +106,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
       console.error('Failed to load configurations:', error);
       return [];
     }
-  };
+  }, []);
 
   const deleteConfiguration = async (configName: string) => {
     try {
@@ -198,7 +198,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
     };
 
     loadConfigurations();
-  }, [router, boardConfigs]);
+  }, [router, boardConfigs, loadAllConfigurations]);
 
   // Set default selections on initial load if no saved configs exist
   useEffect(() => {

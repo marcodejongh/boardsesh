@@ -163,10 +163,12 @@ export function getFullTableName(boardName: BoardName, tableName: keyof TableSet
   return `${getBoardPrefix(boardName)}${tableName}`;
 }
 
-export default {
+const tableSelectUtils = {
   getTable,
   getBoardTables,
   isValidBoardName,
   getBoardPrefix,
   getFullTableName,
 };
+
+export default tableSelectUtils;
