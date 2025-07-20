@@ -22,10 +22,27 @@ const createMockDataConnection = (peer: string): DataConnection => ({
   type: 'data'
 } as DataConnection);
 
+// Helper to create a proper mock PeerConnection with all required fields
+const createMockPeerConnection = (
+  peer: string, 
+  state: PeerConnection['state'] = 'CONNECTING',
+  isHost: boolean = false
+): PeerConnection => ({
+  connection: createMockDataConnection(peer),
+  state,
+  isHost,
+  health: 'HEALTHY',
+  reconnectAttempts: 0,
+  lastHeartbeat: Date.now()
+});
+
 const mockPeerConnection: PeerConnection = {
   connection: createMockDataConnection('test-peer'),
   state: 'CONNECTING',
-  isHost: false
+  isHost: false,
+  health: 'HEALTHY',
+  reconnectAttempts: 0,
+  lastHeartbeat: Date.now()
 };
 
 const mockPeer = {
@@ -49,7 +66,10 @@ describe('peerReducer', () => {
         peer: null,
         peerId: null,
         connections: [],
-        readyToConnect: false
+        readyToConnect: false,
+        currentLeader: null,
+        isLeader: false,
+        leaderElectionInProgress: false
       });
     });
   });
@@ -120,11 +140,7 @@ describe('peerReducer', () => {
 
   describe('UPDATE_CONNECTIONS', () => {
     it('should replace all connections', () => {
-      const existingConnection: PeerConnection = {
-        connection: createMockDataConnection('existing-peer'),
-        state: 'CONNECTED',
-        isHost: true
-      };
+      const existingConnection: PeerConnection = createMockPeerConnection('existing-peer', 'CONNECTED', true);
 
       const stateWithConnections: PeerState = {
         ...initialPeerState,
@@ -132,16 +148,8 @@ describe('peerReducer', () => {
       };
 
       const newConnections: PeerConnection[] = [
-        {
-          connection: createMockDataConnection('new-peer-1'),
-          state: 'CONNECTING',
-          isHost: false
-        },
-        {
-          connection: createMockDataConnection('new-peer-2'),
-          state: 'READY',
-          isHost: true
-        }
+        createMockPeerConnection('new-peer-1', 'CONNECTING', false),
+        createMockPeerConnection('new-peer-2', 'READY', true)
       ];
 
       const action: PeerAction = {
@@ -186,22 +194,14 @@ describe('peerReducer', () => {
     });
 
     it('should add multiple connections', () => {
-      const firstConnection: PeerConnection = {
-        connection: createMockDataConnection('peer-1'),
-        state: 'CONNECTING',
-        isHost: false
-      };
+      const firstConnection: PeerConnection = createMockPeerConnection('peer-1', 'CONNECTING', false);
 
       const stateWithFirstConnection: PeerState = {
         ...initialPeerState,
         connections: [firstConnection]
       };
 
-      const secondConnection: PeerConnection = {
-        connection: createMockDataConnection('peer-2'),
-        state: 'CONNECTED',
-        isHost: true
-      };
+      const secondConnection: PeerConnection = createMockPeerConnection('peer-2', 'CONNECTED', true);
 
       const action: PeerAction = {
         type: 'ADD_CONNECTION',
@@ -216,22 +216,14 @@ describe('peerReducer', () => {
     });
 
     it('should not add duplicate connections', () => {
-      const existingConnection: PeerConnection = {
-        connection: createMockDataConnection('existing-peer'),
-        state: 'CONNECTED',
-        isHost: false
-      };
+      const existingConnection: PeerConnection = createMockPeerConnection('existing-peer', 'CONNECTED', false);
 
       const stateWithConnection: PeerState = {
         ...initialPeerState,
         connections: [existingConnection]
       };
 
-      const duplicateConnection: PeerConnection = {
-        connection: createMockDataConnection('existing-peer'),
-        state: 'READY',
-        isHost: true
-      };
+      const duplicateConnection: PeerConnection = createMockPeerConnection('existing-peer', 'READY', true);
 
       const action: PeerAction = {
         type: 'ADD_CONNECTION',
@@ -247,17 +239,8 @@ describe('peerReducer', () => {
 
   describe('REMOVE_CONNECTION', () => {
     it('should remove connection by peer ID', () => {
-      const connection1: PeerConnection = {
-        connection: createMockDataConnection('peer-1'),
-        state: 'CONNECTED',
-        isHost: false
-      };
-
-      const connection2: PeerConnection = {
-        connection: createMockDataConnection('peer-2'),
-        state: 'READY',
-        isHost: true
-      };
+      const connection1: PeerConnection = createMockPeerConnection('peer-1', 'CONNECTED', false);
+      const connection2: PeerConnection = createMockPeerConnection('peer-2', 'READY', true);
 
       const stateWithConnections: PeerState = {
         ...initialPeerState,
@@ -334,17 +317,8 @@ describe('peerReducer', () => {
     });
 
     it('should not update state for non-matching peer', () => {
-      const connection1: PeerConnection = {
-        connection: createMockDataConnection('peer-1'),
-        state: 'CONNECTING',
-        isHost: false
-      };
-
-      const connection2: PeerConnection = {
-        connection: createMockDataConnection('peer-2'),
-        state: 'CONNECTED',
-        isHost: true
-      };
+      const connection1: PeerConnection = createMockPeerConnection('peer-1', 'CONNECTING', false);
+      const connection2: PeerConnection = createMockPeerConnection('peer-2', 'CONNECTED', true);
 
       const stateWithConnections: PeerState = {
         ...initialPeerState,
@@ -384,6 +358,186 @@ describe('peerReducer', () => {
 
       expect(result.connections).toHaveLength(1);
       expect(result.connections[0]).toEqual(mockPeerConnection);
+    });
+  });
+
+  describe('UPDATE_CONNECTION_HEALTH', () => {
+    it('should update connection health and latency', () => {
+      const stateWithConnection: PeerState = {
+        ...initialPeerState,
+        connections: [mockPeerConnection]
+      };
+
+      const action: PeerAction = {
+        type: 'UPDATE_CONNECTION_HEALTH',
+        payload: {
+          peerId: 'test-peer',
+          health: 'DEGRADED',
+          latency: 1500
+        }
+      };
+
+      const result = peerReducer(stateWithConnection, action);
+
+      expect(result.connections[0].health).toBe('DEGRADED');
+      expect(result.connections[0].latency).toBe(1500);
+    });
+
+    it('should update health without changing latency if not provided', () => {
+      const stateWithConnection: PeerState = {
+        ...initialPeerState,
+        connections: [{
+          ...mockPeerConnection,
+          latency: 500
+        }]
+      };
+
+      const action: PeerAction = {
+        type: 'UPDATE_CONNECTION_HEALTH',
+        payload: {
+          peerId: 'test-peer',
+          health: 'POOR'
+        }
+      };
+
+      const result = peerReducer(stateWithConnection, action);
+
+      expect(result.connections[0].health).toBe('POOR');
+      expect(result.connections[0].latency).toBe(500);
+    });
+  });
+
+  describe('UPDATE_LAST_HEARTBEAT', () => {
+    it('should update last heartbeat timestamp', () => {
+      const stateWithConnection: PeerState = {
+        ...initialPeerState,
+        connections: [mockPeerConnection]
+      };
+
+      const timestamp = Date.now();
+      const action: PeerAction = {
+        type: 'UPDATE_LAST_HEARTBEAT',
+        payload: {
+          peerId: 'test-peer',
+          timestamp
+        }
+      };
+
+      const result = peerReducer(stateWithConnection, action);
+
+      expect(result.connections[0].lastHeartbeat).toBe(timestamp);
+    });
+  });
+
+  describe('INCREMENT_RECONNECT_ATTEMPTS', () => {
+    it('should increment reconnect attempts for a connection', () => {
+      const stateWithConnection: PeerState = {
+        ...initialPeerState,
+        connections: [{
+          ...mockPeerConnection,
+          reconnectAttempts: 1
+        }]
+      };
+
+      const action: PeerAction = {
+        type: 'INCREMENT_RECONNECT_ATTEMPTS',
+        payload: {
+          peerId: 'test-peer'
+        }
+      };
+
+      const result = peerReducer(stateWithConnection, action);
+
+      expect(result.connections[0].reconnectAttempts).toBe(2);
+    });
+  });
+
+  describe('RESET_RECONNECT_ATTEMPTS', () => {
+    it('should reset reconnect attempts to 0', () => {
+      const stateWithConnection: PeerState = {
+        ...initialPeerState,
+        connections: [{
+          ...mockPeerConnection,
+          reconnectAttempts: 3
+        }]
+      };
+
+      const action: PeerAction = {
+        type: 'RESET_RECONNECT_ATTEMPTS',
+        payload: {
+          peerId: 'test-peer'
+        }
+      };
+
+      const result = peerReducer(stateWithConnection, action);
+
+      expect(result.connections[0].reconnectAttempts).toBe(0);
+    });
+  });
+
+  describe('SET_LEADER', () => {
+    it('should set current leader and update isLeader when peerId matches', () => {
+      const state: PeerState = {
+        ...initialPeerState,
+        peerId: 'my-peer-id',
+        leaderElectionInProgress: true
+      };
+
+      const action: PeerAction = {
+        type: 'SET_LEADER',
+        payload: 'my-peer-id'
+      };
+
+      const result = peerReducer(state, action);
+
+      expect(result.currentLeader).toBe('my-peer-id');
+      expect(result.isLeader).toBe(true);
+      expect(result.leaderElectionInProgress).toBe(false);
+    });
+
+    it('should set current leader and isLeader to false when peerId does not match', () => {
+      const state: PeerState = {
+        ...initialPeerState,
+        peerId: 'my-peer-id',
+        leaderElectionInProgress: true
+      };
+
+      const action: PeerAction = {
+        type: 'SET_LEADER',
+        payload: 'other-peer-id'
+      };
+
+      const result = peerReducer(state, action);
+
+      expect(result.currentLeader).toBe('other-peer-id');
+      expect(result.isLeader).toBe(false);
+      expect(result.leaderElectionInProgress).toBe(false);
+    });
+  });
+
+  describe('SET_IS_LEADER', () => {
+    it('should set isLeader flag', () => {
+      const action: PeerAction = {
+        type: 'SET_IS_LEADER',
+        payload: true
+      };
+
+      const result = peerReducer(initialPeerState, action);
+
+      expect(result.isLeader).toBe(true);
+    });
+  });
+
+  describe('SET_LEADER_ELECTION_IN_PROGRESS', () => {
+    it('should set leaderElectionInProgress flag', () => {
+      const action: PeerAction = {
+        type: 'SET_LEADER_ELECTION_IN_PROGRESS',
+        payload: true
+      };
+
+      const result = peerReducer(initialPeerState, action);
+
+      expect(result.leaderElectionInProgress).toBe(true);
     });
   });
 
