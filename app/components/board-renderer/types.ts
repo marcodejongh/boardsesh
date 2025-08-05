@@ -39,7 +39,7 @@ export const HOLD_STATE_MAP: Record<
   Record<HoldCode, { name: HoldState; color: HoldColor; displayColor?: HoldColor }>
 > = {
   kilter: {
-    42: { name: 'STARTING', color: '#00DD00' },
+    42: { name: 'STARTING', color: '#00FF00' },
     43: { name: 'HAND', color: '#00FFFF' },
     44: { name: 'FINISH', color: '#FF00FF' },
     45: { name: 'FOOT', color: '#FFA500' },
