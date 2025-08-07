@@ -16,7 +16,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@ant-design/nextjs-registry": "^1.0.2",
+    "@ant-design/nextjs-registry": "^1.1.0",
     "@atlaskit/pragmatic-drag-and-drop": "^1.5.0",
     "@atlaskit/pragmatic-drag-and-drop-hitbox": "^1.0.3",
     "@atlaskit/pragmatic-drag-and-drop-react-accessibility": "^2.0.0",
