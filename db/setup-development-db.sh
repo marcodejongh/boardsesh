@@ -55,7 +55,17 @@ if [ "$FRESH_SETUP" = true ]; then
       echo "   ♻️  Tensionboard APK already exists, skipping download"
     fi
     echo "   📦 Extracting Tension database..."
-    unzip -o -j tensionboard.apk assets/db.sqlite3 -d /db/tmp/
+    # Try to extract directly from the main APK first, suppressing output and errors.
+    unzip -o -j tensionboard.apk assets/db.sqlite3 -d /db/tmp/ > /dev/null 2>&1 || true
+
+    # If the file isn't there, try extracting the nested APK and then the database from it.
+    if [ ! -f "/db/tmp/db.sqlite3" ]; then
+      echo "   ...database not found directly, attempting nested extraction."
+      unzip -o -j tensionboard.apk 'com.auroraclimbing.tensionboard2.apk' 
+      unzip -o -j com.auroraclimbing.tensionboard2.apk assets/db.sqlite3 -d /db/tmp/
+    else
+      echo "   ♻️  Tension database already exists, skipping extraction"
+    fi
     mv /db/tmp/db.sqlite3 /db/tmp/tension.db
     echo "   ✅ Tension database extracted"
   else
