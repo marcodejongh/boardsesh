@@ -70,7 +70,7 @@ describe('PeerContext Integration Tests', () => {
         wrapper: ({ children }) => <PeerProvider>{children}</PeerProvider>
       });
 
-      expect(() => result.current.sendData({ type: 'test' })).not.toThrow();
+      expect(() => result.current.sendData({ type: 'request-update-queue' })).not.toThrow();
       expect(() => result.current.connectToPeer('peer-123')).not.toThrow();
       expect(() => result.current.initiateLeaderElection()).not.toThrow();
     });
