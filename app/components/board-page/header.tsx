@@ -1,15 +1,18 @@
 'use client';
 import React from 'react';
-import { Flex } from 'antd';
+import { Flex, Button, Dropdown, MenuProps, Grid } from 'antd';
 import { Header } from 'antd/es/layout/layout';
 import Title from 'antd/es/typography/Title';
 import Link from 'next/link';
+import { useSession, signIn, signOut } from 'next-auth/react';
 import SearchButton from '../search-drawer/search-button';
 import SearchClimbNameInput from '../search-drawer/search-climb-name-input';
 import { UISearchParamsProvider } from '../queue-control/ui-searchparams-provider';
 import SendClimbToBoardButton from '../board-bluetooth-control/send-climb-to-board-button';
 import { BoardDetails } from '@/app/lib/types';
 import { ShareBoardButton } from './share-button';
+import { useBoardProvider } from '../board-provider/board-provider-context';
+import { UserOutlined, LogoutOutlined, LoginOutlined } from '@ant-design/icons';
 import AngleSelector from './angle-selector';
 import styles from './header.module.css';
 
@@ -18,6 +21,24 @@ type BoardSeshHeaderProps = {
   angle?: number;
 };
 export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeaderProps) {
+  const { useBreakpoint } = Grid;
+  const screens = useBreakpoint();
+  const { data: session } = useSession();
+  const { logout } = useBoardProvider();
+
+  const handleSignOut = () => {
+    signOut();
+    logout(); // Also logout from board provider
+  };
+
+  const userMenuItems: MenuProps['items'] = [
+    {
+      key: 'logout',
+      icon: <LogoutOutlined />,
+      label: 'Logout',
+      onClick: handleSignOut,
+    },
+  ];
   return (
     <Header
       style={{
@@ -53,6 +74,22 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
             {angle !== undefined && <AngleSelector boardName={boardDetails.board_name} currentAngle={angle} />}
             <ShareBoardButton />
             <SendClimbToBoardButton boardDetails={boardDetails} />
+            {session?.user ? (
+              <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
+                <Button icon={<UserOutlined />} type="text">
+                  {session.user.name || session.user.email}
+                </Button>
+              </Dropdown>
+            ) : (
+              <Button 
+                icon={<LoginOutlined />} 
+                type="text" 
+                onClick={() => signIn()}
+                size={screens.xs ? 'small' : 'middle'}
+              >
+                {screens.xs ? '' : 'Login'}
+              </Button>
+            )}
           </Flex>
         </Flex>
       </UISearchParamsProvider>

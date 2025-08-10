@@ -10,7 +10,9 @@ import {
   timestamp,
   primaryKey,
   index,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core';
+import type { AdapterAccount } from "next-auth/adapters";
 
 export const kilterAttempts = pgTable('kilter_attempts', {
   id: integer().primaryKey().notNull(),
@@ -1073,4 +1075,86 @@ export const tensionBetaLinks = pgTable(
       .onUpdate('cascade')
       .onDelete('restrict'),
   ],
+);
+
+// NextAuth.js tables
+export const users = pgTable("users", {
+  id: text("id").notNull().primaryKey(),
+  name: text("name"),
+  email: text("email").notNull(),
+  emailVerified: timestamp("emailVerified", { mode: "date" }),
+  image: text("image"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const accounts = pgTable(
+  "accounts",
+  {
+    userId: text("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    type: text("type").$type<AdapterAccount["type"]>().notNull(),
+    provider: text("provider").notNull(),
+    providerAccountId: text("providerAccountId").notNull(),
+    refresh_token: text("refresh_token"),
+    access_token: text("access_token"),
+    expires_at: integer("expires_at"),
+    token_type: text("token_type"),
+    scope: text("scope"),
+    id_token: text("id_token"),
+    session_state: text("session_state"),
+  },
+  (account) => ({
+    compoundKey: primaryKey({
+      columns: [account.provider, account.providerAccountId],
+    }),
+  })
+);
+
+export const sessions = pgTable("sessions", {
+  sessionToken: text("sessionToken").notNull().primaryKey(),
+  userId: text("userId")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  expires: timestamp("expires", { mode: "date" }).notNull(),
+});
+
+export const verificationTokens = pgTable(
+  "verificationTokens",
+  {
+    identifier: text("identifier").notNull(),
+    token: text("token").notNull(),
+    expires: timestamp("expires", { mode: "date" }).notNull(),
+  },
+  (vt) => ({
+    compoundKey: primaryKey({ columns: [vt.identifier, vt.token] }),
+  })
+);
+
+// User board mappings table to link NextAuth users with Aurora board users
+export const userBoardMappings = pgTable(
+  "user_board_mappings",
+  {
+    id: bigserial({ mode: 'bigint' }).primaryKey().notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    boardType: text("board_type").notNull(), // 'kilter', 'tension', etc.
+    boardUserId: integer("board_user_id").notNull(),
+    boardUsername: text("board_username"), // Store username for display
+    linkedAt: timestamp("linked_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    // Ensure unique mapping per board type for each user
+    uniqueUserBoard: uniqueIndex("unique_user_board_mapping").on(
+      table.userId, 
+      table.boardType
+    ),
+    // Index for efficient lookup by board user
+    boardUserIdx: index("board_user_mapping_idx").on(
+      table.boardType, 
+      table.boardUserId
+    ),
+  })
 );
