@@ -82,5 +82,8 @@
     "react-dom": "^18",
     "typescript": "^5.7.2",
     "vitest": "^3.2.4"
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-arm64-gnu": "^4.46.2"
   }
 }
