@@ -52,7 +52,7 @@ const handler = NextAuth({
       }
       return session;
     },
-    async jwt({ token, user, account }) {
+    async jwt({ token, user }) {
       // Persist the OAuth access_token and user id to the token right after signin
       if (user) {
         token.id = user.id;

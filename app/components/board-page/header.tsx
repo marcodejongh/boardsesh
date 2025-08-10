@@ -23,8 +23,8 @@ type BoardSeshHeaderProps = {
 export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeaderProps) {
   const { useBreakpoint } = Grid;
   const screens = useBreakpoint();
-  const { data: session, status } = useSession();
-  const { isAuthenticated, username, logout } = useBoardProvider();
+  const { data: session } = useSession();
+  const { logout } = useBoardProvider();
 
   const handleSignOut = () => {
     signOut();

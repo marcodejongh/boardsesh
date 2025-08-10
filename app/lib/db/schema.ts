@@ -10,8 +10,8 @@ import {
   timestamp,
   primaryKey,
   index,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core';
-import { sql } from 'drizzle-orm';
 import type { AdapterAccount } from "next-auth/adapters";
 
 export const kilterAttempts = pgTable('kilter_attempts', {

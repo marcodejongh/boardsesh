@@ -113,6 +113,13 @@
       "when": 1752459287070,
       "tag": "0015_majestic_carmella_unuscione",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1754825330148,
+      "tag": "0016_exotic_valkyrie",
+      "breakpoints": true
     }
   ]
 }
