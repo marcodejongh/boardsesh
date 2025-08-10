@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { peerReducer, initialPeerState } from '../reducer';
 import { PeerState, PeerAction, PeerConnection } from '../types';
-import { DataConnection } from 'peerjs';
+import Peer, { DataConnection } from 'peerjs';
 
 // Mock DataConnection
 const createMockDataConnection = (peer: string): DataConnection => ({
@@ -78,7 +78,7 @@ describe('peerReducer', () => {
     it('should set the peer instance', () => {
       const action: PeerAction = {
         type: 'SET_PEER',
-        payload: mockPeer as any
+        payload: mockPeer as Peer
       };
 
       const result = peerReducer(initialPeerState, action);

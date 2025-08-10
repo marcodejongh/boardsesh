@@ -59,10 +59,10 @@ const mockRouter = {
 const mockUsePeerContext = vi.mocked(usePeerContext);
 
 const mockParsedParams: ParsedBoardRouteParameters = {
-  board_name: 'kilter' as any,
+  board_name: 'kilter',
   layout_id: 1,
   size_id: 1,
-  set_ids: [1] as any,
+  set_ids: [1],
   angle: 40
 };
 
