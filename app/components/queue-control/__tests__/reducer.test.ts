@@ -43,7 +43,11 @@ const mockSearchParams: SearchRequestPagination = {
   onlyClassics: false,
   settername: '',
   setternameSuggestion: '',
-  holdsFilter: {}
+  holdsFilter: {},
+  hideAttempted: false,
+  hideCompleted: false,
+  showOnlyAttempted: false,
+  showOnlyCompleted: false
 };
 
 const initialState: QueueState = {
@@ -284,7 +288,11 @@ describe('queueReducer', () => {
         onlyClassics: false,
         settername: '',
         setternameSuggestion: '',
-        holdsFilter: {}
+        holdsFilter: {},
+        hideAttempted: false,
+        hideCompleted: false,
+        showOnlyAttempted: false,
+        showOnlyCompleted: false
       };
 
       const action: QueueAction = {

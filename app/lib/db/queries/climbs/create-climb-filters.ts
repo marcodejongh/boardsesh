@@ -89,6 +89,57 @@ export const createClimbFilters = (
     ...notHolds.map((holdId) => notLike(tables.climbs.frames, `%${holdId}r%`)),
   ];
 
+  // Personal progress filter conditions (only apply if userId is provided)
+  const personalProgressConditions: SQL[] = [];
+  if (userId) {
+    const ascentsTable = getTableName(params.board_name, 'ascents');
+    const bidsTable = getTableName(params.board_name, 'bids');
+
+    if (searchParams.hideAttempted) {
+      personalProgressConditions.push(
+        sql`NOT EXISTS (
+          SELECT 1 FROM ${sql.identifier(bidsTable)}
+          WHERE climb_uuid = ${tables.climbs.uuid}
+          AND user_id = ${userId}
+          AND angle = ${params.angle}
+        )`
+      );
+    }
+
+    if (searchParams.hideCompleted) {
+      personalProgressConditions.push(
+        sql`NOT EXISTS (
+          SELECT 1 FROM ${sql.identifier(ascentsTable)}
+          WHERE climb_uuid = ${tables.climbs.uuid}
+          AND user_id = ${userId}
+          AND angle = ${params.angle}
+        )`
+      );
+    }
+
+    if (searchParams.showOnlyAttempted) {
+      personalProgressConditions.push(
+        sql`EXISTS (
+          SELECT 1 FROM ${sql.identifier(bidsTable)}
+          WHERE climb_uuid = ${tables.climbs.uuid}
+          AND user_id = ${userId}
+          AND angle = ${params.angle}
+        )`
+      );
+    }
+
+    if (searchParams.showOnlyCompleted) {
+      personalProgressConditions.push(
+        sql`EXISTS (
+          SELECT 1 FROM ${sql.identifier(ascentsTable)}
+          WHERE climb_uuid = ${tables.climbs.uuid}
+          AND user_id = ${userId}
+          AND angle = ${params.angle}
+        )`
+      );
+    }
+  }
+
   // User-specific logbook data selectors
   const getUserLogbookSelects = () => {
     const ascentsTable = getTableName(params.board_name, 'ascents');
@@ -137,7 +188,7 @@ export const createClimbFilters = (
 
   return {
     // Helper function to get all climb filtering conditions
-    getClimbWhereConditions: () => [...baseConditions, ...nameCondition, ...holdConditions],
+    getClimbWhereConditions: () => [...baseConditions, ...nameCondition, ...holdConditions, ...personalProgressConditions],
 
     // Size-specific conditions
     getSizeConditions: () => sizeConditions,
@@ -169,6 +220,7 @@ export const createClimbFilters = (
     nameCondition,
     holdConditions,
     sizeConditions,
+    personalProgressConditions,
     anyHolds,
     notHolds,
   };

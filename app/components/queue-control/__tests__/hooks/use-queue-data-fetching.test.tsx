@@ -77,7 +77,11 @@ const mockSearchParams: SearchRequestPagination = {
   onlyClassics: false,
   settername: '',
   setternameSuggestion: '',
-  holdsFilter: {}
+  holdsFilter: {},
+  hideAttempted: false,
+  hideCompleted: false,
+  showOnlyAttempted: false,
+  showOnlyCompleted: false
 };
 
 const mockParsedParams: ParsedBoardRouteParameters = {

@@ -1,14 +1,18 @@
 'use client';
 
 import React from 'react';
-import { Form, InputNumber, Row, Col, Select, Input } from 'antd';
+import { Form, InputNumber, Row, Col, Select, Input, Switch, Divider } from 'antd';
 import { TENSION_KILTER_GRADES } from '@/app/lib/board-data';
 import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
+import { useBoardProvider } from '@/app/components/board-provider/board-provider-context';
 import SearchClimbNameInput from './search-climb-name-input';
 
 const BasicSearchForm: React.FC = () => {
   const { uiSearchParams, updateFilters } = useUISearchParams();
+  const { token, user_id } = useBoardProvider();
   const grades = TENSION_KILTER_GRADES;
+  
+  const isLoggedIn = token && user_id;
 
   const handleGradeChange = (type: 'min' | 'max', value: number | undefined) => {
     if (type === 'min') {
@@ -139,6 +143,40 @@ const BasicSearchForm: React.FC = () => {
       <Form.Item label="Setter Name">
         <Input value={uiSearchParams.settername} onChange={(e) => updateFilters({ settername: e.target.value })} />
       </Form.Item>
+
+      {isLoggedIn && (
+        <>
+          <Divider>Personal Progress</Divider>
+          
+          <Form.Item label="Hide Attempted" tooltip="Hide climbs you have attempted">
+            <Switch
+              checked={uiSearchParams.hideAttempted}
+              onChange={(checked) => updateFilters({ hideAttempted: checked })}
+            />
+          </Form.Item>
+
+          <Form.Item label="Hide Completed" tooltip="Hide climbs you have completed">
+            <Switch
+              checked={uiSearchParams.hideCompleted}
+              onChange={(checked) => updateFilters({ hideCompleted: checked })}
+            />
+          </Form.Item>
+
+          <Form.Item label="Only Attempted" tooltip="Show only climbs you have attempted">
+            <Switch
+              checked={uiSearchParams.showOnlyAttempted}
+              onChange={(checked) => updateFilters({ showOnlyAttempted: checked })}
+            />
+          </Form.Item>
+
+          <Form.Item label="Only Completed" tooltip="Show only climbs you have completed">
+            <Switch
+              checked={uiSearchParams.showOnlyCompleted}
+              onChange={(checked) => updateFilters({ showOnlyCompleted: checked })}
+            />
+          </Form.Item>
+        </>
+      )}
     </Form>
   );
 };
