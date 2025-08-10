@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  board-controller:
+    image: ghcr.io/marcodejongh/boardsesh-board-controller:latest
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      # Persistent database storage
+      - ./data:/app/data
+    environment:
+      - DB_PATH=/app/data/board_controller.db
+      - LOG_LEVEL=INFO
+    restart: unless-stopped
+    
+    # For Bluetooth support (Linux hosts only)
+    # Uncomment the following lines:
+    # privileged: true
+    # network_mode: host
+    # devices:
+    #   - /dev/bus/usb
+
+  # Optional: Run without Bluetooth
+  board-controller-web-only:
+    build: .
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./data-web:/app/data
+    environment:
+      - DB_PATH=/app/data/board_controller.db
+      - LOG_LEVEL=INFO
+    restart: unless-stopped
+    command: ["python", "main.py", "--no-bluetooth", "--host", "0.0.0.0", "--port", "8000"]
+    profiles:
+      - web-only
+
+volumes:
+  data:
