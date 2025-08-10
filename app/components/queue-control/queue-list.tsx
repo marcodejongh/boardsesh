@@ -1,13 +1,12 @@
 'use client';
 import React, { useEffect } from 'react';
 import { List, Divider, Row, Col, Typography, Button } from 'antd';
-import { HolderOutlined, PlusOutlined } from '@ant-design/icons';
+import { PlusOutlined } from '@ant-design/icons';
 import { useQueueContext } from './queue-context';
 import { Climb, BoardDetails } from '@/app/lib/types';
 import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { extractClosestEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge';
 import { reorder } from '@atlaskit/pragmatic-drag-and-drop/reorder';
-import { DragHandleButton } from '@atlaskit/pragmatic-drag-and-drop-react-accessibility/drag-handle-button';
 import QueueListItem from './queue-list-item';
 import ClimbThumbnail from '../climb-card/climb-thumbnail';
 
@@ -25,7 +24,6 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails, onClimbNavigate }) 
     queue,
     climbSearchResults,
     setCurrentClimbQueueItem,
-    setCurrentClimb,
     setQueue,
     addToQueue,
   } = useQueueContext();
@@ -43,7 +41,12 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails, onClimbNavigate }) 
         if (isNaN(sourceIndex) || isNaN(targetIndex)) return;
 
         const edge = extractClosestEdge(target.data);
-        const finalIndex = edge === 'bottom' ? targetIndex + 1 : targetIndex;
+        let finalIndex = edge === 'bottom' ? targetIndex + 1 : targetIndex;
+
+        // Adjust for the fact that removing the source item shifts indices
+        if (sourceIndex < finalIndex) {
+          finalIndex = finalIndex - 1;
+        }
 
         const newQueue = reorder({
           list: queue,
@@ -88,42 +91,40 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails, onClimbNavigate }) 
           <Divider>Suggested Items</Divider>
           <List
             dataSource={(climbSearchResults || []).filter(
-              (item) => !queue.find(({ climb: { uuid } }) => item.uuid === uuid),
+              (item) => !queue.find((queueItem) => queueItem.climb?.uuid === item.uuid),
             )}
             renderItem={(climb: Climb) => (
               <List.Item>
-                <Row gutter={8} align="middle" wrap={false}>
+                <Row style={{ width: '100%' }} gutter={[8, 8]} align="middle" wrap={false}>
                   <Col xs={2} sm={1}>
                     {/* Empty space to maintain layout consistency */}
                   </Col>
-                  <Col xs={5} sm={4}>
-                    <ClimbThumbnail 
-                      boardDetails={boardDetails} 
-                      currentClimb={climb} 
+                  <Col xs={5} sm={5}>
+                    <ClimbThumbnail
+                      boardDetails={boardDetails}
+                      currentClimb={climb}
                       enableNavigation={true}
                       onNavigate={onClimbNavigate}
                     />
                   </Col>
                   <Col xs={14} sm={16}>
                     <List.Item.Meta
-                      title={<Text ellipsis strong>{climb.name}</Text>}
+                      title={
+                        <Text ellipsis strong>
+                          {climb.name}
+                        </Text>
+                      }
                       description={
                         <Text type="secondary" ellipsis>
-                          {climb.difficulty && climb.quality_average ? (
-                            `${climb.difficulty} ${climb.quality_average}★ @ ${climb.angle}°`
-                          ) : (
-                            `project @ ${climb.angle}°`
-                          )}
+                          {climb.difficulty && climb.quality_average
+                            ? `${climb.difficulty} ${climb.quality_average}★ @ ${climb.angle}°`
+                            : `project @ ${climb.angle}°`}
                         </Text>
                       }
                     />
                   </Col>
-                  <Col xs={3} sm={3}>
-                    <Button
-                      type="default"
-                      icon={<PlusOutlined />}
-                      onClick={() => addToQueue(climb)}
-                    />
+                  <Col xs={3} sm={2}>
+                    <Button type="default" icon={<PlusOutlined />} onClick={() => addToQueue(climb)} />
                   </Col>
                 </Row>
               </List.Item>

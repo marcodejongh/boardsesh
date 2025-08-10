@@ -1,3 +1,4 @@
+import React from 'react';
 import { ImageResponse } from '@vercel/og';
 import { NextRequest } from 'next/server';
 import { getBoardDetails, getClimb } from '@/app/lib/data/queries';
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
     const [boardDetails, currentClimb] = await Promise.all([getBoardDetails(parsedParams), getClimb(parsedParams)]);
 
     // Process climb holds
-    const framesData = convertLitUpHoldsStringToMap(currentClimb.frames, parsedParams.board_name as any);
+    const framesData = convertLitUpHoldsStringToMap(currentClimb.frames, parsedParams.board_name);
 
     // Extract the first frame's data - this should be indexed by hold ID
     // If framesData is an array indexed by frame number, get the first frame
@@ -95,6 +96,7 @@ export async function GET(request: NextRequest) {
             >
               {/* Board background images - render all layers */}
               {imageUrls.map((imageUrl, index) => (
+                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   key={index}
                   src={imageUrl}

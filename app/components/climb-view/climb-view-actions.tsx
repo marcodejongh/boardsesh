@@ -11,7 +11,7 @@ import {
   ArrowLeftOutlined,
 } from '@ant-design/icons';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useQueueContext } from '../queue-control/queue-context';
 import { Climb, BoardDetails } from '@/app/lib/types';
 import type { MenuProps } from 'antd';
@@ -29,10 +29,9 @@ const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl, angle }: ClimbVie
   const { addToQueue, queue } = useQueueContext();
   const [isDuplicate, setDuplicateTimer] = useState(false);
   const [canGoBack, setCanGoBack] = useState(false);
-  const pathname = usePathname();
   const router = useRouter();
 
-  const isAlreadyInQueue = queue.some((item) => item.climb.uuid === climb.uuid);
+  const isAlreadyInQueue = queue.some((item) => item.climb?.uuid === climb.uuid);
 
   useEffect(() => {
     // Check if we can go back and if the previous page was on BoardSesh

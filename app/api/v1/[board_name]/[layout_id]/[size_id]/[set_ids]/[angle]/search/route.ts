@@ -1,6 +1,6 @@
 import { searchClimbs } from '@/app/lib/db/queries/climbs/search-climbs';
 import { BoardRouteParameters, ErrorResponse, SearchClimbsResult, SearchRequestPagination } from '@/app/lib/types';
-import { parseBoardRouteParams, urlParamsToSearchParams } from '@/app/lib/url-utils';
+import { urlParamsToSearchParams } from '@/app/lib/url-utils';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import { NextResponse } from 'next/server';
 

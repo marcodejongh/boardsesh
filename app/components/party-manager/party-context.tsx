@@ -56,7 +56,7 @@ export const PartyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // Subscribe to websocket
     const unsubscribe = subscribeToData(handleWebSocketMessage);
     return () => unsubscribe();
-  }, [subscribeToData]);
+  }, [subscribeToData, sendData, username]);
 
   const handlePeerData = useCallback(
     (data: ReceivedPeerData) => {
@@ -73,7 +73,7 @@ export const PartyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           );
           break;
         case 'send-peer-info':
-          data.username;
+          break;
       }
     },
     [sendData, username],

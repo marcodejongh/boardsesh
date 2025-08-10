@@ -1,13 +1,14 @@
-import React, { useEffect, useMemo, useState } from 'react';
+'use client';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { getImageUrl } from './util';
 import { BoardDetails } from '@/app/lib/types';
 import { HeatmapData } from './types';
 import { LitUpHoldsMap } from './types';
-import { scaleLinear, scaleLog } from 'd3-scale';
+import { scaleLog } from 'd3-scale';
 import useHeatmapData from '../search-drawer/use-heatmap';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
-import { Button, Select, Form, Space, Switch } from 'antd';
+import { Button, Select, Form, Switch } from 'antd';
 import { track } from '@vercel/analytics';
 
 const LEGEND_HEIGHT = 96; // Increased from 80
@@ -27,12 +28,6 @@ const HEATMAP_COLORS = [
   '#f44336', // Light Red
   '#d32f2f', // Deep Red
 ];
-
-// Helper function to get value at percentile
-const getPercentileValue = (values: number[], percentile: number) => {
-  const index = Math.floor(values.length * (percentile / 100));
-  return values[index];
-};
 
 // Helper function to extract angle from pathname
 const getAngleFromPath = (pathname: string): number => {
@@ -94,7 +89,7 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({ boardDetails, litUpHoldsMap
   const heatmapMap = useMemo(() => new Map(heatmapData?.map((data) => [data.holdId, data]) || []), [heatmapData]);
 
   // Updated getValue function to handle user-specific data
-  const getValue = (data: HeatmapData | undefined): number => {
+  const getValue = useCallback((data: HeatmapData | undefined): number => {
     if (!data) return 0;
     switch (colorMode) {
       case 'starting':
@@ -116,7 +111,7 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({ boardDetails, litUpHoldsMap
       default:
         return data.totalUses;
     }
-  };
+  }, [colorMode]);
 
   // Create scales for better distribution of colors
   const { colorScale, opacityScale } = useMemo(() => {
@@ -161,7 +156,7 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({ boardDetails, litUpHoldsMap
       colorScale: getColorScale(),
       opacityScale: getOpacityScale(),
     };
-  }, [heatmapData, colorMode, threshold, litUpHoldsMap]);
+  }, [heatmapData, threshold, litUpHoldsMap, getValue]);
 
   const ColorLegend = () => {
     const gradientId = 'heatmap-gradient';

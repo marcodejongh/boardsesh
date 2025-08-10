@@ -7,7 +7,7 @@ export const runtime = 'nodejs';
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const board_name = searchParams.get('board_name') as BoardName;
+    const board_name = searchParams.get('board_name');
     const layout_id = parseInt(searchParams.get('layout_id') || '');
     const size_id = parseInt(searchParams.get('size_id') || '');
     const set_ids_param = searchParams.get('set_ids');
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     }
 
     const details = await getBoardDetails({
-      board_name,
+      board_name: board_name as BoardName,
       layout_id,
       size_id,
       set_ids,

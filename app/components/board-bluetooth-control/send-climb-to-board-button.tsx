@@ -61,7 +61,7 @@ const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({ boardDe
     let { frames } = currentClimbQueueItem.climb;
 
     const placementPositions = boardDetails.ledPlacements;
-    if (currentClimbQueueItem.climb.mirrored) {
+    if (currentClimbQueueItem.climb?.mirrored) {
       frames = convertToMirroredFramesString(frames, boardDetails.holdsData);
     }
     const bluetoothPacket = getBluetoothPacket(frames, placementPositions, boardDetails.board_name);
@@ -70,14 +70,14 @@ const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({ boardDe
       if (characteristicRef.current) {
         await writeCharacteristicSeries(characteristicRef.current, splitMessages(bluetoothPacket));
         track('Climb Sent to Board Success', {
-          climbUuid: currentClimbQueueItem.climb.uuid,
+          climbUuid: currentClimbQueueItem.climb?.uuid,
           boardLayout: `${boardDetails.layout_name}`,
         });
       }
     } catch (error) {
       console.error('Error sending climb to board:', error);
       track('Climb Sent to Board Failure', {
-        climbUuid: currentClimbQueueItem.climb.uuid,
+        climbUuid: currentClimbQueueItem.climb?.uuid,
         boardLayout: `${boardDetails.layout_name}`,
       });
     }

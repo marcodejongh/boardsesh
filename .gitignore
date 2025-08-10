@@ -42,3 +42,6 @@ db/tmp
 
 # editor
 .vscode
+
+# board controller
+board-controller/board_controller.db

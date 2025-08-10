@@ -137,16 +137,16 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
         }}
         onDoubleClick={() => setCurrentClimbQueueItem(item)}
       >
-        <Row gutter={8} align="middle" wrap={false}>
+        <Row style={{ width: '100%' }} gutter={[8, 8]} align="middle" wrap={false}>
           <Col xs={2} sm={1}>
-            <DragHandleButton label={`Reorder ${item.climb.name}`}>
+            <DragHandleButton label={`Reorder ${item.climb?.name || 'climb'}`}>
               <HolderOutlined />
             </DragHandleButton>
           </Col>
-          <Col xs={5} sm={4}>
-            <ClimbThumbnail 
-              boardDetails={boardDetails} 
-              currentClimb={item.climb} 
+          <Col xs={5} sm={5}>
+            <ClimbThumbnail
+              boardDetails={boardDetails}
+              currentClimb={item.climb}
               enableNavigation={true}
               onNavigate={onClimbNavigate}
             />
@@ -154,25 +154,39 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
           <Col xs={14} sm={16}>
             <List.Item.Meta
               title={
-                <Text ellipsis strong>
-                  {item.climb.name}
-                  <AscentStatus climbUuid={item.climb.uuid} />
-                </Text>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Text
+                    style={{
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      fontWeight: 'bold',
+                    }}
+                  >
+                    {item.climb?.name}
+                  </Text>
+                  <AscentStatus climbUuid={item.climb?.uuid} />
+                </div>
               }
               description={
-                <Text type={isHistory ? 'secondary' : undefined} ellipsis>
-                  {item.climb.difficulty && item.climb.quality_average ? (
-                    `${item.climb.difficulty} ${item.climb.quality_average}★ @ ${item.climb.angle}°`
-                  ) : (
-                    `project @ ${item.climb.angle}°`
-                  )}
-                  {item.climb.benchmark_difficulty && <CopyrightOutlined />}
+                <Text
+                  type={isHistory ? 'secondary' : undefined}
+                  style={{
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  {item.climb?.difficulty && item.climb?.quality_average
+                    ? `${item.climb?.difficulty} ${item.climb?.quality_average}★ @ ${item.climb?.angle}°`
+                    : `project @ ${item.climb?.angle}°`}
+                  {item.climb?.benchmark_difficulty && <CopyrightOutlined style={{ marginLeft: 4 }} />}
                 </Text>
               }
             />
           </Col>
-          <Col xs={3} sm={3}>
-            <TickButton currentClimb={item.climb} angle={item.climb.angle} boardDetails={boardDetails} />
+          <Col xs={3} sm={2}>
+            <TickButton currentClimb={item.climb} angle={item.climb?.angle} boardDetails={boardDetails} />
           </Col>
         </Row>
         {closestEdge && <DropIndicator edge={closestEdge} gap="1px" />}

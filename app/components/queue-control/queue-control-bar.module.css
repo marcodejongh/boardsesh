@@ -1,0 +1,9 @@
+.queueToggle {
+  cursor: pointer;
+}
+
+@media (min-width: 768px) {
+  .queueToggle.listPage {
+    cursor: default;
+  }
+}

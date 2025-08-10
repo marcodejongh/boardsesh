@@ -1,33 +1,15 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
-import {
-  Button,
-  Form,
-  Select,
-  Typography,
-  Input,
-  Divider,
-  Card,
-  Row,
-  Col,
-  Checkbox,
-  Tooltip,
-  Space,
-  Flex,
-  Collapse,
-} from 'antd';
-import { InfoCircleOutlined } from '@ant-design/icons';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Button, Form, Select, Typography, Input, Divider, Card, Row, Col, Flex, Collapse } from 'antd';
 import { useRouter } from 'next/navigation';
 import { openDB } from 'idb';
 import { track } from '@vercel/analytics';
 import { SUPPORTED_BOARDS, ANGLES } from '@/app/lib/board-data';
 import { fetchBoardDetails } from '../rest-api/api';
-import { LayoutRow, SizeRow, SetRow } from '@/app/lib/data/queries';
 import { BoardName } from '@/app/lib/types';
 import BoardConfigPreview from './board-config-preview';
 import BoardConfigLivePreview from './board-config-live-preview';
-import StartClimbingButton from './start-climbing-button';
 import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { BoardConfigData } from '@/app/lib/server-board-configs';
 
@@ -68,15 +50,14 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
   const [selectedAngle, setSelectedAngle] = useState<number>(40);
 
   // Data states - no longer needed as we get them from props
-  const layouts = selectedBoard ? boardConfigs.layouts[selectedBoard] || [] : [];
-  const sizes = selectedBoard && selectedLayout ? boardConfigs.sizes[`${selectedBoard}-${selectedLayout}`] || [] : [];
-  const sets =
+  const layouts = useMemo(() => selectedBoard ? boardConfigs.layouts[selectedBoard] || [] : [], [selectedBoard, boardConfigs.layouts]);
+  const sizes = useMemo(() => selectedBoard && selectedLayout ? boardConfigs.sizes[`${selectedBoard}-${selectedLayout}`] || [] : [], [selectedBoard, selectedLayout, boardConfigs.sizes]);
+  const sets = useMemo(() =>
     selectedBoard && selectedLayout && selectedSize
       ? boardConfigs.sets[`${selectedBoard}-${selectedLayout}-${selectedSize}`] || []
-      : [];
+      : [], [selectedBoard, selectedLayout, selectedSize, boardConfigs.sets]);
 
   // Login states - for now just skip login on setup page
-  const [showLoginSection, setShowLoginSection] = useState(false);
 
   // Additional states
   const [useAsDefault, setUseAsDefault] = useState(false);
@@ -116,18 +97,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
     }
   };
 
-  const loadDefaultConfiguration = async () => {
-    try {
-      const db = await initDB();
-      const allConfigs = await db.getAll(STORE_NAME);
-      return allConfigs.find((config) => config.useAsDefault) || null;
-    } catch (error) {
-      console.error('Failed to load default configuration:', error);
-      return null;
-    }
-  };
-
-  const loadAllConfigurations = async () => {
+  const loadAllConfigurations = useCallback(async () => {
     try {
       const db = await initDB();
       const allConfigs = await db.getAll(STORE_NAME);
@@ -136,7 +106,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
       console.error('Failed to load configurations:', error);
       return [];
     }
-  };
+  }, []);
 
   const deleteConfiguration = async (configName: string) => {
     try {
@@ -165,42 +135,6 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
 
     setSuggestedName(`${layoutName} ${sizeName}`);
   }, [selectedBoard, selectedLayout, selectedSize, layouts, sizes]);
-
-  // Generate climbing URL from current form selections
-  const getClimbingUrl = useCallback(async () => {
-    if (!selectedBoard || !selectedLayout || !selectedSize || selectedSets.length === 0) {
-      return null;
-    }
-
-    const setsString = selectedSets.join(',');
-
-    try {
-      // Try to get board details for slug-based URL from cache first
-      const detailsKey = `${selectedBoard}-${selectedLayout}-${selectedSize}-${setsString}`;
-      let boardDetails = boardConfigs.details[detailsKey];
-
-      if (!boardDetails) {
-        boardDetails = await fetchBoardDetails(selectedBoard, selectedLayout, selectedSize, selectedSets);
-      }
-
-      if (boardDetails?.layout_name && boardDetails?.size_name && boardDetails?.set_names) {
-        return constructClimbListWithSlugs(
-          boardDetails.board_name,
-          boardDetails.layout_name,
-          boardDetails.size_name,
-          boardDetails.set_names,
-          selectedAngle,
-        );
-      } else {
-        // Fallback to old URL format
-        return `/${selectedBoard}/${selectedLayout}/${selectedSize}/${setsString}/${selectedAngle}/list`;
-      }
-    } catch (error) {
-      console.error('Error constructing climbing URL:', error);
-      // Fallback to old URL format
-      return `/${selectedBoard}/${selectedLayout}/${selectedSize}/${setsString}/${selectedAngle}/list`;
-    }
-  }, [selectedBoard, selectedLayout, selectedSize, selectedSets, selectedAngle, boardConfigs]);
 
   // Load configurations on mount
   useEffect(() => {
@@ -264,7 +198,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
     };
 
     loadConfigurations();
-  }, [router, boardConfigs]);
+  }, [router, boardConfigs, loadAllConfigurations]);
 
   // Set default selections on initial load if no saved configs exist
   useEffect(() => {
@@ -274,7 +208,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
       if (SUPPORTED_BOARDS.length > 0) {
         setSelectedBoard(SUPPORTED_BOARDS[0] as BoardName);
       }
-      
+
       // Auto-select first angle (40 degrees is already the default)
       // Keep the existing default angle of 40
     }
@@ -288,7 +222,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
       setSelectedSets([]);
       return;
     }
-    
+
     // Auto-select first layout when board changes
     const availableLayouts = boardConfigs.layouts[selectedBoard] || [];
     if (availableLayouts.length > 0) {
@@ -296,7 +230,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
     } else {
       setSelectedLayout(undefined);
     }
-    
+
     setSelectedSize(undefined);
     setSelectedSets([]);
   }, [selectedBoard, boardConfigs]);
@@ -307,7 +241,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
       setSelectedSets([]);
       return;
     }
-    
+
     // Auto-select first size when layout changes
     const availableSizes = boardConfigs.sizes[`${selectedBoard}-${selectedLayout}`] || [];
     if (availableSizes.length > 0) {
@@ -315,7 +249,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
     } else {
       setSelectedSize(undefined);
     }
-    
+
     setSelectedSets([]);
   }, [selectedBoard, selectedLayout, boardConfigs]);
 
@@ -324,10 +258,10 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
       setSelectedSets([]);
       return;
     }
-    
+
     // Auto-select all available sets when size is selected
     const availableSets = boardConfigs.sets[`${selectedBoard}-${selectedLayout}-${selectedSize}`] || [];
-    const allSetIds = availableSets.map(set => set.id);
+    const allSetIds = availableSets.map((set) => set.id);
     setSelectedSets(allSetIds);
   }, [selectedBoard, selectedLayout, selectedSize, boardConfigs]);
 

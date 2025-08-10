@@ -15,7 +15,7 @@ const getShareUrl = (pathname: string, searchParams: URLSearchParams, peerId: st
     const params = new URLSearchParams(searchParams.toString());
     params.set('hostId', peerId);
     return `${window.location.origin}${pathname}?${params.toString()}`;
-  } catch (e) {
+  } catch {
     return '';
   }
 };
@@ -23,12 +23,13 @@ const getShareUrl = (pathname: string, searchParams: URLSearchParams, peerId: st
 export const ShareBoardButton = () => {
   const { peerId, isConnecting, hasConnected, connections, hostId } = usePeerContext();
   const { connectedUsers, userName } = usePartyContext();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const controllerUrl = searchParams.get('controllerUrl');
+  const isControllerMode = !!controllerUrl;
 
   // const { connectedUsers } = usePartyContext();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-
-  const searchParams = useSearchParams();
-  const pathname = usePathname();
 
   const showDrawer = () => {
     setIsDrawerOpen(true);
@@ -67,8 +68,33 @@ export const ShareBoardButton = () => {
           disabled={!peerId}
         />
       </Badge>
-      <Drawer title="Party Mode" placement="top" onClose={handleClose} open={isDrawerOpen} height="70vh">
+      <Drawer 
+        title={isControllerMode ? "Controller Mode" : "Party Mode"} 
+        placement="top" 
+        onClose={handleClose} 
+        open={isDrawerOpen} 
+        height="70vh"
+      >
         <Flex gap="middle" vertical>
+          {isControllerMode && (
+            <div style={{ 
+              padding: '12px', 
+              background: '#e6f7ff', 
+              border: '1px solid #1890ff', 
+              borderRadius: '6px',
+              marginBottom: '16px'
+            }}>
+              <Flex align="center" gap="small">
+                <span style={{ fontSize: '18px' }}>🎮</span>
+                <div>
+                  <Text strong style={{ color: '#1890ff' }}>Board Controller Connected</Text><br/>
+                  <Text type="secondary" style={{ fontSize: '12px' }}>
+                    Queue management is handled by your Board Controller
+                  </Text>
+                </div>
+              </Flex>
+            </div>
+          )}
           {connectedUsers.length > 0 && (
             <Flex vertical gap="small">
               <Text strong>Connected Users:</Text>

@@ -1,9 +1,8 @@
-import { and, eq, desc, sql } from 'drizzle-orm';
+import { eq, desc, sql, SQL, and } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { dbz as db } from '@/app/lib/db/db';
 import { convertLitUpHoldsStringToMap } from '@/app/components/board-renderer/util';
 import { Climb, ParsedBoardRouteParameters, SearchClimbsResult, SearchRequestPagination } from '@/app/lib/types';
-import { SearchRequest } from '@/app/lib/types';
 import { getBoardTables } from '@/lib/db/queries/util/table-select';
 import { createClimbFilters } from './create-climb-filters';
 
@@ -21,15 +20,15 @@ export const searchClimbs = async (
   const filters = createClimbFilters(tables, params, searchParams, ps, userId);
 
   // Define sort columns with explicit SQL expressions where needed
-  const allowedSortColumns: Record<SearchRequest['sortBy'], any> = {
-    ascents: tables.climbStats.ascensionistCount,
+  const allowedSortColumns: Record<string, SQL> = {
+    ascents: sql`${tables.climbStats.ascensionistCount}`,
     difficulty: sql`ROUND(${tables.climbStats.displayDifficulty}::numeric, 0)`,
-    name: tables.climbs.name,
-    quality: tables.climbStats.qualityAverage,
+    name: sql`${tables.climbs.name}`,
+    quality: sql`${tables.climbStats.qualityAverage}`,
   };
 
   // Get the selected sort column or fall back to ascensionist_count
-  const sortColumn = allowedSortColumns[searchParams.sortBy] || tables.climbStats.ascensionistCount;
+  const sortColumn = allowedSortColumns[searchParams.sortBy] || sql`${tables.climbStats.ascensionistCount}`;
 
   const whereConditions = [
     ...filters.getClimbWhereConditions(),

@@ -1,5 +1,5 @@
 import React from 'react';
-import { notFound, redirect, permanentRedirect } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import { BoardRouteParametersWithUuid } from '@/app/lib/types';
 import { getBoardDetails } from '@/app/lib/data/queries';
 import { getClimb } from '@/app/lib/data/queries';
@@ -11,7 +11,6 @@ import {
   extractUuidFromSlug,
   constructClimbViewUrl,
   isUuidOnly,
-  isSlugFormat,
   constructClimbViewUrlWithSlugs,
   parseBoardRouteParams,
 } from '@/app/lib/url-utils';
@@ -38,10 +37,7 @@ export async function generateMetadata(props: { params: Promise<BoardRouteParame
     const climbUrl = constructClimbViewUrl(parsedParams, parsedParams.climb_uuid, climbName);
 
     // Generate OG image URL - use parsed numeric IDs for better performance
-    const ogImageUrl = new URL(
-      '/api/og/climb',
-      'https://boardsesh.com'
-    );
+    const ogImageUrl = new URL('/api/og/climb', 'https://boardsesh.com');
     ogImageUrl.searchParams.set('board_name', parsedParams.board_name);
     ogImageUrl.searchParams.set('layout_id', parsedParams.layout_id.toString());
     ogImageUrl.searchParams.set('size_id', parsedParams.size_id.toString());
@@ -73,7 +69,7 @@ export async function generateMetadata(props: { params: Promise<BoardRouteParame
         images: [ogImageUrl.toString()],
       },
     };
-  } catch (error) {
+  } catch {
     return {
       title: 'Climb View | BoardSesh',
       description: 'View climb details and beta videos',
@@ -105,7 +101,7 @@ export default async function DynamicResultsPage(props: { params: Promise<BoardR
 
     if (hasNumericParams || isUuidOnly(params.climb_uuid)) {
       // Need to redirect to new slug-based URL
-      const [boardDetails, currentClimb] = await Promise.all([getBoardDetails(parsedParams), getClimb(parsedParams)]);
+      const [currentClimb] = await Promise.all([getClimb(parsedParams)]);
 
       // Get the names for slug generation
       const layouts = await import('@/app/lib/data/queries').then((m) => m.getLayouts(parsedParams.board_name));
@@ -181,7 +177,7 @@ export default async function DynamicResultsPage(props: { params: Promise<BoardR
     }
 
     // Process the frames to get litUpHoldsMap (same as the API does)
-    const litUpHoldsMap = convertLitUpHoldsStringToMap(currentClimb.frames, parsedParams.board_name as any)[0];
+    const litUpHoldsMap = convertLitUpHoldsStringToMap(currentClimb.frames, parsedParams.board_name)[0];
     const climbWithProcessedData = {
       ...currentClimb,
       litUpHoldsMap,

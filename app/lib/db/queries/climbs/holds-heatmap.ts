@@ -125,7 +125,7 @@ export const getHoldHeatmapData = async (
   }
 };
 
-function normalizeStats(stats: Record<string, any>, userId?: number): HoldHeatmapData {
+function normalizeStats(stats: Record<string, unknown>, userId?: number): HoldHeatmapData {
   // For numeric fields, ensure we're returning a number and handle null/undefined properly
   const result: HoldHeatmapData = {
     holdId: Number(stats.holdId),

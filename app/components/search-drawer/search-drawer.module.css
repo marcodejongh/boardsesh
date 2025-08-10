@@ -1,0 +1,9 @@
+.filterColumn {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .filterColumn {
+    display: block;
+  }
+}

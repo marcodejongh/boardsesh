@@ -1,129 +1,9 @@
 {
-  "id": "50af87c5-5095-41c2-9f3d-f49ac1d2e9f3",
+  "id": "adf48b70-c4d6-4836-9278-e1355abee657",
   "prevId": "9c689779-3005-49b1-b4af-1cf1c8a97fcb",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
-    "public.accounts": {
-      "name": "accounts",
-      "schema": "",
-      "columns": {
-        "userId": {
-          "name": "userId",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "type": {
-          "name": "type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "provider": {
-          "name": "provider",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "providerAccountId": {
-          "name": "providerAccountId",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "refresh_token": {
-          "name": "refresh_token",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "access_token": {
-          "name": "access_token",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "expires_at": {
-          "name": "expires_at",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "token_type": {
-          "name": "token_type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "scope": {
-          "name": "scope",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "id_token": {
-          "name": "id_token",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "session_state": {
-          "name": "session_state",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "accounts_userId_users_id_fk": {
-          "name": "accounts_userId_users_id_fk",
-          "tableFrom": "accounts",
-          "tableTo": "users",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "accounts_provider_providerAccountId_pk": {
-          "name": "accounts_provider_providerAccountId_pk",
-          "columns": [
-            "provider",
-            "providerAccountId"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.kilter_android_metadata": {
-      "name": "kilter_android_metadata",
-      "schema": "",
-      "columns": {
-        "locale": {
-          "name": "locale",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.kilter_ascents": {
       "name": "kilter_ascents",
       "schema": "",
@@ -216,12 +96,8 @@
           "name": "ascents_attempt_id_fkey1",
           "tableFrom": "kilter_ascents",
           "tableTo": "kilter_attempts",
-          "columnsFrom": [
-            "attempt_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["attempt_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "cascade"
         },
@@ -229,12 +105,8 @@
           "name": "ascents_climb_uuid_fkey1",
           "tableFrom": "kilter_ascents",
           "tableTo": "kilter_climbs",
-          "columnsFrom": [
-            "climb_uuid"
-          ],
-          "columnsTo": [
-            "uuid"
-          ],
+          "columnsFrom": ["climb_uuid"],
+          "columnsTo": ["uuid"],
           "onDelete": "restrict",
           "onUpdate": "cascade"
         },
@@ -242,12 +114,8 @@
           "name": "ascents_difficulty_fkey1",
           "tableFrom": "kilter_ascents",
           "tableTo": "kilter_difficulty_grades",
-          "columnsFrom": [
-            "difficulty"
-          ],
-          "columnsTo": [
-            "difficulty"
-          ],
+          "columnsFrom": ["difficulty"],
+          "columnsTo": ["difficulty"],
           "onDelete": "restrict",
           "onUpdate": "cascade"
         },
@@ -255,12 +123,8 @@
           "name": "ascents_user_id_fkey1",
           "tableFrom": "kilter_ascents",
           "tableTo": "kilter_users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -355,12 +219,8 @@
           "name": "beta_links_climb_uuid_fkey1",
           "tableFrom": "kilter_beta_links",
           "tableTo": "kilter_climbs",
-          "columnsFrom": [
-            "climb_uuid"
-          ],
-          "columnsTo": [
-            "uuid"
-          ],
+          "columnsFrom": ["climb_uuid"],
+          "columnsTo": ["uuid"],
           "onDelete": "restrict",
           "onUpdate": "cascade"
         }
@@ -438,12 +298,8 @@
           "name": "bids_climb_uuid_fkey1",
           "tableFrom": "kilter_bids",
           "tableTo": "kilter_climbs",
-          "columnsFrom": [
-            "climb_uuid"
-          ],
-          "columnsTo": [
-            "uuid"
-          ],
+          "columnsFrom": ["climb_uuid"],
+          "columnsTo": ["uuid"],
           "onDelete": "restrict",
           "onUpdate": "cascade"
         },
@@ -451,12 +307,8 @@
           "name": "bids_user_id_fkey1",
           "tableFrom": "kilter_bids",
           "tableTo": "kilter_users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -559,63 +411,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.kilter_climb_cache_fields": {
-      "name": "kilter_climb_cache_fields",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "bigserial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "climb_uuid": {
-          "name": "climb_uuid",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "ascensionist_count": {
-          "name": "ascensionist_count",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "display_difficulty": {
-          "name": "display_difficulty",
-          "type": "double precision",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "quality_average": {
-          "name": "quality_average",
-          "type": "double precision",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "climb_cache_fields_climb_uuid_fkey1": {
-          "name": "climb_cache_fields_climb_uuid_fkey1",
-          "tableFrom": "kilter_climb_cache_fields",
-          "tableTo": "kilter_climbs",
-          "columnsFrom": [
-            "climb_uuid"
-          ],
-          "columnsTo": [
-            "uuid"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "cascade"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.kilter_climb_holds": {
       "name": "kilter_climb_holds",
       "schema": "",
@@ -679,37 +474,9 @@
       "compositePrimaryKeys": {
         "kilter_climb_holds_climb_uuid_hold_id_pk": {
           "name": "kilter_climb_holds_climb_uuid_hold_id_pk",
-          "columns": [
-            "climb_uuid",
-            "hold_id"
-          ]
+          "columns": ["climb_uuid", "hold_id"]
         }
       },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.kilter_climb_random_positions": {
-      "name": "kilter_climb_random_positions",
-      "schema": "",
-      "columns": {
-        "climb_uuid": {
-          "name": "climb_uuid",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "position": {
-          "name": "position",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -779,10 +546,7 @@
       "compositePrimaryKeys": {
         "kilter_climb_stats_pk": {
           "name": "kilter_climb_stats_pk",
-          "columns": [
-            "climb_uuid",
-            "angle"
-          ]
+          "columns": ["climb_uuid", "angle"]
         }
       },
       "uniqueConstraints": {},
@@ -1060,12 +824,8 @@
           "name": "climbs_layout_id_fkey1",
           "tableFrom": "kilter_climbs",
           "tableTo": "kilter_layouts",
-          "columnsFrom": [
-            "layout_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["layout_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -1167,65 +927,12 @@
           "name": "holes_product_id_fkey1",
           "tableFrom": "kilter_holes",
           "tableTo": "kilter_products",
-          "columnsFrom": [
-            "product_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["product_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
       },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.kilter_kits": {
-      "name": "kilter_kits",
-      "schema": "",
-      "columns": {
-        "serial_number": {
-          "name": "serial_number",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "is_autoconnect": {
-          "name": "is_autoconnect",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "is_listed": {
-          "name": "is_listed",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
@@ -1291,12 +998,8 @@
           "name": "layouts_product_id_fkey1",
           "tableFrom": "kilter_layouts",
           "tableTo": "kilter_products",
-          "columnsFrom": [
-            "product_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["product_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -1342,12 +1045,8 @@
           "name": "leds_hole_id_fkey1",
           "tableFrom": "kilter_leds",
           "tableTo": "kilter_holes",
-          "columnsFrom": [
-            "hole_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["hole_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -1355,12 +1054,8 @@
           "name": "leds_product_size_id_fkey1",
           "tableFrom": "kilter_leds",
           "tableTo": "kilter_product_sizes",
-          "columnsFrom": [
-            "product_size_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["product_size_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -1424,12 +1119,8 @@
           "name": "placement_roles_product_id_fkey1",
           "tableFrom": "kilter_placement_roles",
           "tableTo": "kilter_products",
-          "columnsFrom": [
-            "product_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["product_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -1481,12 +1172,8 @@
           "name": "placements_default_placement_role_id_fkey1",
           "tableFrom": "kilter_placements",
           "tableTo": "kilter_placement_roles",
-          "columnsFrom": [
-            "default_placement_role_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["default_placement_role_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "cascade"
         },
@@ -1494,12 +1181,8 @@
           "name": "placements_hole_id_fkey1",
           "tableFrom": "kilter_placements",
           "tableTo": "kilter_holes",
-          "columnsFrom": [
-            "hole_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["hole_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -1507,12 +1190,8 @@
           "name": "placements_layout_id_fkey1",
           "tableFrom": "kilter_placements",
           "tableTo": "kilter_layouts",
-          "columnsFrom": [
-            "layout_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["layout_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -1520,12 +1199,8 @@
           "name": "placements_set_id_fkey1",
           "tableFrom": "kilter_placements",
           "tableTo": "kilter_sets",
-          "columnsFrom": [
-            "set_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["set_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -1613,12 +1288,8 @@
           "name": "product_sizes_product_id_fkey1",
           "tableFrom": "kilter_product_sizes",
           "tableTo": "kilter_products",
-          "columnsFrom": [
-            "product_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["product_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -1676,12 +1347,8 @@
           "name": "product_sizes_layouts_sets_layout_id_fkey1",
           "tableFrom": "kilter_product_sizes_layouts_sets",
           "tableTo": "kilter_layouts",
-          "columnsFrom": [
-            "layout_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["layout_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -1689,12 +1356,8 @@
           "name": "product_sizes_layouts_sets_product_size_id_fkey1",
           "tableFrom": "kilter_product_sizes_layouts_sets",
           "tableTo": "kilter_product_sizes",
-          "columnsFrom": [
-            "product_size_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["product_size_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -1702,12 +1365,8 @@
           "name": "product_sizes_layouts_sets_set_id_fkey1",
           "tableFrom": "kilter_product_sizes_layouts_sets",
           "tableTo": "kilter_sets",
-          "columnsFrom": [
-            "set_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["set_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -1761,45 +1420,6 @@
       },
       "indexes": {},
       "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.kilter_products_angles": {
-      "name": "kilter_products_angles",
-      "schema": "",
-      "columns": {
-        "product_id": {
-          "name": "product_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "angle": {
-          "name": "angle",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "products_angles_product_id_fkey1": {
-          "name": "products_angles_product_id_fkey1",
-          "tableFrom": "kilter_products_angles",
-          "tableTo": "kilter_products",
-          "columnsFrom": [
-            "product_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "cascade"
-        }
-      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
@@ -1899,31 +1519,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.kilter_user_permissions": {
-      "name": "kilter_user_permissions",
-      "schema": "",
-      "columns": {
-        "user_id": {
-          "name": "user_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.kilter_user_syncs": {
       "name": "kilter_user_syncs",
       "schema": "",
@@ -1953,12 +1548,8 @@
           "name": "user_syncs_user_id_fkey1",
           "tableFrom": "kilter_user_syncs",
           "tableTo": "kilter_users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -1966,10 +1557,7 @@
       "compositePrimaryKeys": {
         "kilter_user_sync_pk": {
           "name": "kilter_user_sync_pk",
-          "columns": [
-            "user_id",
-            "table_name"
-          ]
+          "columns": ["user_id", "table_name"]
         }
       },
       "uniqueConstraints": {},
@@ -2085,12 +1673,8 @@
           "name": "walls_layout_id_fkey1",
           "tableFrom": "kilter_walls",
           "tableTo": "kilter_layouts",
-          "columnsFrom": [
-            "layout_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["layout_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "cascade"
         },
@@ -2098,12 +1682,8 @@
           "name": "walls_product_id_fkey1",
           "tableFrom": "kilter_walls",
           "tableTo": "kilter_products",
-          "columnsFrom": [
-            "product_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["product_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "cascade"
         },
@@ -2111,12 +1691,8 @@
           "name": "walls_product_size_id_fkey1",
           "tableFrom": "kilter_walls",
           "tableTo": "kilter_product_sizes",
-          "columnsFrom": [
-            "product_size_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["product_size_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "cascade"
         },
@@ -2124,132 +1700,12 @@
           "name": "walls_user_id_fkey1",
           "tableFrom": "kilter_walls",
           "tableTo": "kilter_users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
       },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.kilter_walls_sets": {
-      "name": "kilter_walls_sets",
-      "schema": "",
-      "columns": {
-        "wall_uuid": {
-          "name": "wall_uuid",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "set_id": {
-          "name": "set_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "walls_sets_set_id_fkey1": {
-          "name": "walls_sets_set_id_fkey1",
-          "tableFrom": "kilter_walls_sets",
-          "tableTo": "kilter_sets",
-          "columnsFrom": [
-            "set_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "cascade"
-        },
-        "walls_sets_wall_uuid_fkey1": {
-          "name": "walls_sets_wall_uuid_fkey1",
-          "tableFrom": "kilter_walls_sets",
-          "tableTo": "kilter_walls",
-          "columnsFrom": [
-            "wall_uuid"
-          ],
-          "columnsTo": [
-            "uuid"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "cascade"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.sessions": {
-      "name": "sessions",
-      "schema": "",
-      "columns": {
-        "sessionToken": {
-          "name": "sessionToken",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "userId": {
-          "name": "userId",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "expires": {
-          "name": "expires",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "sessions_userId_users_id_fk": {
-          "name": "sessions_userId_users_id_fk",
-          "tableFrom": "sessions",
-          "tableTo": "users",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.tension_android_metadata": {
-      "name": "tension_android_metadata",
-      "schema": "",
-      "columns": {
-        "locale": {
-          "name": "locale",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
@@ -2348,12 +1804,8 @@
           "name": "ascents_attempt_id_fkey",
           "tableFrom": "tension_ascents",
           "tableTo": "tension_attempts",
-          "columnsFrom": [
-            "attempt_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["attempt_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "cascade"
         },
@@ -2361,12 +1813,8 @@
           "name": "ascents_climb_uuid_fkey",
           "tableFrom": "tension_ascents",
           "tableTo": "tension_climbs",
-          "columnsFrom": [
-            "climb_uuid"
-          ],
-          "columnsTo": [
-            "uuid"
-          ],
+          "columnsFrom": ["climb_uuid"],
+          "columnsTo": ["uuid"],
           "onDelete": "restrict",
           "onUpdate": "cascade"
         },
@@ -2374,12 +1822,8 @@
           "name": "ascents_difficulty_fkey",
           "tableFrom": "tension_ascents",
           "tableTo": "tension_difficulty_grades",
-          "columnsFrom": [
-            "difficulty"
-          ],
-          "columnsTo": [
-            "difficulty"
-          ],
+          "columnsFrom": ["difficulty"],
+          "columnsTo": ["difficulty"],
           "onDelete": "restrict",
           "onUpdate": "cascade"
         },
@@ -2387,12 +1831,8 @@
           "name": "ascents_user_id_fkey",
           "tableFrom": "tension_ascents",
           "tableTo": "tension_users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -2487,12 +1927,8 @@
           "name": "beta_links_climb_uuid_fkey",
           "tableFrom": "tension_beta_links",
           "tableTo": "tension_climbs",
-          "columnsFrom": [
-            "climb_uuid"
-          ],
-          "columnsTo": [
-            "uuid"
-          ],
+          "columnsFrom": ["climb_uuid"],
+          "columnsTo": ["uuid"],
           "onDelete": "restrict",
           "onUpdate": "cascade"
         }
@@ -2570,12 +2006,8 @@
           "name": "bids_climb_uuid_fkey",
           "tableFrom": "tension_bids",
           "tableTo": "tension_climbs",
-          "columnsFrom": [
-            "climb_uuid"
-          ],
-          "columnsTo": [
-            "uuid"
-          ],
+          "columnsFrom": ["climb_uuid"],
+          "columnsTo": ["uuid"],
           "onDelete": "restrict",
           "onUpdate": "cascade"
         },
@@ -2583,12 +2015,8 @@
           "name": "bids_user_id_fkey",
           "tableFrom": "tension_bids",
           "tableTo": "tension_users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -2691,63 +2119,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.tension_climb_cache_fields": {
-      "name": "tension_climb_cache_fields",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "bigserial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "climb_uuid": {
-          "name": "climb_uuid",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "ascensionist_count": {
-          "name": "ascensionist_count",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "display_difficulty": {
-          "name": "display_difficulty",
-          "type": "double precision",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "quality_average": {
-          "name": "quality_average",
-          "type": "double precision",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "climb_cache_fields_climb_uuid_fkey": {
-          "name": "climb_cache_fields_climb_uuid_fkey",
-          "tableFrom": "tension_climb_cache_fields",
-          "tableTo": "tension_climbs",
-          "columnsFrom": [
-            "climb_uuid"
-          ],
-          "columnsTo": [
-            "uuid"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "cascade"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.tension_climb_holds": {
       "name": "tension_climb_holds",
       "schema": "",
@@ -2811,37 +2182,9 @@
       "compositePrimaryKeys": {
         "tension_climb_holds_climb_uuid_hold_id_pk": {
           "name": "tension_climb_holds_climb_uuid_hold_id_pk",
-          "columns": [
-            "climb_uuid",
-            "hold_id"
-          ]
+          "columns": ["climb_uuid", "hold_id"]
         }
       },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.tension_climb_random_positions": {
-      "name": "tension_climb_random_positions",
-      "schema": "",
-      "columns": {
-        "climb_uuid": {
-          "name": "climb_uuid",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "position": {
-          "name": "position",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -2911,10 +2254,7 @@
       "compositePrimaryKeys": {
         "tension_climb_stats_pk": {
           "name": "tension_climb_stats_pk",
-          "columns": [
-            "climb_uuid",
-            "angle"
-          ]
+          "columns": ["climb_uuid", "angle"]
         }
       },
       "uniqueConstraints": {},
@@ -3192,12 +2532,8 @@
           "name": "climbs_layout_id_fkey",
           "tableFrom": "tension_climbs",
           "tableTo": "tension_layouts",
-          "columnsFrom": [
-            "layout_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["layout_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -3299,12 +2635,8 @@
           "name": "holes_mirrored_hole_id_fkey",
           "tableFrom": "tension_holes",
           "tableTo": "tension_holes",
-          "columnsFrom": [
-            "mirrored_hole_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["mirrored_hole_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "cascade"
         },
@@ -3312,65 +2644,12 @@
           "name": "holes_product_id_fkey",
           "tableFrom": "tension_holes",
           "tableTo": "tension_products",
-          "columnsFrom": [
-            "product_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["product_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
       },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.tension_kits": {
-      "name": "tension_kits",
-      "schema": "",
-      "columns": {
-        "serial_number": {
-          "name": "serial_number",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "is_autoconnect": {
-          "name": "is_autoconnect",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "is_listed": {
-          "name": "is_listed",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
@@ -3436,12 +2715,8 @@
           "name": "layouts_product_id_fkey",
           "tableFrom": "tension_layouts",
           "tableTo": "tension_products",
-          "columnsFrom": [
-            "product_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["product_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -3487,12 +2762,8 @@
           "name": "leds_hole_id_fkey",
           "tableFrom": "tension_leds",
           "tableTo": "tension_holes",
-          "columnsFrom": [
-            "hole_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["hole_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -3500,12 +2771,8 @@
           "name": "leds_product_size_id_fkey",
           "tableFrom": "tension_leds",
           "tableTo": "tension_product_sizes",
-          "columnsFrom": [
-            "product_size_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["product_size_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -3569,12 +2836,8 @@
           "name": "placement_roles_product_id_fkey",
           "tableFrom": "tension_placement_roles",
           "tableTo": "tension_products",
-          "columnsFrom": [
-            "product_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["product_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -3626,12 +2889,8 @@
           "name": "placements_default_placement_role_id_fkey",
           "tableFrom": "tension_placements",
           "tableTo": "tension_placement_roles",
-          "columnsFrom": [
-            "default_placement_role_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["default_placement_role_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "cascade"
         },
@@ -3639,12 +2898,8 @@
           "name": "placements_hole_id_fkey",
           "tableFrom": "tension_placements",
           "tableTo": "tension_holes",
-          "columnsFrom": [
-            "hole_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["hole_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -3652,12 +2907,8 @@
           "name": "placements_layout_id_fkey",
           "tableFrom": "tension_placements",
           "tableTo": "tension_layouts",
-          "columnsFrom": [
-            "layout_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["layout_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -3665,12 +2916,8 @@
           "name": "placements_set_id_fkey",
           "tableFrom": "tension_placements",
           "tableTo": "tension_sets",
-          "columnsFrom": [
-            "set_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["set_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -3758,12 +3005,8 @@
           "name": "product_sizes_product_id_fkey",
           "tableFrom": "tension_product_sizes",
           "tableTo": "tension_products",
-          "columnsFrom": [
-            "product_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["product_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -3821,12 +3064,8 @@
           "name": "product_sizes_layouts_sets_layout_id_fkey",
           "tableFrom": "tension_product_sizes_layouts_sets",
           "tableTo": "tension_layouts",
-          "columnsFrom": [
-            "layout_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["layout_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -3834,12 +3073,8 @@
           "name": "product_sizes_layouts_sets_product_size_id_fkey",
           "tableFrom": "tension_product_sizes_layouts_sets",
           "tableTo": "tension_product_sizes",
-          "columnsFrom": [
-            "product_size_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["product_size_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -3847,12 +3082,8 @@
           "name": "product_sizes_layouts_sets_set_id_fkey",
           "tableFrom": "tension_product_sizes_layouts_sets",
           "tableTo": "tension_sets",
-          "columnsFrom": [
-            "set_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["set_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -3906,45 +3137,6 @@
       },
       "indexes": {},
       "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.tension_products_angles": {
-      "name": "tension_products_angles",
-      "schema": "",
-      "columns": {
-        "product_id": {
-          "name": "product_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "angle": {
-          "name": "angle",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "products_angles_product_id_fkey": {
-          "name": "products_angles_product_id_fkey",
-          "tableFrom": "tension_products_angles",
-          "tableTo": "tension_products",
-          "columnsFrom": [
-            "product_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "cascade"
-        }
-      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
@@ -4044,31 +3236,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.tension_user_permissions": {
-      "name": "tension_user_permissions",
-      "schema": "",
-      "columns": {
-        "user_id": {
-          "name": "user_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.tension_user_syncs": {
       "name": "tension_user_syncs",
       "schema": "",
@@ -4098,12 +3265,8 @@
           "name": "user_syncs_user_id_fkey",
           "tableFrom": "tension_user_syncs",
           "tableTo": "tension_users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -4111,10 +3274,7 @@
       "compositePrimaryKeys": {
         "tension_user_sync_pk": {
           "name": "tension_user_sync_pk",
-          "columns": [
-            "user_id",
-            "table_name"
-          ]
+          "columns": ["user_id", "table_name"]
         }
       },
       "uniqueConstraints": {},
@@ -4230,12 +3390,8 @@
           "name": "walls_layout_id_fkey",
           "tableFrom": "tension_walls",
           "tableTo": "tension_layouts",
-          "columnsFrom": [
-            "layout_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["layout_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "cascade"
         },
@@ -4243,12 +3399,8 @@
           "name": "walls_product_id_fkey",
           "tableFrom": "tension_walls",
           "tableTo": "tension_products",
-          "columnsFrom": [
-            "product_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["product_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "cascade"
         },
@@ -4256,12 +3408,8 @@
           "name": "walls_product_size_id_fkey",
           "tableFrom": "tension_walls",
           "tableTo": "tension_product_sizes",
-          "columnsFrom": [
-            "product_size_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["product_size_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "cascade"
         },
@@ -4269,272 +3417,13 @@
           "name": "walls_user_id_fkey",
           "tableFrom": "tension_walls",
           "tableTo": "tension_users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.tension_walls_sets": {
-      "name": "tension_walls_sets",
-      "schema": "",
-      "columns": {
-        "wall_uuid": {
-          "name": "wall_uuid",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "set_id": {
-          "name": "set_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "walls_sets_set_id_fkey": {
-          "name": "walls_sets_set_id_fkey",
-          "tableFrom": "tension_walls_sets",
-          "tableTo": "tension_sets",
-          "columnsFrom": [
-            "set_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "cascade"
-        },
-        "walls_sets_wall_uuid_fkey": {
-          "name": "walls_sets_wall_uuid_fkey",
-          "tableFrom": "tension_walls_sets",
-          "tableTo": "tension_walls",
-          "columnsFrom": [
-            "wall_uuid"
-          ],
-          "columnsTo": [
-            "uuid"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "cascade"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.user_board_mappings": {
-      "name": "user_board_mappings",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "bigserial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "board_type": {
-          "name": "board_type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "board_user_id": {
-          "name": "board_user_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "board_username": {
-          "name": "board_username",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "linked_at": {
-          "name": "linked_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "unique_user_board_mapping": {
-          "name": "unique_user_board_mapping",
-          "columns": [
-            {
-              "expression": "user_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "board_type",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "board_user_mapping_idx": {
-          "name": "board_user_mapping_idx",
-          "columns": [
-            {
-              "expression": "board_type",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "board_user_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "user_board_mappings_user_id_users_id_fk": {
-          "name": "user_board_mappings_user_id_users_id_fk",
-          "tableFrom": "user_board_mappings",
-          "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.users": {
-      "name": "users",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "email": {
-          "name": "email",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "emailVerified": {
-          "name": "emailVerified",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "image": {
-          "name": "image",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.verificationTokens": {
-      "name": "verificationTokens",
-      "schema": "",
-      "columns": {
-        "identifier": {
-          "name": "identifier",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "token": {
-          "name": "token",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "expires": {
-          "name": "expires",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "verificationTokens_identifier_token_pk": {
-          "name": "verificationTokens_identifier_token_pk",
-          "columns": [
-            "identifier",
-            "token"
-          ]
-        }
-      },
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},

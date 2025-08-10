@@ -2,13 +2,14 @@
 'use client';
 
 import React, { useContext, createContext, ReactNode, useEffect, useCallback } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { v4 as uuidv4 } from 'uuid';
 import { usePeerContext } from '../connection-manager/peer-context';
 import { useQueueReducer } from './reducer';
 import { useQueueDataFetching } from './hooks/use-queue-data-fetching';
+import { useControllerWebSocket } from './hooks/use-controller-websocket';
 import { QueueContextType, ClimbQueueItem, UserName } from './types';
-import { urlParamsToSearchParams } from '@/app/lib/url-utils';
+import { urlParamsToSearchParams, searchParamsToUrlParams } from '@/app/lib/url-utils';
 import { Climb, ParsedBoardRouteParameters } from '@/app/lib/types';
 import { ReceivedPeerData } from '../connection-manager/types';
 
@@ -28,9 +29,18 @@ const QueueContext = createContext<QueueContextType | undefined>(undefined);
 
 export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const initialSearchParams = urlParamsToSearchParams(searchParams);
   const [state, dispatch] = useQueueReducer(initialSearchParams);
-  const { sendData, peerId, subscribeToData, hostId } = usePeerContext();
+  const peerContext = usePeerContext();
+  const controllerWS = useControllerWebSocket();
+  
+  // Use controller WebSocket if available, otherwise fall back to PeerJS
+  const isControllerMode = controllerWS.isControllerMode && controllerWS.isConnected;
+  const sendData = isControllerMode ? controllerWS.sendData : peerContext.sendData;
+  const peerId = isControllerMode ? 'boardsesh-client' : peerContext.peerId;
+  const hostId = isControllerMode ? controllerWS.controllerId : peerContext.hostId;
+  const subscribeToData = isControllerMode ? controllerWS.subscribeToData : peerContext.subscribeToData;
 
   // Set up queue update handler
   const handlePeerData = useCallback(
@@ -65,6 +75,59 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
             payload: {
               queue: data.queue,
               currentClimbQueueItem: data.currentClimbQueueItem || null,
+            },
+          });
+          break;
+        case 'add-queue-item':
+          dispatch({
+            type: 'DELTA_ADD_QUEUE_ITEM',
+            payload: {
+              item: data.item,
+              position: data.position,
+            },
+          });
+          break;
+        case 'remove-queue-item':
+          dispatch({
+            type: 'DELTA_REMOVE_QUEUE_ITEM',
+            payload: {
+              uuid: data.uuid,
+            },
+          });
+          break;
+        case 'reorder-queue-item':
+          dispatch({
+            type: 'DELTA_REORDER_QUEUE_ITEM',
+            payload: {
+              uuid: data.uuid,
+              oldIndex: data.oldIndex,
+              newIndex: data.newIndex,
+            },
+          });
+          break;
+        case 'update-current-climb':
+          dispatch({
+            type: 'DELTA_UPDATE_CURRENT_CLIMB',
+            payload: {
+              item: data.item,
+              shouldAddToQueue: data.shouldAddToQueue,
+            },
+          });
+          break;
+        case 'mirror-current-climb':
+          dispatch({
+            type: 'DELTA_MIRROR_CURRENT_CLIMB',
+            payload: {
+              mirrored: data.mirrored,
+            },
+          });
+          break;
+        case 'replace-queue-item':
+          dispatch({
+            type: 'DELTA_REPLACE_QUEUE_ITEM',
+            payload: {
+              uuid: data.uuid,
+              item: data.item,
             },
           });
           break;
@@ -106,62 +169,53 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
     hasMoreResults,
     isFetchingClimbs,
     hasDoneFirstFetch: state.hasDoneFirstFetch,
-    viewOnlyMode: hostId ? !state.initialQueueDataReceivedFromPeers : false,
+    viewOnlyMode: isControllerMode ? false : (hostId ? !state.initialQueueDataReceivedFromPeers : false),
     // Actions
     addToQueue: (climb: Climb) => {
       const newItem = createClimbQueueItem(climb, peerId);
 
-      dispatch({ type: 'ADD_TO_QUEUE', payload: newItem });
+      dispatch({ type: 'DELTA_ADD_QUEUE_ITEM', payload: { item: newItem } });
       sendData({
-        type: 'update-queue',
-        queue: [...state.queue, newItem],
-        currentClimbQueueItem: state.currentClimbQueueItem,
+        type: 'add-queue-item',
+        item: newItem,
       });
     },
 
     removeFromQueue: (item: ClimbQueueItem) => {
-      // TODO: SInce we're dispatching the full new queue, it can lead to race conditions if
-      // someone is hammering the UI. So ideally, we call sendData _after_ the state has been applied
-      const newQueue = state.queue.filter((qItem) => qItem.uuid !== item.uuid);
-
-      dispatch({ type: 'REMOVE_FROM_QUEUE', payload: newQueue });
-
+      dispatch({ type: 'DELTA_REMOVE_QUEUE_ITEM', payload: { uuid: item.uuid } });
       sendData({
-        type: 'update-queue',
-        queue: newQueue,
-        currentClimbQueueItem: state.currentClimbQueueItem,
+        type: 'remove-queue-item',
+        uuid: item.uuid,
       });
     },
 
     setCurrentClimb: (climb: Climb) => {
-      /**
-       * The behaviour of setCurrentClimb is subtly different from setCurrentClimbQueueItem
-       * But I cant quite remember how, I think something about inserting the current lcimb at the current position
-       * in the queue.
-       */
       const newItem = createClimbQueueItem(climb, peerId);
 
       dispatch({ type: 'SET_CURRENT_CLIMB', payload: newItem });
 
-      /**
-       * THe queue injecting logic is completely duplicated in the reducer, so should figure out how to reuse
-       * that somehow. Probably by having a middleware perform sideeffects, or something like that.
-       */
+      // Send delta message to add the item at the appropriate position
       const currentIndex = state.currentClimbQueueItem
         ? state.queue.findIndex(({ uuid }) => uuid === state.currentClimbQueueItem?.uuid)
         : -1;
-      const newQueue =
-        currentIndex === -1
-          ? [...state.queue, newItem]
-          : [...state.queue.slice(0, currentIndex + 1), newItem, ...state.queue.slice(currentIndex + 1)];
+      const position = currentIndex === -1 ? undefined : currentIndex + 1;
 
       sendData({
-        type: 'update-queue',
-        queue: newQueue,
-        currentClimbQueueItem: newItem,
+        type: 'add-queue-item',
+        item: newItem,
+        position,
+      });
+
+      // Then update the current climb
+      sendData({
+        type: 'update-current-climb',
+        item: newItem,
+        shouldAddToQueue: false, // Already added above
       });
     },
     setQueue: (queue) => {
+      // For now, keep the full update for complex reordering operations
+      // TODO: Implement delta-based reordering for better efficiency
       dispatch({
         type: 'UPDATE_QUEUE',
         payload: {
@@ -177,35 +231,35 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
       });
     },
     setCurrentClimbQueueItem: (item: ClimbQueueItem) => {
-      dispatch({ type: 'SET_CURRENT_CLIMB_QUEUE_ITEM', payload: item });
-      const newQueue =
-        item.suggested && !state.queue.find(({ uuid }) => uuid === item.uuid) ? [...state.queue, item] : state.queue;
-
+      dispatch({ type: 'DELTA_UPDATE_CURRENT_CLIMB', payload: { item, shouldAddToQueue: item.suggested } });
+      
       sendData({
-        type: 'update-queue',
-        queue: newQueue,
-        currentClimbQueueItem: item,
+        type: 'update-current-climb',
+        item,
+        shouldAddToQueue: item.suggested,
       });
     },
 
-    setClimbSearchParams: (params) => dispatch({ type: 'SET_CLIMB_SEARCH_PARAMS', payload: params }),
+    setClimbSearchParams: (params) => {
+      dispatch({ type: 'SET_CLIMB_SEARCH_PARAMS', payload: params });
+
+      // Update URL with new search parameters
+      const urlParams = searchParamsToUrlParams(params);
+      const currentPath = window.location.pathname;
+      router.replace(`${currentPath}?${urlParams.toString()}`);
+    },
 
     mirrorClimb: () => {
       if (!state.currentClimbQueueItem?.climb) {
         return;
       }
-      dispatch({ type: 'MIRROR_CLIMB' });
+      const newMirroredState = !state.currentClimbQueueItem.climb?.mirrored;
+      
+      dispatch({ type: 'DELTA_MIRROR_CURRENT_CLIMB', payload: { mirrored: newMirroredState } });
 
       sendData({
-        type: 'update-queue',
-        queue: state.queue,
-        currentClimbQueueItem: {
-          ...state.currentClimbQueueItem,
-          climb: {
-            ...state.currentClimbQueueItem?.climb,
-            mirrored: !state.currentClimbQueueItem?.climb.mirrored,
-          },
-        },
+        type: 'mirror-current-climb',
+        mirrored: newMirroredState,
       });
     },
 

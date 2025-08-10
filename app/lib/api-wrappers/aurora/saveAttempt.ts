@@ -6,7 +6,7 @@ import dayjs from 'dayjs';
 // eslint-disable-next-line  @typescript-eslint/no-explicit-any
 export async function saveAttempt(board: BoardName, token: string, options: SaveAttemptOptions): Promise<any> {
   const uuid = generateUuid();
-  
+
   // Convert the ISO date to the required format "YYYY-MM-DD HH:mm:ss"
   const formattedDate = dayjs(options.climbed_at).format('YYYY-MM-DD HH:mm:ss');
 
@@ -50,10 +50,10 @@ export async function saveAttempt(board: BoardName, token: string, options: Save
     let errorData;
     try {
       errorData = await response.json();
-    } catch (parseError) {
+    } catch {
       try {
         errorData = await responseClone.text();
-      } catch (textError) {
+      } catch {
         errorData = 'Could not read error response';
       }
     }
@@ -66,7 +66,7 @@ export async function saveAttempt(board: BoardName, token: string, options: Save
   }
 
   // Handle response
-  let responseData: any;
+  let responseData: unknown;
   try {
     const responseText = await response.text();
     console.log(`Save attempt response body: ${responseText}`);

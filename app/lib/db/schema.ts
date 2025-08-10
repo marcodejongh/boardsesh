@@ -8,42 +8,16 @@ import {
   boolean,
   bigint,
   timestamp,
-  uniqueIndex,
   primaryKey,
   index,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import type { AdapterAccount } from "next-auth/adapters";
 
-export const kilterClimbCacheFields = pgTable(
-  'kilter_climb_cache_fields',
-  {
-    id: bigserial({ mode: 'bigint' }).primaryKey().notNull(),
-    climbUuid: text('climb_uuid'),
-    ascensionistCount: integer('ascensionist_count'),
-    displayDifficulty: doublePrecision('display_difficulty'),
-    qualityAverage: doublePrecision('quality_average'),
-  },
-  (table) => [
-    foreignKey({
-      columns: [table.climbUuid],
-      foreignColumns: [kilterClimbs.uuid],
-      name: 'climb_cache_fields_climb_uuid_fkey1',
-    })
-      .onUpdate('cascade')
-      .onDelete('cascade'),
-  ],
-);
-
 export const kilterAttempts = pgTable('kilter_attempts', {
   id: integer().primaryKey().notNull(),
   position: integer(),
   name: text(),
-});
-
-export const kilterClimbRandomPositions = pgTable('kilter_climb_random_positions', {
-  climbUuid: text('climb_uuid').primaryKey().notNull(),
-  position: integer(),
 });
 
 export const kilterLayouts = pgTable(
@@ -68,10 +42,6 @@ export const kilterLayouts = pgTable(
       .onDelete('cascade'),
   ],
 );
-
-export const kilterAndroidMetadata = pgTable('kilter_android_metadata', {
-  locale: text(),
-});
 
 export const kilterCircuits = pgTable('kilter_circuits', {
   uuid: text().primaryKey().notNull(),
@@ -117,26 +87,6 @@ export const tensionClimbStatsHistory = pgTable('tension_climb_stats_history', {
   faAt: timestamp('fa_at', { mode: 'string' }),
   createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
 });
-
-export const tensionClimbCacheFields = pgTable(
-  'tension_climb_cache_fields',
-  {
-    id: bigserial({ mode: 'bigint' }).primaryKey().notNull(),
-    climbUuid: text('climb_uuid'),
-    ascensionistCount: integer('ascensionist_count'),
-    displayDifficulty: doublePrecision('display_difficulty'),
-    qualityAverage: doublePrecision('quality_average'),
-  },
-  (table) => [
-    foreignKey({
-      columns: [table.climbUuid],
-      foreignColumns: [tensionClimbs.uuid],
-      name: 'climb_cache_fields_climb_uuid_fkey',
-    })
-      .onUpdate('cascade')
-      .onDelete('cascade'),
-  ],
-);
 
 export const kilterLeds = pgTable(
   'kilter_leds',
@@ -222,15 +172,6 @@ export const kilterProductSizes = pgTable(
   ],
 );
 
-export const kilterKits = pgTable('kilter_kits', {
-  serialNumber: text('serial_number').primaryKey().notNull(),
-  name: text(),
-  isAutoconnect: boolean('is_autoconnect'),
-  isListed: boolean('is_listed'),
-  createdAt: text('created_at'),
-  updatedAt: text('updated_at'),
-});
-
 export const kilterBids = pgTable(
   'kilter_bids',
   {
@@ -278,28 +219,6 @@ export const kilterHoles = pgTable(
       columns: [table.productId],
       foreignColumns: [kilterProducts.id],
       name: 'holes_product_id_fkey1',
-    })
-      .onUpdate('cascade')
-      .onDelete('cascade'),
-  ],
-);
-
-export const kilterPlacementRoles = pgTable(
-  'kilter_placement_roles',
-  {
-    id: integer().primaryKey().notNull(),
-    productId: integer('product_id'),
-    position: integer(),
-    name: text(),
-    fullName: text('full_name'),
-    ledColor: text('led_color'),
-    screenColor: text('screen_color'),
-  },
-  (table) => [
-    foreignKey({
-      columns: [table.productId],
-      foreignColumns: [kilterProducts.id],
-      name: 'placement_roles_product_id_fkey1',
     })
       .onUpdate('cascade')
       .onDelete('cascade'),
@@ -443,6 +362,12 @@ export const kilterUsers = pgTable('kilter_users', {
   createdAt: text('created_at'),
 });
 
+export const kilterSets = pgTable('kilter_sets', {
+  id: integer().primaryKey().notNull(),
+  name: text(),
+  hsm: integer(),
+});
+
 export const kilterProducts = pgTable('kilter_products', {
   id: integer().primaryKey().notNull(),
   name: text(),
@@ -452,11 +377,27 @@ export const kilterProducts = pgTable('kilter_products', {
   maxCountInFrame: integer('max_count_in_frame'),
 });
 
-export const kilterSets = pgTable('kilter_sets', {
-  id: integer().primaryKey().notNull(),
-  name: text(),
-  hsm: integer(),
-});
+export const kilterPlacementRoles = pgTable(
+  'kilter_placement_roles',
+  {
+    id: integer().primaryKey().notNull(),
+    productId: integer('product_id'),
+    position: integer(),
+    name: text(),
+    fullName: text('full_name'),
+    ledColor: text('led_color'),
+    screenColor: text('screen_color'),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.productId],
+      foreignColumns: [kilterProducts.id],
+      name: 'placement_roles_product_id_fkey1',
+    })
+      .onUpdate('cascade')
+      .onDelete('cascade'),
+  ],
+);
 
 export const kilterWalls = pgTable(
   'kilter_walls',
@@ -504,10 +445,6 @@ export const kilterWalls = pgTable(
       .onDelete('cascade'),
   ],
 );
-
-export const tensionAndroidMetadata = pgTable('tension_android_metadata', {
-  locale: text(),
-});
 
 export const tensionAttempts = pgTable('tension_attempts', {
   id: integer().primaryKey().notNull(),
@@ -584,20 +521,6 @@ export const tensionCircuits = pgTable('tension_circuits', {
   isPublic: boolean('is_public'),
   createdAt: text('created_at'),
   updatedAt: text('updated_at'),
-});
-
-export const tensionKits = pgTable('tension_kits', {
-  serialNumber: text('serial_number').primaryKey().notNull(),
-  name: text(),
-  isAutoconnect: boolean('is_autoconnect'),
-  isListed: boolean('is_listed'),
-  createdAt: text('created_at'),
-  updatedAt: text('updated_at'),
-});
-
-export const tensionClimbRandomPositions = pgTable('tension_climb_random_positions', {
-  climbUuid: text('climb_uuid').primaryKey().notNull(),
-  position: integer(),
 });
 
 export const tensionClimbs = pgTable(
@@ -685,6 +608,37 @@ export const tensionSets = pgTable('tension_sets', {
   hsm: integer(),
 });
 
+export const tensionProducts = pgTable('tension_products', {
+  id: integer().primaryKey().notNull(),
+  name: text(),
+  isListed: boolean('is_listed'),
+  password: text(),
+  minCountInFrame: integer('min_count_in_frame'),
+  maxCountInFrame: integer('max_count_in_frame'),
+});
+
+export const tensionPlacementRoles = pgTable(
+  'tension_placement_roles',
+  {
+    id: integer().primaryKey().notNull(),
+    productId: integer('product_id'),
+    position: integer(),
+    name: text(),
+    fullName: text('full_name'),
+    ledColor: text('led_color'),
+    screenColor: text('screen_color'),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.productId],
+      foreignColumns: [tensionProducts.id],
+      name: 'placement_roles_product_id_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('cascade'),
+  ],
+);
+
 export const tensionPlacements = pgTable(
   'tension_placements',
   {
@@ -720,28 +674,6 @@ export const tensionPlacements = pgTable(
       columns: [table.setId],
       foreignColumns: [tensionSets.id],
       name: 'placements_set_id_fkey',
-    })
-      .onUpdate('cascade')
-      .onDelete('cascade'),
-  ],
-);
-
-export const tensionPlacementRoles = pgTable(
-  'tension_placement_roles',
-  {
-    id: integer().primaryKey().notNull(),
-    productId: integer('product_id'),
-    position: integer(),
-    name: text(),
-    fullName: text('full_name'),
-    ledColor: text('led_color'),
-    screenColor: text('screen_color'),
-  },
-  (table) => [
-    foreignKey({
-      columns: [table.productId],
-      foreignColumns: [tensionProducts.id],
-      name: 'placement_roles_product_id_fkey',
     })
       .onUpdate('cascade')
       .onDelete('cascade'),
@@ -959,15 +891,6 @@ export const tensionWalls = pgTable(
   ],
 );
 
-export const tensionProducts = pgTable('tension_products', {
-  id: integer().primaryKey().notNull(),
-  name: text(),
-  isListed: boolean('is_listed'),
-  password: text(),
-  minCountInFrame: integer('min_count_in_frame'),
-  maxCountInFrame: integer('max_count_in_frame'),
-});
-
 export const tensionDifficultyGrades = pgTable('tension_difficulty_grades', {
   difficulty: integer().primaryKey().notNull(),
   boulderName: text('boulder_name'),
@@ -1030,89 +953,6 @@ export const tensionUsers = pgTable('tension_users', {
   createdAt: text('created_at'),
 });
 
-export const kilterProductsAngles = pgTable(
-  'kilter_products_angles',
-  {
-    productId: integer('product_id').notNull(),
-    angle: integer().notNull(),
-  },
-  (table) => [
-    foreignKey({
-      columns: [table.productId],
-      foreignColumns: [kilterProducts.id],
-      name: 'products_angles_product_id_fkey1',
-    })
-      .onUpdate('cascade')
-      .onDelete('cascade'),
-  ],
-);
-
-export const kilterWallsSets = pgTable(
-  'kilter_walls_sets',
-  {
-    wallUuid: text('wall_uuid').notNull(),
-    setId: integer('set_id').notNull(),
-  },
-  (table) => [
-    foreignKey({
-      columns: [table.setId],
-      foreignColumns: [kilterSets.id],
-      name: 'walls_sets_set_id_fkey1',
-    })
-      .onUpdate('cascade')
-      .onDelete('restrict'),
-    foreignKey({
-      columns: [table.wallUuid],
-      foreignColumns: [kilterWalls.uuid],
-      name: 'walls_sets_wall_uuid_fkey1',
-    })
-      .onUpdate('cascade')
-      .onDelete('cascade'),
-  ],
-);
-
-export const kilterUserPermissions = pgTable(
-  'kilter_user_permissions',
-  {
-    userId: integer('user_id').notNull(),
-    name: text().notNull(),
-  },
-  (table) => [],
-);
-
-export const tensionUserPermissions = pgTable(
-  'tension_user_permissions',
-  {
-    userId: integer('user_id').notNull(),
-    name: text().notNull(),
-  },
-  (table) => [],
-);
-
-export const tensionWallsSets = pgTable(
-  'tension_walls_sets',
-  {
-    wallUuid: text('wall_uuid').notNull(),
-    setId: integer('set_id').notNull(),
-  },
-  (table) => [
-    foreignKey({
-      columns: [table.setId],
-      foreignColumns: [tensionSets.id],
-      name: 'walls_sets_set_id_fkey',
-    })
-      .onUpdate('cascade')
-      .onDelete('restrict'),
-    foreignKey({
-      columns: [table.wallUuid],
-      foreignColumns: [tensionWalls.uuid],
-      name: 'walls_sets_wall_uuid_fkey',
-    })
-      .onUpdate('cascade')
-      .onDelete('cascade'),
-  ],
-);
-
 export const kilterCircuitsClimbs = pgTable(
   'kilter_circuits_climbs',
   {
@@ -1120,24 +960,7 @@ export const kilterCircuitsClimbs = pgTable(
     climbUuid: text('climb_uuid').notNull(),
     position: integer(),
   },
-  (table) => [],
-);
-
-export const tensionProductsAngles = pgTable(
-  'tension_products_angles',
-  {
-    productId: integer('product_id').notNull(),
-    angle: integer().notNull(),
-  },
-  (table) => [
-    foreignKey({
-      columns: [table.productId],
-      foreignColumns: [tensionProducts.id],
-      name: 'products_angles_product_id_fkey',
-    })
-      .onUpdate('cascade')
-      .onDelete('cascade'),
-  ],
+  () => [],
 );
 
 export const kilterUserSyncs = pgTable(
@@ -1166,7 +989,7 @@ export const tensionCircuitsClimbs = pgTable(
     climbUuid: text('climb_uuid').notNull(),
     position: integer(),
   },
-  (table) => [],
+  () => [],
 );
 
 export const tensionUserSyncs = pgTable(
@@ -1196,7 +1019,7 @@ export const kilterTags = pgTable(
     name: text().notNull(),
     isListed: boolean('is_listed'),
   },
-  (table) => [],
+  () => [],
 );
 
 export const tensionTags = pgTable(
@@ -1207,7 +1030,7 @@ export const tensionTags = pgTable(
     name: text().notNull(),
     isListed: boolean('is_listed'),
   },
-  (table) => [],
+  () => [],
 );
 
 export const kilterBetaLinks = pgTable(
