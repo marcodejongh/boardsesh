@@ -7,7 +7,18 @@ import { Climb, ParsedBoardRouteParameters, SearchRequestPagination } from '@/ap
 import { useEffect, useMemo } from 'react';
 import { useBoardProvider } from '../../board-provider/board-provider-context';
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+const createFetcher = (authState: { token: string | null; user_id: number | null }) => 
+  (url: string) => {
+    const headers: Record<string, string> = {};
+    
+    // Add authentication headers if available
+    if (authState.token && authState.user_id) {
+      headers['x-auth-token'] = authState.token;
+      headers['x-user-id'] = authState.user_id.toString();
+    }
+    
+    return fetch(url, { headers }).then((res) => res.json());
+  };
 
 interface UseQueueDataFetchingProps {
   searchParams: SearchRequestPagination;
@@ -24,8 +35,9 @@ export const useQueueDataFetching = ({
   hasDoneFirstFetch,
   setHasDoneFirstFetch,
 }: UseQueueDataFetchingProps) => {
-  const { getLogbook } = useBoardProvider();
+  const { getLogbook, token, user_id } = useBoardProvider();
   const fetchedUuidsRef = useRef<string>('');
+  const fetcher = useMemo(() => createFetcher({ token, user_id }), [token, user_id]);
 
   const getKey = (pageIndex: number, previousPageData: { climbs: Climb[] }) => {
     if (previousPageData && previousPageData.climbs.length === 0) return null;

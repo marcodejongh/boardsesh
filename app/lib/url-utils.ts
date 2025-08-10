@@ -50,6 +50,10 @@ export const searchParamsToUrlParams = ({
   settername,
   setternameSuggestion,
   holdsFilter,
+  hideAttempted,
+  hideCompleted,
+  showOnlyAttempted,
+  showOnlyCompleted,
   page,
   pageSize,
 }: SearchRequestPagination): URLSearchParams => {
@@ -95,6 +99,18 @@ export const searchParamsToUrlParams = ({
   if (pageSize !== DEFAULT_SEARCH_PARAMS.pageSize) {
     params.pageSize = pageSize.toString();
   }
+  if (hideAttempted !== DEFAULT_SEARCH_PARAMS.hideAttempted) {
+    params.hideAttempted = hideAttempted.toString();
+  }
+  if (hideCompleted !== DEFAULT_SEARCH_PARAMS.hideCompleted) {
+    params.hideCompleted = hideCompleted.toString();
+  }
+  if (showOnlyAttempted !== DEFAULT_SEARCH_PARAMS.showOnlyAttempted) {
+    params.showOnlyAttempted = showOnlyAttempted.toString();
+  }
+  if (showOnlyCompleted !== DEFAULT_SEARCH_PARAMS.showOnlyCompleted) {
+    params.showOnlyCompleted = showOnlyCompleted.toString();
+  }
 
   // Add holds filter entries only if they exist
   if (holdsFilter && Object.keys(holdsFilter).length > 0) {
@@ -118,6 +134,10 @@ export const DEFAULT_SEARCH_PARAMS: SearchRequestPagination = {
   settername: '',
   setternameSuggestion: '',
   holdsFilter: {},
+  hideAttempted: false,
+  hideCompleted: false,
+  showOnlyAttempted: false,
+  showOnlyCompleted: false,
   page: 0,
   pageSize: PAGE_LIMIT,
 };
@@ -144,6 +164,10 @@ export const urlParamsToSearchParams = (urlParams: URLSearchParams): SearchReque
     setternameSuggestion: urlParams.get('setternameSuggestion') ?? DEFAULT_SEARCH_PARAMS.setternameSuggestion,
     //@ts-expect-error fix later
     holdsFilter: holdsFilter ?? DEFAULT_SEARCH_PARAMS.holdsFilter,
+    hideAttempted: urlParams.get('hideAttempted') === 'true',
+    hideCompleted: urlParams.get('hideCompleted') === 'true',
+    showOnlyAttempted: urlParams.get('showOnlyAttempted') === 'true',
+    showOnlyCompleted: urlParams.get('showOnlyCompleted') === 'true',
     page: Number(urlParams.get('page') ?? DEFAULT_SEARCH_PARAMS.page),
     pageSize: Number(urlParams.get('pageSize') ?? DEFAULT_SEARCH_PARAMS.pageSize),
   };
