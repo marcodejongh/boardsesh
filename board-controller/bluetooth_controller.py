@@ -143,13 +143,13 @@ class BluetoothController:
             
             # Create custom RX characteristic that uses our message buffer
             class CustomRxCharacteristic(SimpleRxCharacteristic):
-                def __init__(self, bus, index, service, message_buffer):
-                    super().__init__(bus, index, service, self.led_controller)
+                def __init__(self, bus, index, service, message_buffer, led_controller):
+                    super().__init__(bus, index, service, led_controller)
                     self.message_buffer = message_buffer
             
             uart_service = UartService(bus, 0)
             uart_service.characteristics[0] = CustomRxCharacteristic(
-                bus, 0, uart_service, self.message_buffer
+                bus, 0, uart_service, self.message_buffer, self.led_controller
             )
             
             app.add_service(uart_service)

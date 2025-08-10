@@ -162,34 +162,32 @@ For example:
 
 **Kilter Board:**
 - **Board Name**: `kilter`
-- **Layouts**: `original` (most common)
-- **Sizes**: Common options include:
-  - `12x12`, `8x10`, `16x12`
-  - `original-16x12-bolt-ons`, `original-16x12-screw-ons`
-- **Sets**: Common options include:
-  - `screw_bolt`, `bolt_on`
-  - `original-screw-ons`, `original-bolt-ons`
+- **Layouts**: URL-friendly layout names:
+  - `original` (most common layout)
+- **Sizes**: Board dimensions as URL slugs:
+  - `12x12`, `8x10`, `16x12` (standard board sizes)
+- **Sets**: Hold set names as URL slugs:
+  - `bolt`, `screw` (individual hold types)
+  - `screw_bolt` (both hold types combined, sorted alphabetically descending)
 - **Angles**: `0`, `5`, `10`, `15`, `20`, `25`, `30`, `35`, `40`, `45`, `50`, `55`, `60`, `65`, `70`
 
 **Tension Board:**
 - **Board Name**: `tension`
-- **Layouts**: Numbered layouts: `1`, `2`, `3`, ..., `28`
-- **Sizes**: Common options include:
+- **Layouts**: URL-friendly layout names:
+  - `1`, `2`, `3`, ..., `28` (for numbered layouts)
+  - `two-mirror`, `two-spray` (for layouts that start with "2-" in database)
+- **Sizes**: Board dimensions as URL slugs:
   - `8x10`, `8x12`, `12x10`, `12x12`
-  - `8x10-tb2-plastic`, `8x10-tb2-wood`
-  - `8x12-tb2-plastic`, `8x12-tb2-wood`
-  - `12x10-tb2-plastic`, `12x10-tb2-wood`
-  - `12x12-tb2-plastic`, `12x12-tb2-wood`
-- **Sets**: Common options include:
-  - `plastic`, `wood`
-  - `TB2-plastic`, `TB2-wood`
+- **Sets**: Hold set names as URL slugs:
+  - `plastic`, `wood` (individual hold types)
+  - `plastic_wood` (both hold types combined)
 - **Angles**: `0`, `5`, `10`, `15`, `20`, `25`, `30`, `35`, `40`, `45`, `50`, `55`, `60`, `65`, `70`
 
 **Note**: The exact available options depend on your specific board configuration and what hold sets you have installed. Visit BoardSesh.com and navigate to your board to see the exact URL parameters for your setup.
 
 **Example configurations:**
 ```bash
-# Kilter 12x12 with screw-on holds at 45 degrees
+# Kilter 12x12 with screw and bolt holds at 45 degrees
 BOARD_NAME=kilter
 BOARD_LAYOUT=original
 BOARD_SIZE=12x12
@@ -198,9 +196,9 @@ BOARD_ANGLE=45
 
 # Tension 8x12 with plastic holds at 30 degrees
 BOARD_NAME=tension
-BOARD_LAYOUT=1
+BOARD_LAYOUT=two-mirror
 BOARD_SIZE=8x12
-BOARD_SET=TB2-plastic
+BOARD_SET=plastic
 BOARD_ANGLE=30
 ```
 

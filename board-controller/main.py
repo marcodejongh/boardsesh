@@ -9,20 +9,16 @@ import argparse
 import json
 import logging
 import os
-import ssl
 import sys
-import threading
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional
 
 import aiosqlite
 import uvicorn
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Request
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
 
 # Configure logging
 logging.basicConfig(
@@ -33,7 +29,6 @@ logger = logging.getLogger(__name__)
 
 # Database path
 DB_PATH = Path(__file__).parent / "board_controller.db"
-STATIC_PATH = Path(__file__).parent / "static"
 
 
 class DatabaseManager:
@@ -50,11 +45,6 @@ class DatabaseManager:
                 CREATE TABLE IF NOT EXISTS sessions (
                     id TEXT PRIMARY KEY,
                     controller_id TEXT UNIQUE NOT NULL,
-                    board_name TEXT,
-                    layout_id INTEGER,
-                    size_id INTEGER,
-                    set_ids TEXT,
-                    angle INTEGER,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
@@ -94,6 +84,9 @@ class DatabaseManager:
             
             await db.commit()
             logger.info(f"Database initialized at {self.db_path}")
+            
+            # Clean up old data on startup
+            await self._cleanup_old_data()
     
     async def create_session(self, controller_id: str) -> str:
         """Create a new session"""
@@ -142,8 +135,8 @@ class DatabaseManager:
                 if row_dict.get('climb_data'):
                     try:
                         climb_data = json.loads(row_dict['climb_data'])
-                    except:
-                        pass
+                    except (json.JSONDecodeError, TypeError) as e:
+                        logger.warning(f"Failed to decode cached climb data for {row_dict['climb_uuid']}: {e}")
                 
                 # If no cached climb data, create minimal climb object
                 if not climb_data:
@@ -248,6 +241,44 @@ class DatabaseManager:
                 (session_id, climb_uuid)
             )
             await db.commit()
+    
+    async def _cleanup_old_data(self):
+        """Clean up old database records"""
+        try:
+            async with aiosqlite.connect(self.db_path) as db:
+                # Clean up cache entries older than 7 days
+                seven_days_ago = (datetime.now() - timedelta(days=7)).isoformat()
+                await db.execute(
+                    'DELETE FROM climb_cache WHERE cached_at < ?',
+                    (seven_days_ago,)
+                )
+                
+                # Clean up sessions older than 30 days
+                thirty_days_ago = (datetime.now() - timedelta(days=30)).isoformat()
+                await db.execute(
+                    'DELETE FROM sessions WHERE created_at < ?',
+                    (thirty_days_ago,)
+                )
+                
+                await db.commit()
+                logger.info("Cleaned up old database records")
+                
+        except Exception as e:
+            logger.error(f"Failed to cleanup old data: {e}")
+    
+    async def cleanup_orphaned_queue_items(self):
+        """Clean up queue items for sessions that no longer exist"""
+        try:
+            async with aiosqlite.connect(self.db_path) as db:
+                await db.execute(
+                    '''DELETE FROM queue_items 
+                       WHERE session_id NOT IN (SELECT id FROM sessions)'''
+                )
+                await db.commit()
+                logger.info("Cleaned up orphaned queue items")
+                
+        except Exception as e:
+            logger.error(f"Failed to cleanup orphaned queue items: {e}")
 
 
 class WebSocketManager:
@@ -284,9 +315,9 @@ class WebSocketManager:
             if session_id is None or conn_info.get('session_id') == session_id:
                 try:
                     await connection.send_json(message)
-                except:
-                    # Connection might be closed
-                    pass
+                except (ConnectionResetError, ConnectionAbortedError, RuntimeError) as e:
+                    # Connection might be closed, log and continue
+                    logger.debug(f"Failed to send message to WebSocket connection: {e}")
     
     async def send_personal_message(self, message: dict, websocket: WebSocket):
         """Send message to specific connection"""
@@ -423,6 +454,9 @@ class BoardController:
             await self.db_manager.init_database()
             self.session_id = await self.db_manager.create_session(self.controller_id)
             self.bluetooth_manager.set_session_id(self.session_id)
+            
+            # Clean up orphaned queue items
+            await self.db_manager.cleanup_orphaned_queue_items()
             logger.info(f"Controller started with ID: {self.controller_id}")
             logger.info(f"Session ID: {self.session_id}")
         
@@ -559,12 +593,15 @@ class BoardController:
                 logger.error(f"WebSocket error: {e}")
                 self.ws_manager.disconnect(websocket)
         
-        # Proxy BoardSesh API requests
-        @self.app.get("/api/boardsesh/climb/{climb_uuid}")
-        async def proxy_climb_details(climb_uuid: str):
-            """Proxy climb details from BoardSesh API"""
-            # TODO: Implement actual API call with caching
-            return {"uuid": climb_uuid, "name": "Test Climb", "grade": "V5"}
+        # Health check endpoint
+        @self.app.get("/api/health")
+        async def health_check():
+            """Health check endpoint"""
+            return {
+                "status": "healthy",
+                "sessionId": self.session_id,
+                "bluetoothEnabled": self.bluetooth_manager.bluetooth_enabled
+            }
         
         # Root endpoint - redirect to BoardSesh with controller URL
         @self.app.get("/")
@@ -624,10 +661,11 @@ class BoardController:
                 
                 # Cache the full climb data
                 if climb_data.get("uuid"):
+                    board_name = os.getenv("BOARD_NAME", "kilter")
                     await self.db_manager.cache_climb_data(
                         climb_data["uuid"], 
                         climb_data, 
-                        "kilter"  # TODO: Make board name configurable
+                        board_name
                     )
                 
                 db_item = {
@@ -660,10 +698,11 @@ class BoardController:
                 
                 # Cache climb data if available
                 if climb_data.get("uuid"):
+                    board_name = os.getenv("BOARD_NAME", "kilter")
                     await self.db_manager.cache_climb_data(
                         climb_data["uuid"], 
                         climb_data, 
-                        "kilter"  # TODO: Make board name configurable
+                        board_name
                     )
                 
                 # Use climb UUID to find and set current climb
@@ -717,7 +756,7 @@ def auto_generate_ssl_cert():
         from cryptography.x509.oid import NameOID
         from cryptography.hazmat.primitives import hashes, serialization
         from cryptography.hazmat.primitives.asymmetric import rsa
-        from datetime import datetime, timedelta
+        from datetime import datetime, timedelta, timedelta
         import socket
         import ipaddress
         
