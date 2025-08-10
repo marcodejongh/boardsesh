@@ -4,9 +4,15 @@ import { resolve } from 'path'
 
 export default defineConfig({
   plugins: [react()],
+  define: {
+    'process.env.NODE_ENV': '"test"',
+  },
   test: {
     environment: 'jsdom',
     globals: true,
+    env: {
+      NODE_ENV: 'test',
+    },
     coverage: {
       provider: 'v8',
       include: ['app/**/*.{ts,tsx}'],
