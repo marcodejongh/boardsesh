@@ -31,7 +31,7 @@ const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl, angle }: ClimbVie
   const [canGoBack, setCanGoBack] = useState(false);
   const router = useRouter();
 
-  const isAlreadyInQueue = queue.some((item) => item.climb.uuid === climb.uuid);
+  const isAlreadyInQueue = queue.some((item) => item.climb?.uuid === climb.uuid);
 
   useEffect(() => {
     // Check if we can go back and if the previous page was on BoardSesh

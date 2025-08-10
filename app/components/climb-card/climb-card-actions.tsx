@@ -22,7 +22,7 @@ const ClimbCardActions = ({ climb, boardDetails }: ClimbCardActionsProps) => {
     return [];
   }
 
-  const isAlreadyInQueue = queue.some((item) => item.climb.uuid === climb.uuid);
+  const isAlreadyInQueue = queue.some((item) => item.climb?.uuid === climb.uuid);
 
   const handleAddToQueue = () => {
     if (addToQueue && !isDuplicate) {

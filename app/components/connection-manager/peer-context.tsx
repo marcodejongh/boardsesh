@@ -86,7 +86,10 @@ const calculateConnectionHealth = (connection: PeerConnection): 'HEALTHY' | 'DEG
 
 export const PeerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(peerReducer, initialPeerState);
-  const urlHostId = useSearchParams().get('hostId');
+  const searchParams = useSearchParams();
+  const urlHostId = searchParams.get('hostId');
+  const controllerUrl = searchParams.get('controllerUrl');
+  const isControllerMode = !!controllerUrl;
   const dataHandlers = useRef<DataHandler[]>([]);
   const stateRef = useRef(state);
 
@@ -449,6 +452,12 @@ export const PeerProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   useEffect(() => {
+    // Skip PeerJS initialization in controller mode
+    if (isControllerMode) {
+      console.log('🎮 Controller mode detected, skipping PeerJS initialization');
+      return;
+    }
+    
     if (!peerInstance) {
       peerInstance = new Peer({ debug: 1 });
       const p = peerInstance;
@@ -540,7 +549,7 @@ export const PeerProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
       });
-  }, [state.connections, state.isLeader, state.peerId, state.currentLeader, sendData, notifySubscribers, initiateLeaderElection]);
+  }, [isControllerMode, state.connections, state.isLeader, state.peerId, state.currentLeader, sendData, notifySubscribers, initiateLeaderElection]);
 
   useEffect(() => {
     if (state.readyToConnect && urlHostId) {

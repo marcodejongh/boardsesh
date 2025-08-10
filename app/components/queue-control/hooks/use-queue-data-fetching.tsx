@@ -58,14 +58,14 @@ export const useQueueDataFetching = ({
   );
 
   const suggestedClimbs = useMemo(
-    () => (climbSearchResults || []).filter((item) => !queue.find(({ climb: { uuid } }) => item.uuid === uuid)),
+    () => (climbSearchResults || []).filter((item) => !queue.find((queueItem) => queueItem.climb?.uuid === item.uuid)),
     [climbSearchResults, queue],
   );
 
   // Combine and deduplicate climb UUIDs from both sources
   const climbUuidsString = useMemo(() => {
     const searchUuids = climbSearchResults?.map((climb) => climb.uuid) || [];
-    const queueUuids = queue.map((item) => item.climb.uuid);
+    const queueUuids = queue.map((item) => item.climb?.uuid).filter(Boolean);
     const uniqueUuids = Array.from(new Set([...searchUuids, ...queueUuids]));
     return JSON.stringify(uniqueUuids.sort());
   }, [climbSearchResults, queue]);
