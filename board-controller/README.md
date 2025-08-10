@@ -136,6 +136,72 @@ SQLite database is created automatically with tables:
 - `DB_PATH` - Database file path (default: ./board_controller.db)
 - `CACHE_TTL_HOURS` - API cache TTL (default: 24)
 
+#### Board Configuration
+
+These environment variables control the default board configuration for the redirect URL when accessing the controller root endpoint:
+
+- `BOARD_NAME` - Board type: `kilter` or `tension` (default: kilter)
+- `BOARD_LAYOUT` - Board layout name (varies by board, default: original)
+- `BOARD_SIZE` - Board size (varies by board, default: 12x12)
+- `BOARD_SET` - Holds set (varies by board, default: screw_bolt)
+- `BOARD_ANGLE` - Board angle: 0-70 in 5-degree increments (default: 40)
+
+**How to Find Your Board Configuration:**
+
+The easiest way to determine your board's configuration is to look at your BoardSesh URL when you navigate to your specific board setup. The URL follows this pattern:
+
+```
+https://www.boardsesh.com/{board_name}/{layout}/{size}/{set}/{angle}/list
+```
+
+For example:
+- `https://www.boardsesh.com/kilter/original/12x12/screw_bolt/40/list`
+- `https://www.boardsesh.com/tension/1/8x12/TB2-plastic/30/list`
+
+**Available Options by Board:**
+
+**Kilter Board:**
+- **Board Name**: `kilter`
+- **Layouts**: URL-friendly layout names:
+  - `original` (most common layout)
+- **Sizes**: Board dimensions as URL slugs:
+  - `12x12`, `8x10`, `16x12` (standard board sizes)
+- **Sets**: Hold set names as URL slugs:
+  - `bolt`, `screw` (individual hold types)
+  - `screw_bolt` (both hold types combined, sorted alphabetically descending)
+- **Angles**: `0`, `5`, `10`, `15`, `20`, `25`, `30`, `35`, `40`, `45`, `50`, `55`, `60`, `65`, `70`
+
+**Tension Board:**
+- **Board Name**: `tension`
+- **Layouts**: URL-friendly layout names:
+  - `1`, `2`, `3`, ..., `28` (for numbered layouts)
+  - `two-mirror`, `two-spray` (for layouts that start with "2-" in database)
+- **Sizes**: Board dimensions as URL slugs:
+  - `8x10`, `8x12`, `12x10`, `12x12`
+- **Sets**: Hold set names as URL slugs:
+  - `plastic`, `wood` (individual hold types)
+  - `plastic_wood` (both hold types combined)
+- **Angles**: `0`, `5`, `10`, `15`, `20`, `25`, `30`, `35`, `40`, `45`, `50`, `55`, `60`, `65`, `70`
+
+**Note**: The exact available options depend on your specific board configuration and what hold sets you have installed. Visit BoardSesh.com and navigate to your board to see the exact URL parameters for your setup.
+
+**Example configurations:**
+```bash
+# Kilter 12x12 with screw and bolt holds at 45 degrees
+BOARD_NAME=kilter
+BOARD_LAYOUT=original
+BOARD_SIZE=12x12
+BOARD_SET=screw_bolt
+BOARD_ANGLE=45
+
+# Tension 8x12 with plastic holds at 30 degrees
+BOARD_NAME=tension
+BOARD_LAYOUT=two-mirror
+BOARD_SIZE=8x12
+BOARD_SET=plastic
+BOARD_ANGLE=30
+```
+
 ### Command Line Options
 
 ```bash
