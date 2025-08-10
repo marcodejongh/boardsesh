@@ -43,13 +43,23 @@ export async function GET(
       searchParams.showOnlyAttempted || 
       searchParams.showOnlyCompleted;
     
+    console.log('Heatmap API - Personal progress filters enabled:', personalProgressFiltersEnabled, 'Search params:', { 
+      hideAttempted: searchParams.hideAttempted,
+      hideCompleted: searchParams.hideCompleted, 
+      showOnlyAttempted: searchParams.showOnlyAttempted,
+      showOnlyCompleted: searchParams.showOnlyCompleted
+    });
+    
     if (personalProgressFiltersEnabled) {
       const userIdHeader = req.headers.get('x-user-id');
       const tokenHeader = req.headers.get('x-auth-token');
       
+      console.log('Heatmap API - Headers received:', { userIdHeader, tokenHeader: tokenHeader ? '***' : null });
+      
       // Only use userId if both user ID and token are provided (basic auth check)
       if (userIdHeader && tokenHeader && userIdHeader !== 'null') {
         userId = parseInt(userIdHeader, 10);
+        console.log('Heatmap API - Using header auth, userId:', userId);
       }
     }
     
@@ -60,8 +70,12 @@ export async function GET(
       userId = session.userId;
     }
 
+    console.log('Heatmap API - Final userId being used:', userId);
+    
     // Get the heatmap data using the query function
     const holdStats = await getHoldHeatmapData(parsedParams, searchParams, userId);
+    
+    console.log('Heatmap API - Hold stats count:', holdStats.length);
 
     // Return response
     return NextResponse.json({

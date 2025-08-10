@@ -19,6 +19,16 @@ export default function useHeatmapData({ boardName, layoutId, sizeId, setIds, an
   const [error, setError] = useState<Error | null>(null);
   const { token, user_id } = useBoardProvider();
 
+  // Create a stable dependency string for the filters to ensure proper re-fetching
+  const filtersKey = JSON.stringify({
+    ...filters,
+    // Explicitly include personal progress filters to ensure they trigger re-fetching
+    hideAttempted: filters.hideAttempted,
+    hideCompleted: filters.hideCompleted,
+    showOnlyAttempted: filters.showOnlyAttempted,
+    showOnlyCompleted: filters.showOnlyCompleted,
+  });
+
   useEffect(() => {
     const fetchHeatmapData = async () => {
       try {
@@ -33,6 +43,8 @@ export default function useHeatmapData({ boardName, layoutId, sizeId, setIds, an
           headers['x-user-id'] = user_id.toString();
         }
         
+        console.log('Fetching heatmap data with filters:', filters, 'headers:', headers); // Debug log
+        
         const response = await fetch(
           `/api/v1/${boardName}/${layoutId}/${sizeId}/${setIds}/${angle}/heatmap?${searchParamsToUrlParams(filters).toString()}`,
           { headers }
@@ -43,6 +55,7 @@ export default function useHeatmapData({ boardName, layoutId, sizeId, setIds, an
         }
 
         const data = await response.json();
+        console.log('Heatmap data received:', data.holdStats?.length, 'holds'); // Debug log
         setHeatmapData(data.holdStats);
         setError(null);
       } catch (err) {
@@ -54,7 +67,7 @@ export default function useHeatmapData({ boardName, layoutId, sizeId, setIds, an
     };
 
     fetchHeatmapData();
-  }, [boardName, layoutId, sizeId, setIds, angle, filters, token, user_id]);
+  }, [boardName, layoutId, sizeId, setIds, angle, filtersKey, token, user_id]);
 
   return { data: heatmapData, loading, error };
 }
