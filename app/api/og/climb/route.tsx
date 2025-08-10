@@ -96,6 +96,7 @@ export async function GET(request: NextRequest) {
             >
               {/* Board background images - render all layers */}
               {imageUrls.map((imageUrl, index) => (
+                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   key={index}
                   src={imageUrl}

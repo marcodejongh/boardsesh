@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { getImageUrl } from './util';
 import { BoardDetails } from '@/app/lib/types';
 import { HeatmapData } from './types';
@@ -89,7 +89,7 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({ boardDetails, litUpHoldsMap
   const heatmapMap = useMemo(() => new Map(heatmapData?.map((data) => [data.holdId, data]) || []), [heatmapData]);
 
   // Updated getValue function to handle user-specific data
-  const getValue = (data: HeatmapData | undefined): number => {
+  const getValue = useCallback((data: HeatmapData | undefined): number => {
     if (!data) return 0;
     switch (colorMode) {
       case 'starting':
@@ -111,7 +111,7 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({ boardDetails, litUpHoldsMap
       default:
         return data.totalUses;
     }
-  };
+  }, [colorMode]);
 
   // Create scales for better distribution of colors
   const { colorScale, opacityScale } = useMemo(() => {
@@ -156,7 +156,7 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({ boardDetails, litUpHoldsMap
       colorScale: getColorScale(),
       opacityScale: getOpacityScale(),
     };
-  }, [heatmapData, colorMode, threshold, litUpHoldsMap]);
+  }, [heatmapData, threshold, litUpHoldsMap, getValue]);
 
   const ColorLegend = () => {
     const gradientId = 'heatmap-gradient';
