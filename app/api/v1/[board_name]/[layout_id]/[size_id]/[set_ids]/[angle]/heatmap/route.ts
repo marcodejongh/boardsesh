@@ -33,10 +33,35 @@ export async function GET(
     const parsedParams = await parseBoardRouteParamsWithSlugs(params);
     const searchParams: SearchRequestPagination = urlParamsToSearchParams(query);
 
-    const cookieStore = await cookies();
-    const session = await getSession(cookieStore, parsedParams.board_name);
+    // Extract user authentication - try headers first, then fall back to session
+    let userId: number | undefined;
+    
+    // Check for header-based authentication first (for consistency with search API)
+    const personalProgressFiltersEnabled = 
+      searchParams.hideAttempted || 
+      searchParams.hideCompleted || 
+      searchParams.showOnlyAttempted || 
+      searchParams.showOnlyCompleted;
+    
+    if (personalProgressFiltersEnabled) {
+      const userIdHeader = req.headers.get('x-user-id');
+      const tokenHeader = req.headers.get('x-auth-token');
+      
+      // Only use userId if both user ID and token are provided (basic auth check)
+      if (userIdHeader && tokenHeader && userIdHeader !== 'null') {
+        userId = parseInt(userIdHeader, 10);
+      }
+    }
+    
+    // Fall back to session-based authentication if no header auth
+    if (!userId) {
+      const cookieStore = await cookies();
+      const session = await getSession(cookieStore, parsedParams.board_name);
+      userId = session.userId;
+    }
+
     // Get the heatmap data using the query function
-    const holdStats = await getHoldHeatmapData(parsedParams, searchParams, session.userId);
+    const holdStats = await getHoldHeatmapData(parsedParams, searchParams, userId);
 
     // Return response
     return NextResponse.json({
