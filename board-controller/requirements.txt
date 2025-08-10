@@ -33,4 +33,4 @@ python-dotenv==1.0.1
 uuid==1.30
 
 # SSL certificate generation (for development)
-cryptography==43.0.3
+cryptography==44.0.1
