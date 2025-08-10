@@ -580,8 +580,14 @@ class BoardController:
             controller_url = f"{scheme}://{host}:{port}"
             encoded_controller_url = urllib.parse.quote(controller_url, safe='')
             
-            # Default board configuration (can be made configurable later)
-            boardsesh_url = f"https://www.boardsesh.com/kilter/original/12x12/screw_bolt/40/list?controllerUrl={encoded_controller_url}"
+            # Board configuration from environment variables with defaults
+            board_name = os.getenv("BOARD_NAME", "kilter")
+            board_layout = os.getenv("BOARD_LAYOUT", "original")
+            board_size = os.getenv("BOARD_SIZE", "12x12")
+            board_set = os.getenv("BOARD_SET", "screw_bolt")
+            board_angle = os.getenv("BOARD_ANGLE", "40")
+            
+            boardsesh_url = f"https://www.boardsesh.com/{board_name}/{board_layout}/{board_size}/{board_set}/{board_angle}/list?controllerUrl={encoded_controller_url}"
             
             return RedirectResponse(url=boardsesh_url, status_code=302)
         
