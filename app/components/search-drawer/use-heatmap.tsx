@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { BoardName, SearchRequestPagination } from '@/app/lib/types';
 import { HeatmapData } from '../board-renderer/types';
 import { searchParamsToUrlParams } from '@/app/lib/url-utils';
+import { useBoardProvider } from '../board-provider/board-provider-context';
 
 interface UseHeatmapDataProps {
   boardName: BoardName;
@@ -16,13 +17,25 @@ export default function useHeatmapData({ boardName, layoutId, sizeId, setIds, an
   const [heatmapData, setHeatmapData] = useState<HeatmapData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const { token, user_id } = useBoardProvider();
 
   useEffect(() => {
     const fetchHeatmapData = async () => {
       try {
         setLoading(true);
+        
+        // Prepare headers
+        const headers: Record<string, string> = {};
+        
+        // Add authentication headers if available
+        if (token && user_id) {
+          headers['x-auth-token'] = token;
+          headers['x-user-id'] = user_id.toString();
+        }
+        
         const response = await fetch(
           `/api/v1/${boardName}/${layoutId}/${sizeId}/${setIds}/${angle}/heatmap?${searchParamsToUrlParams(filters).toString()}`,
+          { headers }
         );
 
         if (!response.ok) {
@@ -41,7 +54,7 @@ export default function useHeatmapData({ boardName, layoutId, sizeId, setIds, an
     };
 
     fetchHeatmapData();
-  }, [boardName, layoutId, sizeId, setIds, angle, filters]);
+  }, [boardName, layoutId, sizeId, setIds, angle, filters, token, user_id]);
 
   return { data: heatmapData, loading, error };
 }
