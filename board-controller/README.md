@@ -146,6 +146,36 @@ Options:
 - `--no-bluetooth` - Disable Bluetooth support
 - `--port PORT` - Server port (default: 8000)
 - `--host HOST` - Server host (default: 0.0.0.0)
+- `--ssl-cert FILE` - SSL certificate file for HTTPS/WSS
+- `--ssl-key FILE` - SSL private key file for HTTPS/WSS
+
+### SSL Setup (HTTPS/WSS Support)
+
+When accessing the controller from HTTPS sites like boardsesh.com, you need SSL support:
+
+**Generate development certificates:**
+```bash
+# Install cryptography library
+pip install cryptography
+
+# Generate self-signed certificate
+python generate_cert.py --ip 192.168.1.112
+
+# Start server with SSL
+python main.py --ssl-cert server.crt --ssl-key server.key
+```
+
+**Production certificates:**
+```bash
+# Use Let's Encrypt or other CA
+certbot certonly --standalone -d your-domain.com
+
+# Start with real certificates  
+python main.py --ssl-cert /etc/letsencrypt/live/your-domain.com/fullchain.pem \
+               --ssl-key /etc/letsencrypt/live/your-domain.com/privkey.pem
+```
+
+The server automatically detects SSL and uses WSS for WebSocket connections.
 
 ## Troubleshooting
 
@@ -170,7 +200,7 @@ Options:
 
 1. Check firewall settings
 2. Ensure port 8000 is accessible
-3. For HTTPS sites, controller needs HTTPS/WSS too
+3. For HTTPS sites, controller needs HTTPS/WSS too (see SSL Setup below)
 
 ### Database Issues
 

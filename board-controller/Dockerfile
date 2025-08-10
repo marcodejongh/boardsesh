@@ -26,6 +26,7 @@ EXPOSE 8000
 # Set environment variables
 ENV DB_PATH=/app/data/board_controller.db
 ENV PYTHONUNBUFFERED=1
+ENV DOCKER_CONTAINER=1
 
-# Run the application
-CMD ["python", "main.py", "--host", "0.0.0.0", "--port", "8000"]
+# Run the application with auto-SSL enabled
+CMD ["python", "main.py", "--host", "0.0.0.0", "--port", "8000", "--auto-ssl"]
