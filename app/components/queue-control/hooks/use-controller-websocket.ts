@@ -74,7 +74,13 @@ export const useControllerWebSocket = (): UseControllerWebSocketReturn => {
       }
       
       // Ensure the WebSocket URL includes the /ws path
-      const wsUrl = controllerUrl.endsWith('/ws') ? controllerUrl : `${controllerUrl}/ws`;
+      let wsUrl = controllerUrl.endsWith('/ws') ? controllerUrl : `${controllerUrl}/ws`;
+      
+      // Use WSS if the page is loaded over HTTPS
+      if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
+        wsUrl = wsUrl.replace(/^ws:\/\//, 'wss://');
+      }
+      
       console.log('🎮 Connecting to Board Controller:', wsUrl);
       wsRef.current = new WebSocket(wsUrl);
       
@@ -175,7 +181,7 @@ export const useControllerWebSocket = (): UseControllerWebSocketReturn => {
         wsRef.current.close(1000, 'Component unmounting');
       }
     };
-  }, [isControllerMode, connect]);
+  }, [isControllerMode, controllerUrl, connect]);
   
   return {
     isControllerMode,

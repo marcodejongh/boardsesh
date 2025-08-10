@@ -1,35 +1,34 @@
 # Board Controller
 
-A unified Python server that combines Bluetooth control for Kilter/Tension boards with WebSocket integration for BoardSesh.com queue management.
+A Python WebSocket server that enables persistent queue management and collaborative control for Kilter/Tension climbing boards. Integrates with BoardSesh.com to provide synchronized queue state across multiple devices and apps.
 
 ## Features
 
 - **Single Entry Point**: One command starts everything
-- **Bluetooth Support**: Accepts commands from Kilter/Tension mobile apps
-- **Web Integration**: Seamlessly integrates with BoardSesh.com via WebSocket
-- **Queue Persistence**: SQLite database stores queue state across restarts
-- **QR Code Interface**: Simple web UI with QR code for easy connection
-- **API Caching**: BoardSesh API responses cached locally for performance
+- **Bluetooth Support**: Accepts commands from Kilter/Tension mobile apps (optional)
+- **WebSocket Integration**: Real-time synchronization with BoardSesh.com
+- **Queue Persistence**: SQLite database maintains queue state across restarts
+- **Auto-redirect**: localhost:8000 automatically redirects to BoardSesh with controller integration
+- **Multi-device Support**: Control queue from both web browser and mobile apps simultaneously
 
 ## Quick Start
 
 ### Prerequisites
 
 - Python 3.8+
-- Node.js 18+ (for building frontend)
-- Bluetooth adapter (for Bluetooth functionality)
+- Bluetooth adapter (optional, for Bluetooth functionality)
 
 ### Installation
 
 ```bash
 # Install Python dependencies
-pip install -r requirements.txt
+pip install fastapi uvicorn aiosqlite
 
-# Build React frontend
-cd frontend
-chmod +x build.sh
-./build.sh
-cd ..
+# Or create requirements.txt:
+echo "fastapi>=0.100.0" > requirements.txt
+echo "uvicorn>=0.23.0" >> requirements.txt  
+echo "aiosqlite>=0.19.0" >> requirements.txt
+pip install -r requirements.txt
 ```
 
 ### Usage
@@ -49,20 +48,18 @@ python main.py --port 8080
 
 1. Run `python main.py`
 2. Open http://localhost:8000 in your browser
-3. Scan the QR code with your phone
-4. This opens BoardSesh with controller integration
-5. The controller takes over queue management
-6. Use both web interface and Kilter/Tension apps
+3. You'll be automatically redirected to BoardSesh with controller integration
+4. The controller takes over queue management from BoardSesh
+5. Add climbs to the queue - they persist across browser refreshes
+6. Use both BoardSesh web interface and Kilter/Tension mobile apps
 
 ## Architecture
 
 ### Components
 
-- **main.py**: Unified server entry point
-- **bluetooth_controller.py**: Bluetooth service wrapper
-- **boardsesh_client.py**: API client with caching
-- **frontend/**: React web interface
-- **board_controller.db**: SQLite database (auto-created)
+- **main.py**: Unified FastAPI server with WebSocket support
+- **controller.py**: Original Bluetooth controller integration (optional)
+- **board_controller.db**: SQLite database for queue persistence (auto-created)
 
 ### API Endpoints
 
@@ -75,49 +72,53 @@ python main.py --port 8080
 
 ### WebSocket Protocol
 
-Messages sent between BoardSesh and controller:
+Key message types between BoardSesh and controller:
 
-```typescript
-// Handshake
+```json
+// Initial handshake from controller
 {
   "type": "controller-handshake",
   "sessionId": "uuid",
+  "controllerId": "uuid", 
   "capabilities": ["queue", "bluetooth", "persistence"]
+}
+
+// New connection request (triggers queue data response)
+{
+  "type": "new-connection",
+  "source": "boardsesh-client"
+}
+
+// Queue state update
+{
+  "type": "initial-queue-data",
+  "queue": [...],
+  "currentClimbQueueItem": {...}
 }
 
 // Queue operations
 {
   "type": "add-queue-item",
-  "item": { /* queue item */ }
+  "item": { "climb": {...}, "addedBy": "user", "uuid": "..." }
 }
 
-// Bluetooth updates
 {
-  "type": "bluetooth-update",
-  "ledData": [...],
-  "inferredClimb": "climb-uuid"
+  "type": "update-current-climb", 
+  "item": {...},
+  "shouldAddToQueue": false
 }
 ```
 
 ## Development
 
-### Frontend Development
-
-```bash
-cd frontend
-npm run dev  # Starts Vite dev server on port 3001
-```
-
-### Python Development
-
 The server uses FastAPI with automatic reload:
 
 ```bash
-# Install in development mode
-pip install -e .
+# Run with auto-reload for development
+python main.py --no-bluetooth
 
-# Run with auto-reload
-uvicorn main:app --reload --port 8000
+# Or use uvicorn directly
+uvicorn main:BoardController().app --reload --port 8000
 ```
 
 ### Database
@@ -145,6 +146,36 @@ Options:
 - `--no-bluetooth` - Disable Bluetooth support
 - `--port PORT` - Server port (default: 8000)
 - `--host HOST` - Server host (default: 0.0.0.0)
+- `--ssl-cert FILE` - SSL certificate file for HTTPS/WSS
+- `--ssl-key FILE` - SSL private key file for HTTPS/WSS
+
+### SSL Setup (HTTPS/WSS Support)
+
+When accessing the controller from HTTPS sites like boardsesh.com, you need SSL support:
+
+**Generate development certificates:**
+```bash
+# Install cryptography library
+pip install cryptography
+
+# Generate self-signed certificate
+python generate_cert.py --ip 192.168.1.112
+
+# Start server with SSL
+python main.py --ssl-cert server.crt --ssl-key server.key
+```
+
+**Production certificates:**
+```bash
+# Use Let's Encrypt or other CA
+certbot certonly --standalone -d your-domain.com
+
+# Start with real certificates  
+python main.py --ssl-cert /etc/letsencrypt/live/your-domain.com/fullchain.pem \
+               --ssl-key /etc/letsencrypt/live/your-domain.com/privkey.pem
+```
+
+The server automatically detects SSL and uses WSS for WebSocket connections.
 
 ## Troubleshooting
 
@@ -169,7 +200,7 @@ Options:
 
 1. Check firewall settings
 2. Ensure port 8000 is accessible
-3. For HTTPS sites, controller needs HTTPS/WSS too
+3. For HTTPS sites, controller needs HTTPS/WSS too (see SSL Setup below)
 
 ### Database Issues
 
@@ -184,31 +215,80 @@ Options:
 ```bash
 # Install system dependencies
 sudo apt update
-sudo apt install python3-pip bluez python3-dbus
+sudo apt install python3-pip python3-venv
+
+# Optional: for Bluetooth support
+sudo apt install bluez python3-dbus
 
 # Clone and setup
 git clone <repo>
 cd board-controller
-pip install -r requirements.txt
-cd frontend && ./build.sh && cd ..
+python3 -m venv venv
+source venv/bin/activate
+pip install fastapi uvicorn aiosqlite
 
-# Run as service (optional)
-sudo cp board-controller.service /etc/systemd/system/
+# Run
+python main.py
+
+# Run as service (create systemd service file)
+sudo tee /etc/systemd/system/board-controller.service > /dev/null <<EOF
+[Unit]
+Description=Board Controller
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/board-controller
+Environment=PATH=/home/pi/board-controller/venv/bin
+ExecStart=/home/pi/board-controller/venv/bin/python main.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
 sudo systemctl enable board-controller
 sudo systemctl start board-controller
 ```
 
 ### Docker
 
+**Option 1: Docker Compose (Recommended)**
+
+```bash
+# Run with persistent database
+docker-compose up -d
+
+# Run web-only mode (no Bluetooth)
+docker-compose --profile web-only up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop
+docker-compose down
+```
+
+**Option 2: Docker Run**
+
 ```bash
 # Build image
 docker build -t board-controller .
 
-# Run container
-docker run -p 8000:8000 --privileged board-controller
-```
+# Run container (basic)
+docker run -p 8000:8000 board-controller
 
-Note: `--privileged` needed for Bluetooth access.
+# Run with Bluetooth support (Linux only)
+docker run -p 8000:8000 --privileged --net=host board-controller
+
+# Run with persistent database
+docker run -p 8000:8000 -v ./data:/app/data board-controller
+
+# Run web-only mode
+docker run -p 8000:8000 -v ./data:/app/data board-controller \
+  python main.py --no-bluetooth --host 0.0.0.0
+```
 
 ## Integration with BoardSesh
 
@@ -226,3 +306,61 @@ This allows users to control their climbing board through:
 - Controller web interface
 
 All interfaces stay synchronized through the controller's queue management.
+
+## Publishing & Distribution
+
+### Container Registry
+
+The Docker image is automatically built and published to GitHub Container Registry:
+
+**Pull and run the latest version:**
+
+```bash
+# Pull latest image
+docker pull ghcr.io/marcodejongh/boardsesh-board-controller:latest
+
+# Run with Docker
+docker run -p 8000:8000 -v ./data:/app/data ghcr.io/marcodejongh/boardsesh-board-controller:latest
+
+# Or use docker-compose (recommended)
+curl -O https://raw.githubusercontent.com/marcodejongh/boardsesh/main/board-controller/docker-compose.yml
+docker-compose up -d
+```
+
+**Available tags:**
+- `latest` - Latest stable build from main branch
+- `main` - Latest build from main branch  
+- `v1.0.0` - Specific version releases
+- `pr-123` - Pull request builds for testing
+
+### GitHub Releases
+
+Create releases with pre-built assets:
+
+```bash
+# Create release with binaries for different platforms
+# Include installation scripts for Raspberry Pi
+# Package Docker compose files
+```
+
+### Package Managers
+
+Consider publishing to:
+- **PyPI**: `pip install board-controller`
+- **Homebrew**: `brew install board-controller`  
+- **APT repository**: For Debian/Ubuntu users
+
+### One-Line Install Script
+
+Create an install script for easy setup:
+
+```bash
+# Install script example
+curl -fsSL https://raw.githubusercontent.com/user/repo/main/install.sh | bash
+```
+
+This would handle:
+1. Platform detection (Raspberry Pi, Linux, macOS)
+2. Dependency installation 
+3. Service setup
+4. Configuration prompts

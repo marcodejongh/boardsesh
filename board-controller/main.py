@@ -9,6 +9,7 @@ import argparse
 import json
 import logging
 import os
+import ssl
 import sys
 import threading
 import uuid
@@ -574,7 +575,9 @@ class BoardController:
             # Get the request host to build controller URL  
             host = request.url.hostname or "localhost"
             port = request.url.port or 8000
-            controller_url = f"http://{host}:{port}"
+            # Use https if the request came over HTTPS (SSL enabled)
+            scheme = "https" if request.url.scheme == "https" else "http"
+            controller_url = f"{scheme}://{host}:{port}"
             encoded_controller_url = urllib.parse.quote(controller_url, safe='')
             
             # Default board configuration (can be made configurable later)
@@ -669,16 +672,123 @@ class BoardController:
                     "source": self.controller_id
                 }, self.session_id, exclude=websocket)
     
-    async def run(self, host: str = "0.0.0.0", port: int = 8000):
-        """Start the server"""
-        config = uvicorn.Config(
-            app=self.app,
-            host=host,
-            port=port,
-            log_level="info"
-        )
+    async def run(self, host: str = "0.0.0.0", port: int = 8000, ssl_keyfile: str = None, ssl_certfile: str = None):
+        """Start the server with optional SSL support"""
+        config_kwargs = {
+            "app": self.app,
+            "host": host,
+            "port": port,
+            "log_level": "info"
+        }
+        
+        # Add SSL configuration if certificates are provided
+        if ssl_keyfile and ssl_certfile:
+            config_kwargs["ssl_keyfile"] = ssl_keyfile
+            config_kwargs["ssl_certfile"] = ssl_certfile
+            logger.info(f"Starting HTTPS/WSS server on {host}:{port}")
+        else:
+            logger.info(f"Starting HTTP/WS server on {host}:{port}")
+            logger.info("To enable HTTPS/WSS, provide --ssl-cert and --ssl-key parameters")
+        
+        config = uvicorn.Config(**config_kwargs)
         server = uvicorn.Server(config)
         await server.serve()
+
+
+def auto_generate_ssl_cert():
+    """Auto-generate self-signed SSL certificate if none exists"""
+    cert_path = Path("server.crt")
+    key_path = Path("server.key")
+    
+    if cert_path.exists() and key_path.exists():
+        logger.info("Using existing SSL certificates")
+        return str(cert_path), str(key_path)
+    
+    logger.info("Generating self-signed SSL certificate...")
+    
+    try:
+        from cryptography import x509
+        from cryptography.x509.oid import NameOID
+        from cryptography.hazmat.primitives import hashes, serialization
+        from cryptography.hazmat.primitives.asymmetric import rsa
+        from datetime import datetime, timedelta
+        import socket
+        import ipaddress
+        
+        # Generate private key
+        private_key = rsa.generate_private_key(
+            public_exponent=65537,
+            key_size=2048,
+        )
+        
+        # Get local IP
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            local_ip = s.getsockname()[0]
+            s.close()
+        except Exception:
+            local_ip = "127.0.0.1"
+        
+        # Certificate subject
+        subject = issuer = x509.Name([
+            x509.NameAttribute(NameOID.COUNTRY_NAME, "US"),
+            x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, "CA"),
+            x509.NameAttribute(NameOID.LOCALITY_NAME, "Local"),
+            x509.NameAttribute(NameOID.ORGANIZATION_NAME, "BoardSesh Controller"),
+            x509.NameAttribute(NameOID.COMMON_NAME, "localhost"),
+        ])
+        
+        # Build certificate
+        cert_builder = x509.CertificateBuilder()
+        cert_builder = cert_builder.subject_name(subject)
+        cert_builder = cert_builder.issuer_name(issuer)
+        cert_builder = cert_builder.public_key(private_key.public_key())
+        cert_builder = cert_builder.serial_number(x509.random_serial_number())
+        cert_builder = cert_builder.not_valid_before(datetime.utcnow())
+        cert_builder = cert_builder.not_valid_after(datetime.utcnow() + timedelta(days=365))
+        
+        # Add Subject Alternative Names (SAN)
+        san_list = [
+            x509.DNSName("localhost"),
+            x509.IPAddress(ipaddress.ip_address("127.0.0.1"))
+        ]
+        
+        if local_ip != "127.0.0.1":
+            try:
+                san_list.append(x509.IPAddress(ipaddress.ip_address(local_ip)))
+            except Exception:
+                pass
+        
+        cert_builder = cert_builder.add_extension(
+            x509.SubjectAlternativeName(san_list),
+            critical=False,
+        )
+        
+        # Sign certificate
+        certificate = cert_builder.sign(private_key, hashes.SHA256())
+        
+        # Write files
+        with open(key_path, "wb") as f:
+            f.write(private_key.private_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PrivateFormat.PKCS8,
+                encryption_algorithm=serialization.NoEncryption()
+            ))
+        
+        with open(cert_path, "wb") as f:
+            f.write(certificate.public_bytes(serialization.Encoding.PEM))
+        
+        logger.info(f"Generated SSL certificate for localhost and {local_ip}")
+        return str(cert_path), str(key_path)
+        
+    except ImportError:
+        logger.error("cryptography library required for SSL certificate generation")
+        logger.error("Run: pip install cryptography")
+        return None, None
+    except Exception as e:
+        logger.error(f"Failed to generate SSL certificate: {e}")
+        return None, None
 
 
 def main():
@@ -687,14 +797,42 @@ def main():
     parser.add_argument("--no-bluetooth", action="store_true", help="Run without Bluetooth support")
     parser.add_argument("--port", type=int, default=8000, help="Server port (default: 8000)")
     parser.add_argument("--host", type=str, default="0.0.0.0", help="Server host (default: 0.0.0.0)")
+    parser.add_argument("--ssl-cert", type=str, help="Path to SSL certificate file")
+    parser.add_argument("--ssl-key", type=str, help="Path to SSL private key file")
+    parser.add_argument("--auto-ssl", action="store_true", help="Auto-generate self-signed SSL certificate")
     
     args = parser.parse_args()
+    
+    # Auto-generate SSL if requested or if running in Docker
+    ssl_cert, ssl_key = args.ssl_cert, args.ssl_key
+    if args.auto_ssl or (not ssl_cert and not ssl_key and os.getenv("DOCKER_CONTAINER")):
+        logger.info("Auto-generating SSL certificate...")
+        ssl_cert, ssl_key = auto_generate_ssl_cert()
+    
+    # Validate SSL arguments
+    if (ssl_cert and not ssl_key) or (ssl_key and not ssl_cert):
+        logger.error("Both SSL certificate and key must be provided together")
+        sys.exit(1)
+    
+    if ssl_cert and ssl_key:
+        # Verify SSL files exist
+        if not os.path.isfile(ssl_cert):
+            logger.error(f"SSL certificate file not found: {ssl_cert}")
+            sys.exit(1)
+        if not os.path.isfile(ssl_key):
+            logger.error(f"SSL key file not found: {ssl_key}")
+            sys.exit(1)
     
     # Create and run controller
     controller = BoardController(no_bluetooth=args.no_bluetooth)
     
     try:
-        asyncio.run(controller.run(host=args.host, port=args.port))
+        asyncio.run(controller.run(
+            host=args.host, 
+            port=args.port, 
+            ssl_keyfile=ssl_key,
+            ssl_certfile=ssl_cert
+        ))
     except KeyboardInterrupt:
         logger.info("Shutting down...")
     except Exception as e:
