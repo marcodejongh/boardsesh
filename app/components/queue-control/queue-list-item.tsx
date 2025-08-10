@@ -139,7 +139,7 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
       >
         <Row style={{ width: '100%' }} gutter={[8, 8]} align="middle" wrap={false}>
           <Col xs={2} sm={1}>
-            <DragHandleButton label={`Reorder ${item.climb.name}`}>
+            <DragHandleButton label={`Reorder ${item.climb?.name || 'climb'}`}>
               <HolderOutlined />
             </DragHandleButton>
           </Col>
@@ -163,9 +163,9 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
                       fontWeight: 'bold',
                     }}
                   >
-                    {item.climb.name}
+                    {item.climb?.name}
                   </Text>
-                  <AscentStatus climbUuid={item.climb.uuid} />
+                  <AscentStatus climbUuid={item.climb?.uuid} />
                 </div>
               }
               description={
@@ -177,16 +177,16 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
                     textOverflow: 'ellipsis',
                   }}
                 >
-                  {item.climb.difficulty && item.climb.quality_average
-                    ? `${item.climb.difficulty} ${item.climb.quality_average}★ @ ${item.climb.angle}°`
-                    : `project @ ${item.climb.angle}°`}
-                  {item.climb.benchmark_difficulty && <CopyrightOutlined style={{ marginLeft: 4 }} />}
+                  {item.climb?.difficulty && item.climb?.quality_average
+                    ? `${item.climb?.difficulty} ${item.climb?.quality_average}★ @ ${item.climb?.angle}°`
+                    : `project @ ${item.climb?.angle}°`}
+                  {item.climb?.benchmark_difficulty && <CopyrightOutlined style={{ marginLeft: 4 }} />}
                 </Text>
               }
             />
           </Col>
           <Col xs={3} sm={2}>
-            <TickButton currentClimb={item.climb} angle={item.climb.angle} boardDetails={boardDetails} />
+            <TickButton currentClimb={item.climb} angle={item.climb?.angle} boardDetails={boardDetails} />
           </Col>
         </Row>
         {closestEdge && <DropIndicator edge={closestEdge} gap="1px" />}

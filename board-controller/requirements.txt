@@ -1,0 +1,33 @@
+# Core web framework
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+
+# WebSocket support
+websockets==13.1
+python-multipart==0.0.12
+
+# Database
+aiosqlite==0.20.0
+
+# HTTP client for BoardSesh API
+httpx==0.27.2
+
+# QR code generation
+qrcode[pil]==8.0
+
+# Data validation
+pydantic==2.10.3
+
+# Async file operations
+aiofiles==24.1.0
+
+# Environment variables
+python-dotenv==1.0.1
+
+# Bluetooth dependencies (already installed for controller.py)
+# adafruit-circuitpython-neopixel-spi
+# dbus-python
+# PyGObject
+
+# Utilities
+uuid==1.30

@@ -91,7 +91,7 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails, onClimbNavigate }) 
           <Divider>Suggested Items</Divider>
           <List
             dataSource={(climbSearchResults || []).filter(
-              (item) => !queue.find(({ climb: { uuid } }) => item.uuid === uuid),
+              (item) => !queue.find((queueItem) => queueItem.climb?.uuid === item.uuid),
             )}
             renderItem={(climb: Climb) => (
               <List.Item>

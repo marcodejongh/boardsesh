@@ -39,3 +39,6 @@ next-env.d.ts
 kilter.db
 tension.db
 db/tmp
+
+# board controller
+board-controller/board_controller.db

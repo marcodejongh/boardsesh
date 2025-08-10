@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { usePeerContext } from '../connection-manager/peer-context';
 import { useQueueReducer } from './reducer';
 import { useQueueDataFetching } from './hooks/use-queue-data-fetching';
+import { useControllerWebSocket } from './hooks/use-controller-websocket';
 import { QueueContextType, ClimbQueueItem, UserName } from './types';
 import { urlParamsToSearchParams, searchParamsToUrlParams } from '@/app/lib/url-utils';
 import { Climb, ParsedBoardRouteParameters } from '@/app/lib/types';
@@ -31,7 +32,15 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
   const router = useRouter();
   const initialSearchParams = urlParamsToSearchParams(searchParams);
   const [state, dispatch] = useQueueReducer(initialSearchParams);
-  const { sendData, peerId, subscribeToData, hostId } = usePeerContext();
+  const peerContext = usePeerContext();
+  const controllerWS = useControllerWebSocket();
+  
+  // Use controller WebSocket if available, otherwise fall back to PeerJS
+  const isControllerMode = controllerWS.isControllerMode && controllerWS.isConnected;
+  const sendData = isControllerMode ? controllerWS.sendData : peerContext.sendData;
+  const peerId = isControllerMode ? 'boardsesh-client' : peerContext.peerId;
+  const hostId = isControllerMode ? controllerWS.controllerId : peerContext.hostId;
+  const subscribeToData = isControllerMode ? controllerWS.subscribeToData : peerContext.subscribeToData;
 
   // Set up queue update handler
   const handlePeerData = useCallback(
@@ -160,7 +169,7 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
     hasMoreResults,
     isFetchingClimbs,
     hasDoneFirstFetch: state.hasDoneFirstFetch,
-    viewOnlyMode: hostId ? !state.initialQueueDataReceivedFromPeers : false,
+    viewOnlyMode: isControllerMode ? false : (hostId ? !state.initialQueueDataReceivedFromPeers : false),
     // Actions
     addToQueue: (climb: Climb) => {
       const newItem = createClimbQueueItem(climb, peerId);
@@ -244,7 +253,7 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
       if (!state.currentClimbQueueItem?.climb) {
         return;
       }
-      const newMirroredState = !state.currentClimbQueueItem.climb.mirrored;
+      const newMirroredState = !state.currentClimbQueueItem.climb?.mirrored;
       
       dispatch({ type: 'DELTA_MIRROR_CURRENT_CLIMB', payload: { mirrored: newMirroredState } });
 
