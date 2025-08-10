@@ -34,35 +34,74 @@ export const getHoldHeatmapData = async (
   const filters = createClimbFilters(tables, params, searchParams, ps, userId);
 
   try {
-    // Build query without user-specific fields first
-    const baseQuery = db
-      .select({
-        holdId: climbHolds.holdId,
-        totalUses: sql<number>`COUNT(DISTINCT ${climbHolds.climbUuid})`,
-        totalAscents: sql<number>`SUM(${tables.climbStats.ascensionistCount})`,
-        startingUses: sql<number>`SUM(CASE WHEN ${climbHolds.holdState} = 'STARTING' THEN 1 ELSE 0 END)`,
-        handUses: sql<number>`SUM(CASE WHEN ${climbHolds.holdState} = 'HAND' THEN 1 ELSE 0 END)`,
-        footUses: sql<number>`SUM(CASE WHEN ${climbHolds.holdState} = 'FOOT' THEN 1 ELSE 0 END)`,
-        finishUses: sql<number>`SUM(CASE WHEN ${climbHolds.holdState} = 'FINISH' THEN 1 ELSE 0 END)`,
-        averageDifficulty: sql<number>`AVG(${tables.climbStats.displayDifficulty})`,
-      })
-      .from(climbHolds)
-      .innerJoin(tables.climbs, eq(tables.climbs.uuid, climbHolds.climbUuid))
-      .innerJoin(ps, eq(ps.id, params.size_id))
-      .leftJoin(
-        tables.climbStats,
-        and(eq(tables.climbStats.climbUuid, climbHolds.climbUuid), eq(tables.climbStats.angle, params.angle)),
-      )
-      .where(
-        and(...filters.getClimbWhereConditions(), ...filters.getSizeConditions(), ...filters.getClimbStatsConditions()),
-      )
-      .groupBy(climbHolds.holdId);
+    // Check if personal progress filters are active - if so, use user-specific counts
+    const personalProgressFiltersEnabled = 
+      searchParams.hideAttempted || 
+      searchParams.hideCompleted || 
+      searchParams.showOnlyAttempted || 
+      searchParams.showOnlyCompleted;
 
-    // Execute the base query
-    let holdStats = await baseQuery;
+    let holdStats: Record<string, unknown>[];
 
-    // If userId is provided, fetch user-specific data separately and merge it
-    if (userId) {
+    if (personalProgressFiltersEnabled && userId) {
+      // When personal progress filters are active, we need to compute user-specific hold statistics
+      // Since the filters already limit climbs to user's attempted/completed ones,
+      // we can use the same base query but the results will be user-filtered
+      const baseQuery = db
+        .select({
+          holdId: climbHolds.holdId,
+          totalUses: sql<number>`COUNT(DISTINCT ${climbHolds.climbUuid})`,
+          totalAscents: sql<number>`COUNT(DISTINCT ${climbHolds.climbUuid})`, // For user mode, this represents user's climb count per hold
+          startingUses: sql<number>`SUM(CASE WHEN ${climbHolds.holdState} = 'STARTING' THEN 1 ELSE 0 END)`,
+          handUses: sql<number>`SUM(CASE WHEN ${climbHolds.holdState} = 'HAND' THEN 1 ELSE 0 END)`,
+          footUses: sql<number>`SUM(CASE WHEN ${climbHolds.holdState} = 'FOOT' THEN 1 ELSE 0 END)`,
+          finishUses: sql<number>`SUM(CASE WHEN ${climbHolds.holdState} = 'FINISH' THEN 1 ELSE 0 END)`,
+          averageDifficulty: sql<number>`AVG(${tables.climbStats.displayDifficulty})`,
+        })
+        .from(climbHolds)
+        .innerJoin(tables.climbs, eq(tables.climbs.uuid, climbHolds.climbUuid))
+        .innerJoin(ps, eq(ps.id, params.size_id))
+        .leftJoin(
+          tables.climbStats,
+          and(eq(tables.climbStats.climbUuid, climbHolds.climbUuid), eq(tables.climbStats.angle, params.angle)),
+        )
+        .where(
+          and(...filters.getClimbWhereConditions(), ...filters.getSizeConditions(), ...filters.getClimbStatsConditions()),
+        )
+        .groupBy(climbHolds.holdId);
+
+      holdStats = await baseQuery;
+    } else {
+      // Use global community stats when no personal progress filters are active
+      const baseQuery = db
+        .select({
+          holdId: climbHolds.holdId,
+          totalUses: sql<number>`COUNT(DISTINCT ${climbHolds.climbUuid})`,
+          totalAscents: sql<number>`SUM(${tables.climbStats.ascensionistCount})`,
+          startingUses: sql<number>`SUM(CASE WHEN ${climbHolds.holdState} = 'STARTING' THEN 1 ELSE 0 END)`,
+          handUses: sql<number>`SUM(CASE WHEN ${climbHolds.holdState} = 'HAND' THEN 1 ELSE 0 END)`,
+          footUses: sql<number>`SUM(CASE WHEN ${climbHolds.holdState} = 'FOOT' THEN 1 ELSE 0 END)`,
+          finishUses: sql<number>`SUM(CASE WHEN ${climbHolds.holdState} = 'FINISH' THEN 1 ELSE 0 END)`,
+          averageDifficulty: sql<number>`AVG(${tables.climbStats.displayDifficulty})`,
+        })
+        .from(climbHolds)
+        .innerJoin(tables.climbs, eq(tables.climbs.uuid, climbHolds.climbUuid))
+        .innerJoin(ps, eq(ps.id, params.size_id))
+        .leftJoin(
+          tables.climbStats,
+          and(eq(tables.climbStats.climbUuid, climbHolds.climbUuid), eq(tables.climbStats.angle, params.angle)),
+        )
+        .where(
+          and(...filters.getClimbWhereConditions(), ...filters.getSizeConditions(), ...filters.getClimbStatsConditions()),
+        )
+        .groupBy(climbHolds.holdId);
+
+      holdStats = await baseQuery;
+    }
+
+    // Add user-specific data only if not already computed in the main query
+    if (userId && !personalProgressFiltersEnabled) {
+      // Only fetch separate user data if we're not already using user-specific main stats
       const ascentsTableName = getTableName(params.board_name, 'ascents');
       const bidsTableName = getTableName(params.board_name, 'bids');
       const climbHoldsTableName = getTableName(params.board_name, 'climb_holds');
@@ -115,6 +154,15 @@ export const getHoldHeatmapData = async (
         ...stat,
         userAscents: ascentsMap.get(Number(stat.holdId)) || 0,
         userAttempts: attemptsMap.get(Number(stat.holdId)) || 0,
+      }));
+    } else if (personalProgressFiltersEnabled && userId) {
+      // When using personal progress filters, the main stats ARE the user stats,
+      // but we still need to provide the userAscents and userAttempts fields
+      // for backward compatibility with the frontend
+      holdStats = holdStats.map((stat) => ({
+        ...stat,
+        userAscents: Number(stat.totalAscents) || 0,
+        userAttempts: Number(stat.totalUses) || 0, // Use totalUses as attempts when in user mode
       }));
     }
 
