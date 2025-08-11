@@ -121,21 +121,15 @@ const AnimatedBoardLoading: React.FC<AnimatedBoardLoadingProps> = ({ isVisible, 
           />
         </div>
       ) : (
-        // Fallback to simple animated dots if no board details
-        <div style={{ display: 'flex', gap: '8px' }}>
-          {[0, 1, 2, 3, 4].map((i) => (
-            <div
-              key={i}
-              style={{
-                width: '12px',
-                height: '12px',
-                borderRadius: '50%',
-                backgroundColor: '#4ECDC4',
-                animation: `pulse 1.5s ease-in-out ${i * 0.15}s infinite`,
-              }}
-            />
-          ))}
-        </div>
+        // Show a spinning circle instead of dots when no board details
+        <div style={{
+          width: '80px',
+          height: '80px',
+          border: '4px solid rgba(76, 205, 196, 0.3)',
+          borderTop: '4px solid #4ECDC4',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite',
+        }} />
       )}
       
       <Text
@@ -162,6 +156,10 @@ const AnimatedBoardLoading: React.FC<AnimatedBoardLoadingProps> = ({ isVisible, 
             opacity: 1;
             transform: scale(1.2);
           }
+        }
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
         }
       `}</style>
     </div>

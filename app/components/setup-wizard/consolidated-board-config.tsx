@@ -10,7 +10,7 @@ import { SUPPORTED_BOARDS, ANGLES } from '@/app/lib/board-data';
 import { fetchBoardDetails } from '../rest-api/api';
 import { BoardName, BoardDetails } from '@/app/lib/types';
 import BoardConfigPreview from './board-config-preview';
-import BoardConfigLivePreview from './board-config-live-preview';
+import BoardRenderer from '../board-renderer/board-renderer';
 import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { BoardConfigData } from '@/app/lib/server-board-configs';
 import AnimatedBoardLoading from '../loading/animated-board-loading';
@@ -68,6 +68,41 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
   const [activeCollapsePanels, setActiveCollapsePanels] = useState<string[]>(['saved']);
   const [isStartingClimbing, setIsStartingClimbing] = useState(false);
   const [loadingBoardDetails, setLoadingBoardDetails] = useState<BoardDetails | null>(null);
+  
+  // Get board details for the preview (shared with loading animation)
+  const [previewBoardDetails, setPreviewBoardDetails] = useState<BoardDetails | null>(null);
+  
+  // Load board details for preview when configuration changes
+  useEffect(() => {
+    if (!selectedBoard || !selectedLayout || !selectedSize || selectedSets.length === 0) {
+      setPreviewBoardDetails(null);
+      return;
+    }
+
+    const loadPreviewDetails = async () => {
+      try {
+        const detailsKey = `${selectedBoard}-${selectedLayout}-${selectedSize}-${selectedSets.join(',')}`;
+        const cachedDetails = boardConfigs.details[detailsKey];
+        
+        if (cachedDetails) {
+          setPreviewBoardDetails(cachedDetails);
+        } else {
+          try {
+            const details = await fetchBoardDetails(selectedBoard, selectedLayout, selectedSize, selectedSets);
+            setPreviewBoardDetails(details);
+          } catch (error) {
+            console.error('Failed to fetch board details for preview:', error);
+            setPreviewBoardDetails(null);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load preview details:', error);
+        setPreviewBoardDetails(null);
+      }
+    };
+
+    loadPreviewDetails();
+  }, [selectedBoard, selectedLayout, selectedSize, selectedSets, boardConfigs]);
 
   // IndexedDB helper functions
   const initDB = async () => {
@@ -337,14 +372,9 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
       return;
     }
 
+    // Use the preview board details for loading animation
+    setLoadingBoardDetails(previewBoardDetails);
     setIsStartingClimbing(true);
-    
-    // Try to get board details for loading animation
-    const detailsKey = `${selectedBoard}-${selectedLayout}-${selectedSize}-${selectedSets.join(',')}`;
-    const cachedDetails = boardConfigs.details[detailsKey];
-    if (cachedDetails) {
-      setLoadingBoardDetails(cachedDetails);
-    }
 
     try {
       // Generate default name if none provided
@@ -387,33 +417,34 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
       const detailsKey = `${selectedBoard}-${selectedLayout}-${selectedSize}-${selectedSets.join(',')}`;
       const cachedBoardDetails = boardConfigs.details[detailsKey];
       
-      if (!cachedBoardDetails) {
+      if (!cachedBoardDetails && previewBoardDetails) {
+        // Use preview board details if available
         try {
-          // Fetch board details only if not cached
-          const boardDetails = await fetchBoardDetails(selectedBoard, selectedLayout, selectedSize, selectedSets);
-          setLoadingBoardDetails(boardDetails);
-          
-          if (boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names) {
+          if (previewBoardDetails.layout_name && previewBoardDetails.size_name && previewBoardDetails.set_names) {
             const slugUrl = constructClimbListWithSlugs(
-              boardDetails.board_name,
-              boardDetails.layout_name,
-              boardDetails.size_name,
-              boardDetails.set_names,
+              previewBoardDetails.board_name,
+              previewBoardDetails.layout_name,
+              previewBoardDetails.size_name,
+              previewBoardDetails.set_names,
               selectedAngle,
             );
             router.push(slugUrl);
             return;
           }
         } catch (error) {
-          console.error('Error fetching board details for slug URL:', error);
+          console.error('Error using preview board details for slug URL:', error);
         }
         
         // Fallback to numeric URL format
         const setsString = selectedSets.join(',');
         router.push(`/${selectedBoard}/${selectedLayout}/${selectedSize}/${setsString}/${selectedAngle}/list`);
-      } else {
+      } else if (cachedBoardDetails) {
         // URL is cached, use it directly
         router.push(boardUrl);
+      } else {
+        // No board details available, use fallback URL
+        const setsString = selectedSets.join(',');
+        router.push(`/${selectedBoard}/${selectedLayout}/${selectedSize}/${setsString}/${selectedAngle}/list`);
       }
     } catch (error) {
       console.error('Error starting climbing session:', error);
@@ -619,16 +650,22 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
                   label: 'Preview',
                   children: (
                     <Flex gap="middle" wrap="wrap">
-                      <BoardConfigLivePreview
-                        boardName={selectedBoard}
-                        layoutId={selectedLayout}
-                        sizeId={selectedSize}
-                        setIds={selectedSets}
-                        angle={selectedAngle}
-                        configName={configName || suggestedName || 'New Configuration'}
-                        useAsDefault={useAsDefault}
-                        boardConfigs={boardConfigs}
-                      />
+                      {previewBoardDetails ? (
+                        <Card
+                          style={{ width: 400 }}
+                          cover={<BoardRenderer litUpHoldsMap={{}} mirrored={false} boardDetails={previewBoardDetails} thumbnail={false} />}
+                        />
+                      ) : selectedBoard && selectedLayout && selectedSize && selectedSets.length > 0 ? (
+                        <Card style={{ width: 400 }}>
+                          <div style={{ textAlign: 'center', padding: '20px' }}>
+                            <div style={{ color: '#1890ff', marginBottom: '8px' }}>Loading preview...</div>
+                          </div>
+                        </Card>
+                      ) : (
+                        <Card style={{ width: 400, textAlign: 'center' }}>
+                          <Text type="secondary">Select board configuration to see preview</Text>
+                        </Card>
+                      )}
                     </Flex>
                   ),
                 },
