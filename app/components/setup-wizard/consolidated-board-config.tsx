@@ -440,7 +440,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
         router.push(`/${selectedBoard}/${selectedLayout}/${selectedSize}/${setsString}/${selectedAngle}/list`);
       } else if (cachedBoardDetails) {
         // URL is cached, use it directly
-        router.push(boardUrl);
+        router.push(targetUrl || `/${selectedBoard}/${selectedLayout}/${selectedSize}/${selectedSets.join(',')}/${selectedAngle}/list`);
       } else {
         // No board details available, use fallback URL
         const setsString = selectedSets.join(',');

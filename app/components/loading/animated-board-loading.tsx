@@ -53,8 +53,9 @@ const AnimatedBoardLoading: React.FC<AnimatedBoardLoadingProps> = ({ isVisible, 
     
     selectedHolds.forEach(holdId => {
       holdsMap[holdId] = {
-        state: 'ON',
+        state: 'HAND',
         color: colors[colorIndex % colors.length],
+        displayColor: colors[colorIndex % colors.length],
       };
       colorIndex++;
     });
