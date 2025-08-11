@@ -23,8 +23,8 @@ export default function AngleSelector({ boardName, currentAngle, currentClimb }:
   const pathname = usePathname();
   
   // Build the API URL for fetching climb stats
-  const climbStatsUrl = currentClimb && pathname 
-    ? `${pathname.replace(/\/[^\/]*$/, '')}/climb-stats/${currentClimb.uuid}`
+  const climbStatsUrl = currentClimb
+    ? `/api/v1/${boardName}/climb-stats/${currentClimb.uuid}`
     : null;
   
   // Fetch climb stats for all angles when there's a current climb
