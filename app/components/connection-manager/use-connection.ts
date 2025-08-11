@@ -15,9 +15,12 @@ export const useConnection = (): PeerContextType => {
   const controllerUrl = searchParams.get('controllerUrl');
   const isControllerMode = !!controllerUrl;
 
-  // Only try to use the context that should be available
+  // Always call hooks at the top level (React hooks rules)
+  const peerContext = useContext(PeerContext);
+  const wsContext = useContext(WebSocketContext);
+
+  // Choose which context to use based on mode
   if (isControllerMode) {
-    const wsContext = useContext(WebSocketContext);
     if (!wsContext) {
       throw new Error('useConnection must be used within a WebSocketProvider when in controller mode');
     }
@@ -37,7 +40,6 @@ export const useConnection = (): PeerContextType => {
       connectToPeer: () => {}, // No-op in WebSocket mode
     };
   } else {
-    const peerContext = useContext(PeerContext);
     if (!peerContext) {
       throw new Error('useConnection must be used within a PeerProvider when in party mode');
     }
