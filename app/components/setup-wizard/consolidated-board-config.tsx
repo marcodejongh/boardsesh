@@ -12,6 +12,7 @@ import BoardConfigPreview from './board-config-preview';
 import BoardConfigLivePreview from './board-config-live-preview';
 import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { BoardConfigData } from '@/app/lib/server-board-configs';
+import FullPageLoadingOverlay from '../loading/full-page-loading-overlay';
 
 const { Option } = Select;
 const { Title, Text } = Typography;
@@ -377,7 +378,9 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
   const isFormComplete = selectedBoard && selectedLayout && selectedSize && selectedSets.length > 0;
 
   return (
-    <div style={{ padding: '24px', maxWidth: '600px', margin: '0 auto' }}>
+    <>
+      <FullPageLoadingOverlay isVisible={isStartingClimbing} />
+      <div style={{ padding: '24px', maxWidth: '600px', margin: '0 auto' }}>
       <Card>
         <Title level={1} style={{ textAlign: 'center', marginBottom: '8px' }}>
           BoardSesh
@@ -576,6 +579,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
         )}
       </Card>
     </div>
+    </>
   );
 };
 
