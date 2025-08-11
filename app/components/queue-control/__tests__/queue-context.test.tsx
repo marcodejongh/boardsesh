@@ -6,7 +6,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { QueueProvider, useQueueContext } from '../queue-context';
 import { ParsedBoardRouteParameters, Climb } from '@/app/lib/types';
 import { ClimbQueueItem } from '../types';
-import { usePeerContext } from '../../connection-manager/peer-context';
+import { useConnection } from '../../connection-manager/use-connection';
 
 // Mock dependencies
 vi.mock('next/navigation', () => ({
@@ -20,11 +20,32 @@ vi.mock('@/app/lib/url-utils', () => ({
 }));
 
 vi.mock('../../connection-manager/peer-context', () => ({
+  PeerContext: React.createContext(undefined),
   usePeerContext: vi.fn(() => ({
     sendData: vi.fn(),
     peerId: 'test-peer-id',
     subscribeToData: vi.fn(() => vi.fn()),
     hostId: null
+  }))
+}));
+
+vi.mock('../../connection-manager/websocket-context', () => ({
+  WebSocketContext: React.createContext(undefined)
+}));
+
+vi.mock('../../connection-manager/use-connection', () => ({
+  useConnection: vi.fn(() => ({
+    sendData: vi.fn(),
+    peerId: 'test-peer-id',
+    subscribeToData: vi.fn(() => vi.fn()),
+    hostId: null,
+    hasConnected: false,
+    isConnecting: false,
+    connections: [],
+    currentLeader: null,
+    isLeader: false,
+    initiateLeaderElection: vi.fn(),
+    connectToPeer: vi.fn()
   }))
 }));
 
@@ -56,7 +77,7 @@ const mockRouter = {
   replace: vi.fn()
 };
 
-const mockUsePeerContext = vi.mocked(usePeerContext);
+const mockUseConnection = vi.mocked(useConnection);
 
 const mockParsedParams: ParsedBoardRouteParameters = {
   board_name: 'kilter',
@@ -123,7 +144,7 @@ describe('QueueProvider', () => {
     vi.clearAllMocks();
     (useSearchParams as ReturnType<typeof vi.fn>).mockReturnValue(mockSearchParams);
     (useRouter as ReturnType<typeof vi.fn>).mockReturnValue(mockRouter);
-    mockUsePeerContext.mockReturnValue({
+    mockUseConnection.mockReturnValue({
       sendData: vi.fn(),
       peerId: 'test-peer-id',
       subscribeToData: vi.fn(() => vi.fn()),
@@ -231,7 +252,7 @@ describe('QueueProvider with peer functionality', () => {
     
     // Mock peer context with host
     mockSubscribeToData.mockReturnValue(vi.fn()); // Return unsubscribe function
-    mockUsePeerContext.mockReturnValue({
+    mockUseConnection.mockReturnValue({
       sendData: mockSendData,
       peerId: 'test-peer-id',
       subscribeToData: mockSubscribeToData,
@@ -343,7 +364,7 @@ describe('QueueProvider utility functions', () => {
     vi.clearAllMocks();
     (useSearchParams as ReturnType<typeof vi.fn>).mockReturnValue(mockSearchParams);
     (useRouter as ReturnType<typeof vi.fn>).mockReturnValue(mockRouter);
-    mockUsePeerContext.mockReturnValue({
+    mockUseConnection.mockReturnValue({
       sendData: vi.fn(),
       peerId: 'test-peer-id',
       subscribeToData: vi.fn(() => vi.fn()),
