@@ -160,6 +160,40 @@ export const getClimb = async (params: ParsedBoardRouteParametersWithUuid): Prom
   return result[0] as Climb;
 };
 
+export interface ClimbStatsForAngle {
+  angle: number;
+  ascensionist_count: string; // comes as string from DB
+  quality_average: string | null; // comes as string from DB
+  difficulty_average: number | null;
+  display_difficulty: number | null;
+  fa_username: string | null;
+  fa_at: string | null;
+  difficulty: string | null;
+}
+
+export const getClimbStatsForAllAngles = async (
+  params: ParsedBoardRouteParametersWithUuid
+): Promise<ClimbStatsForAngle[]> => {
+  const result = await sql`
+    SELECT 
+      climb_stats.angle,
+      COALESCE(climb_stats.ascensionist_count, 0) as ascensionist_count,
+      ROUND(climb_stats.quality_average::numeric, 2) as quality_average,
+      climb_stats.difficulty_average,
+      climb_stats.display_difficulty,
+      climb_stats.fa_username,
+      climb_stats.fa_at,
+      dg.boulder_name as difficulty
+    FROM ${sql.unsafe(getTableName(params.board_name, 'climb_stats'))} climb_stats
+    LEFT JOIN ${sql.unsafe(
+      getTableName(params.board_name, 'difficulty_grades'),
+    )} dg on dg.difficulty = ROUND(climb_stats.display_difficulty::numeric)
+    WHERE climb_stats.climb_uuid = ${params.climb_uuid}
+    ORDER BY climb_stats.angle ASC
+  `;
+  return result as ClimbStatsForAngle[];
+};
+
 function getImageUrlHoldsMapObjectEntries(
   set_ids: SetIdList,
   board_name: string,
