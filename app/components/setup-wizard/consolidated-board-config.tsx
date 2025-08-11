@@ -582,9 +582,8 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
                 size="large"
                 block
                 disabled={!isFormComplete || isStartingClimbing}
-                loading={isStartingClimbing}
               >
-                {isStartingClimbing ? 'Starting...' : 'Start Climbing'}
+                Start Climbing
               </Button>
             </Link>
           ) : (
@@ -594,9 +593,8 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
               block
               onClick={handleStartClimbing}
               disabled={!isFormComplete || isStartingClimbing}
-              loading={isStartingClimbing}
             >
-              {isStartingClimbing ? 'Starting...' : 'Start Climbing'}
+              Start Climbing
             </Button>
           )}
         </Form>
