@@ -10,7 +10,6 @@ import { Climb, BoardDetails } from '@/app/lib/types';
 import ClimbCardActions from './climb-card-actions';
 import { useClimbCircuits } from '@/app/hooks/use-climb-circuits';
 import { useBoardProvider } from '@/app/components/board-provider/board-provider-context';
-import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
 
 type ClimbCardProps = {
   climb?: Climb;
@@ -19,11 +18,11 @@ type ClimbCardProps = {
   onCoverClick?: () => void;
   selected?: boolean;
   actions?: React.JSX.Element[];
+  onCircuitClick?: (circuitUuid: string) => void;
 };
 
-const ClimbCard = ({ climb, boardDetails, onCoverClick, selected, actions }: ClimbCardProps) => {
+const ClimbCard = ({ climb, boardDetails, onCoverClick, selected, actions, onCircuitClick }: ClimbCardProps) => {
   const { boardName, isAuthenticated } = useBoardProvider();
-  const { updateFilters } = useUISearchParams();
   const { circuits } = useClimbCircuits(boardName, climb?.uuid || null, Boolean(isAuthenticated && climb?.uuid));
   
   const cover = <ClimbCardCover climb={climb} boardDetails={boardDetails} onClick={onCoverClick} />;
@@ -69,17 +68,17 @@ const ClimbCard = ({ climb, boardDetails, onCoverClick, selected, actions }: Cli
                   key={circuit.uuid}
                   color={circuit.color || undefined}
                   style={{ 
-                    cursor: 'pointer',
+                    cursor: onCircuitClick ? 'pointer' : 'default',
                     fontSize: '11px',
                     padding: '2px 6px',
                     margin: '0',
                     borderRadius: '4px'
                   }}
-                  onClick={(e) => {
+                  onClick={onCircuitClick ? (e) => {
                     e.stopPropagation();
-                    updateFilters({ circuitUuids: [circuit.uuid] });
-                  }}
-                  title={`Filter by circuit: ${circuit.name}`}
+                    onCircuitClick(circuit.uuid);
+                  } : undefined}
+                  title={onCircuitClick ? `Filter by circuit: ${circuit.name}` : circuit.name || 'Unnamed Circuit'}
                 >
                   {circuit.name || 'Unnamed Circuit'}
                 </Tag>
