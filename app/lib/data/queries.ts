@@ -162,8 +162,8 @@ export const getClimb = async (params: ParsedBoardRouteParametersWithUuid): Prom
 
 export interface ClimbStatsForAngle {
   angle: number;
-  ascensionist_count: number;
-  quality_average: number | null;
+  ascensionist_count: string; // comes as string from DB
+  quality_average: string | null; // comes as string from DB
   difficulty_average: number | null;
   display_difficulty: number | null;
   fa_username: string | null;

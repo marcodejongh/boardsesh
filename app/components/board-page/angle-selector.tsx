@@ -77,8 +77,8 @@ export default function AngleSelector({ boardName, currentAngle, currentClimb }:
         {stats.quality_average !== null && (
           <div style={{ marginBottom: 4 }}>
             <Text strong style={{ fontSize: '12px' }}>Quality: </Text>
-            <Rate disabled allowHalf value={stats.quality_average} style={{ fontSize: '10px' }} />
-            <Text style={{ fontSize: '12px', marginLeft: 4 }}>({stats.quality_average?.toFixed(1)})</Text>
+            <Rate disabled allowHalf value={Number(stats.quality_average)} style={{ fontSize: '10px' }} />
+            <Text style={{ fontSize: '12px', marginLeft: 4 }}>({Number(stats.quality_average).toFixed(1)})</Text>
           </div>
         )}
         <div style={{ marginBottom: 4 }}>
