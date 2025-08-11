@@ -41,6 +41,7 @@ export const UISearchParamsProvider: React.FC<{ children: React.ReactNode }> = (
     if (uiSearchParams.hideCompleted) activeFilters.push('hideCompleted');
     if (uiSearchParams.showOnlyAttempted) activeFilters.push('showOnlyAttempted');
     if (uiSearchParams.showOnlyCompleted) activeFilters.push('showOnlyCompleted');
+    if (uiSearchParams.circuitUuids && uiSearchParams.circuitUuids.length > 0) activeFilters.push('circuits');
 
     if (activeFilters.length > 0) {
       track('Climb Search Performed', {

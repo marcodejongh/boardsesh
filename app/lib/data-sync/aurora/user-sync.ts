@@ -252,6 +252,26 @@ async function upsertTableData(
       break;
     }
 
+    case 'circuits_climbs': {
+      const circuitsClimbsSchema = getTable('circuitsClimbs', boardName);
+      for (const item of data) {
+        await db
+          .insert(circuitsClimbsSchema)
+          .values({
+            circuitUuid: item.circuit_uuid,
+            climbUuid: item.climb_uuid,
+            position: Number(item.position || 0),
+          })
+          .onConflictDoUpdate({
+            target: [circuitsClimbsSchema.circuitUuid, circuitsClimbsSchema.climbUuid],
+            set: {
+              position: Number(item.position || 0),
+            },
+          });
+      }
+      break;
+    }
+
     default:
       console.warn(`No specific upsert logic for table: ${tableName}`);
       break;

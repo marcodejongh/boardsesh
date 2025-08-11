@@ -54,6 +54,7 @@ export const searchParamsToUrlParams = ({
   hideCompleted,
   showOnlyAttempted,
   showOnlyCompleted,
+  circuitUuids,
   page,
   pageSize,
 }: SearchRequestPagination): URLSearchParams => {
@@ -119,6 +120,11 @@ export const searchParamsToUrlParams = ({
     });
   }
 
+  // Add circuit UUIDs if they exist
+  if (circuitUuids && circuitUuids.length > 0) {
+    params.circuitUuids = circuitUuids.join(',');
+  }
+
   return new URLSearchParams(params);
 };
 export const DEFAULT_SEARCH_PARAMS: SearchRequestPagination = {
@@ -138,6 +144,7 @@ export const DEFAULT_SEARCH_PARAMS: SearchRequestPagination = {
   hideCompleted: false,
   showOnlyAttempted: false,
   showOnlyCompleted: false,
+  circuitUuids: [],
   page: 0,
   pageSize: PAGE_LIMIT,
 };
@@ -148,6 +155,8 @@ export const urlParamsToSearchParams = (urlParams: URLSearchParams): SearchReque
       .filter(([key]) => key.startsWith('hold_'))
       .map(([key, value]) => [key.replace('hold_', ''), value]),
   );
+
+  const circuitUuids = urlParams.get('circuitUuids')?.split(',').filter(Boolean) ?? DEFAULT_SEARCH_PARAMS.circuitUuids;
 
   return {
     ...DEFAULT_SEARCH_PARAMS,
@@ -168,6 +177,7 @@ export const urlParamsToSearchParams = (urlParams: URLSearchParams): SearchReque
     hideCompleted: urlParams.get('hideCompleted') === 'true',
     showOnlyAttempted: urlParams.get('showOnlyAttempted') === 'true',
     showOnlyCompleted: urlParams.get('showOnlyCompleted') === 'true',
+    circuitUuids,
     page: Number(urlParams.get('page') ?? DEFAULT_SEARCH_PARAMS.page),
     pageSize: Number(urlParams.get('pageSize') ?? DEFAULT_SEARCH_PARAMS.pageSize),
   };

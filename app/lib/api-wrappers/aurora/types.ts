@@ -201,6 +201,7 @@ export const USER_TABLES = [
   'bids',
   'tags',
   'circuits',
+  'circuits_climbs',
 ];
 export const SHARED_SYNC_TABLES = [
   'products',

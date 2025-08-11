@@ -93,6 +93,7 @@ export type SearchRequest = {
   hideCompleted: boolean;
   showOnlyAttempted: boolean;
   showOnlyCompleted: boolean;
+  circuitUuids: string[];
   [key: `hold_${number}`]: HoldFilterValue; // Allow dynamic hold keys directly in the search params
 };
 
