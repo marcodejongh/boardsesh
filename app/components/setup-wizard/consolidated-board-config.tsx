@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button, Form, Select, Typography, Input, Divider, Card, Row, Col, Flex, Collapse } from 'antd';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { openDB } from 'idb';
 import { track } from '@vercel/analytics';
 import { SUPPORTED_BOARDS, ANGLES } from '@/app/lib/board-data';
@@ -271,6 +272,33 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
     generateSuggestedName();
   }, [selectedBoard, selectedLayout, selectedSize, generateSuggestedName]);
 
+  // Compute target URL for navigation optimization
+  const targetUrl = useMemo(() => {
+    if (!selectedBoard || !selectedLayout || !selectedSize || selectedSets.length === 0) {
+      return null;
+    }
+
+    const setsString = selectedSets.join(',');
+    
+    // Check if we have cached board details
+    const detailsKey = `${selectedBoard}-${selectedLayout}-${selectedSize}-${selectedSets.join(',')}`;
+    const cachedBoardDetails = boardConfigs.details[detailsKey];
+    
+    if (cachedBoardDetails && cachedBoardDetails.layout_name && cachedBoardDetails.size_name && cachedBoardDetails.set_names) {
+      // Use slug-based URL if we have cached details
+      return constructClimbListWithSlugs(
+        cachedBoardDetails.board_name,
+        cachedBoardDetails.layout_name,
+        cachedBoardDetails.size_name,
+        cachedBoardDetails.set_names,
+        selectedAngle,
+      );
+    } else {
+      // Fall back to numeric URL format
+      return `/${selectedBoard}/${selectedLayout}/${selectedSize}/${setsString}/${selectedAngle}/list`;
+    }
+  }, [selectedBoard, selectedLayout, selectedSize, selectedSets, selectedAngle, boardConfigs.details]);
+
   const handleFormChange = () => {
     // Don't automatically expand saved configurations when form changes
     // Let user control collapse state manually
@@ -304,52 +332,58 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
   // Login will be handled after reaching the main board page
 
   const handleStartClimbing = async () => {
-    if (selectedBoard && selectedLayout && selectedSize && selectedSets.length > 0) {
-      setIsStartingClimbing(true);
+    if (!selectedBoard || !selectedLayout || !selectedSize || selectedSets.length === 0) {
+      return;
+    }
 
-      try {
-        // Generate default name if none provided
-        let configurationName = configName.trim();
-        if (!configurationName) {
-          const layout = layouts.find((l) => l.id === selectedLayout);
-          const size = sizes.find((s) => s.id === selectedSize);
+    setIsStartingClimbing(true);
 
-          const layoutName = layout?.name || `Layout ${selectedLayout}`;
-          const sizeName = size?.name || `Size ${selectedSize}`;
+    try {
+      // Generate default name if none provided
+      let configurationName = configName.trim();
+      if (!configurationName) {
+        const layout = layouts.find((l) => l.id === selectedLayout);
+        const size = sizes.find((s) => s.id === selectedSize);
 
-          configurationName = `${layoutName} ${sizeName}`;
-        }
+        const layoutName = layout?.name || `Layout ${selectedLayout}`;
+        const sizeName = size?.name || `Size ${selectedSize}`;
 
-        // Track board configuration completion
-        track('Board Configuration Completed', {
-          boardLayout: selectedLayout,
-          setAsDefault: useAsDefault,
-        });
+        configurationName = `${layoutName} ${sizeName}`;
+      }
 
-        // Always save configuration with either user-provided or generated name
-        const config: StoredBoardConfig = {
-          name: configurationName,
-          board: selectedBoard,
-          layoutId: selectedLayout,
-          sizeId: selectedSize,
-          setIds: selectedSets,
-          angle: selectedAngle,
-          useAsDefault,
-          createdAt: new Date().toISOString(),
-          lastUsed: new Date().toISOString(),
-        };
+      // Track board configuration completion
+      track('Board Configuration Completed', {
+        boardLayout: selectedLayout,
+        setAsDefault: useAsDefault,
+      });
 
-        await saveConfiguration(config);
-        // Refresh the saved configurations list
-        const updatedConfigs = await loadAllConfigurations();
-        setSavedConfigurations(updatedConfigs);
+      // Always save configuration with either user-provided or generated name
+      const config: StoredBoardConfig = {
+        name: configurationName,
+        board: selectedBoard,
+        layoutId: selectedLayout,
+        sizeId: selectedSize,
+        setIds: selectedSets,
+        angle: selectedAngle,
+        useAsDefault,
+        createdAt: new Date().toISOString(),
+        lastUsed: new Date().toISOString(),
+      };
 
-        const setsString = selectedSets.join(',');
+      await saveConfiguration(config);
+      // Refresh the saved configurations list
+      const updatedConfigs = await loadAllConfigurations();
+      setSavedConfigurations(updatedConfigs);
 
+      // For cases where we need to fetch board details on demand (not cached)
+      const detailsKey = `${selectedBoard}-${selectedLayout}-${selectedSize}-${selectedSets.join(',')}`;
+      const cachedBoardDetails = boardConfigs.details[detailsKey];
+      
+      if (!cachedBoardDetails) {
         try {
-          // Try to get board details for slug-based URL
-          const boardDetails = await fetchBoardDetails(selectedBoard!, selectedLayout!, selectedSize!, selectedSets);
-
+          // Fetch board details only if not cached
+          const boardDetails = await fetchBoardDetails(selectedBoard, selectedLayout, selectedSize, selectedSets);
+          
           if (boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names) {
             const slugUrl = constructClimbListWithSlugs(
               boardDetails.board_name,
@@ -359,19 +393,20 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
               selectedAngle,
             );
             router.push(slugUrl);
-          } else {
-            // Fallback to old URL format
-            router.push(`/${selectedBoard}/${selectedLayout}/${selectedSize}/${setsString}/${selectedAngle}/list`);
+            return;
           }
         } catch (error) {
           console.error('Error fetching board details for slug URL:', error);
-          // Fallback to old URL format
-          router.push(`/${selectedBoard}/${selectedLayout}/${selectedSize}/${setsString}/${selectedAngle}/list`);
         }
-      } catch (error) {
-        console.error('Error starting climbing session:', error);
-        setIsStartingClimbing(false);
+        
+        // Fallback to numeric URL format
+        const setsString = selectedSets.join(',');
+        router.push(`/${selectedBoard}/${selectedLayout}/${selectedSize}/${setsString}/${selectedAngle}/list`);
       }
+      // If URL is cached, navigation happens via Link component
+    } catch (error) {
+      console.error('Error starting climbing session:', error);
+      setIsStartingClimbing(false);
     }
   };
 
@@ -528,16 +563,30 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
           </Form.Item>
           */}
 
-          <Button
-            type="primary"
-            size="large"
-            block
-            onClick={handleStartClimbing}
-            disabled={!isFormComplete || isStartingClimbing}
-            loading={isStartingClimbing}
-          >
-            {isStartingClimbing ? 'Starting...' : 'Start Climbing'}
-          </Button>
+          {targetUrl ? (
+            <Link href={targetUrl} onClick={handleStartClimbing}>
+              <Button
+                type="primary"
+                size="large"
+                block
+                disabled={!isFormComplete || isStartingClimbing}
+                loading={isStartingClimbing}
+              >
+                {isStartingClimbing ? 'Starting...' : 'Start Climbing'}
+              </Button>
+            </Link>
+          ) : (
+            <Button
+              type="primary"
+              size="large"
+              block
+              onClick={handleStartClimbing}
+              disabled={!isFormComplete || isStartingClimbing}
+              loading={isStartingClimbing}
+            >
+              {isStartingClimbing ? 'Starting...' : 'Start Climbing'}
+            </Button>
+          )}
         </Form>
 
         {isFormComplete && (
