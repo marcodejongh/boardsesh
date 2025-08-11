@@ -146,22 +146,24 @@ const AnimatedBoardLoading: React.FC<AnimatedBoardLoadingProps> = ({ isVisible, 
         {currentMessage}
       </Text>
       
-      <style jsx>{`
-        @keyframes pulse {
-          0%, 100% {
-            opacity: 0.3;
-            transform: scale(0.8);
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          @keyframes pulse {
+            0%, 100% {
+              opacity: 0.3;
+              transform: scale(0.8);
+            }
+            50% {
+              opacity: 1;
+              transform: scale(1.2);
+            }
           }
-          50% {
-            opacity: 1;
-            transform: scale(1.2);
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
           }
-        }
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `}</style>
+        `
+      }} />
     </div>
   );
 };
