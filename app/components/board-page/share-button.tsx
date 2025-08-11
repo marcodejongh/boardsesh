@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { TeamOutlined, CopyOutlined, CrownFilled, LoadingOutlined } from '@ant-design/icons';
 import { Button, Input, Drawer, QRCode, Flex, message, Typography, Badge } from 'antd';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { usePeerContext } from '../connection-manager/peer-context';
+import { useConnection } from '../connection-manager/use-connection';
 import { usePartyContext } from '../party-manager/party-context';
 // import { usePartyContext } from '../party-manager/party-context';
 
@@ -21,7 +21,7 @@ const getShareUrl = (pathname: string, searchParams: URLSearchParams, peerId: st
 };
 
 export const ShareBoardButton = () => {
-  const { peerId, isConnecting, hasConnected, connections, hostId } = usePeerContext();
+  const { peerId, isConnecting, hasConnected, connections, hostId } = useConnection();
   const { connectedUsers, userName } = usePartyContext();
   const searchParams = useSearchParams();
   const pathname = usePathname();

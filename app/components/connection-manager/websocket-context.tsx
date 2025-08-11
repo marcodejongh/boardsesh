@@ -13,7 +13,7 @@ interface WebSocketContextType {
   subscribeToData: (callback: (data: ReceivedPeerData) => void) => () => void;
 }
 
-const WebSocketContext = createContext<WebSocketContextType | undefined>(undefined);
+export const WebSocketContext = createContext<WebSocketContextType | undefined>(undefined);
 
 type DataHandler = {
   id: string;

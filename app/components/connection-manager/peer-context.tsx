@@ -15,7 +15,7 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 import { peerReducer, initialPeerState } from './reducer';
 
-const PeerContext = createContext<PeerContextType | undefined>(undefined);
+export const PeerContext = createContext<PeerContextType | undefined>(undefined);
 let peerInstance: Peer | undefined;
 let heartbeatInterval: NodeJS.Timeout | undefined;
 let healthCheckInterval: NodeJS.Timeout | undefined;

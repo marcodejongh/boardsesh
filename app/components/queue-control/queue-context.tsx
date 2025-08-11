@@ -4,10 +4,9 @@
 import React, { useContext, createContext, ReactNode, useEffect, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { v4 as uuidv4 } from 'uuid';
-import { usePeerContext } from '../connection-manager/peer-context';
+import { useConnection } from '../connection-manager/use-connection';
 import { useQueueReducer } from './reducer';
 import { useQueueDataFetching } from './hooks/use-queue-data-fetching';
-import { useControllerWebSocket } from './hooks/use-controller-websocket';
 import { QueueContextType, ClimbQueueItem, UserName } from './types';
 import { urlParamsToSearchParams, searchParamsToUrlParams } from '@/app/lib/url-utils';
 import { Climb, ParsedBoardRouteParameters } from '@/app/lib/types';
@@ -32,15 +31,17 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
   const router = useRouter();
   const initialSearchParams = urlParamsToSearchParams(searchParams);
   const [state, dispatch] = useQueueReducer(initialSearchParams);
-  const peerContext = usePeerContext();
-  const controllerWS = useControllerWebSocket();
+  const connection = useConnection();
   
-  // Use controller WebSocket if available, otherwise fall back to PeerJS
-  const isControllerMode = controllerWS.isControllerMode && controllerWS.isConnected;
-  const sendData = isControllerMode ? controllerWS.sendData : peerContext.sendData;
-  const peerId = isControllerMode ? 'boardsesh-client' : peerContext.peerId;
-  const hostId = isControllerMode ? controllerWS.controllerId : peerContext.hostId;
-  const subscribeToData = isControllerMode ? controllerWS.subscribeToData : peerContext.subscribeToData;
+  // Check if we're in controller mode
+  const controllerUrl = searchParams.get('controllerUrl');
+  const isControllerMode = !!controllerUrl;
+  
+  // Use the connection hook which handles the switching logic
+  const sendData = connection.sendData;
+  const peerId = connection.peerId;
+  const hostId = connection.hostId;
+  const subscribeToData = connection.subscribeToData;
 
   // Set up queue update handler
   const handlePeerData = useCallback(
