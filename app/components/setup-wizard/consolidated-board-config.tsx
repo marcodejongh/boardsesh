@@ -8,12 +8,12 @@ import { openDB } from 'idb';
 import { track } from '@vercel/analytics';
 import { SUPPORTED_BOARDS, ANGLES } from '@/app/lib/board-data';
 import { fetchBoardDetails } from '../rest-api/api';
-import { BoardName } from '@/app/lib/types';
+import { BoardName, BoardDetails } from '@/app/lib/types';
 import BoardConfigPreview from './board-config-preview';
 import BoardConfigLivePreview from './board-config-live-preview';
 import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { BoardConfigData } from '@/app/lib/server-board-configs';
-import FullPageLoadingOverlay from '../loading/full-page-loading-overlay';
+import AnimatedBoardLoading from '../loading/animated-board-loading';
 
 const { Option } = Select;
 const { Title, Text } = Typography;
@@ -67,6 +67,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
   const [suggestedName, setSuggestedName] = useState<string>('');
   const [activeCollapsePanels, setActiveCollapsePanels] = useState<string[]>(['saved']);
   const [isStartingClimbing, setIsStartingClimbing] = useState(false);
+  const [loadingBoardDetails, setLoadingBoardDetails] = useState<BoardDetails | null>(null);
 
   // IndexedDB helper functions
   const initDB = async () => {
@@ -337,6 +338,13 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
     }
 
     setIsStartingClimbing(true);
+    
+    // Try to get board details for loading animation
+    const detailsKey = `${selectedBoard}-${selectedLayout}-${selectedSize}-${selectedSets.join(',')}`;
+    const cachedDetails = boardConfigs.details[detailsKey];
+    if (cachedDetails) {
+      setLoadingBoardDetails(cachedDetails);
+    }
 
     try {
       // Generate default name if none provided
@@ -383,6 +391,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
         try {
           // Fetch board details only if not cached
           const boardDetails = await fetchBoardDetails(selectedBoard, selectedLayout, selectedSize, selectedSets);
+          setLoadingBoardDetails(boardDetails);
           
           if (boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names) {
             const slugUrl = constructClimbListWithSlugs(
@@ -402,11 +411,14 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
         // Fallback to numeric URL format
         const setsString = selectedSets.join(',');
         router.push(`/${selectedBoard}/${selectedLayout}/${selectedSize}/${setsString}/${selectedAngle}/list`);
+      } else {
+        // URL is cached, use it directly
+        router.push(boardUrl);
       }
-      // If URL is cached, navigation happens via Link component
     } catch (error) {
       console.error('Error starting climbing session:', error);
       setIsStartingClimbing(false);
+      setLoadingBoardDetails(null);
     }
   };
 
@@ -414,7 +426,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
 
   return (
     <>
-      <FullPageLoadingOverlay isVisible={isStartingClimbing} />
+      <AnimatedBoardLoading isVisible={isStartingClimbing} boardDetails={loadingBoardDetails} />
       <div style={{ padding: '24px', maxWidth: '600px', margin: '0 auto' }}>
       <Card>
         <Title level={1} style={{ textAlign: 'center', marginBottom: '8px' }}>
