@@ -2,7 +2,7 @@
 
 import React, { useContext, createContext, useEffect, useCallback, useState, useMemo } from 'react';
 import { useBoardProvider } from '../board-provider/board-provider-context';
-import { usePeerContext } from '../connection-manager/peer-context';
+import { useConnection } from '../connection-manager/use-connection';
 import { ReceivedPeerData, SendPeerInfo } from '../connection-manager/types';
 
 type ConnectedUser = {
@@ -22,7 +22,7 @@ type WebSocketData = Pick<SendPeerInfo, 'username'>;
 const PartyContext = createContext<PartyContextType | undefined>(undefined);
 
 export const PartyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { sendData, peerId, subscribeToData, connections } = usePeerContext();
+  const { sendData, peerId, subscribeToData, connections } = useConnection();
   const { username: boardUsername } = useBoardProvider();
 
   const username = boardUsername || '';

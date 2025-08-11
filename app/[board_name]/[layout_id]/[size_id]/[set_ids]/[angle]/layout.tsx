@@ -12,7 +12,7 @@ import QueueControlBar from '@/app/components/queue-control/queue-control-bar';
 import { getBoardDetails } from '@/app/lib/data/queries';
 import BoardSeshHeader from '@/app/components/board-page/header';
 import { QueueProvider } from '@/app/components/queue-control/queue-context';
-import { PeerProvider } from '@/app/components/connection-manager/peer-context';
+import { ConnectionProviderWrapper } from '@/app/components/connection-manager/connection-provider-wrapper';
 import { PartyProvider } from '@/app/components/party-manager/party-context';
 
 interface BoardLayoutProps {
@@ -82,7 +82,7 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
     <>
       <title>{`Boardsesh on ${board_name} - Layout ${layout_id}`}</title>
       <Layout style={{ height: '100dvh', display: 'flex', flexDirection: 'column' }}>
-        <PeerProvider>
+        <ConnectionProviderWrapper>
           <QueueProvider parsedParams={parsedParams}>
             <PartyProvider>
               <BoardSeshHeader boardDetails={boardDetails} angle={angle} />
@@ -111,7 +111,7 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
               </Affix>
             </PartyProvider>
           </QueueProvider>
-        </PeerProvider>
+        </ConnectionProviderWrapper>
       </Layout>
     </>
   );
