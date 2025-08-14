@@ -2,11 +2,12 @@
 
 import React from 'react';
 import Card from 'antd/es/card';
-import { CopyrightOutlined } from '@ant-design/icons';
+import { CopyrightOutlined, StopOutlined } from '@ant-design/icons';
 
 import ClimbCardCover from './climb-card-cover';
 import { Climb, BoardDetails } from '@/app/lib/types';
 import ClimbCardActions from './climb-card-actions';
+import { hasNoMatchingPattern } from '@/app/lib/climb-utils';
 
 type ClimbCardProps = {
   climb?: Climb;
@@ -26,6 +27,9 @@ const ClimbCard = ({ climb, boardDetails, onCoverClick, selected, actions }: Cli
       <div>
         {climb.name} @ {climb.angle}°
         {climb.benchmark_difficulty !== null && <CopyrightOutlined style={{ marginLeft: 4 }} />}
+        {boardDetails.board_name === 'tension' && hasNoMatchingPattern(climb.description) && (
+          <StopOutlined style={{ marginLeft: 4, color: '#ff4d4f' }} title="No matching allowed" />
+        )}
       </div>
 
       {/* RIGHT: Difficulty, Quality */}
