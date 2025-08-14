@@ -47,7 +47,8 @@ const mockSearchParams: SearchRequestPagination = {
   hideAttempted: false,
   hideCompleted: false,
   showOnlyAttempted: false,
-  showOnlyCompleted: false
+  showOnlyCompleted: false,
+  circuitUuids: []
 };
 
 const initialState: QueueState = {
@@ -292,7 +293,8 @@ describe('queueReducer', () => {
         hideAttempted: false,
         hideCompleted: false,
         showOnlyAttempted: false,
-        showOnlyCompleted: false
+        showOnlyCompleted: false,
+        circuitUuids: []
       };
 
       const action: QueueAction = {

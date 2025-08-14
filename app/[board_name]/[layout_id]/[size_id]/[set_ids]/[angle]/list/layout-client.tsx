@@ -69,14 +69,14 @@ const TabsWrapper: React.FC<{ boardDetails: BoardDetails }> = ({ boardDetails })
 
 const ListLayoutClient: React.FC<PropsWithChildren<ListLayoutClientProps>> = ({ boardDetails, children }) => {
   return (
-    <Layout className={styles.listLayout}>
-      <Content className={styles.mainContent}>{children}</Content>
-      <Sider width={400} className={styles.sider} theme="light" style={{ padding: '20px'}}>
-        <UISearchParamsProvider>
+    <UISearchParamsProvider>
+      <Layout className={styles.listLayout}>
+        <Content className={styles.mainContent}>{children}</Content>
+        <Sider width={400} className={styles.sider} theme="light" style={{ padding: '20px'}}>
           <TabsWrapper boardDetails={boardDetails} />
-        </UISearchParamsProvider>
-      </Sider>
-    </Layout>
+        </Sider>
+      </Layout>
+    </UISearchParamsProvider>
   );
 };
 

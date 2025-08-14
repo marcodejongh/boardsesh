@@ -5,13 +5,15 @@ import { Form, InputNumber, Row, Col, Select, Input, Switch, Alert, Typography }
 import { TENSION_KILTER_GRADES } from '@/app/lib/board-data';
 import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
 import { useBoardProvider } from '@/app/components/board-provider/board-provider-context';
+import { useCircuits } from '@/app/hooks/use-circuits';
 import SearchClimbNameInput from './search-climb-name-input';
 
 const { Title } = Typography;
 
 const BasicSearchForm: React.FC = () => {
   const { uiSearchParams, updateFilters } = useUISearchParams();
-  const { token, user_id } = useBoardProvider();
+  const { token, user_id, boardName } = useBoardProvider();
+  const { circuits, isLoading: circuitsLoading } = useCircuits(boardName, Boolean(token && user_id));
   const grades = TENSION_KILTER_GRADES;
   
   const isLoggedIn = token && user_id;
@@ -193,6 +195,40 @@ const BasicSearchForm: React.FC = () => {
       <Form.Item label="Setter Name">
         <Input value={uiSearchParams.settername} onChange={(e) => updateFilters({ settername: e.target.value })} />
       </Form.Item>
+
+      {isLoggedIn && (
+        <Form.Item label="Circuits">
+          <Select
+            mode="multiple"
+            placeholder={circuitsLoading ? "Loading circuits..." : "Filter by circuits"}
+            value={uiSearchParams.circuitUuids}
+            onChange={(value) => updateFilters({ circuitUuids: value })}
+            style={{ width: '100%' }}
+            loading={circuitsLoading}
+            disabled={circuitsLoading}
+            allowClear
+          >
+            {circuits.map((circuit) => (
+              <Select.Option key={circuit.uuid} value={circuit.uuid}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {circuit.color && (
+                    <div
+                      style={{
+                        width: '12px',
+                        height: '12px',
+                        backgroundColor: circuit.color,
+                        borderRadius: '50%',
+                        flexShrink: 0,
+                      }}
+                    />
+                  )}
+                  {circuit.name || 'Unnamed Circuit'}
+                </div>
+              </Select.Option>
+            ))}
+          </Select>
+        </Form.Item>
+      )}
 
       <Form.Item>
         <Title level={5}>Personal Progress</Title>

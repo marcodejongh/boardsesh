@@ -6,6 +6,7 @@ import InfiniteScroll from 'react-infinite-scroll-component';
 import { track } from '@vercel/analytics';
 import { Climb, ParsedBoardRouteParameters, BoardDetails } from '@/app/lib/types';
 import { useQueueContext } from '../queue-control/queue-context';
+import { useUISearchParams } from '../queue-control/ui-searchparams-provider';
 import ClimbCard from '../climb-card/climb-card';
 import { useEffect, useRef } from 'react';
 import { PlusCircleOutlined, FireOutlined } from '@ant-design/icons';
@@ -44,6 +45,8 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
     hasDoneFirstFetch,
     isFetchingClimbs,
   } = useQueueContext();
+  
+  const { updateFilters } = useUISearchParams();
 
   const searchParams = useSearchParams();
   const page = searchParams.get('page');
@@ -158,6 +161,13 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
                   updateHash(climb.uuid);
                   setCurrentClimb(climb);
                   track('Climb List Card Clicked', {
+                    climbUuid: climb.uuid,
+                  });
+                }}
+                onCircuitClick={(circuitUuid) => {
+                  updateFilters({ circuitUuids: [circuitUuid] });
+                  track('Circuit Tag Clicked', {
+                    circuitUuid,
                     climbUuid: climb.uuid,
                   });
                 }}

@@ -2,11 +2,14 @@
 
 import React from 'react';
 import Card from 'antd/es/card';
+import { Tag } from 'antd';
 import { CopyrightOutlined } from '@ant-design/icons';
 
 import ClimbCardCover from './climb-card-cover';
 import { Climb, BoardDetails } from '@/app/lib/types';
 import ClimbCardActions from './climb-card-actions';
+import { useClimbCircuits } from '@/app/hooks/use-climb-circuits';
+import { useBoardProvider } from '@/app/components/board-provider/board-provider-context';
 
 type ClimbCardProps = {
   climb?: Climb;
@@ -15,9 +18,13 @@ type ClimbCardProps = {
   onCoverClick?: () => void;
   selected?: boolean;
   actions?: React.JSX.Element[];
+  onCircuitClick?: (circuitUuid: string) => void;
 };
 
-const ClimbCard = ({ climb, boardDetails, onCoverClick, selected, actions }: ClimbCardProps) => {
+const ClimbCard = ({ climb, boardDetails, onCoverClick, selected, actions, onCircuitClick }: ClimbCardProps) => {
+  const { boardName, isAuthenticated } = useBoardProvider();
+  const { circuits } = useClimbCircuits(boardName, climb?.uuid || null, Boolean(isAuthenticated && climb?.uuid));
+  
   const cover = <ClimbCardCover climb={climb} boardDetails={boardDetails} onClick={onCoverClick} />;
 
   const cardTitle = climb ? (
@@ -49,7 +56,37 @@ const ClimbCard = ({ climb, boardDetails, onCoverClick, selected, actions }: Cli
       actions={actions || ClimbCardActions({ climb, boardDetails })}
     >
       {/* TODO: Make a link to the list with the setter_name filter  */}
-      {climb ? `By ${climb.setter_username} - ${climb.ascensionist_count} ascents` : null}
+      {climb && (
+        <div>
+          <div style={{ marginBottom: circuits.length > 0 ? '8px' : '0' }}>
+            By {climb.setter_username} - {climb.ascensionist_count} ascents
+          </div>
+          {circuits.length > 0 && (
+            <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+              {circuits.map((circuit) => (
+                <Tag
+                  key={circuit.uuid}
+                  color={circuit.color || undefined}
+                  style={{ 
+                    cursor: onCircuitClick ? 'pointer' : 'default',
+                    fontSize: '11px',
+                    padding: '2px 6px',
+                    margin: '0',
+                    borderRadius: '4px'
+                  }}
+                  onClick={onCircuitClick ? (e) => {
+                    e.stopPropagation();
+                    onCircuitClick(circuit.uuid);
+                  } : undefined}
+                  title={onCircuitClick ? `Filter by circuit: ${circuit.name}` : circuit.name || 'Unnamed Circuit'}
+                >
+                  {circuit.name || 'Unnamed Circuit'}
+                </Tag>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       {cover}
     </Card>
   );

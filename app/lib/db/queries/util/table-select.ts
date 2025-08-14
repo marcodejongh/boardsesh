@@ -7,6 +7,7 @@ import {
   kilterLayouts,
   kilterUsers,
   kilterCircuits,
+  kilterCircuitsClimbs,
   kilterAscents,
   kilterBids,
   kilterClimbStatsHistory,
@@ -17,6 +18,7 @@ import {
   tensionLayouts,
   tensionUsers,
   tensionCircuits,
+  tensionCircuitsClimbs,
   tensionAscents,
   tensionBids,
   tensionClimbStatsHistory,
@@ -49,6 +51,7 @@ export type TableSet = {
   layouts: typeof kilterLayouts | typeof tensionLayouts;
   users: typeof kilterUsers | typeof tensionUsers;
   circuits: typeof kilterCircuits | typeof tensionCircuits;
+  circuitsClimbs: typeof kilterCircuitsClimbs | typeof tensionCircuitsClimbs;
   ascents: typeof kilterAscents | typeof tensionAscents;
   bids: typeof kilterBids | typeof tensionBids;
   climbStatsHistory: typeof kilterClimbStatsHistory | typeof tensionClimbStatsHistory;
@@ -72,6 +75,7 @@ const BOARD_TABLES: Record<BoardName, TableSet> = {
     layouts: kilterLayouts,
     users: kilterUsers,
     circuits: kilterCircuits,
+    circuitsClimbs: kilterCircuitsClimbs,
     ascents: kilterAscents,
     bids: kilterBids,
     climbStatsHistory: kilterClimbStatsHistory,
@@ -92,6 +96,7 @@ const BOARD_TABLES: Record<BoardName, TableSet> = {
     layouts: tensionLayouts,
     users: tensionUsers,
     circuits: tensionCircuits,
+    circuitsClimbs: tensionCircuitsClimbs,
     ascents: tensionAscents,
     bids: tensionBids,
     climbStatsHistory: tensionClimbStatsHistory,

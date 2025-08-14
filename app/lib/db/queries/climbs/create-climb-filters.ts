@@ -140,6 +140,19 @@ export const createClimbFilters = (
     }
   }
 
+  // Circuit filter conditions
+  const circuitConditions: SQL[] = [];
+  if (searchParams.circuitUuids && searchParams.circuitUuids.length > 0) {
+    const circuitsClimbsTable = getTableName(params.board_name, 'circuitsClimbs');
+    circuitConditions.push(
+      sql`EXISTS (
+        SELECT 1 FROM ${sql.identifier(circuitsClimbsTable)}
+        WHERE climb_uuid = ${tables.climbs.uuid}
+        AND circuit_uuid = ANY(${searchParams.circuitUuids})
+      )`
+    );
+  }
+
   // User-specific logbook data selectors
   const getUserLogbookSelects = () => {
     const ascentsTable = getTableName(params.board_name, 'ascents');
@@ -188,7 +201,7 @@ export const createClimbFilters = (
 
   return {
     // Helper function to get all climb filtering conditions
-    getClimbWhereConditions: () => [...baseConditions, ...nameCondition, ...holdConditions, ...personalProgressConditions],
+    getClimbWhereConditions: () => [...baseConditions, ...nameCondition, ...holdConditions, ...personalProgressConditions, ...circuitConditions],
 
     // Size-specific conditions
     getSizeConditions: () => sizeConditions,
@@ -221,6 +234,7 @@ export const createClimbFilters = (
     holdConditions,
     sizeConditions,
     personalProgressConditions,
+    circuitConditions,
     anyHolds,
     notHolds,
   };
