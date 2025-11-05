@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Select } from 'antd';
 import { useUISearchParams } from '../queue-control/ui-searchparams-provider';
 import useSWR from 'swr';
-import { useBoardDetailsContext } from '@/app/components/board-page/board-details-context';
+import { usePathname } from 'next/navigation';
 
 interface SetterStat {
   setter_username: string;
@@ -15,8 +15,20 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 const SetterNameSelect = () => {
   const { uiSearchParams, updateFilters } = useUISearchParams();
-  const { boardUrl } = useBoardDetailsContext();
+  const pathname = usePathname();
   const [searchValue, setSearchValue] = useState('');
+
+  // Extract board URL from pathname (e.g., /kilter/123/456/789/40/list -> /api/v1/kilter/123/456/789/40)
+  const boardUrl = React.useMemo(() => {
+    if (!pathname) return null;
+
+    // Pattern: /[board_name]/[layout_id]/[size_id]/[set_ids]/[angle]/...
+    const match = pathname.match(/^\/([^/]+)\/([^/]+)\/([^/]+)\/([^/]+)\/([^/]+)/);
+    if (!match) return null;
+
+    const [, boardName, layoutId, sizeId, setIds, angle] = match;
+    return `/api/v1/${boardName}/${layoutId}/${sizeId}/${setIds}/${angle}`;
+  }, [pathname]);
 
   // Fetch setter stats from the API
   const { data: setterStats, isLoading } = useSWR<SetterStat[]>(
