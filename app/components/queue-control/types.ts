@@ -1,4 +1,4 @@
-import { Climb, SearchRequestPagination } from '@/app/lib/types';
+import { Climb, SearchRequestPagination, ParsedBoardRouteParameters } from '@/app/lib/types';
 
 export type PeerId = string | null;
 export type UserName = PeerId;
@@ -51,6 +51,7 @@ export interface QueueContextType {
   isFetchingClimbs: boolean;
   hasDoneFirstFetch: boolean;
   viewOnlyMode: boolean;
+  parsedParams: ParsedBoardRouteParameters;
   addToQueue: (climb: Climb) => void;
   removeFromQueue: (item: ClimbQueueItem) => void;
   setCurrentClimb: (climb: Climb) => void;

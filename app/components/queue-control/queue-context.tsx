@@ -172,6 +172,7 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
     isFetchingClimbs,
     hasDoneFirstFetch: state.hasDoneFirstFetch,
     viewOnlyMode: isControllerMode ? false : (hostId ? !state.initialQueueDataReceivedFromPeers : false),
+    parsedParams,
     // Actions
     addToQueue: (climb: Climb) => {
       const newItem = createClimbQueueItem(climb, peerId);

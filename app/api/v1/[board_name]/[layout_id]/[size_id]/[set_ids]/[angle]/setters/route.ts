@@ -11,7 +11,12 @@ export async function GET(
 
   try {
     const parsedParams = await parseBoardRouteParamsWithSlugs(params);
-    const setterStats = await getSetterStats(parsedParams);
+
+    // Extract search query parameter
+    const url = new URL(req.url);
+    const searchQuery = url.searchParams.get('search') || undefined;
+
+    const setterStats = await getSetterStats(parsedParams, searchQuery);
 
     return NextResponse.json(setterStats);
   } catch (error) {

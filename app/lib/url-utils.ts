@@ -258,6 +258,14 @@ export const constructClimbSearchUrl = (
   queryString: string,
 ) => `/api/v1/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/search?${queryString}`;
 
+export const constructSetterStatsUrl = (
+  { board_name, layout_id, angle, size_id, set_ids }: ParsedBoardRouteParameters,
+  searchQuery?: string,
+) => {
+  const baseUrl = `/api/v1/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/setters`;
+  return searchQuery ? `${baseUrl}?search=${encodeURIComponent(searchQuery)}` : baseUrl;
+};
+
 // New slug-based URL construction functions
 export const constructClimbListWithSlugs = (
   board_name: string,

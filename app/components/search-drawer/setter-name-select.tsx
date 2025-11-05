@@ -3,8 +3,9 @@
 import React, { useState } from 'react';
 import { Select } from 'antd';
 import { useUISearchParams } from '../queue-control/ui-searchparams-provider';
+import { useQueueContext } from '../queue-control/queue-context';
 import useSWR from 'swr';
-import { usePathname } from 'next/navigation';
+import { constructSetterStatsUrl } from '@/app/lib/url-utils';
 
 interface SetterStat {
   setter_username: string;
@@ -13,60 +14,61 @@ interface SetterStat {
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
+const MIN_SEARCH_LENGTH = 2; // Only fetch when user has typed at least 2 characters
+
 const SetterNameSelect = () => {
   const { uiSearchParams, updateFilters } = useUISearchParams();
-  const pathname = usePathname();
+  const { parsedParams } = useQueueContext();
   const [searchValue, setSearchValue] = useState('');
 
-  // Extract board URL from pathname (e.g., /kilter/123/456/789/40/list -> /api/v1/kilter/123/456/789/40)
-  const boardUrl = React.useMemo(() => {
-    if (!pathname) return null;
+  // Only fetch when search value is long enough (lazy loading)
+  const shouldFetch = searchValue.length >= MIN_SEARCH_LENGTH;
+  const apiUrl = shouldFetch
+    ? constructSetterStatsUrl(parsedParams, searchValue)
+    : null;
 
-    // Pattern: /[board_name]/[layout_id]/[size_id]/[set_ids]/[angle]/...
-    const match = pathname.match(/^\/([^/]+)\/([^/]+)\/([^/]+)\/([^/]+)\/([^/]+)/);
-    if (!match) return null;
-
-    const [, boardName, layoutId, sizeId, setIds, angle] = match;
-    return `/api/v1/${boardName}/${layoutId}/${sizeId}/${setIds}/${angle}`;
-  }, [pathname]);
-
-  // Fetch setter stats from the API
+  // Fetch setter stats from the API (only when shouldFetch is true)
   const { data: setterStats, isLoading } = useSWR<SetterStat[]>(
-    boardUrl ? `${boardUrl}/setters` : null,
+    apiUrl,
     fetcher,
     {
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
+      keepPreviousData: true,
     }
   );
 
-  // Filter options based on search value
-  const filteredOptions = React.useMemo(() => {
+  // Map setter stats to Select options
+  const options = React.useMemo(() => {
     if (!setterStats) return [];
 
-    const lowerSearch = searchValue.toLowerCase();
-    return setterStats
-      .filter(stat => stat.setter_username.toLowerCase().includes(lowerSearch))
-      .map(stat => ({
-        value: stat.setter_username,
-        label: `${stat.setter_username} (${stat.climb_count})`,
-        count: stat.climb_count,
-      }));
-  }, [setterStats, searchValue]);
+    return setterStats.map(stat => ({
+      value: stat.setter_username,
+      label: `${stat.setter_username} (${stat.climb_count})`,
+      count: stat.climb_count,
+    }));
+  }, [setterStats]);
 
   return (
     <Select
       mode="multiple"
-      placeholder="Select setters..."
+      placeholder={`Type ${MIN_SEARCH_LENGTH}+ characters to search setters...`}
       value={uiSearchParams.settername}
       onChange={(value) => updateFilters({ settername: value })}
       onSearch={setSearchValue}
       loading={isLoading}
       showSearch
-      filterOption={false} // We handle filtering manually
-      options={filteredOptions}
+      filterOption={false} // Server-side filtering
+      options={options}
       style={{ width: '100%' }}
       maxTagCount="responsive"
+      notFoundContent={
+        searchValue.length < MIN_SEARCH_LENGTH
+          ? `Type at least ${MIN_SEARCH_LENGTH} characters to search`
+          : isLoading
+          ? 'Loading...'
+          : 'No setters found'
+      }
     />
   );
 };
