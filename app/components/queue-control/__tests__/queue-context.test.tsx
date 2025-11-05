@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import React from 'react';
 import { render, screen, act, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { QueueProvider, useQueueContext } from '../queue-context';
 import { ParsedBoardRouteParameters, Climb } from '@/app/lib/types';
 import { ClimbQueueItem } from '../types';
@@ -11,7 +11,8 @@ import { useConnection } from '../../connection-manager/use-connection';
 // Mock dependencies
 vi.mock('next/navigation', () => ({
   useSearchParams: vi.fn(),
-  useRouter: vi.fn()
+  useRouter: vi.fn(),
+  usePathname: vi.fn()
 }));
 
 vi.mock('@/app/lib/url-utils', () => ({
@@ -76,6 +77,7 @@ const mockSearchParams = new URLSearchParams();
 const mockRouter = {
   replace: vi.fn()
 };
+const mockPathname = '/test/path';
 
 const mockUseConnection = vi.mocked(useConnection);
 
