@@ -146,6 +146,7 @@ describe('QueueProvider', () => {
     vi.clearAllMocks();
     (useSearchParams as ReturnType<typeof vi.fn>).mockReturnValue(mockSearchParams);
     (useRouter as ReturnType<typeof vi.fn>).mockReturnValue(mockRouter);
+    (usePathname as ReturnType<typeof vi.fn>).mockReturnValue(mockPathname);
     mockUseConnection.mockReturnValue({
       sendData: vi.fn(),
       peerId: 'test-peer-id',
@@ -251,7 +252,8 @@ describe('QueueProvider with peer functionality', () => {
     vi.clearAllMocks();
     (useSearchParams as ReturnType<typeof vi.fn>).mockReturnValue(mockSearchParams);
     (useRouter as ReturnType<typeof vi.fn>).mockReturnValue(mockRouter);
-    
+    (usePathname as ReturnType<typeof vi.fn>).mockReturnValue(mockPathname);
+
     // Mock peer context with host
     mockSubscribeToData.mockReturnValue(vi.fn()); // Return unsubscribe function
     mockUseConnection.mockReturnValue({
@@ -366,6 +368,7 @@ describe('QueueProvider utility functions', () => {
     vi.clearAllMocks();
     (useSearchParams as ReturnType<typeof vi.fn>).mockReturnValue(mockSearchParams);
     (useRouter as ReturnType<typeof vi.fn>).mockReturnValue(mockRouter);
+    (usePathname as ReturnType<typeof vi.fn>).mockReturnValue(mockPathname);
     mockUseConnection.mockReturnValue({
       sendData: vi.fn(),
       peerId: 'test-peer-id',
