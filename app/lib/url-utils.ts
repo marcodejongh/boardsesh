@@ -174,9 +174,22 @@ export const urlParamsToSearchParams = (urlParams: URLSearchParams): SearchReque
 };
 
 export const parsedRouteSearchParamsToSearchParams = (urlParams: SearchRequestPagination): SearchRequestPagination => {
+  // Handle settername which may come as a string from URL but needs to be an array
+  let settername = DEFAULT_SEARCH_PARAMS.settername;
+  if (urlParams.settername) {
+    if (typeof urlParams.settername === 'string') {
+      // If it's a string, split by comma
+      settername = urlParams.settername.split(',').filter(s => s.length > 0);
+    } else if (Array.isArray(urlParams.settername)) {
+      // If it's already an array, use it
+      settername = urlParams.settername;
+    }
+  }
+
   return {
     ...DEFAULT_SEARCH_PARAMS,
     ...urlParams,
+    settername,
     gradeAccuracy: Number(urlParams.gradeAccuracy ?? DEFAULT_SEARCH_PARAMS.gradeAccuracy),
     maxGrade: Number(urlParams.maxGrade ?? DEFAULT_SEARCH_PARAMS.maxGrade),
     minAscents: Number(urlParams.minAscents ?? DEFAULT_SEARCH_PARAMS.minAscents),
