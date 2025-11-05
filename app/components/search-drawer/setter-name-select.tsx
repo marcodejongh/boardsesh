@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Select } from 'antd';
 import { useUISearchParams } from '../queue-control/ui-searchparams-provider';
 import useSWR from 'swr';
