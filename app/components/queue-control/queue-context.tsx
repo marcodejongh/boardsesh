@@ -29,7 +29,16 @@ const QueueContext = createContext<QueueContextType | undefined>(undefined);
 export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const pathname = usePathname();
+  let pathname: string | null = null;
+  try {
+    pathname = usePathname();
+  } catch (e) {
+    // usePathname() can fail in test environments or SSR contexts
+    // Fall back to window.location.pathname if available
+    if (typeof window !== 'undefined') {
+      pathname = window.location.pathname;
+    }
+  }
   const initialSearchParams = urlParamsToSearchParams(searchParams);
   const [state, dispatch] = useQueueReducer(initialSearchParams);
   const connection = useConnection();
@@ -248,7 +257,8 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
       // Update URL with new search parameters
       const urlParams = searchParamsToUrlParams(params);
       const queryString = urlParams.toString();
-      const newUrl = queryString ? `${pathname}?${queryString}` : pathname;
+      const currentPath = pathname || (typeof window !== 'undefined' ? window.location.pathname : '/');
+      const newUrl = queryString ? `${currentPath}?${queryString}` : currentPath;
       router.replace(newUrl, { scroll: false });
     },
 
