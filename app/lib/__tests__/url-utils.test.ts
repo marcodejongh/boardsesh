@@ -53,10 +53,10 @@ describe('searchParamsToUrlParams', () => {
     const result = searchParamsToUrlParams({
       ...DEFAULT_SEARCH_PARAMS,
       name: '',
-      settername: '',
+      settername: [],
       minGrade: 3,
     });
-    
+
     expect(result.toString()).toBe('minGrade=3');
   });
 
@@ -204,7 +204,7 @@ describe('parsedRouteSearchParamsToSearchParams', () => {
     const input = {
       ...DEFAULT_SEARCH_PARAMS,
       name: 'test climb',
-      settername: 'john doe',
+      settername: ['john doe'],
       sortBy: 'difficulty' as any,
       sortOrder: 'asc' as any,
       onlyClassics: true,
@@ -214,7 +214,7 @@ describe('parsedRouteSearchParamsToSearchParams', () => {
     const result = parsedRouteSearchParamsToSearchParams(input);
 
     expect(result.name).toBe('test climb');
-    expect(result.settername).toBe('john doe');
+    expect(result.settername).toEqual(['john doe']);
     expect(result.sortBy).toBe('difficulty');
     expect(result.sortOrder).toBe('asc');
     expect(result.onlyClassics).toBe(true);

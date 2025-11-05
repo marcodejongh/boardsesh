@@ -12,7 +12,7 @@ export const defaultClimbSearchParameters: SearchRequestPagination = {
   minRating: 1.0,
   onlyClassics: false,
   gradeAccuracy: 1,
-  settername: '',
+  settername: [],
   setternameSuggestion: '',
   //@ts-expect-error TODO fix later
   holdsFilter: '',
