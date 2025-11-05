@@ -75,7 +75,7 @@ const mockSearchParams: SearchRequestPagination = {
   sortOrder: 'desc',
   name: '',
   onlyClassics: false,
-  settername: '',
+  settername: [],
   setternameSuggestion: '',
   holdsFilter: {},
   hideAttempted: false,

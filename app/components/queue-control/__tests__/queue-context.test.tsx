@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import React from 'react';
 import { render, screen, act, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { QueueProvider, useQueueContext } from '../queue-context';
 import { ParsedBoardRouteParameters, Climb } from '@/app/lib/types';
 import { ClimbQueueItem } from '../types';
@@ -11,7 +11,8 @@ import { useConnection } from '../../connection-manager/use-connection';
 // Mock dependencies
 vi.mock('next/navigation', () => ({
   useSearchParams: vi.fn(),
-  useRouter: vi.fn()
+  useRouter: vi.fn(),
+  usePathname: vi.fn()
 }));
 
 vi.mock('@/app/lib/url-utils', () => ({
@@ -76,6 +77,7 @@ const mockSearchParams = new URLSearchParams();
 const mockRouter = {
   replace: vi.fn()
 };
+const mockPathname = '/test/path';
 
 const mockUseConnection = vi.mocked(useConnection);
 
@@ -144,6 +146,7 @@ describe('QueueProvider', () => {
     vi.clearAllMocks();
     (useSearchParams as ReturnType<typeof vi.fn>).mockReturnValue(mockSearchParams);
     (useRouter as ReturnType<typeof vi.fn>).mockReturnValue(mockRouter);
+    (usePathname as ReturnType<typeof vi.fn>).mockReturnValue(mockPathname);
     mockUseConnection.mockReturnValue({
       sendData: vi.fn(),
       peerId: 'test-peer-id',
@@ -249,7 +252,8 @@ describe('QueueProvider with peer functionality', () => {
     vi.clearAllMocks();
     (useSearchParams as ReturnType<typeof vi.fn>).mockReturnValue(mockSearchParams);
     (useRouter as ReturnType<typeof vi.fn>).mockReturnValue(mockRouter);
-    
+    (usePathname as ReturnType<typeof vi.fn>).mockReturnValue(mockPathname);
+
     // Mock peer context with host
     mockSubscribeToData.mockReturnValue(vi.fn()); // Return unsubscribe function
     mockUseConnection.mockReturnValue({
@@ -364,6 +368,7 @@ describe('QueueProvider utility functions', () => {
     vi.clearAllMocks();
     (useSearchParams as ReturnType<typeof vi.fn>).mockReturnValue(mockSearchParams);
     (useRouter as ReturnType<typeof vi.fn>).mockReturnValue(mockRouter);
+    (usePathname as ReturnType<typeof vi.fn>).mockReturnValue(mockPathname);
     mockUseConnection.mockReturnValue({
       sendData: vi.fn(),
       peerId: 'test-peer-id',

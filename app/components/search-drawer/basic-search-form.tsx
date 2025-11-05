@@ -1,11 +1,12 @@
 'use client';
 
 import React from 'react';
-import { Form, InputNumber, Row, Col, Select, Input, Switch, Alert, Typography } from 'antd';
+import { Form, InputNumber, Row, Col, Select, Switch, Alert, Typography } from 'antd';
 import { TENSION_KILTER_GRADES } from '@/app/lib/board-data';
 import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
 import { useBoardProvider } from '@/app/components/board-provider/board-provider-context';
 import SearchClimbNameInput from './search-climb-name-input';
+import SetterNameSelect from './setter-name-select';
 
 const { Title } = Typography;
 
@@ -191,7 +192,7 @@ const BasicSearchForm: React.FC = () => {
       </Form.Item>
 
       <Form.Item label="Setter Name">
-        <Input value={uiSearchParams.settername} onChange={(e) => updateFilters({ settername: e.target.value })} />
+        <SetterNameSelect />
       </Form.Item>
 
       <Form.Item>

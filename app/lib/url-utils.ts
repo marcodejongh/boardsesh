@@ -87,8 +87,8 @@ export const searchParamsToUrlParams = ({
   if (onlyClassics !== DEFAULT_SEARCH_PARAMS.onlyClassics) {
     params.onlyClassics = onlyClassics.toString();
   }
-  if (settername && settername !== DEFAULT_SEARCH_PARAMS.settername) {
-    params.settername = settername;
+  if (settername && settername.length > 0) {
+    params.settername = settername.join(',');
   }
   if (setternameSuggestion && setternameSuggestion !== DEFAULT_SEARCH_PARAMS.setternameSuggestion) {
     params.setternameSuggestion = setternameSuggestion;
@@ -131,7 +131,7 @@ export const DEFAULT_SEARCH_PARAMS: SearchRequestPagination = {
   sortOrder: 'desc',
   name: '',
   onlyClassics: false,
-  settername: '',
+  settername: [],
   setternameSuggestion: '',
   holdsFilter: {},
   hideAttempted: false,
@@ -160,7 +160,7 @@ export const urlParamsToSearchParams = (urlParams: URLSearchParams): SearchReque
     sortOrder: (urlParams.get('sortOrder') ?? DEFAULT_SEARCH_PARAMS.sortOrder) as 'asc' | 'desc',
     name: urlParams.get('name') ?? DEFAULT_SEARCH_PARAMS.name,
     onlyClassics: urlParams.get('onlyClassics') === 'true',
-    settername: urlParams.get('settername') ?? DEFAULT_SEARCH_PARAMS.settername,
+    settername: urlParams.get('settername')?.split(',').filter(s => s.length > 0) ?? DEFAULT_SEARCH_PARAMS.settername,
     setternameSuggestion: urlParams.get('setternameSuggestion') ?? DEFAULT_SEARCH_PARAMS.setternameSuggestion,
     //@ts-expect-error fix later
     holdsFilter: holdsFilter ?? DEFAULT_SEARCH_PARAMS.holdsFilter,
@@ -174,9 +174,24 @@ export const urlParamsToSearchParams = (urlParams: URLSearchParams): SearchReque
 };
 
 export const parsedRouteSearchParamsToSearchParams = (urlParams: SearchRequestPagination): SearchRequestPagination => {
+  // Handle settername which may come as a string from URL but needs to be an array
+  let settername = DEFAULT_SEARCH_PARAMS.settername;
+  if (urlParams.settername) {
+    // Type assertion needed because Next.js may pass this as a string from URL params
+    const setternameValue = urlParams.settername as unknown;
+    if (typeof setternameValue === 'string') {
+      // If it's a string, split by comma
+      settername = setternameValue.split(',').filter((s: string) => s.length > 0);
+    } else if (Array.isArray(setternameValue)) {
+      // If it's already an array, use it
+      settername = setternameValue;
+    }
+  }
+
   return {
     ...DEFAULT_SEARCH_PARAMS,
     ...urlParams,
+    settername,
     gradeAccuracy: Number(urlParams.gradeAccuracy ?? DEFAULT_SEARCH_PARAMS.gradeAccuracy),
     maxGrade: Number(urlParams.maxGrade ?? DEFAULT_SEARCH_PARAMS.maxGrade),
     minAscents: Number(urlParams.minAscents ?? DEFAULT_SEARCH_PARAMS.minAscents),
@@ -242,6 +257,14 @@ export const constructClimbSearchUrl = (
   { board_name, layout_id, angle, size_id, set_ids }: ParsedBoardRouteParameters,
   queryString: string,
 ) => `/api/v1/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/search?${queryString}`;
+
+export const constructSetterStatsUrl = (
+  { board_name, layout_id, angle, size_id, set_ids }: ParsedBoardRouteParameters,
+  searchQuery?: string,
+) => {
+  const baseUrl = `/api/v1/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/setters`;
+  return searchQuery ? `${baseUrl}?search=${encodeURIComponent(searchQuery)}` : baseUrl;
+};
 
 // New slug-based URL construction functions
 export const constructClimbListWithSlugs = (

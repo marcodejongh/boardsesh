@@ -34,7 +34,7 @@ export const UISearchParamsProvider: React.FC<{ children: React.ReactNode }> = (
     if (uiSearchParams.minRating) activeFilters.push('minRating');
     if (uiSearchParams.onlyClassics) activeFilters.push('classics');
     if (uiSearchParams.gradeAccuracy) activeFilters.push('gradeAccuracy');
-    if (uiSearchParams.settername) activeFilters.push('setter');
+    if (uiSearchParams.settername.length > 0) activeFilters.push('setter');
     if (uiSearchParams.holdsFilter && Object.entries(uiSearchParams.holdsFilter).length > 0)
       activeFilters.push('holds');
     if (uiSearchParams.hideAttempted) activeFilters.push('hideAttempted');

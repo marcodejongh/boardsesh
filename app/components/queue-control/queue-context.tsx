@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useContext, createContext, ReactNode, useEffect, useCallback } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { v4 as uuidv4 } from 'uuid';
 import { useConnection } from '../connection-manager/use-connection';
 import { useQueueReducer } from './reducer';
@@ -29,10 +29,11 @@ const QueueContext = createContext<QueueContextType | undefined>(undefined);
 export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const pathname = usePathname();
   const initialSearchParams = urlParamsToSearchParams(searchParams);
   const [state, dispatch] = useQueueReducer(initialSearchParams);
   const connection = useConnection();
-  
+
   // Check if we're in controller mode
   const controllerUrl = searchParams.get('controllerUrl');
   const isControllerMode = !!controllerUrl;
@@ -171,6 +172,7 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
     isFetchingClimbs,
     hasDoneFirstFetch: state.hasDoneFirstFetch,
     viewOnlyMode: isControllerMode ? false : (hostId ? !state.initialQueueDataReceivedFromPeers : false),
+    parsedParams,
     // Actions
     addToQueue: (climb: Climb) => {
       const newItem = createClimbQueueItem(climb, peerId);
@@ -246,8 +248,9 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
 
       // Update URL with new search parameters
       const urlParams = searchParamsToUrlParams(params);
-      const currentPath = window.location.pathname;
-      router.replace(`${currentPath}?${urlParams.toString()}`);
+      const queryString = urlParams.toString();
+      const newUrl = queryString ? `${pathname}?${queryString}` : pathname;
+      router.replace(newUrl, { scroll: false });
     },
 
     mirrorClimb: () => {

@@ -1,4 +1,4 @@
-import { eq, gte, sql, like, notLike, SQL } from 'drizzle-orm';
+import { eq, gte, sql, like, notLike, inArray, SQL } from 'drizzle-orm';
 import { PgTableWithColumns } from 'drizzle-orm/pg-core';
 import { ParsedBoardRouteParameters, SearchRequestPagination } from '@/app/lib/types';
 import { TableSet } from '@/lib/db/queries/util/table-select';
@@ -82,6 +82,11 @@ export const createClimbFilters = (
 
   // Name search condition (only used in searchClimbs)
   const nameCondition: SQL[] = searchParams.name ? [sql`${tables.climbs.name} ILIKE ${`%${searchParams.name}%`}`] : [];
+
+  // Setter name filter condition
+  const setterNameCondition: SQL[] = searchParams.settername && searchParams.settername.length > 0
+    ? [inArray(tables.climbs.setterUsername, searchParams.settername)]
+    : [];
 
   // Hold filter conditions
   const holdConditions: SQL[] = [
@@ -188,7 +193,7 @@ export const createClimbFilters = (
 
   return {
     // Helper function to get all climb filtering conditions
-    getClimbWhereConditions: () => [...baseConditions, ...nameCondition, ...holdConditions, ...personalProgressConditions],
+    getClimbWhereConditions: () => [...baseConditions, ...nameCondition, ...setterNameCondition, ...holdConditions, ...personalProgressConditions],
 
     // Size-specific conditions
     getSizeConditions: () => sizeConditions,
@@ -218,6 +223,7 @@ export const createClimbFilters = (
     baseConditions,
     climbStatsConditions,
     nameCondition,
+    setterNameCondition,
     holdConditions,
     sizeConditions,
     personalProgressConditions,
