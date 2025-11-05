@@ -87,8 +87,8 @@ export const searchParamsToUrlParams = ({
   if (onlyClassics !== DEFAULT_SEARCH_PARAMS.onlyClassics) {
     params.onlyClassics = onlyClassics.toString();
   }
-  if (settername && settername !== DEFAULT_SEARCH_PARAMS.settername) {
-    params.settername = settername;
+  if (settername && settername.length > 0) {
+    params.settername = settername.join(',');
   }
   if (setternameSuggestion && setternameSuggestion !== DEFAULT_SEARCH_PARAMS.setternameSuggestion) {
     params.setternameSuggestion = setternameSuggestion;
@@ -131,7 +131,7 @@ export const DEFAULT_SEARCH_PARAMS: SearchRequestPagination = {
   sortOrder: 'desc',
   name: '',
   onlyClassics: false,
-  settername: '',
+  settername: [],
   setternameSuggestion: '',
   holdsFilter: {},
   hideAttempted: false,
@@ -160,7 +160,7 @@ export const urlParamsToSearchParams = (urlParams: URLSearchParams): SearchReque
     sortOrder: (urlParams.get('sortOrder') ?? DEFAULT_SEARCH_PARAMS.sortOrder) as 'asc' | 'desc',
     name: urlParams.get('name') ?? DEFAULT_SEARCH_PARAMS.name,
     onlyClassics: urlParams.get('onlyClassics') === 'true',
-    settername: urlParams.get('settername') ?? DEFAULT_SEARCH_PARAMS.settername,
+    settername: urlParams.get('settername')?.split(',').filter(s => s.length > 0) ?? DEFAULT_SEARCH_PARAMS.settername,
     setternameSuggestion: urlParams.get('setternameSuggestion') ?? DEFAULT_SEARCH_PARAMS.setternameSuggestion,
     //@ts-expect-error fix later
     holdsFilter: holdsFilter ?? DEFAULT_SEARCH_PARAMS.holdsFilter,
