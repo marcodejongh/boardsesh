@@ -14,20 +14,24 @@ interface SetterStat {
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
-const MIN_SEARCH_LENGTH = 2; // Only fetch when user has typed at least 2 characters
+const MIN_SEARCH_LENGTH = 2; // Only search when user has typed at least 2 characters
 
 const SetterNameSelect = () => {
   const { uiSearchParams, updateFilters } = useUISearchParams();
   const { parsedParams } = useQueueContext();
   const [searchValue, setSearchValue] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
 
-  // Only fetch when search value is long enough (lazy loading)
-  const shouldFetch = searchValue.length >= MIN_SEARCH_LENGTH;
+  // Fetch top setters when dropdown is open OR when user is searching
+  const shouldFetch = isOpen || searchValue.length >= MIN_SEARCH_LENGTH;
+  const isSearching = searchValue.length >= MIN_SEARCH_LENGTH;
+
+  // Build API URL - with search query if searching, without if just showing top setters
   const apiUrl = shouldFetch
-    ? constructSetterStatsUrl(parsedParams, searchValue)
+    ? constructSetterStatsUrl(parsedParams, isSearching ? searchValue : undefined)
     : null;
 
-  // Fetch setter stats from the API (only when shouldFetch is true)
+  // Fetch setter stats from the API
   const { data: setterStats, isLoading } = useSWR<SetterStat[]>(
     apiUrl,
     fetcher,
@@ -52,10 +56,11 @@ const SetterNameSelect = () => {
   return (
     <Select
       mode="multiple"
-      placeholder={`Type ${MIN_SEARCH_LENGTH}+ characters to search setters...`}
+      placeholder="Select setters..."
       value={uiSearchParams.settername}
       onChange={(value) => updateFilters({ settername: value })}
       onSearch={setSearchValue}
+      onDropdownVisibleChange={setIsOpen}
       loading={isLoading}
       showSearch
       filterOption={false} // Server-side filtering
@@ -63,10 +68,10 @@ const SetterNameSelect = () => {
       style={{ width: '100%' }}
       maxTagCount="responsive"
       notFoundContent={
-        searchValue.length < MIN_SEARCH_LENGTH
-          ? `Type at least ${MIN_SEARCH_LENGTH} characters to search`
-          : isLoading
+        isLoading
           ? 'Loading...'
+          : !isOpen && searchValue.length === 0
+          ? 'Open dropdown to see setters'
           : 'No setters found'
       }
     />
