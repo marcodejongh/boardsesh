@@ -177,12 +177,14 @@ export const parsedRouteSearchParamsToSearchParams = (urlParams: SearchRequestPa
   // Handle settername which may come as a string from URL but needs to be an array
   let settername = DEFAULT_SEARCH_PARAMS.settername;
   if (urlParams.settername) {
-    if (typeof urlParams.settername === 'string') {
+    // Type assertion needed because Next.js may pass this as a string from URL params
+    const setternameValue = urlParams.settername as unknown;
+    if (typeof setternameValue === 'string') {
       // If it's a string, split by comma
-      settername = urlParams.settername.split(',').filter(s => s.length > 0);
-    } else if (Array.isArray(urlParams.settername)) {
+      settername = setternameValue.split(',').filter((s: string) => s.length > 0);
+    } else if (Array.isArray(setternameValue)) {
       // If it's already an array, use it
-      settername = urlParams.settername;
+      settername = setternameValue;
     }
   }
 
