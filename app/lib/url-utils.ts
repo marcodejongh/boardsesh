@@ -54,6 +54,7 @@ export const searchParamsToUrlParams = ({
   hideCompleted,
   showOnlyAttempted,
   showOnlyCompleted,
+  tallClimbsOnly,
   page,
   pageSize,
 }: SearchRequestPagination): URLSearchParams => {
@@ -111,6 +112,9 @@ export const searchParamsToUrlParams = ({
   if (showOnlyCompleted !== DEFAULT_SEARCH_PARAMS.showOnlyCompleted) {
     params.showOnlyCompleted = showOnlyCompleted.toString();
   }
+  if (tallClimbsOnly !== DEFAULT_SEARCH_PARAMS.tallClimbsOnly) {
+    params.tallClimbsOnly = tallClimbsOnly.toString();
+  }
 
   // Add holds filter entries only if they exist
   if (holdsFilter && Object.keys(holdsFilter).length > 0) {
@@ -138,6 +142,7 @@ export const DEFAULT_SEARCH_PARAMS: SearchRequestPagination = {
   hideCompleted: false,
   showOnlyAttempted: false,
   showOnlyCompleted: false,
+  tallClimbsOnly: false,
   page: 0,
   pageSize: PAGE_LIMIT,
 };
@@ -168,6 +173,7 @@ export const urlParamsToSearchParams = (urlParams: URLSearchParams): SearchReque
     hideCompleted: urlParams.get('hideCompleted') === 'true',
     showOnlyAttempted: urlParams.get('showOnlyAttempted') === 'true',
     showOnlyCompleted: urlParams.get('showOnlyCompleted') === 'true',
+    tallClimbsOnly: urlParams.get('tallClimbsOnly') === 'true',
     page: Number(urlParams.get('page') ?? DEFAULT_SEARCH_PARAMS.page),
     pageSize: Number(urlParams.get('pageSize') ?? DEFAULT_SEARCH_PARAMS.pageSize),
   };

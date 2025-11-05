@@ -104,7 +104,7 @@ export const getBoardDetails = async ({
       })),
   );
 
-  // Fetch names for slug-based URLs
+  // Fetch names for slug-based URLs and all sizes to determine if current is largest
   const [layouts, sizes, sets] = await Promise.all([
     getLayouts(board_name),
     getSizes(board_name, layout_id),
@@ -114,6 +114,27 @@ export const getBoardDetails = async ({
   const layout = layouts.find((l) => l.id === layout_id);
   const size = sizes.find((s) => s.id === size_id);
   const selectedSets = sets.filter((s) => set_ids.includes(s.id));
+
+  // Determine if current size is the largest by checking all size dimensions
+  // Get all sizes for this layout to compare
+  const allSizesForLayoutResult = await sql`
+    SELECT edge_left, edge_right, edge_bottom, edge_top
+    FROM ${sql.unsafe(getTableName(board_name, 'product_sizes'))} ps
+    INNER JOIN ${sql.unsafe(getTableName(board_name, 'layouts'))} layouts ON ps.product_id = layouts.product_id
+    WHERE layouts.id = ${layout_id}
+  `;
+
+  const allSizesForLayout = allSizesForLayoutResult as ProductSizeRow[];
+  const currentEdges = sizeDimensions[0];
+  const isLargestSize = !allSizesForLayout.some((otherSize) => {
+    // Check if any other size has larger boundaries
+    return (
+      otherSize.edge_top > currentEdges.edge_top ||
+      otherSize.edge_bottom < currentEdges.edge_bottom ||
+      otherSize.edge_left < currentEdges.edge_left ||
+      otherSize.edge_right > currentEdges.edge_right
+    );
+  });
 
   return {
     images_to_holds: imagesToHolds,
@@ -130,6 +151,7 @@ export const getBoardDetails = async ({
     set_ids,
     ledPlacements: Object.fromEntries(ledPlacements.map(({ id, position }) => [id, position])),
     supportsMirroring: board_name === 'tension' && layout_id !== 11,
+    isLargestSize,
     // Added for slug-based URLs
     layout_name: layout?.name,
     size_name: size?.name,

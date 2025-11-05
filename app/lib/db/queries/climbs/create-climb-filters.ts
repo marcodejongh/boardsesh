@@ -145,6 +145,50 @@ export const createClimbFilters = (
     }
   }
 
+  // Tall climbs filter condition
+  // A climb is "tall" if it extends beyond the boundaries of smaller sizes
+  const tallClimbsConditions: SQL[] = [];
+  if (searchParams.tallClimbsOnly) {
+    // Filter climbs that extend beyond the maximum edgeTop of smaller sizes
+    // This subquery finds the max edgeTop of all sizes smaller than the current size
+    tallClimbsConditions.push(
+      sql`(
+        ${tables.climbs.edgeTop} > (
+          SELECT COALESCE(MAX(ps2.edge_top), 0)
+          FROM ${tables.productSizes} ps2
+          INNER JOIN ${tables.layouts} layouts2 ON ps2.product_id = layouts2.product_id
+          WHERE layouts2.id = ${params.layout_id}
+          AND ps2.id != ${params.size_id}
+          AND ps2.edge_top < ${sizeTable.edgeTop}
+        )
+        OR ${tables.climbs.edgeBottom} < (
+          SELECT COALESCE(MIN(ps2.edge_bottom), 999)
+          FROM ${tables.productSizes} ps2
+          INNER JOIN ${tables.layouts} layouts2 ON ps2.product_id = layouts2.product_id
+          WHERE layouts2.id = ${params.layout_id}
+          AND ps2.id != ${params.size_id}
+          AND ps2.edge_bottom > ${sizeTable.edgeBottom}
+        )
+        OR ${tables.climbs.edgeLeft} < (
+          SELECT COALESCE(MIN(ps2.edge_left), 999)
+          FROM ${tables.productSizes} ps2
+          INNER JOIN ${tables.layouts} layouts2 ON ps2.product_id = layouts2.product_id
+          WHERE layouts2.id = ${params.layout_id}
+          AND ps2.id != ${params.size_id}
+          AND ps2.edge_left > ${sizeTable.edgeLeft}
+        )
+        OR ${tables.climbs.edgeRight} > (
+          SELECT COALESCE(MAX(ps2.edge_right), 0)
+          FROM ${tables.productSizes} ps2
+          INNER JOIN ${tables.layouts} layouts2 ON ps2.product_id = layouts2.product_id
+          WHERE layouts2.id = ${params.layout_id}
+          AND ps2.id != ${params.size_id}
+          AND ps2.edge_right < ${sizeTable.edgeRight}
+        )
+      )`
+    );
+  }
+
   // User-specific logbook data selectors
   const getUserLogbookSelects = () => {
     const ascentsTable = getTableName(params.board_name, 'ascents');
@@ -193,7 +237,7 @@ export const createClimbFilters = (
 
   return {
     // Helper function to get all climb filtering conditions
-    getClimbWhereConditions: () => [...baseConditions, ...nameCondition, ...setterNameCondition, ...holdConditions, ...personalProgressConditions],
+    getClimbWhereConditions: () => [...baseConditions, ...nameCondition, ...setterNameCondition, ...holdConditions, ...personalProgressConditions, ...tallClimbsConditions],
 
     // Size-specific conditions
     getSizeConditions: () => sizeConditions,
@@ -227,6 +271,7 @@ export const createClimbFilters = (
     holdConditions,
     sizeConditions,
     personalProgressConditions,
+    tallClimbsConditions,
     anyHolds,
     notHolds,
   };

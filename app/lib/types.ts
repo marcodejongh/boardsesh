@@ -93,6 +93,7 @@ export type SearchRequest = {
   hideCompleted: boolean;
   showOnlyAttempted: boolean;
   showOnlyCompleted: boolean;
+  tallClimbsOnly: boolean;
   [key: `hold_${number}`]: HoldFilterValue; // Allow dynamic hold keys directly in the search params
 };
 
@@ -214,6 +215,7 @@ export type BoardDetails = {
   set_ids: SetIdList;
   ledPlacements: LedPlacements;
   supportsMirroring?: boolean;
+  isLargestSize?: boolean;
   // Added for slug-based URLs
   layout_name?: string;
   size_name?: string;
