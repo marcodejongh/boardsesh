@@ -22,6 +22,7 @@ import { dbz } from '@/app/lib/db/db';
 import { kilterBetaLinks, tensionBetaLinks } from '@/app/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { BetaLink } from '@/app/lib/api-wrappers/sync-api-types';
+import SimilarClimbs from '@/app/components/similar-climbs/similar-climbs';
 
 export async function generateMetadata(props: { params: Promise<BoardRouteParametersWithUuid> }): Promise<Metadata> {
   const params = await props.params;
@@ -204,6 +205,11 @@ export default async function DynamicResultsPage(props: { params: Promise<BoardR
             <ClimbCard climb={climbWithProcessedData} boardDetails={boardDetails} actions={[]} />
           </Col>
           <Col xs={24} lg={8}>
+            <SimilarClimbs
+              boardDetails={boardDetails}
+              params={parsedParams}
+              currentClimbName={currentClimb.name}
+            />
             <BetaVideos betaLinks={betaLinks} />
           </Col>
         </Row>
