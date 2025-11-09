@@ -146,44 +146,40 @@ export const createClimbFilters = (
   }
 
   // Tall climbs filter condition
-  // A climb is "tall" if it extends beyond the boundaries of smaller sizes
+  // A climb is "tall" if it uses holds beyond the boundaries of ALL other sizes
   const tallClimbsConditions: SQL[] = [];
   if (searchParams.tallClimbsOnly) {
-    // Filter climbs that extend beyond the maximum edgeTop of smaller sizes
-    // This subquery finds the max edgeTop of all sizes smaller than the current size
+    // Find climbs that extend beyond the boundaries of ALL other sizes for this layout
+    // This means the climb uses at least 1 hold only available on the current (largest) size
     tallClimbsConditions.push(
       sql`(
         ${tables.climbs.edgeTop} > (
-          SELECT COALESCE(MAX(ps2.edge_top), 0)
+          SELECT COALESCE(MAX(ps2.edge_top), ${sizeTable.edgeTop} - 1)
           FROM ${tables.productSizes} ps2
           INNER JOIN ${tables.layouts} layouts2 ON ps2.product_id = layouts2.product_id
           WHERE layouts2.id = ${params.layout_id}
           AND ps2.id != ${params.size_id}
-          AND ps2.edge_top < ${sizeTable.edgeTop}
         )
         OR ${tables.climbs.edgeBottom} < (
-          SELECT COALESCE(MIN(ps2.edge_bottom), 999)
+          SELECT COALESCE(MIN(ps2.edge_bottom), ${sizeTable.edgeBottom} + 1)
           FROM ${tables.productSizes} ps2
           INNER JOIN ${tables.layouts} layouts2 ON ps2.product_id = layouts2.product_id
           WHERE layouts2.id = ${params.layout_id}
           AND ps2.id != ${params.size_id}
-          AND ps2.edge_bottom > ${sizeTable.edgeBottom}
         )
         OR ${tables.climbs.edgeLeft} < (
-          SELECT COALESCE(MIN(ps2.edge_left), 999)
+          SELECT COALESCE(MIN(ps2.edge_left), ${sizeTable.edgeLeft} + 1)
           FROM ${tables.productSizes} ps2
           INNER JOIN ${tables.layouts} layouts2 ON ps2.product_id = layouts2.product_id
           WHERE layouts2.id = ${params.layout_id}
           AND ps2.id != ${params.size_id}
-          AND ps2.edge_left > ${sizeTable.edgeLeft}
         )
         OR ${tables.climbs.edgeRight} > (
-          SELECT COALESCE(MAX(ps2.edge_right), 0)
+          SELECT COALESCE(MAX(ps2.edge_right), ${sizeTable.edgeRight} - 1)
           FROM ${tables.productSizes} ps2
           INNER JOIN ${tables.layouts} layouts2 ON ps2.product_id = layouts2.product_id
           WHERE layouts2.id = ${params.layout_id}
           AND ps2.id != ${params.size_id}
-          AND ps2.edge_right < ${sizeTable.edgeRight}
         )
       )`
     );
