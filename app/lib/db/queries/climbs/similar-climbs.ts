@@ -1,4 +1,4 @@
-import { eq, and, sql, inArray, ne } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { dbz as db } from '@/app/lib/db/db';
 import { convertLitUpHoldsStringToMap } from '@/app/components/board-renderer/util';
 import { Climb, ParsedBoardRouteParametersWithUuid } from '@/app/lib/types';
@@ -7,6 +7,22 @@ import { getBoardTables } from '@/lib/db/queries/util/table-select';
 export interface SimilarClimb extends Climb {
   totalHolds: number;
   matchingHolds: number;
+}
+
+interface SimilarClimbRow {
+  uuid: string;
+  setter_username: string | null;
+  name: string | null;
+  description: string | null;
+  frames: string | null;
+  angle: number | null;
+  ascensionist_count: number | null;
+  difficulty: string | null;
+  quality_average: number | null;
+  difficulty_error: number | null;
+  benchmark_difficulty: number | null;
+  total_holds: number;
+  matching_holds: number;
 }
 
 /**
@@ -77,23 +93,26 @@ export const getSimilarClimbs = async (
     `);
 
     // Transform results to Climb objects
-    const climbs: SimilarClimb[] = results.rows.map((row: any) => ({
-      uuid: row.uuid,
-      setter_username: row.setter_username || '',
-      name: row.name || '',
-      description: row.description || '',
-      frames: row.frames || '',
-      angle: Number(row.angle || params.angle),
-      ascensionist_count: Number(row.ascensionist_count || 0),
-      difficulty: row.difficulty || '',
-      quality_average: row.quality_average?.toString() || '0',
-      stars: Math.round((Number(row.quality_average) || 0) * 5),
-      difficulty_error: row.difficulty_error?.toString() || '0',
-      benchmark_difficulty: row.benchmark_difficulty?.toString() || null,
-      litUpHoldsMap: convertLitUpHoldsStringToMap(row.frames || '', params.board_name)[0],
-      totalHolds: Number(row.total_holds || 0),
-      matchingHolds: Number(row.matching_holds || 0),
-    }));
+    const climbs: SimilarClimb[] = results.rows.map((row) => {
+      const typedRow = row as unknown as SimilarClimbRow;
+      return {
+        uuid: typedRow.uuid,
+        setter_username: typedRow.setter_username || '',
+        name: typedRow.name || '',
+        description: typedRow.description || '',
+        frames: typedRow.frames || '',
+        angle: Number(typedRow.angle || params.angle),
+        ascensionist_count: Number(typedRow.ascensionist_count || 0),
+        difficulty: typedRow.difficulty || '',
+        quality_average: typedRow.quality_average?.toString() || '0',
+        stars: Math.round((Number(typedRow.quality_average) || 0) * 5),
+        difficulty_error: typedRow.difficulty_error?.toString() || '0',
+        benchmark_difficulty: typedRow.benchmark_difficulty?.toString() || null,
+        litUpHoldsMap: convertLitUpHoldsStringToMap(typedRow.frames || '', params.board_name)[0],
+        totalHolds: Number(typedRow.total_holds || 0),
+        matchingHolds: Number(typedRow.matching_holds || 0),
+      };
+    });
 
     return climbs;
   } catch (error) {

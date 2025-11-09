@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Collapse, Row, Col, Typography, Empty, Spin } from 'antd';
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { BoardDetails, ParsedBoardRouteParametersWithUuid } from '@/app/lib/types';
@@ -22,17 +22,14 @@ const SimilarClimbs: React.FC<SimilarClimbsProps> = ({ boardDetails, params, cur
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
+  const hasFetchedRef = useRef(false);
 
-  useEffect(() => {
-    // Only fetch when the panel is expanded and we haven't fetched yet
-    if (isExpanded && similarClimbs.length === 0 && !loading) {
-      fetchSimilarClimbs();
-    }
-  }, [isExpanded]);
+  const fetchSimilarClimbs = useCallback(async () => {
+    if (hasFetchedRef.current) return;
 
-  const fetchSimilarClimbs = async () => {
     setLoading(true);
     setError(null);
+    hasFetchedRef.current = true;
 
     try {
       const queryParams = new URLSearchParams({
@@ -58,7 +55,14 @@ const SimilarClimbs: React.FC<SimilarClimbsProps> = ({ boardDetails, params, cur
     } finally {
       setLoading(false);
     }
-  };
+  }, [params]);
+
+  useEffect(() => {
+    // Only fetch when the panel is expanded
+    if (isExpanded) {
+      fetchSimilarClimbs();
+    }
+  }, [isExpanded, fetchSimilarClimbs]);
 
   const handleCollapseChange = (key: string | string[]) => {
     setIsExpanded(Array.isArray(key) ? key.length > 0 : !!key);
