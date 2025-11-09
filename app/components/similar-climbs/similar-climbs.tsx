@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Collapse, Row, Col, Typography, Empty, Spin } from 'antd';
+import React from 'react';
+import { Collapse, Row, Col, Typography, Empty } from 'antd';
 import { InfoCircleOutlined } from '@ant-design/icons';
-import { BoardDetails, ParsedBoardRouteParametersWithUuid } from '@/app/lib/types';
+import { BoardDetails } from '@/app/lib/types';
 import ClimbCard from '../climb-card/climb-card';
 import { SimilarClimb } from '@/app/lib/db/queries/climbs/similar-climbs';
 import { PlusCircleOutlined, FireOutlined } from '@ant-design/icons';
@@ -13,63 +13,13 @@ const { Text } = Typography;
 
 interface SimilarClimbsProps {
   boardDetails: BoardDetails;
-  params: ParsedBoardRouteParametersWithUuid;
+  similarClimbs: SimilarClimb[];
   currentClimbName?: string;
 }
 
-const SimilarClimbs: React.FC<SimilarClimbsProps> = ({ boardDetails, params, currentClimbName }) => {
-  const [similarClimbs, setSimilarClimbs] = useState<SimilarClimb[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [isExpanded, setIsExpanded] = useState(false);
-  const hasFetchedRef = useRef(false);
-
-  const fetchSimilarClimbs = useCallback(async () => {
-    if (hasFetchedRef.current) return;
-
-    setLoading(true);
-    setError(null);
-    hasFetchedRef.current = true;
-
-    try {
-      const queryParams = new URLSearchParams({
-        board_name: params.board_name,
-        layout_id: params.layout_id.toString(),
-        size_id: params.size_id.toString(),
-        set_ids: params.set_ids.join(','),
-        angle: params.angle.toString(),
-        climb_uuid: params.climb_uuid,
-      });
-
-      const response = await fetch(`/api/internal/similar-climbs?${queryParams}`);
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch similar climbs');
-      }
-
-      const data = await response.json();
-      setSimilarClimbs(data.climbs || []);
-    } catch (err) {
-      console.error('Error fetching similar climbs:', err);
-      setError('Failed to load similar climbs');
-    } finally {
-      setLoading(false);
-    }
-  }, [params]);
-
-  useEffect(() => {
-    // Only fetch when the panel is expanded
-    if (isExpanded) {
-      fetchSimilarClimbs();
-    }
-  }, [isExpanded, fetchSimilarClimbs]);
-
-  const handleCollapseChange = (key: string | string[]) => {
-    setIsExpanded(Array.isArray(key) ? key.length > 0 : !!key);
-  };
-
+const SimilarClimbs: React.FC<SimilarClimbsProps> = ({ boardDetails, similarClimbs, currentClimbName }) => {
   return (
-    <Collapse onChange={handleCollapseChange} style={{ marginBottom: 16 }}>
+    <Collapse defaultActiveKey={['similar-climbs']} style={{ marginBottom: 16 }}>
       <Panel
         header={
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -80,13 +30,7 @@ const SimilarClimbs: React.FC<SimilarClimbsProps> = ({ boardDetails, params, cur
         }
         key="similar-climbs"
       >
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: '40px 0' }}>
-            <Spin size="large" />
-          </div>
-        ) : error ? (
-          <Empty description={error} image={Empty.PRESENTED_IMAGE_SIMPLE} />
-        ) : similarClimbs.length === 0 ? (
+        {similarClimbs.length === 0 ? (
           <Empty
             description="No similar climbs found. Similar climbs are versions of this climb that use all the same holds plus additional holds."
             image={Empty.PRESENTED_IMAGE_SIMPLE}

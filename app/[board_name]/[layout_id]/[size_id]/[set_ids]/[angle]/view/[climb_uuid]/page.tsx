@@ -23,6 +23,7 @@ import { kilterBetaLinks, tensionBetaLinks } from '@/app/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { BetaLink } from '@/app/lib/api-wrappers/sync-api-types';
 import SimilarClimbs from '@/app/components/similar-climbs/similar-climbs';
+import { getSimilarClimbs } from '@/app/lib/db/queries/climbs/similar-climbs';
 
 export async function generateMetadata(props: { params: Promise<BoardRouteParametersWithUuid> }): Promise<Metadata> {
   const params = await props.params;
@@ -165,11 +166,12 @@ export default async function DynamicResultsPage(props: { params: Promise<BoardR
       }
     };
 
-    // Fetch the search results using searchCLimbs
-    const [boardDetails, currentClimb, betaLinks] = await Promise.all([
+    // Fetch all data in parallel
+    const [boardDetails, currentClimb, betaLinks, similarClimbs] = await Promise.all([
       getBoardDetails(parsedParams),
       getClimb(parsedParams),
       fetchBetaLinks(),
+      getSimilarClimbs(parsedParams, 10),
     ]);
 
     if (!currentClimb) {
@@ -207,7 +209,7 @@ export default async function DynamicResultsPage(props: { params: Promise<BoardR
           <Col xs={24} lg={8}>
             <SimilarClimbs
               boardDetails={boardDetails}
-              params={parsedParams}
+              similarClimbs={similarClimbs}
               currentClimbName={currentClimb.name}
             />
             <BetaVideos betaLinks={betaLinks} />
