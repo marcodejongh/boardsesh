@@ -88,6 +88,7 @@ export const getSimilarClimbs = async (
       LEFT JOIN ${tables.difficultyGrades} dg ON dg.difficulty = ROUND(cs.display_difficulty::numeric)
       WHERE c.layout_id = ${params.layout_id}
         AND c.frames_count = 1
+        AND c.name NOT ILIKE 'Twister%'
       ORDER BY cc.total_holds ASC, cs.ascensionist_count DESC NULLS LAST
       LIMIT ${limit}
     `);
