@@ -76,7 +76,25 @@ export default async function DynamicResultsPage(props: {
       getBoardDetails(parsedParams),
     ]);
 
-    if (!fetchedResults || fetchedResults.climbs.length === 0) {
+    // Only show 404 if there are no climbs at all AND no filters are applied
+    // If filters are active and return 0 results, that's a valid empty state
+    const hasActiveFilters =
+      searchParamsObject.name ||
+      searchParamsObject.minGrade ||
+      searchParamsObject.maxGrade ||
+      searchParamsObject.minAscents ||
+      searchParamsObject.minRating ||
+      searchParamsObject.onlyClassics ||
+      searchParamsObject.tallClimbsOnly ||
+      searchParamsObject.gradeAccuracy ||
+      searchParamsObject.settername.length > 0 ||
+      Object.keys(searchParamsObject.holdsFilter).length > 0 ||
+      searchParamsObject.hideAttempted ||
+      searchParamsObject.hideCompleted ||
+      searchParamsObject.showOnlyAttempted ||
+      searchParamsObject.showOnlyCompleted;
+
+    if (!fetchedResults || (fetchedResults.climbs.length === 0 && !hasActiveFilters)) {
       notFound();
     }
 

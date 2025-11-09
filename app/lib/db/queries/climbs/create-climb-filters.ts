@@ -151,31 +151,32 @@ export const createClimbFilters = (
   if (searchParams.tallClimbsOnly) {
     // Find climbs that extend beyond the boundaries of ALL other sizes for this layout
     // This means the climb uses at least 1 hold only available on the current (largest) size
+    // COALESCE fallbacks ensure no matches if there's only one size (which is correct - no "tall-only" climbs exist)
     tallClimbsConditions.push(
       sql`(
         ${tables.climbs.edgeTop} > (
-          SELECT COALESCE(MAX(ps2.edge_top), ${sizeTable.edgeTop} - 1)
+          SELECT COALESCE(MAX(ps2.edge_top), 999)
           FROM ${tables.productSizes} ps2
           INNER JOIN ${tables.layouts} layouts2 ON ps2.product_id = layouts2.product_id
           WHERE layouts2.id = ${params.layout_id}
           AND ps2.id != ${params.size_id}
         )
         OR ${tables.climbs.edgeBottom} < (
-          SELECT COALESCE(MIN(ps2.edge_bottom), ${sizeTable.edgeBottom} + 1)
+          SELECT COALESCE(MIN(ps2.edge_bottom), -999)
           FROM ${tables.productSizes} ps2
           INNER JOIN ${tables.layouts} layouts2 ON ps2.product_id = layouts2.product_id
           WHERE layouts2.id = ${params.layout_id}
           AND ps2.id != ${params.size_id}
         )
         OR ${tables.climbs.edgeLeft} < (
-          SELECT COALESCE(MIN(ps2.edge_left), ${sizeTable.edgeLeft} + 1)
+          SELECT COALESCE(MIN(ps2.edge_left), -999)
           FROM ${tables.productSizes} ps2
           INNER JOIN ${tables.layouts} layouts2 ON ps2.product_id = layouts2.product_id
           WHERE layouts2.id = ${params.layout_id}
           AND ps2.id != ${params.size_id}
         )
         OR ${tables.climbs.edgeRight} > (
-          SELECT COALESCE(MAX(ps2.edge_right), ${sizeTable.edgeRight} - 1)
+          SELECT COALESCE(MAX(ps2.edge_right), 999)
           FROM ${tables.productSizes} ps2
           INNER JOIN ${tables.layouts} layouts2 ON ps2.product_id = layouts2.product_id
           WHERE layouts2.id = ${params.layout_id}
