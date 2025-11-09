@@ -1,7 +1,7 @@
 import React from 'react';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { BoardRouteParametersWithUuid } from '@/app/lib/types';
-import { getBoardDetails } from '@/app/lib/data/queries';
+import { getBoardDetails, getSizes } from '@/app/lib/data/queries';
 import { getClimb } from '@/app/lib/data/queries';
 import ClimbCard from '@/app/components/climb-card/climb-card';
 import { Col, Row } from 'antd';
@@ -166,12 +166,18 @@ export default async function DynamicResultsPage(props: { params: Promise<BoardR
       }
     };
 
+    // Fetch sizes to determine if we're on the smallest size board
+    const sizes = await getSizes(parsedParams.board_name, parsedParams.layout_id);
+    const minSizeId = Math.min(...sizes.map((s) => s.id));
+    const isSmallestSize = parsedParams.size_id === minSizeId;
+
     // Fetch all data in parallel
     const [boardDetails, currentClimb, betaLinks, similarClimbs] = await Promise.all([
       getBoardDetails(parsedParams),
       getClimb(parsedParams),
       fetchBetaLinks(),
-      getSimilarClimbs(parsedParams, 10),
+      // Only fetch similar climbs if not on the smallest size
+      isSmallestSize ? Promise.resolve([]) : getSimilarClimbs(parsedParams, 10),
     ]);
 
     if (!currentClimb) {
@@ -207,11 +213,13 @@ export default async function DynamicResultsPage(props: { params: Promise<BoardR
             <ClimbCard climb={climbWithProcessedData} boardDetails={boardDetails} actions={[]} />
           </Col>
           <Col xs={24} lg={8}>
-            <SimilarClimbs
-              boardDetails={boardDetails}
-              similarClimbs={similarClimbs}
-              currentClimbName={currentClimb.name}
-            />
+            {!isSmallestSize && (
+              <SimilarClimbs
+                boardDetails={boardDetails}
+                similarClimbs={similarClimbs}
+                currentClimbName={currentClimb.name}
+              />
+            )}
             <BetaVideos betaLinks={betaLinks} />
           </Col>
         </Row>
