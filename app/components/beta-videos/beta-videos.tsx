@@ -1,20 +1,35 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Card, Row, Col, Typography, Empty, Modal } from 'antd';
-import { InstagramOutlined, UserOutlined } from '@ant-design/icons';
+import { Card, Row, Col, Typography, Empty, Modal, Button, Space } from 'antd';
+import { InstagramOutlined, UserOutlined, PlusOutlined } from '@ant-design/icons';
 import { BetaLink } from '@/app/lib/api-wrappers/sync-api-types';
+import { BoardName } from '@/app/lib/types';
+import SubmitBetaModal from './submit-beta-modal';
 
 const { Title, Text } = Typography;
 
 interface BetaVideosProps {
   betaLinks: BetaLink[];
+  climbUuid: string;
+  climbName: string;
+  boardName: BoardName;
+  grade?: string;
+  angle: number;
 }
 
-const BetaVideos: React.FC<BetaVideosProps> = ({ betaLinks }) => {
+const BetaVideos: React.FC<BetaVideosProps> = ({
+  betaLinks,
+  climbUuid,
+  climbName,
+  boardName,
+  grade,
+  angle,
+}) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedVideo, setSelectedVideo] = useState<BetaLink | null>(null);
   const [iframeKey, setIframeKey] = useState(0);
+  const [submitModalVisible, setSubmitModalVisible] = useState(false);
 
   const getInstagramEmbedUrl = (link: string) => {
     // Extract Instagram post ID from the URL
@@ -43,12 +58,31 @@ const BetaVideos: React.FC<BetaVideosProps> = ({ betaLinks }) => {
 
   return (
     <div style={{ padding: '16px 0' }}>
-      <Title level={3} style={{ marginBottom: 24 }}>
-        Beta Videos
-      </Title>
+      <Space direction="vertical" style={{ width: '100%', marginBottom: 16 }} size="middle">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Title level={3} style={{ marginBottom: 0 }}>
+            Beta Videos
+          </Title>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => setSubmitModalVisible(true)}
+            size="large"
+          >
+            Submit Beta
+          </Button>
+        </div>
+      </Space>
 
       {betaLinks.length === 0 ? (
-        <Empty description="No beta videos available" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+        <Empty
+          description="No beta videos yet"
+          image={Empty.PRESENTED_IMAGE_SIMPLE}
+        >
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setSubmitModalVisible(true)}>
+            Be the first to share beta!
+          </Button>
+        </Empty>
       ) : (
         <Row gutter={[16, 16]}>
           {betaLinks.map((betaLink, index) => {
@@ -168,6 +202,20 @@ const BetaVideos: React.FC<BetaVideosProps> = ({ betaLinks }) => {
           )}
         </Modal>
       )}
+
+      <SubmitBetaModal
+        climbUuid={climbUuid}
+        climbName={climbName}
+        boardName={boardName}
+        grade={grade}
+        angle={angle}
+        visible={submitModalVisible}
+        onClose={() => setSubmitModalVisible(false)}
+        onSuccess={() => {
+          // Optionally refresh beta links here
+          window.location.reload();
+        }}
+      />
     </div>
   );
 };

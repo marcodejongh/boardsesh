@@ -20,7 +20,7 @@ import ClimbViewActions from '@/app/components/climb-view/climb-view-actions';
 import { Metadata } from 'next';
 import { dbz } from '@/app/lib/db/db';
 import { kilterBetaLinks, tensionBetaLinks } from '@/app/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { BetaLink } from '@/app/lib/api-wrappers/sync-api-types';
 
 export async function generateMetadata(props: { params: Promise<BoardRouteParametersWithUuid> }): Promise<Metadata> {
@@ -129,7 +129,7 @@ export default async function DynamicResultsPage(props: { params: Promise<BoardR
         permanentRedirect(newUrl);
       }
     }
-    // Fetch beta links server-side
+    // Fetch beta links server-side (only approved ones)
     const fetchBetaLinks = async (): Promise<BetaLink[]> => {
       try {
         let betaLinks;
@@ -138,12 +138,16 @@ export default async function DynamicResultsPage(props: { params: Promise<BoardR
           betaLinks = await dbz
             .select()
             .from(kilterBetaLinks)
-            .where(eq(kilterBetaLinks.climbUuid, parsedParams.climb_uuid));
+            .where(
+              and(eq(kilterBetaLinks.climbUuid, parsedParams.climb_uuid), eq(kilterBetaLinks.isListed, true)),
+            );
         } else if (parsedParams.board_name === 'tension') {
           betaLinks = await dbz
             .select()
             .from(tensionBetaLinks)
-            .where(eq(tensionBetaLinks.climbUuid, parsedParams.climb_uuid));
+            .where(
+              and(eq(tensionBetaLinks.climbUuid, parsedParams.climb_uuid), eq(tensionBetaLinks.isListed, true)),
+            );
         } else {
           return [];
         }
@@ -204,7 +208,14 @@ export default async function DynamicResultsPage(props: { params: Promise<BoardR
             <ClimbCard climb={climbWithProcessedData} boardDetails={boardDetails} actions={[]} />
           </Col>
           <Col xs={24} lg={8}>
-            <BetaVideos betaLinks={betaLinks} />
+            <BetaVideos
+              betaLinks={betaLinks}
+              climbUuid={currentClimb.uuid}
+              climbName={currentClimb.name || 'Unnamed Climb'}
+              boardName={parsedParams.board_name}
+              grade={currentClimb.difficulty}
+              angle={parsedParams.angle}
+            />
           </Col>
         </Row>
       </div>
