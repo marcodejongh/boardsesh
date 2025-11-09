@@ -7,15 +7,21 @@ import { useUISearchParams } from '@/app/components/queue-control/ui-searchparam
 import { useBoardProvider } from '@/app/components/board-provider/board-provider-context';
 import SearchClimbNameInput from './search-climb-name-input';
 import SetterNameSelect from './setter-name-select';
+import { BoardDetails } from '@/app/lib/types';
 
 const { Title } = Typography;
 
-const BasicSearchForm: React.FC = () => {
+interface BasicSearchFormProps {
+  boardDetails: BoardDetails;
+}
+
+const BasicSearchForm: React.FC<BasicSearchFormProps> = ({ boardDetails }) => {
   const { uiSearchParams, updateFilters } = useUISearchParams();
   const { token, user_id } = useBoardProvider();
   const grades = TENSION_KILTER_GRADES;
-  
+
   const isLoggedIn = token && user_id;
+  const isLargestSize = boardDetails.isLargestSize ?? false;
 
   const handleGradeChange = (type: 'min' | 'max', value: number | undefined) => {
     if (type === 'min') {
@@ -177,6 +183,16 @@ const BasicSearchForm: React.FC = () => {
           onChange={(checked) => updateFilters({ onlyClassics: checked })}
         />
       </Form.Item>
+
+      {isLargestSize && (
+        <Form.Item label="Tall Climbs Only" valuePropName="checked">
+          <Switch
+            style={{ float: 'right' }}
+            checked={uiSearchParams.tallClimbsOnly}
+            onChange={(checked) => updateFilters({ tallClimbsOnly: checked })}
+          />
+        </Form.Item>
+      )}
 
       <Form.Item label="Grade Accuracy">
         <Select
