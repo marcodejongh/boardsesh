@@ -337,12 +337,13 @@ export const generateSetSlug = (setNames: string[]): string => {
       // Handle homewall-specific set names (supports both "Auxiliary/Mainline" and "Aux/Main" variants)
       const hasAux = lowercaseName.includes('auxiliary') || lowercaseName.includes('aux');
       const hasMain = lowercaseName.includes('mainline') || lowercaseName.includes('main');
-      const hasKickboard = lowercaseName.includes('kickboard');
+      // Support both "kickboard" and "kicker" in set names (different sizes use different naming)
+      const hasKickerVariant = lowercaseName.includes('kickboard') || lowercaseName.includes('kicker');
 
-      if (hasAux && hasKickboard) {
+      if (hasAux && hasKickerVariant) {
         return 'aux-kicker';
       }
-      if (hasMain && hasKickboard) {
+      if (hasMain && hasKickerVariant) {
         return 'main-kicker';
       }
       if (hasAux) {

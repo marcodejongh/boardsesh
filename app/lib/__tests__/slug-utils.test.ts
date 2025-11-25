@@ -118,6 +118,68 @@ describe('matchSetNameToSlugParts', () => {
     });
   });
 
+  describe('homewall sets - "kicker" naming variant (used in some sizes like 10x12)', () => {
+    describe('Aux Kicker (without "board")', () => {
+      it('should match aux-kicker slug', () => {
+        expect(matchSetNameToSlugParts('Aux Kicker', ['aux-kicker'])).toBe(true);
+      });
+
+      it('should NOT match aux slug', () => {
+        expect(matchSetNameToSlugParts('Aux Kicker', ['aux'])).toBe(false);
+      });
+    });
+
+    describe('Main Kicker (without "board")', () => {
+      it('should match main-kicker slug', () => {
+        expect(matchSetNameToSlugParts('Main Kicker', ['main-kicker'])).toBe(true);
+      });
+
+      it('should NOT match main slug', () => {
+        expect(matchSetNameToSlugParts('Main Kicker', ['main'])).toBe(false);
+      });
+    });
+
+    describe('Auxiliary Kicker (full name without "board")', () => {
+      it('should match aux-kicker slug', () => {
+        expect(matchSetNameToSlugParts('Auxiliary Kicker', ['aux-kicker'])).toBe(true);
+      });
+
+      it('should NOT match aux slug', () => {
+        expect(matchSetNameToSlugParts('Auxiliary Kicker', ['aux'])).toBe(false);
+      });
+    });
+
+    describe('Mainline Kicker (full name without "board")', () => {
+      it('should match main-kicker slug', () => {
+        expect(matchSetNameToSlugParts('Mainline Kicker', ['main-kicker'])).toBe(true);
+      });
+
+      it('should NOT match main slug', () => {
+        expect(matchSetNameToSlugParts('Mainline Kicker', ['main'])).toBe(false);
+      });
+    });
+
+    describe('10x12 full ride with kicker naming', () => {
+      const fullRideSlugParts = ['main-kicker', 'main', 'aux-kicker', 'aux'];
+
+      it('should match Aux Kicker to aux-kicker', () => {
+        expect(matchSetNameToSlugParts('Aux Kicker', fullRideSlugParts)).toBe(true);
+      });
+
+      it('should match Main Kicker to main-kicker', () => {
+        expect(matchSetNameToSlugParts('Main Kicker', fullRideSlugParts)).toBe(true);
+      });
+
+      it('should match Aux to aux', () => {
+        expect(matchSetNameToSlugParts('Aux', fullRideSlugParts)).toBe(true);
+      });
+
+      it('should match Main to main', () => {
+        expect(matchSetNameToSlugParts('Main', fullRideSlugParts)).toBe(true);
+      });
+    });
+  });
+
   describe('homewall full ride - all four sets with full slug', () => {
     const fullRideSlugParts = ['main-kicker', 'main', 'aux-kicker', 'aux'];
 

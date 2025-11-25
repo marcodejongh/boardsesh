@@ -505,6 +505,34 @@ describe('Slug generation functions', () => {
       });
     });
 
+    describe('homewall specific sets - "kicker" naming variant (used in some sizes like 10x12)', () => {
+      it('should handle Aux Kicker (without "board")', () => {
+        expect(generateSetSlug(['Aux Kicker'])).toBe('aux-kicker');
+      });
+
+      it('should handle Main Kicker (without "board")', () => {
+        expect(generateSetSlug(['Main Kicker'])).toBe('main-kicker');
+      });
+
+      it('should handle Auxiliary Kicker', () => {
+        expect(generateSetSlug(['Auxiliary Kicker'])).toBe('aux-kicker');
+      });
+
+      it('should handle Mainline Kicker', () => {
+        expect(generateSetSlug(['Mainline Kicker'])).toBe('main-kicker');
+      });
+
+      it('should generate correct slug for 10x12 with kicker naming', () => {
+        const result = generateSetSlug([
+          'Aux Kicker',
+          'Main Kicker',
+          'Aux',
+          'Main'
+        ]);
+        expect(result).toBe('main-kicker_main_aux-kicker_aux');
+      });
+    });
+
     describe('homewall full ride - all four sets combined', () => {
       it('should generate correct slug for all four homewall sets (full names)', () => {
         const result = generateSetSlug([
