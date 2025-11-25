@@ -440,21 +440,194 @@ describe('Slug generation functions', () => {
   });
 
   describe('generateSetSlug', () => {
-    it('should handle homewall specific sets', () => {
-      expect(generateSetSlug(['Auxiliary Kickboard'])).toBe('aux-kicker');
-      expect(generateSetSlug(['Mainline Kickboard'])).toBe('main-kicker');
-      expect(generateSetSlug(['Auxiliary'])).toBe('aux');
-      expect(generateSetSlug(['Mainline'])).toBe('main');
+    describe('homewall specific sets - full names', () => {
+      it('should handle Auxiliary Kickboard', () => {
+        expect(generateSetSlug(['Auxiliary Kickboard'])).toBe('aux-kicker');
+      });
+
+      it('should handle Mainline Kickboard', () => {
+        expect(generateSetSlug(['Mainline Kickboard'])).toBe('main-kicker');
+      });
+
+      it('should handle Auxiliary (standalone)', () => {
+        expect(generateSetSlug(['Auxiliary'])).toBe('aux');
+      });
+
+      it('should handle Mainline (standalone)', () => {
+        expect(generateSetSlug(['Mainline'])).toBe('main');
+      });
     });
 
-    it('should handle original kilter/tension sets', () => {
-      expect(generateSetSlug(['Bolt Ons'])).toBe('bolt');
-      expect(generateSetSlug(['Screw Ons'])).toBe('screw');
+    describe('homewall specific sets - abbreviated names (Aux/Main)', () => {
+      it('should handle Aux Kickboard', () => {
+        expect(generateSetSlug(['Aux Kickboard'])).toBe('aux-kicker');
+      });
+
+      it('should handle Main Kickboard', () => {
+        expect(generateSetSlug(['Main Kickboard'])).toBe('main-kicker');
+      });
+
+      it('should handle Aux (standalone)', () => {
+        expect(generateSetSlug(['Aux'])).toBe('aux');
+      });
+
+      it('should handle Main (standalone)', () => {
+        expect(generateSetSlug(['Main'])).toBe('main');
+      });
     });
 
-    it('should sort multiple sets', () => {
-      const result = generateSetSlug(['bolt ons', 'screw ons']);
-      expect(result).toBe('screw_bolt');
+    describe('homewall specific sets - case insensitivity', () => {
+      it('should handle lowercase auxiliary kickboard', () => {
+        expect(generateSetSlug(['auxiliary kickboard'])).toBe('aux-kicker');
+      });
+
+      it('should handle uppercase AUXILIARY KICKBOARD', () => {
+        expect(generateSetSlug(['AUXILIARY KICKBOARD'])).toBe('aux-kicker');
+      });
+
+      it('should handle mixed case AuXiLiArY', () => {
+        expect(generateSetSlug(['AuXiLiArY'])).toBe('aux');
+      });
+
+      it('should handle lowercase aux', () => {
+        expect(generateSetSlug(['aux'])).toBe('aux');
+      });
+
+      it('should handle uppercase AUX', () => {
+        expect(generateSetSlug(['AUX'])).toBe('aux');
+      });
+    });
+
+    describe('homewall specific sets - with extra whitespace', () => {
+      it('should handle leading/trailing whitespace', () => {
+        expect(generateSetSlug(['  Auxiliary Kickboard  '])).toBe('aux-kicker');
+        expect(generateSetSlug(['  Auxiliary  '])).toBe('aux');
+      });
+    });
+
+    describe('homewall full ride - all four sets combined', () => {
+      it('should generate correct slug for all four homewall sets (full names)', () => {
+        const result = generateSetSlug([
+          'Auxiliary Kickboard',
+          'Mainline Kickboard',
+          'Auxiliary',
+          'Mainline'
+        ]);
+        // Should be sorted alphabetically descending and joined with underscores
+        expect(result).toBe('main-kicker_main_aux-kicker_aux');
+      });
+
+      it('should generate correct slug for all four homewall sets (abbreviated names)', () => {
+        const result = generateSetSlug([
+          'Aux Kickboard',
+          'Main Kickboard',
+          'Aux',
+          'Main'
+        ]);
+        expect(result).toBe('main-kicker_main_aux-kicker_aux');
+      });
+
+      it('should generate correct slug for mixed full and abbreviated names', () => {
+        const result = generateSetSlug([
+          'Auxiliary Kickboard',
+          'Main Kickboard',
+          'Aux',
+          'Mainline'
+        ]);
+        expect(result).toBe('main-kicker_main_aux-kicker_aux');
+      });
+    });
+
+    describe('homewall partial selections', () => {
+      it('should handle aux + main (no kickers)', () => {
+        const result = generateSetSlug(['Auxiliary', 'Mainline']);
+        expect(result).toBe('main_aux');
+      });
+
+      it('should handle aux-kicker + main-kicker (kickers only)', () => {
+        const result = generateSetSlug(['Auxiliary Kickboard', 'Mainline Kickboard']);
+        expect(result).toBe('main-kicker_aux-kicker');
+      });
+
+      it('should handle aux + aux-kicker (aux variants only)', () => {
+        const result = generateSetSlug(['Auxiliary', 'Auxiliary Kickboard']);
+        expect(result).toBe('aux-kicker_aux');
+      });
+
+      it('should handle main + main-kicker (main variants only)', () => {
+        const result = generateSetSlug(['Mainline', 'Mainline Kickboard']);
+        expect(result).toBe('main-kicker_main');
+      });
+
+      it('should handle single aux selection', () => {
+        expect(generateSetSlug(['Auxiliary'])).toBe('aux');
+        expect(generateSetSlug(['Aux'])).toBe('aux');
+      });
+
+      it('should handle aux + main-kicker + main (no aux-kicker)', () => {
+        const result = generateSetSlug(['Auxiliary', 'Mainline Kickboard', 'Mainline']);
+        expect(result).toBe('main-kicker_main_aux');
+      });
+    });
+
+    describe('original kilter/tension sets', () => {
+      it('should handle Bolt Ons', () => {
+        expect(generateSetSlug(['Bolt Ons'])).toBe('bolt');
+      });
+
+      it('should handle Screw Ons', () => {
+        expect(generateSetSlug(['Screw Ons'])).toBe('screw');
+      });
+
+      it('should handle bolt on (singular)', () => {
+        expect(generateSetSlug(['Bolt On'])).toBe('bolt');
+      });
+
+      it('should handle screw on (singular)', () => {
+        expect(generateSetSlug(['Screw On'])).toBe('screw');
+      });
+
+      it('should sort bolt and screw correctly', () => {
+        const result = generateSetSlug(['Bolt Ons', 'Screw Ons']);
+        expect(result).toBe('screw_bolt');
+      });
+    });
+
+    describe('sorting behavior', () => {
+      it('should sort slugs alphabetically descending', () => {
+        // z > a, so 'screw' > 'main' > 'bolt' > 'aux'
+        const result = generateSetSlug(['Auxiliary', 'Bolt Ons', 'Mainline', 'Screw Ons']);
+        expect(result).toBe('screw_main_bolt_aux');
+      });
+
+      it('should maintain consistent ordering regardless of input order', () => {
+        const order1 = generateSetSlug(['Auxiliary', 'Mainline', 'Auxiliary Kickboard', 'Mainline Kickboard']);
+        const order2 = generateSetSlug(['Mainline Kickboard', 'Auxiliary Kickboard', 'Mainline', 'Auxiliary']);
+        const order3 = generateSetSlug(['Auxiliary Kickboard', 'Auxiliary', 'Mainline Kickboard', 'Mainline']);
+
+        expect(order1).toBe(order2);
+        expect(order2).toBe(order3);
+        expect(order1).toBe('main-kicker_main_aux-kicker_aux');
+      });
+    });
+
+    describe('edge cases', () => {
+      it('should handle empty array', () => {
+        expect(generateSetSlug([])).toBe('');
+      });
+
+      it('should handle single set', () => {
+        expect(generateSetSlug(['Auxiliary'])).toBe('aux');
+      });
+
+      it('should handle sets with numbers', () => {
+        // Generic set names should fall through to general slug generation
+        expect(generateSetSlug(['Set 1'])).toBe('set-1');
+      });
+
+      it('should handle sets with special characters', () => {
+        expect(generateSetSlug(['Test Set!'])).toBe('test-set!');
+      });
     });
   });
 });
