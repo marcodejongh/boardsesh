@@ -118,29 +118,25 @@ export const getSetsBySlug = async (
   const matchingSets = rows.filter((s) => {
     const lowercaseName = s.name.toLowerCase().trim();
 
-    // Handle homewall-specific set names
-    if (
-      lowercaseName.includes('auxiliary') &&
-      lowercaseName.includes('kickboard') &&
-      slugParts.includes('aux-kicker')
-    ) {
+    // Handle homewall-specific set names (supports both "Auxiliary/Mainline" and "Aux/Main" variants)
+    const hasAux = lowercaseName.includes('auxiliary') || lowercaseName.includes('aux');
+    const hasMain = lowercaseName.includes('mainline') || lowercaseName.includes('main');
+    const hasKickboard = lowercaseName.includes('kickboard');
+
+    // Match aux-kicker: sets with aux/auxiliary AND kickboard
+    if (hasAux && hasKickboard && slugParts.includes('aux-kicker')) {
       return true;
     }
-    if (
-      lowercaseName.includes('mainline') &&
-      lowercaseName.includes('kickboard') &&
-      slugParts.includes('main-kicker')
-    ) {
+    // Match main-kicker: sets with main/mainline AND kickboard
+    if (hasMain && hasKickboard && slugParts.includes('main-kicker')) {
       return true;
     }
-    // For 'aux' slug, match sets that have 'auxiliary' but NOT 'kickboard'
-    // This ensures "Auxiliary Kickboard" only matches 'aux-kicker', not 'aux'
-    if (lowercaseName.includes('auxiliary') && !lowercaseName.includes('kickboard') && slugParts.includes('aux')) {
+    // Match aux: sets with aux/auxiliary but NOT kickboard
+    if (hasAux && !hasKickboard && slugParts.includes('aux')) {
       return true;
     }
-    // For 'main' slug, match sets that have 'mainline' but NOT 'kickboard'
-    // This ensures "Mainline Kickboard" only matches 'main-kicker', not 'main'
-    if (lowercaseName.includes('mainline') && !lowercaseName.includes('kickboard') && slugParts.includes('main')) {
+    // Match main: sets with main/mainline but NOT kickboard
+    if (hasMain && !hasKickboard && slugParts.includes('main')) {
       return true;
     }
 
