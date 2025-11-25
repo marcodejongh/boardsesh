@@ -133,10 +133,14 @@ export const getSetsBySlug = async (
     ) {
       return true;
     }
-    if (lowercaseName.includes('auxiliary') && slugParts.includes('aux')) {
+    // For 'aux' slug, match sets that have 'auxiliary' but NOT 'kickboard'
+    // This ensures "Auxiliary Kickboard" only matches 'aux-kicker', not 'aux'
+    if (lowercaseName.includes('auxiliary') && !lowercaseName.includes('kickboard') && slugParts.includes('aux')) {
       return true;
     }
-    if (lowercaseName.includes('mainline') && slugParts.includes('main')) {
+    // For 'main' slug, match sets that have 'mainline' but NOT 'kickboard'
+    // This ensures "Mainline Kickboard" only matches 'main-kicker', not 'main'
+    if (lowercaseName.includes('mainline') && !lowercaseName.includes('kickboard') && slugParts.includes('main')) {
       return true;
     }
 
