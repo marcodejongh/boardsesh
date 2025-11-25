@@ -62,6 +62,7 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({ boardDetails, litUpHoldsMap
 
   const [colorMode, setColorMode] = useState<ColorMode>('ascents');
   const [showNumbers, setShowNumbers] = useState(false);
+  const [showHeatmap, setShowHeatmap] = useState(false);
 
   // Get angle from pathname immediately
   const [angle, setAngle] = useState(() => getAngleFromPath(pathname));
@@ -74,6 +75,7 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({ boardDetails, litUpHoldsMap
     }
   }, [pathname, searchParams, angle]);
 
+  // Only fetch heatmap data when heatmap is enabled
   const { data: heatmapData = [], loading: heatmapLoading } = useHeatmapData({
     boardName: boardDetails.board_name,
     layoutId: boardDetails.layout_id,
@@ -81,7 +83,7 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({ boardDetails, litUpHoldsMap
     setIds: boardDetails.set_ids.join(','),
     angle,
     filters: uiSearchParams,
-    // No need to pass userId - it's handled server-side from the session
+    enabled: showHeatmap,
   });
 
   const [threshold, setThreshold] = useState(1);
@@ -198,8 +200,6 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({ boardDetails, litUpHoldsMap
       </g>
     );
   };
-
-  const [showHeatmap, setShowHeatmap] = useState(false);
 
   // Updated color mode options to include user-specific options
   const colorModeOptions = [
