@@ -47,6 +47,7 @@ export const searchParamsToUrlParams = ({
   sortOrder,
   name,
   onlyClassics,
+  onlyTallClimbs,
   settername,
   setternameSuggestion,
   holdsFilter,
@@ -86,6 +87,9 @@ export const searchParamsToUrlParams = ({
   }
   if (onlyClassics !== DEFAULT_SEARCH_PARAMS.onlyClassics) {
     params.onlyClassics = onlyClassics.toString();
+  }
+  if (onlyTallClimbs !== DEFAULT_SEARCH_PARAMS.onlyTallClimbs) {
+    params.onlyTallClimbs = onlyTallClimbs.toString();
   }
   if (settername && settername.length > 0) {
     params.settername = settername.join(',');
@@ -131,6 +135,7 @@ export const DEFAULT_SEARCH_PARAMS: SearchRequestPagination = {
   sortOrder: 'desc',
   name: '',
   onlyClassics: false,
+  onlyTallClimbs: false,
   settername: [],
   setternameSuggestion: '',
   holdsFilter: {},
@@ -160,6 +165,7 @@ export const urlParamsToSearchParams = (urlParams: URLSearchParams): SearchReque
     sortOrder: (urlParams.get('sortOrder') ?? DEFAULT_SEARCH_PARAMS.sortOrder) as 'asc' | 'desc',
     name: urlParams.get('name') ?? DEFAULT_SEARCH_PARAMS.name,
     onlyClassics: urlParams.get('onlyClassics') === 'true',
+    onlyTallClimbs: urlParams.get('onlyTallClimbs') === 'true',
     settername: urlParams.get('settername')?.split(',').filter(s => s.length > 0) ?? DEFAULT_SEARCH_PARAMS.settername,
     setternameSuggestion: urlParams.get('setternameSuggestion') ?? DEFAULT_SEARCH_PARAMS.setternameSuggestion,
     //@ts-expect-error fix later

@@ -37,6 +37,7 @@ export const UISearchParamsProvider: React.FC<{ children: React.ReactNode }> = (
     if (uiSearchParams.settername.length > 0) activeFilters.push('setter');
     if (uiSearchParams.holdsFilter && Object.entries(uiSearchParams.holdsFilter).length > 0)
       activeFilters.push('holds');
+    if (uiSearchParams.onlyTallClimbs) activeFilters.push('onlyTallClimbs');
     if (uiSearchParams.hideAttempted) activeFilters.push('hideAttempted');
     if (uiSearchParams.hideCompleted) activeFilters.push('hideCompleted');
     if (uiSearchParams.showOnlyAttempted) activeFilters.push('showOnlyAttempted');
