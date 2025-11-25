@@ -24,7 +24,8 @@ export default function useHeatmapData({
   enabled = true,
 }: UseHeatmapDataProps) {
   const [heatmapData, setHeatmapData] = useState<HeatmapData[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
+  const [hasFetched, setHasFetched] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const { token, user_id } = useBoardProvider();
 
@@ -34,10 +35,12 @@ export default function useHeatmapData({
       return;
     }
 
+    // Reset hasFetched when dependencies change to trigger loading state
+    setHasFetched(false);
+    setIsFetching(true);
+
     const fetchHeatmapData = async () => {
       try {
-        setLoading(true);
-
         // Prepare headers
         const headers: Record<string, string> = {};
 
@@ -63,12 +66,16 @@ export default function useHeatmapData({
         setError(err instanceof Error ? err : new Error('Unknown error'));
         console.error('Error fetching heatmap data:', err);
       } finally {
-        setLoading(false);
+        setIsFetching(false);
+        setHasFetched(true);
       }
     };
 
     fetchHeatmapData();
   }, [boardName, layoutId, sizeId, setIds, angle, filters, token, user_id, enabled]);
+
+  // Show loading if enabled but haven't fetched yet, or if actively fetching
+  const loading = enabled && (!hasFetched || isFetching);
 
   return { data: heatmapData, loading, error };
 }
