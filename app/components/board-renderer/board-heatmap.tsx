@@ -8,8 +8,9 @@ import { scaleLog } from 'd3-scale';
 import useHeatmapData from '../search-drawer/use-heatmap';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
-import { Button, Select, Form, Switch } from 'antd';
+import { Button, Select, Form, Switch, Spin } from 'antd';
 import { track } from '@vercel/analytics';
+import { LoadingOutlined } from '@ant-design/icons';
 
 const LEGEND_HEIGHT = 96; // Increased from 80
 const BLUR_RADIUS = 10; // Increased blur radius
@@ -73,7 +74,7 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({ boardDetails, litUpHoldsMap
     }
   }, [pathname, searchParams, angle]);
 
-  const { data: heatmapData = [] } = useHeatmapData({
+  const { data: heatmapData = [], loading: heatmapLoading } = useHeatmapData({
     boardName: boardDetails.board_name,
     layoutId: boardDetails.layout_id,
     sizeId: boardDetails.size_id,
@@ -246,7 +247,23 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({ boardDetails, litUpHoldsMap
           ))}
 
           {/* Heat overlay with blur effect */}
-          {showHeatmap && (
+          {showHeatmap && heatmapLoading && (
+            <foreignObject x={boardWidth / 2 - 50} y={boardHeight / 2 - 50} width={100} height={100}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  height: '100%',
+                  background: 'rgba(255, 255, 255, 0.8)',
+                  borderRadius: '8px',
+                }}
+              >
+                <Spin indicator={<LoadingOutlined style={{ fontSize: 32 }} spin />} />
+              </div>
+            </foreignObject>
+          )}
+          {showHeatmap && !heatmapLoading && (
             <>
               {/* Blurred background layer */}
               <g filter="url(#blur)">
@@ -350,7 +367,7 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({ boardDetails, litUpHoldsMap
             );
           })}
 
-          {showHeatmap && <ColorLegend />}
+          {showHeatmap && !heatmapLoading && <ColorLegend />}
         </g>
       </svg>
       <Form layout="inline" className="mb-4">
