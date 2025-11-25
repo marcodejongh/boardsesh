@@ -86,6 +86,7 @@ export type SearchRequest = {
   sortOrder: 'asc' | 'desc';
   name: string;
   onlyClassics: boolean;
+  onlyTallClimbs: boolean;
   settername: string[];
   setternameSuggestion: string;
   holdsFilter: LitUpHoldsMap;
