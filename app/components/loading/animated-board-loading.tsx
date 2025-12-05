@@ -39,7 +39,7 @@ const AnimatedBoardLoading: React.FC<AnimatedBoardLoadingProps> = ({ isVisible, 
     const centerY = (boardDetails.edge_top + boardDetails.edge_bottom) / 2;
 
     // Current sweep angle (0-360), advances each frame
-    const sweepAngle = (animationFrame * 3.6) % 360; // Full rotation over 100 frames
+    const sweepAngle = (animationFrame * 7.2) % 360; // Full rotation over 50 frames
     const sweepWidth = 60; // 60 degree sweep arc
 
     const holdsMap: LitUpHoldsMap = {};
