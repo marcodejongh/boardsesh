@@ -8,6 +8,9 @@ const PACKET_MIDDLE = 81;
 const PACKET_FIRST = 82;
 const PACKET_LAST = 83;
 const PACKET_ONLY = 84;
+// Aurora boards (Kilter, Tension, etc.) advertise this service UUID for discovery
+const AURORA_ADVERTISED_SERVICE_UUID = '4488b571-7806-4df6-bcff-a2897e4953ff';
+// Nordic UART Service UUID - used for actual communication
 const SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
 const CHARACTERISTIC_UUID = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
 
@@ -77,9 +80,11 @@ export const writeCharacteristicSeries = async (
   }
 };
 
-export const requestDevice = async (namePrefix: string) =>
+export const requestDevice = async () =>
   navigator.bluetooth.requestDevice({
-    filters: [{ namePrefix }],
+    // Filter by the Aurora advertised service UUID to find Kilter/Tension/Decoy boards
+    // Board names can be customized by users so namePrefix filtering doesn't work reliably
+    filters: [{ services: [AURORA_ADVERTISED_SERVICE_UUID] }],
     optionalServices: [SERVICE_UUID],
   });
 

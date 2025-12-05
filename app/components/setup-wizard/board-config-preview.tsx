@@ -84,6 +84,7 @@ export default function BoardConfigPreview({ config, onDelete, boardConfigs }: B
               details.board_name,
               details.layout_name,
               details.size_name,
+              details.size_description,
               details.set_names,
               savedAngle,
             );

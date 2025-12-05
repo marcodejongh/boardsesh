@@ -62,6 +62,7 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
         boardDetails.board_name,
         boardDetails.layout_name,
         boardDetails.size_name,
+        boardDetails.size_description,
         boardDetails.set_names,
         parsedParams.angle,
       );

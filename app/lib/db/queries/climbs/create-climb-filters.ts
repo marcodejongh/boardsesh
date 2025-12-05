@@ -94,6 +94,30 @@ export const createClimbFilters = (
     ...notHolds.map((holdId) => notLike(tables.climbs.frames, `%${holdId}r%`)),
   ];
 
+  // Tall climbs filter condition
+  // Only applies for Kilter Homewall (layout_id = 8) on the largest size
+  // A "tall climb" is one that uses holds in the bottom rows that are only available on the largest size
+  const tallClimbsConditions: SQL[] = [];
+  const KILTER_HOMEWALL_LAYOUT_ID = 8;
+
+  if (searchParams.onlyTallClimbs && params.board_name === 'kilter' && params.layout_id === KILTER_HOMEWALL_LAYOUT_ID) {
+    // Find the maximum edge_bottom of all sizes smaller than the current size
+    // Climbs with edge_bottom below this threshold use "tall only" holds
+    const productSizesTable = getTableName(params.board_name, 'product_sizes');
+    const layoutsTable = getTableName(params.board_name, 'layouts');
+
+    tallClimbsConditions.push(
+      sql`${tables.climbs.edgeBottom} < (
+        SELECT MAX(other_sizes.edge_bottom)
+        FROM ${sql.identifier(productSizesTable)} other_sizes
+        INNER JOIN ${sql.identifier(layoutsTable)} layouts ON other_sizes.product_id = layouts.product_id
+        WHERE layouts.id = ${params.layout_id}
+        AND other_sizes.id != ${params.size_id}
+        AND other_sizes.edge_bottom < ${sizeTable.edgeTop}
+      )`
+    );
+  }
+
   // Personal progress filter conditions (only apply if userId is provided)
   const personalProgressConditions: SQL[] = [];
   if (userId) {
@@ -193,7 +217,7 @@ export const createClimbFilters = (
 
   return {
     // Helper function to get all climb filtering conditions
-    getClimbWhereConditions: () => [...baseConditions, ...nameCondition, ...setterNameCondition, ...holdConditions, ...personalProgressConditions],
+    getClimbWhereConditions: () => [...baseConditions, ...nameCondition, ...setterNameCondition, ...holdConditions, ...tallClimbsConditions, ...personalProgressConditions],
 
     // Size-specific conditions
     getSizeConditions: () => sizeConditions,
@@ -225,6 +249,7 @@ export const createClimbFilters = (
     nameCondition,
     setterNameCondition,
     holdConditions,
+    tallClimbsConditions,
     sizeConditions,
     personalProgressConditions,
     anyHolds,

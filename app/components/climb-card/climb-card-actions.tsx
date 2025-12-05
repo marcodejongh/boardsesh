@@ -55,6 +55,7 @@ const ClimbCardActions = ({ climb, boardDetails }: ClimbCardActionsProps) => {
               boardDetails.board_name,
               boardDetails.layout_name,
               boardDetails.size_name,
+              boardDetails.size_description,
               boardDetails.set_names,
               climb.angle,
               climb.uuid,

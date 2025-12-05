@@ -133,6 +133,7 @@ export const getBoardDetails = async ({
     // Added for slug-based URLs
     layout_name: layout?.name,
     size_name: size?.name,
+    size_description: size?.description,
     set_names: selectedSets.map((s) => s.name),
   };
 };

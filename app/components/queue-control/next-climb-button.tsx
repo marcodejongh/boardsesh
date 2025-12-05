@@ -42,6 +42,7 @@ export default function NextClimbButton({ navigate = false, boardDetails }: Next
             boardDetails.board_name,
             boardDetails.layout_name,
             boardDetails.size_name,
+            boardDetails.size_description,
             boardDetails.set_names,
             angle,
             nextClimb.climb.uuid,

@@ -215,6 +215,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
               boardDetails.board_name,
               boardDetails.layout_name,
               boardDetails.size_name,
+              boardDetails.size_description,
               boardDetails.set_names,
               savedAngle,
             );
@@ -326,6 +327,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
         cachedBoardDetails.board_name,
         cachedBoardDetails.layout_name,
         cachedBoardDetails.size_name,
+        cachedBoardDetails.size_description,
         cachedBoardDetails.set_names,
         selectedAngle,
       );
@@ -425,6 +427,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
               previewBoardDetails.board_name,
               previewBoardDetails.layout_name,
               previewBoardDetails.size_name,
+              previewBoardDetails.size_description,
               previewBoardDetails.set_names,
               selectedAngle,
             );

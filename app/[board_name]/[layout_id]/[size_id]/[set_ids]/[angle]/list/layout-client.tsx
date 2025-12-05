@@ -44,7 +44,7 @@ const TabsWrapper: React.FC<{ boardDetails: BoardDetails }> = ({ boardDetails })
       children: (
         <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
           <div style={{ flex: 1, overflow: 'auto' }}>
-            <BasicSearchForm />
+            <BasicSearchForm boardDetails={boardDetails} />
           </div>
           <SearchResultsFooter />
         </div>

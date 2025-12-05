@@ -37,6 +37,7 @@ export default async function ListLayout(props: PropsWithChildren<LayoutProps>) 
         boardDetails.board_name,
         boardDetails.layout_name,
         boardDetails.size_name,
+        boardDetails.size_description,
         boardDetails.set_names,
         parsedParams.angle,
       );
