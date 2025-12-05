@@ -98,18 +98,15 @@ export interface SaveAttemptOptions {
   climbed_at: string;
 }
 export interface SaveClimbOptions {
-  layout_id: string;
-  setter_id: string;
+  layout_id: number;
+  setter_id: number;
   name: string;
   description: string;
   is_draft: boolean;
-  frames: Array<{
-    role: number;
-    position: number;
-  }>;
+  frames: string;
   frames_count?: number;
   frames_pace?: number;
-  angle?: number;
+  angle: number;
 }
 export const HOST_BASES: Record<BoardName, string> = {
   // aurora: 'auroraboardapp',

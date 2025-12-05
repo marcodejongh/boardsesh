@@ -13,7 +13,7 @@ import { BoardDetails } from '@/app/lib/types';
 import { ShareBoardButton } from './share-button';
 import { useBoardProvider } from '../board-provider/board-provider-context';
 import { useQueueContext } from '../queue-control/queue-context';
-import { UserOutlined, LogoutOutlined, LoginOutlined } from '@ant-design/icons';
+import { UserOutlined, LogoutOutlined, LoginOutlined, PlusOutlined } from '@ant-design/icons';
 import AngleSelector from './angle-selector';
 import styles from './header.module.css';
 
@@ -25,7 +25,7 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
   const { useBreakpoint } = Grid;
   const screens = useBreakpoint();
   const { data: session } = useSession();
-  const { logout } = useBoardProvider();
+  const { logout, isAuthenticated } = useBoardProvider();
   const { currentClimb } = useQueueContext();
 
   const handleSignOut = () => {
@@ -62,8 +62,8 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
           </Flex>
 
           {/* Center Section - Mobile only */}
-          <Flex justify="center" gap={2}>
-            <div className={styles.mobileOnly}>
+          <Flex justify="center" gap={2} style={{ flex: 1, maxWidth: '200px' }}>
+            <div className={styles.mobileOnly} style={{ flex: 1 }}>
               <SearchClimbNameInput />
             </div>
             <div className={styles.mobileOnly}>
@@ -74,6 +74,13 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
           {/* Right Section */}
           <Flex gap={4} align="center">
             {angle !== undefined && <AngleSelector boardName={boardDetails.board_name} currentAngle={angle} currentClimb={currentClimb} />}
+            {isAuthenticated && angle !== undefined && (
+              <Link
+                href={`/${boardDetails.board_name}/${boardDetails.layout_id}/${boardDetails.size_id}/${boardDetails.set_ids.join(',')}/${angle}/create`}
+              >
+                <Button icon={<PlusOutlined />} type="text" title="Create new climb" />
+              </Link>
+            )}
             <ShareBoardButton />
             <SendClimbToBoardButton boardDetails={boardDetails} />
             {session?.user ? (
