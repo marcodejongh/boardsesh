@@ -94,8 +94,7 @@ const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({ boardDe
     try {
       // Request Bluetooth connection if not already connected
       if (!bluetoothDeviceRef.current || !characteristicRef.current) {
-        const bluetoothboardname = boardDetails.board_name[0].toUpperCase() + boardDetails.board_name.slice(1);
-        const device = await requestDevice(bluetoothboardname);
+        const device = await requestDevice();
         const characteristic = await getCharacteristic(device);
 
         if (characteristic) {
