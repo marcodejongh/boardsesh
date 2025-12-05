@@ -24,20 +24,19 @@ export default function useHeatmapData({
   enabled = true,
 }: UseHeatmapDataProps) {
   const [heatmapData, setHeatmapData] = useState<HeatmapData[]>([]);
-  const [isFetching, setIsFetching] = useState(false);
-  const [hasFetched, setHasFetched] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const { token, user_id } = useBoardProvider();
 
   useEffect(() => {
     // Don't fetch if not enabled
     if (!enabled) {
+      setLoading(false);
       return;
     }
 
-    // Reset hasFetched when dependencies change to trigger loading state
-    setHasFetched(false);
-    setIsFetching(true);
+    let cancelled = false;
+    setLoading(true);
 
     const fetchHeatmapData = async () => {
       try {
@@ -55,27 +54,35 @@ export default function useHeatmapData({
           { headers },
         );
 
+        if (cancelled) return;
+
         if (!response.ok) {
           throw new Error('Failed to fetch heatmap data');
         }
 
         const data = await response.json();
+
+        if (cancelled) return;
+
         setHeatmapData(data.holdStats);
         setError(null);
       } catch (err) {
+        if (cancelled) return;
         setError(err instanceof Error ? err : new Error('Unknown error'));
         console.error('Error fetching heatmap data:', err);
       } finally {
-        setIsFetching(false);
-        setHasFetched(true);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
 
     fetchHeatmapData();
-  }, [boardName, layoutId, sizeId, setIds, angle, filters, token, user_id, enabled]);
 
-  // Show loading if enabled but haven't fetched yet, or if actively fetching
-  const loading = enabled && (!hasFetched || isFetching);
+    return () => {
+      cancelled = true;
+    };
+  }, [boardName, layoutId, sizeId, setIds, angle, filters, token, user_id, enabled]);
 
   return { data: heatmapData, loading, error };
 }
