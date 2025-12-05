@@ -25,7 +25,7 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
   const { useBreakpoint } = Grid;
   const screens = useBreakpoint();
   const { data: session } = useSession();
-  const { logout, isAuthenticated } = useBoardProvider();
+  const { logout } = useBoardProvider();
   const { currentClimb } = useQueueContext();
 
   const handleSignOut = () => {
@@ -74,7 +74,7 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
           {/* Right Section */}
           <Flex gap={4} align="center">
             {angle !== undefined && <AngleSelector boardName={boardDetails.board_name} currentAngle={angle} currentClimb={currentClimb} />}
-            {isAuthenticated && angle !== undefined && (
+            {angle !== undefined && (
               <Link
                 href={`/${boardDetails.board_name}/${boardDetails.layout_id}/${boardDetails.size_id}/${boardDetails.set_ids.join(',')}/${angle}/create`}
               >
