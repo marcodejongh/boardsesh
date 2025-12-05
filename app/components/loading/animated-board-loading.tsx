@@ -30,36 +30,43 @@ const AnimatedBoardLoading: React.FC<AnimatedBoardLoadingProps> = ({ isVisible, 
   const [currentMessage, setCurrentMessage] = useState(loadingMessages[0]);
   const [animationFrame, setAnimationFrame] = useState(0);
 
-  // Generate animated holds map with rotating colors
+  // Generate animated holds map with radial sweep animation (like clock hands)
   const animatedHoldsMap = useMemo<LitUpHoldsMap>(() => {
     if (!boardDetails?.holdsData) return {};
-    
+
+    // Calculate center of board
+    const centerX = (boardDetails.edge_left + boardDetails.edge_right) / 2;
+    const centerY = (boardDetails.edge_top + boardDetails.edge_bottom) / 2;
+
+    // Current sweep angle (0-360), advances each frame
+    const sweepAngle = (animationFrame * 3.6) % 360; // Full rotation over 100 frames
+    const sweepWidth = 60; // 60 degree sweep arc
+
     const holdsMap: LitUpHoldsMap = {};
-    const holdCount = boardDetails.holdsData.length;
-    const numAnimatedHolds = Math.min(12, Math.floor(holdCount * 0.15)); // Animate 15% of holds, max 12
-    
-    // Create a pattern where holds light up in a spiral/wave pattern
-    const selectedHolds = new Set<number>();
-    const step = Math.floor(holdCount / numAnimatedHolds);
-    
-    for (let i = 0; i < numAnimatedHolds; i++) {
-      const holdIndex = (i * step + animationFrame * 3) % holdCount;
-      selectedHolds.add(boardDetails.holdsData[holdIndex].id);
+    const colors = ['#4ECDC4', '#45B7D1', '#96CEB4'];
+
+    for (const hold of boardDetails.holdsData) {
+      // Calculate angle from center (in degrees, 0-360)
+      let angle = Math.atan2(hold.cy - centerY, hold.cx - centerX) * (180 / Math.PI);
+      angle = (angle + 360) % 360; // Normalize to 0-360
+
+      // Check if hold is within the sweep arc
+      const diff = Math.abs(angle - sweepAngle);
+      const withinSweep = diff < sweepWidth / 2 || diff > 360 - sweepWidth / 2;
+
+      if (withinSweep) {
+        // Color based on distance from sweep center for gradient effect
+        const normalizedDiff = Math.min(diff, 360 - diff) / (sweepWidth / 2);
+        const colorIndex = Math.floor(normalizedDiff * 3);
+
+        holdsMap[hold.id] = {
+          state: 'HAND',
+          color: colors[colorIndex] || colors[0],
+          displayColor: colors[colorIndex] || colors[0],
+        };
+      }
     }
-    
-    // Assign colors to selected holds with a gradient effect
-    const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FECA57', '#9B59B6'];
-    let colorIndex = 0;
-    
-    selectedHolds.forEach(holdId => {
-      holdsMap[holdId] = {
-        state: 'HAND',
-        color: colors[colorIndex % colors.length],
-        displayColor: colors[colorIndex % colors.length],
-      };
-      colorIndex++;
-    });
-    
+
     return holdsMap;
   }, [boardDetails, animationFrame]);
 
