@@ -10,6 +10,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
 import { Button, Select, Form, Switch } from 'antd';
 import { track } from '@vercel/analytics';
+import BoardRenderer from './board-renderer';
 
 const LEGEND_HEIGHT = 96; // Increased from 80
 const BLUR_RADIUS = 10; // Increased blur radius
@@ -61,6 +62,7 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({ boardDetails, litUpHoldsMap
 
   const [colorMode, setColorMode] = useState<ColorMode>('ascents');
   const [showNumbers, setShowNumbers] = useState(false);
+  const [showHeatmap, setShowHeatmap] = useState(false);
 
   // Get angle from pathname immediately
   const [angle, setAngle] = useState(() => getAngleFromPath(pathname));
@@ -73,20 +75,57 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({ boardDetails, litUpHoldsMap
     }
   }, [pathname, searchParams, angle]);
 
-  const { data: heatmapData = [] } = useHeatmapData({
+  // Only fetch heatmap data when heatmap is enabled
+  const { data: heatmapData = [], loading: heatmapLoading } = useHeatmapData({
     boardName: boardDetails.board_name,
     layoutId: boardDetails.layout_id,
     sizeId: boardDetails.size_id,
     setIds: boardDetails.set_ids.join(','),
     angle,
     filters: uiSearchParams,
-    // No need to pass userId - it's handled server-side from the session
+    enabled: showHeatmap,
   });
 
   const [threshold, setThreshold] = useState(1);
+  const [animationFrame, setAnimationFrame] = useState(0);
   const { boardWidth, boardHeight, holdsData } = boardDetails;
 
   const heatmapMap = useMemo(() => new Map(heatmapData?.map((data) => [data.holdId, data]) || []), [heatmapData]);
+
+  // Animated holds map for the mini loading board
+  const animatedHoldsMap = useMemo<LitUpHoldsMap>(() => {
+    if (!holdsData) return {};
+
+    const holdsMap: LitUpHoldsMap = {};
+    const holdCount = holdsData.length;
+    const numAnimatedHolds = Math.min(8, Math.floor(holdCount * 0.1)); // Animate 10% of holds, max 8
+
+    const step = Math.floor(holdCount / numAnimatedHolds);
+    const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FECA57', '#9B59B6'];
+
+    for (let i = 0; i < numAnimatedHolds; i++) {
+      const holdIndex = (i * step + animationFrame * 2) % holdCount;
+      const hold = holdsData[holdIndex];
+      holdsMap[hold.id] = {
+        state: 'HAND',
+        color: colors[i % colors.length],
+        displayColor: colors[i % colors.length],
+      };
+    }
+
+    return holdsMap;
+  }, [holdsData, animationFrame]);
+
+  // Animation frame update for hold movement when loading
+  useEffect(() => {
+    if (!heatmapLoading) return;
+
+    const animationInterval = setInterval(() => {
+      setAnimationFrame((prev) => (prev + 1) % 100);
+    }, 150);
+
+    return () => clearInterval(animationInterval);
+  }, [heatmapLoading]);
 
   // Updated getValue function to handle user-specific data
   const getValue = useCallback((data: HeatmapData | undefined): number => {
@@ -198,8 +237,6 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({ boardDetails, litUpHoldsMap
     );
   };
 
-  const [showHeatmap, setShowHeatmap] = useState(false);
-
   // Updated color mode options to include user-specific options
   const colorModeOptions = [
     { value: 'ascents', label: 'Ascents' },
@@ -223,30 +260,60 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({ boardDetails, litUpHoldsMap
 
   return (
     <div className="w-full">
-      <svg
-        viewBox={`0 0 ${boardWidth} ${boardHeight + LEGEND_HEIGHT}`}
-        preserveAspectRatio="xMidYMid meet"
-        className="w-full h-auto max-h-[55vh]"
-      >
-        <defs>
-          <filter id="blur">
-            <feGaussianBlur stdDeviation={BLUR_RADIUS} />
-          </filter>
-        </defs>
+      <div className="relative">
+        {/* Loading overlay with mini animated board */}
+        {showHeatmap && heatmapLoading && (
+          <div
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              zIndex: 10,
+              background: 'rgba(0, 0, 0, 0.85)',
+              borderRadius: '12px',
+              padding: '16px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '12px',
+            }}
+          >
+            <div style={{ width: '120px', height: '120px' }}>
+              <BoardRenderer
+                litUpHoldsMap={animatedHoldsMap}
+                mirrored={false}
+                boardDetails={boardDetails}
+                thumbnail={true}
+              />
+            </div>
+            <span style={{ fontSize: '14px', color: '#fff', fontWeight: 500 }}>Loading heatmap...</span>
+          </div>
+        )}
+        <svg
+          viewBox={`0 0 ${boardWidth} ${boardHeight + LEGEND_HEIGHT}`}
+          preserveAspectRatio="xMidYMid meet"
+          className="w-full h-auto max-h-[55vh]"
+        >
+          <defs>
+            <filter id="blur">
+              <feGaussianBlur stdDeviation={BLUR_RADIUS} />
+            </filter>
+          </defs>
 
-        <g>
-          {/* Board background images */}
-          {Object.keys(boardDetails.images_to_holds).map((imageUrl) => (
-            <image
-              key={imageUrl}
-              href={getImageUrl(imageUrl, boardDetails.board_name)}
-              width="100%"
-              height={boardHeight}
-            />
-          ))}
+          <g>
+            {/* Board background images */}
+            {Object.keys(boardDetails.images_to_holds).map((imageUrl) => (
+              <image
+                key={imageUrl}
+                href={getImageUrl(imageUrl, boardDetails.board_name)}
+                width="100%"
+                height={boardHeight}
+              />
+            ))}
 
-          {/* Heat overlay with blur effect */}
-          {showHeatmap && (
+            {/* Heat overlay with blur effect */}
+            {showHeatmap && !heatmapLoading && (
             <>
               {/* Blurred background layer */}
               <g filter="url(#blur)">
@@ -350,9 +417,10 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({ boardDetails, litUpHoldsMap
             );
           })}
 
-          {showHeatmap && <ColorLegend />}
+          {showHeatmap && !heatmapLoading && <ColorLegend />}
         </g>
       </svg>
+      </div>
       <Form layout="inline" className="mb-4">
         <Form.Item>
           <Button

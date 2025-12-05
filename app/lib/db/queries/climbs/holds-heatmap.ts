@@ -35,10 +35,10 @@ export const getHoldHeatmapData = async (
 
   try {
     // Check if personal progress filters are active - if so, use user-specific counts
-    const personalProgressFiltersEnabled = 
-      searchParams.hideAttempted || 
-      searchParams.hideCompleted || 
-      searchParams.showOnlyAttempted || 
+    const personalProgressFiltersEnabled =
+      searchParams.hideAttempted ||
+      searchParams.hideCompleted ||
+      searchParams.showOnlyAttempted ||
       searchParams.showOnlyCompleted;
 
     let holdStats: Record<string, unknown>[];
@@ -106,36 +106,33 @@ export const getHoldHeatmapData = async (
       const bidsTableName = getTableName(params.board_name, 'bids');
       const climbHoldsTableName = getTableName(params.board_name, 'climb_holds');
 
-      // Query for user ascents per hold
-      const userAscentsQuery = await db.execute(sql`
-        SELECT ch.hold_id, COUNT(*) as user_ascents
-        FROM ${sql.identifier(ascentsTableName)} a
-        JOIN ${sql.identifier(climbHoldsTableName)} ch ON a.climb_uuid = ch.climb_uuid
-        WHERE a.user_id = ${userId}
-          AND a.angle = ${params.angle}
-        GROUP BY ch.hold_id
-      `);
-
-      const userAttemptsQuery = await db.execute(sql`
-        SELECT ch.hold_id, SUM(attempt_count) as user_attempts
-        FROM (
-          -- Get bid_count from bids table
-          SELECT b.climb_uuid, b.bid_count as attempt_count
-          FROM ${sql.identifier(bidsTableName)} b
-          WHERE b.user_id = ${userId}
-            AND b.angle = ${params.angle}
-          
-          UNION ALL
-          
-          -- Get bid_count from ascents table
-          SELECT a.climb_uuid, a.bid_count as attempt_count
+      // Query for user ascents and attempts per hold in parallel
+      const [userAscentsQuery, userAttemptsQuery] = await Promise.all([
+        db.execute(sql`
+          SELECT ch.hold_id, COUNT(*) as user_ascents
           FROM ${sql.identifier(ascentsTableName)} a
+          JOIN ${sql.identifier(climbHoldsTableName)} ch ON a.climb_uuid = ch.climb_uuid
           WHERE a.user_id = ${userId}
             AND a.angle = ${params.angle}
-        ) attempts
-        JOIN ${sql.identifier(climbHoldsTableName)} ch ON attempts.climb_uuid = ch.climb_uuid
-        GROUP BY ch.hold_id
-      `);
+          GROUP BY ch.hold_id
+        `),
+        db.execute(sql`
+          SELECT ch.hold_id, SUM(attempt_count) as user_attempts
+          FROM (
+            SELECT b.climb_uuid, b.bid_count as attempt_count
+            FROM ${sql.identifier(bidsTableName)} b
+            WHERE b.user_id = ${userId}
+              AND b.angle = ${params.angle}
+            UNION ALL
+            SELECT a.climb_uuid, a.bid_count as attempt_count
+            FROM ${sql.identifier(ascentsTableName)} a
+            WHERE a.user_id = ${userId}
+              AND a.angle = ${params.angle}
+          ) attempts
+          JOIN ${sql.identifier(climbHoldsTableName)} ch ON attempts.climb_uuid = ch.climb_uuid
+          GROUP BY ch.hold_id
+        `),
+      ]);
 
       // Convert results to Maps for easier lookup
       const ascentsMap = new Map();
@@ -162,7 +159,7 @@ export const getHoldHeatmapData = async (
       holdStats = holdStats.map((stat) => ({
         ...stat,
         userAscents: Number(stat.totalAscents) || 0,
-        userAttempts: Number(stat.totalUses) || 0, // Use totalUses as attempts when in user mode
+        userAttempts: Number(stat.totalUses) || 0,
       }));
     }
 

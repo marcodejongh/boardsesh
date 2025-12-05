@@ -1,6 +1,8 @@
 {
   "permissions": {
     "allow": [
+      "Bash(find:*)",
+      "Bash(npx tsc:*)"
       "Bash(gh issue view:*)",
       "Bash(npm run lint)",
       "Bash(npm run build:*)",
