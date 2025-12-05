@@ -89,11 +89,11 @@ const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl, angle }: ClimbVie
   };
 
   const getBackToListUrl = () => {
-    const { board_name, layout_name, size_name, set_names } = boardDetails;
+    const { board_name, layout_name, size_name, size_description, set_names } = boardDetails;
 
     // Use slug-based URL construction if slug names are available
     if (layout_name && size_name && set_names) {
-      return constructClimbListWithSlugs(board_name, layout_name, size_name, set_names, angle);
+      return constructClimbListWithSlugs(board_name, layout_name, size_name, size_description, set_names, angle);
     }
 
     // Fallback to numeric format

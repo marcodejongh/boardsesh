@@ -121,6 +121,7 @@ export default async function DynamicResultsPage(props: { params: Promise<BoardR
           parsedParams.board_name,
           layout.name,
           size.name,
+          size.description,
           selectedSets.map((s) => s.name),
           parsedParams.angle,
           parsedParams.climb_uuid,
