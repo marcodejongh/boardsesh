@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Form, Input, Switch, Button, Typography, Flex, Space, Tag } from 'antd';
+import { Form, Input, Switch, Button, Typography, Flex, Space, Tag, Modal } from 'antd';
 import { useRouter } from 'next/navigation';
 import { track } from '@vercel/analytics';
 import BoardRenderer from '../board-renderer/board-renderer';
@@ -26,7 +26,7 @@ interface CreateClimbFormProps {
 
 export default function CreateClimbForm({ boardDetails, angle }: CreateClimbFormProps) {
   const router = useRouter();
-  const { isAuthenticated, saveClimb } = useBoardProvider();
+  const { isAuthenticated, saveClimb, login } = useBoardProvider();
   const {
     litUpHoldsMap,
     handleHoldClick,
@@ -39,13 +39,13 @@ export default function CreateClimbForm({ boardDetails, angle }: CreateClimbForm
   } = useCreateClimb(boardDetails.board_name);
 
   const [form] = Form.useForm<CreateClimbFormValues>();
+  const [loginForm] = Form.useForm<{ username: string; password: string }>();
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [pendingFormValues, setPendingFormValues] = useState<CreateClimbFormValues | null>(null);
 
-  const handleSubmit = async (values: CreateClimbFormValues) => {
-    if (!isValid) {
-      return;
-    }
-
+  const doSaveClimb = async (values: CreateClimbFormValues) => {
     setIsSaving(true);
 
     try {
@@ -87,6 +87,48 @@ export default function CreateClimbForm({ boardDetails, angle }: CreateClimbForm
     }
   };
 
+  const handleSubmit = async (values: CreateClimbFormValues) => {
+    if (!isValid) {
+      return;
+    }
+
+    if (!isAuthenticated) {
+      // Store the form values and show login modal
+      setPendingFormValues(values);
+      setIsLoginModalOpen(true);
+      return;
+    }
+
+    await doSaveClimb(values);
+  };
+
+  const handleLogin = async (loginValues: { username: string; password: string }) => {
+    setIsLoggingIn(true);
+    try {
+      await login(boardDetails.board_name, loginValues.username, loginValues.password);
+      track('User Login Success', {
+        boardLayout: boardDetails.layout_name || '',
+        context: 'create_climb',
+      });
+      setIsLoginModalOpen(false);
+      loginForm.resetFields();
+
+      // If we have pending form values, save the climb now
+      if (pendingFormValues) {
+        await doSaveClimb(pendingFormValues);
+        setPendingFormValues(null);
+      }
+    } catch (error) {
+      console.error('Login failed:', error);
+      track('User Login Failed', {
+        boardLayout: boardDetails.layout_name || '',
+        context: 'create_climb',
+      });
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
   const handleCancel = () => {
     const listUrl = constructClimbListWithSlugs(
       boardDetails.board_name,
@@ -98,14 +140,11 @@ export default function CreateClimbForm({ boardDetails, angle }: CreateClimbForm
     router.push(listUrl);
   };
 
-  if (!isAuthenticated) {
-    return (
-      <div style={{ padding: '16px', textAlign: 'center' }}>
-        <Title level={4}>Please log in to create climbs</Title>
-        <Text type="secondary">You need to be logged in to create and save climbs.</Text>
-      </div>
-    );
-  }
+  const handleLoginModalCancel = () => {
+    setIsLoginModalOpen(false);
+    setPendingFormValues(null);
+    loginForm.resetFields();
+  };
 
   return (
     <div style={{ padding: '16px' }}>
@@ -184,6 +223,41 @@ export default function CreateClimbForm({ boardDetails, angle }: CreateClimbForm
           </Space>
         </Form>
       </Flex>
+
+      {/* Aurora Login Modal */}
+      <Modal
+        title="Aurora Login Required"
+        open={isLoginModalOpen}
+        onCancel={handleLoginModalCancel}
+        footer={null}
+        destroyOnClose
+      >
+        <Text type="secondary" style={{ display: 'block', marginBottom: '16px' }}>
+          Please log in with your {boardDetails.board_name.charAt(0).toUpperCase() + boardDetails.board_name.slice(1)}{' '}
+          Board account to save your climb.
+        </Text>
+        <Form form={loginForm} layout="vertical" onFinish={handleLogin}>
+          <Form.Item
+            name="username"
+            label="Username"
+            rules={[{ required: true, message: 'Please enter your username' }]}
+          >
+            <Input placeholder="Enter username" />
+          </Form.Item>
+
+          <Form.Item
+            name="password"
+            label="Password"
+            rules={[{ required: true, message: 'Please enter your password' }]}
+          >
+            <Input.Password placeholder="Enter password" />
+          </Form.Item>
+
+          <Button type="primary" htmlType="submit" loading={isLoggingIn} block>
+            {isLoggingIn ? 'Logging in...' : 'Login & Save Climb'}
+          </Button>
+        </Form>
+      </Modal>
     </div>
   );
 }
