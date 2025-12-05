@@ -47,6 +47,7 @@ export const searchParamsToUrlParams = ({
   sortOrder,
   name,
   onlyClassics,
+  onlyTallClimbs,
   settername,
   setternameSuggestion,
   holdsFilter,
@@ -86,6 +87,9 @@ export const searchParamsToUrlParams = ({
   }
   if (onlyClassics !== DEFAULT_SEARCH_PARAMS.onlyClassics) {
     params.onlyClassics = onlyClassics.toString();
+  }
+  if (onlyTallClimbs !== DEFAULT_SEARCH_PARAMS.onlyTallClimbs) {
+    params.onlyTallClimbs = onlyTallClimbs.toString();
   }
   if (settername && settername.length > 0) {
     params.settername = settername.join(',');
@@ -131,6 +135,7 @@ export const DEFAULT_SEARCH_PARAMS: SearchRequestPagination = {
   sortOrder: 'desc',
   name: '',
   onlyClassics: false,
+  onlyTallClimbs: false,
   settername: [],
   setternameSuggestion: '',
   holdsFilter: {},
@@ -160,6 +165,7 @@ export const urlParamsToSearchParams = (urlParams: URLSearchParams): SearchReque
     sortOrder: (urlParams.get('sortOrder') ?? DEFAULT_SEARCH_PARAMS.sortOrder) as 'asc' | 'desc',
     name: urlParams.get('name') ?? DEFAULT_SEARCH_PARAMS.name,
     onlyClassics: urlParams.get('onlyClassics') === 'true',
+    onlyTallClimbs: urlParams.get('onlyTallClimbs') === 'true',
     settername: urlParams.get('settername')?.split(',').filter(s => s.length > 0) ?? DEFAULT_SEARCH_PARAMS.settername,
     setternameSuggestion: urlParams.get('setternameSuggestion') ?? DEFAULT_SEARCH_PARAMS.setternameSuggestion,
     //@ts-expect-error fix later
@@ -222,13 +228,14 @@ export const constructClimbViewUrlWithSlugs = (
   board_name: string,
   layoutName: string,
   sizeName: string,
+  sizeDescription: string | undefined,
   setNames: string[],
   angle: number,
   climb_uuid: ClimbUuid,
   climbName?: string,
 ) => {
   const layoutSlug = generateLayoutSlug(layoutName);
-  const sizeSlug = generateSizeSlug(sizeName);
+  const sizeSlug = generateSizeSlug(sizeName, sizeDescription);
   const setSlug = generateSetSlug(setNames);
 
   const baseUrl = `/${board_name}/${layoutSlug}/${sizeSlug}/${setSlug}/${angle}/view/`;
@@ -271,11 +278,12 @@ export const constructClimbListWithSlugs = (
   board_name: string,
   layoutName: string,
   sizeName: string,
+  sizeDescription: string | undefined,
   setNames: string[],
   angle: number,
 ) => {
   const layoutSlug = generateLayoutSlug(layoutName);
-  const sizeSlug = generateSizeSlug(sizeName);
+  const sizeSlug = generateSizeSlug(sizeName, sizeDescription);
   const setSlug = generateSetSlug(setNames);
   return `/${board_name}/${layoutSlug}/${sizeSlug}/${setSlug}/${angle}/list`;
 };
@@ -313,20 +321,41 @@ export const generateLayoutSlug = (layoutName: string): string => {
   return baseSlug;
 };
 
-export const generateSizeSlug = (sizeName: string): string => {
+export const generateSizeSlug = (sizeName: string, description?: string): string => {
   // Extract size dimensions (e.g., "12 x 12 Commercial" -> "12x12")
   const sizeMatch = sizeName.match(/(\d+)\s*x\s*(\d+)/i);
+  let baseSlug = '';
+
   if (sizeMatch) {
-    return `${sizeMatch[1]}x${sizeMatch[2]}`;
+    baseSlug = `${sizeMatch[1]}x${sizeMatch[2]}`;
+  } else {
+    // Fallback to general slug generation
+    baseSlug = sizeName
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
   }
-  // Fallback to general slug generation
-  return sizeName
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '');
+
+  // Append description suffix if provided (for disambiguating sizes with same dimensions)
+  if (description && description.trim()) {
+    const descSlug = description
+      .toLowerCase()
+      .replace(/led\s*kit/gi, '') // Remove "LED Kit" suffix
+      .trim()
+      .replace(/[^\w\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+
+    if (descSlug) {
+      return `${baseSlug}-${descSlug}`;
+    }
+  }
+
+  return baseSlug;
 };
 
 export const generateSetSlug = (setNames: string[]): string => {
@@ -334,17 +363,22 @@ export const generateSetSlug = (setNames: string[]): string => {
     .map((name) => {
       const lowercaseName = name.toLowerCase().trim();
 
-      // Handle homewall-specific set names
-      if (lowercaseName.includes('auxiliary') && lowercaseName.includes('kickboard')) {
+      // Handle homewall-specific set names (supports both "Auxiliary/Mainline" and "Aux/Main" variants)
+      const hasAux = lowercaseName.includes('auxiliary') || lowercaseName.includes('aux');
+      const hasMain = lowercaseName.includes('mainline') || lowercaseName.includes('main');
+      // Support both "kickboard" and "kicker" in set names (different sizes use different naming)
+      const hasKickerVariant = lowercaseName.includes('kickboard') || lowercaseName.includes('kicker');
+
+      if (hasAux && hasKickerVariant) {
         return 'aux-kicker';
       }
-      if (lowercaseName.includes('mainline') && lowercaseName.includes('kickboard')) {
+      if (hasMain && hasKickerVariant) {
         return 'main-kicker';
       }
-      if (lowercaseName.includes('auxiliary')) {
+      if (hasAux) {
         return 'aux';
       }
-      if (lowercaseName.includes('mainline')) {
+      if (hasMain) {
         return 'main';
       }
 

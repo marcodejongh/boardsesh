@@ -1,21 +1,35 @@
 'use client';
 
 import React from 'react';
-import { Form, InputNumber, Row, Col, Select, Switch, Alert, Typography } from 'antd';
+import { Form, InputNumber, Row, Col, Select, Switch, Alert, Typography, Tooltip } from 'antd';
 import { TENSION_KILTER_GRADES } from '@/app/lib/board-data';
 import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
 import { useBoardProvider } from '@/app/components/board-provider/board-provider-context';
 import SearchClimbNameInput from './search-climb-name-input';
 import SetterNameSelect from './setter-name-select';
+import { BoardDetails } from '@/app/lib/types';
 
 const { Title } = Typography;
 
-const BasicSearchForm: React.FC = () => {
+// Kilter Homewall layout ID
+const KILTER_HOMEWALL_LAYOUT_ID = 8;
+
+interface BasicSearchFormProps {
+  boardDetails: BoardDetails;
+}
+
+const BasicSearchForm: React.FC<BasicSearchFormProps> = ({ boardDetails }) => {
   const { uiSearchParams, updateFilters } = useUISearchParams();
   const { token, user_id } = useBoardProvider();
   const grades = TENSION_KILTER_GRADES;
-  
+
   const isLoggedIn = token && user_id;
+
+  // Check if we should show the tall climbs filter
+  // Only show for Kilter Homewall on the largest size (10x12)
+  const isKilterHomewall = boardDetails.board_name === 'kilter' && boardDetails.layout_id === KILTER_HOMEWALL_LAYOUT_ID;
+  const isLargestSize = boardDetails.size_name?.toLowerCase().includes('12');
+  const showTallClimbsFilter = isKilterHomewall && isLargestSize;
 
   const handleGradeChange = (type: 'min' | 'max', value: number | undefined) => {
     if (type === 'min') {
@@ -177,6 +191,23 @@ const BasicSearchForm: React.FC = () => {
           onChange={(checked) => updateFilters({ onlyClassics: checked })}
         />
       </Form.Item>
+
+      {showTallClimbsFilter && (
+        <Form.Item
+          label={
+            <Tooltip title="Show only climbs that use holds in the bottom 8 rows (only available on 10x12 boards)">
+              Tall Climbs Only
+            </Tooltip>
+          }
+          valuePropName="checked"
+        >
+          <Switch
+            style={{ float: 'right' }}
+            checked={uiSearchParams.onlyTallClimbs}
+            onChange={(checked) => updateFilters({ onlyTallClimbs: checked })}
+          />
+        </Form.Item>
+      )}
 
       <Form.Item label="Grade Accuracy">
         <Select
