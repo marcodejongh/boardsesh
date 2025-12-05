@@ -116,6 +116,7 @@ describe('useQueueDataFetching', () => {
       getLogbook: mockGetLogbook,
       logbook: [],
       saveAscent: vi.fn(),
+      saveClimb: vi.fn(),
       boardName: 'kilter'
     });
 

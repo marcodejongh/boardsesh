@@ -1,5 +1,6 @@
 import { BoardName } from '../../types';
 import { API_HOSTS, SaveClimbOptions } from './types';
+import { generateUuid } from './util';
 
 // eslint-disable-next-line  @typescript-eslint/no-explicit-any
 export async function saveClimb(board: BoardName, token: string, options: SaveClimbOptions): Promise<any> {
@@ -17,7 +18,4 @@ export async function saveClimb(board: BoardName, token: string, options: SaveCl
   });
   if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
   return response.json();
-}
-function generateUuid() {
-  throw new Error('Function not implemented.');
 }
