@@ -224,46 +224,53 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({ boardDetails, litUpHoldsMap
 
   return (
     <div className="w-full">
-      <svg
-        viewBox={`0 0 ${boardWidth} ${boardHeight + LEGEND_HEIGHT}`}
-        preserveAspectRatio="xMidYMid meet"
-        className="w-full h-auto max-h-[55vh]"
-      >
-        <defs>
-          <filter id="blur">
-            <feGaussianBlur stdDeviation={BLUR_RADIUS} />
-          </filter>
-        </defs>
+      <div className="relative">
+        {/* Loading overlay - positioned outside SVG for better browser compatibility */}
+        {showHeatmap && heatmapLoading && (
+          <div
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              zIndex: 10,
+              background: 'rgba(255, 255, 255, 0.9)',
+              borderRadius: '8px',
+              padding: '20px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '8px',
+            }}
+          >
+            <Spin indicator={<LoadingOutlined style={{ fontSize: 32 }} spin />} />
+            <span style={{ fontSize: '14px', color: '#666' }}>Loading heatmap...</span>
+          </div>
+        )}
+        <svg
+          viewBox={`0 0 ${boardWidth} ${boardHeight + LEGEND_HEIGHT}`}
+          preserveAspectRatio="xMidYMid meet"
+          className="w-full h-auto max-h-[55vh]"
+        >
+          <defs>
+            <filter id="blur">
+              <feGaussianBlur stdDeviation={BLUR_RADIUS} />
+            </filter>
+          </defs>
 
-        <g>
-          {/* Board background images */}
-          {Object.keys(boardDetails.images_to_holds).map((imageUrl) => (
-            <image
-              key={imageUrl}
-              href={getImageUrl(imageUrl, boardDetails.board_name)}
-              width="100%"
-              height={boardHeight}
-            />
-          ))}
+          <g>
+            {/* Board background images */}
+            {Object.keys(boardDetails.images_to_holds).map((imageUrl) => (
+              <image
+                key={imageUrl}
+                href={getImageUrl(imageUrl, boardDetails.board_name)}
+                width="100%"
+                height={boardHeight}
+              />
+            ))}
 
-          {/* Heat overlay with blur effect */}
-          {showHeatmap && heatmapLoading && (
-            <foreignObject x={boardWidth / 2 - 50} y={boardHeight / 2 - 50} width={100} height={100}>
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  height: '100%',
-                  background: 'rgba(255, 255, 255, 0.8)',
-                  borderRadius: '8px',
-                }}
-              >
-                <Spin indicator={<LoadingOutlined style={{ fontSize: 32 }} spin />} />
-              </div>
-            </foreignObject>
-          )}
-          {showHeatmap && !heatmapLoading && (
+            {/* Heat overlay with blur effect */}
+            {showHeatmap && !heatmapLoading && (
             <>
               {/* Blurred background layer */}
               <g filter="url(#blur)">
@@ -370,6 +377,7 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({ boardDetails, litUpHoldsMap
           {showHeatmap && !heatmapLoading && <ColorLegend />}
         </g>
       </svg>
+      </div>
       <Form layout="inline" className="mb-4">
         <Form.Item>
           <Button
