@@ -89,7 +89,7 @@ const AnimatedBoardLoading: React.FC<AnimatedBoardLoadingProps> = ({ isVisible, 
 
     const animationInterval = setInterval(() => {
       setAnimationFrame(prev => (prev + 1) % 100);
-    }, 150); // Update every 150ms for smooth animation
+    }, 80); // Update every 80ms for faster rotation
 
     return () => clearInterval(animationInterval);
   }, [isVisible, boardDetails]);

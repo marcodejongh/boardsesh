@@ -138,7 +138,7 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({ boardDetails, litUpHoldsMap
 
     const animationInterval = setInterval(() => {
       setAnimationFrame((prev) => (prev + 1) % 100);
-    }, 150);
+    }, 80); // Faster rotation
 
     return () => clearInterval(animationInterval);
   }, [heatmapLoading]);
