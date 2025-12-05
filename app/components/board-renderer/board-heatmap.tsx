@@ -8,9 +8,9 @@ import { scaleLog } from 'd3-scale';
 import useHeatmapData from '../search-drawer/use-heatmap';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
-import { Button, Select, Form, Switch, Spin } from 'antd';
+import { Button, Select, Form, Switch } from 'antd';
 import { track } from '@vercel/analytics';
-import { LoadingOutlined } from '@ant-design/icons';
+import BoardRenderer from './board-renderer';
 
 const LEGEND_HEIGHT = 96; // Increased from 80
 const BLUR_RADIUS = 10; // Increased blur radius
@@ -87,9 +87,45 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({ boardDetails, litUpHoldsMap
   });
 
   const [threshold, setThreshold] = useState(1);
+  const [animationFrame, setAnimationFrame] = useState(0);
   const { boardWidth, boardHeight, holdsData } = boardDetails;
 
   const heatmapMap = useMemo(() => new Map(heatmapData?.map((data) => [data.holdId, data]) || []), [heatmapData]);
+
+  // Animated holds map for the mini loading board
+  const animatedHoldsMap = useMemo<LitUpHoldsMap>(() => {
+    if (!holdsData) return {};
+
+    const holdsMap: LitUpHoldsMap = {};
+    const holdCount = holdsData.length;
+    const numAnimatedHolds = Math.min(8, Math.floor(holdCount * 0.1)); // Animate 10% of holds, max 8
+
+    const step = Math.floor(holdCount / numAnimatedHolds);
+    const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FECA57', '#9B59B6'];
+
+    for (let i = 0; i < numAnimatedHolds; i++) {
+      const holdIndex = (i * step + animationFrame * 2) % holdCount;
+      const hold = holdsData[holdIndex];
+      holdsMap[hold.id] = {
+        state: 'HAND',
+        color: colors[i % colors.length],
+        displayColor: colors[i % colors.length],
+      };
+    }
+
+    return holdsMap;
+  }, [holdsData, animationFrame]);
+
+  // Animation frame update for hold movement when loading
+  useEffect(() => {
+    if (!heatmapLoading) return;
+
+    const animationInterval = setInterval(() => {
+      setAnimationFrame((prev) => (prev + 1) % 100);
+    }, 150);
+
+    return () => clearInterval(animationInterval);
+  }, [heatmapLoading]);
 
   // Updated getValue function to handle user-specific data
   const getValue = useCallback((data: HeatmapData | undefined): number => {
@@ -225,7 +261,7 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({ boardDetails, litUpHoldsMap
   return (
     <div className="w-full">
       <div className="relative">
-        {/* Loading overlay - positioned outside SVG for better browser compatibility */}
+        {/* Loading overlay with mini animated board */}
         {showHeatmap && heatmapLoading && (
           <div
             style={{
@@ -234,17 +270,24 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({ boardDetails, litUpHoldsMap
               left: '50%',
               transform: 'translate(-50%, -50%)',
               zIndex: 10,
-              background: 'rgba(255, 255, 255, 0.9)',
-              borderRadius: '8px',
-              padding: '20px',
+              background: 'rgba(0, 0, 0, 0.85)',
+              borderRadius: '12px',
+              padding: '16px',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              gap: '8px',
+              gap: '12px',
             }}
           >
-            <Spin indicator={<LoadingOutlined style={{ fontSize: 32 }} spin />} />
-            <span style={{ fontSize: '14px', color: '#666' }}>Loading heatmap...</span>
+            <div style={{ width: '120px', height: '120px' }}>
+              <BoardRenderer
+                litUpHoldsMap={animatedHoldsMap}
+                mirrored={false}
+                boardDetails={boardDetails}
+                thumbnail={true}
+              />
+            </div>
+            <span style={{ fontSize: '14px', color: '#fff', fontWeight: 500 }}>Loading heatmap...</span>
           </div>
         )}
         <svg
