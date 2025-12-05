@@ -174,6 +174,24 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
     setSuggestedName(`${layoutName} ${sizeName}`);
   }, [selectedBoard, selectedLayout, selectedSize, layouts, sizes]);
 
+  // Prefetch images for common board configurations
+  useEffect(() => {
+    const prefetchImages = () => {
+      Object.values(boardConfigs.details).forEach((details) => {
+        if (!details) return;
+        Object.keys(details.images_to_holds).forEach((imageUrl) => {
+          const fullUrl = `/images/${details.board_name}/${imageUrl}`;
+          const link = document.createElement('link');
+          link.rel = 'prefetch';
+          link.href = fullUrl;
+          link.as = 'image';
+          document.head.appendChild(link);
+        });
+      });
+    };
+    prefetchImages();
+  }, [boardConfigs.details]);
+
   // Load configurations on mount
   useEffect(() => {
     const loadConfigurations = async () => {
