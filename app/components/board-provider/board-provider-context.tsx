@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { BoardName, ClimbUuid } from '@/app/lib/types';
 import { IDBPDatabase, openDB } from 'idb';
-import { AscentSavedEvent, LogbookEntry, SaveAscentResponse } from '@/app/lib/api-wrappers/aurora/types';
+import { AscentSavedEvent, LogbookEntry, SaveAscentResponse, SaveClimbOptions } from '@/app/lib/api-wrappers/aurora/types';
 import { SaveAscentOptions } from '@/app/lib/api-wrappers/aurora/types';
 import { generateUuid } from '@/app/lib/api-wrappers/aurora/util';
 import { supported_boards } from '../board-renderer/types';
@@ -51,6 +51,10 @@ interface AuthState {
   board: BoardName | null;
 }
 
+export interface SaveClimbResponse {
+  uuid: string;
+}
+
 interface BoardContextType {
   boardName: BoardName;
   isAuthenticated: boolean;
@@ -65,6 +69,7 @@ interface BoardContextType {
   logbook: LogbookEntry[];
   getLogbook: (climbUuids: ClimbUuid[]) => Promise<void>;
   saveAscent: (options: Omit<SaveAscentOptions, 'uuid'>) => Promise<SaveAscentResponse>;
+  saveClimb: (options: Omit<SaveClimbOptions, 'setter_id'>) => Promise<SaveClimbResponse>;
 }
 
 const BoardContext = createContext<BoardContextType | undefined>(undefined);
@@ -309,6 +314,39 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
     }
   };
 
+  const saveClimb = async (options: Omit<SaveClimbOptions, 'setter_id'>): Promise<SaveClimbResponse> => {
+    if (!authState.token || !authState.user_id) {
+      throw new Error('Not authenticated');
+    }
+
+    try {
+      const response = await fetch(`/api/v1/${boardName}/proxy/saveClimb`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          token: authState.token,
+          options: {
+            ...options,
+            setter_id: authState.user_id,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to save climb');
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      message.error('Failed to save climb');
+      throw error;
+    }
+  };
+
   const logout = async () => {
     setAuthState({
       token: null,
@@ -330,6 +368,7 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
     getLogbook,
     logbook,
     saveAscent,
+    saveClimb,
     boardName,
   };
 
