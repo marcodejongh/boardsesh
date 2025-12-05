@@ -222,13 +222,14 @@ export const constructClimbViewUrlWithSlugs = (
   board_name: string,
   layoutName: string,
   sizeName: string,
+  sizeDescription: string | undefined,
   setNames: string[],
   angle: number,
   climb_uuid: ClimbUuid,
   climbName?: string,
 ) => {
   const layoutSlug = generateLayoutSlug(layoutName);
-  const sizeSlug = generateSizeSlug(sizeName);
+  const sizeSlug = generateSizeSlug(sizeName, sizeDescription);
   const setSlug = generateSetSlug(setNames);
 
   const baseUrl = `/${board_name}/${layoutSlug}/${sizeSlug}/${setSlug}/${angle}/view/`;
@@ -271,11 +272,12 @@ export const constructClimbListWithSlugs = (
   board_name: string,
   layoutName: string,
   sizeName: string,
+  sizeDescription: string | undefined,
   setNames: string[],
   angle: number,
 ) => {
   const layoutSlug = generateLayoutSlug(layoutName);
-  const sizeSlug = generateSizeSlug(sizeName);
+  const sizeSlug = generateSizeSlug(sizeName, sizeDescription);
   const setSlug = generateSetSlug(setNames);
   return `/${board_name}/${layoutSlug}/${sizeSlug}/${setSlug}/${angle}/list`;
 };
@@ -313,20 +315,41 @@ export const generateLayoutSlug = (layoutName: string): string => {
   return baseSlug;
 };
 
-export const generateSizeSlug = (sizeName: string): string => {
+export const generateSizeSlug = (sizeName: string, description?: string): string => {
   // Extract size dimensions (e.g., "12 x 12 Commercial" -> "12x12")
   const sizeMatch = sizeName.match(/(\d+)\s*x\s*(\d+)/i);
+  let baseSlug = '';
+
   if (sizeMatch) {
-    return `${sizeMatch[1]}x${sizeMatch[2]}`;
+    baseSlug = `${sizeMatch[1]}x${sizeMatch[2]}`;
+  } else {
+    // Fallback to general slug generation
+    baseSlug = sizeName
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
   }
-  // Fallback to general slug generation
-  return sizeName
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '');
+
+  // Append description suffix if provided (for disambiguating sizes with same dimensions)
+  if (description && description.trim()) {
+    const descSlug = description
+      .toLowerCase()
+      .replace(/led\s*kit/gi, '') // Remove "LED Kit" suffix
+      .trim()
+      .replace(/[^\w\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+
+    if (descSlug) {
+      return `${baseSlug}-${descSlug}`;
+    }
+  }
+
+  return baseSlug;
 };
 
 export const generateSetSlug = (setNames: string[]): string => {

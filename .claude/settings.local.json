@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh issue view:*)",
+      "Bash(npm run lint)",
+      "Bash(npm run build:*)",
+      "Bash(npm install)",
+      "Bash(npm test:*)",
+      "Bash(npx tsc:*)",
+      "Bash(git push:*)"
+    ],
+    "deny": []
+  }
+}

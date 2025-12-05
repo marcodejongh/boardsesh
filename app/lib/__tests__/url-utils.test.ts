@@ -437,6 +437,45 @@ describe('Slug generation functions', () => {
     it('should fallback to general slug for non-dimensional names', () => {
       expect(generateSizeSlug('Custom Size')).toBe('custom-size');
     });
+
+    describe('with description parameter (for disambiguating sizes)', () => {
+      it('should append description suffix for Full Ride LED Kit', () => {
+        expect(generateSizeSlug('10x12', 'Full Ride LED Kit')).toBe('10x12-full-ride');
+      });
+
+      it('should append description suffix for Mainline LED Kit', () => {
+        expect(generateSizeSlug('10x12', 'Mainline LED Kit')).toBe('10x12-mainline');
+      });
+
+      it('should handle size with spaces in name', () => {
+        expect(generateSizeSlug('10 x 12', 'Full Ride LED Kit')).toBe('10x12-full-ride');
+      });
+
+      it('should return just dimensions when description is empty', () => {
+        expect(generateSizeSlug('10x12', '')).toBe('10x12');
+        expect(generateSizeSlug('10x12', '   ')).toBe('10x12');
+      });
+
+      it('should return just dimensions when description is undefined', () => {
+        expect(generateSizeSlug('10x12', undefined)).toBe('10x12');
+        expect(generateSizeSlug('10x12')).toBe('10x12');
+      });
+
+      it('should handle description with only LED Kit (no meaningful suffix)', () => {
+        // After removing "LED Kit", if nothing remains, just return dimensions
+        expect(generateSizeSlug('10x12', 'LED Kit')).toBe('10x12');
+      });
+
+      it('should handle various LED Kit formats', () => {
+        expect(generateSizeSlug('10x12', 'Full Ride led kit')).toBe('10x12-full-ride');
+        expect(generateSizeSlug('10x12', 'Full Ride LED KIT')).toBe('10x12-full-ride');
+        expect(generateSizeSlug('10x12', 'Full RideLEDKit')).toBe('10x12-full-ride');
+      });
+
+      it('should handle non-dimensional size names with description', () => {
+        expect(generateSizeSlug('Custom Size', 'Full Ride LED Kit')).toBe('custom-size-full-ride');
+      });
+    });
   });
 
   describe('generateSetSlug', () => {

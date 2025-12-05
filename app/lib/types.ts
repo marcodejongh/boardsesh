@@ -217,6 +217,7 @@ export type BoardDetails = {
   // Added for slug-based URLs
   layout_name?: string;
   size_name?: string;
+  size_description?: string;
   set_names?: string[];
 };
 

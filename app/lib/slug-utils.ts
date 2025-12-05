@@ -80,15 +80,59 @@ export const getSizeBySlug = async (
     WHERE layouts.id = ${layout_id}
   `) as SizeRow[];
 
-  const size = rows.find((s) => {
-    // Try to match size dimensions first (e.g., "12x12" matches "12 x 12 Commercial")
-    const sizeMatch = s.name.match(/(\d+)\s*x\s*(\d+)/i);
-    if (sizeMatch) {
-      const expectedSlug = `${sizeMatch[1]}x${sizeMatch[2]}`;
-      if (expectedSlug === slug) return true;
-    }
+  // Parse slug - may be "10x12" or "10x12-full-ride"
+  const dimensionMatch = slug.match(/^(\d+x\d+)(?:-(.+))?$/i);
 
-    // Fallback to general slug matching
+  if (dimensionMatch) {
+    const dimensions = dimensionMatch[1].toLowerCase();
+    const descSuffix = dimensionMatch[2]; // e.g., "full-ride" or undefined
+
+    const size = rows.find((s) => {
+      const sizeMatch = s.name.match(/(\d+)\s*x\s*(\d+)/i);
+      if (!sizeMatch) return false;
+
+      const sizeDimensions = `${sizeMatch[1]}x${sizeMatch[2]}`.toLowerCase();
+      if (sizeDimensions !== dimensions) return false;
+
+      // If slug has description suffix, match against description
+      if (descSuffix && s.description) {
+        const descSlug = s.description
+          .toLowerCase()
+          .replace(/led\s*kit/gi, '') // Remove "LED Kit" suffix
+          .trim()
+          .replace(/[^\w\s-]/g, '')
+          .replace(/\s+/g, '-')
+          .replace(/-+/g, '-')
+          .replace(/^-|-$/g, '');
+        return descSlug === descSuffix;
+      }
+
+      // No suffix - default to "Full Ride" variant for backward compat
+      // or first size if no description contains "full ride"
+      if (!descSuffix) {
+        const descLower = (s.description || '').toLowerCase();
+        return descLower.includes('full ride') || !s.description;
+      }
+
+      return false;
+    });
+
+    if (size) return size;
+
+    // If no "Full Ride" found with backward compat, try to match first size with dimensions
+    if (!descSuffix) {
+      const fallbackSize = rows.find((s) => {
+        const sizeMatch = s.name.match(/(\d+)\s*x\s*(\d+)/i);
+        if (!sizeMatch) return false;
+        const sizeDimensions = `${sizeMatch[1]}x${sizeMatch[2]}`.toLowerCase();
+        return sizeDimensions === dimensions;
+      });
+      if (fallbackSize) return fallbackSize;
+    }
+  }
+
+  // Fallback to general slug matching
+  const size = rows.find((s) => {
     const sizeSlug = s.name
       .toLowerCase()
       .trim()
