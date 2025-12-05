@@ -10,6 +10,7 @@ import SearchClimbNameInput from '../search-drawer/search-climb-name-input';
 import { UISearchParamsProvider } from '../queue-control/ui-searchparams-provider';
 import SendClimbToBoardButton from '../board-bluetooth-control/send-climb-to-board-button';
 import { BoardDetails } from '@/app/lib/types';
+import { generateLayoutSlug, generateSizeSlug, generateSetSlug } from '@/app/lib/url-utils';
 import { ShareBoardButton } from './share-button';
 import { useBoardProvider } from '../board-provider/board-provider-context';
 import { useQueueContext } from '../queue-control/queue-context';
@@ -74,9 +75,9 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
           {/* Right Section */}
           <Flex gap={4} align="center">
             {angle !== undefined && <AngleSelector boardName={boardDetails.board_name} currentAngle={angle} currentClimb={currentClimb} />}
-            {angle !== undefined && (
+            {angle !== undefined && boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names && (
               <Link
-                href={`/${boardDetails.board_name}/${boardDetails.layout_id}/${boardDetails.size_id}/${boardDetails.set_ids.join(',')}/${angle}/create`}
+                href={`/${boardDetails.board_name}/${generateLayoutSlug(boardDetails.layout_name)}/${generateSizeSlug(boardDetails.size_name)}/${generateSetSlug(boardDetails.set_names)}/${angle}/create`}
               >
                 <Button icon={<PlusOutlined />} type="text" title="Create new climb" />
               </Link>
