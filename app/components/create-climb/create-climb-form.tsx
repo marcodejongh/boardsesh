@@ -73,6 +73,7 @@ export default function CreateClimbForm({ boardDetails, angle }: CreateClimbForm
         boardDetails.board_name,
         boardDetails.layout_name || '',
         boardDetails.size_name || '',
+        boardDetails.size_description,
         boardDetails.set_names || [],
         angle,
       );
@@ -134,6 +135,7 @@ export default function CreateClimbForm({ boardDetails, angle }: CreateClimbForm
       boardDetails.board_name,
       boardDetails.layout_name || '',
       boardDetails.size_name || '',
+      boardDetails.size_description,
       boardDetails.set_names || [],
       angle,
     );
