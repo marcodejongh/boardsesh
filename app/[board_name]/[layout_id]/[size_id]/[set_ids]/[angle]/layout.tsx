@@ -18,7 +18,7 @@ import { Metadata } from 'next';
 
 /**
  * Generates a user-friendly page title from board details.
- * Example output: "Kilter - Original Layout 12x12 | BoardSesh"
+ * Example output: "Kilter Original 12x12 | BoardSesh"
  */
 function generateBoardTitle(boardDetails: BoardDetails): string {
   const parts: string[] = [];
@@ -27,9 +27,16 @@ function generateBoardTitle(boardDetails: BoardDetails): string {
   const boardName = boardDetails.board_name.charAt(0).toUpperCase() + boardDetails.board_name.slice(1);
   parts.push(boardName);
 
-  // Add layout name if available
+  // Add layout name if available, but strip out board name prefix to avoid duplication
   if (boardDetails.layout_name) {
-    parts.push(boardDetails.layout_name);
+    // Remove board name prefix (e.g., "Kilter Board Original" -> "Original")
+    const layoutName = boardDetails.layout_name
+      .replace(new RegExp(`^${boardDetails.board_name}\\s*(board)?\\s*`, 'i'), '')
+      .trim();
+
+    if (layoutName) {
+      parts.push(layoutName);
+    }
   }
 
   // Add size info - prefer size_name, fallback to size_description
