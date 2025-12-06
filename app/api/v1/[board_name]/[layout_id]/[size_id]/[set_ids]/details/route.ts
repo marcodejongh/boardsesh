@@ -1,12 +1,12 @@
 import { getBoardDetails } from '@/app/lib/data/queries';
-import { BoardRouteParameters } from '@/app/lib/types';
+import { BoardDetailsRouteParameters } from '@/app/lib/types';
 import { NextResponse } from 'next/server';
-import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
+import { parseBoardDetailsRouteParams } from '@/app/lib/url-utils.server';
 
-export async function GET(req: Request, props: { params: Promise<BoardRouteParameters> }) {
+export async function GET(req: Request, props: { params: Promise<BoardDetailsRouteParameters> }) {
   const params = await props.params;
   try {
-    const parsedParams = await parseBoardRouteParamsWithSlugs(params);
+    const parsedParams = await parseBoardDetailsRouteParams(params);
     const boardDetails = await getBoardDetails(parsedParams);
 
     // Return the combined result

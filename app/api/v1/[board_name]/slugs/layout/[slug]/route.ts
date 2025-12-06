@@ -4,13 +4,13 @@ import { BoardName } from '@/app/lib/types';
 
 export async function GET(
   req: Request,
-  props: { params: Promise<{ board_name: BoardName; slug: string }> },
+  props: { params: Promise<{ board_name: string; slug: string }> },
 ): Promise<NextResponse<LayoutRow | { error: string }>> {
   const params = await props.params;
   const { board_name, slug } = params;
 
   try {
-    const layout = await getLayoutBySlug(board_name, slug);
+    const layout = await getLayoutBySlug(board_name as BoardName, slug);
 
     if (!layout) {
       return NextResponse.json(

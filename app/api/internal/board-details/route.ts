@@ -11,7 +11,6 @@ export async function GET(request: NextRequest) {
     const layout_id = parseInt(searchParams.get('layout_id') || '');
     const size_id = parseInt(searchParams.get('size_id') || '');
     const set_ids_param = searchParams.get('set_ids');
-    const angle = parseInt(searchParams.get('angle') || '40');
 
     if (!board_name || isNaN(layout_id) || isNaN(size_id) || !set_ids_param) {
       return NextResponse.json(
@@ -31,7 +30,6 @@ export async function GET(request: NextRequest) {
       layout_id,
       size_id,
       set_ids,
-      angle,
     });
 
     return NextResponse.json(details, {

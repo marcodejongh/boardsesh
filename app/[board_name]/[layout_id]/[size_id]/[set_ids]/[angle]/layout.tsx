@@ -1,7 +1,7 @@
 import React from 'react';
 import { PropsWithChildren } from 'react';
 import { Affix, Layout } from 'antd';
-import { ParsedBoardRouteParameters, BoardRouteParametersWithUuid } from '@/app/lib/types';
+import { ParsedBoardRouteParameters, BoardRouteParameters } from '@/app/lib/types';
 import { parseBoardRouteParams, constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import { permanentRedirect } from 'next/navigation';
@@ -16,25 +16,7 @@ import { ConnectionProviderWrapper } from '@/app/components/connection-manager/c
 import { PartyProvider } from '@/app/components/party-manager/party-context';
 
 interface BoardLayoutProps {
-  params: Promise<BoardRouteParametersWithUuid>;
-  searchParams: {
-    query?: string;
-    page?: string;
-    gradeAccuracy?: string;
-    maxGrade?: string;
-    minAscents?: string;
-    minGrade?: string;
-    minRating?: string;
-    sortBy?: string;
-    sortOrder?: string;
-    name?: string;
-    onlyClassics?: string;
-    settername?: string;
-    setternameSuggestion?: string;
-    holds?: string;
-    mirroredHolds?: string;
-    pageSize?: string;
-  };
+  params: Promise<BoardRouteParameters>;
 }
 
 export default async function BoardLayout(props: PropsWithChildren<BoardLayoutProps>) {

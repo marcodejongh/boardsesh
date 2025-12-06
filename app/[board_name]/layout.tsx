@@ -1,12 +1,11 @@
 import React from 'react';
 import { PropsWithChildren } from 'react';
-import { ParsedBoardRouteParameters, BoardRouteParametersWithUuid } from '@/app/lib/types';
-import { parseBoardRouteParams } from '@/app/lib/url-utils'; // Assume this utility helps with parsing
+import { BoardName, BoardOnlyRouteParameters } from '@/app/lib/types';
 
 import { BoardProvider } from '../components/board-provider/board-provider-context';
 
 interface BoardLayoutProps {
-  params: Promise<BoardRouteParametersWithUuid>;
+  params: Promise<BoardOnlyRouteParameters>;
 }
 
 export default async function BoardLayout(props: PropsWithChildren<BoardLayoutProps>) {
@@ -14,9 +13,6 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
 
   const { children } = props;
 
-  // Parse the route parameters
-  const parsedParams: ParsedBoardRouteParameters = parseBoardRouteParams(params);
-
-  const { board_name } = parsedParams;
+  const board_name = params.board_name as BoardName;
   return <BoardProvider boardName={board_name}>{children}</BoardProvider>;
 }

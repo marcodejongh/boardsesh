@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 
 export async function GET(
   req: Request,
-  props: { params: Promise<{ board_name: BoardName; climb_uuid: string }> },
+  props: { params: Promise<{ board_name: string; climb_uuid: string }> },
 ): Promise<NextResponse<ClimbStatsForAngle[] | ErrorResponse>> {
   const params = await props.params;
   try {
