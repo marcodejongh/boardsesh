@@ -127,25 +127,33 @@ const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({ boardDe
 
         bluetoothDeviceRef.current = device;
         characteristicRef.current = characteristic;
-        setIsConnected(true);
+
         track('Bluetooth Connection Success', {
           boardLayout: `${boardDetails.layout_name}`,
         });
 
         // Send the current climb immediately after connection is established
+        // Button is disabled when no climb is selected, so currentClimbQueueItem should always exist here
         if (currentClimbQueueItem) {
-          let { frames } = currentClimbQueueItem.climb;
-          const placementPositions = boardDetails.ledPlacements;
-          if (currentClimbQueueItem.climb?.mirrored) {
-            frames = convertToMirroredFramesString(frames, boardDetails.holdsData);
+          try {
+            let { frames } = currentClimbQueueItem.climb;
+            const placementPositions = boardDetails.ledPlacements;
+            if (currentClimbQueueItem.climb?.mirrored) {
+              frames = convertToMirroredFramesString(frames, boardDetails.holdsData);
+            }
+            const bluetoothPacket = getBluetoothPacket(frames, placementPositions, boardDetails.board_name);
+            await writeCharacteristicSeries(characteristic, splitMessages(bluetoothPacket));
+            track('Climb Sent to Board Success', {
+              climbUuid: currentClimbQueueItem.climb?.uuid,
+              boardLayout: `${boardDetails.layout_name}`,
+            });
+          } catch (sendError) {
+            console.error('Error sending climb after connection:', sendError);
           }
-          const bluetoothPacket = getBluetoothPacket(frames, placementPositions, boardDetails.board_name);
-          await writeCharacteristicSeries(characteristic, splitMessages(bluetoothPacket));
-          track('Climb Sent to Board Success', {
-            climbUuid: currentClimbQueueItem.climb?.uuid,
-            boardLayout: `${boardDetails.layout_name}`,
-          });
         }
+
+        // Set connected state after successful send attempt
+        setIsConnected(true);
       }
     } catch (error) {
       console.error('Error connecting to Bluetooth:', error);
