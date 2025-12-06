@@ -231,6 +231,19 @@ export type BoardRouteParameters = {
   climb_uuid?: string;
 };
 
+// Route parameters for routes with only board_name
+export type BoardOnlyRouteParameters = {
+  board_name: string;
+};
+
+// Route parameters for routes without angle (e.g., /details endpoint)
+export type BoardDetailsRouteParameters = {
+  board_name: string;
+  layout_id: string;
+  size_id: string;
+  set_ids: string;
+};
+
 export type FetchCurrentProblemResponse = Climb;
 
 export interface ErrorResponse {

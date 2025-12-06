@@ -58,7 +58,7 @@ export const getBoardDetails = async ({
   layout_id,
   size_id,
   set_ids,
-}: ParsedBoardRouteParameters): Promise<BoardDetails> => {
+}: Pick<ParsedBoardRouteParameters, 'board_name' | 'layout_id' | 'size_id' | 'set_ids'>): Promise<BoardDetails> => {
   const imageUrlHoldsMapEntriesPromises = getImageUrlHoldsMapObjectEntries(set_ids, board_name, layout_id, size_id);
 
   const [ledPlacementsResult, sizeDimensionsResult, ...imgUrlMapEntries] = await Promise.all([

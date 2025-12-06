@@ -2,7 +2,7 @@ import React from 'react';
 
 import { PropsWithChildren } from 'react';
 
-import { BoardRouteParametersWithUuid, ParsedBoardRouteParameters } from '@/app/lib/types';
+import { BoardRouteParameters, ParsedBoardRouteParameters } from '@/app/lib/types';
 import { parseBoardRouteParams, constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import { getBoardDetails } from '@/app/lib/data/queries';
@@ -10,7 +10,7 @@ import { permanentRedirect } from 'next/navigation';
 import ListLayoutClient from './layout-client';
 
 interface LayoutProps {
-  params: Promise<BoardRouteParametersWithUuid>;
+  params: Promise<BoardRouteParameters>;
 }
 
 export default async function ListLayout(props: PropsWithChildren<LayoutProps>) {

@@ -1,7 +1,6 @@
 // app/api/v1/[board_name]/proxy/saveAscent/route.ts
 import { saveAscent } from '@/app/lib/api-wrappers/aurora/saveAscent';
-import { BoardRouteParameters, ParsedBoardRouteParameters } from '@/app/lib/types';
-import { parseBoardRouteParams } from '@/app/lib/url-utils';
+import { BoardName, BoardOnlyRouteParameters } from '@/app/lib/types';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -25,9 +24,9 @@ const saveAscentSchema = z.object({
     .strict(),
 });
 
-export async function POST(request: Request, props: { params: Promise<BoardRouteParameters> }) {
+export async function POST(request: Request, props: { params: Promise<BoardOnlyRouteParameters> }) {
   const params = await props.params;
-  const { board_name }: ParsedBoardRouteParameters = parseBoardRouteParams(params);
+  const board_name = params.board_name as BoardName;
 
   let validatedData: z.infer<typeof saveAscentSchema> | null = null;
 

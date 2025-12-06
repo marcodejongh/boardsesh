@@ -37,7 +37,6 @@ export async function getAllBoardConfigs(): Promise<BoardConfigData> {
         layout_id: layoutId,
         size_id: sizeId,
         set_ids: setIds,
-        angle: 40,
       });
       configData.details[key] = details;
     } catch (error) {

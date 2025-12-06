@@ -7,9 +7,10 @@ import { extractUuidFromSlug } from '@/app/lib/url-utils';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ board_name: BoardName; climb_uuid: string }> },
+  { params }: { params: Promise<{ board_name: string; climb_uuid: string }> },
 ) {
-  const { board_name, climb_uuid: rawClimbUuid } = await params;
+  const { board_name: boardNameParam, climb_uuid: rawClimbUuid } = await params;
+  const board_name = boardNameParam as BoardName;
   const climb_uuid = extractUuidFromSlug(rawClimbUuid);
 
   try {

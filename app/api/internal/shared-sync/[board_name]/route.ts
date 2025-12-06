@@ -1,13 +1,18 @@
 // app/api/cron/sync-shared-data/route.ts
 import { NextResponse } from 'next/server';
 import { syncSharedData as syncSharedDataFunction } from '@/lib/data-sync/aurora/shared-sync';
-import { BoardRouteParameters, ParsedBoardRouteParameters, BoardName } from '@/app/lib/types';
-import { parseBoardRouteParams } from '@/app/lib/url-utils';
+import { BoardName } from '@/app/lib/types';
+
+const VALID_BOARD_NAMES: BoardName[] = ['kilter', 'tension'];
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 // This is a simple way to secure the endpoint, should be replaced with a better solution
 const CRON_SECRET = process.env.CRON_SECRET;
+
+type SharedSyncRouteParams = {
+  board_name: string;
+};
 
 const internalSyncSharedData = async (
   board_name: BoardName,
@@ -59,10 +64,17 @@ const internalSyncSharedData = async (
   return mergedResults;
 };
 
-export async function GET(request: Request, props: { params: Promise<BoardRouteParameters> }) {
+export async function GET(request: Request, props: { params: Promise<SharedSyncRouteParams> }) {
   const params = await props.params;
   try {
-    const { board_name }: ParsedBoardRouteParameters = parseBoardRouteParams(params);
+    const { board_name: boardNameParam } = params;
+
+    // Validate board_name is a valid BoardName
+    if (!VALID_BOARD_NAMES.includes(boardNameParam as BoardName)) {
+      return NextResponse.json({ error: `Invalid board name: ${boardNameParam}` }, { status: 400 });
+    }
+    const board_name = boardNameParam as BoardName;
+
     console.log(`Starting shared sync for ${board_name}`);
 
     // Basic auth check

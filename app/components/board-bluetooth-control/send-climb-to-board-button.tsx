@@ -54,6 +54,23 @@ const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({ boardDe
   const bluetoothDeviceRef = useRef<BluetoothDevice | null>(null);
   const characteristicRef = useRef<BluetoothRemoteGATTCharacteristic | null>(null);
 
+  // Handler for device disconnection
+  const handleDisconnection = useCallback(() => {
+    setIsConnected(false);
+    characteristicRef.current = null;
+    // Don't clear the device ref so we can potentially reconnect to the same device
+  }, []);
+
+  // Clean up disconnect listener from a device
+  const cleanupDeviceListeners = useCallback(
+    (device: BluetoothDevice | null) => {
+      if (device) {
+        device.removeEventListener('gattserverdisconnected', handleDisconnection);
+      }
+    },
+    [handleDisconnection],
+  );
+
   // Function to send climb data to the board
   const sendClimbToBoard = useCallback(async () => {
     if (!currentClimbQueueItem || !characteristicRef.current) return;
@@ -92,35 +109,58 @@ const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({ boardDe
     setLoading(true);
 
     try {
-      // Request Bluetooth connection if not already connected
-      if (!bluetoothDeviceRef.current || !characteristicRef.current) {
-        const device = await requestDevice();
-        const characteristic = await getCharacteristic(device);
+      // Clean up any existing device listeners before requesting a new device
+      cleanupDeviceListeners(bluetoothDeviceRef.current);
 
-        if (characteristic) {
-          bluetoothDeviceRef.current = device;
-          characteristicRef.current = characteristic;
-          setIsConnected(true); // Mark as connected
-          track('Bluetooth Connection Success', {
+      // Always request a new device to allow connecting to a different board
+      // or reconnecting to the same board
+      const device = await requestDevice();
+      const characteristic = await getCharacteristic(device);
+
+      if (characteristic) {
+        // Set up disconnection listener
+        device.addEventListener('gattserverdisconnected', handleDisconnection);
+
+        bluetoothDeviceRef.current = device;
+        characteristicRef.current = characteristic;
+        setIsConnected(true);
+        track('Bluetooth Connection Success', {
+          boardLayout: `${boardDetails.layout_name}`,
+        });
+
+        // Send the current climb immediately after connection is established
+        if (currentClimbQueueItem) {
+          let { frames } = currentClimbQueueItem.climb;
+          const placementPositions = boardDetails.ledPlacements;
+          if (currentClimbQueueItem.climb?.mirrored) {
+            frames = convertToMirroredFramesString(frames, boardDetails.holdsData);
+          }
+          const bluetoothPacket = getBluetoothPacket(frames, placementPositions, boardDetails.board_name);
+          await writeCharacteristicSeries(characteristic, splitMessages(bluetoothPacket));
+          track('Climb Sent to Board Success', {
+            climbUuid: currentClimbQueueItem.climb?.uuid,
             boardLayout: `${boardDetails.layout_name}`,
           });
         }
       }
-
-      // Immediately send the climb after connecting
-      if (characteristicRef.current) {
-        await sendClimbToBoard();
-      }
     } catch (error) {
       console.error('Error connecting to Bluetooth:', error);
-      setIsConnected(false); // Mark as disconnected if an error occurs
+      setIsConnected(false);
+      characteristicRef.current = null;
       track('Bluetooth Connection Failed', {
         boardLayout: `${boardDetails.layout_name}`,
       });
     } finally {
       setLoading(false);
     }
-  }, [sendClimbToBoard, boardDetails]);
+  }, [cleanupDeviceListeners, handleDisconnection, boardDetails, currentClimbQueueItem]);
+
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      cleanupDeviceListeners(bluetoothDeviceRef.current);
+    };
+  }, [cleanupDeviceListeners]);
 
   // Automatically send climb when currentClimbQueueItem changes (only if connected)
   useEffect(() => {
@@ -133,7 +173,7 @@ const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({ boardDe
     <Button
       id="button-illuminate"
       type="default"
-      icon={isConnected ? <BulbFilled className={'connect-button-glow'} /> : <BulbOutlined />} // Conditionally apply "glow" class
+      icon={isConnected ? <BulbFilled className={'connect-button-glow'} /> : <BulbOutlined />}
       onClick={handleClick}
       loading={loading}
       disabled={!currentClimbQueueItem}

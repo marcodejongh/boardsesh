@@ -2,8 +2,7 @@ import { sql } from '@/app/lib/db/db';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import AuroraClimbingClient from '@/app/lib/api-wrappers/aurora-rest-client/aurora-rest-client';
-import { BoardName, BoardRouteParameters, ParsedBoardRouteParameters } from '@/app/lib/types';
-import { parseBoardRouteParams } from '@/app/lib/url-utils';
+import { BoardName, BoardOnlyRouteParameters } from '@/app/lib/types';
 import { syncUserData } from '@/app/lib/data-sync/aurora/user-sync';
 import { Session } from '@/app/lib/api-wrappers/aurora-rest-client/types';
 import { getSession } from '@/app/lib/session';
@@ -64,9 +63,9 @@ async function login(boardName: BoardName, username: string, password: string): 
  * @param props - Route parameters
  * @returns NextResponse with login results or error
  */
-export async function POST(request: Request, props: { params: Promise<BoardRouteParameters> }) {
+export async function POST(request: Request, props: { params: Promise<BoardOnlyRouteParameters> }) {
   const params = await props.params;
-  const { board_name }: ParsedBoardRouteParameters = parseBoardRouteParams(params);
+  const board_name = params.board_name as BoardName;
 
   try {
     // Parse and validate request body

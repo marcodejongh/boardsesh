@@ -1,15 +1,14 @@
 // app/api/login/route.ts
 import { getLogbook } from '@/app/lib/data/get-logbook';
 import { getSession } from '@/app/lib/session';
-import { BoardRouteParameters, ParsedBoardRouteParameters } from '@/app/lib/types';
-import { parseBoardRouteParams } from '@/app/lib/url-utils';
+import { BoardName, BoardOnlyRouteParameters } from '@/app/lib/types';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
-export async function POST(request: Request, props: { params: Promise<BoardRouteParameters> }) {
+export async function POST(request: Request, props: { params: Promise<BoardOnlyRouteParameters> }) {
   const params = await props.params;
-  const { board_name }: ParsedBoardRouteParameters = parseBoardRouteParams(params);
+  const board_name = params.board_name as BoardName;
   try {
     // Parse and validate request body
     const validatedData = await request.json();
