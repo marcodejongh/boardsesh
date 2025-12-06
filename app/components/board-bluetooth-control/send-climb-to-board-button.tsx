@@ -15,6 +15,7 @@ import {
   writeCharacteristicSeries,
 } from './bluetooth';
 import { HoldRenderData } from '../board-renderer/types';
+import { useWakeLock } from './use-wake-lock';
 
 type SendClimbToBoardButtonProps = { boardDetails: BoardDetails };
 
@@ -49,6 +50,9 @@ const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({ boardDe
   const { currentClimbQueueItem } = useQueueContext();
   const [loading, setLoading] = useState(false);
   const [isConnected, setIsConnected] = useState(false); // Track Bluetooth connection state
+
+  // Prevent device from sleeping while connected to the board
+  useWakeLock(isConnected);
 
   // Store Bluetooth device and characteristic across renders
   const bluetoothDeviceRef = useRef<BluetoothDevice | null>(null);
