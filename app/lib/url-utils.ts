@@ -251,7 +251,7 @@ export const constructClimbViewUrlWithSlugs = (
 export const constructClimbInfoUrl = (
   { board_name }: BoardDetails,
   climb_uuid: ClimbUuid,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+   
   angle: Angle,
 ) => `https://${board_name}boardapp${board_name === 'tension' ? '2' : ''}.com/climbs/${climb_uuid}`;
 

@@ -7,7 +7,7 @@ export async function sharedSync(
   board: BoardName,
   options: Omit<SyncOptions, 'walls' | 'wallExpungements'> = {},
   token: string,
-  // eslint-disable-next-line  @typescript-eslint/no-explicit-any
+   
 ): Promise<SyncData> {
   const { sharedSyncs = [] } = options;
 

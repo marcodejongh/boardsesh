@@ -64,16 +64,8 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({ boardDetails, litUpHoldsMap
   const [showNumbers, setShowNumbers] = useState(false);
   const [showHeatmap, setShowHeatmap] = useState(false);
 
-  // Get angle from pathname immediately
-  const [angle, setAngle] = useState(() => getAngleFromPath(pathname));
-
-  // Update angle if pathname changes
-  useEffect(() => {
-    const newAngle = getAngleFromPath(pathname);
-    if (newAngle !== angle) {
-      setAngle(newAngle);
-    }
-  }, [pathname, searchParams, angle]);
+  // Get angle from pathname - derived directly without needing state
+  const angle = useMemo(() => getAngleFromPath(pathname), [pathname]);
 
   // Only fetch heatmap data when heatmap is enabled
   const { data: heatmapData = [], loading: heatmapLoading } = useHeatmapData({
