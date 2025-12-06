@@ -1,7 +1,7 @@
 import React from 'react';
 import { PropsWithChildren } from 'react';
 import { Affix, Layout } from 'antd';
-import { ParsedBoardRouteParameters, BoardRouteParameters } from '@/app/lib/types';
+import { ParsedBoardRouteParameters, BoardRouteParameters, BoardDetails } from '@/app/lib/types';
 import { parseBoardRouteParams, constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import { permanentRedirect } from 'next/navigation';
@@ -14,6 +14,77 @@ import BoardSeshHeader from '@/app/components/board-page/header';
 import { QueueProvider } from '@/app/components/queue-control/queue-context';
 import { ConnectionProviderWrapper } from '@/app/components/connection-manager/connection-provider-wrapper';
 import { PartyProvider } from '@/app/components/party-manager/party-context';
+import { Metadata } from 'next';
+
+/**
+ * Generates a user-friendly page title from board details.
+ * Example output: "Kilter Original 12x12 | BoardSesh"
+ */
+function generateBoardTitle(boardDetails: BoardDetails): string {
+  const parts: string[] = [];
+
+  // Capitalize board name
+  const boardName = boardDetails.board_name.charAt(0).toUpperCase() + boardDetails.board_name.slice(1);
+  parts.push(boardName);
+
+  // Add layout name if available, but strip out board name prefix to avoid duplication
+  if (boardDetails.layout_name) {
+    // Remove board name prefix (e.g., "Kilter Board Original" -> "Original")
+    const layoutName = boardDetails.layout_name
+      .replace(new RegExp(`^${boardDetails.board_name}\\s*(board)?\\s*`, 'i'), '')
+      .trim();
+
+    if (layoutName) {
+      parts.push(layoutName);
+    }
+  }
+
+  // Add size info - prefer size_name, fallback to size_description
+  if (boardDetails.size_name) {
+    // Extract dimensions if present (e.g., "12 x 12 Commercial" -> "12x12")
+    const sizeMatch = boardDetails.size_name.match(/(\d+)\s*x\s*(\d+)/i);
+    if (sizeMatch) {
+      parts.push(`${sizeMatch[1]}x${sizeMatch[2]}`);
+    } else {
+      parts.push(boardDetails.size_name);
+    }
+  } else if (boardDetails.size_description) {
+    parts.push(boardDetails.size_description);
+  }
+
+  return `${parts.join(' ')} | BoardSesh`;
+}
+
+export async function generateMetadata(props: { params: Promise<BoardRouteParameters> }): Promise<Metadata> {
+  const params = await props.params;
+
+  try {
+    const hasNumericParams = [params.layout_id, params.size_id, params.set_ids].some((param) =>
+      param.includes(',') ? param.split(',').every((id) => /^\d+$/.test(id.trim())) : /^\d+$/.test(param),
+    );
+
+    let parsedParams: ParsedBoardRouteParameters;
+
+    if (hasNumericParams) {
+      parsedParams = parseBoardRouteParams(params);
+    } else {
+      parsedParams = await parseBoardRouteParamsWithSlugs(params);
+    }
+
+    const boardDetails = await getBoardDetails(parsedParams);
+    const title = generateBoardTitle(boardDetails);
+
+    return {
+      title,
+    };
+  } catch {
+    // Fallback title if metadata generation fails
+    const boardName = params.board_name.charAt(0).toUpperCase() + params.board_name.slice(1);
+    return {
+      title: `${boardName} | BoardSesh`,
+    };
+  }
+}
 
 interface BoardLayoutProps {
   params: Promise<BoardRouteParameters>;
@@ -56,46 +127,43 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
     parsedParams = await parseBoardRouteParamsWithSlugs(params);
   }
 
-  const { board_name, layout_id, angle } = parsedParams;
+  const { board_name, angle } = parsedParams;
 
   // Fetch the climbs and board details server-side
   const [boardDetails] = await Promise.all([getBoardDetails(parsedParams)]);
 
   return (
-    <>
-      <title>{`Boardsesh on ${board_name} - Layout ${layout_id}`}</title>
-      <Layout style={{ height: '100dvh', display: 'flex', flexDirection: 'column' }}>
-        <ConnectionProviderWrapper>
-          <QueueProvider parsedParams={parsedParams}>
-            <PartyProvider>
-              <BoardSeshHeader boardDetails={boardDetails} angle={angle} />
+    <Layout style={{ height: '100dvh', display: 'flex', flexDirection: 'column' }}>
+      <ConnectionProviderWrapper>
+        <QueueProvider parsedParams={parsedParams}>
+          <PartyProvider>
+            <BoardSeshHeader boardDetails={boardDetails} angle={angle} />
 
-              <Content
-                id="content-for-scrollable"
-                style={{
-                  flex: 1,
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  overflowY: 'auto',
-                  overflowX: 'hidden',
-                  height: '80vh',
-                  paddingLeft: '10px',
-                  paddingRight: '10px',
-                  paddingTop: '10px',
-                }}
-              >
-                {children}
-              </Content>
+            <Content
+              id="content-for-scrollable"
+              style={{
+                flex: 1,
+                justifyContent: 'center',
+                alignItems: 'center',
+                overflowY: 'auto',
+                overflowX: 'hidden',
+                height: '80vh',
+                paddingLeft: '10px',
+                paddingRight: '10px',
+                paddingTop: '10px',
+              }}
+            >
+              {children}
+            </Content>
 
-              <Affix offsetBottom={0}>
-                <div style={{ width: '100%', backgroundColor: '#fff', boxShadow: '0 -2px 8px rgba(0, 0, 0, 0.15)' }}>
-                  <QueueControlBar board={board_name} boardDetails={boardDetails} angle={angle} />
-                </div>
-              </Affix>
-            </PartyProvider>
-          </QueueProvider>
-        </ConnectionProviderWrapper>
-      </Layout>
-    </>
+            <Affix offsetBottom={0}>
+              <div style={{ width: '100%', backgroundColor: '#fff', boxShadow: '0 -2px 8px rgba(0, 0, 0, 0.15)' }}>
+                <QueueControlBar board={board_name} boardDetails={boardDetails} angle={angle} />
+              </div>
+            </Affix>
+          </PartyProvider>
+        </QueueProvider>
+      </ConnectionProviderWrapper>
+    </Layout>
   );
 }
