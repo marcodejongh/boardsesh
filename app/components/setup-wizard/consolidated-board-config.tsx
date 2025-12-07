@@ -211,46 +211,30 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
         setSelectedAngle(defaultConfig.angle || 40);
         setUseAsDefault(defaultConfig.useAsDefault);
 
-        // Redirect immediately if there's a default
-        const setsString = defaultConfig.setIds.join(',');
+        // Redirect immediately if there's a default - always use SEO-friendly slug URLs
         const savedAngle = defaultConfig.angle || 40;
 
-        try {
-          // Try to get board details for slug-based URL from cache first
-          const detailsKey = `${defaultConfig.board}-${defaultConfig.layoutId}-${defaultConfig.sizeId}-${defaultConfig.setIds.join(',')}`;
-          let boardDetails = boardConfigs.details[detailsKey];
+        // Look up names from the pre-loaded board configs data
+        const configLayouts = boardConfigs.layouts[defaultConfig.board as BoardName] || [];
+        const configSizes = boardConfigs.sizes[`${defaultConfig.board}-${defaultConfig.layoutId}`] || [];
+        const configSets = boardConfigs.sets[`${defaultConfig.board}-${defaultConfig.layoutId}-${defaultConfig.sizeId}`] || [];
 
-          if (!boardDetails) {
-            boardDetails = await fetchBoardDetails(
-              defaultConfig.board,
-              defaultConfig.layoutId,
-              defaultConfig.sizeId,
-              defaultConfig.setIds,
-            );
-          }
+        const layout = configLayouts.find((l: { id: number; name: string }) => l.id === defaultConfig.layoutId);
+        const size = configSizes.find((s: { id: number; name: string; description: string }) => s.id === defaultConfig.sizeId);
+        const setNames = configSets
+          .filter((s) => defaultConfig.setIds.includes(s.id))
+          .map((s) => s.name);
 
-          if (boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names) {
-            const slugUrl = constructClimbListWithSlugs(
-              boardDetails.board_name,
-              boardDetails.layout_name,
-              boardDetails.size_name,
-              boardDetails.size_description,
-              boardDetails.set_names,
-              savedAngle,
-            );
-            router.push(slugUrl);
-          } else {
-            // Fallback to old URL format
-            router.push(
-              `/${defaultConfig.board}/${defaultConfig.layoutId}/${defaultConfig.sizeId}/${setsString}/${savedAngle}/list`,
-            );
-          }
-        } catch (error) {
-          console.error('Error fetching board details for slug URL:', error);
-          // Fallback to old URL format
-          router.push(
-            `/${defaultConfig.board}/${defaultConfig.layoutId}/${defaultConfig.sizeId}/${setsString}/${savedAngle}/list`,
+        if (layout && size && setNames.length > 0) {
+          const slugUrl = constructClimbListWithSlugs(
+            defaultConfig.board,
+            layout.name,
+            size.name,
+            size.description,
+            setNames,
+            savedAngle,
           );
+          router.push(slugUrl);
         }
       }
     };
@@ -328,33 +312,33 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
     generateSuggestedName();
   }, [selectedBoard, selectedLayout, selectedSize, generateSuggestedName]);
 
-  // Compute target URL for navigation optimization
+  // Compute target URL for navigation optimization - always use SEO-friendly slug URLs
   const targetUrl = useMemo(() => {
     if (!selectedBoard || !selectedLayout || !selectedSize || selectedSets.length === 0) {
       return null;
     }
 
-    const setsString = selectedSets.join(',');
-    
-    // Check if we have cached board details
-    const detailsKey = `${selectedBoard}-${selectedLayout}-${selectedSize}-${selectedSets.join(',')}`;
-    const cachedBoardDetails = boardConfigs.details[detailsKey];
-    
-    if (cachedBoardDetails && cachedBoardDetails.layout_name && cachedBoardDetails.size_name && cachedBoardDetails.set_names) {
-      // Use slug-based URL if we have cached details
+    // Get names from the locally available data (layouts, sizes, sets arrays)
+    const layout = layouts.find((l) => l.id === selectedLayout);
+    const size = sizes.find((s) => s.id === selectedSize);
+    const selectedSetNames = sets
+      .filter((s) => selectedSets.includes(s.id))
+      .map((s) => s.name);
+
+    if (layout && size && selectedSetNames.length > 0) {
+      // Always use slug-based URL for SEO
       return constructClimbListWithSlugs(
-        cachedBoardDetails.board_name,
-        cachedBoardDetails.layout_name,
-        cachedBoardDetails.size_name,
-        cachedBoardDetails.size_description,
-        cachedBoardDetails.set_names,
+        selectedBoard,
+        layout.name,
+        size.name,
+        size.description,
+        selectedSetNames,
         selectedAngle,
       );
-    } else {
-      // Fall back to numeric URL format
-      return `/${selectedBoard}/${selectedLayout}/${selectedSize}/${setsString}/${selectedAngle}/list`;
     }
-  }, [selectedBoard, selectedLayout, selectedSize, selectedSets, selectedAngle, boardConfigs.details]);
+
+    return null;
+  }, [selectedBoard, selectedLayout, selectedSize, selectedSets, selectedAngle, layouts, sizes, sets]);
 
   const handleFormChange = () => {
     // Don't automatically expand saved configurations when form changes
@@ -434,39 +418,9 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
       const updatedConfigs = await loadAllConfigurations();
       setSavedConfigurations(updatedConfigs);
 
-      // For cases where we need to fetch board details on demand (not cached)
-      const detailsKey = `${selectedBoard}-${selectedLayout}-${selectedSize}-${selectedSets.join(',')}`;
-      const cachedBoardDetails = boardConfigs.details[detailsKey];
-      
-      if (!cachedBoardDetails && previewBoardDetails) {
-        // Use preview board details if available
-        try {
-          if (previewBoardDetails.layout_name && previewBoardDetails.size_name && previewBoardDetails.set_names) {
-            const slugUrl = constructClimbListWithSlugs(
-              previewBoardDetails.board_name,
-              previewBoardDetails.layout_name,
-              previewBoardDetails.size_name,
-              previewBoardDetails.size_description,
-              previewBoardDetails.set_names,
-              selectedAngle,
-            );
-            router.push(slugUrl);
-            return;
-          }
-        } catch (error) {
-          console.error('Error using preview board details for slug URL:', error);
-        }
-        
-        // Fallback to numeric URL format
-        const setsString = selectedSets.join(',');
-        router.push(`/${selectedBoard}/${selectedLayout}/${selectedSize}/${setsString}/${selectedAngle}/list`);
-      } else if (cachedBoardDetails) {
-        // URL is cached, use it directly
-        router.push(targetUrl || `/${selectedBoard}/${selectedLayout}/${selectedSize}/${selectedSets.join(',')}/${selectedAngle}/list`);
-      } else {
-        // No board details available, use fallback URL
-        const setsString = selectedSets.join(',');
-        router.push(`/${selectedBoard}/${selectedLayout}/${selectedSize}/${setsString}/${selectedAngle}/list`);
+      // Navigate using the SEO-friendly slug URL (targetUrl is always computed with slugs)
+      if (targetUrl) {
+        router.push(targetUrl);
       }
     } catch (error) {
       console.error('Error starting climbing session:', error);
