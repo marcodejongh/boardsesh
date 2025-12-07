@@ -76,7 +76,7 @@ export const writeCharacteristicSeries = async (
   messages: Uint8Array[],
 ) => {
   for (const message of messages) {
-    await characteristic.writeValue(message);
+    await characteristic.writeValue(new Uint8Array(message));
   }
 };
 
