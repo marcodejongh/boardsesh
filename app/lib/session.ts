@@ -1,26 +1,26 @@
 import { getIronSession } from 'iron-session';
 import 'server-only';
 import { BoardName } from './types';
-import { CookieSerializeOptions } from 'cookie';
+import { SerializeOptions } from 'cookie';
 
 /**
  * {@link https://wicg.github.io/cookie-store/#dictdef-cookielistitem CookieListItem}
  * as specified by W3C.
  */
-interface CookieListItem extends Pick<CookieSerializeOptions, 'domain' | 'path' | 'sameSite' | 'secure'> {
+interface CookieListItem extends Pick<SerializeOptions, 'domain' | 'path' | 'sameSite' | 'secure'> {
   /** A string with the name of a cookie. */
   name: string;
   /** A string containing the value of the cookie. */
   value: string;
   /** A number of milliseconds or Date interface containing the expires of the cookie. */
-  expires?: CookieSerializeOptions['expires'] | number;
+  expires?: SerializeOptions['expires'] | number;
 }
 
 /**
  * Superset of {@link CookieListItem} extending it with
  * the `httpOnly`, `maxAge` and `priority` properties.
  */
-type ResponseCookie = CookieListItem & Pick<CookieSerializeOptions, 'httpOnly' | 'maxAge' | 'priority'>;
+type ResponseCookie = CookieListItem & Pick<SerializeOptions, 'httpOnly' | 'maxAge' | 'priority'>;
 /**
  * The high-level type definition of the .get() and .set() methods
  * of { cookies() } from "next/headers"

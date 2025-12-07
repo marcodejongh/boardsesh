@@ -15,20 +15,18 @@ vi.mock('uuid', () => ({
   v4: vi.fn(() => 'test-uuid-123')
 }));
 
-// Simple mock for PeerJS that doesn't trigger complex behaviors
+// Simple mock for PeerJS that doesn't trigger complex behaviors - using class for Vitest 4.x compatibility
 vi.mock('peerjs', () => {
-  const mockPeer = {
-    id: null,
-    connect: vi.fn(),
-    disconnect: vi.fn(),
-    destroy: vi.fn(),
-    on: vi.fn(),
-    off: vi.fn(),
-    open: false
-  };
-  
   return {
-    default: vi.fn(() => mockPeer)
+    default: class MockPeer {
+      id = null;
+      connect = vi.fn();
+      disconnect = vi.fn();
+      destroy = vi.fn();
+      on = vi.fn();
+      off = vi.fn();
+      open = false;
+    }
   };
 });
 

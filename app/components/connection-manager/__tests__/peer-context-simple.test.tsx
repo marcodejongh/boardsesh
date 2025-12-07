@@ -10,23 +10,22 @@ vi.mock('next/navigation', () => ({
   useSearchParams: vi.fn()
 }));
 
+// Using class for Vitest 4.x compatibility
 vi.mock('peerjs', () => {
-  const mockPeer = {
-    id: 'test-peer-id',
-    connect: vi.fn(),
-    disconnect: vi.fn(),
-    destroy: vi.fn(),
-    on: vi.fn(),
-    off: vi.fn(),
-    options: {},
-    open: true,
-    connections: {},
-    disconnected: false,
-    destroyed: false
-  };
-  
   return {
-    default: vi.fn(() => mockPeer)
+    default: class MockPeer {
+      id = 'test-peer-id';
+      connect = vi.fn();
+      disconnect = vi.fn();
+      destroy = vi.fn();
+      on = vi.fn();
+      off = vi.fn();
+      options = {};
+      open = true;
+      connections = {};
+      disconnected = false;
+      destroyed = false;
+    }
   };
 });
 
