@@ -60,11 +60,28 @@ export default function BoardConfigPreview({ config, onDelete, boardConfigs }: B
         // Validate that the saved configuration is still valid
         const isValidConfig = layout && size && config.setIds.every((setId) => sets.some((set) => set.id === setId));
 
-        // Generate the URL
+        // Generate the URL - always use SEO-friendly slug URLs
         const savedAngle = config.angle || 40;
-        let url: string;
 
-        // Only try to get board details if we have cached details or if the config is valid
+        // Get set names for slug generation
+        const setNames = sets
+          .filter((s) => config.setIds.includes(s.id))
+          .map((s) => s.name);
+
+        // Always generate slug-based URL from the pre-loaded board configs data
+        if (layout && size && setNames.length > 0) {
+          const url = constructClimbListWithSlugs(
+            config.board,
+            layout.name,
+            size.name,
+            size.description,
+            setNames,
+            savedAngle,
+          );
+          setBoardUrl(url);
+        }
+
+        // Only try to get board details for preview rendering if we have cached details or if the config is valid
         let details = cachedDetails;
         if (!details && isValidConfig) {
           try {
@@ -76,37 +93,20 @@ export default function BoardConfigPreview({ config, onDelete, boardConfigs }: B
         } else if (cachedDetails) {
           setBoardDetails(details);
         }
-
-        try {
-          // Try to use slug-based URL if board details are available
-          if (details?.layout_name && details?.size_name && details?.set_names) {
-            url = constructClimbListWithSlugs(
-              details.board_name,
-              details.layout_name,
-              details.size_name,
-              details.size_description,
-              details.set_names,
-              savedAngle,
-            );
-          } else {
-            // Fallback to old URL format
-            const setsString = config.setIds.join(',');
-            url = `/${config.board}/${config.layoutId}/${config.sizeId}/${setsString}/${savedAngle}/list`;
-          }
-        } catch (error) {
-          console.error('Error generating board URL:', error);
-          // Fallback to old URL format
-          const setsString = config.setIds.join(',');
-          url = `/${config.board}/${config.layoutId}/${config.sizeId}/${setsString}/${savedAngle}/list`;
-        }
-
-        setBoardUrl(url);
       } catch (error) {
         console.error('Failed to load board details for preview:', error);
-        // Set fallback URL even if loading fails
-        const setsString = config.setIds.join(',');
+        // Try to set slug URL even if loading fails
         const savedAngle = config.angle || 40;
-        setBoardUrl(`/${config.board}/${config.layoutId}/${config.sizeId}/${setsString}/${savedAngle}/list`);
+        const layouts = boardConfigs.layouts[config.board as BoardName] || [];
+        const sizes = boardConfigs.sizes[`${config.board}-${config.layoutId}`] || [];
+        const sets = boardConfigs.sets[`${config.board}-${config.layoutId}-${config.sizeId}`] || [];
+        const layout = layouts.find((l) => l.id === config.layoutId);
+        const size = sizes.find((s) => s.id === config.sizeId);
+        const setNames = sets.filter((s) => config.setIds.includes(s.id)).map((s) => s.name);
+
+        if (layout && size && setNames.length > 0) {
+          setBoardUrl(constructClimbListWithSlugs(config.board, layout.name, size.name, size.description, setNames, savedAngle));
+        }
       } finally {
         setIsLoading(false);
       }
