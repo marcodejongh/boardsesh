@@ -5,7 +5,6 @@ import { App } from 'antd';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import SessionProviderWrapper from './components/providers/session-provider';
-import WebBluetoothWarning from './components/board-bluetooth-control/web-bluetooth-warning';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -17,10 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Analytics />
         <SessionProviderWrapper>
           <AntdRegistry>
-            <App>
-              <WebBluetoothWarning />
-              {children}
-            </App>
+            <App>{children}</App>
           </AntdRegistry>
         </SessionProviderWrapper>
         <SpeedInsights />
