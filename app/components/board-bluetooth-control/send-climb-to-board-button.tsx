@@ -62,6 +62,9 @@ const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({ boardDe
     typeof navigator !== 'undefined' &&
     /iPhone|iPad|iPod/i.test(navigator.userAgent || (navigator as { vendor?: string }).vendor || '');
 
+  // Check if Web Bluetooth is supported
+  const isBluetoothSupported = typeof navigator !== 'undefined' && !!navigator.bluetooth;
+
   // Store Bluetooth device and characteristic across renders
   const bluetoothDeviceRef = useRef<BluetoothDevice | null>(null);
   const characteristicRef = useRef<BluetoothRemoteGATTCharacteristic | null>(null);
@@ -195,10 +198,11 @@ const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({ boardDe
       <Button
         id="button-illuminate"
         type="default"
+        danger={!isBluetoothSupported}
         icon={isConnected ? <BulbFilled className={'connect-button-glow'} /> : <BulbOutlined />}
         onClick={handleClick}
         loading={loading}
-        disabled={!currentClimbQueueItem}
+        disabled={isBluetoothSupported && !currentClimbQueueItem}
       />
       <Modal
         title="Web Bluetooth Not Supported"
