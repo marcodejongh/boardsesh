@@ -5,12 +5,14 @@ import { BoardDetails } from '@/app/lib/types';
 import { HeatmapData } from './types';
 import { LitUpHoldsMap } from './types';
 import { scaleLog } from 'd3-scale';
-import useHeatmapData from '../search-drawer/use-heatmap';
-import { usePathname, useSearchParams } from 'next/navigation';
-import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
+import useHeatmapData, { HoldsWithStateFilter } from '../search-drawer/use-heatmap';
+import { usePathname } from 'next/navigation';
+import { useUISearchParamsOptional } from '@/app/components/queue-control/ui-searchparams-provider';
 import { Button, Select, Form, Switch } from 'antd';
 import { track } from '@vercel/analytics';
 import BoardRenderer from './board-renderer';
+import { SearchRequestPagination } from '@/app/lib/types';
+import { DEFAULT_SEARCH_PARAMS } from '@/app/lib/url-utils';
 
 const LEGEND_HEIGHT = 96; // Increased from 80
 const BLUR_RADIUS = 10; // Increased blur radius
@@ -41,6 +43,9 @@ interface BoardHeatmapProps {
   boardDetails: BoardDetails;
   litUpHoldsMap?: LitUpHoldsMap;
   onHoldClick?: (holdId: number) => void;
+  holdsWithState?: HoldsWithStateFilter; // Filter for create climb heatmap
+  angle?: number; // Optional angle override (used by create climb)
+  filters?: SearchRequestPagination; // Optional filters override (used by create climb)
 }
 
 // Define the color mode type including user-specific modes
@@ -55,17 +60,30 @@ type ColorMode =
   | 'userAscents'
   | 'userAttempts';
 
-const BoardHeatmap: React.FC<BoardHeatmapProps> = ({ boardDetails, litUpHoldsMap, onHoldClick }) => {
+const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
+  boardDetails,
+  litUpHoldsMap,
+  onHoldClick,
+  holdsWithState,
+  angle: angleProp,
+  filters: filtersProp,
+}) => {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const { uiSearchParams } = useUISearchParams();
+
+  // Use uiSearchParams context if available and no filters prop provided
+  const uiSearchParamsContext = useUISearchParamsOptional();
+  const uiSearchParams = uiSearchParamsContext?.uiSearchParams;
 
   const [colorMode, setColorMode] = useState<ColorMode>('ascents');
   const [showNumbers, setShowNumbers] = useState(false);
   const [showHeatmap, setShowHeatmap] = useState(false);
 
-  // Get angle from pathname - derived directly without needing state
-  const angle = useMemo(() => getAngleFromPath(pathname), [pathname]);
+  // Get angle from pathname if not provided as prop
+  const angleFromPath = useMemo(() => getAngleFromPath(pathname), [pathname]);
+  const angle = angleProp ?? angleFromPath;
+
+  // Use provided filters or fall back to uiSearchParams (context may not be available in create climb screen)
+  const filters = filtersProp ?? uiSearchParams ?? DEFAULT_SEARCH_PARAMS;
 
   // Only fetch heatmap data when heatmap is enabled
   const { data: heatmapData = [], loading: heatmapLoading } = useHeatmapData({
@@ -74,8 +92,9 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({ boardDetails, litUpHoldsMap
     sizeId: boardDetails.size_id,
     setIds: boardDetails.set_ids.join(','),
     angle,
-    filters: uiSearchParams,
+    filters,
     enabled: showHeatmap,
+    holdsWithState,
   });
 
   const [threshold, setThreshold] = useState(1);
@@ -299,7 +318,7 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({ boardDetails, litUpHoldsMap
           </div>
         )}
         <svg
-          viewBox={`0 0 ${boardWidth} ${boardHeight + LEGEND_HEIGHT}`}
+          viewBox={`0 0 ${boardWidth} ${boardHeight + (showHeatmap && !heatmapLoading ? LEGEND_HEIGHT : 0)}`}
           preserveAspectRatio="xMidYMid meet"
           className="w-full h-auto max-h-[55vh]"
         >
