@@ -1,17 +1,30 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Form, Input, Switch, Button, Typography, Flex, Space, Tag, Modal, Alert } from 'antd';
 import { BulbOutlined, BulbFilled, ExperimentOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import { track } from '@vercel/analytics';
-import BoardRenderer from '../board-renderer/board-renderer';
+import BoardHeatmap from '../board-renderer/board-heatmap';
 import { useBoardProvider } from '../board-provider/board-provider-context';
 import { useCreateClimb } from './use-create-climb';
 import { useBoardBluetooth } from '../board-bluetooth-control/use-board-bluetooth';
 import { BoardDetails } from '@/app/lib/types';
-import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
+import { constructClimbListWithSlugs, DEFAULT_SEARCH_PARAMS } from '@/app/lib/url-utils';
+import { HoldsWithStateFilter } from '../search-drawer/use-heatmap';
+import { LitUpHoldsMap } from '../board-renderer/types';
 import '../board-bluetooth-control/send-climb-to-board-button.css';
+
+// Helper function to convert litUpHoldsMap to holdsWithState filter format
+function convertToHoldsWithState(litUpHoldsMap: LitUpHoldsMap): HoldsWithStateFilter {
+  const holdsWithState: HoldsWithStateFilter = {};
+  for (const [holdId, hold] of Object.entries(litUpHoldsMap)) {
+    if (hold.state && hold.state !== 'OFF') {
+      holdsWithState[holdId] = hold.state;
+    }
+  }
+  return holdsWithState;
+}
 
 const { TextArea } = Input;
 const { Title, Text } = Typography;
@@ -42,6 +55,9 @@ export default function CreateClimbForm({ boardDetails, angle }: CreateClimbForm
   } = useCreateClimb(boardDetails.board_name);
 
   const { isConnected, loading: bluetoothLoading, connect, sendFramesToBoard } = useBoardBluetooth({ boardDetails });
+
+  // Convert litUpHoldsMap to holdsWithState format for heatmap filtering
+  const holdsWithState = useMemo(() => convertToHoldsWithState(litUpHoldsMap), [litUpHoldsMap]);
 
   const [form] = Form.useForm<CreateClimbFormValues>();
   const [loginForm] = Form.useForm<{ username: string; password: string }>();
@@ -212,17 +228,19 @@ export default function CreateClimbForm({ boardDetails, angle }: CreateClimbForm
       </Flex>
 
       <Flex vertical gap={16}>
-        {/* Board with clickable holds */}
+        {/* Board with clickable holds and heatmap */}
         <div>
           <Text type="secondary" style={{ display: 'block', marginBottom: '8px' }}>
             Tap holds to set their type. Tap again to cycle through types.
             {isConnected && ' Changes are shown live on the board.'}
           </Text>
-          <BoardRenderer
+          <BoardHeatmap
             boardDetails={boardDetails}
             litUpHoldsMap={litUpHoldsMap}
-            mirrored={false}
             onHoldClick={handleHoldClick}
+            holdsWithState={holdsWithState}
+            angle={angle}
+            filters={DEFAULT_SEARCH_PARAMS}
           />
         </div>
 

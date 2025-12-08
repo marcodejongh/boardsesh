@@ -86,3 +86,8 @@ export const useUISearchParams = () => {
   }
   return context;
 };
+
+// Optional version that returns null if not in context (for components that can work without it)
+export const useUISearchParamsOptional = () => {
+  return useContext(UISearchParamsContext);
+};

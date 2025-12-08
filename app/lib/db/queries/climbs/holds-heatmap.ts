@@ -1,4 +1,4 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, like, sql, SQL } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { dbz as db } from '@/app/lib/db/db';
 import { ParsedBoardRouteParameters, SearchRequestPagination } from '@/app/lib/types';
@@ -19,10 +19,32 @@ export interface HoldHeatmapData {
   userAttempts?: number;
 }
 
+// Maps hold state names to their codes for each board type
+// These must match the format used in frames strings: p{holdId}r{stateCode}
+const HOLD_STATE_TO_CODE: Record<string, Record<string, number>> = {
+  kilter: {
+    STARTING: 42,
+    HAND: 43,
+    FINISH: 44,
+    FOOT: 45,
+  },
+  tension: {
+    STARTING: 1,
+    HAND: 2,
+    FINISH: 3,
+    FOOT: 4,
+  },
+};
+
+export interface HoldsWithStateFilter {
+  [holdId: string]: string; // holdId -> HoldState (STARTING, HAND, FOOT, FINISH)
+}
+
 export const getHoldHeatmapData = async (
   params: ParsedBoardRouteParameters,
   searchParams: SearchRequestPagination,
   userId?: number,
+  holdsWithState?: HoldsWithStateFilter,
 ): Promise<HoldHeatmapData[]> => {
   const tables = getBoardTables(params.board_name);
   const climbHolds = tables.climbHolds;
@@ -32,6 +54,22 @@ export const getHoldHeatmapData = async (
 
   // Use the shared filter creator with the PS alias
   const filters = createClimbFilters(tables, params, searchParams, ps, userId);
+
+  // Build hold state filter conditions if provided
+  // These filter climbs to only include those that have ALL specified holds in their specified states
+  const holdStateConditions: SQL[] = [];
+  if (holdsWithState && Object.keys(holdsWithState).length > 0) {
+    const stateToCode = HOLD_STATE_TO_CODE[params.board_name];
+    if (stateToCode) {
+      for (const [holdId, state] of Object.entries(holdsWithState)) {
+        const stateCode = stateToCode[state];
+        if (stateCode !== undefined) {
+          // Match pattern: p{holdId}r{stateCode} in frames string
+          holdStateConditions.push(like(tables.climbs.frames, `%p${holdId}r${stateCode}%`));
+        }
+      }
+    }
+  }
 
   try {
     // Check if personal progress filters are active - if so, use user-specific counts
@@ -66,7 +104,7 @@ export const getHoldHeatmapData = async (
           and(eq(tables.climbStats.climbUuid, climbHolds.climbUuid), eq(tables.climbStats.angle, params.angle)),
         )
         .where(
-          and(...filters.getClimbWhereConditions(), ...filters.getSizeConditions(), ...filters.getClimbStatsConditions()),
+          and(...filters.getClimbWhereConditions(), ...filters.getSizeConditions(), ...filters.getClimbStatsConditions(), ...holdStateConditions),
         )
         .groupBy(climbHolds.holdId);
 
@@ -92,7 +130,7 @@ export const getHoldHeatmapData = async (
           and(eq(tables.climbStats.climbUuid, climbHolds.climbUuid), eq(tables.climbStats.angle, params.angle)),
         )
         .where(
-          and(...filters.getClimbWhereConditions(), ...filters.getSizeConditions(), ...filters.getClimbStatsConditions()),
+          and(...filters.getClimbWhereConditions(), ...filters.getSizeConditions(), ...filters.getClimbStatsConditions(), ...holdStateConditions),
         )
         .groupBy(climbHolds.holdId);
 

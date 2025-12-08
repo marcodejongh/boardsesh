@@ -1,4 +1,4 @@
-import { getHoldHeatmapData } from '@/app/lib/db/queries/climbs/holds-heatmap';
+import { getHoldHeatmapData, HoldsWithStateFilter } from '@/app/lib/db/queries/climbs/holds-heatmap';
 import { getSession } from '@/app/lib/session';
 import { BoardRouteParameters, ErrorResponse, SearchRequestPagination } from '@/app/lib/types';
 import { urlParamsToSearchParams } from '@/app/lib/url-utils';
@@ -60,8 +60,19 @@ export async function GET(
       userId = session.userId;
     }
 
+    // Parse holdsWithState filter if provided (JSON stringified object)
+    let holdsWithState: HoldsWithStateFilter | undefined;
+    const holdsWithStateParam = query.get('holdsWithState');
+    if (holdsWithStateParam) {
+      try {
+        holdsWithState = JSON.parse(holdsWithStateParam);
+      } catch {
+        console.warn('Invalid holdsWithState parameter, ignoring');
+      }
+    }
+
     // Get the heatmap data using the query function
-    const holdStats = await getHoldHeatmapData(parsedParams, searchParams, userId);
+    const holdStats = await getHoldHeatmapData(parsedParams, searchParams, userId, holdsWithState);
 
     // Return response
     return NextResponse.json({
