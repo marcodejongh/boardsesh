@@ -11,8 +11,13 @@ export const metadata: Metadata = {
   description: 'Create a new climb on your climbing board',
 };
 
-export default async function CreateClimbPage(props: { params: Promise<BoardRouteParameters> }) {
-  const params = await props.params;
+interface CreateClimbPageProps {
+  params: Promise<BoardRouteParameters>;
+  searchParams: Promise<{ forkFrames?: string; forkName?: string }>;
+}
+
+export default async function CreateClimbPage(props: CreateClimbPageProps) {
+  const [params, searchParams] = await Promise.all([props.params, props.searchParams]);
 
   // Check if any parameters are in numeric format (old URLs)
   const hasNumericParams = [params.layout_id, params.size_id, params.set_ids].some((param) =>
@@ -29,5 +34,12 @@ export default async function CreateClimbPage(props: { params: Promise<BoardRout
 
   const boardDetails = await getBoardDetails(parsedParams);
 
-  return <CreateClimbForm boardDetails={boardDetails} angle={parsedParams.angle} />;
+  return (
+    <CreateClimbForm
+      boardDetails={boardDetails}
+      angle={parsedParams.angle}
+      forkFrames={searchParams.forkFrames}
+      forkName={searchParams.forkName}
+    />
+  );
 }

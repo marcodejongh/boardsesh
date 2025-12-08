@@ -2,9 +2,9 @@
 import React, { useState } from 'react';
 import { useQueueContext } from '../queue-control/queue-context';
 import { BoardDetails, Climb } from '@/app/lib/types';
-import { PlusCircleOutlined, HeartOutlined, InfoCircleOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { PlusCircleOutlined, HeartOutlined, InfoCircleOutlined, CheckCircleOutlined, ForkOutlined } from '@ant-design/icons';
 import Link from 'next/link';
-import { constructClimbViewUrl, constructClimbViewUrlWithSlugs } from '@/app/lib/url-utils';
+import { constructClimbViewUrl, constructClimbViewUrlWithSlugs, constructCreateClimbUrl } from '@/app/lib/url-utils';
 import { track } from '@vercel/analytics';
 import { message } from 'antd';
 
@@ -44,7 +44,7 @@ const ClimbCardActions = ({ climb, boardDetails }: ClimbCardActionsProps) => {
     }
   };
 
-  return [
+  const actions: (React.JSX.Element | null)[] = [
     // <SettingOutlined key="setting" />,
     // <TickClimbButton key="tickclimbbutton" />,
     <Link
@@ -81,6 +81,29 @@ const ClimbCardActions = ({ climb, boardDetails }: ClimbCardActionsProps) => {
     >
       <InfoCircleOutlined />
     </Link>,
+    boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names ? (
+      <Link
+        key="fork"
+        href={constructCreateClimbUrl(
+          boardDetails.board_name,
+          boardDetails.layout_name,
+          boardDetails.size_name,
+          boardDetails.size_description,
+          boardDetails.set_names,
+          climb.angle,
+          { frames: climb.frames, name: climb.name },
+        )}
+        onClick={() => {
+          track('Climb Forked', {
+            boardLayout: boardDetails.layout_name || '',
+            originalClimb: climb.uuid,
+          });
+        }}
+        title="Fork this climb"
+      >
+        <ForkOutlined />
+      </Link>
+    ) : null,
     <HeartOutlined key="heart" onClick={() => message.info('TODO: Implement')} />,
     isAlreadyInQueue ? (
       <CheckCircleOutlined
@@ -96,6 +119,8 @@ const ClimbCardActions = ({ climb, boardDetails }: ClimbCardActionsProps) => {
       />
     ),
   ];
+
+  return actions.filter((action): action is React.JSX.Element => action !== null);
 };
 
 export default ClimbCardActions;
