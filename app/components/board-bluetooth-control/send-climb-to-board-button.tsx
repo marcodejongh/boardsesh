@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { BulbOutlined, BulbFilled } from '@ant-design/icons';
-import { Button, message } from 'antd';
+import { BulbOutlined, BulbFilled, AppleOutlined } from '@ant-design/icons';
+import { Button, Modal, Typography } from 'antd';
 import { track } from '@vercel/analytics';
+
+const { Text, Paragraph } = Typography;
 import { useQueueContext } from '../queue-control/queue-context';
 import { BoardDetails } from '@/app/lib/types';
 import './send-climb-to-board-button.css'; // Import your custom styles
@@ -50,9 +52,18 @@ const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({ boardDe
   const { currentClimbQueueItem } = useQueueContext();
   const [loading, setLoading] = useState(false);
   const [isConnected, setIsConnected] = useState(false); // Track Bluetooth connection state
+  const [showBluetoothWarning, setShowBluetoothWarning] = useState(false);
 
   // Prevent device from sleeping while connected to the board
   useWakeLock(isConnected);
+
+  // Detect if the device is iOS
+  const isIOS =
+    typeof navigator !== 'undefined' &&
+    /iPhone|iPad|iPod/i.test(navigator.userAgent || (navigator as { vendor?: string }).vendor || '');
+
+  // Check if Web Bluetooth is supported
+  const isBluetoothSupported = typeof navigator !== 'undefined' && !!navigator.bluetooth;
 
   // Store Bluetooth device and characteristic across renders
   const bluetoothDeviceRef = useRef<BluetoothDevice | null>(null);
@@ -107,7 +118,8 @@ const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({ boardDe
   // Handle button click to initiate Bluetooth connection
   const handleClick = useCallback(async () => {
     if (!navigator.bluetooth) {
-      return message.error('Current browser does not support Web Bluetooth.');
+      setShowBluetoothWarning(true);
+      return;
     }
 
     setLoading(true);
@@ -182,14 +194,45 @@ const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({ boardDe
   }, [currentClimbQueueItem, isConnected, sendClimbToBoard]);
 
   return (
-    <Button
-      id="button-illuminate"
-      type="default"
-      icon={isConnected ? <BulbFilled className={'connect-button-glow'} /> : <BulbOutlined />}
-      onClick={handleClick}
-      loading={loading}
-      disabled={!currentClimbQueueItem}
-    />
+    <>
+      <Button
+        id="button-illuminate"
+        type="default"
+        danger={!isBluetoothSupported}
+        icon={isConnected ? <BulbFilled className={'connect-button-glow'} /> : <BulbOutlined />}
+        onClick={handleClick}
+        loading={loading}
+        disabled={isBluetoothSupported && !currentClimbQueueItem}
+      />
+      <Modal
+        title="Web Bluetooth Not Supported"
+        open={showBluetoothWarning}
+        onCancel={() => setShowBluetoothWarning(false)}
+        footer={<Button onClick={() => setShowBluetoothWarning(false)}>Close</Button>}
+      >
+        <Paragraph>
+          <Text>
+            Your browser does not support Web Bluetooth, which means you won&#39;t be able to illuminate routes on the
+            board.
+          </Text>
+        </Paragraph>
+        {isIOS ? (
+          <>
+            <Paragraph>To control your board from an iOS device, install the Bluefy browser:</Paragraph>
+            <Button
+              type="primary"
+              icon={<AppleOutlined />}
+              href="https://apps.apple.com/us/app/bluefy-web-ble-browser/id1492822055"
+              target="_blank"
+            >
+              Download Bluefy from the App Store
+            </Button>
+          </>
+        ) : (
+          <Paragraph>For the best experience, please use Chrome or another Chromium-based browser.</Paragraph>
+        )}
+      </Modal>
+    </>
   );
 };
 
