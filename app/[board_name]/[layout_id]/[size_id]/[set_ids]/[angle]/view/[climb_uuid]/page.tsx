@@ -6,6 +6,7 @@ import { getClimb } from '@/app/lib/data/queries';
 import ClimbCard from '@/app/components/climb-card/climb-card';
 import { Col, Row } from 'antd';
 import BetaVideos from '@/app/components/beta-videos/beta-videos';
+import SimilarClimbs from '@/app/components/similar-climbs/similar-climbs';
 import {
   constructClimbInfoUrl,
   extractUuidFromSlug,
@@ -206,6 +207,9 @@ export default async function DynamicResultsPage(props: { params: Promise<BoardR
           </Col>
           <Col xs={24} lg={8}>
             <BetaVideos betaLinks={betaLinks} />
+            <div style={{ marginTop: '16px' }}>
+              <SimilarClimbs params={parsedParams} boardDetails={boardDetails} />
+            </div>
           </Col>
         </Row>
       </div>
