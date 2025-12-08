@@ -1,7 +1,6 @@
 // app/api/v1/[board_name]/proxy/saveClimb/route.ts
 import { saveClimb } from '@/app/lib/api-wrappers/aurora/saveClimb';
-import { BoardRouteParameters, ParsedBoardRouteParameters } from '@/app/lib/types';
-import { parseBoardRouteParams } from '@/app/lib/url-utils';
+import { BoardName } from '@/app/lib/types';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -22,9 +21,9 @@ const saveClimbSchema = z.object({
     .strict(),
 });
 
-export async function POST(request: Request, props: { params: Promise<BoardRouteParameters> }) {
+export async function POST(request: Request, props: { params: Promise<{ board_name: string }> }) {
   const params = await props.params;
-  const { board_name }: ParsedBoardRouteParameters = parseBoardRouteParams(params);
+  const board_name = params.board_name as BoardName;
 
   let validatedData: z.infer<typeof saveClimbSchema> | null = null;
 
@@ -43,7 +42,7 @@ export async function POST(request: Request, props: { params: Promise<BoardRoute
     });
 
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Invalid request data', details: error.errors }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid request data', details: error.issues }, { status: 400 });
     }
 
     if (error instanceof Error) {

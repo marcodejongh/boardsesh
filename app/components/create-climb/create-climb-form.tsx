@@ -1,14 +1,17 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Form, Input, Switch, Button, Typography, Flex, Space, Tag, Modal } from 'antd';
+import { BulbOutlined, BulbFilled } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import { track } from '@vercel/analytics';
 import BoardRenderer from '../board-renderer/board-renderer';
 import { useBoardProvider } from '../board-provider/board-provider-context';
 import { useCreateClimb } from './use-create-climb';
+import { useBoardBluetooth } from '../board-bluetooth-control/use-board-bluetooth';
 import { BoardDetails } from '@/app/lib/types';
 import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
+import '../board-bluetooth-control/send-climb-to-board-button.css';
 
 const { TextArea } = Input;
 const { Title, Text } = Typography;
@@ -29,14 +32,16 @@ export default function CreateClimbForm({ boardDetails, angle }: CreateClimbForm
   const { isAuthenticated, saveClimb, login } = useBoardProvider();
   const {
     litUpHoldsMap,
-    handleHoldClick,
+    handleHoldClick: originalHandleHoldClick,
     generateFramesString,
     startingCount,
     finishCount,
     totalHolds,
     isValid,
-    resetHolds,
+    resetHolds: originalResetHolds,
   } = useCreateClimb(boardDetails.board_name);
+
+  const { isConnected, loading: bluetoothLoading, connect, sendFramesToBoard } = useBoardBluetooth({ boardDetails });
 
   const [form] = Form.useForm<CreateClimbFormValues>();
   const [loginForm] = Form.useForm<{ username: string; password: string }>();
@@ -44,6 +49,38 @@ export default function CreateClimbForm({ boardDetails, angle }: CreateClimbForm
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [pendingFormValues, setPendingFormValues] = useState<CreateClimbFormValues | null>(null);
+
+  // Send frames to board whenever litUpHoldsMap changes and we're connected
+  useEffect(() => {
+    if (isConnected) {
+      const frames = generateFramesString();
+      sendFramesToBoard(frames);
+    }
+  }, [litUpHoldsMap, isConnected, generateFramesString, sendFramesToBoard]);
+
+  // Wrap handleHoldClick to also send to board after state updates
+  const handleHoldClick = useCallback(
+    (holdId: number) => {
+      originalHandleHoldClick(holdId);
+      // The useEffect above will handle sending to board after state updates
+    },
+    [originalHandleHoldClick],
+  );
+
+  // Wrap resetHolds to also clear the board
+  const resetHolds = useCallback(() => {
+    originalResetHolds();
+    // Send empty frames to clear the board
+    if (isConnected) {
+      sendFramesToBoard('');
+    }
+  }, [originalResetHolds, isConnected, sendFramesToBoard]);
+
+  // Handle Bluetooth connect button click
+  const handleBluetoothConnect = useCallback(async () => {
+    const frames = generateFramesString();
+    await connect(frames);
+  }, [connect, generateFramesString]);
 
   const doSaveClimb = async (values: CreateClimbFormValues) => {
     setIsSaving(true);
@@ -150,15 +187,27 @@ export default function CreateClimbForm({ boardDetails, angle }: CreateClimbForm
 
   return (
     <div style={{ padding: '16px' }}>
-      <Title level={4} style={{ marginBottom: '16px' }}>
-        Create New Climb
-      </Title>
+      <Flex justify="space-between" align="center" style={{ marginBottom: '16px' }}>
+        <Title level={4} style={{ margin: 0 }}>
+          Create New Climb
+        </Title>
+        <Button
+          type="default"
+          icon={isConnected ? <BulbFilled className="connect-button-glow" /> : <BulbOutlined />}
+          onClick={handleBluetoothConnect}
+          loading={bluetoothLoading}
+          title={isConnected ? 'Connected to board' : 'Connect to board for live preview'}
+        >
+          {isConnected ? 'Connected' : 'Connect Board'}
+        </Button>
+      </Flex>
 
       <Flex vertical gap={16}>
         {/* Board with clickable holds */}
         <div>
           <Text type="secondary" style={{ display: 'block', marginBottom: '8px' }}>
             Tap holds to set their type. Tap again to cycle through types.
+            {isConnected && ' Changes are shown live on the board.'}
           </Text>
           <BoardRenderer
             boardDetails={boardDetails}
