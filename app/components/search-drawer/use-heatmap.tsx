@@ -35,6 +35,10 @@ export default function useHeatmapData({
   const [error, setError] = useState<Error | null>(null);
   const { token, user_id } = useBoardProvider();
 
+  // Serialize objects for stable comparison in useEffect
+  const holdsWithStateKey = holdsWithState ? JSON.stringify(holdsWithState) : '';
+  const filtersKey = JSON.stringify(filters);
+
   useEffect(() => {
     // Don't fetch if not enabled
     if (!enabled) {
@@ -97,7 +101,8 @@ export default function useHeatmapData({
     return () => {
       cancelled = true;
     };
-  }, [boardName, layoutId, sizeId, setIds, angle, filters, token, user_id, enabled, holdsWithState]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [boardName, layoutId, sizeId, setIds, angle, filtersKey, token, user_id, enabled, holdsWithStateKey]);
 
   return { data: heatmapData, loading, error };
 }
