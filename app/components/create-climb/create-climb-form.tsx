@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Form, Input, Switch, Button, Typography, Flex, Space, Tag, Modal } from 'antd';
-import { BulbOutlined, BulbFilled } from '@ant-design/icons';
+import { Form, Input, Switch, Button, Typography, Flex, Space, Tag, Modal, Alert } from 'antd';
+import { BulbOutlined, BulbFilled, ExperimentOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import { track } from '@vercel/analytics';
 import BoardRenderer from '../board-renderer/board-renderer';
@@ -187,6 +187,15 @@ export default function CreateClimbForm({ boardDetails, angle }: CreateClimbForm
 
   return (
     <div style={{ padding: '16px' }}>
+      <Alert
+        message="Beta Feature"
+        type="info"
+        showIcon
+        icon={<ExperimentOutlined />}
+        style={{ marginBottom: '16px' }}
+        banner
+      />
+
       <Flex justify="space-between" align="center" style={{ marginBottom: '16px' }}>
         <Title level={4} style={{ margin: 0 }}>
           Create New Climb
