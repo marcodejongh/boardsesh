@@ -318,7 +318,7 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({
           </div>
         )}
         <svg
-          viewBox={`0 0 ${boardWidth} ${boardHeight + LEGEND_HEIGHT}`}
+          viewBox={`0 0 ${boardWidth} ${boardHeight + (showHeatmap && !heatmapLoading ? LEGEND_HEIGHT : 0)}`}
           preserveAspectRatio="xMidYMid meet"
           className="w-full h-auto max-h-[55vh]"
         >
