@@ -23,8 +23,12 @@ const STATE_TO_CODE: Record<BoardName, Partial<Record<HoldState, HoldCode>>> = {
   },
 };
 
-export function useCreateClimb(boardName: BoardName) {
-  const [litUpHoldsMap, setLitUpHoldsMap] = useState<LitUpHoldsMap>({});
+interface UseCreateClimbOptions {
+  initialHoldsMap?: LitUpHoldsMap;
+}
+
+export function useCreateClimb(boardName: BoardName, options?: UseCreateClimbOptions) {
+  const [litUpHoldsMap, setLitUpHoldsMap] = useState<LitUpHoldsMap>(options?.initialHoldsMap ?? {});
 
   // Derived state: count holds by type
   const startingCount = useMemo(

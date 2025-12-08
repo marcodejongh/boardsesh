@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Form, Input, Switch, Button, Typography, Flex, Space, Tag, Modal, Alert } from 'antd';
 import { BulbOutlined, BulbFilled, ExperimentOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
@@ -11,6 +11,7 @@ import { useCreateClimb } from './use-create-climb';
 import { useBoardBluetooth } from '../board-bluetooth-control/use-board-bluetooth';
 import { BoardDetails } from '@/app/lib/types';
 import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
+import { convertLitUpHoldsStringToMap } from '../board-renderer/util';
 import '../board-bluetooth-control/send-climb-to-board-button.css';
 
 const { TextArea } = Input;
@@ -25,11 +26,22 @@ interface CreateClimbFormValues {
 interface CreateClimbFormProps {
   boardDetails: BoardDetails;
   angle: number;
+  forkFrames?: string;
+  forkName?: string;
 }
 
-export default function CreateClimbForm({ boardDetails, angle }: CreateClimbFormProps) {
+export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkName }: CreateClimbFormProps) {
   const router = useRouter();
   const { isAuthenticated, saveClimb, login } = useBoardProvider();
+
+  // Convert fork frames to initial holds map if provided
+  const initialHoldsMap = useMemo(() => {
+    if (!forkFrames) return undefined;
+    const framesMap = convertLitUpHoldsStringToMap(forkFrames, boardDetails.board_name);
+    // Get the first frame (frame 0) - most climbs have a single frame
+    return framesMap[0] ?? undefined;
+  }, [forkFrames, boardDetails.board_name]);
+
   const {
     litUpHoldsMap,
     handleHoldClick: originalHandleHoldClick,
@@ -39,7 +51,7 @@ export default function CreateClimbForm({ boardDetails, angle }: CreateClimbForm
     totalHolds,
     isValid,
     resetHolds: originalResetHolds,
-  } = useCreateClimb(boardDetails.board_name);
+  } = useCreateClimb(boardDetails.board_name, { initialHoldsMap });
 
   const { isConnected, loading: bluetoothLoading, connect, sendFramesToBoard } = useBoardBluetooth({ boardDetails });
 
@@ -198,7 +210,7 @@ export default function CreateClimbForm({ boardDetails, angle }: CreateClimbForm
 
       <Flex justify="space-between" align="center" style={{ marginBottom: '16px' }}>
         <Title level={4} style={{ margin: 0 }}>
-          Create New Climb
+          {forkName ? 'Fork Climb' : 'Create New Climb'}
         </Title>
         <Button
           type="default"
@@ -244,7 +256,7 @@ export default function CreateClimbForm({ boardDetails, angle }: CreateClimbForm
           layout="vertical"
           onFinish={handleSubmit}
           initialValues={{
-            name: '',
+            name: forkName ? `${forkName} fork` : '',
             description: '',
             isDraft: false,
           }}

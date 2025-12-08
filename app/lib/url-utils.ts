@@ -421,3 +421,29 @@ export const isNumericId = (value: string): boolean => {
 export const isSlugFormat = (value: string): boolean => {
   return !isNumericId(value);
 };
+
+// Construct URL for creating a new climb (with optional fork params)
+export const constructCreateClimbUrl = (
+  board_name: string,
+  layoutName: string,
+  sizeName: string,
+  sizeDescription: string | undefined,
+  setNames: string[],
+  angle: number,
+  forkParams?: { frames: string; name: string },
+) => {
+  const layoutSlug = generateLayoutSlug(layoutName);
+  const sizeSlug = generateSizeSlug(sizeName, sizeDescription);
+  const setSlug = generateSetSlug(setNames);
+  const baseUrl = `/${board_name}/${layoutSlug}/${sizeSlug}/${setSlug}/${angle}/create`;
+
+  if (forkParams) {
+    const params = new URLSearchParams({
+      forkFrames: forkParams.frames,
+      forkName: forkParams.name,
+    });
+    return `${baseUrl}?${params.toString()}`;
+  }
+
+  return baseUrl;
+};
