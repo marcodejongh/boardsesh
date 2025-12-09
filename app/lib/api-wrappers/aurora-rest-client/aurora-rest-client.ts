@@ -99,6 +99,7 @@ class AuroraClimbingClient {
           ...this.createHeaders(contentType),
           ...(fetchOptions.headers || {}),
         },
+        cache: 'no-store',
         // Add timeout to prevent hanging requests
         signal: AbortSignal.timeout(30000), // 30 second timeout
       });
@@ -166,19 +167,21 @@ class AuroraClimbingClient {
    */
   async signIn(username: string, password: string): Promise<LoginResponse> {
     try {
-      // Use /sessions endpoint on web host only
+      // Build form-urlencoded body like other working Aurora endpoints
+      const formBody = this.encodeFormData({
+        username,
+        password,
+        tou: 'accepted',
+        pp: 'accepted',
+        ua: 'app',
+      });
+
+      // Use /sessions endpoint on web host only with form-urlencoded
       const data = await this.request<LoginResponse>(
         '/sessions',
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            username,
-            password,
-            tou: 'accepted',
-            pp: 'accepted',
-            ua: 'app',
-          }),
+          body: formBody,
         },
         { apiUrl: false }, // Use web host only
       );

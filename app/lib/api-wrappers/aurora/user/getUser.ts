@@ -1,6 +1,5 @@
 import { BoardName } from '../../../types';
-import { API_HOSTS } from '../types';
-import { auroraGetApi } from '../util';
+import { WEB_HOSTS } from '../types';
 
 export interface SocialStats {
   followees_accepted: number;
@@ -57,8 +56,24 @@ export interface UsersResponse {
 }
 
 export async function getUser(board: BoardName, userId: number, token: string): Promise<UsersResponse> {
-  const url = `${API_HOSTS[board]}/users/${userId}`;
-  const data = await auroraGetApi<UsersResponse>(url, token);
+  const url = `${WEB_HOSTS[board]}/users/${userId}`;
+  console.log(`Getting user from: ${url}`);
 
-  return data;
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'User-Agent': 'Kilter%20Board/202 CFNetwork/1568.100.1 Darwin/24.0.0',
+      Cookie: `token=${token}`,
+    },
+    cache: 'no-store',
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Get user error:', errorText);
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+
+  return response.json();
 }

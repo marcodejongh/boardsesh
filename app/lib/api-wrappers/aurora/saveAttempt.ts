@@ -39,6 +39,7 @@ export async function saveAttempt(board: BoardName, token: string, options: Save
       'User-Agent': 'Kilter%20Board/202 CFNetwork/1568.100.1 Darwin/24.0.0',
       Cookie: `token=${token}`,
     },
+    cache: 'no-store',
     body: requestBody.toString(),
   });
 

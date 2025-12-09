@@ -117,11 +117,6 @@ export const HOST_BASES: Record<BoardName, string> = {
   // touchstone: 'touchstoneboardapp',
 };
 
-//
-export const API_HOSTS: Record<BoardName, string> = Object.fromEntries(
-  Object.entries(HOST_BASES).map(([board, hostBase]) => [board, `https://api.${hostBase}.com`]),
-) as Record<BoardName, string>;
-
 export const WEB_HOSTS: Record<BoardName, string> = Object.fromEntries(
   Object.entries(HOST_BASES).map(([board, hostBase]) => [board, `https://${hostBase}.com`]),
 ) as Record<BoardName, string>;

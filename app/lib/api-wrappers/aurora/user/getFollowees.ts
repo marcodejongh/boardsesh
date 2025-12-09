@@ -1,6 +1,5 @@
 import { BoardName } from '../../../types';
-import { API_HOSTS } from '../types';
-import { auroraGetApi } from '../util';
+import { WEB_HOSTS } from '../types';
 
 export interface Followee {
   id: number; // Unique ID for the followee
@@ -15,9 +14,24 @@ export interface FolloweesResponse {
 }
 
 export async function getFollowees(board: BoardName, userId: number, token: string): Promise<FolloweesResponse> {
-  // Replace `any` with the specific type for followees if available
-  const url = `${API_HOSTS[board]}/users/${userId}/followees`; // Adjust the endpoint as needed
-  const data = await auroraGetApi<FolloweesResponse>(url, token);
+  const url = `${WEB_HOSTS[board]}/users/${userId}/followees`;
+  console.log(`Getting followees from: ${url}`);
 
-  return data;
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'User-Agent': 'Kilter%20Board/202 CFNetwork/1568.100.1 Darwin/24.0.0',
+      Cookie: `token=${token}`,
+    },
+    cache: 'no-store',
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Get followees error:', errorText);
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+
+  return response.json();
 }
