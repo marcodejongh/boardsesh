@@ -14,6 +14,7 @@ import {
   SearchClimbsResult,
 } from '@/app/lib/types';
 import { BetaLink } from '@/app/lib/api-wrappers/sync-api-types';
+import { LitUpHoldsMap } from '@/app/components/board-renderer/types';
 
 const API_BASE_URL = `/api/v1`;
 
@@ -127,4 +128,45 @@ export const fetchSets = async (board_name: BoardName, layout_id: LayoutId, size
   }
 
   return response.json();
+};
+
+// Fetch similar climbs
+export const fetchSimilarClimbs = async (
+  routeParameters: ParsedBoardRouteParametersWithUuid,
+  threshold: number = 0.9,
+  limit: number = 10,
+): Promise<SimilarClimbsResult> => {
+  const apiUrl = `${API_BASE_URL}/${routeParameters.board_name}/${routeParameters.layout_id}/${routeParameters.size_id}/${routeParameters.set_ids}/${routeParameters.angle}/${routeParameters.climb_uuid}/similar?threshold=${threshold}&limit=${limit}`;
+  const response = await fetch(apiUrl);
+
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+
+  return response.json();
+};
+
+export type SimilarClimbsResult = {
+  exactLargerMatches: SimilarClimbMatch[];
+  highSimilarityMatches: SimilarClimbMatch[];
+};
+
+export type SimilarClimbMatch = {
+  uuid: string;
+  setter_username: string;
+  name: string;
+  description: string;
+  frames: string;
+  angle: number;
+  ascensionist_count: number;
+  difficulty: string;
+  quality_average: string;
+  stars: number;
+  difficulty_error: string;
+  benchmark_difficulty: string | null;
+  litUpHoldsMap: LitUpHoldsMap;
+  matchType: 'exact_larger' | 'high_similarity';
+  similarity: number;
+  matchingSizeId: number;
+  matchingSizeName: string;
 };
