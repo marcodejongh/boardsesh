@@ -22,9 +22,20 @@ export function peerReducer(state: PeerState, action: PeerAction): PeerState {
       return { ...state, connections: action.payload };
     case 'REMOVE_CONNECTION':
       return { ...state, connections: state.connections.filter((conn) => conn.connection.peer !== action.payload) };
-    case 'ADD_CONNECTION':
-      if (state.connections.some((conn) => conn.connection.peer === action.payload.connection.peer)) {
-        return state;
+    case 'ADD_CONNECTION': {
+      const existingIndex = state.connections.findIndex(
+        (conn) => conn.connection.peer === action.payload.connection.peer,
+      );
+      if (existingIndex >= 0) {
+        // Update existing connection with new state instead of ignoring
+        const updatedConnections = [...state.connections];
+        updatedConnections[existingIndex] = {
+          ...updatedConnections[existingIndex],
+          state: action.payload.state,
+          health: action.payload.health || updatedConnections[existingIndex].health,
+          lastHeartbeat: action.payload.lastHeartbeat || updatedConnections[existingIndex].lastHeartbeat,
+        };
+        return { ...state, connections: updatedConnections };
       }
       const newConnection = {
         ...action.payload,
@@ -32,6 +43,7 @@ export function peerReducer(state: PeerState, action: PeerAction): PeerState {
         reconnectAttempts: action.payload.reconnectAttempts || 0,
       };
       return { ...state, connections: [...state.connections, newConnection] };
+    }
     case 'UPDATE_CONNECTION_STATE':
       return {
         ...state,

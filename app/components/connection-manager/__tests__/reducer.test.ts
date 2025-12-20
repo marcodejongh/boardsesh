@@ -215,15 +215,15 @@ describe('peerReducer', () => {
       expect(result.connections[1]).toEqual(secondConnection);
     });
 
-    it('should not add duplicate connections', () => {
-      const existingConnection: PeerConnection = createMockPeerConnection('existing-peer', 'CONNECTED', false);
+    it('should update existing connection state when adding duplicate', () => {
+      const existingConnection: PeerConnection = createMockPeerConnection('existing-peer', 'CONNECTING', false);
 
       const stateWithConnection: PeerState = {
         ...initialPeerState,
         connections: [existingConnection]
       };
 
-      const duplicateConnection: PeerConnection = createMockPeerConnection('existing-peer', 'READY', true);
+      const duplicateConnection: PeerConnection = createMockPeerConnection('existing-peer', 'CONNECTED', true);
 
       const action: PeerAction = {
         type: 'ADD_CONNECTION',
@@ -233,7 +233,9 @@ describe('peerReducer', () => {
       const result = peerReducer(stateWithConnection, action);
 
       expect(result.connections).toHaveLength(1);
-      expect(result.connections[0]).toEqual(existingConnection);
+      expect(result.connections[0].state).toBe('CONNECTED');
+      // Should preserve original connection object but update state
+      expect(result.connections[0].connection.peer).toBe('existing-peer');
     });
   });
 
