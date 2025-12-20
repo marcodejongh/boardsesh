@@ -587,7 +587,7 @@ export const PeerProvider: React.FC<{ children: React.ReactNode }> = ({ children
     subscribeToData,
     hostId: state.connections.find((conn) => conn.isHost)?.connection?.peer || urlHostId,
     isConnecting:
-      !state.peerId || (state.connections.length > 0 && state.connections.some((conn) => conn.state === 'READY')),
+      !state.peerId || (state.connections.length > 0 && state.connections.some((conn) => conn.state === 'CONNECTING')),
     hasConnected: state.connections.length > 0 && state.connections.some((conn) => conn.state === 'READY'),
     currentLeader: state.currentLeader,
     isLeader: state.isLeader,
