@@ -89,6 +89,7 @@ export interface DaemonContextType extends PeerContextType {
   daemonUsers: DaemonUser[];
   disconnect: () => void;
   connectionError: string | null;
+  requestQueueState: () => void;
 }
 
 export const DaemonContext = createContext<DaemonContextType | undefined>(undefined);
@@ -123,14 +124,37 @@ export const DaemonProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const lastHeartbeatResponse = useRef<number>(0);
   const connectionHealth = useRef<'HEALTHY' | 'DEGRADED' | 'POOR'>('HEALTHY');
 
+  // Use refs for callbacks to avoid reconnecting when they change
+  const handleDaemonMessageRef = useRef<(data: DaemonMessage) => void>(() => {});
+  const notifySubscribersRef = useRef<(data: ReceivedPeerData) => void>(() => {});
+  const joinSessionRef = useRef<() => void>(() => {});
+
+  // Store initial queue data to provide to late subscribers
+  const initialQueueDataRef = useRef<ReceivedPeerData | null>(null);
+
   // Generate session ID from pathname
   const sessionId = pathname.replace(/\//g, '-').slice(1) || 'default';
 
   const subscribeToData = useCallback((callback: (data: ReceivedPeerData) => void) => {
     const handlerId = uuidv4();
+    console.log('[DEBUG] New subscriber registered, id:', handlerId, 'total handlers:', dataHandlers.current.length + 1);
     dataHandlers.current.push({ id: handlerId, callback });
 
+    // If we have initial queue data, immediately provide it to the new subscriber
+    if (initialQueueDataRef.current) {
+      const storedData = initialQueueDataRef.current as { queue?: unknown[] };
+      console.log('[DEBUG] Providing stored initial queue data to new subscriber, queue length:', storedData.queue?.length);
+      try {
+        callback(initialQueueDataRef.current);
+      } catch (error) {
+        console.error('Error providing initial queue data to subscriber:', error);
+      }
+    } else {
+      console.log('[DEBUG] No stored initial queue data yet for new subscriber');
+    }
+
     return () => {
+      console.log('[DEBUG] Subscriber unregistered, id:', handlerId);
       dataHandlers.current = dataHandlers.current.filter((handler) => handler.id !== handlerId);
     };
   }, []);
@@ -144,6 +168,9 @@ export const DaemonProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
     });
   }, []);
+
+  // Keep ref updated
+  notifySubscribersRef.current = notifySubscribers;
 
   const sendData = useCallback(
     (data: PeerData, _connectionId?: string | null) => {
@@ -161,10 +188,21 @@ export const DaemonProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     [state.clientId],
   );
 
+  const requestQueueState = useCallback(() => {
+    console.log('[DEBUG] requestQueueState called, sessionId:', state.sessionId, 'wsReady:', wsRef.current?.readyState === WebSocket.OPEN);
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN && state.sessionId) {
+      console.log('[DEBUG] Sending request-queue-state');
+      wsRef.current.send(JSON.stringify({ type: 'request-queue-state' }));
+    } else {
+      console.log('[DEBUG] NOT sending request-queue-state - conditions not met');
+    }
+  }, [state.sessionId]);
+
   const handleDaemonMessage = useCallback(
     (data: DaemonMessage) => {
       switch (data.type) {
         case 'session-joined':
+          console.log('[DEBUG] session-joined received, sessionId:', data.sessionId, 'queue length:', data.queue?.length);
           setState((prev) => ({
             ...prev,
             clientId: data.clientId,
@@ -174,15 +212,18 @@ export const DaemonProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             leaderId: data.users.find((u) => u.isLeader)?.id || null,
           }));
 
-          // Notify queue context about initial data
-          if (data.queue.length > 0 || data.currentClimbQueueItem) {
-            notifySubscribers({
-              type: 'initial-queue-data',
-              queue: data.queue,
-              currentClimbQueueItem: data.currentClimbQueueItem,
-              source: 'daemon',
-            });
-          }
+          // Store initial queue data, even if empty, so subscribers get it
+          const initialData: ReceivedPeerData = {
+            type: 'initial-queue-data',
+            queue: data.queue || [],
+            currentClimbQueueItem: data.currentClimbQueueItem || null,
+            source: 'daemon',
+          };
+          initialQueueDataRef.current = initialData;
+          console.log('[DEBUG] Stored initial queue data, notifying subscribers');
+
+          // Notify any existing subscribers
+          notifySubscribers(initialData);
           break;
 
         case 'user-joined':
@@ -243,6 +284,9 @@ export const DaemonProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     [notifySubscribers],
   );
 
+  // Keep ref updated
+  handleDaemonMessageRef.current = handleDaemonMessage;
+
   const joinSession = useCallback(() => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN && !hasJoinedSession.current) {
       const joinMessage = {
@@ -261,6 +305,9 @@ export const DaemonProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
     }
   }, [sessionId, pathname, username]);
+
+  // Keep ref updated
+  joinSessionRef.current = joinSession;
 
   const connect = useCallback(() => {
     if (!daemonUrl) return;
@@ -285,7 +332,7 @@ export const DaemonProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         connectionHealth.current = 'HEALTHY';
 
         // Join session after connection
-        joinSession();
+        joinSessionRef.current();
 
         // Start heartbeat interval (every 10 seconds)
         if (heartbeatIntervalRef.current) {
@@ -316,7 +363,22 @@ export const DaemonProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
           // Handle daemon-specific messages
           if (isDaemonMessage(data)) {
-            handleDaemonMessage(data);
+            handleDaemonMessageRef.current(data);
+            return;
+          }
+
+          // Handle queue state response - relay to subscribers as initial-queue-data
+          if (data.type === 'queue-state-response') {
+            console.log('[DEBUG] Received queue-state-response, queue length:', data.queue?.length);
+            const queueData: ReceivedPeerData = {
+              type: 'initial-queue-data',
+              queue: data.queue,
+              currentClimbQueueItem: data.currentClimbQueueItem,
+              source: 'daemon',
+            };
+            // Update stored data
+            initialQueueDataRef.current = queueData;
+            notifySubscribersRef.current(queueData);
             return;
           }
 
@@ -327,7 +389,7 @@ export const DaemonProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           };
 
           if (isPeerData(dataWithSource)) {
-            notifySubscribers(dataWithSource);
+            notifySubscribersRef.current(dataWithSource);
           } else {
             console.warn('Received invalid peer data from daemon:', data.type);
           }
@@ -374,7 +436,7 @@ export const DaemonProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         isConnecting: false,
       }));
     }
-  }, [daemonUrl, joinSession, handleDaemonMessage, notifySubscribers]);
+  }, [daemonUrl]); // Using refs for callbacks to avoid reconnecting when they change
 
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
@@ -421,7 +483,8 @@ export const DaemonProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         wsRef.current.close(1000, 'Component unmounting');
       }
     };
-  }, [daemonUrl, connect]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [daemonUrl]); // Only reconnect when daemonUrl changes
 
   // Send username update when it changes
   useEffect(() => {
@@ -463,6 +526,7 @@ export const DaemonProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     sendData,
     subscribeToData,
     connectToPeer: () => {}, // No-op in daemon mode
+    requestQueueState,
 
     // Daemon-specific
     isDaemonMode: true,

@@ -54,6 +54,7 @@ export interface PeerContextType {
   currentLeader: PeerId;
   isLeader: boolean;
   initiateLeaderElection: () => void;
+  requestQueueState?: () => void;
 }
 
 export type PeerProviderProps = {
@@ -69,6 +70,16 @@ interface PeerDataBase {
 // Specific message types
 interface RequestUpdateQueueData {
   type: 'request-update-queue';
+}
+
+interface RequestQueueStateData {
+  type: 'request-queue-state';
+}
+
+interface QueueStateResponseData {
+  type: 'queue-state-response';
+  queue: ClimbQueue;
+  currentClimbQueueItem: ClimbQueueItem | null;
 }
 
 interface UpdateQueueData {
@@ -166,6 +177,8 @@ interface ReconnectCoordinationData {
 // Union type of all possible message types
 export type PeerData =
   | RequestUpdateQueueData
+  | RequestQueueStateData
+  | QueueStateResponseData
   | UpdateQueueData
   | BroadcastOtherPeersData
   | NewConnectionData
@@ -195,12 +208,14 @@ export function isPeerData(data: unknown): data is ReceivedPeerData {
   // Validate based on type
   switch (msg.type) {
     case 'request-update-queue':
+    case 'request-queue-state':
     case 'new-connection':
       return true; // No additional required fields
     case 'send-peer-info':
       return !!msg.username;
     case 'initial-queue-data':
     case 'update-queue':
+    case 'queue-state-response':
       return 'queue' in msg && 'currentClimbQueueItem' in msg;
     case 'broadcast-other-peers':
       return Array.isArray(msg.peers);
