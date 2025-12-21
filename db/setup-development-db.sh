@@ -25,8 +25,8 @@ export PGDATABASE="postgres" # Connect to the default `postgres` database
 if [ "$FRESH_SETUP" = true ]; then
   echo "🗃️  Step 1/6: Setting up PostgreSQL database..."
   echo "   Database: $PGDBNAME on $PGHOST:$PGPORT"
-  psql postgres -tAc "SELECT 1 FROM pg_database WHERE datname='verceldb'" | grep -q 1 && psql postgres -c "DROP DATABASE verceldb"
-  psql postgres -c "CREATE DATABASE verceldb"
+  psql postgres -tAc "SELECT 1 FROM pg_database WHERE datname='$PGDBNAME'" | grep -q 1 && psql postgres -c "DROP DATABASE $PGDBNAME"
+  psql postgres -c "CREATE DATABASE $PGDBNAME"
   echo "   ✅ Database created successfully"
 
   echo "📱 Step 2/6: Downloading and extracting board databases..."

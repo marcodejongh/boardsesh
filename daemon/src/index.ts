@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { startServer } from './server.js';
 import { roomManager } from './services/room-manager.js';
 

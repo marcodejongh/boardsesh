@@ -11,7 +11,7 @@ BEGIN
         AND tablename not like 'tension_%'
         AND tablename not like 'boardsesh_%'
     LOOP
-        EXECUTE 'DROP TABLE IF EXISTS ' || quote_ident('tension_' || r.tablename);
+        EXECUTE 'DROP TABLE IF EXISTS ' || quote_ident('tension_' || r.tablename) || ' CASCADE';
         EXECUTE 'ALTER TABLE ' || quote_ident(r.tablename) ||
                 ' RENAME TO ' || quote_ident('tension_' || r.tablename);
     END LOOP;
