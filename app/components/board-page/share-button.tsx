@@ -10,7 +10,7 @@ import {
   DisconnectOutlined,
 } from '@ant-design/icons';
 import { Button, Input, Drawer, QRCode, Flex, message, Typography, Badge, Segmented } from 'antd';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { useConnection, useDaemonConnection } from '../connection-manager/use-connection';
 import { usePartyContext } from '../party-manager/party-context';
 import { usePartyMode, PartyMode } from '../connection-manager/use-party-mode';
@@ -51,6 +51,7 @@ export const ShareBoardButton = () => {
   const { daemonUrl, setDaemonUrl, clearDaemonUrl } = useDaemonUrl();
   const searchParams = useSearchParams();
   const pathname = usePathname();
+  const router = useRouter();
   const controllerUrl = searchParams.get('controllerUrl');
   const isControllerMode = !!controllerUrl;
 
@@ -93,8 +94,13 @@ export const ShareBoardButton = () => {
   };
 
   const handleDaemonConnect = (url: string) => {
-    // Set the daemon URL - this will trigger the DaemonProvider to render
-    // and automatically connect via the useEffect in daemon-context
+    // Update the URL with daemonUrl parameter - this ensures all hook instances
+    // see the change via useSearchParams, not just localStorage updates which
+    // only affect the local component's state
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('daemonUrl', url);
+    router.push(`${pathname}?${params.toString()}`);
+    // Also store in localStorage for persistence
     setDaemonUrl(url);
     // Ensure we're in daemon mode
     setPartyMode('daemon');
@@ -104,6 +110,11 @@ export const ShareBoardButton = () => {
     if (daemonConnection?.disconnect) {
       daemonConnection.disconnect();
     }
+    // Remove daemonUrl from URL
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('daemonUrl');
+    const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+    router.push(newUrl);
     clearDaemonUrl();
     setPartyMode('direct');
   };
