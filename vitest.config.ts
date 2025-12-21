@@ -13,6 +13,7 @@ export default defineConfig({
     env: {
       NODE_ENV: 'test',
     },
+    exclude: ['**/node_modules/**', '**/dist/**', 'daemon/**'],
     coverage: {
       provider: 'v8',
       include: ['app/**/*.{ts,tsx}'],
