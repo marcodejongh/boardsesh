@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { usePartyMode } from '../use-party-mode';
+import React from 'react';
+import { usePartyMode, ConnectionSettingsProvider } from '../connection-settings-context';
 
 // Mock next/navigation
 vi.mock('next/navigation', () => ({
@@ -9,16 +10,8 @@ vi.mock('next/navigation', () => ({
   })),
 }));
 
-// Mock useDaemonUrl
-vi.mock('../use-daemon-url', () => ({
-  useDaemonUrl: vi.fn(() => ({
-    daemonUrl: null,
-    setDaemonUrl: vi.fn(),
-    clearDaemonUrl: vi.fn(),
-    isLoaded: true,
-    hasUrlParam: false,
-  })),
-}));
+const wrapper = ({ children }: { children: React.ReactNode }) =>
+  React.createElement(ConnectionSettingsProvider, null, children);
 
 describe('usePartyMode', () => {
   beforeEach(() => {
@@ -27,7 +20,7 @@ describe('usePartyMode', () => {
   });
 
   it('should default to direct mode', () => {
-    const { result } = renderHook(() => usePartyMode());
+    const { result } = renderHook(() => usePartyMode(), { wrapper });
 
     expect(result.current.partyMode).toBe('direct');
   });
@@ -35,7 +28,7 @@ describe('usePartyMode', () => {
   it('should load mode from localStorage', async () => {
     localStorage.setItem('boardsesh:partyMode', 'daemon');
 
-    const { result, rerender } = renderHook(() => usePartyMode());
+    const { result, rerender } = renderHook(() => usePartyMode(), { wrapper });
 
     await act(async () => {
       rerender();
@@ -45,7 +38,7 @@ describe('usePartyMode', () => {
   });
 
   it('should set party mode and persist to localStorage', async () => {
-    const { result } = renderHook(() => usePartyMode());
+    const { result } = renderHook(() => usePartyMode(), { wrapper });
 
     await act(async () => {
       result.current.setPartyMode('daemon');
@@ -56,7 +49,7 @@ describe('usePartyMode', () => {
   });
 
   it('should switch between modes', async () => {
-    const { result } = renderHook(() => usePartyMode());
+    const { result } = renderHook(() => usePartyMode(), { wrapper });
 
     // Switch to daemon
     await act(async () => {
@@ -74,7 +67,7 @@ describe('usePartyMode', () => {
   it('should default to direct for invalid stored value', async () => {
     localStorage.setItem('boardsesh:partyMode', 'invalid');
 
-    const { result, rerender } = renderHook(() => usePartyMode());
+    const { result, rerender } = renderHook(() => usePartyMode(), { wrapper });
 
     await act(async () => {
       rerender();
@@ -100,7 +93,7 @@ describe('usePartyMode with daemon URL', () => {
       }),
     } as unknown as ReturnType<typeof useSearchParams>);
 
-    const { result, rerender } = renderHook(() => usePartyMode());
+    const { result, rerender } = renderHook(() => usePartyMode(), { wrapper });
 
     await act(async () => {
       rerender();

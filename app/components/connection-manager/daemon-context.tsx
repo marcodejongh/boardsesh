@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { v4 as uuidv4 } from 'uuid';
 import { ReceivedPeerData, PeerData, PeerConnection, PeerContextType, isPeerData } from './types';
 import type { ClimbQueueItem } from '../queue-control/types';
-import { useDaemonUrl } from './use-daemon-url';
+import { useDaemonUrl } from './connection-settings-context';
 import { useBoardProvider } from '../board-provider/board-provider-context';
 
 // Daemon-specific message types

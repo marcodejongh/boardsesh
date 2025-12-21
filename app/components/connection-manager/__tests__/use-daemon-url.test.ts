@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { useDaemonUrl } from '../use-daemon-url';
+import React from 'react';
+import { useDaemonUrl, ConnectionSettingsProvider } from '../connection-settings-context';
 
 // Mock next/navigation
 vi.mock('next/navigation', () => ({
@@ -12,6 +13,9 @@ vi.mock('next/navigation', () => ({
   })),
 }));
 
+const wrapper = ({ children }: { children: React.ReactNode }) =>
+  React.createElement(ConnectionSettingsProvider, null, children);
+
 describe('useDaemonUrl', () => {
   beforeEach(() => {
     // Clear localStorage before each test
@@ -20,7 +24,7 @@ describe('useDaemonUrl', () => {
   });
 
   it('should return null when no daemon URL is set', () => {
-    const { result } = renderHook(() => useDaemonUrl());
+    const { result } = renderHook(() => useDaemonUrl(), { wrapper });
 
     expect(result.current.daemonUrl).toBeNull();
     expect(result.current.hasUrlParam).toBe(false);
@@ -29,7 +33,7 @@ describe('useDaemonUrl', () => {
   it('should return stored URL from localStorage', async () => {
     localStorage.setItem('boardsesh:daemonUrl', 'ws://localhost:8080');
 
-    const { result, rerender } = renderHook(() => useDaemonUrl());
+    const { result, rerender } = renderHook(() => useDaemonUrl(), { wrapper });
 
     // Wait for useEffect to run
     await act(async () => {
@@ -40,7 +44,7 @@ describe('useDaemonUrl', () => {
   });
 
   it('should set daemon URL in localStorage', async () => {
-    const { result } = renderHook(() => useDaemonUrl());
+    const { result } = renderHook(() => useDaemonUrl(), { wrapper });
 
     await act(async () => {
       result.current.setDaemonUrl('ws://192.168.1.100:8080');
@@ -53,7 +57,7 @@ describe('useDaemonUrl', () => {
   it('should clear daemon URL from localStorage', async () => {
     localStorage.setItem('boardsesh:daemonUrl', 'ws://localhost:8080');
 
-    const { result, rerender } = renderHook(() => useDaemonUrl());
+    const { result, rerender } = renderHook(() => useDaemonUrl(), { wrapper });
 
     await act(async () => {
       rerender();
@@ -68,7 +72,7 @@ describe('useDaemonUrl', () => {
   });
 
   it('should report isLoaded as true after mounting', async () => {
-    const { result, rerender } = renderHook(() => useDaemonUrl());
+    const { result, rerender } = renderHook(() => useDaemonUrl(), { wrapper });
 
     // After effect runs (useEffect runs synchronously in test environment)
     await act(async () => {
@@ -98,7 +102,7 @@ describe('useDaemonUrl with URL param', () => {
     // Set localStorage value
     localStorage.setItem('boardsesh:daemonUrl', 'ws://localhost:8080');
 
-    const { result, rerender } = renderHook(() => useDaemonUrl());
+    const { result, rerender } = renderHook(() => useDaemonUrl(), { wrapper });
 
     await act(async () => {
       rerender();
@@ -118,7 +122,7 @@ describe('useDaemonUrl with URL param', () => {
       }),
     } as unknown as ReturnType<typeof useSearchParams>);
 
-    const { result, rerender } = renderHook(() => useDaemonUrl());
+    const { result, rerender } = renderHook(() => useDaemonUrl(), { wrapper });
 
     await act(async () => {
       rerender();

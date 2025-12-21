@@ -13,6 +13,7 @@ import { getBoardDetails } from '@/app/lib/data/queries';
 import BoardSeshHeader from '@/app/components/board-page/header';
 import { QueueProvider } from '@/app/components/queue-control/queue-context';
 import { ConnectionProviderWrapper } from '@/app/components/connection-manager/connection-provider-wrapper';
+import { ConnectionSettingsProvider } from '@/app/components/connection-manager/connection-settings-context';
 import { PartyProvider } from '@/app/components/party-manager/party-context';
 import { Metadata } from 'next';
 
@@ -134,36 +135,38 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
 
   return (
     <Layout style={{ height: '100dvh', display: 'flex', flexDirection: 'column' }}>
-      <ConnectionProviderWrapper>
-        <QueueProvider parsedParams={parsedParams}>
-          <PartyProvider>
-            <BoardSeshHeader boardDetails={boardDetails} angle={angle} />
+      <ConnectionSettingsProvider>
+        <ConnectionProviderWrapper>
+          <QueueProvider parsedParams={parsedParams}>
+            <PartyProvider>
+              <BoardSeshHeader boardDetails={boardDetails} angle={angle} />
 
-            <Content
-              id="content-for-scrollable"
-              style={{
-                flex: 1,
-                justifyContent: 'center',
-                alignItems: 'center',
-                overflowY: 'auto',
-                overflowX: 'hidden',
-                height: '80vh',
-                paddingLeft: '10px',
-                paddingRight: '10px',
-                paddingTop: '10px',
-              }}
-            >
-              {children}
-            </Content>
+              <Content
+                id="content-for-scrollable"
+                style={{
+                  flex: 1,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  overflowY: 'auto',
+                  overflowX: 'hidden',
+                  height: '80vh',
+                  paddingLeft: '10px',
+                  paddingRight: '10px',
+                  paddingTop: '10px',
+                }}
+              >
+                {children}
+              </Content>
 
-            <Affix offsetBottom={0}>
-              <div style={{ width: '100%', backgroundColor: '#fff', boxShadow: '0 -2px 8px rgba(0, 0, 0, 0.15)' }}>
-                <QueueControlBar board={board_name} boardDetails={boardDetails} angle={angle} />
-              </div>
-            </Affix>
-          </PartyProvider>
-        </QueueProvider>
-      </ConnectionProviderWrapper>
+              <Affix offsetBottom={0}>
+                <div style={{ width: '100%', backgroundColor: '#fff', boxShadow: '0 -2px 8px rgba(0, 0, 0, 0.15)' }}>
+                  <QueueControlBar board={board_name} boardDetails={boardDetails} angle={angle} />
+                </div>
+              </Affix>
+            </PartyProvider>
+          </QueueProvider>
+        </ConnectionProviderWrapper>
+      </ConnectionSettingsProvider>
     </Layout>
   );
 }
