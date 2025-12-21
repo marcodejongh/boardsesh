@@ -13,8 +13,7 @@ import { Button, Input, Drawer, QRCode, Flex, message, Typography, Badge, Segmen
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useConnection, useDaemonConnection } from '../connection-manager/use-connection';
 import { usePartyContext } from '../party-manager/party-context';
-import { usePartyMode, PartyMode } from '../connection-manager/use-party-mode';
-import { useDaemonUrl } from '../connection-manager/use-daemon-url';
+import { usePartyMode, useDaemonUrl, type PartyMode } from '../connection-manager/connection-settings-context';
 import { DaemonSetupPanel } from './daemon-setup-panel';
 
 const { Text } = Typography;
@@ -93,11 +92,9 @@ export const ShareBoardButton = () => {
   };
 
   const handleDaemonConnect = (url: string) => {
-    // Set the daemon URL - this will trigger the DaemonProvider to render
-    // and automatically connect via the useEffect in daemon-context
+    // Set the daemon URL - this updates shared context state and triggers
+    // ConnectionProviderWrapper to render DaemonProvider
     setDaemonUrl(url);
-    // Ensure we're in daemon mode
-    setPartyMode('daemon');
   };
 
   const handleDaemonDisconnect = () => {
