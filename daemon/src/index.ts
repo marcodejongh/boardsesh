@@ -1,19 +1,12 @@
 import 'dotenv/config';
 import { startServer } from './server.js';
-import { roomManager } from './services/room-manager.js';
 
 // Start the server
 const { wss, httpServer } = startServer();
 
-// Start session cleanup interval
-roomManager.startCleanupInterval();
-
 // Handle graceful shutdown
 function shutdown() {
   console.log('\nShutting down BoardSesh Daemon...');
-
-  // Stop session cleanup interval
-  roomManager.stopCleanupInterval();
 
   // Close WebSocket server (stops accepting new connections)
   wss.close(() => {

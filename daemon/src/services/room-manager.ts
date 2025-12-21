@@ -2,7 +2,7 @@ import { WebSocket } from 'ws';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../db/client.js';
 import { sessions, sessionClients, sessionQueues } from '../db/schema.js';
-import { eq, lt } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import type { ClimbQueueItem, SessionUser } from '../types/messages.js';
 
 interface ConnectedClient {
@@ -14,15 +14,11 @@ interface ConnectedClient {
   connectedAt: Date;
 }
 
-// Session TTL in milliseconds (24 hours)
-const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
-// Cleanup interval (1 hour)
-const CLEANUP_INTERVAL_MS = 60 * 60 * 1000;
-
 class RoomManager {
   private clients: Map<WebSocket, ConnectedClient> = new Map();
   private sessions: Map<string, Set<WebSocket>> = new Map();
-  private cleanupInterval: NodeJS.Timeout | null = null;
+  private activeSessionId: string | null = null;
+  private activeSessionBoardPath: string | null = null;
 
   /**
    * Reset all state (for testing purposes)
@@ -30,10 +26,8 @@ class RoomManager {
   reset(): void {
     this.clients.clear();
     this.sessions.clear();
-    if (this.cleanupInterval) {
-      clearInterval(this.cleanupInterval);
-      this.cleanupInterval = null;
-    }
+    this.activeSessionId = null;
+    this.activeSessionBoardPath = null;
   }
 
   registerClient(ws: WebSocket): string {
@@ -62,12 +56,14 @@ class RoomManager {
     return undefined;
   }
 
-  async joinSession(ws: WebSocket, sessionId: string, username?: string): Promise<{
+  async joinSession(ws: WebSocket, sessionId: string, boardPath: string, username?: string): Promise<{
     clientId: string;
     users: SessionUser[];
     queue: ClimbQueueItem[];
     currentClimbQueueItem: ClimbQueueItem | null;
     isLeader: boolean;
+    sessionSwitched: boolean;
+    previousSessionClients: WebSocket[];
   }> {
     const client = this.clients.get(ws);
     if (!client) {
@@ -77,6 +73,30 @@ class RoomManager {
     // Leave current session if in one
     if (client.sessionId) {
       await this.leaveSession(ws);
+    }
+
+    // Check if we need to switch sessions (different board path)
+    let sessionSwitched = false;
+    let previousSessionClients: WebSocket[] = [];
+
+    if (this.activeSessionId && this.activeSessionBoardPath !== boardPath) {
+      // Session switching: get clients to notify and clear old session
+      previousSessionClients = this.getSessionClients(this.activeSessionId);
+
+      // Clear old session from memory
+      this.sessions.delete(this.activeSessionId);
+
+      // Mark all clients in old session as not in a session
+      for (const oldWs of previousSessionClients) {
+        const oldClient = this.clients.get(oldWs);
+        if (oldClient && oldWs !== ws) {
+          oldClient.sessionId = null;
+          oldClient.isLeader = false;
+        }
+      }
+
+      sessionSwitched = true;
+      console.log(`Session switched from ${this.activeSessionBoardPath} to ${boardPath}`);
     }
 
     // Update client info
@@ -96,8 +116,12 @@ class RoomManager {
     client.isLeader = isLeader;
     sessionClients.add(ws);
 
+    // Update active session tracking
+    this.activeSessionId = sessionId;
+    this.activeSessionBoardPath = boardPath;
+
     // Persist to database
-    await this.persistSessionJoin(sessionId, client.clientId, client.username, isLeader);
+    await this.persistSessionJoin(sessionId, boardPath, client.clientId, client.username, isLeader);
 
     // Get current session state
     const users = this.getSessionUsers(sessionId);
@@ -109,6 +133,8 @@ class RoomManager {
       queue: queueState.queue,
       currentClimbQueueItem: queueState.currentClimbQueueItem,
       isLeader,
+      sessionSwitched,
+      previousSessionClients: previousSessionClients.filter(c => c !== ws),
     };
   }
 
@@ -129,6 +155,11 @@ class RoomManager {
       // Clean up empty sessions
       if (sessionClients.size === 0) {
         this.sessions.delete(sessionId);
+        // Clear active session tracking if this was the active session
+        if (this.activeSessionId === sessionId) {
+          this.activeSessionId = null;
+          this.activeSessionBoardPath = null;
+        }
       }
     }
 
@@ -241,8 +272,31 @@ class RoomManager {
     };
   }
 
+  /**
+   * Get the active session info for the /join route
+   */
+  getActiveSession(): { sessionId: string; boardPath: string } | null {
+    if (!this.activeSessionId || !this.activeSessionBoardPath) {
+      return null;
+    }
+
+    // Verify session still has clients
+    const sessionClients = this.sessions.get(this.activeSessionId);
+    if (!sessionClients || sessionClients.size === 0) {
+      this.activeSessionId = null;
+      this.activeSessionBoardPath = null;
+      return null;
+    }
+
+    return {
+      sessionId: this.activeSessionId,
+      boardPath: this.activeSessionBoardPath,
+    };
+  }
+
   private async persistSessionJoin(
     sessionId: string,
+    boardPath: string,
     clientId: string,
     username: string,
     isLeader: boolean
@@ -252,11 +306,12 @@ class RoomManager {
       .insert(sessions)
       .values({
         id: sessionId,
+        boardPath,
         lastActivity: new Date(),
       })
       .onConflictDoUpdate({
         target: sessions.id,
-        set: { lastActivity: new Date() },
+        set: { boardPath, lastActivity: new Date() },
       });
 
     // Add client to session
@@ -290,71 +345,6 @@ class RoomManager {
       .update(sessionClients)
       .set({ isLeader: true })
       .where(eq(sessionClients.id, newLeaderId));
-  }
-
-  /**
-   * Start the periodic cleanup of inactive sessions
-   */
-  startCleanupInterval(): void {
-    if (this.cleanupInterval) {
-      return; // Already running
-    }
-
-    console.log('Starting session cleanup interval (every 1 hour)');
-    this.cleanupInterval = setInterval(() => {
-      this.cleanupInactiveSessions().catch((error) => {
-        console.error('Error during session cleanup:', error);
-      });
-    }, CLEANUP_INTERVAL_MS);
-
-    // Run initial cleanup on startup
-    this.cleanupInactiveSessions().catch((error) => {
-      console.error('Error during initial session cleanup:', error);
-    });
-  }
-
-  /**
-   * Stop the cleanup interval
-   */
-  stopCleanupInterval(): void {
-    if (this.cleanupInterval) {
-      clearInterval(this.cleanupInterval);
-      this.cleanupInterval = null;
-      console.log('Stopped session cleanup interval');
-    }
-  }
-
-  /**
-   * Clean up sessions that have been inactive beyond the TTL
-   */
-  private async cleanupInactiveSessions(): Promise<void> {
-    const cutoffTime = new Date(Date.now() - SESSION_TTL_MS);
-
-    try {
-      // Get sessions older than TTL (lastActivity < cutoffTime)
-      const oldSessions = await db
-        .select({ id: sessions.id })
-        .from(sessions)
-        .where(lt(sessions.lastActivity, cutoffTime));
-
-      if (oldSessions.length === 0) {
-        return;
-      }
-
-      console.log(`Cleaning up ${oldSessions.length} inactive sessions`);
-
-      for (const session of oldSessions) {
-        // Remove from in-memory cache if present
-        this.sessions.delete(session.id);
-
-        // Delete from database (cascade will handle clients and queues)
-        await db.delete(sessions).where(eq(sessions.id, session.id));
-      }
-
-      console.log(`Cleaned up ${oldSessions.length} inactive sessions`);
-    } catch (error) {
-      console.error('Failed to cleanup inactive sessions:', error);
-    }
   }
 }
 

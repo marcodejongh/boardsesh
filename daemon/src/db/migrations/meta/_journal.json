@@ -8,6 +8,13 @@
       "when": 1766291980731,
       "tag": "0000_chemical_morlocks",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1766301544517,
+      "tag": "0001_conscious_the_leader",
+      "breakpoints": true
     }
   ]
 }

@@ -4,6 +4,7 @@ import { broadcastToSession, sendToClient } from '../services/broadcast.js';
 import type {
   JoinSessionMessage,
   SessionJoinedMessage,
+  SessionEndedMessage,
   UserJoinedMessage,
   UserLeftMessage,
   LeaderChangedMessage,
@@ -16,7 +17,20 @@ export async function handleJoinSession(
   message: JoinSessionMessage
 ): Promise<void> {
   try {
-    const result = await roomManager.joinSession(ws, message.sessionId, message.username);
+    const result = await roomManager.joinSession(ws, message.sessionId, message.boardPath, message.username);
+
+    // If session was switched, notify old clients
+    if (result.sessionSwitched && result.previousSessionClients.length > 0) {
+      const sessionEndedMessage: SessionEndedMessage = {
+        type: 'session-ended',
+        reason: 'session-switched',
+        newPath: message.boardPath,
+      };
+      for (const oldWs of result.previousSessionClients) {
+        sendToClient(oldWs, sessionEndedMessage);
+      }
+      console.log(`Session switched, notified ${result.previousSessionClients.length} clients`);
+    }
 
     // Send session info to the joining client
     const sessionJoinedMessage: SessionJoinedMessage = {
@@ -44,7 +58,7 @@ export async function handleJoinSession(
       broadcastToSession(message.sessionId, userJoinedMessage, ws);
     }
 
-    console.log(`Client ${result.clientId} joined session ${message.sessionId}`);
+    console.log(`Client ${result.clientId} joined session ${message.sessionId} (path: ${message.boardPath})`);
   } catch (error) {
     const errorMessage: ErrorMessage = {
       type: 'error',

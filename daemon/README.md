@@ -59,6 +59,97 @@ For other devices on your network to connect:
 
 Example: `ws://192.168.1.100:8080`
 
+## Production Deployment with WSS (Traefik)
+
+For secure WebSocket connections over the internet, deploy behind a reverse proxy with TLS termination.
+
+### Architecture
+
+```
+Internet
+    ↓
+Traefik (TLS termination, Let's Encrypt)
+    ↓ (ws://daemon:8080)
+BoardSesh Daemon
+    ↓
+PostgreSQL
+```
+
+### Traefik Configuration
+
+Add to your Traefik dynamic configuration:
+
+```yaml
+http:
+  routers:
+    boardsesh-daemon:
+      rule: "Host(`boardsesh-ws.yourdomain.com`)"
+      entryPoints:
+        - websecure
+      service: boardsesh-daemon
+      tls:
+        certResolver: letsencrypt
+
+  services:
+    boardsesh-daemon:
+      loadBalancer:
+        servers:
+          - url: "http://daemon-internal-ip:8080"
+```
+
+### Docker Compose for Production
+
+```yaml
+services:
+  daemon:
+    image: ghcr.io/marcodejongh/boardsesh-daemon:latest
+    # No ports exposed - only accessible via Traefik
+    environment:
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/boardsesh_daemon
+      - PORT=8080
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - traefik  # Your Traefik network
+      - internal
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=boardsesh_daemon
+    volumes:
+      - daemon_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - internal
+
+networks:
+  traefik:
+    external: true
+  internal:
+    driver: bridge
+
+volumes:
+  daemon_data:
+```
+
+### Usage
+
+Once deployed, users connect via:
+```
+https://boardsesh.com?daemonUrl=wss://boardsesh-ws.yourdomain.com
+```
+
+The `daemonUrl` parameter is saved to localStorage for future sessions.
+
 ## API
 
 The daemon uses WebSocket with JSON messages. See `src/types/messages.ts` for the full protocol definition.

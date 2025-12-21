@@ -3,6 +3,7 @@ import type { ClimbQueueItem } from '../types/messages.js';
 
 export const sessions = pgTable('sessions', {
   id: text('id').primaryKey(),
+  boardPath: text('board_path').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   lastActivity: timestamp('last_activity').defaultNow().notNull(),
 });

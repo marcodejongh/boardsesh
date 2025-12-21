@@ -40,12 +40,19 @@ interface HeartbeatResponseMessage {
   responseTimestamp: number;
 }
 
+interface SessionEndedMessage {
+  type: 'session-ended';
+  reason: 'session-switched';
+  newPath?: string;
+}
+
 type DaemonMessage =
   | SessionJoinedMessage
   | UserJoinedMessage
   | UserLeftMessage
   | LeaderChangedMessage
-  | HeartbeatResponseMessage;
+  | HeartbeatResponseMessage
+  | SessionEndedMessage;
 
 function isDaemonMessage(data: unknown): data is DaemonMessage {
   if (typeof data !== 'object' || data === null) return false;
@@ -55,7 +62,8 @@ function isDaemonMessage(data: unknown): data is DaemonMessage {
     msg.type === 'user-joined' ||
     msg.type === 'user-left' ||
     msg.type === 'leader-changed' ||
-    msg.type === 'heartbeat-response'
+    msg.type === 'heartbeat-response' ||
+    msg.type === 'session-ended'
   );
 }
 
@@ -216,6 +224,20 @@ export const DaemonProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           }
           break;
         }
+
+        case 'session-ended':
+          console.log('Session ended:', data.reason, 'New path:', data.newPath);
+          // Reset state since our session was ended
+          setState((prev) => ({
+            ...prev,
+            sessionId: null,
+            users: [],
+            isLeader: false,
+            leaderId: null,
+            error: `Session ended: ${data.reason}${data.newPath ? `. Navigate to ${data.newPath} to rejoin.` : ''}`,
+          }));
+          hasJoinedSession.current = false;
+          break;
       }
     },
     [notifySubscribers],
@@ -226,6 +248,7 @@ export const DaemonProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const joinMessage = {
         type: 'join-session',
         sessionId,
+        boardPath: pathname,
         username: username || `User-${Date.now().toString(36)}`,
       };
       try {
@@ -237,7 +260,7 @@ export const DaemonProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         // Don't set flag so we can retry on next connection
       }
     }
-  }, [sessionId, username]);
+  }, [sessionId, pathname, username]);
 
   const connect = useCallback(() => {
     if (!daemonUrl) return;

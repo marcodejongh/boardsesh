@@ -40,6 +40,7 @@ export interface SessionUser {
 export interface JoinSessionMessage {
   type: 'join-session';
   sessionId: string;
+  boardPath: string;
   username?: string;
 }
 
@@ -138,6 +139,12 @@ export interface ErrorMessage {
   code?: string;
 }
 
+export interface SessionEndedMessage {
+  type: 'session-ended';
+  reason: 'session-switched';
+  newPath?: string;
+}
+
 // Union types
 export type ClientMessage =
   | JoinSessionMessage
@@ -159,6 +166,7 @@ export type DaemonMessage =
   | LeaderChangedMessage
   | HeartbeatResponseMessage
   | ErrorMessage
+  | SessionEndedMessage
   | AddQueueItemMessage
   | RemoveQueueItemMessage
   | ReorderQueueItemMessage

@@ -96,7 +96,7 @@ describe('RoomManager', () => {
   describe('joinSession', () => {
     it('should allow a client to join a session', async () => {
       roomManager.registerClient(mockWs1);
-      const result = await roomManager.joinSession(mockWs1, 'session-1', 'User1');
+      const result = await roomManager.joinSession(mockWs1, 'session-1', '/kilter/1/2/3/25/list', 'User1');
 
       expect(result.clientId).toBeDefined();
       expect(result.isLeader).toBe(true); // First client is leader
@@ -108,8 +108,8 @@ describe('RoomManager', () => {
       roomManager.registerClient(mockWs1);
       roomManager.registerClient(mockWs2);
 
-      const result1 = await roomManager.joinSession(mockWs1, 'session-1', 'User1');
-      const result2 = await roomManager.joinSession(mockWs2, 'session-1', 'User2');
+      const result1 = await roomManager.joinSession(mockWs1, 'session-1', '/kilter/1/2/3/25/list', 'User1');
+      const result2 = await roomManager.joinSession(mockWs2, 'session-1', '/kilter/1/2/3/25/list', 'User2');
 
       expect(result1.isLeader).toBe(true);
       expect(result2.isLeader).toBe(false);
@@ -119,8 +119,8 @@ describe('RoomManager', () => {
       roomManager.registerClient(mockWs1);
       roomManager.registerClient(mockWs2);
 
-      await roomManager.joinSession(mockWs1, 'session-1', 'User1');
-      const result2 = await roomManager.joinSession(mockWs2, 'session-1', 'User2');
+      await roomManager.joinSession(mockWs1, 'session-1', '/kilter/1/2/3/25/list', 'User1');
+      const result2 = await roomManager.joinSession(mockWs2, 'session-1', '/kilter/1/2/3/25/list', 'User2');
 
       expect(result2.users.length).toBe(2);
       expect(result2.users.map((u) => u.username).sort()).toEqual(['User1', 'User2']);
@@ -128,13 +128,13 @@ describe('RoomManager', () => {
 
     it('should use default username if not provided', async () => {
       const clientId = roomManager.registerClient(mockWs1);
-      const result = await roomManager.joinSession(mockWs1, 'session-1');
+      const result = await roomManager.joinSession(mockWs1, 'session-1', '/kilter/1/2/3/25/list');
 
       expect(result.users[0].username).toContain('User-');
     });
 
     it('should throw error for unregistered client', async () => {
-      await expect(roomManager.joinSession(mockWs1, 'session-1')).rejects.toThrow(
+      await expect(roomManager.joinSession(mockWs1, 'session-1', '/kilter/1/2/3/25/list')).rejects.toThrow(
         'Client not registered',
       );
     });
@@ -145,8 +145,8 @@ describe('RoomManager', () => {
       roomManager.registerClient(mockWs1);
       roomManager.registerClient(mockWs2);
 
-      await roomManager.joinSession(mockWs1, 'session-1', 'User1');
-      await roomManager.joinSession(mockWs2, 'session-1', 'User2');
+      await roomManager.joinSession(mockWs1, 'session-1', '/kilter/1/2/3/25/list', 'User1');
+      await roomManager.joinSession(mockWs2, 'session-1', '/kilter/1/2/3/25/list', 'User2');
 
       await roomManager.leaveSession(mockWs1);
 
@@ -160,12 +160,12 @@ describe('RoomManager', () => {
       roomManager.registerClient(mockWs2);
       roomManager.registerClient(mockWs3);
 
-      await roomManager.joinSession(mockWs1, 'session-1', 'User1');
+      await roomManager.joinSession(mockWs1, 'session-1', '/kilter/1/2/3/25/list', 'User1');
       // Small delay to ensure different connectedAt times
       await new Promise((resolve) => setTimeout(resolve, 10));
-      await roomManager.joinSession(mockWs2, 'session-1', 'User2');
+      await roomManager.joinSession(mockWs2, 'session-1', '/kilter/1/2/3/25/list', 'User2');
       await new Promise((resolve) => setTimeout(resolve, 10));
-      await roomManager.joinSession(mockWs3, 'session-1', 'User3');
+      await roomManager.joinSession(mockWs3, 'session-1', '/kilter/1/2/3/25/list', 'User3');
 
       // User1 is leader and leaves
       const result = await roomManager.leaveSession(mockWs1);
@@ -190,8 +190,8 @@ describe('RoomManager', () => {
       roomManager.registerClient(mockWs1);
       roomManager.registerClient(mockWs2);
 
-      await roomManager.joinSession(mockWs1, 'session-1', 'User1');
-      await roomManager.joinSession(mockWs2, 'session-1', 'User2');
+      await roomManager.joinSession(mockWs1, 'session-1', '/kilter/1/2/3/25/list', 'User1');
+      await roomManager.joinSession(mockWs2, 'session-1', '/kilter/1/2/3/25/list', 'User2');
 
       const users = roomManager.getSessionUsers('session-1');
       expect(users.length).toBe(2);
@@ -208,8 +208,8 @@ describe('RoomManager', () => {
       roomManager.registerClient(mockWs1);
       roomManager.registerClient(mockWs2);
 
-      await roomManager.joinSession(mockWs1, 'session-1');
-      await roomManager.joinSession(mockWs2, 'session-1');
+      await roomManager.joinSession(mockWs1, 'session-1', '/kilter/1/2/3/25/list');
+      await roomManager.joinSession(mockWs2, 'session-1', '/kilter/1/2/3/25/list');
 
       const clients = roomManager.getSessionClients('session-1');
       expect(clients.length).toBe(2);
@@ -221,7 +221,7 @@ describe('RoomManager', () => {
   describe('updateUsername', () => {
     it('should update the username of a client', async () => {
       roomManager.registerClient(mockWs1);
-      await roomManager.joinSession(mockWs1, 'session-1', 'OldName');
+      await roomManager.joinSession(mockWs1, 'session-1', '/kilter/1/2/3/25/list', 'OldName');
 
       await roomManager.updateUsername(mockWs1, 'NewName');
 
