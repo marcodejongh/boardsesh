@@ -1,0 +1,1 @@
+ALTER TABLE "sessions" ADD COLUMN "board_path" text NOT NULL;

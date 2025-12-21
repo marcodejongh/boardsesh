@@ -42,7 +42,7 @@ const BasicSearchForm: React.FC<BasicSearchFormProps> = ({ boardDetails }) => {
   const renderLogbookSection = () => {
     if (!isLoggedIn) {
       return (
-        <Form.Item>
+        <Form.Item wrapperCol={{ span: 24 }}>
           <Alert
             message="Sign in to access personal progress filters"
             description="Login to your account to filter climbs based on your attempt and completion history."
@@ -91,7 +91,7 @@ const BasicSearchForm: React.FC<BasicSearchFormProps> = ({ boardDetails }) => {
   };
 
   return (
-    <Form layout="horizontal" labelAlign="left" labelCol={{ span: 14 }} wrapperCol={{ span: 10 }}>
+    <Form layout="horizontal" labelAlign="left" labelCol={{ span: 10 }} wrapperCol={{ span: 14 }}>
       <Form.Item label="Climb Name">
         <SearchClimbNameInput />
       </Form.Item>
@@ -226,7 +226,7 @@ const BasicSearchForm: React.FC<BasicSearchFormProps> = ({ boardDetails }) => {
         <SetterNameSelect />
       </Form.Item>
 
-      <Form.Item>
+      <Form.Item wrapperCol={{ span: 24 }}>
         <Title level={5}>Personal Progress</Title>
       </Form.Item>
 

@@ -59,8 +59,9 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
           );
           break;
         case 'initial-queue-data':
-          if (hostId !== data.source) {
-            console.log(`Ignoring queue data from ${data.source} since it's not the host(${hostId}).`);
+          // Accept data from the host OR from the daemon (which is authoritative in daemon mode)
+          if (hostId !== data.source && data.source !== 'daemon') {
+            console.log(`Ignoring queue data from ${data.source} since it's not the host(${hostId}) or daemon.`);
             return;
           }
           dispatch({
