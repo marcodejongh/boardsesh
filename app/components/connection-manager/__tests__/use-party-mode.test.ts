@@ -98,7 +98,7 @@ describe('usePartyMode with daemon URL', () => {
         if (key === 'daemonUrl') return 'ws://localhost:8080';
         return null;
       }),
-    } as ReturnType<typeof useSearchParams>);
+    } as unknown as ReturnType<typeof useSearchParams>);
 
     const { result, rerender } = renderHook(() => usePartyMode());
 

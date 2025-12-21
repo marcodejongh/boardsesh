@@ -93,7 +93,7 @@ describe('useDaemonUrl with URL param', () => {
         if (key === 'daemonUrl') return 'ws://url-param:8080';
         return null;
       }),
-    } as ReturnType<typeof useSearchParams>);
+    } as unknown as ReturnType<typeof useSearchParams>);
 
     // Set localStorage value
     localStorage.setItem('boardsesh:daemonUrl', 'ws://localhost:8080');
@@ -116,7 +116,7 @@ describe('useDaemonUrl with URL param', () => {
         if (key === 'daemonUrl') return 'ws://url-param:8080';
         return null;
       }),
-    } as ReturnType<typeof useSearchParams>);
+    } as unknown as ReturnType<typeof useSearchParams>);
 
     const { result, rerender } = renderHook(() => useDaemonUrl());
 
