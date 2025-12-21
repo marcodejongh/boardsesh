@@ -137,11 +137,16 @@ export const DaemonProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const subscribeToData = useCallback((callback: (data: ReceivedPeerData) => void) => {
     const handlerId = uuidv4();
     dataHandlers.current.push({ id: handlerId, callback });
+    console.log('[Daemon] New subscriber registered, total:', dataHandlers.current.length, 'hasPendingData:', !!pendingInitialData.current);
 
     // If there's pending initial data, immediately send it to this new subscriber
     // This handles the race condition where session-joined arrives before subscribers register
     if (pendingInitialData.current) {
       const data = pendingInitialData.current;
+      console.log('[Daemon] Sending pending initial data to late subscriber:', {
+        queueLength: data.queue?.length ?? 0,
+        currentClimb: data.currentClimbQueueItem?.climb?.name ?? null,
+      });
       // Use setTimeout to ensure this runs after the current execution context
       // This gives React time to complete the effect that's registering this subscriber
       setTimeout(() => {
@@ -193,6 +198,13 @@ export const DaemonProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     (data: DaemonMessage) => {
       switch (data.type) {
         case 'session-joined':
+          console.log('[Daemon] session-joined received:', {
+            queueLength: data.queue?.length ?? 0,
+            currentClimb: data.currentClimbQueueItem?.climb?.name ?? null,
+            isLeader: data.isLeader,
+            subscriberCount: dataHandlers.current.length,
+          });
+
           setState((prev) => ({
             ...prev,
             clientId: data.clientId,
@@ -211,6 +223,7 @@ export const DaemonProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
           // Always notify subscribers about initial data (even if empty)
           // This ensures the QueueContext knows the session state and can set initialQueueDataReceivedFromPeers
+          console.log('[Daemon] Notifying', dataHandlers.current.length, 'subscribers with initial-queue-data');
           notifySubscribers({
             type: 'initial-queue-data',
             queue: data.queue,

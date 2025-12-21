@@ -59,11 +59,18 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
           );
           break;
         case 'initial-queue-data':
+          console.log('[QueueContext] Received initial-queue-data:', {
+            source: data.source,
+            hostId,
+            queueLength: data.queue?.length ?? 0,
+            currentClimb: data.currentClimbQueueItem?.climb?.name ?? null,
+          });
           // Accept data from the host OR from the daemon (which is authoritative in daemon mode)
           if (hostId !== data.source && data.source !== 'daemon') {
-            console.log(`Ignoring queue data from ${data.source} since it's not the host(${hostId}) or daemon.`);
+            console.log(`[QueueContext] Ignoring queue data from ${data.source} since it's not the host(${hostId}) or daemon.`);
             return;
           }
+          console.log('[QueueContext] Applying initial queue data');
           dispatch({
             type: 'INITIAL_QUEUE_DATA',
             payload: {
