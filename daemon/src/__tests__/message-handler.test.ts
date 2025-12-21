@@ -66,12 +66,13 @@ describe('handleMessage', () => {
       const message = JSON.stringify({
         type: 'join-session',
         sessionId: 'test-session',
+        boardPath: '/kilter/1/2/3/40',
         username: 'TestUser',
       });
 
       await handleMessage(mockWs, message);
 
-      expect(roomManager.joinSession).toHaveBeenCalledWith(mockWs, 'test-session', 'TestUser');
+      expect(roomManager.joinSession).toHaveBeenCalledWith(mockWs, 'test-session', '/kilter/1/2/3/40', 'TestUser');
       expect(sendToClient).toHaveBeenCalled();
     });
   });
