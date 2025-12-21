@@ -16,8 +16,11 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@boardsesh/shared-schema": "*",
     "dotenv": "^17.2.3",
     "drizzle-orm": "^0.38.3",
+    "graphql": "^16.9.0",
+    "graphql-ws": "^5.16.0",
     "postgres": "^3.4.5",
     "uuid": "^11.0.3",
     "ws": "^8.18.0"

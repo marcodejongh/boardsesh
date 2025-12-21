@@ -1,20 +1,21 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
-/node_modules
+node_modules
 /.pnp
 .pnp.js
 .yarn/install-state.gz
 
 # testing
-/coverage
+coverage
 
 # next.js
-/.next/
-/out/
+.next/
+out/
 
 # production
-/build
+build
+dist
 
 # misc
 .DS_Store
@@ -45,3 +46,9 @@ db/tmp
 
 # board controller
 board-controller/board_controller.db
+
+# daemon
+packages/daemon/dist
+
+# shared-schema
+packages/shared-schema/dist

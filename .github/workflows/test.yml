@@ -27,6 +27,7 @@ jobs:
     
     - name: Run type checking
       run: npx tsc --noEmit
+      working-directory: packages/web
     
     - name: Run tests
       run: npm run test:run
@@ -42,15 +43,13 @@ jobs:
       with:
         node-version: '20'
         cache: 'npm'
-        cache-dependency-path: daemon/package-lock.json
 
-    - name: Install daemon dependencies
+    - name: Install dependencies
       run: npm ci
-      working-directory: daemon
 
     - name: Run daemon tests
       run: npm run test:run
-      working-directory: daemon
+      working-directory: packages/daemon
 
   test-coverage:
     runs-on: ubuntu-latest

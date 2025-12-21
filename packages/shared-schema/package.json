@@ -1,0 +1,36 @@
+{
+  "name": "@boardsesh/shared-schema",
+  "version": "1.0.0",
+  "description": "Shared GraphQL schema and types for BoardSesh",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./types": {
+      "types": "./dist/types.d.ts",
+      "import": "./dist/types.js"
+    },
+    "./schema": {
+      "types": "./dist/schema.d.ts",
+      "import": "./dist/schema.js"
+    },
+    "./operations": {
+      "types": "./dist/operations.d.ts",
+      "import": "./dist/operations.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "graphql": "^16.9.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}
