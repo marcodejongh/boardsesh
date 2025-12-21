@@ -16,7 +16,7 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
-    "@boardsesh/shared-schema": "workspace:*",
+    "@boardsesh/shared-schema": "*",
     "dotenv": "^17.2.3",
     "drizzle-orm": "^0.38.3",
     "graphql": "^16.9.0",
