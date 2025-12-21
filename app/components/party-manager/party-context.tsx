@@ -2,7 +2,7 @@
 
 import React, { useContext, createContext, useEffect, useCallback, useState, useMemo } from 'react';
 import { useBoardProvider } from '../board-provider/board-provider-context';
-import { useConnection } from '../connection-manager/use-connection';
+import { useConnection, useDaemonConnection } from '../connection-manager/use-connection';
 import { ReceivedPeerData, SendPeerInfo } from '../connection-manager/types';
 
 type ConnectedUser = {
@@ -22,72 +22,76 @@ type WebSocketData = Pick<SendPeerInfo, 'username'>;
 const PartyContext = createContext<PartyContextType | undefined>(undefined);
 
 export const PartyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { sendData, peerId, subscribeToData, connections } = useConnection();
+  const { sendData, peerId, subscribeToData, connections,isDaemonMode } = useConnection();
+  const daemonConnection = useDaemonConnection();
   const { username: boardUsername } = useBoardProvider();
 
   const username = boardUsername || '';
 
   const [webSocketData, setWebSocketData] = useState<Record<string, WebSocketData>>({});
 
-  // Derive party from both connections and webSocketData
-  const party: ConnectedUser[] = useMemo(
+  // Derive party from connections and webSocketData (for PeerJS mode)
+  const peerJsParty: ConnectedUser[] = useMemo(
     () =>
       connections.map((connection) => ({
         ...(webSocketData[connection.connection.peer] || {}),
         id: connection.connection.peer,
+        isHost: connection.isHost,
       })),
     [connections, webSocketData],
   );
 
+  // For daemon mode, convert daemon users to ConnectedUser format
+  const daemonParty: ConnectedUser[] = useMemo(() => {
+    if (!daemonConnection?.daemonUsers) return [];
+    // Filter out self from connected users list
+    return daemonConnection.daemonUsers
+      .filter((user) => user.id !== daemonConnection.peerId)
+      .map((user) => ({
+        username: user.username,
+        id: user.id,
+        isHost: user.isLeader,
+      }));
+  }, [daemonConnection?.daemonUsers, daemonConnection?.peerId]);
+
+  // Choose party based on mode
+  const party = isDaemonMode ? daemonParty : peerJsParty;
+
+  // Single consolidated subscription for PeerJS mode peer data
   useEffect(() => {
-    const handleWebSocketMessage = (data: ReceivedPeerData) => {
+    // Skip PeerJS-specific logic in daemon mode
+    if (isDaemonMode) return;
+
+    const handlePeerData = (data: ReceivedPeerData) => {
       switch (data.type) {
         case 'send-peer-info':
+          // Update stored peer info
           setWebSocketData((prev) => ({
             ...prev,
             [data.source]: { username: data.username },
           }));
           break;
         case 'new-connection':
+          // Respond with our peer info
           sendData({ type: 'send-peer-info', username }, data.source);
+          break;
       }
     };
 
-    // Subscribe to websocket
-    const unsubscribe = subscribeToData(handleWebSocketMessage);
-    return () => unsubscribe();
-  }, [subscribeToData, sendData, username]);
-
-  const handlePeerData = useCallback(
-    (data: ReceivedPeerData) => {
-      console.log(`${new Date().getTime()} Party context received: ${data.type} from: ${data.source}`);
-
-      switch (data.type) {
-        case 'new-connection':
-          sendData(
-            {
-              type: 'send-peer-info',
-              username,
-            },
-            data.source,
-          );
-          break;
-        case 'send-peer-info':
-          break;
-      }
-    },
-    [sendData, username],
-  );
-
-  useEffect(() => {
     const unsubscribe = subscribeToData(handlePeerData);
     return () => unsubscribe();
-  }, [subscribeToData, handlePeerData]);
+  }, [subscribeToData, sendData, username, isDaemonMode]);
 
-  // In a real implementation, this would likely use useState and be updated
-  // based on peer connections/disconnections
+  // Get the effective username based on mode
+  const effectiveUserName = isDaemonMode
+    ? daemonConnection?.daemonUsers?.find((u) => u.id === daemonConnection.peerId)?.username ||
+      username ||
+      daemonConnection?.peerId ||
+      ''
+    : username || peerId || '';
+
   const contextValue: PartyContextType = {
-    userName: username || peerId || '',
+    userName: effectiveUserName,
     connectedUsers: party,
   };
 

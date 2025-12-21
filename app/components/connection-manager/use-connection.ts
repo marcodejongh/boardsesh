@@ -4,13 +4,14 @@ import { useContext } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { PeerContext } from './peer-context';
 import { WebSocketContext } from './websocket-context';
+import { DaemonContext, DaemonContextType } from './daemon-context';
 import { PeerContextType } from './types';
 
 /**
- * Hook that returns the appropriate connection context (WebSocket or PeerJS)
- * based on whether we're in controller mode or party mode
+ * Hook that returns the appropriate connection context (WebSocket, Daemon, or PeerJS)
+ * based on the current connection mode
  */
-export const useConnection = (): PeerContextType => {
+export const useConnection = (): PeerContextType & { isDaemonMode?: boolean; disconnect?: () => void } => {
   const searchParams = useSearchParams();
   const controllerUrl = searchParams.get('controllerUrl');
   const isControllerMode = !!controllerUrl;
@@ -18,13 +19,12 @@ export const useConnection = (): PeerContextType => {
   // Always call hooks at the top level (React hooks rules)
   const peerContext = useContext(PeerContext);
   const wsContext = useContext(WebSocketContext);
+  const daemonContext = useContext(DaemonContext);
 
-  // Choose which context to use based on mode
-  if (isControllerMode) {
-    if (!wsContext) {
-      throw new Error('useConnection must be used within a WebSocketProvider when in controller mode');
-    }
-    
+  // Priority: Controller > Daemon > PeerJS
+
+  // 1. Controller mode
+  if (isControllerMode && wsContext) {
     // Adapt WebSocket context to match PeerContextType interface
     return {
       peerId: 'boardsesh-client',
@@ -39,10 +39,26 @@ export const useConnection = (): PeerContextType => {
       subscribeToData: wsContext.subscribeToData,
       connectToPeer: () => {}, // No-op in WebSocket mode
     };
-  } else {
-    if (!peerContext) {
-      throw new Error('useConnection must be used within a PeerProvider when in party mode');
-    }
+  }
+
+  // 2. Daemon mode
+  if (daemonContext) {
+    return daemonContext;
+  }
+
+  // 3. PeerJS mode (default)
+  if (peerContext) {
     return peerContext;
   }
+
+  // Fallback: no provider found
+  throw new Error('useConnection must be used within a ConnectionProviderWrapper');
+};
+
+/**
+ * Hook that returns daemon-specific context if in daemon mode
+ */
+export const useDaemonConnection = (): DaemonContextType | null => {
+  const daemonContext = useContext(DaemonContext);
+  return daemonContext || null;
 };

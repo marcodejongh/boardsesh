@@ -4,24 +4,30 @@ import React from 'react';
 import { useSearchParams } from 'next/navigation';
 import { PeerProvider } from './peer-context';
 import { WebSocketProvider } from './websocket-context';
+import { DaemonProvider } from './daemon-context';
+import { useDaemonUrl } from './use-daemon-url';
+import { usePartyMode } from './use-party-mode';
 
 export const ConnectionProviderWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const searchParams = useSearchParams();
   const controllerUrl = searchParams.get('controllerUrl');
   const isControllerMode = !!controllerUrl;
 
-  // Use WebSocket for controller mode, PeerJS for party mode
+  const { daemonUrl } = useDaemonUrl();
+  const { partyMode } = usePartyMode();
+
+  // Priority:
+  // 1. Controller mode (explicit controllerUrl param)
+  // 2. Daemon mode (partyMode is 'daemon' AND daemonUrl is available)
+  // 3. Direct mode (PeerJS - default)
+
   if (isControllerMode) {
-    return (
-      <WebSocketProvider>
-        {children}
-      </WebSocketProvider>
-    );
+    return <WebSocketProvider>{children}</WebSocketProvider>;
   }
 
-  return (
-    <PeerProvider>
-      {children}
-    </PeerProvider>
-  );
+  if (partyMode === 'daemon' && daemonUrl) {
+    return <DaemonProvider>{children}</DaemonProvider>;
+  }
+
+  return <PeerProvider>{children}</PeerProvider>;
 };
