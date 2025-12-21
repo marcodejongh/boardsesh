@@ -263,9 +263,14 @@ class RoomManager {
       .limit(1);
 
     if (result.length === 0) {
+      console.log(`[RoomManager] getQueueState(${sessionId}): No data found in DB`);
       return { queue: [], currentClimbQueueItem: null };
     }
 
+    console.log(`[RoomManager] getQueueState(${sessionId}):`, {
+      queueLength: result[0].queue?.length ?? 0,
+      currentClimb: result[0].currentClimbQueueItem?.climb?.name ?? null,
+    });
     return {
       queue: result[0].queue,
       currentClimbQueueItem: result[0].currentClimbQueueItem,

@@ -184,5 +184,9 @@ async function handleQueueOperation(
       break;
   }
 
+  console.log(`[Daemon] Persisting queue state for session ${client.sessionId}:`, {
+    queueLength: queue?.length ?? 0,
+    currentClimb: currentClimbQueueItem?.climb?.name ?? null,
+  });
   await roomManager.updateQueueState(client.sessionId, queue, currentClimbQueueItem);
 }

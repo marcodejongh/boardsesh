@@ -42,6 +42,12 @@ export async function handleJoinSession(
       currentClimbQueueItem: result.currentClimbQueueItem,
       isLeader: result.isLeader,
     };
+    console.log(`[Daemon] Sending session-joined to ${result.clientId}:`, {
+      sessionId: message.sessionId,
+      queueLength: result.queue?.length ?? 0,
+      currentClimb: result.currentClimbQueueItem?.climb?.name ?? null,
+      isLeader: result.isLeader,
+    });
     sendToClient(ws, sessionJoinedMessage);
 
     // Notify other clients about the new user
