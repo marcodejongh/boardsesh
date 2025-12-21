@@ -98,6 +98,12 @@ type DataHandler = {
   callback: (data: ReceivedPeerData) => void;
 };
 
+// Pending initial data that should be sent to new subscribers
+interface PendingInitialData {
+  queue: ClimbQueueItem[];
+  currentClimbQueueItem: ClimbQueueItem | null;
+}
+
 export const DaemonProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { daemonUrl } = useDaemonUrl();
   const pathname = usePathname();
@@ -122,6 +128,8 @@ export const DaemonProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const hasJoinedSession = useRef(false);
   const lastHeartbeatResponse = useRef<number>(0);
   const connectionHealth = useRef<'HEALTHY' | 'DEGRADED' | 'POOR'>('HEALTHY');
+  // Store pending initial data to replay to late subscribers
+  const pendingInitialData = useRef<PendingInitialData | null>(null);
 
   // Generate session ID from pathname
   const sessionId = pathname.replace(/\//g, '-').slice(1) || 'default';
@@ -129,6 +137,26 @@ export const DaemonProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const subscribeToData = useCallback((callback: (data: ReceivedPeerData) => void) => {
     const handlerId = uuidv4();
     dataHandlers.current.push({ id: handlerId, callback });
+
+    // If there's pending initial data, immediately send it to this new subscriber
+    // This handles the race condition where session-joined arrives before subscribers register
+    if (pendingInitialData.current) {
+      const data = pendingInitialData.current;
+      // Use setTimeout to ensure this runs after the current execution context
+      // This gives React time to complete the effect that's registering this subscriber
+      setTimeout(() => {
+        try {
+          callback({
+            type: 'initial-queue-data',
+            queue: data.queue,
+            currentClimbQueueItem: data.currentClimbQueueItem,
+            source: 'daemon',
+          });
+        } catch (error) {
+          console.error('Error sending pending initial data to subscriber:', error);
+        }
+      }, 0);
+    }
 
     return () => {
       dataHandlers.current = dataHandlers.current.filter((handler) => handler.id !== handlerId);
@@ -174,15 +202,21 @@ export const DaemonProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             leaderId: data.users.find((u) => u.isLeader)?.id || null,
           }));
 
-          // Notify queue context about initial data
-          if (data.queue.length > 0 || data.currentClimbQueueItem) {
-            notifySubscribers({
-              type: 'initial-queue-data',
-              queue: data.queue,
-              currentClimbQueueItem: data.currentClimbQueueItem,
-              source: 'daemon',
-            });
-          }
+          // Always store the initial queue data for late subscribers
+          // This handles the race condition where subscribers register after session-joined
+          pendingInitialData.current = {
+            queue: data.queue,
+            currentClimbQueueItem: data.currentClimbQueueItem,
+          };
+
+          // Always notify subscribers about initial data (even if empty)
+          // This ensures the QueueContext knows the session state and can set initialQueueDataReceivedFromPeers
+          notifySubscribers({
+            type: 'initial-queue-data',
+            queue: data.queue,
+            currentClimbQueueItem: data.currentClimbQueueItem,
+            source: 'daemon',
+          });
           break;
 
         case 'user-joined':
@@ -237,6 +271,7 @@ export const DaemonProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             error: `Session ended: ${data.reason}${data.newPath ? `. Navigate to ${data.newPath} to rejoin.` : ''}`,
           }));
           hasJoinedSession.current = false;
+          pendingInitialData.current = null;
           break;
       }
     },
@@ -345,6 +380,7 @@ export const DaemonProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           users: [],
         }));
         hasJoinedSession.current = false;
+        pendingInitialData.current = null;
 
         // Attempt to reconnect unless it was a manual close
         if (event.code !== 1000 && reconnectAttempts.current < 5) {
@@ -402,6 +438,7 @@ export const DaemonProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       error: null,
     });
     hasJoinedSession.current = false;
+    pendingInitialData.current = null;
   }, []);
 
   // Connect when daemon URL is available
