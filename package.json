@@ -12,6 +12,7 @@
     "build:shared": "npm run build --workspace=@boardsesh/shared-schema",
     "lint": "npm run lint --workspace=@boardsesh/web",
     "test": "npm run test --workspaces --if-present",
+    "test:run": "npm run test:run --workspaces --if-present",
     "daemon:dev": "npm run dev --workspace=boardsesh-daemon",
     "daemon:start": "npm run start --workspace=boardsesh-daemon"
   },
