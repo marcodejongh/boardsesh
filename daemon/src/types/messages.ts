@@ -100,6 +100,10 @@ export interface HeartbeatMessage {
   timestamp: number;
 }
 
+export interface RequestQueueStateMessage {
+  type: 'request-queue-state';
+}
+
 // ============= Daemon -> Client Messages =============
 
 export interface SessionJoinedMessage {
@@ -145,6 +149,12 @@ export interface SessionEndedMessage {
   newPath?: string;
 }
 
+export interface QueueStateResponseMessage {
+  type: 'queue-state-response';
+  queue: ClimbQueueItem[];
+  currentClimbQueueItem: ClimbQueueItem | null;
+}
+
 // Union types
 export type ClientMessage =
   | JoinSessionMessage
@@ -157,7 +167,8 @@ export type ClientMessage =
   | UpdateCurrentClimbMessage
   | MirrorCurrentClimbMessage
   | ReplaceQueueItemMessage
-  | HeartbeatMessage;
+  | HeartbeatMessage
+  | RequestQueueStateMessage;
 
 export type DaemonMessage =
   | SessionJoinedMessage
@@ -173,7 +184,8 @@ export type DaemonMessage =
   | UpdateQueueMessage
   | UpdateCurrentClimbMessage
   | MirrorCurrentClimbMessage
-  | ReplaceQueueItemMessage;
+  | ReplaceQueueItemMessage
+  | QueueStateResponseMessage;
 
 // Type guards
 export function isClientMessage(data: unknown): data is ClientMessage {
@@ -193,6 +205,7 @@ export function isClientMessage(data: unknown): data is ClientMessage {
     'mirror-current-climb',
     'replace-queue-item',
     'heartbeat',
+    'request-queue-state',
   ];
 
   return validTypes.includes(msg.type);

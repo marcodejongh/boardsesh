@@ -1,7 +1,7 @@
 import { WebSocket } from 'ws';
 import { roomManager } from '../services/room-manager.js';
 import { broadcastToSession, sendToClient } from '../services/broadcast.js';
-import { handleJoinSession, handleLeaveSession, handleUpdateUsername } from './room.js';
+import { handleJoinSession, handleLeaveSession, handleUpdateUsername, handleRequestQueueState } from './room.js';
 import type {
   ClientMessage,
   AddQueueItemMessage,
@@ -22,7 +22,10 @@ export async function handleMessage(ws: WebSocket, data: string): Promise<void> 
 
   try {
     const parsed = JSON.parse(data);
+    console.log('[DEBUG] Received message:', parsed.type, JSON.stringify(parsed).slice(0, 200));
+
     if (!isClientMessage(parsed)) {
+      console.warn('[DEBUG] Invalid message format - type not recognized:', parsed.type);
       console.warn('Invalid message format:', data);
       return;
     }
@@ -38,6 +41,8 @@ export async function handleMessage(ws: WebSocket, data: string): Promise<void> 
     return;
   }
 
+  console.log('[DEBUG] Processing message:', message.type, 'from client:', client.clientId, 'session:', client.sessionId);
+
   switch (message.type) {
     case 'join-session':
       await handleJoinSession(ws, message);
@@ -49,6 +54,10 @@ export async function handleMessage(ws: WebSocket, data: string): Promise<void> 
 
     case 'update-username':
       await handleUpdateUsername(ws, message);
+      break;
+
+    case 'request-queue-state':
+      await handleRequestQueueState(ws);
       break;
 
     case 'heartbeat':

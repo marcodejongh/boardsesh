@@ -10,6 +10,7 @@ import type {
   LeaderChangedMessage,
   UpdateUsernameMessage,
   ErrorMessage,
+  QueueStateResponseMessage,
 } from '../types/messages.js';
 
 export async function handleJoinSession(
@@ -116,4 +117,26 @@ export async function handleUpdateUsername(ws: WebSocket, message: UpdateUsernam
     };
     broadcastToSession(client.sessionId, userJoinedMessage, ws);
   }
+}
+
+export async function handleRequestQueueState(ws: WebSocket): Promise<void> {
+  const client = roomManager.getClient(ws);
+  console.log('[DEBUG] handleRequestQueueState called, client:', client?.clientId, 'sessionId:', client?.sessionId);
+
+  if (!client || !client.sessionId) {
+    console.log('[DEBUG] handleRequestQueueState: client not in session, ignoring');
+    return; // Silently ignore if not in a session
+  }
+
+  const queueState = await roomManager.getQueueState(client.sessionId);
+  console.log('[DEBUG] handleRequestQueueState: got queue state, queue length:', queueState.queue.length);
+
+  const response: QueueStateResponseMessage = {
+    type: 'queue-state-response',
+    queue: queueState.queue,
+    currentClimbQueueItem: queueState.currentClimbQueueItem,
+  };
+
+  console.log('[DEBUG] handleRequestQueueState: sending response');
+  sendToClient(ws, response);
 }

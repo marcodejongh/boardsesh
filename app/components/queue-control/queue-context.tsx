@@ -1,7 +1,7 @@
 // File: QueueContext.tsx
 'use client';
 
-import React, { useContext, createContext, ReactNode, useEffect, useCallback } from 'react';
+import React, { useContext, createContext, ReactNode, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { v4 as uuidv4 } from 'uuid';
 import { useConnection } from '../connection-manager/use-connection';
@@ -43,8 +43,21 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
   const peerId = connection.peerId;
   const hostId = connection.hostId;
   const subscribeToData = connection.subscribeToData;
+  const requestQueueState = connection.requestQueueState;
 
-  // Set up queue update handler
+  // Track if we've already requested initial queue state
+  const hasRequestedQueueState = useRef(false);
+  // Track if we've received initial data to prevent replaying on re-subscription
+  const hasReceivedInitialData = useRef(false);
+
+  // Use refs for values needed in handler to avoid re-subscription on state changes
+  const stateRef = useRef({ queue: state.queue, currentClimbQueueItem: state.currentClimbQueueItem });
+  stateRef.current = { queue: state.queue, currentClimbQueueItem: state.currentClimbQueueItem };
+
+  const hostIdRef = useRef(hostId);
+  hostIdRef.current = hostId;
+
+  // Set up queue update handler - use refs to avoid dependency changes
   const handlePeerData = useCallback(
     (data: ReceivedPeerData) => {
       switch (data.type) {
@@ -52,18 +65,25 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
           sendData(
             {
               type: 'initial-queue-data',
-              queue: state.queue,
-              currentClimbQueueItem: state.currentClimbQueueItem,
+              queue: stateRef.current.queue,
+              currentClimbQueueItem: stateRef.current.currentClimbQueueItem,
             },
             data.source,
           );
           break;
         case 'initial-queue-data':
-          // Accept data from the host OR from the daemon (which is authoritative in daemon mode)
-          if (hostId !== data.source && data.source !== 'daemon') {
-            console.log(`Ignoring queue data from ${data.source} since it's not the host(${hostId}) or daemon.`);
+          // Only accept initial data once to prevent replaying old state on re-subscription
+          if (hasReceivedInitialData.current) {
+            console.log('[DEBUG] Ignoring initial-queue-data, already received initial data');
             return;
           }
+          // Accept data from the host OR from the daemon (which is authoritative in daemon mode)
+          if (hostIdRef.current !== data.source && data.source !== 'daemon') {
+            console.log(`Ignoring queue data from ${data.source} since it's not the host(${hostIdRef.current}) or daemon.`);
+            return;
+          }
+          hasReceivedInitialData.current = true;
+          console.log('[DEBUG] Processing initial-queue-data, queue length:', data.queue?.length);
           dispatch({
             type: 'INITIAL_QUEUE_DATA',
             payload: {
@@ -136,13 +156,23 @@ export const QueueProvider = ({ parsedParams, children }: QueueContextProps) => 
           break;
       }
     },
-    [sendData, state.queue, state.currentClimbQueueItem, hostId, dispatch],
+    [sendData, dispatch], // Stable dependencies only
   );
 
+  // Subscribe once on mount - handler uses refs so it's stable
   useEffect(() => {
     const unsubscribe = subscribeToData(handlePeerData);
     return () => unsubscribe();
   }, [subscribeToData, handlePeerData]);
+
+  // Request initial queue state once when requestQueueState becomes available
+  useEffect(() => {
+    if (requestQueueState && !hasRequestedQueueState.current) {
+      console.log('[DEBUG] QueueProvider requesting initial queue state');
+      hasRequestedQueueState.current = true;
+      requestQueueState();
+    }
+  }, [requestQueueState]);
 
   const {
     climbSearchResults,
