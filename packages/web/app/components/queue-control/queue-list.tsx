@@ -2,7 +2,7 @@
 import React, { useEffect } from 'react';
 import { List, Divider, Row, Col, Typography, Button } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
-import { useQueueContext } from './queue-context';
+import { useQueueContext } from '../graphql-queue';
 import { Climb, BoardDetails } from '@/app/lib/types';
 import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { extractClosestEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge';

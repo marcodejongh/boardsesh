@@ -1,6 +1,6 @@
 'use client';
 import React, { useState } from 'react';
-import { useQueueContext } from '../queue-control/queue-context';
+import { useQueueContext } from '../graphql-queue';
 import { BoardDetails, Climb } from '@/app/lib/types';
 import { PlusCircleOutlined, HeartOutlined, InfoCircleOutlined, CheckCircleOutlined, ForkOutlined } from '@ant-design/icons';
 import Link from 'next/link';

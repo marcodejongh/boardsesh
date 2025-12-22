@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Button, Drawer, Badge, Space, Typography, Spin } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 import SearchForm from './search-form';
-import { useQueueContext } from '@/app/components/queue-control/queue-context';
+import { useQueueContext } from '@/app/components/graphql-queue';
 import ClearButton from './clear-button';
 import { BoardDetails } from '@/app/lib/types';
 import { useUISearchParams } from '../queue-control/ui-searchparams-provider';

@@ -1,7 +1,7 @@
 import React from 'react';
 
 import Link from 'next/link';
-import { useQueueContext } from './queue-context';
+import { useQueueContext } from '../graphql-queue';
 import { useParams } from 'next/navigation';
 import { parseBoardRouteParams, constructClimbViewUrlWithSlugs } from '@/app/lib/url-utils';
 import { BoardRouteParametersWithUuid, BoardDetails } from '@/app/lib/types';

@@ -4,7 +4,7 @@ import { ParsedBoardRouteParametersWithUuid, BoardDetails } from '@/lib/types';
 import { Button } from 'antd';
 import { LeftOutlined } from '@ant-design/icons';
 import Link from 'next/link';
-import { useQueueContext } from '../queue-control/queue-context';
+import { useQueueContext } from '../graphql-queue';
 import { searchParamsToUrlParams, constructClimbListWithSlugs } from '@/app/lib/url-utils';
 
 const BackToClimbList = ({

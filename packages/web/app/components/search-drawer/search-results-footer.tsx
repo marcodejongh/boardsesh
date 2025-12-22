@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Space, Typography, Spin } from 'antd';
-import { useQueueContext } from '@/app/components/queue-control/queue-context';
+import { useQueueContext } from '@/app/components/graphql-queue';
 import ClearButton from './clear-button';
 import { useUISearchParams } from '../queue-control/ui-searchparams-provider';
 import { DEFAULT_SEARCH_PARAMS } from '@/app/lib/url-utils';

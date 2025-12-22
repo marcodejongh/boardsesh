@@ -13,7 +13,7 @@ import { BoardDetails } from '@/app/lib/types';
 import { generateLayoutSlug, generateSizeSlug, generateSetSlug } from '@/app/lib/url-utils';
 import { ShareBoardButton } from './share-button';
 import { useBoardProvider } from '../board-provider/board-provider-context';
-import { useQueueContext } from '../queue-control/queue-context';
+import { useQueueContext } from '../graphql-queue';
 import { UserOutlined, LogoutOutlined, LoginOutlined, PlusOutlined } from '@ant-design/icons';
 import AngleSelector from './angle-selector';
 import styles from './header.module.css';

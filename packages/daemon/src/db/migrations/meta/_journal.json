@@ -15,6 +15,13 @@
       "when": 1766301544517,
       "tag": "0001_conscious_the_leader",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1766378644440,
+      "tag": "0002_closed_blade",
+      "breakpoints": true
     }
   ]
 }

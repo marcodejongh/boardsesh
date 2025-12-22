@@ -12,7 +12,7 @@ import {
 } from '@ant-design/icons';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useQueueContext } from '../queue-control/queue-context';
+import { useQueueContext } from '../graphql-queue';
 import { Climb, BoardDetails } from '@/app/lib/types';
 import type { MenuProps } from 'antd';
 import styles from './climb-view-actions.module.css';

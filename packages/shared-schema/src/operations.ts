@@ -121,6 +121,7 @@ export const SET_QUEUE = `
 export const SESSION_UPDATES = `
   subscription SessionUpdates($sessionId: ID!) {
     sessionUpdates(sessionId: $sessionId) {
+      __typename
       ... on UserJoined {
         user {
           id
@@ -145,6 +146,7 @@ export const SESSION_UPDATES = `
 export const QUEUE_UPDATES = `
   subscription QueueUpdates($sessionId: ID!) {
     queueUpdates(sessionId: $sessionId) {
+      __typename
       ... on FullSync {
         state {
           queue {
@@ -156,7 +158,7 @@ export const QUEUE_UPDATES = `
         }
       }
       ... on QueueItemAdded {
-        item {
+        addedItem: item {
           ${QUEUE_ITEM_FIELDS}
         }
         position
@@ -170,7 +172,7 @@ export const QUEUE_UPDATES = `
         newIndex
       }
       ... on CurrentClimbChanged {
-        item {
+        currentItem: item {
           ${QUEUE_ITEM_FIELDS}
         }
       }

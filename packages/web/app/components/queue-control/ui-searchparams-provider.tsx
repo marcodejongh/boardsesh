@@ -3,7 +3,7 @@ import React, { createContext, useContext, useState } from 'react';
 import { SearchRequestPagination } from '@/lib/types';
 import { useDebouncedCallback } from 'use-debounce';
 import { track } from '@vercel/analytics';
-import { useQueueContext } from './queue-context';
+import { useQueueContext } from '../graphql-queue';
 import { DEFAULT_SEARCH_PARAMS } from '@/app/lib/url-utils';
 
 interface UISearchParamsContextType {

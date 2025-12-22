@@ -39,7 +39,7 @@ yarn-error.log*
 next-env.d.ts
 kilter.db
 tension.db
-db/tmp
+**/db/tmp
 
 # editor
 .vscode
