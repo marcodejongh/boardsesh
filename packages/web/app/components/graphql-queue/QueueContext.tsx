@@ -212,54 +212,60 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
         // Optimistic update
         dispatch({ type: 'DELTA_ADD_QUEUE_ITEM', payload: { item: newItem } });
 
-        // Send to server
-        queueSession.addQueueItem(newItem).catch((error) => {
-          console.error('Failed to add queue item:', error);
-          // TODO: Consider rollback on error
-        });
+        // Send to server only if connected
+        if (queueSession.hasConnected) {
+          queueSession.addQueueItem(newItem).catch((error) => {
+            console.error('Failed to add queue item:', error);
+          });
+        }
       },
 
       removeFromQueue: (item: ClimbQueueItem) => {
         // Optimistic update
         dispatch({ type: 'DELTA_REMOVE_QUEUE_ITEM', payload: { uuid: item.uuid } });
 
-        // Send to server
-        queueSession.removeQueueItem(item.uuid).catch((error) => {
-          console.error('Failed to remove queue item:', error);
-        });
+        // Send to server only if connected
+        if (queueSession.hasConnected) {
+          queueSession.removeQueueItem(item.uuid).catch((error) => {
+            console.error('Failed to remove queue item:', error);
+          });
+        }
       },
 
       setCurrentClimb: async (climb: Climb) => {
         const newItem = createClimbQueueItem(climb, clientId, currentUserInfo);
 
-        // Save previous state for rollback
-        const previousQueue = [...state.queue];
-        const previousCurrentClimb = state.currentClimbQueueItem;
-
         // Optimistic update
         dispatch({ type: 'SET_CURRENT_CLIMB', payload: newItem });
 
-        // Calculate position for insertion
-        const currentIndex = state.currentClimbQueueItem
-          ? state.queue.findIndex(({ uuid }) => uuid === state.currentClimbQueueItem?.uuid)
-          : -1;
-        const position = currentIndex === -1 ? undefined : currentIndex + 1;
+        // Only sync with daemon if connected
+        if (queueSession.hasConnected) {
+          // Save previous state for rollback
+          const previousQueue = [...state.queue];
+          const previousCurrentClimb = state.currentClimbQueueItem;
 
-        try {
-          // First add the item at the appropriate position, then set as current
-          // These must be sequential to avoid race conditions in the database
-          await queueSession.addQueueItem(newItem, position);
-          await queueSession.setCurrentClimb(newItem, false);
-        } catch (error) {
-          console.error('Failed to set current climb, rolling back:', error);
-          // Rollback to previous state
-          dispatch({
-            type: 'UPDATE_QUEUE',
-            payload: {
-              queue: previousQueue,
-              currentClimbQueueItem: previousCurrentClimb,
-            },
-          });
+          // Calculate position for insertion
+          const currentIndex = state.currentClimbQueueItem
+            ? state.queue.findIndex(({ uuid }) => uuid === state.currentClimbQueueItem?.uuid)
+            : -1;
+          const position = currentIndex === -1 ? undefined : currentIndex + 1;
+
+          try {
+            // First add the item at the appropriate position, then set as current
+            // These must be sequential to avoid race conditions in the database
+            await queueSession.addQueueItem(newItem, position);
+            await queueSession.setCurrentClimb(newItem, false);
+          } catch (error) {
+            console.error('Failed to set current climb, rolling back:', error);
+            // Rollback to previous state
+            dispatch({
+              type: 'UPDATE_QUEUE',
+              payload: {
+                queue: previousQueue,
+                currentClimbQueueItem: previousCurrentClimb,
+              },
+            });
+          }
         }
       },
 
@@ -273,10 +279,12 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
           },
         });
 
-        // Send to server
-        queueSession.setQueue(queue, state.currentClimbQueueItem).catch((error) => {
-          console.error('Failed to set queue:', error);
-        });
+        // Send to server only if connected
+        if (queueSession.hasConnected) {
+          queueSession.setQueue(queue, state.currentClimbQueueItem).catch((error) => {
+            console.error('Failed to set queue:', error);
+          });
+        }
       },
 
       setCurrentClimbQueueItem: (item: ClimbQueueItem) => {
@@ -286,10 +294,12 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
           payload: { item, shouldAddToQueue: item.suggested },
         });
 
-        // Send to server
-        queueSession.setCurrentClimb(item, item.suggested).catch((error) => {
-          console.error('Failed to set current climb:', error);
-        });
+        // Send to server only if connected
+        if (queueSession.hasConnected) {
+          queueSession.setCurrentClimb(item, item.suggested).catch((error) => {
+            console.error('Failed to set current climb:', error);
+          });
+        }
       },
 
       setClimbSearchParams: (params) => {
@@ -314,10 +324,12 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
           payload: { mirrored: newMirroredState },
         });
 
-        // Send to server
-        queueSession.mirrorCurrentClimb(newMirroredState).catch((error) => {
-          console.error('Failed to mirror climb:', error);
-        });
+        // Send to server only if connected
+        if (queueSession.hasConnected) {
+          queueSession.mirrorCurrentClimb(newMirroredState).catch((error) => {
+            console.error('Failed to mirror climb:', error);
+          });
+        }
       },
 
       fetchMoreClimbs,
