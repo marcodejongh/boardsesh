@@ -1,7 +1,7 @@
 // Shared TypeScript types for BoardSesh
 // These types are used by both the daemon and the web app
 
-export type UserId = string | null;
+export type UserId = string;
 
 export type LitUpHoldsMap = Record<string, string>;
 
