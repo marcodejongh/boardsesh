@@ -14,6 +14,7 @@ import BoardSeshHeader from '@/app/components/board-page/header';
 import { GraphQLQueueProvider } from '@/app/components/graphql-queue';
 import { ConnectionSettingsProvider } from '@/app/components/connection-manager/connection-settings-context';
 import { PartyProvider } from '@/app/components/party-manager/party-context';
+import PartyProfileWrapper from '@/app/components/party-manager/party-profile-wrapper';
 import { Metadata } from 'next';
 
 /**
@@ -135,8 +136,9 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
   return (
     <Layout style={{ height: '100dvh', display: 'flex', flexDirection: 'column' }}>
       <ConnectionSettingsProvider>
-        <GraphQLQueueProvider parsedParams={parsedParams}>
-          <PartyProvider>
+        <PartyProfileWrapper>
+          <GraphQLQueueProvider parsedParams={parsedParams}>
+            <PartyProvider>
             <BoardSeshHeader boardDetails={boardDetails} angle={angle} />
 
             <Content
@@ -161,8 +163,9 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
                 <QueueControlBar board={board_name} boardDetails={boardDetails} angle={angle} />
               </div>
             </Affix>
-          </PartyProvider>
-        </GraphQLQueueProvider>
+            </PartyProvider>
+          </GraphQLQueueProvider>
+        </PartyProfileWrapper>
       </ConnectionSettingsProvider>
     </Layout>
   );

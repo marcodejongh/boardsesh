@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { List, Row, Col, Typography } from 'antd';
-import { HolderOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { List, Row, Col, Typography, Avatar, Tooltip } from 'antd';
+import { HolderOutlined, CheckOutlined, CloseOutlined, UserOutlined } from '@ant-design/icons';
 import { BoardDetails, ClimbUuid } from '@/app/lib/types';
 import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { DragHandleButton } from '@atlaskit/pragmatic-drag-and-drop-react-accessibility/drag-handle-button';
@@ -151,7 +151,7 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
               onNavigate={onClimbNavigate}
             />
           </Col>
-          <Col xs={14} sm={16}>
+          <Col xs={item.addedByUser ? 12 : 14} sm={item.addedByUser ? 14 : 16}>
             <List.Item.Meta
               title={
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -185,6 +185,13 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
               }
             />
           </Col>
+          {item.addedByUser && (
+            <Col xs={2} sm={2}>
+              <Tooltip title={item.addedByUser.username}>
+                <Avatar size="small" src={item.addedByUser.avatarUrl} icon={<UserOutlined />} />
+              </Tooltip>
+            </Col>
+          )}
           <Col xs={3} sm={2}>
             <TickButton currentClimb={item.climb} angle={item.climb?.angle} boardDetails={boardDetails} />
           </Col>

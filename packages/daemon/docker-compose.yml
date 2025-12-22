@@ -6,6 +6,8 @@ services:
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/boardsesh_daemon
       - PORT=8080
+    volumes:
+      - avatars_data:/app/avatars
     depends_on:
       db:
         condition: service_healthy
@@ -29,3 +31,4 @@ services:
 
 volumes:
   daemon_data:
+  avatars_data:

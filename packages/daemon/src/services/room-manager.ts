@@ -16,6 +16,7 @@ interface ConnectedClient {
   connectionId: string;
   sessionId: string | null;
   username: string;
+  avatarUrl?: string;
   isLeader: boolean;
   connectedAt: Date;
 }
@@ -59,7 +60,8 @@ class RoomManager {
     connectionId: string,
     sessionId: string,
     boardPath: string,
-    username?: string
+    username?: string,
+    avatarUrl?: string
   ): Promise<{
     clientId: string;
     users: SessionUser[];
@@ -107,6 +109,9 @@ class RoomManager {
     client.sessionId = sessionId;
     if (username) {
       client.username = username;
+    }
+    if (avatarUrl) {
+      client.avatarUrl = avatarUrl;
     }
 
     // Create or get session in memory
@@ -210,6 +215,7 @@ class RoomManager {
           id: client.connectionId,
           username: client.username,
           isLeader: client.isLeader,
+          avatarUrl: client.avatarUrl,
         });
       }
     }
@@ -221,10 +227,13 @@ class RoomManager {
     return session ? Array.from(session) : [];
   }
 
-  async updateUsername(connectionId: string, username: string): Promise<void> {
+  async updateUsername(connectionId: string, username: string, avatarUrl?: string): Promise<void> {
     const client = this.clients.get(connectionId);
     if (client) {
       client.username = username;
+      if (avatarUrl !== undefined) {
+        client.avatarUrl = avatarUrl;
+      }
       // Persist to database
       await db.update(sessionClients).set({ username }).where(eq(sessionClients.id, connectionId));
     }
