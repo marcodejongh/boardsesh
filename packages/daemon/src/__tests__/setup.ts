@@ -18,7 +18,8 @@ let db: ReturnType<typeof drizzle>;
 
 beforeAll(async () => {
   // First, connect to postgres database to create test database if needed
-  const adminClient = postgres(baseConnectionString, { max: 1 });
+  // Suppress PostgreSQL NOTICE messages in test output
+  const adminClient = postgres(baseConnectionString, { max: 1, onnotice: () => {} });
 
   try {
     // Check if test database exists
@@ -39,7 +40,7 @@ beforeAll(async () => {
   }
 
   // Now connect to the test database
-  migrationClient = postgres(connectionString, { max: 1 });
+  migrationClient = postgres(connectionString, { max: 1, onnotice: () => {} });
   db = drizzle(migrationClient, { schema });
 
   // Run migrations
