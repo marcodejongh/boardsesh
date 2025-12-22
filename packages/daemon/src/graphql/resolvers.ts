@@ -103,10 +103,10 @@ const resolvers = {
   Mutation: {
     joinSession: async (
       _: unknown,
-      { sessionId, boardPath, username }: { sessionId: string; boardPath: string; username?: string },
+      { sessionId, boardPath, username, avatarUrl }: { sessionId: string; boardPath: string; username?: string; avatarUrl?: string },
       ctx: ConnectionContext
     ) => {
-      const result = await roomManager.joinSession(ctx.connectionId, sessionId, boardPath, username || undefined);
+      const result = await roomManager.joinSession(ctx.connectionId, sessionId, boardPath, username || undefined, avatarUrl || undefined);
 
       // Update context with session info
       updateContext(ctx.connectionId, { sessionId, userId: result.clientId });
@@ -126,6 +126,7 @@ const resolvers = {
           id: result.clientId,
           username: username || `User-${result.clientId.substring(0, 6)}`,
           isLeader: result.isLeader,
+          avatarUrl: avatarUrl,
         },
       };
       pubsub.publishSessionEvent(sessionId, userJoinedEvent);
@@ -173,8 +174,8 @@ const resolvers = {
       return true;
     },
 
-    updateUsername: async (_: unknown, { username }: { username: string }, ctx: ConnectionContext) => {
-      await roomManager.updateUsername(ctx.connectionId, username);
+    updateUsername: async (_: unknown, { username, avatarUrl }: { username: string; avatarUrl?: string }, ctx: ConnectionContext) => {
+      await roomManager.updateUsername(ctx.connectionId, username, avatarUrl);
 
       if (ctx.sessionId) {
         const client = roomManager.getClient(ctx.connectionId);
@@ -186,6 +187,7 @@ const resolvers = {
               id: client.connectionId,
               username,
               isLeader: client.isLeader,
+              avatarUrl: client.avatarUrl,
             },
           });
         }

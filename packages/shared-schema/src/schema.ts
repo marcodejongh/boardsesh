@@ -42,10 +42,23 @@ export const typeDefs = /* GraphQL */ `
     userAttempts: Int
   }
 
+  type QueueItemUser {
+    id: ID!
+    username: String!
+    avatarUrl: String
+  }
+
+  input QueueItemUserInput {
+    id: ID!
+    username: String!
+    avatarUrl: String
+  }
+
   type ClimbQueueItem {
     uuid: ID!
     climb: Climb!
     addedBy: String
+    addedByUser: QueueItemUser
     tickedBy: [String!]
     suggested: Boolean
   }
@@ -54,6 +67,7 @@ export const typeDefs = /* GraphQL */ `
     uuid: ID!
     climb: ClimbInput!
     addedBy: String
+    addedByUser: QueueItemUserInput
     tickedBy: [String!]
     suggested: Boolean
   }
@@ -62,6 +76,7 @@ export const typeDefs = /* GraphQL */ `
     id: ID!
     username: String!
     isLeader: Boolean!
+    avatarUrl: String
   }
 
   type QueueState {
@@ -83,9 +98,9 @@ export const typeDefs = /* GraphQL */ `
   }
 
   type Mutation {
-    joinSession(sessionId: ID!, boardPath: String!, username: String): Session!
+    joinSession(sessionId: ID!, boardPath: String!, username: String, avatarUrl: String): Session!
     leaveSession: Boolean!
-    updateUsername(username: String!): Boolean!
+    updateUsername(username: String!, avatarUrl: String): Boolean!
 
     addQueueItem(item: ClimbQueueItemInput!, position: Int): ClimbQueueItem!
     removeQueueItem(uuid: ID!): Boolean!

@@ -4,8 +4,15 @@ import { SessionUser } from '@boardsesh/shared-schema';
 export type PeerId = string | null;
 export type UserName = PeerId;
 
+export interface QueueItemUser {
+  id: string;
+  username: string;
+  avatarUrl?: string;
+}
+
 export interface ClimbQueueItem {
   addedBy?: UserName;
+  addedByUser?: QueueItemUser;
   tickedBy?: UserName[];
   climb: Climb;
   uuid: string;

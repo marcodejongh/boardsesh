@@ -21,20 +21,29 @@ const CLIMB_FIELDS = `
   userAttempts
 `;
 
+const QUEUE_ITEM_USER_FIELDS = `
+  id
+  username
+  avatarUrl
+`;
+
 const QUEUE_ITEM_FIELDS = `
   uuid
   climb {
     ${CLIMB_FIELDS}
   }
   addedBy
+  addedByUser {
+    ${QUEUE_ITEM_USER_FIELDS}
+  }
   tickedBy
   suggested
 `;
 
 // Mutations
 export const JOIN_SESSION = `
-  mutation JoinSession($sessionId: ID!, $boardPath: String!, $username: String) {
-    joinSession(sessionId: $sessionId, boardPath: $boardPath, username: $username) {
+  mutation JoinSession($sessionId: ID!, $boardPath: String!, $username: String, $avatarUrl: String) {
+    joinSession(sessionId: $sessionId, boardPath: $boardPath, username: $username, avatarUrl: $avatarUrl) {
       id
       boardPath
       clientId
@@ -43,6 +52,7 @@ export const JOIN_SESSION = `
         id
         username
         isLeader
+        avatarUrl
       }
       queueState {
         queue {
@@ -63,8 +73,8 @@ export const LEAVE_SESSION = `
 `;
 
 export const UPDATE_USERNAME = `
-  mutation UpdateUsername($username: String!) {
-    updateUsername(username: $username)
+  mutation UpdateUsername($username: String!, $avatarUrl: String) {
+    updateUsername(username: $username, avatarUrl: $avatarUrl)
   }
 `;
 
@@ -127,6 +137,7 @@ export const SESSION_UPDATES = `
           id
           username
           isLeader
+          avatarUrl
         }
       }
       ... on UserLeft {

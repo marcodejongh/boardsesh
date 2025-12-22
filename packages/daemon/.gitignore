@@ -3,3 +3,4 @@ dist/
 *.db
 .env
 .env.local
+avatars/

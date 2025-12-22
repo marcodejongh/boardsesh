@@ -54,6 +54,13 @@ function toClimbQueueItemInput(item: LocalClimbQueueItem) {
       userAttempts: item.climb.userAttempts,
     },
     addedBy: item.addedBy,
+    addedByUser: item.addedByUser
+      ? {
+          id: item.addedByUser.id,
+          username: item.addedByUser.username,
+          avatarUrl: item.addedByUser.avatarUrl,
+        }
+      : undefined,
     tickedBy: item.tickedBy,
     suggested: item.suggested,
   };
@@ -64,6 +71,7 @@ export interface UseQueueSessionOptions {
   sessionId: string;
   boardPath: string;
   username?: string;
+  avatarUrl?: string;
   onQueueEvent?: (event: ClientQueueEvent) => void;
   onSessionEvent?: (event: SessionEvent) => void;
 }
@@ -96,6 +104,7 @@ export function useQueueSession({
   sessionId,
   boardPath,
   username,
+  avatarUrl,
   onQueueEvent,
   onSessionEvent,
 }: UseQueueSessionOptions): UseQueueSessionReturn {
@@ -149,7 +158,7 @@ export function useQueueSession({
       try {
         const response = await execute<{ joinSession: Session }>(client, {
           query: JOIN_SESSION,
-          variables: { sessionId, boardPath, username },
+          variables: { sessionId, boardPath, username, avatarUrl },
         });
         return response.joinSession;
       } catch (err) {
@@ -198,7 +207,7 @@ export function useQueueSession({
         if (DEBUG) console.log('[QueueSession] Calling joinSession mutation...');
         const response = await execute<{ joinSession: Session }>(graphqlClient, {
           query: JOIN_SESSION,
-          variables: { sessionId, boardPath, username },
+          variables: { sessionId, boardPath, username, avatarUrl },
         });
 
         if (!mounted) {
@@ -346,7 +355,7 @@ export function useQueueSession({
       setSession(null);
       setIsConnecting(false);
     };
-  }, [daemonUrl, sessionId, boardPath, username]); // Removed onQueueEvent and onSessionEvent - using refs instead
+  }, [daemonUrl, sessionId, boardPath, username, avatarUrl]); // Removed onQueueEvent and onSessionEvent - using refs instead
 
   // Mutation functions - must check for session, not just client
   // The client exists before joinSession completes, so we need to wait for session

@@ -27,10 +27,17 @@ export type Climb = {
   userAttempts?: number;
 };
 
+export type QueueItemUser = {
+  id: string;
+  username: string;
+  avatarUrl?: string;
+};
+
 export type ClimbQueueItem = {
   uuid: string;
   climb: Climb;
   addedBy?: UserId;
+  addedByUser?: QueueItemUser;
   tickedBy?: UserId[];
   suggested?: boolean;
 };
@@ -39,6 +46,7 @@ export type SessionUser = {
   id: string;
   username: string;
   isLeader: boolean;
+  avatarUrl?: string;
 };
 
 export type QueueState = {

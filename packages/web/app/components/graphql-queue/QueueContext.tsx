@@ -6,10 +6,11 @@ import { v4 as uuidv4 } from 'uuid';
 import { useQueueSession } from './use-queue-session';
 import { useQueueReducer } from '../queue-control/reducer';
 import { useQueueDataFetching } from '../queue-control/hooks/use-queue-data-fetching';
-import { QueueContextType, ClimbQueueItem, UserName } from '../queue-control/types';
+import { QueueContextType, ClimbQueueItem, UserName, QueueItemUser } from '../queue-control/types';
 import { urlParamsToSearchParams, searchParamsToUrlParams } from '@/app/lib/url-utils';
 import { Climb, ParsedBoardRouteParameters } from '@/app/lib/types';
 import { useConnectionSettings } from '../connection-manager/connection-settings-context';
+import { usePartyProfile } from '../party-manager/party-profile-context';
 import { ClientQueueEvent } from '@boardsesh/shared-schema';
 
 type GraphQLQueueContextProps = {
@@ -17,9 +18,15 @@ type GraphQLQueueContextProps = {
   children: ReactNode;
 };
 
-const createClimbQueueItem = (climb: Climb, addedBy: UserName, suggested?: boolean): ClimbQueueItem => ({
+const createClimbQueueItem = (
+  climb: Climb,
+  addedBy: UserName,
+  addedByUser?: QueueItemUser,
+  suggested?: boolean,
+): ClimbQueueItem => ({
   climb,
   addedBy,
+  addedByUser,
   uuid: uuidv4(),
   suggested: !!suggested,
 });
@@ -60,10 +67,25 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
   // Get daemon URL from settings
   const { daemonUrl, isLoaded } = useConnectionSettings();
 
-  // Generate session ID and get user info
+  // Get party profile for username and avatarUrl
+  const { profile, isLoading: profileLoading } = usePartyProfile();
+
+  // Generate session ID and get user info from party profile
   const sessionId = useMemo(() => generateSessionId(pathname), [pathname]);
-  const userId = useMemo(() => getOrCreateUserId(), []);
-  const username = useMemo(() => getStoredUsername(), []);
+
+  // Use party profile for username and avatarUrl, fallback to legacy localStorage if not available
+  const username = useMemo(() => profile?.username || getStoredUsername(), [profile?.username]);
+  const avatarUrl = useMemo(() => profile?.avatarUrl, [profile?.avatarUrl]);
+
+  // Build current user info for queue items
+  const currentUserInfo: QueueItemUser | undefined = useMemo(() => {
+    if (!profile?.id) return undefined;
+    return {
+      id: profile.id,
+      username: profile.username || '',
+      avatarUrl: profile.avatarUrl,
+    };
+  }, [profile?.id, profile?.username, profile?.avatarUrl]);
 
   // Handle queue events from GraphQL subscription
   const handleQueueEvent = useCallback(
@@ -129,6 +151,7 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
     sessionId,
     boardPath: pathname,
     username,
+    avatarUrl,
     onQueueEvent: handleQueueEvent,
   });
 
@@ -184,7 +207,7 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
 
       // Actions
       addToQueue: (climb: Climb) => {
-        const newItem = createClimbQueueItem(climb, clientId);
+        const newItem = createClimbQueueItem(climb, clientId, currentUserInfo);
 
         // Optimistic update
         dispatch({ type: 'DELTA_ADD_QUEUE_ITEM', payload: { item: newItem } });
@@ -207,7 +230,7 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
       },
 
       setCurrentClimb: async (climb: Climb) => {
-        const newItem = createClimbQueueItem(climb, clientId);
+        const newItem = createClimbQueueItem(climb, clientId, currentUserInfo);
 
         // Save previous state for rollback
         const previousQueue = [...state.queue];
@@ -308,7 +331,7 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
           climbSearchResults?.length > 0
         ) {
           const nextClimb = suggestedClimbs[0];
-          return nextClimb ? createClimbQueueItem(nextClimb, clientId, true) : null;
+          return nextClimb ? createClimbQueueItem(nextClimb, clientId, currentUserInfo, true) : null;
         }
 
         return queueItemIndex >= state.queue.length - 1 ? null : state.queue[queueItemIndex + 1];
@@ -336,6 +359,7 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
       pathname,
       router,
       fetchMoreClimbs,
+      currentUserInfo,
     ],
   );
 
