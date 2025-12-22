@@ -1,0 +1,1 @@
+ALTER TABLE "session_queues" ADD COLUMN "version" integer DEFAULT 1 NOT NULL;

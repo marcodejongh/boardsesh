@@ -33,37 +33,33 @@ This document tracks the remaining work to migrate from PeerJS/custom WebSocket 
   - Created `packages/web/app/components/graphql-queue/index.ts` - Clean exports
   - Updated `packages/shared-schema/src/types.ts` - Fixed LitUpHoldsMap type to match web app
 
-## Remaining Work
+- [x] **Phase 4: Integration & Switchover**
+  - Updated `packages/web/app/[board_name]/[layout_id]/[size_id]/[set_ids]/[angle]/layout.tsx`:
+    - Removed `ConnectionProviderWrapper`
+    - Now uses `GraphQLQueueProvider` directly
+    - Kept `ConnectionSettingsProvider` for daemon URL config
+  - Updated `packages/web/app/components/party-manager/party-context.tsx`:
+    - Now gets users from queue context instead of peer context
+  - Added session fields to `QueueContextType` in `queue-control/types.ts`
+  - Exposed session data (users, clientId, isLeader, etc.) in `GraphQLQueueProvider`
 
-### Phase 4: Integration & Switchover
+- [x] **Phase 5: Cleanup**
+  - Deleted old connection-manager files:
+    - `peer-context.tsx`
+    - `daemon-context.tsx`
+    - `websocket-context.tsx`
+    - `use-connection.ts`
+    - `connection-provider-wrapper.tsx`
+    - `hybrid-connection-context.tsx`
+    - `reducer.tsx`
+    - `types.ts`
+    - `constants.ts`
+    - `__tests__/` (all test files)
+  - Kept `connection-settings-context.tsx` (for daemonUrl storage)
+  - Deleted old `queue-control/queue-context.tsx`
+  - Removed `peerjs` dependency from `packages/web/package.json`
 
-- [ ] Update `packages/web/app/[board_name]/[layout_id]/[size_id]/[set_ids]/[angle]/layout.tsx`:
-  - Remove `ConnectionProviderWrapper`
-  - Use new GraphQL-based `QueueProvider`
-  - Keep `ConnectionSettingsProvider` for daemon URL config
-
-- [ ] Update `packages/web/app/components/party-manager/party-context.tsx`:
-  - Get users from queue session instead of peer context
-
-### Phase 5: Cleanup
-
-**Files to delete from `packages/web/app/components/connection-manager/`:**
-- [ ] `peer-context.tsx`
-- [ ] `daemon-context.tsx`
-- [ ] `websocket-context.tsx`
-- [ ] `use-connection.ts`
-- [ ] `connection-provider-wrapper.tsx`
-- [ ] `hybrid-connection-context.tsx`
-- [ ] `reducer.tsx`
-- [ ] `types.ts`
-- [ ] `constants.ts`
-- [ ] `__tests__/` (all test files)
-
-**Keep:**
-- `connection-settings-context.tsx` (for daemonUrl storage)
-
-**Dependencies to remove from `packages/web/package.json`:**
-- [ ] `peerjs`
+## Migration Complete!
 
 ---
 

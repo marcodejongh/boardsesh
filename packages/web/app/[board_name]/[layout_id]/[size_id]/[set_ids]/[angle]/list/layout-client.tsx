@@ -9,7 +9,7 @@ import ClimbHoldSearchForm from '@/app/components/search-drawer/climb-hold-searc
 import SearchResultsFooter from '@/app/components/search-drawer/search-results-footer';
 import QueueList from '@/app/components/queue-control/queue-list';
 import { UISearchParamsProvider } from '@/app/components/queue-control/ui-searchparams-provider';
-import { useQueueContext } from '@/app/components/queue-control/queue-context';
+import { useQueueContext } from '@/app/components/graphql-queue';
 import styles from './layout-client.module.css';
 
 const { Content, Sider } = Layout;

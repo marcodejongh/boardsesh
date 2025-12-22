@@ -90,14 +90,20 @@ export function queueReducer(state: QueueState, action: QueueAction): QueueState
     // Delta-specific reducers
     case 'DELTA_ADD_QUEUE_ITEM': {
       const { item, position } = action.payload;
+
+      // Skip if item already exists (prevents duplicate from optimistic update + subscription)
+      if (state.queue.some(qItem => qItem.uuid === item.uuid)) {
+        return state;
+      }
+
       const newQueue = [...state.queue];
-      
+
       if (position !== undefined && position >= 0 && position <= newQueue.length) {
         newQueue.splice(position, 0, item);
       } else {
         newQueue.push(item);
       }
-      
+
       return {
         ...state,
         queue: newQueue,

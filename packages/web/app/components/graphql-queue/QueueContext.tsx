@@ -10,7 +10,7 @@ import { QueueContextType, ClimbQueueItem, UserName } from '../queue-control/typ
 import { urlParamsToSearchParams, searchParamsToUrlParams } from '@/app/lib/url-utils';
 import { Climb, ParsedBoardRouteParameters } from '@/app/lib/types';
 import { useConnectionSettings } from '../connection-manager/connection-settings-context';
-import { QueueEvent } from '@boardsesh/shared-schema';
+import { ClientQueueEvent } from '@boardsesh/shared-schema';
 
 type GraphQLQueueContextProps = {
   parsedParams: ParsedBoardRouteParameters;
@@ -67,7 +67,7 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
 
   // Handle queue events from GraphQL subscription
   const handleQueueEvent = useCallback(
-    (event: QueueEvent) => {
+    (event: ClientQueueEvent) => {
       switch (event.__typename) {
         case 'FullSync':
           dispatch({
@@ -82,7 +82,7 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
           dispatch({
             type: 'DELTA_ADD_QUEUE_ITEM',
             payload: {
-              item: event.item as ClimbQueueItem,
+              item: event.addedItem as ClimbQueueItem,
               position: event.position,
             },
           });
@@ -107,7 +107,7 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
           dispatch({
             type: 'DELTA_UPDATE_CURRENT_CLIMB',
             payload: {
-              item: event.item as ClimbQueueItem | null,
+              item: event.currentItem as ClimbQueueItem | null,
               shouldAddToQueue: false,
             },
           });
@@ -151,12 +151,12 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
   });
 
   // Determine view-only mode
-  // In daemon mode: view-only if not the leader and we have received initial data
+  // View-only while still connecting, once connected everyone can modify the queue
   const viewOnlyMode = useMemo(() => {
     if (!daemonUrl) return false; // No daemon = no view-only mode
     if (!queueSession.hasConnected) return true; // Still connecting = view-only
-    return !isLeader;
-  }, [daemonUrl, queueSession.hasConnected, isLeader]);
+    return false; // Once connected, everyone can modify the queue
+  }, [daemonUrl, queueSession.hasConnected]);
 
   const contextValue: QueueContextType = useMemo(
     () => ({
@@ -172,6 +172,15 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
       hasDoneFirstFetch: state.hasDoneFirstFetch,
       viewOnlyMode,
       parsedParams,
+
+      // Session data for party context
+      users: queueSession.users,
+      clientId: queueSession.clientId,
+      isLeader,
+      isDaemonMode: !!daemonUrl,
+      hasConnected: queueSession.hasConnected,
+      connectionError: queueSession.error,
+      disconnect: queueSession.disconnect,
 
       // Actions
       addToQueue: (climb: Climb) => {
@@ -197,8 +206,12 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
         });
       },
 
-      setCurrentClimb: (climb: Climb) => {
+      setCurrentClimb: async (climb: Climb) => {
         const newItem = createClimbQueueItem(climb, clientId);
+
+        // Save previous state for rollback
+        const previousQueue = [...state.queue];
+        const previousCurrentClimb = state.currentClimbQueueItem;
 
         // Optimistic update
         dispatch({ type: 'SET_CURRENT_CLIMB', payload: newItem });
@@ -209,15 +222,22 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
           : -1;
         const position = currentIndex === -1 ? undefined : currentIndex + 1;
 
-        // First add the item at the appropriate position
-        queueSession.addQueueItem(newItem, position).catch((error) => {
-          console.error('Failed to add queue item:', error);
-        });
-
-        // Then update the current climb
-        queueSession.setCurrentClimb(newItem, false).catch((error) => {
-          console.error('Failed to set current climb:', error);
-        });
+        try {
+          // First add the item at the appropriate position, then set as current
+          // These must be sequential to avoid race conditions in the database
+          await queueSession.addQueueItem(newItem, position);
+          await queueSession.setCurrentClimb(newItem, false);
+        } catch (error) {
+          console.error('Failed to set current climb, rolling back:', error);
+          // Rollback to previous state
+          dispatch({
+            type: 'UPDATE_QUEUE',
+            payload: {
+              queue: previousQueue,
+              currentClimbQueueItem: previousCurrentClimb,
+            },
+          });
+        }
       },
 
       setQueue: (queue) => {
@@ -309,6 +329,8 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
       viewOnlyMode,
       parsedParams,
       clientId,
+      isLeader,
+      daemonUrl,
       queueSession,
       dispatch,
       pathname,

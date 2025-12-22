@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean, jsonb } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, boolean, jsonb, integer } from 'drizzle-orm/pg-core';
 import type { ClimbQueueItem } from '@boardsesh/shared-schema';
 
 export const sessions = pgTable('sessions', {
@@ -24,6 +24,7 @@ export const sessionQueues = pgTable('session_queues', {
     .references(() => sessions.id, { onDelete: 'cascade' }),
   queue: jsonb('queue').$type<ClimbQueueItem[]>().default([]).notNull(),
   currentClimbQueueItem: jsonb('current_climb_queue_item').$type<ClimbQueueItem | null>().default(null),
+  version: integer('version').default(1).notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 

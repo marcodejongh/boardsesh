@@ -1,9 +1,8 @@
 'use client';
 
-import React, { useContext, createContext, useEffect, useCallback, useState, useMemo } from 'react';
+import React, { useContext, createContext, useMemo } from 'react';
 import { useBoardProvider } from '../board-provider/board-provider-context';
-import { useConnection, useDaemonConnection } from '../connection-manager/use-connection';
-import { ReceivedPeerData, SendPeerInfo } from '../connection-manager/types';
+import { useQueueContext } from '../graphql-queue';
 
 type ConnectedUser = {
   username: string;
@@ -17,82 +16,37 @@ type PartyContextType = {
   connectedUsers: ConnectedUser[];
 };
 
-type WebSocketData = Pick<SendPeerInfo, 'username'>;
-
 const PartyContext = createContext<PartyContextType | undefined>(undefined);
 
 export const PartyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { sendData, peerId, subscribeToData, connections,isDaemonMode } = useConnection();
-  const daemonConnection = useDaemonConnection();
   const { username: boardUsername } = useBoardProvider();
+  const { users, clientId, isDaemonMode, hasConnected } = useQueueContext();
 
   const username = boardUsername || '';
 
-  const [webSocketData, setWebSocketData] = useState<Record<string, WebSocketData>>({});
-
-  // Derive party from connections and webSocketData (for PeerJS mode)
-  const peerJsParty: ConnectedUser[] = useMemo(
-    () =>
-      connections.map((connection) => ({
-        ...(webSocketData[connection.connection.peer] || {}),
-        id: connection.connection.peer,
-        isHost: connection.isHost,
-      })),
-    [connections, webSocketData],
-  );
-
-  // For daemon mode, convert daemon users to ConnectedUser format
-  const daemonParty: ConnectedUser[] = useMemo(() => {
-    if (!daemonConnection?.daemonUsers) return [];
-    // Filter out self from connected users list
-    return daemonConnection.daemonUsers
-      .filter((user) => user.id !== daemonConnection.peerId)
+  // Convert SessionUser[] to ConnectedUser[]
+  const connectedUsers: ConnectedUser[] = useMemo(() => {
+    if (!isDaemonMode || !hasConnected || !users) return [];
+    return users
+      .filter((user) => user.id !== clientId)
       .map((user) => ({
         username: user.username,
         id: user.id,
         isHost: user.isLeader,
       }));
-  }, [daemonConnection?.daemonUsers, daemonConnection?.peerId]);
-
-  // Choose party based on mode
-  const party = isDaemonMode ? daemonParty : peerJsParty;
-
-  // Single consolidated subscription for PeerJS mode peer data
-  useEffect(() => {
-    // Skip PeerJS-specific logic in daemon mode
-    if (isDaemonMode) return;
-
-    const handlePeerData = (data: ReceivedPeerData) => {
-      switch (data.type) {
-        case 'send-peer-info':
-          // Update stored peer info
-          setWebSocketData((prev) => ({
-            ...prev,
-            [data.source]: { username: data.username },
-          }));
-          break;
-        case 'new-connection':
-          // Respond with our peer info
-          sendData({ type: 'send-peer-info', username }, data.source);
-          break;
-      }
-    };
-
-    const unsubscribe = subscribeToData(handlePeerData);
-    return () => unsubscribe();
-  }, [subscribeToData, sendData, username, isDaemonMode]);
+  }, [users, clientId, isDaemonMode, hasConnected]);
 
   // Get the effective username based on mode
-  const effectiveUserName = isDaemonMode
-    ? daemonConnection?.daemonUsers?.find((u) => u.id === daemonConnection.peerId)?.username ||
-      username ||
-      daemonConnection?.peerId ||
-      ''
-    : username || peerId || '';
+  const effectiveUserName = useMemo(() => {
+    if (isDaemonMode && hasConnected && users) {
+      return users.find((u) => u.id === clientId)?.username || username || clientId || '';
+    }
+    return username || '';
+  }, [isDaemonMode, hasConnected, users, clientId, username]);
 
   const contextValue: PartyContextType = {
     userName: effectiveUserName,
-    connectedUsers: party,
+    connectedUsers,
   };
 
   return <PartyContext.Provider value={contextValue}>{children}</PartyContext.Provider>;

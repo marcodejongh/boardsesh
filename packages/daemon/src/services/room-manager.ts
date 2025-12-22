@@ -1,8 +1,16 @@
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../db/client.js';
 import { sessions, sessionClients, sessionQueues } from '../db/schema.js';
-import { eq } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import type { ClimbQueueItem, SessionUser } from '@boardsesh/shared-schema';
+
+// Custom error for version conflicts
+export class VersionConflictError extends Error {
+  constructor(sessionId: string, expectedVersion: number) {
+    super(`Version conflict for session ${sessionId}. Expected version ${expectedVersion} but it was updated by another operation.`);
+    this.name = 'VersionConflictError';
+  }
+}
 
 interface ConnectedClient {
   connectionId: string;
@@ -225,14 +233,39 @@ class RoomManager {
   async updateQueueState(
     sessionId: string,
     queue: ClimbQueueItem[],
-    currentClimbQueueItem: ClimbQueueItem | null
-  ): Promise<void> {
-    await db
+    currentClimbQueueItem: ClimbQueueItem | null,
+    expectedVersion?: number
+  ): Promise<number> {
+    if (expectedVersion !== undefined) {
+      // Optimistic locking: only update if version matches
+      const result = await db
+        .update(sessionQueues)
+        .set({
+          queue,
+          currentClimbQueueItem,
+          version: sql`${sessionQueues.version} + 1`,
+          updatedAt: new Date(),
+        })
+        .where(and(
+          eq(sessionQueues.sessionId, sessionId),
+          eq(sessionQueues.version, expectedVersion)
+        ))
+        .returning({ version: sessionQueues.version });
+
+      if (result.length === 0) {
+        throw new VersionConflictError(sessionId, expectedVersion);
+      }
+      return result[0].version;
+    }
+
+    // No version check - insert or update
+    const result = await db
       .insert(sessionQueues)
       .values({
         sessionId,
         queue,
         currentClimbQueueItem,
+        version: 1,
         updatedAt: new Date(),
       })
       .onConflictDoUpdate({
@@ -240,24 +273,70 @@ class RoomManager {
         set: {
           queue,
           currentClimbQueueItem,
+          version: sql`${sessionQueues.version} + 1`,
           updatedAt: new Date(),
         },
-      });
+      })
+      .returning({ version: sessionQueues.version });
+
+    return result[0]?.version ?? 1;
+  }
+
+  /**
+   * Update only the queue without touching currentClimbQueueItem.
+   * This avoids race conditions when other operations are modifying currentClimbQueueItem.
+   */
+  async updateQueueOnly(sessionId: string, queue: ClimbQueueItem[], expectedVersion?: number): Promise<number> {
+    if (expectedVersion !== undefined) {
+      // Optimistic locking: only update if version matches
+      const result = await db
+        .update(sessionQueues)
+        .set({
+          queue,
+          version: sql`${sessionQueues.version} + 1`,
+          updatedAt: new Date(),
+        })
+        .where(and(
+          eq(sessionQueues.sessionId, sessionId),
+          eq(sessionQueues.version, expectedVersion)
+        ))
+        .returning({ version: sessionQueues.version });
+
+      if (result.length === 0) {
+        throw new VersionConflictError(sessionId, expectedVersion);
+      }
+      return result[0].version;
+    }
+
+    // No version check
+    const result = await db
+      .update(sessionQueues)
+      .set({
+        queue,
+        version: sql`${sessionQueues.version} + 1`,
+        updatedAt: new Date(),
+      })
+      .where(eq(sessionQueues.sessionId, sessionId))
+      .returning({ version: sessionQueues.version });
+
+    return result[0]?.version ?? 1;
   }
 
   async getQueueState(sessionId: string): Promise<{
     queue: ClimbQueueItem[];
     currentClimbQueueItem: ClimbQueueItem | null;
+    version: number;
   }> {
     const result = await db.select().from(sessionQueues).where(eq(sessionQueues.sessionId, sessionId)).limit(1);
 
     if (result.length === 0) {
-      return { queue: [], currentClimbQueueItem: null };
+      return { queue: [], currentClimbQueueItem: null, version: 0 };
     }
 
     return {
       queue: result[0].queue,
       currentClimbQueueItem: result[0].currentClimbQueueItem,
+      version: result[0].version,
     };
   }
 

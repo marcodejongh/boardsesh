@@ -6,7 +6,7 @@ import { Button, Modal, Typography } from 'antd';
 import { track } from '@vercel/analytics';
 
 const { Text, Paragraph } = Typography;
-import { useQueueContext } from '../queue-control/queue-context';
+import { useQueueContext } from '../graphql-queue';
 import { BoardDetails } from '@/app/lib/types';
 import './send-climb-to-board-button.css'; // Import your custom styles
 import {

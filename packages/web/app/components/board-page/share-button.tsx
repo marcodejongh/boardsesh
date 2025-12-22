@@ -9,32 +9,24 @@ import {
   CheckCircleOutlined,
   DisconnectOutlined,
 } from '@ant-design/icons';
-import { Button, Input, Drawer, QRCode, Flex, message, Typography, Badge, Segmented } from 'antd';
+import { Button, Input, Drawer, QRCode, Flex, message, Typography, Badge } from 'antd';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { useConnection, useDaemonConnection } from '../connection-manager/use-connection';
 import { usePartyContext } from '../party-manager/party-context';
-import { usePartyMode, useDaemonUrl, type PartyMode } from '../connection-manager/connection-settings-context';
+import { useDaemonUrl } from '../connection-manager/connection-settings-context';
+import { useQueueContext } from '../graphql-queue';
 import { DaemonSetupPanel } from './daemon-setup-panel';
 
 const { Text } = Typography;
 
-const getShareUrl = (
-  pathname: string,
-  searchParams: URLSearchParams,
-  peerId: string,
-  daemonUrl: string | null,
-  partyMode: PartyMode,
-) => {
+const getShareUrl = (pathname: string, searchParams: URLSearchParams, daemonUrl: string | null) => {
   try {
     const params = new URLSearchParams(searchParams.toString());
     // Remove existing connection params
     params.delete('hostId');
     params.delete('daemonUrl');
 
-    if (partyMode === 'daemon' && daemonUrl) {
+    if (daemonUrl) {
       params.set('daemonUrl', daemonUrl);
-    } else {
-      params.set('hostId', peerId);
     }
     return `${window.location.origin}${pathname}?${params.toString()}`;
   } catch {
@@ -43,10 +35,8 @@ const getShareUrl = (
 };
 
 export const ShareBoardButton = () => {
-  const { peerId, isConnecting, hasConnected, connections } = useConnection();
-  const daemonConnection = useDaemonConnection();
+  const { users, clientId, isDaemonMode, hasConnected, connectionError, disconnect } = useQueueContext();
   const { connectedUsers, userName } = usePartyContext();
-  const { partyMode, setPartyMode } = usePartyMode();
   const { daemonUrl, setDaemonUrl, clearDaemonUrl } = useDaemonUrl();
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -63,22 +53,11 @@ export const ShareBoardButton = () => {
     setIsDrawerOpen(false);
   };
 
-  // Determine effective connection state
-  const isDaemonMode = partyMode === 'daemon';
-  const isDaemonConnected = daemonConnection?.hasConnected ?? false;
-  const isDaemonConnecting = daemonConnection?.isConnecting ?? false;
-  const daemonError = daemonConnection?.connectionError ?? null;
+  // Determine connection state
+  const isConnecting = !!(isDaemonMode && !hasConnected);
+  const isConnected = !!(isDaemonMode && hasConnected);
 
-  // Get the effective host ID for share URL
-  const effectiveHostId = isDaemonMode ? daemonConnection?.peerId : peerId;
-
-  const shareUrl = getShareUrl(
-    pathname,
-    searchParams,
-    effectiveHostId || peerId || '',
-    daemonUrl,
-    partyMode,
-  );
+  const shareUrl = getShareUrl(pathname, searchParams, daemonUrl);
 
   const copyToClipboard = () => {
     navigator.clipboard
@@ -92,43 +71,20 @@ export const ShareBoardButton = () => {
   };
 
   const handleDaemonConnect = (url: string) => {
-    // Set the daemon URL - this updates shared context state and triggers
-    // ConnectionProviderWrapper to render DaemonProvider
     setDaemonUrl(url);
   };
 
   const handleDaemonDisconnect = () => {
-    if (daemonConnection?.disconnect) {
-      daemonConnection.disconnect();
-    }
+    // First disconnect the GraphQL client, then clear the URL
+    disconnect?.();
     clearDaemonUrl();
-    setPartyMode('direct');
-  };
-
-  const handleModeChange = (value: string | number) => {
-    const mode = value as PartyMode;
-    setPartyMode(mode);
-
-    // If switching to direct mode, disconnect from daemon
-    if (mode === 'direct' && isDaemonConnected) {
-      handleDaemonDisconnect();
-    }
   };
 
   // Calculate connection count for badge
-  const connectionCount = isDaemonMode
-    ? (daemonConnection?.daemonUsers?.length ?? 0)
-    : connections.length > 0
-      ? connections.length + 1
-      : 0;
+  const connectionCount = users?.length ?? 0;
 
-  // Determine button state
-  const isButtonConnecting = isDaemonMode ? isDaemonConnecting : isConnecting;
-  const isButtonConnected = isDaemonMode ? isDaemonConnected : hasConnected;
-
-  // Get users list based on mode
-  const daemonUsers = daemonConnection?.daemonUsers ?? [];
-  const currentUserId = isDaemonMode ? daemonConnection?.peerId : peerId;
+  // Get users list
+  const currentUserId = clientId;
 
   return (
     <>
@@ -136,10 +92,8 @@ export const ShareBoardButton = () => {
         <Button
           type="default"
           onClick={showDrawer}
-          icon={
-            !isButtonConnected && isButtonConnecting ? <LoadingOutlined /> : <TeamOutlined />
-          }
-          disabled={!isDaemonMode && !peerId}
+          icon={!isConnected && isConnecting ? <LoadingOutlined /> : <TeamOutlined />}
+          disabled={!isDaemonMode && !clientId}
         />
       </Badge>
       <Drawer
@@ -176,36 +130,21 @@ export const ShareBoardButton = () => {
             </div>
           )}
 
-          {/* Mode Toggle (only show when not in controller mode) */}
-          {!isControllerMode && (
-            <Flex vertical gap="small">
-              <Segmented
-                block
-                value={partyMode}
-                onChange={handleModeChange}
-                options={[
-                  { label: 'Direct (P2P)', value: 'direct' },
-                  { label: 'Daemon', value: 'daemon' },
-                ]}
-              />
-            </Flex>
-          )}
-
           {/* Daemon Mode Content */}
-          {isDaemonMode && !isControllerMode && (
+          {!isControllerMode && (
             <>
               {/* Not connected - show setup */}
-              {!isDaemonConnected && !isDaemonConnecting && (
+              {!isConnected && !isConnecting && (
                 <DaemonSetupPanel
                   onConnect={handleDaemonConnect}
-                  isConnecting={isDaemonConnecting}
-                  error={daemonError}
+                  isConnecting={isConnecting}
+                  error={connectionError?.message ?? null}
                   storedUrl={daemonUrl}
                 />
               )}
 
               {/* Connecting */}
-              {isDaemonConnecting && (
+              {isConnecting && (
                 <Flex vertical align="center" gap="middle" style={{ padding: '24px' }}>
                   <LoadingOutlined style={{ fontSize: '32px', color: '#1890ff' }} />
                   <Text>Connecting to daemon...</Text>
@@ -216,7 +155,7 @@ export const ShareBoardButton = () => {
               )}
 
               {/* Connected */}
-              {isDaemonConnected && (
+              {isConnected && (
                 <>
                   <Flex
                     align="center"
@@ -240,10 +179,10 @@ export const ShareBoardButton = () => {
                     </div>
                   </Flex>
 
-                  {/* Users list for daemon mode */}
-                  {daemonUsers.length > 0 && (
+                  {/* Users list */}
+                  {users && users.length > 0 && (
                     <Flex vertical gap="small">
-                      <Text strong>Connected Users ({daemonUsers.length}):</Text>
+                      <Text strong>Connected Users ({users.length}):</Text>
                       <Flex
                         vertical
                         gap="small"
@@ -253,7 +192,7 @@ export const ShareBoardButton = () => {
                           padding: '4px',
                         }}
                       >
-                        {daemonUsers.map((user) => (
+                        {users.map((user) => (
                           <Flex
                             key={user.id}
                             justify="space-between"
@@ -280,7 +219,7 @@ export const ShareBoardButton = () => {
                     </Flex>
                   )}
 
-                  {/* Share URL for daemon mode */}
+                  {/* Share URL */}
                   <Flex style={{ width: '100%' }} align="center">
                     <Input
                       value={shareUrl}
@@ -294,86 +233,11 @@ export const ShareBoardButton = () => {
                   </Flex>
 
                   {/* Disconnect button */}
-                  <Button
-                    danger
-                    icon={<DisconnectOutlined />}
-                    onClick={handleDaemonDisconnect}
-                    block
-                  >
+                  <Button danger icon={<DisconnectOutlined />} onClick={handleDaemonDisconnect} block>
                     Disconnect from Daemon
                   </Button>
                 </>
               )}
-            </>
-          )}
-
-          {/* Direct (PeerJS) Mode Content */}
-          {!isDaemonMode && !isControllerMode && (
-            <>
-              {/* Connected Users */}
-              {(connectedUsers.length > 0 || peerId) && (
-                <Flex vertical gap="small">
-                  <Text strong>Connected Users:</Text>
-                  <Flex
-                    vertical
-                    gap="small"
-                    style={{
-                      maxHeight: '150px',
-                      overflowY: 'auto',
-                      padding: '4px',
-                    }}
-                  >
-                    <Flex
-                      key={peerId}
-                      justify="space-between"
-                      align="center"
-                      style={{
-                        background: '#e6f7ff',
-                        padding: '8px 12px',
-                        borderRadius: '8px',
-                        width: '100%',
-                      }}
-                    >
-                      <Flex gap="small" align="center">
-                        <Text style={{ fontSize: '14px' }}>{userName || peerId} (you)</Text>
-                      </Flex>
-                    </Flex>
-                    {connectedUsers.map((conn) => (
-                      <Flex
-                        key={conn.id}
-                        justify="space-between"
-                        align="center"
-                        style={{
-                          background: '#f5f5f5',
-                          padding: '8px 12px',
-                          borderRadius: '8px',
-                          width: '100%',
-                        }}
-                      >
-                        <Flex gap="small" align="center">
-                          <Text style={{ fontSize: '14px' }}>{conn.username || conn.id}</Text>
-                        </Flex>
-                        {conn.isHost && (
-                          <CrownFilled style={{ color: '#FFD700', fontSize: '16px' }} />
-                        )}
-                      </Flex>
-                    ))}
-                  </Flex>
-                </Flex>
-              )}
-
-              {/* Share URL */}
-              <Flex style={{ width: '100%' }} align="center">
-                <Input
-                  value={shareUrl}
-                  readOnly
-                  addonAfter={<Button icon={<CopyOutlined />} onClick={copyToClipboard} />}
-                />
-              </Flex>
-
-              <Flex justify="center">
-                <QRCode value={shareUrl} size={160} bordered={false} />
-              </Flex>
             </>
           )}
         </Flex>

@@ -131,15 +131,15 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
       }
 
       try {
-        await fetch(`/api/v1/${boardName}/proxy/user-sync`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            board_name: boardName,
-          }),
-        });
+        // await fetch(`/api/v1/${boardName}/proxy/user-sync`, {
+        //   method: 'POST',
+        //   headers: {
+        //     'Content-Type': 'application/json',
+        //   },
+        //   body: JSON.stringify({
+        //     board_name: boardName,
+        //   }),
+        // });
       } catch (error) {
         console.error('Failed to sync user data:', error);
         // Don't surface this error to the user since it's a background sync

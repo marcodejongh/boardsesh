@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { Select } from 'antd';
 import { useUISearchParams } from '../queue-control/ui-searchparams-provider';
-import { useQueueContext } from '../queue-control/queue-context';
+import { useQueueContext } from '../graphql-queue';
 import useSWR from 'swr';
 import { constructSetterStatsUrl } from '@/app/lib/url-utils';
 

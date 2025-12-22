@@ -1,4 +1,5 @@
 import { Climb, SearchRequestPagination, ParsedBoardRouteParameters } from '@/app/lib/types';
+import { SessionUser } from '@boardsesh/shared-schema';
 
 export type PeerId = string | null;
 export type UserName = PeerId;
@@ -52,6 +53,14 @@ export interface QueueContextType {
   hasDoneFirstFetch: boolean;
   viewOnlyMode: boolean;
   parsedParams: ParsedBoardRouteParameters;
+  // Session-related fields (from GraphQL queue)
+  users?: SessionUser[];
+  clientId?: string | null;
+  isLeader?: boolean;
+  isDaemonMode?: boolean;
+  hasConnected?: boolean;
+  connectionError?: Error | null;
+  disconnect?: () => void;
   addToQueue: (climb: Climb) => void;
   removeFromQueue: (item: ClimbQueueItem) => void;
   setCurrentClimb: (climb: Climb) => void;

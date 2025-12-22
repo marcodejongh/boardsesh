@@ -13,11 +13,13 @@ import {
   SESSION_UPDATES,
   QUEUE_UPDATES,
   SessionUser,
-  QueueEvent,
+  ClientQueueEvent,
   SessionEvent,
   QueueState,
 } from '@boardsesh/shared-schema';
 import { ClimbQueueItem as LocalClimbQueueItem } from '../queue-control/types';
+
+const DEBUG = process.env.NODE_ENV === 'development';
 
 // Session type matching the GraphQL response
 export interface Session {
@@ -62,7 +64,7 @@ export interface UseQueueSessionOptions {
   sessionId: string;
   boardPath: string;
   username?: string;
-  onQueueEvent?: (event: QueueEvent) => void;
+  onQueueEvent?: (event: ClientQueueEvent) => void;
   onSessionEvent?: (event: SessionEvent) => void;
 }
 
@@ -110,6 +112,22 @@ export function useQueueSession({
   // Track current session for mutations
   const sessionRef = useRef<Session | null>(null);
 
+  // Lock to prevent concurrent reconnection attempts
+  const isReconnectingRef = useRef(false);
+
+  // Store callbacks in refs to avoid effect re-runs when they change
+  const onQueueEventRef = useRef(onQueueEvent);
+  const onSessionEventRef = useRef(onSessionEvent);
+
+  // Keep refs in sync with props
+  useEffect(() => {
+    onQueueEventRef.current = onQueueEvent;
+  }, [onQueueEvent]);
+
+  useEffect(() => {
+    onSessionEventRef.current = onSessionEvent;
+  }, [onSessionEvent]);
+
   // Keep sessionRef in sync with session state
   useEffect(() => {
     sessionRef.current = session;
@@ -118,45 +136,95 @@ export function useQueueSession({
   // Connect and join session
   useEffect(() => {
     if (!daemonUrl || !sessionId || !boardPath) {
+      if (DEBUG) console.log('[QueueSession] Missing required params:', { daemonUrl: !!daemonUrl, sessionId, boardPath });
       return;
     }
 
     let mounted = true;
     let graphqlClient: Client | null = null;
 
+    // Function to join/rejoin the session
+    async function joinSession(client: Client): Promise<Session | null> {
+      if (DEBUG) console.log('[QueueSession] Calling joinSession mutation...');
+      try {
+        const response = await execute<{ joinSession: Session }>(client, {
+          query: JOIN_SESSION,
+          variables: { sessionId, boardPath, username },
+        });
+        return response.joinSession;
+      } catch (err) {
+        console.error('[QueueSession] JoinSession failed:', err);
+        return null;
+      }
+    }
+
+    // Handle reconnection - re-join the session with lock to prevent concurrent attempts
+    async function handleReconnect() {
+      if (!mounted || !graphqlClient) return;
+      if (isReconnectingRef.current) {
+        if (DEBUG) console.log('[QueueSession] Reconnection already in progress, skipping');
+        return;
+      }
+
+      isReconnectingRef.current = true;
+      try {
+        if (DEBUG) console.log('[QueueSession] Handling reconnection, re-joining session...');
+        const sessionData = await joinSession(graphqlClient);
+        if (sessionData && mounted) {
+          setSession(sessionData);
+          if (DEBUG) console.log('[QueueSession] Re-joined session after reconnect, clientId:', sessionData.clientId);
+        }
+      } finally {
+        isReconnectingRef.current = false;
+      }
+    }
+
     async function connect() {
+      if (DEBUG) console.log('[QueueSession] Connecting to session:', sessionId);
       setIsConnecting(true);
       setError(null);
 
       try {
-        // Create the GraphQL client
-        graphqlClient = createGraphQLClient(daemonUrl);
-        if (!mounted) return;
+        // Create the GraphQL client with reconnection handler
+        graphqlClient = createGraphQLClient(daemonUrl, handleReconnect);
+        if (!mounted) {
+          if (DEBUG) console.log('[QueueSession] Unmounted before client setup, disposing');
+          graphqlClient.dispose();
+          return;
+        }
         setClient(graphqlClient);
 
-        // Join the session
+        // Join the session FIRST before any subscriptions
+        if (DEBUG) console.log('[QueueSession] Calling joinSession mutation...');
         const response = await execute<{ joinSession: Session }>(graphqlClient, {
           query: JOIN_SESSION,
           variables: { sessionId, boardPath, username },
         });
 
-        if (!mounted) return;
+        if (!mounted) {
+          if (DEBUG) console.log('[QueueSession] Unmounted after joinSession, disposing');
+          graphqlClient.dispose();
+          return;
+        }
 
         const sessionData = response.joinSession;
+        if (DEBUG) console.log('[QueueSession] Joined session, clientId:', sessionData.clientId, 'isLeader:', sessionData.isLeader);
+
         setSession(sessionData);
         setHasConnected(true);
         setIsConnecting(false);
 
         // Send initial queue state via callback
-        if (onQueueEvent && sessionData.queueState) {
-          onQueueEvent({
+        if (onQueueEventRef.current && sessionData.queueState) {
+          onQueueEventRef.current({
             __typename: 'FullSync',
             state: sessionData.queueState,
           });
         }
 
-        // Subscribe to queue updates
-        queueUnsubscribeRef.current = subscribe<{ queueUpdates: QueueEvent }>(
+        // Subscribe to queue updates AFTER joining session
+        if (DEBUG) console.log('[QueueSession] Setting up queue subscription...');
+        queueUnsubscribeRef.current = subscribe<{ queueUpdates: ClientQueueEvent }>(
           graphqlClient,
           {
             query: QUEUE_UPDATES,
@@ -164,23 +232,25 @@ export function useQueueSession({
           },
           {
             next: (data) => {
-              if (data.queueUpdates && onQueueEvent) {
-                onQueueEvent(data.queueUpdates);
+              if (data.queueUpdates && onQueueEventRef.current) {
+                if (DEBUG) console.log('[QueueSession] Queue event:', data.queueUpdates.__typename);
+                onQueueEventRef.current(data.queueUpdates);
               }
             },
             error: (err) => {
-              console.error('Queue subscription error:', err);
+              console.error('[QueueSession] Queue subscription error:', err);
               if (mounted) {
                 setError(err instanceof Error ? err : new Error(String(err)));
               }
             },
             complete: () => {
-              console.log('Queue subscription completed');
+              if (DEBUG) console.log('[QueueSession] Queue subscription completed');
             },
           },
         );
 
         // Subscribe to session updates
+        if (DEBUG) console.log('[QueueSession] Setting up session subscription...');
         sessionUnsubscribeRef.current = subscribe<{ sessionUpdates: SessionEvent }>(
           graphqlClient,
           {
@@ -192,8 +262,9 @@ export function useQueueSession({
               if (!data.sessionUpdates) return;
 
               const event = data.sessionUpdates;
-              if (onSessionEvent) {
-                onSessionEvent(event);
+              if (DEBUG) console.log('[QueueSession] Session event:', event.__typename);
+              if (onSessionEventRef.current) {
+                onSessionEventRef.current(event);
               }
 
               // Update local session state
@@ -221,8 +292,7 @@ export function useQueueSession({
                       })),
                     };
                   case 'SessionEnded':
-                    // Session ended - could navigate or show message
-                    console.log('Session ended:', event.reason);
+                    console.log('[QueueSession] Session ended:', event.reason);
                     return prev;
                   default:
                     return prev;
@@ -230,18 +300,22 @@ export function useQueueSession({
               });
             },
             error: (err) => {
-              console.error('Session subscription error:', err);
+              console.error('[QueueSession] Session subscription error:', err);
             },
             complete: () => {
-              console.log('Session subscription completed');
+              if (DEBUG) console.log('[QueueSession] Session subscription completed');
             },
           },
         );
       } catch (err) {
-        console.error('Failed to connect to session:', err);
+        console.error('[QueueSession] Failed to connect to session:', err);
         if (mounted) {
           setError(err instanceof Error ? err : new Error(String(err)));
           setIsConnecting(false);
+        }
+        // Dispose the client even on error
+        if (graphqlClient) {
+          graphqlClient.dispose();
         }
       }
     }
@@ -250,15 +324,21 @@ export function useQueueSession({
 
     // Cleanup
     return () => {
+      if (DEBUG) console.log('[QueueSession] Cleaning up session:', sessionId);
       mounted = false;
 
       // Unsubscribe from subscriptions
       queueUnsubscribeRef.current?.();
       sessionUnsubscribeRef.current?.();
 
-      // Leave session and dispose client
-      if (graphqlClient && sessionRef.current) {
-        execute(graphqlClient, { query: LEAVE_SESSION }).catch(console.error);
+      // Always dispose the client, even if session wasn't fully established
+      if (graphqlClient) {
+        // Only try to leave session if we actually joined
+        if (sessionRef.current) {
+          execute(graphqlClient, { query: LEAVE_SESSION }).catch((err) => {
+            if (DEBUG) console.log('[QueueSession] Leave session failed (expected if connection closed):', err);
+          });
+        }
         graphqlClient.dispose();
       }
 
@@ -266,34 +346,35 @@ export function useQueueSession({
       setSession(null);
       setIsConnecting(false);
     };
-  }, [daemonUrl, sessionId, boardPath, username, onQueueEvent, onSessionEvent]);
+  }, [daemonUrl, sessionId, boardPath, username]); // Removed onQueueEvent and onSessionEvent - using refs instead
 
-  // Mutation functions
+  // Mutation functions - must check for session, not just client
+  // The client exists before joinSession completes, so we need to wait for session
   const addQueueItem = useCallback(
     async (item: LocalClimbQueueItem, position?: number) => {
-      if (!client) throw new Error('Not connected');
+      if (!client || !session) throw new Error('Not connected to session');
       await execute(client, {
         query: ADD_QUEUE_ITEM,
         variables: { item: toClimbQueueItemInput(item), position },
       });
     },
-    [client],
+    [client, session],
   );
 
   const removeQueueItem = useCallback(
     async (uuid: string) => {
-      if (!client) throw new Error('Not connected');
+      if (!client || !session) throw new Error('Not connected to session');
       await execute(client, {
         query: REMOVE_QUEUE_ITEM,
         variables: { uuid },
       });
     },
-    [client],
+    [client, session],
   );
 
   const setCurrentClimb = useCallback(
     async (item: LocalClimbQueueItem | null, shouldAddToQueue?: boolean) => {
-      if (!client) throw new Error('Not connected');
+      if (!client || !session) throw new Error('Not connected to session');
       await execute(client, {
         query: SET_CURRENT_CLIMB,
         variables: {
@@ -302,23 +383,23 @@ export function useQueueSession({
         },
       });
     },
-    [client],
+    [client, session],
   );
 
   const mirrorCurrentClimb = useCallback(
     async (mirrored: boolean) => {
-      if (!client) throw new Error('Not connected');
+      if (!client || !session) throw new Error('Not connected to session');
       await execute(client, {
         query: MIRROR_CURRENT_CLIMB,
         variables: { mirrored },
       });
     },
-    [client],
+    [client, session],
   );
 
   const setQueueMutation = useCallback(
     async (queue: LocalClimbQueueItem[], currentClimbQueueItem?: LocalClimbQueueItem | null) => {
-      if (!client) throw new Error('Not connected');
+      if (!client || !session) throw new Error('Not connected to session');
       await execute(client, {
         query: SET_QUEUE,
         variables: {
@@ -327,7 +408,7 @@ export function useQueueSession({
         },
       });
     },
-    [client],
+    [client, session],
   );
 
   const disconnect = useCallback(() => {

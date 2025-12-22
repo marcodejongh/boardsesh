@@ -1,7 +1,7 @@
 import { makeExecutableSchema } from '@graphql-tools/schema';
 import GraphQLJSON from 'graphql-type-json';
 import { typeDefs } from '@boardsesh/shared-schema';
-import { roomManager } from '../services/room-manager.js';
+import { roomManager, VersionConflictError } from '../services/room-manager.js';
 import { pubsub } from '../pubsub/index.js';
 import { updateContext } from './context.js';
 import type {
@@ -12,6 +12,9 @@ import type {
   QueueState,
   SessionUser,
 } from '@boardsesh/shared-schema';
+
+// Maximum retries for version conflicts
+const MAX_RETRIES = 3;
 
 /**
  * Helper to require a session context.
@@ -24,9 +27,13 @@ function requireSession(ctx: ConnectionContext): string {
   return ctx.sessionId;
 }
 
+// Maximum queue size for subscriptions to prevent memory issues with slow clients
+const MAX_SUBSCRIPTION_QUEUE_SIZE = 1000;
+
 /**
  * Helper to create an async iterator from a callback-based subscription.
  * Used for GraphQL subscriptions.
+ * Includes bounded queue to prevent memory issues with slow clients.
  */
 function createAsyncIterator<T>(subscribe: (push: (value: T) => void) => () => void): AsyncIterable<T> {
   const queue: T[] = [];
@@ -40,6 +47,11 @@ function createAsyncIterator<T>(subscribe: (push: (value: T) => void) => () => v
         if (pending.length > 0) {
           pending.shift()!({ value, done: false });
         } else {
+          // Bounded queue: drop oldest events if queue is full
+          if (queue.length >= MAX_SUBSCRIPTION_QUEUE_SIZE) {
+            queue.shift(); // Drop oldest
+            console.warn('[Subscription] Queue full, dropping oldest event');
+          }
           queue.push(value);
         }
       });
@@ -188,25 +200,44 @@ const resolvers = {
       ctx: ConnectionContext
     ) => {
       const sessionId = requireSession(ctx);
+      console.log('[addQueueItem] Adding item:', item.climb?.name, 'by client:', ctx.connectionId, 'at position:', position);
 
-      // Get current state and update
-      const currentState = await roomManager.getQueueState(sessionId);
-      let queue = currentState.queue;
+      // Retry loop for optimistic locking
+      for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+        // Get current state and update
+        const currentState = await roomManager.getQueueState(sessionId);
+        console.log('[addQueueItem] Current state - queue size:', currentState.queue.length, 'version:', currentState.version);
+        let queue = currentState.queue;
 
-      // Only add if not already in queue
-      if (!queue.some((i) => i.uuid === item.uuid)) {
+        // Only add if not already in queue
+        if (queue.some((i) => i.uuid === item.uuid)) {
+          // Item already in queue, just return it
+          break;
+        }
+
         if (position !== undefined && position >= 0 && position <= queue.length) {
           queue = [...queue.slice(0, position), item, ...queue.slice(position)];
         } else {
           queue = [...queue, item];
         }
-        await roomManager.updateQueueState(sessionId, queue, currentState.currentClimbQueueItem);
+
+        try {
+          // Use updateQueueOnly with version check to avoid race conditions
+          await roomManager.updateQueueOnly(sessionId, queue, currentState.version);
+          break; // Success, exit retry loop
+        } catch (error) {
+          if (error instanceof VersionConflictError && attempt < MAX_RETRIES - 1) {
+            console.log(`[addQueueItem] Version conflict, retrying (attempt ${attempt + 1}/${MAX_RETRIES})`);
+            continue; // Retry
+          }
+          throw error; // Re-throw if not a version conflict or max retries exceeded
+        }
       }
 
       // Broadcast to subscribers
       pubsub.publishQueueEvent(sessionId, {
         __typename: 'QueueItemAdded',
-        item,
+        item: item,
         position,
       });
 
@@ -248,7 +279,8 @@ const resolvers = {
       if (oldIndex >= 0 && oldIndex < queue.length && newIndex >= 0 && newIndex < queue.length) {
         const [movedItem] = queue.splice(oldIndex, 1);
         queue.splice(newIndex, 0, movedItem);
-        await roomManager.updateQueueState(sessionId, queue, currentState.currentClimbQueueItem);
+        // Use updateQueueOnly to avoid overwriting currentClimbQueueItem
+        await roomManager.updateQueueOnly(sessionId, queue);
       }
 
       pubsub.publishQueueEvent(sessionId, {
@@ -268,19 +300,38 @@ const resolvers = {
     ) => {
       const sessionId = requireSession(ctx);
 
-      const currentState = await roomManager.getQueueState(sessionId);
-      let queue = currentState.queue;
-
-      // Optionally add to queue if not already present
-      if (shouldAddToQueue && item && !queue.some((i) => i.uuid === item.uuid)) {
-        queue = [...queue, item];
+      // Debug: track who's setting null
+      if (item === null) {
+        console.log('[setCurrentClimb] Setting current climb to NULL by client:', ctx.connectionId, 'session:', sessionId);
+      } else {
+        console.log('[setCurrentClimb] Setting current climb to:', item.climb?.name, 'by client:', ctx.connectionId);
       }
 
-      await roomManager.updateQueueState(sessionId, queue, item);
+      // Retry loop for optimistic locking
+      for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+        const currentState = await roomManager.getQueueState(sessionId);
+        let queue = currentState.queue;
+
+        // Optionally add to queue if not already present
+        if (shouldAddToQueue && item && !queue.some((i) => i.uuid === item.uuid)) {
+          queue = [...queue, item];
+        }
+
+        try {
+          await roomManager.updateQueueState(sessionId, queue, item, currentState.version);
+          break; // Success, exit retry loop
+        } catch (error) {
+          if (error instanceof VersionConflictError && attempt < MAX_RETRIES - 1) {
+            console.log(`[setCurrentClimb] Version conflict, retrying (attempt ${attempt + 1}/${MAX_RETRIES})`);
+            continue; // Retry
+          }
+          throw error; // Re-throw if not a version conflict or max retries exceeded
+        }
+      }
 
       pubsub.publishQueueEvent(sessionId, {
         __typename: 'CurrentClimbChanged',
-        item,
+        item: item,
       });
 
       return item;

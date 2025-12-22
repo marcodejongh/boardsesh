@@ -5,7 +5,7 @@ import { Row, Col, Skeleton } from 'antd';
 import InfiniteScroll from 'react-infinite-scroll-component';
 import { track } from '@vercel/analytics';
 import { Climb, ParsedBoardRouteParameters, BoardDetails } from '@/app/lib/types';
-import { useQueueContext } from '../queue-control/queue-context';
+import { useQueueContext } from '../graphql-queue';
 import ClimbCard from '../climb-card/climb-card';
 import { useEffect, useRef } from 'react';
 import { PlusCircleOutlined, FireOutlined } from '@ant-design/icons';

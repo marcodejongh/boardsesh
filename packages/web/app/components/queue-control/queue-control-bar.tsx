@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Button, Typography, Row, Col, Card, Drawer, Space } from 'antd';
 import { SyncOutlined } from '@ant-design/icons';
 import { track } from '@vercel/analytics';
-import { useQueueContext } from './queue-context';
+import { useQueueContext } from '../graphql-queue';
 import NextClimbButton from './next-climb-button';
 import { usePathname } from 'next/navigation';
 import PreviousClimbButton from './previous-climb-button';
