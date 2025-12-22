@@ -12,50 +12,21 @@ This document tracks the remaining work to migrate from PeerJS/custom WebSocket 
   - Added `graphql` and `graphql-ws` dependencies to both packages
   - Commit: `66850345` on branch `refactor/monorepo-graphql-ws`
 
+- [x] **Phase 1: Complete Shared Schema Package**
+  - Verified types match between packages
+  - Fixed operation naming bugs
+  - Built shared-schema package
+
+- [x] **Phase 2: Daemon GraphQL Implementation**
+  - Created `packages/daemon/src/graphql/resolvers.ts` with all mutations/subscriptions
+  - Created `packages/daemon/src/graphql/context.ts` for connection context
+  - Created `packages/daemon/src/pubsub/index.ts` for subscription events
+  - Updated `packages/daemon/src/server.ts` to use graphql-ws
+  - Refactored `packages/daemon/src/services/room-manager.ts` to use connectionId
+  - Deleted old handlers, broadcast service, and message types
+  - Added `@graphql-tools/schema` and `graphql-type-json` dependencies
+
 ## Remaining Work
-
-### Phase 1: Complete Shared Schema Package ✅
-
-The `packages/shared-schema/` has been verified and updated:
-
-- [x] Verify `src/types.ts` matches `packages/web/app/lib/types.ts` (Climb type) - **Identical**
-- [x] Verify `src/types.ts` matches `packages/web/app/components/queue-control/types.ts` (ClimbQueueItem) - **Added UserId type alias**
-- [x] Fixed `removeFromQueue` → `removeQueueItem` bug in operations.ts
-- [x] Build the package: `npm run build --workspace=@boardsesh/shared-schema`
-
-### Phase 2: Daemon GraphQL Implementation
-
-Replace current WebSocket handlers with graphql-ws:
-
-**Files to create:**
-- [ ] `packages/daemon/src/graphql/resolvers.ts` - Query, Mutation, Subscription resolvers
-- [ ] `packages/daemon/src/graphql/context.ts` - Connection context creation
-- [ ] `packages/daemon/src/pubsub/index.ts` - Simple PubSub for subscriptions
-
-**Files to modify:**
-- [ ] `packages/daemon/src/server.ts` - Use `graphql-ws/lib/use/ws` instead of raw WebSocket
-- [ ] `packages/daemon/src/services/room-manager.ts` - Track by connectionId instead of WebSocket reference
-
-**Files to delete (after migration):**
-- [ ] `packages/daemon/src/handlers/message.ts` - Replaced by GraphQL resolvers
-- [ ] `packages/daemon/src/types/messages.ts` - Replaced by shared-schema
-
-**Key resolvers needed:**
-```
-Mutations:
-- joinSession(sessionId, boardPath, username) -> Session
-- leaveSession() -> Boolean
-- addQueueItem(item, position) -> ClimbQueueItem
-- removeQueueItem(uuid) -> Boolean
-- reorderQueueItem(uuid, oldIndex, newIndex) -> Boolean
-- setCurrentClimb(item, shouldAddToQueue) -> ClimbQueueItem
-- mirrorCurrentClimb(mirrored) -> ClimbQueueItem
-- setQueue(queue, currentClimbQueueItem) -> QueueState
-
-Subscriptions:
-- queueUpdates(sessionId) -> QueueEvent (union type)
-- sessionUpdates(sessionId) -> SessionEvent (union type)
-```
 
 ### Phase 3: Client GraphQL Implementation
 

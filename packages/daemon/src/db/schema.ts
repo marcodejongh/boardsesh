@@ -1,5 +1,5 @@
 import { pgTable, text, timestamp, boolean, jsonb } from 'drizzle-orm/pg-core';
-import type { ClimbQueueItem } from '../types/messages.js';
+import type { ClimbQueueItem } from '@boardsesh/shared-schema';
 
 export const sessions = pgTable('sessions', {
   id: text('id').primaryKey(),

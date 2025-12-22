@@ -1,13 +1,11 @@
-import { WebSocket } from 'ws';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../db/client.js';
 import { sessions, sessionClients, sessionQueues } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
-import type { ClimbQueueItem, SessionUser } from '../types/messages.js';
+import type { ClimbQueueItem, SessionUser } from '@boardsesh/shared-schema';
 
 interface ConnectedClient {
-  ws: WebSocket;
-  clientId: string;
+  connectionId: string;
   sessionId: string | null;
   username: string;
   isLeader: boolean;
@@ -15,8 +13,8 @@ interface ConnectedClient {
 }
 
 class RoomManager {
-  private clients: Map<WebSocket, ConnectedClient> = new Map();
-  private sessions: Map<string, Set<WebSocket>> = new Map();
+  private clients: Map<string, ConnectedClient> = new Map();
+  private sessions: Map<string, Set<string>> = new Map();
   private activeSessionId: string | null = null;
   private activeSessionBoardPath: string | null = null;
 
@@ -30,66 +28,64 @@ class RoomManager {
     this.activeSessionBoardPath = null;
   }
 
-  registerClient(ws: WebSocket): string {
-    const clientId = uuidv4();
-    this.clients.set(ws, {
-      ws,
-      clientId,
+  registerClient(connectionId: string): string {
+    this.clients.set(connectionId, {
+      connectionId,
       sessionId: null,
-      username: `User-${clientId.substring(0, 6)}`,
+      username: `User-${connectionId.substring(0, 6)}`,
       isLeader: false,
       connectedAt: new Date(),
     });
-    return clientId;
+    return connectionId;
   }
 
-  getClient(ws: WebSocket): ConnectedClient | undefined {
-    return this.clients.get(ws);
+  getClient(connectionId: string): ConnectedClient | undefined {
+    return this.clients.get(connectionId);
   }
 
   getClientById(clientId: string): ConnectedClient | undefined {
-    for (const client of this.clients.values()) {
-      if (client.clientId === clientId) {
-        return client;
-      }
-    }
-    return undefined;
+    return this.clients.get(clientId);
   }
 
-  async joinSession(ws: WebSocket, sessionId: string, boardPath: string, username?: string): Promise<{
+  async joinSession(
+    connectionId: string,
+    sessionId: string,
+    boardPath: string,
+    username?: string
+  ): Promise<{
     clientId: string;
     users: SessionUser[];
     queue: ClimbQueueItem[];
     currentClimbQueueItem: ClimbQueueItem | null;
     isLeader: boolean;
     sessionSwitched: boolean;
-    previousSessionClients: WebSocket[];
+    previousSessionClientIds: string[];
   }> {
-    const client = this.clients.get(ws);
+    const client = this.clients.get(connectionId);
     if (!client) {
       throw new Error('Client not registered');
     }
 
     // Leave current session if in one
     if (client.sessionId) {
-      await this.leaveSession(ws);
+      await this.leaveSession(connectionId);
     }
 
     // Check if we need to switch sessions (different board path)
     let sessionSwitched = false;
-    let previousSessionClients: WebSocket[] = [];
+    let previousSessionClientIds: string[] = [];
 
     if (this.activeSessionId && this.activeSessionBoardPath !== boardPath) {
       // Session switching: get clients to notify and clear old session
-      previousSessionClients = this.getSessionClients(this.activeSessionId);
+      previousSessionClientIds = this.getSessionClients(this.activeSessionId);
 
       // Clear old session from memory
       this.sessions.delete(this.activeSessionId);
 
       // Mark all clients in old session as not in a session
-      for (const oldWs of previousSessionClients) {
-        const oldClient = this.clients.get(oldWs);
-        if (oldClient && oldWs !== ws) {
+      for (const oldClientId of previousSessionClientIds) {
+        const oldClient = this.clients.get(oldClientId);
+        if (oldClient && oldClientId !== connectionId) {
           oldClient.sessionId = null;
           oldClient.isLeader = false;
         }
@@ -109,37 +105,37 @@ class RoomManager {
     if (!this.sessions.has(sessionId)) {
       this.sessions.set(sessionId, new Set());
     }
-    const sessionClients = this.sessions.get(sessionId)!;
+    const sessionClientIds = this.sessions.get(sessionId)!;
 
     // First client becomes leader
-    const isLeader = sessionClients.size === 0;
+    const isLeader = sessionClientIds.size === 0;
     client.isLeader = isLeader;
-    sessionClients.add(ws);
+    sessionClientIds.add(connectionId);
 
     // Update active session tracking
     this.activeSessionId = sessionId;
     this.activeSessionBoardPath = boardPath;
 
     // Persist to database
-    await this.persistSessionJoin(sessionId, boardPath, client.clientId, client.username, isLeader);
+    await this.persistSessionJoin(sessionId, boardPath, connectionId, client.username, isLeader);
 
     // Get current session state
     const users = this.getSessionUsers(sessionId);
     const queueState = await this.getQueueState(sessionId);
 
     return {
-      clientId: client.clientId,
+      clientId: connectionId,
       users,
       queue: queueState.queue,
       currentClimbQueueItem: queueState.currentClimbQueueItem,
       isLeader,
       sessionSwitched,
-      previousSessionClients: previousSessionClients.filter(c => c !== ws),
+      previousSessionClientIds: previousSessionClientIds.filter((c) => c !== connectionId),
     };
   }
 
-  async leaveSession(ws: WebSocket): Promise<{ sessionId: string; newLeaderId?: string } | null> {
-    const client = this.clients.get(ws);
+  async leaveSession(connectionId: string): Promise<{ sessionId: string; newLeaderId?: string } | null> {
+    const client = this.clients.get(connectionId);
     if (!client || !client.sessionId) {
       return null;
     }
@@ -148,12 +144,12 @@ class RoomManager {
     const wasLeader = client.isLeader;
 
     // Remove from session
-    const sessionClients = this.sessions.get(sessionId);
-    if (sessionClients) {
-      sessionClients.delete(ws);
+    const sessionClientIds = this.sessions.get(sessionId);
+    if (sessionClientIds) {
+      sessionClientIds.delete(connectionId);
 
       // Clean up empty sessions
-      if (sessionClients.size === 0) {
+      if (sessionClientIds.size === 0) {
         this.sessions.delete(sessionId);
         // Clear active session tracking if this was the active session
         if (this.activeSessionId === sessionId) {
@@ -168,21 +164,21 @@ class RoomManager {
     client.isLeader = false;
 
     // Remove from database
-    await this.persistSessionLeave(client.clientId);
+    await this.persistSessionLeave(connectionId);
 
     // Elect new leader if needed (deterministic: pick earliest connected client)
     let newLeaderId: string | undefined;
-    if (wasLeader && sessionClients && sessionClients.size > 0) {
+    if (wasLeader && sessionClientIds && sessionClientIds.size > 0) {
       // Convert Set to array and sort by connectedAt for deterministic leader election
-      const clientsArray = Array.from(sessionClients)
-        .map((ws) => this.clients.get(ws))
+      const clientsArray = Array.from(sessionClientIds)
+        .map((id) => this.clients.get(id))
         .filter((client): client is ConnectedClient => client !== undefined)
         .sort((a, b) => a.connectedAt.getTime() - b.connectedAt.getTime());
 
       if (clientsArray.length > 0) {
         const newLeader = clientsArray[0];
         newLeader.isLeader = true;
-        newLeaderId = newLeader.clientId;
+        newLeaderId = newLeader.connectionId;
         await this.persistLeaderChange(sessionId, newLeaderId);
       }
     }
@@ -190,20 +186,20 @@ class RoomManager {
     return { sessionId, newLeaderId };
   }
 
-  removeClient(ws: WebSocket): void {
-    this.clients.delete(ws);
+  removeClient(connectionId: string): void {
+    this.clients.delete(connectionId);
   }
 
   getSessionUsers(sessionId: string): SessionUser[] {
-    const sessionClients = this.sessions.get(sessionId);
-    if (!sessionClients) return [];
+    const sessionClientIds = this.sessions.get(sessionId);
+    if (!sessionClientIds) return [];
 
     const users: SessionUser[] = [];
-    for (const clientWs of sessionClients) {
-      const client = this.clients.get(clientWs);
+    for (const clientId of sessionClientIds) {
+      const client = this.clients.get(clientId);
       if (client) {
         users.push({
-          id: client.clientId,
+          id: client.connectionId,
           username: client.username,
           isLeader: client.isLeader,
         });
@@ -212,20 +208,17 @@ class RoomManager {
     return users;
   }
 
-  getSessionClients(sessionId: string): WebSocket[] {
+  getSessionClients(sessionId: string): string[] {
     const session = this.sessions.get(sessionId);
     return session ? Array.from(session) : [];
   }
 
-  async updateUsername(ws: WebSocket, username: string): Promise<void> {
-    const client = this.clients.get(ws);
+  async updateUsername(connectionId: string, username: string): Promise<void> {
+    const client = this.clients.get(connectionId);
     if (client) {
       client.username = username;
       // Persist to database
-      await db
-        .update(sessionClients)
-        .set({ username })
-        .where(eq(sessionClients.id, client.clientId));
+      await db.update(sessionClients).set({ username }).where(eq(sessionClients.id, connectionId));
     }
   }
 
@@ -256,11 +249,7 @@ class RoomManager {
     queue: ClimbQueueItem[];
     currentClimbQueueItem: ClimbQueueItem | null;
   }> {
-    const result = await db
-      .select()
-      .from(sessionQueues)
-      .where(eq(sessionQueues.sessionId, sessionId))
-      .limit(1);
+    const result = await db.select().from(sessionQueues).where(eq(sessionQueues.sessionId, sessionId)).limit(1);
 
     if (result.length === 0) {
       return { queue: [], currentClimbQueueItem: null };
@@ -281,8 +270,8 @@ class RoomManager {
     }
 
     // Verify session still has clients
-    const sessionClients = this.sessions.get(this.activeSessionId);
-    if (!sessionClients || sessionClients.size === 0) {
+    const sessionClientIds = this.sessions.get(this.activeSessionId);
+    if (!sessionClientIds || sessionClientIds.size === 0) {
       this.activeSessionId = null;
       this.activeSessionBoardPath = null;
       return null;
@@ -335,16 +324,10 @@ class RoomManager {
 
   private async persistLeaderChange(sessionId: string, newLeaderId: string): Promise<void> {
     // Remove leader status from all clients in session
-    await db
-      .update(sessionClients)
-      .set({ isLeader: false })
-      .where(eq(sessionClients.sessionId, sessionId));
+    await db.update(sessionClients).set({ isLeader: false }).where(eq(sessionClients.sessionId, sessionId));
 
     // Set new leader
-    await db
-      .update(sessionClients)
-      .set({ isLeader: true })
-      .where(eq(sessionClients.id, newLeaderId));
+    await db.update(sessionClients).set({ isLeader: true }).where(eq(sessionClients.id, newLeaderId));
   }
 }
 
