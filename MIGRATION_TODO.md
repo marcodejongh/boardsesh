@@ -26,23 +26,14 @@ This document tracks the remaining work to migrate from PeerJS/custom WebSocket 
   - Deleted old handlers, broadcast service, and message types
   - Added `@graphql-tools/schema` and `graphql-type-json` dependencies
 
+- [x] **Phase 3: Client GraphQL Implementation**
+  - Created `packages/web/app/components/graphql-queue/graphql-client.ts` - graphql-ws client setup
+  - Created `packages/web/app/components/graphql-queue/use-queue-session.ts` - Main hook with subscriptions + mutations
+  - Created `packages/web/app/components/graphql-queue/QueueContext.tsx` - New QueueProvider using the hook
+  - Created `packages/web/app/components/graphql-queue/index.ts` - Clean exports
+  - Updated `packages/shared-schema/src/types.ts` - Fixed LitUpHoldsMap type to match web app
+
 ## Remaining Work
-
-### Phase 3: Client GraphQL Implementation
-
-Create new GraphQL-based connection in the web app:
-
-**Files to create:**
-- [ ] `packages/web/app/components/graphql-queue/graphql-client.ts` - graphql-ws client setup
-- [ ] `packages/web/app/components/graphql-queue/use-queue-session.ts` - Main hook with subscriptions + mutations
-- [ ] `packages/web/app/components/graphql-queue/QueueContext.tsx` - New QueueProvider using the hook
-
-**The hook should:**
-- Connect to daemon via graphql-ws
-- Call `joinSession` mutation on mount
-- Subscribe to `queueUpdates` and `sessionUpdates`
-- Expose mutation functions matching current QueueContextType interface
-- Handle reconnection automatically (graphql-ws handles this)
 
 ### Phase 4: Integration & Switchover
 

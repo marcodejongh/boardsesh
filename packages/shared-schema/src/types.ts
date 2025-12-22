@@ -3,7 +3,10 @@
 
 export type UserId = string;
 
-export type LitUpHoldsMap = Record<string, string>;
+// Hold state types matching the web app
+export type HoldState = 'OFF' | 'STARTING' | 'FINISH' | 'HAND' | 'FOOT' | 'ANY' | 'NOT';
+export type LitupHold = { state: HoldState; color: string; displayColor: string };
+export type LitUpHoldsMap = Record<number, LitupHold>;
 
 export type Climb = {
   uuid: string;

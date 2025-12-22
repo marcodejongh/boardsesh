@@ -23,7 +23,10 @@ const createTestClimb = (uuid: string): ClimbQueueItem => ({
     quality_average: '4.5',
     stars: 4.5,
     difficulty_error: '0.5',
-    litUpHoldsMap: { A1: 'red', B2: 'blue' },
+    litUpHoldsMap: {
+      42: { state: 'STARTING', color: '#00FF00', displayColor: '#00FF00' },
+      43: { state: 'HAND', color: '#00FFFF', displayColor: '#00FFFF' },
+    },
     mirrored: false,
     benchmark_difficulty: 'V5',
   },
