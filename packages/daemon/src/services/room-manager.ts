@@ -237,6 +237,36 @@ class RoomManager {
     expectedVersion?: number
   ): Promise<number> {
     if (expectedVersion !== undefined) {
+      if (expectedVersion === 0) {
+        // Version 0 means no row exists yet - use insert with conflict handling
+        const result = await db
+          .insert(sessionQueues)
+          .values({
+            sessionId,
+            queue,
+            currentClimbQueueItem,
+            version: 1,
+            updatedAt: new Date(),
+          })
+          .onConflictDoUpdate({
+            target: sessionQueues.sessionId,
+            set: {
+              queue,
+              currentClimbQueueItem,
+              version: sql`${sessionQueues.version} + 1`,
+              updatedAt: new Date(),
+            },
+            // Only update if version is still 0
+            setWhere: eq(sessionQueues.version, 0),
+          })
+          .returning({ version: sessionQueues.version });
+
+        if (result.length === 0) {
+          throw new VersionConflictError(sessionId, expectedVersion);
+        }
+        return result[0].version;
+      }
+
       // Optimistic locking: only update if version matches
       const result = await db
         .update(sessionQueues)
@@ -288,6 +318,37 @@ class RoomManager {
    */
   async updateQueueOnly(sessionId: string, queue: ClimbQueueItem[], expectedVersion?: number): Promise<number> {
     if (expectedVersion !== undefined) {
+      if (expectedVersion === 0) {
+        // Version 0 means no row exists yet - use insert with conflict handling
+        // If a row was created between our read and this insert, the conflict will update
+        // only if the version is still 0 (which would mean another insert just happened)
+        const result = await db
+          .insert(sessionQueues)
+          .values({
+            sessionId,
+            queue,
+            currentClimbQueueItem: null,
+            version: 1,
+            updatedAt: new Date(),
+          })
+          .onConflictDoUpdate({
+            target: sessionQueues.sessionId,
+            set: {
+              queue,
+              version: sql`${sessionQueues.version} + 1`,
+              updatedAt: new Date(),
+            },
+            // Only update if version is still 0 (i.e., the row was just created by another concurrent insert)
+            setWhere: eq(sessionQueues.version, 0),
+          })
+          .returning({ version: sessionQueues.version });
+
+        if (result.length === 0) {
+          throw new VersionConflictError(sessionId, expectedVersion);
+        }
+        return result[0].version;
+      }
+
       // Optimistic locking: only update if version matches
       const result = await db
         .update(sessionQueues)
