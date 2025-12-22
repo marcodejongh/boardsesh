@@ -14,13 +14,14 @@ This document tracks the remaining work to migrate from PeerJS/custom WebSocket 
 
 ## Remaining Work
 
-### Phase 1: Complete Shared Schema Package
+### Phase 1: Complete Shared Schema Package ✅
 
-The `packages/shared-schema/` has placeholder files. Need to verify types match existing codebase:
+The `packages/shared-schema/` has been verified and updated:
 
-- [ ] Verify `src/types.ts` matches `packages/web/app/lib/types.ts` (Climb type)
-- [ ] Verify `src/types.ts` matches `packages/web/app/components/queue-control/types.ts` (ClimbQueueItem)
-- [ ] Build the package: `npm run build --workspace=@boardsesh/shared-schema`
+- [x] Verify `src/types.ts` matches `packages/web/app/lib/types.ts` (Climb type) - **Identical**
+- [x] Verify `src/types.ts` matches `packages/web/app/components/queue-control/types.ts` (ClimbQueueItem) - **Added UserId type alias**
+- [x] Fixed `removeFromQueue` → `removeQueueItem` bug in operations.ts
+- [x] Build the package: `npm run build --workspace=@boardsesh/shared-schema`
 
 ### Phase 2: Daemon GraphQL Implementation
 

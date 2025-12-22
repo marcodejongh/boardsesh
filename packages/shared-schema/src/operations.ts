@@ -78,7 +78,7 @@ export const ADD_QUEUE_ITEM = `
 
 export const REMOVE_QUEUE_ITEM = `
   mutation RemoveQueueItem($uuid: ID!) {
-    removeFromQueue(uuid: $uuid)
+    removeQueueItem(uuid: $uuid)
   }
 `;
 
