@@ -24,8 +24,16 @@ jobs:
     
     - name: Run linting
       run: npm run lint
-    
-    - name: Run type checking
+
+    - name: Build shared-schema
+      run: npm run build
+      working-directory: packages/shared-schema
+
+    - name: Type check shared-schema
+      run: npx tsc --noEmit
+      working-directory: packages/shared-schema
+
+    - name: Run type checking (web)
       run: npx tsc --noEmit
       working-directory: packages/web
     
