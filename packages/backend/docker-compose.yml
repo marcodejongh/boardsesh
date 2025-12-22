@@ -1,10 +1,10 @@
 services:
-  daemon:
+  backend:
     build: .
     ports:
       - "8080:8080"
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/boardsesh_daemon
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/boardsesh_backend
       - PORT=8080
     volumes:
       - avatars_data:/app/avatars
@@ -19,9 +19,9 @@ services:
       - "5433:5432"
     environment:
       - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=boardsesh_daemon
+      - POSTGRES_DB=boardsesh_backend
     volumes:
-      - daemon_data:/var/lib/postgresql/data
+      - backend_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -30,5 +30,5 @@ services:
     restart: unless-stopped
 
 volumes:
-  daemon_data:
+  backend_data:
   avatars_data:

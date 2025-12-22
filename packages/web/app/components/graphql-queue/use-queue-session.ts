@@ -67,7 +67,7 @@ function toClimbQueueItemInput(item: LocalClimbQueueItem) {
 }
 
 export interface UseQueueSessionOptions {
-  daemonUrl: string;
+  backendUrl: string;
   sessionId: string;
   boardPath: string;
   username?: string;
@@ -100,7 +100,7 @@ export interface UseQueueSessionReturn {
 }
 
 export function useQueueSession({
-  daemonUrl,
+  backendUrl,
   sessionId,
   boardPath,
   username,
@@ -144,8 +144,8 @@ export function useQueueSession({
 
   // Connect and join session
   useEffect(() => {
-    if (!daemonUrl || !sessionId || !boardPath) {
-      if (DEBUG) console.log('[QueueSession] Missing required params:', { daemonUrl: !!daemonUrl, sessionId, boardPath });
+    if (!backendUrl || !sessionId || !boardPath) {
+      if (DEBUG) console.log('[QueueSession] Missing required params:', { backendUrl: !!backendUrl, sessionId, boardPath });
       return;
     }
 
@@ -195,7 +195,7 @@ export function useQueueSession({
 
       try {
         // Create the GraphQL client with reconnection handler
-        graphqlClient = createGraphQLClient(daemonUrl, handleReconnect);
+        graphqlClient = createGraphQLClient(backendUrl, handleReconnect);
         if (!mounted) {
           if (DEBUG) console.log('[QueueSession] Unmounted before client setup, disposing');
           graphqlClient.dispose();
@@ -355,7 +355,7 @@ export function useQueueSession({
       setSession(null);
       setIsConnecting(false);
     };
-  }, [daemonUrl, sessionId, boardPath, username, avatarUrl]); // Removed onQueueEvent and onSessionEvent - using refs instead
+  }, [backendUrl, sessionId, boardPath, username, avatarUrl]); // Removed onQueueEvent and onSessionEvent - using refs instead
 
   // Mutation functions - must check for session, not just client
   // The client exists before joinSession completes, so we need to wait for session

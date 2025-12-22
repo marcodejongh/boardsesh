@@ -7,7 +7,7 @@ This document tracks the remaining work to migrate from PeerJS/custom WebSocket 
 - [x] **Phase 0: Monorepo Restructure**
   - Created NPM workspaces structure
   - Moved Next.js app to `packages/web/`
-  - Moved daemon to `packages/daemon/`
+  - Moved backend to `packages/backend/`
   - Created `packages/shared-schema/` with initial types/schema/operations
   - Added `graphql` and `graphql-ws` dependencies to both packages
   - Commit: `66850345` on branch `refactor/monorepo-graphql-ws`
@@ -17,12 +17,12 @@ This document tracks the remaining work to migrate from PeerJS/custom WebSocket 
   - Fixed operation naming bugs
   - Built shared-schema package
 
-- [x] **Phase 2: Daemon GraphQL Implementation**
-  - Created `packages/daemon/src/graphql/resolvers.ts` with all mutations/subscriptions
-  - Created `packages/daemon/src/graphql/context.ts` for connection context
-  - Created `packages/daemon/src/pubsub/index.ts` for subscription events
-  - Updated `packages/daemon/src/server.ts` to use graphql-ws
-  - Refactored `packages/daemon/src/services/room-manager.ts` to use connectionId
+- [x] **Phase 2: Backend GraphQL Implementation**
+  - Created `packages/backend/src/graphql/resolvers.ts` with all mutations/subscriptions
+  - Created `packages/backend/src/graphql/context.ts` for connection context
+  - Created `packages/backend/src/pubsub/index.ts` for subscription events
+  - Updated `packages/backend/src/server.ts` to use graphql-ws
+  - Refactored `packages/backend/src/services/room-manager.ts` to use connectionId
   - Deleted old handlers, broadcast service, and message types
   - Added `@graphql-tools/schema` and `graphql-type-json` dependencies
 
@@ -37,7 +37,7 @@ This document tracks the remaining work to migrate from PeerJS/custom WebSocket 
   - Updated `packages/web/app/[board_name]/[layout_id]/[size_id]/[set_ids]/[angle]/layout.tsx`:
     - Removed `ConnectionProviderWrapper`
     - Now uses `GraphQLQueueProvider` directly
-    - Kept `ConnectionSettingsProvider` for daemon URL config
+    - Kept `ConnectionSettingsProvider` for backend URL config
   - Updated `packages/web/app/components/party-manager/party-context.tsx`:
     - Now gets users from queue context instead of peer context
   - Added session fields to `QueueContextType` in `queue-control/types.ts`
@@ -55,7 +55,7 @@ This document tracks the remaining work to migrate from PeerJS/custom WebSocket 
     - `types.ts`
     - `constants.ts`
     - `__tests__/` (all test files)
-  - Kept `connection-settings-context.tsx` (for daemonUrl storage)
+  - Kept `connection-settings-context.tsx` (for backendUrl storage)
   - Deleted old `queue-control/queue-context.tsx`
   - Removed `peerjs` dependency from `packages/web/package.json`
 
@@ -123,12 +123,12 @@ After pulling this branch, run:
 npm install  # From root - installs all workspace packages
 npm run build:shared  # Build shared-schema first
 npm run dev  # Start web dev server
-npm run daemon:dev  # Start daemon (in separate terminal)
+npm run backend:dev  # Start backend (in separate terminal)
 ```
 
 ## Testing the Migration
 
-1. Start daemon: `npm run daemon:dev`
+1. Start backend: `npm run backend:dev`
 2. Start web: `npm run dev`
-3. Navigate to a board page with `?daemonUrl=ws://localhost:8080/graphql`
+3. Navigate to a board page with `?backendUrl=ws://localhost:8080/graphql`
 4. Verify queue operations work between multiple browser tabs

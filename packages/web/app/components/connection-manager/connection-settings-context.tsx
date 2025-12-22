@@ -3,16 +3,16 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 
-const DAEMON_URL_STORAGE_KEY = 'boardsesh:daemonUrl';
+const BACKEND_URL_STORAGE_KEY = 'boardsesh:backendUrl';
 const PARTY_MODE_STORAGE_KEY = 'boardsesh:partyMode';
 
-export type PartyMode = 'direct' | 'daemon';
+export type PartyMode = 'direct' | 'backend';
 
 interface ConnectionSettingsContextType {
-  // Daemon URL
-  daemonUrl: string | null;
-  setDaemonUrl: (url: string) => void;
-  clearDaemonUrl: () => void;
+  // Backend URL
+  backendUrl: string | null;
+  setBackendUrl: (url: string) => void;
+  clearBackendUrl: () => void;
   hasUrlParam: boolean;
 
   // Party Mode
@@ -27,23 +27,23 @@ const ConnectionSettingsContext = createContext<ConnectionSettingsContextType | 
 
 export const ConnectionSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const searchParams = useSearchParams();
-  const urlDaemonUrl = searchParams.get('daemonUrl');
-  const hasUrlParam = !!urlDaemonUrl;
+  const urlBackendUrl = searchParams.get('backendUrl');
+  const hasUrlParam = !!urlBackendUrl;
 
-  const [storedDaemonUrl, setStoredDaemonUrl] = useState<string | null>(null);
+  const [storedBackendUrl, setStoredBackendUrl] = useState<string | null>(null);
   const [storedPartyMode, setStoredPartyMode] = useState<PartyMode>('direct');
   const [isLoaded, setIsLoaded] = useState(false);
 
   // Load from localStorage on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const storedUrl = localStorage.getItem(DAEMON_URL_STORAGE_KEY);
+      const storedUrl = localStorage.getItem(BACKEND_URL_STORAGE_KEY);
       const storedMode = localStorage.getItem(PARTY_MODE_STORAGE_KEY) as PartyMode | null;
 
       if (storedUrl) {
-        setStoredDaemonUrl(storedUrl);
+        setStoredBackendUrl(storedUrl);
       }
-      if (storedMode === 'direct' || storedMode === 'daemon') {
+      if (storedMode === 'direct' || storedMode === 'backend') {
         setStoredPartyMode(storedMode);
       }
       setIsLoaded(true);
@@ -52,39 +52,39 @@ export const ConnectionSettingsProvider: React.FC<{ children: React.ReactNode }>
 
   // Sync localStorage when URL param is present
   useEffect(() => {
-    if (urlDaemonUrl && typeof window !== 'undefined') {
-      localStorage.setItem(DAEMON_URL_STORAGE_KEY, urlDaemonUrl);
-      localStorage.setItem(PARTY_MODE_STORAGE_KEY, 'daemon');
-      setStoredDaemonUrl(urlDaemonUrl);
-      setStoredPartyMode('daemon');
+    if (urlBackendUrl && typeof window !== 'undefined') {
+      localStorage.setItem(BACKEND_URL_STORAGE_KEY, urlBackendUrl);
+      localStorage.setItem(PARTY_MODE_STORAGE_KEY, 'backend');
+      setStoredBackendUrl(urlBackendUrl);
+      setStoredPartyMode('backend');
     }
-  }, [urlDaemonUrl]);
+  }, [urlBackendUrl]);
 
-  // Effective daemon URL - URL param takes precedence
-  const daemonUrl = useMemo(() => urlDaemonUrl || storedDaemonUrl, [urlDaemonUrl, storedDaemonUrl]);
+  // Effective backend URL - URL param takes precedence
+  const backendUrl = useMemo(() => urlBackendUrl || storedBackendUrl, [urlBackendUrl, storedBackendUrl]);
 
-  // Effective party mode - URL param forces daemon mode
+  // Effective party mode - URL param forces backend mode
   const partyMode = useMemo<PartyMode>(() => {
     if (hasUrlParam) {
-      return 'daemon';
+      return 'backend';
     }
     return storedPartyMode;
   }, [hasUrlParam, storedPartyMode]);
 
-  const setDaemonUrl = useCallback((url: string) => {
+  const setBackendUrl = useCallback((url: string) => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem(DAEMON_URL_STORAGE_KEY, url);
-      setStoredDaemonUrl(url);
-      // Also set party mode to daemon when setting a daemon URL
-      localStorage.setItem(PARTY_MODE_STORAGE_KEY, 'daemon');
-      setStoredPartyMode('daemon');
+      localStorage.setItem(BACKEND_URL_STORAGE_KEY, url);
+      setStoredBackendUrl(url);
+      // Also set party mode to backend when setting a backend URL
+      localStorage.setItem(PARTY_MODE_STORAGE_KEY, 'backend');
+      setStoredPartyMode('backend');
     }
   }, []);
 
-  const clearDaemonUrl = useCallback(() => {
+  const clearBackendUrl = useCallback(() => {
     if (typeof window !== 'undefined') {
-      localStorage.removeItem(DAEMON_URL_STORAGE_KEY);
-      setStoredDaemonUrl(null);
+      localStorage.removeItem(BACKEND_URL_STORAGE_KEY);
+      setStoredBackendUrl(null);
     }
   }, []);
 
@@ -97,15 +97,15 @@ export const ConnectionSettingsProvider: React.FC<{ children: React.ReactNode }>
 
   const value = useMemo<ConnectionSettingsContextType>(
     () => ({
-      daemonUrl,
-      setDaemonUrl,
-      clearDaemonUrl,
+      backendUrl,
+      setBackendUrl,
+      clearBackendUrl,
       hasUrlParam,
       partyMode,
       setPartyMode,
       isLoaded,
     }),
-    [daemonUrl, setDaemonUrl, clearDaemonUrl, hasUrlParam, partyMode, setPartyMode, isLoaded],
+    [backendUrl, setBackendUrl, clearBackendUrl, hasUrlParam, partyMode, setPartyMode, isLoaded],
   );
 
   return <ConnectionSettingsContext.Provider value={value}>{children}</ConnectionSettingsContext.Provider>;
@@ -120,9 +120,9 @@ export function useConnectionSettings() {
 }
 
 // Convenience hooks for backwards compatibility
-export function useDaemonUrl() {
-  const { daemonUrl, setDaemonUrl, clearDaemonUrl, isLoaded, hasUrlParam } = useConnectionSettings();
-  return { daemonUrl, setDaemonUrl, clearDaemonUrl, isLoaded, hasUrlParam };
+export function useBackendUrl() {
+  const { backendUrl, setBackendUrl, clearBackendUrl, isLoaded, hasUrlParam } = useConnectionSettings();
+  return { backendUrl, setBackendUrl, clearBackendUrl, isLoaded, hasUrlParam };
 }
 
 export function usePartyMode() {

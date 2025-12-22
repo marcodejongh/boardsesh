@@ -20,13 +20,13 @@ const PartyContext = createContext<PartyContextType | undefined>(undefined);
 
 export const PartyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { username: boardUsername } = useBoardProvider();
-  const { users, clientId, isDaemonMode, hasConnected } = useQueueContext();
+  const { users, clientId, isBackendMode, hasConnected } = useQueueContext();
 
   const username = boardUsername || '';
 
   // Convert SessionUser[] to ConnectedUser[]
   const connectedUsers: ConnectedUser[] = useMemo(() => {
-    if (!isDaemonMode || !hasConnected || !users) return [];
+    if (!isBackendMode || !hasConnected || !users) return [];
     return users
       .filter((user) => user.id !== clientId)
       .map((user) => ({
@@ -34,15 +34,15 @@ export const PartyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         id: user.id,
         isHost: user.isLeader,
       }));
-  }, [users, clientId, isDaemonMode, hasConnected]);
+  }, [users, clientId, isBackendMode, hasConnected]);
 
   // Get the effective username based on mode
   const effectiveUserName = useMemo(() => {
-    if (isDaemonMode && hasConnected && users) {
+    if (isBackendMode && hasConnected && users) {
       return users.find((u) => u.id === clientId)?.username || username || clientId || '';
     }
     return username || '';
-  }, [isDaemonMode, hasConnected, users, clientId, username]);
+  }, [isBackendMode, hasConnected, users, clientId, username]);
 
   const contextValue: PartyContextType = {
     userName: effectiveUserName,

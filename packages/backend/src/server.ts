@@ -94,10 +94,10 @@ export function startServer(): { wss: WebSocketServer; httpServer: ReturnType<ty
       return;
     }
 
-    // Construct the daemon WebSocket URL from the request host
+    // Construct the backend WebSocket URL from the request host
     const host = req.headers.host || `localhost:${PORT}`;
-    const daemonUrl = `ws://${host}/graphql`;
-    const redirectUrl = `${BOARDSESH_URL}${activeSession.boardPath}?daemonUrl=${encodeURIComponent(daemonUrl)}`;
+    const backendUrl = `ws://${host}/graphql`;
+    const redirectUrl = `${BOARDSESH_URL}${activeSession.boardPath}?backendUrl=${encodeURIComponent(backendUrl)}`;
 
     res.redirect(302, redirectUrl);
   });
@@ -173,7 +173,7 @@ export function startServer(): { wss: WebSocketServer; httpServer: ReturnType<ty
     path: '/graphql',
   });
 
-  console.log(`BoardSesh Daemon starting on port ${PORT}...`);
+  console.log(`BoardSesh Backend starting on port ${PORT}...`);
 
   // Use graphql-ws server
   useServer(
@@ -254,7 +254,7 @@ export function startServer(): { wss: WebSocketServer; httpServer: ReturnType<ty
 
   // Start HTTP server (WebSocket server is attached to it)
   httpServer.listen(PORT, () => {
-    console.log(`BoardSesh Daemon is running on port ${PORT}`);
+    console.log(`BoardSesh Backend is running on port ${PORT}`);
     console.log(`  GraphQL WS: ws://0.0.0.0:${PORT}/graphql`);
     console.log(`  Health check: http://0.0.0.0:${PORT}/health`);
     console.log(`  Join session: http://0.0.0.0:${PORT}/join`);

@@ -47,8 +47,8 @@ tension.db
 # board controller
 board-controller/board_controller.db
 
-# daemon
-packages/daemon/dist
+# backend
+packages/backend/dist
 
 # shared-schema
 packages/shared-schema/dist

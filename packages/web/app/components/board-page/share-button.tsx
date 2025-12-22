@@ -12,21 +12,21 @@ import {
 import { Button, Input, Drawer, QRCode, Flex, message, Typography, Badge } from 'antd';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { usePartyContext } from '../party-manager/party-context';
-import { useDaemonUrl } from '../connection-manager/connection-settings-context';
+import { useBackendUrl } from '../connection-manager/connection-settings-context';
 import { useQueueContext } from '../graphql-queue';
-import { DaemonSetupPanel } from './daemon-setup-panel';
+import { BackendSetupPanel } from './backend-setup-panel';
 
 const { Text } = Typography;
 
-const getShareUrl = (pathname: string, searchParams: URLSearchParams, daemonUrl: string | null) => {
+const getShareUrl = (pathname: string, searchParams: URLSearchParams, backendUrl: string | null) => {
   try {
     const params = new URLSearchParams(searchParams.toString());
     // Remove existing connection params
     params.delete('hostId');
-    params.delete('daemonUrl');
+    params.delete('backendUrl');
 
-    if (daemonUrl) {
-      params.set('daemonUrl', daemonUrl);
+    if (backendUrl) {
+      params.set('backendUrl', backendUrl);
     }
     return `${window.location.origin}${pathname}?${params.toString()}`;
   } catch {
@@ -35,9 +35,9 @@ const getShareUrl = (pathname: string, searchParams: URLSearchParams, daemonUrl:
 };
 
 export const ShareBoardButton = () => {
-  const { users, clientId, isDaemonMode, hasConnected, connectionError, disconnect } = useQueueContext();
+  const { users, clientId, isBackendMode, hasConnected, connectionError, disconnect } = useQueueContext();
   const { connectedUsers, userName } = usePartyContext();
-  const { daemonUrl, setDaemonUrl, clearDaemonUrl } = useDaemonUrl();
+  const { backendUrl, setBackendUrl, clearBackendUrl } = useBackendUrl();
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const controllerUrl = searchParams.get('controllerUrl');
@@ -54,10 +54,10 @@ export const ShareBoardButton = () => {
   };
 
   // Determine connection state
-  const isConnecting = !!(isDaemonMode && !hasConnected);
-  const isConnected = !!(isDaemonMode && hasConnected);
+  const isConnecting = !!(isBackendMode && !hasConnected);
+  const isConnected = !!(isBackendMode && hasConnected);
 
-  const shareUrl = getShareUrl(pathname, searchParams, daemonUrl);
+  const shareUrl = getShareUrl(pathname, searchParams, backendUrl);
 
   const copyToClipboard = () => {
     navigator.clipboard
@@ -70,14 +70,14 @@ export const ShareBoardButton = () => {
       });
   };
 
-  const handleDaemonConnect = (url: string) => {
-    setDaemonUrl(url);
+  const handleBackendConnect = (url: string) => {
+    setBackendUrl(url);
   };
 
-  const handleDaemonDisconnect = () => {
+  const handleBackendDisconnect = () => {
     // First disconnect the GraphQL client, then clear the URL
     disconnect?.();
-    clearDaemonUrl();
+    clearBackendUrl();
   };
 
   // Calculate connection count for badge
@@ -93,7 +93,7 @@ export const ShareBoardButton = () => {
           type="default"
           onClick={showDrawer}
           icon={!isConnected && isConnecting ? <LoadingOutlined /> : <TeamOutlined />}
-          disabled={!isDaemonMode && !clientId}
+          disabled={!isBackendMode && !clientId}
         />
       </Badge>
       <Drawer
@@ -130,16 +130,16 @@ export const ShareBoardButton = () => {
             </div>
           )}
 
-          {/* Daemon Mode Content */}
+          {/* Backend Mode Content */}
           {!isControllerMode && (
             <>
               {/* Not connected - show setup */}
               {!isConnected && !isConnecting && (
-                <DaemonSetupPanel
-                  onConnect={handleDaemonConnect}
+                <BackendSetupPanel
+                  onConnect={handleBackendConnect}
                   isConnecting={isConnecting}
                   error={connectionError?.message ?? null}
-                  storedUrl={daemonUrl}
+                  storedUrl={backendUrl}
                 />
               )}
 
@@ -147,9 +147,9 @@ export const ShareBoardButton = () => {
               {isConnecting && (
                 <Flex vertical align="center" gap="middle" style={{ padding: '24px' }}>
                   <LoadingOutlined style={{ fontSize: '32px', color: '#1890ff' }} />
-                  <Text>Connecting to daemon...</Text>
+                  <Text>Connecting to backend...</Text>
                   <Text type="secondary" style={{ fontSize: '12px' }}>
-                    {daemonUrl}
+                    {backendUrl}
                   </Text>
                 </Flex>
               )}
@@ -170,11 +170,11 @@ export const ShareBoardButton = () => {
                     <CheckCircleOutlined style={{ color: '#52c41a', fontSize: '18px' }} />
                     <div>
                       <Text strong style={{ color: '#52c41a' }}>
-                        Connected to Daemon
+                        Connected to Backend
                       </Text>
                       <br />
                       <Text type="secondary" style={{ fontSize: '12px' }}>
-                        {daemonUrl}
+                        {backendUrl}
                       </Text>
                     </div>
                   </Flex>
@@ -233,8 +233,8 @@ export const ShareBoardButton = () => {
                   </Flex>
 
                   {/* Disconnect button */}
-                  <Button danger icon={<DisconnectOutlined />} onClick={handleDaemonDisconnect} block>
-                    Disconnect from Daemon
+                  <Button danger icon={<DisconnectOutlined />} onClick={handleBackendDisconnect} block>
+                    Disconnect from Backend
                   </Button>
                 </>
               )}

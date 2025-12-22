@@ -11,7 +11,7 @@ BoardSesh is a monorepo containing a Next.js 15 application for controlling stan
 ```
 /packages/
   /web/           # Next.js web application
-  /daemon/        # WebSocket daemon for party mode (graphql-ws)
+  /backend/       # WebSocket backend for party mode (graphql-ws)
   /shared-schema/ # Shared GraphQL schema and TypeScript types
 ```
 
@@ -40,8 +40,8 @@ npm install
 # Start web development server
 npm run dev
 
-# Start daemon development server
-npm run daemon:dev
+# Start backend development server
+npm run backend:dev
 ```
 
 ### Common Commands (from root)
@@ -49,10 +49,10 @@ npm run daemon:dev
 - `npm run dev` - Start web development server with Turbopack
 - `npm run build` - Build all packages
 - `npm run build:web` - Build web package only
-- `npm run build:daemon` - Build daemon package only
+- `npm run build:backend` - Build backend package only
 - `npm run lint` - Run ESLint on web package
-- `npm run daemon:dev` - Start daemon in development mode
-- `npm run daemon:start` - Start daemon in production mode
+- `npm run backend:dev` - Start backend in development mode
+- `npm run backend:start` - Start backend in production mode
 
 ### Database Commands (run from packages/web/)
 
@@ -88,7 +88,7 @@ We are using next.js app router, it's important we try to use server side compon
 2. **QueueProvider** (`packages/web/app/components/queue-control/queue-context.tsx`)
    - Manages climb queue with reducer pattern
    - Integrates with search results and suggestions
-   - Syncs with daemon via GraphQL subscriptions
+   - Syncs with backend via GraphQL subscriptions
 
 #### Data Flow
 
@@ -109,7 +109,7 @@ We are using next.js app router, it's important we try to use server side compon
 ### Key Integration Points
 
 1. **Web Bluetooth**: Board LED control via Web Bluetooth API
-2. **GraphQL-WS Daemon**: Real-time collaboration via WebSocket GraphQL subscriptions
+2. **GraphQL-WS Backend**: Real-time collaboration via WebSocket GraphQL subscriptions
 3. **IndexedDB**: Offline storage for auth and queue state
 4. **Aurora API**: External API integration for user data sync
 

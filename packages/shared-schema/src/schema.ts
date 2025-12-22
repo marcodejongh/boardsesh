@@ -1,5 +1,5 @@
 // GraphQL Schema for BoardSesh Queue Synchronization
-// This schema is shared between the daemon server and client
+// This schema is shared between the backend server and client
 
 export const typeDefs = /* GraphQL */ `
   scalar JSON

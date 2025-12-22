@@ -1,17 +1,17 @@
-name: Daemon Integration Tests
+name: Backend Integration Tests
 
 on:
   push:
     branches: [main]
     paths:
-      - 'packages/daemon/**'
+      - 'packages/backend/**'
       - 'packages/shared-schema/**'
-      - '.github/workflows/daemon-tests.yml'
+      - '.github/workflows/backend-tests.yml'
   pull_request:
     paths:
-      - 'packages/daemon/**'
+      - 'packages/backend/**'
       - 'packages/shared-schema/**'
-      - '.github/workflows/daemon-tests.yml'
+      - '.github/workflows/backend-tests.yml'
 
 jobs:
   test:
@@ -22,7 +22,7 @@ jobs:
         image: postgres:16-alpine
         env:
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: boardsesh_daemon_test
+          POSTGRES_DB: boardsesh_backend_test
         ports:
           - 5433:5432
         options: >-
@@ -44,7 +44,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run daemon integration tests
-        run: npm run test:run --workspace=boardsesh-daemon
+      - name: Run backend integration tests
+        run: npm run test:run --workspace=boardsesh-backend
         env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5433/boardsesh_daemon_test
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5433/boardsesh_backend_test

@@ -15,23 +15,23 @@ interface PartyProfileWrapperInnerProps {
  */
 const PartyProfileWrapperInner: React.FC<PartyProfileWrapperInnerProps> = ({ children }) => {
   const { hasUsername, isLoading: profileLoading } = usePartyProfile();
-  const { partyMode, daemonUrl, isLoaded: settingsLoaded } = useConnectionSettings();
+  const { partyMode, backendUrl, isLoaded: settingsLoaded } = useConnectionSettings();
   const [showModal, setShowModal] = useState(false);
   const [hasShownModal, setHasShownModal] = useState(false);
 
-  const isDaemonMode = partyMode === 'daemon';
+  const isBackendMode = partyMode === 'backend';
 
   // Show modal when:
   // 1. Settings and profile are loaded
-  // 2. In daemon mode (party mode active)
+  // 2. In backend mode (party mode active)
   // 3. Username is not set
   // 4. Haven't already shown modal this session
   useEffect(() => {
-    if (settingsLoaded && !profileLoading && isDaemonMode && !hasUsername && !hasShownModal) {
+    if (settingsLoaded && !profileLoading && isBackendMode && !hasUsername && !hasShownModal) {
       setShowModal(true);
       setHasShownModal(true);
     }
-  }, [settingsLoaded, profileLoading, isDaemonMode, hasUsername, hasShownModal]);
+  }, [settingsLoaded, profileLoading, isBackendMode, hasUsername, hasShownModal]);
 
   const handleCloseModal = () => {
     setShowModal(false);
@@ -43,8 +43,8 @@ const PartyProfileWrapperInner: React.FC<PartyProfileWrapperInnerProps> = ({ chi
       <PartyProfileModal
         open={showModal}
         onClose={handleCloseModal}
-        isDaemonMode={isDaemonMode}
-        daemonUrl={daemonUrl || undefined}
+        isBackendMode={isBackendMode}
+        backendUrl={backendUrl || undefined}
       />
     </>
   );

@@ -1,5 +1,5 @@
 // GraphQL Operations for BoardSesh Queue Client
-// These operations are used by the web app to communicate with the daemon
+// These operations are used by the web app to communicate with the backend
 
 // Fragment for reusable climb fields
 const CLIMB_FIELDS = `
