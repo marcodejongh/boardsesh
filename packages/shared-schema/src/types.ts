@@ -1,5 +1,5 @@
 // Shared TypeScript types for BoardSesh
-// These types are used by both the daemon and the web app
+// These types are used by both the backend and the web app
 
 export type UserId = string;
 
@@ -62,7 +62,7 @@ export type QueueState = {
  * There are TWO event types because of GraphQL field aliasing:
  *
  * 1. **QueueEvent** (Server-side)
- *    - Used by the daemon when publishing events via PubSub
+ *    - Used by the backend when publishing events via PubSub
  *    - Uses the actual GraphQL field names defined in the schema (e.g., `item`)
  *
  * 2. **ClientQueueEvent** (Client-side)
@@ -89,7 +89,7 @@ export type QueueState = {
  * TypeScript types must reflect what the client actually receives.
  *
  * When working with these types:
- * - In the daemon (server): use `QueueEvent`
+ * - In the backend (server): use `QueueEvent`
  * - In the web app (client): use `ClientQueueEvent`
  */
 

@@ -64,7 +64,7 @@ export interface QueueContextType {
   users?: SessionUser[];
   clientId?: string | null;
   isLeader?: boolean;
-  isDaemonMode?: boolean;
+  isBackendMode?: boolean;
   hasConnected?: boolean;
   connectionError?: Error | null;
   disconnect?: () => void;

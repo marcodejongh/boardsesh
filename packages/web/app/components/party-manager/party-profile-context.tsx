@@ -18,7 +18,7 @@ interface PartyProfileContextType {
   hasUsername: boolean;
   setUsername: (username: string) => Promise<void>;
   setAvatarUrl: (avatarUrl: string) => Promise<void>;
-  uploadAvatar: (file: File, daemonUrl: string) => Promise<string>;
+  uploadAvatar: (file: File, backendUrl: string) => Promise<string>;
   clearProfile: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -108,13 +108,13 @@ export const PartyProfileProvider: React.FC<{ children: React.ReactNode }> = ({ 
   }, []);
 
   const uploadAvatar = useCallback(
-    async (file: File, daemonUrl: string): Promise<string> => {
+    async (file: File, backendUrl: string): Promise<string> => {
       if (!profile?.id) {
         throw new Error('No profile ID available');
       }
 
       // Convert WS URL to HTTP
-      const httpBaseUrl = wsUrlToHttpUrl(daemonUrl);
+      const httpBaseUrl = wsUrlToHttpUrl(backendUrl);
 
       const formData = new FormData();
       formData.append('avatar', file);
@@ -132,7 +132,7 @@ export const PartyProfileProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
       const result = await response.json();
 
-      // The daemon returns a relative URL, we need to make it absolute
+      // The backend returns a relative URL, we need to make it absolute
       const avatarUrl = `${httpBaseUrl}${result.avatarUrl}`;
 
       // Save the avatar URL to the profile

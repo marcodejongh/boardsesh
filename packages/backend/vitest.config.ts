@@ -15,7 +15,7 @@ export default defineConfig({
     },
     // Use separate database for tests (port 5433 to avoid conflicts with main db)
     env: {
-      DATABASE_URL: 'postgresql://postgres:postgres@localhost:5433/boardsesh_daemon_test',
+      DATABASE_URL: 'postgresql://postgres:postgres@localhost:5433/boardsesh_backend_test',
     },
   },
 });

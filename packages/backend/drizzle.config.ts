@@ -5,6 +5,6 @@ export default defineConfig({
   out: './src/db/migrations',
   dialect: 'postgresql',
   dbCredentials: {
-    url: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/boardsesh_daemon',
+    url: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/boardsesh_backend',
   },
 });

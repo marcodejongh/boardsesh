@@ -64,8 +64,8 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
   const initialSearchParams = urlParamsToSearchParams(searchParams);
   const [state, dispatch] = useQueueReducer(initialSearchParams);
 
-  // Get daemon URL from settings
-  const { daemonUrl, isLoaded } = useConnectionSettings();
+  // Get backend URL from settings
+  const { backendUrl, isLoaded } = useConnectionSettings();
 
   // Get party profile for username and avatarUrl
   const { profile, isLoading: profileLoading } = usePartyProfile();
@@ -147,7 +147,7 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
 
   // Connect to GraphQL session
   const queueSession = useQueueSession({
-    daemonUrl: daemonUrl || '',
+    backendUrl: backendUrl || '',
     sessionId,
     boardPath: pathname,
     username,
@@ -176,10 +176,10 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
   // Determine view-only mode
   // View-only while still connecting, once connected everyone can modify the queue
   const viewOnlyMode = useMemo(() => {
-    if (!daemonUrl) return false; // No daemon = no view-only mode
+    if (!backendUrl) return false; // No backend = no view-only mode
     if (!queueSession.hasConnected) return true; // Still connecting = view-only
     return false; // Once connected, everyone can modify the queue
-  }, [daemonUrl, queueSession.hasConnected]);
+  }, [backendUrl, queueSession.hasConnected]);
 
   const contextValue: QueueContextType = useMemo(
     () => ({
@@ -200,7 +200,7 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
       users: queueSession.users,
       clientId: queueSession.clientId,
       isLeader,
-      isDaemonMode: !!daemonUrl,
+      isBackendMode: !!backendUrl,
       hasConnected: queueSession.hasConnected,
       connectionError: queueSession.error,
       disconnect: queueSession.disconnect,
@@ -238,7 +238,7 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
         // Optimistic update
         dispatch({ type: 'SET_CURRENT_CLIMB', payload: newItem });
 
-        // Only sync with daemon if connected
+        // Only sync with backend if connected
         if (queueSession.hasConnected) {
           // Save previous state for rollback
           const previousQueue = [...state.queue];
@@ -365,7 +365,7 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
       parsedParams,
       clientId,
       isLeader,
-      daemonUrl,
+      backendUrl,
       queueSession,
       dispatch,
       pathname,
@@ -380,8 +380,8 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
     return null;
   }
 
-  // If no daemon URL configured, show error or fallback
-  if (!daemonUrl) {
+  // If no backend URL configured, show error or fallback
+  if (!backendUrl) {
     return (
       <QueueContext.Provider value={contextValue}>
         {children}

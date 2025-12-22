@@ -6,7 +6,7 @@ import { sql } from 'drizzle-orm';
 import * as schema from '../db/schema.js';
 import { roomManager } from '../services/room-manager.js';
 
-const TEST_DB_NAME = 'boardsesh_daemon_test';
+const TEST_DB_NAME = 'boardsesh_backend_test';
 const connectionString =
   process.env.DATABASE_URL || `postgresql://postgres:postgres@localhost:5433/${TEST_DB_NAME}`;
 

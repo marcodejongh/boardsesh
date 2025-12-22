@@ -6,14 +6,14 @@ import { CopyOutlined, LinkOutlined, GithubOutlined } from '@ant-design/icons';
 
 const { Text, Paragraph } = Typography;
 
-interface DaemonSetupPanelProps {
+interface BackendSetupPanelProps {
   onConnect: (url: string) => void;
   isConnecting: boolean;
   error: string | null;
   storedUrl: string | null;
 }
 
-export const DaemonSetupPanel: React.FC<DaemonSetupPanelProps> = ({
+export const BackendSetupPanel: React.FC<BackendSetupPanelProps> = ({
   onConnect,
   isConnecting,
   error,
@@ -21,7 +21,7 @@ export const DaemonSetupPanel: React.FC<DaemonSetupPanelProps> = ({
 }) => {
   const [inputUrl, setInputUrl] = useState(storedUrl || '');
 
-  const dockerCommand = 'docker run -d -p 8080:8080 --name boardsesh-daemon boardsesh/daemon';
+  const dockerCommand = 'docker run -d -p 8080:8080 --name boardsesh-backend boardsesh/backend';
 
   const copyDockerCommand = () => {
     navigator.clipboard
@@ -32,7 +32,7 @@ export const DaemonSetupPanel: React.FC<DaemonSetupPanelProps> = ({
 
   const handleConnect = () => {
     if (!inputUrl.trim()) {
-      message.error('Please enter a daemon URL');
+      message.error('Please enter a backend URL');
       return;
     }
 
@@ -56,8 +56,8 @@ export const DaemonSetupPanel: React.FC<DaemonSetupPanelProps> = ({
       <Alert
         type="info"
         showIcon
-        message="BoardSesh Daemon Required"
-        description="To use Daemon mode for more reliable connections, you need to run the BoardSesh daemon on your local network."
+        message="BoardSesh Backend Required"
+        description="To use Backend mode for more reliable connections, you need to run the BoardSesh backend on your local network."
       />
 
       <Flex vertical gap="small">
@@ -76,7 +76,7 @@ export const DaemonSetupPanel: React.FC<DaemonSetupPanelProps> = ({
         <Text strong>Option 2: Download from GitHub</Text>
         <Button
           icon={<GithubOutlined />}
-          href="https://github.com/boardsesh/daemon/releases"
+          href="https://github.com/boardsesh/backend/releases"
           target="_blank"
           rel="noopener noreferrer"
         >
@@ -85,9 +85,9 @@ export const DaemonSetupPanel: React.FC<DaemonSetupPanelProps> = ({
       </Flex>
 
       <Flex vertical gap="small" style={{ marginTop: '16px' }}>
-        <Text strong>Connect to Daemon</Text>
+        <Text strong>Connect to Backend</Text>
         <Paragraph type="secondary" style={{ margin: 0, fontSize: '12px' }}>
-          Enter the WebSocket URL of your running daemon. Find your computer&apos;s IP address and
+          Enter the WebSocket URL of your running backend. Find your computer&apos;s IP address and
           use port 8080.
         </Paragraph>
         <Flex gap="small">

@@ -9,14 +9,14 @@ import { usePartyProfile } from './party-profile-context';
 interface PartyProfileModalProps {
   open: boolean;
   onClose: () => void;
-  isDaemonMode: boolean;
-  daemonUrl?: string;
+  isBackendMode: boolean;
+  backendUrl?: string;
 }
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 
-const PartyProfileModal: React.FC<PartyProfileModalProps> = ({ open, onClose, isDaemonMode, daemonUrl }) => {
+const PartyProfileModal: React.FC<PartyProfileModalProps> = ({ open, onClose, isBackendMode, backendUrl }) => {
   const { profile, setUsername, uploadAvatar, isLoading } = usePartyProfile();
   const [form] = Form.useForm();
   const [fileList, setFileList] = useState<UploadFile[]>([]);
@@ -86,11 +86,11 @@ const PartyProfileModal: React.FC<PartyProfileModalProps> = ({ open, onClose, is
       // Save username first
       await setUsername(username);
 
-      // Upload avatar if there's a new file and we're in daemon mode
-      if (isDaemonMode && daemonUrl && fileList.length > 0 && fileList[0].originFileObj) {
+      // Upload avatar if there's a new file and we're in backend mode
+      if (isBackendMode && backendUrl && fileList.length > 0 && fileList[0].originFileObj) {
         setUploading(true);
         try {
-          await uploadAvatar(fileList[0].originFileObj as File, daemonUrl);
+          await uploadAvatar(fileList[0].originFileObj as File, backendUrl);
           message.success('Profile saved with avatar');
         } catch (error) {
           console.error('Avatar upload failed:', error);
@@ -156,7 +156,7 @@ const PartyProfileModal: React.FC<PartyProfileModalProps> = ({ open, onClose, is
           <Input placeholder="Enter your username" prefix={<UserOutlined />} maxLength={30} />
         </Form.Item>
 
-        {isDaemonMode && daemonUrl && (
+        {isBackendMode && backendUrl && (
           <Form.Item label="Avatar (optional)">
             <Space direction="vertical" align="center" style={{ width: '100%' }}>
               <Avatar size={80} src={previewUrl} icon={<UserOutlined />} />

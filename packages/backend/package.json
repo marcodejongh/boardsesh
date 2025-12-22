@@ -1,7 +1,7 @@
 {
-  "name": "boardsesh-daemon",
+  "name": "boardsesh-backend",
   "version": "1.0.0",
-  "description": "WebSocket daemon for BoardSesh Party Mode",
+  "description": "WebSocket backend for BoardSesh Party Mode",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
@@ -12,7 +12,7 @@
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:db:up": "docker-compose up -d db",
-    "test:db:migrate": "DATABASE_URL=postgresql://postgres:postgres@localhost:5433/boardsesh_daemon_test drizzle-kit migrate",
+    "test:db:migrate": "DATABASE_URL=postgresql://postgres:postgres@localhost:5433/boardsesh_backend_test drizzle-kit migrate",
     "test:integration": "vitest run src/__tests__/integration.test.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
