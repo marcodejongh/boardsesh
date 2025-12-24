@@ -60,6 +60,7 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
   ];
   return (
     <Header
+      className={styles.header}
       style={{
         background: '#fff',
         height: '8dvh',

@@ -10,6 +10,16 @@
   display: none;
 }
 
+.header {
+  touch-action: manipulation;
+}
+
+.header button,
+.header a,
+.header input {
+  touch-action: manipulation;
+}
+
 @media (max-width: 768px) {
   .mobileOnly {
     display: block;
