@@ -2,8 +2,24 @@
   display: none;
 }
 
+.desktopOnly {
+  display: flex;
+}
+
+.mobileMenuButton {
+  display: none;
+}
+
 @media (max-width: 768px) {
   .mobileOnly {
     display: block;
+  }
+
+  .desktopOnly {
+    display: none;
+  }
+
+  .mobileMenuButton {
+    display: flex;
   }
 }
