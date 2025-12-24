@@ -128,7 +128,7 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
             {mobileMenuItems.length > 0 && (
               <div className={styles.mobileMenuButton}>
                 <Dropdown menu={{ items: mobileMenuItems }} placement="bottomRight" trigger={['click']}>
-                  <Button icon={<MoreOutlined />} type="text" />
+                  <Button icon={<MoreOutlined />} type="default" />
                 </Dropdown>
               </div>
             )}
