@@ -4,11 +4,29 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
+/* Prevent double-tap zoom globally while preserving pinch-to-zoom */
+html {
+  touch-action: manipulation;
+}
+
+/* Ensure all interactive elements have minimum 16px font to prevent iOS auto-zoom on focus */
 @media (max-width: 768px) {
   input,
   textarea,
-  select {
+  select,
+  button,
+  .ant-select,
+  .ant-select-selector,
+  .ant-select-selection-item,
+  .ant-select-selection-search-input,
+  .ant-select-selection-placeholder,
+  .ant-input,
+  .ant-input-number,
+  .ant-input-number-input,
+  .ant-picker,
+  .ant-picker-input > input,
+  .ant-btn,
+  .ant-dropdown-trigger {
     font-size: 16px !important;
-    touch-action: manipulation;
   }
 }

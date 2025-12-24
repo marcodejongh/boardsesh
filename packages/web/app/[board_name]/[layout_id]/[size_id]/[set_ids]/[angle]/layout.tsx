@@ -5,8 +5,6 @@ import { ParsedBoardRouteParameters, BoardRouteParameters, BoardDetails } from '
 import { parseBoardRouteParams, constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import { permanentRedirect } from 'next/navigation';
-import '@/c/index.css';
-
 import { Content } from 'antd/es/layout/layout';
 import QueueControlBar from '@/app/components/queue-control/queue-control-bar';
 import { getBoardDetails } from '@/app/lib/data/queries';
