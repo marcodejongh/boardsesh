@@ -114,13 +114,8 @@ html {
 
 /* Header shadow utility */
 .header-shadow {
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.12);
-  border-bottom: none;
-}
-
-/* Remove any default Ant Design header border */
-.ant-layout-header {
-  border-bottom: none;
+  box-shadow: none;
+  border-bottom: 1px solid #E5E7EB;
 }
 
 /* Bottom bar shadow utility */
