@@ -73,15 +73,6 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
       }
     : {};
 
-  const renderQualityText = () => {
-    if (hasGrade) {
-      const baseText = `${climb.quality_average}★`;
-      return showAngle ? `${baseText} @ ${climb.angle}°` : baseText;
-    }
-    const projectText = showAngle ? `project @ ${climb.angle}°` : 'project';
-    return <span style={{ fontStyle: 'italic' }}>{projectText}</span>;
-  };
-
   const renderDifficultyText = () => {
     if (hasGrade) {
       const baseText = `${climb.difficulty} ${climb.quality_average}★`;
@@ -122,19 +113,6 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
       }}
     >
       {renderDifficultyText()}
-    </Text>
-  );
-
-  const qualityElement = (
-    <Text
-      type="secondary"
-      style={{
-        fontSize: themeTokens.typography.fontSize.xs,
-        fontWeight: themeTokens.typography.fontWeight.normal,
-        ...textOverflowStyles,
-      }}
-    >
-      {renderQualityText()}
     </Text>
   );
 
