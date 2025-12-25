@@ -27,11 +27,9 @@ type ClimbViewActionsProps = {
 
 const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl, angle }: ClimbViewActionsProps) => {
   const { addToQueue, queue } = useQueueContext();
-  const [isDuplicate, setDuplicateTimer] = useState(false);
+  const [recentlyAdded, setRecentlyAdded] = useState(false);
   const [canGoBack, setCanGoBack] = useState(false);
   const router = useRouter();
-
-  const isAlreadyInQueue = queue.some((item) => item.climb?.uuid === climb.uuid);
 
   useEffect(() => {
     // Check if we can go back and if the previous page was on Boardsesh
@@ -53,17 +51,14 @@ const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl, angle }: ClimbVie
   }, []);
 
   const handleAddToQueue = () => {
-    if (addToQueue && !isDuplicate) {
+    if (addToQueue && !recentlyAdded) {
       addToQueue(climb);
 
-      const climbName = climb.name || '';
-      message.info(`Successfully added ${climbName} to the queue`);
-
-      setDuplicateTimer(true);
+      setRecentlyAdded(true);
 
       setTimeout(() => {
-        setDuplicateTimer(false);
-      }, 3000);
+        setRecentlyAdded(false);
+      }, 5000);
     }
   };
 
@@ -143,17 +138,17 @@ const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl, angle }: ClimbVie
         <div className={styles.mobileRight}>
           <Button icon={<HeartOutlined />} onClick={handleFavourite} />
 
-          {isAlreadyInQueue ? (
+          {recentlyAdded ? (
             <Button
               icon={<CheckCircleOutlined />}
               onClick={handleAddToQueue}
-              disabled={isDuplicate}
+              disabled
               className={styles.inQueueButton}
             >
-              In Queue
+              Added
             </Button>
           ) : (
-            <Button icon={<PlusCircleOutlined />} onClick={handleAddToQueue} disabled={isDuplicate}>
+            <Button icon={<PlusCircleOutlined />} onClick={handleAddToQueue}>
               Queue
             </Button>
           )}
@@ -192,17 +187,17 @@ const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl, angle }: ClimbVie
               Tick
             </Button>
 
-            {isAlreadyInQueue ? (
+            {recentlyAdded ? (
               <Button
                 icon={<CheckCircleOutlined />}
                 onClick={handleAddToQueue}
-                disabled={isDuplicate}
+                disabled
                 className={styles.inQueueButton}
               >
-                In Queue
+                Added to Queue
               </Button>
             ) : (
-              <Button icon={<PlusCircleOutlined />} onClick={handleAddToQueue} disabled={isDuplicate}>
+              <Button icon={<PlusCircleOutlined />} onClick={handleAddToQueue}>
                 Add to Queue
               </Button>
             )}

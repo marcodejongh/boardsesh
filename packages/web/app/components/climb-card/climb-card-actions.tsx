@@ -16,31 +16,26 @@ type ClimbCardActionsProps = {
 };
 const ClimbCardActions = ({ climb, boardDetails }: ClimbCardActionsProps) => {
   const { addToQueue, queue } = useQueueContext();
-  const [isDuplicate, setDuplicateTimer] = useState(false);
+  const [recentlyAdded, setRecentlyAdded] = useState(false);
 
   if (!climb) {
     return [];
   }
 
-  const isAlreadyInQueue = queue.some((item) => item.climb?.uuid === climb.uuid);
-
   const handleAddToQueue = () => {
-    if (addToQueue && !isDuplicate) {
+    if (addToQueue && !recentlyAdded) {
       addToQueue(climb);
-
-      const climbName = climb.name || '';
-      message.info(`Successfully added ${climbName} to the queue`);
 
       track('Add to Queue', {
         boardLayout: boardDetails.layout_name || '',
         queueLength: queue.length + 1,
       });
 
-      setDuplicateTimer(true);
+      setRecentlyAdded(true);
 
       setTimeout(() => {
-        setDuplicateTimer(false);
-      }, 3000);
+        setRecentlyAdded(false);
+      }, 5000);
     }
   };
 
@@ -105,17 +100,17 @@ const ClimbCardActions = ({ climb, boardDetails }: ClimbCardActionsProps) => {
       </Link>
     ) : null,
     <HeartOutlined key="heart" onClick={() => message.info('TODO: Implement')} />,
-    isAlreadyInQueue ? (
+    recentlyAdded ? (
       <CheckCircleOutlined
         key="edit"
         onClick={handleAddToQueue}
-        style={{ color: '#52c41a', cursor: isDuplicate ? 'not-allowed' : 'pointer' }}
+        style={{ color: '#52c41a', cursor: 'not-allowed' }}
       />
     ) : (
       <PlusCircleOutlined
         key="edit"
         onClick={handleAddToQueue}
-        style={{ color: 'inherit', cursor: isDuplicate ? 'not-allowed' : 'pointer' }}
+        style={{ color: 'inherit', cursor: 'pointer' }}
       />
     ),
   ];
