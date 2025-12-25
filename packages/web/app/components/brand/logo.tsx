@@ -16,9 +16,9 @@ const KILTER_PINK = '#FF00FF'; // Finish hold color
 const BG_COLOR = '#0a0a14'; // Dark background
 
 const sizes = {
-  sm: { icon: 28, fontSize: 14, gap: 6 },
-  md: { icon: 34, fontSize: 16, gap: 8 },
-  lg: { icon: 44, fontSize: 20, gap: 10 },
+  sm: { icon: 32, fontSize: 14, gap: 6 },
+  md: { icon: 40, fontSize: 16, gap: 8 },
+  lg: { icon: 52, fontSize: 20, gap: 10 },
 };
 
 // Pixel art letter definitions (each letter on a grid)
