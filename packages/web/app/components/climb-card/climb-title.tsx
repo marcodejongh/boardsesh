@@ -144,7 +144,7 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
         fontSize: 28,
         fontWeight: themeTokens.typography.fontWeight.bold,
         lineHeight: 1,
-        color: themeTokens.colors.textSecondary,
+        color: themeTokens.neutral[500],
       }}
     >
       {climb.difficulty}
@@ -165,21 +165,39 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
   );
 
   if (layout === 'horizontal') {
+    const secondLineContent = [];
+    if (hasGrade) {
+      secondLineContent.push(`${climb.quality_average}★`);
+    }
+    if (showSetterInfo && climb.setter_username) {
+      secondLineContent.push(`${climb.setter_username}`);
+    }
+    if (climb.ascensionist_count !== undefined) {
+      secondLineContent.push(`${climb.ascensionist_count} ascents`);
+    }
+
     return (
       <Flex gap={12} align="center" className={className}>
-        {/* Left side: Name, quality, and setter stacked */}
+        {/* Left side: Name and quality/setter stacked */}
         <Flex vertical gap={0} style={{ flex: 1, minWidth: 0 }}>
           {/* Row 1: Name with addon */}
           <div style={{ display: 'flex', alignItems: 'center', gap: themeTokens.spacing[2] }}>
             {nameElement}
             {nameAddon}
           </div>
-          {/* Row 2: Quality/stars */}
-          {qualityElement}
-          {/* Row 3 (optional): Setter info */}
-          {setterElement}
+          {/* Row 2: Quality, setter, ascents */}
+          <Text
+            type="secondary"
+            style={{
+              fontSize: themeTokens.typography.fontSize.xs,
+              fontWeight: themeTokens.typography.fontWeight.normal,
+              ...textOverflowStyles,
+            }}
+          >
+            {secondLineContent.length > 0 ? secondLineContent.join(' · ') : <span style={{ fontStyle: 'italic' }}>project</span>}
+          </Text>
         </Flex>
-        {/* Right side: Large V grade spanning all rows */}
+        {/* Right side: Large V grade spanning both rows */}
         {largeGradeElement}
       </Flex>
     );
