@@ -61,7 +61,7 @@ export const useQueueDataFetching = ({
     initialSize: searchParams.page ? searchParams.page + 1 : 1,
   });
 
-  const hasMoreResults = data && data[0] && size * PAGE_LIMIT < data[0].totalCount;
+  const hasMoreResults = Boolean(data && data[0] && size * PAGE_LIMIT < data[0].totalCount);
   const totalSearchResultCount = (data && data[0] && data[0].totalCount) || null;
 
   const climbSearchResults = useMemo(
@@ -102,7 +102,7 @@ export const useQueueDataFetching = ({
   }, [climbSearchResults, hasDoneFirstFetch, setHasDoneFirstFetch]);
 
   const fetchMoreClimbs = useCallback(() => {
-    setSize((oldSize) => {
+    return setSize((oldSize) => {
       const newParams = { ...searchParams, page: oldSize + 1 };
       history.replaceState(null, '', `${window.location.pathname}?${searchParamsToUrlParams(newParams).toString()}`);
       return oldSize + 1;

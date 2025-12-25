@@ -74,7 +74,7 @@ export interface QueueContextType {
   setCurrentClimbQueueItem: (item: ClimbQueueItem) => void;
   setClimbSearchParams: (params: SearchRequestPagination) => void;
   mirrorClimb: () => void;
-  fetchMoreClimbs: () => void;
+  fetchMoreClimbs: () => Promise<unknown>;
   getNextClimbQueueItem: () => ClimbQueueItem | null;
   getPreviousClimbQueueItem: () => ClimbQueueItem | null;
   setQueue: (queue: ClimbQueueItem[]) => void;
