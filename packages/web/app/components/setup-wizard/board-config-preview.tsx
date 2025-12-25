@@ -28,9 +28,10 @@ type BoardConfigPreviewProps = {
   config: StoredBoardConfig;
   onDelete: (configName: string) => void;
   boardConfigs: BoardConfigData;
+  isEditMode?: boolean;
 };
 
-export default function BoardConfigPreview({ config, onDelete, boardConfigs }: BoardConfigPreviewProps) {
+export default function BoardConfigPreview({ config, onDelete, boardConfigs, isEditMode = false }: BoardConfigPreviewProps) {
   const [boardDetails, setBoardDetails] = useState<BoardDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [layoutName, setLayoutName] = useState<string>('');
@@ -116,6 +117,7 @@ export default function BoardConfigPreview({ config, onDelete, boardConfigs }: B
   }, [config, boardConfigs]);
 
   const handleDelete = (e: React.MouseEvent) => {
+    e.preventDefault();
     e.stopPropagation();
     onDelete(config.name);
   };
@@ -135,7 +137,7 @@ export default function BoardConfigPreview({ config, onDelete, boardConfigs }: B
           hoverable
           size="small"
           style={{ minWidth: 0 }}
-          extra={<Button type="text" icon={<DeleteOutlined />} onClick={handleDelete} danger size="small" />}
+          extra={isEditMode ? <Button type="text" icon={<DeleteOutlined />} onClick={handleDelete} danger size="small" /> : undefined}
         >
           <Space direction="vertical" size="small" align="center">
             <Text type="secondary">Preview unavailable</Text>
@@ -168,7 +170,7 @@ export default function BoardConfigPreview({ config, onDelete, boardConfigs }: B
             thumbnail={true}
           />
         }
-        extra={<Button type="text" icon={<DeleteOutlined />} onClick={handleDelete} danger size="small" />}
+        extra={isEditMode ? <Button type="text" icon={<DeleteOutlined />} onClick={handleDelete} danger size="small" /> : undefined}
       >
         <Card.Meta
           title={<Text strong>{config.name}</Text>}

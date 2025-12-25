@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button, Form, Select, Typography, Input, Divider, Card, Row, Col, Flex, Collapse, Space } from 'antd';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { GithubOutlined } from '@ant-design/icons';
+import { GithubOutlined, EditOutlined } from '@ant-design/icons';
 import { openDB } from 'idb';
 import { track } from '@vercel/analytics';
 import { SUPPORTED_BOARDS, ANGLES } from '@/app/lib/board-data';
@@ -69,6 +69,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
   const [savedConfigurations, setSavedConfigurations] = useState<StoredBoardConfig[]>([]);
   const [suggestedName, setSuggestedName] = useState<string>('');
   const [activeCollapsePanels, setActiveCollapsePanels] = useState<string[]>(['saved']);
+  const [isEditMode, setIsEditMode] = useState(false);
   const [isStartingClimbing, setIsStartingClimbing] = useState(false);
   const [loadingBoardDetails, setLoadingBoardDetails] = useState<BoardDetails | null>(null);
   
@@ -467,6 +468,17 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
                 {
                   key: 'saved',
                   label: `Saved Configurations (${savedConfigurations.length})`,
+                  extra: (
+                    <Button
+                      type={isEditMode ? 'primary' : 'default'}
+                      size="small"
+                      icon={<EditOutlined />}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsEditMode(!isEditMode);
+                      }}
+                    />
+                  ),
                   children: (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', width: '100%', overflow: 'hidden' }}>
                       {savedConfigurations.map((config) => (
@@ -475,6 +487,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
                           config={config}
                           onDelete={deleteConfiguration}
                           boardConfigs={boardConfigs}
+                          isEditMode={isEditMode}
                         />
                       ))}
                     </div>
