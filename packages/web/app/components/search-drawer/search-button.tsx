@@ -72,7 +72,7 @@ const SearchButton = ({ boardDetails }: { boardDetails: BoardDetails }) => {
         onClose={() => setIsOpen(false)}
         footer={hasActiveFilters ? drawerFooter : null}
         styles={{
-          body: { padding: '16px' },
+          body: { padding: '12px 16px 16px' },
           footer: { padding: 0, border: 'none' },
         }}
       >
