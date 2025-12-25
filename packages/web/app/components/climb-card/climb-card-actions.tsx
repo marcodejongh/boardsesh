@@ -13,7 +13,6 @@ import {
 import Link from 'next/link';
 import { constructClimbViewUrl, constructClimbViewUrlWithSlugs, constructCreateClimbUrl } from '@/app/lib/url-utils';
 import { track } from '@vercel/analytics';
-import { message } from 'antd';
 import { useFavorite } from '../climb-actions';
 import AuthModal from '../auth/auth-modal';
 
@@ -67,25 +66,33 @@ const ClimbCardActions = ({ climb, boardDetails }: ClimbCardActionsProps) => {
         climbUuid: climb.uuid,
         action: newState ? 'favorited' : 'unfavorited',
       });
-      message.success(newState ? 'Added to favorites' : 'Removed from favorites');
     } catch {
-      message.error('Failed to update favorite');
+      // Silently fail
     }
   };
 
-  const handleAuthSuccess = () => {
-    toggleFavorite()
-      .then((newState) => {
+  const handleAuthSuccess = async () => {
+    // Call API directly since session state may not have updated yet
+    try {
+      const response = await fetch('/api/internal/favorites', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          boardName: boardDetails.board_name,
+          climbUuid: climb.uuid,
+          angle: climb.angle,
+        }),
+      });
+      if (response.ok) {
         track('Favorite Toggle', {
           boardName: boardDetails.board_name,
           climbUuid: climb.uuid,
-          action: newState ? 'favorited' : 'unfavorited',
+          action: 'favorited',
         });
-        message.success('Added to favorites');
-      })
-      .catch(() => {
-        message.error('Failed to add to favorites');
-      });
+      }
+    } catch {
+      // Silently fail
+    }
   };
 
   const HeartIcon = isFavorited ? HeartFilled : HeartOutlined;

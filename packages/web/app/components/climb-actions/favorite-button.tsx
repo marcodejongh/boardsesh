@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { HeartOutlined, HeartFilled } from '@ant-design/icons';
-import { message, Tooltip } from 'antd';
+import { Tooltip } from 'antd';
 import { track } from '@vercel/analytics';
 import { useFavorite } from './use-favorite';
 import { BoardName } from '@/app/lib/types';
@@ -52,27 +52,33 @@ export default function FavoriteButton({
         climbUuid,
         action: newState ? 'favorited' : 'unfavorited',
       });
-
-      message.success(newState ? 'Added to favorites' : 'Removed from favorites');
     } catch {
-      message.error('Failed to update favorite');
+      // Silently fail
     }
   };
 
-  const handleAuthSuccess = () => {
-    // After successful auth, trigger the favorite action
-    toggleFavorite()
-      .then((newState) => {
+  const handleAuthSuccess = async () => {
+    // Call API directly since session state may not have updated yet
+    try {
+      const response = await fetch('/api/internal/favorites', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          boardName,
+          climbUuid,
+          angle,
+        }),
+      });
+      if (response.ok) {
         track('Favorite Toggle', {
           boardName,
           climbUuid,
-          action: newState ? 'favorited' : 'unfavorited',
+          action: 'favorited',
         });
-        message.success('Added to favorites');
-      })
-      .catch(() => {
-        message.error('Failed to add to favorites');
-      });
+      }
+    } catch {
+      // Silently fail
+    }
   };
 
   const iconStyle: React.CSSProperties = {

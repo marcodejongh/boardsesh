@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Button, Space, message, Dropdown } from 'antd';
+import { Button, Space, Dropdown, message } from 'antd';
 import {
   HeartOutlined,
   HeartFilled,
@@ -86,25 +86,33 @@ const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl, angle }: ClimbVie
         climbUuid: climb.uuid,
         action: newState ? 'favorited' : 'unfavorited',
       });
-      message.success(newState ? 'Added to favorites' : 'Removed from favorites');
     } catch {
-      message.error('Failed to update favorite');
+      // Silently fail
     }
   };
 
-  const handleAuthSuccess = () => {
-    toggleFavorite()
-      .then((newState) => {
+  const handleAuthSuccess = async () => {
+    // Call API directly since session state may not have updated yet
+    try {
+      const response = await fetch('/api/internal/favorites', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          boardName: boardDetails.board_name,
+          climbUuid: climb.uuid,
+          angle,
+        }),
+      });
+      if (response.ok) {
         track('Favorite Toggle', {
           boardName: boardDetails.board_name,
           climbUuid: climb.uuid,
-          action: newState ? 'favorited' : 'unfavorited',
+          action: 'favorited',
         });
-        message.success('Added to favorites');
-      })
-      .catch(() => {
-        message.error('Failed to add to favorites');
-      });
+      }
+    } catch {
+      // Silently fail
+    }
   };
 
   const handleAddToList = () => {
