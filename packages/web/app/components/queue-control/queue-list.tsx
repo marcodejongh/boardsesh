@@ -1,6 +1,6 @@
 'use client';
 import React, { useEffect } from 'react';
-import { List, Divider, Row, Col, Typography, Button } from 'antd';
+import { Divider, Row, Col, Typography, Button, Flex } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { useQueueContext } from '../graphql-queue';
 import { Climb, BoardDetails } from '@/app/lib/types';
@@ -9,6 +9,7 @@ import { extractClosestEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/clo
 import { reorder } from '@atlaskit/pragmatic-drag-and-drop/reorder';
 import QueueListItem from './queue-list-item';
 import ClimbThumbnail from '../climb-card/climb-thumbnail';
+import { themeTokens } from '@/app/theme/theme-config';
 
 const { Text } = Typography;
 
@@ -61,11 +62,14 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails, onClimbNavigate }) 
     return cleanup; // Cleanup listener on component unmount
   }, [queue, setQueue]);
 
+  const suggestedClimbs = (climbSearchResults || []).filter(
+    (item) => !queue.find((queueItem) => queueItem.climb?.uuid === item.uuid),
+  );
+
   return (
     <>
-      <List
-        dataSource={queue}
-        renderItem={(climbQueueItem, index) => {
+      <Flex vertical>
+        {queue.map((climbQueueItem, index) => {
           const isCurrent = currentClimbQueueItem?.uuid === climbQueueItem.uuid;
           const isHistory =
             queue.findIndex((item) => item.uuid === currentClimbQueueItem?.uuid) >
@@ -84,17 +88,22 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails, onClimbNavigate }) 
               onClimbNavigate={onClimbNavigate}
             />
           );
-        }}
-      />
+        })}
+      </Flex>
       {!viewOnlyMode && (
         <>
           <Divider>Suggested Items</Divider>
-          <List
-            dataSource={(climbSearchResults || []).filter(
-              (item) => !queue.find((queueItem) => queueItem.climb?.uuid === item.uuid),
-            )}
-            renderItem={(climb: Climb) => (
-              <List.Item>
+          <Flex vertical>
+            {suggestedClimbs.map((climb: Climb) => (
+              <div
+                key={climb.uuid}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: '12px 0',
+                  borderBottom: `1px solid ${themeTokens.neutral[200]}`,
+                }}
+              >
                 <Row style={{ width: '100%' }} gutter={[8, 8]} align="middle" wrap={false}>
                   <Col xs={2} sm={1}>
                     {/* Empty space to maintain layout consistency */}
@@ -108,28 +117,24 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails, onClimbNavigate }) 
                     />
                   </Col>
                   <Col xs={14} sm={16}>
-                    <List.Item.Meta
-                      title={
-                        <Text ellipsis strong>
-                          {climb.name}
-                        </Text>
-                      }
-                      description={
-                        <Text type="secondary" ellipsis>
-                          {climb.difficulty && climb.quality_average
-                            ? `${climb.difficulty} ${climb.quality_average}★ @ ${climb.angle}°`
-                            : `project @ ${climb.angle}°`}
-                        </Text>
-                      }
-                    />
+                    <Flex vertical gap={4}>
+                      <Text ellipsis strong>
+                        {climb.name}
+                      </Text>
+                      <Text type="secondary" ellipsis style={{ fontSize: '14px' }}>
+                        {climb.difficulty && climb.quality_average
+                          ? `${climb.difficulty} ${climb.quality_average}★ @ ${climb.angle}°`
+                          : `project @ ${climb.angle}°`}
+                      </Text>
+                    </Flex>
                   </Col>
                   <Col xs={3} sm={2}>
                     <Button type="default" icon={<PlusOutlined />} onClick={() => addToQueue(climb)} />
                   </Col>
                 </Row>
-              </List.Item>
-            )}
-          />
+              </div>
+            ))}
+          </Flex>
         </>
       )}
     </>

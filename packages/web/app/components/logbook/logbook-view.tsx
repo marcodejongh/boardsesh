@@ -1,5 +1,5 @@
 import React from 'react';
-import { List, Card, Rate, Tag, Typography, Space } from 'antd';
+import { Card, Rate, Tag, Typography, Space, Flex, Empty } from 'antd';
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Climb } from '@/app/lib/types';
 import { useBoardProvider } from '../board-provider/board-provider-context';
@@ -26,48 +26,48 @@ export const LogbookView: React.FC<LogbookViewProps> = ({ currentClimb }) => {
 
   const showMirrorTag = boardName === 'tension';
 
+  if (climbAscents.length === 0) {
+    return <Empty description="No ascents logged for this climb" />;
+  }
+
   return (
-    <List
-      dataSource={climbAscents}
-      renderItem={(ascent) => (
-        <List.Item>
-          <Card style={{ width: '100%' }} size="small">
-            <Space direction="vertical" style={{ width: '100%' }}>
-              <Space wrap>
-                <Text strong>{dayjs(ascent.climbed_at).format('MMM D, YYYY h:mm A')}</Text>
-                {ascent.angle !== currentClimb.angle && (
-                  <>
-                    <Tag color="blue">{ascent.angle}°</Tag>
-                    {ascent.is_ascent ? (
-                      <CheckOutlined style={{ color: '#52c41a' }} />
-                    ) : (
-                      <CloseOutlined style={{ color: '#ff4d4f' }} />
-                    )}
-                  </>
-                )}
-                {showMirrorTag && ascent.is_mirror && <Tag color="purple">Mirrored</Tag>}
-              </Space>
-              {ascent.is_ascent && (
+    <Flex vertical gap={8}>
+      {climbAscents.map((ascent) => (
+        <Card key={`${ascent.climb_uuid}-${ascent.climbed_at}`} style={{ width: '100%' }} size="small">
+          <Space orientation="vertical" style={{ width: '100%' }}>
+            <Space wrap>
+              <Text strong>{dayjs(ascent.climbed_at).format('MMM D, YYYY h:mm A')}</Text>
+              {ascent.angle !== currentClimb.angle && (
                 <>
-                  <Space>
-                    <Rate disabled value={ascent.quality} count={3} style={{ fontSize: 14 }} />
-                  </Space>
+                  <Tag color="blue">{ascent.angle}°</Tag>
+                  {ascent.is_ascent ? (
+                    <CheckOutlined style={{ color: '#52c41a' }} />
+                  ) : (
+                    <CloseOutlined style={{ color: '#ff4d4f' }} />
+                  )}
                 </>
               )}
-              <Space>
-                <Text>Attempts: {ascent.tries}</Text>
-              </Space>
-
-              {ascent.comment && (
-                <Text type="secondary" style={{ whiteSpace: 'pre-wrap' }}>
-                  {ascent.comment}
-                </Text>
-              )}
+              {showMirrorTag && ascent.is_mirror && <Tag color="purple">Mirrored</Tag>}
             </Space>
-          </Card>
-        </List.Item>
-      )}
-      locale={{ emptyText: 'No ascents logged for this climb' }}
-    />
+            {ascent.is_ascent && (
+              <>
+                <Space>
+                  <Rate disabled value={ascent.quality} count={3} style={{ fontSize: 14 }} />
+                </Space>
+              </>
+            )}
+            <Space>
+              <Text>Attempts: {ascent.tries}</Text>
+            </Space>
+
+            {ascent.comment && (
+              <Text type="secondary" style={{ whiteSpace: 'pre-wrap' }}>
+                {ascent.comment}
+              </Text>
+            )}
+          </Space>
+        </Card>
+      ))}
+    </Flex>
   );
 };

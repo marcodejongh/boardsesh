@@ -277,7 +277,7 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
             <Switch />
           </Form.Item>
 
-          <Space style={{ width: '100%' }} direction="vertical">
+          <Space style={{ width: '100%' }} orientation="vertical">
             <Button
               type="primary"
               htmlType="submit"

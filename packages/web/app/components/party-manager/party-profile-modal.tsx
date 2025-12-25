@@ -158,7 +158,7 @@ const PartyProfileModal: React.FC<PartyProfileModalProps> = ({ open, onClose, is
 
         {isBackendMode && backendUrl && (
           <Form.Item label="Avatar (optional)">
-            <Space direction="vertical" align="center" style={{ width: '100%' }}>
+            <Space orientation="vertical" align="center" style={{ width: '100%' }}>
               <Avatar size={80} src={previewUrl} icon={<UserOutlined />} />
               <Space>
                 <Upload {...uploadProps}>

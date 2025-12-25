@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { List, Row, Col, Typography, Avatar, Tooltip } from 'antd';
-import { HolderOutlined, CheckOutlined, CloseOutlined, UserOutlined } from '@ant-design/icons';
+import { Row, Col, Typography, Avatar, Tooltip, Flex } from 'antd';
+import { HolderOutlined, CheckOutlined, CloseOutlined, UserOutlined, CopyrightOutlined } from '@ant-design/icons';
 import { BoardDetails, ClimbUuid } from '@/app/lib/types';
 import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { DragHandleButton } from '@atlaskit/pragmatic-drag-and-drop-react-accessibility/drag-handle-button';
@@ -12,7 +12,6 @@ import { ClimbQueueItem } from './types';
 import { TickButton } from '../logbook/tick-button';
 import ClimbThumbnail from '../climb-card/climb-thumbnail';
 import { useBoardProvider } from '../board-provider/board-provider-context';
-import { CopyrightOutlined } from '@ant-design/icons';
 import { themeTokens } from '@/app/theme/theme-config';
 
 const { Text } = Typography;
@@ -125,8 +124,12 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
 
   return (
     <div ref={itemRef}>
-      <List.Item
+      <div
         style={{
+          display: 'flex',
+          alignItems: 'center',
+          padding: '12px 0',
+          borderBottom: `1px solid ${themeTokens.neutral[200]}`,
           backgroundColor: isCurrent
             ? themeTokens.semantic.selected
             : isHistory
@@ -158,38 +161,36 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
             />
           </Col>
           <Col xs={item.addedByUser ? 12 : 14} sm={item.addedByUser ? 14 : 16}>
-            <List.Item.Meta
-              title={
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Text
-                    style={{
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      fontWeight: 'bold',
-                    }}
-                  >
-                    {item.climb?.name}
-                  </Text>
-                  <AscentStatus climbUuid={item.climb?.uuid} />
-                </div>
-              }
-              description={
+            <Flex vertical gap={4}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Text
-                  type={isHistory ? 'secondary' : undefined}
                   style={{
                     whiteSpace: 'nowrap',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
+                    fontWeight: 'bold',
                   }}
                 >
-                  {item.climb?.difficulty && item.climb?.quality_average
-                    ? `${item.climb?.difficulty} ${item.climb?.quality_average}★ @ ${item.climb?.angle}°`
-                    : `project @ ${item.climb?.angle}°`}
-                  {item.climb?.benchmark_difficulty && <CopyrightOutlined style={{ marginLeft: 4 }} />}
+                  {item.climb?.name}
                 </Text>
-              }
-            />
+                <AscentStatus climbUuid={item.climb?.uuid} />
+              </div>
+              <Text
+                type={isHistory ? 'secondary' : undefined}
+                style={{
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  fontSize: '14px',
+                  color: themeTokens.neutral[500],
+                }}
+              >
+                {item.climb?.difficulty && item.climb?.quality_average
+                  ? `${item.climb?.difficulty} ${item.climb?.quality_average}★ @ ${item.climb?.angle}°`
+                  : `project @ ${item.climb?.angle}°`}
+                {item.climb?.benchmark_difficulty && <CopyrightOutlined style={{ marginLeft: 4 }} />}
+              </Text>
+            </Flex>
           </Col>
           {item.addedByUser && (
             <Col xs={2} sm={2}>
@@ -203,7 +204,7 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
           </Col>
         </Row>
         {closestEdge && <DropIndicator edge={closestEdge} gap="1px" />}
-      </List.Item>
+      </div>
     </div>
   );
 };
