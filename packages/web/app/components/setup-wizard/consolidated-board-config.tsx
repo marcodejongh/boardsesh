@@ -439,13 +439,9 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
       <AnimatedBoardLoading isVisible={isStartingClimbing} boardDetails={loadingBoardDetails} />
       <div
         style={{
-          padding: themeTokens.spacing[6],
+          padding: `10px ${themeTokens.spacing[6]} ${themeTokens.spacing[6]}`,
           maxWidth: '600px',
           margin: '0 auto',
-          minHeight: '100vh',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
         }}
       >
         <Card style={{ boxShadow: themeTokens.shadows.lg }}>
