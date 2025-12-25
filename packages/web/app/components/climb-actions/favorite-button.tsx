@@ -98,11 +98,8 @@ export default function FavoriteButton({
           onClick={handleClick}
           className={className}
           style={{
-            display: 'flex',
+            display: 'inline-flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            width: '100%',
-            height: '100%',
             cursor: isLoading ? 'wait' : 'pointer',
           }}
           role="button"
