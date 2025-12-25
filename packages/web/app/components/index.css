@@ -135,6 +135,23 @@ html {
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
 }
 
+/* Queue bar shadow utility */
+.queue-bar-shadow {
+  position: relative;
+  z-index: 10;
+}
+
+.queue-bar-shadow::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -4px;
+  height: 4px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.06), transparent);
+  pointer-events: none;
+}
+
 /* Drawer transitions - Ant Design already handles this, but we customize the easing */
 .ant-drawer .ant-drawer-content-wrapper {
   transition: transform 0.3s cubic-bezier(0.23, 1, 0.32, 1);

@@ -47,7 +47,7 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
   };
 
   return (
-    <div style={{ flexShrink: 0, width: '100%', backgroundColor: '#fff' }}>
+    <div className="queue-bar-shadow" style={{ flexShrink: 0, width: '100%', backgroundColor: '#fff' }}>
       {/* Main Control Bar */}
       <Card
         bordered={false}
