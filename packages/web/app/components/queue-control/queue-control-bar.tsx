@@ -1,6 +1,6 @@
 'use client';
 import React, { useState } from 'react';
-import { Button, Typography, Row, Col, Card, Drawer, Space } from 'antd';
+import { Button, Row, Col, Card, Drawer, Space } from 'antd';
 import { SyncOutlined } from '@ant-design/icons';
 import { track } from '@vercel/analytics';
 import { useQueueContext } from '../graphql-queue';
@@ -11,12 +11,10 @@ import { BoardName, BoardDetails, Angle } from '@/app/lib/types';
 import QueueList from './queue-list';
 import { TickButton } from '../logbook/tick-button';
 import ClimbThumbnail from '../climb-card/climb-thumbnail';
+import ClimbTitle from '../climb-card/climb-title';
 import { AscentStatus } from './queue-list-item';
-import { CopyrightOutlined } from '@ant-design/icons';
 import { themeTokens } from '@/app/theme/theme-config';
 import styles from './queue-control-bar.module.css';
-
-const { Title, Text } = Typography;
 
 export interface QueueControlBar {
   boardDetails: BoardDetails;
@@ -82,47 +80,11 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
           {/* Clickable main body for opening the queue */}
           <Col xs={11} style={{ textAlign: 'center' }}>
             <div onClick={toggleQueueDrawer} className={`${styles.queueToggle} ${isListPage ? styles.listPage : ''}`}>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'baseline',
-                  justifyContent: 'center',
-                  gap: '4px',
-                }}
-              >
-                <Title
-                  level={5}
-                  style={{
-                    marginBottom: 0,
-                    fontSize: '14px',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }}
-                >
-                  {currentClimb && currentClimb.name ? currentClimb.name : 'No climb selected'}
-                </Title>
-                {currentClimb && currentClimb.name && <AscentStatus climbUuid={currentClimb.uuid} />}
-              </div>
-              <Text
-                style={{
-                  fontSize: '12px',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                }}
-              >
-                {currentClimb ? (
-                  <>
-                    {currentClimb.difficulty && currentClimb.quality_average ? (
-                      `${currentClimb.difficulty} ${currentClimb.quality_average}★ @ ${currentClimb.angle}°`
-                    ) : (
-                      <span style={{ fontWeight: 400, fontStyle: 'italic' }}>project @ {currentClimb.angle}°</span>
-                    )}
-                    {currentClimb.benchmark_difficulty && <CopyrightOutlined style={{ marginLeft: 4 }} />}
-                  </>
-                ) : null}
-              </Text>
+              <ClimbTitle
+                climb={currentClimb}
+                showAngle
+                nameAddon={currentClimb?.name && <AscentStatus climbUuid={currentClimb.uuid} />}
+              />
             </div>
           </Col>
 
