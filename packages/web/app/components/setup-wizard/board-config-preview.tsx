@@ -117,6 +117,7 @@ export default function BoardConfigPreview({ config, onDelete, boardConfigs, isE
   }, [config, boardConfigs]);
 
   const handleDelete = (e: React.MouseEvent) => {
+    e.preventDefault();
     e.stopPropagation();
     onDelete(config.name);
   };
