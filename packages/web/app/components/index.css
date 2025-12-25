@@ -1,12 +1,135 @@
+/* BoardSesh Global Styles */
+
+/* Base styles */
 body {
   margin: 0;
   padding: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background-color: #F9FAFB;
+  color: #1F2937;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* Prevent horizontal overflow */
+html, body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+/* Prevent horizontal scroll on layout components */
+.ant-layout,
+.ant-layout-content,
+.ant-row {
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 /* Prevent double-tap zoom globally while preserving pinch-to-zoom */
 html {
   touch-action: manipulation;
+}
+
+/* Smooth transitions for interactive elements */
+a,
+button,
+.ant-btn,
+.ant-card,
+.ant-input,
+.ant-select,
+.ant-select-selector {
+  transition: all 0.2s ease;
+}
+
+/* Card hover enhancement */
+.ant-card {
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.ant-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Prevent text selection on interactive cards - intentional for drag-and-drop UX */
+.ant-card {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Button hover polish - subtle lift effect */
+.ant-btn:not(:disabled):not(.ant-btn-text):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.ant-btn:not(:disabled):active {
+  transform: translateY(0);
+}
+
+/* Selected state styling utility class - use higher specificity instead of !important */
+.selected-item.selected-item {
+  background-color: #ECFEFF;
+  border-color: #06B6D4;
+}
+
+/* Custom scrollbar for webkit browsers */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F3F4F6;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #D1D5DB;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #9CA3AF;
+}
+
+/* Firefox scrollbar - scoped to html to avoid performance overhead of * selector */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: #D1D5DB #F3F4F6;
+}
+
+/* Focus styles for accessibility */
+:focus-visible {
+  outline: 2px solid #06B6D4;
+  outline-offset: 2px;
+}
+
+/* Remove default focus outline when using mouse */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Header shadow utility */
+.header-shadow {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* Bottom bar shadow utility */
+.bottom-bar-shadow {
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* Drawer transitions - Ant Design already handles this, but we customize the easing */
+.ant-drawer .ant-drawer-content-wrapper {
+  transition: transform 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+/* Improve modal animations */
+.ant-modal {
+  animation-duration: 0.2s;
 }
 
 /* Ensure all interactive elements have minimum 16px font to prevent iOS auto-zoom on focus */
@@ -29,4 +152,71 @@ html {
   .ant-dropdown-trigger {
     font-size: 16px !important;
   }
+
+  /* Slightly reduce card hover effect on mobile for performance */
+  .ant-card:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    transform: none;
+  }
+
+  /* Disable button lift on mobile */
+  .ant-btn:not(:disabled):hover {
+    transform: none;
+  }
+}
+
+/* Loading skeleton animation improvement */
+.ant-skeleton-content .ant-skeleton-title,
+.ant-skeleton-content .ant-skeleton-paragraph > li {
+  background: linear-gradient(90deg, #F3F4F6 25%, #E5E7EB 37%, #F3F4F6 63%);
+  background-size: 400% 100%;
+  animation: skeleton-loading 1.4s ease infinite;
+}
+
+@keyframes skeleton-loading {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+
+/* Tag styling enhancement */
+.ant-tag {
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+/* Rate/star styling */
+.ant-rate-star {
+  transition: transform 0.15s ease;
+}
+
+.ant-rate-star:hover {
+  transform: scale(1.1);
+}
+
+/* Collapse panel styling - use higher specificity */
+.ant-collapse .ant-collapse-header {
+  font-weight: 500;
+}
+
+/* Badge styling */
+.ant-badge-count {
+  font-weight: 600;
+  box-shadow: 0 0 0 2px #fff;
+}
+
+/* Override Atlaskit drag-and-drop indicator color to match theme
+   Note: !important is required here as third-party library sets inline styles */
+[data-drop-indicator-edge] {
+  --indicator-color: #06B6D4 !important;
+  background-color: #06B6D4 !important;
+}
+
+/* Alternative selector for drop indicator line */
+.pragmatic-drop-indicator,
+[class*="drop-indicator"] {
+  background-color: #06B6D4 !important;
 }

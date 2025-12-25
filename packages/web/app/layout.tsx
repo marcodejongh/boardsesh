@@ -1,10 +1,11 @@
 // app/layout.tsx (or app/_app.tsx if you are using a global layout)
 import React from 'react';
 import { AntdRegistry } from '@ant-design/nextjs-registry';
-import { App } from 'antd';
+import { App, ConfigProvider } from 'antd';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import SessionProviderWrapper from './components/providers/session-provider';
+import { antdTheme } from './theme/antd-theme';
 import './components/index.css';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -17,7 +18,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Analytics />
         <SessionProviderWrapper>
           <AntdRegistry>
-            <App>{children}</App>
+            <ConfigProvider theme={antdTheme}>
+              <App>{children}</App>
+            </ConfigProvider>
           </AntdRegistry>
         </SessionProviderWrapper>
         <SpeedInsights />

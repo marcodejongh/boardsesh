@@ -11,9 +11,13 @@ import {
   ArcElement,
   TooltipItem,
 } from 'chart.js';
+import { Button, Space, DatePicker, Typography } from 'antd';
 import dayjs from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
+import { themeTokens } from '@/app/theme/theme-config';
 dayjs.extend(isoWeek);
+
+const { Text } = Typography;
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement);
 
@@ -319,42 +323,58 @@ export const LogBookStats: React.FC<{ boardName: string; userId: string }> = ({ 
     }
   }, [filteredLogbook]);
 
-  const buttonStyle = (btnTimeframe: string) => ({
-    marginRight: '10px',
-    backgroundColor: timeframe === btnTimeframe ? '#007bff' : '#f8f9fa',
-    color: timeframe === btnTimeframe ? '#fff' : '#000',
-    border: '1px solid #007bff',
-    padding: '5px 10px',
-    cursor: 'pointer',
-  });
-
   return (
-    <div style={{ width: '80%', margin: '0 auto', padding: '20px' }}>
-      <h3>LogBook Stats</h3>
-      <div style={{ marginBottom: '20px' }}>
-        <button onClick={() => setTimeframe('all')} style={buttonStyle('all')}>
-          All
-        </button>
-        <button onClick={() => setTimeframe('lastYear')} style={buttonStyle('lastYear')}>
-          Last Year
-        </button>
-        <button onClick={() => setTimeframe('lastMonth')} style={buttonStyle('lastMonth')}>
-          Last Month
-        </button>
-        <button onClick={() => setTimeframe('lastWeek')} style={buttonStyle('lastWeek')}>
-          Last Week
-        </button>
-        <button onClick={() => setTimeframe('custom')} style={buttonStyle('custom')}>
-          Select Timeframe
-        </button>
+    <div style={{ width: '80%', margin: '0 auto', padding: themeTokens.spacing[5] }}>
+      <Text strong style={{ fontSize: themeTokens.typography.fontSize.lg, display: 'block', marginBottom: themeTokens.spacing[4] }}>
+        LogBook Stats
+      </Text>
+      <div style={{ marginBottom: themeTokens.spacing[5] }}>
+        <Space wrap>
+          <Button
+            type={timeframe === 'all' ? 'primary' : 'default'}
+            onClick={() => setTimeframe('all')}
+          >
+            All
+          </Button>
+          <Button
+            type={timeframe === 'lastYear' ? 'primary' : 'default'}
+            onClick={() => setTimeframe('lastYear')}
+          >
+            Last Year
+          </Button>
+          <Button
+            type={timeframe === 'lastMonth' ? 'primary' : 'default'}
+            onClick={() => setTimeframe('lastMonth')}
+          >
+            Last Month
+          </Button>
+          <Button
+            type={timeframe === 'lastWeek' ? 'primary' : 'default'}
+            onClick={() => setTimeframe('lastWeek')}
+          >
+            Last Week
+          </Button>
+          <Button
+            type={timeframe === 'custom' ? 'primary' : 'default'}
+            onClick={() => setTimeframe('custom')}
+          >
+            Custom
+          </Button>
+        </Space>
         {timeframe === 'custom' && (
-          <div style={{ marginTop: '10px' }}>
-            <label>
-              From: <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
-            </label>
-            <label style={{ marginLeft: '10px' }}>
-              To: <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
-            </label>
+          <div style={{ marginTop: themeTokens.spacing[3] }}>
+            <Space>
+              <Text>From:</Text>
+              <DatePicker
+                value={fromDate ? dayjs(fromDate) : null}
+                onChange={(date) => setFromDate(date ? date.format('YYYY-MM-DD') : '')}
+              />
+              <Text>To:</Text>
+              <DatePicker
+                value={toDate ? dayjs(toDate) : null}
+                onChange={(date) => setToDate(date ? date.format('YYYY-MM-DD') : '')}
+              />
+            </Space>
           </div>
         )}
       </div>

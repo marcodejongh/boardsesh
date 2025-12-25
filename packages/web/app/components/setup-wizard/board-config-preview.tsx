@@ -122,7 +122,7 @@ export default function BoardConfigPreview({ config, onDelete, boardConfigs }: B
 
   if (isLoading) {
     return (
-      <Card hoverable size="small" style={{ width: 200 }}>
+      <Card hoverable size="small" style={{ minWidth: 0 }}>
         <Skeleton active paragraph={{ rows: 2 }} />
       </Card>
     );
@@ -130,10 +130,11 @@ export default function BoardConfigPreview({ config, onDelete, boardConfigs }: B
 
   if (!boardDetails) {
     return (
-      <Link href={boardUrl} style={{ textDecoration: 'none' }}>
+      <Link href={boardUrl} style={{ textDecoration: 'none', minWidth: 0 }}>
         <Card
           hoverable
           size="small"
+          style={{ minWidth: 0 }}
           extra={<Button type="text" icon={<DeleteOutlined />} onClick={handleDelete} danger size="small" />}
         >
           <Space direction="vertical" size="small" align="center">
@@ -154,10 +155,11 @@ export default function BoardConfigPreview({ config, onDelete, boardConfigs }: B
   }
 
   return (
-    <Link href={boardUrl} style={{ textDecoration: 'none' }}>
+    <Link href={boardUrl} style={{ textDecoration: 'none', minWidth: 0 }}>
       <Card
         hoverable
         size="small"
+        style={{ minWidth: 0 }}
         cover={
           <BoardRenderer
             litUpHoldsMap={{}} // Empty holds map - just show the board

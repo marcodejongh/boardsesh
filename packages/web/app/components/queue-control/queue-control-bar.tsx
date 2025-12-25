@@ -13,6 +13,7 @@ import { TickButton } from '../logbook/tick-button';
 import ClimbThumbnail from '../climb-card/climb-thumbnail';
 import { AscentStatus } from './queue-list-item';
 import { CopyrightOutlined } from '@ant-design/icons';
+import { themeTokens } from '@/app/theme/theme-config';
 import styles from './queue-control-bar.module.css';
 
 const { Title, Text } = Typography;
@@ -51,7 +52,7 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
       <Card
         styles={{
           body: {
-            padding: '5px',
+            padding: '8px 12px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -59,7 +60,9 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
         }}
         style={{
           width: '100%',
-          boxShadow: '0 -2px 8px rgba(0,0,0,0.1)', // Add subtle shadow for separation
+          boxShadow: themeTokens.shadows.lg,
+          borderRadius: 0,
+          borderTop: `1px solid ${themeTokens.neutral[200]}`,
         }}
       >
         <Row justify="space-between" align="middle" style={{ width: '100%' }}>
@@ -136,7 +139,11 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
                     });
                   }}
                   type={currentClimb?.mirrored ? 'primary' : 'default'}
-                  style={currentClimb?.mirrored ? { backgroundColor: '#722ed1', borderColor: '#722ed1' } : undefined}
+                  style={
+                    currentClimb?.mirrored
+                      ? { backgroundColor: themeTokens.colors.purple, borderColor: themeTokens.colors.purple }
+                      : undefined
+                  }
                   icon={<SyncOutlined />}
                 />
               ) : null}

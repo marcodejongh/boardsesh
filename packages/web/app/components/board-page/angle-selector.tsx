@@ -8,6 +8,7 @@ import useSWR from 'swr';
 import { ANGLES } from '@/app/lib/board-data';
 import { BoardName, Climb } from '@/app/lib/types';
 import { ClimbStatsForAngle } from '@/app/lib/data/queries';
+import { themeTokens } from '@/app/theme/theme-config';
 
 const { Text, Title } = Typography;
 
@@ -131,8 +132,8 @@ export default function AngleSelector({ boardName, currentAngle, currentClimb }:
                   hoverable
                   onClick={() => handleAngleChange(angle)}
                   style={{
-                    backgroundColor: angle === currentAngle ? '#e6f7ff' : undefined,
-                    borderColor: angle === currentAngle ? '#1890ff' : undefined,
+                    backgroundColor: angle === currentAngle ? themeTokens.semantic.selected : undefined,
+                    borderColor: angle === currentAngle ? themeTokens.colors.primary : undefined,
                     minHeight: currentClimb && !isLoading ? (hasStats ? '160px' : '60px') : '60px',
                   }}
                 >

@@ -2,6 +2,8 @@
   background: transparent;
   height: 100%;
   position: relative;
+  overflow-x: hidden;
+  max-width: 100%;
 }
 
 .mainContent {
@@ -9,6 +11,8 @@
   padding: 0;
   margin-right: 0;
   transition: margin-right 0.2s;
+  overflow-x: hidden;
+  max-width: 100%;
 }
 
 .sider {

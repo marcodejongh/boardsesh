@@ -2,8 +2,6 @@
 import React from 'react';
 import { Flex, Button, Dropdown, MenuProps } from 'antd';
 import { Header } from 'antd/es/layout/layout';
-import Title from 'antd/es/typography/Title';
-import Link from 'next/link';
 import { useSession, signIn, signOut } from 'next-auth/react';
 import SearchButton from '../search-drawer/search-button';
 import SearchClimbNameInput from '../search-drawer/search-climb-name-input';
@@ -16,7 +14,9 @@ import { useBoardProvider } from '../board-provider/board-provider-context';
 import { useQueueContext } from '../graphql-queue';
 import { UserOutlined, LogoutOutlined, LoginOutlined, PlusOutlined, MoreOutlined } from '@ant-design/icons';
 import AngleSelector from './angle-selector';
+import Logo from '../brand/logo';
 import styles from './header.module.css';
+import Link from 'next/link';
 
 type BoardSeshHeaderProps = {
   boardDetails: BoardDetails;
@@ -60,23 +60,20 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
   ];
   return (
     <Header
-      className={styles.header}
+      className={`${styles.header} header-shadow`}
       style={{
         background: '#fff',
         height: '8dvh',
+        minHeight: 48,
         display: 'flex',
-        padding: '0 4px',
+        padding: '0 12px',
       }}
     >
       <UISearchParamsProvider>
-        <Flex justify="space-between" align="center" style={{ width: '100%' }} gap={7}>
+        <Flex justify="space-between" align="center" style={{ width: '100%' }} gap={8}>
           {/* Logo - Fixed to left */}
-          <Flex>
-            <Title level={4} style={{ margin: 0, lineHeight: '1.2', whiteSpace: 'nowrap' }}>
-              <Link href="/" style={{ textDecoration: 'none', color: 'inherit' }}>
-                BS
-              </Link>
-            </Title>
+          <Flex align="center">
+            <Logo size="sm" showText={false} />
           </Flex>
 
           {/* Center Section - Mobile only */}

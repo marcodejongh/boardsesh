@@ -13,6 +13,7 @@ import { TickButton } from '../logbook/tick-button';
 import ClimbThumbnail from '../climb-card/climb-thumbnail';
 import { useBoardProvider } from '../board-provider/board-provider-context';
 import { CopyrightOutlined } from '@ant-design/icons';
+import { themeTokens } from '@/app/theme/theme-config';
 
 const { Text } = Typography;
 
@@ -45,7 +46,7 @@ export const AscentStatus = ({ climbUuid }: { climbUuid: ClimbUuid }) => {
         {/* Regular ascent icon */}
         {hasSuccessfulAscent ? (
           <div style={{ position: 'absolute', left: 0 }}>
-            <CheckOutlined style={{ color: '#52c41a' }} />
+            <CheckOutlined style={{ color: themeTokens.colors.success }} />
           </div>
         ) : null}
         {/* Mirrored ascent icon */}
@@ -57,11 +58,11 @@ export const AscentStatus = ({ climbUuid }: { climbUuid: ClimbUuid }) => {
               left: '2px',
             }}
           >
-            <CheckOutlined style={{ color: '#52c41a' }} />
+            <CheckOutlined style={{ color: themeTokens.colors.success }} />
           </div>
         ) : null}
         {!hasSuccessfulMirroredAscent && !hasSuccessfulAscent ? (
-          <CloseOutlined style={{ color: '#ff4d4f', position: 'absolute', left: 0 }} />
+          <CloseOutlined style={{ color: themeTokens.colors.error, position: 'absolute', left: 0 }} />
         ) : null}
       </div>
     );
@@ -69,9 +70,9 @@ export const AscentStatus = ({ climbUuid }: { climbUuid: ClimbUuid }) => {
 
   // Single icon for non-mirroring boards
   return hasSuccessfulAscent ? (
-    <CheckOutlined style={{ color: '#52c41a' }} />
+    <CheckOutlined style={{ color: themeTokens.colors.success }} />
   ) : (
-    <CloseOutlined style={{ color: '#ff4d4f' }} />
+    <CloseOutlined style={{ color: themeTokens.colors.error }} />
   );
 };
 
@@ -126,7 +127,11 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
     <div ref={itemRef}>
       <List.Item
         style={{
-          backgroundColor: isCurrent ? '#eeffff' : isHistory ? '#f5f5f5' : 'inherit',
+          backgroundColor: isCurrent
+            ? themeTokens.semantic.selected
+            : isHistory
+              ? themeTokens.neutral[100]
+              : 'inherit',
           opacity: isHistory ? 0.6 : 1,
           cursor: 'grab',
           position: 'relative',
@@ -134,6 +139,7 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
           MozUserSelect: 'none',
           msUserSelect: 'none',
           userSelect: 'none',
+          borderLeft: isCurrent ? `3px solid ${themeTokens.colors.primary}` : undefined,
         }}
         onDoubleClick={() => setCurrentClimbQueueItem(item)}
       >
