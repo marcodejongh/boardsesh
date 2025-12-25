@@ -32,7 +32,7 @@ const ClimbCard = ({ climb, boardDetails, onCoverClick, selected, actions }: Cli
         <Text strong style={{ fontSize: themeTokens.typography.fontSize.sm }}>
           {climb.name} @ {climb.angle}°
           {climb.benchmark_difficulty !== null && (
-            <CopyrightOutlined style={{ marginLeft: 4, color: themeTokens.colors.primary }} />
+            <CopyrightOutlined style={{ marginLeft: 4, fontSize: themeTokens.typography.fontSize.xs, color: themeTokens.colors.primary }} />
           )}
         </Text>
         <Text strong type="secondary" style={{ fontSize: themeTokens.typography.fontSize.sm }}>
