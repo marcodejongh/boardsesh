@@ -90,7 +90,7 @@ const ClimbCardActions = ({ climb, boardDetails }: ClimbCardActionsProps) => {
 
   const HeartIcon = isFavorited ? HeartFilled : HeartOutlined;
 
-  const actions: (React.JSX.Element | null)[] = [
+  const actions: React.JSX.Element[] = [
     <Link
       key="infocircle"
       href={
@@ -125,52 +125,36 @@ const ClimbCardActions = ({ climb, boardDetails }: ClimbCardActionsProps) => {
     >
       <InfoCircleOutlined />
     </Link>,
-    boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names ? (
-      <Link
-        key="fork"
-        href={constructCreateClimbUrl(
-          boardDetails.board_name,
-          boardDetails.layout_name,
-          boardDetails.size_name,
-          boardDetails.size_description,
-          boardDetails.set_names,
-          climb.angle,
-          { frames: climb.frames, name: climb.name },
-        )}
-        onClick={() => {
-          track('Climb Forked', {
-            boardLayout: boardDetails.layout_name || '',
-            originalClimb: climb.uuid,
-          });
-        }}
-        title="Fork this climb"
-      >
-        <ForkOutlined />
-      </Link>
-    ) : null,
-    <HeartIcon
-      key="heart"
-      onClick={handleFavorite}
-      style={{ color: isFavorited ? '#ff4d4f' : 'inherit' }}
-    />,
-    recentlyAdded ? (
-      <CheckCircleOutlined
-        key="edit"
-        onClick={handleAddToQueue}
-        style={{ color: '#52c41a', cursor: 'not-allowed' }}
+    ...(boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names
+      ? [
+          <Link
+            key="fork"
+            href={constructCreateClimbUrl(
+              boardDetails.board_name,
+              boardDetails.layout_name,
+              boardDetails.size_name,
+              boardDetails.size_description,
+              boardDetails.set_names,
+              climb.angle,
+              { frames: climb.frames, name: climb.name },
+            )}
+            onClick={() => {
+              track('Climb Forked', {
+                boardLayout: boardDetails.layout_name || '',
+                originalClimb: climb.uuid,
+              });
+            }}
+            title="Fork this climb"
+          >
+            <ForkOutlined />
+          </Link>,
+        ]
+      : []),
+    <React.Fragment key="heart">
+      <HeartIcon
+        onClick={handleFavorite}
+        style={{ color: isFavorited ? '#ff4d4f' : 'inherit' }}
       />
-    ) : (
-      <PlusCircleOutlined
-        key="edit"
-        onClick={handleAddToQueue}
-        style={{ color: 'inherit', cursor: 'pointer' }}
-      />
-    ),
-  ];
-
-  return (
-    <>
-      {actions.filter((action): action is React.JSX.Element => action !== null)}
       <AuthModal
         open={showAuthModal}
         onClose={() => setShowAuthModal(false)}
@@ -178,8 +162,23 @@ const ClimbCardActions = ({ climb, boardDetails }: ClimbCardActionsProps) => {
         title="Sign in to save favorites"
         description={`Sign in to save "${climb.name}" to your favorites.`}
       />
-    </>
-  );
+    </React.Fragment>,
+    recentlyAdded ? (
+      <CheckCircleOutlined
+        key="queue"
+        onClick={handleAddToQueue}
+        style={{ color: '#52c41a', cursor: 'not-allowed' }}
+      />
+    ) : (
+      <PlusCircleOutlined
+        key="queue"
+        onClick={handleAddToQueue}
+        style={{ color: 'inherit', cursor: 'pointer' }}
+      />
+    ),
+  ];
+
+  return actions;
 };
 
 export default ClimbCardActions;
