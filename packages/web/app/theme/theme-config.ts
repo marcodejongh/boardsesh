@@ -1,4 +1,4 @@
-// Design tokens for BoardSesh
+// Design tokens for Boardsesh
 // This file defines the design system used throughout the application
 
 export const themeTokens = {

@@ -35,7 +35,7 @@ export const Logo = ({ size = 'md', showText = true, linkToHome = true }: LogoPr
         viewBox="0 0 48 48"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
-        aria-label="BoardSesh logo"
+        aria-label="Boardsesh logo"
       >
         {/* Board background with rounded corners */}
         <rect x="2" y="2" width="44" height="44" rx="8" fill={themeTokens.colors.primary} />
@@ -64,7 +64,7 @@ export const Logo = ({ size = 'md', showText = true, linkToHome = true }: LogoPr
             lineHeight: 1,
           }}
         >
-          BoardSesh
+          Boardsesh
         </span>
       )}
     </div>

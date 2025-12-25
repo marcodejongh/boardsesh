@@ -2,7 +2,7 @@
 
 set -e
 
-echo "🚀 Starting BoardSesh development database setup..."
+echo "🚀 Starting Boardsesh development database setup..."
 
 # Check if this is a fresh setup or just running migrations
 FRESH_SETUP=false
@@ -124,4 +124,4 @@ echo "🔄 Step 8/8: Running drizzle migrations..."
 npx drizzle-kit migrate
 echo "   ✅ Drizzle migrations completed!"
 
-echo "✨ BoardSesh development database is ready!" 
+echo "✨ Boardsesh development database is ready!" 

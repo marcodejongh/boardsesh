@@ -46,7 +46,7 @@ export async function generateMetadata(props: { params: Promise<BoardRouteParame
     ogImageUrl.searchParams.set('climb_uuid', parsedParams.climb_uuid);
 
     return {
-      title: `${climbName} - ${climbGrade} | BoardSesh`,
+      title: `${climbName} - ${climbGrade} | Boardsesh`,
       description,
       openGraph: {
         title: `${climbName} - ${climbGrade}`,
@@ -71,7 +71,7 @@ export async function generateMetadata(props: { params: Promise<BoardRouteParame
     };
   } catch {
     return {
-      title: 'Climb View | BoardSesh',
+      title: 'Climb View | Boardsesh',
       description: 'View climb details and beta videos',
     };
   }

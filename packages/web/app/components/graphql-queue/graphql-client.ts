@@ -28,7 +28,7 @@ export interface ExtendedClient extends Client {
 }
 
 /**
- * Creates a GraphQL-WS client for connecting to the BoardSesh backend
+ * Creates a GraphQL-WS client for connecting to the Boardsesh backend
  */
 export function createGraphQLClient(
   url: string,

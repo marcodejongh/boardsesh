@@ -602,7 +602,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
               disabled={!isFormComplete}
             >
               Use this board configuration as default
-              <Tooltip title="When this option is selected, navigating to BoardSesh will always load this board configuration immediately">
+              <Tooltip title="When this option is selected, navigating to Boardsesh will always load this board configuration immediately">
                 <InfoCircleOutlined style={{ marginLeft: '4px', color: '#1890ff' }} />
               </Tooltip>
             </Checkbox>

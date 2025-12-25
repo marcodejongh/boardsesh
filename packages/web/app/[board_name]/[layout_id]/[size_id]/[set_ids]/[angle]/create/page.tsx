@@ -7,7 +7,7 @@ import CreateClimbForm from '@/app/components/create-climb/create-climb-form';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Create Climb | BoardSesh',
+  title: 'Create Climb | Boardsesh',
   description: 'Create a new climb on your climbing board',
 };
 

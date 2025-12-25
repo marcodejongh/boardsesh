@@ -17,7 +17,7 @@ import { Metadata } from 'next';
 
 /**
  * Generates a user-friendly page title from board details.
- * Example output: "Kilter Original 12x12 | BoardSesh"
+ * Example output: "Kilter Original 12x12 | Boardsesh"
  */
 function generateBoardTitle(boardDetails: BoardDetails): string {
   const parts: string[] = [];
@@ -51,7 +51,7 @@ function generateBoardTitle(boardDetails: BoardDetails): string {
     parts.push(boardDetails.size_description);
   }
 
-  return `${parts.join(' ')} | BoardSesh`;
+  return `${parts.join(' ')} | Boardsesh`;
 }
 
 export async function generateMetadata(props: { params: Promise<BoardRouteParameters> }): Promise<Metadata> {
@@ -80,7 +80,7 @@ export async function generateMetadata(props: { params: Promise<BoardRouteParame
     // Fallback title if metadata generation fails
     const boardName = params.board_name.charAt(0).toUpperCase() + params.board_name.slice(1);
     return {
-      title: `${boardName} | BoardSesh`,
+      title: `${boardName} | Boardsesh`,
     };
   }
 }

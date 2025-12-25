@@ -56,8 +56,8 @@ export const BackendSetupPanel: React.FC<BackendSetupPanelProps> = ({
       <Alert
         type="info"
         showIcon
-        message="BoardSesh Backend Required"
-        description="To use Backend mode for more reliable connections, you need to run the BoardSesh backend on your local network."
+        message="Boardsesh Backend Required"
+        description="To use Backend mode for more reliable connections, you need to run the Boardsesh backend on your local network."
       />
 
       <Flex vertical gap="small">

@@ -603,7 +603,7 @@ class BoardController:
                 "bluetoothEnabled": self.bluetooth_manager.bluetooth_enabled
             }
         
-        # Root endpoint - redirect to BoardSesh with controller URL
+        # Root endpoint - redirect to Boardsesh with controller URL
         @self.app.get("/")
         async def root(request: Request):
             from fastapi.responses import RedirectResponse
@@ -628,7 +628,7 @@ class BoardController:
             
             return RedirectResponse(url=boardsesh_url, status_code=302)
         
-        # No static files needed - we redirect to BoardSesh
+        # No static files needed - we redirect to Boardsesh
     
     async def _handle_websocket_message(self, data: dict, websocket: WebSocket):
         """Handle incoming WebSocket messages"""
@@ -645,14 +645,14 @@ class BoardController:
             }, websocket)
         
         elif msg_type == "controller-takeover":
-            # BoardSesh is acknowledging controller takeover
+            # Boardsesh is acknowledging controller takeover
             await self.ws_manager.broadcast({
                 "type": "controller-active",
                 "sessionId": self.session_id
             })
         
         elif msg_type in ["add-queue-item", "remove-queue-item", "update-current-climb"]:
-            # Queue operations from BoardSesh
+            # Queue operations from Boardsesh
             # Update database and broadcast to other connections
             if msg_type == "add-queue-item":
                 item_data = data.get("item", {})
@@ -780,7 +780,7 @@ def auto_generate_ssl_cert():
             x509.NameAttribute(NameOID.COUNTRY_NAME, "US"),
             x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, "CA"),
             x509.NameAttribute(NameOID.LOCALITY_NAME, "Local"),
-            x509.NameAttribute(NameOID.ORGANIZATION_NAME, "BoardSesh Controller"),
+            x509.NameAttribute(NameOID.ORGANIZATION_NAME, "Boardsesh Controller"),
             x509.NameAttribute(NameOID.COMMON_NAME, "localhost"),
         ])
         
