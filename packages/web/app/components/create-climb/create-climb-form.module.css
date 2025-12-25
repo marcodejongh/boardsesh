@@ -1,0 +1,120 @@
+/* Create Climb Form Styles */
+
+.pageContainer {
+  padding: 16px;
+  min-height: 100vh;
+  background-color: #F9FAFB;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Board section - white card container */
+.boardSection {
+  background-color: #FFFFFF;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* Hold counts row */
+.holdCounts {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 16px;
+}
+
+/* Form section - white card container */
+.formSection {
+  background-color: #FFFFFF;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+}
+
+.formContent {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* Button group at bottom of form */
+.buttonGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+/* Beta banner */
+.betaBanner {
+  margin-bottom: 16px;
+}
+
+/* Modal content */
+.modalDescription {
+  display: block;
+  margin-bottom: 16px;
+}
+
+/* Mobile adjustments */
+@media (max-width: 767px) {
+  .pageContainer {
+    padding: 12px;
+  }
+
+  .boardSection,
+  .formSection {
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+  }
+
+  .formSection {
+    margin-bottom: 0;
+  }
+
+  .holdCounts {
+    margin-top: 12px;
+  }
+
+  .betaBanner {
+    margin-bottom: 12px;
+  }
+}
+
+/* Desktop layout */
+@media (min-width: 992px) {
+  .pageContainer {
+    padding: 24px;
+  }
+
+  .boardSection,
+  .formSection {
+    padding: 20px;
+  }
+
+  .contentWrapper {
+    display: flex;
+    gap: 24px;
+  }
+
+  .boardSection {
+    flex: 2;
+    margin-bottom: 0;
+  }
+
+  .formSection {
+    flex: 1;
+    max-width: 400px;
+    position: sticky;
+    top: 24px;
+    align-self: flex-start;
+  }
+
+  .buttonGroup {
+    margin-top: 16px;
+  }
+}
