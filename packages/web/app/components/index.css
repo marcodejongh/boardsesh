@@ -20,8 +20,7 @@ html, body {
 
 /* Prevent horizontal scroll on layout components */
 .ant-layout,
-.ant-layout-content,
-.ant-row {
+.ant-layout-content {
   max-width: 100%;
   overflow-x: hidden;
 }
