@@ -126,6 +126,21 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
     }
   }, [page, hasDoneFirstFetch, isFetchingClimbs]); // Depend on the page query parameter
 
+  // Auto-trigger load when content doesn't fill the scroll container
+  // This handles the case where initial climbs don't fill the viewport
+  useEffect(() => {
+    if (!hasMoreResults || isFetchingClimbs) return;
+
+    const scrollContainer = document.getElementById('content-for-scrollable');
+    if (!scrollContainer) return;
+
+    // Check if content doesn't fill the container (no scrollbar needed)
+    const needsMoreContent = scrollContainer.scrollHeight <= scrollContainer.clientHeight;
+    if (needsMoreContent) {
+      fetchMoreClimbs();
+    }
+  }, [hasMoreResults, isFetchingClimbs, climbs.length, fetchMoreClimbs]);
+
   return (
     <InfiniteScroll
       dataLength={climbs.length}
