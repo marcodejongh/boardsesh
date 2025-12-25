@@ -141,7 +141,7 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
       endMessage={<div style={{ textAlign: 'center' }}>No more climbs 🤐</div>}
       // Probably not how this should be done in a React app, but it works and I ain't no CSS-wizard
       scrollableTarget="content-for-scrollable"
-      style={{ paddingTop: '10px' }}
+      style={{ paddingTop: '5px' }}
     >
       <Row gutter={[16, 16]}>
         {climbs.map((climb) => (
