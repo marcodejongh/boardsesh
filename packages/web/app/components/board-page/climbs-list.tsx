@@ -1,13 +1,10 @@
 'use client';
-import React from 'react';
-
-import { Row, Col, Skeleton } from 'antd';
-import InfiniteScroll from 'react-infinite-scroll-component';
+import React, { useEffect, useRef, useCallback } from 'react';
+import { Row, Col, Skeleton, Spin } from 'antd';
 import { track } from '@vercel/analytics';
 import { Climb, ParsedBoardRouteParameters, BoardDetails } from '@/app/lib/types';
 import { useQueueContext } from '../graphql-queue';
 import ClimbCard from '../climb-card/climb-card';
-import { useEffect, useRef } from 'react';
 import { PlusCircleOutlined, FireOutlined } from '@ant-design/icons';
 import { useSearchParams } from 'next/navigation';
 
@@ -48,7 +45,7 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
   const searchParams = useSearchParams();
   const page = searchParams.get('page');
 
-  // Queue Context provider uses SWR infinite to fetch results, which can only happen clientside.
+  // Queue Context provider uses React Query infinite to fetch results, which can only happen clientside.
   // That data equals null at the start, so when its null we use the initialClimbs array which we
   // fill on the server side in the page component. This way the user never sees a loading state for
   // the climb list.
@@ -57,46 +54,12 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
   // A ref to store each climb's DOM element position for easier scroll tracking
   const climbsRefs = useRef<{ [uuid: string]: HTMLDivElement | null }>({});
 
+  // Ref for the intersection observer sentinel element
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
   const updateHash = (climbId: string) => {
     history.replaceState(null, '', `#${climbId}`);
   };
-
-  /**
-   * TODO: Figure out a better way to restore scroll position, might want to try out react-query
-   * which promises that it always restores scroll correctly. But for now this works, and as a
-   * cool side-effect shared links will also scroll to the correct item.
-   */
-  // const handleScroll = () => {
-  //   let closestClimb = null;
-  //   let closestDistance = Infinity;
-
-  //   const climbUuids = Object.keys(climbsRefs.current);
-
-  //   for (let i = 0; i < climbUuids.length; i++) {
-  //     const uuid = climbUuids[i];
-  //     const climbElement = climbsRefs.current[uuid];
-
-  //     if (climbElement) {
-  //       const rect = climbElement.getBoundingClientRect();
-  //       const distanceFromViewportTop = Math.abs(rect.top - 100); // Adjust 100 to your viewport reference
-
-  //       if (distanceFromViewportTop < closestDistance) {
-  //         closestDistance = distanceFromViewportTop;
-  //         closestClimb = uuid;
-  //       } else {
-  //         // If distance starts to increase, no need to check further climbs
-  //         break;
-  //       }
-  //     }
-  //   }
-
-  //   // If the closest climb is different from the current one, update the hash
-  //   if (closestClimb) {
-  //     updateHash(closestClimb);
-  //   }
-  // };
-
-  // const debouncedHandleScroll = useDebouncedCallback(handleScroll, 500);
 
   // Function to restore scroll based on the hash in the URL
   const restoreScrollFromHash = () => {
@@ -124,25 +87,45 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
       }
       climbsRefs.current = {};
     }
-  }, [page, hasDoneFirstFetch, isFetchingClimbs]); // Depend on the page query parameter
+  }, [page, hasDoneFirstFetch, isFetchingClimbs]);
 
-  return (
-    <InfiniteScroll
-      dataLength={climbs.length}
-      next={() => {
+  // Intersection Observer callback for infinite scroll
+  const handleObserver = useCallback(
+    (entries: IntersectionObserverEntry[]) => {
+      const [target] = entries;
+      if (target.isIntersecting && hasMoreResults) {
         track('Infinite Scroll Load More', {
           currentCount: climbs.length,
           hasMore: hasMoreResults,
         });
-        return fetchMoreClimbs();
-      }}
-      hasMore={hasMoreResults}
-      loader={<Skeleton active />}
-      endMessage={<div style={{ textAlign: 'center' }}>No more climbs 🤐</div>}
-      // Probably not how this should be done in a React app, but it works and I ain't no CSS-wizard
-      scrollableTarget="content-for-scrollable"
-      style={{ paddingTop: '5px' }}
-    >
+        fetchMoreClimbs();
+      }
+    },
+    [hasMoreResults, fetchMoreClimbs, climbs.length],
+  );
+
+  // Set up Intersection Observer
+  useEffect(() => {
+    const element = loadMoreRef.current;
+    if (!element) return;
+
+    const scrollContainer = document.getElementById('content-for-scrollable');
+
+    const observer = new IntersectionObserver(handleObserver, {
+      root: scrollContainer,
+      rootMargin: '100px',
+      threshold: 0,
+    });
+
+    observer.observe(element);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [handleObserver]);
+
+  return (
+    <div style={{ paddingTop: '5px' }}>
       <Row gutter={[16, 16]}>
         {climbs.map((climb) => (
           <Col xs={24} lg={12} xl={12} id={climb.uuid} key={climb.uuid}>
@@ -170,7 +153,21 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
           <ClimbsListSkeleton boardDetails={boardDetails} />
         ) : null}
       </Row>
-    </InfiniteScroll>
+
+      {/* Sentinel element for Intersection Observer */}
+      <div ref={loadMoreRef} style={{ height: '20px', marginTop: '16px' }}>
+        {isFetchingClimbs && climbs.length > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '20px' }}>
+            <Spin />
+          </div>
+        )}
+        {!hasMoreResults && climbs.length > 0 && (
+          <div style={{ textAlign: 'center', padding: '20px', color: '#888' }}>
+            No more climbs 🤐
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
 

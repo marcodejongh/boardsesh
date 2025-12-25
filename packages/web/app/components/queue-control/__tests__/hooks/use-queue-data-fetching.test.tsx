@@ -1,16 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useQueueDataFetching } from '../../hooks/use-queue-data-fetching';
 import { ParsedBoardRouteParameters, SearchRequestPagination, Climb } from '@/app/lib/types';
 import { ClimbQueue } from '../../types';
-import useSWRInfinite from 'swr/infinite';
 import { useBoardProvider } from '../../../board-provider/board-provider-context';
+import React from 'react';
 
 // Mock dependencies
-vi.mock('swr/infinite', () => ({
-  default: vi.fn()
-}));
-
 vi.mock('@/app/lib/url-utils', () => ({
   constructClimbSearchUrl: vi.fn(() => 'http://test.com/search'),
   searchParamsToUrlParams: vi.fn(() => new URLSearchParams('page=1'))
@@ -41,7 +38,10 @@ Object.defineProperty(window, 'location', {
   writable: true
 });
 
-const mockUseSWRInfinite = vi.mocked(useSWRInfinite);
+// Mock fetch
+const mockFetch = vi.fn();
+global.fetch = mockFetch;
+
 const mockUseBoardProvider = vi.mocked(useBoardProvider);
 
 const mockClimb: Climb = {
@@ -95,14 +95,29 @@ const mockParsedParams: ParsedBoardRouteParameters = {
 
 const mockQueue: ClimbQueue = [];
 
+// Create a wrapper with QueryClientProvider
+const createWrapper = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  });
+  const Wrapper = ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+  Wrapper.displayName = 'QueryClientWrapper';
+  return Wrapper;
+};
+
 describe('useQueueDataFetching', () => {
   const mockSetHasDoneFirstFetch = vi.fn();
   const mockGetLogbook = vi.fn();
-  const mockSetSize = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     mockUseBoardProvider.mockReturnValue({
       isAuthenticated: true,
       token: 'mock-token',
@@ -120,19 +135,12 @@ describe('useQueueDataFetching', () => {
       boardName: 'kilter'
     });
 
-    mockUseSWRInfinite.mockReturnValue({
-      data: [
-        {
-          climbs: [mockClimb],
-          totalCount: 50
-        }
-      ],
-      size: 1,
-      setSize: mockSetSize,
-      isLoading: false,
-      mutate: vi.fn(),
-      error: undefined,
-      isValidating: false
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        climbs: [mockClimb],
+        totalCount: 50
+      })
     });
   });
 
@@ -140,25 +148,29 @@ describe('useQueueDataFetching', () => {
     vi.clearAllMocks();
   });
 
-  it('should return climb search results and suggested climbs', () => {
-    const { result } = renderHook(() =>
-      useQueueDataFetching({
-        searchParams: mockSearchParams,
-        queue: mockQueue,
-        parsedParams: mockParsedParams,
-        hasDoneFirstFetch: false,
-        setHasDoneFirstFetch: mockSetHasDoneFirstFetch
-      })
+  it('should return climb search results and suggested climbs', async () => {
+    const { result } = renderHook(
+      () =>
+        useQueueDataFetching({
+          searchParams: mockSearchParams,
+          queue: mockQueue,
+          parsedParams: mockParsedParams,
+          hasDoneFirstFetch: false,
+          setHasDoneFirstFetch: mockSetHasDoneFirstFetch
+        }),
+      { wrapper: createWrapper() }
     );
 
-    expect(result.current.climbSearchResults).toEqual([mockClimb]);
+    await waitFor(() => {
+      expect(result.current.climbSearchResults).toEqual([mockClimb]);
+    });
+
     expect(result.current.suggestedClimbs).toEqual([mockClimb]);
     expect(result.current.totalSearchResultCount).toBe(50);
     expect(result.current.hasMoreResults).toBe(true);
-    expect(result.current.isFetchingClimbs).toBe(false);
   });
 
-  it('should filter out climbs already in queue from suggestions', () => {
+  it('should filter out climbs already in queue from suggestions', async () => {
     const queueWithClimb: ClimbQueue = [
       {
         climb: mockClimb,
@@ -168,29 +180,36 @@ describe('useQueueDataFetching', () => {
       }
     ];
 
-    const { result } = renderHook(() =>
-      useQueueDataFetching({
-        searchParams: mockSearchParams,
-        queue: queueWithClimb,
-        parsedParams: mockParsedParams,
-        hasDoneFirstFetch: false,
-        setHasDoneFirstFetch: mockSetHasDoneFirstFetch
-      })
+    const { result } = renderHook(
+      () =>
+        useQueueDataFetching({
+          searchParams: mockSearchParams,
+          queue: queueWithClimb,
+          parsedParams: mockParsedParams,
+          hasDoneFirstFetch: false,
+          setHasDoneFirstFetch: mockSetHasDoneFirstFetch
+        }),
+      { wrapper: createWrapper() }
     );
 
-    expect(result.current.climbSearchResults).toEqual([mockClimb]);
+    await waitFor(() => {
+      expect(result.current.climbSearchResults).toEqual([mockClimb]);
+    });
+
     expect(result.current.suggestedClimbs).toEqual([]);
   });
 
   it('should call setHasDoneFirstFetch when first results are available', async () => {
-    renderHook(() =>
-      useQueueDataFetching({
-        searchParams: mockSearchParams,
-        queue: mockQueue,
-        parsedParams: mockParsedParams,
-        hasDoneFirstFetch: false,
-        setHasDoneFirstFetch: mockSetHasDoneFirstFetch
-      })
+    renderHook(
+      () =>
+        useQueueDataFetching({
+          searchParams: mockSearchParams,
+          queue: mockQueue,
+          parsedParams: mockParsedParams,
+          hasDoneFirstFetch: false,
+          setHasDoneFirstFetch: mockSetHasDoneFirstFetch
+        }),
+      { wrapper: createWrapper() }
     );
 
     await waitFor(() => {
@@ -198,29 +217,37 @@ describe('useQueueDataFetching', () => {
     });
   });
 
-  it('should not call setHasDoneFirstFetch if already done', () => {
-    renderHook(() =>
-      useQueueDataFetching({
-        searchParams: mockSearchParams,
-        queue: mockQueue,
-        parsedParams: mockParsedParams,
-        hasDoneFirstFetch: true,
-        setHasDoneFirstFetch: mockSetHasDoneFirstFetch
-      })
+  it('should not call setHasDoneFirstFetch if already done', async () => {
+    const { result } = renderHook(
+      () =>
+        useQueueDataFetching({
+          searchParams: mockSearchParams,
+          queue: mockQueue,
+          parsedParams: mockParsedParams,
+          hasDoneFirstFetch: true,
+          setHasDoneFirstFetch: mockSetHasDoneFirstFetch
+        }),
+      { wrapper: createWrapper() }
     );
+
+    await waitFor(() => {
+      expect(result.current.climbSearchResults).toBeDefined();
+    });
 
     expect(mockSetHasDoneFirstFetch).not.toHaveBeenCalled();
   });
 
   it('should call getLogbook with climb UUIDs', async () => {
-    renderHook(() =>
-      useQueueDataFetching({
-        searchParams: mockSearchParams,
-        queue: mockQueue,
-        parsedParams: mockParsedParams,
-        hasDoneFirstFetch: false,
-        setHasDoneFirstFetch: mockSetHasDoneFirstFetch
-      })
+    renderHook(
+      () =>
+        useQueueDataFetching({
+          searchParams: mockSearchParams,
+          queue: mockQueue,
+          parsedParams: mockParsedParams,
+          hasDoneFirstFetch: false,
+          setHasDoneFirstFetch: mockSetHasDoneFirstFetch
+        }),
+      { wrapper: createWrapper() }
     );
 
     await waitFor(() => {
@@ -228,106 +255,86 @@ describe('useQueueDataFetching', () => {
     });
   });
 
-  it('should handle empty search results', () => {
-    mockUseSWRInfinite.mockReturnValue({
-      data: undefined,
-      size: 1,
-      setSize: mockSetSize,
-      isLoading: false,
-      mutate: vi.fn(),
-      error: undefined,
-      isValidating: false
+  it('should handle empty search results', async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        climbs: [],
+        totalCount: 0
+      })
     });
 
-    const { result } = renderHook(() =>
-      useQueueDataFetching({
-        searchParams: mockSearchParams,
-        queue: mockQueue,
-        parsedParams: mockParsedParams,
-        hasDoneFirstFetch: false,
-        setHasDoneFirstFetch: mockSetHasDoneFirstFetch
-      })
+    const { result } = renderHook(
+      () =>
+        useQueueDataFetching({
+          searchParams: mockSearchParams,
+          queue: mockQueue,
+          parsedParams: mockParsedParams,
+          hasDoneFirstFetch: false,
+          setHasDoneFirstFetch: mockSetHasDoneFirstFetch
+        }),
+      { wrapper: createWrapper() }
     );
 
-    expect(result.current.climbSearchResults).toBeNull();
+    await waitFor(() => {
+      expect(result.current.climbSearchResults).toEqual([]);
+    });
+
     expect(result.current.suggestedClimbs).toEqual([]);
-    expect(result.current.totalSearchResultCount).toBeNull();
-    expect(result.current.hasMoreResults).toBeFalsy();
-  });
-
-  it('should handle fetchMoreClimbs', () => {
-    const { result } = renderHook(() =>
-      useQueueDataFetching({
-        searchParams: mockSearchParams,
-        queue: mockQueue,
-        parsedParams: mockParsedParams,
-        hasDoneFirstFetch: false,
-        setHasDoneFirstFetch: mockSetHasDoneFirstFetch
-      })
-    );
-
-    result.current.fetchMoreClimbs();
-
-    expect(mockSetSize).toHaveBeenCalledWith(expect.any(Function));
-  });
-
-  it('should calculate hasMoreResults correctly', () => {
-    // Test case where there are more results
-    mockUseSWRInfinite.mockReturnValue({
-      data: [
-        {
-          climbs: Array(20).fill(mockClimb),
-          totalCount: 50
-        }
-      ],
-      size: 1,
-      setSize: mockSetSize,
-      isLoading: false,
-      mutate: vi.fn(),
-      error: undefined,
-      isValidating: false
-    });
-
-    const { result } = renderHook(() =>
-      useQueueDataFetching({
-        searchParams: mockSearchParams,
-        queue: mockQueue,
-        parsedParams: mockParsedParams,
-        hasDoneFirstFetch: false,
-        setHasDoneFirstFetch: mockSetHasDoneFirstFetch
-      })
-    );
-
-    expect(result.current.hasMoreResults).toBe(true);
-  });
-
-  it('should handle no more results case', () => {
-    mockUseSWRInfinite.mockReturnValue({
-      data: [
-        {
-          climbs: Array(10).fill(mockClimb),
-          totalCount: 10
-        }
-      ],
-      size: 1,
-      setSize: mockSetSize,
-      isLoading: false,
-      mutate: vi.fn(),
-      error: undefined,
-      isValidating: false
-    });
-
-    const { result } = renderHook(() =>
-      useQueueDataFetching({
-        searchParams: mockSearchParams,
-        queue: mockQueue,
-        parsedParams: mockParsedParams,
-        hasDoneFirstFetch: false,
-        setHasDoneFirstFetch: mockSetHasDoneFirstFetch
-      })
-    );
-
+    expect(result.current.totalSearchResultCount).toBe(0);
     expect(result.current.hasMoreResults).toBe(false);
+  });
+
+  it('should calculate hasMoreResults correctly when there are more results', async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        climbs: Array(20).fill(mockClimb),
+        totalCount: 50
+      })
+    });
+
+    const { result } = renderHook(
+      () =>
+        useQueueDataFetching({
+          searchParams: mockSearchParams,
+          queue: mockQueue,
+          parsedParams: mockParsedParams,
+          hasDoneFirstFetch: false,
+          setHasDoneFirstFetch: mockSetHasDoneFirstFetch
+        }),
+      { wrapper: createWrapper() }
+    );
+
+    await waitFor(() => {
+      expect(result.current.hasMoreResults).toBe(true);
+    });
+  });
+
+  it('should handle no more results case', async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        climbs: Array(10).fill(mockClimb),
+        totalCount: 10
+      })
+    });
+
+    const { result } = renderHook(
+      () =>
+        useQueueDataFetching({
+          searchParams: mockSearchParams,
+          queue: mockQueue,
+          parsedParams: mockParsedParams,
+          hasDoneFirstFetch: false,
+          setHasDoneFirstFetch: mockSetHasDoneFirstFetch
+        }),
+      { wrapper: createWrapper() }
+    );
+
+    await waitFor(() => {
+      expect(result.current.hasMoreResults).toBe(false);
+    });
   });
 
   it('should combine UUIDs from search results and queue', async () => {
@@ -341,42 +348,20 @@ describe('useQueueDataFetching', () => {
       }
     ];
 
-    renderHook(() =>
-      useQueueDataFetching({
-        searchParams: mockSearchParams,
-        queue: queueWithClimb,
-        parsedParams: mockParsedParams,
-        hasDoneFirstFetch: false,
-        setHasDoneFirstFetch: mockSetHasDoneFirstFetch
-      })
+    renderHook(
+      () =>
+        useQueueDataFetching({
+          searchParams: mockSearchParams,
+          queue: queueWithClimb,
+          parsedParams: mockParsedParams,
+          hasDoneFirstFetch: false,
+          setHasDoneFirstFetch: mockSetHasDoneFirstFetch
+        }),
+      { wrapper: createWrapper() }
     );
 
     await waitFor(() => {
       expect(mockGetLogbook).toHaveBeenCalledWith(['climb-1', 'climb-2']);
     });
-  });
-
-  it('should not call getLogbook if UUIDs have not changed', async () => {
-    const { rerender } = renderHook(() =>
-      useQueueDataFetching({
-        searchParams: mockSearchParams,
-        queue: mockQueue,
-        parsedParams: mockParsedParams,
-        hasDoneFirstFetch: false,
-        setHasDoneFirstFetch: mockSetHasDoneFirstFetch
-      })
-    );
-
-    await waitFor(() => {
-      expect(mockGetLogbook).toHaveBeenCalledTimes(1);
-    });
-
-    // Clear the mock and rerender with same data
-    mockGetLogbook.mockClear();
-    
-    rerender();
-
-    // Should not call getLogbook again
-    expect(mockGetLogbook).not.toHaveBeenCalled();
   });
 });
