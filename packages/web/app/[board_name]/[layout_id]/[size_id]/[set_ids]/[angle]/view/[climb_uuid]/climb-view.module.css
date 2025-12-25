@@ -1,0 +1,89 @@
+/* Climb View Page Styles */
+
+.pageContainer {
+  padding: 16px;
+  min-height: 100vh;
+  background-color: #F9FAFB;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Actions section - white card container */
+.actionsSection {
+  background-color: #FFFFFF;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* Main content wrapper for the climb card and beta videos */
+.contentWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Climb card section */
+.climbSection {
+  flex: 1;
+  min-width: 0; /* Prevent flex overflow */
+}
+
+/* Beta videos section with white background */
+.betaSection {
+  background-color: #FFFFFF;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* Mobile adjustments */
+@media (max-width: 767px) {
+  .pageContainer {
+    padding: 12px;
+  }
+
+  .actionsSection {
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+  }
+
+  .betaSection {
+    padding: 16px;
+    border-radius: 8px;
+  }
+
+  .contentWrapper {
+    gap: 12px;
+  }
+}
+
+/* Desktop layout */
+@media (min-width: 992px) {
+  .pageContainer {
+    padding: 24px;
+  }
+
+  .actionsSection {
+    padding: 20px;
+  }
+
+  .contentWrapper {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 24px;
+  }
+
+  .climbSection {
+    flex: 2;
+  }
+
+  .betaSection {
+    flex: 1;
+    max-width: 400px;
+    position: sticky;
+    top: 24px;
+  }
+}

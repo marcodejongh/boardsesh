@@ -4,7 +4,6 @@ import { BoardRouteParametersWithUuid } from '@/app/lib/types';
 import { getBoardDetails } from '@/app/lib/data/queries';
 import { getClimb } from '@/app/lib/data/queries';
 import ClimbCard from '@/app/components/climb-card/climb-card';
-import { Col, Row } from 'antd';
 import BetaVideos from '@/app/components/beta-videos/beta-videos';
 import {
   constructClimbInfoUrl,
@@ -22,6 +21,7 @@ import { dbz } from '@/app/lib/db/db';
 import { kilterBetaLinks, tensionBetaLinks } from '@/app/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { BetaLink } from '@/app/lib/api-wrappers/sync-api-types';
+import styles from './climb-view.module.css';
 
 export async function generateMetadata(props: { params: Promise<BoardRouteParametersWithUuid> }): Promise<Metadata> {
   const params = await props.params;
@@ -191,23 +191,26 @@ export default async function DynamicResultsPage(props: { params: Promise<BoardR
     );
 
     return (
-      <div style={{ padding: '16px' }}>
-        <Row gutter={[16, 16]}>
-          <Col xs={24}>
-            <ClimbViewActions
-              climb={climbWithProcessedData}
-              boardDetails={boardDetails}
-              auroraAppUrl={auroraAppUrl}
-              angle={parsedParams.angle}
-            />
-          </Col>
-          <Col xs={24} lg={16}>
+      <div className={styles.pageContainer}>
+        {/* Actions Section */}
+        <div className={styles.actionsSection}>
+          <ClimbViewActions
+            climb={climbWithProcessedData}
+            boardDetails={boardDetails}
+            auroraAppUrl={auroraAppUrl}
+            angle={parsedParams.angle}
+          />
+        </div>
+
+        {/* Main Content */}
+        <div className={styles.contentWrapper}>
+          <div className={styles.climbSection}>
             <ClimbCard climb={climbWithProcessedData} boardDetails={boardDetails} actions={[]} />
-          </Col>
-          <Col xs={24} lg={8}>
+          </div>
+          <div className={styles.betaSection}>
             <BetaVideos betaLinks={betaLinks} />
-          </Col>
-        </Row>
+          </div>
+        </div>
       </div>
     );
   } catch (error) {
