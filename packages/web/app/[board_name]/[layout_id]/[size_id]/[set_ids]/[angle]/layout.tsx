@@ -150,7 +150,6 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
                 height: '80vh',
                 paddingLeft: '10px',
                 paddingRight: '10px',
-                paddingTop: '10px',
               }}
             >
               {children}
