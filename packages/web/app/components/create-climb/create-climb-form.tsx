@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Form, Input, Switch, Button, Typography, Tag, Modal, Alert } from 'antd';
-import { BulbOutlined, BulbFilled, ExperimentOutlined } from '@ant-design/icons';
+import { ExperimentOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import { track } from '@vercel/analytics';
 import BoardRenderer from '../board-renderer/board-renderer';
@@ -12,11 +12,10 @@ import { useBoardBluetooth } from '../board-bluetooth-control/use-board-bluetoot
 import { BoardDetails } from '@/app/lib/types';
 import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { convertLitUpHoldsStringToMap } from '../board-renderer/util';
-import '../board-bluetooth-control/send-climb-to-board-button.css';
 import styles from './create-climb-form.module.css';
 
 const { TextArea } = Input;
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 interface CreateClimbFormValues {
   name: string;
@@ -54,7 +53,7 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
     resetHolds: originalResetHolds,
   } = useCreateClimb(boardDetails.board_name, { initialHoldsMap });
 
-  const { isConnected, loading: bluetoothLoading, connect, sendFramesToBoard } = useBoardBluetooth({ boardDetails });
+  const { isConnected, sendFramesToBoard } = useBoardBluetooth({ boardDetails });
 
   const [form] = Form.useForm<CreateClimbFormValues>();
   const [loginForm] = Form.useForm<{ username: string; password: string }>();
@@ -88,12 +87,6 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
       sendFramesToBoard('');
     }
   }, [originalResetHolds, isConnected, sendFramesToBoard]);
-
-  // Handle Bluetooth connect button click
-  const handleBluetoothConnect = useCallback(async () => {
-    const frames = generateFramesString();
-    await connect(frames);
-  }, [connect, generateFramesString]);
 
   const doSaveClimb = async (values: CreateClimbFormValues) => {
     setIsSaving(true);
@@ -209,31 +202,9 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
         banner
       />
 
-      {/* Header Section */}
-      <div className={styles.headerSection}>
-        <div className={styles.headerContent}>
-          <Title level={4} className={styles.headerTitle}>
-            {forkName ? 'Fork Climb' : 'Create New Climb'}
-          </Title>
-          <Button
-            type="default"
-            icon={isConnected ? <BulbFilled className="connect-button-glow" /> : <BulbOutlined />}
-            onClick={handleBluetoothConnect}
-            loading={bluetoothLoading}
-            title={isConnected ? 'Connected to board' : 'Connect to board for live preview'}
-          >
-            {isConnected ? 'Connected' : 'Connect Board'}
-          </Button>
-        </div>
-      </div>
-
       <div className={styles.contentWrapper}>
         {/* Board Section */}
         <div className={styles.boardSection}>
-          <Text type="secondary" className={styles.boardInstructions}>
-            Tap holds to set their type. Tap again to cycle through types.
-            {isConnected && ' Changes are shown live on the board.'}
-          </Text>
           <BoardRenderer
             boardDetails={boardDetails}
             litUpHoldsMap={litUpHoldsMap}
