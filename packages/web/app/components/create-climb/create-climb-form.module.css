@@ -53,9 +53,8 @@
   margin-bottom: 16px;
 }
 
-/* Modal content */
-.modalDescription {
-  display: block;
+/* Auth alert */
+.authAlert {
   margin-bottom: 16px;
 }
 

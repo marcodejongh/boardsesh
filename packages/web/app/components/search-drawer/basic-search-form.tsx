@@ -1,7 +1,7 @@
 'use client';
 
-import React from 'react';
-import { InputNumber, Row, Col, Select, Switch, Alert, Typography, Tooltip, Divider, Space } from 'antd';
+import React, { useState } from 'react';
+import { InputNumber, Row, Col, Select, Switch, Alert, Typography, Tooltip, Divider, Space, Button } from 'antd';
 import {
   SearchOutlined,
   SortAscendingOutlined,
@@ -14,6 +14,7 @@ import {
   CheckCircleOutlined,
   ClockCircleOutlined,
   ArrowUpOutlined,
+  LoginOutlined,
 } from '@ant-design/icons';
 import { TENSION_KILTER_GRADES } from '@/app/lib/board-data';
 import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
@@ -21,6 +22,7 @@ import { useBoardProvider } from '@/app/components/board-provider/board-provider
 import SearchClimbNameInput from './search-climb-name-input';
 import SetterNameSelect from './setter-name-select';
 import { BoardDetails } from '@/app/lib/types';
+import AuthModal from '@/app/components/auth/auth-modal';
 import styles from './search-form.module.css';
 
 const { Text } = Typography;
@@ -34,10 +36,11 @@ interface BasicSearchFormProps {
 
 const BasicSearchForm: React.FC<BasicSearchFormProps> = ({ boardDetails }) => {
   const { uiSearchParams, updateFilters } = useUISearchParams();
-  const { token, user_id } = useBoardProvider();
+  const { isAuthenticated, hasAuroraCredentials } = useBoardProvider();
   const grades = TENSION_KILTER_GRADES;
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
-  const isLoggedIn = token && user_id;
+  const canFilterByProgress = isAuthenticated && hasAuroraCredentials;
 
   // Check if we should show the tall climbs filter
   // Only show for Kilter Homewall on the largest size (10x12)
@@ -54,11 +57,33 @@ const BasicSearchForm: React.FC<BasicSearchFormProps> = ({ boardDetails }) => {
   };
 
   const renderLogbookSection = () => {
-    if (!isLoggedIn) {
+    if (!isAuthenticated) {
       return (
         <Alert
           message="Sign in to filter by progress"
           description="Login to filter climbs based on your attempt and completion history."
+          type="info"
+          showIcon
+          className={styles.progressAlert}
+          action={
+            <Button
+              size="small"
+              type="primary"
+              icon={<LoginOutlined />}
+              onClick={() => setShowAuthModal(true)}
+            >
+              Sign In
+            </Button>
+          }
+        />
+      );
+    }
+
+    if (!hasAuroraCredentials) {
+      return (
+        <Alert
+          message="Link your board account"
+          description={`Link your ${boardDetails.board_name.charAt(0).toUpperCase() + boardDetails.board_name.slice(1)} account in Settings to filter by progress.`}
           type="info"
           showIcon
           className={styles.progressAlert}
@@ -313,6 +338,13 @@ const BasicSearchForm: React.FC<BasicSearchFormProps> = ({ boardDetails }) => {
         </Text>
         {renderLogbookSection()}
       </div>
+
+      <AuthModal
+        open={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        title="Sign in to Boardsesh"
+        description="Create an account to filter by your climbing progress and save favorites."
+      />
     </div>
   );
 };

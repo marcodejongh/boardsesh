@@ -1,48 +1,11 @@
 'use client';
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { BoardName, ClimbUuid } from '@/app/lib/types';
-import { IDBPDatabase, openDB } from 'idb';
 import { AscentSavedEvent, LogbookEntry, SaveAscentResponse, SaveClimbOptions } from '@/app/lib/api-wrappers/aurora/types';
 import { SaveAscentOptions } from '@/app/lib/api-wrappers/aurora/types';
 import { generateUuid } from '@/app/lib/api-wrappers/aurora/util';
-import { supported_boards } from '../board-renderer/types';
 import { message } from 'antd';
-
-const DB_NAME = 'boardsesh_v2';
-const DB_VERSION = 5;
-
-const initDB = async () => {
-  const db = await openDB(DB_NAME, DB_VERSION, {
-    upgrade(db) {
-      // Simply create any missing stores
-      supported_boards.forEach((boardName) => {
-        if (!db.objectStoreNames.contains(boardName)) {
-          db.createObjectStore(boardName);
-        }
-      });
-    },
-  });
-  return db;
-};
-
-const loadAuthState = async (db: IDBPDatabase, board_name: BoardName): Promise<AuthState | null> => {
-  try {
-    const authState = await db.get(board_name, 'auth');
-    return authState || null;
-  } catch (error) {
-    console.error('Failed to load auth state:', error);
-    return null;
-  }
-};
-
-const saveAuthState = async (db: IDBPDatabase, board_name: BoardName, value: AuthState): Promise<void> => {
-  try {
-    await db.put(board_name, value, 'auth');
-  } catch (error) {
-    console.error('Failed to save auth state:', error);
-    throw error;
-  }
-};
+import { useSession } from 'next-auth/react';
 
 interface AuthState {
   token: string | null;
@@ -58,11 +21,10 @@ export interface SaveClimbResponse {
 interface BoardContextType {
   boardName: BoardName;
   isAuthenticated: boolean;
+  hasAuroraCredentials: boolean;
   token: string | null;
   user_id: number | null;
   username: string | null;
-  login: (board: BoardName, username: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
   isLoading: boolean;
   error: string | null;
   isInitialized: boolean;
@@ -75,131 +37,82 @@ interface BoardContextType {
 const BoardContext = createContext<BoardContextType | undefined>(undefined);
 
 export function BoardProvider({ boardName, children }: { boardName: BoardName; children: React.ReactNode }) {
+  const { data: session, status: sessionStatus } = useSession();
   const [authState, setAuthState] = useState<AuthState>({
     token: null,
     user_id: null,
     username: null,
     board: null,
   });
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
-  const [db, setDb] = useState<IDBPDatabase | null>(null);
   const [logbook, setLogbook] = useState<LogbookEntry[]>([]);
   const [currentClimbUuids, setCurrentClimbUuids] = useState<ClimbUuid[]>([]);
 
-  // Load saved auth state on mount
+  // Fetch Aurora credentials when session changes
   useEffect(() => {
     let mounted = true;
 
-    const initializeAuth = async () => {
+    const fetchAuroraCredentials = async () => {
+      // Only fetch if user is authenticated with NextAuth
+      if (sessionStatus === 'loading') {
+        return;
+      }
+
+      if (sessionStatus !== 'authenticated' || !session?.user?.id) {
+        setAuthState({
+          token: null,
+          user_id: null,
+          username: null,
+          board: null,
+        });
+        setIsLoading(false);
+        setIsInitialized(true);
+        return;
+      }
+
       try {
-        const database = await initDB();
+        setIsLoading(true);
+        const response = await fetch(`/api/internal/aurora-credentials/${boardName}`);
+
         if (!mounted) return;
 
-        setDb(database);
-
-        const savedState = await loadAuthState(database, boardName);
-        if (!mounted) return;
-
-        if (savedState) {
-          setAuthState(savedState);
+        if (response.ok) {
+          const data = await response.json();
+          setAuthState({
+            token: data.token,
+            user_id: data.user_id,
+            username: data.username,
+            board: boardName,
+          });
+        } else {
+          setAuthState({
+            token: null,
+            user_id: null,
+            username: null,
+            board: null,
+          });
         }
-      } catch (error) {
-        console.error('Failed to initialize auth:', error);
+      } catch (err) {
+        console.error('Failed to fetch Aurora credentials:', err);
         if (mounted) {
-          setError('Failed to initialize authentication system');
+          setError('Failed to load Aurora credentials');
         }
       } finally {
         if (mounted) {
+          setIsLoading(false);
           setIsInitialized(true);
         }
       }
     };
 
-    initializeAuth();
+    fetchAuroraCredentials();
 
     return () => {
       mounted = false;
     };
-  }, [boardName]);
-
-  useEffect(() => {
-    const syncUserData = async () => {
-      if (!authState.token || !authState.user_id || !boardName) {
-        return;
-      }
-
-      try {
-        // await fetch(`/api/v1/${boardName}/proxy/user-sync`, {
-        //   method: 'POST',
-        //   headers: {
-        //     'Content-Type': 'application/json',
-        //   },
-        //   body: JSON.stringify({
-        //     board_name: boardName,
-        //   }),
-        // });
-      } catch (error) {
-        console.error('Failed to sync user data:', error);
-        // Don't surface this error to the user since it's a background sync
-      }
-    };
-
-    if (authState.token && boardName && authState.user_id) {
-      syncUserData();
-    }
-  }, [authState.token, authState.user_id, boardName]);
-
-  const login = async (board: BoardName, username: string, password: string) => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch(`/api/v1/${board}/proxy/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ username, password }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Login failed');
-      }
-
-      const newAuthState = {
-        token: data.token,
-        user_id: data.user_id,
-        username: username,
-        board,
-      };
-
-      // Update state
-      setAuthState(newAuthState);
-
-      // Persist to IndexedDB - use the board parameter from login, not from context
-      if (db) {
-        try {
-          await saveAuthState(db, board, newAuthState);
-        } catch (error) {
-          console.error('Failed to persist auth state:', error);
-          message.warning('Login successful but failed to save session');
-        }
-      } else {
-        console.error('Database not initialized');
-        message.warning('Login successful but session may not persist');
-      }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'An error occurred during login';
-      setError(errorMessage);
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  }, [boardName, session?.user?.id, sessionStatus]);
 
   const getLogbook = useCallback(async (climbUuids: ClimbUuid[]) => {
     try {
@@ -347,21 +260,12 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
     }
   };
 
-  const logout = async () => {
-    setAuthState({
-      token: null,
-      user_id: null,
-      username: null,
-      board: null,
-    });
-  };
   const value = {
-    isAuthenticated: !!authState.token,
+    isAuthenticated: sessionStatus === 'authenticated',
+    hasAuroraCredentials: !!authState.token && !!authState.user_id,
     token: authState.token,
     user_id: authState.user_id,
     username: authState.username,
-    login,
-    logout,
     isLoading,
     error,
     isInitialized,

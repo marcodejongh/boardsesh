@@ -1214,3 +1214,33 @@ export const userFavorites = pgTable(
     ),
   })
 );
+
+// Aurora credentials for Kilter/Tension board accounts (encrypted)
+export const auroraCredentials = pgTable(
+  "aurora_credentials",
+  {
+    id: bigserial({ mode: 'bigint' }).primaryKey().notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    boardType: text("board_type").notNull(), // 'kilter', 'tension'
+    encryptedUsername: text("encrypted_username").notNull(),
+    encryptedPassword: text("encrypted_password").notNull(),
+    auroraUserId: integer("aurora_user_id"), // Aurora board user ID after successful login
+    auroraToken: text("aurora_token"), // Session token (encrypted)
+    lastSyncAt: timestamp("last_sync_at"), // Last successful sync
+    syncStatus: text("sync_status").default("pending").notNull(), // 'pending', 'active', 'error', 'expired'
+    syncError: text("sync_error"), // Error message if sync failed
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    // Ensure unique credential per board type for each user
+    uniqueUserBoardCredential: uniqueIndex("unique_user_board_credential").on(
+      table.userId,
+      table.boardType
+    ),
+    // Index for efficient lookup by user
+    userCredentialsIdx: index("aurora_credentials_user_idx").on(table.userId),
+  })
+);
