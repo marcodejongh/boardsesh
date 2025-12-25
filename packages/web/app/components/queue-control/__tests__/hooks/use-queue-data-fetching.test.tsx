@@ -120,11 +120,10 @@ describe('useQueueDataFetching', () => {
 
     mockUseBoardProvider.mockReturnValue({
       isAuthenticated: true,
+      hasAuroraCredentials: true,
       token: 'mock-token',
       user_id: 123,
       username: 'testuser',
-      login: vi.fn(),
-      logout: vi.fn(),
       isLoading: false,
       error: null,
       isInitialized: true,

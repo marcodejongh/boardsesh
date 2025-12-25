@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Form, Input, Switch, Button, Typography, Tag, Modal, Alert } from 'antd';
-import { ExperimentOutlined } from '@ant-design/icons';
+import { Form, Input, Switch, Button, Typography, Tag, Alert } from 'antd';
+import { ExperimentOutlined, SettingOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import { track } from '@vercel/analytics';
 import BoardRenderer from '../board-renderer/board-renderer';
@@ -12,6 +12,7 @@ import { useBoardBluetooth } from '../board-bluetooth-control/use-board-bluetoot
 import { BoardDetails } from '@/app/lib/types';
 import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { convertLitUpHoldsStringToMap } from '../board-renderer/util';
+import AuthModal from '../auth/auth-modal';
 import styles from './create-climb-form.module.css';
 
 const { TextArea } = Input;
@@ -32,7 +33,7 @@ interface CreateClimbFormProps {
 
 export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkName }: CreateClimbFormProps) {
   const router = useRouter();
-  const { isAuthenticated, saveClimb, login } = useBoardProvider();
+  const { isAuthenticated, hasAuroraCredentials, saveClimb } = useBoardProvider();
 
   // Convert fork frames to initial holds map if provided
   const initialHoldsMap = useMemo(() => {
@@ -56,10 +57,8 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
   const { isConnected, sendFramesToBoard } = useBoardBluetooth({ boardDetails });
 
   const [form] = Form.useForm<CreateClimbFormValues>();
-  const [loginForm] = Form.useForm<{ username: string; password: string }>();
   const [isSaving, setIsSaving] = useState(false);
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [pendingFormValues, setPendingFormValues] = useState<CreateClimbFormValues | null>(null);
 
   // Send frames to board whenever litUpHoldsMap changes and we're connected
@@ -137,39 +136,32 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
     }
 
     if (!isAuthenticated) {
-      // Store the form values and show login modal
+      // Store the form values and show auth modal
       setPendingFormValues(values);
-      setIsLoginModalOpen(true);
+      setShowAuthModal(true);
+      return;
+    }
+
+    if (!hasAuroraCredentials) {
+      // User is logged in but hasn't linked their Aurora account
+      // This shouldn't happen due to the UI, but handle it gracefully
       return;
     }
 
     await doSaveClimb(values);
   };
 
-  const handleLogin = async (loginValues: { username: string; password: string }) => {
-    setIsLoggingIn(true);
-    try {
-      await login(boardDetails.board_name, loginValues.username, loginValues.password);
-      track('User Login Success', {
-        boardLayout: boardDetails.layout_name || '',
-        context: 'create_climb',
-      });
-      setIsLoginModalOpen(false);
-      loginForm.resetFields();
-
-      // If we have pending form values, save the climb now
-      if (pendingFormValues) {
-        await doSaveClimb(pendingFormValues);
+  const handleAuthSuccess = async () => {
+    // After successful auth, check if they have Aurora credentials linked
+    // If not, they'll see the message in the form
+    // If yes and we have pending form values, we need to wait for the credentials to load
+    if (pendingFormValues) {
+      // Give time for the board provider to refresh credentials
+      setTimeout(async () => {
+        // The component will re-render with new auth state
+        // User needs to click save again after linking their account
         setPendingFormValues(null);
-      }
-    } catch (error) {
-      console.error('Login failed:', error);
-      track('User Login Failed', {
-        boardLayout: boardDetails.layout_name || '',
-        context: 'create_climb',
-      });
-    } finally {
-      setIsLoggingIn(false);
+      }, 1000);
     }
   };
 
@@ -185,11 +177,8 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
     router.push(listUrl);
   };
 
-  const handleLoginModalCancel = () => {
-    setIsLoginModalOpen(false);
-    setPendingFormValues(null);
-    loginForm.resetFields();
-  };
+  const boardNameCapitalized = boardDetails.board_name.charAt(0).toUpperCase() + boardDetails.board_name.slice(1);
+  const canSave = isAuthenticated && hasAuroraCredentials && isValid;
 
   return (
     <div className={styles.pageContainer}>
@@ -227,6 +216,36 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
 
         {/* Form Section */}
         <div className={styles.formSection}>
+          {!isAuthenticated && (
+            <Alert
+              message="Sign in required"
+              description="Sign in to your Boardsesh account to save your climb."
+              type="warning"
+              showIcon
+              className={styles.authAlert}
+              action={
+                <Button size="small" type="primary" onClick={() => setShowAuthModal(true)}>
+                  Sign In
+                </Button>
+              }
+            />
+          )}
+
+          {isAuthenticated && !hasAuroraCredentials && (
+            <Alert
+              message={`Link your ${boardNameCapitalized} account`}
+              description={`Link your ${boardNameCapitalized} Board account in Settings to save climbs.`}
+              type="warning"
+              showIcon
+              className={styles.authAlert}
+              action={
+                <Button size="small" icon={<SettingOutlined />} onClick={() => router.push('/settings')}>
+                  Settings
+                </Button>
+              }
+            />
+          )}
+
           <Form
             form={form}
             layout="vertical"
@@ -259,7 +278,7 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
                 type="primary"
                 htmlType="submit"
                 loading={isSaving}
-                disabled={!isValid || isSaving}
+                disabled={!canSave || isSaving}
                 block
                 size="large"
               >
@@ -274,40 +293,13 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
         </div>
       </div>
 
-      {/* Aurora Login Modal */}
-      <Modal
-        title="Aurora Login Required"
-        open={isLoginModalOpen}
-        onCancel={handleLoginModalCancel}
-        footer={null}
-        destroyOnClose
-      >
-        <Text type="secondary" className={styles.modalDescription}>
-          Please log in with your {boardDetails.board_name.charAt(0).toUpperCase() + boardDetails.board_name.slice(1)}{' '}
-          Board account to save your climb.
-        </Text>
-        <Form form={loginForm} layout="vertical" onFinish={handleLogin}>
-          <Form.Item
-            name="username"
-            label="Username"
-            rules={[{ required: true, message: 'Please enter your username' }]}
-          >
-            <Input placeholder="Enter username" />
-          </Form.Item>
-
-          <Form.Item
-            name="password"
-            label="Password"
-            rules={[{ required: true, message: 'Please enter your password' }]}
-          >
-            <Input.Password placeholder="Enter password" />
-          </Form.Item>
-
-          <Button type="primary" htmlType="submit" loading={isLoggingIn} block>
-            {isLoggingIn ? 'Logging in...' : 'Login & Save Climb'}
-          </Button>
-        </Form>
-      </Modal>
+      <AuthModal
+        open={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={handleAuthSuccess}
+        title="Sign in to save your climb"
+        description="Create an account or sign in to save your climb to the board."
+      />
     </div>
   );
 }

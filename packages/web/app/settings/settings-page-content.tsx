@@ -20,6 +20,7 @@ import type { UploadFile, UploadProps } from 'antd/es/upload/interface';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Logo from '@/app/components/brand/logo';
+import AuroraCredentialsSection from '@/app/components/settings/aurora-credentials-section';
 
 const { Content, Header } = Layout;
 const { Title, Text } = Typography;
@@ -291,6 +292,10 @@ export default function SettingsPageContent() {
             </Form.Item>
           </Form>
         </Card>
+
+        <Divider />
+
+        <AuroraCredentialsSection />
       </Content>
     </Layout>
   );

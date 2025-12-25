@@ -10,7 +10,6 @@ import SendClimbToBoardButton from '../board-bluetooth-control/send-climb-to-boa
 import { BoardDetails } from '@/app/lib/types';
 import { generateLayoutSlug, generateSizeSlug, generateSetSlug } from '@/app/lib/url-utils';
 import { ShareBoardButton } from './share-button';
-import { useBoardProvider } from '../board-provider/board-provider-context';
 import { useQueueContext } from '../graphql-queue';
 import { UserOutlined, LogoutOutlined, LoginOutlined, PlusOutlined, MoreOutlined, SettingOutlined } from '@ant-design/icons';
 import AngleSelector from './angle-selector';
@@ -24,12 +23,10 @@ type BoardSeshHeaderProps = {
 };
 export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeaderProps) {
   const { data: session } = useSession();
-  const { logout } = useBoardProvider();
   const { currentClimb } = useQueueContext();
 
   const handleSignOut = () => {
     signOut();
-    logout(); // Also logout from board provider
   };
 
   const userMenuItems: MenuProps['items'] = [
