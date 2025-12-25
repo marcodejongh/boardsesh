@@ -9,7 +9,7 @@ const saveAscentSchema = z.object({
   options: z
     .object({
       uuid: z.string(),
-      user_id: z.number(), // Changed from z.string() to z.number()
+      user_id: z.number(),
       climb_uuid: z.string(),
       angle: z.number(),
       is_mirror: z.boolean(),
@@ -28,41 +28,26 @@ export async function POST(request: Request, props: { params: Promise<BoardOnlyR
   const params = await props.params;
   const board_name = params.board_name as BoardName;
 
-  let validatedData: z.infer<typeof saveAscentSchema> | null = null;
-
   try {
     const body = await request.json();
-    validatedData = saveAscentSchema.parse(body);
+    const validatedData = saveAscentSchema.parse(body);
 
+    // saveAscent now handles Aurora failures gracefully and always saves locally
+    // It will never throw for Aurora API failures - only for validation/db errors
     const response = await saveAscent(board_name, validatedData.token, validatedData.options);
     return NextResponse.json(response);
   } catch (error) {
-    // Add detailed error logging
     console.error('SaveAscent error details:', {
       error: error instanceof Error ? error.message : error,
       stack: error instanceof Error ? error.stack : undefined,
       board_name,
-      options: validatedData?.options,
     });
 
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: 'Invalid request data', details: error.issues }, { status: 400 });
     }
 
-    if (error instanceof Error) {
-      if (error.message.includes('401')) {
-        return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
-      }
-
-      if (error.message.includes('403')) {
-        return NextResponse.json({ error: 'Access forbidden' }, { status: 403 });
-      }
-
-      if (error.message.startsWith('HTTP error!')) {
-        return NextResponse.json({ error: 'Service unavailable' }, { status: 503 });
-      }
-    }
-
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    // Only database errors should reach here now
+    return NextResponse.json({ error: 'Failed to save ascent' }, { status: 500 });
   }
 }

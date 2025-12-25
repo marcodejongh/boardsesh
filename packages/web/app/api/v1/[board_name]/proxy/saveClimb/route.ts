@@ -25,12 +25,12 @@ export async function POST(request: Request, props: { params: Promise<{ board_na
   const params = await props.params;
   const board_name = params.board_name as BoardName;
 
-  let validatedData: z.infer<typeof saveClimbSchema> | null = null;
-
   try {
     const body = await request.json();
-    validatedData = saveClimbSchema.parse(body);
+    const validatedData = saveClimbSchema.parse(body);
 
+    // saveClimb now handles Aurora failures gracefully and always saves locally
+    // It will never throw for Aurora API failures - only for validation/db errors
     const response = await saveClimb(board_name, validatedData.token, validatedData.options);
     return NextResponse.json(response);
   } catch (error) {
@@ -38,27 +38,13 @@ export async function POST(request: Request, props: { params: Promise<{ board_na
       error: error instanceof Error ? error.message : error,
       stack: error instanceof Error ? error.stack : undefined,
       board_name,
-      options: validatedData?.options,
     });
 
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: 'Invalid request data', details: error.issues }, { status: 400 });
     }
 
-    if (error instanceof Error) {
-      if (error.message.includes('401')) {
-        return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
-      }
-
-      if (error.message.includes('403')) {
-        return NextResponse.json({ error: 'Access forbidden' }, { status: 403 });
-      }
-
-      if (error.message.startsWith('HTTP error!')) {
-        return NextResponse.json({ error: 'Service unavailable' }, { status: 503 });
-      }
-    }
-
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    // Only database errors should reach here now
+    return NextResponse.json({ error: 'Failed to save climb' }, { status: 500 });
   }
 }

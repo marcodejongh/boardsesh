@@ -184,6 +184,8 @@ export const kilterBids = pgTable(
     comment: text().default(''),
     climbedAt: text('climbed_at'),
     createdAt: text('created_at'),
+    synced: boolean('synced').default(true).notNull(),
+    syncError: text('sync_error'),
   },
   (table) => [
     foreignKey({
@@ -294,6 +296,8 @@ export const kilterClimbs = pgTable(
     isDraft: boolean('is_draft').default(false),
     isListed: boolean('is_listed'),
     createdAt: text('created_at'),
+    synced: boolean('synced').default(true).notNull(),
+    syncError: text('sync_error'),
   },
   (table) => ({
     // Indexes
@@ -464,6 +468,8 @@ export const tensionBids = pgTable(
     comment: text().default(''),
     climbedAt: text('climbed_at'),
     createdAt: text('created_at'),
+    synced: boolean('synced').default(true).notNull(),
+    syncError: text('sync_error'),
   },
   (table) => [
     foreignKey({
@@ -544,6 +550,8 @@ export const tensionClimbs = pgTable(
     isDraft: boolean('is_draft').default(false),
     isListed: boolean('is_listed'),
     createdAt: text('created_at'),
+    synced: boolean('synced').default(true).notNull(),
+    syncError: text('sync_error'),
   },
   (table) => ({
     // Indexes
@@ -811,6 +819,8 @@ export const kilterAscents = pgTable(
     comment: text().default(''),
     climbedAt: text('climbed_at'),
     createdAt: text('created_at'),
+    synced: boolean('synced').default(true).notNull(),
+    syncError: text('sync_error'),
   },
   (table) => [
     foreignKey({
@@ -914,6 +924,8 @@ export const tensionAscents = pgTable(
     comment: text().default(''),
     climbedAt: text('climbed_at'),
     createdAt: text('created_at'),
+    synced: boolean('synced').default(true).notNull(),
+    syncError: text('sync_error'),
   },
   (table) => [
     foreignKey({

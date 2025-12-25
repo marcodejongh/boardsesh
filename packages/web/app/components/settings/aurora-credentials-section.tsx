@@ -13,6 +13,7 @@ import {
   Spin,
   Tag,
   Popconfirm,
+  Alert,
 } from 'antd';
 import {
   CheckCircleOutlined,
@@ -21,15 +22,23 @@ import {
   DeleteOutlined,
   PlusOutlined,
   SyncOutlined,
+  WarningOutlined,
 } from '@ant-design/icons';
 import type { AuroraCredentialStatus } from '@/app/api/internal/aurora-credentials/route';
+import type { UnsyncedCounts } from '@/app/api/internal/aurora-credentials/unsynced/route';
 import styles from './aurora-credentials-section.module.css';
 
 const { Text, Title } = Typography;
 
+interface BoardUnsyncedCounts {
+  ascents: number;
+  climbs: number;
+}
+
 interface BoardCredentialCardProps {
   boardType: 'kilter' | 'tension';
   credential: AuroraCredentialStatus | null;
+  unsyncedCounts: BoardUnsyncedCounts;
   onAdd: () => void;
   onRemove: () => void;
   isRemoving: boolean;
@@ -38,11 +47,13 @@ interface BoardCredentialCardProps {
 function BoardCredentialCard({
   boardType,
   credential,
+  unsyncedCounts,
   onAdd,
   onRemove,
   isRemoving,
 }: BoardCredentialCardProps) {
   const boardName = boardType.charAt(0).toUpperCase() + boardType.slice(1);
+  const totalUnsynced = unsyncedCounts.ascents + unsyncedCounts.climbs;
 
   const getSyncStatusTag = () => {
     if (!credential) return null;
@@ -121,6 +132,22 @@ function BoardCredentialCard({
             <Text type="danger">{credential.syncError}</Text>
           </div>
         )}
+        {totalUnsynced > 0 && (
+          <Alert
+            type="warning"
+            icon={<WarningOutlined />}
+            showIcon
+            message={`${totalUnsynced} item${totalUnsynced > 1 ? 's' : ''} pending sync`}
+            description={
+              <Text type="secondary">
+                {unsyncedCounts.ascents > 0 && `${unsyncedCounts.ascents} ascent${unsyncedCounts.ascents > 1 ? 's' : ''}`}
+                {unsyncedCounts.ascents > 0 && unsyncedCounts.climbs > 0 && ', '}
+                {unsyncedCounts.climbs > 0 && `${unsyncedCounts.climbs} climb${unsyncedCounts.climbs > 1 ? 's' : ''}`}
+              </Text>
+            }
+            className={styles.unsyncedAlert}
+          />
+        )}
       </div>
       <Popconfirm
         title="Remove account link"
@@ -140,6 +167,7 @@ function BoardCredentialCard({
 
 export default function AuroraCredentialsSection() {
   const [credentials, setCredentials] = useState<AuroraCredentialStatus[]>([]);
+  const [unsyncedCounts, setUnsyncedCounts] = useState<UnsyncedCounts | null>(null);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedBoard, setSelectedBoard] = useState<'kilter' | 'tension'>('kilter');
@@ -161,8 +189,21 @@ export default function AuroraCredentialsSection() {
     }
   };
 
+  const fetchUnsyncedCounts = async () => {
+    try {
+      const response = await fetch('/api/internal/aurora-credentials/unsynced');
+      if (response.ok) {
+        const data = await response.json();
+        setUnsyncedCounts(data.counts);
+      }
+    } catch (error) {
+      console.error('Failed to fetch unsynced counts:', error);
+    }
+  };
+
   useEffect(() => {
     fetchCredentials();
+    fetchUnsyncedCounts();
   }, []);
 
   const handleAddClick = (boardType: 'kilter' | 'tension') => {
@@ -255,6 +296,7 @@ export default function AuroraCredentialsSection() {
           <BoardCredentialCard
             boardType="kilter"
             credential={getCredentialForBoard('kilter')}
+            unsyncedCounts={unsyncedCounts?.kilter ?? { ascents: 0, climbs: 0 }}
             onAdd={() => handleAddClick('kilter')}
             onRemove={() => handleRemove('kilter')}
             isRemoving={removingBoard === 'kilter'}
@@ -262,6 +304,7 @@ export default function AuroraCredentialsSection() {
           <BoardCredentialCard
             boardType="tension"
             credential={getCredentialForBoard('tension')}
+            unsyncedCounts={unsyncedCounts?.tension ?? { ascents: 0, climbs: 0 }}
             onAdd={() => handleAddClick('tension')}
             onRemove={() => handleRemove('tension')}
             isRemoving={removingBoard === 'tension'}
