@@ -5,7 +5,6 @@ import { Layout, Card, Form, Input, Button, Tabs, Typography, Divider, message, 
 import { UserOutlined, LockOutlined, MailOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { signIn, useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
 import Logo from '@/app/components/brand/logo';
 
 const { Content, Header } = Layout;
@@ -233,9 +232,7 @@ export default function AuthPageContent() {
           boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
         }}
       >
-        <Link href="/">
-          <Button icon={<ArrowLeftOutlined />} type="text" />
-        </Link>
+        <Button icon={<ArrowLeftOutlined />} type="text" onClick={() => router.back()} />
         <Logo size="sm" showText={false} />
         <Title level={4} style={{ margin: 0, flex: 1 }}>
           Welcome

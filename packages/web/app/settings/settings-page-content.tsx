@@ -19,7 +19,6 @@ import { UserOutlined, UploadOutlined, LoadingOutlined, ArrowLeftOutlined } from
 import type { UploadFile, UploadProps } from 'antd/es/upload/interface';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import Logo from '@/app/components/brand/logo';
 
 const { Content, Header } = Layout;
@@ -232,9 +231,7 @@ export default function SettingsPageContent() {
           boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
         }}
       >
-        <Link href="/">
-          <Button icon={<ArrowLeftOutlined />} type="text" />
-        </Link>
+        <Button icon={<ArrowLeftOutlined />} type="text" onClick={() => router.back()} />
         <Logo size="sm" showText={false} />
         <Title level={4} style={{ margin: 0, flex: 1 }}>
           Settings

@@ -59,11 +59,22 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
       icon: <PlusOutlined />,
       label: <Link href={createClimbUrl}>Create Climb</Link>,
     }] : []),
-    ...(session?.user ? [{
-      key: 'settings',
-      icon: <SettingOutlined />,
-      label: <Link href="/settings">Settings</Link>,
-    }] : []),
+    ...(session?.user ? [
+      {
+        key: 'settings',
+        icon: <SettingOutlined />,
+        label: <Link href="/settings">Settings</Link>,
+      },
+      {
+        type: 'divider' as const,
+      },
+      {
+        key: 'logout',
+        icon: <LogoutOutlined />,
+        label: 'Logout',
+        onClick: handleSignOut,
+      },
+    ] : []),
     ...(!session?.user ? [{
       key: 'login',
       icon: <LoginOutlined />,
@@ -115,15 +126,15 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
             <ShareBoardButton />
             <SendClimbToBoardButton boardDetails={boardDetails} />
 
-            {/* User menu or login button */}
-            {session?.user ? (
-              <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-                <Button icon={<UserOutlined />} type="text">
-                  {session.user.name || session.user.email}
-                </Button>
-              </Dropdown>
-            ) : (
-              <div className={styles.desktopOnly}>
+            {/* Desktop: User menu or login button */}
+            <div className={styles.desktopOnly}>
+              {session?.user ? (
+                <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
+                  <Button icon={<UserOutlined />} type="text">
+                    {session.user.name || session.user.email}
+                  </Button>
+                </Dropdown>
+              ) : (
                 <Button
                   icon={<LoginOutlined />}
                   type="text"
@@ -131,8 +142,8 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
                 >
                   Login
                 </Button>
-              </div>
-            )}
+              )}
+            </div>
 
             {/* Mobile: meatball menu for Create Climb and Login */}
             {mobileMenuItems.length > 0 && (
