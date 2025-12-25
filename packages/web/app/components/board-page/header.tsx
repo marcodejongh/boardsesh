@@ -73,7 +73,7 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
         <Flex justify="space-between" align="center" style={{ width: '100%' }} gap={8}>
           {/* Logo - Fixed to left */}
           <Flex align="center">
-            <Logo size="sm" showText={false} />
+            <Logo size="sm" showText={true} hideTextOnMobile={true} />
           </Flex>
 
           {/* Center Section - Mobile only */}

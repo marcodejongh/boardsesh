@@ -3,10 +3,12 @@
 import React from 'react';
 import Link from 'next/link';
 import { themeTokens } from '@/app/theme/theme-config';
+import styles from './logo.module.css';
 
 type LogoProps = {
   size?: 'sm' | 'md' | 'lg';
   showText?: boolean;
+  hideTextOnMobile?: boolean;
   linkToHome?: boolean;
 };
 
@@ -16,18 +18,13 @@ const sizes = {
   lg: { icon: 36, fontSize: 20, gap: 10 },
 };
 
-export const Logo = ({ size = 'md', showText = true, linkToHome = true }: LogoProps) => {
+export const Logo = ({ size = 'md', showText = true, hideTextOnMobile = false, linkToHome = true }: LogoProps) => {
   const { icon, fontSize, gap } = sizes[size];
 
   const logoContent = (
     <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap,
-        textDecoration: 'none',
-        color: 'inherit',
-      }}
+      className={styles.logoContainer}
+      style={{ gap }}
     >
       <svg
         width={icon}
@@ -56,12 +53,11 @@ export const Logo = ({ size = 'md', showText = true, linkToHome = true }: LogoPr
       </svg>
       {showText && (
         <span
+          className={`${styles.logoText} ${hideTextOnMobile ? styles.hideTextOnMobile : ''}`}
           style={{
             fontSize,
             fontWeight: themeTokens.typography.fontWeight.bold,
             color: themeTokens.neutral[800],
-            letterSpacing: '-0.02em',
-            lineHeight: 1,
           }}
         >
           Boardsesh

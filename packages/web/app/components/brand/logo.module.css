@@ -1,0 +1,21 @@
+.logoContainer {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  color: inherit;
+}
+
+.logoText {
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.hideTextOnMobile {
+  display: inline;
+}
+
+@media (max-width: 768px) {
+  .hideTextOnMobile {
+    display: none;
+  }
+}
