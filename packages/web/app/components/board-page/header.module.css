@@ -10,6 +10,14 @@
   display: none;
 }
 
+.hideOnMobileExpanded {
+  display: flex;
+}
+
+.showOnMobileExpanded {
+  display: none;
+}
+
 .header {
   touch-action: manipulation;
 }
@@ -30,6 +38,14 @@
   }
 
   .mobileMenuButton {
+    display: flex;
+  }
+
+  .hideOnMobileExpanded {
+    display: none;
+  }
+
+  .showOnMobileExpanded {
     display: flex;
   }
 }
