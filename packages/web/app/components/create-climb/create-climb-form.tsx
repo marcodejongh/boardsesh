@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Form, Input, Switch, Button, Typography, Flex, Space, Tag, Modal, Alert } from 'antd';
+import { Form, Input, Switch, Button, Typography, Tag, Modal, Alert } from 'antd';
 import { BulbOutlined, BulbFilled, ExperimentOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import { track } from '@vercel/analytics';
@@ -13,6 +13,7 @@ import { BoardDetails } from '@/app/lib/types';
 import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { convertLitUpHoldsStringToMap } from '../board-renderer/util';
 import '../board-bluetooth-control/send-climb-to-board-button.css';
+import styles from './create-climb-form.module.css';
 
 const { TextArea } = Input;
 const { Title, Text } = Typography;
@@ -198,35 +199,38 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
   };
 
   return (
-    <div style={{ padding: '16px' }}>
+    <div className={styles.pageContainer}>
       <Alert
         message="Beta Feature"
         type="info"
         showIcon
         icon={<ExperimentOutlined />}
-        style={{ marginBottom: '16px' }}
+        className={styles.betaBanner}
         banner
       />
 
-      <Flex justify="space-between" align="center" style={{ marginBottom: '16px' }}>
-        <Title level={4} style={{ margin: 0 }}>
-          {forkName ? 'Fork Climb' : 'Create New Climb'}
-        </Title>
-        <Button
-          type="default"
-          icon={isConnected ? <BulbFilled className="connect-button-glow" /> : <BulbOutlined />}
-          onClick={handleBluetoothConnect}
-          loading={bluetoothLoading}
-          title={isConnected ? 'Connected to board' : 'Connect to board for live preview'}
-        >
-          {isConnected ? 'Connected' : 'Connect Board'}
-        </Button>
-      </Flex>
+      {/* Header Section */}
+      <div className={styles.headerSection}>
+        <div className={styles.headerContent}>
+          <Title level={4} className={styles.headerTitle}>
+            {forkName ? 'Fork Climb' : 'Create New Climb'}
+          </Title>
+          <Button
+            type="default"
+            icon={isConnected ? <BulbFilled className="connect-button-glow" /> : <BulbOutlined />}
+            onClick={handleBluetoothConnect}
+            loading={bluetoothLoading}
+            title={isConnected ? 'Connected to board' : 'Connect to board for live preview'}
+          >
+            {isConnected ? 'Connected' : 'Connect Board'}
+          </Button>
+        </div>
+      </div>
 
-      <Flex vertical gap={16}>
-        {/* Board with clickable holds */}
-        <div>
-          <Text type="secondary" style={{ display: 'block', marginBottom: '8px' }}>
+      <div className={styles.contentWrapper}>
+        {/* Board Section */}
+        <div className={styles.boardSection}>
+          <Text type="secondary" className={styles.boardInstructions}>
             Tap holds to set their type. Tap again to cycle through types.
             {isConnected && ' Changes are shown live on the board.'}
           </Text>
@@ -236,65 +240,68 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
             mirrored={false}
             onHoldClick={handleHoldClick}
           />
+
+          {/* Hold counts */}
+          <div className={styles.holdCounts}>
+            <Tag color={startingCount > 0 ? 'green' : 'default'}>Starting: {startingCount}/2</Tag>
+            <Tag color={finishCount > 0 ? 'magenta' : 'default'}>Finish: {finishCount}/2</Tag>
+            <Tag color={totalHolds > 0 ? 'blue' : 'default'}>Total holds: {totalHolds}</Tag>
+            {totalHolds > 0 && (
+              <Button size="small" onClick={resetHolds}>
+                Clear All
+              </Button>
+            )}
+          </div>
         </div>
 
-        {/* Hold counts */}
-        <Flex gap={8} wrap="wrap" align="center">
-          <Tag color={startingCount > 0 ? 'green' : 'default'}>Starting: {startingCount}/2</Tag>
-          <Tag color={finishCount > 0 ? 'magenta' : 'default'}>Finish: {finishCount}/2</Tag>
-          <Tag color={totalHolds > 0 ? 'blue' : 'default'}>Total holds: {totalHolds}</Tag>
-          {totalHolds > 0 && (
-            <Button size="small" onClick={resetHolds}>
-              Clear All
-            </Button>
-          )}
-        </Flex>
-
-        {/* Form */}
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={handleSubmit}
-          initialValues={{
-            name: forkName ? `${forkName} fork` : '',
-            description: '',
-            isDraft: false,
-          }}
-        >
-          <Form.Item
-            name="name"
-            label="Climb Name"
-            rules={[{ required: true, message: 'Please enter a name for your climb' }]}
+        {/* Form Section */}
+        <div className={styles.formSection}>
+          <Form
+            form={form}
+            layout="vertical"
+            onFinish={handleSubmit}
+            initialValues={{
+              name: forkName ? `${forkName} fork` : '',
+              description: '',
+              isDraft: false,
+            }}
+            className={styles.formContent}
           >
-            <Input placeholder="Enter climb name" maxLength={100} />
-          </Form.Item>
-
-          <Form.Item name="description" label="Description">
-            <TextArea placeholder="Optional description or beta" rows={3} maxLength={500} />
-          </Form.Item>
-
-          <Form.Item name="isDraft" label="Save as Draft" valuePropName="checked">
-            <Switch />
-          </Form.Item>
-
-          <Space style={{ width: '100%' }} orientation="vertical">
-            <Button
-              type="primary"
-              htmlType="submit"
-              loading={isSaving}
-              disabled={!isValid || isSaving}
-              block
-              size="large"
+            <Form.Item
+              name="name"
+              label="Climb Name"
+              rules={[{ required: true, message: 'Please enter a name for your climb' }]}
             >
-              {isSaving ? 'Saving...' : 'Save Climb'}
-            </Button>
+              <Input placeholder="Enter climb name" maxLength={100} />
+            </Form.Item>
 
-            <Button block size="large" onClick={handleCancel} disabled={isSaving}>
-              Cancel
-            </Button>
-          </Space>
-        </Form>
-      </Flex>
+            <Form.Item name="description" label="Description">
+              <TextArea placeholder="Optional description or beta" rows={3} maxLength={500} />
+            </Form.Item>
+
+            <Form.Item name="isDraft" label="Save as Draft" valuePropName="checked">
+              <Switch />
+            </Form.Item>
+
+            <div className={styles.buttonGroup}>
+              <Button
+                type="primary"
+                htmlType="submit"
+                loading={isSaving}
+                disabled={!isValid || isSaving}
+                block
+                size="large"
+              >
+                {isSaving ? 'Saving...' : 'Save Climb'}
+              </Button>
+
+              <Button block size="large" onClick={handleCancel} disabled={isSaving}>
+                Cancel
+              </Button>
+            </div>
+          </Form>
+        </div>
+      </div>
 
       {/* Aurora Login Modal */}
       <Modal
@@ -304,7 +311,7 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
         footer={null}
         destroyOnClose
       >
-        <Text type="secondary" style={{ display: 'block', marginBottom: '16px' }}>
+        <Text type="secondary" className={styles.modalDescription}>
           Please log in with your {boardDetails.board_name.charAt(0).toUpperCase() + boardDetails.board_name.slice(1)}{' '}
           Board account to save your climb.
         </Text>
