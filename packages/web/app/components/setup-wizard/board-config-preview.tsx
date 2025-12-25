@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Typography, Button, Tooltip, Tag, Space, Skeleton } from 'antd';
 import { DeleteOutlined, StarFilled } from '@ant-design/icons';
-import Link from 'next/link';
 import { fetchBoardDetails } from '../rest-api/api';
 import { BoardDetails, BoardName } from '@/app/lib/types';
 import BoardRenderer from '../board-renderer/board-renderer';
@@ -27,11 +26,12 @@ type StoredBoardConfig = {
 type BoardConfigPreviewProps = {
   config: StoredBoardConfig;
   onDelete: (configName: string) => void;
+  onSelect: (boardDetails: BoardDetails | null, boardUrl: string) => void;
   boardConfigs: BoardConfigData;
   isEditMode?: boolean;
 };
 
-export default function BoardConfigPreview({ config, onDelete, boardConfigs, isEditMode = false }: BoardConfigPreviewProps) {
+export default function BoardConfigPreview({ config, onDelete, onSelect, boardConfigs, isEditMode = false }: BoardConfigPreviewProps) {
   const [boardDetails, setBoardDetails] = useState<BoardDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [layoutName, setLayoutName] = useState<string>('');
@@ -122,6 +122,12 @@ export default function BoardConfigPreview({ config, onDelete, boardConfigs, isE
     onDelete(config.name);
   };
 
+  const handleSelect = () => {
+    if (boardUrl) {
+      onSelect(boardDetails, boardUrl);
+    }
+  };
+
   if (isLoading) {
     return (
       <Card hoverable size="small" style={{ minWidth: 0 }}>
@@ -132,64 +138,62 @@ export default function BoardConfigPreview({ config, onDelete, boardConfigs, isE
 
   if (!boardDetails) {
     return (
-      <Link href={boardUrl} style={{ textDecoration: 'none', minWidth: 0 }}>
-        <Card
-          hoverable
-          size="small"
-          style={{ minWidth: 0 }}
-          extra={isEditMode ? <Button type="text" icon={<DeleteOutlined />} onClick={handleDelete} danger size="small" /> : undefined}
-        >
-          <Space orientation="vertical" size="small" align="center">
-            <Text type="secondary">Preview unavailable</Text>
-            <Text strong>{config.name}</Text>
-            <Space orientation="vertical" size={2}>
-              <Tag>{layoutName}</Tag>
-              <Space size={2}>
-                <Tag>{sizeName}</Tag>
-                <Tag>{config.angle || 40}°</Tag>
-                {config.useAsDefault && <StarFilled />}
-              </Space>
+      <Card
+        hoverable
+        size="small"
+        style={{ minWidth: 0, cursor: 'pointer' }}
+        onClick={handleSelect}
+        extra={isEditMode ? <Button type="text" icon={<DeleteOutlined />} onClick={handleDelete} danger size="small" /> : undefined}
+      >
+        <Space orientation="vertical" size="small" align="center">
+          <Text type="secondary">Preview unavailable</Text>
+          <Text strong>{config.name}</Text>
+          <Space orientation="vertical" size={2}>
+            <Tag>{layoutName}</Tag>
+            <Space size={2}>
+              <Tag>{sizeName}</Tag>
+              <Tag>{config.angle || 40}°</Tag>
+              {config.useAsDefault && <StarFilled />}
             </Space>
           </Space>
-        </Card>
-      </Link>
+        </Space>
+      </Card>
     );
   }
 
   return (
-    <Link href={boardUrl} style={{ textDecoration: 'none', minWidth: 0 }}>
-      <Card
-        hoverable
-        size="small"
-        style={{ minWidth: 0 }}
-        cover={
-          <BoardRenderer
-            litUpHoldsMap={{}} // Empty holds map - just show the board
-            mirrored={false}
-            boardDetails={boardDetails}
-            thumbnail={true}
-          />
-        }
-        extra={isEditMode ? <Button type="text" icon={<DeleteOutlined />} onClick={handleDelete} danger size="small" /> : undefined}
-      >
-        <Card.Meta
-          title={<Text strong>{config.name}</Text>}
-          description={
-            <Space orientation="vertical" size={2}>
-              <Tag>{layoutName}</Tag>
-              <Space size={2}>
-                <Tag>{sizeName}</Tag>
-                <Tag>{config.angle || 40}°</Tag>
-                {config.useAsDefault && (
-                  <Tooltip title="Default configuration">
-                    <StarFilled />
-                  </Tooltip>
-                )}
-              </Space>
-            </Space>
-          }
+    <Card
+      hoverable
+      size="small"
+      style={{ minWidth: 0, cursor: 'pointer' }}
+      onClick={handleSelect}
+      cover={
+        <BoardRenderer
+          litUpHoldsMap={{}} // Empty holds map - just show the board
+          mirrored={false}
+          boardDetails={boardDetails}
+          thumbnail={true}
         />
-      </Card>
-    </Link>
+      }
+      extra={isEditMode ? <Button type="text" icon={<DeleteOutlined />} onClick={handleDelete} danger size="small" /> : undefined}
+    >
+      <Card.Meta
+        title={<Text strong>{config.name}</Text>}
+        description={
+          <Space orientation="vertical" size={2}>
+            <Tag>{layoutName}</Tag>
+            <Space size={2}>
+              <Tag>{sizeName}</Tag>
+              <Tag>{config.angle || 40}°</Tag>
+              {config.useAsDefault && (
+                <Tooltip title="Default configuration">
+                  <StarFilled />
+                </Tooltip>
+              )}
+            </Space>
+          </Space>
+        }
+      />
+    </Card>
   );
 }

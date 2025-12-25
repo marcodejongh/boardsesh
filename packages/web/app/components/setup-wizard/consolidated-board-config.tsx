@@ -380,6 +380,15 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
 
   // Login will be handled after reaching the main board page
 
+  const handleSavedBoardSelect = (boardDetails: BoardDetails | null, boardUrl: string) => {
+    // Show the loading spinner with the board details
+    setLoadingBoardDetails(boardDetails);
+    setIsStartingClimbing(true);
+
+    // Navigate to the board page
+    router.push(boardUrl);
+  };
+
   const handleStartClimbing = async () => {
     if (!selectedBoard || !selectedLayout || !selectedSize || selectedSets.length === 0) {
       return;
@@ -498,6 +507,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
                         key={config.name}
                         config={config}
                         onDelete={deleteConfiguration}
+                        onSelect={handleSavedBoardSelect}
                         boardConfigs={boardConfigs}
                         isEditMode={isEditMode}
                       />
