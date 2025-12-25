@@ -47,7 +47,7 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
   };
 
   return (
-    <>
+    <div style={{ flexShrink: 0, width: '100%' }}>
       {/* Main Control Bar */}
       <Card
         bordered={false}
@@ -166,7 +166,7 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
       >
         <QueueList boardDetails={boardDetails} onClimbNavigate={() => setIsQueueOpen(false)} />
       </Drawer>
-    </>
+    </div>
   );
 };
 
