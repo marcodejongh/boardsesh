@@ -470,16 +470,14 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
                   label: `Saved Configurations (${savedConfigurations.length})`,
                   extra: (
                     <Button
-                      type={isEditMode ? 'primary' : 'text'}
+                      type={isEditMode ? 'primary' : 'default'}
                       size="small"
                       icon={<EditOutlined />}
                       onClick={(e) => {
                         e.stopPropagation();
                         setIsEditMode(!isEditMode);
                       }}
-                    >
-                      {isEditMode ? 'Done' : 'Edit'}
-                    </Button>
+                    />
                   ),
                   children: (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', width: '100%', overflow: 'hidden' }}>
