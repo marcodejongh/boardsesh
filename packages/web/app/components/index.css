@@ -114,12 +114,42 @@ html {
 
 /* Header shadow utility */
 .header-shadow {
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  border-bottom: 1px solid #E5E7EB;
+  position: relative;
+  z-index: 10;
+}
+
+.header-shadow::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -4px;
+  height: 4px;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.06), transparent);
+  pointer-events: none;
 }
 
 /* Bottom bar shadow utility */
 .bottom-bar-shadow {
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* Queue bar shadow utility */
+.queue-bar-shadow {
+  position: relative;
+  z-index: 10;
+}
+
+.queue-bar-shadow::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -4px;
+  height: 4px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.06), transparent);
+  pointer-events: none;
 }
 
 /* Drawer transitions - Ant Design already handles this, but we customize the easing */
