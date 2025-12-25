@@ -1,6 +1,6 @@
 'use client';
-import React from 'react';
-import { Flex, Button, Dropdown, MenuProps } from 'antd';
+import React, { useState, useRef } from 'react';
+import { Flex, Button, Dropdown, MenuProps, InputRef } from 'antd';
 import { Header } from 'antd/es/layout/layout';
 import { useSession, signIn, signOut } from 'next-auth/react';
 import SearchButton from '../search-drawer/search-button';
@@ -12,7 +12,7 @@ import { generateLayoutSlug, generateSizeSlug, generateSetSlug } from '@/app/lib
 import { ShareBoardButton } from './share-button';
 import { useBoardProvider } from '../board-provider/board-provider-context';
 import { useQueueContext } from '../graphql-queue';
-import { UserOutlined, LogoutOutlined, LoginOutlined, PlusOutlined, MoreOutlined } from '@ant-design/icons';
+import { UserOutlined, LogoutOutlined, LoginOutlined, PlusOutlined, MoreOutlined, CloseOutlined } from '@ant-design/icons';
 import AngleSelector from './angle-selector';
 import Logo from '../brand/logo';
 import styles from './header.module.css';
@@ -26,10 +26,21 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
   const { data: session } = useSession();
   const { logout } = useBoardProvider();
   const { currentClimb } = useQueueContext();
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const searchInputRef = useRef<InputRef>(null);
 
   const handleSignOut = () => {
     signOut();
     logout(); // Also logout from board provider
+  };
+
+  const handleSearchFocus = () => {
+    setIsSearchExpanded(true);
+  };
+
+  const handleSearchCollapse = () => {
+    setIsSearchExpanded(false);
+    searchInputRef.current?.blur();
   };
 
   const userMenuItems: MenuProps['items'] = [
@@ -57,6 +68,12 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
       label: 'Login',
       onClick: () => signIn(),
     }] : []),
+    ...(session?.user ? [{
+      key: 'logout',
+      icon: <LogoutOutlined />,
+      label: 'Logout',
+      onClick: handleSignOut,
+    }] : []),
   ];
   return (
     <Header
@@ -71,23 +88,34 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
     >
       <UISearchParamsProvider>
         <Flex justify="space-between" align="center" style={{ width: '100%' }} gap={8}>
-          {/* Logo - Fixed to left */}
-          <Flex align="center">
+          {/* Logo - Fixed to left, hidden on mobile when search is expanded */}
+          <Flex align="center" className={isSearchExpanded ? styles.hideOnMobileExpanded : undefined}>
             <Logo size="sm" showText={false} />
           </Flex>
 
           {/* Center Section - Mobile only */}
           <Flex justify="center" gap={2} style={{ flex: 1 }}>
             <div className={styles.mobileOnly} style={{ flex: 1 }}>
-              <SearchClimbNameInput />
+              <SearchClimbNameInput
+                onFocus={handleSearchFocus}
+                inputRef={searchInputRef}
+              />
             </div>
             <div className={styles.mobileOnly}>
-              <SearchButton boardDetails={boardDetails} />
+              {isSearchExpanded ? (
+                <Button
+                  icon={<CloseOutlined />}
+                  type="text"
+                  onClick={handleSearchCollapse}
+                />
+              ) : (
+                <SearchButton boardDetails={boardDetails} />
+              )}
             </div>
           </Flex>
 
-          {/* Right Section */}
-          <Flex gap={4} align="center">
+          {/* Right Section - hidden on mobile when search is expanded */}
+          <Flex gap={4} align="center" className={isSearchExpanded ? styles.hideOnMobileExpanded : undefined}>
             {angle !== undefined && <AngleSelector boardName={boardDetails.board_name} currentAngle={angle} currentClimb={currentClimb} />}
 
             {/* Desktop: show Create Climb button */}
@@ -120,16 +148,14 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
                 </Button>
               </div>
             )}
-
-            {/* Mobile: meatball menu for Create Climb and Login */}
-            {mobileMenuItems.length > 0 && (
-              <div className={styles.mobileMenuButton}>
-                <Dropdown menu={{ items: mobileMenuItems }} placement="bottomRight" trigger={['click']}>
-                  <Button icon={<MoreOutlined />} type="default" />
-                </Dropdown>
-              </div>
-            )}
           </Flex>
+
+          {/* Mobile: meatball menu - always show when search is expanded, otherwise only when there are items */}
+          <div className={isSearchExpanded ? styles.showOnMobileExpanded : styles.mobileMenuButton}>
+            <Dropdown menu={{ items: mobileMenuItems }} placement="bottomRight" trigger={['click']}>
+              <Button icon={<MoreOutlined />} type="default" />
+            </Dropdown>
+          </div>
         </Flex>
       </UISearchParamsProvider>
     </Header>
