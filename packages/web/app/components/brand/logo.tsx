@@ -104,21 +104,13 @@ export const Logo = ({ size = 'md', showText = true, linkToHome = true }: LogoPr
         {/* Transparent background */}
         <rect x="0" y="0" width="48" height="48" rx="4" fill="transparent" />
 
-        {/* B letter - straight */}
-        <g>
-          {/* Pink shadow layer for B */}
-          <PixelLetter pixels={B_PIXELS} startX={3 + shadowOffset} startY={6 + shadowOffset} pixelSize={pixelSize} fill={KILTER_PINK} />
-          {/* Cyan B letter */}
-          <PixelLetter pixels={B_PIXELS} startX={3} startY={6} pixelSize={pixelSize} fill={KILTER_CYAN} />
-        </g>
+        {/* Pink shadow layers */}
+        <PixelLetter pixels={B_PIXELS} startX={3 + shadowOffset} startY={6 + shadowOffset} pixelSize={pixelSize} fill={KILTER_PINK} />
+        <PixelLetter pixels={S_PIXELS} startX={24 + shadowOffset} startY={6 + shadowOffset} pixelSize={pixelSize} fill={KILTER_PINK} />
 
-        {/* S letter - rotated -10 degrees for playfulness */}
-        <g transform="rotate(-10, 34.5, 19.5)">
-          {/* Pink shadow layer for S */}
-          <PixelLetter pixels={S_PIXELS} startX={24 + shadowOffset} startY={6 + shadowOffset} pixelSize={pixelSize} fill={KILTER_PINK} />
-          {/* Cyan S letter */}
-          <PixelLetter pixels={S_PIXELS} startX={24} startY={6} pixelSize={pixelSize} fill={KILTER_CYAN} />
-        </g>
+        {/* Cyan letters */}
+        <PixelLetter pixels={B_PIXELS} startX={3} startY={6} pixelSize={pixelSize} fill={KILTER_CYAN} />
+        <PixelLetter pixels={S_PIXELS} startX={24} startY={6} pixelSize={pixelSize} fill={KILTER_CYAN} />
       </svg>
       {showText && (
         <span
