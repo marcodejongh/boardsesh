@@ -126,22 +126,22 @@ const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl, angle }: ClimbVie
     <div className={styles.container}>
       {/* Mobile view: Show back button + key actions + overflow menu */}
       <div className={styles.mobileActions}>
-        {canGoBack ? (
-          <Button icon={<ArrowLeftOutlined />} className={styles.backButton} onClick={handleBackClick}>
-            Back
-          </Button>
-        ) : (
-          <Link href={getBackToListUrl()}>
-            <Button icon={<ArrowLeftOutlined />} className={styles.backButton}>
+        <div className={styles.mobileLeft}>
+          {canGoBack ? (
+            <Button icon={<ArrowLeftOutlined />} onClick={handleBackClick}>
               Back
             </Button>
-          </Link>
-        )}
+          ) : (
+            <Link href={getBackToListUrl()}>
+              <Button icon={<ArrowLeftOutlined />}>
+                Back
+              </Button>
+            </Link>
+          )}
+        </div>
 
-        <Space>
-          <Button icon={<HeartOutlined />} onClick={handleFavourite}>
-            Favourite
-          </Button>
+        <div className={styles.mobileRight}>
+          <Button icon={<HeartOutlined />} onClick={handleFavourite} />
 
           {isAlreadyInQueue ? (
             <Button
@@ -154,14 +154,14 @@ const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl, angle }: ClimbVie
             </Button>
           ) : (
             <Button icon={<PlusCircleOutlined />} onClick={handleAddToQueue} disabled={isDuplicate}>
-              Add to Queue
+              Queue
             </Button>
           )}
 
           <Dropdown menu={{ items: menuItems }} placement="bottomRight" trigger={['click']}>
             <Button icon={<MoreOutlined />} />
           </Dropdown>
-        </Space>
+        </div>
       </div>
 
       {/* Desktop view: Show all buttons */}

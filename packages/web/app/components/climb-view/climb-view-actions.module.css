@@ -6,22 +6,30 @@
   align-items: center;
 }
 
-.backButton {
-  flex: 0 0 auto;
-}
-
 .actionButtons {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
+/* Mobile layout */
 .mobileActions {
   display: flex;
   justify-content: space-between;
   align-items: center;
   width: 100%;
-  gap: 12px;
+  gap: 8px;
+}
+
+.mobileLeft {
+  flex-shrink: 0;
+}
+
+.mobileRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 .desktopActions {
