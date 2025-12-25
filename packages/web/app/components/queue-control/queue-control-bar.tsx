@@ -53,7 +53,7 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
         bordered={false}
         styles={{
           body: {
-            padding: '4px 12px',
+            padding: '2px 12px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -61,9 +61,9 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
         }}
         style={{
           width: '100%',
-          boxShadow: themeTokens.shadows.lg,
           borderRadius: 0,
           margin: 0,
+          borderTop: `1px solid ${themeTokens.neutral[200]}`,
         }}
       >
         <Row justify="space-between" align="middle" style={{ width: '100%' }}>
