@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Row, Col, Typography, Avatar, Tooltip, Flex } from 'antd';
-import { HolderOutlined, CheckOutlined, CloseOutlined, UserOutlined, CopyrightOutlined } from '@ant-design/icons';
+import { Row, Col, Avatar, Tooltip } from 'antd';
+import { HolderOutlined, CheckOutlined, CloseOutlined, UserOutlined } from '@ant-design/icons';
 import { BoardDetails, ClimbUuid } from '@/app/lib/types';
 import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { DragHandleButton } from '@atlaskit/pragmatic-drag-and-drop-react-accessibility/drag-handle-button';
@@ -11,10 +11,9 @@ import { combine } from '@atlaskit/pragmatic-drag-and-drop/combine';
 import { ClimbQueueItem } from './types';
 import { TickButton } from '../logbook/tick-button';
 import ClimbThumbnail from '../climb-card/climb-thumbnail';
+import ClimbTitle from '../climb-card/climb-title';
 import { useBoardProvider } from '../board-provider/board-provider-context';
 import { themeTokens } from '@/app/theme/theme-config';
-
-const { Text } = Typography;
 
 type QueueListItemProps = {
   item: ClimbQueueItem;
@@ -161,36 +160,12 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
             />
           </Col>
           <Col xs={item.addedByUser ? 12 : 14} sm={item.addedByUser ? 14 : 16}>
-            <Flex vertical gap={4}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Text
-                  style={{
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    fontWeight: 'bold',
-                  }}
-                >
-                  {item.climb?.name}
-                </Text>
-                <AscentStatus climbUuid={item.climb?.uuid} />
-              </div>
-              <Text
-                type={isHistory ? 'secondary' : undefined}
-                style={{
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  fontSize: '14px',
-                  color: themeTokens.neutral[500],
-                }}
-              >
-                {item.climb?.difficulty && item.climb?.quality_average
-                  ? `${item.climb?.difficulty} ${item.climb?.quality_average}★ @ ${item.climb?.angle}°`
-                  : `project @ ${item.climb?.angle}°`}
-                {item.climb?.benchmark_difficulty && <CopyrightOutlined style={{ marginLeft: 4 }} />}
-              </Text>
-            </Flex>
+            <ClimbTitle
+              climb={item.climb}
+              showAngle
+              centered
+              nameAddon={<AscentStatus climbUuid={item.climb?.uuid} />}
+            />
           </Col>
           {item.addedByUser && (
             <Col xs={2} sm={2}>

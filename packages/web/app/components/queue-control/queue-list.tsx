@@ -1,6 +1,6 @@
 'use client';
 import React, { useEffect } from 'react';
-import { Divider, Row, Col, Typography, Button, Flex } from 'antd';
+import { Divider, Row, Col, Button, Flex } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { useQueueContext } from '../graphql-queue';
 import { Climb, BoardDetails } from '@/app/lib/types';
@@ -9,9 +9,8 @@ import { extractClosestEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/clo
 import { reorder } from '@atlaskit/pragmatic-drag-and-drop/reorder';
 import QueueListItem from './queue-list-item';
 import ClimbThumbnail from '../climb-card/climb-thumbnail';
+import ClimbTitle from '../climb-card/climb-title';
 import { themeTokens } from '@/app/theme/theme-config';
-
-const { Text } = Typography;
 
 type QueueListProps = {
   boardDetails: BoardDetails;
@@ -117,16 +116,7 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails, onClimbNavigate }) 
                     />
                   </Col>
                   <Col xs={14} sm={16}>
-                    <Flex vertical gap={4}>
-                      <Text ellipsis strong>
-                        {climb.name}
-                      </Text>
-                      <Text type="secondary" ellipsis style={{ fontSize: '14px' }}>
-                        {climb.difficulty && climb.quality_average
-                          ? `${climb.difficulty} ${climb.quality_average}★ @ ${climb.angle}°`
-                          : `project @ ${climb.angle}°`}
-                      </Text>
-                    </Flex>
+                    <ClimbTitle climb={climb} showAngle centered />
                   </Col>
                   <Col xs={3} sm={2}>
                     <Button type="default" icon={<PlusOutlined />} onClick={() => addToQueue(climb)} />
