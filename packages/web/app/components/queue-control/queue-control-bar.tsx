@@ -47,12 +47,13 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
   };
 
   return (
-    <>
+    <div style={{ flexShrink: 0, width: '100%', backgroundColor: '#fff' }}>
       {/* Main Control Bar */}
       <Card
+        bordered={false}
         styles={{
           body: {
-            padding: '8px 12px',
+            padding: '4px 12px 0px 12px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -60,8 +61,8 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
         }}
         style={{
           width: '100%',
-          boxShadow: themeTokens.shadows.lg,
           borderRadius: 0,
+          margin: 0,
           borderTop: `1px solid ${themeTokens.neutral[200]}`,
         }}
       >
@@ -126,7 +127,7 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
           </Col>
 
           {/* Button cluster */}
-          <Col xs={9} style={{ textAlign: 'right', paddingRight: '10px' }}>
+          <Col xs={9} style={{ textAlign: 'right' }}>
             <Space>
               {boardDetails.supportsMirroring ? (
                 <Button
@@ -165,7 +166,7 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
       >
         <QueueList boardDetails={boardDetails} onClimbNavigate={() => setIsQueueOpen(false)} />
       </Drawer>
-    </>
+    </div>
   );
 };
 

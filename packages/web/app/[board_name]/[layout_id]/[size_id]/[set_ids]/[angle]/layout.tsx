@@ -132,7 +132,7 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
   const [boardDetails] = await Promise.all([getBoardDetails(parsedParams)]);
 
   return (
-    <Layout style={{ height: '100dvh', display: 'flex', flexDirection: 'column' }}>
+    <Layout style={{ height: '100dvh', display: 'flex', flexDirection: 'column', padding: 0 }}>
       <ConnectionSettingsProvider>
         <PartyProfileWrapper>
           <GraphQLQueueProvider parsedParams={parsedParams}>
@@ -157,9 +157,7 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
             </Content>
 
             <Affix offsetBottom={0}>
-              <div style={{ width: '100%', backgroundColor: '#fff', boxShadow: '0 -2px 8px rgba(0, 0, 0, 0.15)' }}>
-                <QueueControlBar board={board_name} boardDetails={boardDetails} angle={angle} />
-              </div>
+              <QueueControlBar board={board_name} boardDetails={boardDetails} angle={angle} />
             </Affix>
             </PartyProvider>
           </GraphQLQueueProvider>
