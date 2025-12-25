@@ -71,7 +71,7 @@ const ListLayoutClient: React.FC<PropsWithChildren<ListLayoutClientProps>> = ({ 
   return (
     <Layout className={styles.listLayout}>
       <Content className={styles.mainContent}>{children}</Content>
-      <Sider width={400} className={styles.sider} theme="light" style={{ padding: '20px'}}>
+      <Sider width={400} className={styles.sider} theme="light" style={{ padding: '0 8px 20px 8px' }}>
         <UISearchParamsProvider>
           <TabsWrapper boardDetails={boardDetails} />
         </UISearchParamsProvider>
