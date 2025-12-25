@@ -104,7 +104,7 @@ export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boa
           userId={userId}
         />
       ) : (
-        <Drawer title="Login Required" placement="bottom" onClose={closeDrawer} open={drawerVisible} height="50%">
+        <Drawer title="Login Required" placement="bottom" onClose={closeDrawer} open={drawerVisible} styles={{ wrapper: { height: '50%' } }}>
           <LoginForm onLogin={handleLogin} isLoggingIn={isLoggingIn} />
         </Drawer>
       )}

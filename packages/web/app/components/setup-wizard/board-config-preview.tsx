@@ -139,10 +139,10 @@ export default function BoardConfigPreview({ config, onDelete, boardConfigs, isE
           style={{ minWidth: 0 }}
           extra={isEditMode ? <Button type="text" icon={<DeleteOutlined />} onClick={handleDelete} danger size="small" /> : undefined}
         >
-          <Space direction="vertical" size="small" align="center">
+          <Space orientation="vertical" size="small" align="center">
             <Text type="secondary">Preview unavailable</Text>
             <Text strong>{config.name}</Text>
-            <Space direction="vertical" size={2}>
+            <Space orientation="vertical" size={2}>
               <Tag>{layoutName}</Tag>
               <Space size={2}>
                 <Tag>{sizeName}</Tag>
@@ -175,7 +175,7 @@ export default function BoardConfigPreview({ config, onDelete, boardConfigs, isE
         <Card.Meta
           title={<Text strong>{config.name}</Text>}
           description={
-            <Space direction="vertical" size={2}>
+            <Space orientation="vertical" size={2}>
               <Tag>{layoutName}</Tag>
               <Space size={2}>
                 <Tag>{sizeName}</Tag>

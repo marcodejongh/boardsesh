@@ -11,7 +11,7 @@ const ClimbInfoButton = () => {
   return (
     <>
       <Button type="default" icon={<InfoCircleOutlined />} onClick={() => setIsOpen(true)} />
-      <Drawer title="Climb Info" placement="right" width={'80%'} open={isOpen} onClose={() => setIsOpen(false)}>
+      <Drawer title="Climb Info" placement="right" styles={{ wrapper: { width: '80%' } }} open={isOpen} onClose={() => setIsOpen(false)}>
         <ClimbInfo />
       </Drawer>
     </>
