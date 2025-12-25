@@ -1,6 +1,6 @@
 'use client';
 import React from 'react';
-import { Flex, Button, Dropdown, MenuProps, Grid } from 'antd';
+import { Flex, Button, Dropdown, MenuProps } from 'antd';
 import { Header } from 'antd/es/layout/layout';
 import Title from 'antd/es/typography/Title';
 import Link from 'next/link';
@@ -14,7 +14,7 @@ import { generateLayoutSlug, generateSizeSlug, generateSetSlug } from '@/app/lib
 import { ShareBoardButton } from './share-button';
 import { useBoardProvider } from '../board-provider/board-provider-context';
 import { useQueueContext } from '../graphql-queue';
-import { UserOutlined, LogoutOutlined, LoginOutlined, PlusOutlined } from '@ant-design/icons';
+import { UserOutlined, LogoutOutlined, LoginOutlined, PlusOutlined, MoreOutlined } from '@ant-design/icons';
 import AngleSelector from './angle-selector';
 import styles from './header.module.css';
 
@@ -23,8 +23,6 @@ type BoardSeshHeaderProps = {
   angle?: number;
 };
 export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeaderProps) {
-  const { useBreakpoint } = Grid;
-  const screens = useBreakpoint();
   const { data: session } = useSession();
   const { logout } = useBoardProvider();
   const { currentClimb } = useQueueContext();
@@ -42,8 +40,27 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
       onClick: handleSignOut,
     },
   ];
+
+  const createClimbUrl = angle !== undefined && boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names
+    ? `/${boardDetails.board_name}/${generateLayoutSlug(boardDetails.layout_name)}/${generateSizeSlug(boardDetails.size_name)}/${generateSetSlug(boardDetails.set_names)}/${angle}/create`
+    : null;
+
+  const mobileMenuItems: MenuProps['items'] = [
+    ...(createClimbUrl ? [{
+      key: 'create-climb',
+      icon: <PlusOutlined />,
+      label: <Link href={createClimbUrl}>Create Climb</Link>,
+    }] : []),
+    ...(!session?.user ? [{
+      key: 'login',
+      icon: <LoginOutlined />,
+      label: 'Login',
+      onClick: () => signIn(),
+    }] : []),
+  ];
   return (
     <Header
+      className={styles.header}
       style={{
         background: '#fff',
         height: '8dvh',
@@ -63,7 +80,7 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
           </Flex>
 
           {/* Center Section - Mobile only */}
-          <Flex justify="center" gap={2} style={{ flex: 1, maxWidth: '200px' }}>
+          <Flex justify="center" gap={2} style={{ flex: 1 }}>
             <div className={styles.mobileOnly} style={{ flex: 1 }}>
               <SearchClimbNameInput />
             </div>
@@ -75,15 +92,20 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
           {/* Right Section */}
           <Flex gap={4} align="center">
             {angle !== undefined && <AngleSelector boardName={boardDetails.board_name} currentAngle={angle} currentClimb={currentClimb} />}
-            {angle !== undefined && boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names && (
-              <Link
-                href={`/${boardDetails.board_name}/${generateLayoutSlug(boardDetails.layout_name)}/${generateSizeSlug(boardDetails.size_name)}/${generateSetSlug(boardDetails.set_names)}/${angle}/create`}
-              >
-                <Button icon={<PlusOutlined />} type="text" title="Create new climb" />
-              </Link>
+
+            {/* Desktop: show Create Climb button */}
+            {createClimbUrl && (
+              <div className={styles.desktopOnly}>
+                <Link href={createClimbUrl}>
+                  <Button icon={<PlusOutlined />} type="text" title="Create new climb" />
+                </Link>
+              </div>
             )}
+
             <ShareBoardButton />
             <SendClimbToBoardButton boardDetails={boardDetails} />
+
+            {/* User menu or login button */}
             {session?.user ? (
               <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
                 <Button icon={<UserOutlined />} type="text">
@@ -91,14 +113,24 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
                 </Button>
               </Dropdown>
             ) : (
-              <Button 
-                icon={<LoginOutlined />} 
-                type="text" 
-                onClick={() => signIn()}
-                size={screens.xs ? 'small' : 'middle'}
-              >
-                {screens.xs ? '' : 'Login'}
-              </Button>
+              <div className={styles.desktopOnly}>
+                <Button
+                  icon={<LoginOutlined />}
+                  type="text"
+                  onClick={() => signIn()}
+                >
+                  Login
+                </Button>
+              </div>
+            )}
+
+            {/* Mobile: meatball menu for Create Climb and Login */}
+            {mobileMenuItems.length > 0 && (
+              <div className={styles.mobileMenuButton}>
+                <Dropdown menu={{ items: mobileMenuItems }} placement="bottomRight" trigger={['click']}>
+                  <Button icon={<MoreOutlined />} type="default" />
+                </Dropdown>
+              </div>
             )}
           </Flex>
         </Flex>

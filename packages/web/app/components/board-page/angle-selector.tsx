@@ -103,7 +103,7 @@ export default function AngleSelector({ boardName, currentAngle, currentClimb }:
 
   return (
     <>
-      <Button type="default" onClick={() => setIsDrawerOpen(true)} style={{ minWidth: '45px', padding: '4px 8px' }}>
+      <Button type="default" onClick={() => setIsDrawerOpen(true)} style={{ minWidth: '38px', padding: '4px 6px' }}>
         {currentAngle}°
       </Button>
 
