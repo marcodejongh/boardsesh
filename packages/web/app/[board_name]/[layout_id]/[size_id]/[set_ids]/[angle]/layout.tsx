@@ -132,7 +132,7 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
   const [boardDetails] = await Promise.all([getBoardDetails(parsedParams)]);
 
   return (
-    <Layout style={{ height: '100dvh', display: 'flex', flexDirection: 'column' }}>
+    <Layout style={{ height: '100dvh', display: 'flex', flexDirection: 'column', padding: 0 }}>
       <ConnectionSettingsProvider>
         <PartyProfileWrapper>
           <GraphQLQueueProvider parsedParams={parsedParams}>
