@@ -114,8 +114,8 @@ html {
 
 /* Header shadow utility */
 .header-shadow {
-  box-shadow: none;
-  border-bottom: 1px solid #E5E7EB;
+  border-bottom: 2px solid #E5E7EB;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
 }
 
 /* Bottom bar shadow utility */
