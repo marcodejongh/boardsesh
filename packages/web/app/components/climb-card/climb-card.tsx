@@ -27,26 +27,26 @@ const ClimbCard = ({ climb, boardDetails, onCoverClick, selected, actions }: Cli
 
   const cardTitle = climb ? (
     <Flex vertical gap={0}>
-      {/* Row 1: Name, Angle, Benchmark | Difficulty, Quality */}
+      {/* Row 1: Name, Benchmark | Difficulty, Quality */}
       <Flex justify="space-between" align="center">
         <Text strong style={{ fontSize: themeTokens.typography.fontSize.sm }}>
-          {climb.name} @ {climb.angle}°
+          {climb.name}
           {climb.benchmark_difficulty !== null && (
-            <CopyrightOutlined style={{ marginLeft: 4, color: themeTokens.colors.primary }} />
+            <CopyrightOutlined style={{ marginLeft: 4, fontSize: themeTokens.typography.fontSize.xs, color: themeTokens.colors.primary }} />
           )}
         </Text>
-        <Text type="secondary" style={{ fontSize: themeTokens.typography.fontSize.sm }}>
+        <Text strong type="secondary" style={{ fontSize: themeTokens.typography.fontSize.sm }}>
           {climb.difficulty && climb.quality_average && climb.quality_average !== '0' ? (
             `${climb.difficulty} ★${climb.quality_average}`
           ) : (
-            <Text italic type="secondary">
+            <Text italic type="secondary" style={{ fontSize: themeTokens.typography.fontSize.sm }}>
               project
             </Text>
           )}
         </Text>
       </Flex>
       {/* Row 2: Setter and ascent count */}
-      <Text type="secondary" style={{ fontSize: themeTokens.typography.fontSize.xs }}>
+      <Text type="secondary" style={{ fontSize: themeTokens.typography.fontSize.xs, fontWeight: themeTokens.typography.fontWeight.normal }}>
         By {climb.setter_username} - {climb.ascensionist_count} ascents
       </Text>
     </Flex>
@@ -62,7 +62,7 @@ const ClimbCard = ({ climb, boardDetails, onCoverClick, selected, actions }: Cli
         backgroundColor: selected ? themeTokens.semantic.selected : themeTokens.semantic.surface,
         borderColor: selected ? themeTokens.colors.primary : undefined,
       }}
-      styles={{ header: { paddingTop: 10, paddingBottom: 8 } }}
+      styles={{ header: { paddingTop: 8, paddingBottom: 6 }, body: { padding: 6 } }}
       actions={actions || ClimbCardActions({ climb, boardDetails })}
     >
       {cover}
