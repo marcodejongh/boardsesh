@@ -61,7 +61,11 @@ export const useQueueDataFetching = ({
     initialSize: searchParams.page ? searchParams.page + 1 : 1,
   });
 
-  const hasMoreResults = data && data[0] && size * PAGE_LIMIT < data[0].totalCount;
+  // Before first fetch, assume there are more results (optimistic)
+  // After fetch, use actual totalCount from response
+  const hasMoreResults = data === undefined
+    ? true
+    : !!(data && data[0] && size * PAGE_LIMIT < data[0].totalCount);
   const totalSearchResultCount = (data && data[0] && data[0].totalCount) || null;
 
   const climbSearchResults = useMemo(
@@ -87,10 +91,11 @@ export const useQueueDataFetching = ({
       return; // Skip if we've already fetched these exact UUIDs
     }
 
-    console.log('Fetching logbook for UUIDs:', climbUuidsString); // Debug log
     const climbUuids = JSON.parse(climbUuidsString);
     if (climbUuids.length > 0) {
-      getLogbook(climbUuids);
+      getLogbook(climbUuids).catch(() => {
+        // Error is already handled in getLogbook, just prevent unhandled rejection
+      });
       fetchedUuidsRef.current = climbUuidsString;
     }
   }, [climbUuidsString, getLogbook]);

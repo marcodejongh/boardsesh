@@ -5,7 +5,6 @@ import { ParsedBoardRouteParameters, BoardRouteParameters, BoardDetails } from '
 import { parseBoardRouteParams, constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import { permanentRedirect } from 'next/navigation';
-import { Content } from 'antd/es/layout/layout';
 import QueueControlBar from '@/app/components/queue-control/queue-control-bar';
 import { getBoardDetails } from '@/app/lib/data/queries';
 import BoardSeshHeader from '@/app/components/board-page/header';
@@ -14,6 +13,7 @@ import { ConnectionSettingsProvider } from '@/app/components/connection-manager/
 import { PartyProvider } from '@/app/components/party-manager/party-context';
 import PartyProfileWrapper from '@/app/components/party-manager/party-profile-wrapper';
 import { Metadata } from 'next';
+import { ScrollableContent } from '@/app/components/board-page/scrollable-content';
 
 /**
  * Generates a user-friendly page title from board details.
@@ -139,21 +139,9 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
             <PartyProvider>
             <BoardSeshHeader boardDetails={boardDetails} angle={angle} />
 
-            <Content
-              id="content-for-scrollable"
-              style={{
-                flex: 1,
-                justifyContent: 'center',
-                alignItems: 'center',
-                overflowY: 'auto',
-                overflowX: 'hidden',
-                height: '80vh',
-                paddingLeft: '10px',
-                paddingRight: '10px',
-              }}
-            >
+            <ScrollableContent>
               {children}
-            </Content>
+            </ScrollableContent>
 
             <Affix offsetBottom={0}>
               <QueueControlBar board={board_name} boardDetails={boardDetails} angle={angle} />

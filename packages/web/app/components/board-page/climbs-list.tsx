@@ -10,6 +10,7 @@ import ClimbCard from '../climb-card/climb-card';
 import { useEffect, useRef } from 'react';
 import { PlusCircleOutlined, FireOutlined } from '@ant-design/icons';
 import { useSearchParams } from 'next/navigation';
+import { useScrollContainer } from './scrollable-content';
 
 type ClimbsListProps = ParsedBoardRouteParameters & {
   boardDetails: BoardDetails;
@@ -47,6 +48,9 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
 
   const searchParams = useSearchParams();
   const page = searchParams.get('page');
+
+  // Get scroll container ref from context - needed for InfiniteScroll to work properly
+  const scrollContainer = useScrollContainer();
 
   // Queue Context provider uses SWR infinite to fetch results, which can only happen clientside.
   // That data equals null at the start, so when its null we use the initialClimbs array which we
@@ -117,14 +121,32 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
   }, []);
 
   useEffect(() => {
-    if (page === '0' && hasDoneFirstFetch && isFetchingClimbs) {
-      const scrollContainer = document.getElementById('content-for-scrollable');
-      if (scrollContainer) {
-        scrollContainer.scrollTo({ top: 0, behavior: 'instant' });
-      }
+    if (page === '0' && hasDoneFirstFetch && isFetchingClimbs && scrollContainer) {
+      scrollContainer.scrollTo({ top: 0, behavior: 'instant' });
       climbsRefs.current = {};
     }
-  }, [page, hasDoneFirstFetch, isFetchingClimbs]); // Depend on the page query parameter
+  }, [page, hasDoneFirstFetch, isFetchingClimbs, scrollContainer]);
+
+  // Don't render InfiniteScroll until we have the scroll container ref
+  if (!scrollContainer) {
+    return (
+      <Row gutter={[16, 16]} style={{ paddingTop: '5px' }}>
+        {initialClimbs.map((climb) => (
+          <Col xs={24} lg={12} xl={12} id={climb.uuid} key={climb.uuid}>
+            <ClimbCard
+              climb={climb}
+              boardDetails={boardDetails}
+              selected={currentClimb?.uuid === climb.uuid}
+              onCoverClick={() => {
+                updateHash(climb.uuid);
+                setCurrentClimb(climb);
+              }}
+            />
+          </Col>
+        ))}
+      </Row>
+    );
+  }
 
   return (
     <InfiniteScroll
@@ -139,8 +161,7 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
       hasMore={hasMoreResults}
       loader={<Skeleton active />}
       endMessage={<div style={{ textAlign: 'center' }}>No more climbs 🤐</div>}
-      // Probably not how this should be done in a React app, but it works and I ain't no CSS-wizard
-      scrollableTarget="content-for-scrollable"
+      scrollableTarget={scrollContainer}
       style={{ paddingTop: '5px' }}
     >
       <Row gutter={[16, 16]}>
