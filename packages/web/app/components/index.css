@@ -51,7 +51,7 @@ button,
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-/* Prevent text selection on interactive cards */
+/* Prevent text selection on interactive cards - intentional for drag-and-drop UX */
 .ant-card {
   -webkit-user-select: none;
   -moz-user-select: none;
@@ -69,10 +69,10 @@ button,
   transform: translateY(0);
 }
 
-/* Selected state styling utility class */
-.selected-item {
-  background-color: #ECFEFF !important;
-  border-color: #06B6D4 !important;
+/* Selected state styling utility class - use higher specificity instead of !important */
+.selected-item.selected-item {
+  background-color: #ECFEFF;
+  border-color: #06B6D4;
 }
 
 /* Custom scrollbar for webkit browsers */
@@ -95,8 +95,8 @@ button,
   background: #9CA3AF;
 }
 
-/* Firefox scrollbar */
-* {
+/* Firefox scrollbar - scoped to html to avoid performance overhead of * selector */
+html {
   scrollbar-width: thin;
   scrollbar-color: #D1D5DB #F3F4F6;
 }
@@ -122,9 +122,9 @@ button,
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
 }
 
-/* Drawer transitions */
-.ant-drawer-content-wrapper {
-  transition: transform 0.3s cubic-bezier(0.23, 1, 0.32, 1) !important;
+/* Drawer transitions - Ant Design already handles this, but we customize the easing */
+.ant-drawer .ant-drawer-content-wrapper {
+  transition: transform 0.3s cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 /* Improve modal animations */
@@ -197,9 +197,9 @@ button,
   transform: scale(1.1);
 }
 
-/* Collapse panel styling */
-.ant-collapse-header {
-  font-weight: 500 !important;
+/* Collapse panel styling - use higher specificity */
+.ant-collapse .ant-collapse-header {
+  font-weight: 500;
 }
 
 /* Badge styling */
@@ -208,7 +208,8 @@ button,
   box-shadow: 0 0 0 2px #fff;
 }
 
-/* Override Atlaskit drag-and-drop indicator color to match theme */
+/* Override Atlaskit drag-and-drop indicator color to match theme
+   Note: !important is required here as third-party library sets inline styles */
 [data-drop-indicator-edge] {
   --indicator-color: #06B6D4 !important;
   background-color: #06B6D4 !important;

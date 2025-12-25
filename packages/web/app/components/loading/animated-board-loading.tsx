@@ -135,7 +135,7 @@ const AnimatedBoardLoading: React.FC<AnimatedBoardLoadingProps> = ({ isVisible, 
         <div style={{
           width: '80px',
           height: '80px',
-          border: `4px solid ${themeTokens.colors.primary}33`, // 20% opacity
+          border: '4px solid rgba(6, 182, 212, 0.2)', // primary color at 20% opacity
           borderTop: `4px solid ${themeTokens.colors.primary}`,
           borderRadius: '50%',
           animation: 'spin 1s linear infinite',
