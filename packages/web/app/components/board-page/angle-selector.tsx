@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Button, Drawer, Card, Row, Col, Rate, Spin, Typography, Divider } from 'antd';
+import React, { useState, useRef, useEffect } from 'react';
+import { Button, Drawer, Spin, Typography, Flex } from 'antd';
 import { useRouter, usePathname } from 'next/navigation';
 import { track } from '@vercel/analytics';
 import useSWR from 'swr';
@@ -9,8 +9,9 @@ import { ANGLES } from '@/app/lib/board-data';
 import { BoardName, Climb } from '@/app/lib/types';
 import { ClimbStatsForAngle } from '@/app/lib/data/queries';
 import { themeTokens } from '@/app/theme/theme-config';
+import styles from './angle-selector.module.css';
 
-const { Text, Title } = Typography;
+const { Text } = Typography;
 
 type AngleSelectorProps = {
   boardName: BoardName;
@@ -22,12 +23,13 @@ export default function AngleSelector({ boardName, currentAngle, currentClimb }:
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
-  
+  const currentAngleRef = useRef<HTMLButtonElement>(null);
+
   // Build the API URL for fetching climb stats
   const climbStatsUrl = currentClimb
     ? `/api/v1/${boardName}/climb-stats/${currentClimb.uuid}`
     : null;
-  
+
   // Fetch climb stats for all angles when there's a current climb
   const { data: climbStats, isLoading } = useSWR<ClimbStatsForAngle[]>(
     climbStatsUrl,
@@ -37,12 +39,26 @@ export default function AngleSelector({ boardName, currentAngle, currentClimb }:
       revalidateOnReconnect: false,
     }
   );
-  
+
   // Create a map for easy lookup of stats by angle
   const statsMap = React.useMemo(() => {
     if (!climbStats) return new Map();
     return new Map(climbStats.map(stat => [stat.angle, stat]));
   }, [climbStats]);
+
+  // Scroll to current angle when drawer opens
+  useEffect(() => {
+    if (isDrawerOpen && currentAngleRef.current) {
+      // Small delay to ensure drawer is fully rendered
+      const timeoutId = setTimeout(() => {
+        currentAngleRef.current?.scrollIntoView({
+          behavior: 'instant',
+          block: 'center',
+        });
+      }, 50);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [isDrawerOpen]);
 
   const handleAngleChange = (newAngle: number) => {
     track('Angle Changed', {
@@ -62,43 +78,44 @@ export default function AngleSelector({ boardName, currentAngle, currentClimb }:
     setIsDrawerOpen(false);
   };
 
-  const renderClimbStats = (angle: number) => {
+  const renderAngleButton = (angle: number) => {
     const stats = statsMap.get(angle);
-    if (!stats || !currentClimb) return null;
+    const isSelected = angle === currentAngle;
+    const hasStats = currentClimb && stats;
 
     return (
-      <div style={{ marginTop: 8 }}>
-        <Divider style={{ margin: '8px 0' }} />
-        {stats.difficulty && (
-          <div style={{ marginBottom: 4 }}>
-            <Text strong style={{ fontSize: '12px' }}>Grade: </Text>
-            <Text style={{ fontSize: '12px' }}>{stats.difficulty}</Text>
-          </div>
+      <button
+        key={angle}
+        ref={isSelected ? currentAngleRef : null}
+        className={`${styles.angleButton} ${isSelected ? styles.angleButtonSelected : ''}`}
+        onClick={() => handleAngleChange(angle)}
+      >
+        <Text strong className={styles.angleValue}>
+          {angle}°
+        </Text>
+        {hasStats && (
+          <Flex vertical gap={2} className={styles.statsContainer}>
+            {stats.difficulty && (
+              <Text className={styles.grade}>{stats.difficulty}</Text>
+            )}
+            <Flex gap={4} align="center" justify="center" wrap="wrap">
+              {stats.quality_average !== null && Number(stats.quality_average) > 0 && (
+                <Text className={styles.quality}>
+                  ★{Number(stats.quality_average).toFixed(1)}
+                </Text>
+              )}
+              <Text type="secondary" className={styles.ascents}>
+                {stats.ascensionist_count} sends
+              </Text>
+            </Flex>
+          </Flex>
         )}
-        {stats.quality_average !== null && (
-          <div style={{ marginBottom: 4 }}>
-            <Text strong style={{ fontSize: '12px' }}>Quality: </Text>
-            <Rate disabled allowHalf value={Number(stats.quality_average)} style={{ fontSize: '10px' }} />
-            <Text style={{ fontSize: '12px', marginLeft: 4 }}>({Number(stats.quality_average).toFixed(1)})</Text>
-          </div>
+        {currentClimb && !hasStats && !isLoading && (
+          <Text type="secondary" className={styles.noData}>
+            No data
+          </Text>
         )}
-        <div style={{ marginBottom: 4 }}>
-          <Text strong style={{ fontSize: '12px' }}>Ascents: </Text>
-          <Text style={{ fontSize: '12px' }}>{stats.ascensionist_count}</Text>
-        </div>
-        {stats.fa_username && (
-          <div style={{ marginBottom: 4 }}>
-            <Text strong style={{ fontSize: '12px' }}>FA: </Text>
-            <Text style={{ fontSize: '12px' }}>{stats.fa_username}</Text>
-          </div>
-        )}
-        {stats.fa_at && (
-          <div>
-            <Text strong style={{ fontSize: '12px' }}>Date: </Text>
-            <Text style={{ fontSize: '12px' }}>{new Date(stats.fa_at).toLocaleDateString()}</Text>
-          </div>
-        )}
-      </div>
+      </button>
     );
   };
 
@@ -109,55 +126,27 @@ export default function AngleSelector({ boardName, currentAngle, currentClimb }:
       </Button>
 
       <Drawer
-        title={currentClimb ? `Select Angle - ${currentClimb.name}` : "Select Angle"}
+        title={currentClimb ? `Select Angle` : "Select Angle"}
         placement="right"
         onClose={() => setIsDrawerOpen(false)}
         open={isDrawerOpen}
-        width={350}
+        width={320}
+        styles={{ body: { padding: '12px' } }}
       >
-        {currentClimb && isLoading && (
-          <div style={{ textAlign: 'center', padding: '20px' }}>
-            <Spin size="large" />
-            <div style={{ marginTop: 8 }}>
-              <Text>Loading climb statistics...</Text>
-            </div>
+        {currentClimb && (
+          <div className={styles.climbName}>
+            <Text strong ellipsis>{currentClimb.name}</Text>
           </div>
         )}
-        <Row gutter={[0, 16]}>
-          {ANGLES[boardName].map((angle) => {
-            const hasStats = currentClimb && statsMap.has(angle);
-            return (
-              <Col span={24} key={angle}>
-                <Card
-                  hoverable
-                  onClick={() => handleAngleChange(angle)}
-                  style={{
-                    backgroundColor: angle === currentAngle ? themeTokens.semantic.selected : undefined,
-                    borderColor: angle === currentAngle ? themeTokens.colors.primary : undefined,
-                    minHeight: currentClimb && !isLoading ? (hasStats ? '160px' : '60px') : '60px',
-                  }}
-                >
-                  <div>
-                    <Title level={4} style={{ margin: 0, marginBottom: hasStats ? 0 : 4 }}>
-                      {angle}°
-                    </Title>
-                    {!currentClimb && (
-                      <Text type="secondary" style={{ fontSize: '12px' }}>
-                        Click to select this angle
-                      </Text>
-                    )}
-                    {currentClimb && !hasStats && !isLoading && (
-                      <Text type="secondary" style={{ fontSize: '12px' }}>
-                        No data for this angle
-                      </Text>
-                    )}
-                    {!isLoading && renderClimbStats(angle)}
-                  </div>
-                </Card>
-              </Col>
-            );
-          })}
-        </Row>
+        {currentClimb && isLoading && (
+          <div className={styles.loadingContainer}>
+            <Spin size="small" />
+            <Text type="secondary" className={styles.loadingText}>Loading stats...</Text>
+          </div>
+        )}
+        <div className={styles.anglesGrid}>
+          {ANGLES[boardName].map(renderAngleButton)}
+        </div>
       </Drawer>
     </>
   );

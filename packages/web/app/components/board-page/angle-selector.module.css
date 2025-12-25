@@ -1,0 +1,79 @@
+.anglesGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.angleButton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 8px;
+  min-height: 80px;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  background-color: #FFFFFF;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.angleButton:hover {
+  border-color: #06B6D4;
+  background-color: #F9FAFB;
+}
+
+.angleButtonSelected {
+  background-color: #ECFEFF;
+  border-color: #06B6D4;
+  border-width: 2px;
+}
+
+.angleValue {
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.statsContainer {
+  margin-top: 4px;
+  text-align: center;
+}
+
+.grade {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.quality {
+  font-size: 11px;
+  color: #F59E0B;
+}
+
+.ascents {
+  font-size: 10px;
+}
+
+.noData {
+  font-size: 10px;
+  margin-top: 4px;
+}
+
+.climbName {
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background-color: #F3F4F6;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.loadingContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.loadingText {
+  font-size: 12px;
+}
