@@ -590,10 +590,6 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
             />
           </Form.Item>
 
-          <div style={{ marginBottom: themeTokens.spacing[4], textAlign: 'center' }}>
-            <Text type="secondary">You can login after reaching the board page</Text>
-          </div>
-
           {/* TODO: Improve UX for default board selection
           <Form.Item>
             <Checkbox
