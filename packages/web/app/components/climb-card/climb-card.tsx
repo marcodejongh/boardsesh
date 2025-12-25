@@ -35,18 +35,18 @@ const ClimbCard = ({ climb, boardDetails, onCoverClick, selected, actions }: Cli
             <CopyrightOutlined style={{ marginLeft: 4, color: themeTokens.colors.primary }} />
           )}
         </Text>
-        <Text type="secondary" style={{ fontSize: themeTokens.typography.fontSize.sm }}>
+        <Text strong type="secondary" style={{ fontSize: themeTokens.typography.fontSize.sm }}>
           {climb.difficulty && climb.quality_average && climb.quality_average !== '0' ? (
             `${climb.difficulty} ★${climb.quality_average}`
           ) : (
-            <Text italic type="secondary">
+            <Text italic type="secondary" style={{ fontSize: themeTokens.typography.fontSize.sm }}>
               project
             </Text>
           )}
         </Text>
       </Flex>
       {/* Row 2: Setter and ascent count */}
-      <Text type="secondary" style={{ fontSize: themeTokens.typography.fontSize.xs }}>
+      <Text type="secondary" style={{ fontSize: themeTokens.typography.fontSize.xs, fontWeight: themeTokens.typography.fontWeight.normal }}>
         By {climb.setter_username} - {climb.ascensionist_count} ascents
       </Text>
     </Flex>
