@@ -13,7 +13,6 @@ type LogoProps = {
 // 90s vibe colors from Kilter board holds
 const KILTER_CYAN = '#00FFFF'; // Hand hold color
 const KILTER_PINK = '#FF00FF'; // Finish hold color
-const BG_COLOR = '#0a0a14'; // Dark background
 
 const sizes = {
   sm: { icon: 32, fontSize: 14, gap: 6 },
@@ -102,8 +101,8 @@ export const Logo = ({ size = 'md', showText = true, linkToHome = true }: LogoPr
         xmlns="http://www.w3.org/2000/svg"
         aria-label="Boardsesh logo"
       >
-        {/* Background */}
-        <rect x="0" y="0" width="48" height="48" rx="4" fill={BG_COLOR} />
+        {/* Transparent background */}
+        <rect x="0" y="0" width="48" height="48" rx="4" fill="transparent" />
 
         {/* Pink shadow layer for B */}
         <PixelLetter pixels={B_PIXELS} startX={3 + shadowOffset} startY={6 + shadowOffset} pixelSize={pixelSize} fill={KILTER_PINK} />
