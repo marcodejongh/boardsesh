@@ -27,10 +27,10 @@ const ClimbCard = ({ climb, boardDetails, onCoverClick, selected, actions }: Cli
 
   const cardTitle = climb ? (
     <Flex vertical gap={0}>
-      {/* Row 1: Name, Angle, Benchmark | Difficulty, Quality */}
+      {/* Row 1: Name, Benchmark | Difficulty, Quality */}
       <Flex justify="space-between" align="center">
         <Text strong style={{ fontSize: themeTokens.typography.fontSize.sm }}>
-          {climb.name} @ {climb.angle}°
+          {climb.name}
           {climb.benchmark_difficulty !== null && (
             <CopyrightOutlined style={{ marginLeft: 4, fontSize: themeTokens.typography.fontSize.xs, color: themeTokens.colors.primary }} />
           )}
