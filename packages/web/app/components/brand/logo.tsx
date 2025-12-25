@@ -15,9 +15,9 @@ const KILTER_CYAN = '#00FFFF'; // Hand hold color
 const KILTER_PINK = '#FF00FF'; // Finish hold color
 
 const sizes = {
-  sm: { icon: 24, fontSize: 14, gap: 6 },
-  md: { icon: 28, fontSize: 16, gap: 8 },
-  lg: { icon: 36, fontSize: 20, gap: 10 },
+  sm: { icon: 28, fontSize: 14, gap: 6 },
+  md: { icon: 34, fontSize: 16, gap: 8 },
+  lg: { icon: 44, fontSize: 20, gap: 10 },
 };
 
 export const Logo = ({ size = 'md', showText = true, linkToHome = true }: LogoProps) => {
@@ -47,47 +47,85 @@ export const Logo = ({ size = 'md', showText = true, linkToHome = true }: LogoPr
             <stop offset="0%" stopColor={KILTER_CYAN} />
             <stop offset="100%" stopColor={KILTER_PINK} />
           </linearGradient>
-          {/* Drop shadow filter */}
-          <filter id="bs-shadow" x="-20%" y="-20%" width="140%" height="140%">
-            <feDropShadow dx="1" dy="1" stdDeviation="0.5" floodColor="#000" floodOpacity="0.4" />
-          </filter>
+          <linearGradient id="bs-gradient-reverse" x1="100%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor={KILTER_PINK} />
+            <stop offset="100%" stopColor={KILTER_CYAN} />
+          </linearGradient>
         </defs>
 
         {/* Background with rounded corners */}
-        <rect x="2" y="2" width="44" height="44" rx="8" fill="#1a1a2e" />
+        <rect x="2" y="2" width="44" height="44" rx="6" fill="#0d0d1a" />
 
-        {/* Decorative corner triangles - 90s geometric style */}
-        <polygon points="2,10 2,2 10,2" fill={KILTER_CYAN} opacity="0.6" />
-        <polygon points="46,38 46,46 38,46" fill={KILTER_PINK} opacity="0.6" />
+        {/* Diagonal stripes background - 90s pattern */}
+        <g clipPath="url(#bg-clip)">
+          <clipPath id="bg-clip">
+            <rect x="2" y="2" width="44" height="44" rx="6" />
+          </clipPath>
+          <line x1="0" y1="48" x2="16" y2="0" stroke={KILTER_CYAN} strokeWidth="1" opacity="0.15" />
+          <line x1="16" y1="48" x2="32" y2="0" stroke={KILTER_PINK} strokeWidth="1" opacity="0.15" />
+          <line x1="32" y1="48" x2="48" y2="0" stroke={KILTER_CYAN} strokeWidth="1" opacity="0.15" />
+        </g>
 
-        {/* Bold "B" letter - clean geometric style */}
+        {/* Geometric accent shapes */}
+        <polygon points="2,2 14,2 2,14" fill={KILTER_CYAN} opacity="0.8" />
+        <polygon points="46,46 34,46 46,34" fill={KILTER_PINK} opacity="0.8" />
+
+        {/* "B" shadow layer - offset for 90s depth effect */}
         <text
-          x="8"
-          y="35"
-          fontFamily="Arial Black, Arial, sans-serif"
-          fontSize="28"
+          x="10"
+          y="36"
+          fontFamily="Impact, Arial Black, sans-serif"
+          fontSize="32"
           fontWeight="900"
-          fill={KILTER_CYAN}
-          filter="url(#bs-shadow)"
+          fill="#000"
+          opacity="0.5"
         >
           B
         </text>
 
-        {/* Bold "S" letter - offset for depth effect */}
+        {/* "B" main letter */}
         <text
-          x="24"
-          y="35"
-          fontFamily="Arial Black, Arial, sans-serif"
-          fontSize="28"
+          x="8"
+          y="34"
+          fontFamily="Impact, Arial Black, sans-serif"
+          fontSize="32"
           fontWeight="900"
-          fill={KILTER_PINK}
-          filter="url(#bs-shadow)"
+          fill={KILTER_CYAN}
+          stroke="#000"
+          strokeWidth="1"
+        >
+          B
+        </text>
+
+        {/* "S" shadow layer */}
+        <text
+          x="26"
+          y="38"
+          fontFamily="Impact, Arial Black, sans-serif"
+          fontSize="32"
+          fontWeight="900"
+          fill="#000"
+          opacity="0.5"
         >
           S
         </text>
 
-        {/* Accent line - 90s style */}
-        <rect x="2" y="42" width="44" height="4" rx="2" fill="url(#bs-gradient)" />
+        {/* "S" main letter - slightly overlapping B */}
+        <text
+          x="24"
+          y="36"
+          fontFamily="Impact, Arial Black, sans-serif"
+          fontSize="32"
+          fontWeight="900"
+          fill={KILTER_PINK}
+          stroke="#000"
+          strokeWidth="1"
+        >
+          S
+        </text>
+
+        {/* Bottom accent bar with gradient */}
+        <rect x="4" y="42" width="40" height="3" rx="1.5" fill="url(#bs-gradient)" />
       </svg>
       {showText && (
         <span
