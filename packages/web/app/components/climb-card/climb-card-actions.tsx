@@ -2,11 +2,20 @@
 import React, { useState } from 'react';
 import { useQueueContext } from '../graphql-queue';
 import { BoardDetails, Climb } from '@/app/lib/types';
-import { PlusCircleOutlined, InfoCircleOutlined, CheckCircleOutlined, ForkOutlined } from '@ant-design/icons';
+import {
+  PlusCircleOutlined,
+  InfoCircleOutlined,
+  CheckCircleOutlined,
+  ForkOutlined,
+  HeartOutlined,
+  HeartFilled,
+} from '@ant-design/icons';
 import Link from 'next/link';
 import { constructClimbViewUrl, constructClimbViewUrlWithSlugs, constructCreateClimbUrl } from '@/app/lib/url-utils';
 import { track } from '@vercel/analytics';
-import { FavoriteButton } from '../climb-actions';
+import { message } from 'antd';
+import { useFavorite } from '../climb-actions';
+import AuthModal from '../auth/auth-modal';
 
 type ClimbCardActionsProps = {
   climb?: Climb;
@@ -16,6 +25,13 @@ type ClimbCardActionsProps = {
 const ClimbCardActions = ({ climb, boardDetails }: ClimbCardActionsProps) => {
   const { addToQueue, queue } = useQueueContext();
   const [recentlyAdded, setRecentlyAdded] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+
+  const { isFavorited, toggleFavorite, isAuthenticated } = useFavorite({
+    boardName: boardDetails.board_name,
+    climbUuid: climb?.uuid ?? '',
+    angle: climb?.angle ?? 0,
+  });
 
   if (!climb) {
     return [];
@@ -37,6 +53,42 @@ const ClimbCardActions = ({ climb, boardDetails }: ClimbCardActionsProps) => {
       }, 5000);
     }
   };
+
+  const handleFavorite = async () => {
+    if (!isAuthenticated) {
+      setShowAuthModal(true);
+      return;
+    }
+
+    try {
+      const newState = await toggleFavorite();
+      track('Favorite Toggle', {
+        boardName: boardDetails.board_name,
+        climbUuid: climb.uuid,
+        action: newState ? 'favorited' : 'unfavorited',
+      });
+      message.success(newState ? 'Added to favorites' : 'Removed from favorites');
+    } catch {
+      message.error('Failed to update favorite');
+    }
+  };
+
+  const handleAuthSuccess = () => {
+    toggleFavorite()
+      .then((newState) => {
+        track('Favorite Toggle', {
+          boardName: boardDetails.board_name,
+          climbUuid: climb.uuid,
+          action: newState ? 'favorited' : 'unfavorited',
+        });
+        message.success('Added to favorites');
+      })
+      .catch(() => {
+        message.error('Failed to add to favorites');
+      });
+  };
+
+  const HeartIcon = isFavorited ? HeartFilled : HeartOutlined;
 
   const actions: (React.JSX.Element | null)[] = [
     <Link
@@ -96,13 +148,10 @@ const ClimbCardActions = ({ climb, boardDetails }: ClimbCardActionsProps) => {
         <ForkOutlined />
       </Link>
     ) : null,
-    <FavoriteButton
+    <HeartIcon
       key="heart"
-      boardName={boardDetails.board_name}
-      climbUuid={climb.uuid}
-      climbName={climb.name}
-      angle={climb.angle}
-      size="small"
+      onClick={handleFavorite}
+      style={{ color: isFavorited ? '#ff4d4f' : 'inherit' }}
     />,
     recentlyAdded ? (
       <CheckCircleOutlined
@@ -119,7 +168,18 @@ const ClimbCardActions = ({ climb, boardDetails }: ClimbCardActionsProps) => {
     ),
   ];
 
-  return actions.filter((action): action is React.JSX.Element => action !== null);
+  return (
+    <>
+      {actions.filter((action): action is React.JSX.Element => action !== null)}
+      <AuthModal
+        open={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={handleAuthSuccess}
+        title="Sign in to save favorites"
+        description={`Sign in to save "${climb.name}" to your favorites.`}
+      />
+    </>
+  );
 };
 
 export default ClimbCardActions;
