@@ -97,7 +97,7 @@ const mockQueue: ClimbQueue = [];
 
 describe('useQueueDataFetching', () => {
   const mockSetHasDoneFirstFetch = vi.fn();
-  const mockGetLogbook = vi.fn();
+  const mockGetLogbook = vi.fn().mockResolvedValue([]);
   const mockSetSize = vi.fn();
 
   beforeEach(() => {
@@ -252,7 +252,8 @@ describe('useQueueDataFetching', () => {
     expect(result.current.climbSearchResults).toBeNull();
     expect(result.current.suggestedClimbs).toEqual([]);
     expect(result.current.totalSearchResultCount).toBeNull();
-    expect(result.current.hasMoreResults).toBeFalsy();
+    // Before first fetch completes, we optimistically assume there are more results
+  expect(result.current.hasMoreResults).toBe(true);
   });
 
   it('should handle fetchMoreClimbs', () => {
