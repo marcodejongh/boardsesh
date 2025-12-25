@@ -2,11 +2,12 @@ import { getServerSession } from "next-auth/next";
 import { NextRequest, NextResponse } from "next/server";
 import { createUserBoardMapping, getUserBoardMappings } from "@/app/lib/auth/user-board-mappings";
 import { BoardName } from "@/app/lib/types";
+import { authOptions } from "@/app/lib/auth/auth-options";
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession();
-    
+    const session = await getServerSession(authOptions);
+
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -37,8 +38,8 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   try {
-    const session = await getServerSession();
-    
+    const session = await getServerSession(authOptions);
+
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

@@ -4,6 +4,7 @@ import { getDb } from "@/app/lib/db/db";
 import * as schema from "@/app/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+import { authOptions } from "@/app/lib/auth/auth-options";
 
 const updateProfileSchema = z.object({
   displayName: z.string().max(100, "Display name must be less than 100 characters").optional().nullable(),
@@ -12,7 +13,7 @@ const updateProfileSchema = z.object({
 
 export async function GET() {
   try {
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -61,7 +62,7 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
