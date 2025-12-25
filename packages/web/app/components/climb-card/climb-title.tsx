@@ -65,6 +65,14 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
   const hasGrade = climb.difficulty && climb.quality_average && climb.quality_average !== '0';
   const isBenchmark = climb.benchmark_difficulty !== null && climb.benchmark_difficulty !== undefined;
 
+  // Extract V grade from difficulty string (e.g., "6a/V3" -> "V3", "V5" -> "V5")
+  const getVGrade = (difficulty: string): string | null => {
+    const vGradeMatch = difficulty.match(/V\d+/i);
+    return vGradeMatch ? vGradeMatch[0].toUpperCase() : null;
+  };
+
+  const vGrade = climb.difficulty ? getVGrade(climb.difficulty) : null;
+
   const textOverflowStyles = ellipsis
     ? {
         whiteSpace: 'nowrap' as const,
@@ -116,6 +124,19 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
     </Text>
   );
 
+  const largeGradeElement = vGrade && (
+    <Text
+      style={{
+        fontSize: 28,
+        fontWeight: themeTokens.typography.fontWeight.bold,
+        lineHeight: 1,
+        color: 'var(--ant-color-text-secondary)',
+      }}
+    >
+      {vGrade}
+    </Text>
+  );
+
   const setterElement = showSetterInfo && climb.setter_username && (
     <Text
       type="secondary"
@@ -130,18 +151,40 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
   );
 
   if (layout === 'horizontal') {
+    const secondLineContent = [];
+    if (hasGrade) {
+      secondLineContent.push(`${climb.difficulty} ${climb.quality_average}★`);
+    }
+    if (showSetterInfo && climb.setter_username) {
+      secondLineContent.push(`${climb.setter_username}`);
+    }
+    if (climb.ascensionist_count !== undefined) {
+      secondLineContent.push(`${climb.ascensionist_count} ascents`);
+    }
+
     return (
-      <Flex vertical gap={0} className={className}>
-        {/* Row 1: Name (left) with addon, Grade (right) */}
-        <Flex justify="space-between" align="center">
+      <Flex gap={12} align="center" className={className}>
+        {/* Left side: Name and quality/setter stacked */}
+        <Flex vertical gap={0} style={{ flex: 1, minWidth: 0 }}>
+          {/* Row 1: Name with addon */}
           <div style={{ display: 'flex', alignItems: 'center', gap: themeTokens.spacing[2] }}>
             {nameElement}
             {nameAddon}
           </div>
-          {gradeElement}
+          {/* Row 2: Quality, setter, ascents */}
+          <Text
+            type="secondary"
+            style={{
+              fontSize: themeTokens.typography.fontSize.xs,
+              fontWeight: themeTokens.typography.fontWeight.normal,
+              ...textOverflowStyles,
+            }}
+          >
+            {secondLineContent.length > 0 ? secondLineContent.join(' · ') : <span style={{ fontStyle: 'italic' }}>project</span>}
+          </Text>
         </Flex>
-        {/* Row 2 (optional): Setter info */}
-        {setterElement}
+        {/* Right side: Large V grade spanning both rows */}
+        {largeGradeElement}
       </Flex>
     );
   }
