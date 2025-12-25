@@ -127,6 +127,13 @@
       "when": 1766697469058,
       "tag": "0017_puzzling_mikhail_rasputin",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1766699828855,
+      "tag": "0018_perpetual_cerise",
+      "breakpoints": true
     }
   ]
 }
