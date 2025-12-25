@@ -2,7 +2,7 @@
 import React from 'react';
 
 import { Row, Col, Skeleton } from 'antd';
-import InfiniteScroll from 'react-infinite-scroll-component';
+import InfiniteScroll from '../infinite-scroll/infinite-scroll';
 import { track } from '@vercel/analytics';
 import { Climb, ParsedBoardRouteParameters, BoardDetails } from '@/app/lib/types';
 import { useQueueContext } from '../graphql-queue';
@@ -128,18 +128,17 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
 
   return (
     <InfiniteScroll
-      dataLength={climbs.length}
-      next={() => {
+      loadMore={() => {
         track('Infinite Scroll Load More', {
           currentCount: climbs.length,
           hasMore: hasMoreResults,
         });
-        return fetchMoreClimbs();
+        fetchMoreClimbs();
       }}
       hasMore={hasMoreResults}
+      isLoading={isFetchingClimbs}
       loader={<Skeleton active />}
       endMessage={<div style={{ textAlign: 'center' }}>No more climbs 🤐</div>}
-      // Probably not how this should be done in a React app, but it works and I ain't no CSS-wizard
       scrollableTarget="content-for-scrollable"
       style={{ paddingTop: '5px' }}
     >
