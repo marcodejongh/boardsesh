@@ -1,14 +1,15 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Button, Drawer, Badge, Space, Typography, Spin } from 'antd';
-import { SearchOutlined } from '@ant-design/icons';
+import { Button, Drawer, Badge, Typography, Spin, Space } from 'antd';
+import { SearchOutlined, FilterOutlined } from '@ant-design/icons';
 import SearchForm from './search-form';
 import { useQueueContext } from '@/app/components/graphql-queue';
 import ClearButton from './clear-button';
 import { BoardDetails } from '@/app/lib/types';
 import { useUISearchParams } from '../queue-control/ui-searchparams-provider';
 import { DEFAULT_SEARCH_PARAMS } from '@/app/lib/url-utils';
+import styles from './search-form.module.css';
 
 const { Text } = Typography;
 
@@ -26,6 +27,31 @@ const SearchButton = ({ boardDetails }: { boardDetails: BoardDetails }) => {
     return value !== DEFAULT_SEARCH_PARAMS[key as keyof typeof DEFAULT_SEARCH_PARAMS];
   });
 
+  const drawerTitle = (
+    <Space>
+      <FilterOutlined style={{ color: '#06B6D4' }} />
+      <span>Search Climbs</span>
+    </Space>
+  );
+
+  const drawerFooter = (
+    <div className={styles.searchFooter}>
+      <div className={styles.resultCount}>
+        {isFetchingClimbs ? (
+          <Spin size="small" />
+        ) : (
+          <Space size={8}>
+            <FilterOutlined style={{ color: '#06B6D4' }} />
+            <Text type="secondary">
+              <span className={styles.resultBadge}>{totalSearchResultCount.toLocaleString()}</span> results
+            </Text>
+          </Space>
+        )}
+      </div>
+      <ClearButton />
+    </div>
+  );
+
   return (
     <>
       <Badge
@@ -39,23 +65,16 @@ const SearchButton = ({ boardDetails }: { boardDetails: BoardDetails }) => {
       </Badge>
 
       <Drawer
-        title="Search"
+        title={drawerTitle}
         placement="right"
         width={'90%'}
         open={isOpen}
         onClose={() => setIsOpen(false)}
-        footer={
-          <Space style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <div style={{ textAlign: 'left' }}>
-              {isFetchingClimbs ? (
-                <Spin size="small" />
-              ) : (
-                <Text type="secondary">Total Results: {totalSearchResultCount}</Text>
-              )}
-            </div>
-            <ClearButton />
-          </Space>
-        }
+        footer={hasActiveFilters ? drawerFooter : null}
+        styles={{
+          body: { padding: '16px' },
+          footer: { padding: 0, border: 'none' },
+        }}
       >
         <SearchForm boardDetails={boardDetails} />
       </Drawer>

@@ -1,9 +1,13 @@
 import React from 'react';
 import { BoardDetails, HoldState } from '@/app/lib/types';
 import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
-import { Select, Button, Form } from 'antd';
+import { Select, Button, Typography, Space, Tag } from 'antd';
+import { AimOutlined, ClearOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import BoardHeatmap from '../board-renderer/board-heatmap';
 import { track } from '@vercel/analytics';
+import styles from './search-form.module.css';
+
+const { Text } = Typography;
 
 interface ClimbHoldSearchFormProps {
   boardDetails: BoardDetails;
@@ -23,8 +27,8 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
       } else {
         updatedHoldsFilter[holdId] = {
           state: selectedState,
-          color: selectedState === 'ANY' ? '#00CCCC' : '#FF0000',
-          displayColor: selectedState === 'ANY' ? '#00CCCC' : '#FF0000',
+          color: selectedState === 'ANY' ? '#06B6D4' : '#EF4444',
+          displayColor: selectedState === 'ANY' ? '#06B6D4' : '#EF4444',
         };
       }
     }
@@ -35,14 +39,22 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
   };
 
   const stateItems = [
-    { value: 'ANY', label: 'Any Hold' },
-    { value: 'NOT', label: 'Not This Hold' },
+    { value: 'ANY', label: 'Must Include', icon: <CheckCircleOutlined style={{ color: '#06B6D4' }} /> },
+    { value: 'NOT', label: 'Must Exclude', icon: <CloseCircleOutlined style={{ color: '#EF4444' }} /> },
   ];
 
+  const selectedHoldsCount = Object.keys(uiSearchParams.holdsFilter || {}).length;
+  const anyHoldsCount = Object.values(uiSearchParams.holdsFilter || {}).filter(h => h.state === 'ANY').length;
+  const notHoldsCount = Object.values(uiSearchParams.holdsFilter || {}).filter(h => h.state === 'NOT').length;
+
   return (
-    <div className="relative">
-      <Form layout="horizontal" className="mb-4">
-        <Form.Item label="Select hold type" className="mb-0">
+    <div className={styles.holdSearchForm}>
+      <div className={styles.holdSearchHeader}>
+        <div className={styles.holdTypeSelector}>
+          <Space>
+            <AimOutlined className={styles.labelIcon} />
+            <Text strong>Hold Filter</Text>
+          </Space>
           <Select
             value={selectedState}
             onChange={(value) => {
@@ -52,15 +64,34 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
                 boardLayout: boardDetails.layout_name || '',
               });
             }}
-            style={{ width: 200 }}
-            options={stateItems}
+            style={{ width: 160 }}
+            options={stateItems.map(item => ({
+              value: item.value,
+              label: (
+                <Space>
+                  {item.icon}
+                  {item.label}
+                </Space>
+              ),
+            }))}
           />
-        </Form.Item>
-      </Form>
+        </div>
+        <Text type="secondary" className={styles.holdSearchHint}>
+          Tap holds on the board to {selectedState === 'ANY' ? 'include them in results' : 'exclude them from results'}
+        </Text>
+        {selectedHoldsCount > 0 && (
+          <Space size={4}>
+            {anyHoldsCount > 0 && (
+              <Tag color="cyan">{anyHoldsCount} included</Tag>
+            )}
+            {notHoldsCount > 0 && (
+              <Tag color="red">{notHoldsCount} excluded</Tag>
+            )}
+          </Space>
+        )}
+      </div>
 
-      <p className="mb-4">Click on holds to set them to the selected type</p>
-
-      <div className="w-full max-w-2xl mx-auto">
+      <div className={styles.boardContainer}>
         <BoardHeatmap
           boardDetails={boardDetails}
           litUpHoldsMap={uiSearchParams.holdsFilter}
@@ -68,22 +99,22 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
         />
       </div>
 
-      {Object.keys(uiSearchParams.holdsFilter || {}).length > 0 && (
-        <Form.Item className="mt-4">
-          <Button
-            danger
-            onClick={() => {
-              const holdCount = Object.keys(uiSearchParams.holdsFilter || {}).length;
-              updateFilters({ holdsFilter: {} });
-              track('Clear Search Holds', {
-                holds_cleared: holdCount,
-                boardLayout: boardDetails.layout_name || '',
-              });
-            }}
-          >
-            Clear Selected Holds
-          </Button>
-        </Form.Item>
+      {selectedHoldsCount > 0 && (
+        <Button
+          icon={<ClearOutlined />}
+          danger
+          block
+          className={styles.clearHoldsButton}
+          onClick={() => {
+            updateFilters({ holdsFilter: {} });
+            track('Clear Search Holds', {
+              holds_cleared: selectedHoldsCount,
+              boardLayout: boardDetails.layout_name || '',
+            });
+          }}
+        >
+          Clear All Holds ({selectedHoldsCount})
+        </Button>
       )}
     </div>
   );
