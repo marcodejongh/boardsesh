@@ -1,26 +1,50 @@
+/* Climb View Actions Styles */
+
 .container {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-.backButton {
-  flex: 0 0 auto;
+.actionButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
+/* Mobile layout */
 .mobileActions {
   display: flex;
   justify-content: space-between;
   align-items: center;
   width: 100%;
+  gap: 8px;
+}
+
+.mobileLeft {
+  flex-shrink: 0;
+}
+
+.mobileRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 .desktopActions {
   display: none;
 }
 
+/* In Queue button - uses theme success color */
 .inQueueButton {
-  color: #52c41a !important;
+  color: #10B981 !important;
+  border-color: #10B981 !important;
+}
+
+.inQueueButton:hover {
+  color: #059669 !important;
+  border-color: #059669 !important;
 }
 
 @media (min-width: 768px) {
@@ -30,6 +54,7 @@
     align-items: center;
     width: 100%;
   }
+
   .mobileActions {
     display: none;
   }
