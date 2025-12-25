@@ -89,41 +89,19 @@
 .holdSearchForm {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 8px;
 }
 
-.holdSearchHeader {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 12px;
-  background-color: #F9FAFB;
-  border-radius: 8px;
-}
-
-.holdTypeSelector {
+.holdSearchHeaderCompact {
   display: flex;
   align-items: center;
-  gap: 12px;
-}
-
-.holdSearchHint {
-  font-size: 13px;
-  color: #6B7280;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  padding: 8px 0;
 }
 
 .boardContainer {
   width: 100%;
   max-width: 100%;
   margin: 0 auto;
-}
-
-.clearHoldsButton {
-  margin-top: 8px;
 }
 
 /* Search Results Footer Styles */

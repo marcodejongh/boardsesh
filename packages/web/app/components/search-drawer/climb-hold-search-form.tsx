@@ -1,8 +1,8 @@
 import React from 'react';
 import { BoardDetails, HoldState } from '@/app/lib/types';
 import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
-import { Select, Button, Typography, Space, Tag } from 'antd';
-import { AimOutlined, ClearOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
+import { Select, Typography, Space, Tag } from 'antd';
+import { CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import BoardHeatmap from '../board-renderer/board-heatmap';
 import { track } from '@vercel/analytics';
 import styles from './search-form.module.css';
@@ -39,8 +39,8 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
   };
 
   const stateItems = [
-    { value: 'ANY', label: 'Must Include', icon: <CheckCircleOutlined style={{ color: '#06B6D4' }} /> },
-    { value: 'NOT', label: 'Must Exclude', icon: <CloseCircleOutlined style={{ color: '#EF4444' }} /> },
+    { value: 'ANY', label: 'Include', icon: <CheckCircleOutlined style={{ color: '#06B6D4' }} /> },
+    { value: 'NOT', label: 'Exclude', icon: <CloseCircleOutlined style={{ color: '#EF4444' }} /> },
   ];
 
   const selectedHoldsCount = Object.keys(uiSearchParams.holdsFilter || {}).length;
@@ -49,12 +49,9 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
 
   return (
     <div className={styles.holdSearchForm}>
-      <div className={styles.holdSearchHeader}>
-        <div className={styles.holdTypeSelector}>
-          <Space>
-            <AimOutlined className={styles.labelIcon} />
-            <Text strong>Hold Filter</Text>
-          </Space>
+      <div className={styles.holdSearchHeaderCompact}>
+        <Space size={8} wrap>
+          <Text type="secondary">Tap to:</Text>
           <Select
             value={selectedState}
             onChange={(value) => {
@@ -64,31 +61,21 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
                 boardLayout: boardDetails.layout_name || '',
               });
             }}
-            style={{ width: 160 }}
+            size="small"
+            style={{ width: 110 }}
             options={stateItems.map(item => ({
               value: item.value,
               label: (
-                <Space>
+                <Space size={4}>
                   {item.icon}
                   {item.label}
                 </Space>
               ),
             }))}
           />
-        </div>
-        <Text type="secondary" className={styles.holdSearchHint}>
-          Tap holds on the board to {selectedState === 'ANY' ? 'include them in results' : 'exclude them from results'}
-        </Text>
-        {selectedHoldsCount > 0 && (
-          <Space size={4}>
-            {anyHoldsCount > 0 && (
-              <Tag color="cyan">{anyHoldsCount} included</Tag>
-            )}
-            {notHoldsCount > 0 && (
-              <Tag color="red">{notHoldsCount} excluded</Tag>
-            )}
-          </Space>
-        )}
+          {anyHoldsCount > 0 && <Tag color="cyan" style={{ margin: 0 }}>{anyHoldsCount} in</Tag>}
+          {notHoldsCount > 0 && <Tag color="red" style={{ margin: 0 }}>{notHoldsCount} out</Tag>}
+        </Space>
       </div>
 
       <div className={styles.boardContainer}>
@@ -98,24 +85,6 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
           onHoldClick={handleHoldClick}
         />
       </div>
-
-      {selectedHoldsCount > 0 && (
-        <Button
-          icon={<ClearOutlined />}
-          danger
-          block
-          className={styles.clearHoldsButton}
-          onClick={() => {
-            updateFilters({ holdsFilter: {} });
-            track('Clear Search Holds', {
-              holds_cleared: selectedHoldsCount,
-              boardLayout: boardDetails.layout_name || '',
-            });
-          }}
-        >
-          Clear All Holds ({selectedHoldsCount})
-        </Button>
-      )}
     </div>
   );
 };
