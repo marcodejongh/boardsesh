@@ -22,24 +22,28 @@ const ClimbCard = ({ climb, boardDetails, onCoverClick, selected, actions }: Cli
   const cover = <ClimbCardCover climb={climb} boardDetails={boardDetails} onClick={onCoverClick} />;
 
   const cardTitle = climb ? (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-      {/* LEFT: Name, Angle, Benchmark */}
-      <div style={{ fontWeight: themeTokens.typography.fontWeight.semibold }}>
-        {climb.name} @ {climb.angle}°
-        {climb.benchmark_difficulty !== null && (
-          <CopyrightOutlined style={{ marginLeft: 4, color: themeTokens.colors.primary }} />
-        )}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      {/* Row 1: Name, Angle, Benchmark | Difficulty, Quality */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: themeTokens.typography.fontSize.sm }}>
+        <div style={{ fontWeight: themeTokens.typography.fontWeight.semibold }}>
+          {climb.name} @ {climb.angle}°
+          {climb.benchmark_difficulty !== null && (
+            <CopyrightOutlined style={{ marginLeft: 4, color: themeTokens.colors.primary }} />
+          )}
+        </div>
+        <div style={{ color: themeTokens.neutral[600] }}>
+          {climb.difficulty && climb.quality_average && climb.quality_average !== '0' ? (
+            `${climb.difficulty} ★${climb.quality_average}`
+          ) : (
+            <span style={{ fontWeight: 400, fontStyle: 'italic', color: themeTokens.neutral[400] }}>
+              project
+            </span>
+          )}
+        </div>
       </div>
-
-      {/* RIGHT: Difficulty, Quality */}
-      <div style={{ color: themeTokens.neutral[600] }}>
-        {climb.difficulty && climb.quality_average && climb.quality_average !== '0' ? (
-          `${climb.difficulty} ★${climb.quality_average}`
-        ) : (
-          <span style={{ fontWeight: 400, fontStyle: 'italic', color: themeTokens.neutral[400] }}>
-            project
-          </span>
-        )}
+      {/* Row 2: Setter and ascent count */}
+      <div style={{ fontSize: themeTokens.typography.fontSize.xs, color: themeTokens.neutral[500], fontWeight: themeTokens.typography.fontWeight.normal }}>
+        By {climb.setter_username} - {climb.ascensionist_count} ascents
       </div>
     </div>
   ) : (
@@ -56,9 +60,6 @@ const ClimbCard = ({ climb, boardDetails, onCoverClick, selected, actions }: Cli
       }}
       actions={actions || ClimbCardActions({ climb, boardDetails })}
     >
-      <div style={{ color: themeTokens.neutral[500], fontSize: themeTokens.typography.fontSize.sm }}>
-        {climb ? `By ${climb.setter_username} - ${climb.ascensionist_count} ascents` : null}
-      </div>
       {cover}
     </Card>
   );
