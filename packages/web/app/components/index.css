@@ -19,11 +19,13 @@ html, body {
 }
 
 /* Prevent horizontal scroll on layout components */
-.ant-layout,
-.ant-layout-content {
+.ant-layout {
   max-width: 100%;
   overflow-x: hidden;
 }
+
+/* Note: .ant-layout-content overflow is controlled by inline styles on #content-for-scrollable
+   to enable proper infinite scroll detection. Do not set overflow here. */
 
 /* Prevent double-tap zoom globally while preserving pinch-to-zoom */
 html {

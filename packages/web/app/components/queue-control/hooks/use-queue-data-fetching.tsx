@@ -61,7 +61,11 @@ export const useQueueDataFetching = ({
     initialSize: searchParams.page ? searchParams.page + 1 : 1,
   });
 
-  const hasMoreResults = data && data[0] && size * PAGE_LIMIT < data[0].totalCount;
+  // When data exists, calculate normally. Otherwise default to true while loading
+  // (so infinite scroll works during SSR hydration), or false after loading completes with no data
+  const hasMoreResults = data?.[0]?.totalCount !== undefined
+    ? size * PAGE_LIMIT < data[0].totalCount
+    : Boolean(isFetchingClimbs);
   const totalSearchResultCount = (data && data[0] && data[0].totalCount) || null;
 
   const climbSearchResults = useMemo(

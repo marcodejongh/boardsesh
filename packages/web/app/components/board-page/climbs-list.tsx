@@ -126,6 +126,30 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
     }
   }, [page, hasDoneFirstFetch, isFetchingClimbs]); // Depend on the page query parameter
 
+  // Auto-trigger load when content doesn't fill the scroll container
+  const wasFetchingRef = useRef(isFetchingClimbs);
+
+  useEffect(() => {
+    const wasFetching = wasFetchingRef.current;
+    wasFetchingRef.current = isFetchingClimbs;
+
+    // Only check when fetch just completed (was fetching, now not)
+    // OR on initial mount when not fetching
+    const fetchJustCompleted = wasFetching && !isFetchingClimbs;
+    const isInitialCheck = !wasFetching && !isFetchingClimbs && climbs.length > 0;
+
+    if (!hasMoreResults || isFetchingClimbs) return;
+    if (!fetchJustCompleted && !isInitialCheck) return;
+
+    const scrollContainer = document.getElementById('content-for-scrollable');
+    if (!scrollContainer) return;
+
+    const needsMoreContent = scrollContainer.scrollHeight <= scrollContainer.clientHeight;
+    if (needsMoreContent) {
+      fetchMoreClimbs();
+    }
+  }, [hasMoreResults, isFetchingClimbs, climbs.length, fetchMoreClimbs]);
+
   return (
     <InfiniteScroll
       dataLength={climbs.length}
