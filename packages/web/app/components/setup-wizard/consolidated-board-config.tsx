@@ -467,7 +467,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
               items={[
                 {
                   key: 'saved',
-                  label: `Saved Configurations (${savedConfigurations.length})`,
+                  label: `Saved Boards (${savedConfigurations.length})`,
                   extra: (
                     <Button
                       type={isEditMode ? 'primary' : 'default'}
@@ -500,15 +500,6 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
         )}
 
         <Form layout="vertical">
-          <Form.Item label="Configuration Name (Optional)">
-            <Input
-              value={configName}
-              onChange={(e) => setConfigName(e.target.value)}
-              placeholder={suggestedName || 'Enter a name for this configuration'}
-              maxLength={50}
-            />
-          </Form.Item>
-
           <Form.Item label="Board Configuration" required>
             <Row gutter={[16, 16]}>
               <Col xs={24} sm={12}>
@@ -588,6 +579,15 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
                 </Form.Item>
               </Col>
             </Row>
+          </Form.Item>
+
+          <Form.Item label="Board Name (Optional)">
+            <Input
+              value={configName}
+              onChange={(e) => setConfigName(e.target.value)}
+              placeholder={suggestedName || 'Enter a name for this board'}
+              maxLength={50}
+            />
           </Form.Item>
 
           <div style={{ marginBottom: themeTokens.spacing[4], textAlign: 'center' }}>
