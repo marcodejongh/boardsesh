@@ -109,7 +109,6 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
       style={{
         fontSize: themeTokens.typography.fontSize.xs,
         fontWeight: themeTokens.typography.fontWeight.normal,
-        color: themeTokens.neutral[500],
         ...textOverflowStyles,
       }}
     >
