@@ -65,6 +65,14 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
   const hasGrade = climb.difficulty && climb.quality_average && climb.quality_average !== '0';
   const isBenchmark = climb.benchmark_difficulty !== null && climb.benchmark_difficulty !== undefined;
 
+  // Extract V grade from difficulty string (e.g., "6a/V3" -> "V3", "V5" -> "V5")
+  const getVGrade = (difficulty: string): string | null => {
+    const vGradeMatch = difficulty.match(/V\d+/i);
+    return vGradeMatch ? vGradeMatch[0].toUpperCase() : null;
+  };
+
+  const vGrade = climb.difficulty ? getVGrade(climb.difficulty) : null;
+
   const textOverflowStyles = ellipsis
     ? {
         whiteSpace: 'nowrap' as const,
@@ -116,7 +124,7 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
     </Text>
   );
 
-  const largeGradeElement = climb.difficulty && (
+  const largeGradeElement = vGrade && (
     <Text
       style={{
         fontSize: 28,
@@ -125,7 +133,7 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
         color: themeTokens.neutral[500],
       }}
     >
-      {climb.difficulty}
+      {vGrade}
     </Text>
   );
 
@@ -145,7 +153,7 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
   if (layout === 'horizontal') {
     const secondLineContent = [];
     if (hasGrade) {
-      secondLineContent.push(`${climb.quality_average}★`);
+      secondLineContent.push(`${climb.difficulty} ${climb.quality_average}★`);
     }
     if (showSetterInfo && climb.setter_username) {
       secondLineContent.push(`${climb.setter_username}`);
