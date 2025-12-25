@@ -25,9 +25,18 @@ const loadingMessages = [
 interface AnimatedBoardLoadingProps {
   isVisible: boolean;
   boardDetails?: BoardDetails | null;
+  /** Render inline without overlay or messages */
+  inline?: boolean;
+  /** Size for inline mode (default: 80) */
+  size?: number;
 }
 
-const AnimatedBoardLoading: React.FC<AnimatedBoardLoadingProps> = ({ isVisible, boardDetails }) => {
+const AnimatedBoardLoading: React.FC<AnimatedBoardLoadingProps> = ({
+  isVisible,
+  boardDetails,
+  inline = false,
+  size = 80,
+}) => {
   const [currentMessage, setCurrentMessage] = useState(loadingMessages[0]);
   const [animationFrame, setAnimationFrame] = useState(0);
 
@@ -72,9 +81,9 @@ const AnimatedBoardLoading: React.FC<AnimatedBoardLoadingProps> = ({ isVisible, 
     return holdsMap;
   }, [boardDetails, animationFrame]);
 
-  // Message rotation effect
+  // Message rotation effect (only for overlay mode)
   useEffect(() => {
-    if (!isVisible) return;
+    if (!isVisible || inline) return;
 
     let messageIndex = 0;
     const messageInterval = setInterval(() => {
@@ -83,7 +92,7 @@ const AnimatedBoardLoading: React.FC<AnimatedBoardLoadingProps> = ({ isVisible, 
     }, 2500);
 
     return () => clearInterval(messageInterval);
-  }, [isVisible]);
+  }, [isVisible, inline]);
 
   // Animation frame update for hold movement
   useEffect(() => {
@@ -98,6 +107,29 @@ const AnimatedBoardLoading: React.FC<AnimatedBoardLoadingProps> = ({ isVisible, 
 
   if (!isVisible) return null;
 
+  // Inline mode: just render the animated board
+  if (inline && boardDetails) {
+    return (
+      <div
+        style={{
+          width: size,
+          height: size,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <BoardRenderer
+          litUpHoldsMap={animatedHoldsMap}
+          mirrored={false}
+          boardDetails={boardDetails}
+          thumbnail={false}
+        />
+      </div>
+    );
+  }
+
+  // Full overlay mode
   return (
     <div
       style={{
@@ -116,13 +148,15 @@ const AnimatedBoardLoading: React.FC<AnimatedBoardLoadingProps> = ({ isVisible, 
       }}
     >
       {boardDetails ? (
-        <div style={{ 
-          width: '250px',
-          height: '250px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}>
+        <div
+          style={{
+            width: '250px',
+            height: '250px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
           <BoardRenderer
             litUpHoldsMap={animatedHoldsMap}
             mirrored={false}
@@ -132,16 +166,18 @@ const AnimatedBoardLoading: React.FC<AnimatedBoardLoadingProps> = ({ isVisible, 
         </div>
       ) : (
         // Show a spinning circle instead of dots when no board details
-        <div style={{
-          width: '80px',
-          height: '80px',
-          border: '4px solid rgba(6, 182, 212, 0.2)', // primary color at 20% opacity
-          borderTop: `4px solid ${themeTokens.colors.primary}`,
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite',
-        }} />
+        <div
+          style={{
+            width: '80px',
+            height: '80px',
+            border: '4px solid rgba(6, 182, 212, 0.2)', // primary color at 20% opacity
+            borderTop: `4px solid ${themeTokens.colors.primary}`,
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+          }}
+        />
       )}
-      
+
       <Text
         style={{
           color: 'white',
@@ -155,9 +191,10 @@ const AnimatedBoardLoading: React.FC<AnimatedBoardLoadingProps> = ({ isVisible, 
       >
         {currentMessage}
       </Text>
-      
-      <style dangerouslySetInnerHTML={{
-        __html: `
+
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
           @keyframes pulse {
             0%, 100% {
               opacity: 0.3;
@@ -172,8 +209,9 @@ const AnimatedBoardLoading: React.FC<AnimatedBoardLoadingProps> = ({ isVisible, 
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
           }
-        `
-      }} />
+        `,
+        }}
+      />
     </div>
   );
 };
