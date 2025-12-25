@@ -58,7 +58,7 @@ const ClimbCard = ({ climb, boardDetails, onCoverClick, selected, actions }: Cli
         backgroundColor: selected ? themeTokens.semantic.selected : themeTokens.semantic.surface,
         borderColor: selected ? themeTokens.colors.primary : undefined,
       }}
-      styles={{ header: { paddingTop: 12, paddingBottom: 8 } }}
+      styles={{ header: { paddingTop: 10, paddingBottom: 8 } }}
       actions={actions || ClimbCardActions({ climb, boardDetails })}
     >
       {cover}
