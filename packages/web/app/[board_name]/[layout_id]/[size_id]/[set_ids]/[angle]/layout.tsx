@@ -157,9 +157,7 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
             </Content>
 
             <Affix offsetBottom={0}>
-              <div style={{ width: '100%', backgroundColor: '#fff', boxShadow: '0 -2px 8px rgba(0, 0, 0, 0.15)' }}>
-                <QueueControlBar board={board_name} boardDetails={boardDetails} angle={angle} />
-              </div>
+              <QueueControlBar board={board_name} boardDetails={boardDetails} angle={angle} />
             </Affix>
             </PartyProvider>
           </GraphQLQueueProvider>
