@@ -163,6 +163,7 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
         height="70%" // Adjust as per design preference
         open={isQueueOpen}
         onClose={toggleQueueDrawer}
+        styles={{ body: { padding: 0 } }}
       >
         <QueueList boardDetails={boardDetails} onClimbNavigate={() => setIsQueueOpen(false)} />
       </Drawer>
