@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Button, Drawer, Card, Row, Col, Rate, Spin, Typography, Divider } from 'antd';
+import React, { useState, useRef, useEffect } from 'react';
+import { Button, Drawer, Spin, Typography, Flex, Row, Col, Card, Alert } from 'antd';
 import { useRouter, usePathname } from 'next/navigation';
 import { track } from '@vercel/analytics';
 import useSWR from 'swr';
@@ -10,7 +10,7 @@ import { BoardName, Climb } from '@/app/lib/types';
 import { ClimbStatsForAngle } from '@/app/lib/data/queries';
 import { themeTokens } from '@/app/theme/theme-config';
 
-const { Text, Title } = Typography;
+const { Text } = Typography;
 
 type AngleSelectorProps = {
   boardName: BoardName;
@@ -22,12 +22,13 @@ export default function AngleSelector({ boardName, currentAngle, currentClimb }:
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
-  
+  const currentAngleRef = useRef<HTMLDivElement>(null);
+
   // Build the API URL for fetching climb stats
   const climbStatsUrl = currentClimb
     ? `/api/v1/${boardName}/climb-stats/${currentClimb.uuid}`
     : null;
-  
+
   // Fetch climb stats for all angles when there's a current climb
   const { data: climbStats, isLoading } = useSWR<ClimbStatsForAngle[]>(
     climbStatsUrl,
@@ -37,12 +38,26 @@ export default function AngleSelector({ boardName, currentAngle, currentClimb }:
       revalidateOnReconnect: false,
     }
   );
-  
+
   // Create a map for easy lookup of stats by angle
   const statsMap = React.useMemo(() => {
     if (!climbStats) return new Map();
     return new Map(climbStats.map(stat => [stat.angle, stat]));
   }, [climbStats]);
+
+  // Scroll to current angle when drawer opens
+  useEffect(() => {
+    if (isDrawerOpen && currentAngleRef.current) {
+      // Small delay to ensure drawer is fully rendered
+      const timeoutId = setTimeout(() => {
+        currentAngleRef.current?.scrollIntoView({
+          behavior: 'instant',
+          block: 'center',
+        });
+      }, 50);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [isDrawerOpen]);
 
   const handleAngleChange = (newAngle: number) => {
     track('Angle Changed', {
@@ -62,43 +77,62 @@ export default function AngleSelector({ boardName, currentAngle, currentClimb }:
     setIsDrawerOpen(false);
   };
 
-  const renderClimbStats = (angle: number) => {
+  const renderAngleCard = (angle: number) => {
     const stats = statsMap.get(angle);
-    if (!stats || !currentClimb) return null;
+    const isSelected = angle === currentAngle;
+    const hasStats = currentClimb && stats;
 
     return (
-      <div style={{ marginTop: 8 }}>
-        <Divider style={{ margin: '8px 0' }} />
-        {stats.difficulty && (
-          <div style={{ marginBottom: 4 }}>
-            <Text strong style={{ fontSize: '12px' }}>Grade: </Text>
-            <Text style={{ fontSize: '12px' }}>{stats.difficulty}</Text>
-          </div>
-        )}
-        {stats.quality_average !== null && (
-          <div style={{ marginBottom: 4 }}>
-            <Text strong style={{ fontSize: '12px' }}>Quality: </Text>
-            <Rate disabled allowHalf value={Number(stats.quality_average)} style={{ fontSize: '10px' }} />
-            <Text style={{ fontSize: '12px', marginLeft: 4 }}>({Number(stats.quality_average).toFixed(1)})</Text>
-          </div>
-        )}
-        <div style={{ marginBottom: 4 }}>
-          <Text strong style={{ fontSize: '12px' }}>Ascents: </Text>
-          <Text style={{ fontSize: '12px' }}>{stats.ascensionist_count}</Text>
+      <Col xs={8} sm={6} md={4} key={angle}>
+        <div ref={isSelected ? currentAngleRef : null}>
+          <Card
+            hoverable
+            size="small"
+            onClick={() => handleAngleChange(angle)}
+            styles={{
+              body: {
+                padding: '12px 8px',
+                minHeight: 80,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+              },
+            }}
+            style={{
+              backgroundColor: isSelected ? themeTokens.semantic.selected : undefined,
+              borderColor: isSelected ? themeTokens.colors.primary : undefined,
+              borderWidth: isSelected ? 2 : 1,
+            }}
+          >
+            <Text strong style={{ fontSize: 20, lineHeight: 1.2 }}>
+              {angle}°
+            </Text>
+            {hasStats && (
+              <Flex vertical gap={2} align="center" style={{ marginTop: 4 }}>
+                {stats.difficulty && (
+                  <Text style={{ fontSize: 12, fontWeight: 500 }}>{stats.difficulty}</Text>
+                )}
+                <Flex gap={4} align="center" justify="center" wrap="wrap">
+                  {stats.quality_average !== null && Number(stats.quality_average) > 0 && (
+                    <Text style={{ fontSize: 11, color: themeTokens.colors.warning }}>
+                      ★{Number(stats.quality_average).toFixed(1)}
+                    </Text>
+                  )}
+                  <Text type="secondary" style={{ fontSize: 10 }}>
+                    {stats.ascensionist_count} sends
+                  </Text>
+                </Flex>
+              </Flex>
+            )}
+            {currentClimb && !hasStats && !isLoading && (
+              <Text type="secondary" style={{ fontSize: 10, marginTop: 4 }}>
+                No data
+              </Text>
+            )}
+          </Card>
         </div>
-        {stats.fa_username && (
-          <div style={{ marginBottom: 4 }}>
-            <Text strong style={{ fontSize: '12px' }}>FA: </Text>
-            <Text style={{ fontSize: '12px' }}>{stats.fa_username}</Text>
-          </div>
-        )}
-        {stats.fa_at && (
-          <div>
-            <Text strong style={{ fontSize: '12px' }}>Date: </Text>
-            <Text style={{ fontSize: '12px' }}>{new Date(stats.fa_at).toLocaleDateString()}</Text>
-          </div>
-        )}
-      </div>
+      </Col>
     );
   };
 
@@ -109,54 +143,28 @@ export default function AngleSelector({ boardName, currentAngle, currentClimb }:
       </Button>
 
       <Drawer
-        title={currentClimb ? `Select Angle - ${currentClimb.name}` : "Select Angle"}
+        title="Select Angle"
         placement="right"
         onClose={() => setIsDrawerOpen(false)}
         open={isDrawerOpen}
-        width={350}
+        width={'90%'}
+        styles={{ body: { padding: 12 } }}
       >
-        {currentClimb && isLoading && (
-          <div style={{ textAlign: 'center', padding: '20px' }}>
-            <Spin size="large" />
-            <div style={{ marginTop: 8 }}>
-              <Text>Loading climb statistics...</Text>
-            </div>
-          </div>
+        {currentClimb && (
+          <Alert
+            message={currentClimb.name}
+            type="info"
+            style={{ marginBottom: 12, textAlign: 'center' }}
+          />
         )}
-        <Row gutter={[0, 16]}>
-          {ANGLES[boardName].map((angle) => {
-            const hasStats = currentClimb && statsMap.has(angle);
-            return (
-              <Col span={24} key={angle}>
-                <Card
-                  hoverable
-                  onClick={() => handleAngleChange(angle)}
-                  style={{
-                    backgroundColor: angle === currentAngle ? themeTokens.semantic.selected : undefined,
-                    borderColor: angle === currentAngle ? themeTokens.colors.primary : undefined,
-                    minHeight: currentClimb && !isLoading ? (hasStats ? '160px' : '60px') : '60px',
-                  }}
-                >
-                  <div>
-                    <Title level={4} style={{ margin: 0, marginBottom: hasStats ? 0 : 4 }}>
-                      {angle}°
-                    </Title>
-                    {!currentClimb && (
-                      <Text type="secondary" style={{ fontSize: '12px' }}>
-                        Click to select this angle
-                      </Text>
-                    )}
-                    {currentClimb && !hasStats && !isLoading && (
-                      <Text type="secondary" style={{ fontSize: '12px' }}>
-                        No data for this angle
-                      </Text>
-                    )}
-                    {!isLoading && renderClimbStats(angle)}
-                  </div>
-                </Card>
-              </Col>
-            );
-          })}
+        {currentClimb && isLoading && (
+          <Flex align="center" justify="center" gap={8} style={{ marginBottom: 12 }}>
+            <Spin size="small" />
+            <Text type="secondary" style={{ fontSize: 12 }}>Loading stats...</Text>
+          </Flex>
+        )}
+        <Row gutter={[8, 8]}>
+          {ANGLES[boardName].map(renderAngleCard)}
         </Row>
       </Drawer>
     </>
