@@ -2,12 +2,16 @@
 
 import React from 'react';
 import Card from 'antd/es/card';
+import Flex from 'antd/es/flex';
+import Typography from 'antd/es/typography';
 import { CopyrightOutlined } from '@ant-design/icons';
 
 import ClimbCardCover from './climb-card-cover';
 import { Climb, BoardDetails } from '@/app/lib/types';
 import ClimbCardActions from './climb-card-actions';
 import { themeTokens } from '@/app/theme/theme-config';
+
+const { Text } = Typography;
 
 type ClimbCardProps = {
   climb?: Climb;
@@ -22,30 +26,30 @@ const ClimbCard = ({ climb, boardDetails, onCoverClick, selected, actions }: Cli
   const cover = <ClimbCardCover climb={climb} boardDetails={boardDetails} onClick={onCoverClick} />;
 
   const cardTitle = climb ? (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+    <Flex vertical gap={0}>
       {/* Row 1: Name, Angle, Benchmark | Difficulty, Quality */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: themeTokens.typography.fontSize.sm }}>
-        <div style={{ fontWeight: themeTokens.typography.fontWeight.semibold }}>
+      <Flex justify="space-between" align="center">
+        <Text strong style={{ fontSize: themeTokens.typography.fontSize.sm }}>
           {climb.name} @ {climb.angle}°
           {climb.benchmark_difficulty !== null && (
             <CopyrightOutlined style={{ marginLeft: 4, color: themeTokens.colors.primary }} />
           )}
-        </div>
-        <div style={{ color: themeTokens.neutral[600] }}>
+        </Text>
+        <Text type="secondary" style={{ fontSize: themeTokens.typography.fontSize.sm }}>
           {climb.difficulty && climb.quality_average && climb.quality_average !== '0' ? (
             `${climb.difficulty} ★${climb.quality_average}`
           ) : (
-            <span style={{ fontWeight: 400, fontStyle: 'italic', color: themeTokens.neutral[400] }}>
+            <Text italic type="secondary">
               project
-            </span>
+            </Text>
           )}
-        </div>
-      </div>
+        </Text>
+      </Flex>
       {/* Row 2: Setter and ascent count */}
-      <div style={{ fontSize: themeTokens.typography.fontSize.xs, color: themeTokens.neutral[500], fontWeight: themeTokens.typography.fontWeight.normal }}>
+      <Text type="secondary" style={{ fontSize: themeTokens.typography.fontSize.xs }}>
         By {climb.setter_username} - {climb.ascensionist_count} ascents
-      </div>
-    </div>
+      </Text>
+    </Flex>
   ) : (
     'Loading...'
   );
