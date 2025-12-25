@@ -22,7 +22,7 @@ const ClimbCard = ({ climb, boardDetails, onCoverClick, selected, actions }: Cli
   const cover = <ClimbCardCover climb={climb} boardDetails={boardDetails} onClick={onCoverClick} />;
 
   const cardTitle = climb ? (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
       {/* Row 1: Name, Angle, Benchmark | Difficulty, Quality */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: themeTokens.typography.fontSize.sm }}>
         <div style={{ fontWeight: themeTokens.typography.fontWeight.semibold }}>
@@ -58,6 +58,7 @@ const ClimbCard = ({ climb, boardDetails, onCoverClick, selected, actions }: Cli
         backgroundColor: selected ? themeTokens.semantic.selected : themeTokens.semantic.surface,
         borderColor: selected ? themeTokens.colors.primary : undefined,
       }}
+      styles={{ header: { paddingTop: 12, paddingBottom: 8 } }}
       actions={actions || ClimbCardActions({ climb, boardDetails })}
     >
       {cover}
