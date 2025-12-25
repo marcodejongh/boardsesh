@@ -50,6 +50,7 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
     <>
       {/* Main Control Bar */}
       <Card
+        bordered={false}
         styles={{
           body: {
             padding: '4px 12px',

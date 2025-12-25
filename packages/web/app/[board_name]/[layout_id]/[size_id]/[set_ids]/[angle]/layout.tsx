@@ -1,6 +1,6 @@
 import React from 'react';
 import { PropsWithChildren } from 'react';
-import { Affix, Layout } from 'antd';
+import { Layout } from 'antd';
 import { ParsedBoardRouteParameters, BoardRouteParameters, BoardDetails } from '@/app/lib/types';
 import { parseBoardRouteParams, constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
@@ -156,9 +156,7 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
               {children}
             </Content>
 
-            <Affix offsetBottom={0}>
-              <QueueControlBar board={board_name} boardDetails={boardDetails} angle={angle} />
-            </Affix>
+            <QueueControlBar board={board_name} boardDetails={boardDetails} angle={angle} />
             </PartyProvider>
           </GraphQLQueueProvider>
         </PartyProfileWrapper>
