@@ -2,18 +2,17 @@
 import React, { useState } from 'react';
 import { useQueueContext } from '../graphql-queue';
 import { BoardDetails, Climb } from '@/app/lib/types';
-import { PlusCircleOutlined, HeartOutlined, InfoCircleOutlined, CheckCircleOutlined, ForkOutlined } from '@ant-design/icons';
+import { PlusCircleOutlined, InfoCircleOutlined, CheckCircleOutlined, ForkOutlined } from '@ant-design/icons';
 import Link from 'next/link';
 import { constructClimbViewUrl, constructClimbViewUrlWithSlugs, constructCreateClimbUrl } from '@/app/lib/url-utils';
 import { track } from '@vercel/analytics';
-import { message } from 'antd';
-
-// import TickClimbButton from '@/c/tick-climb/tick-climb-button';
+import { FavoriteButton } from '../climb-actions';
 
 type ClimbCardActionsProps = {
   climb?: Climb;
   boardDetails: BoardDetails;
 };
+
 const ClimbCardActions = ({ climb, boardDetails }: ClimbCardActionsProps) => {
   const { addToQueue, queue } = useQueueContext();
   const [recentlyAdded, setRecentlyAdded] = useState(false);
@@ -40,8 +39,6 @@ const ClimbCardActions = ({ climb, boardDetails }: ClimbCardActionsProps) => {
   };
 
   const actions: (React.JSX.Element | null)[] = [
-    // <SettingOutlined key="setting" />,
-    // <TickClimbButton key="tickclimbbutton" />,
     <Link
       key="infocircle"
       href={
@@ -99,7 +96,14 @@ const ClimbCardActions = ({ climb, boardDetails }: ClimbCardActionsProps) => {
         <ForkOutlined />
       </Link>
     ) : null,
-    <HeartOutlined key="heart" onClick={() => message.info('TODO: Implement')} />,
+    <FavoriteButton
+      key="heart"
+      boardName={boardDetails.board_name}
+      climbUuid={climb.uuid}
+      climbName={climb.name}
+      angle={climb.angle}
+      size="small"
+    />,
     recentlyAdded ? (
       <CheckCircleOutlined
         key="edit"
