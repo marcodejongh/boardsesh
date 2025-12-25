@@ -12,7 +12,7 @@ import { generateLayoutSlug, generateSizeSlug, generateSetSlug } from '@/app/lib
 import { ShareBoardButton } from './share-button';
 import { useBoardProvider } from '../board-provider/board-provider-context';
 import { useQueueContext } from '../graphql-queue';
-import { UserOutlined, LogoutOutlined, LoginOutlined, PlusOutlined, MoreOutlined } from '@ant-design/icons';
+import { UserOutlined, LogoutOutlined, LoginOutlined, PlusOutlined, MoreOutlined, SettingOutlined } from '@ant-design/icons';
 import AngleSelector from './angle-selector';
 import Logo from '../brand/logo';
 import styles from './header.module.css';
@@ -34,6 +34,14 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
 
   const userMenuItems: MenuProps['items'] = [
     {
+      key: 'settings',
+      icon: <SettingOutlined />,
+      label: <Link href="/settings">Settings</Link>,
+    },
+    {
+      type: 'divider',
+    },
+    {
       key: 'logout',
       icon: <LogoutOutlined />,
       label: 'Logout',
@@ -50,6 +58,11 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
       key: 'create-climb',
       icon: <PlusOutlined />,
       label: <Link href={createClimbUrl}>Create Climb</Link>,
+    }] : []),
+    ...(session?.user ? [{
+      key: 'settings',
+      icon: <SettingOutlined />,
+      label: <Link href="/settings">Settings</Link>,
     }] : []),
     ...(!session?.user ? [{
       key: 'login',
