@@ -53,7 +53,7 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
         bordered={false}
         styles={{
           body: {
-            padding: '2px 12px',
+            padding: '4px 12px 0px 12px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
