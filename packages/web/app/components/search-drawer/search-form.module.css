@@ -1,0 +1,145 @@
+/* Search Form Styles */
+.searchForm {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sectionTitle {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.compactInputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.inputLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.labelIcon {
+  color: #06B6D4;
+  font-size: 14px;
+}
+
+.switchIcon {
+  color: #9CA3AF;
+  font-size: 14px;
+}
+
+.switchGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background-color: #F9FAFB;
+  border-radius: 8px;
+  padding: 4px 0;
+  margin-top: 8px;
+}
+
+.switchRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  transition: background-color 0.15s ease;
+}
+
+.switchRow:hover {
+  background-color: #F3F4F6;
+}
+
+.divider {
+  margin: 16px 0 !important;
+}
+
+.fullWidth {
+  width: 100%;
+}
+
+.progressAlert {
+  margin: 0;
+}
+
+/* Hold Search Form Styles */
+.holdSearchForm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.holdSearchHeaderCompact {
+  display: flex;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.boardContainer {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+/* Search Results Footer Styles */
+.searchFooter {
+  padding: 12px 16px;
+  background: linear-gradient(to top, #FFFFFF, #F9FAFB);
+  border-top: 1px solid #E5E7EB;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.resultCount {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.resultBadge {
+  background-color: #ECFEFF;
+  color: #0891B2;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Mobile Drawer Improvements */
+@media (max-width: 767px) {
+  .section {
+    gap: 12px;
+  }
+
+  .divider {
+    margin: 12px 0 !important;
+  }
+
+  .switchRow {
+    padding: 8px 10px;
+  }
+}

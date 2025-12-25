@@ -1,11 +1,13 @@
 'use client';
 
 import React from 'react';
-import { Space, Typography, Spin } from 'antd';
+import { Typography, Spin, Space } from 'antd';
+import { FilterOutlined } from '@ant-design/icons';
 import { useQueueContext } from '@/app/components/graphql-queue';
 import ClearButton from './clear-button';
 import { useUISearchParams } from '../queue-control/ui-searchparams-provider';
 import { DEFAULT_SEARCH_PARAMS } from '@/app/lib/url-utils';
+import styles from './search-form.module.css';
 
 const { Text } = Typography;
 
@@ -28,17 +30,20 @@ const SearchResultsFooter = () => {
   }
 
   return (
-    <div style={{ padding: '12px 16px', borderTop: '1px solid #f0f0f0', backgroundColor: 'white' }}>
-      <Space style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-        <div style={{ textAlign: 'left' }}>
-          {isFetchingClimbs ? (
-            <Spin size="small" />
-          ) : (
-            <Text type="secondary">Total Results: {totalSearchResultCount}</Text>
-          )}
-        </div>
-        <ClearButton />
-      </Space>
+    <div className={styles.searchFooter}>
+      <div className={styles.resultCount}>
+        {isFetchingClimbs ? (
+          <Spin size="small" />
+        ) : (
+          <Space size={8}>
+            <FilterOutlined style={{ color: '#06B6D4' }} />
+            <Text type="secondary">
+              <span className={styles.resultBadge}>{(totalSearchResultCount ?? 0).toLocaleString()}</span> results
+            </Text>
+          </Space>
+        )}
+      </div>
+      <ClearButton />
     </div>
   );
 };

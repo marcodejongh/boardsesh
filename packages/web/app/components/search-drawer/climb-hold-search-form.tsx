@@ -1,9 +1,13 @@
 import React from 'react';
 import { BoardDetails, HoldState } from '@/app/lib/types';
 import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
-import { Select, Button, Form } from 'antd';
+import { Select, Typography, Space, Tag } from 'antd';
+import { CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import BoardHeatmap from '../board-renderer/board-heatmap';
 import { track } from '@vercel/analytics';
+import styles from './search-form.module.css';
+
+const { Text } = Typography;
 
 interface ClimbHoldSearchFormProps {
   boardDetails: BoardDetails;
@@ -23,8 +27,8 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
       } else {
         updatedHoldsFilter[holdId] = {
           state: selectedState,
-          color: selectedState === 'ANY' ? '#00CCCC' : '#FF0000',
-          displayColor: selectedState === 'ANY' ? '#00CCCC' : '#FF0000',
+          color: selectedState === 'ANY' ? '#06B6D4' : '#EF4444',
+          displayColor: selectedState === 'ANY' ? '#06B6D4' : '#EF4444',
         };
       }
     }
@@ -35,14 +39,19 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
   };
 
   const stateItems = [
-    { value: 'ANY', label: 'Any Hold' },
-    { value: 'NOT', label: 'Not This Hold' },
+    { value: 'ANY', label: 'Include', icon: <CheckCircleOutlined style={{ color: '#06B6D4' }} /> },
+    { value: 'NOT', label: 'Exclude', icon: <CloseCircleOutlined style={{ color: '#EF4444' }} /> },
   ];
 
+  const selectedHoldsCount = Object.keys(uiSearchParams.holdsFilter || {}).length;
+  const anyHoldsCount = Object.values(uiSearchParams.holdsFilter || {}).filter(h => h.state === 'ANY').length;
+  const notHoldsCount = Object.values(uiSearchParams.holdsFilter || {}).filter(h => h.state === 'NOT').length;
+
   return (
-    <div className="relative">
-      <Form layout="horizontal" className="mb-4">
-        <Form.Item label="Select hold type" className="mb-0">
+    <div className={styles.holdSearchForm}>
+      <div className={styles.holdSearchHeaderCompact}>
+        <Space size={8} wrap>
+          <Text type="secondary">Tap to:</Text>
           <Select
             value={selectedState}
             onChange={(value) => {
@@ -52,39 +61,30 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
                 boardLayout: boardDetails.layout_name || '',
               });
             }}
-            style={{ width: 200 }}
-            options={stateItems}
+            size="small"
+            style={{ width: 110 }}
+            options={stateItems.map(item => ({
+              value: item.value,
+              label: (
+                <Space size={4}>
+                  {item.icon}
+                  {item.label}
+                </Space>
+              ),
+            }))}
           />
-        </Form.Item>
-      </Form>
+          {anyHoldsCount > 0 && <Tag color="cyan" style={{ margin: 0 }}>{anyHoldsCount} in</Tag>}
+          {notHoldsCount > 0 && <Tag color="red" style={{ margin: 0 }}>{notHoldsCount} out</Tag>}
+        </Space>
+      </div>
 
-      <p className="mb-4">Click on holds to set them to the selected type</p>
-
-      <div className="w-full max-w-2xl mx-auto">
+      <div className={styles.boardContainer}>
         <BoardHeatmap
           boardDetails={boardDetails}
           litUpHoldsMap={uiSearchParams.holdsFilter}
           onHoldClick={handleHoldClick}
         />
       </div>
-
-      {Object.keys(uiSearchParams.holdsFilter || {}).length > 0 && (
-        <Form.Item className="mt-4">
-          <Button
-            danger
-            onClick={() => {
-              const holdCount = Object.keys(uiSearchParams.holdsFilter || {}).length;
-              updateFilters({ holdsFilter: {} });
-              track('Clear Search Holds', {
-                holds_cleared: holdCount,
-                boardLayout: boardDetails.layout_name || '',
-              });
-            }}
-          >
-            Clear Selected Holds
-          </Button>
-        </Form.Item>
-      )}
     </div>
   );
 };

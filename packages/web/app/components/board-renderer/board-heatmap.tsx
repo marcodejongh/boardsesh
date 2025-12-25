@@ -8,7 +8,7 @@ import { scaleLog } from 'd3-scale';
 import useHeatmapData from '../search-drawer/use-heatmap';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
-import { Button, Select, Form, Switch } from 'antd';
+import { Button, Select, Switch } from 'antd';
 import { track } from '@vercel/analytics';
 import BoardRenderer from './board-renderer';
 
@@ -260,10 +260,10 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({ boardDetails, litUpHoldsMap
   ];
 
   const thresholdOptions = [
-    { value: 1, label: 'Show All' },
-    { value: 2, label: 'At Least 2 Uses' },
-    { value: 5, label: 'At Least 5 Uses' },
-    { value: 10, label: 'At Least 10 Uses' },
+    { value: 1, label: 'All' },
+    { value: 2, label: 'Min 2' },
+    { value: 5, label: 'Min 5' },
+    { value: 10, label: 'Min 10' },
   ];
 
   return (
@@ -429,51 +429,52 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({ boardDetails, litUpHoldsMap
         </g>
       </svg>
       </div>
-      <Form layout="inline" className="mb-4">
-        <Form.Item>
-          <Button
-            type={showHeatmap ? 'primary' : 'default'}
-            onClick={() => {
-              setShowHeatmap(!showHeatmap);
-              track(`Heatmap ${showHeatmap ? 'Shown' : 'Hidden'}`, {
-                boardLayout: boardDetails.layout_name || '',
-              });
-            }}
-          >
-            {showHeatmap ? 'Hide Heatmap' : 'Show Heatmap'}
-          </Button>
-        </Form.Item>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center', marginTop: '8px' }}>
+        <Button
+          type={showHeatmap ? 'primary' : 'default'}
+          size="small"
+          onClick={() => {
+            setShowHeatmap(!showHeatmap);
+            track(`Heatmap ${showHeatmap ? 'Shown' : 'Hidden'}`, {
+              boardLayout: boardDetails.layout_name || '',
+            });
+          }}
+        >
+          {showHeatmap ? 'Hide Heatmap' : 'Show Heatmap'}
+        </Button>
 
         {showHeatmap && (
           <>
-            <Form.Item label="View Mode">
-              <Select
-                value={colorMode}
-                onChange={(value) => {
-                  setColorMode(value as ColorMode);
-                  track('Heatmap Mode Changed', {
-                    mode: value,
-                    board: boardDetails.layout_name || '',
-                  });
-                }}
-                style={{ width: 200 }}
-                options={colorModeOptions}
-              />
-            </Form.Item>
-            <Form.Item label="Minimum Usage">
-              <Select
-                value={threshold}
-                onChange={(value) => setThreshold(value)}
-                style={{ width: 200 }}
-                options={thresholdOptions}
-              />
-            </Form.Item>
-            <Form.Item label="Show Numbers">
-              <Switch checked={showNumbers} onChange={setShowNumbers} />
-            </Form.Item>
+            <Select
+              value={colorMode}
+              onChange={(value) => {
+                setColorMode(value as ColorMode);
+                track('Heatmap Mode Changed', {
+                  mode: value,
+                  board: boardDetails.layout_name || '',
+                });
+              }}
+              size="small"
+              style={{ width: 130 }}
+              options={colorModeOptions}
+            />
+            <Select
+              value={threshold}
+              onChange={(value) => setThreshold(value)}
+              size="small"
+              style={{ width: 100 }}
+              options={thresholdOptions}
+            />
+            <Switch
+              checked={showNumbers}
+              onChange={setShowNumbers}
+              size="small"
+              checkedChildren="#"
+              unCheckedChildren="#"
+            />
           </>
         )}
-      </Form>
+      </div>
     </div>
   );
 };

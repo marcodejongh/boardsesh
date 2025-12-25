@@ -1,15 +1,29 @@
 'use client';
 
 import React from 'react';
-import { Form, InputNumber, Row, Col, Select, Switch, Alert, Typography, Tooltip } from 'antd';
+import { InputNumber, Row, Col, Select, Switch, Alert, Typography, Tooltip, Divider, Space } from 'antd';
+import {
+  SearchOutlined,
+  SortAscendingOutlined,
+  StarOutlined,
+  TrophyOutlined,
+  UserOutlined,
+  AimOutlined,
+  EyeOutlined,
+  EyeInvisibleOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  ArrowUpOutlined,
+} from '@ant-design/icons';
 import { TENSION_KILTER_GRADES } from '@/app/lib/board-data';
 import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
 import { useBoardProvider } from '@/app/components/board-provider/board-provider-context';
 import SearchClimbNameInput from './search-climb-name-input';
 import SetterNameSelect from './setter-name-select';
 import { BoardDetails } from '@/app/lib/types';
+import styles from './search-form.module.css';
 
-const { Title } = Typography;
+const { Text } = Typography;
 
 // Kilter Homewall layout ID
 const KILTER_HOMEWALL_LAYOUT_ID = 8;
@@ -42,69 +56,93 @@ const BasicSearchForm: React.FC<BasicSearchFormProps> = ({ boardDetails }) => {
   const renderLogbookSection = () => {
     if (!isLoggedIn) {
       return (
-        <Form.Item wrapperCol={{ span: 24 }}>
-          <Alert
-            message="Sign in to access personal progress filters"
-            description="Login to your account to filter climbs based on your attempt and completion history."
-            type="info"
-            showIcon
-          />
-        </Form.Item>
+        <Alert
+          message="Sign in to filter by progress"
+          description="Login to filter climbs based on your attempt and completion history."
+          type="info"
+          showIcon
+          className={styles.progressAlert}
+        />
       );
     }
 
     return (
-      <>
-        <Form.Item label="Hide Attempted" valuePropName="checked">
+      <div className={styles.switchGroup}>
+        <div className={styles.switchRow}>
+          <Space>
+            <EyeInvisibleOutlined className={styles.switchIcon} />
+            <Text>Hide Attempted</Text>
+          </Space>
           <Switch
-            style={{ float: 'right' }}
+            size="small"
             checked={uiSearchParams.hideAttempted}
             onChange={(checked) => updateFilters({ hideAttempted: checked })}
           />
-        </Form.Item>
+        </div>
 
-        <Form.Item label="Hide Completed" valuePropName="checked">
+        <div className={styles.switchRow}>
+          <Space>
+            <EyeInvisibleOutlined className={styles.switchIcon} />
+            <Text>Hide Completed</Text>
+          </Space>
           <Switch
-            style={{ float: 'right' }}
+            size="small"
             checked={uiSearchParams.hideCompleted}
             onChange={(checked) => updateFilters({ hideCompleted: checked })}
           />
-        </Form.Item>
+        </div>
 
-        <Form.Item label="Only Attempted" valuePropName="checked">
+        <div className={styles.switchRow}>
+          <Space>
+            <ClockCircleOutlined className={styles.switchIcon} />
+            <Text>Only Attempted</Text>
+          </Space>
           <Switch
-            style={{ float: 'right' }}
+            size="small"
             checked={uiSearchParams.showOnlyAttempted}
             onChange={(checked) => updateFilters({ showOnlyAttempted: checked })}
           />
-        </Form.Item>
+        </div>
 
-        <Form.Item label="Only Completed" valuePropName="checked">
+        <div className={styles.switchRow}>
+          <Space>
+            <CheckCircleOutlined className={styles.switchIcon} />
+            <Text>Only Completed</Text>
+          </Space>
           <Switch
-            style={{ float: 'right' }}
+            size="small"
             checked={uiSearchParams.showOnlyCompleted}
             onChange={(checked) => updateFilters({ showOnlyCompleted: checked })}
           />
-        </Form.Item>
-      </>
+        </div>
+      </div>
     );
   };
 
   return (
-    <Form layout="horizontal" labelAlign="left" labelCol={{ span: 10 }} wrapperCol={{ span: 14 }}>
-      <Form.Item label="Climb Name">
-        <SearchClimbNameInput />
-      </Form.Item>
+    <div className={styles.searchForm}>
+      {/* Search Section */}
+      <div className={styles.section}>
+        <div className={styles.inputGroup}>
+          <div className={styles.inputLabel}>
+            <SearchOutlined className={styles.labelIcon} />
+            <Text strong>Climb Name</Text>
+          </div>
+          <SearchClimbNameInput />
+        </div>
 
-      <Form.Item label="Grade Range">
-        <Row gutter={8}>
-          <Col span={12}>
-            <Form.Item label="Min" noStyle>
+        <div className={styles.inputGroup}>
+          <div className={styles.inputLabel}>
+            <AimOutlined className={styles.labelIcon} />
+            <Text strong>Grade Range</Text>
+          </div>
+          <Row gutter={8}>
+            <Col span={12}>
               <Select
                 value={uiSearchParams.minGrade || 0}
-                defaultValue={0}
                 onChange={(value) => handleGradeChange('min', value)}
-                style={{ width: '100%' }}
+                className={styles.fullWidth}
+                placeholder="Min"
               >
                 <Select.Option value={0}>Any</Select.Option>
                 {grades.map((grade) => (
@@ -113,15 +151,13 @@ const BasicSearchForm: React.FC<BasicSearchFormProps> = ({ boardDetails }) => {
                   </Select.Option>
                 ))}
               </Select>
-            </Form.Item>
-          </Col>
-          <Col span={12}>
-            <Form.Item label="Max" noStyle>
+            </Col>
+            <Col span={12}>
               <Select
                 value={uiSearchParams.maxGrade || 0}
-                defaultValue={0}
                 onChange={(value) => handleGradeChange('max', value)}
-                style={{ width: '100%' }}
+                className={styles.fullWidth}
+                placeholder="Max"
               >
                 <Select.Option value={0}>Any</Select.Option>
                 {grades.map((grade) => (
@@ -130,108 +166,154 @@ const BasicSearchForm: React.FC<BasicSearchFormProps> = ({ boardDetails }) => {
                   </Select.Option>
                 ))}
               </Select>
-            </Form.Item>
+            </Col>
+          </Row>
+        </div>
+
+        <div className={styles.inputGroup}>
+          <div className={styles.inputLabel}>
+            <UserOutlined className={styles.labelIcon} />
+            <Text strong>Setter</Text>
+          </div>
+          <SetterNameSelect />
+        </div>
+      </div>
+
+      <Divider className={styles.divider} />
+
+      {/* Quality Filters Section */}
+      <div className={styles.section}>
+        <Text type="secondary" className={styles.sectionTitle}>Quality Filters</Text>
+
+        <Row gutter={[12, 12]}>
+          <Col span={12}>
+            <div className={styles.compactInputGroup}>
+              <div className={styles.inputLabel}>
+                <ArrowUpOutlined className={styles.labelIcon} />
+                <Text>Min Ascents</Text>
+              </div>
+              <InputNumber
+                min={1}
+                value={uiSearchParams.minAscents}
+                onChange={(value) => updateFilters({ minAscents: value || undefined })}
+                className={styles.fullWidth}
+                placeholder="Any"
+              />
+            </div>
+          </Col>
+          <Col span={12}>
+            <div className={styles.compactInputGroup}>
+              <div className={styles.inputLabel}>
+                <StarOutlined className={styles.labelIcon} />
+                <Text>Min Rating</Text>
+              </div>
+              <InputNumber
+                min={1.0}
+                max={3.0}
+                step={0.1}
+                value={uiSearchParams.minRating}
+                onChange={(value) => updateFilters({ minRating: value || undefined })}
+                className={styles.fullWidth}
+                placeholder="Any"
+              />
+            </div>
           </Col>
         </Row>
-      </Form.Item>
 
-      <Form.Item label="Min Ascents">
-        <InputNumber
-          min={1}
-          value={uiSearchParams.minAscents}
-          onChange={(value) => updateFilters({ minAscents: value || undefined })}
-          style={{ width: '100%' }}
-          placeholder="Any"
-        />
-      </Form.Item>
+        <div className={styles.inputGroup}>
+          <div className={styles.inputLabel}>
+            <AimOutlined className={styles.labelIcon} />
+            <Text>Grade Accuracy</Text>
+          </div>
+          <Select
+            value={uiSearchParams.gradeAccuracy}
+            onChange={(value) => updateFilters({ gradeAccuracy: value || undefined })}
+            className={styles.fullWidth}
+          >
+            <Select.Option value={0}>Any</Select.Option>
+            <Select.Option value={0.2}>Somewhat Accurate (&lt;0.2)</Select.Option>
+            <Select.Option value={0.1}>Very Accurate (&lt;0.1)</Select.Option>
+            <Select.Option value={0.05}>Extremely Accurate (&lt;0.05)</Select.Option>
+          </Select>
+        </div>
 
-      <Form.Item label="Sort By">
-        <Row gutter={8}>
-          <Col span={16}>
-            <Select
-              value={uiSearchParams.sortBy}
-              onChange={(value) => updateFilters({ sortBy: value })}
-              style={{ width: '100%' }}
-            >
-              <Select.Option value="ascents">Ascents</Select.Option>
-              <Select.Option value="difficulty">Difficulty</Select.Option>
-              <Select.Option value="name">Name</Select.Option>
-              <Select.Option value="quality">Quality</Select.Option>
-            </Select>
-          </Col>
-          <Col span={8}>
-            <Select
-              value={uiSearchParams.sortOrder}
-              onChange={(value) => updateFilters({ sortOrder: value })}
-              style={{ width: '100%' }}
-            >
-              <Select.Option value="desc">Descending</Select.Option>
-              <Select.Option value="asc">Ascending</Select.Option>
-            </Select>
-          </Col>
-        </Row>
-      </Form.Item>
+        <div className={styles.switchGroup}>
+          <div className={styles.switchRow}>
+            <Space>
+              <TrophyOutlined className={styles.switchIcon} />
+              <Text>Classics Only</Text>
+            </Space>
+            <Switch
+              size="small"
+              checked={uiSearchParams.onlyClassics}
+              onChange={(checked) => updateFilters({ onlyClassics: checked })}
+            />
+          </div>
 
-      <Form.Item label="Min Rating">
-        <InputNumber
-          min={1.0}
-          max={3.0}
-          step={0.1}
-          value={uiSearchParams.minRating}
-          onChange={(value) => updateFilters({ minRating: value || undefined })}
-          style={{ width: '100%' }}
-          placeholder="Any"
-        />
-      </Form.Item>
+          {showTallClimbsFilter && (
+            <div className={styles.switchRow}>
+              <Space>
+                <Tooltip title="Show only climbs that use holds in the bottom 8 rows (only available on 10x12 boards)">
+                  <ArrowUpOutlined className={styles.switchIcon} />
+                  <Text>Tall Climbs Only</Text>
+                </Tooltip>
+              </Space>
+              <Switch
+                size="small"
+                checked={uiSearchParams.onlyTallClimbs}
+                onChange={(checked) => updateFilters({ onlyTallClimbs: checked })}
+              />
+            </div>
+          )}
+        </div>
+      </div>
 
-      <Form.Item label="Classics Only" valuePropName="checked">
-        <Switch
-          style={{ float: 'right' }}
-          checked={uiSearchParams.onlyClassics}
-          onChange={(checked) => updateFilters({ onlyClassics: checked })}
-        />
-      </Form.Item>
+      <Divider className={styles.divider} />
 
-      {showTallClimbsFilter && (
-        <Form.Item
-          label={
-            <Tooltip title="Show only climbs that use holds in the bottom 8 rows (only available on 10x12 boards)">
-              Tall Climbs Only
-            </Tooltip>
-          }
-          valuePropName="checked"
-        >
-          <Switch
-            style={{ float: 'right' }}
-            checked={uiSearchParams.onlyTallClimbs}
-            onChange={(checked) => updateFilters({ onlyTallClimbs: checked })}
-          />
-        </Form.Item>
-      )}
+      {/* Sort Section */}
+      <div className={styles.section}>
+        <div className={styles.inputGroup}>
+          <div className={styles.inputLabel}>
+            <SortAscendingOutlined className={styles.labelIcon} />
+            <Text strong>Sort By</Text>
+          </div>
+          <Row gutter={8}>
+            <Col span={14}>
+              <Select
+                value={uiSearchParams.sortBy}
+                onChange={(value) => updateFilters({ sortBy: value })}
+                className={styles.fullWidth}
+              >
+                <Select.Option value="ascents">Ascents</Select.Option>
+                <Select.Option value="difficulty">Difficulty</Select.Option>
+                <Select.Option value="name">Name</Select.Option>
+                <Select.Option value="quality">Quality</Select.Option>
+              </Select>
+            </Col>
+            <Col span={10}>
+              <Select
+                value={uiSearchParams.sortOrder}
+                onChange={(value) => updateFilters({ sortOrder: value })}
+                className={styles.fullWidth}
+              >
+                <Select.Option value="desc">Desc</Select.Option>
+                <Select.Option value="asc">Asc</Select.Option>
+              </Select>
+            </Col>
+          </Row>
+        </div>
+      </div>
 
-      <Form.Item label="Grade Accuracy">
-        <Select
-          value={uiSearchParams.gradeAccuracy}
-          onChange={(value) => updateFilters({ gradeAccuracy: value || undefined })}
-          style={{ width: '100%' }}
-        >
-          <Select.Option value={0}>Any</Select.Option>
-          <Select.Option value={0.2}>Somewhat Accurate (&lt;0.2)</Select.Option>
-          <Select.Option value={0.1}>Very Accurate (&lt;0.1)</Select.Option>
-          <Select.Option value={0.05}>Extremely Accurate (&lt;0.05)</Select.Option>
-        </Select>
-      </Form.Item>
+      <Divider className={styles.divider} />
 
-      <Form.Item label="Setter Name">
-        <SetterNameSelect />
-      </Form.Item>
-
-      <Form.Item wrapperCol={{ span: 24 }}>
-        <Title level={5}>Personal Progress</Title>
-      </Form.Item>
-
-      {renderLogbookSection()}
-    </Form>
+      {/* Personal Progress Section */}
+      <div className={styles.section}>
+        <Text type="secondary" className={styles.sectionTitle}>
+          <EyeOutlined className={styles.labelIcon} /> Personal Progress
+        </Text>
+        {renderLogbookSection()}
+      </div>
+    </div>
   );
 };
 

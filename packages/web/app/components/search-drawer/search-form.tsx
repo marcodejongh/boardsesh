@@ -27,6 +27,8 @@ const SearchForm: React.FC<SearchFormProps> = ({ boardDetails }) => {
     <Tabs
       defaultActiveKey="filters"
       items={items}
+      size="small"
+      tabBarStyle={{ marginBottom: 12 }}
       onChange={(activeKey) => {
         track('Search Tab Changed', {
           tab: activeKey,
