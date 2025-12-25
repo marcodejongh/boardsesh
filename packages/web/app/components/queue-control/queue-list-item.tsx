@@ -163,6 +163,7 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
             <ClimbTitle
               climb={item.climb}
               showAngle
+              centered
               nameAddon={<AscentStatus climbUuid={item.climb?.uuid} />}
             />
           </Col>

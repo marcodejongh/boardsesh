@@ -116,7 +116,7 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails, onClimbNavigate }) 
                     />
                   </Col>
                   <Col xs={14} sm={16}>
-                    <ClimbTitle climb={climb} showAngle />
+                    <ClimbTitle climb={climb} showAngle centered />
                   </Col>
                   <Col xs={3} sm={2}>
                     <Button type="default" icon={<PlusOutlined />} onClick={() => addToQueue(climb)} />
