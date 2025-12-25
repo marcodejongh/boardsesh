@@ -1,4 +1,4 @@
-// GraphQL Schema for BoardSesh Queue Synchronization
+// GraphQL Schema for Boardsesh Queue Synchronization
 // This schema is shared between the backend server and client
 
 export const typeDefs = /* GraphQL */ `

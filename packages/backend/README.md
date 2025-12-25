@@ -1,6 +1,6 @@
-# BoardSesh Backend
+# Boardsesh Backend
 
-WebSocket server for BoardSesh Party Mode. Provides reliable real-time synchronization for multi-user climbing queue management.
+WebSocket server for Boardsesh Party Mode. Provides reliable real-time synchronization for multi-user climbing queue management.
 
 ## Quick Start with Docker
 
@@ -55,7 +55,7 @@ For other devices on your network to connect:
    - macOS/Linux: `ifconfig` or `ip addr`
    - Windows: `ipconfig`
 
-2. Use the backend URL in BoardSesh: `ws://YOUR_IP:8080`
+2. Use the backend URL in Boardsesh: `ws://YOUR_IP:8080`
 
 Example: `ws://192.168.1.100:8080`
 
@@ -70,7 +70,7 @@ Internet
     ↓
 Traefik (TLS termination, Let's Encrypt)
     ↓ (ws://backend:8080)
-BoardSesh Backend
+Boardsesh Backend
     ↓
 PostgreSQL
 ```

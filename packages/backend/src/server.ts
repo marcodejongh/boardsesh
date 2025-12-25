@@ -178,7 +178,7 @@ export function startServer(): { wss: WebSocketServer; httpServer: ReturnType<ty
     path: '/graphql',
   });
 
-  console.log(`BoardSesh Backend starting on port ${PORT}...`);
+  console.log(`Boardsesh Backend starting on port ${PORT}...`);
 
   // Use graphql-ws server
   useServer<Record<string, unknown>, CustomExtra>(
@@ -259,7 +259,7 @@ export function startServer(): { wss: WebSocketServer; httpServer: ReturnType<ty
 
   // Start HTTP server (WebSocket server is attached to it)
   httpServer.listen(PORT, () => {
-    console.log(`BoardSesh Backend is running on port ${PORT}`);
+    console.log(`Boardsesh Backend is running on port ${PORT}`);
     console.log(`  GraphQL WS: ws://0.0.0.0:${PORT}/graphql`);
     console.log(`  Health check: http://0.0.0.0:${PORT}/health`);
     console.log(`  Join session: http://0.0.0.0:${PORT}/join`);

@@ -27,7 +27,7 @@ def generate_certificate(hostname="localhost", ip_address=None):
         x509.NameAttribute(NameOID.COUNTRY_NAME, "US"),
         x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, "CA"),
         x509.NameAttribute(NameOID.LOCALITY_NAME, "San Francisco"),
-        x509.NameAttribute(NameOID.ORGANIZATION_NAME, "BoardSesh Controller"),
+        x509.NameAttribute(NameOID.ORGANIZATION_NAME, "Boardsesh Controller"),
         x509.NameAttribute(NameOID.COMMON_NAME, hostname),
     ])
     

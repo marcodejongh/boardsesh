@@ -6,7 +6,7 @@ const { wss, httpServer } = startServer();
 
 // Handle graceful shutdown
 function shutdown() {
-  console.log('\nShutting down BoardSesh Daemon...');
+  console.log('\nShutting down Boardsesh Daemon...');
 
   // Close WebSocket server (stops accepting new connections)
   wss.close(() => {

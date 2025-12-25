@@ -17,8 +17,8 @@ CHECK="✅"
 WARNING="⚠️"
 ERROR="❌"
 
-echo -e "${BLUE}${ROCKET} Welcome to BoardSesh Development Setup!${NC}"
-echo -e "This script will set up everything you need to contribute to BoardSesh."
+echo -e "${BLUE}${ROCKET} Welcome to Boardsesh Development Setup!${NC}"
+echo -e "This script will set up everything you need to contribute to Boardsesh."
 echo ""
 
 # Function to check if command exists

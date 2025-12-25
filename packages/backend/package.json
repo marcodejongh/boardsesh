@@ -1,7 +1,7 @@
 {
   "name": "boardsesh-backend",
   "version": "1.0.0",
-  "description": "WebSocket backend for BoardSesh Party Mode",
+  "description": "WebSocket backend for Boardsesh Party Mode",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {

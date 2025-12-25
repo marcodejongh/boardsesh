@@ -36,7 +36,7 @@ docker-compose.yml
 .git/
 .gitignore
 
-# Static frontend files (we redirect to BoardSesh now)
+# Static frontend files (we redirect to Boardsesh now)
 static/
 
 # Data directory (mounted as volume)

@@ -1,4 +1,4 @@
-// Shared TypeScript types for BoardSesh
+// Shared TypeScript types for Boardsesh
 // These types are used by both the backend and the web app
 
 export type UserId = string;

@@ -1,14 +1,14 @@
 # Board Controller
 
-A Python WebSocket server that enables persistent queue management and collaborative control for Kilter/Tension climbing boards. Integrates with BoardSesh.com to provide synchronized queue state across multiple devices and apps.
+A Python WebSocket server that enables persistent queue management and collaborative control for Kilter/Tension climbing boards. Integrates with Boardsesh.com to provide synchronized queue state across multiple devices and apps.
 
 ## Features
 
 - **Single Entry Point**: One command starts everything
 - **Bluetooth Support**: Accepts commands from Kilter/Tension mobile apps (optional)
-- **WebSocket Integration**: Real-time synchronization with BoardSesh.com
+- **WebSocket Integration**: Real-time synchronization with Boardsesh.com
 - **Queue Persistence**: SQLite database maintains queue state across restarts
-- **Auto-redirect**: localhost:8000 automatically redirects to BoardSesh with controller integration
+- **Auto-redirect**: localhost:8000 automatically redirects to Boardsesh with controller integration
 - **Multi-device Support**: Control queue from both web browser and mobile apps simultaneously
 
 ## Quick Start
@@ -48,10 +48,10 @@ python main.py --port 8080
 
 1. Run `python main.py`
 2. Open http://localhost:8000 in your browser
-3. You'll be automatically redirected to BoardSesh with controller integration
-4. The controller takes over queue management from BoardSesh
+3. You'll be automatically redirected to Boardsesh with controller integration
+4. The controller takes over queue management from Boardsesh
 5. Add climbs to the queue - they persist across browser refreshes
-6. Use both BoardSesh web interface and Kilter/Tension mobile apps
+6. Use both Boardsesh web interface and Kilter/Tension mobile apps
 
 ## Architecture
 
@@ -72,7 +72,7 @@ python main.py --port 8080
 
 ### WebSocket Protocol
 
-Key message types between BoardSesh and controller:
+Key message types between Boardsesh and controller:
 
 ```json
 // Initial handshake from controller
@@ -126,7 +126,7 @@ uvicorn main:BoardController().app --reload --port 8000
 SQLite database is created automatically with tables:
 - `sessions` - Controller sessions
 - `queue_items` - Queue persistence
-- `climb_cache` - BoardSesh API cache
+- `climb_cache` - Boardsesh API cache
 
 ## Configuration
 
@@ -148,7 +148,7 @@ These environment variables control the default board configuration for the redi
 
 **How to Find Your Board Configuration:**
 
-The easiest way to determine your board's configuration is to look at your BoardSesh URL when you navigate to your specific board setup. The URL follows this pattern:
+The easiest way to determine your board's configuration is to look at your Boardsesh URL when you navigate to your specific board setup. The URL follows this pattern:
 
 ```
 https://www.boardsesh.com/{board_name}/{layout}/{size}/{set}/{angle}/list
@@ -183,7 +183,7 @@ For example:
   - `plastic_wood` (both hold types combined)
 - **Angles**: `0`, `5`, `10`, `15`, `20`, `25`, `30`, `35`, `40`, `45`, `50`, `55`, `60`, `65`, `70`
 
-**Note**: The exact available options depend on your specific board configuration and what hold sets you have installed. Visit BoardSesh.com and navigate to your board to see the exact URL parameters for your setup.
+**Note**: The exact available options depend on your specific board configuration and what hold sets you have installed. Visit Boardsesh.com and navigate to your board to see the exact URL parameters for your setup.
 
 **Example configurations:**
 ```bash
@@ -356,18 +356,18 @@ docker run -p 8000:8000 -v ./data:/app/data board-controller \
   python main.py --no-bluetooth --host 0.0.0.0
 ```
 
-## Integration with BoardSesh
+## Integration with Boardsesh
 
-The controller is designed to seamlessly integrate with BoardSesh.com:
+The controller is designed to seamlessly integrate with Boardsesh.com:
 
-1. **Detection**: BoardSesh detects `controllerUrl` parameter in URL
+1. **Detection**: Boardsesh detects `controllerUrl` parameter in URL
 2. **Connection**: Establishes WebSocket connection to controller
 3. **Takeover**: Controller becomes the source of truth for queue state
 4. **Synchronization**: All queue changes sync through controller
-5. **Fallback**: If controller disconnects, BoardSesh falls back to PeerJS
+5. **Fallback**: If controller disconnects, Boardsesh falls back to PeerJS
 
 This allows users to control their climbing board through:
-- BoardSesh web interface
+- Boardsesh web interface
 - Kilter/Tension mobile apps
 - Controller web interface
 
