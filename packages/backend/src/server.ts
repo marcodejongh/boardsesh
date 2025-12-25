@@ -5,17 +5,22 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { writeFile, unlink, access } from 'fs/promises';
-import { useServer } from 'graphql-ws/lib/use/ws';
+import { useServer, type Extra as WsExtra } from 'graphql-ws/use/ws';
+import type { Context as GqlWsContext } from 'graphql-ws';
 import { schema } from './graphql/resolvers.js';
 import { createContext, removeContext, getContext } from './graphql/context.js';
 import { roomManager } from './services/room-manager.js';
 import { pubsub } from './pubsub/index.js';
 import type { ConnectionContext } from '@boardsesh/shared-schema';
 
-// Type for storing context in ws extra
-interface Extra {
+// Extend Extra type with our custom context
+interface CustomExtra extends WsExtra {
   context?: ConnectionContext;
+  [key: PropertyKey]: unknown;
 }
+
+// Type alias for convenience
+type ServerContext = GqlWsContext<Record<string, unknown>, CustomExtra>;
 
 // Avatar upload configuration
 const AVATARS_DIR = './avatars';
@@ -176,24 +181,24 @@ export function startServer(): { wss: WebSocketServer; httpServer: ReturnType<ty
   console.log(`BoardSesh Backend starting on port ${PORT}...`);
 
   // Use graphql-ws server
-  useServer(
+  useServer<Record<string, unknown>, CustomExtra>(
     {
       schema,
       // onConnect is called ONCE when client connects and sends ConnectionInit
-      onConnect: async (ctx) => {
+      onConnect: async (ctx: ServerContext) => {
         // Create context on initial connection
         const context = createContext();
         roomManager.registerClient(context.connectionId);
         console.log(`Client connected: ${context.connectionId}`);
 
         // Store context in ctx.extra for access in other hooks
-        (ctx.extra as Extra).context = context;
+        (ctx.extra as CustomExtra).context = context;
 
         return true; // Allow connection
       },
       // context is called for EACH operation - return the stored context
-      context: async (ctx): Promise<ConnectionContext> => {
-        const extra = ctx.extra as Extra;
+      context: async (ctx: ServerContext): Promise<ConnectionContext> => {
+        const extra = ctx.extra as CustomExtra;
         if (!extra.context) {
           // This shouldn't happen if onConnect worked, but handle gracefully
           console.warn('No context found in extra, creating new one');
@@ -204,8 +209,8 @@ export function startServer(): { wss: WebSocketServer; httpServer: ReturnType<ty
         // Return a fresh reference to the context (it may have been updated)
         return getContext(extra.context.connectionId) || extra.context;
       },
-      onDisconnect: async (ctx, code, _reason) => {
-        const context = (ctx.extra as Extra)?.context;
+      onDisconnect: async (ctx: ServerContext, code?: number) => {
+        const context = (ctx.extra as CustomExtra)?.context;
         if (context) {
           console.log(`Client disconnected: ${context.connectionId} (code: ${code})`);
 
@@ -239,14 +244,14 @@ export function startServer(): { wss: WebSocketServer; httpServer: ReturnType<ty
           removeContext(context.connectionId);
         }
       },
-      onSubscribe: (_ctx, msg) => {
-        console.log(`Subscription started: ${msg.payload.operationName || 'anonymous'}`);
+      onSubscribe: (_ctx: ServerContext, _id: string, payload) => {
+        console.log(`Subscription started: ${payload.operationName || 'anonymous'}`);
       },
-      onError: (_ctx, _msg, errors) => {
+      onError: (_ctx: ServerContext, _id: string, _payload, errors) => {
         console.error('GraphQL error:', errors);
       },
-      onComplete: (_ctx, _msg) => {
-        console.log('Subscription completed');
+      onComplete: (_ctx: ServerContext, _id: string, payload) => {
+        console.log(`Subscription completed: ${payload.operationName || 'anonymous'}`);
       },
     },
     wss,
