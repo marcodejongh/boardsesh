@@ -10,14 +10,78 @@ type LogoProps = {
   linkToHome?: boolean;
 };
 
+// 90s vibe colors from Kilter board holds
+const KILTER_CYAN = '#00FFFF'; // Hand hold color
+const KILTER_PINK = '#FF00FF'; // Finish hold color
+
 const sizes = {
-  sm: { icon: 24, fontSize: 14, gap: 6 },
-  md: { icon: 28, fontSize: 16, gap: 8 },
-  lg: { icon: 36, fontSize: 20, gap: 10 },
+  sm: { icon: 32, fontSize: 14, gap: 6 },
+  md: { icon: 40, fontSize: 16, gap: 8 },
+  lg: { icon: 52, fontSize: 20, gap: 10 },
 };
+
+// Pixel art letter definitions (each letter on a grid)
+// B letter - 7 wide x 9 tall pixels
+const B_PIXELS = [
+  [1, 1, 1, 1, 1, 1, 0],
+  [1, 1, 1, 1, 1, 1, 1],
+  [1, 1, 0, 0, 0, 1, 1],
+  [1, 1, 1, 1, 1, 1, 0],
+  [1, 1, 1, 1, 1, 1, 1],
+  [1, 1, 0, 0, 0, 1, 1],
+  [1, 1, 0, 0, 0, 1, 1],
+  [1, 1, 1, 1, 1, 1, 1],
+  [1, 1, 1, 1, 1, 1, 0],
+];
+
+// S letter - 7 wide x 9 tall pixels
+const S_PIXELS = [
+  [0, 1, 1, 1, 1, 1, 1],
+  [1, 1, 1, 1, 1, 1, 1],
+  [1, 1, 0, 0, 0, 0, 0],
+  [1, 1, 1, 1, 1, 1, 0],
+  [0, 1, 1, 1, 1, 1, 1],
+  [0, 0, 0, 0, 0, 1, 1],
+  [0, 0, 0, 0, 0, 1, 1],
+  [1, 1, 1, 1, 1, 1, 1],
+  [1, 1, 1, 1, 1, 1, 0],
+];
+
+const PixelLetter = ({
+  pixels,
+  startX,
+  startY,
+  pixelSize,
+  fill,
+}: {
+  pixels: number[][];
+  startX: number;
+  startY: number;
+  pixelSize: number;
+  fill: string;
+}) => (
+  <>
+    {pixels.map((row, y) =>
+      row.map((pixel, x) =>
+        pixel ? (
+          <rect
+            key={`${x}-${y}`}
+            x={startX + x * pixelSize}
+            y={startY + y * pixelSize}
+            width={pixelSize}
+            height={pixelSize}
+            fill={fill}
+          />
+        ) : null,
+      ),
+    )}
+  </>
+);
 
 export const Logo = ({ size = 'md', showText = true, linkToHome = true }: LogoProps) => {
   const { icon, fontSize, gap } = sizes[size];
+  const pixelSize = 3;
+  const shadowOffset = 2;
 
   const logoContent = (
     <div
@@ -37,22 +101,16 @@ export const Logo = ({ size = 'md', showText = true, linkToHome = true }: LogoPr
         xmlns="http://www.w3.org/2000/svg"
         aria-label="Boardsesh logo"
       >
-        {/* Board background with rounded corners */}
-        <rect x="2" y="2" width="44" height="44" rx="8" fill={themeTokens.colors.primary} />
+        {/* Transparent background */}
+        <rect x="0" y="0" width="48" height="48" rx="4" fill="transparent" />
 
-        {/* Climbing holds pattern - arranged like a real board */}
-        {/* Top row */}
-        <circle cx="14" cy="12" r="4" fill={themeTokens.semantic.selected} />
-        <circle cx="34" cy="14" r="3.5" fill={themeTokens.semantic.selected} />
+        {/* Pink shadow layers */}
+        <PixelLetter pixels={B_PIXELS} startX={3 + shadowOffset} startY={6 + shadowOffset} pixelSize={pixelSize} fill={KILTER_PINK} />
+        <PixelLetter pixels={S_PIXELS} startX={24 + shadowOffset} startY={6 + shadowOffset} pixelSize={pixelSize} fill={KILTER_PINK} />
 
-        {/* Middle section */}
-        <circle cx="24" cy="22" r="5" fill={themeTokens.semantic.selected} />
-        <circle cx="10" cy="26" r="3" fill={themeTokens.semantic.selected} />
-        <circle cx="38" cy="28" r="3.5" fill={themeTokens.semantic.selected} />
-
-        {/* Bottom row */}
-        <circle cx="18" cy="38" r="4" fill={themeTokens.semantic.selected} />
-        <circle cx="32" cy="36" r="3" fill={themeTokens.semantic.selected} />
+        {/* Cyan letters */}
+        <PixelLetter pixels={B_PIXELS} startX={3} startY={6} pixelSize={pixelSize} fill={KILTER_CYAN} />
+        <PixelLetter pixels={S_PIXELS} startX={24} startY={6} pixelSize={pixelSize} fill={KILTER_CYAN} />
       </svg>
       {showText && (
         <span
