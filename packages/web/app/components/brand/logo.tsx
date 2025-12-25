@@ -104,17 +104,18 @@ export const Logo = ({ size = 'md', showText = true, linkToHome = true }: LogoPr
         {/* Transparent background */}
         <rect x="0" y="0" width="48" height="48" rx="4" fill="transparent" />
 
-        {/* Rotated group for playfulness */}
-        <g transform="rotate(-20, 24, 24)">
+        {/* B letter - straight */}
+        <g>
           {/* Pink shadow layer for B */}
           <PixelLetter pixels={B_PIXELS} startX={3 + shadowOffset} startY={6 + shadowOffset} pixelSize={pixelSize} fill={KILTER_PINK} />
-
-          {/* Pink shadow layer for S */}
-          <PixelLetter pixels={S_PIXELS} startX={24 + shadowOffset} startY={6 + shadowOffset} pixelSize={pixelSize} fill={KILTER_PINK} />
-
           {/* Cyan B letter */}
           <PixelLetter pixels={B_PIXELS} startX={3} startY={6} pixelSize={pixelSize} fill={KILTER_CYAN} />
+        </g>
 
+        {/* S letter - rotated -10 degrees for playfulness */}
+        <g transform="rotate(-10, 34.5, 19.5)">
+          {/* Pink shadow layer for S */}
+          <PixelLetter pixels={S_PIXELS} startX={24 + shadowOffset} startY={6 + shadowOffset} pixelSize={pixelSize} fill={KILTER_PINK} />
           {/* Cyan S letter */}
           <PixelLetter pixels={S_PIXELS} startX={24} startY={6} pixelSize={pixelSize} fill={KILTER_CYAN} />
         </g>
