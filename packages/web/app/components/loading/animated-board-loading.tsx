@@ -5,6 +5,7 @@ import { Typography } from 'antd';
 import BoardRenderer from '../board-renderer/board-renderer';
 import { BoardDetails } from '@/app/lib/types';
 import { LitUpHoldsMap } from '../board-renderer/types';
+import { themeTokens } from '@/app/theme/theme-config';
 
 const { Text } = Typography;
 
@@ -43,7 +44,8 @@ const AnimatedBoardLoading: React.FC<AnimatedBoardLoadingProps> = ({ isVisible, 
     const sweepWidth = 60; // 60 degree sweep arc
 
     const holdsMap: LitUpHoldsMap = {};
-    const colors = ['#4ECDC4', '#45B7D1', '#96CEB4'];
+    // Use theme colors for the animation - primary, secondary, and success for variety
+    const colors = [themeTokens.colors.primary, themeTokens.colors.secondary, themeTokens.colors.success];
 
     for (const hold of boardDetails.holdsData) {
       // Calculate angle from center (in degrees, 0-360)
@@ -133,8 +135,8 @@ const AnimatedBoardLoading: React.FC<AnimatedBoardLoadingProps> = ({ isVisible, 
         <div style={{
           width: '80px',
           height: '80px',
-          border: '4px solid rgba(76, 205, 196, 0.3)',
-          borderTop: '4px solid #4ECDC4',
+          border: `4px solid ${themeTokens.colors.primary}33`, // 20% opacity
+          borderTop: `4px solid ${themeTokens.colors.primary}`,
           borderRadius: '50%',
           animation: 'spin 1s linear infinite',
         }} />
@@ -143,12 +145,12 @@ const AnimatedBoardLoading: React.FC<AnimatedBoardLoadingProps> = ({ isVisible, 
       <Text
         style={{
           color: 'white',
-          fontSize: '18px',
+          fontSize: themeTokens.typography.fontSize.lg,
           textAlign: 'center',
           opacity: 0.95,
           maxWidth: '350px',
-          lineHeight: 1.5,
-          fontWeight: 500,
+          lineHeight: themeTokens.typography.lineHeight.normal,
+          fontWeight: themeTokens.typography.fontWeight.medium,
         }}
       >
         {currentMessage}

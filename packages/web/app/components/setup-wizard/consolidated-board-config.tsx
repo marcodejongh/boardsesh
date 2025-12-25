@@ -15,6 +15,8 @@ import BoardRenderer from '../board-renderer/board-renderer';
 import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { BoardConfigData } from '@/app/lib/server-board-configs';
 import AnimatedBoardLoading from '../loading/animated-board-loading';
+import Logo from '../brand/logo';
+import { themeTokens } from '@/app/theme/theme-config';
 
 const { Option } = Select;
 const { Title, Text } = Typography;
@@ -434,14 +436,26 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
   return (
     <>
       <AnimatedBoardLoading isVisible={isStartingClimbing} boardDetails={loadingBoardDetails} />
-      <div style={{ padding: '24px', maxWidth: '600px', margin: '0 auto' }}>
-      <Card>
-        <Title level={1} style={{ textAlign: 'center', marginBottom: '8px' }}>
-          BoardSesh
-        </Title>
-        <Title level={4} style={{ textAlign: 'center', marginBottom: '32px', color: '#666' }}>
-          Configure your climbing board
-        </Title>
+      <div
+        style={{
+          padding: themeTokens.spacing[6],
+          maxWidth: '600px',
+          margin: '0 auto',
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+        }}
+      >
+        <Card style={{ boxShadow: themeTokens.shadows.lg }}>
+          <div style={{ textAlign: 'center', marginBottom: themeTokens.spacing[6] }}>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: themeTokens.spacing[4] }}>
+              <Logo size="lg" showText={true} linkToHome={false} />
+            </div>
+            <Text style={{ color: themeTokens.neutral[500], fontSize: themeTokens.typography.fontSize.lg }}>
+              Configure your climbing board
+            </Text>
+          </div>
 
         {savedConfigurations.length > 0 && (
           <>
@@ -454,7 +468,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
                   key: 'saved',
                   label: `Saved Configurations (${savedConfigurations.length})`,
                   children: (
-                    <Flex gap="middle" wrap="wrap">
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', width: '100%', overflow: 'hidden' }}>
                       {savedConfigurations.map((config) => (
                         <BoardConfigPreview
                           key={config.name}
@@ -463,7 +477,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
                           boardConfigs={boardConfigs}
                         />
                       ))}
-                    </Flex>
+                    </div>
                   ),
                 },
               ]}
@@ -563,7 +577,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
             </Row>
           </Form.Item>
 
-          <div style={{ marginBottom: '16px', textAlign: 'center' }}>
+          <div style={{ marginBottom: themeTokens.spacing[4], textAlign: 'center' }}>
             <Text type="secondary">You can login after reaching the board page</Text>
           </div>
 
@@ -634,7 +648,9 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
                       ) : selectedBoard && selectedLayout && selectedSize && selectedSets.length > 0 ? (
                         <Card style={{ width: 400 }}>
                           <div style={{ textAlign: 'center', padding: '20px' }}>
-                            <div style={{ color: '#1890ff', marginBottom: '8px' }}>Loading preview...</div>
+                            <div style={{ color: themeTokens.colors.primary, marginBottom: '8px' }}>
+                              Loading preview...
+                            </div>
                           </div>
                         </Card>
                       ) : (

@@ -15,6 +15,7 @@ import { usePartyContext } from '../party-manager/party-context';
 import { useBackendUrl } from '../connection-manager/connection-settings-context';
 import { useQueueContext } from '../graphql-queue';
 import { BackendSetupPanel } from './backend-setup-panel';
+import { themeTokens } from '@/app/theme/theme-config';
 
 const { Text } = Typography;
 
@@ -109,16 +110,16 @@ export const ShareBoardButton = () => {
             <div
               style={{
                 padding: '12px',
-                background: '#e6f7ff',
-                border: '1px solid #1890ff',
-                borderRadius: '6px',
+                background: themeTokens.semantic.selected,
+                border: `1px solid ${themeTokens.colors.primary}`,
+                borderRadius: themeTokens.borderRadius.md,
                 marginBottom: '16px',
               }}
             >
               <Flex align="center" gap="small">
                 <span style={{ fontSize: '18px' }}>🎮</span>
                 <div>
-                  <Text strong style={{ color: '#1890ff' }}>
+                  <Text strong style={{ color: themeTokens.colors.primary }}>
                     Board Controller Connected
                   </Text>
                   <br />
@@ -146,7 +147,7 @@ export const ShareBoardButton = () => {
               {/* Connecting */}
               {isConnecting && (
                 <Flex vertical align="center" gap="middle" style={{ padding: '24px' }}>
-                  <LoadingOutlined style={{ fontSize: '32px', color: '#1890ff' }} />
+                  <LoadingOutlined style={{ fontSize: '32px', color: themeTokens.colors.primary }} />
                   <Text>Connecting to backend...</Text>
                   <Text type="secondary" style={{ fontSize: '12px' }}>
                     {backendUrl}
@@ -162,14 +163,14 @@ export const ShareBoardButton = () => {
                     gap="small"
                     style={{
                       padding: '12px',
-                      background: '#f6ffed',
-                      border: '1px solid #b7eb8f',
-                      borderRadius: '6px',
+                      background: themeTokens.colors.successBg,
+                      border: `1px solid ${themeTokens.colors.success}`,
+                      borderRadius: themeTokens.borderRadius.md,
                     }}
                   >
-                    <CheckCircleOutlined style={{ color: '#52c41a', fontSize: '18px' }} />
+                    <CheckCircleOutlined style={{ color: themeTokens.colors.success, fontSize: '18px' }} />
                     <div>
-                      <Text strong style={{ color: '#52c41a' }}>
+                      <Text strong style={{ color: themeTokens.colors.success }}>
                         Connected to Backend
                       </Text>
                       <br />
@@ -198,9 +199,12 @@ export const ShareBoardButton = () => {
                             justify="space-between"
                             align="center"
                             style={{
-                              background: user.id === currentUserId ? '#e6f7ff' : '#f5f5f5',
+                              background:
+                                user.id === currentUserId
+                                  ? themeTokens.semantic.selected
+                                  : themeTokens.neutral[100],
                               padding: '8px 12px',
-                              borderRadius: '8px',
+                              borderRadius: themeTokens.borderRadius.md,
                               width: '100%',
                             }}
                           >
@@ -211,7 +215,7 @@ export const ShareBoardButton = () => {
                               </Text>
                             </Flex>
                             {user.isLeader && (
-                              <CrownFilled style={{ color: '#FFD700', fontSize: '16px' }} />
+                              <CrownFilled style={{ color: themeTokens.colors.warning, fontSize: '16px' }} />
                             )}
                           </Flex>
                         ))}
