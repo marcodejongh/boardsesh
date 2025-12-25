@@ -73,6 +73,15 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
       }
     : {};
 
+  const renderQualityText = () => {
+    if (hasGrade) {
+      const baseText = `${climb.quality_average}★`;
+      return showAngle ? `${baseText} @ ${climb.angle}°` : baseText;
+    }
+    const projectText = showAngle ? `project @ ${climb.angle}°` : 'project';
+    return <span style={{ fontStyle: 'italic' }}>{projectText}</span>;
+  };
+
   const renderDifficultyText = () => {
     if (hasGrade) {
       const baseText = `${climb.difficulty} ${climb.quality_average}★`;
@@ -116,6 +125,32 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
     </Text>
   );
 
+  const qualityElement = (
+    <Text
+      type="secondary"
+      style={{
+        fontSize: themeTokens.typography.fontSize.xs,
+        fontWeight: themeTokens.typography.fontWeight.normal,
+        ...textOverflowStyles,
+      }}
+    >
+      {renderQualityText()}
+    </Text>
+  );
+
+  const largeGradeElement = climb.difficulty && (
+    <Text
+      style={{
+        fontSize: 28,
+        fontWeight: themeTokens.typography.fontWeight.bold,
+        lineHeight: 1,
+        color: themeTokens.colors.textSecondary,
+      }}
+    >
+      {climb.difficulty}
+    </Text>
+  );
+
   const setterElement = showSetterInfo && climb.setter_username && (
     <Text
       type="secondary"
@@ -131,17 +166,21 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
 
   if (layout === 'horizontal') {
     return (
-      <Flex vertical gap={0} className={className}>
-        {/* Row 1: Name (left) with addon, Grade (right) */}
-        <Flex justify="space-between" align="center">
+      <Flex gap={12} align="center" className={className}>
+        {/* Left side: Name, quality, and setter stacked */}
+        <Flex vertical gap={0} style={{ flex: 1, minWidth: 0 }}>
+          {/* Row 1: Name with addon */}
           <div style={{ display: 'flex', alignItems: 'center', gap: themeTokens.spacing[2] }}>
             {nameElement}
             {nameAddon}
           </div>
-          {gradeElement}
+          {/* Row 2: Quality/stars */}
+          {qualityElement}
+          {/* Row 3 (optional): Setter info */}
+          {setterElement}
         </Flex>
-        {/* Row 2 (optional): Setter info */}
-        {setterElement}
+        {/* Right side: Large V grade spanning all rows */}
+        {largeGradeElement}
       </Flex>
     );
   }
