@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useCallback, ReactNode } from 'react';
+import React, { useEffect, useRef, ReactNode } from 'react';
 
 interface InfiniteScrollProps {
   children: ReactNode;
@@ -36,15 +36,23 @@ const InfiniteScroll = ({
   const sentinelRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
 
-  const handleIntersection = useCallback(
-    (entries: IntersectionObserverEntry[]) => {
-      const [entry] = entries;
-      if (entry.isIntersecting && hasMore && !isLoading) {
-        loadMore();
-      }
-    },
-    [hasMore, isLoading, loadMore],
-  );
+  // Use refs to avoid recreating the observer when these values change
+  const loadMoreRef = useRef(loadMore);
+  const hasMoreRef = useRef(hasMore);
+  const isLoadingRef = useRef(isLoading);
+
+  // Keep refs in sync with props
+  useEffect(() => {
+    loadMoreRef.current = loadMore;
+  }, [loadMore]);
+
+  useEffect(() => {
+    hasMoreRef.current = hasMore;
+  }, [hasMore]);
+
+  useEffect(() => {
+    isLoadingRef.current = isLoading;
+  }, [isLoading]);
 
   useEffect(() => {
     const sentinel = sentinelRef.current;
@@ -59,11 +67,19 @@ const InfiniteScroll = ({
     }
 
     // Create new IntersectionObserver
-    observerRef.current = new IntersectionObserver(handleIntersection, {
-      root,
-      rootMargin,
-      threshold,
-    });
+    observerRef.current = new IntersectionObserver(
+      (entries: IntersectionObserverEntry[]) => {
+        const [entry] = entries;
+        if (entry.isIntersecting && hasMoreRef.current && !isLoadingRef.current) {
+          loadMoreRef.current();
+        }
+      },
+      {
+        root,
+        rootMargin,
+        threshold,
+      },
+    );
 
     observerRef.current.observe(sentinel);
 
@@ -72,7 +88,7 @@ const InfiniteScroll = ({
         observerRef.current.disconnect();
       }
     };
-  }, [handleIntersection, scrollableTarget, rootMargin, threshold]);
+  }, [scrollableTarget, rootMargin, threshold]);
 
   return (
     <div className={className} style={style}>
