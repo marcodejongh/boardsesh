@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Button, Drawer, Spin, Typography, Flex } from 'antd';
+import { Button, Drawer, Spin, Typography, Flex, Row, Col, Card, Alert } from 'antd';
 import { useRouter, usePathname } from 'next/navigation';
 import { track } from '@vercel/analytics';
 import useSWR from 'swr';
@@ -9,7 +9,6 @@ import { ANGLES } from '@/app/lib/board-data';
 import { BoardName, Climb } from '@/app/lib/types';
 import { ClimbStatsForAngle } from '@/app/lib/data/queries';
 import { themeTokens } from '@/app/theme/theme-config';
-import styles from './angle-selector.module.css';
 
 const { Text } = Typography;
 
@@ -23,7 +22,7 @@ export default function AngleSelector({ boardName, currentAngle, currentClimb }:
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
-  const currentAngleRef = useRef<HTMLButtonElement>(null);
+  const currentAngleRef = useRef<HTMLDivElement>(null);
 
   // Build the API URL for fetching climb stats
   const climbStatsUrl = currentClimb
@@ -78,44 +77,62 @@ export default function AngleSelector({ boardName, currentAngle, currentClimb }:
     setIsDrawerOpen(false);
   };
 
-  const renderAngleButton = (angle: number) => {
+  const renderAngleCard = (angle: number) => {
     const stats = statsMap.get(angle);
     const isSelected = angle === currentAngle;
     const hasStats = currentClimb && stats;
 
     return (
-      <button
-        key={angle}
-        ref={isSelected ? currentAngleRef : null}
-        className={`${styles.angleButton} ${isSelected ? styles.angleButtonSelected : ''}`}
-        onClick={() => handleAngleChange(angle)}
-      >
-        <Text strong className={styles.angleValue}>
-          {angle}°
-        </Text>
-        {hasStats && (
-          <Flex vertical gap={2} className={styles.statsContainer}>
-            {stats.difficulty && (
-              <Text className={styles.grade}>{stats.difficulty}</Text>
+      <Col xs={8} sm={6} md={4} key={angle}>
+        <div ref={isSelected ? currentAngleRef : null}>
+          <Card
+            hoverable
+            size="small"
+            onClick={() => handleAngleChange(angle)}
+            styles={{
+              body: {
+                padding: '12px 8px',
+                minHeight: 80,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+              },
+            }}
+            style={{
+              backgroundColor: isSelected ? themeTokens.semantic.selected : undefined,
+              borderColor: isSelected ? themeTokens.colors.primary : undefined,
+              borderWidth: isSelected ? 2 : 1,
+            }}
+          >
+            <Text strong style={{ fontSize: 20, lineHeight: 1.2 }}>
+              {angle}°
+            </Text>
+            {hasStats && (
+              <Flex vertical gap={2} align="center" style={{ marginTop: 4 }}>
+                {stats.difficulty && (
+                  <Text style={{ fontSize: 12, fontWeight: 500 }}>{stats.difficulty}</Text>
+                )}
+                <Flex gap={4} align="center" justify="center" wrap="wrap">
+                  {stats.quality_average !== null && Number(stats.quality_average) > 0 && (
+                    <Text style={{ fontSize: 11, color: themeTokens.colors.warning }}>
+                      ★{Number(stats.quality_average).toFixed(1)}
+                    </Text>
+                  )}
+                  <Text type="secondary" style={{ fontSize: 10 }}>
+                    {stats.ascensionist_count} sends
+                  </Text>
+                </Flex>
+              </Flex>
             )}
-            <Flex gap={4} align="center" justify="center" wrap="wrap">
-              {stats.quality_average !== null && Number(stats.quality_average) > 0 && (
-                <Text className={styles.quality}>
-                  ★{Number(stats.quality_average).toFixed(1)}
-                </Text>
-              )}
-              <Text type="secondary" className={styles.ascents}>
-                {stats.ascensionist_count} sends
+            {currentClimb && !hasStats && !isLoading && (
+              <Text type="secondary" style={{ fontSize: 10, marginTop: 4 }}>
+                No data
               </Text>
-            </Flex>
-          </Flex>
-        )}
-        {currentClimb && !hasStats && !isLoading && (
-          <Text type="secondary" className={styles.noData}>
-            No data
-          </Text>
-        )}
-      </button>
+            )}
+          </Card>
+        </div>
+      </Col>
     );
   };
 
@@ -126,27 +143,29 @@ export default function AngleSelector({ boardName, currentAngle, currentClimb }:
       </Button>
 
       <Drawer
-        title={currentClimb ? `Select Angle` : "Select Angle"}
+        title="Select Angle"
         placement="right"
         onClose={() => setIsDrawerOpen(false)}
         open={isDrawerOpen}
         width={'90%'}
-        styles={{ body: { padding: '12px' } }}
+        styles={{ body: { padding: 12 } }}
       >
         {currentClimb && (
-          <div className={styles.climbName}>
-            <Text strong ellipsis>{currentClimb.name}</Text>
-          </div>
+          <Alert
+            message={currentClimb.name}
+            type="info"
+            style={{ marginBottom: 12, textAlign: 'center' }}
+          />
         )}
         {currentClimb && isLoading && (
-          <div className={styles.loadingContainer}>
+          <Flex align="center" justify="center" gap={8} style={{ marginBottom: 12 }}>
             <Spin size="small" />
-            <Text type="secondary" className={styles.loadingText}>Loading stats...</Text>
-          </div>
+            <Text type="secondary" style={{ fontSize: 12 }}>Loading stats...</Text>
+          </Flex>
         )}
-        <div className={styles.anglesGrid}>
-          {ANGLES[boardName].map(renderAngleButton)}
-        </div>
+        <Row gutter={[8, 8]}>
+          {ANGLES[boardName].map(renderAngleCard)}
+        </Row>
       </Drawer>
     </>
   );
