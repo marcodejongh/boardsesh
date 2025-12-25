@@ -5,6 +5,7 @@ import { App, ConfigProvider } from 'antd';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import SessionProviderWrapper from './components/providers/session-provider';
+import QueryClientProvider from './components/providers/query-client-provider';
 import { antdTheme } from './theme/antd-theme';
 import './components/index.css';
 
@@ -16,13 +17,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body style={{ margin: 0 }}>
         <Analytics />
-        <SessionProviderWrapper>
-          <AntdRegistry>
-            <ConfigProvider theme={antdTheme}>
-              <App>{children}</App>
-            </ConfigProvider>
-          </AntdRegistry>
-        </SessionProviderWrapper>
+        <QueryClientProvider>
+          <SessionProviderWrapper>
+            <AntdRegistry>
+              <ConfigProvider theme={antdTheme}>
+                <App>{children}</App>
+              </ConfigProvider>
+            </AntdRegistry>
+          </SessionProviderWrapper>
+        </QueryClientProvider>
         <SpeedInsights />
       </body>
     </html>

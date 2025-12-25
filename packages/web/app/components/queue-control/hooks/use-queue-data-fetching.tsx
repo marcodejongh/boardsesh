@@ -1,24 +1,10 @@
-import { useCallback, useRef } from 'react';
-import useSWRInfinite from 'swr/infinite';
+import { useCallback, useRef, useEffect, useMemo } from 'react';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { constructClimbSearchUrl, searchParamsToUrlParams } from '@/app/lib/url-utils';
 import { PAGE_LIMIT } from '../../board-page/constants';
 import { ClimbQueue } from '../types';
-import { Climb, ParsedBoardRouteParameters, SearchRequestPagination } from '@/app/lib/types';
-import { useEffect, useMemo } from 'react';
+import { ParsedBoardRouteParameters, SearchRequestPagination, SearchClimbsResult } from '@/app/lib/types';
 import { useBoardProvider } from '../../board-provider/board-provider-context';
-
-const createFetcher = (authState: { token: string | null; user_id: number | null }) => 
-  (url: string) => {
-    const headers: Record<string, string> = {};
-    
-    // Add authentication headers if available
-    if (authState.token && authState.user_id) {
-      headers['x-auth-token'] = authState.token;
-      headers['x-user-id'] = authState.user_id.toString();
-    }
-    
-    return fetch(url, { headers }).then((res) => res.json());
-  };
 
 interface UseQueueDataFetchingProps {
   searchParams: SearchRequestPagination;
@@ -37,35 +23,59 @@ export const useQueueDataFetching = ({
 }: UseQueueDataFetchingProps) => {
   const { getLogbook, token, user_id } = useBoardProvider();
   const fetchedUuidsRef = useRef<string>('');
-  const fetcher = useMemo(() => createFetcher({ token, user_id }), [token, user_id]);
 
-  const getKey = (pageIndex: number, previousPageData: { climbs: Climb[] }) => {
-    if (previousPageData && previousPageData.climbs.length === 0) return null;
-
-    const queryString = searchParamsToUrlParams({
-      ...searchParams,
-      page: pageIndex,
-    }).toString();
-
-    return constructClimbSearchUrl(parsedParams, queryString);
-  };
+  // Create a stable query key that changes when search params change
+  const queryKey = useMemo(() => {
+    // Exclude page from the key since pagination is handled by useInfiniteQuery
+    const { page: _, ...paramsWithoutPage } = searchParams;
+    return ['climbSearch', parsedParams, paramsWithoutPage] as const;
+  }, [searchParams, parsedParams]);
 
   const {
     data,
-    size,
-    setSize,
-    isLoading: isFetchingClimbs,
-  } = useSWRInfinite(getKey, fetcher, {
-    revalidateOnFocus: false,
-    revalidateFirstPage: false,
-    initialSize: searchParams.page ? searchParams.page + 1 : 1,
+    fetchNextPage,
+    hasNextPage,
+    isFetching,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey,
+    queryFn: async ({ pageParam }): Promise<SearchClimbsResult> => {
+      const queryString = searchParamsToUrlParams({
+        ...searchParams,
+        page: pageParam,
+      }).toString();
+
+      const url = constructClimbSearchUrl(parsedParams, queryString);
+
+      const headers: Record<string, string> = {};
+      if (token && user_id) {
+        headers['x-auth-token'] = token;
+        headers['x-user-id'] = user_id.toString();
+      }
+
+      const response = await fetch(url, { headers });
+      if (!response.ok) {
+        throw new Error('Failed to fetch climbs');
+      }
+      return response.json();
+    },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) => {
+      const totalFetched = allPages.length * PAGE_LIMIT;
+      if (totalFetched >= lastPage.totalCount) {
+        return undefined; // No more pages
+      }
+      return allPages.length; // Next page number
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: false,
   });
 
-  const hasMoreResults = data && data[0] && size * PAGE_LIMIT < data[0].totalCount;
-  const totalSearchResultCount = (data && data[0] && data[0].totalCount) || null;
+  const totalSearchResultCount = data?.pages[0]?.totalCount ?? null;
+  const hasMoreResults = hasNextPage ?? false;
 
   const climbSearchResults = useMemo(
-    () => (data ? data.flatMap((page: { climbs: Climb[] }) => page.climbs) : null),
+    () => (data ? data.pages.flatMap((page) => page.climbs) : null),
     [data],
   );
 
@@ -87,7 +97,6 @@ export const useQueueDataFetching = ({
       return; // Skip if we've already fetched these exact UUIDs
     }
 
-    console.log('Fetching logbook for UUIDs:', climbUuidsString); // Debug log
     const climbUuids = JSON.parse(climbUuidsString);
     if (climbUuids.length > 0) {
       getLogbook(climbUuids);
@@ -102,12 +111,14 @@ export const useQueueDataFetching = ({
   }, [climbSearchResults, hasDoneFirstFetch, setHasDoneFirstFetch]);
 
   const fetchMoreClimbs = useCallback(() => {
-    setSize((oldSize) => {
-      const newParams = { ...searchParams, page: oldSize + 1 };
+    if (hasNextPage && !isFetchingNextPage) {
+      // Update URL with new page number for scroll restoration
+      const currentPage = data?.pages.length ?? 0;
+      const newParams = { ...searchParams, page: currentPage };
       history.replaceState(null, '', `${window.location.pathname}?${searchParamsToUrlParams(newParams).toString()}`);
-      return oldSize + 1;
-    });
-  }, [searchParams, setSize]);
+      fetchNextPage();
+    }
+  }, [searchParams, hasNextPage, isFetchingNextPage, fetchNextPage, data?.pages.length]);
 
   return {
     data,
@@ -115,7 +126,8 @@ export const useQueueDataFetching = ({
     suggestedClimbs,
     totalSearchResultCount,
     hasMoreResults,
-    isFetchingClimbs,
+    isFetchingClimbs: isFetching,
+    isFetchingNextPage,
     fetchMoreClimbs,
   };
 };
