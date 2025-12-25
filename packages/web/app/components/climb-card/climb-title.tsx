@@ -31,6 +31,8 @@ type ClimbTitleProps = {
   className?: string;
   /** Layout mode: 'stacked' (default) puts grade below name, 'horizontal' puts grade beside name */
   layout?: 'stacked' | 'horizontal';
+  /** Center the content (useful for QueueControlBar) */
+  centered?: boolean;
 };
 
 /**
@@ -45,6 +47,7 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
   ellipsis = true,
   className,
   layout = 'stacked',
+  centered = false,
 }) => {
   if (!climb) {
     return (
@@ -144,7 +147,7 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
   }
 
   return (
-    <Flex vertical gap={2} className={className}>
+    <Flex vertical gap={2} className={className} align={centered ? 'center' : 'flex-start'}>
       {/* Row 1: Name with optional benchmark icon and addon (e.g., AscentStatus) */}
       <div style={{ display: 'flex', alignItems: 'center', gap: themeTokens.spacing[2] }}>
         {nameElement}

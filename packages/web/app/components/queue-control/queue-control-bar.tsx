@@ -83,6 +83,7 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
               <ClimbTitle
                 climb={currentClimb}
                 showAngle
+                centered
                 nameAddon={currentClimb?.name && <AscentStatus climbUuid={currentClimb.uuid} />}
               />
             </div>
