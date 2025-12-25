@@ -6,7 +6,6 @@ import { getClimb } from '@/app/lib/data/queries';
 import ClimbCard from '@/app/components/climb-card/climb-card';
 import BetaVideos from '@/app/components/beta-videos/beta-videos';
 import {
-  constructClimbInfoUrl,
   extractUuidFromSlug,
   constructClimbViewUrl,
   isUuidOnly,
@@ -15,7 +14,6 @@ import {
 } from '@/app/lib/url-utils';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import { convertLitUpHoldsStringToMap } from '@/app/components/board-renderer/util';
-import ClimbViewActions from '@/app/components/climb-view/climb-view-actions';
 import { Metadata } from 'next';
 import { dbz } from '@/app/lib/db/db';
 import { kilterBetaLinks, tensionBetaLinks } from '@/app/lib/db/schema';
@@ -184,24 +182,8 @@ export default async function DynamicResultsPage(props: { params: Promise<BoardR
       litUpHoldsMap,
     };
 
-    const auroraAppUrl = constructClimbInfoUrl(
-      boardDetails,
-      currentClimb.uuid,
-      currentClimb.angle || parsedParams.angle,
-    );
-
     return (
       <div className={styles.pageContainer}>
-        {/* Actions Section */}
-        <div className={styles.actionsSection}>
-          <ClimbViewActions
-            climb={climbWithProcessedData}
-            boardDetails={boardDetails}
-            auroraAppUrl={auroraAppUrl}
-            angle={parsedParams.angle}
-          />
-        </div>
-
         {/* Main Content */}
         <div className={styles.contentWrapper}>
           <div className={styles.climbSection}>

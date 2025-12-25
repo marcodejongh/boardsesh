@@ -20,6 +20,17 @@
   touch-action: manipulation;
 }
 
+/* In Queue button - uses theme success color */
+.inQueueButton {
+  color: #10B981 !important;
+  border-color: #10B981 !important;
+}
+
+.inQueueButton:hover {
+  color: #059669 !important;
+  border-color: #059669 !important;
+}
+
 @media (max-width: 768px) {
   .mobileOnly {
     display: block;
