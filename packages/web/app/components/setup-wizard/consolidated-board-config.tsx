@@ -68,7 +68,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
   const [useAsDefault, setUseAsDefault] = useState(false);
   const [savedConfigurations, setSavedConfigurations] = useState<StoredBoardConfig[]>([]);
   const [suggestedName, setSuggestedName] = useState<string>('');
-  const [activeCollapsePanels, setActiveCollapsePanels] = useState<string[]>(['saved']);
+  const [activeCollapsePanels, setActiveCollapsePanels] = useState<string[]>([]);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isStartingClimbing, setIsStartingClimbing] = useState(false);
   const [loadingBoardDetails, setLoadingBoardDetails] = useState<BoardDetails | null>(null);
@@ -202,6 +202,11 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
       // Load all saved configurations
       const allConfigs = await loadAllConfigurations();
       setSavedConfigurations(allConfigs);
+
+      // Expand saved boards panel if there are saved configurations
+      if (allConfigs.length > 0) {
+        setActiveCollapsePanels((prev) => (prev.includes('saved') ? prev : [...prev, 'saved']));
+      }
 
       // Check for default configuration
       const defaultConfig = allConfigs.find((config) => config.useAsDefault);
@@ -458,57 +463,55 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
             </Text>
           </div>
 
-        {savedConfigurations.length > 0 && (
-          <>
-            <Collapse
-              activeKey={activeCollapsePanels}
-              onChange={(keys) => setActiveCollapsePanels(keys as string[])}
-              size="small"
-              items={[
-                {
-                  key: 'saved',
-                  label: `Saved Configurations (${savedConfigurations.length})`,
-                  extra: (
-                    <Button
-                      type={isEditMode ? 'primary' : 'default'}
-                      size="small"
-                      icon={<EditOutlined />}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setIsEditMode(!isEditMode);
-                      }}
-                    />
-                  ),
-                  children: (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', width: '100%', overflow: 'hidden' }}>
-                      {savedConfigurations.map((config) => (
-                        <BoardConfigPreview
-                          key={config.name}
-                          config={config}
-                          onDelete={deleteConfiguration}
-                          boardConfigs={boardConfigs}
-                          isEditMode={isEditMode}
-                        />
-                      ))}
-                    </div>
-                  ),
-                },
-              ]}
-            />
-            <Divider />
-          </>
-        )}
+        <Collapse
+          activeKey={activeCollapsePanels}
+          onChange={(keys) => setActiveCollapsePanels(keys as string[])}
+          size="small"
+          items={[
+            {
+              key: 'saved',
+              label: `Saved Boards (${savedConfigurations.length})`,
+              extra: savedConfigurations.length > 0 ? (
+                <Button
+                  type={isEditMode ? 'primary' : 'default'}
+                  size="small"
+                  icon={<EditOutlined />}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsEditMode(!isEditMode);
+                  }}
+                />
+              ) : undefined,
+              children:
+                savedConfigurations.length > 0 ? (
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(2, 1fr)',
+                      gap: '16px',
+                      width: '100%',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {savedConfigurations.map((config) => (
+                      <BoardConfigPreview
+                        key={config.name}
+                        config={config}
+                        onDelete={deleteConfiguration}
+                        boardConfigs={boardConfigs}
+                        isEditMode={isEditMode}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <Text type="secondary">No saved boards yet. Configure your board below and it will be saved automatically.</Text>
+                ),
+            },
+          ]}
+        />
+        <Divider />
 
         <Form layout="vertical">
-          <Form.Item label="Configuration Name (Optional)">
-            <Input
-              value={configName}
-              onChange={(e) => setConfigName(e.target.value)}
-              placeholder={suggestedName || 'Enter a name for this configuration'}
-              maxLength={50}
-            />
-          </Form.Item>
-
           <Form.Item label="Board Configuration" required>
             <Row gutter={[16, 16]}>
               <Col xs={24} sm={12}>
@@ -590,9 +593,14 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
             </Row>
           </Form.Item>
 
-          <div style={{ marginBottom: themeTokens.spacing[4], textAlign: 'center' }}>
-            <Text type="secondary">You can login after reaching the board page</Text>
-          </div>
+          <Form.Item label="Board Name (Optional)">
+            <Input
+              value={configName}
+              onChange={(e) => setConfigName(e.target.value)}
+              placeholder={suggestedName || 'Enter a name for this board'}
+              maxLength={50}
+            />
+          </Form.Item>
 
           {/* TODO: Improve UX for default board selection
           <Form.Item>
