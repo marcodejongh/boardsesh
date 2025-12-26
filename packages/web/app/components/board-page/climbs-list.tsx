@@ -33,7 +33,7 @@ const ClimbsListSkeleton = ({ boardDetails }: { boardDetails: BoardDetails }) =>
   ));
 };
 
-const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
+const ClimbsList = ({ boardDetails, initialClimbs, angle }: ClimbsListProps) => {
   const {
     setCurrentClimb,
     climbSearchResults,
@@ -58,7 +58,7 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
   const { favorites, refetch: refetchFavorites } = useFavoritesBatch({
     boardName: boardDetails.board_name,
     climbUuids,
-    angle: boardDetails.angle,
+    angle,
   });
 
   // Local optimistic state for favorites to avoid waiting for refetch
