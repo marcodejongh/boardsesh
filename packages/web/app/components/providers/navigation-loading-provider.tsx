@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
+import { usePathname } from 'next/navigation';
 import AnimatedBoardLoading from '../loading/animated-board-loading';
 import { BoardDetails } from '@/app/lib/types';
 
@@ -22,47 +23,77 @@ export function useNavigationLoading() {
 }
 
 const LOADING_TIMEOUT_MS = 10000; // 10 second safety timeout
+const PATHNAME_FALLBACK_MS = 2000; // 2 second fallback after pathname change
 
 export function NavigationLoadingProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [boardDetails, setBoardDetails] = useState<BoardDetails | null>(null);
+  const pathname = usePathname();
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const pathnameTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isLoadingRef = useRef(false); // Track loading state for timeouts
 
-  const clearLoadingTimeout = useCallback(() => {
+  const clearAllTimeouts = useCallback(() => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
     }
+    if (pathnameTimeoutRef.current) {
+      clearTimeout(pathnameTimeoutRef.current);
+      pathnameTimeoutRef.current = null;
+    }
   }, []);
 
   const hideLoading = useCallback(() => {
-    clearLoadingTimeout();
+    clearAllTimeouts();
+    isLoadingRef.current = false;
     setIsLoading(false);
     setBoardDetails(null);
-  }, [clearLoadingTimeout]);
+  }, [clearAllTimeouts]);
 
   const showLoading = useCallback((details?: BoardDetails | null) => {
-    clearLoadingTimeout();
+    clearAllTimeouts();
     setBoardDetails(details || null);
+    isLoadingRef.current = true;
     setIsLoading(true);
 
     // Set a safety timeout to prevent infinite loading
     timeoutRef.current = setTimeout(() => {
-      console.warn('Navigation loading timed out after 10 seconds');
-      hideLoading();
+      if (isLoadingRef.current) {
+        console.warn('Navigation loading timed out after 10 seconds');
+        hideLoading();
+      }
     }, LOADING_TIMEOUT_MS);
-  }, [clearLoadingTimeout, hideLoading]);
+  }, [clearAllTimeouts, hideLoading]);
 
   const signalPageReady = useCallback(() => {
-    hideLoading();
+    if (isLoadingRef.current) {
+      hideLoading();
+    }
   }, [hideLoading]);
 
-  // Cleanup timeout on unmount
+  // Fallback: hide loading after pathname changes (with delay to allow page to render)
+  useEffect(() => {
+    if (isLoadingRef.current) {
+      // Clear any existing pathname timeout
+      if (pathnameTimeoutRef.current) {
+        clearTimeout(pathnameTimeoutRef.current);
+      }
+      // Set a fallback timeout after pathname change
+      pathnameTimeoutRef.current = setTimeout(() => {
+        if (isLoadingRef.current) {
+          hideLoading();
+        }
+      }, PATHNAME_FALLBACK_MS);
+    }
+  }, [pathname, hideLoading]);
+
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
-      clearLoadingTimeout();
+      clearAllTimeouts();
     };
-  }, [clearLoadingTimeout]);
+  }, [clearAllTimeouts]);
 
   return (
     <NavigationLoadingContext.Provider value={{ showLoading, hideLoading, signalPageReady, isLoading }}>
