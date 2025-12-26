@@ -1,8 +1,9 @@
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../db/client.js';
-import { sessions, sessionClients, sessionQueues } from '../db/schema.js';
-import { eq, and, sql } from 'drizzle-orm';
+import { sessions, sessionClients, sessionQueues, type Session } from '../db/schema.js';
+import { eq, and, sql, gt, gte, lte, lt } from 'drizzle-orm';
 import type { ClimbQueueItem, SessionUser } from '@boardsesh/shared-schema';
+import { haversineDistance, getBoundingBox, getSessionExpiryDate, DEFAULT_SEARCH_RADIUS_METERS } from '../utils/geo.js';
 
 // Custom error for version conflicts
 export class VersionConflictError extends Error {
@@ -21,11 +22,21 @@ interface ConnectedClient {
   connectedAt: Date;
 }
 
+export type DiscoverableSession = {
+  id: string;
+  name: string | null;
+  boardPath: string;
+  latitude: number;
+  longitude: number;
+  createdAt: Date;
+  createdByUserId: string | null;
+  participantCount: number;
+  distance: number;
+};
+
 class RoomManager {
   private clients: Map<string, ConnectedClient> = new Map();
   private sessions: Map<string, Set<string>> = new Map();
-  private activeSessionId: string | null = null;
-  private activeSessionBoardPath: string | null = null;
 
   /**
    * Reset all state (for testing purposes)
@@ -33,8 +44,6 @@ class RoomManager {
   reset(): void {
     this.clients.clear();
     this.sessions.clear();
-    this.activeSessionId = null;
-    this.activeSessionBoardPath = null;
   }
 
   registerClient(connectionId: string): string {
@@ -68,8 +77,6 @@ class RoomManager {
     queue: ClimbQueueItem[];
     currentClimbQueueItem: ClimbQueueItem | null;
     isLeader: boolean;
-    sessionSwitched: boolean;
-    previousSessionClientIds: string[];
   }> {
     const client = this.clients.get(connectionId);
     if (!client) {
@@ -79,30 +86,6 @@ class RoomManager {
     // Leave current session if in one
     if (client.sessionId) {
       await this.leaveSession(connectionId);
-    }
-
-    // Check if we need to switch sessions (different board path)
-    let sessionSwitched = false;
-    let previousSessionClientIds: string[] = [];
-
-    if (this.activeSessionId && this.activeSessionBoardPath !== boardPath) {
-      // Session switching: get clients to notify and clear old session
-      previousSessionClientIds = this.getSessionClients(this.activeSessionId);
-
-      // Clear old session from memory
-      this.sessions.delete(this.activeSessionId);
-
-      // Mark all clients in old session as not in a session
-      for (const oldClientId of previousSessionClientIds) {
-        const oldClient = this.clients.get(oldClientId);
-        if (oldClient && oldClientId !== connectionId) {
-          oldClient.sessionId = null;
-          oldClient.isLeader = false;
-        }
-      }
-
-      sessionSwitched = true;
-      console.log(`Session switched from ${this.activeSessionBoardPath} to ${boardPath}`);
     }
 
     // Update client info
@@ -125,10 +108,6 @@ class RoomManager {
     client.isLeader = isLeader;
     sessionClientIds.add(connectionId);
 
-    // Update active session tracking
-    this.activeSessionId = sessionId;
-    this.activeSessionBoardPath = boardPath;
-
     // Persist to database
     await this.persistSessionJoin(sessionId, boardPath, connectionId, client.username, isLeader);
 
@@ -142,8 +121,6 @@ class RoomManager {
       queue: queueState.queue,
       currentClimbQueueItem: queueState.currentClimbQueueItem,
       isLeader,
-      sessionSwitched,
-      previousSessionClientIds: previousSessionClientIds.filter((c) => c !== connectionId),
     };
   }
 
@@ -161,14 +138,9 @@ class RoomManager {
     if (sessionClientIds) {
       sessionClientIds.delete(connectionId);
 
-      // Clean up empty sessions
+      // Clean up empty sessions from memory
       if (sessionClientIds.size === 0) {
         this.sessions.delete(sessionId);
-        // Clear active session tracking if this was the active session
-        if (this.activeSessionId === sessionId) {
-          this.activeSessionId = null;
-          this.activeSessionBoardPath = null;
-        }
       }
     }
 
@@ -411,25 +383,152 @@ class RoomManager {
   }
 
   /**
-   * Get the active session info for the /join route
+   * Get a session by its ID from the database
    */
-  getActiveSession(): { sessionId: string; boardPath: string } | null {
-    if (!this.activeSessionId || !this.activeSessionBoardPath) {
-      return null;
+  async getSessionById(sessionId: string): Promise<Session | null> {
+    const result = await db.select().from(sessions).where(eq(sessions.id, sessionId)).limit(1);
+    return result[0] || null;
+  }
+
+  /**
+   * Create a discoverable session with GPS coordinates
+   */
+  async createDiscoverableSession(
+    sessionId: string,
+    boardPath: string,
+    userId: string,
+    latitude: number,
+    longitude: number,
+    name?: string
+  ): Promise<Session> {
+    const expiresAt = getSessionExpiryDate();
+
+    const result = await db
+      .insert(sessions)
+      .values({
+        id: sessionId,
+        boardPath,
+        latitude,
+        longitude,
+        discoverable: true,
+        createdByUserId: userId,
+        name: name || null,
+        expiresAt,
+        lastActivity: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: sessions.id,
+        set: {
+          boardPath,
+          latitude,
+          longitude,
+          discoverable: true,
+          createdByUserId: userId,
+          name: name || null,
+          expiresAt,
+          lastActivity: new Date(),
+        },
+      })
+      .returning();
+
+    return result[0];
+  }
+
+  /**
+   * Find discoverable sessions near a location (within radius)
+   * Uses bounding box for initial SQL filter, then precise Haversine distance
+   */
+  async findNearbySessions(
+    latitude: number,
+    longitude: number,
+    radiusMeters: number = DEFAULT_SEARCH_RADIUS_METERS
+  ): Promise<DiscoverableSession[]> {
+    const box = getBoundingBox(latitude, longitude, radiusMeters);
+    const now = new Date();
+
+    // Query sessions within bounding box that are discoverable and not expired
+    const candidates = await db
+      .select()
+      .from(sessions)
+      .where(
+        and(
+          eq(sessions.discoverable, true),
+          gte(sessions.latitude, box.minLat),
+          lte(sessions.latitude, box.maxLat),
+          gte(sessions.longitude, box.minLon),
+          lte(sessions.longitude, box.maxLon),
+          gt(sessions.expiresAt, now)
+        )
+      );
+
+    // Calculate precise distance and filter/sort
+    const sessionsWithDistance = candidates
+      .filter((s) => s.latitude !== null && s.longitude !== null)
+      .map((s) => ({
+        session: s,
+        distance: haversineDistance(latitude, longitude, s.latitude!, s.longitude!),
+      }))
+      .filter((s) => s.distance <= radiusMeters)
+      .sort((a, b) => a.distance - b.distance);
+
+    // Get participant counts for each session
+    const result: DiscoverableSession[] = [];
+    for (const { session, distance } of sessionsWithDistance) {
+      const participantCount = this.sessions.get(session.id)?.size || 0;
+      result.push({
+        id: session.id,
+        name: session.name,
+        boardPath: session.boardPath,
+        latitude: session.latitude!,
+        longitude: session.longitude!,
+        createdAt: session.createdAt,
+        createdByUserId: session.createdByUserId,
+        participantCount,
+        distance,
+      });
     }
 
-    // Verify session still has clients
-    const sessionClientIds = this.sessions.get(this.activeSessionId);
-    if (!sessionClientIds || sessionClientIds.size === 0) {
-      this.activeSessionId = null;
-      this.activeSessionBoardPath = null;
-      return null;
+    return result;
+  }
+
+  /**
+   * Get sessions created by a user (within 7 days)
+   */
+  async getUserSessions(userId: string): Promise<Session[]> {
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    const result = await db
+      .select()
+      .from(sessions)
+      .where(
+        and(
+          eq(sessions.createdByUserId, userId),
+          gt(sessions.createdAt, sevenDaysAgo)
+        )
+      )
+      .orderBy(sessions.lastActivity);
+
+    return result;
+  }
+
+  /**
+   * Clean up expired sessions
+   * @returns Number of sessions deleted
+   */
+  async cleanupExpiredSessions(): Promise<number> {
+    const now = new Date();
+
+    const deleted = await db
+      .delete(sessions)
+      .where(lt(sessions.expiresAt, now))
+      .returning({ id: sessions.id });
+
+    // Also clean up from memory
+    for (const { id } of deleted) {
+      this.sessions.delete(id);
     }
 
-    return {
-      sessionId: this.activeSessionId,
-      boardPath: this.activeSessionBoardPath,
-    };
+    return deleted.length;
   }
 
   private async persistSessionJoin(

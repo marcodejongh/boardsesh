@@ -1,7 +1,8 @@
 import { makeExecutableSchema } from '@graphql-tools/schema';
 import GraphQLJSON from 'graphql-type-json';
+import { v4 as uuidv4 } from 'uuid';
 import { typeDefs } from '@boardsesh/shared-schema';
-import { roomManager, VersionConflictError } from '../services/room-manager.js';
+import { roomManager, VersionConflictError, type DiscoverableSession } from '../services/room-manager.js';
 import { pubsub } from '../pubsub/index.js';
 import { updateContext } from './context.js';
 import type {
@@ -12,6 +13,15 @@ import type {
   QueueState,
   SessionUser,
 } from '@boardsesh/shared-schema';
+
+// Input type for createSession mutation
+type CreateSessionInput = {
+  boardPath: string;
+  latitude: number;
+  longitude: number;
+  name?: string;
+  discoverable: boolean;
+};
 
 // Maximum retries for version conflicts
 const MAX_RETRIES = 3;
@@ -86,17 +96,47 @@ const resolvers = {
       if (users.length === 0) return null;
 
       const queueState = await roomManager.getQueueState(sessionId);
-      const activeSession = roomManager.getActiveSession();
+      const sessionInfo = await roomManager.getSessionById(sessionId);
 
       return {
         id: sessionId,
-        boardPath: activeSession?.boardPath || '',
+        boardPath: sessionInfo?.boardPath || '',
         users,
         queueState,
         // These need connection context, but for Query we return defaults
         isLeader: false,
         clientId: '',
       };
+    },
+
+    nearbySessions: async (
+      _: unknown,
+      { latitude, longitude, radiusMeters }: { latitude: number; longitude: number; radiusMeters?: number }
+    ): Promise<DiscoverableSession[]> => {
+      return roomManager.findNearbySessions(latitude, longitude, radiusMeters || undefined);
+    },
+
+    mySessions: async (_: unknown, __: unknown, ctx: ConnectionContext): Promise<DiscoverableSession[]> => {
+      // For now, we use userId from context if available
+      // In production, this should use authenticated user ID
+      if (!ctx.userId) {
+        return [];
+      }
+
+      const sessions = await roomManager.getUserSessions(ctx.userId);
+
+      // Convert Session to DiscoverableSession format
+      return sessions.map((s) => ({
+        id: s.id,
+        name: s.name,
+        boardPath: s.boardPath,
+        latitude: s.latitude || 0,
+        longitude: s.longitude || 0,
+        createdAt: s.createdAt,
+        createdByUserId: s.createdByUserId,
+        participantCount: roomManager.getSessionClients(s.id).length,
+        distance: 0, // Not applicable for own sessions
+      }));
     },
   },
 
@@ -110,14 +150,6 @@ const resolvers = {
 
       // Update context with session info
       updateContext(ctx.connectionId, { sessionId, userId: result.clientId });
-
-      // Handle session switching - notify old session clients
-      if (result.sessionSwitched && result.previousSessionClientIds.length > 0) {
-        // The old session ID is different, but we don't have it stored
-        // The session switch logic already cleared their sessions
-        // We need to publish to subscribers of the old session
-        // For now, we rely on the client detecting the session switch
-      }
 
       // Notify session about new user
       const userJoinedEvent: SessionEvent = {
@@ -134,6 +166,53 @@ const resolvers = {
       return {
         id: sessionId,
         boardPath,
+        users: result.users,
+        queueState: {
+          queue: result.queue,
+          currentClimbQueueItem: result.currentClimbQueueItem,
+        },
+        isLeader: result.isLeader,
+        clientId: result.clientId,
+      };
+    },
+
+    createSession: async (
+      _: unknown,
+      { input }: { input: CreateSessionInput },
+      ctx: ConnectionContext
+    ) => {
+      // Generate a unique session ID
+      const sessionId = uuidv4();
+
+      if (input.discoverable) {
+        // Create a discoverable session with GPS coordinates
+        // Note: In production, ctx.userId should be the authenticated user ID
+        const userId = ctx.userId || ctx.connectionId;
+        await roomManager.createDiscoverableSession(
+          sessionId,
+          input.boardPath,
+          userId,
+          input.latitude,
+          input.longitude,
+          input.name
+        );
+      }
+
+      // Join the session as the creator
+      const result = await roomManager.joinSession(
+        ctx.connectionId,
+        sessionId,
+        input.boardPath,
+        undefined, // username will be set later
+        undefined  // avatarUrl will be set later
+      );
+
+      // Update context with session info
+      updateContext(ctx.connectionId, { sessionId, userId: result.clientId });
+
+      return {
+        id: sessionId,
+        boardPath: input.boardPath,
         users: result.users,
         queueState: {
           queue: result.queue,

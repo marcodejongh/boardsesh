@@ -93,12 +93,40 @@ export const typeDefs = /* GraphQL */ `
     clientId: ID!
   }
 
+  # Discoverable session for GPS-based discovery
+  type DiscoverableSession {
+    id: ID!
+    name: String
+    boardPath: String!
+    latitude: Float!
+    longitude: Float!
+    createdAt: String!
+    createdByUserId: ID
+    participantCount: Int!
+    distance: Float
+  }
+
+  # Input for creating a session
+  input CreateSessionInput {
+    boardPath: String!
+    latitude: Float!
+    longitude: Float!
+    name: String
+    discoverable: Boolean!
+  }
+
   type Query {
     session(sessionId: ID!): Session
+    # Find discoverable sessions near a location
+    nearbySessions(latitude: Float!, longitude: Float!, radiusMeters: Float): [DiscoverableSession!]!
+    # Get current user's recent sessions (requires auth context)
+    mySessions: [DiscoverableSession!]!
   }
 
   type Mutation {
     joinSession(sessionId: ID!, boardPath: String!, username: String, avatarUrl: String): Session!
+    # Create a new session (optionally discoverable with GPS)
+    createSession(input: CreateSessionInput!): Session!
     leaveSession: Boolean!
     updateUsername(username: String!, avatarUrl: String): Boolean!
 

@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Button, Form, Select, Typography, Input, Divider, Card, Row, Col, Flex, Collapse, Space } from 'antd';
+import { Button, Form, Select, Typography, Input, Divider, Card, Row, Col, Flex, Collapse, Space, Tabs, Switch, Tooltip } from 'antd';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { GithubOutlined, EditOutlined } from '@ant-design/icons';
+import { GithubOutlined, EditOutlined, TeamOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { openDB } from 'idb';
 import { track } from '@vercel/analytics';
+import { useSession } from 'next-auth/react';
 import { SUPPORTED_BOARDS, ANGLES } from '@/app/lib/board-data';
 import { fetchBoardDetails } from '../rest-api/api';
 import { BoardName, BoardDetails } from '@/app/lib/types';
@@ -16,6 +17,9 @@ import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { BoardConfigData } from '@/app/lib/server-board-configs';
 import Logo from '../brand/logo';
 import { themeTokens } from '@/app/theme/theme-config';
+import JoinSessionTab from './join-session-tab';
+import SessionHistoryPanel from './session-history-panel';
+import AuthModal from '../auth/auth-modal';
 
 const { Option } = Select;
 const { Title, Text } = Typography;
@@ -44,6 +48,7 @@ type ConsolidatedBoardConfigProps = {
 
 const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps) => {
   const router = useRouter();
+  const { data: session } = useSession();
 
   // Selection states
   const [configName, setConfigName] = useState<string>('');
@@ -52,6 +57,11 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
   const [selectedSize, setSelectedSize] = useState<number>();
   const [selectedSets, setSelectedSets] = useState<number[]>([]);
   const [selectedAngle, setSelectedAngle] = useState<number>(40);
+
+  // Session settings states
+  const [allowOthersToJoin, setAllowOthersToJoin] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [activeTab, setActiveTab] = useState('start');
 
   // Data states - no longer needed as we get them from props
   const layouts = useMemo(() => selectedBoard ? boardConfigs.layouts[selectedBoard] || [] : [], [selectedBoard, boardConfigs.layouts]);
@@ -448,16 +458,25 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
         }}
       >
         <Card style={{ boxShadow: themeTokens.shadows.lg }}>
-          <div style={{ textAlign: 'center', marginBottom: themeTokens.spacing[6] }}>
+          <div style={{ textAlign: 'center', marginBottom: themeTokens.spacing[4] }}>
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: themeTokens.spacing[4] }}>
               <Logo size="lg" showText={true} linkToHome={false} />
             </div>
-            <Text style={{ color: themeTokens.neutral[500], fontSize: themeTokens.typography.fontSize.lg }}>
-              Configure your climbing board
-            </Text>
           </div>
 
-        <Collapse
+          <Tabs
+            activeKey={activeTab}
+            onChange={setActiveTab}
+            centered
+            items={[
+              {
+                key: 'start',
+                label: 'Start a sesh',
+                children: (
+                  <>
+                    <SessionHistoryPanel />
+
+                    <Collapse
           activeKey={activeCollapsePanels}
           onChange={(keys) => setActiveCollapsePanels(keys as string[])}
           size="small"
@@ -597,6 +616,33 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
             />
           </Form.Item>
 
+          <Form.Item label="Session Settings">
+            <div style={{ display: 'flex', alignItems: 'center', gap: themeTokens.spacing[2] }}>
+              <Switch
+                checked={allowOthersToJoin}
+                onChange={(checked) => {
+                  if (checked && !session) {
+                    setShowAuthModal(true);
+                  } else {
+                    setAllowOthersToJoin(checked);
+                  }
+                }}
+              />
+              <span>
+                <TeamOutlined style={{ marginRight: themeTokens.spacing[1] }} />
+                Allow others nearby to join
+              </span>
+              <Tooltip title="When enabled, climbers within 500 meters can find and join your session. Requires you to be signed in.">
+                <InfoCircleOutlined style={{ color: themeTokens.neutral[400] }} />
+              </Tooltip>
+            </div>
+            {allowOthersToJoin && !session && (
+              <Text type="warning" style={{ display: 'block', marginTop: themeTokens.spacing[2] }}>
+                Please sign in to enable discoverable sessions.
+              </Text>
+            )}
+          </Form.Item>
+
           {/* TODO: Improve UX for default board selection
           <Form.Item>
             <Checkbox
@@ -681,6 +727,16 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
             />
           </>
         )}
+                  </>
+                ),
+              },
+              {
+                key: 'join',
+                label: 'Join a sesh',
+                children: <JoinSessionTab />,
+              },
+            ]}
+          />
 
         <Divider />
         <Space style={{ width: '100%', justifyContent: 'center' }}>
@@ -703,6 +759,15 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
           </a>
         </Space>
       </Card>
+
+      <AuthModal
+        open={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={() => {
+          setShowAuthModal(false);
+          setAllowOthersToJoin(true);
+        }}
+      />
     </div>
   );
 };

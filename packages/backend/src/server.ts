@@ -91,18 +91,25 @@ export function startServer(): { wss: WebSocketServer; httpServer: ReturnType<ty
     res.json({ status: 'healthy', timestamp: Date.now() });
   });
 
-  // Join session endpoint
-  app.get('/join', (req: Request, res: Response) => {
-    const activeSession = roomManager.getActiveSession();
-    if (!activeSession) {
-      res.status(404).json({ error: 'No active session' });
+  // Join session endpoint - requires session ID parameter
+  app.get('/join/:sessionId', async (req: Request, res: Response) => {
+    const { sessionId } = req.params;
+
+    if (!sessionId) {
+      res.status(400).json({ error: 'Session ID is required' });
+      return;
+    }
+
+    const sessionInfo = await roomManager.getSessionById(sessionId);
+    if (!sessionInfo) {
+      res.status(404).json({ error: 'Session not found' });
       return;
     }
 
     // Construct the backend WebSocket URL from the request host
     const host = req.headers.host || `localhost:${PORT}`;
     const backendUrl = `ws://${host}/graphql`;
-    const redirectUrl = `${BOARDSESH_URL}${activeSession.boardPath}?backendUrl=${encodeURIComponent(backendUrl)}`;
+    const redirectUrl = `${BOARDSESH_URL}${sessionInfo.boardPath}?backendUrl=${encodeURIComponent(backendUrl)}&sessionId=${encodeURIComponent(sessionId)}`;
 
     res.redirect(302, redirectUrl);
   });

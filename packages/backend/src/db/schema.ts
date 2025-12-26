@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean, jsonb, integer } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, boolean, jsonb, integer, doublePrecision, index } from 'drizzle-orm/pg-core';
 import type { ClimbQueueItem } from '@boardsesh/shared-schema';
 
 export const sessions = pgTable('sessions', {
@@ -6,7 +6,22 @@ export const sessions = pgTable('sessions', {
   boardPath: text('board_path').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   lastActivity: timestamp('last_activity').defaultNow().notNull(),
-});
+  // GPS coordinates for session discovery
+  latitude: doublePrecision('latitude'),
+  longitude: doublePrecision('longitude'),
+  // Whether session appears in nearby search
+  discoverable: boolean('discoverable').default(false).notNull(),
+  // Link to authenticated user who created the session
+  createdByUserId: text('created_by_user_id'),
+  // Session name for display in discovery
+  name: text('name'),
+  // Expiry timestamp for cleanup (7 days from creation)
+  expiresAt: timestamp('expires_at'),
+}, (table) => ({
+  locationIdx: index('sessions_location_idx').on(table.latitude, table.longitude),
+  discoverableIdx: index('sessions_discoverable_idx').on(table.discoverable, table.expiresAt),
+  userSessionsIdx: index('sessions_user_idx').on(table.createdByUserId),
+}));
 
 export const sessionClients = pgTable('session_clients', {
   id: text('id').primaryKey(),
