@@ -25,15 +25,16 @@ const ClimbCardTitleSkeleton = () => (
 );
 
 /**
- * Skeleton that mimics the BoardRenderer - square placeholder for the board image
+ * Skeleton that mimics the BoardRenderer - placeholder for the board image.
+ * Uses minHeight to approximate the actual BoardRenderer which has maxHeight: 55vh.
  */
 const BoardRendererSkeleton = () => (
   <Skeleton.Node
     active
     style={{
       width: '100%',
-      height: 0,
-      paddingBottom: '110%', // Matches aspectRatio 1/1.1
+      minHeight: '40vh',
+      aspectRatio: '1 / 1.1',
     }}
   >
     <span />
