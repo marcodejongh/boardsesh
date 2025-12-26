@@ -24,16 +24,16 @@ FROM node:22-alpine
 
 WORKDIR /app
 
-# Copy package files
+# Copy package files (need full workspace structure for npm to resolve)
 COPY package*.json ./
 COPY packages/shared-schema/package*.json ./packages/shared-schema/
 COPY packages/backend/package*.json ./packages/backend/
 
-# Copy built shared-schema BEFORE npm ci so workspace resolution works
+# Copy built shared-schema dist BEFORE npm ci (so main entry point exists)
 COPY --from=builder /app/packages/shared-schema/dist ./packages/shared-schema/dist
 
-# Install production dependencies only (now workspace can resolve)
-RUN npm ci --omit=dev
+# Install production dependencies only
+RUN npm ci --omit=dev --workspace=boardsesh-backend --workspace=@boardsesh/shared-schema
 
 # Copy built backend files
 COPY --from=builder /app/packages/backend/dist ./packages/backend/dist
