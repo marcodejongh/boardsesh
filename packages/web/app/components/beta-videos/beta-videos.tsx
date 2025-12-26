@@ -2,11 +2,11 @@
 
 import React, { useState } from 'react';
 import { Card, Row, Col, Typography, Empty, Modal } from 'antd';
-import { InstagramOutlined, UserOutlined } from '@ant-design/icons';
+import { InstagramOutlined } from '@ant-design/icons';
 import { BetaLink } from '@/app/lib/api-wrappers/sync-api-types';
 import { themeTokens } from '@/app/theme/theme-config';
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 
 interface BetaVideosProps {
   betaLinks: BetaLink[];
@@ -51,12 +51,12 @@ const BetaVideos: React.FC<BetaVideosProps> = ({ betaLinks }) => {
       {betaLinks.length === 0 ? (
         <Empty description="No beta videos available" image={Empty.PRESENTED_IMAGE_SIMPLE} />
       ) : (
-        <Row gutter={[12, 12]}>
+        <Row gutter={[8, 8]}>
           {betaLinks.map((betaLink, index) => {
             const embedUrl = getInstagramEmbedUrl(betaLink.link);
 
             return (
-              <Col xs={24} key={index}>
+              <Col xs={8} sm={6} md={8} lg={6} key={index}>
                 <Card
                   hoverable
                   size="small"
@@ -69,7 +69,7 @@ const BetaVideos: React.FC<BetaVideosProps> = ({ betaLinks }) => {
                         position: 'relative',
                         paddingBottom: '100%',
                         overflow: 'hidden',
-                        borderRadius: `${themeTokens.borderRadius.md}px ${themeTokens.borderRadius.md}px 0 0`,
+                        borderRadius: themeTokens.borderRadius.md,
                       }}
                     >
                       <iframe
@@ -86,52 +86,52 @@ const BetaVideos: React.FC<BetaVideosProps> = ({ betaLinks }) => {
                         scrolling="no"
                         title={`Beta video ${index + 1} thumbnail`}
                       />
+                      {(betaLink.foreign_username || betaLink.angle) && (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            padding: `${themeTokens.spacing[1]}px ${themeTokens.spacing[2]}px`,
+                            background: 'linear-gradient(transparent, rgba(0,0,0,0.7))',
+                            color: 'white',
+                            fontSize: themeTokens.typography.fontSize.xs,
+                          }}
+                        >
+                          {betaLink.foreign_username && (
+                            <span>@{betaLink.foreign_username}</span>
+                          )}
+                          {betaLink.angle && (
+                            <span style={{ marginLeft: betaLink.foreign_username ? 4 : 0 }}>
+                              {betaLink.angle}°
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div
                       style={{
-                        padding: themeTokens.spacing[8],
-                        textAlign: 'center',
+                        paddingBottom: '100%',
+                        position: 'relative',
                         background: themeTokens.neutral[100],
+                        borderRadius: themeTokens.borderRadius.md,
                       }}
                     >
-                      <InstagramOutlined style={{ fontSize: 32, color: themeTokens.neutral[400] }} />
-                      <p style={{ margin: `${themeTokens.spacing[2]}px 0 0`, color: themeTokens.neutral[500] }}>
-                        Unable to load video
-                      </p>
+                      <div
+                        style={{
+                          position: 'absolute',
+                          top: '50%',
+                          left: '50%',
+                          transform: 'translate(-50%, -50%)',
+                          textAlign: 'center',
+                        }}
+                      >
+                        <InstagramOutlined style={{ fontSize: 24, color: themeTokens.neutral[400] }} />
+                      </div>
                     </div>
                   )}
-                  <div
-                    style={{
-                      padding: themeTokens.spacing[3],
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      borderTop: `1px solid ${themeTokens.neutral[100]}`,
-                    }}
-                  >
-                    {betaLink.foreign_username && (
-                      <Text type="secondary" style={{ fontSize: themeTokens.typography.fontSize.sm }}>
-                        <UserOutlined style={{ marginRight: 4 }} />@{betaLink.foreign_username}
-                        {betaLink.angle && <span style={{ marginLeft: 8 }}>{betaLink.angle}°</span>}
-                      </Text>
-                    )}
-                    <a
-                      href={betaLink.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      style={{
-                        color: themeTokens.colors.primary,
-                        fontSize: themeTokens.typography.fontSize.sm,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 4,
-                      }}
-                    >
-                      <InstagramOutlined /> View
-                    </a>
-                  </div>
                 </Card>
               </Col>
             );
