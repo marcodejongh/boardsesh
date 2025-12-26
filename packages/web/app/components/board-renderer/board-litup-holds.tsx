@@ -16,8 +16,9 @@ const areLitUpHoldsMapsEqual = (prev: LitUpHoldsMap, next: LitUpHoldsMap): boole
   if (prevKeys.length !== nextKeys.length) return false;
 
   for (const key of prevKeys) {
-    const prevHold = prev[key];
-    const nextHold = next[key];
+    const numKey = Number(key);
+    const prevHold = prev[numKey];
+    const nextHold = next[numKey];
     if (!nextHold) return false;
     if (prevHold.state !== nextHold.state || prevHold.color !== nextHold.color) {
       return false;
