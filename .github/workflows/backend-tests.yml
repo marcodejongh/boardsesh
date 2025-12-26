@@ -44,6 +44,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Build shared-schema
+        run: npm run build --workspace=@boardsesh/shared-schema
+
       - name: Run backend integration tests
         run: npm run test:run --workspace=boardsesh-backend
         env:
