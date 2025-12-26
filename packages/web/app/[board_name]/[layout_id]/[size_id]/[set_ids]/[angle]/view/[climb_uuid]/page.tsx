@@ -22,7 +22,6 @@ import { kilterBetaLinks, tensionBetaLinks } from '@/app/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { BetaLink } from '@/app/lib/api-wrappers/sync-api-types';
 import styles from './climb-view.module.css';
-import PageReadySignal from '@/app/components/loading/page-ready-signal';
 
 export async function generateMetadata(props: { params: Promise<BoardRouteParametersWithUuid> }): Promise<Metadata> {
   const params = await props.params;
@@ -192,30 +191,27 @@ export default async function DynamicResultsPage(props: { params: Promise<BoardR
     );
 
     return (
-      <>
-        <div className={styles.pageContainer}>
-          {/* Actions Section */}
-          <div className={styles.actionsSection}>
-            <ClimbViewActions
-              climb={climbWithProcessedData}
-              boardDetails={boardDetails}
-              auroraAppUrl={auroraAppUrl}
-              angle={parsedParams.angle}
-            />
-          </div>
+      <div className={styles.pageContainer}>
+        {/* Actions Section */}
+        <div className={styles.actionsSection}>
+          <ClimbViewActions
+            climb={climbWithProcessedData}
+            boardDetails={boardDetails}
+            auroraAppUrl={auroraAppUrl}
+            angle={parsedParams.angle}
+          />
+        </div>
 
-          {/* Main Content */}
-          <div className={styles.contentWrapper}>
-            <div className={styles.climbSection}>
-              <ClimbCard climb={climbWithProcessedData} boardDetails={boardDetails} actions={[]} />
-            </div>
-            <div className={styles.betaSection}>
-              <BetaVideos betaLinks={betaLinks} />
-            </div>
+        {/* Main Content */}
+        <div className={styles.contentWrapper}>
+          <div className={styles.climbSection}>
+            <ClimbCard climb={climbWithProcessedData} boardDetails={boardDetails} actions={[]} />
+          </div>
+          <div className={styles.betaSection}>
+            <BetaVideos betaLinks={betaLinks} />
           </div>
         </div>
-        <PageReadySignal />
-      </>
+      </div>
     );
   } catch (error) {
     console.error('Error fetching results or climb:', error);

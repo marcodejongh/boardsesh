@@ -11,7 +11,6 @@ import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import ClimbsList from '@/app/components/board-page/climbs-list';
 import { searchClimbs } from '@/app/lib/db/queries/climbs/search-climbs';
 import { getBoardDetails } from '@/app/lib/data/queries';
-import PageReadySignal from '@/app/components/loading/page-ready-signal';
 
 export default async function DynamicResultsPage(props: {
   params: Promise<BoardRouteParametersWithUuid>;
@@ -84,10 +83,5 @@ export default async function DynamicResultsPage(props: {
     notFound();
   }
 
-  return (
-    <>
-      <ClimbsList {...parsedParams} boardDetails={boardDetails} initialClimbs={fetchedResults.climbs} />
-      <PageReadySignal />
-    </>
-  );
+  return <ClimbsList {...parsedParams} boardDetails={boardDetails} initialClimbs={fetchedResults.climbs} />;
 }
