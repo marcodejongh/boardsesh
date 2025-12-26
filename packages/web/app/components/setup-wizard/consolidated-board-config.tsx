@@ -381,17 +381,33 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
   // Login will be handled after reaching the main board page
 
   const handleSavedBoardSelect = (boardDetails: BoardDetails | null, boardUrl: string) => {
+    // Store board details in sessionStorage for loading.tsx to use
+    if (boardDetails) {
+      try {
+        sessionStorage.setItem('loadingBoardDetails', JSON.stringify(boardDetails));
+      } catch (e) {
+        // Ignore storage errors
+      }
+    }
+
     // Show the loading spinner with the board details
     setLoadingBoardDetails(boardDetails);
     setIsStartingClimbing(true);
-
-    // Navigate to the board page
-    router.push(boardUrl);
+    // Navigation happens via the Link component
   };
 
   const handleStartClimbing = async () => {
     if (!selectedBoard || !selectedLayout || !selectedSize || selectedSets.length === 0) {
       return;
+    }
+
+    // Store board details in sessionStorage for loading.tsx to use
+    if (previewBoardDetails) {
+      try {
+        sessionStorage.setItem('loadingBoardDetails', JSON.stringify(previewBoardDetails));
+      } catch (e) {
+        // Ignore storage errors
+      }
     }
 
     // Use the preview board details for loading animation
