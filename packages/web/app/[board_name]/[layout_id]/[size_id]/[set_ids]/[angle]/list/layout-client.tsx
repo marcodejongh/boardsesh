@@ -6,6 +6,7 @@ import { Layout, Tabs, Badge, Button, Popconfirm, Flex } from 'antd';
 import { DeleteOutlined } from '@ant-design/icons';
 import { track } from '@vercel/analytics';
 import { BoardDetails } from '@/app/lib/types';
+import { themeTokens } from '@/app/theme/theme-config';
 import BasicSearchForm from '@/app/components/search-drawer/basic-search-form';
 import ClimbHoldSearchForm from '@/app/components/search-drawer/climb-hold-search-form';
 import SearchResultsFooter from '@/app/components/search-drawer/search-results-footer';
@@ -57,7 +58,7 @@ const TabsWrapper: React.FC<{ boardDetails: BoardDetails }> = ({ boardDetails })
                 okText="Clear"
                 cancelText="Cancel"
               >
-                <Button type="text" icon={<DeleteOutlined />} size="small" style={{ color: '#8c8c8c' }}>
+                <Button type="text" icon={<DeleteOutlined />} size="small" style={{ color: themeTokens.neutral[400] }}>
                   Clear
                 </Button>
               </Popconfirm>
