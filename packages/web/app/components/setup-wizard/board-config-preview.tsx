@@ -27,11 +27,12 @@ type StoredBoardConfig = {
 type BoardConfigPreviewProps = {
   config: StoredBoardConfig;
   onDelete: (configName: string) => void;
+  onSelect: (boardDetails: BoardDetails | null) => void;
   boardConfigs: BoardConfigData;
   isEditMode?: boolean;
 };
 
-export default function BoardConfigPreview({ config, onDelete, boardConfigs, isEditMode = false }: BoardConfigPreviewProps) {
+export default function BoardConfigPreview({ config, onDelete, onSelect, boardConfigs, isEditMode = false }: BoardConfigPreviewProps) {
   const [boardDetails, setBoardDetails] = useState<BoardDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [layoutName, setLayoutName] = useState<string>('');
@@ -122,6 +123,12 @@ export default function BoardConfigPreview({ config, onDelete, boardConfigs, isE
     onDelete(config.name);
   };
 
+  const handleSelect = () => {
+    // Trigger the loading spinner before navigation
+    onSelect(boardDetails);
+    // Don't prevent default - let the Link navigate
+  };
+
   if (isLoading) {
     return (
       <Card hoverable size="small" style={{ minWidth: 0 }}>
@@ -132,7 +139,7 @@ export default function BoardConfigPreview({ config, onDelete, boardConfigs, isE
 
   if (!boardDetails) {
     return (
-      <Link href={boardUrl} style={{ textDecoration: 'none', minWidth: 0 }}>
+      <Link href={boardUrl} style={{ textDecoration: 'none', minWidth: 0 }} onClick={handleSelect}>
         <Card
           hoverable
           size="small"
@@ -157,7 +164,7 @@ export default function BoardConfigPreview({ config, onDelete, boardConfigs, isE
   }
 
   return (
-    <Link href={boardUrl} style={{ textDecoration: 'none', minWidth: 0 }}>
+    <Link href={boardUrl} style={{ textDecoration: 'none', minWidth: 0 }} onClick={handleSelect}>
       <Card
         hoverable
         size="small"
