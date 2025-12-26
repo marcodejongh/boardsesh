@@ -6,7 +6,7 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc",
+    "build": "npm run build --workspace=@boardsesh/shared-schema && tsc",
     "start": "node dist/index.js",
     "test": "vitest",
     "test:run": "vitest run",

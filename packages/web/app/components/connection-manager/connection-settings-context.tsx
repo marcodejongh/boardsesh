@@ -6,6 +6,9 @@ import { useSearchParams } from 'next/navigation';
 const BACKEND_URL_STORAGE_KEY = 'boardsesh:backendUrl';
 const PARTY_MODE_STORAGE_KEY = 'boardsesh:partyMode';
 
+// Default backend URL from environment variable (for production Railway deployment)
+const DEFAULT_BACKEND_URL = process.env.NEXT_PUBLIC_WS_URL || null;
+
 export type PartyMode = 'direct' | 'backend';
 
 interface ConnectionSettingsContextType {
@@ -60,12 +63,15 @@ export const ConnectionSettingsProvider: React.FC<{ children: React.ReactNode }>
     }
   }, [urlBackendUrl]);
 
-  // Effective backend URL - URL param takes precedence
-  const backendUrl = useMemo(() => urlBackendUrl || storedBackendUrl, [urlBackendUrl, storedBackendUrl]);
+  // Effective backend URL - URL param takes precedence, then localStorage, then env var default
+  const backendUrl = useMemo(
+    () => urlBackendUrl || storedBackendUrl || DEFAULT_BACKEND_URL,
+    [urlBackendUrl, storedBackendUrl],
+  );
 
-  // Effective party mode - URL param forces backend mode
+  // Effective party mode - URL param or env var forces backend mode
   const partyMode = useMemo<PartyMode>(() => {
-    if (hasUrlParam) {
+    if (hasUrlParam || DEFAULT_BACKEND_URL) {
       return 'backend';
     }
     return storedPartyMode;
