@@ -15,9 +15,7 @@ type ClimbCardProps = {
   coverLinkToClimb?: boolean;
   onCoverClick?: () => void;
   selected?: boolean;
-  actions?: React.ReactNode[];
-  isFavorited?: boolean;
-  onFavoriteToggle?: (climbUuid: string, newState: boolean) => void;
+  actions?: React.JSX.Element[];
 };
 
 /**
@@ -25,8 +23,8 @@ type ClimbCardProps = {
  * Handles common cases: both undefined, both empty arrays, or same reference.
  */
 const areActionsEqual = (
-  prev: React.ReactNode[] | undefined,
-  next: React.ReactNode[] | undefined,
+  prev: React.JSX.Element[] | undefined,
+  next: React.JSX.Element[] | undefined,
 ): boolean => {
   // Same reference (including both undefined)
   if (prev === next) return true;
@@ -36,12 +34,12 @@ const areActionsEqual = (
   if (prev.length === 0 && next.length === 0) return true;
   // Different lengths
   if (prev.length !== next.length) return false;
-  // For ReactNode arrays, compare by reference since keys may not be available
-  return prev.every((el, i) => el === next[i]);
+  // Compare by keys (React elements should have stable keys)
+  return prev.every((el, i) => el.key === next[i].key);
 };
 
 const ClimbCard = React.memo(
-  ({ climb, boardDetails, onCoverClick, selected, actions, isFavorited, onFavoriteToggle }: ClimbCardProps) => {
+  ({ climb, boardDetails, onCoverClick, selected, actions }: ClimbCardProps) => {
     const cover = <ClimbCardCover climb={climb} boardDetails={boardDetails} onClick={onCoverClick} />;
 
     const cardTitle = climb ? (
@@ -49,8 +47,6 @@ const ClimbCard = React.memo(
     ) : (
       'Loading...'
     );
-
-    const cardActions: React.ReactNode[] = actions ?? ClimbCardActions({ climb, boardDetails, isFavorited, onFavoriteToggle });
 
     return (
       <Card
@@ -61,7 +57,7 @@ const ClimbCard = React.memo(
           borderColor: selected ? themeTokens.colors.primary : undefined,
         }}
         styles={{ header: { paddingTop: 8, paddingBottom: 6 }, body: { padding: 6 } }}
-        actions={cardActions}
+        actions={actions || ClimbCardActions({ climb, boardDetails })}
       >
         {cover}
       </Card>
@@ -72,8 +68,6 @@ const ClimbCard = React.memo(
     if (prevProps.climb?.uuid !== nextProps.climb?.uuid) return false;
     // Compare selected state
     if (prevProps.selected !== nextProps.selected) return false;
-    // Compare favorite state
-    if (prevProps.isFavorited !== nextProps.isFavorited) return false;
     // Compare boardDetails by reference (stable from server) or by key identifiers
     if (prevProps.boardDetails !== nextProps.boardDetails) {
       // Fallback: compare by stable identifiers if references differ
@@ -89,7 +83,6 @@ const ClimbCard = React.memo(
     }
     // Compare callbacks by reference (parent should memoize with useCallback)
     if (prevProps.onCoverClick !== nextProps.onCoverClick) return false;
-    if (prevProps.onFavoriteToggle !== nextProps.onFavoriteToggle) return false;
     // Compare actions arrays properly
     if (!areActionsEqual(prevProps.actions, nextProps.actions)) return false;
 
