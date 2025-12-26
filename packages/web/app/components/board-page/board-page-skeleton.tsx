@@ -1,5 +1,10 @@
+'use client';
+
 import React from 'react';
-import { Row, Col, Skeleton, Card } from 'antd';
+import Row from 'antd/es/row';
+import Col from 'antd/es/col';
+import Skeleton from 'antd/es/skeleton';
+import Card from 'antd/es/card';
 
 /**
  * Skeleton loading UI for the board page, matching the ClimbsList grid layout.
