@@ -52,12 +52,14 @@ const PixelLetter = ({
   startX,
   startY,
   pixelSize,
+  gap,
   fill,
 }: {
   pixels: number[][];
   startX: number;
   startY: number;
   pixelSize: number;
+  gap: number;
   fill: string;
 }) => (
   <>
@@ -68,8 +70,8 @@ const PixelLetter = ({
             key={`${x}-${y}`}
             x={startX + x * pixelSize}
             y={startY + y * pixelSize}
-            width={pixelSize}
-            height={pixelSize}
+            width={pixelSize - gap}
+            height={pixelSize - gap}
             fill={fill}
           />
         ) : null,
@@ -79,8 +81,9 @@ const PixelLetter = ({
 );
 
 export const Logo = ({ size = 'md', showText = true, linkToHome = true }: LogoProps) => {
-  const { icon, fontSize, gap } = sizes[size];
+  const { icon, fontSize, gap: textGap } = sizes[size];
   const pixelSize = 3;
+  const pixelGap = 0.7; // Gap between pixels for visible grid effect
   const shadowOffset = 2;
 
   const logoContent = (
@@ -88,7 +91,7 @@ export const Logo = ({ size = 'md', showText = true, linkToHome = true }: LogoPr
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap,
+        gap: textGap,
         textDecoration: 'none',
         color: 'inherit',
       }}
@@ -105,12 +108,12 @@ export const Logo = ({ size = 'md', showText = true, linkToHome = true }: LogoPr
         <rect x="0" y="0" width="48" height="48" rx="4" fill="transparent" />
 
         {/* Pink shadow layers */}
-        <PixelLetter pixels={B_PIXELS} startX={3 + shadowOffset} startY={6 + shadowOffset} pixelSize={pixelSize} fill={KILTER_PINK} />
-        <PixelLetter pixels={S_PIXELS} startX={24 + shadowOffset} startY={6 + shadowOffset} pixelSize={pixelSize} fill={KILTER_PINK} />
+        <PixelLetter pixels={B_PIXELS} startX={3 + shadowOffset} startY={6 + shadowOffset} pixelSize={pixelSize} gap={pixelGap} fill={KILTER_PINK} />
+        <PixelLetter pixels={S_PIXELS} startX={24 + shadowOffset} startY={6 + shadowOffset} pixelSize={pixelSize} gap={pixelGap} fill={KILTER_PINK} />
 
         {/* Cyan letters */}
-        <PixelLetter pixels={B_PIXELS} startX={3} startY={6} pixelSize={pixelSize} fill={KILTER_CYAN} />
-        <PixelLetter pixels={S_PIXELS} startX={24} startY={6} pixelSize={pixelSize} fill={KILTER_CYAN} />
+        <PixelLetter pixels={B_PIXELS} startX={3} startY={6} pixelSize={pixelSize} gap={pixelGap} fill={KILTER_CYAN} />
+        <PixelLetter pixels={S_PIXELS} startX={24} startY={6} pixelSize={pixelSize} gap={pixelGap} fill={KILTER_CYAN} />
       </svg>
       {showText && (
         <span
