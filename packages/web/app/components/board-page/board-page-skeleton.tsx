@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 import Row from 'antd/es/row';
 import Col from 'antd/es/col';
