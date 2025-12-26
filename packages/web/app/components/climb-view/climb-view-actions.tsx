@@ -11,7 +11,6 @@ import {
   MoreOutlined,
   ArrowLeftOutlined,
 } from '@ant-design/icons';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useQueueContext } from '../graphql-queue';
 import { Climb, BoardDetails } from '@/app/lib/types';
@@ -175,17 +174,9 @@ const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl, angle }: ClimbVie
         {/* Mobile view: Show back button + key actions + overflow menu */}
         <div className={styles.mobileActions}>
           <div className={styles.mobileLeft}>
-            {canGoBack ? (
-              <Button icon={<ArrowLeftOutlined />} onClick={handleBackClick}>
-                Back
-              </Button>
-            ) : (
-              <Link href={getBackToListUrl()}>
-                <Button icon={<ArrowLeftOutlined />}>
-                  Back
-                </Button>
-              </Link>
-            )}
+            <Button icon={<ArrowLeftOutlined />} onClick={handleBackClick}>
+              Back
+            </Button>
           </div>
 
           <div className={styles.mobileRight}>
@@ -218,17 +209,9 @@ const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl, angle }: ClimbVie
 
         {/* Desktop view: Show all buttons */}
         <div className={styles.desktopActions}>
-          {canGoBack ? (
-            <Button icon={<ArrowLeftOutlined />} className={styles.backButton} onClick={handleBackClick}>
-              Back to List
-            </Button>
-          ) : (
-            <Link href={getBackToListUrl()}>
-              <Button icon={<ArrowLeftOutlined />} className={styles.backButton}>
-                Back to List
-              </Button>
-            </Link>
-          )}
+          <Button icon={<ArrowLeftOutlined />} className={styles.backButton} onClick={handleBackClick}>
+            Back to List
+          </Button>
 
           <div className={styles.actionButtons}>
             <Space wrap>
