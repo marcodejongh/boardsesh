@@ -27,7 +27,7 @@ type StoredBoardConfig = {
 type BoardConfigPreviewProps = {
   config: StoredBoardConfig;
   onDelete: (configName: string) => void;
-  onSelect: (boardDetails: BoardDetails | null, boardUrl: string) => void;
+  onSelect: (boardDetails: BoardDetails | null) => void;
   boardConfigs: BoardConfigData;
   isEditMode?: boolean;
 };
@@ -123,11 +123,9 @@ export default function BoardConfigPreview({ config, onDelete, onSelect, boardCo
     onDelete(config.name);
   };
 
-  const handleSelect = (e: React.MouseEvent) => {
+  const handleSelect = () => {
     // Trigger the loading spinner before navigation
-    if (boardUrl) {
-      onSelect(boardDetails, boardUrl);
-    }
+    onSelect(boardDetails);
     // Don't prevent default - let the Link navigate
   };
 
