@@ -50,7 +50,7 @@ const ClimbCard = React.memo(
       'Loading...'
     );
 
-    const cardActions = actions || ClimbCardActions({ climb, boardDetails, isFavorited, onFavoriteToggle });
+    const cardActions: React.ReactNode[] = actions ?? ClimbCardActions({ climb, boardDetails, isFavorited, onFavoriteToggle });
 
     return (
       <Card
