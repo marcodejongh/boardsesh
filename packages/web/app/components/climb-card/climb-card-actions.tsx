@@ -23,7 +23,7 @@ type ClimbCardActionsProps = {
   onFavoriteToggle?: (climbUuid: string, newState: boolean) => void;
 };
 
-const ClimbCardActions = ({ climb, boardDetails, isFavorited = false, onFavoriteToggle }: ClimbCardActionsProps) => {
+const ClimbCardActions = ({ climb, boardDetails, isFavorited = false, onFavoriteToggle }: ClimbCardActionsProps): React.ReactNode[] => {
   const { addToQueue, queue } = useQueueContext();
   const [recentlyAdded, setRecentlyAdded] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
