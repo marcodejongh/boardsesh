@@ -210,7 +210,4 @@ const ClimbCardActions = ({ climb, boardDetails, isFavorited = false, onFavorite
   return actions;
 };
 
-const MemoizedClimbCardActions = React.memo(ClimbCardActions);
-MemoizedClimbCardActions.displayName = 'ClimbCardActions';
-
-export default MemoizedClimbCardActions;
+export default ClimbCardActions;
