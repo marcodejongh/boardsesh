@@ -1,9 +1,9 @@
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../db/client.js';
 import { sessions, sessionClients, sessionQueues, type Session } from '../db/schema.js';
-import { eq, and, sql, gt, gte, lte, lt } from 'drizzle-orm';
+import { eq, and, sql, gt, gte, lte } from 'drizzle-orm';
 import type { ClimbQueueItem, SessionUser } from '@boardsesh/shared-schema';
-import { haversineDistance, getBoundingBox, getSessionExpiryDate, DEFAULT_SEARCH_RADIUS_METERS } from '../utils/geo.js';
+import { haversineDistance, getBoundingBox, DEFAULT_SEARCH_RADIUS_METERS } from '../utils/geo.js';
 
 // Custom error for version conflicts
 export class VersionConflictError extends Error {
@@ -401,8 +401,6 @@ class RoomManager {
     longitude: number,
     name?: string
   ): Promise<Session> {
-    const expiresAt = getSessionExpiryDate();
-
     const result = await db
       .insert(sessions)
       .values({
@@ -413,7 +411,6 @@ class RoomManager {
         discoverable: true,
         createdByUserId: userId,
         name: name || null,
-        expiresAt,
         lastActivity: new Date(),
       })
       .onConflictDoUpdate({
@@ -425,7 +422,6 @@ class RoomManager {
           discoverable: true,
           createdByUserId: userId,
           name: name || null,
-          expiresAt,
           lastActivity: new Date(),
         },
       })
@@ -444,9 +440,8 @@ class RoomManager {
     radiusMeters: number = DEFAULT_SEARCH_RADIUS_METERS
   ): Promise<DiscoverableSession[]> {
     const box = getBoundingBox(latitude, longitude, radiusMeters);
-    const now = new Date();
 
-    // Query sessions within bounding box that are discoverable and not expired
+    // Query sessions within bounding box that are discoverable
     const candidates = await db
       .select()
       .from(sessions)
@@ -456,8 +451,7 @@ class RoomManager {
           gte(sessions.latitude, box.minLat),
           lte(sessions.latitude, box.maxLat),
           gte(sessions.longitude, box.minLon),
-          lte(sessions.longitude, box.maxLon),
-          gt(sessions.expiresAt, now)
+          lte(sessions.longitude, box.maxLon)
         )
       );
 
@@ -509,26 +503,6 @@ class RoomManager {
       .orderBy(sessions.lastActivity);
 
     return result;
-  }
-
-  /**
-   * Clean up expired sessions
-   * @returns Number of sessions deleted
-   */
-  async cleanupExpiredSessions(): Promise<number> {
-    const now = new Date();
-
-    const deleted = await db
-      .delete(sessions)
-      .where(lt(sessions.expiresAt, now))
-      .returning({ id: sessions.id });
-
-    // Also clean up from memory
-    for (const { id } of deleted) {
-      this.sessions.delete(id);
-    }
-
-    return deleted.length;
   }
 
   private async persistSessionJoin(

@@ -1,19 +1,12 @@
 import 'dotenv/config';
 import { startServer } from './server.js';
-import { sessionCleanupService } from './services/session-cleanup.js';
 
 // Start the server
 const { wss, httpServer } = startServer();
 
-// Start session cleanup service (runs every hour)
-sessionCleanupService.start();
-
 // Handle graceful shutdown
 function shutdown() {
   console.log('\nShutting down Boardsesh Daemon...');
-
-  // Stop session cleanup service
-  sessionCleanupService.stop();
 
   // Close WebSocket server (stops accepting new connections)
   wss.close(() => {

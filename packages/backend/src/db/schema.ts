@@ -15,11 +15,9 @@ export const sessions = pgTable('sessions', {
   createdByUserId: text('created_by_user_id'),
   // Session name for display in discovery
   name: text('name'),
-  // Expiry timestamp for cleanup (7 days from creation)
-  expiresAt: timestamp('expires_at'),
 }, (table) => ({
   locationIdx: index('sessions_location_idx').on(table.latitude, table.longitude),
-  discoverableIdx: index('sessions_discoverable_idx').on(table.discoverable, table.expiresAt),
+  discoverableIdx: index('sessions_discoverable_idx').on(table.discoverable),
   userSessionsIdx: index('sessions_user_idx').on(table.createdByUserId),
 }));
 

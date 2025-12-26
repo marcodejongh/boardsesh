@@ -69,16 +69,3 @@ export function getBoundingBox(lat: number, lon: number, radiusMeters: number): 
  * Default search radius for nearby sessions in meters.
  */
 export const DEFAULT_SEARCH_RADIUS_METERS = 500;
-
-/**
- * Session expiry time in milliseconds (7 days).
- */
-export const SESSION_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
-
-/**
- * Calculate the expiry date for a new session.
- * @returns Date 7 days from now
- */
-export function getSessionExpiryDate(): Date {
-  return new Date(Date.now() + SESSION_EXPIRY_MS);
-}
