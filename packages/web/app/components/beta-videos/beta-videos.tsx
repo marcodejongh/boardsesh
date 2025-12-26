@@ -52,90 +52,76 @@ const BetaVideos: React.FC<BetaVideosProps> = ({ betaLinks }) => {
         <Empty description="No beta videos available" image={Empty.PRESENTED_IMAGE_SIMPLE} />
       ) : (
         <Row gutter={[8, 8]}>
-          {betaLinks.map((betaLink, index) => {
-            const embedUrl = getInstagramEmbedUrl(betaLink.link);
-
-            return (
-              <Col xs={8} sm={6} md={8} lg={6} key={index}>
-                <Card
-                  hoverable
-                  size="small"
-                  styles={{ body: { padding: 0 } }}
-                  onClick={() => handleVideoClick(betaLink)}
+          {betaLinks.map((betaLink, index) => (
+            <Col xs={8} sm={6} md={8} lg={6} key={index}>
+              <Card
+                hoverable
+                size="small"
+                styles={{ body: { padding: 0 } }}
+                onClick={() => handleVideoClick(betaLink)}
+              >
+                <div
+                  style={{
+                    position: 'relative',
+                    paddingBottom: '100%',
+                    overflow: 'hidden',
+                    borderRadius: themeTokens.borderRadius.md,
+                    background: themeTokens.neutral[100],
+                  }}
                 >
-                  {embedUrl ? (
-                    <div
+                  {betaLink.thumbnail ? (
+                    <img
+                      src={betaLink.thumbnail}
+                      alt={`Beta by ${betaLink.foreign_username || 'unknown'}`}
                       style={{
-                        position: 'relative',
-                        paddingBottom: '100%',
-                        overflow: 'hidden',
-                        borderRadius: themeTokens.borderRadius.md,
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
                       }}
-                    >
-                      <iframe
-                        src={embedUrl}
-                        style={{
-                          position: 'absolute',
-                          top: '-20%',
-                          left: 0,
-                          width: '100%',
-                          height: '140%',
-                          border: 'none',
-                          pointerEvents: 'none',
-                        }}
-                        scrolling="no"
-                        title={`Beta video ${index + 1} thumbnail`}
-                      />
-                      {(betaLink.foreign_username || betaLink.angle) && (
-                        <div
-                          style={{
-                            position: 'absolute',
-                            bottom: 0,
-                            left: 0,
-                            right: 0,
-                            padding: `${themeTokens.spacing[1]}px ${themeTokens.spacing[2]}px`,
-                            background: 'linear-gradient(transparent, rgba(0,0,0,0.7))',
-                            color: 'white',
-                            fontSize: themeTokens.typography.fontSize.xs,
-                          }}
-                        >
-                          {betaLink.foreign_username && (
-                            <span>@{betaLink.foreign_username}</span>
-                          )}
-                          {betaLink.angle && (
-                            <span style={{ marginLeft: betaLink.foreign_username ? 4 : 0 }}>
-                              {betaLink.angle}°
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
+                    />
                   ) : (
                     <div
                       style={{
-                        paddingBottom: '100%',
-                        position: 'relative',
-                        background: themeTokens.neutral[100],
-                        borderRadius: themeTokens.borderRadius.md,
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        textAlign: 'center',
                       }}
                     >
-                      <div
-                        style={{
-                          position: 'absolute',
-                          top: '50%',
-                          left: '50%',
-                          transform: 'translate(-50%, -50%)',
-                          textAlign: 'center',
-                        }}
-                      >
-                        <InstagramOutlined style={{ fontSize: 24, color: themeTokens.neutral[400] }} />
-                      </div>
+                      <InstagramOutlined style={{ fontSize: 24, color: themeTokens.neutral[400] }} />
                     </div>
                   )}
-                </Card>
-              </Col>
-            );
-          })}
+                  {(betaLink.foreign_username || betaLink.angle) && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        padding: `${themeTokens.spacing[1]}px ${themeTokens.spacing[2]}px`,
+                        background: 'linear-gradient(transparent, rgba(0,0,0,0.7))',
+                        color: 'white',
+                        fontSize: themeTokens.typography.fontSize.xs,
+                      }}
+                    >
+                      {betaLink.foreign_username && (
+                        <span>@{betaLink.foreign_username}</span>
+                      )}
+                      {betaLink.angle && (
+                        <span style={{ marginLeft: betaLink.foreign_username ? 4 : 0 }}>
+                          {betaLink.angle}°
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </Card>
+            </Col>
+          ))}
         </Row>
       )}
 
