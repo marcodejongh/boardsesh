@@ -14,7 +14,7 @@ import BoardConfigPreview from './board-config-preview';
 import BoardRenderer from '../board-renderer/board-renderer';
 import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { BoardConfigData } from '@/app/lib/server-board-configs';
-import AnimatedBoardLoading from '../loading/animated-board-loading';
+import { useNavigationLoading } from '../providers/navigation-loading-provider';
 import Logo from '../brand/logo';
 import { themeTokens } from '@/app/theme/theme-config';
 
@@ -45,6 +45,7 @@ type ConsolidatedBoardConfigProps = {
 
 const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps) => {
   const router = useRouter();
+  const { showLoading } = useNavigationLoading();
 
   // Selection states
   const [configName, setConfigName] = useState<string>('');
@@ -70,9 +71,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
   const [suggestedName, setSuggestedName] = useState<string>('');
   const [activeCollapsePanels, setActiveCollapsePanels] = useState<string[]>([]);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [isStartingClimbing, setIsStartingClimbing] = useState(false);
-  const [loadingBoardDetails, setLoadingBoardDetails] = useState<BoardDetails | null>(null);
-  
+
   // Get board details for the preview (shared with loading animation)
   const [previewBoardDetails, setPreviewBoardDetails] = useState<BoardDetails | null>(null);
   
@@ -381,9 +380,8 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
   // Login will be handled after reaching the main board page
 
   const handleSavedBoardSelect = (boardDetails: BoardDetails | null) => {
-    // Show the loading spinner with the board details
-    setLoadingBoardDetails(boardDetails);
-    setIsStartingClimbing(true);
+    // Show the loading spinner with the board details (persists across navigation)
+    showLoading(boardDetails);
     // Navigation happens via the Link component
   };
 
@@ -392,9 +390,8 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
       return;
     }
 
-    // Use the preview board details for loading animation
-    setLoadingBoardDetails(previewBoardDetails);
-    setIsStartingClimbing(true);
+    // Show the loading spinner with the board details (persists across navigation)
+    showLoading(previewBoardDetails);
 
     try {
       // Generate default name if none provided
@@ -439,17 +436,14 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
       }
     } catch (error) {
       console.error('Error starting climbing session:', error);
-      setIsStartingClimbing(false);
-      setLoadingBoardDetails(null);
+      // Loading will be hidden automatically by the provider when navigation fails
     }
   };
 
   const isFormComplete = selectedBoard && selectedLayout && selectedSize && selectedSets.length > 0;
 
   return (
-    <>
-      <AnimatedBoardLoading isVisible={isStartingClimbing} boardDetails={loadingBoardDetails} />
-      <div
+    <div
         style={{
           padding: themeTokens.spacing[6],
           maxWidth: '600px',
@@ -631,7 +625,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
                 type="primary"
                 size="large"
                 block
-                disabled={!isFormComplete || isStartingClimbing}
+                disabled={!isFormComplete}
               >
                 Start Climbing
               </Button>
@@ -642,7 +636,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
               size="large"
               block
               onClick={handleStartClimbing}
-              disabled={!isFormComplete || isStartingClimbing}
+              disabled={!isFormComplete}
             >
               Start Climbing
             </Button>
@@ -717,7 +711,6 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
         </Space>
       </Card>
     </div>
-    </>
   );
 };
 
