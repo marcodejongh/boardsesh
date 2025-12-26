@@ -1,7 +1,7 @@
 'use client';
 import React, { useState } from 'react';
-import { Button, Row, Col, Card, Drawer, Space } from 'antd';
-import { SyncOutlined } from '@ant-design/icons';
+import { Button, Row, Col, Card, Drawer, Space, Popconfirm } from 'antd';
+import { SyncOutlined, DeleteOutlined } from '@ant-design/icons';
 import { track } from '@vercel/analytics';
 import { useQueueContext } from '../graphql-queue';
 import NextClimbButton from './next-climb-button';
@@ -28,7 +28,15 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
 
   const isViewPage = pathname.includes('/view/');
   const isListPage = pathname.includes('/list');
-  const { currentClimb, mirrorClimb } = useQueueContext();
+  const { currentClimb, mirrorClimb, queue, setQueue } = useQueueContext();
+
+  const handleClearQueue = () => {
+    setQueue([]);
+    track('Queue Cleared', {
+      boardLayout: boardDetails.layout_name || '',
+      itemsCleared: queue.length,
+    });
+  };
 
   const toggleQueueDrawer = () => {
     // Don't open drawer on desktop when on list page (queue is in sidebar)
@@ -127,6 +135,21 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
         open={isQueueOpen}
         onClose={toggleQueueDrawer}
         styles={{ body: { padding: 0 } }}
+        extra={
+          queue.length > 0 && (
+            <Popconfirm
+              title="Clear queue"
+              description="Are you sure you want to clear all items from the queue?"
+              onConfirm={handleClearQueue}
+              okText="Clear"
+              cancelText="Cancel"
+            >
+              <Button type="text" icon={<DeleteOutlined />} danger>
+                Clear
+              </Button>
+            </Popconfirm>
+          )
+        }
       >
         <QueueList boardDetails={boardDetails} onClimbNavigate={() => setIsQueueOpen(false)} />
       </Drawer>

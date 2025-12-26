@@ -2,7 +2,9 @@
 
 import React from 'react';
 import { PropsWithChildren } from 'react';
-import { Layout, Tabs, Badge } from 'antd';
+import { Layout, Tabs, Badge, Button, Popconfirm, Flex } from 'antd';
+import { DeleteOutlined } from '@ant-design/icons';
+import { track } from '@vercel/analytics';
 import { BoardDetails } from '@/app/lib/types';
 import BasicSearchForm from '@/app/components/search-drawer/basic-search-form';
 import ClimbHoldSearchForm from '@/app/components/search-drawer/climb-hold-search-form';
@@ -19,7 +21,15 @@ interface ListLayoutClientProps {
 }
 
 const TabsWrapper: React.FC<{ boardDetails: BoardDetails }> = ({ boardDetails }) => {
-  const { queue } = useQueueContext();
+  const { queue, setQueue } = useQueueContext();
+
+  const handleClearQueue = () => {
+    setQueue([]);
+    track('Queue Cleared', {
+      boardLayout: boardDetails.layout_name || '',
+      itemsCleared: queue.length,
+    });
+  };
 
   const tabItems = [
     {
@@ -36,7 +46,28 @@ const TabsWrapper: React.FC<{ boardDetails: BoardDetails }> = ({ boardDetails })
           Queue
         </Badge>
       ),
-      children: <QueueList boardDetails={boardDetails} />,
+      children: (
+        <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+          {queue.length > 0 && (
+            <Flex justify="flex-end" style={{ padding: '8px 8px 0 8px' }}>
+              <Popconfirm
+                title="Clear queue"
+                description="Are you sure you want to clear all items from the queue?"
+                onConfirm={handleClearQueue}
+                okText="Clear"
+                cancelText="Cancel"
+              >
+                <Button type="text" icon={<DeleteOutlined />} danger size="small">
+                  Clear
+                </Button>
+              </Popconfirm>
+            </Flex>
+          )}
+          <div style={{ flex: 1, overflow: 'auto' }}>
+            <QueueList boardDetails={boardDetails} />
+          </div>
+        </div>
+      ),
     },
     {
       key: 'search',
