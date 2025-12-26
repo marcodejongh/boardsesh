@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; Boardsesh/1.0)',
       },
-      next: { revalidate: 86400 }, // Next.js fetch cache for 24 hours
+      next: { revalidate: 2592000 }, // Next.js fetch cache for 30 days
     });
 
     if (!response.ok) {
@@ -29,12 +29,12 @@ export async function GET(request: NextRequest) {
     const data = await response.json();
 
     if (data.thumbnail_url) {
-      // Return with cache headers for browser/CDN caching
+      // Return with cache headers for browser/CDN caching (30 days)
       return NextResponse.json(
         { thumbnail_url: data.thumbnail_url },
         {
           headers: {
-            'Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=43200',
+            'Cache-Control': 'public, max-age=2592000, s-maxage=2592000, stale-while-revalidate=604800',
           },
         },
       );
