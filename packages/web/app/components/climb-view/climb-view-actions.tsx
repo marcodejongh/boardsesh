@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button, Space, Dropdown, message } from 'antd';
 import {
   HeartOutlined,
@@ -9,10 +9,7 @@ import {
   CheckCircleOutlined,
   AppstoreOutlined,
   MoreOutlined,
-  ArrowLeftOutlined,
 } from '@ant-design/icons';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useQueueContext } from '../graphql-queue';
 import { Climb, BoardDetails } from '@/app/lib/types';
 import type { MenuProps } from 'antd';
@@ -21,6 +18,7 @@ import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { useFavorite } from '../climb-actions';
 import { track } from '@vercel/analytics';
 import AuthModal from '../auth/auth-modal';
+import BackButton from '../back-button';
 
 type ClimbViewActionsProps = {
   climb: Climb;
@@ -32,9 +30,7 @@ type ClimbViewActionsProps = {
 const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl, angle }: ClimbViewActionsProps) => {
   const { addToQueue } = useQueueContext();
   const [recentlyAdded, setRecentlyAdded] = useState(false);
-  const [canGoBack, setCanGoBack] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const router = useRouter();
 
   const { isFavorited, isLoading: isFavoriteLoading, toggleFavorite, isAuthenticated } = useFavorite({
     boardName: boardDetails.board_name,
@@ -42,24 +38,17 @@ const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl, angle }: ClimbVie
     angle,
   });
 
-  useEffect(() => {
-    // Check if we can go back and if the previous page was on Boardsesh
-    const checkCanGoBack = () => {
-      if (typeof window !== 'undefined') {
-        // Check if there's history to go back to
-        const hasHistory = window.history.length > 1;
+  const getBackToListUrl = () => {
+    const { board_name, layout_name, size_name, size_description, set_names } = boardDetails;
 
-        // Check if document.referrer exists and is from the same origin
-        const referrer = document.referrer;
-        const isSameOrigin =
-          referrer !== '' && (referrer.startsWith(window.location.origin) || referrer.includes('boardsesh.com'));
+    // Use slug-based URL construction if slug names are available
+    if (layout_name && size_name && set_names) {
+      return constructClimbListWithSlugs(board_name, layout_name, size_name, size_description, set_names, angle);
+    }
 
-        setCanGoBack(hasHistory && isSameOrigin);
-      }
-    };
-
-    checkCanGoBack();
-  }, []);
+    // Fallback to numeric format
+    return `/${board_name}/${boardDetails.layout_id}/${boardDetails.size_id}/${boardDetails.set_ids.join(',')}/${angle}/list`;
+  };
 
   const handleAddToQueue = () => {
     if (addToQueue && !recentlyAdded) {
@@ -123,27 +112,6 @@ const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl, angle }: ClimbVie
     message.info('TODO: Implement tick functionality');
   };
 
-  const handleBackClick = () => {
-    if (canGoBack) {
-      window.history.back();
-    } else {
-      const backUrl = getBackToListUrl();
-      router.push(backUrl);
-    }
-  };
-
-  const getBackToListUrl = () => {
-    const { board_name, layout_name, size_name, size_description, set_names } = boardDetails;
-
-    // Use slug-based URL construction if slug names are available
-    if (layout_name && size_name && set_names) {
-      return constructClimbListWithSlugs(board_name, layout_name, size_name, size_description, set_names, angle);
-    }
-
-    // Fallback to numeric format
-    return `/${board_name}/${boardDetails.layout_id}/${boardDetails.size_id}/${boardDetails.set_ids.join(',')}/${angle}/list`;
-  };
-
   // Define menu items for the meatball menu (overflow actions on mobile)
   const menuItems: MenuProps['items'] = [
     {
@@ -175,17 +143,7 @@ const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl, angle }: ClimbVie
         {/* Mobile view: Show back button + key actions + overflow menu */}
         <div className={styles.mobileActions}>
           <div className={styles.mobileLeft}>
-            {canGoBack ? (
-              <Button icon={<ArrowLeftOutlined />} onClick={handleBackClick}>
-                Back
-              </Button>
-            ) : (
-              <Link href={getBackToListUrl()}>
-                <Button icon={<ArrowLeftOutlined />}>
-                  Back
-                </Button>
-              </Link>
-            )}
+            <BackButton fallbackUrl={getBackToListUrl()} />
           </div>
 
           <div className={styles.mobileRight}>
@@ -218,17 +176,7 @@ const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl, angle }: ClimbVie
 
         {/* Desktop view: Show all buttons */}
         <div className={styles.desktopActions}>
-          {canGoBack ? (
-            <Button icon={<ArrowLeftOutlined />} className={styles.backButton} onClick={handleBackClick}>
-              Back to List
-            </Button>
-          ) : (
-            <Link href={getBackToListUrl()}>
-              <Button icon={<ArrowLeftOutlined />} className={styles.backButton}>
-                Back to List
-              </Button>
-            </Link>
-          )}
+          <BackButton fallbackUrl={getBackToListUrl()} className={styles.backButton} />
 
           <div className={styles.actionButtons}>
             <Space wrap>

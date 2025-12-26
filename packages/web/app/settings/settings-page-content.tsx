@@ -15,12 +15,13 @@ import {
   message,
   Spin,
 } from 'antd';
-import { UserOutlined, UploadOutlined, LoadingOutlined, ArrowLeftOutlined } from '@ant-design/icons';
+import { UserOutlined, UploadOutlined, LoadingOutlined } from '@ant-design/icons';
 import type { UploadFile, UploadProps } from 'antd/es/upload/interface';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Logo from '@/app/components/brand/logo';
 import AuroraCredentialsSection from '@/app/components/settings/aurora-credentials-section';
+import BackButton from '@/app/components/back-button';
 
 const { Content, Header } = Layout;
 const { Title, Text } = Typography;
@@ -232,7 +233,7 @@ export default function SettingsPageContent() {
           boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
         }}
       >
-        <Button icon={<ArrowLeftOutlined />} type="text" onClick={() => router.back()} />
+        <BackButton />
         <Logo size="sm" showText={false} />
         <Title level={4} style={{ margin: 0, flex: 1 }}>
           Settings
