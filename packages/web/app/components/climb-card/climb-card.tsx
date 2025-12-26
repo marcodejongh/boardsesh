@@ -15,7 +15,7 @@ type ClimbCardProps = {
   coverLinkToClimb?: boolean;
   onCoverClick?: () => void;
   selected?: boolean;
-  actions?: React.JSX.Element[];
+  actions?: React.ReactNode[];
   isFavorited?: boolean;
   onFavoriteToggle?: (climbUuid: string, newState: boolean) => void;
 };
@@ -25,8 +25,8 @@ type ClimbCardProps = {
  * Handles common cases: both undefined, both empty arrays, or same reference.
  */
 const areActionsEqual = (
-  prev: React.JSX.Element[] | undefined,
-  next: React.JSX.Element[] | undefined,
+  prev: React.ReactNode[] | undefined,
+  next: React.ReactNode[] | undefined,
 ): boolean => {
   // Same reference (including both undefined)
   if (prev === next) return true;
@@ -36,8 +36,8 @@ const areActionsEqual = (
   if (prev.length === 0 && next.length === 0) return true;
   // Different lengths
   if (prev.length !== next.length) return false;
-  // Compare by keys (React elements should have stable keys)
-  return prev.every((el, i) => el.key === next[i].key);
+  // For ReactNode arrays, compare by reference since keys may not be available
+  return prev.every((el, i) => el === next[i]);
 };
 
 const ClimbCard = React.memo(
