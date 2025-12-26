@@ -18,29 +18,42 @@ type ClimbCardProps = {
   actions?: React.JSX.Element[];
 };
 
-const ClimbCard = ({ climb, boardDetails, onCoverClick, selected, actions }: ClimbCardProps) => {
-  const cover = <ClimbCardCover climb={climb} boardDetails={boardDetails} onClick={onCoverClick} />;
+const ClimbCard = React.memo(
+  ({ climb, boardDetails, onCoverClick, selected, actions }: ClimbCardProps) => {
+    const cover = <ClimbCardCover climb={climb} boardDetails={boardDetails} onClick={onCoverClick} />;
 
-  const cardTitle = climb ? (
-    <ClimbTitle climb={climb} layout="horizontal" showSetterInfo />
-  ) : (
-    'Loading...'
-  );
+    const cardTitle = climb ? (
+      <ClimbTitle climb={climb} layout="horizontal" showSetterInfo />
+    ) : (
+      'Loading...'
+    );
 
-  return (
-    <Card
-      title={cardTitle}
-      size="small"
-      style={{
-        backgroundColor: selected ? themeTokens.semantic.selected : themeTokens.semantic.surface,
-        borderColor: selected ? themeTokens.colors.primary : undefined,
-      }}
-      styles={{ header: { paddingTop: 8, paddingBottom: 6 }, body: { padding: 6 } }}
-      actions={actions || ClimbCardActions({ climb, boardDetails })}
-    >
-      {cover}
-    </Card>
-  );
-};
+    return (
+      <Card
+        title={cardTitle}
+        size="small"
+        style={{
+          backgroundColor: selected ? themeTokens.semantic.selected : themeTokens.semantic.surface,
+          borderColor: selected ? themeTokens.colors.primary : undefined,
+        }}
+        styles={{ header: { paddingTop: 8, paddingBottom: 6 }, body: { padding: 6 } }}
+        actions={actions || ClimbCardActions({ climb, boardDetails })}
+      >
+        {cover}
+      </Card>
+    );
+  },
+  (prevProps, nextProps) => {
+    return (
+      prevProps.climb?.uuid === nextProps.climb?.uuid &&
+      prevProps.selected === nextProps.selected &&
+      prevProps.boardDetails === nextProps.boardDetails &&
+      prevProps.onCoverClick === nextProps.onCoverClick &&
+      prevProps.actions === nextProps.actions
+    );
+  },
+);
+
+ClimbCard.displayName = 'ClimbCard';
 
 export default ClimbCard;

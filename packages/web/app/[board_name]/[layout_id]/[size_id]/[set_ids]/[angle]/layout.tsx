@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { PropsWithChildren } from 'react';
 import { Affix, Layout } from 'antd';
 import { ParsedBoardRouteParameters, BoardRouteParameters, BoardDetails } from '@/app/lib/types';
@@ -14,6 +14,7 @@ import { ConnectionSettingsProvider } from '@/app/components/connection-manager/
 import { PartyProvider } from '@/app/components/party-manager/party-context';
 import PartyProfileWrapper from '@/app/components/party-manager/party-profile-wrapper';
 import { Metadata } from 'next';
+import BoardPageSkeleton from '@/app/components/board-page/board-page-skeleton';
 
 /**
  * Generates a user-friendly page title from board details.
@@ -152,7 +153,9 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
                 paddingRight: '10px',
               }}
             >
-              {children}
+              <Suspense fallback={<BoardPageSkeleton />}>
+                {children}
+              </Suspense>
             </Content>
 
             <Affix offsetBottom={0}>

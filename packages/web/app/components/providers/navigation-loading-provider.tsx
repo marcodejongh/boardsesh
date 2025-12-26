@@ -1,13 +1,14 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { usePathname } from 'next/navigation';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import AnimatedBoardLoading from '../loading/animated-board-loading';
 import { BoardDetails } from '@/app/lib/types';
 
 type NavigationLoadingContextType = {
   showLoading: (boardDetails?: BoardDetails | null) => void;
   hideLoading: () => void;
+  signalPageReady: () => void;
+  isLoading: boolean;
 };
 
 const NavigationLoadingContext = createContext<NavigationLoadingContextType | null>(null);
@@ -20,28 +21,51 @@ export function useNavigationLoading() {
   return context;
 }
 
+const LOADING_TIMEOUT_MS = 10000; // 10 second safety timeout
+
 export function NavigationLoadingProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [boardDetails, setBoardDetails] = useState<BoardDetails | null>(null);
-  const pathname = usePathname();
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const showLoading = useCallback((details?: BoardDetails | null) => {
-    setBoardDetails(details || null);
-    setIsLoading(true);
+  const clearLoadingTimeout = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
   }, []);
 
   const hideLoading = useCallback(() => {
+    clearLoadingTimeout();
     setIsLoading(false);
     setBoardDetails(null);
-  }, []);
+  }, [clearLoadingTimeout]);
 
-  // Hide loading when route changes (navigation complete)
-  useEffect(() => {
+  const showLoading = useCallback((details?: BoardDetails | null) => {
+    clearLoadingTimeout();
+    setBoardDetails(details || null);
+    setIsLoading(true);
+
+    // Set a safety timeout to prevent infinite loading
+    timeoutRef.current = setTimeout(() => {
+      console.warn('Navigation loading timed out after 10 seconds');
+      hideLoading();
+    }, LOADING_TIMEOUT_MS);
+  }, [clearLoadingTimeout, hideLoading]);
+
+  const signalPageReady = useCallback(() => {
     hideLoading();
-  }, [pathname, hideLoading]);
+  }, [hideLoading]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      clearLoadingTimeout();
+    };
+  }, [clearLoadingTimeout]);
 
   return (
-    <NavigationLoadingContext.Provider value={{ showLoading, hideLoading }}>
+    <NavigationLoadingContext.Provider value={{ showLoading, hideLoading, signalPageReady, isLoading }}>
       <AnimatedBoardLoading isVisible={isLoading} boardDetails={boardDetails} />
       {children}
     </NavigationLoadingContext.Provider>
