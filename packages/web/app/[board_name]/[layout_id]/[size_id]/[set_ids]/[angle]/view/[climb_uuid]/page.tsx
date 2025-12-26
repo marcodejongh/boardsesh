@@ -102,7 +102,7 @@ export default async function DynamicResultsPage(props: { params: Promise<BoardR
 
     if (hasNumericParams || isUuidOnly(params.climb_uuid)) {
       // Need to redirect to new slug-based URL
-      const [currentClimb] = await Promise.all([getClimb(parsedParams)]);
+      const currentClimb = await getClimb(parsedParams);
 
       // Get the names for slug generation
       const layouts = await import('@/app/lib/data/queries').then((m) => m.getLayouts(parsedParams.board_name));

@@ -129,8 +129,8 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
 
   const { board_name, angle } = parsedParams;
 
-  // Fetch the climbs and board details server-side
-  const [boardDetails] = await Promise.all([getBoardDetails(parsedParams)]);
+  // Fetch the board details server-side
+  const boardDetails = await getBoardDetails(parsedParams);
 
   return (
     <Layout style={{ height: '100dvh', display: 'flex', flexDirection: 'column', padding: 0 }}>
