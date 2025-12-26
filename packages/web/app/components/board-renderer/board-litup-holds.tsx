@@ -9,49 +9,75 @@ interface BoardLitupHoldsProps {
   onHoldClick?: (holdId: number) => void;
 }
 
-const BoardLitupHolds: React.FC<BoardLitupHoldsProps> = ({
-  holdsData,
-  litUpHoldsMap,
-  mirrored,
-  thumbnail,
-  onHoldClick,
-}) => {
-  if (!holdsData) return null;
+const areLitUpHoldsMapsEqual = (prev: LitUpHoldsMap, next: LitUpHoldsMap): boolean => {
+  const prevKeys = Object.keys(prev);
+  const nextKeys = Object.keys(next);
 
-  return (
-    <>
-      {holdsData.map((hold) => {
-        const isLitUp = litUpHoldsMap[hold.id]?.state && litUpHoldsMap[hold.id].state !== 'OFF';
-        const color = isLitUp ? litUpHoldsMap[hold.id].color : 'transparent';
+  if (prevKeys.length !== nextKeys.length) return false;
 
-        let renderHold = hold;
-        if (mirrored && hold.mirroredHoldId) {
-          const mirroredHold = holdsData.find(({ id }) => id === hold.mirroredHoldId);
-          if (!mirroredHold) {
-            throw new Error("Couldn't find mirrored hold");
-          }
-          renderHold = mirroredHold;
-        }
+  for (const key of prevKeys) {
+    const numKey = Number(key);
+    const prevHold = prev[numKey];
+    const nextHold = next[numKey];
+    if (!nextHold) return false;
+    if (prevHold.state !== nextHold.state || prevHold.color !== nextHold.color) {
+      return false;
+    }
+  }
 
-        return (
-          <circle
-            key={renderHold.id}
-            id={`hold-${renderHold.id}`}
-            data-mirror-id={renderHold.mirroredHoldId || undefined}
-            cx={renderHold.cx}
-            cy={renderHold.cy}
-            r={renderHold.r}
-            stroke={color}
-            strokeWidth={thumbnail ? 8 : 6}
-            fillOpacity={thumbnail ? 1 : 0}
-            fill={thumbnail ? color : undefined}
-            style={{ cursor: onHoldClick ? 'pointer' : 'default' }}
-            onClick={onHoldClick ? () => onHoldClick(renderHold.id) : undefined}
-          />
-        );
-      })}
-    </>
-  );
+  return true;
 };
+
+const BoardLitupHolds = React.memo(
+  ({ holdsData, litUpHoldsMap, mirrored, thumbnail, onHoldClick }: BoardLitupHoldsProps) => {
+    if (!holdsData) return null;
+
+    return (
+      <>
+        {holdsData.map((hold) => {
+          const isLitUp = litUpHoldsMap[hold.id]?.state && litUpHoldsMap[hold.id].state !== 'OFF';
+          const color = isLitUp ? litUpHoldsMap[hold.id].color : 'transparent';
+
+          let renderHold = hold;
+          if (mirrored && hold.mirroredHoldId) {
+            const mirroredHold = holdsData.find(({ id }) => id === hold.mirroredHoldId);
+            if (!mirroredHold) {
+              throw new Error("Couldn't find mirrored hold");
+            }
+            renderHold = mirroredHold;
+          }
+
+          return (
+            <circle
+              key={renderHold.id}
+              id={`hold-${renderHold.id}`}
+              data-mirror-id={renderHold.mirroredHoldId || undefined}
+              cx={renderHold.cx}
+              cy={renderHold.cy}
+              r={renderHold.r}
+              stroke={color}
+              strokeWidth={thumbnail ? 8 : 6}
+              fillOpacity={thumbnail ? 1 : 0}
+              fill={thumbnail ? color : undefined}
+              style={{ cursor: onHoldClick ? 'pointer' : 'default' }}
+              onClick={onHoldClick ? () => onHoldClick(renderHold.id) : undefined}
+            />
+          );
+        })}
+      </>
+    );
+  },
+  (prevProps, nextProps) => {
+    return (
+      prevProps.holdsData === nextProps.holdsData &&
+      prevProps.mirrored === nextProps.mirrored &&
+      prevProps.thumbnail === nextProps.thumbnail &&
+      prevProps.onHoldClick === nextProps.onHoldClick &&
+      areLitUpHoldsMapsEqual(prevProps.litUpHoldsMap, nextProps.litUpHoldsMap)
+    );
+  },
+);
+
+BoardLitupHolds.displayName = 'BoardLitupHolds';
 
 export default BoardLitupHolds;

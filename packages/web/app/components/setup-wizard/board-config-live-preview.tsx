@@ -56,7 +56,6 @@ export default function BoardConfigLivePreview({
         let details = cachedDetails;
         if (!details) {
           try {
-            debugger;
             details = await fetchBoardDetails(safeBoardName, safeLayoutId, safeSizeId, setIds);
           } catch (error) {
             console.error('Failed to fetch board details:', error);

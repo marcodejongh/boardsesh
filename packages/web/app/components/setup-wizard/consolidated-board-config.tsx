@@ -14,7 +14,6 @@ import BoardConfigPreview from './board-config-preview';
 import BoardRenderer from '../board-renderer/board-renderer';
 import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { BoardConfigData } from '@/app/lib/server-board-configs';
-import { useNavigationLoading } from '../providers/navigation-loading-provider';
 import Logo from '../brand/logo';
 import { themeTokens } from '@/app/theme/theme-config';
 
@@ -45,7 +44,6 @@ type ConsolidatedBoardConfigProps = {
 
 const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps) => {
   const router = useRouter();
-  const { showLoading } = useNavigationLoading();
 
   // Selection states
   const [configName, setConfigName] = useState<string>('');
@@ -379,19 +377,15 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
 
   // Login will be handled after reaching the main board page
 
-  const handleSavedBoardSelect = (boardDetails: BoardDetails | null) => {
-    // Show the loading spinner with the board details (persists across navigation)
-    showLoading(boardDetails);
+  const handleSavedBoardSelect = () => {
     // Navigation happens via the Link component
+    // Suspense boundary in layout.tsx will show skeleton during loading
   };
 
   const handleStartClimbing = async () => {
     if (!selectedBoard || !selectedLayout || !selectedSize || selectedSets.length === 0) {
       return;
     }
-
-    // Show the loading spinner with the board details (persists across navigation)
-    showLoading(previewBoardDetails);
 
     try {
       // Generate default name if none provided
@@ -436,7 +430,6 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
       }
     } catch (error) {
       console.error('Error starting climbing session:', error);
-      // Loading will be hidden automatically by the provider when navigation fails
     }
   };
 

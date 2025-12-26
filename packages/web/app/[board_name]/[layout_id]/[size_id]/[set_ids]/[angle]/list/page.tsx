@@ -83,9 +83,5 @@ export default async function DynamicResultsPage(props: {
     notFound();
   }
 
-  return (
-    <>
-      <ClimbsList {...parsedParams} boardDetails={boardDetails} initialClimbs={fetchedResults.climbs} />
-    </>
-  );
+  return <ClimbsList {...parsedParams} boardDetails={boardDetails} initialClimbs={fetchedResults.climbs} />;
 }
