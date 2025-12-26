@@ -16,6 +16,8 @@ type ClimbCardProps = {
   onCoverClick?: () => void;
   selected?: boolean;
   actions?: React.JSX.Element[];
+  isFavorited?: boolean;
+  onFavoriteToggle?: (climbUuid: string, newState: boolean) => void;
 };
 
 /**
@@ -39,7 +41,7 @@ const areActionsEqual = (
 };
 
 const ClimbCard = React.memo(
-  ({ climb, boardDetails, onCoverClick, selected, actions }: ClimbCardProps) => {
+  ({ climb, boardDetails, onCoverClick, selected, actions, isFavorited, onFavoriteToggle }: ClimbCardProps) => {
     const cover = <ClimbCardCover climb={climb} boardDetails={boardDetails} onClick={onCoverClick} />;
 
     const cardTitle = climb ? (
@@ -47,6 +49,8 @@ const ClimbCard = React.memo(
     ) : (
       'Loading...'
     );
+
+    const cardActions = actions || ClimbCardActions({ climb, boardDetails, isFavorited, onFavoriteToggle });
 
     return (
       <Card
@@ -57,7 +61,7 @@ const ClimbCard = React.memo(
           borderColor: selected ? themeTokens.colors.primary : undefined,
         }}
         styles={{ header: { paddingTop: 8, paddingBottom: 6 }, body: { padding: 6 } }}
-        actions={actions || ClimbCardActions({ climb, boardDetails })}
+        actions={cardActions}
       >
         {cover}
       </Card>
@@ -68,6 +72,8 @@ const ClimbCard = React.memo(
     if (prevProps.climb?.uuid !== nextProps.climb?.uuid) return false;
     // Compare selected state
     if (prevProps.selected !== nextProps.selected) return false;
+    // Compare favorite state
+    if (prevProps.isFavorited !== nextProps.isFavorited) return false;
     // Compare boardDetails by reference (stable from server) or by key identifiers
     if (prevProps.boardDetails !== nextProps.boardDetails) {
       // Fallback: compare by stable identifiers if references differ
@@ -83,6 +89,7 @@ const ClimbCard = React.memo(
     }
     // Compare callbacks by reference (parent should memoize with useCallback)
     if (prevProps.onCoverClick !== nextProps.onCoverClick) return false;
+    if (prevProps.onFavoriteToggle !== nextProps.onFavoriteToggle) return false;
     // Compare actions arrays properly
     if (!areActionsEqual(prevProps.actions, nextProps.actions)) return false;
 

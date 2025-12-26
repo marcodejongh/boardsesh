@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import { Row, Col } from 'antd';
 import AnimatedBoardLoading from '../loading/animated-board-loading';
 import { track } from '@vercel/analytics';
@@ -8,6 +8,7 @@ import { useQueueContext } from '../graphql-queue';
 import ClimbCard from '../climb-card/climb-card';
 import { PlusCircleOutlined, FireOutlined } from '@ant-design/icons';
 import { useSearchParams } from 'next/navigation';
+import { useFavoritesBatch } from '../climb-actions';
 
 type ClimbsListProps = ParsedBoardRouteParameters & {
   boardDetails: BoardDetails;
@@ -51,6 +52,55 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
   // fill on the server side in the page component. This way the user never sees a loading state for
   // the climb list.
   const climbs = !hasDoneFirstFetch ? initialClimbs : climbSearchResults || [];
+
+  // Batch fetch favorites for all visible climbs
+  const climbUuids = useMemo(() => climbs.map((c) => c.uuid), [climbs]);
+  const { favorites, refetch: refetchFavorites } = useFavoritesBatch({
+    boardName: boardDetails.board_name,
+    climbUuids,
+    angle: boardDetails.angle,
+  });
+
+  // Local optimistic state for favorites to avoid waiting for refetch
+  const [optimisticFavorites, setOptimisticFavorites] = useState<Set<string>>(new Set());
+  const [optimisticUnfavorites, setOptimisticUnfavorites] = useState<Set<string>>(new Set());
+
+  // Combined favorites: server state + optimistic adds - optimistic removes
+  const effectiveFavorites = useMemo(() => {
+    const result = new Set(favorites);
+    optimisticFavorites.forEach((uuid) => result.add(uuid));
+    optimisticUnfavorites.forEach((uuid) => result.delete(uuid));
+    return result;
+  }, [favorites, optimisticFavorites, optimisticUnfavorites]);
+
+  // Handle favorite toggle with optimistic update
+  const handleFavoriteToggle = useCallback(
+    (climbUuid: string, newState: boolean) => {
+      if (newState) {
+        setOptimisticFavorites((prev) => new Set(prev).add(climbUuid));
+        setOptimisticUnfavorites((prev) => {
+          const next = new Set(prev);
+          next.delete(climbUuid);
+          return next;
+        });
+      } else {
+        setOptimisticUnfavorites((prev) => new Set(prev).add(climbUuid));
+        setOptimisticFavorites((prev) => {
+          const next = new Set(prev);
+          next.delete(climbUuid);
+          return next;
+        });
+      }
+      // Refetch to sync with server after a short delay
+      setTimeout(() => {
+        refetchFavorites();
+        // Clear optimistic state after refetch
+        setOptimisticFavorites(new Set());
+        setOptimisticUnfavorites(new Set());
+      }, 1000);
+    },
+    [refetchFavorites],
+  );
 
   // A ref to store each climb's DOM element position for easier scroll tracking
   const climbsRefs = useRef<{ [uuid: string]: HTMLDivElement | null }>({});
@@ -139,6 +189,8 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
                 climb={climb}
                 boardDetails={boardDetails}
                 selected={currentClimb?.uuid === climb.uuid}
+                isFavorited={effectiveFavorites.has(climb.uuid)}
+                onFavoriteToggle={handleFavoriteToggle}
                 onCoverClick={() => {
                   updateHash(climb.uuid);
                   setCurrentClimb(climb);

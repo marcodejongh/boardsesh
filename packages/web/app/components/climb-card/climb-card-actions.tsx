@@ -1,5 +1,5 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useQueueContext } from '../graphql-queue';
 import { BoardDetails, Climb } from '@/app/lib/types';
 import {
@@ -13,24 +13,23 @@ import {
 import Link from 'next/link';
 import { constructClimbViewUrl, constructClimbViewUrlWithSlugs, constructCreateClimbUrl } from '@/app/lib/url-utils';
 import { track } from '@vercel/analytics';
-import { useFavorite } from '../climb-actions';
 import AuthModal from '../auth/auth-modal';
+import { useSession } from 'next-auth/react';
 
 type ClimbCardActionsProps = {
   climb?: Climb;
   boardDetails: BoardDetails;
+  isFavorited?: boolean;
+  onFavoriteToggle?: (climbUuid: string, newState: boolean) => void;
 };
 
-const ClimbCardActions = ({ climb, boardDetails }: ClimbCardActionsProps) => {
+const ClimbCardActions = ({ climb, boardDetails, isFavorited = false, onFavoriteToggle }: ClimbCardActionsProps) => {
   const { addToQueue, queue } = useQueueContext();
   const [recentlyAdded, setRecentlyAdded] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
-
-  const { isFavorited, toggleFavorite, isAuthenticated } = useFavorite({
-    boardName: boardDetails.board_name,
-    climbUuid: climb?.uuid ?? '',
-    angle: climb?.angle ?? 0,
-  });
+  const [isToggling, setIsToggling] = useState(false);
+  const { status } = useSession();
+  const isAuthenticated = status === 'authenticated';
 
   if (!climb) {
     return [];
@@ -53,25 +52,46 @@ const ClimbCardActions = ({ climb, boardDetails }: ClimbCardActionsProps) => {
     }
   };
 
-  const handleFavorite = async () => {
+  const handleFavorite = useCallback(async () => {
     if (!isAuthenticated) {
       setShowAuthModal(true);
       return;
     }
 
+    if (isToggling) return;
+
+    setIsToggling(true);
     try {
-      const newState = await toggleFavorite();
-      track('Favorite Toggle', {
-        boardName: boardDetails.board_name,
-        climbUuid: climb.uuid,
-        action: newState ? 'favorited' : 'unfavorited',
+      const newState = !isFavorited;
+
+      // Call the API
+      const response = await fetch('/api/internal/favorites', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          boardName: boardDetails.board_name,
+          climbUuid: climb.uuid,
+          angle: climb.angle,
+        }),
       });
+
+      if (response.ok) {
+        const result = await response.json();
+        onFavoriteToggle?.(climb.uuid, result.favorited);
+        track('Favorite Toggle', {
+          boardName: boardDetails.board_name,
+          climbUuid: climb.uuid,
+          action: result.favorited ? 'favorited' : 'unfavorited',
+        });
+      }
     } catch {
       // Silently fail
+    } finally {
+      setIsToggling(false);
     }
-  };
+  }, [isAuthenticated, isToggling, isFavorited, boardDetails.board_name, climb.uuid, climb.angle, onFavoriteToggle]);
 
-  const handleAuthSuccess = async () => {
+  const handleAuthSuccess = useCallback(async () => {
     // Call API directly since session state may not have updated yet
     try {
       const response = await fetch('/api/internal/favorites', {
@@ -84,6 +104,8 @@ const ClimbCardActions = ({ climb, boardDetails }: ClimbCardActionsProps) => {
         }),
       });
       if (response.ok) {
+        const result = await response.json();
+        onFavoriteToggle?.(climb.uuid, result.favorited);
         track('Favorite Toggle', {
           boardName: boardDetails.board_name,
           climbUuid: climb.uuid,
@@ -93,7 +115,7 @@ const ClimbCardActions = ({ climb, boardDetails }: ClimbCardActionsProps) => {
     } catch {
       // Silently fail
     }
-  };
+  }, [boardDetails.board_name, climb.uuid, climb.angle, onFavoriteToggle]);
 
   const HeartIcon = isFavorited ? HeartFilled : HeartOutlined;
 
@@ -188,4 +210,7 @@ const ClimbCardActions = ({ climb, boardDetails }: ClimbCardActionsProps) => {
   return actions;
 };
 
-export default ClimbCardActions;
+const MemoizedClimbCardActions = React.memo(ClimbCardActions);
+MemoizedClimbCardActions.displayName = 'ClimbCardActions';
+
+export default MemoizedClimbCardActions;
