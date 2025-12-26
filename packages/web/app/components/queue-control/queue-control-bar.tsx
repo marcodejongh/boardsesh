@@ -144,7 +144,7 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
               okText="Clear"
               cancelText="Cancel"
             >
-              <Button type="text" icon={<DeleteOutlined />} danger>
+              <Button type="text" icon={<DeleteOutlined />} style={{ color: '#8c8c8c' }}>
                 Clear
               </Button>
             </Popconfirm>

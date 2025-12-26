@@ -57,7 +57,7 @@ const TabsWrapper: React.FC<{ boardDetails: BoardDetails }> = ({ boardDetails })
                 okText="Clear"
                 cancelText="Cancel"
               >
-                <Button type="text" icon={<DeleteOutlined />} danger size="small">
+                <Button type="text" icon={<DeleteOutlined />} size="small" style={{ color: '#8c8c8c' }}>
                   Clear
                 </Button>
               </Popconfirm>
