@@ -5,6 +5,7 @@ import Row from 'antd/es/row';
 import Col from 'antd/es/col';
 import Flex from 'antd/es/flex';
 import Card from 'antd/es/card';
+import { InfoCircleOutlined, ForkOutlined, HeartOutlined, PlusCircleOutlined } from '@ant-design/icons';
 import { themeTokens } from '@/app/theme/theme-config';
 
 /**
@@ -13,13 +14,13 @@ import { themeTokens } from '@/app/theme/theme-config';
 const ClimbCardTitleSkeleton = () => (
   <Flex gap={12} align="center">
     {/* Left side: Name and info stacked */}
-    <Flex vertical gap={4} style={{ flex: 1, minWidth: 0 }}>
+    <Flex vertical gap={2} style={{ flex: 1, minWidth: 0 }}>
       {/* Name placeholder */}
       <div
         style={{
-          height: 16,
-          width: '70%',
-          backgroundColor: 'var(--ant-color-fill-tertiary)',
+          height: 14,
+          width: '60%',
+          backgroundColor: 'var(--ant-color-fill-secondary)',
           borderRadius: 4,
         }}
       />
@@ -27,8 +28,8 @@ const ClimbCardTitleSkeleton = () => (
       <div
         style={{
           height: 12,
-          width: '50%',
-          backgroundColor: 'var(--ant-color-fill-quaternary)',
+          width: '80%',
+          backgroundColor: 'var(--ant-color-fill-tertiary)',
           borderRadius: 4,
         }}
       />
@@ -36,79 +37,35 @@ const ClimbCardTitleSkeleton = () => (
     {/* Right side: V grade placeholder */}
     <div
       style={{
-        width: 36,
-        height: 36,
-        backgroundColor: 'var(--ant-color-fill-tertiary)',
-        borderRadius: 6,
+        width: 32,
+        height: 32,
+        backgroundColor: 'var(--ant-color-fill-secondary)',
+        borderRadius: 4,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
       }}
     />
   </Flex>
 );
 
 /**
- * Skeleton that mimics the BoardRenderer with board background and hold circles
+ * Skeleton that mimics the BoardRenderer - just a placeholder area
  */
 const BoardRendererSkeleton = () => (
   <div
     style={{
       width: '100%',
-      aspectRatio: '1 / 1.2',
+      aspectRatio: '1 / 1.1',
       backgroundColor: 'var(--ant-color-fill-quaternary)',
       borderRadius: 4,
-      position: 'relative',
-      overflow: 'hidden',
     }}
-  >
-    {/* Simulated hold circles scattered on the board */}
-    {[
-      { top: '15%', left: '30%', size: 16 },
-      { top: '25%', left: '60%', size: 14 },
-      { top: '35%', left: '45%', size: 18 },
-      { top: '45%', left: '25%', size: 14 },
-      { top: '55%', left: '70%', size: 16 },
-      { top: '65%', left: '40%', size: 14 },
-      { top: '75%', left: '55%', size: 18 },
-      { top: '85%', left: '35%', size: 16 },
-    ].map((hold, i) => (
-      <div
-        key={i}
-        style={{
-          position: 'absolute',
-          top: hold.top,
-          left: hold.left,
-          width: hold.size,
-          height: hold.size,
-          borderRadius: '50%',
-          border: '3px solid var(--ant-color-fill-secondary)',
-          opacity: 0.6,
-        }}
-      />
-    ))}
-  </div>
-);
-
-/**
- * Card action button placeholders
- */
-const CardActionsSkeleton = () => (
-  <Flex justify="space-around" style={{ padding: '8px 0' }}>
-    {[1, 2, 3, 4].map((i) => (
-      <div
-        key={i}
-        style={{
-          width: 20,
-          height: 20,
-          backgroundColor: 'var(--ant-color-fill-tertiary)',
-          borderRadius: 4,
-        }}
-      />
-    ))}
-  </Flex>
+  />
 );
 
 /**
  * Skeleton loading UI for the board page, matching the ClimbsList grid layout.
- * Used as a fallback for Suspense boundaries.
+ * Uses the same Card structure as ClimbCard with muted action icons.
  */
 const ClimbCardSkeleton = () => (
   <Card
@@ -119,10 +76,14 @@ const ClimbCardSkeleton = () => (
     styles={{
       header: { paddingTop: 8, paddingBottom: 6 },
       body: { padding: 6 },
-      actions: { borderTop: '1px solid var(--ant-color-border-secondary)' },
     }}
     title={<ClimbCardTitleSkeleton />}
-    actions={[<CardActionsSkeleton key="actions" />]}
+    actions={[
+      <InfoCircleOutlined key="info" style={{ color: 'var(--ant-color-text-quaternary)' }} />,
+      <ForkOutlined key="fork" style={{ color: 'var(--ant-color-text-quaternary)' }} />,
+      <HeartOutlined key="heart" style={{ color: 'var(--ant-color-text-quaternary)' }} />,
+      <PlusCircleOutlined key="plus" style={{ color: 'var(--ant-color-text-quaternary)' }} />,
+    ]}
   >
     <BoardRendererSkeleton />
   </Card>
