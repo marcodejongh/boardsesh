@@ -1,12 +1,107 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, Row, Col, Typography, Empty, Modal } from 'antd';
 import { InstagramOutlined } from '@ant-design/icons';
 import { BetaLink } from '@/app/lib/api-wrappers/sync-api-types';
 import { themeTokens } from '@/app/theme/theme-config';
 
 const { Title } = Typography;
+
+interface ThumbnailProps {
+  betaLink: BetaLink;
+}
+
+const BetaThumbnail: React.FC<ThumbnailProps> = ({ betaLink }) => {
+  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(betaLink.thumbnail);
+  const [hasError, setHasError] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    // If no stored thumbnail, try oEmbed immediately
+    if (!betaLink.thumbnail && !isLoading && !hasError) {
+      fetchOembedThumbnail();
+    }
+  }, [betaLink.link]);
+
+  const fetchOembedThumbnail = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(
+        `/api/v1/instagram/oembed?url=${encodeURIComponent(betaLink.link)}`,
+      );
+      if (response.ok) {
+        const data = await response.json();
+        if (data.thumbnail_url) {
+          setThumbnailUrl(data.thumbnail_url);
+          setHasError(false);
+          return;
+        }
+      }
+    } catch {
+      // oEmbed failed, show placeholder
+    }
+    setHasError(true);
+    setIsLoading(false);
+  };
+
+  const handleImageError = () => {
+    // Stored thumbnail failed, try oEmbed
+    if (!isLoading) {
+      setThumbnailUrl(null);
+      fetchOembedThumbnail();
+    }
+  };
+
+  if (hasError || (!thumbnailUrl && !isLoading)) {
+    return (
+      <div
+        style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          textAlign: 'center',
+        }}
+      >
+        <InstagramOutlined style={{ fontSize: 24, color: themeTokens.neutral[400] }} />
+      </div>
+    );
+  }
+
+  if (thumbnailUrl) {
+    return (
+      <img
+        src={thumbnailUrl}
+        alt={`Beta by ${betaLink.foreign_username || 'unknown'}`}
+        onError={handleImageError}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+        }}
+      />
+    );
+  }
+
+  // Loading state
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        textAlign: 'center',
+      }}
+    >
+      <InstagramOutlined style={{ fontSize: 24, color: themeTokens.neutral[300] }} />
+    </div>
+  );
+};
 
 interface BetaVideosProps {
   betaLinks: BetaLink[];
@@ -69,32 +164,7 @@ const BetaVideos: React.FC<BetaVideosProps> = ({ betaLinks }) => {
                     background: themeTokens.neutral[100],
                   }}
                 >
-                  {betaLink.thumbnail ? (
-                    <img
-                      src={betaLink.thumbnail}
-                      alt={`Beta by ${betaLink.foreign_username || 'unknown'}`}
-                      style={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover',
-                      }}
-                    />
-                  ) : (
-                    <div
-                      style={{
-                        position: 'absolute',
-                        top: '50%',
-                        left: '50%',
-                        transform: 'translate(-50%, -50%)',
-                        textAlign: 'center',
-                      }}
-                    >
-                      <InstagramOutlined style={{ fontSize: 24, color: themeTokens.neutral[400] }} />
-                    </div>
-                  )}
+                  <BetaThumbnail betaLink={betaLink} />
                   {(betaLink.foreign_username || betaLink.angle) && (
                     <div
                       style={{
