@@ -41,6 +41,52 @@ const BoardRenderer = React.memo(
       </svg>
     );
   },
+  (prevProps, nextProps) => {
+    // Compare thumbnail (affects SVG maxHeight)
+    if (prevProps.thumbnail !== nextProps.thumbnail) return false;
+
+    // Compare mirrored and onHoldClick (passed to BoardLitupHolds)
+    if (prevProps.mirrored !== nextProps.mirrored) return false;
+    if (prevProps.onHoldClick !== nextProps.onHoldClick) return false;
+
+    // Compare litUpHoldsMap presence (content comparison is handled by BoardLitupHolds memo)
+    const prevHasMap = !!prevProps.litUpHoldsMap;
+    const nextHasMap = !!nextProps.litUpHoldsMap;
+    if (prevHasMap !== nextHasMap) return false;
+
+    // Compare boardDetails by key identifiers and dimensions
+    if (prevProps.boardDetails !== nextProps.boardDetails) {
+      const prevBd = prevProps.boardDetails;
+      const nextBd = nextProps.boardDetails;
+
+      // Compare identifiers
+      if (
+        prevBd.board_name !== nextBd.board_name ||
+        prevBd.layout_id !== nextBd.layout_id ||
+        prevBd.size_id !== nextBd.size_id
+      ) {
+        return false;
+      }
+
+      // Compare dimensions (affects SVG viewBox)
+      if (prevBd.boardWidth !== nextBd.boardWidth || prevBd.boardHeight !== nextBd.boardHeight) {
+        return false;
+      }
+
+      // Compare images (affects image rendering)
+      const prevImages = Object.keys(prevBd.images_to_holds);
+      const nextImages = Object.keys(nextBd.images_to_holds);
+      if (prevImages.length !== nextImages.length) return false;
+      for (let i = 0; i < prevImages.length; i++) {
+        if (prevImages[i] !== nextImages[i]) return false;
+      }
+
+      // Compare holdsData reference (passed to BoardLitupHolds)
+      if (prevBd.holdsData !== nextBd.holdsData) return false;
+    }
+
+    return true;
+  },
 );
 
 BoardRenderer.displayName = 'BoardRenderer';
