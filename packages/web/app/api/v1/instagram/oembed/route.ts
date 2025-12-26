@@ -1,21 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Cache for oEmbed responses (in-memory, resets on server restart)
-const thumbnailCache = new Map<string, { url: string; timestamp: number }>();
-const CACHE_TTL = 1000 * 60 * 60 * 24; // 24 hours
-
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const instagramUrl = searchParams.get('url');
 
   if (!instagramUrl) {
     return NextResponse.json({ error: 'Missing url parameter' }, { status: 400 });
-  }
-
-  // Check cache first
-  const cached = thumbnailCache.get(instagramUrl);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    return NextResponse.json({ thumbnail_url: cached.url });
   }
 
   try {
@@ -26,7 +16,7 @@ export async function GET(request: NextRequest) {
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; Boardsesh/1.0)',
       },
-      next: { revalidate: 86400 }, // Cache for 24 hours
+      next: { revalidate: 86400 }, // Next.js fetch cache for 24 hours
     });
 
     if (!response.ok) {
@@ -39,13 +29,15 @@ export async function GET(request: NextRequest) {
     const data = await response.json();
 
     if (data.thumbnail_url) {
-      // Cache the result
-      thumbnailCache.set(instagramUrl, {
-        url: data.thumbnail_url,
-        timestamp: Date.now(),
-      });
-
-      return NextResponse.json({ thumbnail_url: data.thumbnail_url });
+      // Return with cache headers for browser/CDN caching
+      return NextResponse.json(
+        { thumbnail_url: data.thumbnail_url },
+        {
+          headers: {
+            'Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=43200',
+          },
+        },
+      );
     }
 
     return NextResponse.json({ error: 'No thumbnail found' }, { status: 404 });
