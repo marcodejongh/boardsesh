@@ -49,10 +49,8 @@ const BoardRenderer = React.memo(
     if (prevProps.mirrored !== nextProps.mirrored) return false;
     if (prevProps.onHoldClick !== nextProps.onHoldClick) return false;
 
-    // Compare litUpHoldsMap presence (content comparison is handled by BoardLitupHolds memo)
-    const prevHasMap = !!prevProps.litUpHoldsMap;
-    const nextHasMap = !!nextProps.litUpHoldsMap;
-    if (prevHasMap !== nextHasMap) return false;
+    // Compare litUpHoldsMap by reference - different climbs have different map objects
+    if (prevProps.litUpHoldsMap !== nextProps.litUpHoldsMap) return false;
 
     // Compare boardDetails by key identifiers and dimensions
     if (prevProps.boardDetails !== nextProps.boardDetails) {
