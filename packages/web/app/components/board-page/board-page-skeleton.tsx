@@ -1,10 +1,9 @@
-'use client';
-
 import React from 'react';
 import Row from 'antd/es/row';
 import Col from 'antd/es/col';
 import Flex from 'antd/es/flex';
 import Card from 'antd/es/card';
+import Skeleton from 'antd/es/skeleton';
 import { InfoCircleOutlined, ForkOutlined, HeartOutlined, PlusCircleOutlined } from '@ant-design/icons';
 import { themeTokens } from '@/app/theme/theme-config';
 
@@ -14,58 +13,33 @@ import { themeTokens } from '@/app/theme/theme-config';
 const ClimbCardTitleSkeleton = () => (
   <Flex gap={12} align="center">
     {/* Left side: Name and info stacked */}
-    <Flex vertical gap={2} style={{ flex: 1, minWidth: 0 }}>
-      {/* Name placeholder */}
-      <div
-        style={{
-          height: 14,
-          width: '60%',
-          backgroundColor: 'var(--ant-color-fill-secondary)',
-          borderRadius: 4,
-        }}
-      />
-      {/* Quality/setter placeholder */}
-      <div
-        style={{
-          height: 12,
-          width: '80%',
-          backgroundColor: 'var(--ant-color-fill-tertiary)',
-          borderRadius: 4,
-        }}
-      />
+    <Flex vertical gap={4} style={{ flex: 1, minWidth: 0 }}>
+      <Skeleton.Input active size="small" style={{ width: '60%', minWidth: 80 }} />
+      <Skeleton.Input active size="small" style={{ width: '80%', minWidth: 100, height: 14 }} />
     </Flex>
     {/* Right side: V grade placeholder */}
-    <div
-      style={{
-        width: 32,
-        height: 32,
-        backgroundColor: 'var(--ant-color-fill-secondary)',
-        borderRadius: 4,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    />
+    <Skeleton.Avatar active shape="square" size={32} />
   </Flex>
 );
 
 /**
- * Skeleton that mimics the BoardRenderer - just a placeholder area
+ * Skeleton that mimics the BoardRenderer - square placeholder for the board image
  */
 const BoardRendererSkeleton = () => (
-  <div
+  <Skeleton.Node
+    active
     style={{
       width: '100%',
-      aspectRatio: '1 / 1.1',
-      backgroundColor: 'var(--ant-color-fill-quaternary)',
-      borderRadius: 4,
+      height: 0,
+      paddingBottom: '110%', // Matches aspectRatio 1/1.1
     }}
-  />
+  >
+    <span />
+  </Skeleton.Node>
 );
 
 /**
- * Skeleton loading UI for the board page, matching the ClimbsList grid layout.
- * Uses the same Card structure as ClimbCard with muted action icons.
+ * Skeleton loading UI for ClimbCard, matching the card structure with muted action icons.
  */
 const ClimbCardSkeleton = () => (
   <Card
@@ -89,6 +63,9 @@ const ClimbCardSkeleton = () => (
   </Card>
 );
 
+/**
+ * Skeleton loading UI for the board page, matching the ClimbsList grid layout.
+ */
 const BoardPageSkeleton = () => {
   return (
     <Row gutter={[8, 8]}>

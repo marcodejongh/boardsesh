@@ -18,6 +18,26 @@ type ClimbCardProps = {
   actions?: React.JSX.Element[];
 };
 
+/**
+ * Compare actions arrays for memo equality.
+ * Handles common cases: both undefined, both empty arrays, or same reference.
+ */
+const areActionsEqual = (
+  prev: React.JSX.Element[] | undefined,
+  next: React.JSX.Element[] | undefined,
+): boolean => {
+  // Same reference (including both undefined)
+  if (prev === next) return true;
+  // One undefined, one not
+  if (!prev || !next) return false;
+  // Both empty arrays (common case: actions={[]} passed each render)
+  if (prev.length === 0 && next.length === 0) return true;
+  // Different lengths
+  if (prev.length !== next.length) return false;
+  // Compare by keys (React elements should have stable keys)
+  return prev.every((el, i) => el.key === next[i].key);
+};
+
 const ClimbCard = React.memo(
   ({ climb, boardDetails, onCoverClick, selected, actions }: ClimbCardProps) => {
     const cover = <ClimbCardCover climb={climb} boardDetails={boardDetails} onClick={onCoverClick} />;
@@ -44,13 +64,29 @@ const ClimbCard = React.memo(
     );
   },
   (prevProps, nextProps) => {
-    return (
-      prevProps.climb?.uuid === nextProps.climb?.uuid &&
-      prevProps.selected === nextProps.selected &&
-      prevProps.boardDetails === nextProps.boardDetails &&
-      prevProps.onCoverClick === nextProps.onCoverClick &&
-      prevProps.actions === nextProps.actions
-    );
+    // Compare climb by uuid (stable identifier)
+    if (prevProps.climb?.uuid !== nextProps.climb?.uuid) return false;
+    // Compare selected state
+    if (prevProps.selected !== nextProps.selected) return false;
+    // Compare boardDetails by reference (stable from server) or by key identifiers
+    if (prevProps.boardDetails !== nextProps.boardDetails) {
+      // Fallback: compare by stable identifiers if references differ
+      const prevBd = prevProps.boardDetails;
+      const nextBd = nextProps.boardDetails;
+      if (
+        prevBd.board_name !== nextBd.board_name ||
+        prevBd.layout_id !== nextBd.layout_id ||
+        prevBd.size_id !== nextBd.size_id
+      ) {
+        return false;
+      }
+    }
+    // Compare callbacks by reference (parent should memoize with useCallback)
+    if (prevProps.onCoverClick !== nextProps.onCoverClick) return false;
+    // Compare actions arrays properly
+    if (!areActionsEqual(prevProps.actions, nextProps.actions)) return false;
+
+    return true;
   },
 );
 
