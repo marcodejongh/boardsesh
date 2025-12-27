@@ -7,14 +7,12 @@ import {
   CrownFilled,
   LoadingOutlined,
   CheckCircleOutlined,
-  DisconnectOutlined,
 } from '@ant-design/icons';
 import { Button, Input, Drawer, QRCode, Flex, message, Typography, Badge } from 'antd';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { usePartyContext } from '../party-manager/party-context';
 import { useBackendUrl } from '../connection-manager/connection-settings-context';
 import { useQueueContext } from '../graphql-queue';
-import { BackendSetupPanel } from './backend-setup-panel';
 import { themeTokens } from '@/app/theme/theme-config';
 
 const { Text } = Typography;
@@ -36,9 +34,9 @@ const getShareUrl = (pathname: string, searchParams: URLSearchParams, backendUrl
 };
 
 export const ShareBoardButton = () => {
-  const { users, clientId, isBackendMode, hasConnected, connectionError, disconnect } = useQueueContext();
+  const { users, clientId, isBackendMode, hasConnected, connectionError } = useQueueContext();
   const { connectedUsers, userName } = usePartyContext();
-  const { backendUrl, setBackendUrl, clearBackendUrl } = useBackendUrl();
+  const { backendUrl } = useBackendUrl();
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const controllerUrl = searchParams.get('controllerUrl');
@@ -69,16 +67,6 @@ export const ShareBoardButton = () => {
       .catch(() => {
         message.error('Failed to copy URL.');
       });
-  };
-
-  const handleBackendConnect = (url: string) => {
-    setBackendUrl(url);
-  };
-
-  const handleBackendDisconnect = () => {
-    // First disconnect the GraphQL client, then clear the URL
-    disconnect?.();
-    clearBackendUrl();
   };
 
   // Calculate connection count for badge
@@ -134,16 +122,6 @@ export const ShareBoardButton = () => {
           {/* Backend Mode Content */}
           {!isControllerMode && (
             <>
-              {/* Not connected - show setup */}
-              {!isConnected && !isConnecting && (
-                <BackendSetupPanel
-                  onConnect={handleBackendConnect}
-                  isConnecting={isConnecting}
-                  error={connectionError?.message ?? null}
-                  storedUrl={backendUrl}
-                />
-              )}
-
               {/* Connecting */}
               {isConnecting && (
                 <Flex vertical align="center" gap="middle" style={{ padding: '24px' }}>
@@ -152,6 +130,22 @@ export const ShareBoardButton = () => {
                   <Text type="secondary" style={{ fontSize: '12px' }}>
                     {backendUrl}
                   </Text>
+                </Flex>
+              )}
+
+              {/* Connection error */}
+              {connectionError && !isConnecting && (
+                <Flex
+                  align="center"
+                  gap="small"
+                  style={{
+                    padding: '12px',
+                    background: themeTokens.colors.errorBg,
+                    border: `1px solid ${themeTokens.colors.error}`,
+                    borderRadius: themeTokens.borderRadius.md,
+                  }}
+                >
+                  <Text type="danger">{connectionError.message}</Text>
                 </Flex>
               )}
 
@@ -235,11 +229,6 @@ export const ShareBoardButton = () => {
                   <Flex justify="center">
                     <QRCode value={shareUrl} size={160} bordered={false} />
                   </Flex>
-
-                  {/* Disconnect button */}
-                  <Button danger icon={<DisconnectOutlined />} onClick={handleBackendDisconnect} block>
-                    Disconnect from Backend
-                  </Button>
                 </>
               )}
             </>
