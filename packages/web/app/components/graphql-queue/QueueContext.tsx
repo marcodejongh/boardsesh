@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useContext, createContext, ReactNode, useCallback, useMemo, useState, useEffect } from 'react';
+import React, { useContext, createContext, ReactNode, useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { v4 as uuidv4 } from 'uuid';
 import { useQueueReducer } from '../queue-control/reducer';
@@ -172,6 +172,30 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
   const hasConnected = isPersistentSessionActive ? persistentSession.hasConnected : false;
   const users = isPersistentSessionActive ? persistentSession.users : [];
   const connectionError = isPersistentSessionActive ? persistentSession.error : null;
+
+  // Use refs to ensure mutation functions always use current values
+  // This prevents stale closure issues when callbacks are invoked from event handlers
+  // (e.g., drag-and-drop monitors that capture old function references)
+  const hasConnectedRef = useRef(hasConnected);
+  const isPersistentSessionActiveRef = useRef(isPersistentSessionActive);
+  const persistentSessionRef = useRef(persistentSession);
+  const stateRef = useRef(state);
+
+  useEffect(() => {
+    hasConnectedRef.current = hasConnected;
+  }, [hasConnected]);
+
+  useEffect(() => {
+    isPersistentSessionActiveRef.current = isPersistentSessionActive;
+  }, [isPersistentSessionActive]);
+
+  useEffect(() => {
+    persistentSessionRef.current = persistentSession;
+  }, [persistentSession]);
+
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
 
   // Session management functions
   const startSession = useCallback(
@@ -372,18 +396,22 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
       },
 
       setQueue: (queue) => {
+        // Use refs to get current values - prevents stale closure issues
+        // when this function is called from event handlers like drag-and-drop monitors
+        const currentState = stateRef.current;
+
         // Optimistic update
         dispatch({
           type: 'UPDATE_QUEUE',
           payload: {
             queue,
-            currentClimbQueueItem: state.currentClimbQueueItem,
+            currentClimbQueueItem: currentState.currentClimbQueueItem,
           },
         });
 
-        // Send to server only if connected
-        if (hasConnected && isPersistentSessionActive) {
-          persistentSession.setQueue(queue, state.currentClimbQueueItem).catch((error) => {
+        // Send to server only if connected - use refs for current values
+        if (hasConnectedRef.current && isPersistentSessionActiveRef.current) {
+          persistentSessionRef.current.setQueue(queue, currentState.currentClimbQueueItem).catch((error) => {
             console.error('Failed to set queue:', error);
           });
         }
