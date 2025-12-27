@@ -146,13 +146,19 @@ export function queueReducer(state: QueueState, action: QueueAction): QueueState
 
     case 'DELTA_UPDATE_CURRENT_CLIMB': {
       const { item, shouldAddToQueue } = action.payload;
+
+      // Skip if this is the same item (deduplication for optimistic updates)
+      if (item && state.currentClimbQueueItem?.uuid === item.uuid) {
+        return state;
+      }
+
       let newQueue = state.queue;
-      
+
       // Add to queue if requested and item doesn't exist
       if (item && shouldAddToQueue && !state.queue.find(qItem => qItem.uuid === item.uuid)) {
         newQueue = [...state.queue, item];
       }
-      
+
       return {
         ...state,
         queue: newQueue,
