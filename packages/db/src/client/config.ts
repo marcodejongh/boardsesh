@@ -17,28 +17,39 @@ export function isTestEnvironment(): boolean {
 }
 
 export function getConnectionConfig(): ConnectionConfig {
-  let connectionString = process.env.DATABASE_URL;
+  const connectionString = process.env.DATABASE_URL;
   const isLocal = isLocalDevelopment();
   const isTest = isTestEnvironment();
 
-  if (isLocal && !isTest) {
-    connectionString = 'postgres://postgres:password@db.localtest.me:5432/main';
+  // Use DATABASE_URL as-is if provided
+  // Only fall back to local Docker database if DATABASE_URL is not set and in local development
+  if (!connectionString && isLocal && !isTest) {
+    return {
+      connectionString: 'postgres://postgres:password@db.localtest.me:5432/main',
+      isLocal,
+      isTest,
+    };
   }
-  // In test mode, use DATABASE_URL as-is (set by test setup)
 
-  return { connectionString: connectionString!, isLocal, isTest };
+  if (!connectionString) {
+    throw new Error('DATABASE_URL environment variable is required');
+  }
+
+  return { connectionString, isLocal, isTest };
 }
 
 export function configureNeonForEnvironment(): void {
-  const { isLocal, connectionString } = getConnectionConfig();
+  const { connectionString } = getConnectionConfig();
+  const connectionStringUrl = new URL(connectionString);
+  const isLocalDb = connectionStringUrl.hostname === 'db.localtest.me';
 
-  if (isLocal) {
+  // Only apply local Neon proxy settings for the local Docker database
+  if (isLocalDb) {
     neonConfig.fetchEndpoint = (host) => {
       const [protocol, port] = host === 'db.localtest.me' ? ['http', 4444] : ['https', 443];
       return `${protocol}://${host}:${port}/sql`;
     };
-    const connectionStringUrl = new URL(connectionString);
-    neonConfig.useSecureWebSocket = connectionStringUrl.hostname !== 'db.localtest.me';
+    neonConfig.useSecureWebSocket = false;
     neonConfig.wsProxy = (host) => (host === 'db.localtest.me' ? `${host}:4444/v2` : `${host}/v2`);
   }
 }
