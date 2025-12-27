@@ -7,6 +7,7 @@ import { SpeedInsights } from '@vercel/speed-insights/next';
 import SessionProviderWrapper from './components/providers/session-provider';
 import QueryClientProvider from './components/providers/query-client-provider';
 import { NavigationLoadingProvider } from './components/providers/navigation-loading-provider';
+import PersistentSessionWrapper from './components/providers/persistent-session-wrapper';
 import { antdTheme } from './theme/antd-theme';
 import './components/index.css';
 
@@ -23,7 +24,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <AntdRegistry>
               <ConfigProvider theme={antdTheme}>
                 <App>
-                  <NavigationLoadingProvider>{children}</NavigationLoadingProvider>
+                  <PersistentSessionWrapper>
+                    <NavigationLoadingProvider>{children}</NavigationLoadingProvider>
+                  </PersistentSessionWrapper>
                 </App>
               </ConfigProvider>
             </AntdRegistry>

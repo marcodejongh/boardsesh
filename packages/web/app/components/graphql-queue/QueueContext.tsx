@@ -3,7 +3,6 @@
 import React, { useContext, createContext, ReactNode, useCallback, useMemo, useState, useEffect } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { v4 as uuidv4 } from 'uuid';
-import { useQueueSession } from './use-queue-session';
 import { useQueueReducer } from '../queue-control/reducer';
 import { useQueueDataFetching } from '../queue-control/hooks/use-queue-data-fetching';
 import { QueueContextType, ClimbQueueItem, UserName, QueueItemUser } from '../queue-control/types';
@@ -11,9 +10,9 @@ import { urlParamsToSearchParams, searchParamsToUrlParams } from '@/app/lib/url-
 import { Climb, ParsedBoardRouteParameters } from '@/app/lib/types';
 import { useConnectionSettings } from '../connection-manager/connection-settings-context';
 import { usePartyProfile } from '../party-manager/party-profile-context';
-import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { ClientQueueEvent } from '@boardsesh/shared-schema';
 import { saveSessionToHistory } from '../setup-wizard/session-history-panel';
+import { usePersistentSession } from '../persistent-session';
 
 // Extended context type with session management
 export interface GraphQLQueueContextType extends QueueContextType {
@@ -59,8 +58,8 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
   // Get party profile for user ID, and username/avatarUrl from NextAuth session
   const { profile, username, avatarUrl } = usePartyProfile();
 
-  // Get WebSocket auth token for backend authentication
-  const { token: wsAuthToken, isLoading: authLoading } = useWsAuthToken();
+  // Get persistent session (managed at root level)
+  const persistentSession = usePersistentSession();
 
   // Read sessionId from URL search params - party mode is opt-in
   const sessionIdFromUrl = searchParams.get('session');
@@ -74,6 +73,10 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
   // Session ID for connection - only connect if we have an active session
   const sessionId = activeSessionId;
 
+  // Check if persistent session is active for this board
+  const isPersistentSessionActive = persistentSession.activeSession?.sessionId === sessionId &&
+    persistentSession.activeSession?.boardPath === pathname;
+
   // Build current user info for queue items
   const currentUserInfo: QueueItemUser | undefined = useMemo(() => {
     if (!profile?.id) return undefined;
@@ -84,9 +87,11 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
     };
   }, [profile?.id, username, avatarUrl]);
 
-  // Handle queue events from GraphQL subscription
-  const handleQueueEvent = useCallback(
-    (event: ClientQueueEvent) => {
+  // Subscribe to queue events from persistent session
+  useEffect(() => {
+    if (!isPersistentSessionActive) return;
+
+    const unsubscribe = persistentSession.subscribeToQueueEvents((event: ClientQueueEvent) => {
       switch (event.__typename) {
         case 'FullSync':
           dispatch({
@@ -138,22 +143,31 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
           });
           break;
       }
-    },
-    [dispatch],
-  );
+    });
 
-  // Connect to GraphQL session only when we have an active session
-  const queueSession = useQueueSession({
-    backendUrl: sessionId ? (backendUrl || '') : '', // Don't connect if no session
-    sessionId: sessionId || '',
-    boardPath: pathname,
-    username,
-    avatarUrl,
-    authToken: wsAuthToken,
-    onQueueEvent: handleQueueEvent,
-  });
+    return unsubscribe;
+  }, [isPersistentSessionActive, persistentSession, dispatch]);
 
-  const { clientId, isLeader } = queueSession;
+  // Sync local state with persistent session state on mount/reconnect
+  useEffect(() => {
+    if (isPersistentSessionActive && persistentSession.hasConnected) {
+      // Sync queue state from persistent session
+      dispatch({
+        type: 'INITIAL_QUEUE_DATA',
+        payload: {
+          queue: persistentSession.queue,
+          currentClimbQueueItem: persistentSession.currentClimbQueueItem,
+        },
+      });
+    }
+  }, [isPersistentSessionActive, persistentSession.hasConnected, persistentSession.queue, persistentSession.currentClimbQueueItem, dispatch]);
+
+  // Use persistent session values when active
+  const clientId = isPersistentSessionActive ? persistentSession.clientId : null;
+  const isLeader = isPersistentSessionActive ? persistentSession.isLeader : false;
+  const hasConnected = isPersistentSessionActive ? persistentSession.hasConnected : false;
+  const users = isPersistentSessionActive ? persistentSession.users : [];
+  const connectionError = isPersistentSessionActive ? persistentSession.error : null;
 
   // Session management functions
   const startSession = useCallback(
@@ -216,8 +230,8 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
   );
 
   const endSession = useCallback(() => {
-    // Disconnect from backend
-    queueSession.disconnect();
+    // Deactivate persistent session
+    persistentSession.deactivateSession();
 
     // Remove session from URL
     const params = new URLSearchParams(searchParams.toString());
@@ -227,10 +241,10 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
 
     // Update state
     setActiveSessionId(null);
-  }, [queueSession, pathname, router, searchParams]);
+  }, [persistentSession, pathname, router, searchParams]);
 
   // Whether party mode is active
-  const isSessionActive = !!sessionId && queueSession.hasConnected;
+  const isSessionActive = !!sessionId && hasConnected;
 
   // Data fetching for search results
   const {
@@ -254,9 +268,9 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
   const viewOnlyMode = useMemo(() => {
     if (!sessionId) return false; // No session = local mode, not view-only
     if (!backendUrl) return false; // No backend = no view-only mode
-    if (!queueSession.hasConnected) return true; // Still connecting = view-only
+    if (!hasConnected) return true; // Still connecting = view-only
     return false; // Once connected, everyone can modify the queue
-  }, [sessionId, backendUrl, queueSession.hasConnected]);
+  }, [sessionId, backendUrl, hasConnected]);
 
   const contextValue: GraphQLQueueContextType = useMemo(
     () => ({
@@ -281,13 +295,13 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
       endSession,
 
       // Session data for party context
-      users: queueSession.users,
-      clientId: queueSession.clientId,
+      users,
+      clientId,
       isLeader,
       isBackendMode: !!backendUrl,
-      hasConnected: queueSession.hasConnected,
-      connectionError: queueSession.error,
-      disconnect: queueSession.disconnect,
+      hasConnected,
+      connectionError,
+      disconnect: persistentSession.deactivateSession,
 
       // Actions
       addToQueue: (climb: Climb) => {
@@ -297,8 +311,8 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
         dispatch({ type: 'DELTA_ADD_QUEUE_ITEM', payload: { item: newItem } });
 
         // Send to server only if connected
-        if (queueSession.hasConnected) {
-          queueSession.addQueueItem(newItem).catch((error) => {
+        if (hasConnected && isPersistentSessionActive) {
+          persistentSession.addQueueItem(newItem).catch((error) => {
             console.error('Failed to add queue item:', error);
           });
         }
@@ -309,8 +323,8 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
         dispatch({ type: 'DELTA_REMOVE_QUEUE_ITEM', payload: { uuid: item.uuid } });
 
         // Send to server only if connected
-        if (queueSession.hasConnected) {
-          queueSession.removeQueueItem(item.uuid).catch((error) => {
+        if (hasConnected && isPersistentSessionActive) {
+          persistentSession.removeQueueItem(item.uuid).catch((error) => {
             console.error('Failed to remove queue item:', error);
           });
         }
@@ -323,7 +337,7 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
         dispatch({ type: 'SET_CURRENT_CLIMB', payload: newItem });
 
         // Only sync with backend if connected
-        if (queueSession.hasConnected) {
+        if (hasConnected && isPersistentSessionActive) {
           // Save previous state for rollback
           const previousQueue = [...state.queue];
           const previousCurrentClimb = state.currentClimbQueueItem;
@@ -337,8 +351,8 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
           try {
             // First add the item at the appropriate position, then set as current
             // These must be sequential to avoid race conditions in the database
-            await queueSession.addQueueItem(newItem, position);
-            await queueSession.setCurrentClimb(newItem, false);
+            await persistentSession.addQueueItem(newItem, position);
+            await persistentSession.setCurrentClimb(newItem, false);
           } catch (error) {
             console.error('Failed to set current climb, rolling back:', error);
             // Rollback to previous state
@@ -364,8 +378,8 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
         });
 
         // Send to server only if connected
-        if (queueSession.hasConnected) {
-          queueSession.setQueue(queue, state.currentClimbQueueItem).catch((error) => {
+        if (hasConnected && isPersistentSessionActive) {
+          persistentSession.setQueue(queue, state.currentClimbQueueItem).catch((error) => {
             console.error('Failed to set queue:', error);
           });
         }
@@ -379,8 +393,8 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
         });
 
         // Send to server only if connected
-        if (queueSession.hasConnected) {
-          queueSession.setCurrentClimb(item, item.suggested).catch((error) => {
+        if (hasConnected && isPersistentSessionActive) {
+          persistentSession.setCurrentClimb(item, item.suggested).catch((error) => {
             console.error('Failed to set current climb:', error);
           });
         }
@@ -409,8 +423,8 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
         });
 
         // Send to server only if connected
-        if (queueSession.hasConnected) {
-          queueSession.mirrorCurrentClimb(newMirroredState).catch((error) => {
+        if (hasConnected && isPersistentSessionActive) {
+          persistentSession.mirrorCurrentClimb(newMirroredState).catch((error) => {
             console.error('Failed to mirror climb:', error);
           });
         }
@@ -449,8 +463,12 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
       parsedParams,
       clientId,
       isLeader,
+      users,
+      hasConnected,
+      connectionError,
       backendUrl,
-      queueSession,
+      persistentSession,
+      isPersistentSessionActive,
       dispatch,
       pathname,
       router,
@@ -464,8 +482,8 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
     ],
   );
 
-  // Don't render until connection settings and auth are loaded
-  if (!isLoaded || authLoading) {
+  // Don't render until connection settings are loaded
+  if (!isLoaded) {
     return null;
   }
 
