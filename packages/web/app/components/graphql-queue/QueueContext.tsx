@@ -170,8 +170,19 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
   const clientId = isPersistentSessionActive ? persistentSession.clientId : null;
   const isLeader = isPersistentSessionActive ? persistentSession.isLeader : false;
   const hasConnected = isPersistentSessionActive ? persistentSession.hasConnected : false;
+  const isConnecting = isPersistentSessionActive ? persistentSession.isConnecting : false;
   const users = isPersistentSessionActive ? persistentSession.users : [];
   const connectionError = isPersistentSessionActive ? persistentSession.error : null;
+
+  // Connection readiness: true when we have a session and the connection is ready for actions
+  // False when connecting, reconnecting, or there's an error
+  const isConnectionReady = useMemo(() => {
+    if (!sessionId) return true; // No session = local mode, always ready
+    if (!backendUrl) return true; // No backend = local mode, always ready
+    if (!hasConnected) return false; // Still connecting = not ready
+    if (connectionError) return false; // Has error = not ready
+    return true; // Connected without error = ready
+  }, [sessionId, backendUrl, hasConnected, connectionError]);
 
   // Session management functions
   const startSession = useCallback(
@@ -304,6 +315,8 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
       isLeader,
       isBackendMode: !!backendUrl,
       hasConnected,
+      isConnecting,
+      isConnectionReady,
       connectionError,
       disconnect: persistentSession.deactivateSession,
 
@@ -476,6 +489,8 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
       isLeader,
       users,
       hasConnected,
+      isConnecting,
+      isConnectionReady,
       connectionError,
       backendUrl,
       persistentSession,

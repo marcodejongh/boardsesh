@@ -1,6 +1,6 @@
 'use client';
 import React, { useEffect } from 'react';
-import { Divider, Row, Col, Button, Flex } from 'antd';
+import { Divider, Row, Col, Button, Flex, Tooltip } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { useQueueContext } from '../graphql-queue';
 import { Climb, BoardDetails } from '@/app/lib/types';
@@ -11,6 +11,7 @@ import QueueListItem from './queue-list-item';
 import ClimbThumbnail from '../climb-card/climb-thumbnail';
 import ClimbTitle from '../climb-card/climb-title';
 import { themeTokens } from '@/app/theme/theme-config';
+import { ConnectionStatusBanner } from './connection-status-banner';
 
 type QueueListProps = {
   boardDetails: BoardDetails;
@@ -26,7 +27,12 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails, onClimbNavigate }) 
     setCurrentClimbQueueItem,
     setQueue,
     addToQueue,
+    isConnectionReady,
+    sessionId,
   } = useQueueContext();
+
+  // Disable actions when in a session but connection is not ready
+  const actionsDisabled = sessionId && !isConnectionReady;
 
   // Monitor for drag-and-drop events
   useEffect(() => {
@@ -67,6 +73,7 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails, onClimbNavigate }) 
 
   return (
     <>
+      <ConnectionStatusBanner compact />
       <Flex vertical>
         {queue.map((climbQueueItem, index) => {
           const isCurrent = currentClimbQueueItem?.uuid === climbQueueItem.uuid;
@@ -82,6 +89,7 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails, onClimbNavigate }) 
               isCurrent={isCurrent}
               isHistory={isHistory}
               viewOnlyMode={viewOnlyMode}
+              actionsDisabled={!!actionsDisabled}
               boardDetails={boardDetails}
               setCurrentClimbQueueItem={setCurrentClimbQueueItem}
               onClimbNavigate={onClimbNavigate}
@@ -119,7 +127,14 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails, onClimbNavigate }) 
                     <ClimbTitle climb={climb} showAngle centered />
                   </Col>
                   <Col xs={3} sm={2}>
-                    <Button type="default" icon={<PlusOutlined />} onClick={() => addToQueue(climb)} />
+                    <Tooltip title={actionsDisabled ? 'Waiting for connection...' : undefined}>
+                      <Button
+                        type="default"
+                        icon={<PlusOutlined />}
+                        onClick={() => addToQueue(climb)}
+                        disabled={!!actionsDisabled}
+                      />
+                    </Tooltip>
                   </Col>
                 </Row>
               </div>
