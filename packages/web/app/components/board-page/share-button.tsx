@@ -8,28 +8,22 @@ import {
   LoadingOutlined,
   CheckCircleOutlined,
   LoginOutlined,
+  PlayCircleOutlined,
+  CloseCircleOutlined,
 } from '@ant-design/icons';
-import { Button, Input, Drawer, QRCode, Flex, message, Typography, Badge } from 'antd';
+import { Button, Input, Drawer, QRCode, Flex, message, Typography, Badge, Switch, Tabs, Space } from 'antd';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { signIn } from 'next-auth/react';
-import { usePartyContext } from '../party-manager/party-context';
-import { usePartyProfile } from '../party-manager/party-profile-context';
-import { useBackendUrl } from '../connection-manager/connection-settings-context';
+import { signIn, useSession } from 'next-auth/react';
 import { useQueueContext } from '../graphql-queue';
 import { themeTokens } from '@/app/theme/theme-config';
 
 const { Text } = Typography;
 
-const getShareUrl = (pathname: string, searchParams: URLSearchParams, backendUrl: string | null) => {
+const getShareUrl = (pathname: string, sessionId: string | null) => {
   try {
-    const params = new URLSearchParams(searchParams.toString());
-    // Remove existing connection params
-    params.delete('hostId');
-    params.delete('backendUrl');
-
-    if (backendUrl) {
-      params.set('backendUrl', backendUrl);
-    }
+    if (!sessionId) return '';
+    const params = new URLSearchParams();
+    params.set('session', sessionId);
     return `${window.location.origin}${pathname}?${params.toString()}`;
   } catch {
     return '';
@@ -37,16 +31,29 @@ const getShareUrl = (pathname: string, searchParams: URLSearchParams, backendUrl
 };
 
 export const ShareBoardButton = () => {
-  const { users, clientId, isBackendMode, hasConnected, connectionError } = useQueueContext();
-  const { connectedUsers, userName } = usePartyContext();
-  const { isAuthenticated } = usePartyProfile();
-  const { backendUrl } = useBackendUrl();
+  const {
+    users,
+    clientId,
+    hasConnected,
+    connectionError,
+    isSessionActive,
+    sessionId,
+    startSession,
+    joinSession,
+    endSession,
+  } = useQueueContext();
+  const { status: authStatus } = useSession();
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const controllerUrl = searchParams.get('controllerUrl');
   const isControllerMode = !!controllerUrl;
 
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isStartingSession, setIsStartingSession] = useState(false);
+  const [joinSessionId, setJoinSessionId] = useState('');
+  const [discoverable, setDiscoverable] = useState(false);
+
+  const isLoggedIn = authStatus === 'authenticated';
 
   const showDrawer = () => {
     setIsDrawerOpen(true);
@@ -57,10 +64,10 @@ export const ShareBoardButton = () => {
   };
 
   // Determine connection state
-  const isConnecting = !!(isBackendMode && !hasConnected);
-  const isConnected = !!(isBackendMode && hasConnected);
+  const isConnecting = !!(sessionId && !hasConnected);
+  const isConnected = !!(sessionId && hasConnected);
 
-  const shareUrl = getShareUrl(pathname, searchParams, backendUrl);
+  const shareUrl = getShareUrl(pathname, sessionId);
 
   const copyToClipboard = () => {
     navigator.clipboard
@@ -73,6 +80,57 @@ export const ShareBoardButton = () => {
       });
   };
 
+  const handleStartSession = async () => {
+    if (!isLoggedIn) {
+      signIn();
+      return;
+    }
+
+    setIsStartingSession(true);
+    try {
+      await startSession({ discoverable });
+      message.success('Party mode started!');
+    } catch (error) {
+      console.error('Failed to start session:', error);
+      message.error('Failed to start party mode');
+    } finally {
+      setIsStartingSession(false);
+    }
+  };
+
+  const handleJoinSession = async () => {
+    if (!joinSessionId.trim()) {
+      message.warning('Please enter a session ID');
+      return;
+    }
+
+    try {
+      // Extract session ID from URL if full URL was pasted
+      let sessionIdToJoin = joinSessionId.trim();
+      try {
+        const url = new URL(sessionIdToJoin);
+        const sessionParam = url.searchParams.get('session');
+        if (sessionParam) {
+          sessionIdToJoin = sessionParam;
+        }
+      } catch {
+        // Not a URL, use as-is
+      }
+
+      await joinSession(sessionIdToJoin);
+      message.success('Joined party mode!');
+      setJoinSessionId('');
+    } catch (error) {
+      console.error('Failed to join session:', error);
+      message.error('Failed to join session');
+    }
+  };
+
+  const handleEndSession = () => {
+    endSession();
+    message.info('Left party mode');
+  };
+
   // Calculate connection count for badge
   const connectionCount = users?.length ?? 0;
 
@@ -83,10 +141,9 @@ export const ShareBoardButton = () => {
     <>
       <Badge count={connectionCount} overflowCount={100} showZero={false} color="cyan">
         <Button
-          type="default"
+          type={isSessionActive ? 'primary' : 'default'}
           onClick={showDrawer}
-          icon={!isConnected && isConnecting ? <LoadingOutlined /> : <TeamOutlined />}
-          disabled={!isBackendMode && !clientId}
+          icon={isConnecting ? <LoadingOutlined /> : <TeamOutlined />}
         />
       </Badge>
       <Drawer
@@ -123,17 +180,97 @@ export const ShareBoardButton = () => {
             </div>
           )}
 
-          {/* Backend Mode Content */}
+          {/* Party Mode Content */}
           {!isControllerMode && (
             <>
+              {/* No active session - show start/join options */}
+              {!isSessionActive && !isConnecting && (
+                <Tabs
+                  defaultActiveKey="start"
+                  items={[
+                    {
+                      key: 'start',
+                      label: 'Start Session',
+                      children: (
+                        <Flex vertical gap="middle">
+                          <Text>
+                            Start a party mode session to climb with others. Share your queue and take turns!
+                          </Text>
+
+                          {!isLoggedIn && (
+                            <Flex
+                              align="center"
+                              gap="small"
+                              style={{
+                                padding: '12px',
+                                background: themeTokens.colors.warningBg,
+                                border: `1px solid ${themeTokens.colors.warning}`,
+                                borderRadius: themeTokens.borderRadius.md,
+                              }}
+                            >
+                              <Text>Sign in to start a party session</Text>
+                              <Button type="primary" size="small" icon={<LoginOutlined />} onClick={() => signIn()}>
+                                Sign in
+                              </Button>
+                            </Flex>
+                          )}
+
+                          {isLoggedIn && (
+                            <>
+                              <Flex align="center" justify="space-between">
+                                <Space direction="vertical" size={0}>
+                                  <Text strong>Allow others to discover this session</Text>
+                                  <Text type="secondary" style={{ fontSize: '12px' }}>
+                                    Others nearby can find and join your session
+                                  </Text>
+                                </Space>
+                                <Switch checked={discoverable} onChange={setDiscoverable} />
+                              </Flex>
+
+                              <Button
+                                type="primary"
+                                size="large"
+                                icon={<PlayCircleOutlined />}
+                                onClick={handleStartSession}
+                                loading={isStartingSession}
+                                block
+                              >
+                                Start Party Mode
+                              </Button>
+                            </>
+                          )}
+                        </Flex>
+                      ),
+                    },
+                    {
+                      key: 'join',
+                      label: 'Join Session',
+                      children: (
+                        <Flex vertical gap="middle">
+                          <Text>Enter a session link or ID to join an existing party.</Text>
+
+                          <Input
+                            placeholder="Paste session link or ID..."
+                            value={joinSessionId}
+                            onChange={(e) => setJoinSessionId(e.target.value)}
+                            onPressEnter={handleJoinSession}
+                          />
+
+                          <Button type="primary" size="large" onClick={handleJoinSession} block>
+                            Join Session
+                          </Button>
+                        </Flex>
+                      ),
+                    },
+                  ]}
+                />
+              )}
+
               {/* Connecting */}
               {isConnecting && (
                 <Flex vertical align="center" gap="middle" style={{ padding: '24px' }}>
                   <LoadingOutlined style={{ fontSize: '32px', color: themeTokens.colors.primary }} />
-                  <Text>Connecting to backend...</Text>
-                  <Text type="secondary" style={{ fontSize: '12px' }}>
-                    {backendUrl}
-                  </Text>
+                  <Text>Connecting to session...</Text>
                 </Flex>
               )}
 
@@ -153,7 +290,7 @@ export const ShareBoardButton = () => {
                 </Flex>
               )}
 
-              {/* Connected */}
+              {/* Connected - show session info */}
               {isConnected && (
                 <>
                   <Flex
@@ -167,15 +304,23 @@ export const ShareBoardButton = () => {
                     }}
                   >
                     <CheckCircleOutlined style={{ color: themeTokens.colors.success, fontSize: '18px' }} />
-                    <div>
+                    <div style={{ flex: 1 }}>
                       <Text strong style={{ color: themeTokens.colors.success }}>
-                        Connected to Backend
+                        Party Mode Active
                       </Text>
                       <br />
                       <Text type="secondary" style={{ fontSize: '12px' }}>
-                        {backendUrl}
+                        Session: {sessionId?.substring(0, 8)}...
                       </Text>
                     </div>
+                    <Button
+                      type="text"
+                      danger
+                      icon={<CloseCircleOutlined />}
+                      onClick={handleEndSession}
+                    >
+                      Leave
+                    </Button>
                   </Flex>
 
                   {/* Users list */}
@@ -198,9 +343,7 @@ export const ShareBoardButton = () => {
                             align="center"
                             style={{
                               background:
-                                user.id === currentUserId
-                                  ? themeTokens.semantic.selected
-                                  : themeTokens.neutral[100],
+                                user.id === currentUserId ? themeTokens.semantic.selected : themeTokens.neutral[100],
                               padding: '8px 12px',
                               borderRadius: themeTokens.borderRadius.md,
                               width: '100%',
@@ -222,7 +365,7 @@ export const ShareBoardButton = () => {
                   )}
 
                   {/* Sign-in prompt for non-authenticated users */}
-                  {!isAuthenticated && (
+                  {!isLoggedIn && (
                     <Flex
                       align="center"
                       justify="space-between"
@@ -235,28 +378,28 @@ export const ShareBoardButton = () => {
                       <Text type="secondary" style={{ fontSize: '13px' }}>
                         Sign in to customize your username
                       </Text>
-                      <Button
-                        type="link"
-                        size="small"
-                        icon={<LoginOutlined />}
-                        onClick={() => signIn()}
-                      >
+                      <Button type="link" size="small" icon={<LoginOutlined />} onClick={() => signIn()}>
                         Sign in
                       </Button>
                     </Flex>
                   )}
 
-                  {/* Share URL */}
-                  <Flex style={{ width: '100%' }} align="center">
-                    <Input
-                      value={shareUrl}
-                      readOnly
-                      addonAfter={<Button icon={<CopyOutlined />} onClick={copyToClipboard} />}
-                    />
-                  </Flex>
+                  {/* Share section */}
+                  <Flex vertical gap="small">
+                    <Text strong>Invite others to join:</Text>
 
-                  <Flex justify="center">
-                    <QRCode value={shareUrl} size={160} bordered={false} />
+                    {/* Share URL */}
+                    <Flex style={{ width: '100%' }} align="center">
+                      <Input
+                        value={shareUrl}
+                        readOnly
+                        addonAfter={<Button icon={<CopyOutlined />} onClick={copyToClipboard} />}
+                      />
+                    </Flex>
+
+                    <Flex justify="center">
+                      <QRCode value={shareUrl} size={160} bordered={false} />
+                    </Flex>
                   </Flex>
                 </>
               )}
