@@ -82,7 +82,6 @@ export const ShareBoardButton = () => {
           type="default"
           onClick={showDrawer}
           icon={!isConnected && isConnecting ? <LoadingOutlined /> : <TeamOutlined />}
-          disabled={!isBackendMode && !clientId}
         />
       </Badge>
       <Drawer
@@ -122,6 +121,29 @@ export const ShareBoardButton = () => {
           {/* Backend Mode Content */}
           {!isControllerMode && (
             <>
+              {/* No backend configured */}
+              {!isBackendMode && (
+                <Flex
+                  vertical
+                  align="center"
+                  gap="middle"
+                  style={{
+                    padding: '24px',
+                    background: themeTokens.colors.warningBg,
+                    border: `1px solid ${themeTokens.colors.warning}`,
+                    borderRadius: themeTokens.borderRadius.md,
+                  }}
+                >
+                  <Text strong style={{ color: themeTokens.colors.warning }}>
+                    Party Mode Not Configured
+                  </Text>
+                  <Text type="secondary" style={{ textAlign: 'center' }}>
+                    Set the NEXT_PUBLIC_WS_URL environment variable to your backend WebSocket URL and redeploy to
+                    enable Party Mode.
+                  </Text>
+                </Flex>
+              )}
+
               {/* Connecting */}
               {isConnecting && (
                 <Flex vertical align="center" gap="middle" style={{ padding: '24px' }}>
