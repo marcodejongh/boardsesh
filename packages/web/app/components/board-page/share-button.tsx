@@ -7,10 +7,13 @@ import {
   CrownFilled,
   LoadingOutlined,
   CheckCircleOutlined,
+  LoginOutlined,
 } from '@ant-design/icons';
 import { Button, Input, Drawer, QRCode, Flex, message, Typography, Badge } from 'antd';
 import { usePathname, useSearchParams } from 'next/navigation';
+import { signIn } from 'next-auth/react';
 import { usePartyContext } from '../party-manager/party-context';
+import { usePartyProfile } from '../party-manager/party-profile-context';
 import { useBackendUrl } from '../connection-manager/connection-settings-context';
 import { useQueueContext } from '../graphql-queue';
 import { themeTokens } from '@/app/theme/theme-config';
@@ -36,6 +39,7 @@ const getShareUrl = (pathname: string, searchParams: URLSearchParams, backendUrl
 export const ShareBoardButton = () => {
   const { users, clientId, isBackendMode, hasConnected, connectionError } = useQueueContext();
   const { connectedUsers, userName } = usePartyContext();
+  const { isAuthenticated } = usePartyProfile();
   const { backendUrl } = useBackendUrl();
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -214,6 +218,31 @@ export const ShareBoardButton = () => {
                           </Flex>
                         ))}
                       </Flex>
+                    </Flex>
+                  )}
+
+                  {/* Sign-in prompt for non-authenticated users */}
+                  {!isAuthenticated && (
+                    <Flex
+                      align="center"
+                      justify="space-between"
+                      style={{
+                        padding: '12px',
+                        background: themeTokens.neutral[100],
+                        borderRadius: themeTokens.borderRadius.md,
+                      }}
+                    >
+                      <Text type="secondary" style={{ fontSize: '13px' }}>
+                        Sign in to customize your username
+                      </Text>
+                      <Button
+                        type="link"
+                        size="small"
+                        icon={<LoginOutlined />}
+                        onClick={() => signIn()}
+                      >
+                        Sign in
+                      </Button>
                     </Flex>
                   )}
 

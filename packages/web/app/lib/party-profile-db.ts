@@ -8,12 +8,9 @@ const PROFILE_KEY = 'party-profile';
 
 // Legacy localStorage keys to migrate from
 const LEGACY_USER_ID_KEY = 'boardsesh:userId';
-const LEGACY_USERNAME_KEY = 'boardsesh:username';
 
 export interface PartyProfile {
   id: string; // UUID, auto-generated
-  username: string;
-  avatarUrl?: string;
 }
 
 let dbPromise: Promise<IDBPDatabase> | null = null;
@@ -38,7 +35,11 @@ export const getPartyProfile = async (): Promise<PartyProfile | null> => {
   try {
     const db = await initDB();
     const profile = await db.get(STORE_NAME, PROFILE_KEY);
-    return profile || null;
+    if (profile) {
+      // Return only the id field (ignore legacy username/avatarUrl if present)
+      return { id: profile.id };
+    }
+    return null;
   } catch (error) {
     console.error('Failed to get party profile:', error);
     return null;
@@ -88,22 +89,21 @@ export const migrateFromLocalStorage = async (): Promise<boolean> => {
       return false;
     }
 
-    // Check for legacy localStorage values
+    // Check for legacy localStorage user ID
     const legacyUserId = localStorage.getItem(LEGACY_USER_ID_KEY);
-    const legacyUsername = localStorage.getItem(LEGACY_USERNAME_KEY);
 
-    if (legacyUserId || legacyUsername) {
-      // Create new profile with migrated data
+    if (legacyUserId) {
+      // Create new profile with migrated ID
       const migratedProfile: PartyProfile = {
-        id: legacyUserId || uuidv4(),
-        username: legacyUsername || '',
+        id: legacyUserId,
       };
 
       await savePartyProfile(migratedProfile);
 
       // Clean up legacy localStorage
       localStorage.removeItem(LEGACY_USER_ID_KEY);
-      localStorage.removeItem(LEGACY_USERNAME_KEY);
+      // Also clean up legacy username key if present
+      localStorage.removeItem('boardsesh:username');
 
       console.log('Successfully migrated party profile from localStorage to IndexedDB');
       return true;
@@ -119,7 +119,7 @@ export const migrateFromLocalStorage = async (): Promise<boolean> => {
 /**
  * Ensure a user ID exists, creating a new profile if needed
  * This will migrate from localStorage if data exists there
- * Returns the profile (may have empty username)
+ * Returns the profile with just an id
  */
 export const ensurePartyProfile = async (): Promise<PartyProfile> => {
   try {
@@ -135,7 +135,6 @@ export const ensurePartyProfile = async (): Promise<PartyProfile> => {
     // Create a new profile with just an ID
     const newProfile: PartyProfile = {
       id: uuidv4(),
-      username: '',
     };
 
     await savePartyProfile(newProfile);
@@ -145,33 +144,6 @@ export const ensurePartyProfile = async (): Promise<PartyProfile> => {
     // Return a fallback in-memory profile
     return {
       id: uuidv4(),
-      username: '',
     };
   }
-};
-
-/**
- * Update just the username of the profile
- */
-export const updateUsername = async (username: string): Promise<PartyProfile> => {
-  const profile = await ensurePartyProfile();
-  const updatedProfile: PartyProfile = {
-    ...profile,
-    username,
-  };
-  await savePartyProfile(updatedProfile);
-  return updatedProfile;
-};
-
-/**
- * Update just the avatar URL of the profile
- */
-export const updateAvatarUrl = async (avatarUrl: string): Promise<PartyProfile> => {
-  const profile = await ensurePartyProfile();
-  const updatedProfile: PartyProfile = {
-    ...profile,
-    avatarUrl,
-  };
-  await savePartyProfile(updatedProfile);
-  return updatedProfile;
 };
