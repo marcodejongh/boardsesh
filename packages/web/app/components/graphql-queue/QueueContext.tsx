@@ -67,8 +67,25 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
 
   // Sync activeSessionId with URL changes (e.g., when navigating to a shared link)
   useEffect(() => {
-    setActiveSessionId(sessionIdFromUrl);
+    // Only update activeSessionId from URL if:
+    // 1. URL has a session param (joining/starting), OR
+    // 2. We don't have an active session yet
+    // This prevents accidentally clearing the session when URL param is temporarily missing
+    if (sessionIdFromUrl) {
+      setActiveSessionId(sessionIdFromUrl);
+    }
+    // Note: Don't clear activeSessionId when URL param is removed
+    // Only explicit endSession() should clear the session
   }, [sessionIdFromUrl]);
+
+  // Restore session param to URL if it's missing but we have an active session
+  useEffect(() => {
+    if (activeSessionId && !sessionIdFromUrl) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set('session', activeSessionId);
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    }
+  }, [activeSessionId, sessionIdFromUrl, pathname, router, searchParams]);
 
   // Session ID for connection - only connect if we have an active session
   const sessionId = activeSessionId;
@@ -403,8 +420,15 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
       setClimbSearchParams: (params) => {
         dispatch({ type: 'SET_CLIMB_SEARCH_PARAMS', payload: params });
 
-        // Update URL with new search parameters
+        // Update URL with new search parameters, preserving session param
         const urlParams = searchParamsToUrlParams(params);
+
+        // Preserve the session parameter if it exists
+        const currentSession = searchParams.get('session');
+        if (currentSession) {
+          urlParams.set('session', currentSession);
+        }
+
         const queryString = urlParams.toString();
         const newUrl = queryString ? `${pathname}?${queryString}` : pathname;
         router.replace(newUrl, { scroll: false });
