@@ -164,6 +164,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
   const sessionRef = useRef<Session | null>(null);
   const isReconnectingRef = useRef(false);
   const activeSessionRef = useRef<ActiveSessionInfo | null>(null);
+  const mountedRef = useRef(false);
 
   // Event subscribers
   const queueEventSubscribersRef = useRef<Set<(event: ClientQueueEvent) => void>>(new Set());
@@ -297,7 +298,8 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
       return;
     }
 
-    let mounted = true;
+    // Use ref for mounted flag so reconnect callback can safely check current state
+    mountedRef.current = true;
     let graphqlClient: Client | null = null;
 
     async function joinSession(clientToUse: Client): Promise<Session | null> {
@@ -316,7 +318,8 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
     }
 
     async function handleReconnect() {
-      if (!mounted || !graphqlClient) return;
+      // Use ref to safely check if component is still mounted
+      if (!mountedRef.current || !graphqlClient) return;
       if (isReconnectingRef.current) {
         if (DEBUG) console.log('[PersistentSession] Reconnection already in progress');
         return;
@@ -326,7 +329,8 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
       try {
         if (DEBUG) console.log('[PersistentSession] Reconnecting...');
         const sessionData = await joinSession(graphqlClient);
-        if (sessionData && mounted) {
+        // Double-check mounted state after async operation
+        if (sessionData && mountedRef.current) {
           setSession(sessionData);
           if (DEBUG) console.log('[PersistentSession] Reconnected, clientId:', sessionData.clientId);
         }
@@ -348,7 +352,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
           onReconnect: handleReconnect,
         });
 
-        if (!mounted) {
+        if (!mountedRef.current) {
           graphqlClient.dispose();
           return;
         }
@@ -357,7 +361,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
 
         const sessionData = await joinSession(graphqlClient);
 
-        if (!mounted) {
+        if (!mountedRef.current) {
           graphqlClient.dispose();
           return;
         }
@@ -392,12 +396,16 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
             },
             error: (err) => {
               console.error('[PersistentSession] Queue subscription error:', err);
-              if (mounted) {
+              // Clean up ref on error
+              queueUnsubscribeRef.current = null;
+              if (mountedRef.current) {
                 setError(err instanceof Error ? err : new Error(String(err)));
               }
             },
             complete: () => {
               if (DEBUG) console.log('[PersistentSession] Queue subscription completed');
+              // Clean up ref on complete
+              queueUnsubscribeRef.current = null;
             },
           },
         );
@@ -414,15 +422,19 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
             },
             error: (err) => {
               console.error('[PersistentSession] Session subscription error:', err);
+              // Clean up ref on error
+              sessionUnsubscribeRef.current = null;
             },
             complete: () => {
               if (DEBUG) console.log('[PersistentSession] Session subscription completed');
+              // Clean up ref on complete
+              sessionUnsubscribeRef.current = null;
             },
           },
         );
       } catch (err) {
         console.error('[PersistentSession] Connection failed:', err);
-        if (mounted) {
+        if (mountedRef.current) {
           setError(err instanceof Error ? err : new Error(String(err)));
           setIsConnecting(false);
         }
@@ -436,10 +448,18 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
 
     return () => {
       if (DEBUG) console.log('[PersistentSession] Cleaning up connection');
-      mounted = false;
+      // Set mounted ref to false FIRST to prevent any reconnect callbacks from executing
+      mountedRef.current = false;
 
-      queueUnsubscribeRef.current?.();
-      sessionUnsubscribeRef.current?.();
+      // Clean up subscriptions
+      if (queueUnsubscribeRef.current) {
+        queueUnsubscribeRef.current();
+        queueUnsubscribeRef.current = null;
+      }
+      if (sessionUnsubscribeRef.current) {
+        sessionUnsubscribeRef.current();
+        sessionUnsubscribeRef.current = null;
+      }
 
       if (graphqlClient) {
         if (sessionRef.current) {
