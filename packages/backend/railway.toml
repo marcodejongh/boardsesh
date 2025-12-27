@@ -7,3 +7,8 @@ healthcheckPath = "/health"
 healthcheckTimeout = 100
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 5
+
+# Production environment: enable multi-instance scaling
+# Requires Redis add-on to be configured in Railway project
+[environments.production.deploy]
+numReplicas = 2
