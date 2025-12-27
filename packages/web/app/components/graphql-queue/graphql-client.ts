@@ -5,6 +5,11 @@ export type { Client };
 const DEBUG = process.env.NODE_ENV === 'development';
 const MUTATION_TIMEOUT_MS = 30_000; // 30 second timeout for mutations
 
+// Exponential backoff configuration for reconnection
+const INITIAL_RETRY_DELAY_MS = 1000; // Start with 1 second
+const MAX_RETRY_DELAY_MS = 30_000; // Cap at 30 seconds
+const BACKOFF_MULTIPLIER = 2; // Double the delay each retry
+
 let clientCounter = 0;
 
 // Cache for parsed operation names to avoid regex on every call
@@ -61,8 +66,17 @@ export function createGraphQLClient(
 
   const client = createClient({
     url,
-    retryAttempts: 5,
+    retryAttempts: 10, // More attempts with exponential backoff
     shouldRetry: () => true,
+    // Exponential backoff: 1s, 2s, 4s, 8s, 16s, 30s, 30s, ...
+    retryWait: async (retryCount) => {
+      const delay = Math.min(
+        INITIAL_RETRY_DELAY_MS * Math.pow(BACKOFF_MULTIPLIER, retryCount),
+        MAX_RETRY_DELAY_MS,
+      );
+      if (DEBUG) console.log(`[GraphQL] Client #${clientId} retry #${retryCount + 1}, waiting ${delay}ms`);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    },
     // Lazy connection - only connects when first subscription/mutation is made
     lazy: true,
     // Keep alive to detect disconnections

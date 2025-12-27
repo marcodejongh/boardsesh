@@ -26,10 +26,15 @@ const BoardSessionBridge: React.FC<BoardSessionBridgeProps> = ({
 
   const { activeSession, activateSession } = usePersistentSession();
 
-  // Activate session when we have a session param and board details
+  // Activate or update session when we have a session param and board details
+  // This effect handles:
+  // 1. Initial session activation when joining via shared link
+  // 2. Updates when pathname changes (e.g., angle change) while session remains active
   useEffect(() => {
     if (sessionIdFromUrl && boardDetails) {
-      // Activate session when URL has session param (joining via shared link)
+      // Activate session when URL has session param and either:
+      // - Session ID changed
+      // - Board path changed (e.g., navigating to different angle)
       if (activeSession?.sessionId !== sessionIdFromUrl || activeSession?.boardPath !== pathname) {
         activateSession({
           sessionId: sessionIdFromUrl,
@@ -50,19 +55,6 @@ const BoardSessionBridge: React.FC<BoardSessionBridgeProps> = ({
     activeSession?.boardPath,
     activateSession,
   ]);
-
-  // Update board details if they change (e.g., angle change)
-  useEffect(() => {
-    if (activeSession?.sessionId === sessionIdFromUrl && activeSession?.boardPath !== pathname) {
-      // Board path changed but session is the same - update the session info
-      activateSession({
-        sessionId: sessionIdFromUrl!,
-        boardPath: pathname,
-        boardDetails,
-        parsedParams,
-      });
-    }
-  }, [pathname, parsedParams, boardDetails, activeSession, sessionIdFromUrl, activateSession]);
 
   return <>{children}</>;
 };
