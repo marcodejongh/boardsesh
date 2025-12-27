@@ -457,12 +457,13 @@ class RoomManager {
 
     // Calculate precise distance and filter/sort
     const sessionsWithDistance = candidates
-      .filter((s) => s.latitude !== null && s.longitude !== null)
+      .filter((s): s is typeof s & { latitude: number; longitude: number } =>
+        s.latitude !== null && s.longitude !== null)
       .map((s) => ({
         session: s,
-        distance: haversineDistance(latitude, longitude, s.latitude!, s.longitude!),
+        distance: haversineDistance(latitude, longitude, s.latitude, s.longitude),
       }))
-      .filter((s) => s.distance <= radiusMeters)
+      .filter((item) => item.distance <= radiusMeters)
       .sort((a, b) => a.distance - b.distance);
 
     // Get participant counts for each session

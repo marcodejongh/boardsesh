@@ -6,17 +6,20 @@ WORKDIR /app
 # Copy package files for all workspaces
 COPY package*.json ./
 COPY packages/shared-schema/package*.json ./packages/shared-schema/
+COPY packages/db/package*.json ./packages/db/
 COPY packages/backend/package*.json ./packages/backend/
 
 # Install all dependencies (including workspace dependencies)
 RUN npm ci
 
-# Copy source code for shared-schema and backend only
+# Copy source code for shared-schema, db, and backend only
 COPY packages/shared-schema ./packages/shared-schema
+COPY packages/db ./packages/db
 COPY packages/backend ./packages/backend
 
-# Build shared-schema first, then backend
+# Build in dependency order: shared-schema -> db -> backend
 RUN npm run build --workspace=@boardsesh/shared-schema
+RUN npm run build --workspace=@boardsesh/db
 RUN npm run build --workspace=boardsesh-backend
 
 # Production stage
@@ -27,13 +30,15 @@ WORKDIR /app
 # Copy package files (need full workspace structure for npm to resolve)
 COPY package*.json ./
 COPY packages/shared-schema/package*.json ./packages/shared-schema/
+COPY packages/db/package*.json ./packages/db/
 COPY packages/backend/package*.json ./packages/backend/
 
-# Copy built shared-schema dist BEFORE npm ci (so main entry point exists)
+# Copy built shared-schema and db dist BEFORE npm ci (so main entry points exist)
 COPY --from=builder /app/packages/shared-schema/dist ./packages/shared-schema/dist
+COPY --from=builder /app/packages/db/dist ./packages/db/dist
 
 # Install production dependencies only
-RUN npm ci --omit=dev --workspace=boardsesh-backend --workspace=@boardsesh/shared-schema
+RUN npm ci --omit=dev --workspace=boardsesh-backend --workspace=@boardsesh/shared-schema --workspace=@boardsesh/db
 
 # Copy built backend files
 COPY --from=builder /app/packages/backend/dist ./packages/backend/dist
