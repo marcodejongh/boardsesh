@@ -32,10 +32,20 @@ const BoardLitupHolds = React.memo(
   ({ holdsData, litUpHoldsMap, mirrored, thumbnail, onHoldClick }: BoardLitupHoldsProps) => {
     if (!holdsData) return null;
 
+    // When onHoldClick is provided (climb create mode), we need all circles as click targets
+    // Otherwise, only render circles that are actually lit up (skip transparent ones for performance)
+    const isCreateMode = !!onHoldClick;
+
     return (
       <>
         {holdsData.map((hold) => {
           const isLitUp = litUpHoldsMap[hold.id]?.state && litUpHoldsMap[hold.id].state !== 'OFF';
+
+          // Skip rendering transparent circles when not in create mode
+          if (!isCreateMode && !isLitUp) {
+            return null;
+          }
+
           const color = isLitUp ? litUpHoldsMap[hold.id].color : 'transparent';
 
           let renderHold = hold;
