@@ -122,8 +122,27 @@ export interface PersistentSessionContextType {
 const PersistentSessionContext = createContext<PersistentSessionContextType | undefined>(undefined);
 
 export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { token: wsAuthToken } = useWsAuthToken();
+  const { token: wsAuthToken, isLoading: isAuthLoading } = useWsAuthToken();
   const { username, avatarUrl } = usePartyProfile();
+
+  // Use refs for values that shouldn't trigger reconnection
+  // These values are used during connection but changes shouldn't cause reconnect
+  const wsAuthTokenRef = useRef(wsAuthToken);
+  const usernameRef = useRef(username);
+  const avatarUrlRef = useRef(avatarUrl);
+
+  // Keep refs in sync with current values
+  useEffect(() => {
+    wsAuthTokenRef.current = wsAuthToken;
+  }, [wsAuthToken]);
+
+  useEffect(() => {
+    usernameRef.current = username;
+  }, [username]);
+
+  useEffect(() => {
+    avatarUrlRef.current = avatarUrl;
+  }, [avatarUrl]);
 
   // Active session info
   const [activeSession, setActiveSession] = useState<ActiveSessionInfo | null>(null);
@@ -263,6 +282,13 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
       return;
     }
 
+    // Wait for auth to finish loading before connecting
+    // This prevents creating duplicate connections when token loads async
+    if (isAuthLoading) {
+      if (DEBUG) console.log('[PersistentSession] Waiting for auth to load...');
+      return;
+    }
+
     const { sessionId, boardPath } = activeSession;
     const backendUrl = DEFAULT_BACKEND_URL;
 
@@ -279,7 +305,8 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
       try {
         const response = await execute<{ joinSession: Session }>(clientToUse, {
           query: JOIN_SESSION,
-          variables: { sessionId, boardPath, username, avatarUrl },
+          // Use refs for values that may change but shouldn't trigger reconnection
+          variables: { sessionId, boardPath, username: usernameRef.current, avatarUrl: avatarUrlRef.current },
         });
         return response.joinSession;
       } catch (err) {
@@ -316,7 +343,8 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
       try {
         graphqlClient = createGraphQLClient({
           url: backendUrl!,
-          authToken: wsAuthToken,
+          // Use ref for auth token - it's set once auth loading completes
+          authToken: wsAuthTokenRef.current,
           onReconnect: handleReconnect,
         });
 
@@ -425,12 +453,20 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
       setHasConnected(false);
       setIsConnecting(false);
     };
-  }, [activeSession, username, avatarUrl, wsAuthToken, handleQueueEvent, handleSessionEvent]);
+  // Note: username, avatarUrl, wsAuthToken are accessed via refs to prevent reconnection on changes
+  }, [activeSession, isAuthLoading, handleQueueEvent, handleSessionEvent]);
 
   // Session lifecycle functions
   const activateSession = useCallback((info: ActiveSessionInfo) => {
-    if (DEBUG) console.log('[PersistentSession] Activating session:', info.sessionId);
-    setActiveSession(info);
+    setActiveSession((prev) => {
+      // Skip update if sessionId and boardPath are the same - prevents duplicate connections
+      // when only object references change (e.g., search filter changes cause server re-render)
+      if (prev?.sessionId === info.sessionId && prev?.boardPath === info.boardPath) {
+        return prev;
+      }
+      if (DEBUG) console.log('[PersistentSession] Activating session:', info.sessionId);
+      return info;
+    });
   }, []);
 
   const deactivateSession = useCallback(() => {

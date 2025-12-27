@@ -105,6 +105,7 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
   }, [profile?.id, username, avatarUrl]);
 
   // Subscribe to queue events from persistent session
+  // Note: Initial sync is handled by the FullSync event sent by persistent-session-context on join
   useEffect(() => {
     if (!isPersistentSessionActive) return;
 
@@ -164,20 +165,6 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
 
     return unsubscribe;
   }, [isPersistentSessionActive, persistentSession, dispatch]);
-
-  // Sync local state with persistent session state on mount/reconnect
-  useEffect(() => {
-    if (isPersistentSessionActive && persistentSession.hasConnected) {
-      // Sync queue state from persistent session
-      dispatch({
-        type: 'INITIAL_QUEUE_DATA',
-        payload: {
-          queue: persistentSession.queue,
-          currentClimbQueueItem: persistentSession.currentClimbQueueItem,
-        },
-      });
-    }
-  }, [isPersistentSessionActive, persistentSession.hasConnected, persistentSession.queue, persistentSession.currentClimbQueueItem, dispatch]);
 
   // Use persistent session values when active
   const clientId = isPersistentSessionActive ? persistentSession.clientId : null;
