@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { typeDefs } from '@boardsesh/shared-schema';
 import { roomManager, VersionConflictError, type DiscoverableSession } from '../services/room-manager.js';
 import { pubsub } from '../pubsub/index.js';
-import { updateContext } from './context.js';
+import { updateContext, getContext } from './context.js';
 import { checkRateLimit } from '../utils/rate-limiter.js';
 import {
   validateInput,
@@ -67,15 +67,40 @@ function requireAuthenticated(ctx: ConnectionContext): void {
 /**
  * Helper to verify user is a member of the session they're trying to access.
  * Used for subscription authorization.
+ *
+ * This function includes retry logic to handle race conditions where subscriptions
+ * may be authorized before joinSession has completed updating the context.
+ * It re-fetches the context from the Map on each retry to get the latest state.
  */
-function requireSessionMember(ctx: ConnectionContext, sessionId: string): void {
-  if (!ctx.sessionId) {
-    console.error(`[Auth] requireSessionMember failed: not in any session. connectionId=${ctx.connectionId}, requested=${sessionId}`);
+async function requireSessionMember(
+  ctx: ConnectionContext,
+  sessionId: string,
+  maxRetries = 5,
+  retryDelayMs = 50
+): Promise<void> {
+  for (let i = 0; i < maxRetries; i++) {
+    // Re-fetch context to get latest state (joinSession may have updated it)
+    const latestCtx = getContext(ctx.connectionId);
+
+    if (latestCtx?.sessionId === sessionId) {
+      return; // Success - session matches
+    }
+
+    if (i < maxRetries - 1) {
+      // Wait briefly for joinSession to complete
+      await new Promise(resolve => setTimeout(resolve, retryDelayMs));
+    }
+  }
+
+  // Final check after all retries
+  const finalCtx = getContext(ctx.connectionId);
+  if (!finalCtx?.sessionId) {
+    console.error(`[Auth] requireSessionMember failed after ${maxRetries} retries: not in any session. connectionId=${ctx.connectionId}, requested=${sessionId}`);
     throw new Error(`Unauthorized: not in any session (connectionId: ${ctx.connectionId}, requested: ${sessionId})`);
   }
-  if (ctx.sessionId !== sessionId) {
-    console.error(`[Auth] requireSessionMember failed: session mismatch. connectionId=${ctx.connectionId}, have=${ctx.sessionId}, requested=${sessionId}`);
-    throw new Error(`Unauthorized: session mismatch (have: ${ctx.sessionId}, requested: ${sessionId})`);
+  if (finalCtx.sessionId !== sessionId) {
+    console.error(`[Auth] requireSessionMember failed: session mismatch. connectionId=${ctx.connectionId}, have=${finalCtx.sessionId}, requested=${sessionId}`);
+    throw new Error(`Unauthorized: session mismatch (have: ${finalCtx.sessionId}, requested: ${sessionId})`);
   }
 }
 
@@ -649,7 +674,8 @@ const resolvers = {
     queueUpdates: {
       subscribe: async function* (_: unknown, { sessionId }: { sessionId: string }, ctx: ConnectionContext) {
         // Verify user is a member of the session they're subscribing to
-        requireSessionMember(ctx, sessionId);
+        // Uses retry logic to handle race conditions with joinSession
+        await requireSessionMember(ctx, sessionId);
 
         // IMPORTANT: Subscribe to pubsub FIRST, before fetching state.
         // This prevents a race condition where events could be published
@@ -683,7 +709,8 @@ const resolvers = {
     sessionUpdates: {
       subscribe: async function* (_: unknown, { sessionId }: { sessionId: string }, ctx: ConnectionContext) {
         // Verify user is a member of the session they're subscribing to
-        requireSessionMember(ctx, sessionId);
+        // Uses retry logic to handle race conditions with joinSession
+        await requireSessionMember(ctx, sessionId);
 
         // Create async iterator for subscription
         const asyncIterator = createAsyncIterator<SessionEvent>((push) => {

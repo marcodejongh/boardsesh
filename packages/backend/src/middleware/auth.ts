@@ -1,8 +1,24 @@
 import { jwtDecrypt } from 'jose';
+import { hkdf } from '@panva/hkdf';
 
 export interface AuthResult {
   userId: string;
   isAuthenticated: true;
+}
+
+/**
+ * Derive the encryption key the same way NextAuth does.
+ * NextAuth uses HKDF with SHA-256 and a specific info string.
+ */
+async function deriveEncryptionKey(secret: string): Promise<Uint8Array> {
+  const encoder = new TextEncoder();
+  return await hkdf(
+    'sha256',
+    encoder.encode(secret),
+    '',
+    'NextAuth.js Generated Encryption Key',
+    32
+  );
 }
 
 /**
@@ -20,12 +36,8 @@ export async function validateNextAuthToken(token: string): Promise<AuthResult |
       return null;
     }
 
-    // NextAuth uses the secret to derive an encryption key
-    // The key is derived as: SHA-256 hash of the secret, truncated to 32 bytes
-    const encoder = new TextEncoder();
-    const secretBytes = encoder.encode(secret);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', secretBytes);
-    const encryptionKey = new Uint8Array(hashBuffer).slice(0, 32);
+    // Derive the encryption key the same way NextAuth does (using HKDF)
+    const encryptionKey = await deriveEncryptionKey(secret);
 
     // Decrypt the NextAuth JWE token
     const { payload } = await jwtDecrypt(token, encryptionKey, {
