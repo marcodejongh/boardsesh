@@ -6,7 +6,7 @@ import Card from 'antd/es/card';
 import ClimbCardCover from './climb-card-cover';
 import ClimbTitle from './climb-title';
 import { Climb, BoardDetails } from '@/app/lib/types';
-import ClimbCardActions from './climb-card-actions';
+import { ClimbActions } from '../climb-actions';
 import { themeTokens } from '@/app/theme/theme-config';
 
 type ClimbCardProps = {
@@ -57,7 +57,12 @@ const ClimbCard = React.memo(
           borderColor: selected ? themeTokens.colors.primary : undefined,
         }}
         styles={{ header: { paddingTop: 8, paddingBottom: 6 }, body: { padding: 6 } }}
-        actions={actions || ClimbCardActions({ climb, boardDetails })}
+        actions={actions || (climb ? ClimbActions.asCardActions({
+          climb,
+          boardDetails,
+          angle: climb.angle,
+          exclude: ['tick', 'openInApp', 'mirror', 'share', 'addToList'],
+        }) : [])}
       >
         {cover}
       </Card>
