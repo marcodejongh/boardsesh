@@ -5,6 +5,21 @@ import { typeDefs } from '@boardsesh/shared-schema';
 import { roomManager, VersionConflictError, type DiscoverableSession } from '../services/room-manager.js';
 import { pubsub } from '../pubsub/index.js';
 import { updateContext } from './context.js';
+import { checkRateLimit } from '../utils/rate-limiter.js';
+import {
+  validateInput,
+  CreateSessionInputSchema,
+  SessionIdSchema,
+  BoardPathSchema,
+  UsernameSchema,
+  AvatarUrlSchema,
+  ClimbQueueItemSchema,
+  QueueArraySchema,
+  LatitudeSchema,
+  LongitudeSchema,
+  RadiusMetersSchema,
+  UUIDSchema,
+} from '../validation/schemas.js';
 import type {
   ConnectionContext,
   QueueEvent,
@@ -35,6 +50,36 @@ function requireSession(ctx: ConnectionContext): string {
     throw new Error('Must be in a session to perform this operation');
   }
   return ctx.sessionId;
+}
+
+/**
+ * Helper to require authentication.
+ * Throws if the user is not authenticated.
+ * Used for operations that require a logged-in user (e.g., creating sessions).
+ */
+function requireAuthenticated(ctx: ConnectionContext): void {
+  if (!ctx.isAuthenticated) {
+    throw new Error('Authentication required to perform this operation');
+  }
+}
+
+/**
+ * Helper to verify user is a member of the session they're trying to access.
+ * Used for subscription authorization.
+ */
+function requireSessionMember(ctx: ConnectionContext, sessionId: string): void {
+  if (ctx.sessionId !== sessionId) {
+    throw new Error('Unauthorized: must be in session to access this data');
+  }
+}
+
+/**
+ * Apply rate limiting to a connection.
+ * @param ctx - Connection context
+ * @param limit - Optional custom limit (default: 60 requests per minute)
+ */
+function applyRateLimit(ctx: ConnectionContext, limit?: number): void {
+  checkRateLimit(ctx.connectionId, limit);
 }
 
 // Maximum queue size for subscriptions to prevent memory issues with slow clients
@@ -161,6 +206,12 @@ const resolvers = {
       _: unknown,
       { latitude, longitude, radiusMeters }: { latitude: number; longitude: number; radiusMeters?: number }
     ): Promise<DiscoverableSession[]> => {
+      // Validate GPS coordinates
+      validateInput(LatitudeSchema, latitude, 'latitude');
+      validateInput(LongitudeSchema, longitude, 'longitude');
+      if (radiusMeters !== undefined) {
+        validateInput(RadiusMetersSchema, radiusMeters, 'radiusMeters');
+      }
       return roomManager.findNearbySessions(latitude, longitude, radiusMeters || undefined);
     },
 
@@ -194,6 +245,7 @@ const resolvers = {
       { sessionId, boardPath, username, avatarUrl }: { sessionId: string; boardPath: string; username?: string; avatarUrl?: string },
       ctx: ConnectionContext
     ) => {
+      applyRateLimit(ctx, 10); // Limit session joins to prevent abuse
       const result = await roomManager.joinSession(ctx.connectionId, sessionId, boardPath, username || undefined, avatarUrl || undefined);
 
       // Update context with session info
@@ -229,12 +281,19 @@ const resolvers = {
       { input }: { input: CreateSessionInput },
       ctx: ConnectionContext
     ) => {
+      applyRateLimit(ctx, 5); // Limit session creation to prevent abuse
+      // Only authenticated users can create sessions
+      requireAuthenticated(ctx);
+
+      // Validate input
+      validateInput(CreateSessionInputSchema, input, 'createSession input');
+
       // Generate a unique session ID
       const sessionId = uuidv4();
 
       if (input.discoverable) {
         // Create a discoverable session with GPS coordinates
-        // Note: In production, ctx.userId should be the authenticated user ID
+        // Use authenticated userId from context
         const userId = ctx.userId || ctx.connectionId;
         await roomManager.createDiscoverableSession(
           sessionId,
@@ -328,6 +387,7 @@ const resolvers = {
       { item, position }: { item: ClimbQueueItem; position?: number },
       ctx: ConnectionContext
     ) => {
+      applyRateLimit(ctx); // Apply default rate limit
       const sessionId = requireSession(ctx);
       console.log('[addQueueItem] Adding item:', item.climb?.name, 'by client:', ctx.connectionId, 'at position:', position);
 
@@ -385,6 +445,7 @@ const resolvers = {
     },
 
     removeQueueItem: async (_: unknown, { uuid }: { uuid: string }, ctx: ConnectionContext) => {
+      applyRateLimit(ctx);
       const sessionId = requireSession(ctx);
 
       const currentState = await roomManager.getQueueState(sessionId);
@@ -411,6 +472,7 @@ const resolvers = {
       { uuid, oldIndex, newIndex }: { uuid: string; oldIndex: number; newIndex: number },
       ctx: ConnectionContext
     ) => {
+      applyRateLimit(ctx);
       const sessionId = requireSession(ctx);
 
       const currentState = await roomManager.getQueueState(sessionId);
@@ -438,6 +500,7 @@ const resolvers = {
       { item, shouldAddToQueue }: { item: ClimbQueueItem | null; shouldAddToQueue?: boolean },
       ctx: ConnectionContext
     ) => {
+      applyRateLimit(ctx);
       const sessionId = requireSession(ctx);
 
       // Debug: track who's setting null
@@ -478,6 +541,7 @@ const resolvers = {
     },
 
     mirrorCurrentClimb: async (_: unknown, { mirrored }: { mirrored: boolean }, ctx: ConnectionContext) => {
+      applyRateLimit(ctx);
       const sessionId = requireSession(ctx);
 
       const currentState = await roomManager.getQueueState(sessionId);
@@ -511,6 +575,7 @@ const resolvers = {
       { uuid, item }: { uuid: string; item: ClimbQueueItem },
       ctx: ConnectionContext
     ) => {
+      applyRateLimit(ctx);
       const sessionId = requireSession(ctx);
 
       const currentState = await roomManager.getQueueState(sessionId);
@@ -538,7 +603,14 @@ const resolvers = {
       { queue, currentClimbQueueItem }: { queue: ClimbQueueItem[]; currentClimbQueueItem?: ClimbQueueItem },
       ctx: ConnectionContext
     ) => {
+      applyRateLimit(ctx, 30); // Lower limit for bulk operations
       const sessionId = requireSession(ctx);
+
+      // Validate queue size to prevent memory exhaustion
+      validateInput(QueueArraySchema, queue, 'queue');
+      if (currentClimbQueueItem) {
+        validateInput(ClimbQueueItemSchema, currentClimbQueueItem, 'currentClimbQueueItem');
+      }
 
       await roomManager.updateQueueState(sessionId, queue, currentClimbQueueItem || null);
 
@@ -558,7 +630,10 @@ const resolvers = {
 
   Subscription: {
     queueUpdates: {
-      subscribe: async function* (_: unknown, { sessionId }: { sessionId: string }, _ctx: ConnectionContext) {
+      subscribe: async function* (_: unknown, { sessionId }: { sessionId: string }, ctx: ConnectionContext) {
+        // Verify user is a member of the session they're subscribing to
+        requireSessionMember(ctx, sessionId);
+
         // IMPORTANT: Subscribe to pubsub FIRST, before fetching state.
         // This prevents a race condition where events could be published
         // between fetching the queue state and starting to listen.
@@ -589,7 +664,10 @@ const resolvers = {
     },
 
     sessionUpdates: {
-      subscribe: async function* (_: unknown, { sessionId }: { sessionId: string }, _ctx: ConnectionContext) {
+      subscribe: async function* (_: unknown, { sessionId }: { sessionId: string }, ctx: ConnectionContext) {
+        // Verify user is a member of the session they're subscribing to
+        requireSessionMember(ctx, sessionId);
+
         // Create async iterator for subscription
         const asyncIterator = createAsyncIterator<SessionEvent>((push) => {
           return pubsub.subscribeSession(sessionId, push);

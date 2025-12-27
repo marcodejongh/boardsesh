@@ -27,16 +27,35 @@ export interface ExtendedClient extends Client {
   onReconnect?: (callback: () => void) => void;
 }
 
+export interface GraphQLClientOptions {
+  url: string;
+  authToken?: string | null;
+  onReconnect?: () => void;
+}
+
 /**
  * Creates a GraphQL-WS client for connecting to the Boardsesh backend
+ * @param options - Client configuration including URL and optional auth token
  */
+export function createGraphQLClient(options: GraphQLClientOptions): ExtendedClient;
+/**
+ * @deprecated Use options object instead. This signature will be removed in a future version.
+ */
+export function createGraphQLClient(url: string, onReconnect?: () => void): ExtendedClient;
 export function createGraphQLClient(
-  url: string,
+  urlOrOptions: string | GraphQLClientOptions,
   onReconnect?: () => void,
 ): ExtendedClient {
+  // Handle both signatures for backwards compatibility
+  const options: GraphQLClientOptions = typeof urlOrOptions === 'string'
+    ? { url: urlOrOptions, onReconnect }
+    : urlOrOptions;
+
+  const { url, authToken, onReconnect: onReconnectCallback } = options;
+
   const clientId = ++clientCounter;
 
-  if (DEBUG) console.log(`[GraphQL] Creating client #${clientId} for ${url}`);
+  if (DEBUG) console.log(`[GraphQL] Creating client #${clientId} for ${url} (authenticated: ${!!authToken})`);
 
   let hasConnectedOnce = false;
 
@@ -48,12 +67,14 @@ export function createGraphQLClient(
     lazy: true,
     // Keep alive to detect disconnections
     keepAlive: 10_000,
+    // Pass auth token in connection params for backend validation
+    connectionParams: authToken ? { authToken } : undefined,
     on: {
       connected: () => {
         if (DEBUG) console.log(`[GraphQL] Client #${clientId} connected (first: ${!hasConnectedOnce})`);
-        if (hasConnectedOnce && onReconnect) {
+        if (hasConnectedOnce && onReconnectCallback) {
           if (DEBUG) console.log(`[GraphQL] Client #${clientId} reconnected, calling onReconnect`);
-          onReconnect();
+          onReconnectCallback();
         }
         hasConnectedOnce = true;
       },

@@ -72,6 +72,8 @@ export interface UseQueueSessionOptions {
   boardPath: string;
   username?: string;
   avatarUrl?: string;
+  /** Auth token for backend authentication (e.g., NextAuth session token) */
+  authToken?: string | null;
   onQueueEvent?: (event: ClientQueueEvent) => void;
   onSessionEvent?: (event: SessionEvent) => void;
 }
@@ -105,6 +107,7 @@ export function useQueueSession({
   boardPath,
   username,
   avatarUrl,
+  authToken,
   onQueueEvent,
   onSessionEvent,
 }: UseQueueSessionOptions): UseQueueSessionReturn {
@@ -194,8 +197,12 @@ export function useQueueSession({
       setError(null);
 
       try {
-        // Create the GraphQL client with reconnection handler
-        graphqlClient = createGraphQLClient(backendUrl, handleReconnect);
+        // Create the GraphQL client with reconnection handler and auth token
+        graphqlClient = createGraphQLClient({
+          url: backendUrl,
+          authToken,
+          onReconnect: handleReconnect,
+        });
         if (!mounted) {
           if (DEBUG) console.log('[QueueSession] Unmounted before client setup, disposing');
           graphqlClient.dispose();
@@ -355,7 +362,7 @@ export function useQueueSession({
       setSession(null);
       setIsConnecting(false);
     };
-  }, [backendUrl, sessionId, boardPath, username, avatarUrl]); // Removed onQueueEvent and onSessionEvent - using refs instead
+  }, [backendUrl, sessionId, boardPath, username, avatarUrl, authToken]); // Removed onQueueEvent and onSessionEvent - using refs instead
 
   // Mutation functions - must check for session, not just client
   // The client exists before joinSession completes, so we need to wait for session

@@ -11,6 +11,7 @@ import { urlParamsToSearchParams, searchParamsToUrlParams } from '@/app/lib/url-
 import { Climb, ParsedBoardRouteParameters } from '@/app/lib/types';
 import { useConnectionSettings } from '../connection-manager/connection-settings-context';
 import { usePartyProfile } from '../party-manager/party-profile-context';
+import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { ClientQueueEvent } from '@boardsesh/shared-schema';
 
 type GraphQLQueueContextProps = {
@@ -51,6 +52,9 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
 
   // Get party profile for user ID, and username/avatarUrl from NextAuth session
   const { profile, username, avatarUrl } = usePartyProfile();
+
+  // Get WebSocket auth token for backend authentication
+  const { token: wsAuthToken, isLoading: authLoading } = useWsAuthToken();
 
   // Generate session ID from pathname
   const sessionId = useMemo(() => generateSessionId(pathname), [pathname]);
@@ -130,6 +134,7 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
     boardPath: pathname,
     username,
     avatarUrl,
+    authToken: wsAuthToken,
     onQueueEvent: handleQueueEvent,
   });
 
@@ -353,8 +358,8 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
     ],
   );
 
-  // Don't render until connection settings are loaded
-  if (!isLoaded) {
+  // Don't render until connection settings and auth are loaded
+  if (!isLoaded || authLoading) {
     return null;
   }
 
