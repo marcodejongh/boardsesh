@@ -127,6 +127,31 @@ export const SET_QUEUE = `
   }
 `;
 
+export const CREATE_SESSION = `
+  mutation CreateSession($input: CreateSessionInput!) {
+    createSession(input: $input) {
+      id
+      boardPath
+      clientId
+      isLeader
+      users {
+        id
+        username
+        isLeader
+        avatarUrl
+      }
+      queueState {
+        queue {
+          ${QUEUE_ITEM_FIELDS}
+        }
+        currentClimbQueueItem {
+          ${QUEUE_ITEM_FIELDS}
+        }
+      }
+    }
+  }
+`;
+
 // Subscriptions
 export const SESSION_UPDATES = `
   subscription SessionUpdates($sessionId: ID!) {

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useContext, createContext, ReactNode, useCallback, useMemo } from 'react';
+import React, { useContext, createContext, ReactNode, useCallback, useMemo, useState, useEffect } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { v4 as uuidv4 } from 'uuid';
 import { useQueueSession } from './use-queue-session';
@@ -13,6 +13,17 @@ import { useConnectionSettings } from '../connection-manager/connection-settings
 import { usePartyProfile } from '../party-manager/party-profile-context';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { ClientQueueEvent } from '@boardsesh/shared-schema';
+import { saveSessionToHistory } from '../setup-wizard/session-history-panel';
+
+// Extended context type with session management
+export interface GraphQLQueueContextType extends QueueContextType {
+  // Session management
+  isSessionActive: boolean;
+  sessionId: string | null;
+  startSession: (options?: { discoverable?: boolean; name?: string }) => Promise<string>;
+  joinSession: (sessionId: string) => Promise<void>;
+  endSession: () => void;
+}
 
 type GraphQLQueueContextProps = {
   parsedParams: ParsedBoardRouteParameters;
@@ -32,12 +43,7 @@ const createClimbQueueItem = (
   suggested: !!suggested,
 });
 
-const QueueContext = createContext<QueueContextType | undefined>(undefined);
-
-// Generate session ID from pathname
-function generateSessionId(pathname: string): string {
-  return pathname.replace(/\//g, '-').slice(1);
-}
+const QueueContext = createContext<GraphQLQueueContextType | undefined>(undefined);
 
 
 export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueContextProps) => {
@@ -56,8 +62,17 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
   // Get WebSocket auth token for backend authentication
   const { token: wsAuthToken, isLoading: authLoading } = useWsAuthToken();
 
-  // Generate session ID from pathname
-  const sessionId = useMemo(() => generateSessionId(pathname), [pathname]);
+  // Read sessionId from URL search params - party mode is opt-in
+  const sessionIdFromUrl = searchParams.get('session');
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(sessionIdFromUrl);
+
+  // Sync activeSessionId with URL changes (e.g., when navigating to a shared link)
+  useEffect(() => {
+    setActiveSessionId(sessionIdFromUrl);
+  }, [sessionIdFromUrl]);
+
+  // Session ID for connection - only connect if we have an active session
+  const sessionId = activeSessionId;
 
   // Build current user info for queue items
   const currentUserInfo: QueueItemUser | undefined = useMemo(() => {
@@ -127,10 +142,10 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
     [dispatch],
   );
 
-  // Connect to GraphQL session
+  // Connect to GraphQL session only when we have an active session
   const queueSession = useQueueSession({
-    backendUrl: backendUrl || '',
-    sessionId,
+    backendUrl: sessionId ? (backendUrl || '') : '', // Don't connect if no session
+    sessionId: sessionId || '',
     boardPath: pathname,
     username,
     avatarUrl,
@@ -139,6 +154,83 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
   });
 
   const { clientId, isLeader } = queueSession;
+
+  // Session management functions
+  const startSession = useCallback(
+    async (options?: { discoverable?: boolean; name?: string }) => {
+      if (!backendUrl) {
+        throw new Error('Backend URL not configured');
+      }
+
+      // Generate a new session ID
+      const newSessionId = uuidv4();
+
+      // Update URL with session parameter
+      const params = new URLSearchParams(searchParams.toString());
+      params.set('session', newSessionId);
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+
+      // Update state
+      setActiveSessionId(newSessionId);
+
+      // Save to session history
+      await saveSessionToHistory({
+        id: newSessionId,
+        name: options?.name || null,
+        boardPath: pathname,
+        createdAt: new Date().toISOString(),
+        lastActivity: new Date().toISOString(),
+        backendUrl: backendUrl,
+      });
+
+      return newSessionId;
+    },
+    [backendUrl, pathname, router, searchParams],
+  );
+
+  const joinSessionHandler = useCallback(
+    async (sessionIdToJoin: string) => {
+      if (!backendUrl) {
+        throw new Error('Backend URL not configured');
+      }
+
+      // Update URL with session parameter
+      const params = new URLSearchParams(searchParams.toString());
+      params.set('session', sessionIdToJoin);
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+
+      // Update state
+      setActiveSessionId(sessionIdToJoin);
+
+      // Save to session history
+      await saveSessionToHistory({
+        id: sessionIdToJoin,
+        name: null,
+        boardPath: pathname,
+        createdAt: new Date().toISOString(),
+        lastActivity: new Date().toISOString(),
+        backendUrl: backendUrl,
+      });
+    },
+    [backendUrl, pathname, router, searchParams],
+  );
+
+  const endSession = useCallback(() => {
+    // Disconnect from backend
+    queueSession.disconnect();
+
+    // Remove session from URL
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('session');
+    const queryString = params.toString();
+    router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
+
+    // Update state
+    setActiveSessionId(null);
+  }, [queueSession, pathname, router, searchParams]);
+
+  // Whether party mode is active
+  const isSessionActive = !!sessionId && queueSession.hasConnected;
 
   // Data fetching for search results
   const {
@@ -158,13 +250,15 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
 
   // Determine view-only mode
   // View-only while still connecting, once connected everyone can modify the queue
+  // If no session is active, not view-only (local mode)
   const viewOnlyMode = useMemo(() => {
+    if (!sessionId) return false; // No session = local mode, not view-only
     if (!backendUrl) return false; // No backend = no view-only mode
     if (!queueSession.hasConnected) return true; // Still connecting = view-only
     return false; // Once connected, everyone can modify the queue
-  }, [backendUrl, queueSession.hasConnected]);
+  }, [sessionId, backendUrl, queueSession.hasConnected]);
 
-  const contextValue: QueueContextType = useMemo(
+  const contextValue: GraphQLQueueContextType = useMemo(
     () => ({
       queue: state.queue,
       currentClimbQueueItem: state.currentClimbQueueItem,
@@ -178,6 +272,13 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
       hasDoneFirstFetch: state.hasDoneFirstFetch,
       viewOnlyMode,
       parsedParams,
+
+      // Session management
+      isSessionActive,
+      sessionId,
+      startSession,
+      joinSession: joinSessionHandler,
+      endSession,
 
       // Session data for party context
       users: queueSession.users,
@@ -355,6 +456,11 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
       router,
       fetchMoreClimbs,
       currentUserInfo,
+      isSessionActive,
+      sessionId,
+      startSession,
+      joinSessionHandler,
+      endSession,
     ],
   );
 
@@ -375,7 +481,7 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
   return <QueueContext.Provider value={contextValue}>{children}</QueueContext.Provider>;
 };
 
-export const useGraphQLQueueContext = () => {
+export const useGraphQLQueueContext = (): GraphQLQueueContextType => {
   const context = useContext(QueueContext);
   if (!context) {
     throw new Error('useGraphQLQueueContext must be used within a GraphQLQueueProvider');
