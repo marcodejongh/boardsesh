@@ -53,6 +53,7 @@
     "@boardsesh/shared-schema": "*",
     "@neondatabase/serverless": "1.0.2",
     "drizzle-orm": "^0.45.1",
+    "postgres": "^3.4.7",
     "ws": "^8.18.3"
   },
   "devDependencies": {

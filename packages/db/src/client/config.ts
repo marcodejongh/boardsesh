@@ -3,6 +3,7 @@ import { neonConfig } from '@neondatabase/serverless';
 export interface ConnectionConfig {
   connectionString: string;
   isLocal: boolean;
+  isTest: boolean;
 }
 
 export function isLocalDevelopment(): boolean {
@@ -10,15 +11,22 @@ export function isLocalDevelopment(): boolean {
          process.env.NODE_ENV === 'development';
 }
 
+export function isTestEnvironment(): boolean {
+  return process.env.NODE_ENV === 'test' ||
+         process.env.VITEST === 'true';
+}
+
 export function getConnectionConfig(): ConnectionConfig {
   let connectionString = process.env.DATABASE_URL;
   const isLocal = isLocalDevelopment();
+  const isTest = isTestEnvironment();
 
-  if (isLocal) {
+  if (isLocal && !isTest) {
     connectionString = 'postgres://postgres:password@db.localtest.me:5432/main';
   }
+  // In test mode, use DATABASE_URL as-is (set by test setup)
 
-  return { connectionString: connectionString!, isLocal };
+  return { connectionString: connectionString!, isLocal, isTest };
 }
 
 export function configureNeonForEnvironment(): void {

@@ -1,6 +1,5 @@
 import { beforeAll, beforeEach, afterAll } from 'vitest';
 import { drizzle } from 'drizzle-orm/postgres-js';
-import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
 import { sql } from 'drizzle-orm';
 import * as schema from '../db/schema.js';
@@ -15,6 +14,56 @@ const baseConnectionString = connectionString.replace(/\/[^/]+$/, '/postgres');
 
 let migrationClient: ReturnType<typeof postgres>;
 let db: ReturnType<typeof drizzle>;
+
+// SQL to create only the tables needed for backend tests
+const createTablesSQL = `
+  -- Create users table (minimal, needed for FK reference)
+  CREATE TABLE IF NOT EXISTS "users" (
+    "id" text PRIMARY KEY NOT NULL,
+    "name" text,
+    "email" text NOT NULL,
+    "emailVerified" timestamp,
+    "image" text,
+    "created_at" timestamp DEFAULT now() NOT NULL,
+    "updated_at" timestamp DEFAULT now() NOT NULL
+  );
+
+  -- Create board_sessions table
+  CREATE TABLE IF NOT EXISTS "board_sessions" (
+    "id" text PRIMARY KEY NOT NULL,
+    "board_path" text NOT NULL,
+    "created_at" timestamp DEFAULT now() NOT NULL,
+    "last_activity" timestamp DEFAULT now() NOT NULL,
+    "latitude" double precision,
+    "longitude" double precision,
+    "discoverable" boolean DEFAULT false NOT NULL,
+    "created_by_user_id" text REFERENCES "users"("id") ON DELETE SET NULL,
+    "name" text
+  );
+
+  -- Create board_session_clients table
+  CREATE TABLE IF NOT EXISTS "board_session_clients" (
+    "id" text PRIMARY KEY NOT NULL,
+    "session_id" text NOT NULL REFERENCES "board_sessions"("id") ON DELETE CASCADE,
+    "username" text,
+    "connected_at" timestamp DEFAULT now() NOT NULL,
+    "is_leader" boolean DEFAULT false NOT NULL
+  );
+
+  -- Create board_session_queues table
+  CREATE TABLE IF NOT EXISTS "board_session_queues" (
+    "session_id" text PRIMARY KEY NOT NULL REFERENCES "board_sessions"("id") ON DELETE CASCADE,
+    "queue" jsonb DEFAULT '[]'::jsonb NOT NULL,
+    "current_climb_queue_item" jsonb DEFAULT 'null'::jsonb,
+    "version" integer DEFAULT 1 NOT NULL,
+    "updated_at" timestamp DEFAULT now() NOT NULL
+  );
+
+  -- Create indexes
+  CREATE INDEX IF NOT EXISTS "board_sessions_location_idx" ON "board_sessions" ("latitude", "longitude");
+  CREATE INDEX IF NOT EXISTS "board_sessions_discoverable_idx" ON "board_sessions" ("discoverable");
+  CREATE INDEX IF NOT EXISTS "board_sessions_user_idx" ON "board_sessions" ("created_by_user_id");
+`;
 
 beforeAll(async () => {
   // First, connect to postgres database to create test database if needed
@@ -43,8 +92,8 @@ beforeAll(async () => {
   migrationClient = postgres(connectionString, { max: 1, onnotice: () => {} });
   db = drizzle(migrationClient, { schema });
 
-  // Run migrations from packages/db
-  await migrate(db, { migrationsFolder: '../../../db/drizzle' });
+  // Create tables directly (backend tests only need session tables)
+  await migrationClient.unsafe(createTablesSQL);
 });
 
 beforeEach(async () => {
