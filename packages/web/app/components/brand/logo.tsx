@@ -21,30 +21,26 @@ const sizes = {
 };
 
 // Pixel art letter definitions (each letter on a grid)
-// B letter - 7 wide x 9 tall pixels
+// B letter - 5 wide x 7 tall pixels (chunky style)
 const B_PIXELS = [
-  [1, 1, 1, 1, 1, 1, 0],
-  [1, 1, 1, 1, 1, 1, 1],
-  [1, 1, 0, 0, 0, 1, 1],
-  [1, 1, 1, 1, 1, 1, 0],
-  [1, 1, 1, 1, 1, 1, 1],
-  [1, 1, 0, 0, 0, 1, 1],
-  [1, 1, 0, 0, 0, 1, 1],
-  [1, 1, 1, 1, 1, 1, 1],
-  [1, 1, 1, 1, 1, 1, 0],
+  [1, 1, 1, 1, 0],
+  [1, 0, 0, 0, 1],
+  [1, 0, 0, 0, 1],
+  [1, 1, 1, 1, 0],
+  [1, 0, 0, 0, 1],
+  [1, 0, 0, 0, 1],
+  [1, 1, 1, 1, 0],
 ];
 
-// S letter - 7 wide x 9 tall pixels
+// S letter - 5 wide x 7 tall pixels (chunky style)
 const S_PIXELS = [
-  [0, 1, 1, 1, 1, 1, 1],
-  [1, 1, 1, 1, 1, 1, 1],
-  [1, 1, 0, 0, 0, 0, 0],
-  [1, 1, 1, 1, 1, 1, 0],
-  [0, 1, 1, 1, 1, 1, 1],
-  [0, 0, 0, 0, 0, 1, 1],
-  [0, 0, 0, 0, 0, 1, 1],
-  [1, 1, 1, 1, 1, 1, 1],
-  [1, 1, 1, 1, 1, 1, 0],
+  [0, 1, 1, 1, 1],
+  [1, 0, 0, 0, 0],
+  [1, 0, 0, 0, 0],
+  [0, 1, 1, 1, 0],
+  [0, 0, 0, 0, 1],
+  [0, 0, 0, 0, 1],
+  [1, 1, 1, 1, 0],
 ];
 
 const PixelLetter = ({
@@ -79,8 +75,8 @@ const PixelLetter = ({
 );
 
 export const Logo = ({ size = 'md', showText = true, linkToHome = true }: LogoProps) => {
-  const { icon, fontSize, gap } = sizes[size];
-  const pixelSize = 3;
+  const { icon, fontSize, gap: textGap } = sizes[size];
+  const pixelSize = 4;
   const shadowOffset = 2;
 
   const logoContent = (
@@ -88,7 +84,7 @@ export const Logo = ({ size = 'md', showText = true, linkToHome = true }: LogoPr
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap,
+        gap: textGap,
         textDecoration: 'none',
         color: 'inherit',
       }}
@@ -105,12 +101,12 @@ export const Logo = ({ size = 'md', showText = true, linkToHome = true }: LogoPr
         <rect x="0" y="0" width="48" height="48" rx="4" fill="transparent" />
 
         {/* Pink shadow layers */}
-        <PixelLetter pixels={B_PIXELS} startX={3 + shadowOffset} startY={6 + shadowOffset} pixelSize={pixelSize} fill={KILTER_PINK} />
-        <PixelLetter pixels={S_PIXELS} startX={24 + shadowOffset} startY={6 + shadowOffset} pixelSize={pixelSize} fill={KILTER_PINK} />
+        <PixelLetter pixels={B_PIXELS} startX={2 + shadowOffset} startY={10 + shadowOffset} pixelSize={pixelSize} fill={KILTER_PINK} />
+        <PixelLetter pixels={S_PIXELS} startX={26 + shadowOffset} startY={10 + shadowOffset} pixelSize={pixelSize} fill={KILTER_PINK} />
 
         {/* Cyan letters */}
-        <PixelLetter pixels={B_PIXELS} startX={3} startY={6} pixelSize={pixelSize} fill={KILTER_CYAN} />
-        <PixelLetter pixels={S_PIXELS} startX={24} startY={6} pixelSize={pixelSize} fill={KILTER_CYAN} />
+        <PixelLetter pixels={B_PIXELS} startX={2} startY={10} pixelSize={pixelSize} fill={KILTER_CYAN} />
+        <PixelLetter pixels={S_PIXELS} startX={26} startY={10} pixelSize={pixelSize} fill={KILTER_CYAN} />
       </svg>
       {showText && (
         <span
