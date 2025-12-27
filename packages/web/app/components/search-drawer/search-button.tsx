@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Button, Drawer, Badge, Typography, Spin, Space } from 'antd';
-import { SearchOutlined, FilterOutlined } from '@ant-design/icons';
+import { Button, Drawer, Badge, Typography, Spin } from 'antd';
+import { SearchOutlined } from '@ant-design/icons';
 import SearchForm from './search-form';
 import { useQueueContext } from '@/app/components/graphql-queue';
 import ClearButton from './clear-button';
@@ -27,12 +27,7 @@ const SearchButton = ({ boardDetails }: { boardDetails: BoardDetails }) => {
     return value !== DEFAULT_SEARCH_PARAMS[key as keyof typeof DEFAULT_SEARCH_PARAMS];
   });
 
-  const drawerTitle = (
-    <Space>
-      <FilterOutlined style={{ color: '#06B6D4' }} />
-      <span>Search Climbs</span>
-    </Space>
-  );
+  const drawerTitle = 'Search Climbs';
 
   const drawerFooter = (
     <div className={styles.searchFooter}>
@@ -40,12 +35,9 @@ const SearchButton = ({ boardDetails }: { boardDetails: BoardDetails }) => {
         {isFetchingClimbs ? (
           <Spin size="small" />
         ) : (
-          <Space size={8}>
-            <FilterOutlined style={{ color: '#06B6D4' }} />
-            <Text type="secondary">
-              <span className={styles.resultBadge}>{(totalSearchResultCount ?? 0).toLocaleString()}</span> results
-            </Text>
-          </Space>
+          <Text type="secondary">
+            <span className={styles.resultBadge}>{(totalSearchResultCount ?? 0).toLocaleString()}</span> results
+          </Text>
         )}
       </div>
       <ClearButton />

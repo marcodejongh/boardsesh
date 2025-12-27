@@ -1,21 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { InputNumber, Row, Col, Select, Switch, Alert, Typography, Tooltip, Divider, Space, Button } from 'antd';
-import {
-  SearchOutlined,
-  SortAscendingOutlined,
-  StarOutlined,
-  TrophyOutlined,
-  UserOutlined,
-  AimOutlined,
-  EyeOutlined,
-  EyeInvisibleOutlined,
-  CheckCircleOutlined,
-  ClockCircleOutlined,
-  ArrowUpOutlined,
-  LoginOutlined,
-} from '@ant-design/icons';
+import { InputNumber, Row, Col, Select, Switch, Alert, Typography, Tooltip, Divider, Button } from 'antd';
+import { LoginOutlined } from '@ant-design/icons';
 import { TENSION_KILTER_GRADES } from '@/app/lib/board-data';
 import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
 import { useBoardProvider } from '@/app/components/board-provider/board-provider-context';
@@ -94,10 +81,7 @@ const BasicSearchForm: React.FC<BasicSearchFormProps> = ({ boardDetails }) => {
     return (
       <div className={styles.switchGroup}>
         <div className={styles.switchRow}>
-          <Space>
-            <EyeInvisibleOutlined className={styles.switchIcon} />
-            <Text>Hide Attempted</Text>
-          </Space>
+          <Text>Hide Attempted</Text>
           <Switch
             size="small"
             checked={uiSearchParams.hideAttempted}
@@ -106,10 +90,7 @@ const BasicSearchForm: React.FC<BasicSearchFormProps> = ({ boardDetails }) => {
         </div>
 
         <div className={styles.switchRow}>
-          <Space>
-            <EyeInvisibleOutlined className={styles.switchIcon} />
-            <Text>Hide Completed</Text>
-          </Space>
+          <Text>Hide Completed</Text>
           <Switch
             size="small"
             checked={uiSearchParams.hideCompleted}
@@ -118,10 +99,7 @@ const BasicSearchForm: React.FC<BasicSearchFormProps> = ({ boardDetails }) => {
         </div>
 
         <div className={styles.switchRow}>
-          <Space>
-            <ClockCircleOutlined className={styles.switchIcon} />
-            <Text>Only Attempted</Text>
-          </Space>
+          <Text>Only Attempted</Text>
           <Switch
             size="small"
             checked={uiSearchParams.showOnlyAttempted}
@@ -130,10 +108,7 @@ const BasicSearchForm: React.FC<BasicSearchFormProps> = ({ boardDetails }) => {
         </div>
 
         <div className={styles.switchRow}>
-          <Space>
-            <CheckCircleOutlined className={styles.switchIcon} />
-            <Text>Only Completed</Text>
-          </Space>
+          <Text>Only Completed</Text>
           <Switch
             size="small"
             checked={uiSearchParams.showOnlyCompleted}
@@ -149,18 +124,12 @@ const BasicSearchForm: React.FC<BasicSearchFormProps> = ({ boardDetails }) => {
       {/* Search Section */}
       <div className={styles.section}>
         <div className={styles.inputGroup}>
-          <div className={styles.inputLabel}>
-            <SearchOutlined className={styles.labelIcon} />
-            <Text strong>Climb Name</Text>
-          </div>
+          <Text strong>Climb Name</Text>
           <SearchClimbNameInput />
         </div>
 
         <div className={styles.inputGroup}>
-          <div className={styles.inputLabel}>
-            <AimOutlined className={styles.labelIcon} />
-            <Text strong>Grade Range</Text>
-          </div>
+          <Text strong>Grade Range</Text>
           <Row gutter={8}>
             <Col span={12}>
               <Select
@@ -196,10 +165,7 @@ const BasicSearchForm: React.FC<BasicSearchFormProps> = ({ boardDetails }) => {
         </div>
 
         <div className={styles.inputGroup}>
-          <div className={styles.inputLabel}>
-            <UserOutlined className={styles.labelIcon} />
-            <Text strong>Setter</Text>
-          </div>
+          <Text strong>Setter</Text>
           <SetterNameSelect />
         </div>
       </div>
@@ -213,10 +179,7 @@ const BasicSearchForm: React.FC<BasicSearchFormProps> = ({ boardDetails }) => {
         <Row gutter={[12, 12]}>
           <Col span={12}>
             <div className={styles.compactInputGroup}>
-              <div className={styles.inputLabel}>
-                <ArrowUpOutlined className={styles.labelIcon} />
-                <Text>Min Ascents</Text>
-              </div>
+              <Text>Min Ascents</Text>
               <InputNumber
                 min={1}
                 value={uiSearchParams.minAscents}
@@ -228,10 +191,7 @@ const BasicSearchForm: React.FC<BasicSearchFormProps> = ({ boardDetails }) => {
           </Col>
           <Col span={12}>
             <div className={styles.compactInputGroup}>
-              <div className={styles.inputLabel}>
-                <StarOutlined className={styles.labelIcon} />
-                <Text>Min Rating</Text>
-              </div>
+              <Text>Min Rating</Text>
               <InputNumber
                 min={1.0}
                 max={3.0}
@@ -246,10 +206,7 @@ const BasicSearchForm: React.FC<BasicSearchFormProps> = ({ boardDetails }) => {
         </Row>
 
         <div className={styles.inputGroup}>
-          <div className={styles.inputLabel}>
-            <AimOutlined className={styles.labelIcon} />
-            <Text>Grade Accuracy</Text>
-          </div>
+          <Text>Grade Accuracy</Text>
           <Select
             value={uiSearchParams.gradeAccuracy}
             onChange={(value) => updateFilters({ gradeAccuracy: value || undefined })}
@@ -264,10 +221,7 @@ const BasicSearchForm: React.FC<BasicSearchFormProps> = ({ boardDetails }) => {
 
         <div className={styles.switchGroup}>
           <div className={styles.switchRow}>
-            <Space>
-              <TrophyOutlined className={styles.switchIcon} />
-              <Text>Classics Only</Text>
-            </Space>
+            <Text>Classics Only</Text>
             <Switch
               size="small"
               checked={uiSearchParams.onlyClassics}
@@ -277,12 +231,9 @@ const BasicSearchForm: React.FC<BasicSearchFormProps> = ({ boardDetails }) => {
 
           {showTallClimbsFilter && (
             <div className={styles.switchRow}>
-              <Space>
-                <Tooltip title="Show only climbs that use holds in the bottom 8 rows (only available on 10x12 boards)">
-                  <ArrowUpOutlined className={styles.switchIcon} />
-                  <Text>Tall Climbs Only</Text>
-                </Tooltip>
-              </Space>
+              <Tooltip title="Show only climbs that use holds in the bottom 8 rows (only available on 10x12 boards)">
+                <Text>Tall Climbs Only</Text>
+              </Tooltip>
               <Switch
                 size="small"
                 checked={uiSearchParams.onlyTallClimbs}
@@ -298,10 +249,7 @@ const BasicSearchForm: React.FC<BasicSearchFormProps> = ({ boardDetails }) => {
       {/* Sort Section */}
       <div className={styles.section}>
         <div className={styles.inputGroup}>
-          <div className={styles.inputLabel}>
-            <SortAscendingOutlined className={styles.labelIcon} />
-            <Text strong>Sort By</Text>
-          </div>
+          <Text strong>Sort By</Text>
           <Row gutter={8}>
             <Col span={14}>
               <Select
@@ -333,9 +281,7 @@ const BasicSearchForm: React.FC<BasicSearchFormProps> = ({ boardDetails }) => {
 
       {/* Personal Progress Section */}
       <div className={styles.section}>
-        <Text type="secondary" className={styles.sectionTitle}>
-          <EyeOutlined className={styles.labelIcon} /> Personal Progress
-        </Text>
+        <Text type="secondary" className={styles.sectionTitle}>Personal Progress</Text>
         {renderLogbookSection()}
       </div>
 

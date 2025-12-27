@@ -32,7 +32,7 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails, onClimbNavigate }) 
   } = useQueueContext();
 
   // Disable actions when in a session but connection is not ready
-  const actionsDisabled = sessionId && !isConnectionReady;
+  const actionsDisabled = !!(sessionId && !isConnectionReady);
 
   // Monitor for drag-and-drop events
   useEffect(() => {
@@ -89,7 +89,7 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails, onClimbNavigate }) 
               isCurrent={isCurrent}
               isHistory={isHistory}
               viewOnlyMode={viewOnlyMode}
-              actionsDisabled={!!actionsDisabled}
+              actionsDisabled={actionsDisabled}
               boardDetails={boardDetails}
               setCurrentClimbQueueItem={setCurrentClimbQueueItem}
               onClimbNavigate={onClimbNavigate}
@@ -132,7 +132,7 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails, onClimbNavigate }) 
                         type="default"
                         icon={<PlusOutlined />}
                         onClick={() => addToQueue(climb)}
-                        disabled={!!actionsDisabled}
+                        disabled={actionsDisabled}
                       />
                     </Tooltip>
                   </Col>

@@ -26,7 +26,7 @@ export default function NextClimbButton({ navigate = false, boardDetails }: Next
   const nextClimb = getNextClimbQueueItem();
 
   // Disable when in a session but connection is not ready
-  const actionsDisabled = sessionId && !isConnectionReady;
+  const actionsDisabled = !!(sessionId && !isConnectionReady);
 
   const handleClick = () => {
     if (!nextClimb) {
@@ -64,7 +64,7 @@ export default function NextClimbButton({ navigate = false, boardDetails }: Next
     );
   }
 
-  const isDisabled = !nextClimb || viewOnlyMode || !!actionsDisabled;
+  const isDisabled = !nextClimb || viewOnlyMode || actionsDisabled;
 
   return (
     <Tooltip title={actionsDisabled ? 'Waiting for connection...' : undefined}>

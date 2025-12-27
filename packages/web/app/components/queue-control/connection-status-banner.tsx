@@ -4,6 +4,7 @@ import React from 'react';
 import { Alert, Spin } from 'antd';
 import { LoadingOutlined, DisconnectOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { useQueueContext } from '../graphql-queue';
+import styles from './connection-status-banner.module.css';
 
 interface ConnectionStatusBannerProps {
   compact?: boolean;
@@ -23,6 +24,8 @@ export const ConnectionStatusBanner: React.FC<ConnectionStatusBannerProps> = ({ 
     return null;
   }
 
+  const bannerClassName = compact ? styles.bannerCompact : styles.banner;
+
   // Connecting state
   if (isConnecting) {
     return (
@@ -32,7 +35,7 @@ export const ConnectionStatusBanner: React.FC<ConnectionStatusBannerProps> = ({ 
         icon={<Spin indicator={<LoadingOutlined spin />} size="small" />}
         message={compact ? 'Connecting...' : 'Connecting to session'}
         description={compact ? undefined : 'Queue changes will sync once connected'}
-        style={{ marginBottom: compact ? 8 : 16 }}
+        className={bannerClassName}
       />
     );
   }
@@ -46,7 +49,7 @@ export const ConnectionStatusBanner: React.FC<ConnectionStatusBannerProps> = ({ 
         icon={<ExclamationCircleOutlined />}
         message={compact ? 'Connection error' : 'Connection error'}
         description={compact ? undefined : connectionError.message || 'Unable to connect to session'}
-        style={{ marginBottom: compact ? 8 : 16 }}
+        className={bannerClassName}
       />
     );
   }
@@ -60,7 +63,7 @@ export const ConnectionStatusBanner: React.FC<ConnectionStatusBannerProps> = ({ 
         icon={<DisconnectOutlined />}
         message={compact ? 'Disconnected' : 'Disconnected from session'}
         description={compact ? undefined : 'Attempting to reconnect...'}
-        style={{ marginBottom: compact ? 8 : 16 }}
+        className={bannerClassName}
       />
     );
   }
