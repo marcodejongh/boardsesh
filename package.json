@@ -6,15 +6,20 @@
   ],
   "scripts": {
     "dev": "npm run dev --workspace=@boardsesh/web",
-    "build": "npm run build --workspace=@boardsesh/shared-schema && npm run build --workspaces --if-present",
+    "build": "npm run build --workspace=@boardsesh/shared-schema && npm run build --workspace=@boardsesh/db && npm run build --workspaces --if-present",
     "build:web": "npm run build --workspace=@boardsesh/web",
     "build:backend": "npm run build --workspace=boardsesh-backend",
     "build:shared": "npm run build --workspace=@boardsesh/shared-schema",
+    "build:db": "npm run build --workspace=@boardsesh/db",
     "lint": "npm run lint --workspace=@boardsesh/web",
     "test": "npm run test --workspaces --if-present",
     "test:run": "npm run test:run --workspaces --if-present",
     "backend:dev": "npm run dev --workspace=boardsesh-backend",
-    "backend:start": "npm run start --workspace=boardsesh-backend"
+    "backend:start": "npm run start --workspace=boardsesh-backend",
+    "db:up": "docker-compose up -d postgres neon-proxy",
+    "db:setup": "docker-compose up db_setup",
+    "db:migrate": "npm run db:migrate --workspace=@boardsesh/db",
+    "db:studio": "npm run db:studio --workspace=@boardsesh/db"
   },
   "engines": {
     "node": ">=18"

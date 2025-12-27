@@ -1,0 +1,56 @@
+import { neon, neonConfig, Pool } from '@neondatabase/serverless';
+import { drizzle as drizzleHttp } from 'drizzle-orm/neon-http';
+import { drizzle as drizzleServerless } from 'drizzle-orm/neon-serverless';
+import { drizzle as drizzlePostgres } from 'drizzle-orm/postgres-js';
+import postgres from 'postgres';
+import ws from 'ws';
+import { getConnectionConfig, configureNeonForEnvironment, isTestEnvironment } from './config.js';
+import * as schema from '../schema/index.js';
+import * as relations from '../relations/index.js';
+
+// Configure WebSocket constructor
+neonConfig.webSocketConstructor = ws;
+
+// Combine schema and relations for full Drizzle support
+const fullSchema = { ...schema, ...relations };
+
+// Singleton instances
+let pool: Pool | null = null;
+let postgresClient: ReturnType<typeof postgres> | null = null;
+let db: ReturnType<typeof drizzleServerless> | ReturnType<typeof drizzlePostgres> | null = null;
+
+export function createPool(): Pool {
+  if (!pool) {
+    configureNeonForEnvironment();
+    const { connectionString } = getConnectionConfig();
+    pool = new Pool({ connectionString });
+  }
+  return pool;
+}
+
+export function createDb() {
+  if (!db) {
+    const { connectionString, isTest } = getConnectionConfig();
+
+    if (isTest) {
+      // Use postgres-js directly for tests (no Neon proxy needed)
+      postgresClient = postgres(connectionString);
+      db = drizzlePostgres(postgresClient, { schema: fullSchema });
+    } else {
+      // Use Neon serverless for production/development
+      const poolInstance = createPool();
+      db = drizzleServerless(poolInstance, { schema: fullSchema });
+    }
+  }
+  return db;
+}
+
+export function createNeonHttp() {
+  configureNeonForEnvironment();
+  const { connectionString } = getConnectionConfig();
+  const sql = neon(connectionString);
+  return drizzleHttp({ client: sql, schema: fullSchema });
+}
+
+export type DbInstance = ReturnType<typeof createDb>;
+export type PoolInstance = Pool;

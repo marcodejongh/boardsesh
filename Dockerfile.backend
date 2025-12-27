@@ -1,0 +1,55 @@
+# Build stage for the backend service in monorepo
+FROM node:22-alpine AS builder
+
+WORKDIR /app
+
+# Copy package files for all workspaces
+COPY package*.json ./
+COPY packages/shared-schema/package*.json ./packages/shared-schema/
+COPY packages/db/package*.json ./packages/db/
+COPY packages/backend/package*.json ./packages/backend/
+
+# Install all dependencies (including workspace dependencies)
+RUN npm ci
+
+# Copy source code for shared-schema, db, and backend only
+COPY packages/shared-schema ./packages/shared-schema
+COPY packages/db ./packages/db
+COPY packages/backend ./packages/backend
+
+# Build in dependency order: shared-schema -> db -> backend
+RUN npm run build --workspace=@boardsesh/shared-schema
+RUN npm run build --workspace=@boardsesh/db
+RUN npm run build --workspace=boardsesh-backend
+
+# Production stage
+FROM node:22-alpine
+
+WORKDIR /app
+
+# Copy package files (need full workspace structure for npm to resolve)
+COPY package*.json ./
+COPY packages/shared-schema/package*.json ./packages/shared-schema/
+COPY packages/db/package*.json ./packages/db/
+COPY packages/backend/package*.json ./packages/backend/
+
+# Copy built shared-schema and db dist BEFORE npm ci (so main entry points exist)
+COPY --from=builder /app/packages/shared-schema/dist ./packages/shared-schema/dist
+COPY --from=builder /app/packages/db/dist ./packages/db/dist
+
+# Install production dependencies only
+RUN npm ci --omit=dev --workspace=boardsesh-backend --workspace=@boardsesh/shared-schema --workspace=@boardsesh/db
+
+# Copy built backend files
+COPY --from=builder /app/packages/backend/dist ./packages/backend/dist
+
+# Expose port
+EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
+
+# Start the server
+WORKDIR /app/packages/backend
+CMD ["node", "dist/index.js"]
