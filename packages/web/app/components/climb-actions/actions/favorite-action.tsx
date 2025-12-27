@@ -1,0 +1,154 @@
+'use client';
+
+import React, { useState, useCallback } from 'react';
+import { Button, Tooltip } from 'antd';
+import { HeartOutlined, HeartFilled } from '@ant-design/icons';
+import { track } from '@vercel/analytics';
+import { ClimbActionProps, ClimbActionResult } from '../types';
+import { useFavorite } from '../use-favorite';
+import AuthModal from '../../auth/auth-modal';
+
+export function FavoriteAction({
+  climb,
+  boardDetails,
+  angle,
+  viewMode,
+  size = 'default',
+  showLabel,
+  disabled,
+  className,
+  onComplete,
+}: ClimbActionProps): ClimbActionResult {
+  const [showAuthModal, setShowAuthModal] = useState(false);
+
+  const { isFavorited, isLoading, toggleFavorite, isAuthenticated } = useFavorite({
+    boardName: boardDetails.board_name,
+    climbUuid: climb.uuid,
+    angle,
+  });
+
+  const handleClick = useCallback(async (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    e?.preventDefault();
+
+    if (!isAuthenticated) {
+      setShowAuthModal(true);
+      return;
+    }
+
+    try {
+      const newState = await toggleFavorite();
+      track('Favorite Toggle', {
+        boardName: boardDetails.board_name,
+        climbUuid: climb.uuid,
+        action: newState ? 'favorited' : 'unfavorited',
+      });
+      onComplete?.();
+    } catch {
+      // Silently fail
+    }
+  }, [isAuthenticated, toggleFavorite, boardDetails.board_name, climb.uuid, onComplete]);
+
+  const handleAuthSuccess = useCallback(async () => {
+    try {
+      const response = await fetch('/api/internal/favorites', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          boardName: boardDetails.board_name,
+          climbUuid: climb.uuid,
+          angle,
+        }),
+      });
+      if (response.ok) {
+        track('Favorite Toggle', {
+          boardName: boardDetails.board_name,
+          climbUuid: climb.uuid,
+          action: 'favorited',
+        });
+      }
+    } catch {
+      // Silently fail
+    }
+  }, [boardDetails.board_name, climb.uuid, angle]);
+
+  const label = isFavorited ? 'Favorited' : 'Favorite';
+  const shouldShowLabel = showLabel ?? (viewMode === 'button' || viewMode === 'dropdown');
+  const iconSize = size === 'small' ? 14 : size === 'large' ? 20 : 16;
+
+  const HeartIcon = isFavorited ? HeartFilled : HeartOutlined;
+  const iconStyle = isFavorited ? { color: '#ff4d4f', fontSize: iconSize } : { fontSize: iconSize };
+  const icon = <HeartIcon style={iconStyle} />;
+
+  const authModalElement = (
+    <AuthModal
+      open={showAuthModal}
+      onClose={() => setShowAuthModal(false)}
+      onSuccess={handleAuthSuccess}
+      title="Sign in to save favorites"
+      description={`Sign in to save "${climb.name}" to your favorites.`}
+    />
+  );
+
+  // Icon mode - for Card actions
+  const iconElement = (
+    <>
+      <Tooltip title={label}>
+        <span onClick={handleClick} style={{ cursor: 'pointer' }} className={className}>
+          {icon}
+        </span>
+      </Tooltip>
+      {authModalElement}
+    </>
+  );
+
+  // Button mode
+  const buttonElement = (
+    <>
+      <Button
+        icon={icon}
+        onClick={handleClick}
+        loading={isLoading}
+        size={size === 'large' ? 'large' : size === 'small' ? 'small' : 'middle'}
+        disabled={disabled}
+        className={className}
+      >
+        {shouldShowLabel && label}
+      </Button>
+      {authModalElement}
+    </>
+  );
+
+  // Menu item for dropdown
+  const menuItem = {
+    key: 'favorite',
+    label,
+    icon,
+    onClick: () => handleClick(),
+  };
+
+  let element: React.ReactNode;
+  switch (viewMode) {
+    case 'icon':
+      element = iconElement;
+      break;
+    case 'button':
+    case 'compact':
+      element = buttonElement;
+      break;
+    case 'dropdown':
+      element = authModalElement; // Need to render auth modal even in dropdown mode
+      break;
+    default:
+      element = iconElement;
+  }
+
+  return {
+    element,
+    menuItem,
+    key: 'favorite',
+    available: true,
+  };
+}
+
+export default FavoriteAction;
