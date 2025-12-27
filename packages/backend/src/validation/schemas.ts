@@ -6,6 +6,11 @@ import { z } from 'zod';
 export const UUIDSchema = z.string().uuid('Invalid UUID format');
 
 /**
+ * External UUID schema for Aurora API climb UUIDs (non-standard format without dashes)
+ */
+export const ExternalUUIDSchema = z.string().min(1, 'UUID cannot be empty').max(50, 'UUID too long');
+
+/**
  * Session ID validation schema
  */
 export const SessionIdSchema = UUIDSchema;
@@ -56,7 +61,7 @@ export const CreateSessionInputSchema = z.object({
  * Climb validation schema (simplified for input)
  */
 export const ClimbInputSchema = z.object({
-  uuid: UUIDSchema,
+  uuid: ExternalUUIDSchema, // Aurora API uses non-standard UUID format (no dashes)
   setter_username: z.string().max(100),
   name: z.string().max(200),
   description: z.string().max(2000),
@@ -80,7 +85,7 @@ export const ClimbInputSchema = z.object({
 export const QueueItemUserSchema = z.object({
   id: z.string().max(100),
   username: z.string().max(100),
-  avatarUrl: z.string().max(500).optional(),
+  avatarUrl: z.string().max(500).nullish(), // Can be null or undefined
 });
 
 /**
