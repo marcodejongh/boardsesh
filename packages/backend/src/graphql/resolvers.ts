@@ -47,7 +47,8 @@ const MAX_RETRIES = 3;
  */
 function requireSession(ctx: ConnectionContext): string {
   if (!ctx.sessionId) {
-    throw new Error('Must be in a session to perform this operation');
+    console.error(`[Auth] requireSession failed: connectionId=${ctx.connectionId}, sessionId=${ctx.sessionId}`);
+    throw new Error(`Must be in a session to perform this operation (connectionId: ${ctx.connectionId})`);
   }
   return ctx.sessionId;
 }
@@ -68,8 +69,13 @@ function requireAuthenticated(ctx: ConnectionContext): void {
  * Used for subscription authorization.
  */
 function requireSessionMember(ctx: ConnectionContext, sessionId: string): void {
+  if (!ctx.sessionId) {
+    console.error(`[Auth] requireSessionMember failed: not in any session. connectionId=${ctx.connectionId}, requested=${sessionId}`);
+    throw new Error(`Unauthorized: not in any session (connectionId: ${ctx.connectionId}, requested: ${sessionId})`);
+  }
   if (ctx.sessionId !== sessionId) {
-    throw new Error('Unauthorized: must be in session to access this data');
+    console.error(`[Auth] requireSessionMember failed: session mismatch. connectionId=${ctx.connectionId}, have=${ctx.sessionId}, requested=${sessionId}`);
+    throw new Error(`Unauthorized: session mismatch (have: ${ctx.sessionId}, requested: ${sessionId})`);
   }
 }
 
@@ -245,11 +251,16 @@ const resolvers = {
       { sessionId, boardPath, username, avatarUrl }: { sessionId: string; boardPath: string; username?: string; avatarUrl?: string },
       ctx: ConnectionContext
     ) => {
+      console.log(`[joinSession] START - connectionId: ${ctx.connectionId}, sessionId: ${sessionId}, username: ${username}`);
+
       applyRateLimit(ctx, 10); // Limit session joins to prevent abuse
       const result = await roomManager.joinSession(ctx.connectionId, sessionId, boardPath, username || undefined, avatarUrl || undefined);
+      console.log(`[joinSession] roomManager.joinSession completed - clientId: ${result.clientId}, isLeader: ${result.isLeader}`);
 
       // Update context with session info
+      console.log(`[joinSession] Before updateContext - ctx.sessionId: ${ctx.sessionId}`);
       updateContext(ctx.connectionId, { sessionId, userId: result.clientId });
+      console.log(`[joinSession] After updateContext - ctx.sessionId: ${ctx.sessionId}`);
 
       // Notify session about new user
       const userJoinedEvent: SessionEvent = {
@@ -281,6 +292,8 @@ const resolvers = {
       { input }: { input: CreateSessionInput },
       ctx: ConnectionContext
     ) => {
+      console.log(`[createSession] START - connectionId: ${ctx.connectionId}, boardPath: ${input.boardPath}`);
+
       applyRateLimit(ctx, 5); // Limit session creation to prevent abuse
       // Only authenticated users can create sessions
       requireAuthenticated(ctx);
@@ -290,6 +303,7 @@ const resolvers = {
 
       // Generate a unique session ID
       const sessionId = uuidv4();
+      console.log(`[createSession] Generated sessionId: ${sessionId}`);
 
       if (input.discoverable) {
         // Create a discoverable session with GPS coordinates
@@ -313,9 +327,12 @@ const resolvers = {
         undefined, // username will be set later
         undefined  // avatarUrl will be set later
       );
+      console.log(`[createSession] Joined session - clientId: ${result.clientId}, isLeader: ${result.isLeader}`);
 
       // Update context with session info
+      console.log(`[createSession] Before updateContext - ctx.sessionId: ${ctx.sessionId}`);
       updateContext(ctx.connectionId, { sessionId, userId: result.clientId });
+      console.log(`[createSession] After updateContext - ctx.sessionId: ${ctx.sessionId}`);
 
       return {
         id: sessionId,

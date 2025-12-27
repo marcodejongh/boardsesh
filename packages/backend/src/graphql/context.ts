@@ -20,6 +20,7 @@ export function createContext(connectionId?: string, isAuthenticated?: boolean, 
     isAuthenticated: isAuthenticated || false,
   };
   connections.set(id, context);
+  console.log(`[Context] createContext: ${id} (authenticated: ${isAuthenticated}, userId: ${userId}). Total connections: ${connections.size}`);
   return context;
 }
 
@@ -33,22 +34,29 @@ export function getContext(connectionId: string): ConnectionContext | undefined 
 /**
  * Update an existing connection context.
  * Used when a user joins/leaves a session.
+ * Throws an error if the context doesn't exist (prevents silent failures).
  */
 export function updateContext(
   connectionId: string,
   updates: Partial<Omit<ConnectionContext, 'connectionId'>>
 ): void {
   const context = connections.get(connectionId);
-  if (context) {
-    if (updates.sessionId !== undefined) {
-      context.sessionId = updates.sessionId;
-    }
-    if (updates.userId !== undefined) {
-      context.userId = updates.userId;
-    }
-    if (updates.isAuthenticated !== undefined) {
-      context.isAuthenticated = updates.isAuthenticated;
-    }
+  if (!context) {
+    console.error(`[Context] updateContext FAILED: connection ${connectionId} not found. Map has ${connections.size} entries.`);
+    console.error('[Context] Known connections:', Array.from(connections.keys()));
+    throw new Error(`Cannot update context: connection ${connectionId} not found`);
+  }
+
+  console.log(`[Context] updateContext: ${connectionId} -> sessionId=${updates.sessionId}, userId=${updates.userId}`);
+
+  if (updates.sessionId !== undefined) {
+    context.sessionId = updates.sessionId;
+  }
+  if (updates.userId !== undefined) {
+    context.userId = updates.userId;
+  }
+  if (updates.isAuthenticated !== undefined) {
+    context.isAuthenticated = updates.isAuthenticated;
   }
 }
 

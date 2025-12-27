@@ -266,15 +266,23 @@ export function startServer(): { wss: WebSocketServer; httpServer: ReturnType<ty
       // context is called for EACH operation - return the stored context
       context: async (ctx: ServerContext): Promise<ConnectionContext> => {
         const extra = ctx.extra as CustomExtra;
+
         if (!extra.context) {
-          // This shouldn't happen if onConnect worked, but handle gracefully
-          console.warn('No context found in extra, creating new one');
-          const context = createContext();
-          roomManager.registerClient(context.connectionId);
-          extra.context = context;
+          // This should never happen - onConnect should always set context
+          console.error('[Context] CRITICAL: No context in extra - onConnect may have failed');
+          throw new Error('Connection context not initialized - onConnect may have failed');
         }
-        // Return a fresh reference to the context (it may have been updated)
-        return getContext(extra.context.connectionId) || extra.context;
+
+        // Get the latest context (it may have been updated by mutations like joinSession)
+        const latestContext = getContext(extra.context.connectionId);
+
+        if (!latestContext) {
+          console.error(`[Context] Context lost for connection ${extra.context.connectionId}`);
+          throw new Error(`Connection context lost for ${extra.context.connectionId}`);
+        }
+
+        console.log(`[Context] Retrieved context: ${latestContext.connectionId}, sessionId: ${latestContext.sessionId}`);
+        return latestContext;
       },
       onDisconnect: async (ctx: ServerContext, code?: number) => {
         const context = (ctx.extra as CustomExtra)?.context;
