@@ -75,15 +75,33 @@ const deleteExistingAvatars = async (userId: string): Promise<void> => {
   }
 };
 
+// Vercel preview deployment pattern: https://boardsesh-{hash}-marcodejonghs-projects.vercel.app
+const VERCEL_PREVIEW_REGEX = /^https:\/\/boardsesh-[a-z0-9]+-marcodejonghs-projects\.vercel\.app$/;
+
 export function startServer(): { wss: WebSocketServer; httpServer: ReturnType<typeof createServer> } {
   const PORT = parseInt(process.env.PORT || '8080', 10);
   const BOARDSESH_URL = process.env.BOARDSESH_URL || 'https://boardsesh.com';
 
   // Build allowed origins list for CORS
   const ALLOWED_ORIGINS = [BOARDSESH_URL];
+  // Also allow www subdomain variant
+  try {
+    const url = new URL(BOARDSESH_URL);
+    if (!url.hostname.startsWith('www.')) {
+      ALLOWED_ORIGINS.push(`${url.protocol}//www.${url.hostname}`);
+    }
+  } catch {
+    // Invalid URL, skip www variant
+  }
   if (process.env.NODE_ENV !== 'production') {
     ALLOWED_ORIGINS.push('http://localhost:3000', 'http://127.0.0.1:3000');
   }
+
+  // Helper to check if an origin is allowed (includes Vercel preview deployments)
+  const isOriginAllowed = (origin: string): boolean => {
+    if (ALLOWED_ORIGINS.includes(origin)) return true;
+    return VERCEL_PREVIEW_REGEX.test(origin);
+  };
 
   // Create Express app
   const app = express();
@@ -91,7 +109,7 @@ export function startServer(): { wss: WebSocketServer; httpServer: ReturnType<ty
   // CORS middleware for all routes - whitelist specific origins
   app.use((req: Request, res: Response, next: NextFunction) => {
     const origin = req.headers.origin;
-    if (origin && ALLOWED_ORIGINS.includes(origin)) {
+    if (origin && isOriginAllowed(origin)) {
       res.header('Access-Control-Allow-Origin', origin);
       res.header('Access-Control-Allow-Credentials', 'true');
     }
@@ -216,8 +234,8 @@ export function startServer(): { wss: WebSocketServer; httpServer: ReturnType<ty
         return;
       }
 
-      // Check if origin is in allowed list
-      if (ALLOWED_ORIGINS.includes(origin)) {
+      // Check if origin is in allowed list or matches Vercel preview pattern
+      if (isOriginAllowed(origin)) {
         callback(true);
         return;
       }
