@@ -147,7 +147,8 @@ export type FetchResultsResponse = {
 
 export type SearchClimbsResult = {
   climbs: Climb[];
-  totalCount: number;
+  totalCount?: number; // Optional - use countClimbs() for separate count query
+  hasMore?: boolean; // True if more results are available
 };
 
 // Led Colors Type
