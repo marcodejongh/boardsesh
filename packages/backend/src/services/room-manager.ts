@@ -240,7 +240,7 @@ class RoomManager {
             // Only update if version is still 0
             setWhere: eq(sessionQueues.version, 0),
           })
-          .returning({ version: sessionQueues.version });
+          .returning();
 
         if (result.length === 0) {
           throw new VersionConflictError(sessionId, expectedVersion);
@@ -261,7 +261,7 @@ class RoomManager {
           eq(sessionQueues.sessionId, sessionId),
           eq(sessionQueues.version, expectedVersion)
         ))
-        .returning({ version: sessionQueues.version });
+        .returning();
 
       if (result.length === 0) {
         throw new VersionConflictError(sessionId, expectedVersion);
@@ -288,7 +288,7 @@ class RoomManager {
           updatedAt: new Date(),
         },
       })
-      .returning({ version: sessionQueues.version });
+      .returning();
 
     return result[0]?.version ?? 1;
   }
@@ -322,7 +322,7 @@ class RoomManager {
             // Only update if version is still 0 (i.e., the row was just created by another concurrent insert)
             setWhere: eq(sessionQueues.version, 0),
           })
-          .returning({ version: sessionQueues.version });
+          .returning();
 
         if (result.length === 0) {
           throw new VersionConflictError(sessionId, expectedVersion);
@@ -342,7 +342,7 @@ class RoomManager {
           eq(sessionQueues.sessionId, sessionId),
           eq(sessionQueues.version, expectedVersion)
         ))
-        .returning({ version: sessionQueues.version });
+        .returning();
 
       if (result.length === 0) {
         throw new VersionConflictError(sessionId, expectedVersion);
@@ -359,7 +359,7 @@ class RoomManager {
         updatedAt: new Date(),
       })
       .where(eq(sessionQueues.sessionId, sessionId))
-      .returning({ version: sessionQueues.version });
+      .returning();
 
     return result[0]?.version ?? 1;
   }
