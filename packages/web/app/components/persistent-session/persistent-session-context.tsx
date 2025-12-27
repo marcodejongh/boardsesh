@@ -551,7 +551,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
         query: SET_QUEUE,
         variables: {
           queue: newQueue.map(toClimbQueueItemInput),
-          currentClimbQueueItem: newCurrentClimbQueueItem ? toClimbQueueItemInput(newCurrentClimbQueueItem) : null,
+          currentClimbQueueItem: newCurrentClimbQueueItem ? toClimbQueueItemInput(newCurrentClimbQueueItem) : undefined,
         },
       });
     },

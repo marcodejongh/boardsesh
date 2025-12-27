@@ -65,13 +65,13 @@ export const ClimbInputSchema = z.object({
   ascensionist_count: z.number().min(0),
   difficulty: z.string().max(50),
   quality_average: z.string().max(20),
-  stars: z.number().min(0).max(5),
+  stars: z.number().min(0).max(15),
   difficulty_error: z.string().max(50),
   litUpHoldsMap: z.record(z.any()), // JSON object
-  mirrored: z.boolean().optional(),
+  mirrored: z.boolean().nullish(),
   benchmark_difficulty: z.string().max(50).nullable().optional(),
-  userAscents: z.number().min(0).optional(),
-  userAttempts: z.number().min(0).optional(),
+  userAscents: z.number().min(0).nullish(),
+  userAttempts: z.number().min(0).nullish(),
 });
 
 /**
@@ -91,7 +91,7 @@ export const ClimbQueueItemSchema = z.object({
   climb: ClimbInputSchema,
   addedBy: z.string().max(100).optional(),
   addedByUser: QueueItemUserSchema.optional(),
-  tickedBy: z.array(z.string()).max(100).optional(),
+  tickedBy: z.array(z.string()).max(100).nullish(),
   suggested: z.boolean().optional(),
 });
 
