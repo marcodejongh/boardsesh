@@ -165,6 +165,12 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
   const isReconnectingRef = useRef(false);
   const activeSessionRef = useRef<ActiveSessionInfo | null>(null);
   const mountedRef = useRef(false);
+  const clientRef = useRef<Client | null>(null);
+
+  // Track when tab was last hidden for visibility-based resync
+  const hiddenAtRef = useRef<number | null>(null);
+  // Threshold for forcing a resync when tab becomes visible (30 seconds)
+  const VISIBILITY_RESYNC_THRESHOLD_MS = 30_000;
 
   // Event subscribers
   const queueEventSubscribersRef = useRef<Set<(event: ClientQueueEvent) => void>>(new Set());
@@ -178,6 +184,10 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
   useEffect(() => {
     activeSessionRef.current = activeSession;
   }, [activeSession]);
+
+  useEffect(() => {
+    clientRef.current = client;
+  }, [client]);
 
   // Notify queue event subscribers
   const notifyQueueSubscribers = useCallback((event: ClientQueueEvent) => {
@@ -276,6 +286,68 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
     notifySessionSubscribers(event);
   }, [notifySessionSubscribers]);
 
+  // Handle visibility changes to resync when tab becomes visible after being hidden
+  // This catches scenarios where WebSocket might have been throttled or events missed
+  useEffect(() => {
+    function handleVisibilityChange() {
+      if (document.hidden) {
+        // Tab is now hidden - record the time
+        hiddenAtRef.current = Date.now();
+        if (DEBUG) console.log('[PersistentSession] Tab hidden');
+      } else {
+        // Tab is now visible - check if we need to resync
+        const hiddenAt = hiddenAtRef.current;
+        hiddenAtRef.current = null;
+
+        if (DEBUG) console.log('[PersistentSession] Tab visible');
+
+        // If we have an active session and were hidden for long enough, force a resync
+        if (
+          hiddenAt &&
+          Date.now() - hiddenAt > VISIBILITY_RESYNC_THRESHOLD_MS &&
+          activeSessionRef.current &&
+          clientRef.current &&
+          !isReconnectingRef.current
+        ) {
+          if (DEBUG) console.log('[PersistentSession] Tab was hidden for', Date.now() - hiddenAt, 'ms, forcing resync');
+
+          // Trigger a resync by calling handleReconnect logic
+          // This will rejoin the session and re-establish subscriptions
+          isReconnectingRef.current = true;
+          const { sessionId, boardPath } = activeSessionRef.current;
+
+          execute<{ joinSession: Session }>(clientRef.current, {
+            query: JOIN_SESSION,
+            variables: { sessionId, boardPath, username: usernameRef.current, avatarUrl: avatarUrlRef.current },
+          })
+            .then((response) => {
+              if (response?.joinSession && mountedRef.current) {
+                setSession(response.joinSession);
+                if (response.joinSession.queueState) {
+                  handleQueueEvent({
+                    __typename: 'FullSync',
+                    state: response.joinSession.queueState,
+                  });
+                }
+                if (DEBUG) console.log('[PersistentSession] Visibility resync completed');
+              }
+            })
+            .catch((err) => {
+              console.error('[PersistentSession] Visibility resync failed:', err);
+            })
+            .finally(() => {
+              isReconnectingRef.current = false;
+            });
+        }
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [handleQueueEvent]);
+
   // Connect to session when activeSession changes
   useEffect(() => {
     if (!activeSession) {
@@ -317,6 +389,74 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
       }
     }
 
+    // Function to set up subscriptions - reusable for initial connect and reconnect
+    function setupSubscriptions(clientToUse: Client) {
+      if (DEBUG) console.log('[PersistentSession] Setting up subscriptions for session:', sessionId);
+
+      // Clean up any existing subscriptions first
+      if (queueUnsubscribeRef.current) {
+        if (DEBUG) console.log('[PersistentSession] Cleaning up existing queue subscription');
+        queueUnsubscribeRef.current();
+        queueUnsubscribeRef.current = null;
+      }
+      if (sessionUnsubscribeRef.current) {
+        if (DEBUG) console.log('[PersistentSession] Cleaning up existing session subscription');
+        sessionUnsubscribeRef.current();
+        sessionUnsubscribeRef.current = null;
+      }
+
+      // Subscribe to queue updates
+      queueUnsubscribeRef.current = subscribe<{ queueUpdates: ClientQueueEvent }>(
+        clientToUse,
+        { query: QUEUE_UPDATES, variables: { sessionId } },
+        {
+          next: (data) => {
+            if (data.queueUpdates) {
+              handleQueueEvent(data.queueUpdates);
+            }
+          },
+          error: (err) => {
+            console.error('[PersistentSession] Queue subscription error:', err);
+            // Clean up ref on error
+            queueUnsubscribeRef.current = null;
+            if (mountedRef.current) {
+              setError(err instanceof Error ? err : new Error(String(err)));
+            }
+          },
+          complete: () => {
+            if (DEBUG) console.log('[PersistentSession] Queue subscription completed');
+            // Clean up ref on complete
+            queueUnsubscribeRef.current = null;
+          },
+        },
+      );
+
+      // Subscribe to session updates
+      sessionUnsubscribeRef.current = subscribe<{ sessionUpdates: SessionEvent }>(
+        clientToUse,
+        { query: SESSION_UPDATES, variables: { sessionId } },
+        {
+          next: (data) => {
+            if (data.sessionUpdates) {
+              handleSessionEvent(data.sessionUpdates);
+            }
+          },
+          error: (err) => {
+            console.error('[PersistentSession] Session subscription error:', err);
+            // Clean up ref on error
+            sessionUnsubscribeRef.current = null;
+          },
+          complete: () => {
+            if (DEBUG) console.log('[PersistentSession] Session subscription completed');
+            // Clean up ref on complete
+            sessionUnsubscribeRef.current = null;
+          },
+        },
+      );
+
+      if (DEBUG) console.log('[PersistentSession] Subscriptions set up successfully');
+    }
+
     async function handleReconnect() {
       // Use ref to safely check if component is still mounted
       if (!mountedRef.current || !graphqlClient) return;
@@ -333,6 +473,19 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
         if (sessionData && mountedRef.current) {
           setSession(sessionData);
           if (DEBUG) console.log('[PersistentSession] Reconnected, clientId:', sessionData.clientId);
+
+          // Apply FullSync from joinSession response to ensure state is current
+          // This catches any events that were missed during disconnection
+          if (sessionData.queueState) {
+            if (DEBUG) console.log('[PersistentSession] Applying FullSync from reconnection');
+            handleQueueEvent({
+              __typename: 'FullSync',
+              state: sessionData.queueState,
+            });
+          }
+
+          // Re-establish subscriptions since they complete/error on socket close
+          setupSubscriptions(graphqlClient);
         }
       } finally {
         isReconnectingRef.current = false;
@@ -384,54 +537,8 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
           });
         }
 
-        // Subscribe to queue updates
-        queueUnsubscribeRef.current = subscribe<{ queueUpdates: ClientQueueEvent }>(
-          graphqlClient,
-          { query: QUEUE_UPDATES, variables: { sessionId } },
-          {
-            next: (data) => {
-              if (data.queueUpdates) {
-                handleQueueEvent(data.queueUpdates);
-              }
-            },
-            error: (err) => {
-              console.error('[PersistentSession] Queue subscription error:', err);
-              // Clean up ref on error
-              queueUnsubscribeRef.current = null;
-              if (mountedRef.current) {
-                setError(err instanceof Error ? err : new Error(String(err)));
-              }
-            },
-            complete: () => {
-              if (DEBUG) console.log('[PersistentSession] Queue subscription completed');
-              // Clean up ref on complete
-              queueUnsubscribeRef.current = null;
-            },
-          },
-        );
-
-        // Subscribe to session updates
-        sessionUnsubscribeRef.current = subscribe<{ sessionUpdates: SessionEvent }>(
-          graphqlClient,
-          { query: SESSION_UPDATES, variables: { sessionId } },
-          {
-            next: (data) => {
-              if (data.sessionUpdates) {
-                handleSessionEvent(data.sessionUpdates);
-              }
-            },
-            error: (err) => {
-              console.error('[PersistentSession] Session subscription error:', err);
-              // Clean up ref on error
-              sessionUnsubscribeRef.current = null;
-            },
-            complete: () => {
-              if (DEBUG) console.log('[PersistentSession] Session subscription completed');
-              // Clean up ref on complete
-              sessionUnsubscribeRef.current = null;
-            },
-          },
-        );
+        // Set up subscriptions for queue and session updates
+        setupSubscriptions(graphqlClient);
       } catch (err) {
         console.error('[PersistentSession] Connection failed:', err);
         if (mountedRef.current) {
