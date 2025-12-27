@@ -1,69 +1,19 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { PartyProfileProvider, usePartyProfile } from './party-profile-context';
-import PartyProfileModal from './party-profile-modal';
-import { useConnectionSettings } from '@/app/components/connection-manager/connection-settings-context';
-
-interface PartyProfileWrapperInnerProps {
-  children: React.ReactNode;
-}
-
-/**
- * Inner component that handles the modal logic
- * Must be inside PartyProfileProvider and ConnectionSettingsProvider
- */
-const PartyProfileWrapperInner: React.FC<PartyProfileWrapperInnerProps> = ({ children }) => {
-  const { hasUsername, isLoading: profileLoading } = usePartyProfile();
-  const { partyMode, backendUrl, isLoaded: settingsLoaded } = useConnectionSettings();
-  const [showModal, setShowModal] = useState(false);
-  const [hasShownModal, setHasShownModal] = useState(false);
-
-  const isBackendMode = partyMode === 'backend';
-
-  // Show modal when:
-  // 1. Settings and profile are loaded
-  // 2. In backend mode (party mode active)
-  // 3. Username is not set
-  // 4. Haven't already shown modal this session
-  useEffect(() => {
-    if (settingsLoaded && !profileLoading && isBackendMode && !hasUsername && !hasShownModal) {
-      setShowModal(true);
-      setHasShownModal(true);
-    }
-  }, [settingsLoaded, profileLoading, isBackendMode, hasUsername, hasShownModal]);
-
-  const handleCloseModal = () => {
-    setShowModal(false);
-  };
-
-  return (
-    <>
-      {children}
-      <PartyProfileModal
-        open={showModal}
-        onClose={handleCloseModal}
-        isBackendMode={isBackendMode}
-        backendUrl={backendUrl || undefined}
-      />
-    </>
-  );
-};
+import React from 'react';
+import { PartyProfileProvider } from './party-profile-context';
 
 interface PartyProfileWrapperProps {
   children: React.ReactNode;
 }
 
 /**
- * Wrapper component that provides party profile context and handles modal display
- * Should be placed inside ConnectionSettingsProvider in the component tree
+ * Wrapper component that provides party profile context.
+ * The profile ID is used for user identification in party mode.
+ * Username and avatar are now derived from NextAuth session.
  */
 const PartyProfileWrapper: React.FC<PartyProfileWrapperProps> = ({ children }) => {
-  return (
-    <PartyProfileProvider>
-      <PartyProfileWrapperInner>{children}</PartyProfileWrapperInner>
-    </PartyProfileProvider>
-  );
+  return <PartyProfileProvider>{children}</PartyProfileProvider>;
 };
 
 export default PartyProfileWrapper;

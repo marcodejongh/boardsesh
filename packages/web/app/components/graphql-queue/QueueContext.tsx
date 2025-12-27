@@ -38,24 +38,6 @@ function generateSessionId(pathname: string): string {
   return pathname.replace(/\//g, '-').slice(1);
 }
 
-// Get or create a persistent user ID for this client
-function getOrCreateUserId(): string {
-  if (typeof window === 'undefined') return uuidv4();
-
-  const storageKey = 'boardsesh:userId';
-  let userId = localStorage.getItem(storageKey);
-  if (!userId) {
-    userId = uuidv4();
-    localStorage.setItem(storageKey, userId);
-  }
-  return userId;
-}
-
-// Get username from localStorage or undefined
-function getStoredUsername(): string | undefined {
-  if (typeof window === 'undefined') return undefined;
-  return localStorage.getItem('boardsesh:username') || undefined;
-}
 
 export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueContextProps) => {
   const searchParams = useSearchParams();
@@ -67,25 +49,21 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
   // Get backend URL from settings
   const { backendUrl, isLoaded } = useConnectionSettings();
 
-  // Get party profile for username and avatarUrl
-  const { profile, isLoading: profileLoading } = usePartyProfile();
+  // Get party profile for user ID, and username/avatarUrl from NextAuth session
+  const { profile, username, avatarUrl } = usePartyProfile();
 
-  // Generate session ID and get user info from party profile
+  // Generate session ID from pathname
   const sessionId = useMemo(() => generateSessionId(pathname), [pathname]);
-
-  // Use party profile for username and avatarUrl, fallback to legacy localStorage if not available
-  const username = useMemo(() => profile?.username || getStoredUsername(), [profile?.username]);
-  const avatarUrl = useMemo(() => profile?.avatarUrl, [profile?.avatarUrl]);
 
   // Build current user info for queue items
   const currentUserInfo: QueueItemUser | undefined = useMemo(() => {
     if (!profile?.id) return undefined;
     return {
       id: profile.id,
-      username: profile.username || '',
-      avatarUrl: profile.avatarUrl,
+      username: username || '',
+      avatarUrl: avatarUrl,
     };
-  }, [profile?.id, profile?.username, profile?.avatarUrl]);
+  }, [profile?.id, username, avatarUrl]);
 
   // Handle queue events from GraphQL subscription
   const handleQueueEvent = useCallback(
