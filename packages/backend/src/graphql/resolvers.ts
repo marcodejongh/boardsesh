@@ -331,12 +331,16 @@ const resolvers = {
       const sessionId = requireSession(ctx);
       console.log('[addQueueItem] Adding item:', item.climb?.name, 'by client:', ctx.connectionId, 'at position:', position);
 
+      // Track the original queue length for position calculation
+      let originalQueueLength = 0;
+
       // Retry loop for optimistic locking
       for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
         // Get current state and update
         const currentState = await roomManager.getQueueState(sessionId);
         console.log('[addQueueItem] Current state - queue size:', currentState.queue.length, 'version:', currentState.version);
         let queue = currentState.queue;
+        originalQueueLength = queue.length;
 
         // Only add if not already in queue
         if (queue.some((i) => i.uuid === item.uuid)) {
@@ -363,11 +367,18 @@ const resolvers = {
         }
       }
 
-      // Broadcast to subscribers
+      // Calculate actual position where item was inserted
+      // If position was valid, item is at that index; otherwise it was appended
+      const actualPosition =
+        position !== undefined && position >= 0 && position <= originalQueueLength
+          ? position
+          : originalQueueLength; // Item was appended at end of original queue
+
+      // Broadcast to subscribers with the actual position
       pubsub.publishQueueEvent(sessionId, {
         __typename: 'QueueItemAdded',
         item: item,
-        position,
+        position: actualPosition,
       });
 
       return item;
