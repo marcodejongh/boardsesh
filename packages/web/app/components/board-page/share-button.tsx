@@ -20,16 +20,13 @@ import { themeTokens } from '@/app/theme/theme-config';
 
 const { Text } = Typography;
 
-const getShareUrl = (pathname: string, searchParams: URLSearchParams, backendUrl: string | null) => {
+const getShareUrl = (pathname: string, searchParams: URLSearchParams) => {
   try {
     const params = new URLSearchParams(searchParams.toString());
-    // Remove existing connection params
+    // Remove legacy connection params (no longer needed with environment-based backend URL)
     params.delete('hostId');
     params.delete('backendUrl');
 
-    if (backendUrl) {
-      params.set('backendUrl', backendUrl);
-    }
     return `${window.location.origin}${pathname}?${params.toString()}`;
   } catch {
     return '';
@@ -60,7 +57,7 @@ export const ShareBoardButton = () => {
   const isConnecting = !!(isBackendMode && !hasConnected);
   const isConnected = !!(isBackendMode && hasConnected);
 
-  const shareUrl = getShareUrl(pathname, searchParams, backendUrl);
+  const shareUrl = getShareUrl(pathname, searchParams);
 
   const copyToClipboard = () => {
     navigator.clipboard

@@ -19,10 +19,6 @@ type StoredSession = {
   backendUrl?: string;
 };
 
-type SessionHistoryPanelProps = {
-  backendUrl?: string;
-};
-
 /**
  * Format relative time for display
  */
@@ -115,7 +111,7 @@ export async function saveSessionToHistory(session: StoredSession): Promise<void
   });
 }
 
-const SessionHistoryPanel = ({ backendUrl }: SessionHistoryPanelProps) => {
+const SessionHistoryPanel = () => {
   const router = useRouter();
   const [sessions, setSessions] = useState<StoredSession[]>([]);
   const [loading, setLoading] = useState(true);
@@ -129,9 +125,6 @@ const SessionHistoryPanel = ({ backendUrl }: SessionHistoryPanelProps) => {
 
   const handleResume = (session: StoredSession) => {
     const url = new URL(session.boardPath, window.location.origin);
-    if (session.backendUrl || backendUrl) {
-      url.searchParams.set('backendUrl', session.backendUrl || backendUrl || '');
-    }
     url.searchParams.set('sessionId', session.id);
     router.push(url.pathname + url.search);
   };

@@ -189,7 +189,6 @@ const JoinSessionTab = ({ backendUrl }: JoinSessionTabProps) => {
           <NearbySessionCard
             key={session.id}
             session={session}
-            backendUrl={backendUrl}
           />
         ))}
       </div>
