@@ -6,12 +6,14 @@ on:
     paths:
       - 'packages/web/**'
       - 'packages/shared-schema/**'
+      - 'packages/db/**'
       - '.github/workflows/test.yml'
   pull_request:
     branches: [ main, develop ]
     paths:
       - 'packages/web/**'
       - 'packages/shared-schema/**'
+      - 'packages/db/**'
       - '.github/workflows/test.yml'
 
 jobs:
@@ -32,6 +34,9 @@ jobs:
 
     - name: Build shared-schema
       run: npm run build --workspace=@boardsesh/shared-schema
+
+    - name: Build db package
+      run: npm run build --workspace=@boardsesh/db
 
     - name: Run linting
       run: npm run lint
@@ -61,6 +66,9 @@ jobs:
 
     - name: Build shared-schema
       run: npm run build --workspace=@boardsesh/shared-schema
+
+    - name: Build db package
+      run: npm run build --workspace=@boardsesh/db
 
     - name: Run tests with coverage
       run: npm run test:run --workspace=@boardsesh/web -- --coverage
