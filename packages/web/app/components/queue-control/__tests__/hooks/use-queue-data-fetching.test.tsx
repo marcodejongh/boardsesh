@@ -138,7 +138,7 @@ describe('useQueueDataFetching', () => {
       ok: true,
       json: () => Promise.resolve({
         climbs: [mockClimb],
-        totalCount: 50
+        hasMore: true
       })
     });
   });
@@ -165,7 +165,7 @@ describe('useQueueDataFetching', () => {
     });
 
     expect(result.current.suggestedClimbs).toEqual([mockClimb]);
-    expect(result.current.totalSearchResultCount).toBe(50);
+    expect(result.current.totalSearchResultCount).toBe(null); // totalCount is no longer returned by the optimized API
     expect(result.current.hasMoreResults).toBe(true);
   });
 
