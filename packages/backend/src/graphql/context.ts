@@ -11,12 +11,13 @@ const connections = new Map<string, ConnectionContext>();
  * Create a new connection context.
  * Called when a WebSocket connection is established.
  */
-export function createContext(connectionId?: string): ConnectionContext {
+export function createContext(connectionId?: string, isAuthenticated?: boolean, userId?: string): ConnectionContext {
   const id = connectionId || uuidv4();
   const context: ConnectionContext = {
     connectionId: id,
     sessionId: undefined,
-    userId: undefined,
+    userId: userId,
+    isAuthenticated: isAuthenticated || false,
   };
   connections.set(id, context);
   return context;
@@ -44,6 +45,9 @@ export function updateContext(
     }
     if (updates.userId !== undefined) {
       context.userId = updates.userId;
+    }
+    if (updates.isAuthenticated !== undefined) {
+      context.isAuthenticated = updates.isAuthenticated;
     }
   }
 }

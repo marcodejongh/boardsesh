@@ -28,9 +28,11 @@
     "graphql": "^16.12.0",
     "graphql-type-json": "^0.3.2",
     "graphql-ws": "^6.0.6",
+    "jose": "^6.0.0",
     "multer": "^2.0.2",
     "uuid": "^13.0.0",
-    "ws": "^8.18.3"
+    "ws": "^8.18.3",
+    "zod": "^3.24.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",

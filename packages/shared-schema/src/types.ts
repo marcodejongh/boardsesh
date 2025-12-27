@@ -121,4 +121,5 @@ export type ConnectionContext = {
   connectionId: string;
   sessionId?: string;
   userId?: string;
+  isAuthenticated?: boolean;
 };
