@@ -24,12 +24,12 @@ const BoardSessionBridge: React.FC<BoardSessionBridgeProps> = ({
   const pathname = usePathname();
   const sessionIdFromUrl = searchParams.get('session');
 
-  const { activeSession, activateSession, deactivateSession } = usePersistentSession();
+  const { activeSession, activateSession } = usePersistentSession();
 
   // Activate session when we have a session param and board details
   useEffect(() => {
     if (sessionIdFromUrl && boardDetails) {
-      // Only activate if not already active for this session
+      // Activate session when URL has session param (joining via shared link)
       if (activeSession?.sessionId !== sessionIdFromUrl || activeSession?.boardPath !== pathname) {
         activateSession({
           sessionId: sessionIdFromUrl,
@@ -38,10 +38,9 @@ const BoardSessionBridge: React.FC<BoardSessionBridgeProps> = ({
           parsedParams,
         });
       }
-    } else if (!sessionIdFromUrl && activeSession?.boardPath === pathname) {
-      // If session was removed from URL while on this board, deactivate
-      deactivateSession();
     }
+    // Don't deactivate when URL param is missing - only explicit endSession() should disconnect
+    // The session connection persists even if URL param is temporarily removed
   }, [
     sessionIdFromUrl,
     pathname,
@@ -50,7 +49,6 @@ const BoardSessionBridge: React.FC<BoardSessionBridgeProps> = ({
     activeSession?.sessionId,
     activeSession?.boardPath,
     activateSession,
-    deactivateSession,
   ]);
 
   // Update board details if they change (e.g., angle change)
