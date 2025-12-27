@@ -32,37 +32,40 @@ export interface Session {
 }
 
 // Convert local ClimbQueueItem to GraphQL input format
+// Handles null/undefined values properly for Zod validation:
+// - Zod's .optional() allows undefined but NOT null
+// - Required fields need defaults for potentially null database values
 function toClimbQueueItemInput(item: LocalClimbQueueItem) {
   return {
     uuid: item.uuid,
     climb: {
       uuid: item.climb.uuid,
-      setter_username: item.climb.setter_username,
-      name: item.climb.name,
+      setter_username: item.climb.setter_username || '',
+      name: item.climb.name || '',
       description: item.climb.description || '',
-      frames: item.climb.frames,
-      angle: item.climb.angle,
-      ascensionist_count: item.climb.ascensionist_count,
-      difficulty: item.climb.difficulty,
-      quality_average: item.climb.quality_average,
-      stars: item.climb.stars,
-      difficulty_error: item.climb.difficulty_error,
-      litUpHoldsMap: item.climb.litUpHoldsMap,
-      mirrored: item.climb.mirrored,
+      frames: item.climb.frames || '',
+      angle: item.climb.angle ?? 0,
+      ascensionist_count: item.climb.ascensionist_count ?? 0,
+      difficulty: item.climb.difficulty || '',
+      quality_average: item.climb.quality_average || '',
+      stars: item.climb.stars ?? 0,
+      difficulty_error: item.climb.difficulty_error || '',
+      litUpHoldsMap: item.climb.litUpHoldsMap || {},
+      mirrored: item.climb.mirrored ?? undefined,
       benchmark_difficulty: item.climb.benchmark_difficulty,
-      userAscents: item.climb.userAscents,
-      userAttempts: item.climb.userAttempts,
+      userAscents: item.climb.userAscents ?? undefined,
+      userAttempts: item.climb.userAttempts ?? undefined,
     },
-    addedBy: item.addedBy,
+    addedBy: item.addedBy ?? undefined,
     addedByUser: item.addedByUser
       ? {
           id: item.addedByUser.id,
           username: item.addedByUser.username,
-          avatarUrl: item.addedByUser.avatarUrl,
+          avatarUrl: item.addedByUser.avatarUrl ?? undefined,
         }
       : undefined,
-    tickedBy: item.tickedBy,
-    suggested: item.suggested,
+    tickedBy: item.tickedBy ?? undefined,
+    suggested: item.suggested ?? undefined,
   };
 }
 

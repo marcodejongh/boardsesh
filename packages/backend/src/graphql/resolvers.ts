@@ -648,6 +648,14 @@ const resolvers = {
       applyRateLimit(ctx, 30); // Lower limit for bulk operations
       const sessionId = requireSession(ctx);
 
+      // Only the party leader can clear the queue
+      if (queue.length === 0) {
+        const client = roomManager.getClient(ctx.connectionId);
+        if (!client?.isLeader) {
+          throw new Error('Only the party leader can clear the queue');
+        }
+      }
+
       // Validate queue size to prevent memory exhaustion
       validateInput(QueueArraySchema, queue, 'queue');
       if (currentClimbQueueItem) {

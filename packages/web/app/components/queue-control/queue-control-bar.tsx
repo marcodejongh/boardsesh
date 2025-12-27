@@ -28,7 +28,7 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
 
   const isViewPage = pathname.includes('/view/');
   const isListPage = pathname.includes('/list');
-  const { currentClimb, mirrorClimb, queue, setQueue } = useQueueContext();
+  const { currentClimb, mirrorClimb, queue, setQueue, isLeader, isSessionActive } = useQueueContext();
 
   const handleClearQueue = () => {
     setQueue([]);
@@ -136,7 +136,7 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
         onClose={toggleQueueDrawer}
         styles={{ body: { padding: 0 } }}
         extra={
-          queue.length > 0 && (
+          queue.length > 0 && (!isSessionActive || isLeader) && (
             <Popconfirm
               title="Clear queue"
               description="Are you sure you want to clear all items from the queue?"
