@@ -31,6 +31,9 @@ const DEFAULT_BACKEND_URL = process.env.NEXT_PUBLIC_WS_URL || null;
 // Board names to check if we're on a board route
 const BOARD_NAMES = ['kilter', 'tension', 'decoy'];
 
+// Threshold for forcing a resync when tab becomes visible (30 seconds)
+const VISIBILITY_RESYNC_THRESHOLD_MS = 30_000;
+
 // Session type matching the GraphQL response
 export interface Session {
   id: string;
@@ -169,8 +172,6 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
 
   // Track when tab was last hidden for visibility-based resync
   const hiddenAtRef = useRef<number | null>(null);
-  // Threshold for forcing a resync when tab becomes visible (30 seconds)
-  const VISIBILITY_RESYNC_THRESHOLD_MS = 30_000;
 
   // Event subscribers
   const queueEventSubscribersRef = useRef<Set<(event: ClientQueueEvent) => void>>(new Set());
@@ -311,8 +312,10 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
         ) {
           if (DEBUG) console.log('[PersistentSession] Tab was hidden for', Date.now() - hiddenAt, 'ms, forcing resync');
 
-          // Trigger a resync by calling handleReconnect logic
-          // This will rejoin the session and re-establish subscriptions
+          // Trigger a resync by rejoining the session and applying FullSync.
+          // Note: We only resync state, not re-establish subscriptions, because the WebSocket
+          // connection is still active - the browser just throttled the tab. Subscriptions
+          // remain valid and will continue receiving events after we resync.
           isReconnectingRef.current = true;
           const { sessionId, boardPath } = activeSessionRef.current;
 
@@ -334,6 +337,9 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
             })
             .catch((err) => {
               console.error('[PersistentSession] Visibility resync failed:', err);
+              if (mountedRef.current) {
+                setError(err instanceof Error ? err : new Error(String(err)));
+              }
             })
             .finally(() => {
               isReconnectingRef.current = false;
