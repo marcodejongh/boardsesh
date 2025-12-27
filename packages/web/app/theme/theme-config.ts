@@ -35,6 +35,7 @@ export const themeTokens = {
   // Semantic colors
   semantic: {
     selected: '#ECFEFF', // Cyan-50 - lighter cyan
+    selectedLight: 'rgba(6, 182, 212, 0.08)', // Very light cyan for subtle highlights
     selectedBorder: '#06B6D4', // Cyan-500 - matches primary
     background: '#F9FAFB',
     surface: '#FFFFFF',

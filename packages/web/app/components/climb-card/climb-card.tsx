@@ -53,10 +53,15 @@ const ClimbCard = React.memo(
         title={cardTitle}
         size="small"
         style={{
-          backgroundColor: selected ? themeTokens.semantic.selected : themeTokens.semantic.surface,
           borderColor: selected ? themeTokens.colors.primary : undefined,
         }}
-        styles={{ header: { paddingTop: 8, paddingBottom: 6 }, body: { padding: 6 } }}
+        styles={{
+          header: { paddingTop: 8, paddingBottom: 6 },
+          body: {
+            padding: 6,
+            backgroundColor: selected ? themeTokens.semantic.selectedLight : undefined,
+          },
+        }}
         actions={actions || (climb ? ClimbActions.asCardActions({
           climb,
           boardDetails,
