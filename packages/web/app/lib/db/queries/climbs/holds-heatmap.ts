@@ -4,7 +4,7 @@ import { ParsedBoardRouteParameters, SearchRequestPagination } from '@/app/lib/t
 import { getBoardTables } from '@/lib/db/queries/util/table-select';
 import { createClimbFilters } from './create-climb-filters';
 import { getTableName } from '@/app/lib/data-sync/aurora/getTableName';
-import { fetchSizeEdges } from './search-climbs';
+import { getSizeEdges } from './size-edges';
 
 export interface HoldHeatmapData {
   holdId: number;
@@ -27,8 +27,8 @@ export const getHoldHeatmapData = async (
   const tables = getBoardTables(params.board_name);
   const climbHolds = tables.climbHolds;
 
-  // Pre-fetch size edges to use as constants (eliminates JOIN on product_sizes)
-  const sizeEdges = await fetchSizeEdges(params.board_name, params.size_id);
+  // Get hardcoded size edges (eliminates database query)
+  const sizeEdges = getSizeEdges(params.board_name, params.size_id);
   if (!sizeEdges) {
     return [];
   }

@@ -1,5 +1,6 @@
-import { searchClimbs, fetchSizeEdges } from '@/app/lib/db/queries/climbs/search-climbs';
+import { searchClimbs } from '@/app/lib/db/queries/climbs/search-climbs';
 import { countClimbs } from '@/app/lib/db/queries/climbs/count-climbs';
+import { getSizeEdges } from '@/app/lib/db/queries/climbs/size-edges';
 import { BoardRouteParameters, ErrorResponse, SearchClimbsResult, SearchRequestPagination } from '@/app/lib/types';
 import { urlParamsToSearchParams } from '@/app/lib/url-utils';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
@@ -36,8 +37,8 @@ export async function GET(
       }
     }
 
-    // Pre-fetch size edges (shared between search and count)
-    const sizeEdges = await fetchSizeEdges(parsedParams.board_name, parsedParams.size_id);
+    // Get hardcoded size edges (no database query needed)
+    const sizeEdges = getSizeEdges(parsedParams.board_name, parsedParams.size_id);
     if (!sizeEdges) {
       return NextResponse.json({
         climbs: [],

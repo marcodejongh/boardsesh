@@ -2,7 +2,8 @@ import { sql, and } from 'drizzle-orm';
 import { dbz as db } from '@/app/lib/db/db';
 import { ParsedBoardRouteParameters, SearchRequestPagination } from '@/app/lib/types';
 import { getBoardTables } from '@/lib/db/queries/util/table-select';
-import { createClimbFilters, SizeEdges } from './create-climb-filters';
+import { createClimbFilters } from './create-climb-filters';
+import { SizeEdges } from './size-edges';
 
 /**
  * Counts the total number of climbs matching the search criteria.

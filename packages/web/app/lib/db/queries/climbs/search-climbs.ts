@@ -1,42 +1,10 @@
 import { eq, desc, sql, SQL, and } from 'drizzle-orm';
 import { dbz as db } from '@/app/lib/db/db';
 import { convertLitUpHoldsStringToMap } from '@/app/components/board-renderer/util';
-import { Climb, ParsedBoardRouteParameters, SearchClimbsResult, SearchRequestPagination, BoardName } from '@/app/lib/types';
+import { Climb, ParsedBoardRouteParameters, SearchClimbsResult, SearchRequestPagination } from '@/app/lib/types';
 import { getBoardTables } from '@/lib/db/queries/util/table-select';
-import { createClimbFilters, SizeEdges } from './create-climb-filters';
-
-/**
- * Fetches the edge boundaries for a given product size.
- * This is called once before the main query to get static values,
- * eliminating the need for a JOIN on product_sizes.
- */
-export const fetchSizeEdges = async (
-  boardName: BoardName,
-  sizeId: number,
-): Promise<SizeEdges | null> => {
-  const tables = getBoardTables(boardName);
-  const result = await db
-    .select({
-      edgeLeft: tables.productSizes.edgeLeft,
-      edgeRight: tables.productSizes.edgeRight,
-      edgeBottom: tables.productSizes.edgeBottom,
-      edgeTop: tables.productSizes.edgeTop,
-    })
-    .from(tables.productSizes)
-    .where(eq(tables.productSizes.id, sizeId))
-    .limit(1);
-
-  if (result.length === 0) {
-    return null;
-  }
-
-  return {
-    edgeLeft: result[0].edgeLeft ?? 0,
-    edgeRight: result[0].edgeRight ?? 0,
-    edgeBottom: result[0].edgeBottom ?? 0,
-    edgeTop: result[0].edgeTop ?? 0,
-  };
-};
+import { createClimbFilters } from './create-climb-filters';
+import { getSizeEdges } from './size-edges';
 
 export const searchClimbs = async (
   params: ParsedBoardRouteParameters,
@@ -45,8 +13,8 @@ export const searchClimbs = async (
 ): Promise<SearchClimbsResult> => {
   const tables = getBoardTables(params.board_name);
 
-  // Pre-fetch size edges to use as constants (eliminates JOIN on product_sizes)
-  const sizeEdges = await fetchSizeEdges(params.board_name, params.size_id);
+  // Get hardcoded size edges (eliminates database query)
+  const sizeEdges = getSizeEdges(params.board_name, params.size_id);
   if (!sizeEdges) {
     return { climbs: [], totalCount: 0 };
   }
