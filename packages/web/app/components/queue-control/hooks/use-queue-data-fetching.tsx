@@ -61,9 +61,8 @@ export const useQueueDataFetching = ({
     },
     initialPageParam: 0,
     getNextPageParam: (lastPage, allPages) => {
-      // Use the hasMore flag from the API response for efficient pagination
-      // This avoids the need for count(*) over() in the database query
-      if (!lastPage.hasMore) {
+      const totalFetched = allPages.length * PAGE_LIMIT;
+      if (totalFetched >= lastPage.totalCount) {
         return undefined; // No more pages
       }
       return allPages.length; // Next page number
