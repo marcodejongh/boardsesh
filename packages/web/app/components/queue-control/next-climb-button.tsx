@@ -7,6 +7,7 @@ import { BoardRouteParametersWithUuid, BoardDetails } from '@/app/lib/types';
 import { FastForwardOutlined } from '@ant-design/icons';
 import { track } from '@vercel/analytics';
 import Button, { ButtonProps } from 'antd/es/button';
+import { Tooltip } from 'antd';
 
 type NextClimbButtonProps = {
   navigate: boolean;
@@ -18,11 +19,14 @@ const NextButton = (props: ButtonProps) => (
 );
 
 export default function NextClimbButton({ navigate = false, boardDetails }: NextClimbButtonProps) {
-  const { setCurrentClimbQueueItem, getNextClimbQueueItem, viewOnlyMode } = useQueueContext(); // Assuming setSuggestedQueue is available
+  const { setCurrentClimbQueueItem, getNextClimbQueueItem, viewOnlyMode, isConnectionReady, sessionId } = useQueueContext();
   const { board_name, layout_id, size_id, set_ids, angle } =
     parseBoardRouteParams(useParams<BoardRouteParametersWithUuid>());
 
   const nextClimb = getNextClimbQueueItem();
+
+  // Disable when in a session but connection is not ready
+  const actionsDisabled = sessionId && !isConnectionReady;
 
   const handleClick = () => {
     if (!nextClimb) {
@@ -35,7 +39,7 @@ export default function NextClimbButton({ navigate = false, boardDetails }: Next
     });
   };
 
-  if (!viewOnlyMode && navigate && nextClimb) {
+  if (!viewOnlyMode && !actionsDisabled && navigate && nextClimb) {
     const climbViewUrl =
       boardDetails?.layout_name && boardDetails?.size_name && boardDetails?.set_names
         ? constructClimbViewUrlWithSlugs(
@@ -59,5 +63,12 @@ export default function NextClimbButton({ navigate = false, boardDetails }: Next
       </Link>
     );
   }
-  return <NextButton onClick={handleClick} disabled={!nextClimb || viewOnlyMode} />;
+
+  const isDisabled = !nextClimb || viewOnlyMode || !!actionsDisabled;
+
+  return (
+    <Tooltip title={actionsDisabled ? 'Waiting for connection...' : undefined}>
+      <NextButton onClick={handleClick} disabled={isDisabled} />
+    </Tooltip>
+  );
 }
