@@ -16,7 +16,7 @@
     "test:run": "npm run test:run --workspaces --if-present",
     "backend:dev": "npm run dev --workspace=boardsesh-backend",
     "backend:start": "npm run start --workspace=boardsesh-backend",
-    "db:up": "docker-compose up -d postgres neon-proxy",
+    "db:up": "docker-compose up -d postgres neon-proxy redis",
     "db:setup": "docker-compose up db_setup",
     "db:migrate": "npm run db:migrate --workspace=@boardsesh/db",
     "db:studio": "npm run db:studio --workspace=@boardsesh/db"

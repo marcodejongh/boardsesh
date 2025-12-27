@@ -20,8 +20,8 @@ Boardsesh is a monorepo containing a Next.js 15 application for controlling stan
 ### Development Setup
 
 ```bash
-# One-time database setup
-cd packages/web/db/ && docker-compose up
+# Start development databases (PostgreSQL, Neon proxy, Redis)
+npm run db:up
 
 # Environment files are in packages/web/:
 # .env.local contains generic config (tracked in git)
@@ -50,9 +50,10 @@ npm run backend:dev
 - `npm run build` - Build all packages
 - `npm run build:web` - Build web package only
 - `npm run build:backend` - Build backend package only
-- `npm run lint` - Run ESLint on web package
+- `npm run lint` - Run oxlint on web package
 - `npm run backend:dev` - Start backend in development mode
 - `npm run backend:start` - Start backend in production mode
+- `npm run db:up` - Start development databases (PostgreSQL, Neon proxy, Redis)
 
 ### Database Commands (run from packages/web/)
 
@@ -110,8 +111,9 @@ We are using next.js app router, it's important we try to use server side compon
 
 1. **Web Bluetooth**: Board LED control via Web Bluetooth API
 2. **GraphQL-WS Backend**: Real-time collaboration via WebSocket GraphQL subscriptions
-3. **IndexedDB**: Offline storage for auth and queue state
-4. **Aurora API**: External API integration for user data sync
+3. **Redis**: Pub/sub for multi-instance backend scaling
+4. **IndexedDB**: Offline storage for auth and queue state
+5. **Aurora API**: External API integration for user data sync
 
 ### Type System
 
