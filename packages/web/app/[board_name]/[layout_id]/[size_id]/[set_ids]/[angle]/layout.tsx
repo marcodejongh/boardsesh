@@ -12,7 +12,7 @@ import BoardSeshHeader from '@/app/components/board-page/header';
 import { GraphQLQueueProvider } from '@/app/components/graphql-queue';
 import { ConnectionSettingsProvider } from '@/app/components/connection-manager/connection-settings-context';
 import { PartyProvider } from '@/app/components/party-manager/party-context';
-import PartyProfileWrapper from '@/app/components/party-manager/party-profile-wrapper';
+import { BoardSessionBridge } from '@/app/components/persistent-session';
 import { Metadata } from 'next';
 import BoardPageSkeleton from '@/app/components/board-page/board-page-skeleton';
 
@@ -134,37 +134,37 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
 
   return (
     <Layout style={{ height: '100dvh', display: 'flex', flexDirection: 'column', padding: 0 }}>
-      <ConnectionSettingsProvider>
-        <PartyProfileWrapper>
+      <BoardSessionBridge boardDetails={boardDetails} parsedParams={parsedParams}>
+        <ConnectionSettingsProvider>
           <GraphQLQueueProvider parsedParams={parsedParams}>
             <PartyProvider>
-            <BoardSeshHeader boardDetails={boardDetails} angle={angle} />
+              <BoardSeshHeader boardDetails={boardDetails} angle={angle} />
 
-            <Content
-              id="content-for-scrollable"
-              style={{
-                flex: 1,
-                justifyContent: 'center',
-                alignItems: 'center',
-                overflowY: 'auto',
-                overflowX: 'hidden',
-                height: '80vh',
-                paddingLeft: '10px',
-                paddingRight: '10px',
-              }}
-            >
-              <Suspense fallback={<BoardPageSkeleton />}>
-                {children}
-              </Suspense>
-            </Content>
+              <Content
+                id="content-for-scrollable"
+                style={{
+                  flex: 1,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  overflowY: 'auto',
+                  overflowX: 'hidden',
+                  height: '80vh',
+                  paddingLeft: '10px',
+                  paddingRight: '10px',
+                }}
+              >
+                <Suspense fallback={<BoardPageSkeleton />}>
+                  {children}
+                </Suspense>
+              </Content>
 
-            <Affix offsetBottom={0}>
-              <QueueControlBar board={board_name} boardDetails={boardDetails} angle={angle} />
-            </Affix>
+              <Affix offsetBottom={0}>
+                <QueueControlBar board={board_name} boardDetails={boardDetails} angle={angle} />
+              </Affix>
             </PartyProvider>
           </GraphQLQueueProvider>
-        </PartyProfileWrapper>
-      </ConnectionSettingsProvider>
+        </ConnectionSettingsProvider>
+      </BoardSessionBridge>
     </Layout>
   );
 }
