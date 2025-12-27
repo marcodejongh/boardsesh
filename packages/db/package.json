@@ -1,0 +1,73 @@
+{
+  "name": "@boardsesh/db",
+  "version": "1.0.0",
+  "description": "Shared database schema and client for Boardsesh",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./schema": {
+      "types": "./dist/schema/index.d.ts",
+      "import": "./dist/schema/index.js",
+      "default": "./dist/schema/index.js"
+    },
+    "./schema/boards": {
+      "types": "./dist/schema/boards/index.d.ts",
+      "import": "./dist/schema/boards/index.js",
+      "default": "./dist/schema/boards/index.js"
+    },
+    "./schema/auth": {
+      "types": "./dist/schema/auth/index.d.ts",
+      "import": "./dist/schema/auth/index.js",
+      "default": "./dist/schema/auth/index.js"
+    },
+    "./schema/app": {
+      "types": "./dist/schema/app/index.d.ts",
+      "import": "./dist/schema/app/index.js",
+      "default": "./dist/schema/app/index.js"
+    },
+    "./relations": {
+      "types": "./dist/relations/index.d.ts",
+      "import": "./dist/relations/index.js",
+      "default": "./dist/relations/index.js"
+    },
+    "./client": {
+      "types": "./dist/client/index.d.ts",
+      "import": "./dist/client/index.js",
+      "default": "./dist/client/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "@boardsesh/shared-schema": "*",
+    "@neondatabase/serverless": "1.0.2",
+    "drizzle-orm": "^0.45.1",
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "@types/node": "^25",
+    "@types/ws": "^8.18.1",
+    "dotenv": "^17.2.3",
+    "drizzle-kit": "^0.31.8",
+    "typescript": "^5.9.3"
+  },
+  "peerDependencies": {
+    "next-auth": "^4.24.13"
+  },
+  "peerDependenciesMeta": {
+    "next-auth": {
+      "optional": true
+    }
+  }
+}

@@ -19,6 +19,7 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@boardsesh/db": "*",
     "@boardsesh/shared-schema": "*",
     "@graphql-tools/schema": "^10.0.30",
     "dotenv": "^17.2.3",
@@ -28,7 +29,6 @@
     "graphql-type-json": "^0.3.2",
     "graphql-ws": "^6.0.6",
     "multer": "^2.0.2",
-    "postgres": "^3.4.7",
     "uuid": "^13.0.0",
     "ws": "^8.18.3"
   },
@@ -40,6 +40,7 @@
     "@types/uuid": "^11.0.0",
     "@types/ws": "^8.18.1",
     "drizzle-kit": "^0.31.8",
+    "postgres": "^3.4.7",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vitest": "^4.0.16"

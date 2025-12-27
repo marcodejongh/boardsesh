@@ -1,10 +1,7 @@
-import { drizzle } from 'drizzle-orm/postgres-js';
-import postgres from 'postgres';
-import * as schema from './schema.js';
+// Re-export db client from @boardsesh/db
+import { createDb } from '@boardsesh/db/client';
 
-const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/boardsesh_backend';
-
-const client = postgres(connectionString);
-export const db = drizzle(client, { schema });
+// Create singleton db instance for backend
+export const db = createDb();
 
 export type Database = typeof db;

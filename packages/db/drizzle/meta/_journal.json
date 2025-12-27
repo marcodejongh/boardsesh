@@ -1,0 +1,160 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1734255307302,
+      "tag": "0000_cloudy_carlie_cooper",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1735369313427,
+      "tag": "0001_unique_climbstats",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1735420640429,
+      "tag": "0002_unique_climbstats",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1735422473281,
+      "tag": "0003_add_climbs_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1735427173465,
+      "tag": "0004_fix_circuits",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1735427858324,
+      "tag": "0005_add_pk_to_user_syncs",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1735427971317,
+      "tag": "0006_remove_unnecessary_unique",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1735440124885,
+      "tag": "0007_remove_climbstats_id_column",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1735440793114,
+      "tag": "0008_stats_foreign_keys",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1735526188118,
+      "tag": "0009_nullable_stats",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1735526364141,
+      "tag": "0010_remove_stats_foreignkeys",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1735770051923,
+      "tag": "0011_add_holds_map_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1736553172493,
+      "tag": "0012_drop_climb_holds_fk",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1740054525189,
+      "tag": "0013_add_heatmap_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1741938194000,
+      "tag": "0014_add_missing_primary_keys",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1752459287070,
+      "tag": "0015_majestic_carmella_unuscione",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1754825330148,
+      "tag": "0016_exotic_valkyrie",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1766697469058,
+      "tag": "0017_puzzling_mikhail_rasputin",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1766699828855,
+      "tag": "0018_perpetual_cerise",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1766700000000,
+      "tag": "0019_aurora_credentials",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1766701000000,
+      "tag": "0020_add_synced_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1766702000000,
+      "tag": "0021_add_board_sessions",
+      "breakpoints": true
+    }
+  ]
+}

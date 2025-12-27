@@ -1,48 +1,20 @@
-import { neon, neonConfig, Pool } from '@neondatabase/serverless';
-import { drizzle as drizzleHttp } from 'drizzle-orm/neon-http';
-import { drizzle as drizzleServerless } from 'drizzle-orm/neon-serverless';
 import 'server-only';
-import ws from 'ws';
+import { neon } from '@neondatabase/serverless';
 
-let connectionString = process.env.DATABASE_URL;
+// Re-export from @boardsesh/db with server-only protection
+export { createDb as getDb, createPool as getPool, createNeonHttp } from '@boardsesh/db/client';
+export { configureNeonForEnvironment, getConnectionConfig } from '@boardsesh/db/client';
 
-// Configuring Neon for local development
-if (process.env.VERCEL_ENV === 'development' || process.env.NODE_ENV === 'development') {
-  connectionString = 'postgres://postgres:password@db.localtest.me:5432/main';
+// Configure and export the raw SQL template literal function
+import { configureNeonForEnvironment, getConnectionConfig } from '@boardsesh/db/client';
 
-  neonConfig.fetchEndpoint = (host) => {
-    const [protocol, port] = host === 'db.localtest.me' ? ['http', 4444] : ['https', 443];
-    return `${protocol}://${host}:${port}/sql`;
-  };
-  const connectionStringUrl = new URL(connectionString);
-  neonConfig.useSecureWebSocket = connectionStringUrl.hostname !== 'db.localtest.me';
-  neonConfig.wsProxy = (host) => (host === 'db.localtest.me' ? `${host}:4444/v2` : `${host}/v2`);
-}
+// Configure Neon for the environment
+configureNeonForEnvironment();
+const { connectionString } = getConnectionConfig();
 
-// Configure WebSocket constructor
-neonConfig.webSocketConstructor = ws;
+// Export the neon SQL template literal function for raw SQL queries
+export const sql = neon(connectionString);
 
-// Create a singleton pool instance
-let pool: Pool | null = null;
-
-export const getPool = () => {
-  if (!pool) {
-    pool = new Pool({ connectionString });
-  }
-  return pool;
-};
-
-// Create a singleton db instance
-let db: ReturnType<typeof drizzleServerless> | null = null;
-
-export const getDb = () => {
-  if (!db) {
-    const pool = getPool();
-    db = drizzleServerless(pool);
-  }
-  return db;
-};
-
-export const sql = neon(connectionString!);
-
-export const dbz = drizzleHttp({ client: sql });
+// For backward compatibility (some code may use dbz)
+import { createNeonHttp } from '@boardsesh/db/client';
+export const dbz = createNeonHttp();

@@ -43,8 +43,8 @@ beforeAll(async () => {
   migrationClient = postgres(connectionString, { max: 1, onnotice: () => {} });
   db = drizzle(migrationClient, { schema });
 
-  // Run migrations
-  await migrate(db, { migrationsFolder: './src/db/migrations' });
+  // Run migrations from packages/db
+  await migrate(db, { migrationsFolder: '../../../db/drizzle' });
 });
 
 beforeEach(async () => {
@@ -52,9 +52,9 @@ beforeEach(async () => {
   roomManager.reset();
 
   // Clear all tables in correct order (respect foreign keys)
-  await db.execute(sql`TRUNCATE TABLE session_queues CASCADE`);
-  await db.execute(sql`TRUNCATE TABLE session_clients CASCADE`);
-  await db.execute(sql`TRUNCATE TABLE sessions CASCADE`);
+  await db.execute(sql`TRUNCATE TABLE board_session_queues CASCADE`);
+  await db.execute(sql`TRUNCATE TABLE board_session_clients CASCADE`);
+  await db.execute(sql`TRUNCATE TABLE board_sessions CASCADE`);
 });
 
 afterAll(async () => {
