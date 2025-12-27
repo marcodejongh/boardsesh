@@ -1,41 +1,10 @@
 import { eq, desc, sql, SQL, and } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import { dbz as db } from '@/app/lib/db/db';
 import { convertLitUpHoldsStringToMap } from '@/app/components/board-renderer/util';
-import { Climb, ParsedBoardRouteParameters, SearchClimbsResult, SearchRequestPagination, BoardName } from '@/app/lib/types';
+import { Climb, ParsedBoardRouteParameters, SearchClimbsResult, SearchRequestPagination } from '@/app/lib/types';
 import { getBoardTables } from '@/lib/db/queries/util/table-select';
-import { createClimbFilters, SizeEdges } from './create-climb-filters';
-
-/**
- * Fetches the edge boundaries for a given product size
- * This is called once before the main query to get static values
- */
-export const fetchSizeEdges = async (
-  boardName: BoardName,
-  sizeId: number,
-): Promise<SizeEdges | null> => {
-  const tables = getBoardTables(boardName);
-  const result = await db
-    .select({
-      edgeLeft: tables.productSizes.edgeLeft,
-      edgeRight: tables.productSizes.edgeRight,
-      edgeBottom: tables.productSizes.edgeBottom,
-      edgeTop: tables.productSizes.edgeTop,
-    })
-    .from(tables.productSizes)
-    .where(eq(tables.productSizes.id, sizeId))
-    .limit(1);
-
-  if (result.length === 0) {
-    return null;
-  }
-
-  return {
-    edgeLeft: result[0].edgeLeft ?? 0,
-    edgeRight: result[0].edgeRight ?? 0,
-    edgeBottom: result[0].edgeBottom ?? 0,
-    edgeTop: result[0].edgeTop ?? 0,
-  };
-};
+import { createClimbFilters } from './create-climb-filters';
 
 export const searchClimbs = async (
   params: ParsedBoardRouteParameters,
@@ -44,20 +13,16 @@ export const searchClimbs = async (
 ): Promise<SearchClimbsResult> => {
   const tables = getBoardTables(params.board_name);
 
-  // Pre-fetch size edges to use as constants (eliminates JOIN on product_sizes)
-  const sizeEdges = await fetchSizeEdges(params.board_name, params.size_id);
-  if (!sizeEdges) {
-    return { climbs: [], totalCount: 0 };
-  }
+  // Create the product sizes alias
+  const ps = alias(tables.productSizes, 'ps');
 
-  // Use the shared filter creator with static edge values and optional userId
-  const filters = createClimbFilters(tables, params, searchParams, sizeEdges, userId);
+  // Use the shared filter creator with the PS alias and optional userId
+  const filters = createClimbFilters(tables, params, searchParams, ps, userId);
 
   // Define sort columns with explicit SQL expressions where needed
   const allowedSortColumns: Record<string, SQL> = {
     ascents: sql`${tables.climbStats.ascensionistCount}`,
-    // Use the pre-computed roundedDifficulty column for efficient index usage
-    difficulty: sql`${tables.climbStats.roundedDifficulty}`,
+    difficulty: sql`ROUND(${tables.climbStats.displayDifficulty}::numeric, 0)`,
     name: sql`${tables.climbs.name}`,
     quality: sql`${tables.climbStats.qualityAverage}`,
   };
@@ -74,7 +39,6 @@ export const searchClimbs = async (
 
   try {
     // Base fields for the query
-    // Note: count(*) over() removed - use separate countClimbs() for total count
     const baseSelectFields = {
       uuid: tables.climbs.uuid,
       setter_username: tables.climbs.setterUsername,
@@ -87,6 +51,7 @@ export const searchClimbs = async (
       quality_average: sql<number>`ROUND(${tables.climbStats.qualityAverage}::numeric, 2)`,
       difficulty_error: sql<number>`ROUND(${tables.climbStats.difficultyAverage}::numeric - ${tables.climbStats.displayDifficulty}::numeric, 2)`,
       benchmark_difficulty: tables.climbStats.benchmarkDifficulty,
+      totalCount: sql<number>`count(*) over()`,
     };
 
     // Add user-specific fields if userId is provided
@@ -104,29 +69,22 @@ export const searchClimbs = async (
       .leftJoin(tables.climbStats, and(...filters.getClimbStatsJoinConditions()))
       .leftJoin(
         tables.difficultyGrades,
-        // Use the pre-computed roundedDifficulty column for efficient index usage
-        eq(tables.difficultyGrades.difficulty, tables.climbStats.roundedDifficulty),
+        eq(tables.difficultyGrades.difficulty, sql`ROUND(${tables.climbStats.displayDifficulty}::numeric)`),
       )
-      // Note: product_sizes JOIN eliminated - using pre-fetched sizeEdges constants instead
+      .innerJoin(ps, eq(ps.id, params.size_id))
       .where(and(...whereConditions))
       .orderBy(
         searchParams.sortOrder === 'asc' ? sql`${sortColumn} ASC NULLS FIRST` : sql`${sortColumn} DESC NULLS LAST`,
         // Add secondary sort to ensure consistent ordering
         desc(tables.climbs.uuid),
       )
-      // Fetch one extra row to detect if there are more results (hasMore)
-      .limit(searchParams.pageSize + 1)
+      .limit(searchParams.pageSize)
       .offset(searchParams.page * searchParams.pageSize);
 
     const results = await baseQuery;
 
-    // Check if there are more results available
-    const hasMore = results.length > searchParams.pageSize;
-    // Only return up to pageSize results
-    const trimmedResults = hasMore ? results.slice(0, searchParams.pageSize) : results;
-
     // Transform the results into the complete Climb type
-    const climbs: Climb[] = trimmedResults.map((result) => ({
+    const climbs: Climb[] = results.map((result) => ({
       uuid: result.uuid,
       setter_username: result.setter_username || '',
       name: result.name || '',
@@ -142,14 +100,15 @@ export const searchClimbs = async (
       // TODO: Multiframe support should remove the hardcoded [0]
       litUpHoldsMap: convertLitUpHoldsStringToMap(result.frames || '', params.board_name)[0],
       // Add user-specific fields if they exist
-      userAscents: userId ? Number((result as Record<string, unknown>)?.userAscents || 0) : undefined,
-      userAttempts: userId ? Number((result as Record<string, unknown>)?.userAttempts || 0) : undefined,
+      //@ts-expect-error Stupid typescript
+      userAscents: userId ? Number(result?.userAscents || 0) : undefined,
+      //@ts-expect-error Stupid typescript
+      userAttempts: userId ? Number(result?.userAttempts || 0) : undefined,
     }));
 
     return {
       climbs: climbs,
-      hasMore,
-      // totalCount is no longer included - use countClimbs() for separate count query
+      totalCount: results.length > 0 ? Number(results[0].totalCount) : 0,
     };
   } catch (error) {
     console.error('Error in searchClimbs:', error);

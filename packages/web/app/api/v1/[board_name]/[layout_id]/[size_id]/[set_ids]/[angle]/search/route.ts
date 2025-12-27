@@ -1,5 +1,4 @@
-import { searchClimbs, fetchSizeEdges } from '@/app/lib/db/queries/climbs/search-climbs';
-import { countClimbs } from '@/app/lib/db/queries/climbs/count-climbs';
+import { searchClimbs } from '@/app/lib/db/queries/climbs/search-climbs';
 import { BoardRouteParameters, ErrorResponse, SearchClimbsResult, SearchRequestPagination } from '@/app/lib/types';
 import { urlParamsToSearchParams } from '@/app/lib/url-utils';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
@@ -20,40 +19,29 @@ export async function GET(
 
     // Extract user authentication from headers for personal progress filters
     let userId: number | undefined;
-    const personalProgressFiltersEnabled =
-      searchParams.hideAttempted ||
-      searchParams.hideCompleted ||
-      searchParams.showOnlyAttempted ||
+    const personalProgressFiltersEnabled = 
+      searchParams.hideAttempted || 
+      searchParams.hideCompleted || 
+      searchParams.showOnlyAttempted || 
       searchParams.showOnlyCompleted;
-
+    
     if (personalProgressFiltersEnabled) {
       const userIdHeader = req.headers.get('x-user-id');
       const tokenHeader = req.headers.get('x-auth-token');
-
+      
       // Only use userId if both user ID and token are provided (basic auth check)
       if (userIdHeader && tokenHeader && userIdHeader !== 'null') {
         userId = parseInt(userIdHeader, 10);
       }
     }
 
-    // Pre-fetch size edges (used by both search and count)
-    const sizeEdges = await fetchSizeEdges(parsedParams.board_name, parsedParams.size_id);
-    if (!sizeEdges) {
-      return NextResponse.json({ climbs: [], totalCount: 0 });
-    }
+    // Call the separate function to perform the search
+    const result = await searchClimbs(parsedParams, searchParams, userId);
 
-    // Run search and count in parallel for better performance
-    // The count query is now separate from the main search (no window function)
-    const [result, totalCount] = await Promise.all([
-      searchClimbs(parsedParams, searchParams, userId),
-      countClimbs(parsedParams, searchParams, sizeEdges, userId),
-    ]);
-
-    // Return response with both totalCount (for display) and hasMore (for pagination)
+    // Return response
     return NextResponse.json({
-      totalCount,
+      totalCount: result.totalCount,
       climbs: result.climbs,
-      hasMore: result.hasMore,
     });
   } catch (error) {
     console.error('Error fetching data:', error);

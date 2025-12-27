@@ -1,32 +1,23 @@
 import { eq, gte, sql, like, notLike, inArray, SQL } from 'drizzle-orm';
+import { PgTableWithColumns } from 'drizzle-orm/pg-core';
 import { ParsedBoardRouteParameters, SearchRequestPagination } from '@/app/lib/types';
 import { TableSet } from '@/lib/db/queries/util/table-select';
 import { getTableName } from '@/app/lib/data-sync/aurora/getTableName';
-
-/**
- * Pre-fetched edge values from product_sizes table
- * Using static values eliminates the need for a JOIN in the main query
- */
-export interface SizeEdges {
-  edgeLeft: number;
-  edgeRight: number;
-  edgeBottom: number;
-  edgeTop: number;
-}
 
 /**
  * Creates a shared filtering object that can be used by both search climbs and heatmap queries
  * @param tables The board-specific tables from getBoardTables
  * @param params The route parameters
  * @param searchParams The search parameters
- * @param sizeEdges Pre-fetched edge values from product_sizes table
+ * @param productSizeAlias Optional alias for the product sizes table. If provided, size conditions will use this alias.
  * @param userId Optional user ID to include user-specific ascent and attempt data
  */
 export const createClimbFilters = (
   tables: TableSet,
   params: ParsedBoardRouteParameters,
   searchParams: SearchRequestPagination,
-  sizeEdges: SizeEdges,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  productSizeAlias?: PgTableWithColumns<any>,
   userId?: number,
 ) => {
   // Process hold filters
@@ -46,13 +37,16 @@ export const createClimbFilters = (
     eq(tables.climbs.framesCount, 1),
   ];
 
-  // Size-specific conditions using pre-fetched static edge values
-  // This eliminates the need for a JOIN on product_sizes in the main query
+  // Get the product sizes table or its alias
+  const sizeTable = productSizeAlias || tables.productSizes;
+
+  // Size-specific conditions
   const sizeConditions: SQL[] = [
-    sql`${tables.climbs.edgeLeft} > ${sizeEdges.edgeLeft}`,
-    sql`${tables.climbs.edgeRight} < ${sizeEdges.edgeRight}`,
-    sql`${tables.climbs.edgeBottom} > ${sizeEdges.edgeBottom}`,
-    sql`${tables.climbs.edgeTop} < ${sizeEdges.edgeTop}`,
+    eq(sizeTable.id, params.size_id),
+    sql`${tables.climbs.edgeLeft} > ${sizeTable.edgeLeft}`,
+    sql`${tables.climbs.edgeRight} < ${sizeTable.edgeRight}`,
+    sql`${tables.climbs.edgeBottom} > ${sizeTable.edgeBottom}`,
+    sql`${tables.climbs.edgeTop} < ${sizeTable.edgeTop}`,
   ];
 
   // Conditions for climb stats
@@ -62,18 +56,17 @@ export const createClimbFilters = (
     climbStatsConditions.push(gte(tables.climbStats.ascensionistCount, searchParams.minAscents));
   }
 
-  // Use the pre-computed roundedDifficulty column for efficient index usage
   if (searchParams.minGrade && searchParams.maxGrade) {
     climbStatsConditions.push(
-      sql`${tables.climbStats.roundedDifficulty} BETWEEN ${searchParams.minGrade} AND ${searchParams.maxGrade}`,
+      sql`ROUND(${tables.climbStats.displayDifficulty}::numeric, 0) BETWEEN ${searchParams.minGrade} AND ${searchParams.maxGrade}`,
     );
   } else if (searchParams.minGrade) {
     climbStatsConditions.push(
-      sql`${tables.climbStats.roundedDifficulty} >= ${searchParams.minGrade}`,
+      sql`ROUND(${tables.climbStats.displayDifficulty}::numeric, 0) >= ${searchParams.minGrade}`,
     );
   } else if (searchParams.maxGrade) {
     climbStatsConditions.push(
-      sql`${tables.climbStats.roundedDifficulty} <= ${searchParams.maxGrade}`,
+      sql`ROUND(${tables.climbStats.displayDifficulty}::numeric, 0) <= ${searchParams.maxGrade}`,
     );
   }
 
@@ -83,7 +76,7 @@ export const createClimbFilters = (
 
   if (searchParams.gradeAccuracy) {
     climbStatsConditions.push(
-      sql`ABS(${tables.climbStats.roundedDifficulty} - ${tables.climbStats.difficultyAverage}::numeric) <= ${searchParams.gradeAccuracy}`,
+      sql`ABS(ROUND(${tables.climbStats.displayDifficulty}::numeric, 0) - ${tables.climbStats.difficultyAverage}::numeric) <= ${searchParams.gradeAccuracy}`,
     );
   }
 
@@ -120,7 +113,7 @@ export const createClimbFilters = (
         INNER JOIN ${sql.identifier(layoutsTable)} layouts ON other_sizes.product_id = layouts.product_id
         WHERE layouts.id = ${params.layout_id}
         AND other_sizes.id != ${params.size_id}
-        AND other_sizes.edge_bottom < ${sizeEdges.edgeTop}
+        AND other_sizes.edge_bottom < ${sizeTable.edgeTop}
       )`
     );
   }

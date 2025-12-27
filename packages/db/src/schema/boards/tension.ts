@@ -73,8 +73,6 @@ export const tensionClimbStats = pgTable(
     qualityAverage: doublePrecision('quality_average'),
     faUsername: text('fa_username'),
     faAt: timestamp('fa_at', { mode: 'string' }),
-    // Generated column: ROUND(display_difficulty::numeric)::integer - for efficient JOINs
-    roundedDifficulty: integer('rounded_difficulty'),
   },
   (table) => ({
     compositePk: primaryKey({ name: 'tension_climb_stats_pk', columns: [table.climbUuid, table.angle] }),
