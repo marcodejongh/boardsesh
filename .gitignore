@@ -52,3 +52,7 @@ packages/backend/dist
 
 # shared-schema
 packages/shared-schema/dist
+
+# user uploads (local development)
+packages/web/public/uploads
+!packages/web/public/uploads/.gitkeep
