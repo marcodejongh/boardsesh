@@ -219,7 +219,9 @@ class RoomManager {
   ): Promise<number> {
     if (expectedVersion !== undefined) {
       if (expectedVersion === 0) {
-        // Version 0 means no row exists yet - use insert with conflict handling
+        // Version 0 means no row exists yet - try to insert
+        // If a row was created between our read and this insert, the conflict will
+        // cause us to return nothing, triggering a VersionConflictError and retry
         const result = await db
           .insert(sessionQueues)
           .values({
@@ -229,20 +231,11 @@ class RoomManager {
             version: 1,
             updatedAt: new Date(),
           })
-          .onConflictDoUpdate({
-            target: sessionQueues.sessionId,
-            set: {
-              queue,
-              currentClimbQueueItem,
-              version: sql`${sessionQueues.version} + 1`,
-              updatedAt: new Date(),
-            },
-            // Only update if version is still 0
-            setWhere: eq(sessionQueues.version, 0),
-          })
+          .onConflictDoNothing()
           .returning();
 
         if (result.length === 0) {
+          // Row was created by a concurrent operation, trigger retry
           throw new VersionConflictError(sessionId, expectedVersion);
         }
         return result[0].version;
@@ -300,9 +293,9 @@ class RoomManager {
   async updateQueueOnly(sessionId: string, queue: ClimbQueueItem[], expectedVersion?: number): Promise<number> {
     if (expectedVersion !== undefined) {
       if (expectedVersion === 0) {
-        // Version 0 means no row exists yet - use insert with conflict handling
-        // If a row was created between our read and this insert, the conflict will update
-        // only if the version is still 0 (which would mean another insert just happened)
+        // Version 0 means no row exists yet - try to insert
+        // If a row was created between our read and this insert, the conflict will
+        // cause us to return nothing, triggering a VersionConflictError and retry
         const result = await db
           .insert(sessionQueues)
           .values({
@@ -312,19 +305,11 @@ class RoomManager {
             version: 1,
             updatedAt: new Date(),
           })
-          .onConflictDoUpdate({
-            target: sessionQueues.sessionId,
-            set: {
-              queue,
-              version: sql`${sessionQueues.version} + 1`,
-              updatedAt: new Date(),
-            },
-            // Only update if version is still 0 (i.e., the row was just created by another concurrent insert)
-            setWhere: eq(sessionQueues.version, 0),
-          })
+          .onConflictDoNothing()
           .returning();
 
         if (result.length === 0) {
+          // Row was created by a concurrent operation, trigger retry
           throw new VersionConflictError(sessionId, expectedVersion);
         }
         return result[0].version;
