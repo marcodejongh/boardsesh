@@ -134,7 +134,7 @@ function collectEvents<T>(
 }
 
 describe('Daemon Integration Tests', () => {
-  let server: ReturnType<typeof startServer>;
+  let server: Awaited<ReturnType<typeof startServer>>;
   const activeClients: Client[] = [];
 
   const createTestClient = () => {
@@ -150,7 +150,7 @@ describe('Daemon Integration Tests', () => {
 
   beforeAll(async () => {
     process.env.PORT = String(TEST_PORT);
-    server = startServer();
+    server = await startServer();
     // Wait for server to be ready
     await new Promise((resolve) => setTimeout(resolve, 500));
   });
