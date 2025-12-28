@@ -1,6 +1,6 @@
 import { searchClimbs } from '@/app/lib/db/queries/climbs/search-climbs';
 import { countClimbs } from '@/app/lib/db/queries/climbs/count-climbs';
-import { getSizeEdges } from '@/app/lib/db/queries/climbs/product-sizes-data';
+import { getSizeEdges } from '@/app/lib/__generated__/product-sizes-data';
 import { BoardRouteParameters, ErrorResponse, SearchClimbsResult, SearchRequestPagination } from '@/app/lib/types';
 import { urlParamsToSearchParams } from '@/app/lib/url-utils';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';

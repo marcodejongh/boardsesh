@@ -3,7 +3,7 @@ import { dbz as db } from '@/app/lib/db/db';
 import { ParsedBoardRouteParameters, SearchRequestPagination } from '@/app/lib/types';
 import { getBoardTables } from '@/lib/db/queries/util/table-select';
 import { createClimbFilters } from './create-climb-filters';
-import { SizeEdges } from './product-sizes-data';
+import { SizeEdges } from '@/app/lib/__generated__/product-sizes-data';
 
 /**
  * Counts the total number of climbs matching the search criteria.

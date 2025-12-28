@@ -1,6 +1,6 @@
 import { BoardName, BoardDetails } from '@/app/lib/types';
 import { LayoutRow, SizeRow, SetRow, getBoardDetails } from '@/app/lib/data/queries';
-import { getBoardSelectorOptions } from '@/app/lib/db/queries/climbs/product-sizes-data';
+import { getBoardSelectorOptions } from '@/app/lib/__generated__/product-sizes-data';
 
 export type BoardConfigData = {
   layouts: Record<BoardName, LayoutRow[]>;

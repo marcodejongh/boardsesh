@@ -26,7 +26,7 @@ import {
   getLayout,
   getSizesForLayoutId,
   getAllLayouts,
-} from '@/app/lib/db/queries/climbs/product-sizes-data';
+} from '@/app/lib/__generated__/product-sizes-data';
 
 const getTableName = (board_name: string, table_name: string) => {
   switch (board_name) {

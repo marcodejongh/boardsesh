@@ -11,6 +11,7 @@ import { useSession } from 'next-auth/react';
 import { SUPPORTED_BOARDS, ANGLES } from '@/app/lib/board-data';
 import { fetchBoardDetails } from '../rest-api/api';
 import { BoardName, BoardDetails } from '@/app/lib/types';
+import { getDefaultSizeForLayout } from '@/app/lib/__generated__/product-sizes-data';
 import BoardConfigPreview from './board-config-preview';
 import BoardRenderer from '../board-renderer/board-renderer';
 import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
@@ -299,16 +300,16 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
       return;
     }
 
-    // Auto-select first size when layout changes
-    const availableSizes = boardConfigs.sizes[`${selectedBoard}-${selectedLayout}`] || [];
-    if (availableSizes.length > 0) {
-      setSelectedSize(availableSizes[0].id);
+    // Auto-select default size for this layout (or first available if no default)
+    const defaultSizeId = getDefaultSizeForLayout(selectedBoard, selectedLayout);
+    if (defaultSizeId !== null) {
+      setSelectedSize(defaultSizeId);
     } else {
       setSelectedSize(undefined);
     }
 
     setSelectedSets([]);
-  }, [selectedBoard, selectedLayout, boardConfigs]);
+  }, [selectedBoard, selectedLayout]);
 
   useEffect(() => {
     if (!selectedBoard || !selectedLayout || !selectedSize) {
