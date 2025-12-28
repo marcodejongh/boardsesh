@@ -1,5 +1,5 @@
 import sharp from 'sharp';
-import { DetectedHold, HoldType, GridCoordinate, Column, Row, GRID_CONFIG } from './types.js';
+import { DetectedHold, HoldType, GridCoordinate, Column, GRID_CONFIG } from './types.js';
 
 interface PixelColor {
   r: number;
@@ -7,28 +7,26 @@ interface PixelColor {
   b: number;
 }
 
-interface CellDetection {
-  row: number;
-  col: number;
+interface CircleCenter {
+  x: number;
+  y: number;
   type: HoldType;
-  count: number;
+  pixelCount: number;
 }
 
 /**
- * Detect colored hold markers in the board region using grid-based sampling.
- * This is much faster than scanning every pixel.
+ * Detect colored hold markers using flood-fill connected component analysis.
  *
- * Strategy: Divide the board into 11x18 grid cells and sample each cell
- * for the presence of colored circle markers.
+ * Strategy:
+ * 1. Find colored circles by flood-filling connected pixels of same color
+ * 2. Calculate center of mass for each circle
+ * 3. Map circle position to grid coordinate based on cell dimensions
  */
 export async function detectHolds(
   imageBuffer: Buffer,
   boardRegion: { x: number; y: number; width: number; height: number }
 ): Promise<DetectedHold[]> {
-  // Crop and resize board region for faster processing
-  const scaledWidth = 330; // 30px per column
-  const scaledHeight = 540; // 30px per row
-
+  // Extract board region
   const { data, info } = await sharp(imageBuffer)
     .extract({
       left: boardRegion.x,
@@ -36,89 +34,38 @@ export async function detectHolds(
       width: boardRegion.width,
       height: boardRegion.height,
     })
-    .resize(scaledWidth, scaledHeight)
     .raw()
     .toBuffer({ resolveWithObject: true });
 
   const { width, height, channels } = info;
+
+  // Find all colored circles using flood fill
+  const circles = findCircleCenters(data, width, height, channels);
+
+  // Calculate grid cell dimensions
   const cellWidth = width / GRID_CONFIG.numColumns;
   const cellHeight = height / GRID_CONFIG.numRows;
 
-  const cellDetections: CellDetection[] = [];
+  // Convert circle positions to grid coordinates
+  const detectedHolds: DetectedHold[] = circles.map(circle => {
+    // Calculate column (A-K)
+    const colIdx = Math.min(
+      Math.floor(circle.x / cellWidth),
+      GRID_CONFIG.numColumns - 1
+    );
+    const column = GRID_CONFIG.columns[colIdx];
 
-  // Sample each grid cell
-  for (let row = 0; row < GRID_CONFIG.numRows; row++) {
-    for (let col = 0; col < GRID_CONFIG.numColumns; col++) {
-      // Calculate cell bounds
-      const cellX = Math.floor(col * cellWidth);
-      const cellY = Math.floor(row * cellHeight);
-      const cellW = Math.floor(cellWidth);
-      const cellH = Math.floor(cellHeight);
+    // Calculate row (18 at top, 1 at bottom)
+    const rowIdx = Math.floor(circle.y / cellHeight);
+    const row = Math.min(18, Math.max(1, 18 - rowIdx)) as typeof GRID_CONFIG.rows[number];
 
-      // Count colored pixels in this cell
-      const colorCounts = { start: 0, hand: 0, finish: 0 };
-
-      for (let y = cellY; y < cellY + cellH && y < height; y++) {
-        for (let x = cellX; x < cellX + cellW && x < width; x++) {
-          const idx = (y * width + x) * channels;
-          const r = data[idx];
-          const g = data[idx + 1];
-          const b = data[idx + 2];
-
-          const holdType = classifyPixelColor({ r, g, b });
-          if (holdType) {
-            colorCounts[holdType]++;
-          }
-        }
-      }
-
-      // Check if any color has enough pixels (threshold for circle detection)
-      // With exact color matching, we can use a lower threshold
-      const threshold = (cellW * cellH) * 0.03; // 3% of cell area
-
-      for (const [type, count] of Object.entries(colorCounts)) {
-        if (count > threshold) {
-          // Position-based validation
-          // MoonBoard grid: row 18 at top of image, row 1 at bottom
-          // Image row 0-2 → grid rows 16-18 (top)
-          // Image row 15-17 → grid rows 1-3 (bottom)
-          const gridRow = GRID_CONFIG.rows[row];
-
-          // Finish holds (RED) should be at the top (rows 15-18)
-          if (type === 'finish' && gridRow < 15) {
-            continue; // Skip finish holds detected below row 15
-          }
-
-          // Start holds (GREEN) should be at the bottom (rows 1-8)
-          if (type === 'start' && gridRow > 8) {
-            continue; // Skip start holds detected above row 8
-          }
-
-          cellDetections.push({
-            row,
-            col,
-            type: type as HoldType,
-            count,
-          });
-        }
-      }
-    }
-  }
-
-  // Deduplicate adjacent cells of the same type - keep only the cell with the highest count
-  const deduplicatedHolds = deduplicateAdjacentCells(cellDetections);
-
-  // Convert to DetectedHold format
-  const detectedHolds: DetectedHold[] = deduplicatedHolds.map(cell => {
-    const column = GRID_CONFIG.columns[cell.col];
-    const rowNum = GRID_CONFIG.rows[cell.row];
-    const coordinate = `${column}${rowNum}` as GridCoordinate;
+    const coordinate = `${column}${row}` as GridCoordinate;
 
     return {
-      type: cell.type,
+      type: circle.type,
       coordinate,
-      pixelX: boardRegion.x + Math.floor((cell.col + 0.5) * (boardRegion.width / GRID_CONFIG.numColumns)),
-      pixelY: boardRegion.y + Math.floor((cell.row + 0.5) * (boardRegion.height / GRID_CONFIG.numRows)),
+      pixelX: boardRegion.x + circle.x,
+      pixelY: boardRegion.y + circle.y,
       confidence: 1,
     };
   });
@@ -127,63 +74,100 @@ export async function detectHolds(
 }
 
 /**
- * Deduplicate adjacent cells of the same hold type.
- * When a circle spans multiple cells, keep only the cell with the highest pixel count.
+ * Find centers of colored circles using flood-fill connected components.
  */
-function deduplicateAdjacentCells(cells: CellDetection[]): CellDetection[] {
-  if (cells.length === 0) return [];
+function findCircleCenters(
+  data: Buffer,
+  width: number,
+  height: number,
+  channels: number
+): CircleCenter[] {
+  const visited = new Set<number>();
+  const circles: CircleCenter[] = [];
 
-  // Group cells by type
-  const byType = new Map<HoldType, CellDetection[]>();
-  for (const cell of cells) {
-    const group = byType.get(cell.type) || [];
-    group.push(cell);
-    byType.set(cell.type, group);
-  }
+  // Minimum pixels to be considered a valid circle (filters noise)
+  const minPixels = 500;
 
-  const result: CellDetection[] = [];
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const idx = y * width + x;
+      if (visited.has(idx)) continue;
 
-  // For each type, find connected components and keep the best cell from each
-  for (const [type, typeCells] of byType) {
-    const visited = new Set<string>();
+      const pixelIdx = idx * channels;
+      const r = data[pixelIdx];
+      const g = data[pixelIdx + 1];
+      const b = data[pixelIdx + 2];
 
-    for (const cell of typeCells) {
-      const key = `${cell.row},${cell.col}`;
-      if (visited.has(key)) continue;
+      const holdType = classifyPixelColor({ r, g, b });
+      if (!holdType) continue;
 
-      // BFS to find all connected cells of same type
-      const component: CellDetection[] = [];
-      const queue = [cell];
+      // Flood fill to find all connected pixels of same type
+      const component = floodFill(data, width, height, channels, x, y, holdType, visited);
 
-      while (queue.length > 0) {
-        const current = queue.shift()!;
-        const currentKey = `${current.row},${current.col}`;
-        if (visited.has(currentKey)) continue;
-        visited.add(currentKey);
-        component.push(current);
-
-        // Check adjacent cells (4-connected)
-        for (const other of typeCells) {
-          const otherKey = `${other.row},${other.col}`;
-          if (visited.has(otherKey)) continue;
-
-          const rowDiff = Math.abs(other.row - current.row);
-          const colDiff = Math.abs(other.col - current.col);
-
-          // Adjacent if difference is 1 in one dimension and 0 in other
-          if ((rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1)) {
-            queue.push(other);
-          }
+      if (component.length >= minPixels) {
+        // Calculate center of mass
+        let sumX = 0, sumY = 0;
+        for (const p of component) {
+          sumX += p.x;
+          sumY += p.y;
         }
-      }
 
-      // Keep the cell with highest count from this component
-      const best = component.reduce((a, b) => a.count > b.count ? a : b);
-      result.push(best);
+        circles.push({
+          x: Math.round(sumX / component.length),
+          y: Math.round(sumY / component.length),
+          type: holdType,
+          pixelCount: component.length,
+        });
+      }
     }
   }
 
-  return result;
+  return circles;
+}
+
+/**
+ * Flood fill to find all connected pixels of the same hold type.
+ */
+function floodFill(
+  data: Buffer,
+  width: number,
+  height: number,
+  channels: number,
+  startX: number,
+  startY: number,
+  targetType: HoldType,
+  visited: Set<number>
+): { x: number; y: number }[] {
+  const pixels: { x: number; y: number }[] = [];
+  const stack: { x: number; y: number }[] = [{ x: startX, y: startY }];
+
+  while (stack.length > 0) {
+    const { x, y } = stack.pop()!;
+
+    if (x < 0 || x >= width || y < 0 || y >= height) continue;
+
+    const idx = y * width + x;
+    if (visited.has(idx)) continue;
+
+    const pixelIdx = idx * channels;
+    const r = data[pixelIdx];
+    const g = data[pixelIdx + 1];
+    const b = data[pixelIdx + 2];
+
+    const pixelType = classifyPixelColor({ r, g, b });
+    if (pixelType !== targetType) continue;
+
+    visited.add(idx);
+    pixels.push({ x, y });
+
+    // Add 4-connected neighbors
+    stack.push({ x: x + 1, y });
+    stack.push({ x: x - 1, y });
+    stack.push({ x, y: y + 1 });
+    stack.push({ x, y: y - 1 });
+  }
+
+  return pixels;
 }
 
 /**
@@ -206,7 +190,7 @@ function classifyPixelColor(color: PixelColor): HoldType | null {
   const redDist2 = Math.sqrt(
     Math.pow(r - 225, 2) + Math.pow(g - 82, 2) + Math.pow(b - 64, 2)
   );
-  if (redDist < 40 || redDist2 < 40) {
+  if (redDist < 50 || redDist2 < 50) {
     return 'finish';
   }
 
@@ -215,7 +199,7 @@ function classifyPixelColor(color: PixelColor): HoldType | null {
   const blueDist = Math.sqrt(
     Math.pow(r - 41, 2) + Math.pow(g - 97, 2) + Math.pow(b - 255, 2)
   );
-  if (blueDist < 40) {
+  if (blueDist < 50) {
     return 'hand';
   }
 
@@ -228,7 +212,7 @@ function classifyPixelColor(color: PixelColor): HoldType | null {
   const greenDist2 = Math.sqrt(
     Math.pow(r - 100, 2) + Math.pow(g - 160, 2) + Math.pow(b - 80, 2)
   );
-  if ((greenDist1 < 30 || greenDist2 < 30) && g > r && g > b) {
+  if ((greenDist1 < 40 || greenDist2 < 40) && g > r && g > b) {
     return 'start';
   }
 

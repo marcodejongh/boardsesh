@@ -111,17 +111,10 @@ function calculateRegions(width: number, height: number): ImageRegions {
   const headerHeight = Math.round(height * 0.07);
 
   // Board region: the actual 11x18 grid of holds
-  // Must exclude:
-  // - "Any marked holds" button at top
-  // - Column letters row (A-K) at top
-  // - Row numbers (1-18) on left side
-  // On 2796px height image:
-  // - Actual grid starts around y=580 (below column letters)
-  // - Grid ends around y=2400
-  // - Grid left edge around x=130 (right of row numbers)
-  // - Grid right edge around x=1220
-  const boardTop = Math.round(height * 0.238);  // Skip header + column letters (tuned for grid alignment)
-  const boardBottom = Math.round(height * 0.86);
+  // Calibrated for labeled MoonBoard screenshots with "Show hold markers" enabled
+  // These values are fine-tuned to align grid cells with actual hold positions
+  const boardTop = Math.round(height * 0.249);   // Start at row 18 (top)
+  const boardBottom = Math.round(height * 0.88); // End at row 1 (bottom)
   const boardHeight = boardBottom - boardTop;
 
   // Skip the row number labels on left
