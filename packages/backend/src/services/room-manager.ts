@@ -456,15 +456,16 @@ class RoomManager {
       );
 
     // Calculate precise distance and filter/sort
+    type SessionWithCoords = Session & { latitude: number; longitude: number };
     const sessionsWithDistance = candidates
-      .filter((s): s is typeof s & { latitude: number; longitude: number } =>
+      .filter((s): s is SessionWithCoords =>
         s.latitude !== null && s.longitude !== null)
-      .map((s) => ({
+      .map((s: SessionWithCoords) => ({
         session: s,
         distance: haversineDistance(latitude, longitude, s.latitude, s.longitude),
       }))
-      .filter((item) => item.distance <= radiusMeters)
-      .sort((a, b) => a.distance - b.distance);
+      .filter((item: { session: SessionWithCoords; distance: number }) => item.distance <= radiusMeters)
+      .sort((a: { distance: number }, b: { distance: number }) => a.distance - b.distance);
 
     // Get participant counts for each session
     const result: DiscoverableSession[] = [];

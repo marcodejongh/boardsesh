@@ -30,6 +30,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Build db package
+        run: npm run build --workspace=@boardsesh/db
+
       - name: Build shared-schema
         run: npm run build --workspace=@boardsesh/shared-schema
 
