@@ -115,12 +115,85 @@ export const typeDefs = /* GraphQL */ `
     discoverable: Boolean!
   }
 
+  # Board Configuration Types
+  type Grade {
+    difficultyId: Int!
+    difficultyName: String!
+  }
+
+  type BoardAngle {
+    angle: Int!
+  }
+
+  type Layout {
+    id: Int!
+    name: String!
+  }
+
+  type Size {
+    id: Int!
+    name: String!
+    description: String!
+  }
+
+  type Set {
+    id: Int!
+    name: String!
+  }
+
+  # Climb Search Types
+  input ClimbSearchInput {
+    boardName: String!
+    layoutId: Int!
+    sizeId: Int!
+    setIds: [Int!]!
+    angle: Int!
+    # Pagination
+    page: Int
+    pageSize: Int
+    # Filters
+    minGrade: Int
+    maxGrade: Int
+    minAscents: Int
+    minRating: Int
+    gradeAccuracy: Int
+    name: String
+    settername: [String!]
+    onlyClassics: Boolean
+    onlyTallClimbs: Boolean
+    # Sort
+    sortBy: String
+    sortOrder: String
+    # Progress filters (requires userId)
+    hideAttempted: Boolean
+    hideCompleted: Boolean
+    showOnlyAttempted: Boolean
+    showOnlyCompleted: Boolean
+  }
+
+  type ClimbSearchResult {
+    climbs: [Climb!]!
+    totalCount: Int!
+    hasMore: Boolean!
+  }
+
   type Query {
     session(sessionId: ID!): Session
     # Find discoverable sessions near a location
     nearbySessions(latitude: Float!, longitude: Float!, radiusMeters: Float): [DiscoverableSession!]!
     # Get current user's recent sessions (requires auth context)
     mySessions: [DiscoverableSession!]!
+
+    # Board Configuration Queries
+    grades(boardName: String!): [Grade!]!
+    angles(boardName: String!, layoutId: Int!): [BoardAngle!]!
+    layouts(boardName: String!): [Layout!]!
+    sizes(boardName: String!, layoutId: Int!): [Size!]!
+    sets(boardName: String!, layoutId: Int!, sizeId: Int!): [Set!]!
+
+    # Climb Queries
+    searchClimbs(input: ClimbSearchInput!): ClimbSearchResult!
+    climb(boardName: String!, layoutId: Int!, sizeId: Int!, setIds: [Int!]!, angle: Int!, climbUuid: ID!): Climb
   }
 
   type Mutation {

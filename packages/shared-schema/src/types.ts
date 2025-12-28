@@ -123,3 +123,67 @@ export type ConnectionContext = {
   userId?: string;
   isAuthenticated?: boolean;
 };
+
+// Board Configuration Types
+export type BoardName = 'kilter' | 'tension';
+
+export type Grade = {
+  difficultyId: number;
+  difficultyName: string;
+};
+
+export type BoardAngle = {
+  angle: number;
+};
+
+export type Layout = {
+  id: number;
+  name: string;
+};
+
+export type Size = {
+  id: number;
+  name: string;
+  description: string;
+};
+
+export type Set = {
+  id: number;
+  name: string;
+};
+
+// Climb Search Types
+export type ClimbSearchInput = {
+  boardName: string;
+  layoutId: number;
+  sizeId: number;
+  setIds: number[];
+  angle: number;
+  // Pagination
+  page?: number;
+  pageSize?: number;
+  // Filters
+  minGrade?: number;
+  maxGrade?: number;
+  minAscents?: number;
+  minRating?: number;
+  gradeAccuracy?: number;
+  name?: string;
+  settername?: string[];
+  onlyClassics?: boolean;
+  onlyTallClimbs?: boolean;
+  // Sort
+  sortBy?: string;
+  sortOrder?: string;
+  // Progress filters
+  hideAttempted?: boolean;
+  hideCompleted?: boolean;
+  showOnlyAttempted?: boolean;
+  showOnlyCompleted?: boolean;
+};
+
+export type ClimbSearchResult = {
+  climbs: Climb[];
+  totalCount: number;
+  hasMore: boolean;
+};
