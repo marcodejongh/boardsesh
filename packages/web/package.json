@@ -22,6 +22,7 @@
     "@atlaskit/pragmatic-drag-and-drop-react-accessibility": "^2.1.8",
     "@atlaskit/pragmatic-drag-and-drop-react-drop-indicator": "^3.2.10",
     "@auth/drizzle-adapter": "^1.11.1",
+    "@aws-sdk/client-s3": "^3.958.0",
     "@boardsesh/db": "*",
     "@boardsesh/shared-schema": "*",
     "@tanstack/react-query": "^5.90.12",
