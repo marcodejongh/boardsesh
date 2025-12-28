@@ -1,19 +1,16 @@
 import { NextResponse } from 'next/server';
-import { getAllBoardSelectorOptions } from '@/app/lib/data/queries';
+import { getBoardSelectorOptions } from '@/app/lib/db/queries/climbs/product-sizes-data';
 
 export const runtime = 'nodejs';
 
 export async function GET() {
-  try {
-    const selectorOptions = await getAllBoardSelectorOptions();
+  // All data is now hardcoded, no database query needed
+  const selectorOptions = getBoardSelectorOptions();
 
-    return NextResponse.json(selectorOptions, {
-      headers: {
-        'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
-      },
-    });
-  } catch (error) {
-    console.error('Error fetching board selector options:', error);
-    return NextResponse.json({ error: 'Failed to fetch board selector options' }, { status: 500 });
-  }
+  return NextResponse.json(selectorOptions, {
+    headers: {
+      // Since data is hardcoded, we can cache it for a long time
+      'Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=604800',
+    },
+  });
 }
