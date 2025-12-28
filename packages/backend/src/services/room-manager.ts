@@ -514,16 +514,24 @@ class RoomManager {
     isLeader: boolean
   ): Promise<void> {
     // Ensure session exists
+    // Note: Explicitly provide all column values to avoid DEFAULT keyword issues with Neon driver
+    const now = new Date();
     await db
       .insert(sessions)
       .values({
         id: sessionId,
         boardPath,
-        lastActivity: new Date(),
+        createdAt: now,
+        lastActivity: now,
+        latitude: null,
+        longitude: null,
+        discoverable: false,
+        createdByUserId: null,
+        name: null,
       })
       .onConflictDoUpdate({
         target: sessions.id,
-        set: { boardPath, lastActivity: new Date() },
+        set: { boardPath, lastActivity: now },
       });
 
     // Add client to session

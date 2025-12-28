@@ -99,6 +99,7 @@ export async function startServer(): Promise<{ wss: WebSocketServer; httpServer:
   }
   if (process.env.NODE_ENV !== 'production') {
     ALLOWED_ORIGINS.push('http://localhost:3000', 'http://127.0.0.1:3000');
+    ALLOWED_ORIGINS.push('http://localhost:3001', 'http://127.0.0.1:3001'); // For multi-instance testing
   }
 
   // Helper to check if an origin is allowed (includes Vercel preview deployments)

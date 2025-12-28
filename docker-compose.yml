@@ -1,7 +1,7 @@
 services:
   postgres:
     image: postgres:17
-    command: '-d 1'
+    command: postgres -c max_connections=300 -c log_min_messages=warning
     volumes:
       - db_data:/var/lib/postgresql/data
     ports:
