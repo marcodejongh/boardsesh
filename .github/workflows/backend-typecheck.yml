@@ -1,0 +1,40 @@
+name: Backend TypeScript Check
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/backend/**'
+      - 'packages/shared-schema/**'
+      - '.github/workflows/backend-typecheck.yml'
+  pull_request:
+    paths:
+      - 'packages/backend/**'
+      - 'packages/shared-schema/**'
+      - '.github/workflows/backend-typecheck.yml'
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build shared-schema
+        run: npm run build --workspace=@boardsesh/shared-schema
+
+      - name: Build db package
+        run: npm run build --workspace=@boardsesh/db
+
+      - name: TypeScript check backend
+        run: npm run build --workspace=boardsesh-backend
