@@ -105,8 +105,19 @@ export async function handleAvatarUpload(req: IncomingMessage, res: ServerRespon
 
   const authenticatedUserId = authResult.userId;
 
-  // Ensure avatars directory exists (only needed for local storage)
+  // Check S3 configuration
   const useS3 = isS3Configured();
+  const isProduction = process.env.NODE_ENV === 'production';
+
+  // In production, S3 must be configured for avatar uploads
+  if (isProduction && !useS3) {
+    console.error('Avatar upload attempted in production without S3 configured');
+    res.writeHead(501, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Avatar uploads are not configured. Please contact the administrator.' }));
+    return;
+  }
+
+  // Ensure avatars directory exists (only needed for local storage in development)
   if (!useS3) {
     try {
       await ensureAvatarsDir();
