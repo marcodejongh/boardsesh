@@ -9,11 +9,16 @@ import {
   ensurePartyProfile,
 } from '@/app/lib/party-profile-db';
 
+interface UserProfileData {
+  displayName: string | null;
+  avatarUrl: string | null;
+}
+
 interface PartyProfileContextType {
   profile: PartyProfile | null;
   isLoading: boolean;
   hasProfile: boolean;
-  // Username and avatar come from NextAuth session
+  // Username and avatar - prefer custom profile over NextAuth session
   username: string | undefined;
   avatarUrl: string | undefined;
   isAuthenticated: boolean;
@@ -25,10 +30,11 @@ const PartyProfileContext = createContext<PartyProfileContextType | undefined>(u
 
 export const PartyProfileProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [profile, setProfile] = useState<PartyProfile | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfileData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { data: session, status: sessionStatus } = useSession();
 
-  // Load profile on mount
+  // Load party profile on mount
   useEffect(() => {
     let mounted = true;
 
@@ -55,14 +61,54 @@ export const PartyProfileProvider: React.FC<{ children: React.ReactNode }> = ({ 
     };
   }, []);
 
+  // Fetch custom user profile (displayName, avatarUrl) when authenticated
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchUserProfile = async () => {
+      if (sessionStatus !== 'authenticated') {
+        setUserProfile(null);
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/internal/profile');
+        if (response.ok) {
+          const data = await response.json();
+          if (mounted) {
+            setUserProfile(data.profile || null);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch user profile:', error);
+      }
+    };
+
+    fetchUserProfile();
+
+    return () => {
+      mounted = false;
+    };
+  }, [sessionStatus]);
+
   const refreshProfile = useCallback(async () => {
     try {
+      // Refresh party profile from IndexedDB
       const loadedProfile = await getPartyProfile();
       setProfile(loadedProfile);
+
+      // Also refresh user profile from API if authenticated
+      if (sessionStatus === 'authenticated') {
+        const response = await fetch('/api/internal/profile');
+        if (response.ok) {
+          const data = await response.json();
+          setUserProfile(data.profile || null);
+        }
+      }
     } catch (error) {
       console.error('Failed to refresh party profile:', error);
     }
-  }, []);
+  }, [sessionStatus]);
 
   const clearProfileHandler = useCallback(async () => {
     setIsLoading(true);
@@ -81,9 +127,15 @@ export const PartyProfileProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const hasProfile = useMemo(() => !!profile?.id, [profile?.id]);
 
-  // Username and avatar from NextAuth session
-  const username = useMemo(() => session?.user?.name || undefined, [session?.user?.name]);
-  const avatarUrl = useMemo(() => session?.user?.image || undefined, [session?.user?.image]);
+  // Username and avatar - prefer custom profile over NextAuth session
+  const username = useMemo(
+    () => userProfile?.displayName || session?.user?.name || undefined,
+    [userProfile?.displayName, session?.user?.name],
+  );
+  const avatarUrl = useMemo(
+    () => userProfile?.avatarUrl || session?.user?.image || undefined,
+    [userProfile?.avatarUrl, session?.user?.image],
+  );
   const isAuthenticated = useMemo(() => sessionStatus === 'authenticated', [sessionStatus]);
 
   const value = useMemo<PartyProfileContextType>(
