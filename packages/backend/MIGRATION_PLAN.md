@@ -45,7 +45,7 @@ Node.js HTTP Server
 
 ---
 
-## Phase 2: REST API Reimplementation (TODO)
+## Phase 2: REST API Reimplementation (IN PROGRESS)
 
 Reimplement Next.js REST APIs as GraphQL queries/mutations. Only endpoints that query our database - Aurora proxy routes stay in Next.js.
 
@@ -53,8 +53,11 @@ Reimplement Next.js REST APIs as GraphQL queries/mutations. Only endpoints that 
 
 | REST Endpoint | GraphQL Operation | Status |
 |---------------|-------------------|--------|
-| `GET /api/v1/grades/[board_name]` | `Query.grades(boardName: String!)` | TODO |
-| `GET /api/v1/angles/[board_name]/[layout_id]` | `Query.angles(boardName: String!, layoutId: Int!)` | TODO |
+| `GET /api/v1/grades/[board_name]` | `Query.grades(boardName: String!)` | ✅ DONE |
+| `GET /api/v1/angles/[board_name]/[layout_id]` | `Query.angles(boardName: String!, layoutId: Int!)` | ✅ DONE |
+| N/A | `Query.layouts(boardName: String!)` | ✅ DONE |
+| N/A | `Query.sizes(boardName: String!, layoutId: Int!)` | ✅ DONE |
+| N/A | `Query.sets(boardName: String!, layoutId: Int!, sizeId: Int!)` | ✅ DONE |
 | `GET /api/v1/[board_name]/[layout_id]/[size_id]/[set_ids]/details` | `Query.boardDetails(...)` | TODO |
 
 **Source files:**
@@ -66,8 +69,8 @@ Reimplement Next.js REST APIs as GraphQL queries/mutations. Only endpoints that 
 
 | REST Endpoint | GraphQL Operation | Status |
 |---------------|-------------------|--------|
-| `GET /api/v1/[board_name]/.../search` | `Query.searchClimbs(input: ClimbSearchInput!)` | TODO |
-| `GET /api/v1/[board_name]/.../[climb_uuid]` | `Query.climb(...)` | TODO |
+| `GET /api/v1/[board_name]/.../search` | `Query.searchClimbs(input: ClimbSearchInput!)` | ✅ DONE |
+| `GET /api/v1/[board_name]/.../[climb_uuid]` | `Query.climb(...)` | ✅ DONE |
 
 **Medium Priority:**
 
@@ -120,9 +123,13 @@ Reimplement Next.js REST APIs as GraphQL queries/mutations. Only endpoints that 
 
 ---
 
-## Phase 3: Type Sharing (TODO)
+## Phase 3: Type Sharing (PARTIAL)
 
 Add new GraphQL types to `packages/shared-schema/src/schema.ts` and corresponding TypeScript types to `packages/shared-schema/src/types.ts`.
+
+### Implemented Types
+- `Grade`, `BoardAngle`, `Layout`, `Size`, `Set` - Board configuration types
+- `ClimbSearchInput`, `ClimbSearchResult` - Climb search types
 
 ### New Types Needed
 
@@ -176,10 +183,11 @@ type Favorite { climbUuid: String!, angle: Int! }
 - [x] Verify WebSocket subscriptions work
 - [x] Remove Express dependency
 
-### Milestone 2: Core Queries (High Priority)
-- [ ] Add new types to shared-schema
-- [ ] Implement `grades`, `angles`, `boardDetails` queries
-- [ ] Implement `searchClimbs`, `climb` queries
+### Milestone 2: Core Queries (High Priority) - IN PROGRESS
+- [x] Add new types to shared-schema
+- [x] Implement `grades`, `angles`, `layouts`, `sizes`, `sets` queries
+- [x] Implement `searchClimbs`, `climb` queries
+- [ ] Implement `boardDetails` query (complex - requires hold/LED data)
 - [ ] Implement `profile` query and `updateProfile` mutation
 - [ ] Implement `auroraCredentials` queries/mutations
 

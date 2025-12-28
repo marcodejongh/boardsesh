@@ -1,6 +1,7 @@
 import { makeExecutableSchema } from '@graphql-tools/schema';
 import GraphQLJSON from 'graphql-type-json';
 import { v4 as uuidv4 } from 'uuid';
+import { eq, and, sql, desc, SQL } from 'drizzle-orm';
 import { typeDefs } from '@boardsesh/shared-schema';
 import { roomManager, VersionConflictError, type DiscoverableSession } from '../services/room-manager.js';
 import { pubsub } from '../pubsub/index.js';
@@ -27,8 +28,16 @@ import type {
   SessionEvent,
   ClimbQueueItem,
   QueueState,
-  SessionUser,
+  ClimbSearchInput,
+  Grade,
+  BoardAngle,
+  Layout,
+  Size,
+  Set,
+  Climb,
 } from '@boardsesh/shared-schema';
+import { db } from '../db/client.js';
+import { getBoardTables, isValidBoardName, type BoardName } from '../db/tables.js';
 
 // Input type for createSession mutation
 type CreateSessionInput = {
@@ -268,6 +277,304 @@ const resolvers = {
         participantCount: roomManager.getSessionClients(s.id).length,
         distance: 0, // Not applicable for own sessions
       }));
+    },
+
+    // Board Configuration Queries
+    grades: async (_: unknown, { boardName }: { boardName: string }): Promise<Grade[]> => {
+      if (!isValidBoardName(boardName)) {
+        throw new Error(`Invalid board name: ${boardName}`);
+      }
+      const tables = getBoardTables(boardName);
+      const result = await db
+        .select({
+          difficultyId: tables.difficultyGrades.difficulty,
+          difficultyName: tables.difficultyGrades.boulderName,
+        })
+        .from(tables.difficultyGrades)
+        .where(eq(tables.difficultyGrades.isListed, true))
+        .orderBy(tables.difficultyGrades.difficulty);
+
+      return result.map((row) => ({
+        difficultyId: row.difficultyId,
+        difficultyName: row.difficultyName || '',
+      }));
+    },
+
+    angles: async (_: unknown, { boardName, layoutId }: { boardName: string; layoutId: number }): Promise<BoardAngle[]> => {
+      if (!isValidBoardName(boardName)) {
+        throw new Error(`Invalid board name: ${boardName}`);
+      }
+      // Query the products_angles table joined with layouts
+      // The angles are associated with products, and layouts have product_ids
+      const result = await db.execute(sql`
+        SELECT DISTINCT pa.angle
+        FROM ${sql.identifier(boardName + '_products_angles')} pa
+        JOIN ${sql.identifier(boardName + '_layouts')} l ON l.product_id = pa.product_id
+        WHERE l.id = ${layoutId}
+        ORDER BY pa.angle ASC
+      `);
+
+      return (result.rows as Array<{ angle: number }>).map((row) => ({
+        angle: row.angle,
+      }));
+    },
+
+    layouts: async (_: unknown, { boardName }: { boardName: string }): Promise<Layout[]> => {
+      if (!isValidBoardName(boardName)) {
+        throw new Error(`Invalid board name: ${boardName}`);
+      }
+      const tables = getBoardTables(boardName);
+      const result = await db
+        .select({
+          id: tables.layouts.id,
+          name: tables.layouts.name,
+        })
+        .from(tables.layouts)
+        .where(eq(tables.layouts.isListed, true))
+        .orderBy(tables.layouts.id);
+
+      return result.map((row) => ({
+        id: row.id,
+        name: row.name || '',
+      }));
+    },
+
+    sizes: async (_: unknown, { boardName, layoutId }: { boardName: string; layoutId: number }): Promise<Size[]> => {
+      if (!isValidBoardName(boardName)) {
+        throw new Error(`Invalid board name: ${boardName}`);
+      }
+      const tables = getBoardTables(boardName);
+      // Get sizes that have product_sizes_layouts_sets entries for this layout
+      const result = await db.execute(sql`
+        SELECT DISTINCT ps.id, ps.name, ps.description
+        FROM ${sql.identifier(boardName + '_product_sizes')} ps
+        JOIN ${sql.identifier(boardName + '_product_sizes_layouts_sets')} psls ON psls.product_size_id = ps.id
+        WHERE psls.layout_id = ${layoutId}
+        AND ps.is_listed = true
+        ORDER BY ps.id ASC
+      `);
+
+      return (result.rows as Array<{ id: number; name: string; description: string }>).map((row) => ({
+        id: row.id,
+        name: row.name || '',
+        description: row.description || '',
+      }));
+    },
+
+    sets: async (_: unknown, { boardName, layoutId, sizeId }: { boardName: string; layoutId: number; sizeId: number }): Promise<Set[]> => {
+      if (!isValidBoardName(boardName)) {
+        throw new Error(`Invalid board name: ${boardName}`);
+      }
+      const tables = getBoardTables(boardName);
+      const result = await db
+        .select({
+          id: tables.sets.id,
+          name: tables.sets.name,
+        })
+        .from(tables.sets)
+        .innerJoin(
+          tables.productSizesLayoutsSets,
+          eq(tables.sets.id, tables.productSizesLayoutsSets.setId)
+        )
+        .where(
+          and(
+            eq(tables.productSizesLayoutsSets.layoutId, layoutId),
+            eq(tables.productSizesLayoutsSets.productSizeId, sizeId)
+          )
+        )
+        .orderBy(tables.sets.id);
+
+      return result.map((row) => ({
+        id: row.id,
+        name: row.name || '',
+      }));
+    },
+
+    // Climb Queries
+    searchClimbs: async (_: unknown, { input }: { input: ClimbSearchInput }) => {
+      const { boardName, layoutId, sizeId, setIds, angle, page = 0, pageSize = 20 } = input;
+
+      if (!isValidBoardName(boardName)) {
+        throw new Error(`Invalid board name: ${boardName}`);
+      }
+
+      const tables = getBoardTables(boardName);
+
+      // Build the where conditions
+      const whereConditions: SQL[] = [
+        eq(tables.climbs.layoutId, layoutId),
+        eq(tables.climbs.isListed, true),
+        eq(tables.climbs.isDraft, false),
+        eq(tables.climbs.framesCount, 1),
+        eq(tables.climbStats.angle, angle),
+      ];
+
+      // Add filters if provided
+      if (input.minGrade !== undefined && input.minGrade !== null) {
+        whereConditions.push(sql`ROUND(${tables.climbStats.displayDifficulty}::numeric) >= ${input.minGrade}`);
+      }
+      if (input.maxGrade !== undefined && input.maxGrade !== null) {
+        whereConditions.push(sql`ROUND(${tables.climbStats.displayDifficulty}::numeric) <= ${input.maxGrade}`);
+      }
+      if (input.minAscents !== undefined && input.minAscents > 0) {
+        whereConditions.push(sql`${tables.climbStats.ascensionistCount} >= ${input.minAscents}`);
+      }
+      if (input.minRating !== undefined && input.minRating > 0) {
+        whereConditions.push(sql`${tables.climbStats.qualityAverage} >= ${input.minRating}`);
+      }
+      if (input.name) {
+        whereConditions.push(sql`LOWER(${tables.climbs.name}) LIKE LOWER(${`%${input.name}%`})`);
+      }
+      if (input.onlyClassics) {
+        whereConditions.push(sql`${tables.climbStats.benchmarkDifficulty} IS NOT NULL`);
+      }
+
+      // Define sort columns
+      const sortColumns: Record<string, SQL> = {
+        ascents: sql`${tables.climbStats.ascensionistCount}`,
+        difficulty: sql`ROUND(${tables.climbStats.displayDifficulty}::numeric, 0)`,
+        name: sql`${tables.climbs.name}`,
+        quality: sql`${tables.climbStats.qualityAverage}`,
+      };
+
+      const sortColumn = sortColumns[input.sortBy || 'ascents'] || sortColumns.ascents;
+      const sortOrder = input.sortOrder === 'asc' ? sql`ASC NULLS FIRST` : sql`DESC NULLS LAST`;
+
+      // Execute search query
+      const searchResult = await db
+        .select({
+          uuid: tables.climbs.uuid,
+          setter_username: tables.climbs.setterUsername,
+          name: tables.climbs.name,
+          description: tables.climbs.description,
+          frames: tables.climbs.frames,
+          angle: tables.climbStats.angle,
+          ascensionist_count: tables.climbStats.ascensionistCount,
+          difficulty: tables.difficultyGrades.boulderName,
+          quality_average: sql<number>`ROUND(${tables.climbStats.qualityAverage}::numeric, 2)`,
+          difficulty_error: sql<number>`ROUND(${tables.climbStats.difficultyAverage}::numeric - ${tables.climbStats.displayDifficulty}::numeric, 2)`,
+          benchmark_difficulty: tables.climbStats.benchmarkDifficulty,
+        })
+        .from(tables.climbs)
+        .innerJoin(tables.climbStats, eq(tables.climbs.uuid, tables.climbStats.climbUuid))
+        .leftJoin(
+          tables.difficultyGrades,
+          eq(tables.difficultyGrades.difficulty, sql`ROUND(${tables.climbStats.displayDifficulty}::numeric)`)
+        )
+        .where(and(...whereConditions))
+        .orderBy(sql`${sortColumn} ${sortOrder}`, desc(tables.climbs.uuid))
+        .limit(pageSize + 1)
+        .offset(page * pageSize);
+
+      // Check if there are more results
+      const hasMore = searchResult.length > pageSize;
+      const trimmedResults = hasMore ? searchResult.slice(0, pageSize) : searchResult;
+
+      // Execute count query for total
+      const countResult = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(tables.climbs)
+        .innerJoin(tables.climbStats, eq(tables.climbs.uuid, tables.climbStats.climbUuid))
+        .where(and(...whereConditions));
+
+      const totalCount = Number(countResult[0]?.count || 0);
+
+      // Transform results to Climb type
+      const climbs = trimmedResults.map((row) => ({
+        uuid: row.uuid,
+        setter_username: row.setter_username || '',
+        name: row.name || '',
+        description: row.description || '',
+        frames: row.frames || '',
+        angle: Number(row.angle) || angle,
+        ascensionist_count: Number(row.ascensionist_count) || 0,
+        difficulty: row.difficulty || '',
+        quality_average: row.quality_average?.toString() || '0',
+        stars: Math.round((Number(row.quality_average) || 0) * 5),
+        difficulty_error: row.difficulty_error?.toString() || '0',
+        benchmark_difficulty: row.benchmark_difficulty?.toString() || null,
+        litUpHoldsMap: {}, // Will be populated by client when needed
+      }));
+
+      return {
+        climbs,
+        totalCount,
+        hasMore,
+      };
+    },
+
+    climb: async (
+      _: unknown,
+      { boardName, layoutId, sizeId, setIds, angle, climbUuid }: {
+        boardName: string;
+        layoutId: number;
+        sizeId: number;
+        setIds: number[];
+        angle: number;
+        climbUuid: string;
+      }
+    ): Promise<Climb | null> => {
+      if (!isValidBoardName(boardName)) {
+        throw new Error(`Invalid board name: ${boardName}`);
+      }
+
+      const tables = getBoardTables(boardName);
+
+      const result = await db
+        .select({
+          uuid: tables.climbs.uuid,
+          setter_username: tables.climbs.setterUsername,
+          name: tables.climbs.name,
+          description: tables.climbs.description,
+          frames: tables.climbs.frames,
+          angle: tables.climbStats.angle,
+          ascensionist_count: tables.climbStats.ascensionistCount,
+          difficulty: tables.difficultyGrades.boulderName,
+          quality_average: sql<number>`ROUND(${tables.climbStats.qualityAverage}::numeric, 2)`,
+          difficulty_error: sql<number>`ROUND(${tables.climbStats.difficultyAverage}::numeric - ${tables.climbStats.displayDifficulty}::numeric, 2)`,
+          benchmark_difficulty: tables.climbStats.benchmarkDifficulty,
+        })
+        .from(tables.climbs)
+        .leftJoin(
+          tables.climbStats,
+          and(
+            eq(tables.climbStats.climbUuid, tables.climbs.uuid),
+            eq(tables.climbStats.angle, angle)
+          )
+        )
+        .leftJoin(
+          tables.difficultyGrades,
+          eq(tables.difficultyGrades.difficulty, sql`ROUND(${tables.climbStats.displayDifficulty}::numeric)`)
+        )
+        .where(
+          and(
+            eq(tables.climbs.uuid, climbUuid),
+            eq(tables.climbs.layoutId, layoutId),
+            eq(tables.climbs.framesCount, 1)
+          )
+        )
+        .limit(1);
+
+      if (result.length === 0) {
+        return null;
+      }
+
+      const row = result[0];
+      return {
+        uuid: row.uuid,
+        setter_username: row.setter_username || '',
+        name: row.name || '',
+        description: row.description || '',
+        frames: row.frames || '',
+        angle: Number(row.angle) || angle,
+        ascensionist_count: Number(row.ascensionist_count) || 0,
+        difficulty: row.difficulty || '',
+        quality_average: row.quality_average?.toString() || '0',
+        stars: Math.round((Number(row.quality_average) || 0) * 5),
+        difficulty_error: row.difficulty_error?.toString() || '0',
+        benchmark_difficulty: row.benchmark_difficulty?.toString() || null,
+        litUpHoldsMap: {}, // Will be populated by client when needed
+      };
     },
   },
 
