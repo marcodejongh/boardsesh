@@ -1,4 +1,5 @@
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import type { Readable } from 'stream';
 
 let s3Client: S3Client | null = null;
 let bucketName: string | null = null;
@@ -115,6 +116,40 @@ export async function deleteFromS3(key: string): Promise<void> {
       Key: key,
     })
   );
+}
+
+/**
+ * Get a file from S3 and return the stream along with metadata
+ */
+export async function getFromS3(key: string): Promise<{
+  stream: Readable;
+  contentType: string | undefined;
+  contentLength: number | undefined;
+} | null> {
+  const client = getS3Client();
+  const bucket = getBucketName();
+
+  try {
+    const response = await client.send(
+      new GetObjectCommand({
+        Bucket: bucket,
+        Key: key,
+      })
+    );
+
+    if (!response.Body) {
+      return null;
+    }
+
+    return {
+      stream: response.Body as Readable,
+      contentType: response.ContentType,
+      contentLength: response.ContentLength,
+    };
+  } catch (error) {
+    // Return null for not found or other errors
+    return null;
+  }
 }
 
 /**
