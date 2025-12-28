@@ -63,7 +63,12 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
   }
 
   const hasGrade = climb.difficulty && climb.quality_average && climb.quality_average !== '0';
-  const isBenchmark = climb.benchmark_difficulty !== null && climb.benchmark_difficulty !== undefined;
+  // A climb is a benchmark/classic if benchmark_difficulty has a meaningful value (not null, undefined, empty, or "0")
+  const isBenchmark =
+    climb.benchmark_difficulty !== null &&
+    climb.benchmark_difficulty !== undefined &&
+    climb.benchmark_difficulty !== '' &&
+    climb.benchmark_difficulty !== '0';
 
   // Extract V grade from difficulty string (e.g., "6a/V3" -> "V3", "V5" -> "V5")
   const getVGrade = (difficulty: string): string | null => {
