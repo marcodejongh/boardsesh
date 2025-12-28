@@ -5,7 +5,7 @@
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
-    "dev": "NODE_ENV=development tsx watch src/index.ts",
+    "dev": "NODE_ENV=development DOTENV_CONFIG_PATH=.env.local tsx watch src/index.ts",
     "build": "npm run build --workspace=@boardsesh/shared-schema && tsc",
     "start": "node dist/index.js",
     "test": "vitest",
@@ -14,6 +14,7 @@
     "test:db:up": "docker-compose up -d db",
     "test:db:migrate": "DATABASE_URL=postgresql://postgres:postgres@localhost:5433/boardsesh_backend_test drizzle-kit migrate",
     "test:integration": "vitest run src/__tests__/integration.test.ts",
+    "test:redis": "vitest run src/__tests__/redis-pubsub.test.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio"
@@ -22,6 +23,7 @@
     "@boardsesh/db": "*",
     "@boardsesh/shared-schema": "*",
     "@graphql-tools/schema": "^10.0.30",
+    "ioredis": "^5.4.1",
     "dotenv": "^17.2.3",
     "drizzle-orm": "^0.45.1",
     "express": "^5.2.1",

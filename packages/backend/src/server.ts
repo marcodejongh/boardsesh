@@ -78,7 +78,11 @@ const deleteExistingAvatars = async (userId: string): Promise<void> => {
 // Vercel preview deployment pattern: https://boardsesh-{hash}-marcodejonghs-projects.vercel.app
 const VERCEL_PREVIEW_REGEX = /^https:\/\/boardsesh-[a-z0-9]+-marcodejonghs-projects\.vercel\.app$/;
 
-export function startServer(): { wss: WebSocketServer; httpServer: ReturnType<typeof createServer> } {
+export async function startServer(): Promise<{ wss: WebSocketServer; httpServer: ReturnType<typeof createServer> }> {
+  // Initialize PubSub (connects to Redis if configured)
+  // This must happen before we start accepting connections
+  await pubsub.initialize();
+
   const PORT = parseInt(process.env.PORT || '8080', 10);
   const BOARDSESH_URL = process.env.BOARDSESH_URL || 'https://boardsesh.com';
 
@@ -95,6 +99,7 @@ export function startServer(): { wss: WebSocketServer; httpServer: ReturnType<ty
   }
   if (process.env.NODE_ENV !== 'production') {
     ALLOWED_ORIGINS.push('http://localhost:3000', 'http://127.0.0.1:3000');
+    ALLOWED_ORIGINS.push('http://localhost:3001', 'http://127.0.0.1:3001'); // For multi-instance testing
   }
 
   // Helper to check if an origin is allowed (includes Vercel preview deployments)
@@ -124,7 +129,24 @@ export function startServer(): { wss: WebSocketServer; httpServer: ReturnType<ty
 
   // Health check endpoint
   app.get('/health', (_req: Request, res: Response) => {
-    res.json({ status: 'healthy', timestamp: Date.now() });
+    const redisRequired = pubsub.isRedisRequired();
+    const redisConnected = pubsub.isRedisConnected();
+
+    // If Redis is required but not connected, report unhealthy
+    if (redisRequired && !redisConnected) {
+      res.status(503).json({
+        status: 'unhealthy',
+        timestamp: Date.now(),
+        redis: { required: true, connected: false },
+      });
+      return;
+    }
+
+    res.json({
+      status: 'healthy',
+      timestamp: Date.now(),
+      redis: { required: redisRequired, connected: redisConnected },
+    });
   });
 
   // Join session endpoint - requires session ID parameter

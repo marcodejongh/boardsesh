@@ -29,6 +29,11 @@ if [ "$FRESH_SETUP" = true ]; then
   psql postgres -c "CREATE DATABASE $PGDBNAME"
   echo "   ✅ Database created successfully"
 
+  echo "   🔌 Creating neon_control_plane schema for local Neon proxy..."
+  psql $PGDBNAME -c "CREATE SCHEMA IF NOT EXISTS neon_control_plane"
+  psql $PGDBNAME -c "CREATE TABLE IF NOT EXISTS neon_control_plane.endpoints (endpoint_id VARCHAR(255) NOT NULL PRIMARY KEY, allowed_ips VARCHAR(255))"
+  echo "   ✅ Neon proxy schema created"
+
   echo "📱 Step 2/6: Downloading and extracting board databases..."
   if [ ! -f "/db/tmp/kilter.db" ]; then
     if [ ! -f "kilterboard.apk" ]; then
