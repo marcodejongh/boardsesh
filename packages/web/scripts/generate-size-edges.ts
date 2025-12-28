@@ -1,51 +1,98 @@
 /**
- * Script to generate the SIZE_EDGES constant from the database.
+ * Script to generate hardcoded board data from the database.
  *
  * Usage:
  *   cd packages/web
  *   docker-compose -f db/docker-compose.yml up -d
  *   npx tsx scripts/generate-size-edges.ts
  *
- * This outputs TypeScript code that can be copied into size-edges.ts
+ * This outputs TypeScript code that can be copied into product-sizes-data.ts
  */
 
 import { execSync } from 'child_process';
 
-interface SizeEdge {
+interface ProductSize {
   id: number;
   name: string;
-  edge_left: number;
-  edge_right: number;
-  edge_bottom: number;
-  edge_top: number;
+  description: string;
+  edgeLeft: number;
+  edgeRight: number;
+  edgeBottom: number;
+  edgeTop: number;
+  productId: number;
 }
 
-function queryDatabase(table: string): SizeEdge[] {
+interface Layout {
+  id: number;
+  name: string;
+  productId: number;
+}
+
+function querySizes(table: string): ProductSize[] {
+  // Use REPLACE to remove newlines from description, and use a unique record separator
   const result = execSync(
-    `docker exec db-postgres-1 psql -U postgres -d main -t -A -F ',' -c "SELECT id, name, edge_left, edge_right, edge_bottom, edge_top FROM ${table} ORDER BY id;"`,
+    `docker exec db-postgres-1 psql -U postgres -d main -t -A -F '|' -R '~~~' -c "SELECT id, REPLACE(name, E'\\n', ' '), COALESCE(REPLACE(description, E'\\n', ' '), ''), edge_left, edge_right, edge_bottom, edge_top, product_id FROM ${table} ORDER BY id;"`,
     { encoding: 'utf-8' }
   );
 
   return result
     .trim()
-    .split('\n')
+    .split('~~~')
+    .filter(line => line.length > 0 && !line.startsWith('\n'))
+    .map(line => line.trim())
     .filter(line => line.length > 0)
     .map(line => {
-      const [id, name, edge_left, edge_right, edge_bottom, edge_top] = line.split(',');
+      const [id, name, description, edge_left, edge_right, edge_bottom, edge_top, product_id] = line.split('|');
       return {
         id: parseInt(id),
-        name,
-        edge_left: parseInt(edge_left),
-        edge_right: parseInt(edge_right),
-        edge_bottom: parseInt(edge_bottom),
-        edge_top: parseInt(edge_top),
+        name: name.trim(),
+        description: description.trim(),
+        edgeLeft: parseInt(edge_left),
+        edgeRight: parseInt(edge_right),
+        edgeBottom: parseInt(edge_bottom),
+        edgeTop: parseInt(edge_top),
+        productId: parseInt(product_id),
       };
     });
 }
 
-function generateTypeScript(boardName: string, sizes: SizeEdge[]): string {
+function queryLayouts(table: string): Layout[] {
+  const result = execSync(
+    `docker exec db-postgres-1 psql -U postgres -d main -t -A -F '|' -R '~~~' -c "SELECT id, REPLACE(name, E'\\n', ' '), product_id FROM ${table} WHERE is_listed = true AND password IS NULL ORDER BY id;"`,
+    { encoding: 'utf-8' }
+  );
+
+  return result
+    .trim()
+    .split('~~~')
+    .filter(line => line.length > 0 && !line.startsWith('\n'))
+    .map(line => line.trim())
+    .filter(line => line.length > 0)
+    .map(line => {
+      const [id, name, product_id] = line.split('|');
+      return {
+        id: parseInt(id),
+        name: name.trim(),
+        productId: parseInt(product_id),
+      };
+    });
+}
+
+function escapeString(str: string): string {
+  return str.replace(/'/g, "\\'");
+}
+
+function generateSizesTypeScript(boardName: string, sizes: ProductSize[]): string {
   const entries = sizes.map(s =>
-    `    ${s.id}: { edgeLeft: ${s.edge_left}, edgeRight: ${s.edge_right}, edgeBottom: ${s.edge_bottom}, edgeTop: ${s.edge_top} }, // ${s.name}`
+    `    ${s.id}: { id: ${s.id}, name: '${escapeString(s.name)}', description: '${escapeString(s.description)}', edgeLeft: ${s.edgeLeft}, edgeRight: ${s.edgeRight}, edgeBottom: ${s.edgeBottom}, edgeTop: ${s.edgeTop}, productId: ${s.productId} },`
+  ).join('\n');
+
+  return `  ${boardName}: {\n${entries}\n  }`;
+}
+
+function generateLayoutsTypeScript(boardName: string, layouts: Layout[]): string {
+  const entries = layouts.map(l =>
+    `    ${l.id}: { id: ${l.id}, name: '${escapeString(l.name)}', productId: ${l.productId} },`
   ).join('\n');
 
   return `  ${boardName}: {\n${entries}\n  }`;
@@ -53,21 +100,44 @@ function generateTypeScript(boardName: string, sizes: SizeEdge[]): string {
 
 async function main() {
   console.log('Querying kilter_product_sizes...');
-  const kilterSizes = queryDatabase('kilter_product_sizes');
+  const kilterSizes = querySizes('kilter_product_sizes');
 
   console.log('Querying tension_product_sizes...');
-  const tensionSizes = queryDatabase('tension_product_sizes');
+  const tensionSizes = querySizes('tension_product_sizes');
+
+  console.log('Querying kilter_layouts...');
+  const kilterLayouts = queryLayouts('kilter_layouts');
+
+  console.log('Querying tension_layouts...');
+  const tensionLayouts = queryLayouts('tension_layouts');
 
   const output = `/**
- * Hardcoded size edge values for each board type.
+ * Hardcoded product sizes and layouts data for each board type.
  * These values are static (board dimensions don't change) so we hardcode them
- * to eliminate a database query on every search request.
+ * to eliminate database queries.
  *
  * Generated by: npx tsx scripts/generate-size-edges.ts
  * Generated at: ${new Date().toISOString()}
  */
 
 import { BoardName } from '@/app/lib/types';
+
+export interface ProductSizeData {
+  id: number;
+  name: string;
+  description: string;
+  edgeLeft: number;
+  edgeRight: number;
+  edgeBottom: number;
+  edgeTop: number;
+  productId: number;
+}
+
+export interface LayoutData {
+  id: number;
+  name: string;
+  productId: number;
+}
 
 export interface SizeEdges {
   edgeLeft: number;
@@ -76,9 +146,14 @@ export interface SizeEdges {
   edgeTop: number;
 }
 
-export const SIZE_EDGES: Record<BoardName, Record<number, SizeEdges>> = {
-${generateTypeScript('kilter', kilterSizes)},
-${generateTypeScript('tension', tensionSizes)},
+export const PRODUCT_SIZES: Record<BoardName, Record<number, ProductSizeData>> = {
+${generateSizesTypeScript('kilter', kilterSizes)},
+${generateSizesTypeScript('tension', tensionSizes)},
+};
+
+export const LAYOUTS: Record<BoardName, Record<number, LayoutData>> = {
+${generateLayoutsTypeScript('kilter', kilterLayouts)},
+${generateLayoutsTypeScript('tension', tensionLayouts)},
 };
 
 /**
@@ -86,7 +161,61 @@ ${generateTypeScript('tension', tensionSizes)},
  * Returns null if the size ID is not found.
  */
 export const getSizeEdges = (boardName: BoardName, sizeId: number): SizeEdges | null => {
-  return SIZE_EDGES[boardName]?.[sizeId] ?? null;
+  const size = PRODUCT_SIZES[boardName]?.[sizeId];
+  if (!size) return null;
+  return {
+    edgeLeft: size.edgeLeft,
+    edgeRight: size.edgeRight,
+    edgeBottom: size.edgeBottom,
+    edgeTop: size.edgeTop,
+  };
+};
+
+/**
+ * Get full product size data for a given board and size ID.
+ * Returns null if the size ID is not found.
+ */
+export const getProductSize = (boardName: BoardName, sizeId: number): ProductSizeData | null => {
+  return PRODUCT_SIZES[boardName]?.[sizeId] ?? null;
+};
+
+/**
+ * Get layout data for a given board and layout ID.
+ * Returns null if the layout ID is not found.
+ */
+export const getLayout = (boardName: BoardName, layoutId: number): LayoutData | null => {
+  return LAYOUTS[boardName]?.[layoutId] ?? null;
+};
+
+/**
+ * Get all layouts for a given board.
+ */
+export const getAllLayouts = (boardName: BoardName): LayoutData[] => {
+  const layouts = LAYOUTS[boardName];
+  if (!layouts) return [];
+  return Object.values(layouts);
+};
+
+/**
+ * Get all sizes for a given board and layout ID.
+ * Uses the layout's product_id to find matching sizes.
+ */
+export const getSizesForLayoutId = (boardName: BoardName, layoutId: number): ProductSizeData[] => {
+  const layout = LAYOUTS[boardName]?.[layoutId];
+  if (!layout) return [];
+  const sizes = PRODUCT_SIZES[boardName];
+  if (!sizes) return [];
+  return Object.values(sizes).filter(size => size.productId === layout.productId);
+};
+
+/**
+ * Get all sizes for a given board and product ID.
+ * Used by the board selector to list available sizes.
+ */
+export const getSizesForProduct = (boardName: BoardName, productId: number): ProductSizeData[] => {
+  const sizes = PRODUCT_SIZES[boardName];
+  if (!sizes) return [];
+  return Object.values(sizes).filter(size => size.productId === productId);
 };
 `;
 

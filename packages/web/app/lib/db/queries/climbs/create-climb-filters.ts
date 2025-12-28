@@ -2,7 +2,7 @@ import { eq, gte, sql, like, notLike, inArray, SQL } from 'drizzle-orm';
 import { ParsedBoardRouteParameters, SearchRequestPagination } from '@/app/lib/types';
 import { TableSet } from '@/lib/db/queries/util/table-select';
 import { getTableName } from '@/app/lib/data-sync/aurora/getTableName';
-import { SizeEdges } from './size-edges';
+import { SizeEdges } from './product-sizes-data';
 
 /**
  * Creates a shared filtering object that can be used by both search climbs and heatmap queries

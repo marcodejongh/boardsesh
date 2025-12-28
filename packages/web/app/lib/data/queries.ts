@@ -21,6 +21,12 @@ import {
 import { HoldRenderData } from '@/app/components/board-renderer/types';
 import { getBoardImageDimensions } from '@/app/components/board-renderer/util';
 import { SetIdList } from '../board-data';
+import {
+  getProductSize,
+  getLayout,
+  getSizesForLayoutId,
+  getAllLayouts,
+} from '@/app/lib/db/queries/climbs/product-sizes-data';
 
 const getTableName = (board_name: string, table_name: string) => {
   switch (board_name) {
@@ -59,11 +65,20 @@ export const getBoardDetails = async ({
   size_id,
   set_ids,
 }: Pick<ParsedBoardRouteParameters, 'board_name' | 'layout_id' | 'size_id' | 'set_ids'>): Promise<BoardDetails> => {
+  // Get hardcoded size data (eliminates product_sizes query)
+  const sizeData = getProductSize(board_name, size_id);
+  if (!sizeData) {
+    throw new Error('Size dimensions not found');
+  }
+
+  // Get hardcoded layout data
+  const layoutData = getLayout(board_name, layout_id);
+
   const imageUrlHoldsMapEntriesPromises = getImageUrlHoldsMapObjectEntries(set_ids, board_name, layout_id, size_id);
 
-  const [ledPlacementsResult, sizeDimensionsResult, ...imgUrlMapEntries] = await Promise.all([
+  const [ledPlacementsResult, setsResult, ...imgUrlMapEntries] = await Promise.all([
     sql`
-        SELECT 
+        SELECT
             placements.id,
             leds.position
         FROM ${sql.unsafe(getTableName(board_name, 'placements'))} placements
@@ -71,24 +86,16 @@ export const getBoardDetails = async ({
         WHERE placements.layout_id = ${layout_id}
         AND leds.product_size_id = ${size_id}
     `,
-    sql`
-    SELECT edge_left, edge_right, edge_bottom, edge_top
-    FROM ${sql.unsafe(getTableName(board_name, 'product_sizes'))}
-    WHERE id = ${size_id}
-    `,
+    getSets(board_name, layout_id, size_id),
     ...imageUrlHoldsMapEntriesPromises,
   ]);
 
   const ledPlacements = ledPlacementsResult as LedPlacementRow[];
-  const sizeDimensions = sizeDimensionsResult as ProductSizeRow[];
   const imagesToHolds = Object.fromEntries(imgUrlMapEntries);
 
-  if (sizeDimensions.length === 0) {
-    throw new Error('Size dimensions not found');
-  }
+  const { edgeLeft: edge_left, edgeRight: edge_right, edgeBottom: edge_bottom, edgeTop: edge_top } = sizeData;
 
   const { width: boardWidth, height: boardHeight } = getBoardImageDimensions(board_name, Object.keys(imagesToHolds)[0]);
-  const { edge_left, edge_right, edge_bottom, edge_top } = sizeDimensions[0];
   const xSpacing = boardWidth / (edge_right - edge_left);
   const ySpacing = boardHeight / (edge_top - edge_bottom);
 
@@ -104,24 +111,15 @@ export const getBoardDetails = async ({
       })),
   );
 
-  // Fetch names for slug-based URLs
-  const [layouts, sizes, sets] = await Promise.all([
-    getLayouts(board_name),
-    getSizes(board_name, layout_id),
-    getSets(board_name, layout_id, size_id),
-  ]);
-
-  const layout = layouts.find((l) => l.id === layout_id);
-  const size = sizes.find((s) => s.id === size_id);
-  const selectedSets = sets.filter((s) => set_ids.includes(s.id));
+  const selectedSets = setsResult.filter((s) => set_ids.includes(s.id));
 
   return {
     images_to_holds: imagesToHolds,
     holdsData,
-    edge_left: sizeDimensions[0].edge_left,
-    edge_right: sizeDimensions[0].edge_right,
-    edge_bottom: sizeDimensions[0].edge_bottom,
-    edge_top: sizeDimensions[0].edge_top,
+    edge_left,
+    edge_right,
+    edge_bottom,
+    edge_top,
     boardHeight,
     boardWidth,
     board_name,
@@ -130,10 +128,10 @@ export const getBoardDetails = async ({
     set_ids,
     ledPlacements: Object.fromEntries(ledPlacements.map(({ id, position }) => [id, position])),
     supportsMirroring: board_name === 'tension' && layout_id !== 11,
-    // Added for slug-based URLs
-    layout_name: layout?.name,
-    size_name: size?.name,
-    size_description: size?.description,
+    // From hardcoded data
+    layout_name: layoutData?.name,
+    size_name: sizeData.name,
+    size_description: sizeData.description,
     set_names: selectedSets.map((s) => s.name),
   };
 };
@@ -255,14 +253,13 @@ export type LayoutRow = {
   name: string;
 };
 
-export const getLayouts = async (board_name: BoardName) => {
-  const layouts = await sql`
-    SELECT id, name
-    FROM ${sql.unsafe(getTableName(board_name, 'layouts'))} layouts
-    WHERE is_listed = true
-    AND password IS NULL
-  `;
-  return layouts as LayoutRow[];
+export const getLayouts = (board_name: BoardName): LayoutRow[] => {
+  // Use hardcoded data instead of database query
+  const layouts = getAllLayouts(board_name);
+  return layouts.map((layout) => ({
+    id: layout.id,
+    name: layout.name,
+  }));
 };
 
 export type SizeRow = {
@@ -271,14 +268,14 @@ export type SizeRow = {
   description: string;
 };
 
-export const getSizes = async (board_name: BoardName, layout_id: LayoutId) => {
-  const layouts = await sql`
-    SELECT product_sizes.id, product_sizes.name, product_sizes.description
-    FROM ${sql.unsafe(getTableName(board_name, 'product_sizes'))} product_sizes
-    INNER JOIN ${sql.unsafe(getTableName(board_name, 'layouts'))} layouts ON product_sizes.product_id = layouts.product_id
-    WHERE layouts.id = ${layout_id}
-  `;
-  return layouts as SizeRow[];
+export const getSizes = (board_name: BoardName, layout_id: LayoutId): SizeRow[] => {
+  // Use hardcoded data instead of database query
+  const sizes = getSizesForLayoutId(board_name, layout_id);
+  return sizes.map((size) => ({
+    id: size.id,
+    name: size.name,
+    description: size.description,
+  }));
 };
 
 export type SetRow = {
@@ -306,210 +303,8 @@ export type BoardSelectorOptions = {
 };
 
 export const getAllBoardSelectorOptions = async (): Promise<BoardSelectorOptions> => {
-  // Single query to get all layouts, sizes, and sets for all boards
-  /*
-    WITH board_data AS (
-      SELECT 
-        $1::text as board_name,
-        'layouts' as type,
-        layouts.id::text as parent_id,
-        null::text as grandparent_id,
-        layouts.id,
-        layouts.name,
-        null::text as description
-      FROM ${getTableName('kilter', 'layouts')} layouts
-      WHERE layouts.is_listed = true AND layouts.password IS NULL
-      
-      UNION ALL
-      
-      SELECT 
-        $1::text as board_name,
-        'sizes' as type,
-        layouts.id::text as parent_id,
-        null::text as grandparent_id,
-        sizes.id,
-        sizes.name,
-        sizes.description
-      FROM ${getTableName('kilter', 'product_sizes')} sizes
-      INNER JOIN ${getTableName('kilter', 'layouts')} layouts ON sizes.product_id = layouts.product_id
-      WHERE layouts.is_listed = true AND layouts.password IS NULL
-      
-      UNION ALL
-      
-      SELECT 
-        $1::text as board_name,
-        'sets' as type,
-        psls.product_size_id::text as parent_id,
-        psls.layout_id::text as grandparent_id,
-        sets.id,
-        sets.name,
-        null::text as description
-      FROM ${getTableName('kilter', 'sets')} sets
-      INNER JOIN ${getTableName('kilter', 'product_sizes_layouts_sets')} psls 
-        ON psls.set_id = sets.id
-      INNER JOIN ${getTableName('kilter', 'layouts')} layouts ON psls.layout_id = layouts.id
-      WHERE layouts.is_listed = true AND layouts.password IS NULL
-      
-      UNION ALL
-      
-      SELECT 
-        $2::text as board_name,
-        'layouts' as type,
-        layouts.id::text as parent_id,
-        null::text as grandparent_id,
-        layouts.id,
-        layouts.name,
-        null::text as description
-      FROM ${getTableName('tension', 'layouts')} layouts
-      WHERE layouts.is_listed = true AND layouts.password IS NULL
-      
-      UNION ALL
-      
-      SELECT 
-        $2::text as board_name,
-        'sizes' as type,
-        layouts.id::text as parent_id,
-        null::text as grandparent_id,
-        sizes.id,
-        sizes.name,
-        sizes.description
-      FROM ${getTableName('tension', 'product_sizes')} sizes
-      INNER JOIN ${getTableName('tension', 'layouts')} layouts ON sizes.product_id = layouts.product_id
-      WHERE layouts.is_listed = true AND layouts.password IS NULL
-      
-      UNION ALL
-      
-      SELECT 
-        $2::text as board_name,
-        'sets' as type,
-        psls.product_size_id::text as parent_id,
-        psls.layout_id::text as grandparent_id,
-        sets.id,
-        sets.name,
-        null::text as description
-      FROM ${getTableName('tension', 'sets')} sets
-      INNER JOIN ${getTableName('tension', 'product_sizes_layouts_sets')} psls 
-        ON psls.set_id = sets.id
-      INNER JOIN ${getTableName('tension', 'layouts')} layouts ON psls.layout_id = layouts.id
-      WHERE layouts.is_listed = true AND layouts.password IS NULL
-    )
-    SELECT 
-      board_name,
-      type,
-      parent_id,
-      grandparent_id,
-      id,
-      name,
-      description
-    FROM board_data
-    ORDER BY board_name, type, parent_id, grandparent_id, name;
-  */
-
-  const rows = (await sql`
-    WITH board_data AS (
-      SELECT 
-        ${'kilter'}::text as board_name,
-        'layouts' as type,
-        layouts.id::text as parent_id,
-        null::text as grandparent_id,
-        layouts.id,
-        layouts.name,
-        null::text as description
-      FROM ${sql.unsafe(getTableName('kilter', 'layouts'))} layouts
-      WHERE layouts.is_listed = true AND layouts.password IS NULL
-      
-      UNION ALL
-      
-      SELECT 
-        ${'kilter'}::text as board_name,
-        'sizes' as type,
-        layouts.id::text as parent_id,
-        null::text as grandparent_id,
-        sizes.id,
-        sizes.name,
-        sizes.description
-      FROM ${sql.unsafe(getTableName('kilter', 'product_sizes'))} sizes
-      INNER JOIN ${sql.unsafe(getTableName('kilter', 'layouts'))} layouts ON sizes.product_id = layouts.product_id
-      WHERE layouts.is_listed = true AND layouts.password IS NULL
-      
-      UNION ALL
-      
-      SELECT 
-        ${'kilter'}::text as board_name,
-        'sets' as type,
-        psls.product_size_id::text as parent_id,
-        psls.layout_id::text as grandparent_id,
-        sets.id,
-        sets.name,
-        null::text as description
-      FROM ${sql.unsafe(getTableName('kilter', 'sets'))} sets
-      INNER JOIN ${sql.unsafe(getTableName('kilter', 'product_sizes_layouts_sets'))} psls 
-        ON psls.set_id = sets.id
-      INNER JOIN ${sql.unsafe(getTableName('kilter', 'layouts'))} layouts ON psls.layout_id = layouts.id
-      WHERE layouts.is_listed = true AND layouts.password IS NULL
-      
-      UNION ALL
-      
-      SELECT 
-        ${'tension'}::text as board_name,
-        'layouts' as type,
-        layouts.id::text as parent_id,
-        null::text as grandparent_id,
-        layouts.id,
-        layouts.name,
-        null::text as description
-      FROM ${sql.unsafe(getTableName('tension', 'layouts'))} layouts
-      WHERE layouts.is_listed = true AND layouts.password IS NULL
-      
-      UNION ALL
-      
-      SELECT 
-        ${'tension'}::text as board_name,
-        'sizes' as type,
-        layouts.id::text as parent_id,
-        null::text as grandparent_id,
-        sizes.id,
-        sizes.name,
-        sizes.description
-      FROM ${sql.unsafe(getTableName('tension', 'product_sizes'))} sizes
-      INNER JOIN ${sql.unsafe(getTableName('tension', 'layouts'))} layouts ON sizes.product_id = layouts.product_id
-      WHERE layouts.is_listed = true AND layouts.password IS NULL
-      
-      UNION ALL
-      
-      SELECT 
-        ${'tension'}::text as board_name,
-        'sets' as type,
-        psls.product_size_id::text as parent_id,
-        psls.layout_id::text as grandparent_id,
-        sets.id,
-        sets.name,
-        null::text as description
-      FROM ${sql.unsafe(getTableName('tension', 'sets'))} sets
-      INNER JOIN ${sql.unsafe(getTableName('tension', 'product_sizes_layouts_sets'))} psls 
-        ON psls.set_id = sets.id
-      INNER JOIN ${sql.unsafe(getTableName('tension', 'layouts'))} layouts ON psls.layout_id = layouts.id
-      WHERE layouts.is_listed = true AND layouts.password IS NULL
-    )
-    SELECT 
-      board_name,
-      type,
-      parent_id,
-      grandparent_id,
-      id,
-      name,
-      description
-    FROM board_data
-    ORDER BY board_name, type, parent_id, grandparent_id, name
-  `) as {
-    board_name: BoardName;
-    type: 'layouts' | 'sizes' | 'sets';
-    parent_id: string | null;
-    grandparent_id: string | null;
-    id: number;
-    name: string;
-    description: string | null;
-  }[];
+  // Get layouts and sizes from hardcoded data
+  const boardNames: BoardName[] = ['kilter', 'tension'];
 
   const result: BoardSelectorOptions = {
     layouts: {} as Record<BoardName, LayoutRow[]>,
@@ -517,36 +312,64 @@ export const getAllBoardSelectorOptions = async (): Promise<BoardSelectorOptions
     sets: {},
   };
 
-  // Process the results
-  for (const row of rows) {
-    if (row.type === 'layouts') {
-      if (!result.layouts[row.board_name]) {
-        result.layouts[row.board_name] = [];
-      }
-      result.layouts[row.board_name].push({
-        id: row.id,
-        name: row.name,
-      });
-    } else if (row.type === 'sizes') {
-      const key = `${row.board_name}-${row.parent_id}`;
-      if (!result.sizes[key]) {
-        result.sizes[key] = [];
-      }
-      result.sizes[key].push({
-        id: row.id,
-        name: row.name,
-        description: row.description || '',
-      });
-    } else if (row.type === 'sets') {
-      const key = `${row.board_name}-${row.grandparent_id}-${row.parent_id}`;
-      if (!result.sets[key]) {
-        result.sets[key] = [];
-      }
-      result.sets[key].push({
-        id: row.id,
-        name: row.name,
-      });
+  // Populate layouts and sizes from hardcoded data
+  for (const boardName of boardNames) {
+    // Get layouts
+    result.layouts[boardName] = getLayouts(boardName);
+
+    // Get sizes for each layout
+    for (const layout of result.layouts[boardName]) {
+      const key = `${boardName}-${layout.id}`;
+      result.sizes[key] = getSizes(boardName, layout.id);
     }
+  }
+
+  // Only query database for sets (these can't be hardcoded as easily since they involve product_sizes_layouts_sets)
+  const setsRows = (await sql`
+    WITH sets_data AS (
+      SELECT
+        ${'kilter'}::text as board_name,
+        psls.product_size_id::text as size_id,
+        psls.layout_id::text as layout_id,
+        sets.id,
+        sets.name
+      FROM ${sql.unsafe(getTableName('kilter', 'sets'))} sets
+      INNER JOIN ${sql.unsafe(getTableName('kilter', 'product_sizes_layouts_sets'))} psls
+        ON psls.set_id = sets.id
+
+      UNION ALL
+
+      SELECT
+        ${'tension'}::text as board_name,
+        psls.product_size_id::text as size_id,
+        psls.layout_id::text as layout_id,
+        sets.id,
+        sets.name
+      FROM ${sql.unsafe(getTableName('tension', 'sets'))} sets
+      INNER JOIN ${sql.unsafe(getTableName('tension', 'product_sizes_layouts_sets'))} psls
+        ON psls.set_id = sets.id
+    )
+    SELECT board_name, layout_id, size_id, id, name
+    FROM sets_data
+    ORDER BY board_name, layout_id, size_id, name
+  `) as {
+    board_name: BoardName;
+    layout_id: string;
+    size_id: string;
+    id: number;
+    name: string;
+  }[];
+
+  // Process sets from database query
+  for (const row of setsRows) {
+    const key = `${row.board_name}-${row.layout_id}-${row.size_id}`;
+    if (!result.sets[key]) {
+      result.sets[key] = [];
+    }
+    result.sets[key].push({
+      id: row.id,
+      name: row.name,
+    });
   }
 
   return result;

@@ -4,7 +4,7 @@ import { convertLitUpHoldsStringToMap } from '@/app/components/board-renderer/ut
 import { Climb, ParsedBoardRouteParameters, SearchClimbsResult, SearchRequestPagination } from '@/app/lib/types';
 import { getBoardTables } from '@/lib/db/queries/util/table-select';
 import { createClimbFilters } from './create-climb-filters';
-import { getSizeEdges } from './size-edges';
+import { getSizeEdges } from './product-sizes-data';
 
 export const searchClimbs = async (
   params: ParsedBoardRouteParameters,
