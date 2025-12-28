@@ -99,6 +99,7 @@ const FloatingSessionThumbnail: React.FC = () => {
   return (
     <>
       <div
+        data-testid="floating-session-thumbnail"
         style={{
           position: 'fixed',
           bottom: 16,
