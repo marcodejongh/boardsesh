@@ -1,9 +1,19 @@
 import { getServerSession } from "next-auth/next";
 import { NextRequest, NextResponse } from "next/server";
 import { authOptions } from "@/app/lib/auth/auth-options";
+import { getStorageProvider } from "@/app/lib/storage";
+import { v4 as uuidv4 } from "uuid";
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+
+// Map content types to file extensions
+const EXTENSION_MAP: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/gif": "gif",
+  "image/webp": "webp",
+};
 
 export async function POST(request: NextRequest) {
   try {
@@ -36,24 +46,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // TODO: Implement S3 upload
-    // For now, return a placeholder avatar URL
-    // In production, this would:
-    // 1. Upload file to S3 bucket
-    // 2. Return the S3 URL
-    // 3. Update the user profile with the new avatar URL
+    // Read the file as a buffer
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
 
-    // Generate a placeholder URL using a hash of the user ID
-    // This is a dummy implementation - replace with actual S3 upload
-    const placeholderUrl = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(session.user.name || session.user.email || session.user.id)}`;
+    // Generate a unique filename with the user's ID for easier management
+    const extension = EXTENSION_MAP[file.type] || "jpg";
+    const filename = `${session.user.id}-${uuidv4()}.${extension}`;
+
+    // Upload using the appropriate storage provider
+    const storage = getStorageProvider();
+    const result = await storage.upload(buffer, filename, file.type, "avatars");
 
     return NextResponse.json({
       success: true,
-      avatarUrl: placeholderUrl,
-      message: "Avatar upload is not yet implemented. Using placeholder avatar.",
+      avatarUrl: result.url,
     });
   } catch (error) {
     console.error("Failed to upload avatar:", error);
-    return NextResponse.json({ error: "Failed to upload avatar" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to upload avatar" },
+      { status: 500 }
+    );
   }
 }
