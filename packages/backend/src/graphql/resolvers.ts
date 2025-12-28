@@ -18,7 +18,8 @@ import {
   LatitudeSchema,
   LongitudeSchema,
   RadiusMetersSchema,
-  UUIDSchema,
+  QueueIndexSchema,
+  QueueItemIdSchema,
 } from '../validation/schemas.js';
 import type {
   ConnectionContext,
@@ -279,6 +280,13 @@ const resolvers = {
       console.log(`[joinSession] START - connectionId: ${ctx.connectionId}, sessionId: ${sessionId}, username: ${username}`);
 
       applyRateLimit(ctx, 10); // Limit session joins to prevent abuse
+
+      // Validate inputs
+      validateInput(SessionIdSchema, sessionId, 'sessionId');
+      validateInput(BoardPathSchema, boardPath, 'boardPath');
+      if (username) validateInput(UsernameSchema, username, 'username');
+      if (avatarUrl) validateInput(AvatarUrlSchema, avatarUrl, 'avatarUrl');
+
       const result = await roomManager.joinSession(ctx.connectionId, sessionId, boardPath, username || undefined, avatarUrl || undefined);
       console.log(`[joinSession] roomManager.joinSession completed - clientId: ${result.clientId}, isLeader: ${result.isLeader}`);
 
@@ -403,6 +411,10 @@ const resolvers = {
     },
 
     updateUsername: async (_: unknown, { username, avatarUrl }: { username: string; avatarUrl?: string }, ctx: ConnectionContext) => {
+      // Validate inputs
+      validateInput(UsernameSchema, username, 'username');
+      if (avatarUrl) validateInput(AvatarUrlSchema, avatarUrl, 'avatarUrl');
+
       await roomManager.updateUsername(ctx.connectionId, username, avatarUrl);
 
       if (ctx.sessionId) {
@@ -490,6 +502,9 @@ const resolvers = {
       applyRateLimit(ctx);
       const sessionId = requireSession(ctx);
 
+      // Validate input
+      validateInput(QueueItemIdSchema, uuid, 'uuid');
+
       const currentState = await roomManager.getQueueState(sessionId);
       const queue = currentState.queue.filter((i) => i.uuid !== uuid);
       let currentClimb = currentState.currentClimbQueueItem;
@@ -517,8 +532,18 @@ const resolvers = {
       applyRateLimit(ctx);
       const sessionId = requireSession(ctx);
 
+      // Validate inputs
+      validateInput(QueueItemIdSchema, uuid, 'uuid');
+      validateInput(QueueIndexSchema, oldIndex, 'oldIndex');
+      validateInput(QueueIndexSchema, newIndex, 'newIndex');
+
       const currentState = await roomManager.getQueueState(sessionId);
       const queue = [...currentState.queue];
+
+      // Validate indices are within bounds
+      if (oldIndex >= queue.length || newIndex >= queue.length) {
+        throw new Error(`Invalid index: queue has ${queue.length} items`);
+      }
 
       if (oldIndex >= 0 && oldIndex < queue.length && newIndex >= 0 && newIndex < queue.length) {
         const [movedItem] = queue.splice(oldIndex, 1);

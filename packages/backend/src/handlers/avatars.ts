@@ -1,9 +1,9 @@
 import type { IncomingMessage, ServerResponse } from 'http';
 import Busboy from 'busboy';
 import path from 'path';
-import fs from 'fs';
-import { writeFile, unlink, access } from 'fs/promises';
+import { mkdir, writeFile, unlink, access } from 'fs/promises';
 import { applyCorsHeaders } from './cors.js';
+import { validateNextAuthToken } from '../middleware/auth.js';
 
 // Avatar upload configuration
 const AVATARS_DIR = './avatars';
@@ -23,9 +23,38 @@ function validateUserId(userId: string): boolean {
   return UUID_REGEX.test(userId);
 }
 
-// Ensure avatars directory exists
-if (!fs.existsSync(AVATARS_DIR)) {
-  fs.mkdirSync(AVATARS_DIR, { recursive: true });
+// Track if directory has been initialized
+let avatarsDirInitialized = false;
+
+/**
+ * Ensure avatars directory exists (called on first upload)
+ */
+async function ensureAvatarsDir(): Promise<void> {
+  if (avatarsDirInitialized) return;
+
+  try {
+    await mkdir(AVATARS_DIR, { recursive: true });
+    avatarsDirInitialized = true;
+  } catch (error) {
+    // Directory might already exist, that's ok
+    if ((error as NodeJS.ErrnoException).code === 'EEXIST') {
+      avatarsDirInitialized = true;
+    } else {
+      throw error;
+    }
+  }
+}
+
+/**
+ * Extract auth token from Authorization header
+ */
+function extractAuthTokenFromHeader(req: IncomingMessage): string | null {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return null;
+
+  // Support "Bearer <token>" format
+  const match = authHeader.match(/^Bearer\s+(.+)$/i);
+  return match ? match[1] : null;
 }
 
 /**
@@ -51,9 +80,39 @@ async function deleteExistingAvatars(userId: string): Promise<void> {
  * Expects multipart form data with:
  * - avatar: the image file
  * - userId: the user ID (UUID format)
+ *
+ * Requires authentication via Authorization header (Bearer token).
+ * Users can only upload avatars for their own userId.
  */
 export async function handleAvatarUpload(req: IncomingMessage, res: ServerResponse): Promise<void> {
   if (!applyCorsHeaders(req, res)) return;
+
+  // Validate authentication
+  const token = extractAuthTokenFromHeader(req);
+  if (!token) {
+    res.writeHead(401, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Authentication required' }));
+    return;
+  }
+
+  const authResult = await validateNextAuthToken(token);
+  if (!authResult) {
+    res.writeHead(401, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Invalid or expired token' }));
+    return;
+  }
+
+  const authenticatedUserId = authResult.userId;
+
+  // Ensure avatars directory exists
+  try {
+    await ensureAvatarsDir();
+  } catch (error) {
+    console.error('Failed to create avatars directory:', error);
+    res.writeHead(500, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Server configuration error' }));
+    return;
+  }
 
   return new Promise<void>((resolve) => {
     let busboy: ReturnType<typeof Busboy>;
@@ -131,6 +190,14 @@ export async function handleAvatarUpload(req: IncomingMessage, res: ServerRespon
       if (!validateUserId(userId)) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Invalid userId format' }));
+        resolve();
+        return;
+      }
+
+      // Authorization check: users can only upload avatars for their own userId
+      if (userId !== authenticatedUserId) {
+        res.writeHead(403, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'You can only upload avatars for your own user ID' }));
         resolve();
         return;
       }

@@ -1,5 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'http';
-import { createReadStream, statSync } from 'fs';
+import { createReadStream } from 'fs';
+import { stat } from 'fs/promises';
 import { extname } from 'path';
 import path from 'path';
 import { applyCorsHeaders } from './cors.js';
@@ -33,12 +34,12 @@ export async function handleStaticAvatar(req: IncomingMessage, res: ServerRespon
   const filePath = path.join(avatarsDir, fileName);
 
   try {
-    const stat = statSync(filePath);
+    const fileStat = await stat(filePath);
     const ext = extname(filePath).toLowerCase();
     const contentType = MIME_TYPES[ext] || 'application/octet-stream';
 
     // Check If-None-Match for caching
-    const etag = `"${stat.mtime.getTime()}"`;
+    const etag = `"${fileStat.mtime.getTime()}"`;
     const ifNoneMatch = req.headers['if-none-match'];
     if (ifNoneMatch === etag) {
       res.writeHead(304);
@@ -50,7 +51,7 @@ export async function handleStaticAvatar(req: IncomingMessage, res: ServerRespon
     const ifModifiedSince = req.headers['if-modified-since'];
     if (ifModifiedSince) {
       const ifModifiedSinceDate = new Date(ifModifiedSince);
-      if (stat.mtime <= ifModifiedSinceDate) {
+      if (fileStat.mtime <= ifModifiedSinceDate) {
         res.writeHead(304);
         res.end();
         return;
@@ -59,10 +60,10 @@ export async function handleStaticAvatar(req: IncomingMessage, res: ServerRespon
 
     res.writeHead(200, {
       'Content-Type': contentType,
-      'Content-Length': stat.size,
+      'Content-Length': fileStat.size,
       'Cache-Control': 'public, max-age=86400', // 1 day
       ETag: etag,
-      'Last-Modified': stat.mtime.toUTCString(),
+      'Last-Modified': fileStat.mtime.toUTCString(),
     });
 
     createReadStream(filePath).pipe(res);

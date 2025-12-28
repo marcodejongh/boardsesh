@@ -138,9 +138,13 @@ class RoomManager {
     if (sessionClientIds) {
       sessionClientIds.delete(connectionId);
 
-      // Clean up empty sessions from memory
+      // Clean up empty sessions from memory and database
       if (sessionClientIds.size === 0) {
         this.sessions.delete(sessionId);
+        // Clean up session queue state from database
+        this.cleanupSessionQueue(sessionId).catch((error) => {
+          console.error(`[RoomManager] Failed to cleanup session queue: ${error}`);
+        });
       }
     }
 
@@ -536,6 +540,15 @@ class RoomManager {
 
   private async persistSessionLeave(clientId: string): Promise<void> {
     await db.delete(sessionClients).where(eq(sessionClients.id, clientId));
+  }
+
+  /**
+   * Clean up session queue state from database when session becomes empty.
+   * This prevents orphaned queue data from accumulating.
+   */
+  private async cleanupSessionQueue(sessionId: string): Promise<void> {
+    console.log(`[RoomManager] Cleaning up queue state for session: ${sessionId}`);
+    await db.delete(sessionQueues).where(eq(sessionQueues.sessionId, sessionId));
   }
 
   private async persistLeaderChange(sessionId: string, newLeaderId: string): Promise<void> {
