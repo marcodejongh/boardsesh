@@ -1,23 +1,22 @@
 import { eq, gte, sql, like, notLike, inArray, SQL } from 'drizzle-orm';
-import { PgTableWithColumns } from 'drizzle-orm/pg-core';
 import { ParsedBoardRouteParameters, SearchRequestPagination } from '@/app/lib/types';
 import { TableSet } from '@/lib/db/queries/util/table-select';
 import { getTableName } from '@/app/lib/data-sync/aurora/getTableName';
+import { SizeEdges } from '@/app/lib/__generated__/product-sizes-data';
 
 /**
  * Creates a shared filtering object that can be used by both search climbs and heatmap queries
  * @param tables The board-specific tables from getBoardTables
  * @param params The route parameters
  * @param searchParams The search parameters
- * @param productSizeAlias Optional alias for the product sizes table. If provided, size conditions will use this alias.
+ * @param sizeEdges Pre-fetched edge values from product_sizes table
  * @param userId Optional user ID to include user-specific ascent and attempt data
  */
 export const createClimbFilters = (
   tables: TableSet,
   params: ParsedBoardRouteParameters,
   searchParams: SearchRequestPagination,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  productSizeAlias?: PgTableWithColumns<any>,
+  sizeEdges: SizeEdges,
   userId?: number,
 ) => {
   // Process hold filters
@@ -37,16 +36,13 @@ export const createClimbFilters = (
     eq(tables.climbs.framesCount, 1),
   ];
 
-  // Get the product sizes table or its alias
-  const sizeTable = productSizeAlias || tables.productSizes;
-
-  // Size-specific conditions
+  // Size-specific conditions using pre-fetched static edge values
+  // This eliminates the need for a JOIN on product_sizes in the main query
   const sizeConditions: SQL[] = [
-    eq(sizeTable.id, params.size_id),
-    sql`${tables.climbs.edgeLeft} > ${sizeTable.edgeLeft}`,
-    sql`${tables.climbs.edgeRight} < ${sizeTable.edgeRight}`,
-    sql`${tables.climbs.edgeBottom} > ${sizeTable.edgeBottom}`,
-    sql`${tables.climbs.edgeTop} < ${sizeTable.edgeTop}`,
+    sql`${tables.climbs.edgeLeft} > ${sizeEdges.edgeLeft}`,
+    sql`${tables.climbs.edgeRight} < ${sizeEdges.edgeRight}`,
+    sql`${tables.climbs.edgeBottom} > ${sizeEdges.edgeBottom}`,
+    sql`${tables.climbs.edgeTop} < ${sizeEdges.edgeTop}`,
   ];
 
   // Conditions for climb stats
@@ -113,7 +109,7 @@ export const createClimbFilters = (
         INNER JOIN ${sql.identifier(layoutsTable)} layouts ON other_sizes.product_id = layouts.product_id
         WHERE layouts.id = ${params.layout_id}
         AND other_sizes.id != ${params.size_id}
-        AND other_sizes.edge_bottom < ${sizeTable.edgeTop}
+        AND other_sizes.edge_bottom < ${sizeEdges.edgeTop}
       )`
     );
   }

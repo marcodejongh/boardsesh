@@ -61,11 +61,22 @@ export const useQueueDataFetching = ({
     },
     initialPageParam: 0,
     getNextPageParam: (lastPage, allPages) => {
-      const totalFetched = allPages.length * PAGE_LIMIT;
-      if (totalFetched >= lastPage.totalCount) {
+      // Use hasMore flag if available (preferred), otherwise fall back to totalCount comparison
+      if (lastPage.hasMore === false) {
         return undefined; // No more pages
       }
-      return allPages.length; // Next page number
+      if (lastPage.hasMore === true) {
+        return allPages.length; // Next page number
+      }
+      // Fallback for backwards compatibility with totalCount
+      if (lastPage.totalCount !== undefined) {
+        const totalFetched = allPages.length * PAGE_LIMIT;
+        if (totalFetched >= lastPage.totalCount) {
+          return undefined;
+        }
+        return allPages.length;
+      }
+      return undefined;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,

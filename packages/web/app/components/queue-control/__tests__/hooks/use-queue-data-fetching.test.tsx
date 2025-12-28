@@ -138,7 +138,7 @@ describe('useQueueDataFetching', () => {
       ok: true,
       json: () => Promise.resolve({
         climbs: [mockClimb],
-        totalCount: 50
+        hasMore: true
       })
     });
   });
@@ -165,7 +165,7 @@ describe('useQueueDataFetching', () => {
     });
 
     expect(result.current.suggestedClimbs).toEqual([mockClimb]);
-    expect(result.current.totalSearchResultCount).toBe(50);
+    expect(result.current.totalSearchResultCount).toBe(null); // totalCount is no longer returned by the optimized API
     expect(result.current.hasMoreResults).toBe(true);
   });
 
@@ -259,7 +259,7 @@ describe('useQueueDataFetching', () => {
       ok: true,
       json: () => Promise.resolve({
         climbs: [],
-        totalCount: 0
+        hasMore: false
       })
     });
 
@@ -280,7 +280,7 @@ describe('useQueueDataFetching', () => {
     });
 
     expect(result.current.suggestedClimbs).toEqual([]);
-    expect(result.current.totalSearchResultCount).toBe(0);
+    expect(result.current.totalSearchResultCount).toBe(null); // totalCount is no longer returned
     expect(result.current.hasMoreResults).toBe(false);
   });
 
@@ -289,7 +289,7 @@ describe('useQueueDataFetching', () => {
       ok: true,
       json: () => Promise.resolve({
         climbs: Array(20).fill(mockClimb),
-        totalCount: 50
+        hasMore: true
       })
     });
 
@@ -315,7 +315,7 @@ describe('useQueueDataFetching', () => {
       ok: true,
       json: () => Promise.resolve({
         climbs: Array(10).fill(mockClimb),
-        totalCount: 10
+        hasMore: false
       })
     });
 

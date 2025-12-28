@@ -1,10 +1,10 @@
 import { and, eq, sql } from 'drizzle-orm';
-import { alias } from 'drizzle-orm/pg-core';
 import { dbz as db } from '@/app/lib/db/db';
 import { ParsedBoardRouteParameters, SearchRequestPagination } from '@/app/lib/types';
 import { getBoardTables } from '@/lib/db/queries/util/table-select';
 import { createClimbFilters } from './create-climb-filters';
 import { getTableName } from '@/app/lib/data-sync/aurora/getTableName';
+import { getSizeEdges } from '@/app/lib/__generated__/product-sizes-data';
 
 export interface HoldHeatmapData {
   holdId: number;
@@ -27,11 +27,14 @@ export const getHoldHeatmapData = async (
   const tables = getBoardTables(params.board_name);
   const climbHolds = tables.climbHolds;
 
-  // Create the product sizes alias
-  const ps = alias(tables.productSizes, 'ps');
+  // Get hardcoded size edges (eliminates database query)
+  const sizeEdges = getSizeEdges(params.board_name, params.size_id);
+  if (!sizeEdges) {
+    return [];
+  }
 
-  // Use the shared filter creator with the PS alias
-  const filters = createClimbFilters(tables, params, searchParams, ps, userId);
+  // Use the shared filter creator with static edge values
+  const filters = createClimbFilters(tables, params, searchParams, sizeEdges, userId);
 
   try {
     // Check if personal progress filters are active - if so, use user-specific counts
@@ -47,6 +50,7 @@ export const getHoldHeatmapData = async (
       // When personal progress filters are active, we need to compute user-specific hold statistics
       // Since the filters already limit climbs to user's attempted/completed ones,
       // we can use the same base query but the results will be user-filtered
+      // Note: product_sizes JOIN eliminated - using pre-fetched sizeEdges constants instead
       const baseQuery = db
         .select({
           holdId: climbHolds.holdId,
@@ -60,7 +64,6 @@ export const getHoldHeatmapData = async (
         })
         .from(climbHolds)
         .innerJoin(tables.climbs, eq(tables.climbs.uuid, climbHolds.climbUuid))
-        .innerJoin(ps, eq(ps.id, params.size_id))
         .leftJoin(
           tables.climbStats,
           and(eq(tables.climbStats.climbUuid, climbHolds.climbUuid), eq(tables.climbStats.angle, params.angle)),
@@ -73,6 +76,7 @@ export const getHoldHeatmapData = async (
       holdStats = await baseQuery;
     } else {
       // Use global community stats when no personal progress filters are active
+      // Note: product_sizes JOIN eliminated - using pre-fetched sizeEdges constants instead
       const baseQuery = db
         .select({
           holdId: climbHolds.holdId,
@@ -86,7 +90,6 @@ export const getHoldHeatmapData = async (
         })
         .from(climbHolds)
         .innerJoin(tables.climbs, eq(tables.climbs.uuid, climbHolds.climbUuid))
-        .innerJoin(ps, eq(ps.id, params.size_id))
         .leftJoin(
           tables.climbStats,
           and(eq(tables.climbStats.climbUuid, climbHolds.climbUuid), eq(tables.climbStats.angle, params.angle)),

@@ -142,12 +142,14 @@ export type Angle = number;
 export type Size = number;
 export type FetchResultsResponse = {
   rows: Climb[];
-  totalCount: number;
+  totalCount?: number;
+  hasMore?: boolean;
 };
 
 export type SearchClimbsResult = {
   climbs: Climb[];
-  totalCount: number;
+  totalCount?: number;
+  hasMore?: boolean;
 };
 
 // Led Colors Type

@@ -1,6 +1,6 @@
 import { BoardName, BoardDetails } from '@/app/lib/types';
-import { LayoutRow, SizeRow, SetRow } from '@/app/lib/data/queries';
-import { getAllBoardSelectorOptions, getBoardDetails } from '@/app/lib/data/queries';
+import { LayoutRow, SizeRow, SetRow, getBoardDetails } from '@/app/lib/data/queries';
+import { getBoardSelectorOptions } from '@/app/lib/__generated__/product-sizes-data';
 
 export type BoardConfigData = {
   layouts: Record<BoardName, LayoutRow[]>;
@@ -10,8 +10,8 @@ export type BoardConfigData = {
 };
 
 export async function getAllBoardConfigs(): Promise<BoardConfigData> {
-  // Use the new unified query to get all data in a single database transaction
-  const selectorOptions = await getAllBoardSelectorOptions();
+  // Get layouts, sizes, and sets from hardcoded data (no database query)
+  const selectorOptions = getBoardSelectorOptions();
 
   const configData: BoardConfigData = {
     layouts: selectorOptions.layouts,
