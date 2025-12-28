@@ -4,6 +4,7 @@ import path from 'path';
 import { mkdir, writeFile, unlink, access } from 'fs/promises';
 import { applyCorsHeaders } from './cors.js';
 import { validateNextAuthToken } from '../middleware/auth.js';
+import { isS3Configured, uploadToS3, deleteUserAvatarsFromS3 } from '../storage/s3.js';
 
 // Avatar upload configuration
 const AVATARS_DIR = './avatars';
@@ -104,14 +105,28 @@ export async function handleAvatarUpload(req: IncomingMessage, res: ServerRespon
 
   const authenticatedUserId = authResult.userId;
 
-  // Ensure avatars directory exists
-  try {
-    await ensureAvatarsDir();
-  } catch (error) {
-    console.error('Failed to create avatars directory:', error);
-    res.writeHead(500, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: 'Server configuration error' }));
+  // Check S3 configuration
+  const useS3 = isS3Configured();
+  const isProduction = process.env.NODE_ENV === 'production';
+
+  // In production, S3 must be configured for avatar uploads
+  if (isProduction && !useS3) {
+    console.error('Avatar upload attempted in production without S3 configured');
+    res.writeHead(501, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Avatar uploads are not configured. Please contact the administrator.' }));
     return;
+  }
+
+  // Ensure avatars directory exists (only needed for local storage in development)
+  if (!useS3) {
+    try {
+      await ensureAvatarsDir();
+    } catch (error) {
+      console.error('Failed to create avatars directory:', error);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Server configuration error' }));
+      return;
+    }
   }
 
   return new Promise<void>((resolve) => {
@@ -210,24 +225,36 @@ export async function handleAvatarUpload(req: IncomingMessage, res: ServerRespon
         return;
       }
 
-      // Delete any existing avatars for this user (all extensions)
-      await deleteExistingAvatars(userId);
-
-      // Determine file extension and save the file
+      // Determine file extension
       const ext = MIME_TO_EXT[mimeType] || 'jpg';
-      const filePath = path.join(AVATARS_DIR, `${userId}.${ext}`);
+      let avatarUrl: string;
 
       try {
-        await writeFile(filePath, fileBuffer);
-      } catch (writeErr) {
-        console.error('Failed to write avatar file:', writeErr);
+        if (useS3) {
+          // Delete existing avatars from S3
+          await deleteUserAvatarsFromS3(userId);
+
+          // Upload to S3
+          const s3Key = `avatars/${userId}.${ext}`;
+          const result = await uploadToS3(fileBuffer, s3Key, mimeType);
+          avatarUrl = result.url;
+        } else {
+          // Delete any existing avatars for this user (all extensions) from local storage
+          await deleteExistingAvatars(userId);
+
+          // Save to local file system
+          const filePath = path.join(AVATARS_DIR, `${userId}.${ext}`);
+          await writeFile(filePath, fileBuffer);
+          avatarUrl = `/static/avatars/${userId}.${ext}`;
+        }
+      } catch (saveErr) {
+        console.error('Failed to save avatar:', saveErr);
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Failed to save avatar' }));
         resolve();
         return;
       }
 
-      const avatarUrl = `/static/avatars/${userId}.${ext}`;
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ success: true, avatarUrl }));
       resolve();

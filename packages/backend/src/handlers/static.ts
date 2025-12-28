@@ -5,6 +5,7 @@ import { extname } from 'path';
 import path from 'path';
 import { applyCorsHeaders } from './cors.js';
 import { getAvatarsDir } from './avatars.js';
+import { isS3Configured, getPublicUrl } from '../storage/s3.js';
 
 const MIME_TYPES: Record<string, string> = {
   '.jpg': 'image/jpeg',
@@ -18,7 +19,8 @@ const MIME_TYPES: Record<string, string> = {
  * Static avatar file serving handler
  * GET /static/avatars/:filename
  *
- * Serves avatar files with caching headers
+ * When S3 is configured, redirects to the S3 URL.
+ * Otherwise, serves avatar files from local storage with caching headers.
  */
 export async function handleStaticAvatar(req: IncomingMessage, res: ServerResponse, fileName: string): Promise<void> {
   if (!applyCorsHeaders(req, res)) return;
@@ -30,6 +32,19 @@ export async function handleStaticAvatar(req: IncomingMessage, res: ServerRespon
     return;
   }
 
+  // If S3 is configured, redirect to S3 URL
+  if (isS3Configured()) {
+    const s3Key = `avatars/${fileName}`;
+    const s3Url = getPublicUrl(s3Key);
+    res.writeHead(302, {
+      Location: s3Url,
+      'Cache-Control': 'public, max-age=86400', // Cache redirect for 1 day
+    });
+    res.end();
+    return;
+  }
+
+  // Serve from local storage
   const avatarsDir = getAvatarsDir();
   const filePath = path.join(avatarsDir, fileName);
 

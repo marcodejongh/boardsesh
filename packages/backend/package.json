@@ -20,6 +20,7 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.958.0",
     "@boardsesh/db": "*",
     "@boardsesh/shared-schema": "*",
     "@graphql-tools/schema": "^10.0.30",

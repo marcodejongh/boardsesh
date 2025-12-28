@@ -22,12 +22,33 @@ import { useRouter } from 'next/navigation';
 import Logo from '@/app/components/brand/logo';
 import AuroraCredentialsSection from '@/app/components/settings/aurora-credentials-section';
 import BackButton from '@/app/components/back-button';
+import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 
 const { Content, Header } = Layout;
 const { Title, Text } = Typography;
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+
+/**
+ * Get the backend HTTP URL from the WebSocket URL
+ * Converts ws:// to http:// and wss:// to https://
+ */
+function getBackendHttpUrl(): string | null {
+  const wsUrl = process.env.NEXT_PUBLIC_WS_URL;
+  if (!wsUrl) return null;
+
+  try {
+    const url = new URL(wsUrl);
+    // Convert ws/wss to http/https
+    url.protocol = url.protocol === 'wss:' ? 'https:' : 'http:';
+    // Remove the /graphql path if present
+    url.pathname = '';
+    return url.toString().replace(/\/$/, '');
+  } catch {
+    return null;
+  }
+}
 
 interface UserProfile {
   id: string;
@@ -50,6 +71,7 @@ export default function SettingsPageContent() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [fileList, setFileList] = useState<UploadFile[]>([]);
   const [previewUrl, setPreviewUrl] = useState<string | undefined>();
+  const { token: authToken } = useWsAuthToken();
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -144,26 +166,44 @@ export default function SettingsPageContent() {
       if (fileList.length > 0 && fileList[0].originFileObj) {
         setUploading(true);
         try {
+          const backendUrl = getBackendHttpUrl();
+          if (!backendUrl) {
+            throw new Error('Backend URL not configured');
+          }
+
+          if (!authToken) {
+            throw new Error('Authentication required for avatar upload');
+          }
+
+          if (!profile?.id) {
+            throw new Error('User profile not loaded');
+          }
+
           const formData = new FormData();
           formData.append('avatar', fileList[0].originFileObj as File);
+          formData.append('userId', profile.id);
 
-          const uploadResponse = await fetch('/api/internal/profile/avatar', {
+          const uploadResponse = await fetch(`${backendUrl}/api/avatars`, {
             method: 'POST',
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+            },
             body: formData,
           });
 
           if (uploadResponse.ok) {
             const uploadData = await uploadResponse.json();
-            avatarUrl = uploadData.avatarUrl;
-            if (uploadData.message) {
-              message.info(uploadData.message);
-            }
+            // The backend returns a relative URL, need to make it absolute
+            avatarUrl = uploadData.avatarUrl.startsWith('/')
+              ? `${backendUrl}${uploadData.avatarUrl}`
+              : uploadData.avatarUrl;
           } else {
-            message.warning('Avatar upload is not yet available');
+            const errorData = await uploadResponse.json().catch(() => ({}));
+            message.warning(errorData.error || 'Avatar upload failed');
           }
         } catch (error) {
           console.error('Avatar upload failed:', error);
-          message.warning('Avatar upload failed');
+          message.warning(error instanceof Error ? error.message : 'Avatar upload failed');
         } finally {
           setUploading(false);
         }
