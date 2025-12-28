@@ -21,6 +21,7 @@ type QueueListItemProps = {
   isCurrent: boolean;
   isHistory: boolean;
   viewOnlyMode: boolean;
+  actionsDisabled?: boolean;
   boardDetails: BoardDetails;
   setCurrentClimbQueueItem: (item: ClimbQueueItem) => void;
   onClimbNavigate?: () => void;
@@ -79,6 +80,7 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
   index,
   isCurrent,
   isHistory,
+  actionsDisabled,
   boardDetails,
   setCurrentClimbQueueItem,
   onClimbNavigate,
@@ -89,7 +91,8 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
   useEffect(() => {
     const element = itemRef.current;
 
-    if (element) {
+    // Don't enable drag-and-drop when actions are disabled
+    if (element && !actionsDisabled) {
       return combine(
         draggable({
           element,
@@ -119,7 +122,7 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
         }),
       );
     }
-  }, [index, item.uuid]);
+  }, [index, item.uuid, actionsDisabled]);
 
   return (
     <div ref={itemRef}>
@@ -134,8 +137,8 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
             : isHistory
               ? themeTokens.neutral[100]
               : 'inherit',
-          opacity: isHistory ? 0.6 : 1,
-          cursor: 'grab',
+          opacity: isHistory ? 0.6 : actionsDisabled ? 0.7 : 1,
+          cursor: actionsDisabled ? 'not-allowed' : 'grab',
           position: 'relative',
           WebkitUserSelect: 'none',
           MozUserSelect: 'none',
@@ -143,7 +146,7 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
           userSelect: 'none',
           borderLeft: isCurrent ? `3px solid ${themeTokens.colors.primary}` : undefined,
         }}
-        onDoubleClick={() => setCurrentClimbQueueItem(item)}
+        onDoubleClick={() => !actionsDisabled && setCurrentClimbQueueItem(item)}
       >
         <Row style={{ width: '100%' }} gutter={[8, 8]} align="middle" wrap={false}>
           <Col xs={2} sm={1}>
