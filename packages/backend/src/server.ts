@@ -51,8 +51,8 @@ export async function startServer(): Promise<{ wss: WebSocketServer; httpServer:
         return;
       }
 
-      // Avatar upload endpoint
-      if (pathname === '/api/avatars' && req.method === 'POST') {
+      // Avatar upload endpoint (handle OPTIONS for CORS preflight)
+      if (pathname === '/api/avatars' && (req.method === 'POST' || req.method === 'OPTIONS')) {
         await handleAvatarUpload(req, res);
         return;
       }
