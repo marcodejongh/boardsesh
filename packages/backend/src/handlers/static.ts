@@ -5,7 +5,7 @@ import { extname } from 'path';
 import path from 'path';
 import { applyCorsHeaders } from './cors.js';
 import { getAvatarsDir } from './avatars.js';
-import { isS3Configured, getPublicUrl } from '../storage/s3.js';
+import { isS3Configured, getFromS3 } from '../storage/s3.js';
 
 const MIME_TYPES: Record<string, string> = {
   '.jpg': 'image/jpeg',
@@ -19,7 +19,7 @@ const MIME_TYPES: Record<string, string> = {
  * Static avatar file serving handler
  * GET /static/avatars/:filename
  *
- * When S3 is configured, redirects to the S3 URL.
+ * When S3 is configured, proxies the image from S3 (avoids ACL/public access requirements).
  * Otherwise, serves avatar files from local storage with caching headers.
  */
 export async function handleStaticAvatar(req: IncomingMessage, res: ServerResponse, fileName: string): Promise<void> {
@@ -32,15 +32,29 @@ export async function handleStaticAvatar(req: IncomingMessage, res: ServerRespon
     return;
   }
 
-  // If S3 is configured, redirect to S3 URL
+  // If S3 is configured, proxy the image from S3
+  // This avoids requiring S3 public access / ACLs which many S3-compatible services don't support
   if (isS3Configured()) {
     const s3Key = `avatars/${fileName}`;
-    const s3Url = getPublicUrl(s3Key);
-    res.writeHead(302, {
-      Location: s3Url,
-      'Cache-Control': 'public, max-age=86400', // Cache redirect for 1 day
+    const s3Object = await getFromS3(s3Key);
+
+    if (!s3Object) {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Not found' }));
+      return;
+    }
+
+    const ext = extname(fileName).toLowerCase();
+    const contentType = s3Object.contentType || MIME_TYPES[ext] || 'application/octet-stream';
+
+    res.writeHead(200, {
+      'Content-Type': contentType,
+      ...(s3Object.contentLength && { 'Content-Length': s3Object.contentLength }),
+      'Cache-Control': 'public, max-age=86400', // 1 day
     });
-    res.end();
+
+    // Pipe the S3 stream to the response
+    s3Object.stream.pipe(res);
     return;
   }
 

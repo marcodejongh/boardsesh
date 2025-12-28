@@ -236,8 +236,10 @@ export async function handleAvatarUpload(req: IncomingMessage, res: ServerRespon
 
           // Upload to S3
           const s3Key = `avatars/${userId}.${ext}`;
-          const result = await uploadToS3(fileBuffer, s3Key, mimeType);
-          avatarUrl = result.url;
+          await uploadToS3(fileBuffer, s3Key, mimeType);
+          // Return backend-relative URL instead of direct S3 URL
+          // This allows the backend to proxy the image, avoiding S3 public access requirements
+          avatarUrl = `/static/avatars/${userId}.${ext}`;
         } else {
           // Delete any existing avatars for this user (all extensions) from local storage
           await deleteExistingAvatars(userId);
