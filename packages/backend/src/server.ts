@@ -1,83 +1,21 @@
-import { WebSocketServer, type WebSocket } from 'ws';
-import { createServer, type IncomingMessage } from 'http';
-import express, { Request, Response, NextFunction } from 'express';
-import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
-import { writeFile, unlink, access } from 'fs/promises';
-import { useServer, type Extra as WsExtra } from 'graphql-ws/use/ws';
-import type { Context as GqlWsContext } from 'graphql-ws';
-import { schema } from './graphql/resolvers.js';
-import { createContext, removeContext, getContext } from './graphql/context.js';
-import { roomManager } from './services/room-manager.js';
+import { createServer, type IncomingMessage, type ServerResponse } from 'http';
+import type { WebSocketServer } from 'ws';
 import { pubsub } from './pubsub/index.js';
-import { validateNextAuthToken, extractAuthToken } from './middleware/auth.js';
-import type { ConnectionContext } from '@boardsesh/shared-schema';
+import { initCors, applyCorsHeaders } from './handlers/cors.js';
+import { handleHealthCheck } from './handlers/health.js';
+import { handleSessionJoin } from './handlers/join.js';
+import { handleAvatarUpload } from './handlers/avatars.js';
+import { handleStaticAvatar } from './handlers/static.js';
+import { createYogaInstance } from './graphql/yoga.js';
+import { setupWebSocketServer } from './websocket/setup.js';
 
-// Extend Extra type with our custom context
-interface CustomExtra extends WsExtra {
-  context?: ConnectionContext;
-  [key: PropertyKey]: unknown;
-}
-
-// Type alias for convenience
-type ServerContext = GqlWsContext<Record<string, unknown>, CustomExtra>;
-
-// Avatar upload configuration
-const AVATARS_DIR = './avatars';
-const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
-const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-const MIME_TO_EXT: Record<string, string> = {
-  'image/jpeg': 'jpg',
-  'image/png': 'png',
-  'image/gif': 'gif',
-  'image/webp': 'webp',
-};
-
-// UUID validation regex for path traversal prevention
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-function validateUserId(userId: string): boolean {
-  return UUID_REGEX.test(userId);
-}
-
-// Ensure avatars directory exists
-if (!fs.existsSync(AVATARS_DIR)) {
-  fs.mkdirSync(AVATARS_DIR, { recursive: true });
-}
-
-// Configure multer for avatar uploads - use memory storage since we need userId from body
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: {
-    fileSize: MAX_FILE_SIZE,
-  },
-  fileFilter: (_req, file, cb) => {
-    if (ALLOWED_MIME_TYPES.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only JPG, PNG, GIF, and WebP images are allowed'));
-    }
-  },
-});
-
-// Helper to delete existing avatars for a user (all extensions)
-const deleteExistingAvatars = async (userId: string): Promise<void> => {
-  const extensions = ['jpg', 'png', 'gif', 'webp'];
-  for (const ext of extensions) {
-    const filePath = path.join(AVATARS_DIR, `${userId}.${ext}`);
-    try {
-      await access(filePath);
-      await unlink(filePath);
-    } catch {
-      // File doesn't exist, ignore
-    }
-  }
-};
-
-// Vercel preview deployment pattern: https://boardsesh-{hash}-marcodejonghs-projects.vercel.app
-const VERCEL_PREVIEW_REGEX = /^https:\/\/boardsesh-[a-z0-9]+-marcodejonghs-projects\.vercel\.app$/;
-
+/**
+ * Start the Boardsesh Backend server
+ *
+ * This server uses GraphQL Yoga for HTTP GraphQL requests and graphql-ws
+ * for WebSocket subscriptions. Non-GraphQL routes are handled by custom
+ * request handlers.
+ */
 export async function startServer(): Promise<{ wss: WebSocketServer; httpServer: ReturnType<typeof createServer> }> {
   // Initialize PubSub (connects to Redis if configured)
   // This must happen before we start accepting connections
@@ -86,298 +24,85 @@ export async function startServer(): Promise<{ wss: WebSocketServer; httpServer:
   const PORT = parseInt(process.env.PORT || '8080', 10);
   const BOARDSESH_URL = process.env.BOARDSESH_URL || 'https://boardsesh.com';
 
-  // Build allowed origins list for CORS
-  const ALLOWED_ORIGINS = [BOARDSESH_URL];
-  // Also allow www subdomain variant
-  try {
-    const url = new URL(BOARDSESH_URL);
-    if (!url.hostname.startsWith('www.')) {
-      ALLOWED_ORIGINS.push(`${url.protocol}//www.${url.hostname}`);
-    }
-  } catch {
-    // Invalid URL, skip www variant
-  }
-  if (process.env.NODE_ENV !== 'production') {
-    ALLOWED_ORIGINS.push('http://localhost:3000', 'http://127.0.0.1:3000');
-    ALLOWED_ORIGINS.push('http://localhost:3001', 'http://127.0.0.1:3001'); // For multi-instance testing
-  }
+  // Initialize CORS with allowed origins
+  initCors(BOARDSESH_URL);
 
-  // Helper to check if an origin is allowed (includes Vercel preview deployments)
-  const isOriginAllowed = (origin: string): boolean => {
-    if (ALLOWED_ORIGINS.includes(origin)) return true;
-    return VERCEL_PREVIEW_REGEX.test(origin);
-  };
+  // Create GraphQL Yoga instance
+  const yoga = createYogaInstance();
 
-  // Create Express app
-  const app = express();
+  /**
+   * Custom request handler that routes requests to appropriate handlers
+   */
+  async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
+    const pathname = url.pathname;
 
-  // CORS middleware for all routes - whitelist specific origins
-  app.use((req: Request, res: Response, next: NextFunction) => {
-    const origin = req.headers.origin;
-    if (origin && isOriginAllowed(origin)) {
-      res.header('Access-Control-Allow-Origin', origin);
-      res.header('Access-Control-Allow-Credentials', 'true');
-    }
-    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type');
-    if (req.method === 'OPTIONS') {
-      res.sendStatus(200);
-      return;
-    }
-    next();
-  });
+    try {
+      // Health check endpoint
+      if (pathname === '/health' && req.method === 'GET') {
+        await handleHealthCheck(req, res);
+        return;
+      }
 
-  // Health check endpoint
-  app.get('/health', (_req: Request, res: Response) => {
-    const redisRequired = pubsub.isRedisRequired();
-    const redisConnected = pubsub.isRedisConnected();
+      // Session join redirect endpoint
+      if (pathname.startsWith('/join/') && req.method === 'GET') {
+        const sessionId = pathname.slice('/join/'.length);
+        await handleSessionJoin(req, res, sessionId, PORT, BOARDSESH_URL);
+        return;
+      }
 
-    // If Redis is required but not connected, report unhealthy
-    if (redisRequired && !redisConnected) {
-      res.status(503).json({
-        status: 'unhealthy',
-        timestamp: Date.now(),
-        redis: { required: true, connected: false },
-      });
-      return;
-    }
+      // Avatar upload endpoint
+      if (pathname === '/api/avatars' && req.method === 'POST') {
+        await handleAvatarUpload(req, res);
+        return;
+      }
 
-    res.json({
-      status: 'healthy',
-      timestamp: Date.now(),
-      redis: { required: redisRequired, connected: redisConnected },
-    });
-  });
-
-  // Join session endpoint - requires session ID parameter
-  app.get('/join/:sessionId', async (req: Request, res: Response) => {
-    const { sessionId } = req.params;
-
-    if (!sessionId) {
-      res.status(400).json({ error: 'Session ID is required' });
-      return;
-    }
-
-    const sessionInfo = await roomManager.getSessionById(sessionId);
-    if (!sessionInfo) {
-      res.status(404).json({ error: 'Session not found' });
-      return;
-    }
-
-    // Construct the backend WebSocket URL from the request host
-    const host = req.headers.host || `localhost:${PORT}`;
-    const backendUrl = `ws://${host}/graphql`;
-    const redirectUrl = `${BOARDSESH_URL}${sessionInfo.boardPath}?backendUrl=${encodeURIComponent(backendUrl)}&sessionId=${encodeURIComponent(sessionId)}`;
-
-    res.redirect(302, redirectUrl);
-  });
-
-  // Avatar upload endpoint
-  app.post('/api/avatars', (req: Request, res: Response, next: NextFunction) => {
-    // Use multer's single file upload
-    upload.single('avatar')(req, res, async (err) => {
-      if (err instanceof multer.MulterError) {
-        if (err.code === 'LIMIT_FILE_SIZE') {
-          res.status(400).json({ error: 'File size must be less than 2MB' });
+      // Static avatar files
+      if (pathname.startsWith('/static/avatars/')) {
+        const fileName = pathname.slice('/static/avatars/'.length);
+        if (fileName) {
+          await handleStaticAvatar(req, res, fileName);
           return;
         }
-        res.status(400).json({ error: err.message });
-        return;
-      } else if (err) {
-        res.status(400).json({ error: err.message });
+      }
+
+      // GraphQL endpoint - delegate to Yoga
+      if (pathname === '/graphql') {
+        // Apply CORS for GraphQL requests
+        if (!applyCorsHeaders(req, res)) return;
+
+        // Yoga handles the request and writes directly to the response
+        await yoga.handle(req, res);
         return;
       }
 
-      const userId = req.body.userId;
-      if (!userId) {
-        res.status(400).json({ error: 'userId is required' });
-        return;
+      // 404 for all other routes
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Not found' }));
+    } catch (error) {
+      console.error('Request handler error:', error);
+      if (!res.headersSent) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Internal server error' }));
       }
+    }
+  }
 
-      // Validate userId format to prevent path traversal attacks
-      if (!validateUserId(userId)) {
-        res.status(400).json({ error: 'Invalid userId format' });
-        return;
-      }
+  // Create HTTP server with custom request handler
+  const httpServer = createServer(handleRequest);
 
-      if (!req.file || !req.file.buffer) {
-        res.status(400).json({ error: 'No file uploaded' });
-        return;
-      }
-
-      // Delete any existing avatars for this user (all extensions)
-      await deleteExistingAvatars(userId);
-
-      // Determine file extension and save the file from memory to disk
-      const ext = MIME_TO_EXT[req.file.mimetype] || 'jpg';
-      const filePath = path.join(AVATARS_DIR, `${userId}.${ext}`);
-
-      try {
-        await writeFile(filePath, req.file.buffer);
-      } catch (writeErr) {
-        console.error('Failed to write avatar file:', writeErr);
-        res.status(500).json({ error: 'Failed to save avatar' });
-        return;
-      }
-
-      const avatarUrl = `/static/avatars/${userId}.${ext}`;
-      res.json({ success: true, avatarUrl });
-    });
-  });
-
-  // Serve static avatar files with caching
-  app.use(
-    '/static/avatars',
-    express.static(AVATARS_DIR, {
-      maxAge: '1d',
-      etag: true,
-      lastModified: true,
-    }),
-  );
-
-  // 404 handler
-  app.use((_req: Request, res: Response) => {
-    res.status(404).json({ error: 'Not found' });
-  });
-
-  // Create HTTP server from Express app
-  const httpServer = createServer(app);
-
-  // Create WebSocket server on /graphql path with origin validation
-  const wss = new WebSocketServer({
-    server: httpServer,
-    path: '/graphql',
-    verifyClient: (info: { origin: string; req: IncomingMessage }, callback: (res: boolean, code?: number, message?: string) => void) => {
-      const origin = info.origin;
-
-      // Allow connections without origin header (e.g., from native apps or direct WebSocket clients)
-      if (!origin) {
-        callback(true);
-        return;
-      }
-
-      // Check if origin is in allowed list or matches Vercel preview pattern
-      if (isOriginAllowed(origin)) {
-        callback(true);
-        return;
-      }
-
-      console.warn(`[WebSocket] Rejected connection from unauthorized origin: ${origin}`);
-      callback(false, 403, 'Origin not allowed');
-    },
-  });
+  // Setup WebSocket server for GraphQL subscriptions
+  const wss = setupWebSocketServer(httpServer);
 
   console.log(`Boardsesh Backend starting on port ${PORT}...`);
-
-  // Use graphql-ws server
-  useServer<Record<string, unknown>, CustomExtra>(
-    {
-      schema,
-      // onConnect is called ONCE when client connects and sends ConnectionInit
-      onConnect: async (ctx: ServerContext) => {
-        // Extract and validate auth token
-        const token = extractAuthToken(
-          ctx.connectionParams as Record<string, unknown> | undefined,
-          ctx.extra.request?.url
-        );
-
-        let isAuthenticated = false;
-        let authenticatedUserId: string | undefined;
-
-        if (token) {
-          const authResult = await validateNextAuthToken(token);
-          if (authResult) {
-            isAuthenticated = true;
-            authenticatedUserId = authResult.userId;
-            console.log(`[Auth] Authenticated user: ${authenticatedUserId}`);
-          }
-        }
-
-        // Create context on initial connection with auth info
-        const context = createContext(undefined, isAuthenticated, authenticatedUserId);
-        roomManager.registerClient(context.connectionId);
-        console.log(`Client connected: ${context.connectionId} (authenticated: ${isAuthenticated})`);
-
-        // Store context in ctx.extra for access in other hooks
-        (ctx.extra as CustomExtra).context = context;
-
-        return true; // Allow connection (both authenticated and unauthenticated)
-      },
-      // context is called for EACH operation - return the stored context
-      context: async (ctx: ServerContext): Promise<ConnectionContext> => {
-        const extra = ctx.extra as CustomExtra;
-
-        if (!extra.context) {
-          // This should never happen - onConnect should always set context
-          console.error('[Context] CRITICAL: No context in extra - onConnect may have failed');
-          throw new Error('Connection context not initialized - onConnect may have failed');
-        }
-
-        // Get the latest context (it may have been updated by mutations like joinSession)
-        const latestContext = getContext(extra.context.connectionId);
-
-        if (!latestContext) {
-          console.error(`[Context] Context lost for connection ${extra.context.connectionId}`);
-          throw new Error(`Connection context lost for ${extra.context.connectionId}`);
-        }
-
-        console.log(`[Context] Retrieved context: ${latestContext.connectionId}, sessionId: ${latestContext.sessionId}`);
-        return latestContext;
-      },
-      onDisconnect: async (ctx: ServerContext, code?: number) => {
-        const context = (ctx.extra as CustomExtra)?.context;
-        if (context) {
-          console.log(`Client disconnected: ${context.connectionId} (code: ${code})`);
-
-          // Get the latest context state (sessionId may have been updated)
-          const latestContext = getContext(context.connectionId);
-
-          // Handle session cleanup
-          if (latestContext?.sessionId) {
-            const result = await roomManager.leaveSession(context.connectionId);
-
-            if (result) {
-              // Notify session about user leaving
-              if (latestContext.userId) {
-                pubsub.publishSessionEvent(result.sessionId, {
-                  __typename: 'UserLeft',
-                  userId: latestContext.userId,
-                });
-              }
-
-              // Notify about new leader if changed
-              if (result.newLeaderId) {
-                pubsub.publishSessionEvent(result.sessionId, {
-                  __typename: 'LeaderChanged',
-                  leaderId: result.newLeaderId,
-                });
-              }
-            }
-          }
-
-          roomManager.removeClient(context.connectionId);
-          removeContext(context.connectionId);
-        }
-      },
-      onSubscribe: (_ctx: ServerContext, _id: string, payload) => {
-        console.log(`Subscription started: ${payload.operationName || 'anonymous'}`);
-      },
-      onError: (_ctx: ServerContext, _id: string, _payload, errors) => {
-        console.error('GraphQL error:', errors);
-      },
-      onComplete: (_ctx: ServerContext, _id: string, payload) => {
-        console.log(`Subscription completed: ${payload.operationName || 'anonymous'}`);
-      },
-    },
-    wss,
-  );
 
   // Start HTTP server (WebSocket server is attached to it)
   httpServer.listen(PORT, () => {
     console.log(`Boardsesh Backend is running on port ${PORT}`);
+    console.log(`  GraphQL HTTP: http://0.0.0.0:${PORT}/graphql`);
     console.log(`  GraphQL WS: ws://0.0.0.0:${PORT}/graphql`);
     console.log(`  Health check: http://0.0.0.0:${PORT}/health`);
-    console.log(`  Join session: http://0.0.0.0:${PORT}/join`);
+    console.log(`  Join session: http://0.0.0.0:${PORT}/join/:sessionId`);
     console.log(`  Avatar upload: http://0.0.0.0:${PORT}/api/avatars`);
     console.log(`  Avatar files: http://0.0.0.0:${PORT}/static/avatars/`);
   });
