@@ -23,6 +23,7 @@ import Logo from '@/app/components/brand/logo';
 import AuroraCredentialsSection from '@/app/components/settings/aurora-credentials-section';
 import BackButton from '@/app/components/back-button';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
+import { usePartyProfile } from '@/app/components/party-manager/party-profile-context';
 
 const { Content, Header } = Layout;
 const { Title, Text } = Typography;
@@ -72,6 +73,7 @@ export default function SettingsPageContent() {
   const [fileList, setFileList] = useState<UploadFile[]>([]);
   const [previewUrl, setPreviewUrl] = useState<string | undefined>();
   const { token: authToken } = useWsAuthToken();
+  const { refreshProfile: refreshPartyProfile } = usePartyProfile();
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -228,8 +230,9 @@ export default function SettingsPageContent() {
 
       message.success('Settings saved successfully');
       setFileList([]);
-      // Refresh profile
+      // Refresh profile locally and in context (so queue items show updated avatar)
       await fetchProfile();
+      await refreshPartyProfile();
     } catch (error) {
       console.error('Failed to save settings:', error);
       message.error(error instanceof Error ? error.message : 'Failed to save settings');
