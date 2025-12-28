@@ -71,7 +71,7 @@ export function createRedisPubSubAdapter(
         event,
         timestamp: Date.now(),
       };
-      console.log(`[Redis] Publishing queue event to channel: ${sessionId} (type: ${event.type})`);
+      console.log(`[Redis] Publishing queue event to channel: ${sessionId} (type: ${event.__typename})`);
       await publisher.publish(channel, JSON.stringify(message));
     },
 
@@ -82,7 +82,7 @@ export function createRedisPubSubAdapter(
         event,
         timestamp: Date.now(),
       };
-      console.log(`[Redis] Publishing session event to channel: ${sessionId} (type: ${event.type})`);
+      console.log(`[Redis] Publishing session event to channel: ${sessionId} (type: ${event.__typename})`);
       await publisher.publish(channel, JSON.stringify(message));
     },
 
