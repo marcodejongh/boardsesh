@@ -165,4 +165,117 @@ describe('MoonBoard OCR Parser', () => {
       expect(result.climb!.holds.finish).toEqual(['F18']);
     });
   });
+
+  describe('TEMPEST_IN_A_TEAPOT', () => {
+    it('should extract correct climb data', async () => {
+      const result = await parseScreenshot(path.join(FIXTURES_DIR, 'TEMPEST_IN_A_TEAPOT.PNG'));
+
+      expect(result.success).toBe(true);
+      expect(result.climb).toBeDefined();
+      expect(result.climb!.name).toContain('TEMPEST IN A TEAPOT');
+      expect(result.climb!.setter).toBe('RTAGG');
+      expect(result.climb!.angle).toBe(40);
+      expect(result.climb!.userGrade).toBe('6C/V5');
+      expect(result.climb!.holds.start.sort()).toEqual(['A4', 'F6'].sort());
+      expect(result.climb!.holds.hand.sort()).toEqual(['D7', 'G11', 'G15', 'H9', 'J13', 'K16', 'K5'].sort());
+      expect(result.climb!.holds.finish).toEqual(['K18']);
+    });
+  });
+
+  describe('LIVIN_WAY_OUT_WEST', () => {
+    it('should extract correct climb data', async () => {
+      const result = await parseScreenshot(path.join(FIXTURES_DIR, 'LIVIN_WAY_OUT_WEST.PNG'));
+
+      expect(result.success).toBe(true);
+      expect(result.climb).toBeDefined();
+      expect(result.climb!.name).toContain('LIVIN');
+      expect(result.climb!.name).toContain('WAY OUT WEST');
+      expect(result.climb!.setter).toBe('Sam Prior');
+      expect(result.climb!.angle).toBe(40);
+      expect(result.climb!.userGrade).toBe('6C/V5');
+      expect(result.climb!.holds.start.sort()).toEqual(['A4', 'C4'].sort());
+      expect(result.climb!.holds.hand.sort()).toEqual(['A11', 'A8', 'B2', 'B6', 'C12', 'F12', 'F15', 'F6'].sort());
+      expect(result.climb!.holds.finish).toEqual(['C18']);
+    });
+  });
+
+  describe('FOUR_LETTER_WORDS', () => {
+    it('should extract correct climb data', async () => {
+      const result = await parseScreenshot(path.join(FIXTURES_DIR, 'FOUR_LETTER_WORDS.PNG'));
+
+      expect(result.success).toBe(true);
+      expect(result.climb).toBeDefined();
+      expect(result.climb!.name).toBe('FOUR LETTER WORDS');
+      expect(result.climb!.setter).toBe('Brandon Hyatt');
+      expect(result.climb!.angle).toBe(40);
+      expect(result.climb!.userGrade).toBe('6C/V5');
+      expect(result.climb!.holds.start).toEqual(['G5']);
+      expect(result.climb!.holds.hand.sort()).toEqual(['I16', 'I9', 'K11', 'K13', 'K15', 'K3'].sort());
+      expect(result.climb!.holds.finish.sort()).toEqual(['F18', 'I18'].sort());
+    });
+  });
+
+  describe('PREDICON', () => {
+    it('should extract correct climb data', async () => {
+      const result = await parseScreenshot(path.join(FIXTURES_DIR, 'PREDICON.PNG'));
+
+      expect(result.success).toBe(true);
+      expect(result.climb).toBeDefined();
+      expect(result.climb!.name).toContain('PREDICON');
+      expect(result.climb!.setter).toBe('Mike C');
+      expect(result.climb!.angle).toBe(40);
+      expect(result.climb!.userGrade).toBe('6C/V5');
+      expect(result.climb!.holds.start.sort()).toEqual(['E6', 'F5'].sort());
+      expect(result.climb!.holds.hand.sort()).toEqual(['E9', 'H16', 'I10', 'J15', 'K5'].sort());
+      expect(result.climb!.holds.finish).toEqual(['F18']);
+    });
+  });
+
+  describe('CALLIOPE', () => {
+    it('should extract correct climb data', async () => {
+      const result = await parseScreenshot(path.join(FIXTURES_DIR, 'CALLIOPE.PNG'));
+
+      expect(result.success).toBe(true);
+      expect(result.climb).toBeDefined();
+      expect(result.climb!.name).toBe('CALLIOPE');
+      expect(result.climb!.setter).toBe('JPace');
+      expect(result.climb!.angle).toBe(40);
+      expect(result.climb!.userGrade).toBe('6C/V5');
+      expect(result.climb!.holds.start.sort()).toEqual(['F6', 'I6'].sort());
+      expect(result.climb!.holds.hand.sort()).toEqual(['B10', 'D16', 'E9', 'F13', 'G15', 'I10', 'K5'].sort());
+      expect(result.climb!.holds.finish).toEqual(['C18']);
+    });
+  });
+
+  describe('SOFT_AND_EASY', () => {
+    it('should extract correct climb data', async () => {
+      const result = await parseScreenshot(path.join(FIXTURES_DIR, 'SOFT_AND_EASY.PNG'));
+
+      expect(result.success).toBe(true);
+      expect(result.climb).toBeDefined();
+      expect(result.climb!.name).toContain('SOFT');
+      expect(result.climb!.setter).toBe('joemaln');
+      expect(result.climb!.angle).toBe(40);
+      expect(result.climb!.userGrade).toBe('5+/V1');
+      expect(result.climb!.holds.start.sort()).toEqual(['D5', 'F6'].sort());
+      expect(result.climb!.holds.hand.sort()).toEqual(['A16', 'B14', 'B4', 'C12', 'D1', 'D14', 'E9', 'G12'].sort());
+      expect(result.climb!.holds.finish.sort()).toEqual(['A18', 'C18'].sort());
+    });
+  });
+
+  describe('WARMUP5B_FELSMEISTER', () => {
+    it('should extract correct climb data', async () => {
+      const result = await parseScreenshot(path.join(FIXTURES_DIR, 'WARMUP5B_FELSMEISTER.PNG'));
+
+      expect(result.success).toBe(true);
+      expect(result.climb).toBeDefined();
+      expect(result.climb!.name).toContain('WARMUP');
+      expect(result.climb!.setter).toContain('ClimbingZaubi');
+      expect(result.climb!.angle).toBe(40);
+      expect(result.climb!.userGrade).toBe('6A/V2');
+      expect(result.climb!.holds.start.sort()).toEqual(['F6', 'I6'].sort());
+      expect(result.climb!.holds.hand.sort()).toEqual(['E1', 'E9', 'F15', 'G12', 'H3', 'I10', 'J13', 'J15', 'K9'].sort());
+      expect(result.climb!.holds.finish).toEqual(['I18']);
+    });
+  });
 });
