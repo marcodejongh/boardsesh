@@ -138,9 +138,13 @@ class RoomManager {
     if (sessionClientIds) {
       sessionClientIds.delete(connectionId);
 
-      // Clean up empty sessions from memory
+      // Clean up empty sessions from memory and database
       if (sessionClientIds.size === 0) {
         this.sessions.delete(sessionId);
+        // Clean up session queue state from database
+        this.cleanupSessionQueue(sessionId).catch((error) => {
+          console.error(`[RoomManager] Failed to cleanup session queue: ${error}`);
+        });
       }
     }
 
@@ -219,7 +223,9 @@ class RoomManager {
   ): Promise<number> {
     if (expectedVersion !== undefined) {
       if (expectedVersion === 0) {
-        // Version 0 means no row exists yet - use insert with conflict handling
+        // Version 0 means no row exists yet - try to insert
+        // If a row was created between our read and this insert, the conflict will
+        // cause us to return nothing, triggering a VersionConflictError and retry
         const result = await db
           .insert(sessionQueues)
           .values({
@@ -229,20 +235,11 @@ class RoomManager {
             version: 1,
             updatedAt: new Date(),
           })
-          .onConflictDoUpdate({
-            target: sessionQueues.sessionId,
-            set: {
-              queue,
-              currentClimbQueueItem,
-              version: sql`${sessionQueues.version} + 1`,
-              updatedAt: new Date(),
-            },
-            // Only update if version is still 0
-            setWhere: eq(sessionQueues.version, 0),
-          })
+          .onConflictDoNothing()
           .returning();
 
         if (result.length === 0) {
+          // Row was created by a concurrent operation, trigger retry
           throw new VersionConflictError(sessionId, expectedVersion);
         }
         return result[0].version;
@@ -300,9 +297,9 @@ class RoomManager {
   async updateQueueOnly(sessionId: string, queue: ClimbQueueItem[], expectedVersion?: number): Promise<number> {
     if (expectedVersion !== undefined) {
       if (expectedVersion === 0) {
-        // Version 0 means no row exists yet - use insert with conflict handling
-        // If a row was created between our read and this insert, the conflict will update
-        // only if the version is still 0 (which would mean another insert just happened)
+        // Version 0 means no row exists yet - try to insert
+        // If a row was created between our read and this insert, the conflict will
+        // cause us to return nothing, triggering a VersionConflictError and retry
         const result = await db
           .insert(sessionQueues)
           .values({
@@ -312,19 +309,11 @@ class RoomManager {
             version: 1,
             updatedAt: new Date(),
           })
-          .onConflictDoUpdate({
-            target: sessionQueues.sessionId,
-            set: {
-              queue,
-              version: sql`${sessionQueues.version} + 1`,
-              updatedAt: new Date(),
-            },
-            // Only update if version is still 0 (i.e., the row was just created by another concurrent insert)
-            setWhere: eq(sessionQueues.version, 0),
-          })
+          .onConflictDoNothing()
           .returning();
 
         if (result.length === 0) {
+          // Row was created by a concurrent operation, trigger retry
           throw new VersionConflictError(sessionId, expectedVersion);
         }
         return result[0].version;
@@ -552,6 +541,15 @@ class RoomManager {
 
   private async persistSessionLeave(clientId: string): Promise<void> {
     await db.delete(sessionClients).where(eq(sessionClients.id, clientId));
+  }
+
+  /**
+   * Clean up session queue state from database when session becomes empty.
+   * This prevents orphaned queue data from accumulating.
+   */
+  private async cleanupSessionQueue(sessionId: string): Promise<void> {
+    console.log(`[RoomManager] Cleaning up queue state for session: ${sessionId}`);
+    await db.delete(sessionQueues).where(eq(sessionQueues.sessionId, sessionId));
   }
 
   private async persistLeaderChange(sessionId: string, newLeaderId: string): Promise<void> {

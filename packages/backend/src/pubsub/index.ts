@@ -102,6 +102,13 @@ class PubSub {
     if (isFirstSubscriber && this.redisAdapter) {
       this.redisAdapter.subscribeQueueChannel(sessionId).catch((error) => {
         console.error(`[PubSub] Failed to subscribe to Redis queue channel: ${error}`);
+        // Remove the subscriber since Redis subscription failed
+        if (this.redisRequired) {
+          this.queueSubscribers.get(sessionId)?.delete(callback);
+          if (this.queueSubscribers.get(sessionId)?.size === 0) {
+            this.queueSubscribers.delete(sessionId);
+          }
+        }
       });
     }
 
@@ -140,6 +147,13 @@ class PubSub {
     if (isFirstSubscriber && this.redisAdapter) {
       this.redisAdapter.subscribeSessionChannel(sessionId).catch((error) => {
         console.error(`[PubSub] Failed to subscribe to Redis session channel: ${error}`);
+        // Remove the subscriber since Redis subscription failed
+        if (this.redisRequired) {
+          this.sessionSubscribers.get(sessionId)?.delete(callback);
+          if (this.sessionSubscribers.get(sessionId)?.size === 0) {
+            this.sessionSubscribers.delete(sessionId);
+          }
+        }
       });
     }
 
@@ -163,20 +177,20 @@ class PubSub {
    * Publish a queue event to all subscribers of a session.
    * Dispatches locally first, then publishes to Redis for other instances.
    *
-   * @throws If Redis is required but publish fails (fail-closed behavior)
+   * Note: Redis publish errors are logged but not thrown to avoid blocking
+   * the local dispatch. In Redis mode, events may not reach other instances
+   * if Redis publish fails.
    */
   publishQueueEvent(sessionId: string, event: QueueEvent): void {
     // Always dispatch to local subscribers first (low latency)
     this.dispatchToLocalQueueSubscribers(sessionId, event);
 
-    // Also publish to Redis if available (fire-and-forget for local-first latency)
+    // Also publish to Redis if available
     if (this.redisAdapter) {
       this.redisAdapter.publishQueueEvent(sessionId, event).catch((error) => {
-        console.error('[PubSub] Redis publish failed:', error);
-        // Fail-closed: throw if Redis is required
-        if (this.redisRequired) {
-          throw new Error(`Failed to publish queue event to Redis: ${error}`);
-        }
+        console.error('[PubSub] Redis queue publish failed:', error);
+        // Log but don't throw - local dispatch already succeeded
+        // Health check will report Redis as unhealthy if connection is lost
       });
     }
   }
@@ -185,20 +199,20 @@ class PubSub {
    * Publish a session event to all subscribers.
    * Dispatches locally first, then publishes to Redis for other instances.
    *
-   * @throws If Redis is required but publish fails (fail-closed behavior)
+   * Note: Redis publish errors are logged but not thrown to avoid blocking
+   * the local dispatch. In Redis mode, events may not reach other instances
+   * if Redis publish fails.
    */
   publishSessionEvent(sessionId: string, event: SessionEvent): void {
     // Always dispatch to local subscribers first (low latency)
     this.dispatchToLocalSessionSubscribers(sessionId, event);
 
-    // Also publish to Redis if available (fire-and-forget for local-first latency)
+    // Also publish to Redis if available
     if (this.redisAdapter) {
       this.redisAdapter.publishSessionEvent(sessionId, event).catch((error) => {
-        console.error('[PubSub] Redis publish failed:', error);
-        // Fail-closed: throw if Redis is required
-        if (this.redisRequired) {
-          throw new Error(`Failed to publish session event to Redis: ${error}`);
-        }
+        console.error('[PubSub] Redis session publish failed:', error);
+        // Log but don't throw - local dispatch already succeeded
+        // Health check will report Redis as unhealthy if connection is lost
       });
     }
   }

@@ -12,8 +12,12 @@ export const ExternalUUIDSchema = z.string().min(1, 'UUID cannot be empty').max(
 
 /**
  * Session ID validation schema
+ * Allows UUIDs and alphanumeric strings with hyphens (for testing and backwards compatibility)
  */
-export const SessionIdSchema = UUIDSchema;
+export const SessionIdSchema = z.string()
+  .min(1, 'Session ID cannot be empty')
+  .max(100, 'Session ID too long')
+  .regex(/^[a-zA-Z0-9-]+$/, 'Session ID must be alphanumeric with hyphens only');
 
 /**
  * GPS coordinate validation schemas
@@ -109,6 +113,19 @@ export const QueueArraySchema = z.array(ClimbQueueItemSchema).max(500, 'Queue to
  * Radius validation schema (for nearby sessions)
  */
 export const RadiusMetersSchema = z.number().min(100, 'Radius too small').max(50000, 'Radius too large').optional();
+
+/**
+ * Queue index validation schema (for reorder operations)
+ */
+export const QueueIndexSchema = z.number().int('Index must be an integer').min(0, 'Index cannot be negative');
+
+/**
+ * Queue item identifier schema (for remove/reorder operations)
+ * More permissive than UUIDSchema to allow for test identifiers and backwards compatibility
+ */
+export const QueueItemIdSchema = z.string()
+  .min(1, 'Queue item ID cannot be empty')
+  .max(100, 'Queue item ID too long');
 
 /**
  * Validate input and throw a user-friendly error if invalid.

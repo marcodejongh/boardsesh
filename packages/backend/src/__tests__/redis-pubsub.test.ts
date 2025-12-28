@@ -70,7 +70,7 @@ describe('Redis PubSub Adapter', () => {
             uuid: 'climb-uuid',
             setter_username: 'test-setter',
             name: 'Test Climb',
-            description: 'Test description',
+            description: 'A test climb',
             frames: 'test-frames',
             angle: 40,
             ascensionist_count: 10,
