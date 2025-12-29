@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
 
 /**
  * E2E tests for queue persistence across navigation.
@@ -8,7 +8,7 @@ import { test, expect } from '@playwright/test';
  */
 
 // Helper to wait for the page to be ready
-async function waitForBoardPage(page: ReturnType<typeof test['page']>) {
+async function waitForBoardPage(page: Page) {
   // Wait for the queue control bar to be visible
   await page.waitForSelector('[data-testid="queue-control-bar"]', { timeout: 30000 }).catch(() => {
     // Fallback: wait for any content to load
@@ -17,7 +17,7 @@ async function waitForBoardPage(page: ReturnType<typeof test['page']>) {
 }
 
 // Helper to add a climb to the queue
-async function addClimbToQueue(page: ReturnType<typeof test['page']>) {
+async function addClimbToQueue(page: Page) {
   // Click on a climb card to add it to queue
   const climbCard = page.locator('[data-testid="climb-card"]').first();
   if (await climbCard.isVisible()) {
