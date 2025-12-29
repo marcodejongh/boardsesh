@@ -258,16 +258,8 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
       // Generate a new session ID
       const newSessionId = uuidv4();
 
-      // Update URL with session parameter
-      const params = new URLSearchParams(searchParams.toString());
-      params.set('session', newSessionId);
-      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-
-      // Update state
-      setActiveSessionId(newSessionId);
-
-      // Activate the session with initial queue - this starts the WebSocket connection
-      // and passes the queue to the server as part of the join
+      // Activate the session with initial queue FIRST - this sets activeSession
+      // before the URL changes, preventing BoardSessionBridge from re-activating
       persistentSession.activateSession({
         sessionId: newSessionId,
         boardPath: pathname,
@@ -276,6 +268,14 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
         initialQueue: state.queue.length > 0 ? state.queue : undefined,
         initialCurrentClimbQueueItem: state.currentClimbQueueItem,
       });
+
+      // Update URL with session parameter
+      const params = new URLSearchParams(searchParams.toString());
+      params.set('session', newSessionId);
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+
+      // Update state
+      setActiveSessionId(newSessionId);
 
       // Save to session history
       await saveSessionToHistory({
