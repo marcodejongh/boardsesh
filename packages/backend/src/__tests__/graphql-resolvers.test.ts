@@ -55,7 +55,9 @@ describe('GraphQL Resolver Input Validation', () => {
   let client: Client;
 
   beforeAll(async () => {
-    server = await startServer(TEST_PORT);
+    // Set the test port via environment variable
+    process.env.PORT = TEST_PORT.toString();
+    server = await startServer();
     client = createClient({
       url: `ws://localhost:${TEST_PORT}/graphql`,
       webSocketImpl: WebSocket,
@@ -64,7 +66,14 @@ describe('GraphQL Resolver Input Validation', () => {
 
   afterAll(async () => {
     client.dispose();
-    await server.stop();
+    // Close the server
+    await new Promise<void>((resolve) => {
+      server.httpServer.close(() => {
+        server.wss.close(() => {
+          resolve();
+        });
+      });
+    });
   });
 
   describe('Session Query Validation', () => {

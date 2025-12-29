@@ -304,7 +304,7 @@ describe('Climb Query Functions', () => {
       const searchParams: ClimbSearchParams = {
         page: 0,
         pageSize: 10,
-        setter: ['setter1', 'setter2'],
+        settername: ['setter1', 'setter2'],
       };
 
       const result = await searchClimbs(testParams, searchParams);
