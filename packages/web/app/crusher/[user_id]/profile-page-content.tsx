@@ -53,17 +53,12 @@ interface UserProfile {
   } | null;
 }
 
-interface AuroraCredential {
-  boardType: string;
-  auroraUsername: string;
-  auroraUserId: number | null;
-}
-
 interface LogbookEntry {
   climbed_at: string;
-  difficulty: number;
+  difficulty: number | null;
   tries: number;
   angle: number;
+  status?: 'flash' | 'send' | 'attempt';
 }
 
 const difficultyMapping: Record<number, string> = {
@@ -138,13 +133,15 @@ const angleColors = [
 
 type TimeframeType = 'all' | 'lastYear' | 'lastMonth' | 'lastWeek' | 'custom';
 
+// Board types available in Boardsesh
+const BOARD_TYPES = ['kilter', 'tension'] as const;
+
 export default function ProfilePageContent({ userId }: { userId: string }) {
   const { data: session } = useSession();
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [credentials, setCredentials] = useState<AuroraCredential[]>([]);
-  const [selectedBoard, setSelectedBoard] = useState<string | null>(null);
+  const [selectedBoard, setSelectedBoard] = useState<string>('kilter');
   const [logbook, setLogbook] = useState<LogbookEntry[]>([]);
   const [loadingStats, setLoadingStats] = useState(false);
   const [timeframe, setTimeframe] = useState<TimeframeType>('all');
@@ -175,14 +172,6 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
         image: data.image,
         profile: data.profile,
       });
-
-      const creds = data.credentials || [];
-      setCredentials(creds);
-
-      // Auto-select first board with credentials
-      if (creds.length > 0 && creds[0].auroraUserId) {
-        setSelectedBoard(creds[0].boardType);
-      }
     } catch (error) {
       console.error('Failed to fetch profile:', error);
       message.error('Failed to load profile data');
@@ -191,42 +180,36 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
     }
   }, [userId]);
 
-  // Fetch profile on mount
-  useEffect(() => {
-    fetchProfile();
-  }, [fetchProfile]);
-
-  // Fetch logbook when board selection changes
-  useEffect(() => {
-    if (selectedBoard && credentials.length > 0) {
-      const cred = credentials.find((c) => c.boardType === selectedBoard);
-      if (cred?.auroraUserId) {
-        fetchLogbook(selectedBoard, cred.auroraUserId.toString());
-      }
-    }
-  }, [selectedBoard, credentials]);
-
-  const fetchLogbook = async (boardName: string, auroraUserId: string) => {
+  // Fetch ticks from local database
+  const fetchLogbook = useCallback(async (boardType: string) => {
     setLoadingStats(true);
     try {
-      const response = await fetch(`/api/v1/${boardName}/proxy/getLogbook`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: auroraUserId, climbUuids: '' }),
-      });
+      const response = await fetch(`/api/internal/ticks/user/${userId}?boardType=${boardType}`);
       if (!response.ok) {
-        throw new Error(`Failed to fetch logbook: ${response.status}`);
+        throw new Error(`Failed to fetch ticks: ${response.status}`);
       }
       const data = await response.json();
       setLogbook(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error('Error fetching logbook:', error);
+      console.error('Error fetching ticks:', error);
       message.error('Failed to load climbing stats');
       setLogbook([]);
     } finally {
       setLoadingStats(false);
     }
-  };
+  }, [userId]);
+
+  // Fetch profile on mount
+  useEffect(() => {
+    fetchProfile();
+  }, [fetchProfile]);
+
+  // Fetch ticks when board selection changes
+  useEffect(() => {
+    if (selectedBoard) {
+      fetchLogbook(selectedBoard);
+    }
+  }, [selectedBoard, fetchLogbook]);
 
   // Filter logbook based on timeframe using useMemo
   const filteredLogbook = useMemo(() => {
@@ -260,6 +243,7 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
     const greaterThanOne: Record<string, number> = {};
     const equalToOne: Record<string, number> = {};
     filteredLogbook.forEach((entry) => {
+      if (entry.difficulty === null) return;
       const difficulty = difficultyMapping[entry.difficulty];
       if (difficulty) {
         if (entry.tries > 1) {
@@ -314,6 +298,7 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
     }
     const weeklyData: Record<string, Record<string, number>> = {};
     filteredLogbook.forEach((entry) => {
+      if (entry.difficulty === null) return;
       const week = `W.${dayjs(entry.climbed_at).isoWeek()} / ${dayjs(entry.climbed_at).year()}`;
       const difficulty = difficultyMapping[entry.difficulty];
       if (difficulty) {
@@ -371,12 +356,11 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
   const displayName = profile?.profile?.displayName || profile?.name || 'Crusher';
   const avatarUrl = profile?.profile?.avatarUrl || profile?.image;
 
-  const boardOptions = credentials
-    .filter((c) => c.auroraUserId)
-    .map((c) => ({
-      label: c.boardType.charAt(0).toUpperCase() + c.boardType.slice(1),
-      value: c.boardType,
-    }));
+  // Board options are now available for all users (no Aurora credentials required)
+  const boardOptions = BOARD_TYPES.map((boardType) => ({
+    label: boardType.charAt(0).toUpperCase() + boardType.slice(1),
+    value: boardType,
+  }));
 
   const timeframeOptions = [
     { label: 'All', value: 'all' },
@@ -416,73 +400,58 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
         <Card className={styles.statsCard}>
           <Title level={5}>Climbing Stats</Title>
 
-          {boardOptions.length === 0 ? (
-            <Empty
-              description={
-                <span>
-                  No board accounts linked.{' '}
-                  {isOwnProfile && (
-                    <a href="/settings">Link your Aurora account</a>
-                  )}
-                </span>
-              }
-            />
-          ) : (
-            <>
-              {/* Board Selector */}
-              {boardOptions.length > 1 && (
-                <div className={styles.boardSelector}>
-                  <Segmented
-                    options={boardOptions}
-                    value={selectedBoard || ''}
-                    onChange={(value) => setSelectedBoard(value as string)}
-                  />
-                </div>
-              )}
+          <>
+            {/* Board Selector */}
+            <div className={styles.boardSelector}>
+              <Segmented
+                options={boardOptions}
+                value={selectedBoard}
+                onChange={(value) => setSelectedBoard(value as string)}
+              />
+            </div>
 
-              {/* Timeframe Selector */}
-              <div className={styles.timeframeSelector}>
-                <Segmented
-                  options={timeframeOptions}
-                  value={timeframe}
-                  onChange={(value) => setTimeframe(value as TimeframeType)}
+            {/* Timeframe Selector */}
+            <div className={styles.timeframeSelector}>
+              <Segmented
+                options={timeframeOptions}
+                value={timeframe}
+                onChange={(value) => setTimeframe(value as TimeframeType)}
+              />
+            </div>
+
+            {timeframe === 'custom' && (
+              <div className={styles.customDateRange}>
+                <Space>
+                  <Text>From:</Text>
+                  <DatePicker
+                    value={fromDate ? dayjs(fromDate) : null}
+                    onChange={(date) => setFromDate(date ? date.format('YYYY-MM-DD') : '')}
+                  />
+                  <Text>To:</Text>
+                  <DatePicker
+                    value={toDate ? dayjs(toDate) : null}
+                    onChange={(date) => setToDate(date ? date.format('YYYY-MM-DD') : '')}
+                  />
+                </Space>
+              </div>
+            )}
+
+            {loadingStats ? (
+              <div className={styles.loadingStats}>
+                <Spin />
+              </div>
+            ) : filteredLogbook.length === 0 ? (
+              <Empty description="No climbing data for this period" />
+            ) : (
+              <div className={styles.chartsContainer}>
+                <ProfileStatsCharts
+                  chartDataWeeklyBar={chartDataWeeklyBar}
+                  chartDataBar={chartDataBar}
+                  chartDataPie={chartDataPie}
                 />
               </div>
-
-              {timeframe === 'custom' && (
-                <div className={styles.customDateRange}>
-                  <Space>
-                    <Text>From:</Text>
-                    <DatePicker
-                      value={fromDate ? dayjs(fromDate) : null}
-                      onChange={(date) => setFromDate(date ? date.format('YYYY-MM-DD') : '')}
-                    />
-                    <Text>To:</Text>
-                    <DatePicker
-                      value={toDate ? dayjs(toDate) : null}
-                      onChange={(date) => setToDate(date ? date.format('YYYY-MM-DD') : '')}
-                    />
-                  </Space>
-                </div>
-              )}
-
-              {loadingStats ? (
-                <div className={styles.loadingStats}>
-                  <Spin />
-                </div>
-              ) : filteredLogbook.length === 0 ? (
-                <Empty description="No climbing data for this period" />
-              ) : (
-                <div className={styles.chartsContainer}>
-                  <ProfileStatsCharts
-                    chartDataWeeklyBar={chartDataWeeklyBar}
-                    chartDataBar={chartDataBar}
-                    chartDataPie={chartDataPie}
-                  />
-                </div>
-              )}
-            </>
-          )}
+            )}
+          </>
         </Card>
       </Content>
     </Layout>
