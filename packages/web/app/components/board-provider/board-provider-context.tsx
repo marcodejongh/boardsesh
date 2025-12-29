@@ -1,5 +1,5 @@
 'use client';
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { BoardName, ClimbUuid } from '@/app/lib/types';
 import { SaveClimbOptions } from '@/app/lib/api-wrappers/aurora/types';
 import { message } from 'antd';
@@ -87,7 +87,9 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
   const [error, setError] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [logbook, setLogbook] = useState<LogbookEntry[]>([]);
-  const [currentClimbUuids, setCurrentClimbUuids] = useState<ClimbUuid[]>([]);
+  // Use ref to track climb UUIDs to avoid re-render loops
+  const currentClimbUuidsRef = useRef<ClimbUuid[]>([]);
+  const lastSessionStatusRef = useRef<string>(sessionStatus);
 
   // Fetch Aurora credentials when session changes (still useful for saveClimb)
   useEffect(() => {
@@ -152,24 +154,21 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
     };
   }, [boardName, sessionStatus]);
 
-  // Fetch logbook from local ticks API (works without Aurora credentials)
-  const getLogbook = useCallback(async (climbUuids: ClimbUuid[]) => {
+  // Internal fetch function (not memoized, called by getLogbook and effect)
+  const fetchLogbook = async (climbUuids: ClimbUuid[]) => {
+    if (sessionStatus !== 'authenticated') {
+      setLogbook([]);
+      return;
+    }
+
+    const params = new URLSearchParams({
+      boardType: boardName,
+    });
+    if (climbUuids.length > 0) {
+      params.set('climbUuids', climbUuids.join(','));
+    }
+
     try {
-      setCurrentClimbUuids(climbUuids);
-
-      // Only need NextAuth session, not Aurora credentials
-      if (sessionStatus !== 'authenticated') {
-        setLogbook([]);
-        return;
-      }
-
-      const params = new URLSearchParams({
-        boardType: boardName,
-      });
-      if (climbUuids.length > 0) {
-        params.set('climbUuids', climbUuids.join(','));
-      }
-
       const response = await fetch(`/api/internal/ticks?${params.toString()}`);
 
       if (!response.ok) {
@@ -182,16 +181,28 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
       console.error('Failed to fetch logbook:', err);
       setLogbook([]);
     }
+  };
+
+  // Fetch logbook from local ticks API (works without Aurora credentials)
+  const getLogbook = useCallback(async (climbUuids: ClimbUuid[]) => {
+    // Store the UUIDs in ref to avoid re-render loops
+    currentClimbUuidsRef.current = climbUuids;
+    await fetchLogbook(climbUuids);
   }, [boardName, sessionStatus]);
 
-  // Refetch logbook when session changes or climb UUIDs change
+  // Refetch logbook only when session status changes from non-authenticated to authenticated
   useEffect(() => {
-    if (currentClimbUuids.length > 0 && sessionStatus === 'authenticated') {
-      getLogbook(currentClimbUuids);
-    } else if (sessionStatus !== 'authenticated') {
+    const wasAuthenticated = lastSessionStatusRef.current === 'authenticated';
+    const isNowAuthenticated = sessionStatus === 'authenticated';
+    lastSessionStatusRef.current = sessionStatus;
+
+    // Only refetch if we just became authenticated and have climb UUIDs
+    if (!wasAuthenticated && isNowAuthenticated && currentClimbUuidsRef.current.length > 0) {
+      fetchLogbook(currentClimbUuidsRef.current);
+    } else if (!isNowAuthenticated) {
       setLogbook([]);
     }
-  }, [sessionStatus, currentClimbUuids, getLogbook]);
+  }, [sessionStatus, boardName]);
 
   // Save a tick to local storage (no Aurora credentials required)
   const saveTick = async (options: SaveTickOptions) => {
