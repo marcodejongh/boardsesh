@@ -256,25 +256,20 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
   // Sync pending initial queue after connecting to a new session
   // This handles the case where user starts a session with existing queue items
   useEffect(() => {
-    // Only run when we've just connected to a session
-    if (!isPersistentSessionActive || !hasConnectedForSync) return;
+    // Only run when we've just connected to a session AND we're the leader
+    // All conditions must be met before we attempt the sync
+    if (!isPersistentSessionActive || !hasConnectedForSync || !isLeaderForSync) return;
 
     // Check if we have a pending initial queue for this session
     const pending = pendingInitialQueueRef.current;
     if (!pending || pending.sessionId !== sessionId) return;
-
-    // Only sync if we're the leader (creator of the session)
-    // Non-leaders should receive the queue from the session creator
-    if (!isLeaderForSync) {
-      pendingInitialQueueRef.current = null;
-      return;
-    }
 
     // Clear the pending ref immediately to prevent duplicate syncs
     pendingInitialQueueRef.current = null;
 
     // Sync the initial queue to the server
     // This will broadcast a FullSync event to all clients (including ourselves)
+    console.log('[QueueContext] Syncing initial queue to server:', pending.queue.length, 'items');
     persistentSession.setQueue(pending.queue, pending.currentClimbQueueItem).catch((error) => {
       console.error('[QueueContext] Failed to sync initial queue:', error);
     });
