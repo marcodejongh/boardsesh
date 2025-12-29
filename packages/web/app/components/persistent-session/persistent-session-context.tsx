@@ -113,6 +113,7 @@ export interface PersistentSessionContextType {
     currentItem: LocalClimbQueueItem | null,
     boardPath: string,
     boardDetails: BoardDetails,
+    options?: { force?: boolean },
   ) => void;
   clearLocalQueue: () => void;
 
@@ -511,8 +512,8 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
   const deactivateSession = useCallback(() => {
     if (DEBUG) console.log('[PersistentSession] Deactivating session');
     setActiveSession(null);
-    setQueueState([]);
-    setCurrentClimbQueueItem(null);
+    // Note: Don't clear queue state here. The queue should persist
+    // when leaving a session. QueueContext handles saving to local state.
   }, []);
 
   // Local queue management functions
@@ -522,9 +523,11 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
       newCurrentItem: LocalClimbQueueItem | null,
       boardPath: string,
       boardDetails: BoardDetails,
+      options?: { force?: boolean },
     ) => {
-      // Don't store local queue if party mode is active
-      if (activeSession) return;
+      // Don't store local queue if party mode is active (unless force is true)
+      // Force is used when leaving a party session to preserve the queue
+      if (activeSession && !options?.force) return;
 
       setLocalQueue(newQueue);
       setLocalCurrentClimbQueueItem(newCurrentItem);
