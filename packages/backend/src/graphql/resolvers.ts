@@ -158,31 +158,37 @@ function applyRateLimit(ctx: ConnectionContext, limit?: number): void {
 const MAX_SUBSCRIPTION_QUEUE_SIZE = 1000;
 
 /**
- * Helper to create an async iterator from a callback-based subscription.
+ * Helper to create an async iterator from an async callback-based subscription.
  * Used for GraphQL subscriptions.
  * Includes bounded queue to prevent memory issues with slow clients.
+ *
+ * NOTE: This function is async because the subscribe function may need to
+ * establish Redis connections before returning. We must await subscription
+ * setup to ensure multi-instance pub/sub is ready before yielding events.
  */
-function createAsyncIterator<T>(subscribe: (push: (value: T) => void) => () => void): AsyncIterable<T> {
+async function createAsyncIterator<T>(
+  subscribe: (push: (value: T) => void) => Promise<() => void>
+): Promise<AsyncIterable<T>> {
   const queue: T[] = [];
   const pending: Array<(value: IteratorResult<T>) => void> = [];
   let done = false;
-  let unsubscribe: (() => void) | null = null;
+
+  // Subscribe and await Redis channel setup before returning iterator
+  const unsubscribe = await subscribe((value: T) => {
+    if (pending.length > 0) {
+      pending.shift()!({ value, done: false });
+    } else {
+      // Bounded queue: drop oldest events if queue is full
+      if (queue.length >= MAX_SUBSCRIPTION_QUEUE_SIZE) {
+        queue.shift(); // Drop oldest
+        console.warn('[Subscription] Queue full, dropping oldest event');
+      }
+      queue.push(value);
+    }
+  });
 
   return {
     [Symbol.asyncIterator]() {
-      unsubscribe = subscribe((value: T) => {
-        if (pending.length > 0) {
-          pending.shift()!({ value, done: false });
-        } else {
-          // Bounded queue: drop oldest events if queue is full
-          if (queue.length >= MAX_SUBSCRIPTION_QUEUE_SIZE) {
-            queue.shift(); // Drop oldest
-            console.warn('[Subscription] Queue full, dropping oldest event');
-          }
-          queue.push(value);
-        }
-      });
-
       return {
         async next(): Promise<IteratorResult<T>> {
           if (queue.length > 0) {
@@ -195,7 +201,7 @@ function createAsyncIterator<T>(subscribe: (push: (value: T) => void) => () => v
         },
         async return(): Promise<IteratorResult<T>> {
           done = true;
-          unsubscribe?.();
+          unsubscribe();
           return { value: undefined as unknown as T, done: true };
         },
       };
@@ -209,14 +215,20 @@ function createAsyncIterator<T>(subscribe: (push: (value: T) => void) => () => v
  * this version subscribes right away to avoid missing events during setup.
  * This is critical for preventing race conditions where events could be
  * published between fetching initial state and starting to listen.
+ *
+ * NOTE: This function is async because the subscribe function may need to
+ * establish Redis connections before returning. We must await subscription
+ * setup to ensure multi-instance pub/sub is ready before yielding events.
  */
-function createEagerAsyncIterator<T>(subscribe: (push: (value: T) => void) => () => void): AsyncIterable<T> {
+async function createEagerAsyncIterator<T>(
+  subscribe: (push: (value: T) => void) => Promise<() => void>
+): Promise<AsyncIterable<T>> {
   const queue: T[] = [];
   const pending: Array<(value: IteratorResult<T>) => void> = [];
   let done = false;
 
-  // Subscribe IMMEDIATELY, not lazily when iteration starts
-  const unsubscribe = subscribe((value: T) => {
+  // Subscribe IMMEDIATELY and await Redis channel setup
+  const unsubscribe = await subscribe((value: T) => {
     if (pending.length > 0) {
       pending.shift()!({ value, done: false });
     } else {
@@ -1230,7 +1242,9 @@ const resolvers = {
         // This prevents a race condition where events could be published
         // between fetching the queue state and starting to listen.
         // Events that arrive before we yield FullSync will be queued.
-        const asyncIterator = createEagerAsyncIterator<QueueEvent>((push) => {
+        // NOTE: We await here to ensure Redis subscription is established
+        // before proceeding - this is critical for multi-instance sync.
+        const asyncIterator = await createEagerAsyncIterator<QueueEvent>((push) => {
           return pubsub.subscribeQueue(sessionId, push);
         });
 
@@ -1262,7 +1276,9 @@ const resolvers = {
         await requireSessionMember(ctx, sessionId);
 
         // Create async iterator for subscription
-        const asyncIterator = createAsyncIterator<SessionEvent>((push) => {
+        // NOTE: We await here to ensure Redis subscription is established
+        // before proceeding - this is critical for multi-instance sync.
+        const asyncIterator = await createAsyncIterator<SessionEvent>((push) => {
           return pubsub.subscribeSession(sessionId, push);
         });
 
