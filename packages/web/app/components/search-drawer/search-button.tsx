@@ -59,13 +59,14 @@ const SearchButton = ({ boardDetails }: { boardDetails: BoardDetails }) => {
       <Drawer
         title={drawerTitle}
         placement="right"
-        width={'90%'}
+        size="large"
         open={isOpen}
         onClose={() => setIsOpen(false)}
         footer={hasActiveFilters ? drawerFooter : null}
         styles={{
           body: { padding: '12px 16px 16px' },
           footer: { padding: 0, border: 'none' },
+          wrapper: { width: '90%' },
         }}
       >
         <SearchForm boardDetails={boardDetails} />

@@ -11,7 +11,7 @@ import {
   PlayCircleOutlined,
   CloseCircleOutlined,
 } from '@ant-design/icons';
-import { Button, Input, Drawer, QRCode, Flex, message, Typography, Badge, Switch, Tabs, Space } from 'antd';
+import { Button, Input, Drawer, QRCode, Flex, App, Typography, Badge, Switch, Tabs, Space } from 'antd';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useQueueContext } from '../graphql-queue';
@@ -32,6 +32,7 @@ const getShareUrl = (pathname: string, sessionId: string | null) => {
 };
 
 export const ShareBoardButton = () => {
+  const { message } = App.useApp();
   const {
     users,
     clientId,
@@ -153,7 +154,10 @@ export const ShareBoardButton = () => {
         placement="top"
         onClose={handleClose}
         open={isDrawerOpen}
-        height="70vh"
+        size="large"
+        styles={{
+          wrapper: { height: '70vh' },
+        }}
       >
         <Flex gap="middle" vertical>
           {/* Controller Mode Banner */}
@@ -220,7 +224,7 @@ export const ShareBoardButton = () => {
                           {isLoggedIn && (
                             <>
                               <Flex align="center" justify="space-between">
-                                <Space direction="vertical" size={0}>
+                                <Space orientation="vertical" size={0}>
                                   <Text strong>Allow others to discover this session</Text>
                                   <Text type="secondary" style={{ fontSize: '12px' }}>
                                     Others nearby can find and join your session
