@@ -258,6 +258,17 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
       // Generate a new session ID
       const newSessionId = uuidv4();
 
+      // Activate the session with initial queue FIRST - this sets activeSession
+      // before the URL changes, preventing BoardSessionBridge from re-activating
+      persistentSession.activateSession({
+        sessionId: newSessionId,
+        boardPath: pathname,
+        boardDetails,
+        parsedParams,
+        initialQueue: state.queue.length > 0 ? state.queue : undefined,
+        initialCurrentClimbQueueItem: state.currentClimbQueueItem,
+      });
+
       // Update URL with session parameter
       const params = new URLSearchParams(searchParams.toString());
       params.set('session', newSessionId);

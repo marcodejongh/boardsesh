@@ -11,6 +11,14 @@ export const UUIDSchema = z.string().uuid('Invalid UUID format');
 export const ExternalUUIDSchema = z.string().min(1, 'UUID cannot be empty').max(50, 'UUID too long');
 
 /**
+ * Queue item identifier schema (for remove/reorder operations)
+ * More permissive than UUIDSchema to allow for test identifiers and backwards compatibility
+ */
+export const QueueItemIdSchema = z.string()
+  .min(1, 'Queue item ID cannot be empty')
+  .max(100, 'Queue item ID too long');
+
+/**
  * Session ID validation schema
  * Allows UUIDs and alphanumeric strings with hyphens (for testing and backwards compatibility)
  */
@@ -96,7 +104,7 @@ export const QueueItemUserSchema = z.object({
  * ClimbQueueItem validation schema
  */
 export const ClimbQueueItemSchema = z.object({
-  uuid: UUIDSchema,
+  uuid: QueueItemIdSchema, // Use permissive ID schema (allows test identifiers)
   climb: ClimbInputSchema,
   addedBy: z.string().max(100).optional(),
   addedByUser: QueueItemUserSchema.optional(),
@@ -118,14 +126,6 @@ export const RadiusMetersSchema = z.number().min(100, 'Radius too small').max(50
  * Queue index validation schema (for reorder operations)
  */
 export const QueueIndexSchema = z.number().int('Index must be an integer').min(0, 'Index cannot be negative');
-
-/**
- * Queue item identifier schema (for remove/reorder operations)
- * More permissive than UUIDSchema to allow for test identifiers and backwards compatibility
- */
-export const QueueItemIdSchema = z.string()
-  .min(1, 'Queue item ID cannot be empty')
-  .max(100, 'Queue item ID too long');
 
 /**
  * Validate input and throw a user-friendly error if invalid.
