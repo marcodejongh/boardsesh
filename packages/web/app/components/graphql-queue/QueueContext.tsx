@@ -186,6 +186,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
     const unsubscribe = persistentSession.subscribeToQueueEvents((event: ClientQueueEvent) => {
       switch (event.__typename) {
         case 'FullSync':
+          // Sync queue state from server (includes initial queue if we just created the session)
           dispatch({
             type: 'INITIAL_QUEUE_DATA',
             payload: {
@@ -265,6 +266,17 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
       // Update state
       setActiveSessionId(newSessionId);
 
+      // Activate the session with initial queue - this starts the WebSocket connection
+      // and passes the queue to the server as part of the join
+      persistentSession.activateSession({
+        sessionId: newSessionId,
+        boardPath: pathname,
+        boardDetails,
+        parsedParams,
+        initialQueue: state.queue.length > 0 ? state.queue : undefined,
+        initialCurrentClimbQueueItem: state.currentClimbQueueItem,
+      });
+
       // Save to session history
       await saveSessionToHistory({
         id: newSessionId,
@@ -277,7 +289,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
 
       return newSessionId;
     },
-    [backendUrl, pathname, router, searchParams],
+    [backendUrl, pathname, router, searchParams, state.queue, state.currentClimbQueueItem, boardDetails, parsedParams, persistentSession],
   );
 
   const joinSessionHandler = useCallback(
@@ -308,6 +320,19 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
   );
 
   const endSession = useCallback(() => {
+    // Save current queue to local storage before leaving party mode
+    // This ensures the queue persists after disconnecting from the session
+    // We need to save it explicitly because the sync effect won't run
+    // until after the state change, by which time the session is already gone
+    // Use force: true to bypass the "don't save during party mode" check
+    persistentSession.setLocalQueueState(
+      state.queue,
+      state.currentClimbQueueItem,
+      pathname,
+      boardDetails,
+      { force: true },
+    );
+
     // Deactivate persistent session
     persistentSession.deactivateSession();
 
@@ -319,7 +344,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
 
     // Update state
     setActiveSessionId(null);
-  }, [persistentSession, pathname, router, searchParams]);
+  }, [persistentSession, pathname, router, searchParams, state.queue, state.currentClimbQueueItem, boardDetails]);
 
   // Whether party mode is active
   const isSessionActive = !!sessionId && hasConnected;

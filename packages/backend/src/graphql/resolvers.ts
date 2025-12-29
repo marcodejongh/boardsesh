@@ -595,10 +595,17 @@ const resolvers = {
   Mutation: {
     joinSession: async (
       _: unknown,
-      { sessionId, boardPath, username, avatarUrl }: { sessionId: string; boardPath: string; username?: string; avatarUrl?: string },
+      { sessionId, boardPath, username, avatarUrl, initialQueue, initialCurrentClimbQueueItem }: {
+        sessionId: string;
+        boardPath: string;
+        username?: string;
+        avatarUrl?: string;
+        initialQueue?: ClimbQueueItem[];
+        initialCurrentClimbQueueItem?: ClimbQueueItem;
+      },
       ctx: ConnectionContext
     ) => {
-      if (DEBUG) console.log(`[joinSession] START - connectionId: ${ctx.connectionId}, sessionId: ${sessionId}, username: ${username}`);
+      if (DEBUG) console.log(`[joinSession] START - connectionId: ${ctx.connectionId}, sessionId: ${sessionId}, username: ${username}, hasInitialQueue: ${!!initialQueue}`);
 
       applyRateLimit(ctx, 10); // Limit session joins to prevent abuse
 
@@ -607,6 +614,8 @@ const resolvers = {
       validateInput(BoardPathSchema, boardPath, 'boardPath');
       if (username) validateInput(UsernameSchema, username, 'username');
       if (avatarUrl) validateInput(AvatarUrlSchema, avatarUrl, 'avatarUrl');
+      if (initialQueue) validateInput(QueueArraySchema, initialQueue, 'initialQueue');
+      if (initialCurrentClimbQueueItem) validateInput(ClimbQueueItemSchema, initialCurrentClimbQueueItem, 'initialCurrentClimbQueueItem');
 
       const result = await roomManager.joinSession(ctx.connectionId, sessionId, boardPath, username || undefined, avatarUrl || undefined);
       if (DEBUG) console.log(`[joinSession] roomManager.joinSession completed - clientId: ${result.clientId}, isLeader: ${result.isLeader}`);
@@ -615,6 +624,27 @@ const resolvers = {
       if (DEBUG) console.log(`[joinSession] Before updateContext - ctx.sessionId: ${ctx.sessionId}`);
       updateContext(ctx.connectionId, { sessionId, userId: result.clientId });
       if (DEBUG) console.log(`[joinSession] After updateContext - ctx.sessionId: ${ctx.sessionId}`);
+
+      // If this is the session creator (leader) and they provided an initial queue, set it
+      let finalQueue = result.queue;
+      let finalCurrentClimb = result.currentClimbQueueItem;
+      if (result.isLeader && initialQueue && initialQueue.length > 0) {
+        if (DEBUG) console.log(`[joinSession] Setting initial queue with ${initialQueue.length} items`);
+
+        // Ensure initialCurrentClimbQueueItem is in the queue if provided
+        let queueToSet = initialQueue;
+        if (initialCurrentClimbQueueItem) {
+          const isInQueue = initialQueue.some(item => item.uuid === initialCurrentClimbQueueItem.uuid);
+          if (!isInQueue) {
+            if (DEBUG) console.log(`[joinSession] Adding current climb to queue (was not in queue)`);
+            queueToSet = [initialCurrentClimbQueueItem, ...initialQueue];
+          }
+        }
+
+        await roomManager.updateQueueState(sessionId, queueToSet, initialCurrentClimbQueueItem || null);
+        finalQueue = queueToSet;
+        finalCurrentClimb = initialCurrentClimbQueueItem || null;
+      }
 
       // Notify session about new user
       const userJoinedEvent: SessionEvent = {
@@ -633,8 +663,8 @@ const resolvers = {
         boardPath,
         users: result.users,
         queueState: {
-          queue: result.queue,
-          currentClimbQueueItem: result.currentClimbQueueItem,
+          queue: finalQueue,
+          currentClimbQueueItem: finalCurrentClimb,
         },
         isLeader: result.isLeader,
         clientId: result.clientId,

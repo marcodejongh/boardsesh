@@ -47,6 +47,9 @@ export interface ActiveSessionInfo {
   boardPath: string;
   boardDetails: BoardDetails;
   parsedParams: ParsedBoardRouteParameters;
+  // Initial queue to set when creating a new session
+  initialQueue?: LocalClimbQueueItem[];
+  initialCurrentClimbQueueItem?: LocalClimbQueueItem | null;
 }
 
 // Convert local ClimbQueueItem to GraphQL input format
@@ -113,6 +116,7 @@ export interface PersistentSessionContextType {
     currentItem: LocalClimbQueueItem | null,
     boardPath: string,
     boardDetails: BoardDetails,
+    options?: { force?: boolean },
   ) => void;
   clearLocalQueue: () => void;
 
@@ -321,13 +325,28 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
     mountedRef.current = true;
     let graphqlClient: Client | null = null;
 
-    async function joinSession(clientToUse: Client): Promise<Session | null> {
-      if (DEBUG) console.log('[PersistentSession] Calling joinSession mutation...');
+    async function joinSession(clientToUse: Client, isInitialConnection = false): Promise<Session | null> {
+      if (DEBUG) console.log('[PersistentSession] Calling joinSession mutation...', { isInitialConnection, hasInitialQueue: !!(activeSession?.initialQueue?.length) });
       try {
+        // Only pass initial queue on first connection (not reconnects)
+        const initialQueue = isInitialConnection && activeSession?.initialQueue?.length
+          ? activeSession.initialQueue.map(toClimbQueueItemInput)
+          : undefined;
+        const initialCurrentClimbQueueItem = isInitialConnection && activeSession?.initialCurrentClimbQueueItem
+          ? toClimbQueueItemInput(activeSession.initialCurrentClimbQueueItem)
+          : undefined;
+
         const response = await execute<{ joinSession: Session }>(clientToUse, {
           query: JOIN_SESSION,
           // Use refs for values that may change but shouldn't trigger reconnection
-          variables: { sessionId, boardPath, username: usernameRef.current, avatarUrl: avatarUrlRef.current },
+          variables: {
+            sessionId,
+            boardPath,
+            username: usernameRef.current,
+            avatarUrl: avatarUrlRef.current,
+            initialQueue,
+            initialCurrentClimbQueueItem,
+          },
         });
         return response.joinSession;
       } catch (err) {
@@ -378,7 +397,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
 
         setClient(graphqlClient);
 
-        const sessionData = await joinSession(graphqlClient);
+        const sessionData = await joinSession(graphqlClient, true); // true = initial connection, pass initial queue
 
         if (!mountedRef.current) {
           graphqlClient.dispose();
@@ -511,8 +530,8 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
   const deactivateSession = useCallback(() => {
     if (DEBUG) console.log('[PersistentSession] Deactivating session');
     setActiveSession(null);
-    setQueueState([]);
-    setCurrentClimbQueueItem(null);
+    // Note: Don't clear queue state here. The queue should persist
+    // when leaving a session. QueueContext handles saving to local state.
   }, []);
 
   // Local queue management functions
@@ -522,9 +541,11 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
       newCurrentItem: LocalClimbQueueItem | null,
       boardPath: string,
       boardDetails: BoardDetails,
+      options?: { force?: boolean },
     ) => {
-      // Don't store local queue if party mode is active
-      if (activeSession) return;
+      // Don't store local queue if party mode is active (unless force is true)
+      // Force is used when leaving a party session to preserve the queue
+      if (activeSession && !options?.force) return;
 
       setLocalQueue(newQueue);
       setLocalCurrentClimbQueueItem(newCurrentItem);
