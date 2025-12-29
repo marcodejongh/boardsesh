@@ -55,7 +55,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
   const [state, dispatch] = useQueueReducer(initialSearchParams);
 
   // Get backend URL from settings
-  const { backendUrl, isLoaded } = useConnectionSettings();
+  const { backendUrl } = useConnectionSettings();
 
   // Get party profile for user ID, and username/avatarUrl from NextAuth session
   const { profile, username, avatarUrl } = usePartyProfile();
@@ -572,11 +572,6 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
       endSession,
     ],
   );
-
-  // Don't render until connection settings are loaded
-  if (!isLoaded) {
-    return null;
-  }
 
   // Wrap children with FavoritesProvider to pass hoisted favorites data
   const wrappedChildren = (
