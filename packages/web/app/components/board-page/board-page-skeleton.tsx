@@ -97,3 +97,4 @@ const BoardPageSkeleton = ({ aspectRatio }: BoardPageSkeletonProps) => {
 };
 
 export default BoardPageSkeleton;
+export { ClimbCardSkeleton };
