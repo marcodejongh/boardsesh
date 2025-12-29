@@ -141,3 +141,82 @@ export function validateInput<T>(schema: z.ZodSchema<T>, data: unknown, fieldNam
   }
   return result.data;
 }
+
+// ============================================
+// Board Configuration Schemas
+// ============================================
+
+/**
+ * Board name validation schema (kilter, tension, decoy)
+ */
+export const BoardNameSchema = z.enum(['kilter', 'tension', 'decoy'], {
+  errorMap: () => ({ message: 'Board name must be kilter, tension, or decoy' }),
+});
+
+// ============================================
+// Climb Search Schemas
+// ============================================
+
+/**
+ * Climb search input validation schema
+ */
+export const ClimbSearchInputSchema = z.object({
+  boardName: BoardNameSchema,
+  layoutId: z.number().int().positive('Layout ID must be positive'),
+  sizeId: z.number().int().positive('Size ID must be positive'),
+  setIds: z.string().min(1, 'Set IDs cannot be empty'),
+  angle: z.number().int(),
+  // Pagination
+  page: z.number().int().min(0).optional(),
+  pageSize: z.number().int().min(1).max(100).optional(),
+  // Filters
+  gradeAccuracy: z.string().optional(),
+  minGrade: z.number().int().optional(),
+  maxGrade: z.number().int().optional(),
+  minAscents: z.number().int().min(0).optional(),
+  sortBy: z.string().optional(),
+  sortOrder: z.enum(['asc', 'desc']).optional(),
+  name: z.string().max(200).optional(),
+  setter: z.string().max(100).optional(),
+  setterId: z.number().int().optional(),
+  onlyBenchmarks: z.boolean().optional(),
+  // Personal progress filters
+  hideAttempted: z.boolean().optional(),
+  hideCompleted: z.boolean().optional(),
+  showOnlyAttempted: z.boolean().optional(),
+  showOnlyCompleted: z.boolean().optional(),
+});
+
+// ============================================
+// User Management Schemas
+// ============================================
+
+/**
+ * Update profile input validation schema
+ */
+export const UpdateProfileInputSchema = z.object({
+  displayName: z.string().min(1).max(100).optional(),
+  avatarUrl: z.string().url().max(500).optional(),
+});
+
+/**
+ * Save Aurora credential input validation schema
+ */
+export const SaveAuroraCredentialInputSchema = z.object({
+  boardType: BoardNameSchema,
+  username: z.string().min(1, 'Username cannot be empty').max(100),
+  password: z.string().min(1, 'Password cannot be empty').max(100),
+});
+
+// ============================================
+// Favorites Schemas
+// ============================================
+
+/**
+ * Toggle favorite input validation schema
+ */
+export const ToggleFavoriteInputSchema = z.object({
+  boardName: BoardNameSchema,
+  climbUuid: ExternalUUIDSchema, // Aurora API uses non-standard UUID format
+  angle: z.number().int(),
+});
