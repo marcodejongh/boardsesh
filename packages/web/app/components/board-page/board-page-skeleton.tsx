@@ -9,6 +9,10 @@ import Skeleton from 'antd/es/skeleton';
 import { InfoCircleOutlined, ForkOutlined, HeartOutlined, PlusCircleOutlined } from '@ant-design/icons';
 import { themeTokens } from '@/app/theme/theme-config';
 
+type BoardPageSkeletonProps = {
+  aspectRatio?: number; // width/height ratio from boardDetails
+};
+
 /**
  * Skeleton that mimics the ClimbCard title structure (horizontal layout with V grade)
  */
@@ -26,15 +30,15 @@ const ClimbCardTitleSkeleton = () => (
 
 /**
  * Skeleton that mimics the BoardRenderer - placeholder for the board image.
- * Uses minHeight to approximate the actual BoardRenderer which has maxHeight: 55vh.
+ * Uses the actual board's aspect ratio to prevent layout shift when content loads.
  */
-const BoardRendererSkeleton = () => (
+const BoardRendererSkeleton = ({ aspectRatio }: { aspectRatio?: number }) => (
   <Skeleton.Node
     active
     style={{
       width: '100%',
       minHeight: '40vh',
-      aspectRatio: '1 / 1.1',
+      aspectRatio: aspectRatio ? `${aspectRatio}` : '1 / 1.1',
     }}
   >
     <span />
@@ -44,7 +48,7 @@ const BoardRendererSkeleton = () => (
 /**
  * Skeleton loading UI for ClimbCard, matching the card structure with muted action icons.
  */
-const ClimbCardSkeleton = () => (
+const ClimbCardSkeleton = ({ aspectRatio }: { aspectRatio?: number }) => (
   <Card
     size="small"
     style={{
@@ -62,19 +66,20 @@ const ClimbCardSkeleton = () => (
       <PlusCircleOutlined key="plus" style={{ color: 'var(--ant-color-text-quaternary)' }} />,
     ]}
   >
-    <BoardRendererSkeleton />
+    <BoardRendererSkeleton aspectRatio={aspectRatio} />
   </Card>
 );
 
 /**
  * Skeleton loading UI for the board page, matching the ClimbsList grid layout.
+ * Accepts an optional aspectRatio to match the actual board dimensions.
  */
-const BoardPageSkeleton = () => {
+const BoardPageSkeleton = ({ aspectRatio }: BoardPageSkeletonProps) => {
   return (
     <Row gutter={[8, 8]}>
       {Array.from({ length: 10 }, (_, i) => (
         <Col xs={24} lg={12} xl={12} key={i}>
-          <ClimbCardSkeleton />
+          <ClimbCardSkeleton aspectRatio={aspectRatio} />
         </Col>
       ))}
     </Row>
