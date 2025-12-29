@@ -1,7 +1,7 @@
 import { makeExecutableSchema } from '@graphql-tools/schema';
 import GraphQLJSON from 'graphql-type-json';
 import { v4 as uuidv4 } from 'uuid';
-import { eq, and, asc, inArray, sql } from 'drizzle-orm';
+import { eq, and, asc, desc, inArray, sql } from 'drizzle-orm';
 import { typeDefs } from '@boardsesh/shared-schema';
 import { roomManager, VersionConflictError, type DiscoverableSession } from '../services/room-manager.js';
 import { pubsub } from '../pubsub/index.js';
@@ -36,6 +36,8 @@ import {
   UpdateProfileInputSchema,
   ExternalUUIDSchema,
   SaveAuroraCredentialInputSchema,
+  SaveTickInputSchema,
+  GetTicksInputSchema,
 } from '../validation/schemas.js';
 import type {
   ConnectionContext,
@@ -597,6 +599,100 @@ const resolvers = {
         );
 
       return favorites.map(f => f.climbUuid);
+    },
+
+    // ============================================
+    // Ticks Queries
+    // ============================================
+
+    ticks: async (
+      _: unknown,
+      { input }: { input: { boardType: string; climbUuids?: string[] } },
+      ctx: ConnectionContext
+    ): Promise<unknown[]> => {
+      requireAuthenticated(ctx);
+      validateInput(GetTicksInputSchema, input, 'input');
+
+      const userId = ctx.userId!;
+
+      // Build query conditions
+      const conditions = [
+        eq(dbSchema.boardseshTicks.userId, userId),
+        eq(dbSchema.boardseshTicks.boardType, input.boardType),
+      ];
+
+      if (input.climbUuids && input.climbUuids.length > 0) {
+        conditions.push(inArray(dbSchema.boardseshTicks.climbUuid, input.climbUuids));
+      }
+
+      // Fetch ticks
+      const ticks = await db
+        .select()
+        .from(dbSchema.boardseshTicks)
+        .where(and(...conditions))
+        .orderBy(desc(dbSchema.boardseshTicks.climbedAt));
+
+      return ticks.map(tick => ({
+        uuid: tick.uuid,
+        userId: tick.userId,
+        boardType: tick.boardType,
+        climbUuid: tick.climbUuid,
+        angle: tick.angle,
+        isMirror: tick.isMirror ?? false,
+        status: tick.status,
+        attemptCount: tick.attemptCount,
+        quality: tick.quality,
+        difficulty: tick.difficulty,
+        isBenchmark: tick.isBenchmark ?? false,
+        comment: tick.comment ?? '',
+        climbedAt: tick.climbedAt,
+        createdAt: tick.createdAt,
+        updatedAt: tick.updatedAt,
+        sessionId: tick.sessionId,
+        auroraType: tick.auroraType,
+        auroraId: tick.auroraId,
+        auroraSyncedAt: tick.auroraSyncedAt,
+      }));
+    },
+
+    userTicks: async (
+      _: unknown,
+      { userId, boardType }: { userId: string; boardType: string }
+    ): Promise<unknown[]> => {
+      validateInput(BoardNameSchema, boardType, 'boardType');
+
+      const conditions = [
+        eq(dbSchema.boardseshTicks.userId, userId),
+        eq(dbSchema.boardseshTicks.boardType, boardType),
+      ];
+
+      const ticks = await db
+        .select()
+        .from(dbSchema.boardseshTicks)
+        .where(and(...conditions))
+        .orderBy(desc(dbSchema.boardseshTicks.climbedAt));
+
+      return ticks.map(tick => ({
+        uuid: tick.uuid,
+        userId: tick.userId,
+        boardType: tick.boardType,
+        climbUuid: tick.climbUuid,
+        angle: tick.angle,
+        isMirror: tick.isMirror ?? false,
+        status: tick.status,
+        attemptCount: tick.attemptCount,
+        quality: tick.quality,
+        difficulty: tick.difficulty,
+        isBenchmark: tick.isBenchmark ?? false,
+        comment: tick.comment ?? '',
+        climbedAt: tick.climbedAt,
+        createdAt: tick.createdAt,
+        updatedAt: tick.updatedAt,
+        sessionId: tick.sessionId,
+        auroraType: tick.auroraType,
+        auroraId: tick.auroraId,
+        auroraSyncedAt: tick.auroraSyncedAt,
+      }));
     },
   },
 
@@ -1287,6 +1383,76 @@ const resolvers = {
         });
         return { favorited: true };
       }
+    },
+
+    // ============================================
+    // Ticks Mutations
+    // ============================================
+
+    saveTick: async (
+      _: unknown,
+      { input }: { input: unknown },
+      ctx: ConnectionContext
+    ): Promise<unknown> => {
+      requireAuthenticated(ctx);
+
+      // Validate input with business rules
+      const validatedInput = validateInput(SaveTickInputSchema, input, 'input');
+
+      const userId = ctx.userId!;
+      const uuid = uuidv4();
+      const now = new Date().toISOString();
+      const climbedAt = new Date(validatedInput.climbedAt).toISOString();
+
+      // Insert into database
+      const [tick] = await db
+        .insert(dbSchema.boardseshTicks)
+        .values({
+          uuid,
+          userId,
+          boardType: validatedInput.boardType,
+          climbUuid: validatedInput.climbUuid,
+          angle: validatedInput.angle,
+          isMirror: validatedInput.isMirror,
+          status: validatedInput.status,
+          attemptCount: validatedInput.status === 'flash' ? 1 : validatedInput.attemptCount,
+          quality: validatedInput.quality ?? null,
+          difficulty: validatedInput.difficulty ?? null,
+          isBenchmark: validatedInput.isBenchmark,
+          comment: validatedInput.comment,
+          climbedAt,
+          createdAt: now,
+          updatedAt: now,
+          sessionId: validatedInput.sessionId ?? null,
+          // Aurora sync fields are null - will be populated by periodic sync job
+          auroraType: null,
+          auroraId: null,
+          auroraSyncedAt: null,
+          auroraSyncError: null,
+        })
+        .returning();
+
+      return {
+        uuid: tick.uuid,
+        userId: tick.userId,
+        boardType: tick.boardType,
+        climbUuid: tick.climbUuid,
+        angle: tick.angle,
+        isMirror: tick.isMirror ?? false,
+        status: tick.status,
+        attemptCount: tick.attemptCount,
+        quality: tick.quality,
+        difficulty: tick.difficulty,
+        isBenchmark: tick.isBenchmark ?? false,
+        comment: tick.comment ?? '',
+        climbedAt: tick.climbedAt,
+        createdAt: tick.createdAt,
+        updatedAt: tick.updatedAt,
+        sessionId: tick.sessionId,
+        auroraType: tick.auroraType,
+        auroraId: tick.auroraId,
+        auroraSyncedAt: tick.auroraSyncedAt,
+      };
     },
   },
 

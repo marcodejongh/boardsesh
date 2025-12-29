@@ -218,6 +218,58 @@ export const typeDefs = /* GraphQL */ `
     favorited: Boolean!
   }
 
+  # ============================================
+  # Ticks Types (Local Ascent Tracking)
+  # ============================================
+
+  enum TickStatus {
+    flash
+    send
+    attempt
+  }
+
+  type Tick {
+    uuid: ID!
+    userId: ID!
+    boardType: String!
+    climbUuid: String!
+    angle: Int!
+    isMirror: Boolean!
+    status: TickStatus!
+    attemptCount: Int!
+    quality: Int
+    difficulty: Int
+    isBenchmark: Boolean!
+    comment: String!
+    climbedAt: String!
+    createdAt: String!
+    updatedAt: String!
+    sessionId: String
+    auroraType: String
+    auroraId: String
+    auroraSyncedAt: String
+  }
+
+  input SaveTickInput {
+    boardType: String!
+    climbUuid: String!
+    angle: Int!
+    isMirror: Boolean!
+    status: TickStatus!
+    attemptCount: Int!
+    quality: Int
+    difficulty: Int
+    isBenchmark: Boolean!
+    comment: String!
+    climbedAt: String!
+    sessionId: String
+  }
+
+  input GetTicksInput {
+    boardType: String!
+    climbUuids: [String!]
+  }
+
   type Query {
     session(sessionId: ID!): Session
     # Find discoverable sessions near a location
@@ -267,6 +319,15 @@ export const typeDefs = /* GraphQL */ `
 
     # Check which climbs from a list are favorited (returns favorited UUIDs)
     favorites(boardName: String!, climbUuids: [String!]!, angle: Int!): [String!]!
+
+    # ============================================
+    # Ticks Queries (require auth)
+    # ============================================
+
+    # Get current user's ticks (local ascent tracking)
+    ticks(input: GetTicksInput!): [Tick!]!
+    # Get public ticks for a specific user
+    userTicks(userId: ID!, boardType: String!): [Tick!]!
   }
 
   type Mutation {
@@ -307,6 +368,13 @@ export const typeDefs = /* GraphQL */ `
 
     # Toggle favorite status for a climb (add or remove)
     toggleFavorite(input: ToggleFavoriteInput!): ToggleFavoriteResult!
+
+    # ============================================
+    # Ticks Mutations (require auth)
+    # ============================================
+
+    # Save a new tick (local ascent tracking)
+    saveTick(input: SaveTickInput!): Tick!
   }
 
   type Subscription {

@@ -4,6 +4,16 @@ import { BoardName, ClimbUuid } from '@/app/lib/types';
 import { SaveClimbOptions } from '@/app/lib/api-wrappers/aurora/types';
 import { message } from 'antd';
 import { useSession } from 'next-auth/react';
+import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
+import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
+import {
+  GET_TICKS,
+  SAVE_TICK,
+  type GetTicksQueryVariables,
+  type GetTicksQueryResponse,
+  type SaveTickMutationVariables,
+  type SaveTickMutationResponse,
+} from '@/app/lib/graphql/operations';
 
 interface AuthState {
   token: string | null;
@@ -77,6 +87,8 @@ const BoardContext = createContext<BoardContextType | undefined>(undefined);
 
 export function BoardProvider({ boardName, children }: { boardName: BoardName; children: React.ReactNode }) {
   const { status: sessionStatus } = useSession();
+  // Use wsAuthToken for GraphQL backend auth (NextAuth session token)
+  const { token: wsAuthToken } = useWsAuthToken();
   const [authState, setAuthState] = useState<AuthState>({
     token: null,
     user_id: null,
@@ -161,22 +173,42 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
       return;
     }
 
-    const params = new URLSearchParams({
-      boardType: boardName,
-    });
-    if (climbUuids.length > 0) {
-      params.set('climbUuids', climbUuids.join(','));
-    }
-
     try {
-      const response = await fetch(`/api/internal/ticks?${params.toString()}`);
+      const client = createGraphQLHttpClient(wsAuthToken);
 
-      if (!response.ok) {
-        throw new Error('Could not fetch logbook');
-      }
+      const variables: GetTicksQueryVariables = {
+        input: {
+          boardType: boardName,
+          climbUuids: climbUuids.length > 0 ? climbUuids : undefined,
+        }
+      };
 
-      const data = await response.json();
-      setLogbook(data.entries || []);
+      const response = await client.request<GetTicksQueryResponse>(GET_TICKS, variables);
+
+      // Transform to LogbookEntry format for backward compatibility
+      const entries: LogbookEntry[] = response.ticks.map((tick) => ({
+        uuid: tick.uuid,
+        climb_uuid: tick.climbUuid,
+        angle: tick.angle,
+        is_mirror: tick.isMirror,
+        user_id: 0,
+        attempt_id: 0,
+        tries: tick.attemptCount,
+        quality: tick.quality,
+        difficulty: tick.difficulty,
+        is_benchmark: tick.isBenchmark,
+        is_listed: true,
+        comment: tick.comment,
+        climbed_at: tick.climbedAt,
+        created_at: tick.createdAt,
+        updated_at: tick.updatedAt,
+        wall_uuid: null,
+        is_ascent: tick.status === 'flash' || tick.status === 'send',
+        status: tick.status,
+        aurora_synced: tick.auroraId !== null,
+      }));
+
+      setLogbook(entries);
     } catch (err) {
       console.error('Failed to fetch logbook:', err);
       setLogbook([]);
@@ -210,9 +242,9 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
       throw new Error('Not authenticated');
     }
 
-    // Create optimistic entry
+    const tempUuid = `temp-${Date.now()}`;
     const optimisticEntry: LogbookEntry = {
-      uuid: `temp-${Date.now()}`,
+      uuid: tempUuid,
       climb_uuid: options.climbUuid,
       angle: options.angle,
       is_mirror: options.isMirror,
@@ -237,32 +269,37 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
     setLogbook((currentLogbook) => [optimisticEntry, ...currentLogbook]);
 
     try {
-      const response = await fetch('/api/internal/ticks', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      const client = createGraphQLHttpClient(wsAuthToken);
+
+      const variables: SaveTickMutationVariables = {
+        input: {
           boardType: boardName,
-          ...options,
-        }),
-      });
+          climbUuid: options.climbUuid,
+          angle: options.angle,
+          isMirror: options.isMirror,
+          status: options.status,
+          attemptCount: options.attemptCount,
+          quality: options.quality,
+          difficulty: options.difficulty,
+          isBenchmark: options.isBenchmark,
+          comment: options.comment,
+          climbedAt: options.climbedAt,
+          sessionId: options.sessionId,
+        }
+      };
 
-      if (!response.ok) {
-        throw new Error('Failed to save tick');
-      }
-
-      const data = await response.json();
+      const response = await client.request<SaveTickMutationResponse>(SAVE_TICK, variables);
+      const tick = response.saveTick;
 
       // Update the optimistic entry with the real data
       setLogbook((currentLogbook) =>
         currentLogbook.map((entry) =>
-          entry.uuid === optimisticEntry.uuid
+          entry.uuid === tempUuid
             ? {
                 ...entry,
-                uuid: data.tick.uuid,
-                created_at: data.tick.createdAt,
-                updated_at: data.tick.updatedAt,
+                uuid: tick.uuid,
+                created_at: tick.createdAt,
+                updated_at: tick.updatedAt,
               }
             : entry
         )
@@ -271,7 +308,7 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
       message.error('Failed to save tick');
       // Rollback on error
       setLogbook((currentLogbook) =>
-        currentLogbook.filter((entry) => entry.uuid !== optimisticEntry.uuid)
+        currentLogbook.filter((entry) => entry.uuid !== tempUuid)
       );
       throw err;
     }

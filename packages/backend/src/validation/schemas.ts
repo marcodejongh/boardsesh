@@ -220,3 +220,68 @@ export const ToggleFavoriteInputSchema = z.object({
   climbUuid: ExternalUUIDSchema, // Aurora API uses non-standard UUID format
   angle: z.number().int(),
 });
+
+// ============================================
+// Ticks Schemas
+// ============================================
+
+/**
+ * Tick status validation schema
+ */
+export const TickStatusSchema = z.enum(['flash', 'send', 'attempt'], {
+  errorMap: () => ({ message: 'Status must be flash, send, or attempt' }),
+});
+
+/**
+ * Save tick input validation schema
+ */
+export const SaveTickInputSchema = z.object({
+  boardType: BoardNameSchema,
+  climbUuid: ExternalUUIDSchema, // Aurora API uses non-standard UUID format
+  angle: z.number().int().min(0).max(90),
+  isMirror: z.boolean(),
+  status: TickStatusSchema,
+  attemptCount: z.number().int().min(1).max(999),
+  quality: z.number().int().min(1).max(5).optional().nullable(),
+  difficulty: z.number().int().optional().nullable(),
+  isBenchmark: z.boolean(),
+  comment: z.string().max(2000),
+  climbedAt: z.string(), // ISO date string
+  sessionId: z.string().optional(),
+}).refine(
+  (data) => {
+    // Flash must have attemptCount of 1
+    if (data.status === 'flash' && data.attemptCount !== 1) {
+      return false;
+    }
+    // Send must have attemptCount > 1
+    if (data.status === 'send' && data.attemptCount <= 1) {
+      return false;
+    }
+    return true;
+  },
+  {
+    message: 'Flash requires attemptCount of 1, send requires attemptCount > 1',
+    path: ['attemptCount']
+  }
+).refine(
+  (data) => {
+    // Attempts should not have quality ratings
+    if (data.status === 'attempt' && data.quality !== undefined && data.quality !== null) {
+      return false;
+    }
+    return true;
+  },
+  {
+    message: 'Attempts cannot have quality ratings',
+    path: ['quality']
+  }
+);
+
+/**
+ * Get ticks input validation schema
+ */
+export const GetTicksInputSchema = z.object({
+  boardType: BoardNameSchema,
+  climbUuids: z.array(ExternalUUIDSchema).optional(),
+});
