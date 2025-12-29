@@ -211,10 +211,20 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
   // Handle queue events internally
   const handleQueueEvent = useCallback((event: ClientQueueEvent) => {
     switch (event.__typename) {
-      case 'FullSync':
-        setQueueState(event.state.queue as LocalClimbQueueItem[]);
-        setCurrentClimbQueueItem(event.state.currentClimbQueueItem as LocalClimbQueueItem | null);
+      case 'FullSync': {
+        const newQueue = event.state.queue as LocalClimbQueueItem[];
+        let newCurrentClimbQueueItem = event.state.currentClimbQueueItem as LocalClimbQueueItem | null;
+
+        // Validate that current climb is in the queue
+        // If not, clear it to prevent inconsistent state
+        if (newCurrentClimbQueueItem && !newQueue.some(item => item.uuid === newCurrentClimbQueueItem?.uuid)) {
+          newCurrentClimbQueueItem = null;
+        }
+
+        setQueueState(newQueue);
+        setCurrentClimbQueueItem(newCurrentClimbQueueItem);
         break;
+      }
       case 'QueueItemAdded':
         setQueueState((prev) => {
           const newQueue = [...prev];
@@ -228,6 +238,8 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
         break;
       case 'QueueItemRemoved':
         setQueueState((prev) => prev.filter((item) => item.uuid !== event.uuid));
+        // Clear current climb if it was removed
+        setCurrentClimbQueueItem((prev) => prev?.uuid === event.uuid ? null : prev);
         break;
       case 'QueueReordered':
         setQueueState((prev) => {
@@ -510,9 +522,10 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
 
   const deactivateSession = useCallback(() => {
     if (DEBUG) console.log('[PersistentSession] Deactivating session');
+    // Only clear the active session, NOT the queue state.
+    // The queue should persist for local use after leaving party mode.
+    // The queue state will be synced to local queue by the QueueContext effect.
     setActiveSession(null);
-    setQueueState([]);
-    setCurrentClimbQueueItem(null);
   }, []);
 
   // Local queue management functions

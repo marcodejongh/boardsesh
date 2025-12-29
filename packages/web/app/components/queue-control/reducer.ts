@@ -41,20 +41,40 @@ export function queueReducer(state: QueueState, action: QueueAction): QueueState
         ...state,
         climbSearchParams: action.payload,
       };
-    case 'INITIAL_QUEUE_DATA':
+    case 'INITIAL_QUEUE_DATA': {
+      const newQueue = action.payload.queue;
+      let newCurrentClimbQueueItem = action.payload.currentClimbQueueItem ?? state.currentClimbQueueItem;
+
+      // Validate that current climb is in the queue
+      // If not, clear it to prevent inconsistent state
+      if (newCurrentClimbQueueItem && !newQueue.some(item => item.uuid === newCurrentClimbQueueItem?.uuid)) {
+        newCurrentClimbQueueItem = null;
+      }
+
       return {
         ...state,
-        queue: action.payload.queue,
-        currentClimbQueueItem: action.payload.currentClimbQueueItem ?? state.currentClimbQueueItem,
+        queue: newQueue,
+        currentClimbQueueItem: newCurrentClimbQueueItem,
         initialQueueDataReceivedFromPeers: true,
       };
+    }
 
-    case 'UPDATE_QUEUE':
+    case 'UPDATE_QUEUE': {
+      const newQueue = action.payload.queue;
+      let newCurrentClimbQueueItem = action.payload.currentClimbQueueItem ?? state.currentClimbQueueItem;
+
+      // Validate that current climb is in the queue
+      // If not, clear it to prevent inconsistent state
+      if (newCurrentClimbQueueItem && !newQueue.some(item => item.uuid === newCurrentClimbQueueItem?.uuid)) {
+        newCurrentClimbQueueItem = null;
+      }
+
       return {
         ...state,
-        queue: action.payload.queue,
-        currentClimbQueueItem: action.payload.currentClimbQueueItem ?? state.currentClimbQueueItem,
+        queue: newQueue,
+        currentClimbQueueItem: newCurrentClimbQueueItem,
       };
+    }
 
     case 'ADD_TO_QUEUE':
       return {
