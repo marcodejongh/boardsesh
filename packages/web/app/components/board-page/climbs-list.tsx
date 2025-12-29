@@ -144,8 +144,8 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
         ) : null}
       </Row>
 
-      {/* Sentinel element for Intersection Observer */}
-      <div ref={loadMoreRef} style={{ marginTop: '16px' }}>
+      {/* Sentinel element for Intersection Observer - needs min-height to be observable */}
+      <div ref={loadMoreRef} style={{ minHeight: '20px', marginTop: '16px' }}>
         {isFetchingClimbs && climbs.length > 0 && (
           <Row gutter={[16, 16]}>
             <ClimbsListSkeleton aspectRatio={boardDetails.boardWidth / boardDetails.boardHeight} />
