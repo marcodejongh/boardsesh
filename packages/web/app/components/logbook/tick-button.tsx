@@ -2,10 +2,9 @@ import React, { useState } from 'react';
 import { Angle, Climb, BoardDetails } from '@/app/lib/types';
 import { useBoardProvider } from '../board-provider/board-provider-context';
 import { Button, Badge, Drawer, Typography, Space } from 'antd';
-import { CheckOutlined, SettingOutlined, LoginOutlined } from '@ant-design/icons';
+import { CheckOutlined, LoginOutlined } from '@ant-design/icons';
 import { track } from '@vercel/analytics';
 import { LogbookDrawer } from './logbook-drawer';
-import { useRouter } from 'next/navigation';
 import AuthModal from '../auth/auth-modal';
 
 const { Text, Paragraph } = Typography;
@@ -17,8 +16,7 @@ interface TickButtonProps {
 }
 
 export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boardDetails }) => {
-  const router = useRouter();
-  const { logbook, isAuthenticated, hasAuroraCredentials } = useBoardProvider();
+  const { logbook, isAuthenticated } = useBoardProvider();
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
 
@@ -35,41 +33,6 @@ export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boa
   const hasSuccessfulAscent = filteredLogbook.some((asc) => asc.is_ascent);
   const badgeCount = filteredLogbook.length;
 
-  const boardName = boardDetails.board_name;
-  const boardNameCapitalized = boardName.charAt(0).toUpperCase() + boardName.slice(1);
-
-  const renderDrawerContent = () => {
-    if (!isAuthenticated) {
-      return (
-        <Space direction="vertical" size="large" style={{ width: '100%', textAlign: 'center', padding: '24px 0' }}>
-          <Text strong style={{ fontSize: 16 }}>Sign in to record ascents</Text>
-          <Paragraph type="secondary">
-            Create a Boardsesh account to log your climbs and track your progress.
-          </Paragraph>
-          <Button type="primary" icon={<LoginOutlined />} onClick={() => setShowAuthModal(true)} block>
-            Sign In
-          </Button>
-        </Space>
-      );
-    }
-
-    if (!hasAuroraCredentials) {
-      return (
-        <Space direction="vertical" size="large" style={{ width: '100%', textAlign: 'center', padding: '24px 0' }}>
-          <Text strong style={{ fontSize: 16 }}>Link your {boardNameCapitalized} account</Text>
-          <Paragraph type="secondary">
-            Link your {boardNameCapitalized} Board account in Settings to record ascents and sync your logbook.
-          </Paragraph>
-          <Button icon={<SettingOutlined />} onClick={() => router.push('/settings')} block>
-            Go to Settings
-          </Button>
-        </Space>
-      );
-    }
-
-    return null; // LogbookDrawer will handle the rest
-  };
-
   return (
     <>
       <Badge
@@ -81,7 +44,7 @@ export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boa
         <Button id="button-tick" type="default" icon={<CheckOutlined />} onClick={showDrawer} />
       </Badge>
 
-      {isAuthenticated && hasAuroraCredentials ? (
+      {isAuthenticated ? (
         <LogbookDrawer
           drawerVisible={drawerVisible}
           closeDrawer={closeDrawer}
@@ -90,20 +53,28 @@ export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boa
         />
       ) : (
         <Drawer
-          title={!isAuthenticated ? "Sign In Required" : "Link Account Required"}
+          title="Sign In Required"
           placement="bottom"
           onClose={closeDrawer}
           open={drawerVisible}
           styles={{ wrapper: { height: '50%' } }}
         >
-          {renderDrawerContent()}
+          <Space direction="vertical" size="large" style={{ width: '100%', textAlign: 'center', padding: '24px 0' }}>
+            <Text strong style={{ fontSize: 16 }}>Sign in to record ticks</Text>
+            <Paragraph type="secondary">
+              Create a Boardsesh account to log your climbs and track your progress.
+            </Paragraph>
+            <Button type="primary" icon={<LoginOutlined />} onClick={() => setShowAuthModal(true)} block>
+              Sign In
+            </Button>
+          </Space>
         </Drawer>
       )}
 
       <AuthModal
         open={showAuthModal}
         onClose={() => setShowAuthModal(false)}
-        title="Sign in to record ascents"
+        title="Sign in to record ticks"
         description="Create an account to log your climbs and track your progress."
       />
     </>

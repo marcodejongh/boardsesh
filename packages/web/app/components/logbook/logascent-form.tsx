@@ -3,7 +3,7 @@ import { Button, DatePicker, Select, Input, Rate, Slider, InputNumber, Form, Spa
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { track } from '@vercel/analytics';
 import { Climb, BoardDetails } from '@/app/lib/types';
-import { useBoardProvider } from '../board-provider/board-provider-context';
+import { useBoardProvider, TickStatus } from '../board-provider/board-provider-context';
 import { TENSION_KILTER_GRADES, ANGLES } from '@/app/lib/board-data';
 import dayjs from 'dayjs';
 
@@ -18,6 +18,11 @@ interface LogAscentFormValues {
   notes?: string;
 }
 
+// Helper to determine tick status from attempt count
+const getTickStatus = (attempts: number): TickStatus => {
+  return attempts === 1 ? 'flash' : 'send';
+};
+
 interface LogAscentFormProps {
   currentClimb: Climb;
   boardDetails: BoardDetails;
@@ -25,7 +30,7 @@ interface LogAscentFormProps {
 }
 
 export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boardDetails, onClose }) => {
-  const { user_id, saveAscent } = useBoardProvider();
+  const { saveTick, isAuthenticated } = useBoardProvider();
   const grades = TENSION_KILTER_GRADES;
   const angleOptions = ANGLES[boardDetails.board_name];
   const [form] = Form.useForm<LogAscentFormValues>();
@@ -41,7 +46,7 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boar
       angle: currentClimb?.angle,
       difficulty: grades.find((grade) => grade.difficulty_name === currentClimb?.difficulty)?.difficulty_id,
       attempts: 1,
-      quality: 3,
+      quality: 3, // Default to middle of 1-5 scale
     });
     setIsMirrored(!!currentClimb?.mirrored);
   }, [currentClimb, form, grades]);
@@ -51,36 +56,36 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boar
   };
 
   const handleSubmit = async (values: LogAscentFormValues) => {
-    if (!currentClimb?.uuid || !user_id) {
+    if (!currentClimb?.uuid || !isAuthenticated) {
       return;
     }
 
     setIsSaving(true);
 
     try {
-      await saveAscent({
-        user_id: user_id,
-        climb_uuid: currentClimb.uuid,
+      await saveTick({
+        climbUuid: currentClimb.uuid,
         angle: Number(values.angle),
-        is_mirror: isMirrored,
-        attempt_id: 0,
-        bid_count: values.attempts,
+        isMirror: isMirrored,
+        status: getTickStatus(values.attempts),
+        attemptCount: values.attempts,
         quality: values.quality,
         difficulty: values.difficulty,
-        is_benchmark: false,
+        isBenchmark: false,
         comment: values.notes || '',
-        climbed_at: values.date.toISOString(),
+        climbedAt: values.date.toISOString(),
       });
 
-      track('Ascent Logged', {
+      track('Tick Logged', {
         boardLayout: boardDetails.layout_name || '',
+        status: getTickStatus(values.attempts),
       });
 
       form.resetFields();
       onClose();
     } catch (error) {
-      console.error('Failed to save ascent:', error);
-      track('Ascent Save Failed', {
+      console.error('Failed to save tick:', error);
+      track('Tick Save Failed', {
         boardLayout: boardDetails.layout_name || '',
       });
     } finally {
@@ -142,7 +147,7 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boar
       </Form.Item>
 
       <Form.Item name="quality" label="Quality" {...formItemLayout}>
-        <Rate allowClear={false} count={3} />
+        <Rate allowClear={false} count={5} />
       </Form.Item>
 
       <Form.Item name="difficulty" label="Difficulty" {...formItemLayout}>
