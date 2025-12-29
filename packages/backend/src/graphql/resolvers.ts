@@ -313,17 +313,24 @@ const resolvers = {
       const sessions = await roomManager.getUserSessions(ctx.userId);
 
       // Convert Session to DiscoverableSession format
-      return sessions.map((s) => ({
-        id: s.id,
-        name: s.name,
-        boardPath: s.boardPath,
-        latitude: s.latitude || 0,
-        longitude: s.longitude || 0,
-        createdAt: s.createdAt,
-        createdByUserId: s.createdByUserId,
-        participantCount: roomManager.getSessionClients(s.id).length,
-        distance: 0, // Not applicable for own sessions
-      }));
+      const result: DiscoverableSession[] = [];
+      for (const s of sessions) {
+        const participantCount = roomManager.getSessionClients(s.id).length;
+        const isActive = await roomManager.isSessionActive(s.id);
+        result.push({
+          id: s.id,
+          name: s.name,
+          boardPath: s.boardPath,
+          latitude: s.latitude || 0,
+          longitude: s.longitude || 0,
+          createdAt: s.createdAt,
+          createdByUserId: s.createdByUserId,
+          participantCount,
+          distance: 0, // Not applicable for own sessions
+          isActive,
+        });
+      }
+      return result;
     },
 
     // ============================================

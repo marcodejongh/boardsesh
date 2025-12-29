@@ -148,6 +148,7 @@ const createTestClimb = (): ClimbQueueItem => ({
     difficulty_error: '0.5',
     litUpHoldsMap: {},
     mirrored: false,
+    benchmark_difficulty: null,
   },
   addedBy: 'test-user',
   tickedBy: [],

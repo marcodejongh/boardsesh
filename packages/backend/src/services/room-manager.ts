@@ -43,6 +43,9 @@ class RoomManager {
   private redisStore: RedisSessionStore | null = null;
   private postgresWriteTimers: Map<string, NodeJS.Timeout> = new Map();
   private pendingWrites: Map<string, { queue: ClimbQueueItem[]; currentClimbQueueItem: ClimbQueueItem | null; version: number }> = new Map();
+  private readonly MAX_RETRY_ATTEMPTS = 3;
+  private readonly RETRY_BASE_DELAY = 1000; // 1 second
+  private writeRetryAttempts: Map<string, number> = new Map();
 
   /**
    * Reset all state (for testing purposes)
@@ -123,47 +126,73 @@ class RoomManager {
 
     // Create or get session in memory - with lazy restore
     if (!this.sessions.has(sessionId)) {
-      // Try to restore session from Redis first (hot cache)
-      let sessionExists = false;
       if (this.redisStore) {
-        const redisSession = await this.redisStore.getSession(sessionId);
-        if (redisSession) {
-          console.log(`[RoomManager] Restoring session ${sessionId} from Redis (inactive session)`);
-          sessionExists = true;
-          // Session exists in Redis - still "hot"
+        const lockKey = this.getSessionRestoreLockKey(sessionId);
+        const lockValue = uuidv4();
+        const lockTTL = 10; // 10 seconds
+
+        // Try to acquire lock
+        const lockAcquired = await this.redisStore.acquireLock(lockKey, lockValue, lockTTL);
+
+        if (lockAcquired) {
+          try {
+            // Double-check after acquiring lock (another instance might have initialized)
+            if (!this.sessions.has(sessionId)) {
+              // Try to restore session from Redis first (hot cache)
+              const redisSession = await this.redisStore.getSession(sessionId);
+              if (redisSession) {
+                console.log(`[RoomManager] Restoring session ${sessionId} from Redis (inactive session)`);
+              } else {
+                // Not in Redis, try Postgres (dormant session)
+                const pgSession = await this.getSessionById(sessionId);
+                if (pgSession && pgSession.status !== 'ended') {
+                  console.log(`[RoomManager] Restoring session ${sessionId} from Postgres (dormant session)`);
+                  const queueState = await this.getQueueState(sessionId);
+                  await this.redisStore.saveSession({
+                    sessionId: pgSession.id,
+                    boardPath: pgSession.boardPath,
+                    queue: queueState.queue,
+                    currentClimbQueueItem: queueState.currentClimbQueueItem,
+                    version: queueState.version,
+                    lastActivity: pgSession.lastActivity,
+                    discoverable: pgSession.discoverable,
+                    latitude: pgSession.latitude,
+                    longitude: pgSession.longitude,
+                    name: pgSession.name,
+                    createdByUserId: pgSession.createdByUserId,
+                    createdAt: pgSession.createdAt,
+                  });
+                } else {
+                  // Session doesn't exist in Redis or Postgres - this is a new session
+                  isNewSession = true;
+                  console.log(`[RoomManager] Creating new session ${sessionId} with ${initialQueue?.length || 0} initial queue items`);
+                }
+              }
+              this.sessions.set(sessionId, new Set());
+            }
+          } finally {
+            // Always release lock
+            await this.redisStore.releaseLock(lockKey, lockValue);
+          }
         } else {
-          // Not in Redis, try Postgres (dormant session)
-          const pgSession = await this.getSessionById(sessionId);
-          if (pgSession && pgSession.status !== 'ended') {
-            console.log(`[RoomManager] Restoring session ${sessionId} from Postgres (dormant session)`);
-            sessionExists = true;
-            // Load queue state and restore to Redis
-            const queueState = await this.getQueueState(sessionId);
-            await this.redisStore.saveSession({
-              sessionId: pgSession.id,
-              boardPath: pgSession.boardPath,
-              queue: queueState.queue,
-              currentClimbQueueItem: queueState.currentClimbQueueItem,
-              version: queueState.version,
-              lastActivity: pgSession.lastActivity,
-              discoverable: pgSession.discoverable,
-              latitude: pgSession.latitude,
-              longitude: pgSession.longitude,
-              name: pgSession.name,
-              createdByUserId: pgSession.createdByUserId,
-              createdAt: pgSession.createdAt,
-            });
+          // Lock not acquired, wait briefly for restoration to complete
+          console.log(`[RoomManager] Lock not acquired for session ${sessionId}, waiting...`);
+          await new Promise(resolve => setTimeout(resolve, 100));
+
+          // After waiting, session should exist if another instance initialized it
+          if (!this.sessions.has(sessionId)) {
+            this.sessions.set(sessionId, new Set());
           }
         }
+      } else {
+        // No Redis, check Postgres directly for session existence
+        const pgSession = await this.getSessionById(sessionId);
+        if (!pgSession || pgSession.status === 'ended') {
+          isNewSession = true;
+          console.log(`[RoomManager] Creating new session ${sessionId} with ${initialQueue?.length || 0} initial queue items`);
+        }
+        this.sessions.set(sessionId, new Set());
       }
-
-      // If session doesn't exist anywhere, this is a new session
-      if (!sessionExists) {
-        isNewSession = true;
-        console.log(`[RoomManager] Creating new session ${sessionId} with ${initialQueue?.length || 0} initial queue items`);
-      }
-
-      this.sessions.set(sessionId, new Set());
     }
     const sessionClientIds = this.sessions.get(sessionId)!;
 
@@ -301,6 +330,20 @@ class RoomManager {
   getSessionClients(sessionId: string): string[] {
     const session = this.sessions.get(sessionId);
     return session ? Array.from(session) : [];
+  }
+
+  /**
+   * Check if a session is active (has connected users OR exists in Redis within TTL)
+   */
+  async isSessionActive(sessionId: string): Promise<boolean> {
+    const participantCount = this.sessions.get(sessionId)?.size || 0;
+    if (participantCount > 0) {
+      return true;
+    }
+    if (this.redisStore) {
+      return this.redisStore.exists(sessionId);
+    }
+    return false;
   }
 
   async updateUsername(connectionId: string, username: string, avatarUrl?: string): Promise<void> {
@@ -610,6 +653,14 @@ class RoomManager {
       .sort((a: { distance: number }, b: { distance: number }) => a.distance - b.distance);
 
     // Get participant counts and active status for each session
+    const sessionIds = sessionsWithDistance.map(({ session }) => session.id);
+
+    // Batch check Redis existence to avoid N+1 queries
+    let redisExistsMap: Map<string, boolean> = new Map();
+    if (this.redisStore && sessionIds.length > 0) {
+      redisExistsMap = await this.redisStore.batchExists(sessionIds);
+    }
+
     const result: DiscoverableSession[] = [];
     for (const { session, distance } of sessionsWithDistance) {
       const participantCount = this.sessions.get(session.id)?.size || 0;
@@ -617,7 +668,7 @@ class RoomManager {
       // Session is active if it has connected users OR exists in Redis (within 4h TTL)
       let isActive = participantCount > 0;
       if (!isActive && this.redisStore) {
-        isActive = await this.redisStore.exists(session.id);
+        isActive = redisExistsMap.get(session.id) || false;
       }
 
       result.push({
@@ -722,6 +773,73 @@ class RoomManager {
   }
 
   /**
+   * Get the Redis lock key for session restoration.
+   */
+  private getSessionRestoreLockKey(sessionId: string): string {
+    return `boardsesh:lock:session:restore:${sessionId}`;
+  }
+
+  /**
+   * Calculate exponential backoff delay for retry attempts.
+   */
+  private calculateRetryDelay(attempt: number): number {
+    return Math.min(
+      this.RETRY_BASE_DELAY * Math.pow(2, attempt),
+      30000 // Max 30 seconds
+    );
+  }
+
+  /**
+   * Retry a failed Postgres write with exponential backoff.
+   */
+  private async retryPostgresWrite(
+    sessionId: string,
+    state: { queue: ClimbQueueItem[]; currentClimbQueueItem: ClimbQueueItem | null; version: number }
+  ): Promise<void> {
+    const attempts = this.writeRetryAttempts.get(sessionId) || 0;
+
+    if (attempts >= this.MAX_RETRY_ATTEMPTS) {
+      console.error(
+        `[RoomManager] Max retry attempts (${this.MAX_RETRY_ATTEMPTS}) reached for session ${sessionId}. ` +
+        `Data may be lost. Last state:`,
+        { queueLength: state.queue.length, version: state.version }
+      );
+      this.pendingWrites.delete(sessionId);
+      this.writeRetryAttempts.delete(sessionId);
+      return;
+    }
+
+    this.writeRetryAttempts.set(sessionId, attempts + 1);
+    const delay = this.calculateRetryDelay(attempts);
+
+    console.log(
+      `[RoomManager] Scheduling retry ${attempts + 1}/${this.MAX_RETRY_ATTEMPTS} ` +
+      `for session ${sessionId} in ${delay}ms`
+    );
+
+    const timer = setTimeout(async () => {
+      const currentState = this.pendingWrites.get(sessionId);
+      if (currentState) {
+        try {
+          await this.writeQueueStateToPostgres(sessionId, currentState);
+          this.pendingWrites.delete(sessionId);
+          this.writeRetryAttempts.delete(sessionId);
+          this.postgresWriteTimers.delete(sessionId);
+          console.log(`[RoomManager] Retry successful for session ${sessionId}`);
+        } catch (error) {
+          console.error(
+            `[RoomManager] Retry ${attempts + 1} failed for session ${sessionId}:`,
+            error
+          );
+          await this.retryPostgresWrite(sessionId, currentState);
+        }
+      }
+    }, delay);
+
+    this.postgresWriteTimers.set(sessionId, timer);
+  }
+
+  /**
    * Schedule a debounced write to Postgres for queue state (30 seconds).
    * Writes to Redis happen immediately, Postgres writes are batched.
    */
@@ -750,7 +868,12 @@ class RoomManager {
           this.postgresWriteTimers.delete(sessionId);
           console.log(`[RoomManager] Debounced Postgres write completed for session ${sessionId}`);
         } catch (error) {
-          console.error(`[RoomManager] Debounced Postgres write failed for session ${sessionId}:`, error);
+          console.error(
+            `[RoomManager] Debounced Postgres write failed for session ${sessionId}:`,
+            error
+          );
+          // Retry with exponential backoff instead of giving up
+          await this.retryPostgresWrite(sessionId, state);
         }
       }
     }, 30000); // 30 seconds
