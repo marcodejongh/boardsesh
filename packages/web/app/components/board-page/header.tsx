@@ -18,7 +18,7 @@ const SendClimbToBoardButton = dynamic(
 import { generateLayoutSlug, generateSizeSlug, generateSetSlug } from '@/app/lib/url-utils';
 import { ShareBoardButton } from './share-button';
 import { useQueueContext } from '../graphql-queue';
-import { UserOutlined, LogoutOutlined, LoginOutlined, PlusOutlined, MoreOutlined, SettingOutlined } from '@ant-design/icons';
+import { UserOutlined, LogoutOutlined, LoginOutlined, PlusOutlined, MoreOutlined, SettingOutlined, LineChartOutlined } from '@ant-design/icons';
 import AngleSelector from './angle-selector';
 import Logo from '../brand/logo';
 import styles from './header.module.css';
@@ -39,6 +39,11 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
   };
 
   const userMenuItems: MenuProps['items'] = [
+    {
+      key: 'profile',
+      icon: <LineChartOutlined />,
+      label: <Link href={`/crusher/${session?.user?.id}`}>Profile</Link>,
+    },
     {
       key: 'settings',
       icon: <SettingOutlined />,
@@ -66,6 +71,11 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
       label: <Link href={createClimbUrl}>Create Climb</Link>,
     }] : []),
     ...(session?.user ? [
+      {
+        key: 'profile',
+        icon: <LineChartOutlined />,
+        label: <Link href={`/crusher/${session.user.id}`}>Profile</Link>,
+      },
       {
         key: 'settings',
         icon: <SettingOutlined />,

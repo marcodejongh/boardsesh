@@ -1,0 +1,139 @@
+.layout {
+  min-height: 100vh;
+  background: #f5f5f5;
+}
+
+.header {
+  background: #fff;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  height: 64px;
+}
+
+.headerTitle {
+  margin: 0 !important;
+  flex: 1;
+}
+
+.content {
+  padding: 24px;
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.loadingContent {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.profileCard {
+  margin-bottom: 24px;
+}
+
+.profileInfo {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.profileDetails {
+  display: flex;
+  flex-direction: column;
+}
+
+.displayName {
+  margin: 0 !important;
+}
+
+.statsCard {
+  margin-bottom: 24px;
+}
+
+.boardSelector {
+  margin-bottom: 16px;
+}
+
+.timeframeSelector {
+  margin-bottom: 16px;
+}
+
+.customDateRange {
+  margin-bottom: 16px;
+}
+
+.loadingStats {
+  display: flex;
+  justify-content: center;
+  padding: 48px 0;
+}
+
+.chartsContainer {
+  margin-top: 24px;
+}
+
+.chartWrapper {
+  height: 400px;
+  margin-bottom: 24px;
+}
+
+.bottomChartsRow {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.barChartWrapper {
+  flex: 1;
+  min-width: 280px;
+  height: 300px;
+}
+
+.pieChartWrapper {
+  flex: 0 0 280px;
+  height: 300px;
+}
+
+@media (max-width: 768px) {
+  .content {
+    padding: 16px;
+  }
+
+  .header {
+    padding: 0 12px;
+    gap: 8px;
+  }
+
+  .profileInfo {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .profileDetails {
+    align-items: center;
+  }
+
+  .bottomChartsRow {
+    flex-direction: column;
+  }
+
+  .barChartWrapper,
+  .pieChartWrapper {
+    width: 100%;
+    flex: none;
+  }
+
+  .chartWrapper {
+    height: 300px;
+  }
+
+  .barChartWrapper,
+  .pieChartWrapper {
+    height: 250px;
+  }
+}
