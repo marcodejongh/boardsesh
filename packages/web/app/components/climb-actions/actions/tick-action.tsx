@@ -47,7 +47,6 @@ export function TickAction({
 
   const boardName = boardDetails.board_name;
   const boardNameCapitalized = boardName.charAt(0).toUpperCase() + boardName.slice(1);
-  const userId = String(user_id || '');
 
   const handleClick = useCallback((e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -113,8 +112,6 @@ export function TickAction({
           closeDrawer={closeDrawer}
           currentClimb={climb}
           boardDetails={boardDetails}
-          boardName={boardName}
-          userId={userId}
         />
       ) : (
         <Drawer

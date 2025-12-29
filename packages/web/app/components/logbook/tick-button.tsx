@@ -18,7 +18,7 @@ interface TickButtonProps {
 
 export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boardDetails }) => {
   const router = useRouter();
-  const { logbook, isAuthenticated, hasAuroraCredentials, user_id } = useBoardProvider();
+  const { logbook, isAuthenticated, hasAuroraCredentials } = useBoardProvider();
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
 
@@ -37,7 +37,6 @@ export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boa
 
   const boardName = boardDetails.board_name;
   const boardNameCapitalized = boardName.charAt(0).toUpperCase() + boardName.slice(1);
-  const userId = String(user_id || '');
 
   const renderDrawerContent = () => {
     if (!isAuthenticated) {
@@ -88,8 +87,6 @@ export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boa
           closeDrawer={closeDrawer}
           currentClimb={currentClimb}
           boardDetails={boardDetails}
-          boardName={boardName}
-          userId={userId}
         />
       ) : (
         <Drawer

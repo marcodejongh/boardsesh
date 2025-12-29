@@ -36,7 +36,7 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails, onClimbNavigate }) 
     removeFromQueue,
   } = useQueueContext();
 
-  const { isAuthenticated, hasAuroraCredentials, user_id } = useBoardProvider();
+  const { isAuthenticated, hasAuroraCredentials } = useBoardProvider();
 
   // Tick drawer state
   const [tickDrawerVisible, setTickDrawerVisible] = useState(false);
@@ -55,7 +55,6 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails, onClimbNavigate }) 
 
   const boardName = boardDetails.board_name;
   const boardNameCapitalized = boardName.charAt(0).toUpperCase() + boardName.slice(1);
-  const userId = String(user_id || '');
 
   // Monitor for drag-and-drop events
   useEffect(() => {
@@ -163,8 +162,6 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails, onClimbNavigate }) 
           closeDrawer={closeTickDrawer}
           currentClimb={tickClimb}
           boardDetails={boardDetails}
-          boardName={boardName}
-          userId={userId}
         />
       ) : (
         <Drawer
