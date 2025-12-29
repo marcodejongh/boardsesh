@@ -4,7 +4,63 @@
 export const typeDefs = /* GraphQL */ `
   scalar JSON
 
+  # ClimbStats contains mutable statistics that can change over time
+  # These should be fetched separately from the immutable climb data
+  type ClimbStats {
+    climbUuid: ID!
+    angle: Int!
+    ascensionist_count: Int!
+    difficulty: String!
+    quality_average: String!
+    stars: Float!
+    difficulty_error: String!
+    benchmark_difficulty: String
+  }
+
+  # Input type for ClimbStats (used in queue sync)
+  input ClimbStatsInput {
+    climbUuid: ID!
+    angle: Int!
+    ascensionist_count: Int!
+    difficulty: String!
+    quality_average: String!
+    stars: Float!
+    difficulty_error: String!
+    benchmark_difficulty: String
+  }
+
+  # Climb contains immutable data that never changes after creation
+  # Stats are fetched separately via the climbStats query
   type Climb {
+    uuid: ID!
+    setter_username: String!
+    name: String!
+    description: String!
+    frames: String!
+    angle: Int!
+    litUpHoldsMap: JSON!
+    mirrored: Boolean
+    # User-specific fields (require auth)
+    userAscents: Int
+    userAttempts: Int
+  }
+
+  input ClimbInput {
+    uuid: ID!
+    setter_username: String!
+    name: String!
+    description: String!
+    frames: String!
+    angle: Int!
+    litUpHoldsMap: JSON!
+    mirrored: Boolean
+    userAscents: Int
+    userAttempts: Int
+  }
+
+  # ClimbWithStats combines climb data with stats for convenience
+  # Used in queue items where we need both together
+  type ClimbWithStats {
     uuid: ID!
     setter_username: String!
     name: String!
@@ -23,7 +79,7 @@ export const typeDefs = /* GraphQL */ `
     userAttempts: Int
   }
 
-  input ClimbInput {
+  input ClimbWithStatsInput {
     uuid: ID!
     setter_username: String!
     name: String!
@@ -56,7 +112,7 @@ export const typeDefs = /* GraphQL */ `
 
   type ClimbQueueItem {
     uuid: ID!
-    climb: Climb!
+    climb: ClimbWithStats!
     addedBy: String
     addedByUser: QueueItemUser
     tickedBy: [String!]
@@ -65,7 +121,7 @@ export const typeDefs = /* GraphQL */ `
 
   input ClimbQueueItemInput {
     uuid: ID!
-    climb: ClimbInput!
+    climb: ClimbWithStatsInput!
     addedBy: String
     addedByUser: QueueItemUserInput
     tickedBy: [String!]
@@ -160,7 +216,7 @@ export const typeDefs = /* GraphQL */ `
   }
 
   type ClimbSearchResult {
-    climbs: [Climb!]!
+    climbs: [ClimbWithStats!]!
     totalCount: Int!
     hasMore: Boolean!
   }
@@ -239,7 +295,7 @@ export const typeDefs = /* GraphQL */ `
 
     # Search climbs with filtering and pagination
     searchClimbs(input: ClimbSearchInput!): ClimbSearchResult!
-    # Get a single climb by UUID
+    # Get a single climb by UUID (includes stats)
     climb(
       boardName: String!
       layoutId: Int!
@@ -247,7 +303,14 @@ export const typeDefs = /* GraphQL */ `
       setIds: String!
       angle: Int!
       climbUuid: ID!
-    ): Climb
+    ): ClimbWithStats
+    # Batch fetch stats for multiple climbs - returns stats keyed by climbUuid
+    # Can be fetched more frequently than immutable climb data
+    climbStats(
+      boardName: String!
+      angle: Int!
+      climbUuids: [ID!]!
+    ): [ClimbStats!]!
 
     # ============================================
     # User Management Queries (require auth)

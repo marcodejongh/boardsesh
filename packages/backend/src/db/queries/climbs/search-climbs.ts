@@ -3,7 +3,7 @@ import { db } from '../../client.js';
 import { getBoardTables, type BoardName } from '../util/table-select.js';
 import { createClimbFilters, type ClimbSearchParams, type ParsedBoardRouteParameters } from './create-climb-filters.js';
 import { getSizeEdges } from '../util/product-sizes-data.js';
-import type { Climb, ClimbSearchResult, LitUpHoldsMap, HoldState } from '@boardsesh/shared-schema';
+import type { ClimbWithStats, ClimbSearchResult, LitUpHoldsMap, HoldState } from '@boardsesh/shared-schema';
 
 // Hold state mapping for converting frames string to lit up holds map
 type HoldColor = string;
@@ -158,8 +158,8 @@ export const searchClimbs = async (
     // Only return up to pageSize results
     const trimmedResults = hasMore ? results.slice(0, pageSize) : results;
 
-    // Transform the results into the complete Climb type
-    const climbs: Climb[] = trimmedResults.map((result) => ({
+    // Transform the results into the complete ClimbWithStats type
+    const climbs: ClimbWithStats[] = trimmedResults.map((result) => ({
       uuid: result.uuid,
       setter_username: result.setter_username || '',
       name: result.name || '',

@@ -1,7 +1,7 @@
 import { sql } from 'drizzle-orm';
 import { db } from '../../client.js';
 import { getBoardTables, type BoardName } from '../util/table-select.js';
-import type { Climb, LitUpHoldsMap, HoldState } from '@boardsesh/shared-schema';
+import type { ClimbWithStats, LitUpHoldsMap, HoldState } from '@boardsesh/shared-schema';
 
 // Hold state mapping for converting frames string to lit up holds map
 type HoldColor = string;
@@ -83,7 +83,7 @@ interface GetClimbParams {
   climb_uuid: string;
 }
 
-export const getClimbByUuid = async (params: GetClimbParams): Promise<Climb | null> => {
+export const getClimbByUuid = async (params: GetClimbParams): Promise<ClimbWithStats | null> => {
   const tables = getBoardTables(params.board_name);
 
   try {
@@ -123,8 +123,8 @@ export const getClimbByUuid = async (params: GetClimbParams): Promise<Climb | nu
 
     const row = result[0];
 
-    // Transform the result into the complete Climb type
-    const climb: Climb = {
+    // Transform the result into the complete ClimbWithStats type
+    const climb: ClimbWithStats = {
       uuid: row.uuid,
       setter_username: row.setter_username || '',
       name: row.name || '',

@@ -8,7 +8,40 @@ export type HoldState = 'OFF' | 'STARTING' | 'FINISH' | 'HAND' | 'FOOT' | 'ANY' 
 export type LitupHold = { state: HoldState; color: string; displayColor: string };
 export type LitUpHoldsMap = Record<number, LitupHold>;
 
+// ClimbStats contains mutable statistics that can change over time
+// These should be fetched separately from the immutable climb data
+export type ClimbStats = {
+  climbUuid: string;
+  angle: number;
+  ascensionist_count: number;
+  difficulty: string;
+  quality_average: string;
+  stars: number;
+  difficulty_error: string;
+  benchmark_difficulty: string | null;
+};
+
+// Input type for ClimbStats (used in queue sync)
+export type ClimbStatsInput = ClimbStats;
+
+// Climb contains immutable data that never changes after creation
+// Stats are fetched separately via the climbStats query
 export type Climb = {
+  uuid: string;
+  setter_username: string;
+  name: string;
+  description: string;
+  frames: string;
+  angle: number;
+  litUpHoldsMap: LitUpHoldsMap;
+  mirrored?: boolean | null; // GraphQL nullable Boolean
+  userAscents?: number | null; // GraphQL nullable Int
+  userAttempts?: number | null; // GraphQL nullable Int
+};
+
+// ClimbWithStats combines climb data with stats for convenience
+// Used in search results, single climb fetch, and queue items
+export type ClimbWithStats = {
   uuid: string;
   setter_username: string;
   name: string;
@@ -21,27 +54,14 @@ export type Climb = {
   stars: number;
   difficulty_error: string;
   litUpHoldsMap: LitUpHoldsMap;
-  mirrored?: boolean | null; // GraphQL nullable Boolean
+  mirrored?: boolean | null;
   benchmark_difficulty: string | null;
-  userAscents?: number | null; // GraphQL nullable Int
-  userAttempts?: number | null; // GraphQL nullable Int
+  userAscents?: number | null;
+  userAttempts?: number | null;
 };
 
-export type QueueItemUser = {
-  id: string;
-  username: string;
-  avatarUrl?: string | null; // GraphQL nullable String
-};
-
-// Input type for QueueItemUser (matches GraphQL QueueItemUserInput)
-export type QueueItemUserInput = {
-  id: string;
-  username: string;
-  avatarUrl?: string | null;
-};
-
-// Input type for Climb (matches GraphQL ClimbInput)
-export type ClimbInput = {
+// Input type for ClimbWithStats (matches GraphQL ClimbWithStatsInput)
+export type ClimbWithStatsInput = {
   uuid: string;
   setter_username: string;
   name: string;
@@ -60,9 +80,37 @@ export type ClimbInput = {
   userAttempts?: number | null;
 };
 
+export type QueueItemUser = {
+  id: string;
+  username: string;
+  avatarUrl?: string | null; // GraphQL nullable String
+};
+
+// Input type for QueueItemUser (matches GraphQL QueueItemUserInput)
+export type QueueItemUserInput = {
+  id: string;
+  username: string;
+  avatarUrl?: string | null;
+};
+
+// Input type for Climb (matches GraphQL ClimbInput - immutable data only)
+export type ClimbInput = {
+  uuid: string;
+  setter_username: string;
+  name: string;
+  description: string;
+  frames: string;
+  angle: number;
+  litUpHoldsMap: LitUpHoldsMap;
+  mirrored?: boolean | null;
+  userAscents?: number | null;
+  userAttempts?: number | null;
+};
+
+// ClimbQueueItem uses ClimbWithStats since queue items need full data
 export type ClimbQueueItem = {
   uuid: string;
-  climb: Climb;
+  climb: ClimbWithStats;
   addedBy?: UserId;
   addedByUser?: QueueItemUser;
   tickedBy?: UserId[];
@@ -72,7 +120,7 @@ export type ClimbQueueItem = {
 // Input type for ClimbQueueItem (matches GraphQL ClimbQueueItemInput)
 export type ClimbQueueItemInput = {
   uuid: string;
-  climb: ClimbInput;
+  climb: ClimbWithStatsInput;
   addedBy?: string | null;
   addedByUser?: QueueItemUserInput | null;
   tickedBy?: string[] | null;
@@ -138,7 +186,7 @@ export type ClimbSearchInput = {
 };
 
 export type ClimbSearchResult = {
-  climbs: Climb[];
+  climbs: ClimbWithStats[];
   totalCount: number;
   hasMore: boolean;
 };

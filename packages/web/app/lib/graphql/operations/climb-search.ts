@@ -1,8 +1,9 @@
 import { gql } from 'graphql-request';
-import type { Climb } from '@/app/lib/types';
+import type { Climb, ClimbStats } from '@/app/lib/types';
 
-// Fragment for climb fields
-const CLIMB_FIELDS = `
+// Fragment for climb fields (ClimbWithStats in GraphQL schema)
+// This includes both immutable climb data and mutable stats
+const CLIMB_WITH_STATS_FIELDS = `
   uuid
   setter_username
   name
@@ -21,11 +22,24 @@ const CLIMB_FIELDS = `
   userAttempts
 `;
 
+// Fragment for stats-only fields
+// Use this when fetching stats separately from immutable climb data
+const CLIMB_STATS_FIELDS = `
+  climbUuid
+  angle
+  ascensionist_count
+  difficulty
+  quality_average
+  stars
+  difficulty_error
+  benchmark_difficulty
+`;
+
 export const SEARCH_CLIMBS = gql`
   query SearchClimbs($input: ClimbSearchInput!) {
     searchClimbs(input: $input) {
       climbs {
-        ${CLIMB_FIELDS}
+        ${CLIMB_WITH_STATS_FIELDS}
       }
       totalCount
       hasMore
@@ -50,7 +64,25 @@ export const GET_CLIMB = gql`
       angle: $angle
       climbUuid: $climbUuid
     ) {
-      ${CLIMB_FIELDS}
+      ${CLIMB_WITH_STATS_FIELDS}
+    }
+  }
+`;
+
+// Query to fetch stats for multiple climbs
+// Use this for refreshing stats independently of immutable climb data
+export const GET_CLIMB_STATS = gql`
+  query GetClimbStats(
+    $boardName: String!
+    $angle: Int!
+    $climbUuids: [ID!]!
+  ) {
+    climbStats(
+      boardName: $boardName
+      angle: $angle
+      climbUuids: $climbUuids
+    ) {
+      ${CLIMB_STATS_FIELDS}
     }
   }
 `;
@@ -87,4 +119,16 @@ export interface ClimbSearchResponse {
     totalCount: number;
     hasMore: boolean;
   };
+}
+
+// Type for climb stats query variables
+export interface ClimbStatsInputVariables {
+  boardName: string;
+  angle: number;
+  climbUuids: string[];
+}
+
+// Type for climb stats query response
+export interface ClimbStatsResponse {
+  climbStats: ClimbStats[];
 }

@@ -1,6 +1,21 @@
 import { HoldRenderData, LitUpHoldsMap } from '../components/board-renderer/types';
 import { SetIdList } from './board-data';
 
+// ClimbStats contains mutable statistics that can change over time
+// These should be fetched separately from the immutable climb data
+export type ClimbStats = {
+  climbUuid: string;
+  angle: number;
+  ascensionist_count: number;
+  difficulty: string;
+  quality_average: string;
+  stars: number;
+  difficulty_error: string;
+  benchmark_difficulty: string | null;
+};
+
+// Climb is the full climb object with stats included (ClimbWithStats in GraphQL)
+// This is what the UI uses for display
 export type Climb = {
   uuid: string;
   setter_username: string;

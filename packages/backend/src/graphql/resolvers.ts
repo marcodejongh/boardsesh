@@ -9,7 +9,7 @@ import { updateContext, getContext } from './context.js';
 import { checkRateLimit } from '../utils/rate-limiter.js';
 import { encrypt } from '../utils/encryption.js';
 import { db } from '../db/client.js';
-import { searchClimbs as searchClimbsQuery, countClimbs, getClimbByUuid } from '../db/queries/climbs/index.js';
+import { searchClimbs as searchClimbsQuery, countClimbs, getClimbByUuid, getClimbStats } from '../db/queries/climbs/index.js';
 import { getSizeEdges, type SizeEdges } from '../db/queries/util/product-sizes-data.js';
 import { isValidBoardName } from '../db/queries/util/table-select.js';
 
@@ -47,7 +47,8 @@ import type {
   Grade,
   Angle,
   ClimbSearchInput,
-  Climb,
+  ClimbWithStats,
+  ClimbStats,
   UserProfile,
   AuroraCredentialStatus,
   ToggleFavoriteInput,
@@ -63,7 +64,7 @@ type ClimbSearchContext = {
   sizeEdges: SizeEdges;
   userId: number | undefined;
   // Cached results to avoid duplicate queries when multiple fields are requested
-  _cachedClimbs?: Climb[];
+  _cachedClimbs?: ClimbWithStats[];
   _cachedHasMore?: boolean;
   _cachedTotalCount?: number;
 };
@@ -457,6 +458,47 @@ const resolvers = {
       });
 
       return climb;
+    },
+
+    // Batch fetch stats for multiple climbs
+    // This enables efficient caching: climbs are immutable and can be cached for long periods,
+    // while stats (which change over time) can be fetched separately with shorter cache times
+    climbStats: async (
+      _: unknown,
+      { boardName, angle, climbUuids }: {
+        boardName: string;
+        angle: number;
+        climbUuids: string[];
+      }
+    ): Promise<ClimbStats[]> => {
+      // Validate board name
+      validateInput(BoardNameSchema, boardName, 'boardName');
+
+      if (!isValidBoardName(boardName)) {
+        throw new Error(`Invalid board name: ${boardName}. Must be 'kilter' or 'tension'`);
+      }
+
+      // Validate angle
+      if (angle < 0 || angle > 90) throw new Error('Invalid angle: must be between 0 and 90');
+
+      // Validate UUIDs (limit batch size to prevent abuse)
+      if (climbUuids.length > 100) {
+        throw new Error('Too many UUIDs: maximum 100 allowed per request');
+      }
+
+      for (const uuid of climbUuids) {
+        validateInput(ExternalUUIDSchema, uuid, 'climbUuid');
+      }
+
+      if (DEBUG) console.log('[climbStats] Fetching stats for:', { boardName, angle, count: climbUuids.length });
+
+      const stats = await getClimbStats({
+        board_name: boardName as 'kilter' | 'tension',
+        angle,
+        climb_uuids: climbUuids,
+      });
+
+      return stats;
     },
 
     // ============================================
