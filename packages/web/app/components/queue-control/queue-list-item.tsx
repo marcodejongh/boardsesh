@@ -122,7 +122,7 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
   }, [index, item.uuid]);
 
   return (
-    <div ref={itemRef}>
+    <div ref={itemRef} data-testid="queue-item">
       <div
         style={{
           display: 'flex',

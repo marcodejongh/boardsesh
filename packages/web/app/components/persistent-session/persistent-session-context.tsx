@@ -103,6 +103,19 @@ export interface PersistentSessionContextType {
   currentClimbQueueItem: LocalClimbQueueItem | null;
   queue: LocalClimbQueueItem[];
 
+  // Local queue state (persists without WebSocket session)
+  localQueue: LocalClimbQueueItem[];
+  localCurrentClimbQueueItem: LocalClimbQueueItem | null;
+  localBoardPath: string | null;
+  localBoardDetails: BoardDetails | null;
+  setLocalQueueState: (
+    queue: LocalClimbQueueItem[],
+    currentItem: LocalClimbQueueItem | null,
+    boardPath: string,
+    boardDetails: BoardDetails,
+  ) => void;
+  clearLocalQueue: () => void;
+
   // Session lifecycle
   activateSession: (info: ActiveSessionInfo) => void;
   deactivateSession: () => void;
@@ -157,6 +170,12 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
   // Queue state synced from backend
   const [currentClimbQueueItem, setCurrentClimbQueueItem] = useState<LocalClimbQueueItem | null>(null);
   const [queue, setQueueState] = useState<LocalClimbQueueItem[]>([]);
+
+  // Local queue state (persists without WebSocket session)
+  const [localQueue, setLocalQueue] = useState<LocalClimbQueueItem[]>([]);
+  const [localCurrentClimbQueueItem, setLocalCurrentClimbQueueItem] = useState<LocalClimbQueueItem | null>(null);
+  const [localBoardPath, setLocalBoardPath] = useState<string | null>(null);
+  const [localBoardDetails, setLocalBoardDetails] = useState<BoardDetails | null>(null);
 
   // Refs for cleanup and callbacks
   const queueUnsubscribeRef = useRef<(() => void) | null>(null);
@@ -496,6 +515,33 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
     setCurrentClimbQueueItem(null);
   }, []);
 
+  // Local queue management functions
+  const setLocalQueueState = useCallback(
+    (
+      newQueue: LocalClimbQueueItem[],
+      newCurrentItem: LocalClimbQueueItem | null,
+      boardPath: string,
+      boardDetails: BoardDetails,
+    ) => {
+      // Don't store local queue if party mode is active
+      if (activeSession) return;
+
+      setLocalQueue(newQueue);
+      setLocalCurrentClimbQueueItem(newCurrentItem);
+      setLocalBoardPath(boardPath);
+      setLocalBoardDetails(boardDetails);
+    },
+    [activeSession],
+  );
+
+  const clearLocalQueue = useCallback(() => {
+    if (DEBUG) console.log('[PersistentSession] Clearing local queue');
+    setLocalQueue([]);
+    setLocalCurrentClimbQueueItem(null);
+    setLocalBoardPath(null);
+    setLocalBoardDetails(null);
+  }, []);
+
   // Mutation functions
   const addQueueItem = useCallback(
     async (item: LocalClimbQueueItem, position?: number) => {
@@ -585,6 +631,12 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
       users: session?.users ?? [],
       currentClimbQueueItem,
       queue,
+      localQueue,
+      localCurrentClimbQueueItem,
+      localBoardPath,
+      localBoardDetails,
+      setLocalQueueState,
+      clearLocalQueue,
       activateSession,
       deactivateSession,
       addQueueItem,
@@ -603,6 +655,12 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
       error,
       currentClimbQueueItem,
       queue,
+      localQueue,
+      localCurrentClimbQueueItem,
+      localBoardPath,
+      localBoardDetails,
+      setLocalQueueState,
+      clearLocalQueue,
       activateSession,
       deactivateSession,
       addQueueItem,

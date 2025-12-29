@@ -49,28 +49,30 @@ const ClimbCard = React.memo(
     );
 
     return (
-      <Card
-        title={cardTitle}
-        size="small"
-        style={{
-          borderColor: selected ? themeTokens.colors.primary : undefined,
-        }}
-        styles={{
-          header: { paddingTop: 8, paddingBottom: 6 },
-          body: {
-            padding: 6,
-            backgroundColor: selected ? themeTokens.semantic.selectedLight : undefined,
-          },
-        }}
-        actions={actions || (climb ? ClimbActions.asCardActions({
-          climb,
-          boardDetails,
-          angle: climb.angle,
-          exclude: ['tick', 'openInApp', 'mirror', 'share', 'addToList'],
-        }) : [])}
-      >
-        {cover}
-      </Card>
+      <div data-testid="climb-card">
+        <Card
+          title={cardTitle}
+          size="small"
+          style={{
+            borderColor: selected ? themeTokens.colors.primary : undefined,
+          }}
+          styles={{
+            header: { paddingTop: 8, paddingBottom: 6 },
+            body: {
+              padding: 6,
+              backgroundColor: selected ? themeTokens.semantic.selectedLight : undefined,
+            },
+          }}
+          actions={actions || (climb ? ClimbActions.asCardActions({
+            climb,
+            boardDetails,
+            angle: climb.angle,
+            exclude: ['tick', 'openInApp', 'mirror', 'share', 'addToList'],
+          }) : [])}
+        >
+          {cover}
+        </Card>
+      </div>
     );
   },
   (prevProps, nextProps) => {

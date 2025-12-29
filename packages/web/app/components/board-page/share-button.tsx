@@ -13,9 +13,10 @@ import {
 } from '@ant-design/icons';
 import { Button, Input, Drawer, QRCode, Flex, message, Typography, Badge, Switch, Tabs, Space } from 'antd';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { signIn, useSession } from 'next-auth/react';
+import { useSession } from 'next-auth/react';
 import { useQueueContext } from '../graphql-queue';
 import { themeTokens } from '@/app/theme/theme-config';
+import AuthModal from '../auth/auth-modal';
 
 const { Text } = Typography;
 
@@ -52,6 +53,7 @@ export const ShareBoardButton = () => {
   const [isStartingSession, setIsStartingSession] = useState(false);
   const [joinSessionId, setJoinSessionId] = useState('');
   const [discoverable, setDiscoverable] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   const isLoggedIn = authStatus === 'authenticated';
 
@@ -82,7 +84,7 @@ export const ShareBoardButton = () => {
 
   const handleStartSession = async () => {
     if (!isLoggedIn) {
-      signIn();
+      setShowAuthModal(true);
       return;
     }
 
@@ -209,7 +211,7 @@ export const ShareBoardButton = () => {
                               }}
                             >
                               <Text>Sign in to start a party session</Text>
-                              <Button type="primary" size="small" icon={<LoginOutlined />} onClick={() => signIn()}>
+                              <Button type="primary" size="small" icon={<LoginOutlined />} onClick={() => setShowAuthModal(true)}>
                                 Sign in
                               </Button>
                             </Flex>
@@ -378,7 +380,7 @@ export const ShareBoardButton = () => {
                       <Text type="secondary" style={{ fontSize: '13px' }}>
                         Sign in to customize your username
                       </Text>
-                      <Button type="link" size="small" icon={<LoginOutlined />} onClick={() => signIn()}>
+                      <Button type="link" size="small" icon={<LoginOutlined />} onClick={() => setShowAuthModal(true)}>
                         Sign in
                       </Button>
                     </Flex>
@@ -407,6 +409,13 @@ export const ShareBoardButton = () => {
           )}
         </Flex>
       </Drawer>
+
+      <AuthModal
+        open={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        title="Sign in to start party mode"
+        description="Create an account or sign in to start a party session and climb with others."
+      />
     </>
   );
 };

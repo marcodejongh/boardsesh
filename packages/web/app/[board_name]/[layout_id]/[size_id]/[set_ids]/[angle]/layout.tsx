@@ -136,7 +136,7 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
     <Layout style={{ height: '100dvh', display: 'flex', flexDirection: 'column', padding: 0 }}>
       <BoardSessionBridge boardDetails={boardDetails} parsedParams={parsedParams}>
         <ConnectionSettingsProvider>
-          <GraphQLQueueProvider parsedParams={parsedParams}>
+          <GraphQLQueueProvider parsedParams={parsedParams} boardDetails={boardDetails}>
             <PartyProvider>
               <BoardSeshHeader boardDetails={boardDetails} angle={angle} />
 

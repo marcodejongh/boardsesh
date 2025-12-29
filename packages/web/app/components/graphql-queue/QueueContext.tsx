@@ -7,7 +7,7 @@ import { useQueueReducer } from '../queue-control/reducer';
 import { useQueueDataFetching } from '../queue-control/hooks/use-queue-data-fetching';
 import { QueueContextType, ClimbQueueItem, UserName, QueueItemUser } from '../queue-control/types';
 import { urlParamsToSearchParams, searchParamsToUrlParams } from '@/app/lib/url-utils';
-import { Climb, ParsedBoardRouteParameters } from '@/app/lib/types';
+import { Climb, ParsedBoardRouteParameters, BoardDetails } from '@/app/lib/types';
 import { useConnectionSettings } from '../connection-manager/connection-settings-context';
 import { usePartyProfile } from '../party-manager/party-profile-context';
 import { ClientQueueEvent } from '@boardsesh/shared-schema';
@@ -26,6 +26,7 @@ export interface GraphQLQueueContextType extends QueueContextType {
 
 type GraphQLQueueContextProps = {
   parsedParams: ParsedBoardRouteParameters;
+  boardDetails: BoardDetails;
   children: ReactNode;
 };
 
@@ -45,7 +46,7 @@ const createClimbQueueItem = (
 const QueueContext = createContext<GraphQLQueueContextType | undefined>(undefined);
 
 
-export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueContextProps) => {
+export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: GraphQLQueueContextProps) => {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -103,6 +104,78 @@ export const GraphQLQueueProvider = ({ parsedParams, children }: GraphQLQueueCon
       avatarUrl: avatarUrl,
     };
   }, [profile?.id, username, avatarUrl]);
+
+  // Initialize queue state from persistent session when remounting
+  // This handles the case where we navigate away and back - the persistent session
+  // already has the queue data, but the reducer was reinitialized with empty state
+  useEffect(() => {
+    if (isPersistentSessionActive && persistentSession.hasConnected) {
+      // Sync initial state from persistent session when remounting
+      if (persistentSession.queue.length > 0 || persistentSession.currentClimbQueueItem) {
+        dispatch({
+          type: 'INITIAL_QUEUE_DATA',
+          payload: {
+            queue: persistentSession.queue,
+            currentClimbQueueItem: persistentSession.currentClimbQueueItem,
+          },
+        });
+      }
+    }
+  // Only run on mount and when session becomes active - not on every queue change
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPersistentSessionActive, persistentSession.hasConnected]);
+
+  // Initialize queue state from local queue when remounting (non-party mode)
+  // This handles the case where we navigate away and back without party mode
+  useEffect(() => {
+    // Only run when NOT in party mode
+    if (isPersistentSessionActive || sessionId) return;
+
+    // Check if we have saved local queue for this board path
+    if (
+      persistentSession.localBoardPath === pathname &&
+      (persistentSession.localQueue.length > 0 || persistentSession.localCurrentClimbQueueItem)
+    ) {
+      dispatch({
+        type: 'INITIAL_QUEUE_DATA',
+        payload: {
+          queue: persistentSession.localQueue,
+          currentClimbQueueItem: persistentSession.localCurrentClimbQueueItem,
+        },
+      });
+    }
+  // Only run on mount - not on every queue change
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Clear local queue if navigating to a different board configuration
+  useEffect(() => {
+    if (persistentSession.localBoardPath && persistentSession.localBoardPath !== pathname) {
+      persistentSession.clearLocalQueue();
+    }
+  }, [pathname, persistentSession]);
+
+  // Sync queue changes to local queue when not in party mode
+  useEffect(() => {
+    // Only sync when NOT in party mode
+    if (isPersistentSessionActive || sessionId) return;
+
+    // Sync queue state to persistent session for local storage
+    persistentSession.setLocalQueueState(
+      state.queue,
+      state.currentClimbQueueItem,
+      pathname,
+      boardDetails,
+    );
+  }, [
+    state.queue,
+    state.currentClimbQueueItem,
+    pathname,
+    boardDetails,
+    isPersistentSessionActive,
+    sessionId,
+    persistentSession,
+  ]);
 
   // Subscribe to queue events from persistent session
   // Note: Initial sync is handled by the FullSync event sent by persistent-session-context on join
