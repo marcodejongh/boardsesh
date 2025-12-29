@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import {
   Layout,
   Card,
@@ -10,7 +11,6 @@ import {
   Segmented,
   Empty,
   Space,
-  Button,
   DatePicker,
 } from 'antd';
 import { UserOutlined } from '@ant-design/icons';
@@ -18,25 +18,22 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Logo from '@/app/components/brand/logo';
 import BackButton from '@/app/components/back-button';
-import { Bar, Pie } from 'react-chartjs-2';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title as ChartTitle,
-  Tooltip,
-  Legend,
-  ArcElement,
-  TooltipItem,
-} from 'chart.js';
 import dayjs from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
 import styles from './profile-page.module.css';
+import type { ChartData } from './profile-stats-charts';
 
 dayjs.extend(isoWeek);
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, ChartTitle, Tooltip, Legend, ArcElement);
+// Lazy load Chart.js components to reduce initial bundle size
+const ProfileStatsCharts = dynamic(() => import('./profile-stats-charts'), {
+  ssr: false,
+  loading: () => (
+    <div className={styles.loadingStats}>
+      <Spin />
+    </div>
+  ),
+});
 
 const { Content, Header } = Layout;
 const { Title, Text } = Typography;
@@ -63,15 +60,6 @@ interface LogbookEntry {
   difficulty: number;
   tries: number;
   angle: number;
-}
-
-interface ChartData {
-  labels: string[];
-  datasets: {
-    label: string;
-    data: number[];
-    backgroundColor: string | string[];
-  }[];
 }
 
 const difficultyMapping: Record<number, string> = {
@@ -128,75 +116,21 @@ const gradeColors: Record<string, string> = {
   '8c+': 'rgba(51,0,102,1)',
 };
 
-const optionsBar = {
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: {
-      display: true,
-      position: 'top' as const,
-    },
-    title: {
-      display: true,
-      text: 'Ascents by Difficulty',
-    },
-  },
-  scales: {
-    x: { stacked: true },
-    y: { stacked: true },
-  },
-};
-
-const optionsPie = {
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: {
-      position: 'top' as const,
-    },
-    title: {
-      display: true,
-      text: 'Routes by Angle',
-    },
-  },
-};
-
-const optionsWeeklyBar = {
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: {
-      display: true,
-      position: 'top' as const,
-    },
-    title: {
-      display: true,
-      text: 'Weekly Attempts by Difficulty',
-    },
-    tooltip: {
-      callbacks: {
-        label: function (context: TooltipItem<'bar'>) {
-          const label = context.dataset.label || '';
-          const value = (context.raw as number) || 0;
-          return value > 0 ? `${label}: ${value}` : '';
-        },
-        footer: function (tooltipItems: TooltipItem<'bar'>[]) {
-          let total = 0;
-          tooltipItems.forEach((tooltipItem) => {
-            total += (tooltipItem.raw as number) || 0;
-          });
-          return `Total: ${total}`;
-        },
-      },
-      mode: 'index' as const,
-      intersect: false,
-    },
-  },
-  scales: {
-    x: { stacked: true },
-    y: { stacked: true },
-  },
-};
+const angleColors = [
+  'rgba(255,77,77,0.7)',
+  'rgba(51,0,102,1)',
+  'rgba(77,128,255,0.7)',
+  'rgba(255,204,51,0.7)',
+  'rgba(204,51,153,0.7)',
+  'rgba(51,204,204,0.7)',
+  'rgba(255,230,25,0.7)',
+  'rgba(102,102,255,0.7)',
+  'rgba(51,153,255,0.7)',
+  'rgba(25,179,255,0.7)',
+  'rgba(255,255,51,0.7)',
+  'rgba(102,51,153,1)',
+  'rgba(179,255,128,0.7)',
+];
 
 type TimeframeType = 'all' | 'lastYear' | 'lastMonth' | 'lastWeek' | 'custom';
 
@@ -212,9 +146,6 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
   const [timeframe, setTimeframe] = useState<TimeframeType>('all');
   const [fromDate, setFromDate] = useState<string>('');
   const [toDate, setToDate] = useState<string>('');
-  const [chartDataBar, setChartDataBar] = useState<ChartData | null>(null);
-  const [chartDataPie, setChartDataPie] = useState<ChartData | null>(null);
-  const [chartDataWeeklyBar, setChartDataWeeklyBar] = useState<ChartData | null>(null);
 
   const isOwnProfile = session?.user?.id === userId;
 
@@ -289,132 +220,116 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
     }
   };
 
-  const filterLogbookByTimeframe = (entries: LogbookEntry[]) => {
+  // Filter logbook based on timeframe using useMemo
+  const filteredLogbook = useMemo(() => {
     const now = dayjs();
     switch (timeframe) {
       case 'lastWeek':
-        return entries.filter((entry) => dayjs(entry.climbed_at).isAfter(now.subtract(1, 'week')));
+        return logbook.filter((entry) => dayjs(entry.climbed_at).isAfter(now.subtract(1, 'week')));
       case 'lastMonth':
-        return entries.filter((entry) => dayjs(entry.climbed_at).isAfter(now.subtract(1, 'month')));
+        return logbook.filter((entry) => dayjs(entry.climbed_at).isAfter(now.subtract(1, 'month')));
       case 'lastYear':
-        return entries.filter((entry) => dayjs(entry.climbed_at).isAfter(now.subtract(1, 'year')));
+        return logbook.filter((entry) => dayjs(entry.climbed_at).isAfter(now.subtract(1, 'year')));
       case 'custom':
-        return entries.filter((entry) => {
+        return logbook.filter((entry) => {
           const climbedAt = dayjs(entry.climbed_at);
           return climbedAt.isAfter(dayjs(fromDate)) && climbedAt.isBefore(dayjs(toDate));
         });
       case 'all':
       default:
-        return entries;
+        return logbook;
     }
-  };
+  }, [logbook, timeframe, fromDate, toDate]);
 
-  const filteredLogbook = filterLogbookByTimeframe(logbook);
+  // Generate all chart data in a single useMemo
+  const { chartDataBar, chartDataPie, chartDataWeeklyBar } = useMemo(() => {
+    if (filteredLogbook.length === 0) {
+      return { chartDataBar: null, chartDataPie: null, chartDataWeeklyBar: null };
+    }
 
-  // Generate chart data when filtered logbook changes
-  useEffect(() => {
-    if (filteredLogbook.length > 0) {
-      // Bar chart - Flash vs Redpoint
-      const greaterThanOne: Record<string, number> = {};
-      const equalToOne: Record<string, number> = {};
-      filteredLogbook.forEach((entry) => {
-        const difficulty = difficultyMapping[entry.difficulty];
-        if (difficulty) {
-          if (entry.tries > 1) {
-            greaterThanOne[difficulty] = (greaterThanOne[difficulty] || 0) + entry.tries;
-          } else if (entry.tries === 1) {
-            equalToOne[difficulty] = (equalToOne[difficulty] || 0) + 1;
-          }
+    // Bar chart - Flash vs Redpoint
+    const greaterThanOne: Record<string, number> = {};
+    const equalToOne: Record<string, number> = {};
+    filteredLogbook.forEach((entry) => {
+      const difficulty = difficultyMapping[entry.difficulty];
+      if (difficulty) {
+        if (entry.tries > 1) {
+          greaterThanOne[difficulty] = (greaterThanOne[difficulty] || 0) + entry.tries;
+        } else if (entry.tries === 1) {
+          equalToOne[difficulty] = (equalToOne[difficulty] || 0) + 1;
         }
-      });
-      const labels = Object.keys({ ...greaterThanOne, ...equalToOne }).sort();
-      setChartDataBar({
-        labels,
-        datasets: [
-          {
-            label: 'Flash',
-            data: labels.map((label) => equalToOne[label] || 0),
-            backgroundColor: 'rgba(75,192,192,0.5)',
-          },
-          {
-            label: 'Redpoint',
-            data: labels.map((label) => greaterThanOne[label] || 0),
-            backgroundColor: 'rgba(192,75,75,0.5)',
-          },
-        ],
-      });
-
-      // Pie chart - Routes by Angle
-      const angles = filteredLogbook.reduce((acc: Record<string, number>, entry) => {
-        const angle = `${entry.angle}°`;
-        acc[angle] = (acc[angle] || 0) + 1;
-        return acc;
-      }, {});
-      const angleColors = [
-        'rgba(255,77,77,0.7)',
-        'rgba(51,0,102,1)',
-        'rgba(77,128,255,0.7)',
-        'rgba(255,204,51,0.7)',
-        'rgba(204,51,153,0.7)',
-        'rgba(51,204,204,0.7)',
-        'rgba(255,230,25,0.7)',
-        'rgba(102,102,255,0.7)',
-        'rgba(51,153,255,0.7)',
-        'rgba(25,179,255,0.7)',
-        'rgba(255,255,51,0.7)',
-        'rgba(102,51,153,1)',
-        'rgba(179,255,128,0.7)',
-      ];
-      setChartDataPie({
-        labels: Object.keys(angles),
-        datasets: [
-          {
-            label: 'Routes by Angle',
-            data: Object.values(angles),
-            backgroundColor: Object.keys(angles).map((_, index) => angleColors[index] || 'rgba(200,200,200,0.7)'),
-          },
-        ],
-      });
-
-      // Weekly bar chart
-      const weeks: string[] = [];
-      const first = dayjs(filteredLogbook[filteredLogbook.length - 1]?.climbed_at).startOf('isoWeek');
-      const last = dayjs(filteredLogbook[0]?.climbed_at).endOf('isoWeek');
-      let current = first;
-      while (current.isBefore(last) || current.isSame(last)) {
-        weeks.push(`W.${current.isoWeek()} / ${current.year()}`);
-        current = current.add(1, 'week');
       }
-      const weeklyData: Record<string, Record<string, number>> = {};
-      filteredLogbook.forEach((entry) => {
-        const week = `W.${dayjs(entry.climbed_at).isoWeek()} / ${dayjs(entry.climbed_at).year()}`;
-        const difficulty = difficultyMapping[entry.difficulty];
-        if (difficulty) {
-          weeklyData[week] = {
-            ...(weeklyData[week] || {}),
-            [difficulty]: (weeklyData[week]?.[difficulty] || 0) + 1,
-          };
-        }
-      });
-      const datasets = Object.values(difficultyMapping)
-        .map((difficulty) => {
-          const data = weeks.map((week) => weeklyData[week]?.[difficulty] || 0);
-          return {
-            label: difficulty,
-            data,
-            backgroundColor: gradeColors[difficulty],
-          };
-        })
-        .filter((dataset) => dataset.data.some((value) => value > 0));
-      setChartDataWeeklyBar({
-        labels: weeks,
-        datasets,
-      });
-    } else {
-      setChartDataBar(null);
-      setChartDataPie(null);
-      setChartDataWeeklyBar(null);
+    });
+    const barLabels = Object.keys({ ...greaterThanOne, ...equalToOne }).sort();
+    const chartDataBar: ChartData = {
+      labels: barLabels,
+      datasets: [
+        {
+          label: 'Flash',
+          data: barLabels.map((label) => equalToOne[label] || 0),
+          backgroundColor: 'rgba(75,192,192,0.5)',
+        },
+        {
+          label: 'Redpoint',
+          data: barLabels.map((label) => greaterThanOne[label] || 0),
+          backgroundColor: 'rgba(192,75,75,0.5)',
+        },
+      ],
+    };
+
+    // Pie chart - Routes by Angle
+    const angles = filteredLogbook.reduce((acc: Record<string, number>, entry) => {
+      const angle = `${entry.angle}°`;
+      acc[angle] = (acc[angle] || 0) + 1;
+      return acc;
+    }, {});
+    const chartDataPie: ChartData = {
+      labels: Object.keys(angles),
+      datasets: [
+        {
+          label: 'Routes by Angle',
+          data: Object.values(angles),
+          backgroundColor: Object.keys(angles).map((_, index) => angleColors[index] || 'rgba(200,200,200,0.7)'),
+        },
+      ],
+    };
+
+    // Weekly bar chart
+    const weeks: string[] = [];
+    const first = dayjs(filteredLogbook[filteredLogbook.length - 1]?.climbed_at).startOf('isoWeek');
+    const last = dayjs(filteredLogbook[0]?.climbed_at).endOf('isoWeek');
+    let current = first;
+    while (current.isBefore(last) || current.isSame(last)) {
+      weeks.push(`W.${current.isoWeek()} / ${current.year()}`);
+      current = current.add(1, 'week');
     }
+    const weeklyData: Record<string, Record<string, number>> = {};
+    filteredLogbook.forEach((entry) => {
+      const week = `W.${dayjs(entry.climbed_at).isoWeek()} / ${dayjs(entry.climbed_at).year()}`;
+      const difficulty = difficultyMapping[entry.difficulty];
+      if (difficulty) {
+        weeklyData[week] = {
+          ...(weeklyData[week] || {}),
+          [difficulty]: (weeklyData[week]?.[difficulty] || 0) + 1,
+        };
+      }
+    });
+    const datasets = Object.values(difficultyMapping)
+      .map((difficulty) => {
+        const data = weeks.map((week) => weeklyData[week]?.[difficulty] || 0);
+        return {
+          label: difficulty,
+          data,
+          backgroundColor: gradeColors[difficulty],
+        };
+      })
+      .filter((dataset) => dataset.data.some((value) => value > 0));
+    const chartDataWeeklyBar: ChartData = {
+      labels: weeks,
+      datasets,
+    };
+
+    return { chartDataBar, chartDataPie, chartDataWeeklyBar };
   }, [filteredLogbook]);
 
   if (status === 'loading' || loading) {
@@ -537,26 +452,11 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
                 <Empty description="No climbing data for this period" />
               ) : (
                 <div className={styles.chartsContainer}>
-                  {/* Weekly Chart */}
-                  <div className={styles.chartWrapper}>
-                    {chartDataWeeklyBar && (
-                      <Bar data={chartDataWeeklyBar} options={optionsWeeklyBar} />
-                    )}
-                  </div>
-
-                  {/* Bottom Charts Row */}
-                  <div className={styles.bottomChartsRow}>
-                    <div className={styles.barChartWrapper}>
-                      {chartDataBar && (
-                        <Bar data={chartDataBar} options={optionsBar} />
-                      )}
-                    </div>
-                    <div className={styles.pieChartWrapper}>
-                      {chartDataPie && (
-                        <Pie data={chartDataPie} options={optionsPie} />
-                      )}
-                    </div>
-                  </div>
+                  <ProfileStatsCharts
+                    chartDataWeeklyBar={chartDataWeeklyBar}
+                    chartDataBar={chartDataBar}
+                    chartDataPie={chartDataPie}
+                  />
                 </div>
               )}
             </>
