@@ -1,11 +1,14 @@
 import { makeExecutableSchema } from '@graphql-tools/schema';
 import GraphQLJSON from 'graphql-type-json';
 import { v4 as uuidv4 } from 'uuid';
+import { eq, and, asc, inArray, sql } from 'drizzle-orm';
 import { typeDefs } from '@boardsesh/shared-schema';
 import { roomManager, VersionConflictError, type DiscoverableSession } from '../services/room-manager.js';
 import { pubsub } from '../pubsub/index.js';
 import { updateContext, getContext } from './context.js';
 import { checkRateLimit } from '../utils/rate-limiter.js';
+import { db } from '../db/client.js';
+import * as dbSchema from '@boardsesh/db/schema';
 import {
   validateInput,
   CreateSessionInputSchema,
@@ -20,6 +23,10 @@ import {
   RadiusMetersSchema,
   QueueIndexSchema,
   QueueItemIdSchema,
+  BoardNameSchema,
+  ClimbSearchInputSchema,
+  ToggleFavoriteInputSchema,
+  UpdateProfileInputSchema,
 } from '../validation/schemas.js';
 import type {
   ConnectionContext,
@@ -28,6 +35,14 @@ import type {
   ClimbQueueItem,
   QueueState,
   SessionUser,
+  Grade,
+  Angle,
+  ClimbSearchInput,
+  ClimbSearchResult,
+  UserProfile,
+  AuroraCredentialStatus,
+  ToggleFavoriteInput,
+  ToggleFavoriteResult,
 } from '@boardsesh/shared-schema';
 
 // Input type for createSession mutation
@@ -268,6 +283,213 @@ const resolvers = {
         participantCount: roomManager.getSessionClients(s.id).length,
         distance: 0, // Not applicable for own sessions
       }));
+    },
+
+    // ============================================
+    // Board Configuration Queries
+    // ============================================
+
+    grades: async (_: unknown, { boardName }: { boardName: string }): Promise<Grade[]> => {
+      validateInput(BoardNameSchema, boardName, 'boardName');
+
+      // Select the appropriate table based on board name
+      const gradesTable = boardName === 'kilter'
+        ? dbSchema.kilterDifficultyGrades
+        : dbSchema.tensionDifficultyGrades;
+
+      const grades = await db
+        .select({
+          difficultyId: gradesTable.difficulty,
+          name: gradesTable.boulderName,
+        })
+        .from(gradesTable)
+        .where(eq(gradesTable.isListed, true))
+        .orderBy(asc(gradesTable.difficulty));
+
+      return grades.map(g => ({
+        difficultyId: g.difficultyId,
+        name: g.name || '',
+      }));
+    },
+
+    angles: async (_: unknown, { boardName, layoutId }: { boardName: string; layoutId: number }): Promise<Angle[]> => {
+      validateInput(BoardNameSchema, boardName, 'boardName');
+
+      // Use raw SQL since products_angles tables may have been restructured
+      // This query joins layouts to products to get available angles for a layout
+      const tableName = boardName === 'kilter' ? 'kilter_products_angles' : 'tension_products_angles';
+      const layoutTableName = boardName === 'kilter' ? 'kilter_layouts' : 'tension_layouts';
+
+      const result = await db.execute<{ angle: number }>(sql`
+        SELECT DISTINCT pa.angle
+        FROM ${sql.identifier(tableName)} pa
+        JOIN ${sql.identifier(layoutTableName)} l
+          ON l.product_id = pa.product_id
+        WHERE l.id = ${layoutId}
+        ORDER BY pa.angle ASC
+      `);
+
+      // Handle both possible return types from execute
+      const rows = Array.isArray(result) ? result : (result as { rows: { angle: number }[] }).rows;
+      return rows.map(r => ({ angle: r.angle }));
+    },
+
+    // ============================================
+    // Climb Queries
+    // ============================================
+
+    searchClimbs: async (_: unknown, { input }: { input: ClimbSearchInput }, ctx: ConnectionContext): Promise<ClimbSearchResult> => {
+      validateInput(ClimbSearchInputSchema, input, 'input');
+
+      // TODO: Implement full search logic - for now return empty result
+      // This will require porting the search-climbs.ts logic from web package
+      console.log('[searchClimbs] Input:', input);
+
+      return {
+        climbs: [],
+        totalCount: 0,
+        hasMore: false,
+      };
+    },
+
+    climb: async (
+      _: unknown,
+      { boardName, layoutId, sizeId, setIds, angle, climbUuid }: {
+        boardName: string;
+        layoutId: number;
+        sizeId: number;
+        setIds: string;
+        angle: number;
+        climbUuid: string
+      }
+    ) => {
+      validateInput(BoardNameSchema, boardName, 'boardName');
+
+      // TODO: Implement climb fetch logic
+      // This will require porting the getClimb logic from web package
+      console.log('[climb] Fetching:', { boardName, layoutId, sizeId, setIds, angle, climbUuid });
+
+      return null;
+    },
+
+    // ============================================
+    // User Management Queries
+    // ============================================
+
+    profile: async (_: unknown, __: unknown, ctx: ConnectionContext): Promise<UserProfile | null> => {
+      if (!ctx.isAuthenticated || !ctx.userId) {
+        return null;
+      }
+
+      const users = await db
+        .select()
+        .from(dbSchema.users)
+        .where(eq(dbSchema.users.id, ctx.userId))
+        .limit(1);
+
+      if (users.length === 0) {
+        return null;
+      }
+
+      const user = users[0];
+
+      // Get profile if exists
+      const profiles = await db
+        .select()
+        .from(dbSchema.userProfiles)
+        .where(eq(dbSchema.userProfiles.userId, ctx.userId))
+        .limit(1);
+
+      const profile = profiles[0];
+
+      return {
+        id: user.id,
+        email: user.email,
+        displayName: profile?.displayName || user.name || undefined,
+        avatarUrl: profile?.avatarUrl || user.image || undefined,
+      };
+    },
+
+    auroraCredentials: async (_: unknown, __: unknown, ctx: ConnectionContext): Promise<AuroraCredentialStatus[]> => {
+      if (!ctx.isAuthenticated || !ctx.userId) {
+        return [];
+      }
+
+      const credentials = await db
+        .select()
+        .from(dbSchema.auroraCredentials)
+        .where(eq(dbSchema.auroraCredentials.userId, ctx.userId));
+
+      return credentials.map(c => ({
+        boardType: c.boardType,
+        username: c.encryptedUsername, // Note: In production, decrypt this
+        userId: c.auroraUserId || undefined,
+        syncedAt: c.lastSyncAt?.toISOString() || undefined,
+        hasToken: !!c.auroraToken,
+      }));
+    },
+
+    auroraCredential: async (_: unknown, { boardType }: { boardType: string }, ctx: ConnectionContext) => {
+      if (!ctx.isAuthenticated || !ctx.userId) {
+        return null;
+      }
+
+      validateInput(BoardNameSchema, boardType, 'boardType');
+
+      const credentials = await db
+        .select()
+        .from(dbSchema.auroraCredentials)
+        .where(
+          and(
+            eq(dbSchema.auroraCredentials.userId, ctx.userId),
+            eq(dbSchema.auroraCredentials.boardType, boardType)
+          )
+        )
+        .limit(1);
+
+      if (credentials.length === 0) {
+        return null;
+      }
+
+      const c = credentials[0];
+      return {
+        boardType: c.boardType,
+        username: c.encryptedUsername, // Note: In production, decrypt this
+        userId: c.auroraUserId || undefined,
+        syncedAt: c.lastSyncAt?.toISOString() || undefined,
+        // Note: We don't expose the actual token for security
+        token: c.auroraToken ? '[ENCRYPTED]' : undefined,
+      };
+    },
+
+    // ============================================
+    // Favorites Queries
+    // ============================================
+
+    favorites: async (
+      _: unknown,
+      { boardName, climbUuids, angle }: { boardName: string; climbUuids: string[]; angle: number },
+      ctx: ConnectionContext
+    ): Promise<string[]> => {
+      if (!ctx.isAuthenticated || !ctx.userId) {
+        return [];
+      }
+
+      validateInput(BoardNameSchema, boardName, 'boardName');
+
+      const favorites = await db
+        .select({ climbUuid: dbSchema.userFavorites.climbUuid })
+        .from(dbSchema.userFavorites)
+        .where(
+          and(
+            eq(dbSchema.userFavorites.userId, ctx.userId),
+            eq(dbSchema.userFavorites.boardName, boardName),
+            eq(dbSchema.userFavorites.angle, angle),
+            inArray(dbSchema.userFavorites.climbUuid, climbUuids)
+          )
+        );
+
+      return favorites.map(f => f.climbUuid);
     },
   },
 
@@ -692,6 +914,199 @@ const resolvers = {
       });
 
       return state;
+    },
+
+    // ============================================
+    // User Management Mutations
+    // ============================================
+
+    updateProfile: async (
+      _: unknown,
+      { input }: { input: { displayName?: string; avatarUrl?: string } },
+      ctx: ConnectionContext
+    ): Promise<UserProfile> => {
+      requireAuthenticated(ctx);
+      validateInput(UpdateProfileInputSchema, input, 'input');
+
+      const userId = ctx.userId!;
+
+      // Check if profile exists
+      const existingProfile = await db
+        .select()
+        .from(dbSchema.userProfiles)
+        .where(eq(dbSchema.userProfiles.userId, userId))
+        .limit(1);
+
+      if (existingProfile.length === 0) {
+        // Create new profile
+        await db.insert(dbSchema.userProfiles).values({
+          userId,
+          displayName: input.displayName,
+          avatarUrl: input.avatarUrl,
+        });
+      } else {
+        // Update existing profile
+        await db
+          .update(dbSchema.userProfiles)
+          .set({
+            displayName: input.displayName ?? existingProfile[0].displayName,
+            avatarUrl: input.avatarUrl ?? existingProfile[0].avatarUrl,
+          })
+          .where(eq(dbSchema.userProfiles.userId, userId));
+      }
+
+      // Fetch and return updated profile
+      const users = await db
+        .select()
+        .from(dbSchema.users)
+        .where(eq(dbSchema.users.id, userId))
+        .limit(1);
+
+      const profiles = await db
+        .select()
+        .from(dbSchema.userProfiles)
+        .where(eq(dbSchema.userProfiles.userId, userId))
+        .limit(1);
+
+      const user = users[0];
+      const profile = profiles[0];
+
+      return {
+        id: user.id,
+        email: user.email,
+        displayName: profile?.displayName || user.name || undefined,
+        avatarUrl: profile?.avatarUrl || user.image || undefined,
+      };
+    },
+
+    // ============================================
+    // Aurora Credentials Mutations
+    // ============================================
+
+    saveAuroraCredential: async (
+      _: unknown,
+      { input }: { input: { boardType: string; username: string; password: string } },
+      ctx: ConnectionContext
+    ): Promise<AuroraCredentialStatus> => {
+      requireAuthenticated(ctx);
+      // TODO: Validate with Aurora API and encrypt token
+      // For now, just store the credential
+
+      const userId = ctx.userId!;
+
+      // Check if credential exists
+      const existing = await db
+        .select()
+        .from(dbSchema.auroraCredentials)
+        .where(
+          and(
+            eq(dbSchema.auroraCredentials.userId, userId),
+            eq(dbSchema.auroraCredentials.boardType, input.boardType)
+          )
+        )
+        .limit(1);
+
+      if (existing.length === 0) {
+        await db.insert(dbSchema.auroraCredentials).values({
+          userId,
+          boardType: input.boardType,
+          encryptedUsername: input.username, // TODO: Encrypt this
+          encryptedPassword: input.password, // TODO: Encrypt this
+        });
+      } else {
+        await db
+          .update(dbSchema.auroraCredentials)
+          .set({
+            encryptedUsername: input.username, // TODO: Encrypt this
+            encryptedPassword: input.password, // TODO: Encrypt this
+            updatedAt: new Date(),
+          })
+          .where(
+            and(
+              eq(dbSchema.auroraCredentials.userId, userId),
+              eq(dbSchema.auroraCredentials.boardType, input.boardType)
+            )
+          );
+      }
+
+      return {
+        boardType: input.boardType,
+        username: input.username,
+        hasToken: false, // Not validated yet
+      };
+    },
+
+    deleteAuroraCredential: async (
+      _: unknown,
+      { boardType }: { boardType: string },
+      ctx: ConnectionContext
+    ): Promise<boolean> => {
+      requireAuthenticated(ctx);
+      validateInput(BoardNameSchema, boardType, 'boardType');
+
+      await db
+        .delete(dbSchema.auroraCredentials)
+        .where(
+          and(
+            eq(dbSchema.auroraCredentials.userId, ctx.userId!),
+            eq(dbSchema.auroraCredentials.boardType, boardType)
+          )
+        );
+
+      return true;
+    },
+
+    // ============================================
+    // Favorites Mutations
+    // ============================================
+
+    toggleFavorite: async (
+      _: unknown,
+      { input }: { input: ToggleFavoriteInput },
+      ctx: ConnectionContext
+    ): Promise<ToggleFavoriteResult> => {
+      requireAuthenticated(ctx);
+      validateInput(ToggleFavoriteInputSchema, input, 'input');
+
+      const userId = ctx.userId!;
+
+      // Check if favorite exists
+      const existing = await db
+        .select()
+        .from(dbSchema.userFavorites)
+        .where(
+          and(
+            eq(dbSchema.userFavorites.userId, userId),
+            eq(dbSchema.userFavorites.boardName, input.boardName),
+            eq(dbSchema.userFavorites.climbUuid, input.climbUuid),
+            eq(dbSchema.userFavorites.angle, input.angle)
+          )
+        )
+        .limit(1);
+
+      if (existing.length > 0) {
+        // Remove favorite
+        await db
+          .delete(dbSchema.userFavorites)
+          .where(
+            and(
+              eq(dbSchema.userFavorites.userId, userId),
+              eq(dbSchema.userFavorites.boardName, input.boardName),
+              eq(dbSchema.userFavorites.climbUuid, input.climbUuid),
+              eq(dbSchema.userFavorites.angle, input.angle)
+            )
+          );
+        return { favorited: false };
+      } else {
+        // Add favorite
+        await db.insert(dbSchema.userFavorites).values({
+          userId,
+          boardName: input.boardName,
+          climbUuid: input.climbUuid,
+          angle: input.angle,
+        });
+        return { favorited: true };
+      }
     },
   },
 

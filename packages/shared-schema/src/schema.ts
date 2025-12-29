@@ -115,12 +115,157 @@ export const typeDefs = /* GraphQL */ `
     discoverable: Boolean!
   }
 
+  # ============================================
+  # Board Configuration Types
+  # ============================================
+
+  type Grade {
+    difficultyId: Int!
+    name: String!
+  }
+
+  type Angle {
+    angle: Int!
+  }
+
+  # ============================================
+  # Climb Search Types
+  # ============================================
+
+  input ClimbSearchInput {
+    boardName: String!
+    layoutId: Int!
+    sizeId: Int!
+    setIds: String!
+    angle: Int!
+    # Pagination
+    page: Int
+    pageSize: Int
+    # Filters
+    gradeAccuracy: String
+    minGrade: Int
+    maxGrade: Int
+    minAscents: Int
+    sortBy: String
+    sortOrder: String
+    name: String
+    setter: String
+    setterId: Int
+    onlyBenchmarks: Boolean
+    # Personal progress filters (require auth)
+    hideAttempted: Boolean
+    hideCompleted: Boolean
+    showOnlyAttempted: Boolean
+    showOnlyCompleted: Boolean
+  }
+
+  type ClimbSearchResult {
+    climbs: [Climb!]!
+    totalCount: Int!
+    hasMore: Boolean!
+  }
+
+  # ============================================
+  # User Management Types
+  # ============================================
+
+  type UserProfile {
+    id: ID!
+    email: String!
+    displayName: String
+    avatarUrl: String
+  }
+
+  input UpdateProfileInput {
+    displayName: String
+    avatarUrl: String
+  }
+
+  type AuroraCredential {
+    boardType: String!
+    username: String!
+    userId: Int
+    syncedAt: String
+    token: String
+  }
+
+  type AuroraCredentialStatus {
+    boardType: String!
+    username: String!
+    userId: Int
+    syncedAt: String
+    hasToken: Boolean!
+  }
+
+  input SaveAuroraCredentialInput {
+    boardType: String!
+    username: String!
+    password: String!
+  }
+
+  # ============================================
+  # Favorites Types
+  # ============================================
+
+  input ToggleFavoriteInput {
+    boardName: String!
+    climbUuid: String!
+    angle: Int!
+  }
+
+  type ToggleFavoriteResult {
+    favorited: Boolean!
+  }
+
   type Query {
     session(sessionId: ID!): Session
     # Find discoverable sessions near a location
     nearbySessions(latitude: Float!, longitude: Float!, radiusMeters: Float): [DiscoverableSession!]!
     # Get current user's recent sessions (requires auth context)
     mySessions: [DiscoverableSession!]!
+
+    # ============================================
+    # Board Configuration Queries
+    # ============================================
+
+    # Get difficulty grades for a board type
+    grades(boardName: String!): [Grade!]!
+    # Get available angles for a board layout
+    angles(boardName: String!, layoutId: Int!): [Angle!]!
+
+    # ============================================
+    # Climb Queries
+    # ============================================
+
+    # Search climbs with filtering and pagination
+    searchClimbs(input: ClimbSearchInput!): ClimbSearchResult!
+    # Get a single climb by UUID
+    climb(
+      boardName: String!
+      layoutId: Int!
+      sizeId: Int!
+      setIds: String!
+      angle: Int!
+      climbUuid: ID!
+    ): Climb
+
+    # ============================================
+    # User Management Queries (require auth)
+    # ============================================
+
+    # Get current user's profile
+    profile: UserProfile
+    # Get all Aurora credentials status for current user
+    auroraCredentials: [AuroraCredentialStatus!]!
+    # Get Aurora credential for a specific board type
+    auroraCredential(boardType: String!): AuroraCredential
+
+    # ============================================
+    # Favorites Queries
+    # ============================================
+
+    # Check which climbs from a list are favorited (returns favorited UUIDs)
+    favorites(boardName: String!, climbUuids: [String!]!, angle: Int!): [String!]!
   }
 
   type Mutation {
@@ -137,6 +282,29 @@ export const typeDefs = /* GraphQL */ `
     mirrorCurrentClimb(mirrored: Boolean!): ClimbQueueItem
     replaceQueueItem(uuid: ID!, item: ClimbQueueItemInput!): ClimbQueueItem!
     setQueue(queue: [ClimbQueueItemInput!]!, currentClimbQueueItem: ClimbQueueItemInput): QueueState!
+
+    # ============================================
+    # User Management Mutations (require auth)
+    # ============================================
+
+    # Update current user's profile
+    updateProfile(input: UpdateProfileInput!): UserProfile!
+
+    # ============================================
+    # Aurora Credentials Mutations (require auth)
+    # ============================================
+
+    # Save Aurora climbing credentials (validates with Aurora API)
+    saveAuroraCredential(input: SaveAuroraCredentialInput!): AuroraCredentialStatus!
+    # Delete Aurora credentials for a board type
+    deleteAuroraCredential(boardType: String!): Boolean!
+
+    # ============================================
+    # Favorites Mutations (require auth)
+    # ============================================
+
+    # Toggle favorite status for a climb (add or remove)
+    toggleFavorite(input: ToggleFavoriteInput!): ToggleFavoriteResult!
   }
 
   type Subscription {

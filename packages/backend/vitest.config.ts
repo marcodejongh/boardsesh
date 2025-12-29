@@ -5,6 +5,8 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['src/**/*.test.ts'],
+    // Exclude parity tests from CI - run locally with: npm test -- --config vitest.parity.config.ts
+    exclude: ['**/node_modules/**', '**/dist/**', '**/*parity*.test.ts'],
     setupFiles: ['./src/__tests__/setup.ts'],
     testTimeout: 10000,
     hookTimeout: 30000,

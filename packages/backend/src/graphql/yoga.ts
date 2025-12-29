@@ -27,6 +27,9 @@ export function createYogaInstance() {
       warn: (...args) => console.warn('[Yoga Warn]', ...args),
       error: (...args) => console.error('[Yoga Error]', ...args),
     },
+    // In development/test, show all errors
+    // In production, errors will be masked by default
+    maskedErrors: process.env.NODE_ENV === 'production',
   });
 
   return yoga;

@@ -45,7 +45,7 @@ Node.js HTTP Server
 
 ---
 
-## Phase 2: REST API Reimplementation (TODO)
+## Phase 2: REST API Reimplementation (IN PROGRESS)
 
 Reimplement Next.js REST APIs as GraphQL queries/mutations. Only endpoints that query our database - Aurora proxy routes stay in Next.js.
 
@@ -53,9 +53,9 @@ Reimplement Next.js REST APIs as GraphQL queries/mutations. Only endpoints that 
 
 | REST Endpoint | GraphQL Operation | Status |
 |---------------|-------------------|--------|
-| `GET /api/v1/grades/[board_name]` | `Query.grades(boardName: String!)` | TODO |
-| `GET /api/v1/angles/[board_name]/[layout_id]` | `Query.angles(boardName: String!, layoutId: Int!)` | TODO |
-| `GET /api/v1/[board_name]/[layout_id]/[size_id]/[set_ids]/details` | `Query.boardDetails(...)` | TODO |
+| `GET /api/v1/grades/[board_name]` | `Query.grades(boardName: String!)` | ✅ DONE |
+| `GET /api/v1/angles/[board_name]/[layout_id]` | `Query.angles(boardName: String!, layoutId: Int!)` | ✅ DONE |
+| `GET /api/v1/[board_name]/[layout_id]/[size_id]/[set_ids]/details` | `Query.boardDetails(...)` | SKIP (being removed) |
 
 **Source files:**
 - `packages/web/app/api/v1/grades/[board_name]/route.ts`
@@ -66,8 +66,8 @@ Reimplement Next.js REST APIs as GraphQL queries/mutations. Only endpoints that 
 
 | REST Endpoint | GraphQL Operation | Status |
 |---------------|-------------------|--------|
-| `GET /api/v1/[board_name]/.../search` | `Query.searchClimbs(input: ClimbSearchInput!)` | TODO |
-| `GET /api/v1/[board_name]/.../[climb_uuid]` | `Query.climb(...)` | TODO |
+| `GET /api/v1/[board_name]/.../search` | `Query.searchClimbs(input: ClimbSearchInput!)` | ✅ DONE (stub - returns empty) |
+| `GET /api/v1/[board_name]/.../[climb_uuid]` | `Query.climb(...)` | ✅ DONE (stub - returns null) |
 
 **Medium Priority:**
 
@@ -95,15 +95,15 @@ Reimplement Next.js REST APIs as GraphQL queries/mutations. Only endpoints that 
 
 | REST Endpoint | GraphQL Operation | Status |
 |---------------|-------------------|--------|
-| `GET /api/internal/profile` | `Query.profile` | TODO |
-| `PUT /api/internal/profile` | `Mutation.updateProfile(...)` | TODO |
+| `GET /api/internal/profile` | `Query.profile` | ✅ DONE |
+| `PUT /api/internal/profile` | `Mutation.updateProfile(...)` | ✅ DONE |
 | `POST /api/internal/profile/avatar` | `Mutation.uploadAvatar(...)` | TODO |
-| `GET /api/internal/favorites` | `Query.favorites(...)` | TODO |
-| `POST /api/internal/favorites` | `Mutation.toggleFavorite(...)` | TODO |
-| `GET /api/internal/aurora-credentials` | `Query.auroraCredentials` | TODO |
-| `GET /api/internal/aurora-credentials/[board_type]` | `Query.auroraCredential(...)` | TODO |
-| `POST /api/internal/aurora-credentials` | `Mutation.saveAuroraCredential(...)` | TODO |
-| `DELETE /api/internal/aurora-credentials` | `Mutation.deleteAuroraCredential(...)` | TODO |
+| `GET /api/internal/favorites` | `Query.favorites(...)` | ✅ DONE |
+| `POST /api/internal/favorites` | `Mutation.toggleFavorite(...)` | ✅ DONE |
+| `GET /api/internal/aurora-credentials` | `Query.auroraCredentials` | ✅ DONE |
+| `GET /api/internal/aurora-credentials/[board_type]` | `Query.auroraCredential(...)` | ✅ DONE |
+| `POST /api/internal/aurora-credentials` | `Mutation.saveAuroraCredential(...)` | ✅ DONE |
+| `DELETE /api/internal/aurora-credentials` | `Mutation.deleteAuroraCredential(...)` | ✅ DONE |
 | `GET /api/internal/aurora-credentials/unsynced` | `Query.unsyncedCounts` | TODO |
 | `GET /api/internal/user-board-mapping` | `Query.userBoardMappings` | TODO |
 | `POST /api/internal/user-board-mapping` | `Mutation.createUserBoardMapping(...)` | TODO |
@@ -176,18 +176,20 @@ type Favorite { climbUuid: String!, angle: Int! }
 - [x] Verify WebSocket subscriptions work
 - [x] Remove Express dependency
 
-### Milestone 2: Core Queries (High Priority)
-- [ ] Add new types to shared-schema
-- [ ] Implement `grades`, `angles`, `boardDetails` queries
-- [ ] Implement `searchClimbs`, `climb` queries
-- [ ] Implement `profile` query and `updateProfile` mutation
-- [ ] Implement `auroraCredentials` queries/mutations
+### Milestone 2: Core Queries (High Priority) ✅ PARTIAL
+- [x] Add new types to shared-schema
+- [x] Implement `grades`, `angles` queries (boardDetails skipped - being removed)
+- [x] Implement `searchClimbs`, `climb` queries (stub implementations)
+- [x] Implement `profile` query and `updateProfile` mutation
+- [x] Implement `auroraCredentials` queries/mutations
+- [x] Implement `favorites` query and `toggleFavorite` mutation
+- [x] Add REST vs GraphQL parity tests
 
 ### Milestone 3: Supporting Queries (Medium Priority)
 - [ ] Implement `climbStats`, `heatmap`, `setters` queries
 - [ ] Implement slug lookup queries
-- [ ] Implement `favorites` query and `toggleFavorite` mutation
 - [ ] Implement `userBoardMappings` query/mutation
+- [ ] Complete `searchClimbs` and `climb` with full query logic
 
 ### Milestone 4: Remaining Items (Low Priority)
 - [ ] Implement `betaLinks` query
@@ -215,3 +217,16 @@ curl http://localhost:8080/health
 curl http://localhost:8080/graphql -H "Content-Type: application/json" \
   -d '{"query":"{ __typename }"}'
 ```
+
+### Parity Tests
+
+REST vs GraphQL parity tests compare responses from the public REST API against the local GraphQL implementation.
+
+```bash
+# Run parity tests locally (requires dev database)
+npm run test -w boardsesh-backend -- --config vitest.parity.config.ts
+```
+
+**Note:** Parity tests are excluded from CI (`vitest.config.ts` excludes `*parity*.test.ts`). They require:
+- Local development database running (`npm run db:up`)
+- Access to public REST API at www.boardsesh.com
