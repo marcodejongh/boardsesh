@@ -153,7 +153,7 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
                   paddingRight: '10px',
                 }}
               >
-                <Suspense fallback={<BoardPageSkeleton />}>
+                <Suspense fallback={<BoardPageSkeleton aspectRatio={boardDetails.boardWidth / boardDetails.boardHeight} />}>
                   {children}
                 </Suspense>
               </Content>

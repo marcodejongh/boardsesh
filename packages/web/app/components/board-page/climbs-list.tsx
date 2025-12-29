@@ -1,12 +1,11 @@
 'use client';
 import React, { useEffect, useRef, useCallback } from 'react';
 import { Row, Col } from 'antd';
-import AnimatedBoardLoading from '../loading/animated-board-loading';
 import { track } from '@vercel/analytics';
 import { Climb, ParsedBoardRouteParameters, BoardDetails } from '@/app/lib/types';
 import { useQueueContext } from '../graphql-queue';
 import ClimbCard from '../climb-card/climb-card';
-import { PlusCircleOutlined, FireOutlined } from '@ant-design/icons';
+import { ClimbCardSkeleton } from './board-page-skeleton';
 import { useSearchParams } from 'next/navigation';
 
 type ClimbsListProps = ParsedBoardRouteParameters & {
@@ -14,21 +13,11 @@ type ClimbsListProps = ParsedBoardRouteParameters & {
   initialClimbs: Climb[];
 };
 
-const ClimbCardSkeletons = ({ boardDetails, id }: { boardDetails: BoardDetails; id: number }) => {
-  return (
-    <Col xs={24} lg={12} xl={12} key={id.toString()}>
-      <ClimbCard
-        key={id.toString()}
-        boardDetails={boardDetails}
-        actions={[<PlusCircleOutlined key="plus" />, <FireOutlined key="fire" />]}
-      />
+const ClimbsListSkeleton = ({ aspectRatio }: { aspectRatio: number }) => {
+  return Array.from({ length: 10 }, (_, i) => (
+    <Col xs={24} lg={12} xl={12} key={i}>
+      <ClimbCardSkeleton aspectRatio={aspectRatio} />
     </Col>
-  );
-};
-
-const ClimbsListSkeleton = ({ boardDetails }: { boardDetails: BoardDetails }) => {
-  return Array.from({ length: 10 }, (_, i) => i + 1).map((val) => (
-    <ClimbCardSkeletons id={val} key={val.toString()} boardDetails={boardDetails} />
   ));
 };
 
@@ -151,16 +140,16 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
           </Col>
         ))}
         {isFetchingClimbs && (!climbs || climbs.length === 0) ? (
-          <ClimbsListSkeleton boardDetails={boardDetails} />
+          <ClimbsListSkeleton aspectRatio={boardDetails.boardWidth / boardDetails.boardHeight} />
         ) : null}
       </Row>
 
-      {/* Sentinel element for Intersection Observer */}
-      <div ref={loadMoreRef} style={{ height: '20px', marginTop: '16px' }}>
+      {/* Sentinel element for Intersection Observer - needs min-height to be observable */}
+      <div ref={loadMoreRef} style={{ minHeight: '20px', marginTop: '16px' }}>
         {isFetchingClimbs && climbs.length > 0 && (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '20px' }}>
-            <AnimatedBoardLoading isVisible={true} boardDetails={boardDetails} inline />
-          </div>
+          <Row gutter={[16, 16]}>
+            <ClimbsListSkeleton aspectRatio={boardDetails.boardWidth / boardDetails.boardHeight} />
+          </Row>
         )}
         {!hasMoreResults && climbs.length > 0 && (
           <div style={{ textAlign: 'center', padding: '20px', color: '#888' }}>

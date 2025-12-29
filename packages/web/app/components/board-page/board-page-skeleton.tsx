@@ -8,6 +8,11 @@ import Card from 'antd/es/card';
 import Skeleton from 'antd/es/skeleton';
 import { InfoCircleOutlined, ForkOutlined, HeartOutlined, PlusCircleOutlined } from '@ant-design/icons';
 import { themeTokens } from '@/app/theme/theme-config';
+import styles from './board-page-skeleton.module.css';
+
+type BoardPageSkeletonProps = {
+  aspectRatio?: number; // width/height ratio from boardDetails
+};
 
 /**
  * Skeleton that mimics the ClimbCard title structure (horizontal layout with V grade)
@@ -26,15 +31,15 @@ const ClimbCardTitleSkeleton = () => (
 
 /**
  * Skeleton that mimics the BoardRenderer - placeholder for the board image.
- * Uses minHeight to approximate the actual BoardRenderer which has maxHeight: 55vh.
+ * Uses the actual board's aspect ratio to prevent layout shift when content loads.
  */
-const BoardRendererSkeleton = () => (
+const BoardRendererSkeleton = ({ aspectRatio }: { aspectRatio?: number }) => (
   <Skeleton.Node
     active
     style={{
       width: '100%',
       minHeight: '40vh',
-      aspectRatio: '1 / 1.1',
+      aspectRatio: aspectRatio ? `${aspectRatio}` : '1 / 1.1',
     }}
   >
     <span />
@@ -44,7 +49,7 @@ const BoardRendererSkeleton = () => (
 /**
  * Skeleton loading UI for ClimbCard, matching the card structure with muted action icons.
  */
-const ClimbCardSkeleton = () => (
+const ClimbCardSkeleton = ({ aspectRatio }: { aspectRatio?: number }) => (
   <Card
     size="small"
     style={{
@@ -52,7 +57,7 @@ const ClimbCardSkeleton = () => (
     }}
     styles={{
       header: { paddingTop: 8, paddingBottom: 6 },
-      body: { padding: 6 },
+      body: { padding: 6, display: 'flex', justifyContent: 'center' },
     }}
     title={<ClimbCardTitleSkeleton />}
     actions={[
@@ -62,23 +67,34 @@ const ClimbCardSkeleton = () => (
       <PlusCircleOutlined key="plus" style={{ color: 'var(--ant-color-text-quaternary)' }} />,
     ]}
   >
-    <BoardRendererSkeleton />
+    <BoardRendererSkeleton aspectRatio={aspectRatio} />
   </Card>
 );
 
 /**
  * Skeleton loading UI for the board page, matching the ClimbsList grid layout.
+ * Accepts an optional aspectRatio to match the actual board dimensions.
+ * Includes a sidebar placeholder on desktop (min-width: 768px) to prevent layout shift.
  */
-const BoardPageSkeleton = () => {
+const BoardPageSkeleton = ({ aspectRatio }: BoardPageSkeletonProps) => {
   return (
-    <Row gutter={[8, 8]}>
-      {Array.from({ length: 10 }, (_, i) => (
-        <Col xs={24} lg={12} xl={12} key={i}>
-          <ClimbCardSkeleton />
-        </Col>
-      ))}
-    </Row>
+    <>
+      {/* Main content - always visible */}
+      <div className={styles.skeletonMain}>
+        <Row gutter={[8, 8]}>
+          {Array.from({ length: 10 }, (_, i) => (
+            <Col xs={24} lg={12} xl={12} key={i}>
+              <ClimbCardSkeleton aspectRatio={aspectRatio} />
+            </Col>
+          ))}
+        </Row>
+      </div>
+
+      {/* Sidebar placeholder - only visible on desktop via CSS to reserve space */}
+      <div className={styles.skeletonSider} />
+    </>
   );
 };
 
 export default BoardPageSkeleton;
+export { ClimbCardSkeleton };
