@@ -5,7 +5,7 @@ import { Button } from 'antd';
 import Link from 'next/link';
 import { BoardName } from '@/app/lib/types';
 import { LayoutRow, SizeRow } from '@/app/lib/data/queries';
-import { fetchBoardDetails } from '../rest-api/api';
+import { getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
 import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { BoardConfigData } from '@/app/lib/server-board-configs';
 
@@ -104,7 +104,12 @@ export default function StartClimbingButton({
       let boardDetails = boardConfigs.details[detailsKey];
 
       if (!boardDetails) {
-        boardDetails = await fetchBoardDetails(selectedBoard, selectedLayout, selectedSize, selectedSets);
+        boardDetails = getBoardDetails({
+          board_name: selectedBoard,
+          layout_id: selectedLayout,
+          size_id: selectedSize,
+          set_ids: selectedSets,
+        });
       }
 
       if (boardDetails?.layout_name && boardDetails?.size_name && boardDetails?.set_names) {

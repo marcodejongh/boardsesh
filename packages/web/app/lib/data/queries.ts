@@ -7,30 +7,15 @@
 import 'server-only';
 import { sql } from '@/app/lib/db/db';
 
+import { Climb, ParsedBoardRouteParametersWithUuid, BoardName, LayoutId, Size } from '../types';
 import {
-  Climb,
-  ParsedBoardRouteParametersWithUuid,
-  ParsedBoardRouteParameters,
-  HoldTuple,
-  BoardDetails,
-  ImageFileName,
-  BoardName,
-  LayoutId,
-  Size,
-} from '../types';
-import { HoldRenderData } from '@/app/components/board-renderer/types';
-import { getBoardImageDimensions } from '@/app/components/board-renderer/util';
-import { SetIdList } from '../board-data';
-import {
-  getProductSize,
-  getLayout,
   getSizesForLayoutId,
   getAllLayouts,
   getSetsForLayoutAndSize,
-  getImageFilename,
-  getLedPlacements,
-  getHolePlacements,
 } from '@/app/lib/__generated__/product-sizes-data';
+
+// Re-export getBoardDetails from the generated file for backwards compatibility
+export { getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
 
 const getTableName = (board_name: string, table_name: string) => {
   switch (board_name) {
@@ -40,84 +25,6 @@ const getTableName = (board_name: string, table_name: string) => {
     default:
       return `${table_name}`;
   }
-};
-
-// Note: The following types were previously used for database queries
-// but are no longer needed now that board details use hardcoded data.
-// Keeping ProductSizeRow for potential backwards compatibility.
-export type ProductSizeRow = {
-  edge_left: number;
-  edge_right: number;
-  edge_bottom: number;
-  edge_top: number;
-};
-
-// Collect data for each set_id - now fully synchronous using hardcoded data
-export const getBoardDetails = ({
-  board_name,
-  layout_id,
-  size_id,
-  set_ids,
-}: Pick<ParsedBoardRouteParameters, 'board_name' | 'layout_id' | 'size_id' | 'set_ids'>): BoardDetails => {
-  // Get hardcoded size data (eliminates product_sizes query)
-  const sizeData = getProductSize(board_name, size_id);
-  if (!sizeData) {
-    throw new Error('Size dimensions not found');
-  }
-
-  // Get hardcoded layout data
-  const layoutData = getLayout(board_name, layout_id);
-
-  // Get sets from hardcoded data (no DB query needed)
-  const setsResult = getSets(board_name, layout_id, size_id);
-
-  // Get LED placements from hardcoded data (no DB query needed)
-  const ledPlacements = getLedPlacements(board_name, layout_id, size_id);
-
-  // Get image filenames and hold placements from hardcoded data (no DB query needed)
-  const imagesToHolds = getImageUrlHoldsMap(set_ids, board_name, layout_id, size_id);
-
-  const { edgeLeft: edge_left, edgeRight: edge_right, edgeBottom: edge_bottom, edgeTop: edge_top } = sizeData;
-
-  const { width: boardWidth, height: boardHeight } = getBoardImageDimensions(board_name, Object.keys(imagesToHolds)[0]);
-  const xSpacing = boardWidth / (edge_right - edge_left);
-  const ySpacing = boardHeight / (edge_top - edge_bottom);
-
-  const holdsData: HoldRenderData[] = Object.values<HoldTuple[]>(imagesToHolds).flatMap((holds) =>
-    holds
-      .filter(([, , x, y]) => x > edge_left && x < edge_right && y > edge_bottom && y < edge_top)
-      .map(([holdId, mirroredHoldId, x, y]) => ({
-        id: holdId,
-        mirroredHoldId,
-        cx: (x - edge_left) * xSpacing,
-        cy: boardHeight - (y - edge_bottom) * ySpacing,
-        r: xSpacing * 4,
-      })),
-  );
-
-  const selectedSets = setsResult.filter((s) => set_ids.includes(s.id));
-
-  return {
-    images_to_holds: imagesToHolds,
-    holdsData,
-    edge_left,
-    edge_right,
-    edge_bottom,
-    edge_top,
-    boardHeight,
-    boardWidth,
-    board_name,
-    layout_id,
-    size_id,
-    set_ids,
-    ledPlacements,
-    supportsMirroring: board_name === 'tension' && layout_id !== 11,
-    // From hardcoded data
-    layout_name: layoutData?.name,
-    size_name: sizeData.name,
-    size_description: sizeData.description,
-    set_names: selectedSets.map((s) => s.name),
-  };
 };
 
 export const getClimb = async (params: ParsedBoardRouteParametersWithUuid): Promise<Climb> => {
@@ -176,34 +83,6 @@ export const getClimbStatsForAllAngles = async (
   `;
   return result as ClimbStatsForAngle[];
 };
-
-/**
- * Get image URL to holds mapping from hardcoded data (no database query).
- * Returns a Record mapping image filenames to arrays of HoldTuples.
- */
-function getImageUrlHoldsMap(
-  set_ids: SetIdList,
-  board_name: BoardName,
-  layout_id: number,
-  size_id: number,
-): Record<ImageFileName, HoldTuple[]> {
-  const result: Record<ImageFileName, HoldTuple[]> = {};
-
-  for (const set_id of set_ids) {
-    // Get image filename from hardcoded data
-    const imageFilename = getImageFilename(board_name, layout_id, size_id, set_id);
-    if (!imageFilename) {
-      throw new Error(`Could not find image for set_id ${set_id} for layout_id: ${layout_id} and size_id: ${size_id}`);
-    }
-
-    // Get hole placements from hardcoded data
-    const holds = getHolePlacements(board_name, layout_id, set_id);
-
-    result[imageFilename] = holds;
-  }
-
-  return result;
-}
 
 export type LayoutRow = {
   id: number;

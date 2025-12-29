@@ -3,7 +3,7 @@
  *
  * Usage:
  *   cd packages/web
- *   docker-compose -f db/docker-compose.yml up -d
+ *   # Make sure postgres is running (npm run db:up)
  *   npx tsx scripts/generate-size-edges.ts
  *
  * This generates app/lib/__generated__/product-sizes-data.ts
@@ -12,6 +12,19 @@
 import { execSync } from 'child_process';
 import { writeFileSync } from 'fs';
 import { join } from 'path';
+import { config } from 'dotenv';
+
+// Load environment variables from .env.local
+config({ path: join(__dirname, '../.env.local') });
+
+const POSTGRES_HOST = process.env.POSTGRES_HOST || 'localhost';
+const POSTGRES_PORT = process.env.POSTGRES_PORT || '5432';
+const POSTGRES_USER = process.env.POSTGRES_USER || 'postgres';
+const POSTGRES_PASSWORD = process.env.POSTGRES_PASSWORD || 'password';
+const POSTGRES_DATABASE = process.env.POSTGRES_DATABASE || 'main';
+
+// Build psql command prefix
+const psqlCmd = `PGPASSWORD=${POSTGRES_PASSWORD} psql -h ${POSTGRES_HOST} -p ${POSTGRES_PORT} -U ${POSTGRES_USER} -d ${POSTGRES_DATABASE}`;
 
 const OUTPUT_PATH = join(__dirname, '../app/lib/__generated__/product-sizes-data.ts');
 
@@ -65,7 +78,7 @@ interface HolePlacement {
 function querySizes(table: string): ProductSize[] {
   // Use REPLACE to remove newlines from description, and use a unique record separator
   const result = execSync(
-    `docker exec second-postgres-1 psql -U postgres -d main -t -A -F '|' -R '~~~' -c "SELECT id, REPLACE(name, E'\\n', ' '), COALESCE(REPLACE(description, E'\\n', ' '), ''), edge_left, edge_right, edge_bottom, edge_top, product_id FROM ${table} ORDER BY id;"`,
+    `${psqlCmd} -t -A -F '|' -R '~~~' -c "SELECT id, REPLACE(name, E'\\n', ' '), COALESCE(REPLACE(description, E'\\n', ' '), ''), edge_left, edge_right, edge_bottom, edge_top, product_id FROM ${table} ORDER BY id;"`,
     { encoding: 'utf-8' }
   );
 
@@ -92,7 +105,7 @@ function querySizes(table: string): ProductSize[] {
 
 function queryLayouts(table: string): Layout[] {
   const result = execSync(
-    `docker exec second-postgres-1 psql -U postgres -d main -t -A -F '|' -R '~~~' -c "SELECT id, REPLACE(name, E'\\n', ' '), product_id FROM ${table} WHERE is_listed = true AND password IS NULL ORDER BY id;"`,
+    `${psqlCmd} -t -A -F '|' -R '~~~' -c "SELECT id, REPLACE(name, E'\\n', ' '), product_id FROM ${table} WHERE is_listed = true AND password IS NULL ORDER BY id;"`,
     { encoding: 'utf-8' }
   );
 
@@ -117,7 +130,7 @@ function querySets(boardName: string): SetMapping[] {
   const pslsTable = `${boardName}_product_sizes_layouts_sets`;
 
   const result = execSync(
-    `docker exec second-postgres-1 psql -U postgres -d main -t -A -F '|' -R '~~~' -c "SELECT sets.id, REPLACE(sets.name, E'\\n', ' '), psls.layout_id, psls.product_size_id FROM ${setsTable} sets INNER JOIN ${pslsTable} psls ON sets.id = psls.set_id ORDER BY psls.layout_id, psls.product_size_id, sets.id;"`,
+    `${psqlCmd} -t -A -F '|' -R '~~~' -c "SELECT sets.id, REPLACE(sets.name, E'\\n', ' '), psls.layout_id, psls.product_size_id FROM ${setsTable} sets INNER JOIN ${pslsTable} psls ON sets.id = psls.set_id ORDER BY psls.layout_id, psls.product_size_id, sets.id;"`,
     { encoding: 'utf-8' }
   );
 
@@ -142,7 +155,7 @@ function queryImageFilenames(boardName: string): ImageFilenameMapping[] {
   const pslsTable = `${boardName}_product_sizes_layouts_sets`;
 
   const result = execSync(
-    `docker exec second-postgres-1 psql -U postgres -d main -t -A -F '|' -R '~~~' -c "SELECT layout_id, product_size_id, set_id, image_filename FROM ${pslsTable} WHERE image_filename IS NOT NULL ORDER BY layout_id, product_size_id, set_id;"`,
+    `${psqlCmd} -t -A -F '|' -R '~~~' -c "SELECT layout_id, product_size_id, set_id, image_filename FROM ${pslsTable} WHERE image_filename IS NOT NULL ORDER BY layout_id, product_size_id, set_id;"`,
     { encoding: 'utf-8' }
   );
 
@@ -168,7 +181,7 @@ function queryLedPlacements(boardName: string): LedPlacement[] {
   const ledsTable = `${boardName}_leds`;
 
   const result = execSync(
-    `docker exec second-postgres-1 psql -U postgres -d main -t -A -F '|' -R '~~~' -c "SELECT placements.id, leds.position, placements.layout_id, leds.product_size_id FROM ${placementsTable} placements INNER JOIN ${ledsTable} leds ON placements.hole_id = leds.hole_id ORDER BY placements.layout_id, leds.product_size_id, placements.id;"`,
+    `${psqlCmd} -t -A -F '|' -R '~~~' -c "SELECT placements.id, leds.position, placements.layout_id, leds.product_size_id FROM ${placementsTable} placements INNER JOIN ${ledsTable} leds ON placements.hole_id = leds.hole_id ORDER BY placements.layout_id, leds.product_size_id, placements.id;"`,
     { encoding: 'utf-8' }
   );
 
@@ -194,7 +207,7 @@ function queryHolePlacements(boardName: string): HolePlacement[] {
   const placementsTable = `${boardName}_placements`;
 
   const result = execSync(
-    `docker exec second-postgres-1 psql -U postgres -d main -t -A -F '|' -R '~~~' -c "SELECT placements.id, mirrored_placements.id, holes.x, holes.y, placements.set_id, placements.layout_id FROM ${holesTable} holes INNER JOIN ${placementsTable} placements ON placements.hole_id = holes.id LEFT JOIN ${placementsTable} mirrored_placements ON mirrored_placements.hole_id = holes.mirrored_hole_id AND mirrored_placements.set_id = placements.set_id AND mirrored_placements.layout_id = placements.layout_id ORDER BY placements.layout_id, placements.set_id, placements.id;"`,
+    `${psqlCmd} -t -A -F '|' -R '~~~' -c "SELECT placements.id, mirrored_placements.id, holes.x, holes.y, placements.set_id, placements.layout_id FROM ${holesTable} holes INNER JOIN ${placementsTable} placements ON placements.hole_id = holes.id LEFT JOIN ${placementsTable} mirrored_placements ON mirrored_placements.hole_id = holes.mirrored_hole_id AND mirrored_placements.set_id = placements.set_id AND mirrored_placements.layout_id = placements.layout_id ORDER BY placements.layout_id, placements.set_id, placements.id;"`,
     { encoding: 'utf-8' }
   );
 
@@ -365,7 +378,8 @@ async function main() {
  * Generated at: ${new Date().toISOString()}
  */
 
-import { BoardName } from '@/app/lib/types';
+import { BoardName, BoardDetails, ImageFileName } from '@/app/lib/types';
+import { BOARD_IMAGE_DIMENSIONS, SetIdList } from '@/app/lib/board-data';
 
 export interface ProductSizeData {
   id: number;
@@ -603,6 +617,95 @@ export const getHolePlacements = (
 ): HoldTuple[] => {
   const key = \`\${layoutId}-\${setId}\`;
   return HOLE_PLACEMENTS[boardName]?.[key] ?? [];
+};
+
+// Helper type for hold render data
+interface HoldRenderData {
+  id: number;
+  mirroredHoldId: number | null;
+  cx: number;
+  cy: number;
+  r: number;
+}
+
+/**
+ * Get complete board details from hardcoded data.
+ * This is a fully synchronous function that requires no database queries.
+ */
+export const getBoardDetails = ({
+  board_name,
+  layout_id,
+  size_id,
+  set_ids,
+}: {
+  board_name: BoardName;
+  layout_id: number;
+  size_id: number;
+  set_ids: SetIdList;
+}): BoardDetails => {
+  const sizeData = getProductSize(board_name, size_id);
+  if (!sizeData) {
+    throw new Error('Size dimensions not found');
+  }
+
+  const layoutData = getLayout(board_name, layout_id);
+  const setsResult = getSetsForLayoutAndSize(board_name, layout_id, size_id);
+  const ledPlacements = getLedPlacements(board_name, layout_id, size_id);
+
+  // Build images_to_holds map
+  const imagesToHolds: Record<ImageFileName, HoldTuple[]> = {};
+  for (const set_id of set_ids) {
+    const imageFilename = getImageFilename(board_name, layout_id, size_id, set_id);
+    if (!imageFilename) {
+      throw new Error(\`Could not find image for set_id \${set_id} for layout_id: \${layout_id} and size_id: \${size_id}\`);
+    }
+    imagesToHolds[imageFilename] = getHolePlacements(board_name, layout_id, set_id);
+  }
+
+  const { edgeLeft: edge_left, edgeRight: edge_right, edgeBottom: edge_bottom, edgeTop: edge_top } = sizeData;
+
+  const firstImage = Object.keys(imagesToHolds)[0];
+  const dimensions = BOARD_IMAGE_DIMENSIONS[board_name][firstImage];
+  const boardWidth = dimensions?.width ?? 1080;
+  const boardHeight = dimensions?.height ?? 1920;
+
+  const xSpacing = boardWidth / (edge_right - edge_left);
+  const ySpacing = boardHeight / (edge_top - edge_bottom);
+
+  const holdsData: HoldRenderData[] = Object.values(imagesToHolds).flatMap((holds: HoldTuple[]) =>
+    holds
+      .filter(([, , x, y]) => x > edge_left && x < edge_right && y > edge_bottom && y < edge_top)
+      .map(([holdId, mirroredHoldId, x, y]) => ({
+        id: holdId,
+        mirroredHoldId,
+        cx: (x - edge_left) * xSpacing,
+        cy: boardHeight - (y - edge_bottom) * ySpacing,
+        r: xSpacing * 4,
+      })),
+  );
+
+  const selectedSets = setsResult.filter((s) => set_ids.includes(s.id));
+
+  return {
+    images_to_holds: imagesToHolds,
+    holdsData,
+    edge_left,
+    edge_right,
+    edge_bottom,
+    edge_top,
+    boardHeight,
+    boardWidth,
+    board_name,
+    layout_id,
+    size_id,
+    set_ids,
+    ledPlacements,
+    supportsMirroring: board_name === 'tension' && layout_id !== 11,
+    layout_name: layoutData?.name,
+    size_name: sizeData.name,
+    size_description: sizeData.description,
+    set_names: selectedSets.map((s) => s.name),
+  };
 };
 `;
 

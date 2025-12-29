@@ -10,10 +10,11 @@
  *
  * Includes: product sizes, layouts, sets, image filenames, LED placements, hole placements.
  *
- * Generated at: 2025-12-29T00:48:24.813Z
+ * Generated at: 2025-12-29T01:10:06.047Z
  */
 
-import { BoardName } from '@/app/lib/types';
+import { BoardName, BoardDetails, ImageFileName } from '@/app/lib/types';
+import { BOARD_IMAGE_DIMENSIONS, SetIdList } from '@/app/lib/board-data';
 
 export interface ProductSizeData {
   id: number;
@@ -468,4 +469,93 @@ export const getHolePlacements = (
 ): HoldTuple[] => {
   const key = `${layoutId}-${setId}`;
   return HOLE_PLACEMENTS[boardName]?.[key] ?? [];
+};
+
+// Helper type for hold render data
+interface HoldRenderData {
+  id: number;
+  mirroredHoldId: number | null;
+  cx: number;
+  cy: number;
+  r: number;
+}
+
+/**
+ * Get complete board details from hardcoded data.
+ * This is a fully synchronous function that requires no database queries.
+ */
+export const getBoardDetails = ({
+  board_name,
+  layout_id,
+  size_id,
+  set_ids,
+}: {
+  board_name: BoardName;
+  layout_id: number;
+  size_id: number;
+  set_ids: SetIdList;
+}): BoardDetails => {
+  const sizeData = getProductSize(board_name, size_id);
+  if (!sizeData) {
+    throw new Error('Size dimensions not found');
+  }
+
+  const layoutData = getLayout(board_name, layout_id);
+  const setsResult = getSetsForLayoutAndSize(board_name, layout_id, size_id);
+  const ledPlacements = getLedPlacements(board_name, layout_id, size_id);
+
+  // Build images_to_holds map
+  const imagesToHolds: Record<ImageFileName, HoldTuple[]> = {};
+  for (const set_id of set_ids) {
+    const imageFilename = getImageFilename(board_name, layout_id, size_id, set_id);
+    if (!imageFilename) {
+      throw new Error(`Could not find image for set_id ${set_id} for layout_id: ${layout_id} and size_id: ${size_id}`);
+    }
+    imagesToHolds[imageFilename] = getHolePlacements(board_name, layout_id, set_id);
+  }
+
+  const { edgeLeft: edge_left, edgeRight: edge_right, edgeBottom: edge_bottom, edgeTop: edge_top } = sizeData;
+
+  const firstImage = Object.keys(imagesToHolds)[0];
+  const dimensions = BOARD_IMAGE_DIMENSIONS[board_name][firstImage];
+  const boardWidth = dimensions?.width ?? 1080;
+  const boardHeight = dimensions?.height ?? 1920;
+
+  const xSpacing = boardWidth / (edge_right - edge_left);
+  const ySpacing = boardHeight / (edge_top - edge_bottom);
+
+  const holdsData: HoldRenderData[] = Object.values(imagesToHolds).flatMap((holds: HoldTuple[]) =>
+    holds
+      .filter(([, , x, y]) => x > edge_left && x < edge_right && y > edge_bottom && y < edge_top)
+      .map(([holdId, mirroredHoldId, x, y]) => ({
+        id: holdId,
+        mirroredHoldId,
+        cx: (x - edge_left) * xSpacing,
+        cy: boardHeight - (y - edge_bottom) * ySpacing,
+        r: xSpacing * 4,
+      })),
+  );
+
+  const selectedSets = setsResult.filter((s) => set_ids.includes(s.id));
+
+  return {
+    images_to_holds: imagesToHolds,
+    holdsData,
+    edge_left,
+    edge_right,
+    edge_bottom,
+    edge_top,
+    boardHeight,
+    boardWidth,
+    board_name,
+    layout_id,
+    size_id,
+    set_ids,
+    ledPlacements,
+    supportsMirroring: board_name === 'tension' && layout_id !== 11,
+    layout_name: layoutData?.name,
+    size_name: sizeData.name,
+    size_description: sizeData.description,
+    set_names: selectedSets.map((s) => s.name),
+  };
 };
