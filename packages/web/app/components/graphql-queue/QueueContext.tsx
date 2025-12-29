@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useContext, createContext, ReactNode, useCallback, useMemo, useState, useEffect } from 'react';
+import React, { useContext, createContext, ReactNode, useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { v4 as uuidv4 } from 'uuid';
 import { useQueueReducer } from '../queue-control/reducer';
@@ -66,6 +66,14 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
   // Read sessionId from URL search params - party mode is opt-in
   const sessionIdFromUrl = searchParams.get('session');
   const [activeSessionId, setActiveSessionId] = useState<string | null>(sessionIdFromUrl);
+
+  // Ref to store the initial queue to sync when starting a new session
+  // This captures the queue state before the connection overwrites it with backend state
+  const pendingInitialQueueRef = useRef<{
+    queue: ClimbQueueItem[];
+    currentClimbQueueItem: ClimbQueueItem | null;
+    sessionId: string;
+  } | null>(null);
 
   // Sync activeSessionId with URL changes (e.g., when navigating to a shared link)
   useEffect(() => {
@@ -240,6 +248,33 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
     return unsubscribe;
   }, [isPersistentSessionActive, persistentSession, dispatch]);
 
+  // Extract connection state values that we need for the sync effect
+  // These must be extracted before the effect so they can be used as dependencies
+  const hasConnectedForSync = persistentSession.hasConnected;
+  const isLeaderForSync = persistentSession.isLeader;
+
+  // Sync pending initial queue after connecting to a new session
+  // This handles the case where user starts a session with existing queue items
+  useEffect(() => {
+    // Only run when we've just connected to a session AND we're the leader
+    // All conditions must be met before we attempt the sync
+    if (!isPersistentSessionActive || !hasConnectedForSync || !isLeaderForSync) return;
+
+    // Check if we have a pending initial queue for this session
+    const pending = pendingInitialQueueRef.current;
+    if (!pending || pending.sessionId !== sessionId) return;
+
+    // Clear the pending ref immediately to prevent duplicate syncs
+    pendingInitialQueueRef.current = null;
+
+    // Sync the initial queue to the server
+    // This will broadcast a FullSync event to all clients (including ourselves)
+    console.log('[QueueContext] Syncing initial queue to server:', pending.queue.length, 'items');
+    persistentSession.setQueue(pending.queue, pending.currentClimbQueueItem).catch((error) => {
+      console.error('[QueueContext] Failed to sync initial queue:', error);
+    });
+  }, [isPersistentSessionActive, hasConnectedForSync, isLeaderForSync, sessionId, persistentSession]);
+
   // Use persistent session values when active
   const clientId = isPersistentSessionActive ? persistentSession.clientId : null;
   const isLeader = isPersistentSessionActive ? persistentSession.isLeader : false;
@@ -256,6 +291,18 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
 
       // Generate a new session ID
       const newSessionId = uuidv4();
+
+      // IMPORTANT: Capture the current queue BEFORE the connection is established.
+      // When we connect, the backend will return an empty queue (new session),
+      // which would overwrite our local queue. We store it here so we can sync it
+      // to the server after connecting.
+      if (state.queue.length > 0 || state.currentClimbQueueItem) {
+        pendingInitialQueueRef.current = {
+          queue: state.queue,
+          currentClimbQueueItem: state.currentClimbQueueItem,
+          sessionId: newSessionId,
+        };
+      }
 
       // Update URL with session parameter
       const params = new URLSearchParams(searchParams.toString());
@@ -277,7 +324,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
 
       return newSessionId;
     },
-    [backendUrl, pathname, router, searchParams],
+    [backendUrl, pathname, router, searchParams, state.queue, state.currentClimbQueueItem],
   );
 
   const joinSessionHandler = useCallback(
