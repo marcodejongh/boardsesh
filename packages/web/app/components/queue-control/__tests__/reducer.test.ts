@@ -454,6 +454,314 @@ describe('queueReducer', () => {
     });
   });
 
+  describe('DELTA_ADD_QUEUE_ITEM', () => {
+    it('should add item to queue', () => {
+      const action: QueueAction = {
+        type: 'DELTA_ADD_QUEUE_ITEM',
+        payload: { item: mockClimbQueueItem }
+      };
+
+      const result = queueReducer(initialState, action);
+
+      expect(result.queue).toHaveLength(1);
+      expect(result.queue[0]).toEqual(mockClimbQueueItem);
+    });
+
+    it('should add item at specific position', () => {
+      const item1: ClimbQueueItem = { ...mockClimbQueueItem, uuid: 'item-1' };
+      const item2: ClimbQueueItem = { ...mockClimbQueueItem, uuid: 'item-2' };
+      const newItem: ClimbQueueItem = { ...mockClimbQueueItem, uuid: 'new-item' };
+
+      const stateWithQueue: QueueState = {
+        ...initialState,
+        queue: [item1, item2]
+      };
+
+      const action: QueueAction = {
+        type: 'DELTA_ADD_QUEUE_ITEM',
+        payload: { item: newItem, position: 1 }
+      };
+
+      const result = queueReducer(stateWithQueue, action);
+
+      expect(result.queue).toHaveLength(3);
+      expect(result.queue[1]).toEqual(newItem);
+      expect(result.queue).toEqual([item1, newItem, item2]);
+    });
+
+    it('should skip adding duplicate item (deduplication)', () => {
+      const stateWithQueue: QueueState = {
+        ...initialState,
+        queue: [mockClimbQueueItem]
+      };
+
+      const action: QueueAction = {
+        type: 'DELTA_ADD_QUEUE_ITEM',
+        payload: { item: mockClimbQueueItem }
+      };
+
+      const result = queueReducer(stateWithQueue, action);
+
+      expect(result.queue).toHaveLength(1);
+      expect(result).toBe(stateWithQueue); // Should return same state reference
+    });
+  });
+
+  describe('DELTA_REMOVE_QUEUE_ITEM', () => {
+    it('should remove item by uuid', () => {
+      const item1: ClimbQueueItem = { ...mockClimbQueueItem, uuid: 'item-1' };
+      const item2: ClimbQueueItem = { ...mockClimbQueueItem, uuid: 'item-2' };
+
+      const stateWithQueue: QueueState = {
+        ...initialState,
+        queue: [item1, item2]
+      };
+
+      const action: QueueAction = {
+        type: 'DELTA_REMOVE_QUEUE_ITEM',
+        payload: { uuid: 'item-1' }
+      };
+
+      const result = queueReducer(stateWithQueue, action);
+
+      expect(result.queue).toHaveLength(1);
+      expect(result.queue[0]).toEqual(item2);
+    });
+
+    it('should clear current climb if removed item was current', () => {
+      const stateWithCurrentClimb: QueueState = {
+        ...initialState,
+        queue: [mockClimbQueueItem],
+        currentClimbQueueItem: mockClimbQueueItem
+      };
+
+      const action: QueueAction = {
+        type: 'DELTA_REMOVE_QUEUE_ITEM',
+        payload: { uuid: mockClimbQueueItem.uuid }
+      };
+
+      const result = queueReducer(stateWithCurrentClimb, action);
+
+      expect(result.queue).toHaveLength(0);
+      expect(result.currentClimbQueueItem).toBeNull();
+    });
+  });
+
+  describe('DELTA_REORDER_QUEUE_ITEM', () => {
+    it('should reorder item in queue', () => {
+      const item1: ClimbQueueItem = { ...mockClimbQueueItem, uuid: 'item-1' };
+      const item2: ClimbQueueItem = { ...mockClimbQueueItem, uuid: 'item-2' };
+      const item3: ClimbQueueItem = { ...mockClimbQueueItem, uuid: 'item-3' };
+
+      const stateWithQueue: QueueState = {
+        ...initialState,
+        queue: [item1, item2, item3]
+      };
+
+      const action: QueueAction = {
+        type: 'DELTA_REORDER_QUEUE_ITEM',
+        payload: { uuid: 'item-1', oldIndex: 0, newIndex: 2 }
+      };
+
+      const result = queueReducer(stateWithQueue, action);
+
+      expect(result.queue).toEqual([item2, item3, item1]);
+    });
+
+    it('should return unchanged state for invalid indices', () => {
+      const stateWithQueue: QueueState = {
+        ...initialState,
+        queue: [mockClimbQueueItem]
+      };
+
+      const action: QueueAction = {
+        type: 'DELTA_REORDER_QUEUE_ITEM',
+        payload: { uuid: mockClimbQueueItem.uuid, oldIndex: 5, newIndex: 0 }
+      };
+
+      const result = queueReducer(stateWithQueue, action);
+
+      expect(result).toBe(stateWithQueue);
+    });
+
+    it('should return unchanged state if uuid does not match item at oldIndex', () => {
+      const item1: ClimbQueueItem = { ...mockClimbQueueItem, uuid: 'item-1' };
+      const item2: ClimbQueueItem = { ...mockClimbQueueItem, uuid: 'item-2' };
+
+      const stateWithQueue: QueueState = {
+        ...initialState,
+        queue: [item1, item2]
+      };
+
+      const action: QueueAction = {
+        type: 'DELTA_REORDER_QUEUE_ITEM',
+        payload: { uuid: 'wrong-uuid', oldIndex: 0, newIndex: 1 }
+      };
+
+      const result = queueReducer(stateWithQueue, action);
+
+      expect(result).toBe(stateWithQueue);
+    });
+  });
+
+  describe('DELTA_UPDATE_CURRENT_CLIMB', () => {
+    it('should update current climb', () => {
+      const action: QueueAction = {
+        type: 'DELTA_UPDATE_CURRENT_CLIMB',
+        payload: { item: mockClimbQueueItem, shouldAddToQueue: false }
+      };
+
+      const result = queueReducer(initialState, action);
+
+      expect(result.currentClimbQueueItem).toEqual(mockClimbQueueItem);
+      expect(result.queue).toHaveLength(0);
+    });
+
+    it('should add to queue when shouldAddToQueue is true', () => {
+      const action: QueueAction = {
+        type: 'DELTA_UPDATE_CURRENT_CLIMB',
+        payload: { item: mockClimbQueueItem, shouldAddToQueue: true }
+      };
+
+      const result = queueReducer(initialState, action);
+
+      expect(result.currentClimbQueueItem).toEqual(mockClimbQueueItem);
+      expect(result.queue).toHaveLength(1);
+      expect(result.queue[0]).toEqual(mockClimbQueueItem);
+    });
+
+    it('should skip if same item is already current (deduplication)', () => {
+      const stateWithCurrentClimb: QueueState = {
+        ...initialState,
+        currentClimbQueueItem: mockClimbQueueItem
+      };
+
+      const action: QueueAction = {
+        type: 'DELTA_UPDATE_CURRENT_CLIMB',
+        payload: { item: mockClimbQueueItem, shouldAddToQueue: false }
+      };
+
+      const result = queueReducer(stateWithCurrentClimb, action);
+
+      expect(result).toBe(stateWithCurrentClimb);
+    });
+
+    it('should handle null item', () => {
+      const stateWithCurrentClimb: QueueState = {
+        ...initialState,
+        currentClimbQueueItem: mockClimbQueueItem
+      };
+
+      const action: QueueAction = {
+        type: 'DELTA_UPDATE_CURRENT_CLIMB',
+        payload: { item: null, shouldAddToQueue: false }
+      };
+
+      const result = queueReducer(stateWithCurrentClimb, action);
+
+      expect(result.currentClimbQueueItem).toBeNull();
+    });
+  });
+
+  describe('DELTA_MIRROR_CURRENT_CLIMB', () => {
+    it('should set mirrored state on current climb', () => {
+      const currentClimb: ClimbQueueItem = {
+        ...mockClimbQueueItem,
+        climb: { ...mockClimb, mirrored: false }
+      };
+
+      const stateWithCurrentClimb: QueueState = {
+        ...initialState,
+        currentClimbQueueItem: currentClimb,
+        queue: [currentClimb]
+      };
+
+      const action: QueueAction = {
+        type: 'DELTA_MIRROR_CURRENT_CLIMB',
+        payload: { mirrored: true }
+      };
+
+      const result = queueReducer(stateWithCurrentClimb, action);
+
+      expect(result.currentClimbQueueItem?.climb.mirrored).toBe(true);
+      expect(result.queue[0].climb.mirrored).toBe(true);
+    });
+
+    it('should do nothing when no current climb', () => {
+      const action: QueueAction = {
+        type: 'DELTA_MIRROR_CURRENT_CLIMB',
+        payload: { mirrored: true }
+      };
+
+      const result = queueReducer(initialState, action);
+
+      expect(result).toBe(initialState);
+    });
+  });
+
+  describe('DELTA_REPLACE_QUEUE_ITEM', () => {
+    it('should replace item in queue by uuid', () => {
+      const originalItem: ClimbQueueItem = { ...mockClimbQueueItem, uuid: 'item-1' };
+      const replacementItem: ClimbQueueItem = {
+        ...mockClimbQueueItem,
+        uuid: 'item-1',
+        climb: { ...mockClimb, name: 'Updated Climb' }
+      };
+
+      const stateWithQueue: QueueState = {
+        ...initialState,
+        queue: [originalItem]
+      };
+
+      const action: QueueAction = {
+        type: 'DELTA_REPLACE_QUEUE_ITEM',
+        payload: { uuid: 'item-1', item: replacementItem }
+      };
+
+      const result = queueReducer(stateWithQueue, action);
+
+      expect(result.queue[0].climb.name).toBe('Updated Climb');
+    });
+
+    it('should update current climb if replaced item was current', () => {
+      const stateWithCurrentClimb: QueueState = {
+        ...initialState,
+        queue: [mockClimbQueueItem],
+        currentClimbQueueItem: mockClimbQueueItem
+      };
+
+      const replacementItem: ClimbQueueItem = {
+        ...mockClimbQueueItem,
+        climb: { ...mockClimb, name: 'Updated Climb' }
+      };
+
+      const action: QueueAction = {
+        type: 'DELTA_REPLACE_QUEUE_ITEM',
+        payload: { uuid: mockClimbQueueItem.uuid, item: replacementItem }
+      };
+
+      const result = queueReducer(stateWithCurrentClimb, action);
+
+      expect(result.currentClimbQueueItem?.climb.name).toBe('Updated Climb');
+    });
+
+    it('should return unchanged state if uuid not found', () => {
+      const stateWithQueue: QueueState = {
+        ...initialState,
+        queue: [mockClimbQueueItem]
+      };
+
+      const action: QueueAction = {
+        type: 'DELTA_REPLACE_QUEUE_ITEM',
+        payload: { uuid: 'non-existent', item: mockClimbQueueItem }
+      };
+
+      const result = queueReducer(stateWithQueue, action);
+
+      expect(result).toBe(stateWithQueue);
+    });
+  });
+
   describe('default case', () => {
     it('should return unchanged state for unknown action', () => {
       const unknownAction = { type: 'UNKNOWN_ACTION' } as unknown as QueueAction;

@@ -1,9 +1,9 @@
 'use client';
-import React from 'react';
+import React, { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { Flex, Button, Dropdown, MenuProps } from 'antd';
 import { Header } from 'antd/es/layout/layout';
-import { useSession, signIn, signOut } from 'next-auth/react';
+import { useSession, signOut } from 'next-auth/react';
 import SearchButton from '../search-drawer/search-button';
 import SearchClimbNameInput from '../search-drawer/search-climb-name-input';
 import { UISearchParamsProvider } from '../queue-control/ui-searchparams-provider';
@@ -23,6 +23,7 @@ import AngleSelector from './angle-selector';
 import Logo from '../brand/logo';
 import styles from './header.module.css';
 import Link from 'next/link';
+import AuthModal from '../auth/auth-modal';
 
 type BoardSeshHeaderProps = {
   boardDetails: BoardDetails;
@@ -31,6 +32,7 @@ type BoardSeshHeaderProps = {
 export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeaderProps) {
   const { data: session } = useSession();
   const { currentClimb } = useQueueContext();
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   const handleSignOut = () => {
     signOut();
@@ -83,7 +85,7 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
       key: 'login',
       icon: <LoginOutlined />,
       label: 'Login',
-      onClick: () => signIn(),
+      onClick: () => setShowAuthModal(true),
     }] : []),
   ];
   return (
@@ -142,7 +144,7 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
                 <Button
                   icon={<LoginOutlined />}
                   type="text"
-                  onClick={() => signIn()}
+                  onClick={() => setShowAuthModal(true)}
                 >
                   Login
                 </Button>
@@ -160,6 +162,13 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
           </Flex>
         </Flex>
       </UISearchParamsProvider>
+
+      <AuthModal
+        open={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        title="Sign in to Boardsesh"
+        description="Sign in to access all features including saving favorites, tracking ascents, and more."
+      />
     </Header>
   );
 }
