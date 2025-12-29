@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import {
   Layout,
@@ -12,6 +12,7 @@ import {
   Empty,
   Space,
   DatePicker,
+  message,
 } from 'antd';
 import { UserOutlined } from '@ant-design/icons';
 import { useSession } from 'next-auth/react';
@@ -20,10 +21,14 @@ import Logo from '@/app/components/brand/logo';
 import BackButton from '@/app/components/back-button';
 import dayjs from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
+import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
+import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 import styles from './profile-page.module.css';
 import type { ChartData } from './profile-stats-charts';
 
 dayjs.extend(isoWeek);
+dayjs.extend(isSameOrAfter);
+dayjs.extend(isSameOrBefore);
 
 // Lazy load Chart.js components to reduce initial bundle size
 const ProfileStatsCharts = dynamic(() => import('./profile-stats-charts'), {
@@ -149,48 +154,55 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
 
   const isOwnProfile = session?.user?.id === userId;
 
-  // Redirect if not authenticated
+  // Redirect if not authenticated or viewing someone else's profile
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/');
+    } else if (status === 'authenticated' && session?.user?.id && session.user.id !== userId) {
+      // Currently only own profile is supported - redirect to own profile
+      router.replace(`/crusher/${session.user.id}`);
     }
-  }, [status, router]);
+  }, [status, router, session?.user?.id, userId]);
 
-  // Fetch profile and credentials on mount
-  useEffect(() => {
-    if (status === 'authenticated') {
-      fetchProfileAndCredentials();
-    }
-  }, [status]);
-
-  const fetchProfileAndCredentials = async () => {
+  // Fetch profile and credentials
+  const fetchProfileAndCredentials = useCallback(async () => {
     try {
       const [profileRes, credentialsRes] = await Promise.all([
         fetch('/api/internal/profile'),
         fetch('/api/internal/aurora-credentials'),
       ]);
 
-      if (profileRes.ok) {
-        const profileData = await profileRes.json();
-        setProfile(profileData);
+      if (!profileRes.ok) {
+        throw new Error('Failed to fetch profile');
       }
+      const profileData = await profileRes.json();
+      setProfile(profileData);
 
-      if (credentialsRes.ok) {
-        const credentialsData = await credentialsRes.json();
-        const creds = credentialsData.credentials || [];
-        setCredentials(creds);
+      if (!credentialsRes.ok) {
+        throw new Error('Failed to fetch credentials');
+      }
+      const credentialsData = await credentialsRes.json();
+      const creds = credentialsData.credentials || [];
+      setCredentials(creds);
 
-        // Auto-select first board with credentials
-        if (creds.length > 0 && creds[0].auroraUserId) {
-          setSelectedBoard(creds[0].boardType);
-        }
+      // Auto-select first board with credentials
+      if (creds.length > 0 && creds[0].auroraUserId) {
+        setSelectedBoard(creds[0].boardType);
       }
     } catch (error) {
       console.error('Failed to fetch profile:', error);
+      message.error('Failed to load profile data');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  // Fetch profile and credentials on mount
+  useEffect(() => {
+    if (status === 'authenticated' && isOwnProfile) {
+      fetchProfileAndCredentials();
+    }
+  }, [status, isOwnProfile, fetchProfileAndCredentials]);
 
   // Fetch logbook when board selection changes
   useEffect(() => {
@@ -210,10 +222,14 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: auroraUserId, climbUuids: '' }),
       });
+      if (!response.ok) {
+        throw new Error(`Failed to fetch logbook: ${response.status}`);
+      }
       const data = await response.json();
       setLogbook(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error fetching logbook:', error);
+      message.error('Failed to load climbing stats');
       setLogbook([]);
     } finally {
       setLoadingStats(false);
@@ -233,7 +249,8 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
       case 'custom':
         return logbook.filter((entry) => {
           const climbedAt = dayjs(entry.climbed_at);
-          return climbedAt.isAfter(dayjs(fromDate)) && climbedAt.isBefore(dayjs(toDate));
+          // Use inclusive comparison to include entries on boundary dates
+          return climbedAt.isSameOrAfter(dayjs(fromDate), 'day') && climbedAt.isSameOrBefore(dayjs(toDate), 'day');
         });
       case 'all':
       default:

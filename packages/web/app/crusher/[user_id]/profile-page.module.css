@@ -1,15 +1,24 @@
+/*
+ * Profile page styles
+ * Values here should match themeTokens from @/app/theme/theme-config.ts
+ * semantic.background = #F9FAFB (neutral.50)
+ * semantic.surface = #FFFFFF
+ * shadows.xs = 0 1px 2px 0 rgba(0, 0, 0, 0.05)
+ * spacing: 1=4px, 2=8px, 3=12px, 4=16px, 5=20px, 6=24px, 8=32px, 10=40px, 12=48px
+ */
+
 .layout {
   min-height: 100vh;
-  background: #f5f5f5;
+  background: var(--background, #F9FAFB);
 }
 
 .header {
-  background: #fff;
-  padding: 0 16px;
+  background: var(--surface, #FFFFFF);
+  padding: 0 16px; /* spacing.4 */
   display: flex;
   align-items: center;
-  gap: 16px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  gap: 16px; /* spacing.4 */
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); /* shadows.xs */
   height: 64px;
 }
 
@@ -19,7 +28,7 @@
 }
 
 .content {
-  padding: 24px;
+  padding: 24px; /* spacing.6 */
   max-width: 800px;
   margin: 0 auto;
   width: 100%;
@@ -33,13 +42,13 @@
 }
 
 .profileCard {
-  margin-bottom: 24px;
+  margin-bottom: 24px; /* spacing.6 */
 }
 
 .profileInfo {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 16px; /* spacing.4 */
 }
 
 .profileDetails {
@@ -52,39 +61,39 @@
 }
 
 .statsCard {
-  margin-bottom: 24px;
+  margin-bottom: 24px; /* spacing.6 */
 }
 
 .boardSelector {
-  margin-bottom: 16px;
+  margin-bottom: 16px; /* spacing.4 */
 }
 
 .timeframeSelector {
-  margin-bottom: 16px;
+  margin-bottom: 16px; /* spacing.4 */
 }
 
 .customDateRange {
-  margin-bottom: 16px;
+  margin-bottom: 16px; /* spacing.4 */
 }
 
 .loadingStats {
   display: flex;
   justify-content: center;
-  padding: 48px 0;
+  padding: 48px 0; /* spacing.12 */
 }
 
 .chartsContainer {
-  margin-top: 24px;
+  margin-top: 24px; /* spacing.6 */
 }
 
 .chartWrapper {
   height: 400px;
-  margin-bottom: 24px;
+  margin-bottom: 24px; /* spacing.6 */
 }
 
 .bottomChartsRow {
   display: flex;
-  gap: 24px;
+  gap: 24px; /* spacing.6 */
   flex-wrap: wrap;
 }
 
@@ -101,12 +110,12 @@
 
 @media (max-width: 768px) {
   .content {
-    padding: 16px;
+    padding: 16px; /* spacing.4 */
   }
 
   .header {
-    padding: 0 12px;
-    gap: 8px;
+    padding: 0 12px; /* spacing.3 */
+    gap: 8px; /* spacing.2 */
   }
 
   .profileInfo {
