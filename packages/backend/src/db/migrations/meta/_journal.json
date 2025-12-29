@@ -36,6 +36,13 @@
       "when": 1735344000000,
       "tag": "0004_remove_session_expiry",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1735430400000,
+      "tag": "0005_session_status_tracking",
+      "breakpoints": true
     }
   ]
 }

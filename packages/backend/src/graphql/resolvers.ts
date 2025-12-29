@@ -719,6 +719,23 @@ const resolvers = {
       return true;
     },
 
+    endSession: async (_: unknown, { sessionId }: { sessionId: string }, ctx: ConnectionContext) => {
+      applyRateLimit(ctx, 5); // Limit session end to prevent abuse
+      validateInput(SessionIdSchema, sessionId, 'sessionId');
+
+      // End the session (marks as ended, removes from Redis)
+      await roomManager.endSession(sessionId);
+
+      // Notify all users in the session that it has ended
+      pubsub.publishSessionEvent(sessionId, {
+        __typename: 'SessionEnded',
+        reason: 'Session ended by user',
+        newPath: undefined,
+      });
+
+      return true;
+    },
+
     updateUsername: async (_: unknown, { username, avatarUrl }: { username: string; avatarUrl?: string }, ctx: ConnectionContext) => {
       // Validate inputs
       validateInput(UsernameSchema, username, 'username');
