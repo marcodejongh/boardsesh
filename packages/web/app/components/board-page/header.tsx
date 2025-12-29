@@ -16,7 +16,7 @@ import AngleSelector from './angle-selector';
 import Logo from '../brand/logo';
 import styles from './header.module.css';
 import Link from 'next/link';
-import { AuthModal } from '../auth/auth-modal';
+import AuthModal from '../auth/auth-modal';
 
 type BoardSeshHeaderProps = {
   boardDetails: BoardDetails;

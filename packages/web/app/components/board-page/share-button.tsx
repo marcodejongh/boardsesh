@@ -16,7 +16,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useQueueContext } from '../graphql-queue';
 import { themeTokens } from '@/app/theme/theme-config';
-import { AuthModal } from '../auth/auth-modal';
+import AuthModal from '../auth/auth-modal';
 
 const { Text } = Typography;
 
