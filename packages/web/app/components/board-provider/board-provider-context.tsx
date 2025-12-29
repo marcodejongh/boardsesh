@@ -1,9 +1,7 @@
 'use client';
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { BoardName, ClimbUuid } from '@/app/lib/types';
-import { AscentSavedEvent, LogbookEntry, SaveAscentResponse, SaveClimbOptions } from '@/app/lib/api-wrappers/aurora/types';
-import { SaveAscentOptions } from '@/app/lib/api-wrappers/aurora/types';
-import { generateUuid } from '@/app/lib/api-wrappers/aurora/util';
+import { SaveClimbOptions } from '@/app/lib/api-wrappers/aurora/types';
 import { message } from 'antd';
 import { useSession } from 'next-auth/react';
 
@@ -18,6 +16,47 @@ export interface SaveClimbResponse {
   uuid: string;
 }
 
+// Tick status type matching the database enum
+export type TickStatus = 'flash' | 'send' | 'attempt';
+
+// Options for saving a tick (local storage, no Aurora required)
+export interface SaveTickOptions {
+  climbUuid: string;
+  angle: number;
+  isMirror: boolean;
+  status: TickStatus;
+  attemptCount: number;
+  quality: number; // 1-5
+  difficulty: number;
+  isBenchmark: boolean;
+  comment: string;
+  climbedAt: string;
+  sessionId?: string;
+}
+
+// Logbook entry that works for both local ticks and legacy Aurora entries
+export interface LogbookEntry {
+  uuid: string;
+  climb_uuid: string;
+  angle: number;
+  is_mirror: boolean;
+  user_id: number;
+  attempt_id: number;
+  tries: number;
+  quality: number | null;
+  difficulty: number | null;
+  is_benchmark: boolean;
+  is_listed: boolean;
+  comment: string;
+  climbed_at: string;
+  created_at: string;
+  updated_at: string;
+  wall_uuid: string | null;
+  is_ascent: boolean;
+  status?: TickStatus;
+  aurora_synced?: boolean;
+}
+
 interface BoardContextType {
   boardName: BoardName;
   isAuthenticated: boolean;
@@ -30,14 +69,14 @@ interface BoardContextType {
   isInitialized: boolean;
   logbook: LogbookEntry[];
   getLogbook: (climbUuids: ClimbUuid[]) => Promise<void>;
-  saveAscent: (options: Omit<SaveAscentOptions, 'uuid'>) => Promise<SaveAscentResponse>;
+  saveTick: (options: SaveTickOptions) => Promise<void>;
   saveClimb: (options: Omit<SaveClimbOptions, 'setter_id'>) => Promise<SaveClimbResponse>;
 }
 
 const BoardContext = createContext<BoardContextType | undefined>(undefined);
 
 export function BoardProvider({ boardName, children }: { boardName: BoardName; children: React.ReactNode }) {
-  const { data: session, status: sessionStatus } = useSession();
+  const { status: sessionStatus } = useSession();
   const [authState, setAuthState] = useState<AuthState>({
     token: null,
     user_id: null,
@@ -48,19 +87,20 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
   const [error, setError] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [logbook, setLogbook] = useState<LogbookEntry[]>([]);
-  const [currentClimbUuids, setCurrentClimbUuids] = useState<ClimbUuid[]>([]);
+  // Use ref to track climb UUIDs to avoid re-render loops
+  const currentClimbUuidsRef = useRef<ClimbUuid[]>([]);
+  const lastSessionStatusRef = useRef<string>(sessionStatus);
 
-  // Fetch Aurora credentials when session changes
+  // Fetch Aurora credentials when session changes (still useful for saveClimb)
   useEffect(() => {
     let mounted = true;
 
     const fetchAuroraCredentials = async () => {
-      // Only fetch if user is authenticated with NextAuth
       if (sessionStatus === 'loading') {
         return;
       }
 
-      if (sessionStatus !== 'authenticated' || !session?.user?.id) {
+      if (sessionStatus !== 'authenticated') {
         setAuthState({
           token: null,
           user_id: null,
@@ -112,124 +152,135 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
     return () => {
       mounted = false;
     };
-  }, [boardName, session?.user?.id, sessionStatus]);
+  }, [boardName, sessionStatus]);
 
-  const getLogbook = useCallback(async (climbUuids: ClimbUuid[]) => {
-    try {
-      setCurrentClimbUuids(climbUuids); // Store the current climb UUIDs
-
-      if (!authState.user_id) {
-        setLogbook([]); // Clear logbook if not authenticated
-        return;
-      }
-
-      const { token, user_id: userId } = authState;
-      const response = await fetch(`/api/v1/${boardName}/proxy/getLogbook`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          token,
-          userId: userId.toString(),
-          climbUuids: climbUuids,
-        }),
-      });
-
-      const data: LogbookEntry[] = await response.json();
-
-      if (!response.ok) {
-        throw new Error('Couldnt fetch logbook');
-      }
-
-      setLogbook(data);
-    } catch (error) {
-      setLogbook([]); // Clear logbook on error
-      throw error;
+  // Internal fetch function (not memoized, called by getLogbook and effect)
+  const fetchLogbook = async (climbUuids: ClimbUuid[]) => {
+    if (sessionStatus !== 'authenticated') {
+      setLogbook([]);
+      return;
     }
-  }, [authState, boardName]);
 
-  useEffect(() => {
-    if (currentClimbUuids.length > 0) {
-      getLogbook(currentClimbUuids);
+    const params = new URLSearchParams({
+      boardType: boardName,
+    });
+    if (climbUuids.length > 0) {
+      params.set('climbUuids', climbUuids.join(','));
     }
-  }, [authState.token, authState.user_id, currentClimbUuids, getLogbook]);
-
-  // Then update the saveAscent function
-  const saveAscent = async (options: Omit<SaveAscentOptions, 'uuid'>) => {
-    if (!authState.token || !authState.user_id) {
-      throw new Error('Not authenticated');
-    }
-    const ascentUuid = generateUuid();
-
-    const optimisticAscent: AscentSavedEvent['ascent'] & LogbookEntry = {
-      ...options,
-      attempt_id: 0,
-      user_id: authState.user_id,
-      wall_uuid: null, // Add the nullable wall_uuid
-      is_listed: true,
-      created_at: new Date().toISOString().replace('T', ' ').split('.')[0],
-      updated_at: new Date().toISOString().replace('T', ' ').split('.')[0],
-      uuid: ascentUuid,
-      is_ascent: true,
-      tries: options.bid_count,
-    };
-
-    // Optimistically update the local state
-    setLogbook((currentLogbook) => [optimisticAscent, ...currentLogbook]);
 
     try {
-      const response = await fetch(`/api/v1/${boardName}/proxy/saveAscent`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          token: authState.token,
-          options: {
-            ...options,
-            user_id: authState.user_id,
-            uuid: ascentUuid,
-          },
-        }),
-      });
+      const response = await fetch(`/api/internal/ticks?${params.toString()}`);
 
       if (!response.ok) {
-        throw new Error(`Unexpected response from backend, failed to save ascent`);
+        throw new Error('Could not fetch logbook');
       }
 
-      const data: SaveAscentResponse = await response.json();
-
-      // Find the saved ascent from the response
-      const savedAscentEvent = data.events.find((event): event is AscentSavedEvent => event._type === 'ascent_saved');
-
-      if (savedAscentEvent) {
-        // Update the logbook with the real ascent data
-        setLogbook((currentLogbook) =>
-          currentLogbook.map((ascent) =>
-            ascent.uuid === ascentUuid
-              ? {
-                  ...savedAscentEvent.ascent,
-                  tries: savedAscentEvent.ascent.bid_count,
-                  is_ascent: true,
-                }
-              : ascent,
-          ),
-        );
-      }
-
-      return data;
-    } catch (error) {
-      message.error('Failed to save ascent');
-      // Rollback on error
-      setLogbook((currentLogbook) => currentLogbook.filter((ascent) => ascent.uuid !== ascentUuid));
-      throw error;
+      const data = await response.json();
+      setLogbook(data.entries || []);
+    } catch (err) {
+      console.error('Failed to fetch logbook:', err);
+      setLogbook([]);
     }
   };
 
+  // Fetch logbook from local ticks API (works without Aurora credentials)
+  const getLogbook = useCallback(async (climbUuids: ClimbUuid[]) => {
+    // Store the UUIDs in ref to avoid re-render loops
+    currentClimbUuidsRef.current = climbUuids;
+    await fetchLogbook(climbUuids);
+  }, [boardName, sessionStatus]);
+
+  // Refetch logbook only when session status changes from non-authenticated to authenticated
+  useEffect(() => {
+    const wasAuthenticated = lastSessionStatusRef.current === 'authenticated';
+    const isNowAuthenticated = sessionStatus === 'authenticated';
+    lastSessionStatusRef.current = sessionStatus;
+
+    // Only refetch if we just became authenticated and have climb UUIDs
+    if (!wasAuthenticated && isNowAuthenticated && currentClimbUuidsRef.current.length > 0) {
+      fetchLogbook(currentClimbUuidsRef.current);
+    } else if (!isNowAuthenticated) {
+      setLogbook([]);
+    }
+  }, [sessionStatus, boardName]);
+
+  // Save a tick to local storage (no Aurora credentials required)
+  const saveTick = async (options: SaveTickOptions) => {
+    if (sessionStatus !== 'authenticated') {
+      throw new Error('Not authenticated');
+    }
+
+    // Create optimistic entry
+    const optimisticEntry: LogbookEntry = {
+      uuid: `temp-${Date.now()}`,
+      climb_uuid: options.climbUuid,
+      angle: options.angle,
+      is_mirror: options.isMirror,
+      user_id: 0,
+      attempt_id: 0,
+      tries: options.attemptCount,
+      quality: options.quality,
+      difficulty: options.difficulty,
+      is_benchmark: options.isBenchmark,
+      is_listed: true,
+      comment: options.comment,
+      climbed_at: options.climbedAt,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      wall_uuid: null,
+      is_ascent: options.status === 'flash' || options.status === 'send',
+      status: options.status,
+      aurora_synced: false,
+    };
+
+    // Optimistically update the logbook
+    setLogbook((currentLogbook) => [optimisticEntry, ...currentLogbook]);
+
+    try {
+      const response = await fetch('/api/internal/ticks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          boardType: boardName,
+          ...options,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save tick');
+      }
+
+      const data = await response.json();
+
+      // Update the optimistic entry with the real data
+      setLogbook((currentLogbook) =>
+        currentLogbook.map((entry) =>
+          entry.uuid === optimisticEntry.uuid
+            ? {
+                ...entry,
+                uuid: data.tick.uuid,
+                created_at: data.tick.createdAt,
+                updated_at: data.tick.updatedAt,
+              }
+            : entry
+        )
+      );
+    } catch (err) {
+      message.error('Failed to save tick');
+      // Rollback on error
+      setLogbook((currentLogbook) =>
+        currentLogbook.filter((entry) => entry.uuid !== optimisticEntry.uuid)
+      );
+      throw err;
+    }
+  };
+
+  // Save a climb (still requires Aurora credentials)
   const saveClimb = async (options: Omit<SaveClimbOptions, 'setter_id'>): Promise<SaveClimbResponse> => {
     if (!authState.token || !authState.user_id) {
-      throw new Error('Not authenticated');
+      throw new Error('Aurora credentials required to create climbs');
     }
 
     try {
@@ -254,9 +305,9 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
 
       const data = await response.json();
       return data;
-    } catch (error) {
+    } catch (err) {
       message.error('Failed to save climb');
-      throw error;
+      throw err;
     }
   };
 
@@ -271,7 +322,7 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
     isInitialized,
     getLogbook,
     logbook,
-    saveAscent,
+    saveTick,
     saveClimb,
     boardName,
   };

@@ -141,6 +141,13 @@
       "when": 1735398000000,
       "tag": "0021_drop_redundant_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1767046015112,
+      "tag": "0020_sticky_morg",
+      "breakpoints": true
     }
   ]
 }

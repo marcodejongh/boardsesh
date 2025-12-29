@@ -95,4 +95,3 @@ export const LogbookDrawer: React.FC<LogbookDrawerProps> = ({
     </Drawer>
   );
 };
-

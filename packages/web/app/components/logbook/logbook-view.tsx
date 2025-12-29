@@ -49,10 +49,10 @@ export const LogbookView: React.FC<LogbookViewProps> = ({ currentClimb }) => {
               )}
               {showMirrorTag && ascent.is_mirror && <Tag color="purple">Mirrored</Tag>}
             </Space>
-            {ascent.is_ascent && (
+            {ascent.is_ascent && ascent.quality && (
               <>
                 <Space>
-                  <Rate disabled value={ascent.quality} count={3} style={{ fontSize: 14 }} />
+                  <Rate disabled value={ascent.quality} count={5} style={{ fontSize: 14 }} />
                 </Space>
               </>
             )}
