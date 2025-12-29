@@ -295,6 +295,13 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
                       icon: <CheckOutlined />,
                       onClick: () => item.climb && onTickClick(item.climb),
                     },
+                    {
+                      key: 'remove',
+                      label: 'Remove from Queue',
+                      icon: <DeleteOutlined />,
+                      danger: true,
+                      onClick: () => removeFromQueue(item),
+                    },
                   ],
                 }}
                 trigger={['click']}
