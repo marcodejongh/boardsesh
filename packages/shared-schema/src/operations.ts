@@ -42,8 +42,8 @@ const QUEUE_ITEM_FIELDS = `
 
 // Mutations
 export const JOIN_SESSION = `
-  mutation JoinSession($sessionId: ID!, $boardPath: String!, $username: String, $avatarUrl: String) {
-    joinSession(sessionId: $sessionId, boardPath: $boardPath, username: $username, avatarUrl: $avatarUrl) {
+  mutation JoinSession($sessionId: ID!, $boardPath: String!, $username: String, $avatarUrl: String, $initialQueue: [ClimbQueueItemInput!], $initialCurrentClimb: ClimbQueueItemInput) {
+    joinSession(sessionId: $sessionId, boardPath: $boardPath, username: $username, avatarUrl: $avatarUrl, initialQueue: $initialQueue, initialCurrentClimb: $initialCurrentClimb) {
       id
       boardPath
       clientId

@@ -119,6 +119,11 @@ export interface PersistentSessionContextType {
   // Session lifecycle
   activateSession: (info: ActiveSessionInfo) => void;
   deactivateSession: () => void;
+  setInitialQueueForSession: (
+    sessionId: string,
+    queue: LocalClimbQueueItem[],
+    currentClimb: LocalClimbQueueItem | null,
+  ) => void;
 
   // Mutation functions
   addQueueItem: (item: LocalClimbQueueItem, position?: number) => Promise<void>;
@@ -176,6 +181,13 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
   const [localCurrentClimbQueueItem, setLocalCurrentClimbQueueItem] = useState<LocalClimbQueueItem | null>(null);
   const [localBoardPath, setLocalBoardPath] = useState<string | null>(null);
   const [localBoardDetails, setLocalBoardDetails] = useState<BoardDetails | null>(null);
+
+  // Pending initial queue for new sessions
+  const [pendingInitialQueue, setPendingInitialQueue] = useState<{
+    sessionId: string;
+    queue: LocalClimbQueueItem[];
+    currentClimb: LocalClimbQueueItem | null;
+  } | null>(null);
 
   // Refs for cleanup and callbacks
   const queueUnsubscribeRef = useRef<(() => void) | null>(null);
@@ -324,11 +336,38 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
     async function joinSession(clientToUse: Client): Promise<Session | null> {
       if (DEBUG) console.log('[PersistentSession] Calling joinSession mutation...');
       try {
+        // Check if we have a pending initial queue for this session
+        const initialQueueData =
+          pendingInitialQueue?.sessionId === sessionId
+            ? pendingInitialQueue
+            : null;
+
+        if (DEBUG && initialQueueData) {
+          console.log('[PersistentSession] Sending initial queue with', initialQueueData.queue.length, 'items');
+        }
+
+        // Build variables with optional initial queue
+        const variables = {
+          sessionId,
+          boardPath,
+          username: usernameRef.current,
+          avatarUrl: avatarUrlRef.current,
+          ...(initialQueueData && {
+            initialQueue: initialQueueData.queue.map(toClimbQueueItemInput),
+            initialCurrentClimb: initialQueueData.currentClimb ? toClimbQueueItemInput(initialQueueData.currentClimb) : null,
+          }),
+        };
+
         const response = await execute<{ joinSession: Session }>(clientToUse, {
           query: JOIN_SESSION,
-          // Use refs for values that may change but shouldn't trigger reconnection
-          variables: { sessionId, boardPath, username: usernameRef.current, avatarUrl: avatarUrlRef.current },
+          variables,
         });
+
+        // Clear pending queue after successful send
+        if (initialQueueData) {
+          setPendingInitialQueue(null);
+        }
+
         return response.joinSession;
       } catch (err) {
         console.error('[PersistentSession] JoinSession failed:', err);
@@ -515,6 +554,14 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
     setCurrentClimbQueueItem(null);
   }, []);
 
+  const setInitialQueueForSession = useCallback(
+    (sessionId: string, queue: LocalClimbQueueItem[], currentClimb: LocalClimbQueueItem | null) => {
+      if (DEBUG) console.log(`[PersistentSession] Setting initial queue for session ${sessionId}:`, queue.length, 'items');
+      setPendingInitialQueue({ sessionId, queue, currentClimb });
+    },
+    []
+  );
+
   // Local queue management functions
   const setLocalQueueState = useCallback(
     (
@@ -639,6 +686,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
       clearLocalQueue,
       activateSession,
       deactivateSession,
+      setInitialQueueForSession,
       addQueueItem,
       removeQueueItem,
       setCurrentClimb: setCurrentClimbMutation,
@@ -663,6 +711,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
       clearLocalQueue,
       activateSession,
       deactivateSession,
+      setInitialQueueForSession,
       addQueueItem,
       removeQueueItem,
       setCurrentClimbMutation,

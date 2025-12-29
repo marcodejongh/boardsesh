@@ -42,6 +42,7 @@ import type {
   QueueEvent,
   SessionEvent,
   ClimbQueueItem,
+  ClimbQueueItemInput,
   QueueState,
   SessionUser,
   Grade,
@@ -595,10 +596,10 @@ const resolvers = {
   Mutation: {
     joinSession: async (
       _: unknown,
-      { sessionId, boardPath, username, avatarUrl }: { sessionId: string; boardPath: string; username?: string; avatarUrl?: string },
+      { sessionId, boardPath, username, avatarUrl, initialQueue, initialCurrentClimb }: { sessionId: string; boardPath: string; username?: string; avatarUrl?: string; initialQueue?: ClimbQueueItemInput[]; initialCurrentClimb?: ClimbQueueItemInput },
       ctx: ConnectionContext
     ) => {
-      if (DEBUG) console.log(`[joinSession] START - connectionId: ${ctx.connectionId}, sessionId: ${sessionId}, username: ${username}`);
+      if (DEBUG) console.log(`[joinSession] START - connectionId: ${ctx.connectionId}, sessionId: ${sessionId}, username: ${username}, initialQueue: ${initialQueue?.length || 0} items`);
 
       applyRateLimit(ctx, 10); // Limit session joins to prevent abuse
 
@@ -608,7 +609,41 @@ const resolvers = {
       if (username) validateInput(UsernameSchema, username, 'username');
       if (avatarUrl) validateInput(AvatarUrlSchema, avatarUrl, 'avatarUrl');
 
-      const result = await roomManager.joinSession(ctx.connectionId, sessionId, boardPath, username || undefined, avatarUrl || undefined);
+      // Convert ClimbQueueItemInput to ClimbQueueItem (remove undefined, keep only null)
+      const convertToClimbQueueItem = (item: ClimbQueueItemInput): ClimbQueueItem => ({
+        uuid: item.uuid,
+        climb: {
+          uuid: item.climb.uuid,
+          setter_username: item.climb.setter_username,
+          name: item.climb.name,
+          description: item.climb.description,
+          frames: item.climb.frames,
+          angle: item.climb.angle,
+          ascensionist_count: item.climb.ascensionist_count,
+          difficulty: item.climb.difficulty,
+          quality_average: item.climb.quality_average,
+          stars: item.climb.stars,
+          difficulty_error: item.climb.difficulty_error,
+          litUpHoldsMap: item.climb.litUpHoldsMap,
+          mirrored: item.climb.mirrored ?? null,
+          benchmark_difficulty: item.climb.benchmark_difficulty ?? null,
+          userAscents: item.climb.userAscents ?? null,
+          userAttempts: item.climb.userAttempts ?? null,
+        },
+        addedBy: item.addedBy ?? undefined,
+        addedByUser: item.addedByUser ? {
+          id: item.addedByUser.id,
+          username: item.addedByUser.username,
+          avatarUrl: item.addedByUser.avatarUrl ?? undefined,
+        } : undefined,
+        tickedBy: item.tickedBy ?? undefined,
+        suggested: item.suggested ?? undefined,
+      });
+
+      const convertedInitialQueue = initialQueue?.map(convertToClimbQueueItem);
+      const convertedInitialCurrentClimb = initialCurrentClimb ? convertToClimbQueueItem(initialCurrentClimb) : undefined;
+
+      const result = await roomManager.joinSession(ctx.connectionId, sessionId, boardPath, username || undefined, avatarUrl || undefined, convertedInitialQueue, convertedInitialCurrentClimb);
       if (DEBUG) console.log(`[joinSession] roomManager.joinSession completed - clientId: ${result.clientId}, isLeader: ${result.isLeader}`);
 
       // Update context with session info
