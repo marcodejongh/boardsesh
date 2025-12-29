@@ -16,7 +16,6 @@ import {
 } from 'antd';
 import { UserOutlined } from '@ant-design/icons';
 import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
 import Logo from '@/app/components/brand/logo';
 import BackButton from '@/app/components/back-button';
 import dayjs from 'dayjs';
@@ -140,9 +139,9 @@ const angleColors = [
 type TimeframeType = 'all' | 'lastYear' | 'lastMonth' | 'lastWeek' | 'custom';
 
 export default function ProfilePageContent({ userId }: { userId: string }) {
-  const { data: session, status } = useSession();
-  const router = useRouter();
+  const { data: session } = useSession();
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [credentials, setCredentials] = useState<AuroraCredential[]>([]);
   const [selectedBoard, setSelectedBoard] = useState<string | null>(null);
@@ -154,35 +153,30 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
 
   const isOwnProfile = session?.user?.id === userId;
 
-  // Redirect if not authenticated or viewing someone else's profile
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/');
-    } else if (status === 'authenticated' && session?.user?.id && session.user.id !== userId) {
-      // Currently only own profile is supported - redirect to own profile
-      router.replace(`/crusher/${session.user.id}`);
-    }
-  }, [status, router, session?.user?.id, userId]);
-
-  // Fetch profile and credentials
-  const fetchProfileAndCredentials = useCallback(async () => {
+  // Fetch profile data for the userId in the URL
+  const fetchProfile = useCallback(async () => {
     try {
-      const [profileRes, credentialsRes] = await Promise.all([
-        fetch('/api/internal/profile'),
-        fetch('/api/internal/aurora-credentials'),
-      ]);
+      const response = await fetch(`/api/internal/profile/${userId}`);
 
-      if (!profileRes.ok) {
+      if (response.status === 404) {
+        setNotFound(true);
+        return;
+      }
+
+      if (!response.ok) {
         throw new Error('Failed to fetch profile');
       }
-      const profileData = await profileRes.json();
-      setProfile(profileData);
 
-      if (!credentialsRes.ok) {
-        throw new Error('Failed to fetch credentials');
-      }
-      const credentialsData = await credentialsRes.json();
-      const creds = credentialsData.credentials || [];
+      const data = await response.json();
+      setProfile({
+        id: data.id,
+        email: data.email,
+        name: data.name,
+        image: data.image,
+        profile: data.profile,
+      });
+
+      const creds = data.credentials || [];
       setCredentials(creds);
 
       // Auto-select first board with credentials
@@ -195,14 +189,12 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [userId]);
 
-  // Fetch profile and credentials on mount
+  // Fetch profile on mount
   useEffect(() => {
-    if (status === 'authenticated' && isOwnProfile) {
-      fetchProfileAndCredentials();
-    }
-  }, [status, isOwnProfile, fetchProfileAndCredentials]);
+    fetchProfile();
+  }, [fetchProfile]);
 
   // Fetch logbook when board selection changes
   useEffect(() => {
@@ -349,7 +341,7 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
     return { chartDataBar, chartDataPie, chartDataWeeklyBar };
   }, [filteredLogbook]);
 
-  if (status === 'loading' || loading) {
+  if (loading) {
     return (
       <Layout className={styles.layout}>
         <Content className={styles.loadingContent}>
@@ -359,8 +351,21 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
     );
   }
 
-  if (status === 'unauthenticated') {
-    return null;
+  if (notFound) {
+    return (
+      <Layout className={styles.layout}>
+        <Header className={styles.header}>
+          <BackButton fallbackUrl="/" />
+          <Logo size="sm" showText={false} />
+          <Title level={4} className={styles.headerTitle}>
+            Profile
+          </Title>
+        </Header>
+        <Content className={styles.content}>
+          <Empty description="User not found" />
+        </Content>
+      </Layout>
+    );
   }
 
   const displayName = profile?.profile?.displayName || profile?.name || 'Crusher';
