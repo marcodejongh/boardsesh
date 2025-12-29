@@ -104,6 +104,9 @@ export async function startServer(): Promise<{ wss: WebSocketServer; httpServer:
   // Setup WebSocket server for GraphQL subscriptions
   const wss = setupWebSocketServer(httpServer);
 
+  // Track intervals for cleanup
+  const intervals: NodeJS.Timeout[] = [];
+
   console.log(`Boardsesh Backend starting on port ${PORT}...`);
 
   // Start HTTP server (WebSocket server is attached to it)
@@ -121,9 +124,21 @@ export async function startServer(): Promise<{ wss: WebSocketServer; httpServer:
     console.error('HTTP server error:', error);
   });
 
+  /**
+   * Clean up intervals and timers on shutdown
+   */
+  function cleanupIntervals(): void {
+    console.log(`[Server] Cleaning up ${intervals.length} intervals`);
+    intervals.forEach(interval => clearInterval(interval));
+    intervals.length = 0;
+  }
+
   // Graceful shutdown handler - flush pending writes
   process.on('SIGTERM', async () => {
     console.log('[Server] SIGTERM received, initiating graceful shutdown...');
+
+    // Clean up intervals first
+    cleanupIntervals();
 
     try {
       // Flush any pending debounced writes to Postgres
@@ -150,6 +165,9 @@ export async function startServer(): Promise<{ wss: WebSocketServer; httpServer:
   process.on('SIGINT', async () => {
     console.log('[Server] SIGINT received, initiating graceful shutdown...');
 
+    // Clean up intervals first
+    cleanupIntervals();
+
     try {
       await roomManager.flushPendingWrites();
       console.log('[Server] All pending writes flushed successfully');
@@ -168,25 +186,44 @@ export async function startServer(): Promise<{ wss: WebSocketServer; httpServer:
     }, 10000);
   });
 
-  // Optional: Periodic flush as backup (every 60 seconds)
-  setInterval(async () => {
+  // Periodic flush as backup (every 60 seconds)
+  const flushInterval = setInterval(async () => {
     try {
       await roomManager.flushPendingWrites();
     } catch (error) {
       console.error('[Server] Error in periodic flush:', error);
     }
   }, 60000);
+  intervals.push(flushInterval);
 
-  // Optional: Periodic TTL refresh for active sessions (every minute)
-  setInterval(async () => {
+  // Periodic TTL refresh for active sessions (every 2 minutes)
+  const ttlRefreshInterval = setInterval(async () => {
     try {
-      const activeSessions = roomManager.getAllActiveSessions();
-      // Note: TTL refresh happens automatically in RedisSessionStore methods,
-      // but we can add explicit refresh here if needed for extra safety
+      if (redisClientManager.isRedisConnected() && roomManager['redisStore']) {
+        const activeSessions = roomManager.getAllActiveSessions();
+
+        if (activeSessions.length > 0) {
+          console.log(`[Server] Refreshing TTL for ${activeSessions.length} active sessions`);
+
+          // Batch refresh to avoid overwhelming Redis
+          const batchSize = 50;
+          for (let i = 0; i < activeSessions.length; i += batchSize) {
+            const batch = activeSessions.slice(i, i + batchSize);
+            await Promise.all(
+              batch.map(sessionId =>
+                roomManager['redisStore']?.refreshTTL(sessionId).catch(err =>
+                  console.error(`[Server] TTL refresh failed for ${sessionId}:`, err)
+                )
+              )
+            );
+          }
+        }
+      }
     } catch (error) {
       console.error('[Server] Error in periodic TTL refresh:', error);
     }
-  }, 60000);
+  }, 120000); // 2 minutes
+  intervals.push(ttlRefreshInterval);
 
   return { wss, httpServer };
 }

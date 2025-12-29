@@ -322,6 +322,7 @@ const resolvers = {
         createdByUserId: s.createdByUserId,
         participantCount: roomManager.getSessionClients(s.id).length,
         distance: 0, // Not applicable for own sessions
+        isActive: roomManager.getSessionClients(s.id).length > 0, // Active if has connected clients
       }));
     },
 
