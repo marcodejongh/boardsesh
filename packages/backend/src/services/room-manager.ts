@@ -92,7 +92,9 @@ class RoomManager {
     sessionId: string,
     boardPath: string,
     username?: string,
-    avatarUrl?: string
+    avatarUrl?: string,
+    initialQueue?: ClimbQueueItem[],
+    initialCurrentClimb?: ClimbQueueItem | null
   ): Promise<{
     clientId: string;
     users: SessionUser[];
@@ -118,6 +120,9 @@ class RoomManager {
     if (avatarUrl) {
       client.avatarUrl = avatarUrl;
     }
+
+    // Track if this is a new session
+    let isNewSession = false;
 
     // Create or get session in memory - with lazy restore
     if (!this.sessions.has(sessionId)) {
@@ -157,6 +162,10 @@ class RoomManager {
                     createdByUserId: pgSession.createdByUserId,
                     createdAt: pgSession.createdAt,
                   });
+                } else {
+                  // Session doesn't exist in Redis or Postgres - this is a new session
+                  isNewSession = true;
+                  console.log(`[RoomManager] Creating new session ${sessionId} with ${initialQueue?.length || 0} initial queue items`);
                 }
               }
               this.sessions.set(sessionId, new Set());
@@ -176,7 +185,12 @@ class RoomManager {
           }
         }
       } else {
-        // No Redis, no locking needed (single instance)
+        // No Redis, check Postgres directly for session existence
+        const pgSession = await this.getSessionById(sessionId);
+        if (!pgSession || pgSession.status === 'ended') {
+          isNewSession = true;
+          console.log(`[RoomManager] Creating new session ${sessionId} with ${initialQueue?.length || 0} initial queue items`);
+        }
         this.sessions.set(sessionId, new Set());
       }
     }
@@ -195,6 +209,17 @@ class RoomManager {
       .update(sessions)
       .set({ status: 'active', lastActivity: new Date() })
       .where(eq(sessions.id, sessionId));
+
+    // Initialize queue state for new sessions with provided initial queue
+    if (isNewSession && initialQueue && initialQueue.length > 0) {
+      console.log(`[RoomManager] Initializing queue for new session ${sessionId} with ${initialQueue.length} items`);
+      await this.updateQueueStateImmediate(
+        sessionId,
+        initialQueue,
+        initialCurrentClimb || null,
+        0 // Version 0 for new session
+      );
+    }
 
     // Save users to Redis (ephemeral state, not persisted to Postgres)
     if (this.redisStore) {
