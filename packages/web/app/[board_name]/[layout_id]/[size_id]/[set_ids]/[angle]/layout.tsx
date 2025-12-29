@@ -7,7 +7,7 @@ import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import { permanentRedirect } from 'next/navigation';
 import { Content } from 'antd/es/layout/layout';
 import QueueControlBar from '@/app/components/queue-control/queue-control-bar';
-import { getBoardDetails } from '@/app/lib/data/queries';
+import { getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
 import BoardSeshHeader from '@/app/components/board-page/header';
 import { GraphQLQueueProvider } from '@/app/components/graphql-queue';
 import { ConnectionSettingsProvider } from '@/app/components/connection-manager/connection-settings-context';

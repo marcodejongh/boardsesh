@@ -5,7 +5,7 @@ import { PropsWithChildren } from 'react';
 import { BoardRouteParameters, ParsedBoardRouteParameters } from '@/app/lib/types';
 import { parseBoardRouteParams, constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
-import { getBoardDetails } from '@/app/lib/data/queries';
+import { getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
 import { permanentRedirect } from 'next/navigation';
 import ListLayoutClient from './layout-client';
 

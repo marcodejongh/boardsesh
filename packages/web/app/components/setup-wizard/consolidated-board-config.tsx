@@ -9,9 +9,8 @@ import { openDB } from 'idb';
 import { track } from '@vercel/analytics';
 import { useSession } from 'next-auth/react';
 import { SUPPORTED_BOARDS, ANGLES } from '@/app/lib/board-data';
-import { fetchBoardDetails } from '../rest-api/api';
 import { BoardName, BoardDetails } from '@/app/lib/types';
-import { getDefaultSizeForLayout } from '@/app/lib/__generated__/product-sizes-data';
+import { getDefaultSizeForLayout, getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
 import BoardConfigPreview from './board-config-preview';
 import BoardRenderer from '../board-renderer/board-renderer';
 import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
@@ -91,29 +90,25 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
       return;
     }
 
-    const loadPreviewDetails = async () => {
-      try {
-        const detailsKey = `${selectedBoard}-${selectedLayout}-${selectedSize}-${selectedSets.join(',')}`;
-        const cachedDetails = boardConfigs.details[detailsKey];
-        
-        if (cachedDetails) {
-          setPreviewBoardDetails(cachedDetails);
-        } else {
-          try {
-            const details = await fetchBoardDetails(selectedBoard, selectedLayout, selectedSize, selectedSets);
-            setPreviewBoardDetails(details);
-          } catch (error) {
-            console.error('Failed to fetch board details for preview:', error);
-            setPreviewBoardDetails(null);
-          }
-        }
-      } catch (error) {
-        console.error('Failed to load preview details:', error);
-        setPreviewBoardDetails(null);
-      }
-    };
+    try {
+      const detailsKey = `${selectedBoard}-${selectedLayout}-${selectedSize}-${selectedSets.join(',')}`;
+      const cachedDetails = boardConfigs.details[detailsKey];
 
-    loadPreviewDetails();
+      if (cachedDetails) {
+        setPreviewBoardDetails(cachedDetails);
+      } else {
+        const details = getBoardDetails({
+          board_name: selectedBoard,
+          layout_id: selectedLayout,
+          size_id: selectedSize,
+          set_ids: selectedSets,
+        });
+        setPreviewBoardDetails(details);
+      }
+    } catch (error) {
+      console.error('Failed to load preview details:', error);
+      setPreviewBoardDetails(null);
+    }
   }, [selectedBoard, selectedLayout, selectedSize, selectedSets, boardConfigs]);
 
   // IndexedDB helper functions

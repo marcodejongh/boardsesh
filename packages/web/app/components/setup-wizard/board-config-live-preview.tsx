@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Card, Typography, Skeleton } from 'antd';
-import { fetchBoardDetails } from '../rest-api/api';
 import { BoardDetails, BoardName } from '@/app/lib/types';
+import { getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
 import BoardRenderer from '../board-renderer/board-renderer';
 import { BoardConfigData } from '@/app/lib/server-board-configs';
 
@@ -39,40 +39,41 @@ export default function BoardConfigLivePreview({
       return;
     }
 
-    const loadPreview = async () => {
-      try {
-        setIsLoading(true);
+    try {
+      setIsLoading(true);
 
-        // Type assertion is safe because we've already checked hasRequiredProps
-        const safeBoardName = boardName!;
-        const safeLayoutId = layoutId!;
-        const safeSizeId = sizeId!;
+      // Type assertion is safe because we've already checked hasRequiredProps
+      const safeBoardName = boardName!;
+      const safeLayoutId = layoutId!;
+      const safeSizeId = sizeId!;
 
-        // Get data from boardConfigs prop
-        const detailsKey = `${safeBoardName}-${safeLayoutId}-${safeSizeId}-${setIds.join(',')}`;
-        const cachedDetails = boardConfigs.details[detailsKey];
+      // Get data from boardConfigs prop
+      const detailsKey = `${safeBoardName}-${safeLayoutId}-${safeSizeId}-${setIds.join(',')}`;
+      const cachedDetails = boardConfigs.details[detailsKey];
 
-        // Use cached details if available, otherwise fetch
-        let details = cachedDetails;
-        if (!details) {
-          try {
-            details = await fetchBoardDetails(safeBoardName, safeLayoutId, safeSizeId, setIds);
-          } catch (error) {
-            console.error('Failed to fetch board details:', error);
-            details = null;
-          }
+      // Use cached details if available, otherwise get from hardcoded data
+      let details = cachedDetails;
+      if (!details) {
+        try {
+          details = getBoardDetails({
+            board_name: safeBoardName,
+            layout_id: safeLayoutId,
+            size_id: safeSizeId,
+            set_ids: setIds,
+          });
+        } catch (error) {
+          console.error('Failed to get board details:', error);
+          details = null;
         }
-
-        setBoardDetails(details);
-      } catch (error) {
-        console.error('Failed to load preview:', error);
-        setBoardDetails(null);
-      } finally {
-        setIsLoading(false);
       }
-    };
 
-    loadPreview();
+      setBoardDetails(details);
+    } catch (error) {
+      console.error('Failed to load preview:', error);
+      setBoardDetails(null);
+    } finally {
+      setIsLoading(false);
+    }
   }, [hasRequiredProps, boardName, layoutId, sizeId, setIds, boardConfigs]);
 
   if (!hasRequiredProps) {

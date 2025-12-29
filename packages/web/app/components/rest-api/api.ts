@@ -1,9 +1,7 @@
 // api.ts
 
-import { SetIdList } from '@/app/lib/board-data';
 import {
   FetchCurrentProblemResponse,
-  BoardDetails,
   ParsedBoardRouteParameters,
   ParsedBoardRouteParametersWithUuid,
   SearchRequestPagination,
@@ -70,19 +68,3 @@ export const fetchBetaLinks = async (board: string, uuid: string): Promise<BetaL
   return Array.isArray(data) ? data : [];
 };
 
-// Fetch board details
-export const fetchBoardDetails = async (
-  board: string,
-  layout: number,
-  size: number,
-  set_ids: SetIdList,
-): Promise<BoardDetails> => {
-  const apiUrl = `${API_BASE_URL}/${board}/${layout}/${size}/${set_ids.join(',')}/details?bustCache=101`;
-  const response = await fetch(apiUrl);
-
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
-  }
-
-  return response.json();
-};

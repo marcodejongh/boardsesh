@@ -215,7 +215,6 @@ export type BoardDetails = {
   layout_id: number;
   size_id: number;
   set_ids: SetIdList;
-  ledPlacements: LedPlacements;
   supportsMirroring?: boolean;
   // Added for slug-based URLs
   layout_name?: string;

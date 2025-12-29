@@ -7,25 +7,11 @@
 import 'server-only';
 import { sql } from '@/app/lib/db/db';
 
+import { Climb, ParsedBoardRouteParametersWithUuid, BoardName, LayoutId, Size } from '../types';
 import {
-  Climb,
-  ParsedBoardRouteParametersWithUuid,
-  ParsedBoardRouteParameters,
-  HoldTuple,
-  BoardDetails,
-  ImageFileName,
-  BoardName,
-  LayoutId,
-  Size,
-} from '../types';
-import { HoldRenderData } from '@/app/components/board-renderer/types';
-import { getBoardImageDimensions } from '@/app/components/board-renderer/util';
-import { SetIdList } from '../board-data';
-import {
-  getProductSize,
-  getLayout,
   getSizesForLayoutId,
   getAllLayouts,
+  getSetsForLayoutAndSize,
 } from '@/app/lib/__generated__/product-sizes-data';
 
 const getTableName = (board_name: string, table_name: string) => {
@@ -36,104 +22,6 @@ const getTableName = (board_name: string, table_name: string) => {
     default:
       return `${table_name}`;
   }
-};
-
-export type ImageFileNameRow = { image_filename: string };
-export type HoldsRow = {
-  placement_id: number;
-  mirrored_placement_id: number;
-  x: number;
-  y: number;
-};
-
-export type ProductSizeRow = {
-  edge_left: number;
-  edge_right: number;
-  edge_bottom: number;
-  edge_top: number;
-};
-
-export type LedPlacementRow = {
-  id: number;
-  position: number;
-};
-
-// Collect data for each set_id
-export const getBoardDetails = async ({
-  board_name,
-  layout_id,
-  size_id,
-  set_ids,
-}: Pick<ParsedBoardRouteParameters, 'board_name' | 'layout_id' | 'size_id' | 'set_ids'>): Promise<BoardDetails> => {
-  // Get hardcoded size data (eliminates product_sizes query)
-  const sizeData = getProductSize(board_name, size_id);
-  if (!sizeData) {
-    throw new Error('Size dimensions not found');
-  }
-
-  // Get hardcoded layout data
-  const layoutData = getLayout(board_name, layout_id);
-
-  const imageUrlHoldsMapEntriesPromises = getImageUrlHoldsMapObjectEntries(set_ids, board_name, layout_id, size_id);
-
-  const [ledPlacementsResult, setsResult, ...imgUrlMapEntries] = await Promise.all([
-    sql`
-        SELECT
-            placements.id,
-            leds.position
-        FROM ${sql.unsafe(getTableName(board_name, 'placements'))} placements
-        INNER JOIN ${sql.unsafe(getTableName(board_name, 'leds'))} leds ON placements.hole_id = leds.hole_id
-        WHERE placements.layout_id = ${layout_id}
-        AND leds.product_size_id = ${size_id}
-    `,
-    getSets(board_name, layout_id, size_id),
-    ...imageUrlHoldsMapEntriesPromises,
-  ]);
-
-  const ledPlacements = ledPlacementsResult as LedPlacementRow[];
-  const imagesToHolds = Object.fromEntries(imgUrlMapEntries);
-
-  const { edgeLeft: edge_left, edgeRight: edge_right, edgeBottom: edge_bottom, edgeTop: edge_top } = sizeData;
-
-  const { width: boardWidth, height: boardHeight } = getBoardImageDimensions(board_name, Object.keys(imagesToHolds)[0]);
-  const xSpacing = boardWidth / (edge_right - edge_left);
-  const ySpacing = boardHeight / (edge_top - edge_bottom);
-
-  const holdsData: HoldRenderData[] = Object.values<HoldTuple[]>(imagesToHolds).flatMap((holds) =>
-    holds
-      .filter(([, , x, y]) => x > edge_left && x < edge_right && y > edge_bottom && y < edge_top)
-      .map(([holdId, mirroredHoldId, x, y]) => ({
-        id: holdId,
-        mirroredHoldId,
-        cx: (x - edge_left) * xSpacing,
-        cy: boardHeight - (y - edge_bottom) * ySpacing,
-        r: xSpacing * 4,
-      })),
-  );
-
-  const selectedSets = setsResult.filter((s) => set_ids.includes(s.id));
-
-  return {
-    images_to_holds: imagesToHolds,
-    holdsData,
-    edge_left,
-    edge_right,
-    edge_bottom,
-    edge_top,
-    boardHeight,
-    boardWidth,
-    board_name,
-    layout_id,
-    size_id,
-    set_ids,
-    ledPlacements: Object.fromEntries(ledPlacements.map(({ id, position }) => [id, position])),
-    supportsMirroring: board_name === 'tension' && layout_id !== 11,
-    // From hardcoded data
-    layout_name: layoutData?.name,
-    size_name: sizeData.name,
-    size_description: sizeData.description,
-    set_names: selectedSets.map((s) => s.name),
-  };
 };
 
 export const getClimb = async (params: ParsedBoardRouteParametersWithUuid): Promise<Climb> => {
@@ -193,61 +81,6 @@ export const getClimbStatsForAllAngles = async (
   return result as ClimbStatsForAngle[];
 };
 
-function getImageUrlHoldsMapObjectEntries(
-  set_ids: SetIdList,
-  board_name: string,
-  layout_id: number,
-  size_id: number,
-): Promise<[ImageFileName, HoldTuple[]]>[] {
-  return set_ids.map(async (set_id): Promise<[ImageFileName, HoldTuple[]]> => {
-    const [imageRowsResult, holdsResult] = await Promise.all([
-      sql`
-        SELECT image_filename
-        FROM ${sql.unsafe(getTableName(board_name, 'product_sizes_layouts_sets'))} product_sizes_layouts_sets
-        WHERE layout_id = ${layout_id}
-        AND product_size_id = ${size_id}
-        AND set_id = ${set_id}
-      `,
-      sql`
-          SELECT 
-            placements.id AS placement_id, 
-            mirrored_placements.id AS mirrored_placement_id, 
-            holes.x, holes.y
-          FROM ${sql.unsafe(getTableName(board_name, 'holes'))} holes
-          INNER JOIN ${sql.unsafe(getTableName(board_name, 'placements'))} placements ON placements.hole_id = holes.id
-          AND placements.set_id = ${set_id}
-          AND placements.layout_id = ${layout_id}
-          LEFT JOIN ${sql.unsafe(
-            getTableName(board_name, 'placements'),
-          )} mirrored_placements ON mirrored_placements.hole_id = holes.mirrored_hole_id
-          AND mirrored_placements.set_id = ${set_id}
-          AND mirrored_placements.layout_id = ${layout_id}
-        `,
-    ]);
-
-    const imageRows = imageRowsResult as ImageFileNameRow[];
-    const holds = holdsResult as HoldsRow[];
-
-    if (imageRows.length === 0) {
-      throw new Error(`Could not find set_id ${set_id} for layout_id: ${layout_id} and size_id: ${size_id}`);
-    }
-    const { image_filename } = imageRows[0];
-    if (holds.length === 0) {
-      return [image_filename, []];
-    }
-
-    return [
-      image_filename,
-      holds.map((hold) => [
-        hold.placement_id, // First position: regular placement ID
-        hold.mirrored_placement_id || null, // Second position: mirrored placement ID (or null)
-        hold.x, // Third position: x coordinate
-        hold.y,
-      ]),
-    ];
-  });
-}
-
 export type LayoutRow = {
   id: number;
   name: string;
@@ -283,16 +116,8 @@ export type SetRow = {
   name: string;
 };
 
-export const getSets = async (board_name: BoardName, layout_id: LayoutId, size_id: Size) => {
-  const layouts = await sql`
-    SELECT sets.id, sets.name
-      FROM ${sql.unsafe(getTableName(board_name, 'sets'))} sets
-      INNER JOIN ${sql.unsafe(getTableName(board_name, 'product_sizes_layouts_sets'))} psls 
-      ON sets.id = psls.set_id
-      WHERE psls.product_size_id = ${size_id}
-      AND psls.layout_id = ${layout_id}
-  `;
-
-  return layouts as SetRow[];
+export const getSets = (board_name: BoardName, layout_id: LayoutId, size_id: Size): SetRow[] => {
+  // Use hardcoded data instead of database query
+  return getSetsForLayoutAndSize(board_name, layout_id, size_id);
 };
 

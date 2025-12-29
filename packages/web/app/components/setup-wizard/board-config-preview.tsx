@@ -4,8 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { Card, Typography, Button, Tooltip, Tag, Space, Skeleton } from 'antd';
 import { DeleteOutlined, StarFilled } from '@ant-design/icons';
 import Link from 'next/link';
-import { fetchBoardDetails } from '../rest-api/api';
 import { BoardDetails, BoardName } from '@/app/lib/types';
+import { getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
 import BoardRenderer from '../board-renderer/board-renderer';
 import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { BoardConfigData } from '@/app/lib/server-board-configs';
@@ -87,10 +87,15 @@ export default function BoardConfigPreview({ config, onDelete, onSelect, boardCo
         let details = cachedDetails;
         if (!details && isValidConfig) {
           try {
-            details = await fetchBoardDetails(config.board as BoardName, config.layoutId, config.sizeId, config.setIds);
+            details = getBoardDetails({
+              board_name: config.board as BoardName,
+              layout_id: config.layoutId,
+              size_id: config.sizeId,
+              set_ids: config.setIds,
+            });
             setBoardDetails(details);
           } catch (error) {
-            console.error('Failed to fetch board details:', error);
+            console.error('Failed to get board details:', error);
           }
         } else if (cachedDetails) {
           setBoardDetails(details);
