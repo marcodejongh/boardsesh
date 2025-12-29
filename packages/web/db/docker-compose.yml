@@ -47,6 +47,7 @@ services:
       - ./../app/lib/db/schema.ts:/app/app/lib/db/schema.ts
       - ./../package.json:/app/package.json
       - ./../package-lock.json:/app/package-lock.json
+      - ./../node_modules:/app/node_modules
     environment:
       - POSTGRES_URL=postgres://postgres:password@postgres:5432/main
       - POSTGRES_USER=postgres
