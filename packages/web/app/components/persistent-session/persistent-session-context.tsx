@@ -47,9 +47,6 @@ export interface ActiveSessionInfo {
   boardPath: string;
   boardDetails: BoardDetails;
   parsedParams: ParsedBoardRouteParameters;
-  // Initial queue to set when creating a new session
-  initialQueue?: LocalClimbQueueItem[];
-  initialCurrentClimbQueueItem?: LocalClimbQueueItem | null;
 }
 
 // Convert local ClimbQueueItem to GraphQL input format
@@ -116,7 +113,6 @@ export interface PersistentSessionContextType {
     currentItem: LocalClimbQueueItem | null,
     boardPath: string,
     boardDetails: BoardDetails,
-    options?: { force?: boolean },
   ) => void;
   clearLocalQueue: () => void;
 
@@ -188,9 +184,6 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
   const isReconnectingRef = useRef(false);
   const activeSessionRef = useRef<ActiveSessionInfo | null>(null);
   const mountedRef = useRef(false);
-  // Ref to track pending session activation synchronously (before React state updates)
-  // This prevents race conditions where multiple activateSession calls happen before state updates
-  const pendingSessionRef = useRef<{ sessionId: string; boardPath: string } | null>(null);
 
   // Event subscribers
   const queueEventSubscribersRef = useRef<Set<(event: ClientQueueEvent) => void>>(new Set());
@@ -328,28 +321,13 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
     mountedRef.current = true;
     let graphqlClient: Client | null = null;
 
-    async function joinSession(clientToUse: Client, isInitialConnection = false): Promise<Session | null> {
-      if (DEBUG) console.log('[PersistentSession] Calling joinSession mutation...', { isInitialConnection, hasInitialQueue: !!(activeSession?.initialQueue?.length) });
+    async function joinSession(clientToUse: Client): Promise<Session | null> {
+      if (DEBUG) console.log('[PersistentSession] Calling joinSession mutation...');
       try {
-        // Only pass initial queue on first connection (not reconnects)
-        const initialQueue = isInitialConnection && activeSession?.initialQueue?.length
-          ? activeSession.initialQueue.map(toClimbQueueItemInput)
-          : undefined;
-        const initialCurrentClimbQueueItem = isInitialConnection && activeSession?.initialCurrentClimbQueueItem
-          ? toClimbQueueItemInput(activeSession.initialCurrentClimbQueueItem)
-          : undefined;
-
         const response = await execute<{ joinSession: Session }>(clientToUse, {
           query: JOIN_SESSION,
           // Use refs for values that may change but shouldn't trigger reconnection
-          variables: {
-            sessionId,
-            boardPath,
-            username: usernameRef.current,
-            avatarUrl: avatarUrlRef.current,
-            initialQueue,
-            initialCurrentClimbQueueItem,
-          },
+          variables: { sessionId, boardPath, username: usernameRef.current, avatarUrl: avatarUrlRef.current },
         });
         return response.joinSession;
       } catch (err) {
@@ -400,7 +378,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
 
         setClient(graphqlClient);
 
-        const sessionData = await joinSession(graphqlClient, true); // true = initial connection, pass initial queue
+        const sessionData = await joinSession(graphqlClient);
 
         if (!mountedRef.current) {
           graphqlClient.dispose();
@@ -519,20 +497,6 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
 
   // Session lifecycle functions
   const activateSession = useCallback((info: ActiveSessionInfo) => {
-    // Check ref synchronously first - this handles the race condition where
-    // multiple calls happen before React state updates
-    if (
-      pendingSessionRef.current?.sessionId === info.sessionId &&
-      pendingSessionRef.current?.boardPath === info.boardPath
-    ) {
-      if (DEBUG) console.log('[PersistentSession] Skipping duplicate activation (ref check):', info.sessionId);
-      return;
-    }
-
-    // Set ref synchronously before state update - this ensures any subsequent
-    // calls (e.g., from BoardSessionBridge effect) will see this pending activation
-    pendingSessionRef.current = { sessionId: info.sessionId, boardPath: info.boardPath };
-
     setActiveSession((prev) => {
       // Skip update if sessionId and boardPath are the same - prevents duplicate connections
       // when only object references change (e.g., search filter changes cause server re-render)
@@ -546,11 +510,9 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
 
   const deactivateSession = useCallback(() => {
     if (DEBUG) console.log('[PersistentSession] Deactivating session');
-    // Clear the pending ref so future activations work correctly
-    pendingSessionRef.current = null;
     setActiveSession(null);
-    // Note: Don't clear queue state here. The queue should persist
-    // when leaving a session. QueueContext handles saving to local state.
+    setQueueState([]);
+    setCurrentClimbQueueItem(null);
   }, []);
 
   // Local queue management functions
@@ -560,11 +522,9 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
       newCurrentItem: LocalClimbQueueItem | null,
       boardPath: string,
       boardDetails: BoardDetails,
-      options?: { force?: boolean },
     ) => {
-      // Don't store local queue if party mode is active (unless force is true)
-      // Force is used when leaving a party session to preserve the queue
-      if (activeSession && !options?.force) return;
+      // Don't store local queue if party mode is active
+      if (activeSession) return;
 
       setLocalQueue(newQueue);
       setLocalCurrentClimbQueueItem(newCurrentItem);
