@@ -618,8 +618,19 @@ const resolvers = {
       let finalCurrentClimb = result.currentClimbQueueItem;
       if (result.isLeader && initialQueue && initialQueue.length > 0) {
         if (DEBUG) console.log(`[joinSession] Setting initial queue with ${initialQueue.length} items`);
-        await roomManager.updateQueueState(sessionId, initialQueue, initialCurrentClimbQueueItem || null);
-        finalQueue = initialQueue;
+
+        // Ensure initialCurrentClimbQueueItem is in the queue if provided
+        let queueToSet = initialQueue;
+        if (initialCurrentClimbQueueItem) {
+          const isInQueue = initialQueue.some(item => item.uuid === initialCurrentClimbQueueItem.uuid);
+          if (!isInQueue) {
+            if (DEBUG) console.log(`[joinSession] Adding current climb to queue (was not in queue)`);
+            queueToSet = [initialCurrentClimbQueueItem, ...initialQueue];
+          }
+        }
+
+        await roomManager.updateQueueState(sessionId, queueToSet, initialCurrentClimbQueueItem || null);
+        finalQueue = queueToSet;
         finalCurrentClimb = initialCurrentClimbQueueItem || null;
       }
 
