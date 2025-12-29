@@ -134,6 +134,13 @@
       "when": 1766699828855,
       "tag": "0018_perpetual_cerise",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1735398000000,
+      "tag": "0021_drop_redundant_indexes",
+      "breakpoints": true
     }
   ]
 }
