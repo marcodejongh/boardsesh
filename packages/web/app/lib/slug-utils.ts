@@ -44,7 +44,7 @@ export const getLayoutBySlug = async (board_name: BoardName, slug: string): Prom
     const baseSlug = l.name
       .toLowerCase()
       .trim()
-      .replace(/^(kilter|tension|decoy)\s+board\s+/i, '') // Remove board name prefix
+      .replace(/^(kilter|tension)\s+board\s+/i, '') // Remove board name prefix
       .replace(/[^\w\s-]/g, '')
       .replace(/\s+/g, '-')
       .replace(/-+/g, '-')

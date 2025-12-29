@@ -19,9 +19,29 @@ vi.mock('../../../board-provider/board-provider-context', () => ({
   }))
 }));
 
+vi.mock('@/app/hooks/use-ws-auth-token', () => ({
+  useWsAuthToken: vi.fn(() => ({
+    token: 'mock-token',
+    isAuthenticated: true,
+    isLoading: false,
+    error: null
+  }))
+}));
+
 vi.mock('../../board-page/constants', () => ({
   PAGE_LIMIT: 20
 }));
+
+// Mock GraphQL client
+const mockGraphQLRequest = vi.fn();
+vi.mock('@/app/lib/graphql/client', () => ({
+  createGraphQLHttpClient: vi.fn(() => ({
+    request: mockGraphQLRequest
+  }))
+}));
+
+// Set environment variable for GraphQL client
+process.env.NEXT_PUBLIC_WS_URL = 'ws://localhost:4000/graphql';
 
 // Mock history.replaceState
 Object.defineProperty(window, 'history', {
@@ -37,10 +57,6 @@ Object.defineProperty(window, 'location', {
   },
   writable: true
 });
-
-// Mock fetch
-const mockFetch = vi.fn();
-global.fetch = mockFetch;
 
 const mockUseBoardProvider = vi.mocked(useBoardProvider);
 
@@ -134,12 +150,29 @@ describe('useQueueDataFetching', () => {
       boardName: 'kilter'
     });
 
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({
-        climbs: [mockClimb],
-        hasMore: true
-      })
+    // Mock GraphQL client requests
+    mockGraphQLRequest.mockImplementation(async (document, variables) => {
+      const query = String(document);
+
+      // Check which query is being made
+      if (query.includes('searchClimbs')) {
+        // Search climbs query
+        return {
+          searchClimbs: {
+            climbs: [mockClimb],
+            totalCount: null,
+            hasMore: true
+          }
+        };
+      } else if (query.includes('favorites')) {
+        // Favorites query
+        return {
+          favorites: []
+        };
+      }
+
+      // Default fallback
+      return {};
     });
   });
 
@@ -255,12 +288,12 @@ describe('useQueueDataFetching', () => {
   });
 
   it('should handle empty search results', async () => {
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({
+    mockGraphQLRequest.mockResolvedValue({
+      searchClimbs: {
         climbs: [],
+        totalCount: null,
         hasMore: false
-      })
+      }
     });
 
     const { result } = renderHook(
@@ -285,12 +318,12 @@ describe('useQueueDataFetching', () => {
   });
 
   it('should calculate hasMoreResults correctly when there are more results', async () => {
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({
+    mockGraphQLRequest.mockResolvedValue({
+      searchClimbs: {
         climbs: Array(20).fill(mockClimb),
+        totalCount: null,
         hasMore: true
-      })
+      }
     });
 
     const { result } = renderHook(
@@ -311,12 +344,12 @@ describe('useQueueDataFetching', () => {
   });
 
   it('should handle no more results case', async () => {
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({
+    mockGraphQLRequest.mockResolvedValue({
+      searchClimbs: {
         climbs: Array(10).fill(mockClimb),
+        totalCount: null,
         hasMore: false
-      })
+      }
     });
 
     const { result } = renderHook(

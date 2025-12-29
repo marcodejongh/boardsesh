@@ -149,7 +149,7 @@ export const typeDefs = /* GraphQL */ `
     sortBy: String
     sortOrder: String
     name: String
-    setter: String
+    setter: [String!]
     setterId: Int
     onlyBenchmarks: Boolean
     # Personal progress filters (require auth)

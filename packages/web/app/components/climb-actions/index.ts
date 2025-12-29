@@ -23,4 +23,5 @@ export {
 // Backward compatibility - keep existing exports
 export { default as FavoriteButton } from './favorite-button';
 export { default as QueueButton } from './queue-button';
-export { useFavorite, useFavoritesBatch } from './use-favorite';
+export { useFavorite } from './use-favorite';
+export { useFavoritesContext, FavoritesProvider } from './favorites-batch-context';

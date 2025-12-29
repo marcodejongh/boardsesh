@@ -37,9 +37,7 @@ export function useClimbActions({
   const [showAuthModal, setShowAuthModal] = useState(false);
 
   const { isFavorited, isLoading: isFavoriteLoading, toggleFavorite, isAuthenticated } = useFavorite({
-    boardName: boardDetails.board_name,
     climbUuid: climb?.uuid ?? '',
-    angle,
   });
 
   // Computed availability

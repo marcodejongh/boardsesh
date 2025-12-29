@@ -29,7 +29,7 @@ const DEBUG = process.env.NODE_ENV === 'development';
 const DEFAULT_BACKEND_URL = process.env.NEXT_PUBLIC_WS_URL || null;
 
 // Board names to check if we're on a board route
-const BOARD_NAMES = ['kilter', 'tension', 'decoy'];
+const BOARD_NAMES = ['kilter', 'tension'];
 
 // Session type matching the GraphQL response
 export interface Session {

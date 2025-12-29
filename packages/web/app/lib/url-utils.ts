@@ -302,7 +302,7 @@ export const generateLayoutSlug = (layoutName: string): string => {
   const baseSlug = layoutName
     .toLowerCase()
     .trim()
-    .replace(/^(kilter|tension|decoy)\s+board\s+/i, '') // Remove board name prefix
+    .replace(/^(kilter|tension)\s+board\s+/i, '') // Remove board name prefix
     .replace(/[^\w\s-]/g, '')
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-')

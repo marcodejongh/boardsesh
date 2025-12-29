@@ -107,7 +107,7 @@ test.describe('Queue Persistence - Local Mode', () => {
       await thumbnail.click();
 
       // Verify we're back on a board page
-      await expect(page).toHaveURL(/\/(kilter|tension|decoy)\//);
+      await expect(page).toHaveURL(/\/(kilter|tension)\//);
     }
   });
 

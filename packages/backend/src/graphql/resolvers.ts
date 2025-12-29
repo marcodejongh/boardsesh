@@ -7,7 +7,14 @@ import { roomManager, VersionConflictError, type DiscoverableSession } from '../
 import { pubsub } from '../pubsub/index.js';
 import { updateContext, getContext } from './context.js';
 import { checkRateLimit } from '../utils/rate-limiter.js';
+import { encrypt } from '../utils/encryption.js';
 import { db } from '../db/client.js';
+import { searchClimbs as searchClimbsQuery, countClimbs, getClimbByUuid } from '../db/queries/climbs/index.js';
+import { getSizeEdges, type SizeEdges } from '../db/queries/util/product-sizes-data.js';
+import { isValidBoardName } from '../db/queries/util/table-select.js';
+
+// Debug logging flag - only log in development
+const DEBUG = process.env.NODE_ENV === 'development';
 import * as dbSchema from '@boardsesh/db/schema';
 import {
   validateInput,
@@ -27,6 +34,8 @@ import {
   ClimbSearchInputSchema,
   ToggleFavoriteInputSchema,
   UpdateProfileInputSchema,
+  ExternalUUIDSchema,
+  SaveAuroraCredentialInputSchema,
 } from '../validation/schemas.js';
 import type {
   ConnectionContext,
@@ -38,12 +47,26 @@ import type {
   Grade,
   Angle,
   ClimbSearchInput,
-  ClimbSearchResult,
+  Climb,
   UserProfile,
   AuroraCredentialStatus,
   ToggleFavoriteInput,
   ToggleFavoriteResult,
 } from '@boardsesh/shared-schema';
+import type { ClimbSearchParams, ParsedBoardRouteParameters } from '../db/queries/climbs/index.js';
+
+// Context object passed from searchClimbs query to ClimbSearchResult field resolvers
+// This allows each field (climbs, totalCount, hasMore) to be resolved independently
+type ClimbSearchContext = {
+  params: ParsedBoardRouteParameters;
+  searchParams: ClimbSearchParams;
+  sizeEdges: SizeEdges;
+  userId: number | undefined;
+  // Cached results to avoid duplicate queries when multiple fields are requested
+  _cachedClimbs?: Climb[];
+  _cachedHasMore?: boolean;
+  _cachedTotalCount?: number;
+};
 
 // Input type for createSession mutation
 type CreateSessionInput = {
@@ -84,15 +107,15 @@ function requireAuthenticated(ctx: ConnectionContext): void {
  * Helper to verify user is a member of the session they're trying to access.
  * Used for subscription authorization.
  *
- * This function includes retry logic to handle race conditions where subscriptions
- * may be authorized before joinSession has completed updating the context.
+ * This function includes retry logic with exponential backoff to handle race conditions
+ * where subscriptions may be authorized before joinSession has completed updating the context.
  * It re-fetches the context from the Map on each retry to get the latest state.
  */
 async function requireSessionMember(
   ctx: ConnectionContext,
   sessionId: string,
-  maxRetries = 5,
-  retryDelayMs = 50
+  maxRetries = 8,
+  initialDelayMs = 50
 ): Promise<void> {
   for (let i = 0; i < maxRetries; i++) {
     // Re-fetch context to get latest state (joinSession may have updated it)
@@ -103,8 +126,10 @@ async function requireSessionMember(
     }
 
     if (i < maxRetries - 1) {
-      // Wait briefly for joinSession to complete
-      await new Promise(resolve => setTimeout(resolve, retryDelayMs));
+      // Exponential backoff: 50ms, 100ms, 200ms, 400ms, 800ms, 1600ms, 3200ms
+      // Total max wait: ~6.4 seconds
+      const delay = initialDelayMs * Math.pow(2, i);
+      await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
 
@@ -232,6 +257,9 @@ const resolvers = {
 
   Query: {
     session: async (_: unknown, { sessionId }: { sessionId: string }) => {
+      // Validate session ID
+      validateInput(SessionIdSchema, sessionId, 'sessionId');
+
       const users = roomManager.getSessionUsers(sessionId);
       if (users.length === 0) return null;
 
@@ -338,17 +366,59 @@ const resolvers = {
     // Climb Queries
     // ============================================
 
-    searchClimbs: async (_: unknown, { input }: { input: ClimbSearchInput }, ctx: ConnectionContext): Promise<ClimbSearchResult> => {
+    searchClimbs: async (_: unknown, { input }: { input: ClimbSearchInput }, ctx: ConnectionContext): Promise<ClimbSearchContext> => {
       validateInput(ClimbSearchInputSchema, input, 'input');
 
-      // TODO: Implement full search logic - for now return empty result
-      // This will require porting the search-climbs.ts logic from web package
-      console.log('[searchClimbs] Input:', input);
+      // Validate board name
+      if (!isValidBoardName(input.boardName)) {
+        throw new Error(`Invalid board name: ${input.boardName}. Must be 'kilter' or 'tension'`);
+      }
 
+      // Get size edges for filtering
+      const sizeEdges = getSizeEdges(input.boardName, input.sizeId);
+      if (!sizeEdges) {
+        throw new Error(`Invalid size ID: ${input.sizeId} for board: ${input.boardName}`);
+      }
+
+      // Parse setIds from comma-separated string
+      const setIds = input.setIds.split(',').map(id => parseInt(id.trim(), 10)).filter(id => !isNaN(id));
+
+      // Build route parameters
+      const params: ParsedBoardRouteParameters = {
+        board_name: input.boardName as 'kilter' | 'tension',
+        layout_id: input.layoutId,
+        size_id: input.sizeId,
+        set_ids: setIds,
+        angle: input.angle,
+      };
+
+      // Build search parameters
+      const searchParams: ClimbSearchParams = {
+        page: input.page ?? 0,
+        pageSize: input.pageSize ?? 20,
+        gradeAccuracy: input.gradeAccuracy ? parseFloat(input.gradeAccuracy) : undefined,
+        minGrade: input.minGrade,
+        maxGrade: input.maxGrade,
+        minAscents: input.minAscents,
+        sortBy: input.sortBy ?? 'ascents',
+        sortOrder: input.sortOrder ?? 'desc',
+        name: input.name,
+        settername: input.setter && input.setter.length > 0 ? input.setter : undefined,
+        hideAttempted: input.hideAttempted,
+        hideCompleted: input.hideCompleted,
+        showOnlyAttempted: input.showOnlyAttempted,
+        showOnlyCompleted: input.showOnlyCompleted,
+      };
+
+      // Get authenticated user ID for personal progress filters
+      const userId = ctx.isAuthenticated && ctx.userId ? parseInt(ctx.userId, 10) : undefined;
+
+      // Return context for field resolvers - queries are executed lazily per field
       return {
-        climbs: [],
-        totalCount: 0,
-        hasMore: false,
+        params,
+        searchParams,
+        sizeEdges,
+        userId,
       };
     },
 
@@ -363,13 +433,30 @@ const resolvers = {
         climbUuid: string
       }
     ) => {
+      // Validate board name
       validateInput(BoardNameSchema, boardName, 'boardName');
 
-      // TODO: Implement climb fetch logic
-      // This will require porting the getClimb logic from web package
-      console.log('[climb] Fetching:', { boardName, layoutId, sizeId, setIds, angle, climbUuid });
+      if (!isValidBoardName(boardName)) {
+        throw new Error(`Invalid board name: ${boardName}. Must be 'kilter' or 'tension'`);
+      }
 
-      return null;
+      // Validate all parameters
+      if (layoutId <= 0) throw new Error('Invalid layoutId: must be positive');
+      if (sizeId <= 0) throw new Error('Invalid sizeId: must be positive');
+      if (angle < 0 || angle > 90) throw new Error('Invalid angle: must be between 0 and 90');
+      validateInput(ExternalUUIDSchema, climbUuid, 'climbUuid');
+
+      if (DEBUG) console.log('[climb] Fetching:', { boardName, layoutId, sizeId, setIds, angle, climbUuid });
+
+      const climb = await getClimbByUuid({
+        board_name: boardName as 'kilter' | 'tension',
+        layout_id: layoutId,
+        size_id: sizeId,
+        angle,
+        climb_uuid: climbUuid,
+      });
+
+      return climb;
     },
 
     // ============================================
@@ -422,7 +509,7 @@ const resolvers = {
 
       return credentials.map(c => ({
         boardType: c.boardType,
-        username: c.encryptedUsername, // Note: In production, decrypt this
+        username: c.encryptedUsername, // Username is stored as-is (not encrypted)
         userId: c.auroraUserId || undefined,
         syncedAt: c.lastSyncAt?.toISOString() || undefined,
         hasToken: !!c.auroraToken,
@@ -454,7 +541,7 @@ const resolvers = {
       const c = credentials[0];
       return {
         boardType: c.boardType,
-        username: c.encryptedUsername, // Note: In production, decrypt this
+        username: c.encryptedUsername, // Username is stored as-is (not encrypted)
         userId: c.auroraUserId || undefined,
         syncedAt: c.lastSyncAt?.toISOString() || undefined,
         // Note: We don't expose the actual token for security
@@ -499,7 +586,7 @@ const resolvers = {
       { sessionId, boardPath, username, avatarUrl }: { sessionId: string; boardPath: string; username?: string; avatarUrl?: string },
       ctx: ConnectionContext
     ) => {
-      console.log(`[joinSession] START - connectionId: ${ctx.connectionId}, sessionId: ${sessionId}, username: ${username}`);
+      if (DEBUG) console.log(`[joinSession] START - connectionId: ${ctx.connectionId}, sessionId: ${sessionId}, username: ${username}`);
 
       applyRateLimit(ctx, 10); // Limit session joins to prevent abuse
 
@@ -510,12 +597,12 @@ const resolvers = {
       if (avatarUrl) validateInput(AvatarUrlSchema, avatarUrl, 'avatarUrl');
 
       const result = await roomManager.joinSession(ctx.connectionId, sessionId, boardPath, username || undefined, avatarUrl || undefined);
-      console.log(`[joinSession] roomManager.joinSession completed - clientId: ${result.clientId}, isLeader: ${result.isLeader}`);
+      if (DEBUG) console.log(`[joinSession] roomManager.joinSession completed - clientId: ${result.clientId}, isLeader: ${result.isLeader}`);
 
       // Update context with session info
-      console.log(`[joinSession] Before updateContext - ctx.sessionId: ${ctx.sessionId}`);
+      if (DEBUG) console.log(`[joinSession] Before updateContext - ctx.sessionId: ${ctx.sessionId}`);
       updateContext(ctx.connectionId, { sessionId, userId: result.clientId });
-      console.log(`[joinSession] After updateContext - ctx.sessionId: ${ctx.sessionId}`);
+      if (DEBUG) console.log(`[joinSession] After updateContext - ctx.sessionId: ${ctx.sessionId}`);
 
       // Notify session about new user
       const userJoinedEvent: SessionEvent = {
@@ -547,7 +634,7 @@ const resolvers = {
       { input }: { input: CreateSessionInput },
       ctx: ConnectionContext
     ) => {
-      console.log(`[createSession] START - connectionId: ${ctx.connectionId}, boardPath: ${input.boardPath}`);
+      if (DEBUG) console.log(`[createSession] START - connectionId: ${ctx.connectionId}, boardPath: ${input.boardPath}`);
 
       applyRateLimit(ctx, 5); // Limit session creation to prevent abuse
       // Only authenticated users can create sessions
@@ -558,7 +645,7 @@ const resolvers = {
 
       // Generate a unique session ID
       const sessionId = uuidv4();
-      console.log(`[createSession] Generated sessionId: ${sessionId}`);
+      if (DEBUG) console.log(`[createSession] Generated sessionId: ${sessionId}`);
 
       if (input.discoverable) {
         // Create a discoverable session with GPS coordinates
@@ -582,12 +669,12 @@ const resolvers = {
         undefined, // username will be set later
         undefined  // avatarUrl will be set later
       );
-      console.log(`[createSession] Joined session - clientId: ${result.clientId}, isLeader: ${result.isLeader}`);
+      if (DEBUG) console.log(`[createSession] Joined session - clientId: ${result.clientId}, isLeader: ${result.isLeader}`);
 
       // Update context with session info
-      console.log(`[createSession] Before updateContext - ctx.sessionId: ${ctx.sessionId}`);
+      if (DEBUG) console.log(`[createSession] Before updateContext - ctx.sessionId: ${ctx.sessionId}`);
       updateContext(ctx.connectionId, { sessionId, userId: result.clientId });
-      console.log(`[createSession] After updateContext - ctx.sessionId: ${ctx.sessionId}`);
+      if (DEBUG) console.log(`[createSession] After updateContext - ctx.sessionId: ${ctx.sessionId}`);
 
       return {
         id: sessionId,
@@ -665,7 +752,14 @@ const resolvers = {
     ) => {
       applyRateLimit(ctx); // Apply default rate limit
       const sessionId = requireSession(ctx);
-      console.log('[addQueueItem] Adding item:', item.climb?.name, 'by client:', ctx.connectionId, 'at position:', position);
+
+      // Validate input
+      validateInput(ClimbQueueItemSchema, item, 'item');
+      if (position !== undefined) {
+        validateInput(QueueIndexSchema, position, 'position');
+      }
+
+      if (DEBUG) console.log('[addQueueItem] Adding item:', item.climb?.name, 'by client:', ctx.connectionId, 'at position:', position);
 
       // Track the original queue length for position calculation
       let originalQueueLength = 0;
@@ -674,7 +768,7 @@ const resolvers = {
       for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
         // Get current state and update
         const currentState = await roomManager.getQueueState(sessionId);
-        console.log('[addQueueItem] Current state - queue size:', currentState.queue.length, 'version:', currentState.version);
+        if (DEBUG) console.log('[addQueueItem] Current state - queue size:', currentState.queue.length, 'version:', currentState.version);
         let queue = currentState.queue;
         originalQueueLength = queue.length;
 
@@ -696,7 +790,7 @@ const resolvers = {
           break; // Success, exit retry loop
         } catch (error) {
           if (error instanceof VersionConflictError && attempt < MAX_RETRIES - 1) {
-            console.log(`[addQueueItem] Version conflict, retrying (attempt ${attempt + 1}/${MAX_RETRIES})`);
+            if (DEBUG) console.log(`[addQueueItem] Version conflict, retrying (attempt ${attempt + 1}/${MAX_RETRIES})`);
             continue; // Retry
           }
           throw error; // Re-throw if not a version conflict or max retries exceeded
@@ -792,11 +886,18 @@ const resolvers = {
       applyRateLimit(ctx);
       const sessionId = requireSession(ctx);
 
+      // Validate input
+      if (item !== null) {
+        validateInput(ClimbQueueItemSchema, item, 'item');
+      }
+
       // Debug: track who's setting null
-      if (item === null) {
-        console.log('[setCurrentClimb] Setting current climb to NULL by client:', ctx.connectionId, 'session:', sessionId);
-      } else {
-        console.log('[setCurrentClimb] Setting current climb to:', item.climb?.name, 'by client:', ctx.connectionId);
+      if (DEBUG) {
+        if (item === null) {
+          console.log('[setCurrentClimb] Setting current climb to NULL by client:', ctx.connectionId, 'session:', sessionId);
+        } else {
+          console.log('[setCurrentClimb] Setting current climb to:', item.climb?.name, 'by client:', ctx.connectionId);
+        }
       }
 
       // Retry loop for optimistic locking
@@ -814,7 +915,7 @@ const resolvers = {
           break; // Success, exit retry loop
         } catch (error) {
           if (error instanceof VersionConflictError && attempt < MAX_RETRIES - 1) {
-            console.log(`[setCurrentClimb] Version conflict, retrying (attempt ${attempt + 1}/${MAX_RETRIES})`);
+            if (DEBUG) console.log(`[setCurrentClimb] Version conflict, retrying (attempt ${attempt + 1}/${MAX_RETRIES})`);
             continue; // Retry
           }
           throw error; // Re-throw if not a version conflict or max retries exceeded
@@ -866,6 +967,10 @@ const resolvers = {
     ) => {
       applyRateLimit(ctx);
       const sessionId = requireSession(ctx);
+
+      // Validate input
+      validateInput(QueueItemIdSchema, uuid, 'uuid');
+      validateInput(ClimbQueueItemSchema, item, 'item');
 
       const currentState = await roomManager.getQueueState(sessionId);
       const queue = currentState.queue.map((i) => (i.uuid === uuid ? item : i));
@@ -989,10 +1094,14 @@ const resolvers = {
       ctx: ConnectionContext
     ): Promise<AuroraCredentialStatus> => {
       requireAuthenticated(ctx);
-      // TODO: Validate with Aurora API and encrypt token
-      // For now, just store the credential
+
+      // Validate input
+      validateInput(SaveAuroraCredentialInputSchema, input, 'input');
 
       const userId = ctx.userId!;
+
+      // Only encrypt the password - username is not sensitive
+      const encryptedPassword = encrypt(input.password);
 
       // Check if credential exists
       const existing = await db
@@ -1010,15 +1119,15 @@ const resolvers = {
         await db.insert(dbSchema.auroraCredentials).values({
           userId,
           boardType: input.boardType,
-          encryptedUsername: input.username, // TODO: Encrypt this
-          encryptedPassword: input.password, // TODO: Encrypt this
+          encryptedUsername: input.username, // Username stored as-is (not sensitive)
+          encryptedPassword,
         });
       } else {
         await db
           .update(dbSchema.auroraCredentials)
           .set({
-            encryptedUsername: input.username, // TODO: Encrypt this
-            encryptedPassword: input.password, // TODO: Encrypt this
+            encryptedUsername: input.username, // Username stored as-is (not sensitive)
+            encryptedPassword,
             updatedAt: new Date(),
           })
           .where(
@@ -1161,6 +1270,55 @@ const resolvers = {
           yield { sessionUpdates: event };
         }
       },
+    },
+  },
+
+  // Field resolvers for ClimbSearchResult - each field is resolved independently
+  // This follows GraphQL best practices where clients can request only the fields they need
+  ClimbSearchResult: {
+    climbs: async (parent: ClimbSearchContext): Promise<Climb[]> => {
+      // Return cached result if already fetched (e.g., if hasMore was requested first)
+      if (parent._cachedClimbs !== undefined) {
+        return parent._cachedClimbs;
+      }
+
+      const result = await searchClimbsQuery(parent.params, parent.searchParams, parent.userId);
+
+      // Cache results for other field resolvers
+      parent._cachedClimbs = result.climbs;
+      parent._cachedHasMore = result.hasMore;
+
+      return result.climbs;
+    },
+
+    totalCount: async (parent: ClimbSearchContext): Promise<number> => {
+      // Return cached result if already fetched
+      if (parent._cachedTotalCount !== undefined) {
+        return parent._cachedTotalCount;
+      }
+
+      const count = await countClimbs(parent.params, parent.searchParams, parent.sizeEdges, parent.userId);
+
+      // Cache result
+      parent._cachedTotalCount = count;
+
+      return count;
+    },
+
+    hasMore: async (parent: ClimbSearchContext): Promise<boolean> => {
+      // Return cached result if already fetched (e.g., if climbs was requested first)
+      if (parent._cachedHasMore !== undefined) {
+        return parent._cachedHasMore;
+      }
+
+      // hasMore comes from the search query, not the count query
+      const result = await searchClimbsQuery(parent.params, parent.searchParams, parent.userId);
+
+      // Cache results for other field resolvers
+      parent._cachedClimbs = result.climbs;
+      parent._cachedHasMore = result.hasMore;
+
+      return result.hasMore;
     },
   },
 

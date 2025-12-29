@@ -9,8 +9,10 @@ import {
 } from '@/app/lib/url-utils';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import ClimbsList from '@/app/components/board-page/climbs-list';
-import { searchClimbs } from '@/app/lib/db/queries/climbs/search-climbs';
+import { executeGraphQL } from '@/app/lib/graphql/client';
+import { SEARCH_CLIMBS, type ClimbSearchResponse } from '@/app/lib/graphql/operations/climb-search';
 import { getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
+import { MAX_PAGE_SIZE } from '@/app/components/board-page/constants';
 
 export default async function DynamicResultsPage(props: {
   params: Promise<BoardRouteParametersWithUuid>;
@@ -68,20 +70,41 @@ export default async function DynamicResultsPage(props: {
   // For the SSR version we increase the pageSize so it also gets whatever page number
   // is in the search params. Without this, it would load the SSR version of the page on page 2
   // which would then flicker once SWR runs on the client.
-  searchParamsObject.pageSize = (Number(searchParamsObject.page) + 1) * Number(searchParamsObject.pageSize);
+  const requestedPageSize = (Number(searchParamsObject.page) + 1) * Number(searchParamsObject.pageSize);
+
+  // Enforce max page size to prevent excessive database queries
+  searchParamsObject.pageSize = Math.min(requestedPageSize, MAX_PAGE_SIZE);
   searchParamsObject.page = 0;
 
-  const [fetchedResults, boardDetails] = await Promise.all([
-    searchClimbs(parsedParams, searchParamsObject),
+  const [searchResponse, boardDetails] = await Promise.all([
+    executeGraphQL<ClimbSearchResponse>(SEARCH_CLIMBS, {
+      input: {
+        boardName: parsedParams.board_name,
+        layoutId: parsedParams.layout_id,
+        sizeId: parsedParams.size_id,
+        setIds: parsedParams.set_ids.join(','),
+        angle: parsedParams.angle,
+        page: searchParamsObject.page,
+        pageSize: searchParamsObject.pageSize,
+        gradeAccuracy: searchParamsObject.gradeAccuracy ? String(searchParamsObject.gradeAccuracy) : undefined,
+        minGrade: searchParamsObject.minGrade || undefined,
+        maxGrade: searchParamsObject.maxGrade || undefined,
+        minAscents: searchParamsObject.minAscents || undefined,
+        sortBy: searchParamsObject.sortBy || 'ascents',
+        sortOrder: searchParamsObject.sortOrder || 'desc',
+        name: searchParamsObject.name || undefined,
+        setter: searchParamsObject.settername && searchParamsObject.settername.length > 0 ? searchParamsObject.settername : undefined,
+        hideAttempted: searchParamsObject.hideAttempted || undefined,
+        hideCompleted: searchParamsObject.hideCompleted || undefined,
+        showOnlyAttempted: searchParamsObject.showOnlyAttempted || undefined,
+        showOnlyCompleted: searchParamsObject.showOnlyCompleted || undefined,
+      },
+    }),
     getBoardDetails(parsedParams),
   ]).catch((error) => {
     console.error('Error fetching results or climb:', error);
     notFound();
   });
 
-  if (!fetchedResults || fetchedResults.climbs.length === 0) {
-    notFound();
-  }
-
-  return <ClimbsList {...parsedParams} boardDetails={boardDetails} initialClimbs={fetchedResults.climbs} />;
+  return <ClimbsList {...parsedParams} boardDetails={boardDetails} initialClimbs={searchResponse.searchClimbs.climbs} />;
 }

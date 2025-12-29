@@ -1,29 +1,97 @@
-import { eq, desc, sql, SQL, and } from 'drizzle-orm';
-import { dbz as db } from '@/app/lib/db/db';
-import { convertLitUpHoldsStringToMap } from '@/app/components/board-renderer/util';
-import { Climb, ParsedBoardRouteParameters, SearchClimbsResult, SearchRequestPagination } from '@/app/lib/types';
-import { getBoardTables } from '@/lib/db/queries/util/table-select';
-import { createClimbFilters } from './create-climb-filters';
-import { getSizeEdges } from '@/app/lib/__generated__/product-sizes-data';
+import { eq, desc, sql, and } from 'drizzle-orm';
+import { db } from '../../client.js';
+import { getBoardTables, type BoardName } from '../util/table-select.js';
+import { createClimbFilters, type ClimbSearchParams, type ParsedBoardRouteParameters } from './create-climb-filters.js';
+import { getSizeEdges } from '../util/product-sizes-data.js';
+import type { Climb, ClimbSearchResult, LitUpHoldsMap, HoldState } from '@boardsesh/shared-schema';
+
+// Hold state mapping for converting frames string to lit up holds map
+type HoldColor = string;
+type HoldCode = number;
+
+// Use a broader type for HOLD_STATE_MAP to support future board types
+type BoardNameWithFuture = BoardName;
+
+const HOLD_STATE_MAP: Record<
+  BoardNameWithFuture,
+  Record<HoldCode, { name: HoldState; color: HoldColor; displayColor?: HoldColor }>
+> = {
+  kilter: {
+    42: { name: 'STARTING', color: '#00FF00' },
+    43: { name: 'HAND', color: '#00FFFF' },
+    44: { name: 'FINISH', color: '#FF00FF' },
+    45: { name: 'FOOT', color: '#FFA500' },
+    12: { name: 'STARTING', color: '#00FF00' },
+    13: { name: 'HAND', color: '#00FFFF' },
+    14: { name: 'FINISH', color: '#FF00FF' },
+    15: { name: 'FOOT', color: '#FFA500' },
+  },
+  tension: {
+    1: { name: 'STARTING', displayColor: '#00DD00', color: '#00FF00' },
+    2: { name: 'HAND', displayColor: '#4444FF', color: '#0000FF' },
+    3: { name: 'FINISH', displayColor: '#FF0000', color: '#FF0000' },
+    4: { name: 'FOOT', displayColor: '#FF00FF', color: '#FF00FF' },
+    5: { name: 'STARTING', displayColor: '#00DD00', color: '#00FF00' },
+    6: { name: 'HAND', displayColor: '#4444FF', color: '#0000FF' },
+    7: { name: 'FINISH', displayColor: '#FF0000', color: '#FF0000' },
+    8: { name: 'FOOT', displayColor: '#FF00FF', color: '#FF00FF' },
+  },
+};
+
+
+/**
+ * Convert lit up holds string to a map
+ * Returns only the first frame for single-frame climbs
+ */
+function convertLitUpHoldsStringToMap(litUpHolds: string, board: BoardName): Record<number, LitUpHoldsMap> {
+  return litUpHolds
+    .split(',')
+    .filter((frame) => frame)
+    .reduce(
+      (frameMap, frameString, frameIndex) => {
+        const frameHoldsMap = Object.fromEntries(
+          frameString
+            .split('p')
+            .filter((hold) => hold)
+            .map((holdData) => holdData.split('r').map((str) => Number(str)))
+            .map(([holdId, stateCode]) => {
+              const stateInfo = HOLD_STATE_MAP[board]?.[stateCode];
+              if (!stateInfo) {
+                return [holdId || 0, { state: `${holdId}=${stateCode}` as HoldState, color: '#FFF', displayColor: '#FFF' }];
+              }
+              const { name, color, displayColor } = stateInfo;
+              return [holdId, { state: name, color, displayColor: displayColor || color }];
+            }),
+        );
+        frameMap[frameIndex] = frameHoldsMap as LitUpHoldsMap;
+        return frameMap;
+      },
+      {} as Record<number, LitUpHoldsMap>,
+    );
+}
 
 export const searchClimbs = async (
   params: ParsedBoardRouteParameters,
-  searchParams: SearchRequestPagination,
+  searchParams: ClimbSearchParams,
   userId?: number,
-): Promise<SearchClimbsResult> => {
+): Promise<ClimbSearchResult> => {
   const tables = getBoardTables(params.board_name);
 
   // Get hardcoded size edges (eliminates database query)
   const sizeEdges = getSizeEdges(params.board_name, params.size_id);
   if (!sizeEdges) {
-    return { climbs: [], totalCount: 0 };
+    return { climbs: [], totalCount: 0, hasMore: false };
   }
+
+  // Default pagination values
+  const page = searchParams.page ?? 0;
+  const pageSize = searchParams.pageSize ?? 20;
 
   // Use the shared filter creator with static edge values and optional userId
   const filters = createClimbFilters(tables, params, searchParams, sizeEdges, userId);
 
   // Define sort columns with explicit SQL expressions where needed
-  const allowedSortColumns: Record<string, SQL> = {
+  const allowedSortColumns: Record<string, ReturnType<typeof sql>> = {
     ascents: sql`${tables.climbStats.ascensionistCount}`,
     difficulty: sql`ROUND(${tables.climbStats.displayDifficulty}::numeric, 0)`,
     name: sql`${tables.climbs.name}`,
@@ -31,18 +99,16 @@ export const searchClimbs = async (
   };
 
   // Get the selected sort column or fall back to ascensionist_count
-  const sortColumn = allowedSortColumns[searchParams.sortBy] || sql`${tables.climbStats.ascensionistCount}`;
+  const sortColumn = allowedSortColumns[searchParams.sortBy || 'ascents'] || sql`${tables.climbStats.ascensionistCount}`;
 
   const whereConditions = [
     ...filters.getClimbWhereConditions(),
     ...filters.getSizeConditions(),
-    // Apply climb stats filters in WHERE clause rather than in the JOIN condition
     ...filters.getClimbStatsConditions(),
   ];
 
   try {
     // Base fields for the query
-    // Note: count(*) over() removed - use separate countClimbs() for total count
     const baseSelectFields = {
       uuid: tables.climbs.uuid,
       setter_username: tables.climbs.setterUsername,
@@ -66,6 +132,8 @@ export const searchClimbs = async (
         }
       : baseSelectFields;
 
+    const sortOrder = searchParams.sortOrder === 'asc' ? 'asc' : 'desc';
+
     const baseQuery = db
       .select(selectFields)
       .from(tables.climbs)
@@ -74,23 +142,21 @@ export const searchClimbs = async (
         tables.difficultyGrades,
         eq(tables.difficultyGrades.difficulty, sql`ROUND(${tables.climbStats.displayDifficulty}::numeric)`),
       )
-      // Note: product_sizes JOIN eliminated - using pre-fetched sizeEdges constants instead
       .where(and(...whereConditions))
       .orderBy(
-        searchParams.sortOrder === 'asc' ? sql`${sortColumn} ASC NULLS FIRST` : sql`${sortColumn} DESC NULLS LAST`,
-        // Add secondary sort to ensure consistent ordering
+        sortOrder === 'asc' ? sql`${sortColumn} ASC NULLS FIRST` : sql`${sortColumn} DESC NULLS LAST`,
         desc(tables.climbs.uuid),
       )
       // Fetch one extra row to detect if there are more results (hasMore)
-      .limit(searchParams.pageSize + 1)
-      .offset(searchParams.page * searchParams.pageSize);
+      .limit(pageSize + 1)
+      .offset(page * pageSize);
 
     const results = await baseQuery;
 
     // Check if there are more results available
-    const hasMore = results.length > searchParams.pageSize;
+    const hasMore = results.length > pageSize;
     // Only return up to pageSize results
-    const trimmedResults = hasMore ? results.slice(0, searchParams.pageSize) : results;
+    const trimmedResults = hasMore ? results.slice(0, pageSize) : results;
 
     // Transform the results into the complete Climb type
     const climbs: Climb[] = trimmedResults.map((result) => ({
@@ -114,9 +180,9 @@ export const searchClimbs = async (
     }));
 
     return {
-      climbs: climbs,
+      climbs,
       hasMore,
-      // totalCount is no longer included - use countClimbs() for separate count query
+      totalCount: 0, // Will be filled by countClimbs if needed
     };
   } catch (error) {
     console.error('Error in searchClimbs:', error);

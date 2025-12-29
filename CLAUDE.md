@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Boardsesh is a monorepo containing a Next.js 15 application for controlling standardized interactive climbing training boards (Kilter, Tension, Decoy). It adds missing functionality to boards using Aurora Climbing's software, including queue management and real-time collaborative control.
+Boardsesh is a monorepo containing a Next.js 15 application for controlling standardized interactive climbing training boards (Kilter, Tension). It adds missing functionality to boards using Aurora Climbing's software, including queue management and real-time collaborative control.
 
 ## Monorepo Structure
 
@@ -72,7 +72,7 @@ The app uses deeply nested dynamic routes:
 ```
 
 - Routes mirror the API structure at `/api/v1/...`
-- Board names: "kilter", "tension", "decoy"
+- Board names: "kilter", "tension"
 - All route segments are required for board-specific pages
 
 We are using next.js app router, it's important we try to use server side components as much as possible.

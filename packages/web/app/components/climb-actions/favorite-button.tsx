@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { HeartOutlined, HeartFilled } from '@ant-design/icons';
-import { Tooltip } from 'antd';
+import { Tooltip, message } from 'antd';
 import { track } from '@vercel/analytics';
 import { useFavorite } from './use-favorite';
 import { BoardName } from '@/app/lib/types';
@@ -28,9 +28,7 @@ export default function FavoriteButton({
   size = 'default',
 }: FavoriteButtonProps) {
   const { isFavorited, isLoading, toggleFavorite, isAuthenticated } = useFavorite({
-    boardName,
     climbUuid,
-    angle,
   });
 
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -52,8 +50,9 @@ export default function FavoriteButton({
         climbUuid,
         action: newState ? 'favorited' : 'unfavorited',
       });
-    } catch {
-      // Silently fail
+    } catch (error) {
+      console.error(`[FavoriteButton] Error toggling favorite for ${climbUuid}:`, error);
+      message.error('Failed to update favorite. Please try again.');
     }
   };
 
@@ -75,9 +74,13 @@ export default function FavoriteButton({
           climbUuid,
           action: 'favorited',
         });
+      } else {
+        console.error(`[FavoriteButton] API error for ${climbUuid}: ${response.status}`);
+        message.error('Failed to save favorite. Please try again.');
       }
-    } catch {
-      // Silently fail
+    } catch (error) {
+      console.error(`[FavoriteButton] Error after auth for ${climbUuid}:`, error);
+      message.error('Failed to save favorite. Please try again.');
     }
   };
 

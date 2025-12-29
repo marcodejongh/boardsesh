@@ -1,21 +1,23 @@
 import { sql, and } from 'drizzle-orm';
-import { dbz as db } from '@/app/lib/db/db';
-import { ParsedBoardRouteParameters, SearchRequestPagination } from '@/app/lib/types';
-import { getBoardTables } from '@/lib/db/queries/util/table-select';
-import { createClimbFilters } from './create-climb-filters';
-import { SizeEdges } from '@/app/lib/__generated__/product-sizes-data';
+import { db } from '../../client.js';
+import { getBoardTables } from '../util/table-select.js';
+import { createClimbFilters, type ClimbSearchParams, type ParsedBoardRouteParameters } from './create-climb-filters.js';
+import type { SizeEdges } from '../util/product-sizes-data.js';
 
 /**
  * Counts the total number of climbs matching the search criteria.
  * This is a separate query from searchClimbs to avoid the expensive count(*) over()
  * window function that forces a full table scan.
  *
- * This follows the GraphQL pattern where `items` and `totalCount` are separate fields
- * that can be fetched independently.
+ * This query is only executed when the `totalCount` field is requested in the GraphQL query.
+ * The ClimbSearchResult type uses field-level resolvers, so if a client only requests
+ * `climbs` and `hasMore`, this count query is never executed - improving performance.
+ *
+ * @see resolvers.ts ClimbSearchResult.totalCount for the field resolver
  */
 export const countClimbs = async (
   params: ParsedBoardRouteParameters,
-  searchParams: SearchRequestPagination,
+  searchParams: ClimbSearchParams,
   sizeEdges: SizeEdges,
   userId?: number,
 ): Promise<number> => {

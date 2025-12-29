@@ -147,10 +147,10 @@ export function validateInput<T>(schema: z.ZodSchema<T>, data: unknown, fieldNam
 // ============================================
 
 /**
- * Board name validation schema (kilter, tension, decoy)
+ * Board name validation schema (kilter, tension)
  */
-export const BoardNameSchema = z.enum(['kilter', 'tension', 'decoy'], {
-  errorMap: () => ({ message: 'Board name must be kilter, tension, or decoy' }),
+export const BoardNameSchema = z.enum(['kilter', 'tension'], {
+  errorMap: () => ({ message: 'Board name must be kilter or tension' }),
 });
 
 // ============================================
@@ -168,7 +168,7 @@ export const ClimbSearchInputSchema = z.object({
   angle: z.number().int(),
   // Pagination
   page: z.number().int().min(0).optional(),
-  pageSize: z.number().int().min(1).max(100).optional(),
+  pageSize: z.number().int().min(1).max(100, 'Page size cannot exceed 100').optional(),
   // Filters
   gradeAccuracy: z.string().optional(),
   minGrade: z.number().int().optional(),
@@ -177,7 +177,7 @@ export const ClimbSearchInputSchema = z.object({
   sortBy: z.string().optional(),
   sortOrder: z.enum(['asc', 'desc']).optional(),
   name: z.string().max(200).optional(),
-  setter: z.string().max(100).optional(),
+  setter: z.array(z.string().max(100)).optional(),
   setterId: z.number().int().optional(),
   onlyBenchmarks: z.boolean().optional(),
   // Personal progress filters
