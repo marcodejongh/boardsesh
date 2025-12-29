@@ -1,8 +1,8 @@
 import React from 'react';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { BoardRouteParametersWithUuid } from '@/app/lib/types';
-import { getBoardDetails } from '@/app/lib/data/queries';
 import { getClimb } from '@/app/lib/data/queries';
+import { getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
 import ClimbCard from '@/app/components/climb-card/climb-card';
 import BetaVideos from '@/app/components/beta-videos/beta-videos';
 import {

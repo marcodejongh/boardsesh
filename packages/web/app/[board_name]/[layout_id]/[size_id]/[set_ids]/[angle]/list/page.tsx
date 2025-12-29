@@ -10,7 +10,7 @@ import {
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import ClimbsList from '@/app/components/board-page/climbs-list';
 import { searchClimbs } from '@/app/lib/db/queries/climbs/search-climbs';
-import { getBoardDetails } from '@/app/lib/data/queries';
+import { getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
 
 export default async function DynamicResultsPage(props: {
   params: Promise<BoardRouteParametersWithUuid>;

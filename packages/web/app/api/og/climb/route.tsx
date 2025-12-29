@@ -1,7 +1,8 @@
 import React from 'react';
 import { ImageResponse } from '@vercel/og';
 import { NextRequest } from 'next/server';
-import { getBoardDetails, getClimb } from '@/app/lib/data/queries';
+import { getClimb } from '@/app/lib/data/queries';
+import { getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import { convertLitUpHoldsStringToMap, getImageUrl } from '@/app/components/board-renderer/util';
 import { HoldRenderData } from '@/app/components/board-renderer/types';

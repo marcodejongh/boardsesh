@@ -14,9 +14,6 @@ import {
   getSetsForLayoutAndSize,
 } from '@/app/lib/__generated__/product-sizes-data';
 
-// Re-export getBoardDetails from the generated file for backwards compatibility
-export { getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
-
 const getTableName = (board_name: string, table_name: string) => {
   switch (board_name) {
     case 'tension':
