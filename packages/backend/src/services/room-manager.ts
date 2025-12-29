@@ -1,9 +1,11 @@
 import { v4 as uuidv4 } from 'uuid';
+import type Redis from 'ioredis';
 import { db } from '../db/client.js';
 import { sessions, sessionClients, sessionQueues, type Session } from '../db/schema.js';
-import { eq, and, sql, gt, gte, lte } from 'drizzle-orm';
+import { eq, and, sql, gt, gte, lte, ne } from 'drizzle-orm';
 import type { ClimbQueueItem, SessionUser } from '@boardsesh/shared-schema';
 import { haversineDistance, getBoundingBox, DEFAULT_SEARCH_RADIUS_METERS } from '../utils/geo.js';
+import { RedisSessionStore } from './redis-session-store.js';
 
 // Custom error for version conflicts
 export class VersionConflictError extends Error {
@@ -32,11 +34,15 @@ export type DiscoverableSession = {
   createdByUserId: string | null;
   participantCount: number;
   distance: number;
+  isActive: boolean;
 };
 
 class RoomManager {
   private clients: Map<string, ConnectedClient> = new Map();
   private sessions: Map<string, Set<string>> = new Map();
+  private redisStore: RedisSessionStore | null = null;
+  private postgresWriteTimers: Map<string, NodeJS.Timeout> = new Map();
+  private pendingWrites: Map<string, { queue: ClimbQueueItem[]; currentClimbQueueItem: ClimbQueueItem | null; version: number }> = new Map();
 
   /**
    * Reset all state (for testing purposes)
@@ -44,6 +50,19 @@ class RoomManager {
   reset(): void {
     this.clients.clear();
     this.sessions.clear();
+  }
+
+  /**
+   * Initialize RoomManager with Redis for session persistence.
+   * If Redis is not provided, falls back to Postgres-only mode.
+   */
+  async initialize(redis?: Redis): Promise<void> {
+    if (redis) {
+      this.redisStore = new RedisSessionStore(redis);
+      console.log('[RoomManager] Redis session storage enabled');
+    } else {
+      console.log('[RoomManager] Redis not available - using Postgres only mode');
+    }
   }
 
   registerClient(connectionId: string): string {
@@ -97,8 +116,39 @@ class RoomManager {
       client.avatarUrl = avatarUrl;
     }
 
-    // Create or get session in memory
+    // Create or get session in memory - with lazy restore
     if (!this.sessions.has(sessionId)) {
+      // Try to restore session from Redis first (hot cache)
+      if (this.redisStore) {
+        const redisSession = await this.redisStore.getSession(sessionId);
+        if (redisSession) {
+          console.log(`[RoomManager] Restoring session ${sessionId} from Redis (inactive session)`);
+          // Session exists in Redis - still "hot"
+        } else {
+          // Not in Redis, try Postgres (dormant session)
+          const pgSession = await this.getSessionById(sessionId);
+          if (pgSession && pgSession.status !== 'ended') {
+            console.log(`[RoomManager] Restoring session ${sessionId} from Postgres (dormant session)`);
+            // Load queue state and restore to Redis
+            const queueState = await this.getQueueState(sessionId);
+            await this.redisStore.saveSession({
+              sessionId: pgSession.id,
+              boardPath: pgSession.boardPath,
+              queue: queueState.queue,
+              currentClimbQueueItem: queueState.currentClimbQueueItem,
+              version: queueState.version,
+              lastActivity: pgSession.lastActivity,
+              discoverable: pgSession.discoverable,
+              latitude: pgSession.latitude,
+              longitude: pgSession.longitude,
+              name: pgSession.name,
+              createdByUserId: pgSession.createdByUserId,
+              createdAt: pgSession.createdAt,
+            });
+          }
+        }
+      }
+
       this.sessions.set(sessionId, new Set());
     }
     const sessionClientIds = this.sessions.get(sessionId)!;
@@ -108,8 +158,22 @@ class RoomManager {
     client.isLeader = isLeader;
     sessionClientIds.add(connectionId);
 
-    // Persist to database
+    // Persist to database (update session metadata, not user list)
     await this.persistSessionJoin(sessionId, boardPath, connectionId, client.username, isLeader);
+
+    // Update Postgres session status to 'active' and lastActivity
+    await db
+      .update(sessions)
+      .set({ status: 'active', lastActivity: new Date() })
+      .where(eq(sessions.id, sessionId));
+
+    // Save users to Redis (ephemeral state, not persisted to Postgres)
+    if (this.redisStore) {
+      const users = this.getSessionUsers(sessionId);
+      await this.redisStore.saveUsers(sessionId, users);
+      await this.redisStore.markActive(sessionId);
+      await this.redisStore.refreshTTL(sessionId);
+    }
 
     // Get current session state
     const users = this.getSessionUsers(sessionId);
@@ -138,13 +202,24 @@ class RoomManager {
     if (sessionClientIds) {
       sessionClientIds.delete(connectionId);
 
-      // Clean up empty sessions from memory and database
+      // Keep session alive when last user leaves (for hybrid persistence)
       if (sessionClientIds.size === 0) {
         this.sessions.delete(sessionId);
-        // Clean up session queue state from database
-        this.cleanupSessionQueue(sessionId).catch((error) => {
-          console.error(`[RoomManager] Failed to cleanup session queue: ${error}`);
-        });
+
+        // Mark session as inactive in Redis but DON'T delete (4h TTL starts)
+        if (this.redisStore) {
+          await this.redisStore.markInactive(sessionId);
+          await this.redisStore.saveUsers(sessionId, []); // Clear users from Redis
+          console.log(`[RoomManager] Session ${sessionId} marked inactive - will expire from Redis in 4 hours`);
+        }
+
+        // Update Postgres status to 'inactive' (keep queue state for recovery)
+        await db
+          .update(sessions)
+          .set({ status: 'inactive', lastActivity: new Date() })
+          .where(eq(sessions.id, sessionId));
+
+        // DON'T call cleanupSessionQueue anymore - we keep the queue for later restoration
       }
     }
 
@@ -221,11 +296,45 @@ class RoomManager {
     currentClimbQueueItem: ClimbQueueItem | null,
     expectedVersion?: number
   ): Promise<number> {
+    // Get current version from Redis if available, otherwise from Postgres
+    let currentVersion = expectedVersion;
+    if (currentVersion === undefined) {
+      if (this.redisStore) {
+        const redisSession = await this.redisStore.getSession(sessionId);
+        currentVersion = redisSession?.version ?? 0;
+      }
+      if (currentVersion === undefined || currentVersion === 0) {
+        const pgState = await this.getQueueState(sessionId);
+        currentVersion = pgState.version;
+      }
+    }
+
+    const newVersion = currentVersion + 1;
+
+    // Write to Redis immediately (source of truth for active sessions)
+    if (this.redisStore) {
+      await this.redisStore.updateQueueState(sessionId, queue, currentClimbQueueItem, newVersion);
+    }
+
+    // Debounce Postgres write (30 seconds) - eventual consistency
+    this.schedulePostgresWrite(sessionId, queue, currentClimbQueueItem, newVersion);
+
+    return newVersion;
+  }
+
+  /**
+   * Update queue state with immediate Postgres write (for critical operations).
+   * Use this when you need immediate Postgres consistency (e.g., session creation).
+   */
+  async updateQueueStateImmediate(
+    sessionId: string,
+    queue: ClimbQueueItem[],
+    currentClimbQueueItem: ClimbQueueItem | null,
+    expectedVersion?: number
+  ): Promise<number> {
     if (expectedVersion !== undefined) {
       if (expectedVersion === 0) {
         // Version 0 means no row exists yet - try to insert
-        // If a row was created between our read and this insert, the conflict will
-        // cause us to return nothing, triggering a VersionConflictError and retry
         const result = await db
           .insert(sessionQueues)
           .values({
@@ -239,9 +348,14 @@ class RoomManager {
           .returning();
 
         if (result.length === 0) {
-          // Row was created by a concurrent operation, trigger retry
           throw new VersionConflictError(sessionId, expectedVersion);
         }
+
+        // Also update Redis
+        if (this.redisStore) {
+          await this.redisStore.updateQueueState(sessionId, queue, currentClimbQueueItem, result[0].version);
+        }
+
         return result[0].version;
       }
 
@@ -263,6 +377,12 @@ class RoomManager {
       if (result.length === 0) {
         throw new VersionConflictError(sessionId, expectedVersion);
       }
+
+      // Also update Redis
+      if (this.redisStore) {
+        await this.redisStore.updateQueueState(sessionId, queue, currentClimbQueueItem, result[0].version);
+      }
+
       return result[0].version;
     }
 
@@ -287,7 +407,14 @@ class RoomManager {
       })
       .returning();
 
-    return result[0]?.version ?? 1;
+    const newVersion = result[0]?.version ?? 1;
+
+    // Also update Redis
+    if (this.redisStore) {
+      await this.redisStore.updateQueueState(sessionId, queue, currentClimbQueueItem, newVersion);
+    }
+
+    return newVersion;
   }
 
   /**
@@ -430,13 +557,14 @@ class RoomManager {
   ): Promise<DiscoverableSession[]> {
     const box = getBoundingBox(latitude, longitude, radiusMeters);
 
-    // Query sessions within bounding box that are discoverable
+    // Query sessions within bounding box that are discoverable (exclude ended sessions)
     const candidates = await db
       .select()
       .from(sessions)
       .where(
         and(
           eq(sessions.discoverable, true),
+          ne(sessions.status, 'ended'), // Exclude explicitly ended sessions
           gte(sessions.latitude, box.minLat),
           lte(sessions.latitude, box.maxLat),
           gte(sessions.longitude, box.minLon),
@@ -456,10 +584,17 @@ class RoomManager {
       .filter((item: { session: SessionWithCoords; distance: number }) => item.distance <= radiusMeters)
       .sort((a: { distance: number }, b: { distance: number }) => a.distance - b.distance);
 
-    // Get participant counts for each session
+    // Get participant counts and active status for each session
     const result: DiscoverableSession[] = [];
     for (const { session, distance } of sessionsWithDistance) {
       const participantCount = this.sessions.get(session.id)?.size || 0;
+
+      // Session is active if it has connected users OR exists in Redis (within 4h TTL)
+      let isActive = participantCount > 0;
+      if (!isActive && this.redisStore) {
+        isActive = await this.redisStore.exists(session.id);
+      }
+
       result.push({
         id: session.id,
         name: session.name,
@@ -470,6 +605,7 @@ class RoomManager {
         createdByUserId: session.createdByUserId,
         participantCount,
         distance,
+        isActive,
       });
     }
 
@@ -558,6 +694,131 @@ class RoomManager {
 
     // Set new leader
     await db.update(sessionClients).set({ isLeader: true }).where(eq(sessionClients.id, newLeaderId));
+  }
+
+  /**
+   * Schedule a debounced write to Postgres for queue state (30 seconds).
+   * Writes to Redis happen immediately, Postgres writes are batched.
+   */
+  private schedulePostgresWrite(
+    sessionId: string,
+    queue: ClimbQueueItem[],
+    currentClimbQueueItem: ClimbQueueItem | null,
+    version: number
+  ): void {
+    // Store latest state
+    this.pendingWrites.set(sessionId, { queue, currentClimbQueueItem, version });
+
+    // Clear existing timer
+    const existingTimer = this.postgresWriteTimers.get(sessionId);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+    }
+
+    // Schedule write in 30 seconds
+    const timer = setTimeout(async () => {
+      const state = this.pendingWrites.get(sessionId);
+      if (state) {
+        try {
+          await this.writeQueueStateToPostgres(sessionId, state);
+          this.pendingWrites.delete(sessionId);
+          this.postgresWriteTimers.delete(sessionId);
+          console.log(`[RoomManager] Debounced Postgres write completed for session ${sessionId}`);
+        } catch (error) {
+          console.error(`[RoomManager] Debounced Postgres write failed for session ${sessionId}:`, error);
+        }
+      }
+    }, 30000); // 30 seconds
+
+    this.postgresWriteTimers.set(sessionId, timer);
+  }
+
+  /**
+   * Write queue state directly to Postgres (used by debouncer).
+   */
+  private async writeQueueStateToPostgres(
+    sessionId: string,
+    state: { queue: ClimbQueueItem[]; currentClimbQueueItem: ClimbQueueItem | null; version: number }
+  ): Promise<void> {
+    await db
+      .insert(sessionQueues)
+      .values({
+        sessionId,
+        queue: state.queue,
+        currentClimbQueueItem: state.currentClimbQueueItem,
+        version: state.version,
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: sessionQueues.sessionId,
+        set: {
+          queue: state.queue,
+          currentClimbQueueItem: state.currentClimbQueueItem,
+          version: state.version,
+          updatedAt: new Date(),
+        },
+      });
+  }
+
+  /**
+   * Flush all pending debounced writes to Postgres immediately.
+   * Called on graceful shutdown to ensure durability.
+   */
+  async flushPendingWrites(): Promise<void> {
+    console.log(`[RoomManager] Flushing ${this.pendingWrites.size} pending writes to Postgres...`);
+
+    const writePromises: Promise<void>[] = [];
+
+    for (const [sessionId, state] of this.pendingWrites.entries()) {
+      // Clear the timer
+      const timer = this.postgresWriteTimers.get(sessionId);
+      if (timer) {
+        clearTimeout(timer);
+        this.postgresWriteTimers.delete(sessionId);
+      }
+
+      // Write immediately
+      writePromises.push(
+        this.writeQueueStateToPostgres(sessionId, state).catch((error) => {
+          console.error(`[RoomManager] Failed to flush write for session ${sessionId}:`, error);
+        })
+      );
+    }
+
+    await Promise.all(writePromises);
+    this.pendingWrites.clear();
+    console.log('[RoomManager] All pending writes flushed');
+  }
+
+  /**
+   * Explicitly end a session (user action).
+   * - Removes from Redis
+   * - Marks as 'ended' in Postgres
+   * - Keeps Postgres record for history
+   */
+  async endSession(sessionId: string): Promise<void> {
+    // Remove from Redis
+    if (this.redisStore) {
+      await this.redisStore.deleteSession(sessionId);
+    }
+
+    // Mark as ended in Postgres
+    await db
+      .update(sessions)
+      .set({ status: 'ended', lastActivity: new Date() })
+      .where(eq(sessions.id, sessionId));
+
+    // Remove from memory
+    this.sessions.delete(sessionId);
+
+    console.log(`[RoomManager] Session ${sessionId} explicitly ended`);
+  }
+
+  /**
+   * Get all active session IDs (for TTL refresh).
+   */
+  getAllActiveSessions(): string[] {
+    return Array.from(this.sessions.keys());
   }
 }
 

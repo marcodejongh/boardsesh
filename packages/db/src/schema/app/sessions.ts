@@ -8,6 +8,8 @@ export const boardSessions = pgTable('board_sessions', {
   boardPath: text('board_path').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   lastActivity: timestamp('last_activity').defaultNow().notNull(),
+  // Session lifecycle status: 'active' (users connected), 'inactive' (no users, in Redis), 'ended' (explicitly closed)
+  status: text('status').default('active').notNull(),
   // GPS coordinates for session discovery
   latitude: doublePrecision('latitude'),
   longitude: doublePrecision('longitude'),
@@ -21,6 +23,9 @@ export const boardSessions = pgTable('board_sessions', {
   locationIdx: index('board_sessions_location_idx').on(table.latitude, table.longitude),
   discoverableIdx: index('board_sessions_discoverable_idx').on(table.discoverable),
   userSessionsIdx: index('board_sessions_user_idx').on(table.createdByUserId),
+  statusIdx: index('board_sessions_status_idx').on(table.status),
+  lastActivityIdx: index('board_sessions_last_activity_idx').on(table.lastActivity),
+  discoveryIdx: index('board_sessions_discovery_idx').on(table.discoverable, table.status, table.lastActivity),
 }));
 
 export const boardSessionClients = pgTable('board_session_clients', {
