@@ -1,6 +1,21 @@
 import type Redis from 'ioredis';
 import type { ClimbQueueItem, SessionUser } from '@boardsesh/shared-schema';
 
+/**
+ * Safely parse JSON with fallback for empty strings and malformed data.
+ */
+function safeJSONParse<T>(value: string | undefined | null, fallback: T): T {
+  if (!value || value === '') {
+    return fallback;
+  }
+  try {
+    return JSON.parse(value) as T;
+  } catch (error) {
+    console.error('[RedisSessionStore] JSON parse error:', error, 'Value:', value?.substring(0, 100));
+    return fallback;
+  }
+}
+
 export interface RedisSessionData {
   sessionId: string;
   boardPath: string;
@@ -103,10 +118,8 @@ export class RedisSessionStore {
     return {
       sessionId: data.sessionId,
       boardPath: data.boardPath,
-      queue: data.queue ? JSON.parse(data.queue) : [],
-      currentClimbQueueItem: data.currentClimbQueueItem
-        ? JSON.parse(data.currentClimbQueueItem)
-        : null,
+      queue: safeJSONParse(data.queue, []),
+      currentClimbQueueItem: safeJSONParse(data.currentClimbQueueItem, null),
       version: parseInt(data.version, 10),
       lastActivity: new Date(parseInt(data.lastActivity, 10)),
       discoverable: data.discoverable === '1',
@@ -152,7 +165,9 @@ export class RedisSessionStore {
 
     if (!data) return [];
 
-    return Object.values(data).map((json) => JSON.parse(json));
+    return Object.values(data)
+      .map((json) => safeJSONParse<SessionUser | null>(json, null))
+      .filter((user): user is SessionUser => user !== null);
   }
 
   /**
@@ -175,6 +190,37 @@ export class RedisSessionStore {
   async exists(sessionId: string): Promise<boolean> {
     const exists = await this.redis.exists(`boardsesh:session:${sessionId}`);
     return exists === 1;
+  }
+
+  /**
+   * Check existence of multiple sessions in a single pipeline.
+   * Returns a map of sessionId -> exists boolean.
+   */
+  async batchExists(sessionIds: string[]): Promise<Map<string, boolean>> {
+    if (sessionIds.length === 0) {
+      return new Map();
+    }
+
+    // Use pipeline for batch operation
+    const pipeline = this.redis.pipeline();
+
+    for (const sessionId of sessionIds) {
+      pipeline.exists(`boardsesh:session:${sessionId}`);
+    }
+
+    const results = await pipeline.exec();
+    const existsMap = new Map<string, boolean>();
+
+    if (results) {
+      sessionIds.forEach((sessionId, index) => {
+        const [error, exists] = results[index] || [null, 0];
+        if (!error) {
+          existsMap.set(sessionId, exists === 1);
+        }
+      });
+    }
+
+    return existsMap;
   }
 
   /**
