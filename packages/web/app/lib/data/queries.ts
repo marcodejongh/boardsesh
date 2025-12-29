@@ -26,6 +26,10 @@ import {
   getLayout,
   getSizesForLayoutId,
   getAllLayouts,
+  getSetsForLayoutAndSize,
+  getImageFilename,
+  getLedPlacements,
+  getHolePlacements,
 } from '@/app/lib/__generated__/product-sizes-data';
 
 const getTableName = (board_name: string, table_name: string) => {
@@ -38,14 +42,9 @@ const getTableName = (board_name: string, table_name: string) => {
   }
 };
 
-export type ImageFileNameRow = { image_filename: string };
-export type HoldsRow = {
-  placement_id: number;
-  mirrored_placement_id: number;
-  x: number;
-  y: number;
-};
-
+// Note: The following types were previously used for database queries
+// but are no longer needed now that board details use hardcoded data.
+// Keeping ProductSizeRow for potential backwards compatibility.
 export type ProductSizeRow = {
   edge_left: number;
   edge_right: number;
@@ -53,18 +52,13 @@ export type ProductSizeRow = {
   edge_top: number;
 };
 
-export type LedPlacementRow = {
-  id: number;
-  position: number;
-};
-
-// Collect data for each set_id
-export const getBoardDetails = async ({
+// Collect data for each set_id - now fully synchronous using hardcoded data
+export const getBoardDetails = ({
   board_name,
   layout_id,
   size_id,
   set_ids,
-}: Pick<ParsedBoardRouteParameters, 'board_name' | 'layout_id' | 'size_id' | 'set_ids'>): Promise<BoardDetails> => {
+}: Pick<ParsedBoardRouteParameters, 'board_name' | 'layout_id' | 'size_id' | 'set_ids'>): BoardDetails => {
   // Get hardcoded size data (eliminates product_sizes query)
   const sizeData = getProductSize(board_name, size_id);
   if (!sizeData) {
@@ -74,24 +68,14 @@ export const getBoardDetails = async ({
   // Get hardcoded layout data
   const layoutData = getLayout(board_name, layout_id);
 
-  const imageUrlHoldsMapEntriesPromises = getImageUrlHoldsMapObjectEntries(set_ids, board_name, layout_id, size_id);
+  // Get sets from hardcoded data (no DB query needed)
+  const setsResult = getSets(board_name, layout_id, size_id);
 
-  const [ledPlacementsResult, setsResult, ...imgUrlMapEntries] = await Promise.all([
-    sql`
-        SELECT
-            placements.id,
-            leds.position
-        FROM ${sql.unsafe(getTableName(board_name, 'placements'))} placements
-        INNER JOIN ${sql.unsafe(getTableName(board_name, 'leds'))} leds ON placements.hole_id = leds.hole_id
-        WHERE placements.layout_id = ${layout_id}
-        AND leds.product_size_id = ${size_id}
-    `,
-    getSets(board_name, layout_id, size_id),
-    ...imageUrlHoldsMapEntriesPromises,
-  ]);
+  // Get LED placements from hardcoded data (no DB query needed)
+  const ledPlacements = getLedPlacements(board_name, layout_id, size_id);
 
-  const ledPlacements = ledPlacementsResult as LedPlacementRow[];
-  const imagesToHolds = Object.fromEntries(imgUrlMapEntries);
+  // Get image filenames and hold placements from hardcoded data (no DB query needed)
+  const imagesToHolds = getImageUrlHoldsMap(set_ids, board_name, layout_id, size_id);
 
   const { edgeLeft: edge_left, edgeRight: edge_right, edgeBottom: edge_bottom, edgeTop: edge_top } = sizeData;
 
@@ -126,7 +110,7 @@ export const getBoardDetails = async ({
     layout_id,
     size_id,
     set_ids,
-    ledPlacements: Object.fromEntries(ledPlacements.map(({ id, position }) => [id, position])),
+    ledPlacements,
     supportsMirroring: board_name === 'tension' && layout_id !== 11,
     // From hardcoded data
     layout_name: layoutData?.name,
@@ -193,59 +177,32 @@ export const getClimbStatsForAllAngles = async (
   return result as ClimbStatsForAngle[];
 };
 
-function getImageUrlHoldsMapObjectEntries(
+/**
+ * Get image URL to holds mapping from hardcoded data (no database query).
+ * Returns a Record mapping image filenames to arrays of HoldTuples.
+ */
+function getImageUrlHoldsMap(
   set_ids: SetIdList,
-  board_name: string,
+  board_name: BoardName,
   layout_id: number,
   size_id: number,
-): Promise<[ImageFileName, HoldTuple[]]>[] {
-  return set_ids.map(async (set_id): Promise<[ImageFileName, HoldTuple[]]> => {
-    const [imageRowsResult, holdsResult] = await Promise.all([
-      sql`
-        SELECT image_filename
-        FROM ${sql.unsafe(getTableName(board_name, 'product_sizes_layouts_sets'))} product_sizes_layouts_sets
-        WHERE layout_id = ${layout_id}
-        AND product_size_id = ${size_id}
-        AND set_id = ${set_id}
-      `,
-      sql`
-          SELECT 
-            placements.id AS placement_id, 
-            mirrored_placements.id AS mirrored_placement_id, 
-            holes.x, holes.y
-          FROM ${sql.unsafe(getTableName(board_name, 'holes'))} holes
-          INNER JOIN ${sql.unsafe(getTableName(board_name, 'placements'))} placements ON placements.hole_id = holes.id
-          AND placements.set_id = ${set_id}
-          AND placements.layout_id = ${layout_id}
-          LEFT JOIN ${sql.unsafe(
-            getTableName(board_name, 'placements'),
-          )} mirrored_placements ON mirrored_placements.hole_id = holes.mirrored_hole_id
-          AND mirrored_placements.set_id = ${set_id}
-          AND mirrored_placements.layout_id = ${layout_id}
-        `,
-    ]);
+): Record<ImageFileName, HoldTuple[]> {
+  const result: Record<ImageFileName, HoldTuple[]> = {};
 
-    const imageRows = imageRowsResult as ImageFileNameRow[];
-    const holds = holdsResult as HoldsRow[];
-
-    if (imageRows.length === 0) {
-      throw new Error(`Could not find set_id ${set_id} for layout_id: ${layout_id} and size_id: ${size_id}`);
-    }
-    const { image_filename } = imageRows[0];
-    if (holds.length === 0) {
-      return [image_filename, []];
+  for (const set_id of set_ids) {
+    // Get image filename from hardcoded data
+    const imageFilename = getImageFilename(board_name, layout_id, size_id, set_id);
+    if (!imageFilename) {
+      throw new Error(`Could not find image for set_id ${set_id} for layout_id: ${layout_id} and size_id: ${size_id}`);
     }
 
-    return [
-      image_filename,
-      holds.map((hold) => [
-        hold.placement_id, // First position: regular placement ID
-        hold.mirrored_placement_id || null, // Second position: mirrored placement ID (or null)
-        hold.x, // Third position: x coordinate
-        hold.y,
-      ]),
-    ];
-  });
+    // Get hole placements from hardcoded data
+    const holds = getHolePlacements(board_name, layout_id, set_id);
+
+    result[imageFilename] = holds;
+  }
+
+  return result;
 }
 
 export type LayoutRow = {
@@ -283,16 +240,8 @@ export type SetRow = {
   name: string;
 };
 
-export const getSets = async (board_name: BoardName, layout_id: LayoutId, size_id: Size) => {
-  const layouts = await sql`
-    SELECT sets.id, sets.name
-      FROM ${sql.unsafe(getTableName(board_name, 'sets'))} sets
-      INNER JOIN ${sql.unsafe(getTableName(board_name, 'product_sizes_layouts_sets'))} psls 
-      ON sets.id = psls.set_id
-      WHERE psls.product_size_id = ${size_id}
-      AND psls.layout_id = ${layout_id}
-  `;
-
-  return layouts as SetRow[];
+export const getSets = (board_name: BoardName, layout_id: LayoutId, size_id: Size): SetRow[] => {
+  // Use hardcoded data instead of database query
+  return getSetsForLayoutAndSize(board_name, layout_id, size_id);
 };
 
