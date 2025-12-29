@@ -278,6 +278,20 @@ class RoomManager {
     return session ? Array.from(session) : [];
   }
 
+  /**
+   * Check if a session is active (has connected users OR exists in Redis within TTL)
+   */
+  async isSessionActive(sessionId: string): Promise<boolean> {
+    const participantCount = this.sessions.get(sessionId)?.size || 0;
+    if (participantCount > 0) {
+      return true;
+    }
+    if (this.redisStore) {
+      return this.redisStore.exists(sessionId);
+    }
+    return false;
+  }
+
   async updateUsername(connectionId: string, username: string, avatarUrl?: string): Promise<void> {
     const client = this.clients.get(connectionId);
     if (client) {
