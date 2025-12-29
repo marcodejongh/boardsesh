@@ -188,9 +188,6 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
   const isReconnectingRef = useRef(false);
   const activeSessionRef = useRef<ActiveSessionInfo | null>(null);
   const mountedRef = useRef(false);
-  // Ref to track pending session activation synchronously (before React state updates)
-  // This prevents race conditions where multiple activateSession calls happen before state updates
-  const pendingSessionRef = useRef<{ sessionId: string; boardPath: string } | null>(null);
 
   // Event subscribers
   const queueEventSubscribersRef = useRef<Set<(event: ClientQueueEvent) => void>>(new Set());
@@ -519,20 +516,6 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
 
   // Session lifecycle functions
   const activateSession = useCallback((info: ActiveSessionInfo) => {
-    // Check ref synchronously first - this handles the race condition where
-    // multiple calls happen before React state updates
-    if (
-      pendingSessionRef.current?.sessionId === info.sessionId &&
-      pendingSessionRef.current?.boardPath === info.boardPath
-    ) {
-      if (DEBUG) console.log('[PersistentSession] Skipping duplicate activation (ref check):', info.sessionId);
-      return;
-    }
-
-    // Set ref synchronously before state update - this ensures any subsequent
-    // calls (e.g., from BoardSessionBridge effect) will see this pending activation
-    pendingSessionRef.current = { sessionId: info.sessionId, boardPath: info.boardPath };
-
     setActiveSession((prev) => {
       // Skip update if sessionId and boardPath are the same - prevents duplicate connections
       // when only object references change (e.g., search filter changes cause server re-render)
@@ -546,8 +529,6 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
 
   const deactivateSession = useCallback(() => {
     if (DEBUG) console.log('[PersistentSession] Deactivating session');
-    // Clear the pending ref so future activations work correctly
-    pendingSessionRef.current = null;
     setActiveSession(null);
     // Note: Don't clear queue state here. The queue should persist
     // when leaving a session. QueueContext handles saving to local state.
