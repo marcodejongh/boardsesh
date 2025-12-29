@@ -21,16 +21,43 @@ export type Climb = {
   stars: number;
   difficulty_error: string;
   litUpHoldsMap: LitUpHoldsMap;
-  mirrored?: boolean;
+  mirrored?: boolean | null; // GraphQL nullable Boolean
   benchmark_difficulty: string | null;
-  userAscents?: number;
-  userAttempts?: number;
+  userAscents?: number | null; // GraphQL nullable Int
+  userAttempts?: number | null; // GraphQL nullable Int
 };
 
 export type QueueItemUser = {
   id: string;
   username: string;
-  avatarUrl?: string;
+  avatarUrl?: string | null; // GraphQL nullable String
+};
+
+// Input type for QueueItemUser (matches GraphQL QueueItemUserInput)
+export type QueueItemUserInput = {
+  id: string;
+  username: string;
+  avatarUrl?: string | null;
+};
+
+// Input type for Climb (matches GraphQL ClimbInput)
+export type ClimbInput = {
+  uuid: string;
+  setter_username: string;
+  name: string;
+  description: string;
+  frames: string;
+  angle: number;
+  ascensionist_count: number;
+  difficulty: string;
+  quality_average: string;
+  stars: number;
+  difficulty_error: string;
+  litUpHoldsMap: LitUpHoldsMap;
+  mirrored?: boolean | null;
+  benchmark_difficulty?: string | null;
+  userAscents?: number | null;
+  userAttempts?: number | null;
 };
 
 export type ClimbQueueItem = {
@@ -40,6 +67,16 @@ export type ClimbQueueItem = {
   addedByUser?: QueueItemUser;
   tickedBy?: UserId[];
   suggested?: boolean;
+};
+
+// Input type for ClimbQueueItem (matches GraphQL ClimbQueueItemInput)
+export type ClimbQueueItemInput = {
+  uuid: string;
+  climb: ClimbInput;
+  addedBy?: string | null;
+  addedByUser?: QueueItemUserInput | null;
+  tickedBy?: string[] | null;
+  suggested?: boolean | null;
 };
 
 export type SessionUser = {

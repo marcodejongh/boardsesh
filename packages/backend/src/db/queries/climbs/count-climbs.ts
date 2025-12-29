@@ -9,8 +9,11 @@ import type { SizeEdges } from '../util/product-sizes-data.js';
  * This is a separate query from searchClimbs to avoid the expensive count(*) over()
  * window function that forces a full table scan.
  *
- * This follows the GraphQL pattern where `items` and `totalCount` are separate fields
- * that can be fetched independently.
+ * This query is only executed when the `totalCount` field is requested in the GraphQL query.
+ * The ClimbSearchResult type uses field-level resolvers, so if a client only requests
+ * `climbs` and `hasMore`, this count query is never executed - improving performance.
+ *
+ * @see resolvers.ts ClimbSearchResult.totalCount for the field resolver
  */
 export const countClimbs = async (
   params: ParsedBoardRouteParameters,

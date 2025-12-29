@@ -1,5 +1,6 @@
 import { useCallback, useRef, useEffect, useMemo } from 'react';
 import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { message } from 'antd';
 import { searchParamsToUrlParams } from '@/app/lib/url-utils';
 import { PAGE_LIMIT } from '../../board-page/constants';
 import { ClimbQueue } from '../types';
@@ -30,17 +31,27 @@ export const useQueueDataFetching = ({
   hasDoneFirstFetch,
   setHasDoneFirstFetch,
 }: UseQueueDataFetchingProps) => {
-  const { getLogbook, token: auroraToken } = useBoardProvider();
+  const { getLogbook } = useBoardProvider();
   // Use wsAuthToken for GraphQL backend auth (NextAuth session token)
-  const { token: wsAuthToken, isAuthenticated } = useWsAuthToken();
+  const { token: wsAuthToken, isAuthenticated, isLoading: isAuthLoading } = useWsAuthToken();
   const queryClient = useQueryClient();
   const fetchedUuidsRef = useRef<string>('');
 
-  // Create a stable query key that changes when search params change
+  // Create a stable query key with flattened primitive values to avoid object reference changes
   const queryKey = useMemo(() => {
     // Exclude page from the key since pagination is handled by useInfiniteQuery
     const { page: _, ...paramsWithoutPage } = searchParams;
-    return ['climbSearch', parsedParams, paramsWithoutPage] as const;
+    // Flatten to primitives for stable key
+    const stableFilterKey = JSON.stringify(paramsWithoutPage);
+    return [
+      'climbSearch',
+      parsedParams.board_name,
+      parsedParams.layout_id,
+      parsedParams.size_id,
+      parsedParams.set_ids.join(','),
+      parsedParams.angle,
+      stableFilterKey,
+    ] as const;
   }, [searchParams, parsedParams]);
 
   const {
@@ -49,6 +60,7 @@ export const useQueueDataFetching = ({
     hasNextPage,
     isFetching,
     isFetchingNextPage,
+    error: searchError,
   } = useInfiniteQuery({
     queryKey,
     queryFn: async ({ pageParam }): Promise<SearchClimbsResult> => {
@@ -86,8 +98,9 @@ export const useQueueDataFetching = ({
           hasMore: result.searchClimbs.hasMore,
         };
       } catch (error) {
-        console.error('[GraphQL] Search climbs error:', error);
-        throw new Error('Failed to fetch climbs');
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.error(`[GraphQL] Search climbs error for ${parsedParams.board_name}:`, error);
+        throw new Error(`Failed to fetch climbs: ${errorMessage}`);
       }
     },
     initialPageParam: 0,
@@ -141,20 +154,27 @@ export const useQueueDataFetching = ({
     [parsedParams.board_name, parsedParams.angle, climbUuids]
   );
 
-  const { data: favoritesData, isLoading: isLoadingFavorites } = useQuery({
+  const { data: favoritesData, isLoading: isLoadingFavorites, error: favoritesError } = useQuery({
     queryKey: favoritesQueryKey,
     queryFn: async (): Promise<Set<string>> => {
       if (climbUuids.length === 0) return new Set();
 
       const client = createGraphQLHttpClient(wsAuthToken);
-      const result = await client.request<FavoritesQueryResponse>(GET_FAVORITES, {
-        boardName: parsedParams.board_name,
-        climbUuids,
-        angle: parsedParams.angle,
-      });
-      return new Set(result.favorites);
+      try {
+        const result = await client.request<FavoritesQueryResponse>(GET_FAVORITES, {
+          boardName: parsedParams.board_name,
+          climbUuids,
+          angle: parsedParams.angle,
+        });
+        return new Set(result.favorites);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.error(`[GraphQL] Favorites query error for ${parsedParams.board_name}:`, error);
+        throw new Error(`Failed to fetch favorites: ${errorMessage}`);
+      }
     },
-    enabled: isAuthenticated && climbUuids.length > 0,
+    // Wait for auth to finish loading before making authenticated requests
+    enabled: isAuthenticated && !isAuthLoading && climbUuids.length > 0,
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
   });
@@ -165,14 +185,20 @@ export const useQueueDataFetching = ({
   const toggleFavoriteMutation = useMutation({
     mutationFn: async (climbUuid: string): Promise<{ uuid: string; favorited: boolean }> => {
       const client = createGraphQLHttpClient(wsAuthToken);
-      const result = await client.request<ToggleFavoriteMutationResponse>(TOGGLE_FAVORITE, {
-        input: {
-          boardName: parsedParams.board_name,
-          climbUuid,
-          angle: parsedParams.angle,
-        },
-      });
-      return { uuid: climbUuid, favorited: result.toggleFavorite.favorited };
+      try {
+        const result = await client.request<ToggleFavoriteMutationResponse>(TOGGLE_FAVORITE, {
+          input: {
+            boardName: parsedParams.board_name,
+            climbUuid,
+            angle: parsedParams.angle,
+          },
+        });
+        return { uuid: climbUuid, favorited: result.toggleFavorite.favorited };
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.error(`[GraphQL] Toggle favorite error for climb ${climbUuid}:`, error);
+        throw new Error(`Failed to toggle favorite: ${errorMessage}`);
+      }
     },
     onMutate: async (climbUuid: string) => {
       // Cancel outgoing refetches
@@ -194,15 +220,18 @@ export const useQueueDataFetching = ({
 
       return { previousFavorites };
     },
-    onError: (_err, _climbUuid, context) => {
+    onError: (err, climbUuid, context) => {
+      // Log the error with context
+      console.error(`[Favorites] Error toggling favorite for climb ${climbUuid}:`, err);
       // Rollback on error
       if (context?.previousFavorites) {
         queryClient.setQueryData(favoritesQueryKey, context.previousFavorites);
       }
+      // Show user feedback
+      message.error('Failed to update favorite. Please try again.');
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: favoritesQueryKey });
-    },
+    // Don't invalidate on settled - optimistic update is sufficient
+    // Only invalidate on error (handled above via rollback)
   });
 
   const toggleFavorite = useCallback(
@@ -262,5 +291,9 @@ export const useQueueDataFetching = ({
     toggleFavorite,
     isLoadingFavorites,
     isAuthenticated,
+    isAuthLoading,
+    // Error states
+    searchError,
+    favoritesError,
   };
 };

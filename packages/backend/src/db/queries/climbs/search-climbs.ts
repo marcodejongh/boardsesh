@@ -35,6 +35,9 @@ const HOLD_STATE_MAP: Record<
   },
 };
 
+// Track warned hold states to avoid log spam (only warn once per status code)
+const warnedHoldStates = new Set<string>();
+
 /**
  * Convert lit up holds string to a map
  * Returns only the first frame for single-frame climbs
@@ -53,9 +56,14 @@ function convertLitUpHoldsStringToMap(litUpHolds: string, board: BoardName): Rec
             .map(([holdId, stateCode]) => {
               const stateInfo = HOLD_STATE_MAP[board]?.[stateCode];
               if (!stateInfo) {
-                console.warn(
-                  `HOLD_STATE_MAP is missing values for ${board} hold id: ${holdId}, missing status code: ${stateCode}`,
-                );
+                // Rate-limit warnings to avoid log spam (only warn once per status code)
+                const warnKey = `${board}:${stateCode}`;
+                if (!warnedHoldStates.has(warnKey)) {
+                  warnedHoldStates.add(warnKey);
+                  console.warn(
+                    `HOLD_STATE_MAP is missing values for ${board} status code: ${stateCode} (this warning is only shown once per status code)`,
+                  );
+                }
                 return [holdId || 0, { state: `${holdId}=${stateCode}` as HoldState, color: '#FFF', displayColor: '#FFF' }];
               }
               const { name, color, displayColor } = stateInfo;
