@@ -197,6 +197,18 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
     const unsubscribe = persistentSession.subscribeToQueueEvents((event: ClientQueueEvent) => {
       switch (event.__typename) {
         case 'FullSync':
+          // If we have a pending queue to upload (we just created this session),
+          // don't accept the server's empty queue - upload ours instead
+          if (pendingQueueSyncRef.current?.sessionId === sessionId) {
+            const pending = pendingQueueSyncRef.current;
+            pendingQueueSyncRef.current = null;
+            // Upload our queue to the server (server will broadcast to all clients)
+            persistentSession.setQueue(pending.queue, pending.currentClimbQueueItem).catch((error) => {
+              console.error('Failed to upload queue to new session:', error);
+            });
+            // Don't clear local state - keep the existing queue in reducer
+            return;
+          }
           dispatch({
             type: 'INITIAL_QUEUE_DATA',
             payload: {
@@ -249,41 +261,6 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
     });
 
     return unsubscribe;
-  }, [isPersistentSessionActive, persistentSession, dispatch]);
-
-  // Upload pending queue when connecting to a new session we created
-  // This ensures the user's queue is preserved when starting party mode
-  useEffect(() => {
-    const pending = pendingQueueSyncRef.current;
-    if (!pending) return;
-    if (!isPersistentSessionActive) return;
-    if (!persistentSession.hasConnected) return;
-    if (pending.sessionId !== sessionId) {
-      // Different session than we created - clear pending and accept server queue
-      pendingQueueSyncRef.current = null;
-      return;
-    }
-
-    // We have a pending queue sync for this session - upload it
-    const uploadQueue = async () => {
-      try {
-        await persistentSession.setQueue(pending.queue, pending.currentClimbQueueItem);
-        // After successful upload, update local state to match
-        dispatch({
-          type: 'INITIAL_QUEUE_DATA',
-          payload: {
-            queue: pending.queue,
-            currentClimbQueueItem: pending.currentClimbQueueItem,
-          },
-        });
-      } catch (error) {
-        console.error('Failed to upload queue to new session:', error);
-      } finally {
-        pendingQueueSyncRef.current = null;
-      }
-    };
-
-    uploadQueue();
   }, [isPersistentSessionActive, persistentSession, sessionId, dispatch]);
 
   // Use persistent session values when active
