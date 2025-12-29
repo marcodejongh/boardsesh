@@ -1,7 +1,6 @@
 'use client';
 import React, { useEffect, useRef, useCallback } from 'react';
 import { Row, Col } from 'antd';
-import AnimatedBoardLoading from '../loading/animated-board-loading';
 import { track } from '@vercel/analytics';
 import { Climb, ParsedBoardRouteParameters, BoardDetails } from '@/app/lib/types';
 import { useQueueContext } from '../graphql-queue';
@@ -146,11 +145,11 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
       </Row>
 
       {/* Sentinel element for Intersection Observer */}
-      <div ref={loadMoreRef} style={{ height: '20px', marginTop: '16px' }}>
+      <div ref={loadMoreRef} style={{ marginTop: '16px' }}>
         {isFetchingClimbs && climbs.length > 0 && (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '20px' }}>
-            <AnimatedBoardLoading isVisible={true} boardDetails={boardDetails} inline />
-          </div>
+          <Row gutter={[16, 16]}>
+            <ClimbsListSkeleton aspectRatio={boardDetails.boardWidth / boardDetails.boardHeight} />
+          </Row>
         )}
         {!hasMoreResults && climbs.length > 0 && (
           <div style={{ textAlign: 'center', padding: '20px', color: '#888' }}>
