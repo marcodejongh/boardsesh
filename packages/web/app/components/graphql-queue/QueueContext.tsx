@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useContext, createContext, ReactNode, useCallback, useMemo, useState, useEffect, useRef } from 'react';
+import React, { useContext, createContext, ReactNode, useCallback, useMemo, useState, useEffect } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { v4 as uuidv4 } from 'uuid';
 import { useQueueReducer } from '../queue-control/reducer';
@@ -14,13 +14,6 @@ import { ClientQueueEvent } from '@boardsesh/shared-schema';
 import { saveSessionToHistory } from '../setup-wizard/session-history-panel';
 import { usePersistentSession } from '../persistent-session';
 import { FavoritesProvider } from '../climb-actions/favorites-batch-context';
-
-// Type for pending queue sync when creating a new session
-interface PendingQueueSync {
-  queue: ClimbQueueItem[];
-  currentClimbQueueItem: ClimbQueueItem | null;
-  sessionId: string;
-}
 
 // Extended context type with session management
 export interface GraphQLQueueContextType extends QueueContextType {
@@ -73,10 +66,6 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
   // Read sessionId from URL search params - party mode is opt-in
   const sessionIdFromUrl = searchParams.get('session');
   const [activeSessionId, setActiveSessionId] = useState<string | null>(sessionIdFromUrl);
-
-  // Track pending queue sync when creating a new session
-  // This stores the queue to upload after connecting to a new session
-  const pendingQueueSyncRef = useRef<PendingQueueSync | null>(null);
 
   // Sync activeSessionId with URL changes (e.g., when navigating to a shared link)
   useEffect(() => {
@@ -197,18 +186,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
     const unsubscribe = persistentSession.subscribeToQueueEvents((event: ClientQueueEvent) => {
       switch (event.__typename) {
         case 'FullSync':
-          // If we have a pending queue to upload (we just created this session),
-          // don't accept the server's empty queue - upload ours instead
-          if (pendingQueueSyncRef.current?.sessionId === sessionId) {
-            const pending = pendingQueueSyncRef.current;
-            pendingQueueSyncRef.current = null;
-            // Upload our queue to the server (server will broadcast to all clients)
-            persistentSession.setQueue(pending.queue, pending.currentClimbQueueItem).catch((error) => {
-              console.error('Failed to upload queue to new session:', error);
-            });
-            // Don't clear local state - keep the existing queue in reducer
-            return;
-          }
+          // Sync queue state from server (includes initial queue if we just created the session)
           dispatch({
             type: 'INITIAL_QUEUE_DATA',
             payload: {
@@ -261,7 +239,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
     });
 
     return unsubscribe;
-  }, [isPersistentSessionActive, persistentSession, sessionId, dispatch]);
+  }, [isPersistentSessionActive, persistentSession, dispatch]);
 
   // Use persistent session values when active
   const clientId = isPersistentSessionActive ? persistentSession.clientId : null;
@@ -280,16 +258,6 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
       // Generate a new session ID
       const newSessionId = uuidv4();
 
-      // Save current queue to upload after connecting
-      // This preserves the user's queue when starting party mode
-      if (state.queue.length > 0 || state.currentClimbQueueItem) {
-        pendingQueueSyncRef.current = {
-          queue: state.queue,
-          currentClimbQueueItem: state.currentClimbQueueItem,
-          sessionId: newSessionId,
-        };
-      }
-
       // Update URL with session parameter
       const params = new URLSearchParams(searchParams.toString());
       params.set('session', newSessionId);
@@ -297,6 +265,17 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
 
       // Update state
       setActiveSessionId(newSessionId);
+
+      // Activate the session with initial queue - this starts the WebSocket connection
+      // and passes the queue to the server as part of the join
+      persistentSession.activateSession({
+        sessionId: newSessionId,
+        boardPath: pathname,
+        boardDetails,
+        parsedParams,
+        initialQueue: state.queue.length > 0 ? state.queue : undefined,
+        initialCurrentClimbQueueItem: state.currentClimbQueueItem,
+      });
 
       // Save to session history
       await saveSessionToHistory({
@@ -310,7 +289,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
 
       return newSessionId;
     },
-    [backendUrl, pathname, router, searchParams, state.queue, state.currentClimbQueueItem],
+    [backendUrl, pathname, router, searchParams, state.queue, state.currentClimbQueueItem, boardDetails, parsedParams, persistentSession],
   );
 
   const joinSessionHandler = useCallback(

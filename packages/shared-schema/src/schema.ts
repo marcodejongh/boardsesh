@@ -269,7 +269,7 @@ export const typeDefs = /* GraphQL */ `
   }
 
   type Mutation {
-    joinSession(sessionId: ID!, boardPath: String!, username: String, avatarUrl: String): Session!
+    joinSession(sessionId: ID!, boardPath: String!, username: String, avatarUrl: String, initialQueue: [ClimbQueueItemInput!], initialCurrentClimbQueueItem: ClimbQueueItemInput): Session!
     # Create a new session (optionally discoverable with GPS)
     createSession(input: CreateSessionInput!): Session!
     leaveSession: Boolean!
