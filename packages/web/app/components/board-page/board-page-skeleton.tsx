@@ -57,7 +57,7 @@ const ClimbCardSkeleton = ({ aspectRatio }: { aspectRatio?: number }) => (
     }}
     styles={{
       header: { paddingTop: 8, paddingBottom: 6 },
-      body: { padding: 6 },
+      body: { padding: 6, display: 'flex', justifyContent: 'center' },
     }}
     title={<ClimbCardTitleSkeleton />}
     actions={[
