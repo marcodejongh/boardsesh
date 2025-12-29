@@ -104,6 +104,7 @@ export const typeDefs = /* GraphQL */ `
     createdByUserId: ID
     participantCount: Int!
     distance: Float
+    isActive: Boolean!
   }
 
   # Input for creating a session
@@ -273,6 +274,7 @@ export const typeDefs = /* GraphQL */ `
     # Create a new session (optionally discoverable with GPS)
     createSession(input: CreateSessionInput!): Session!
     leaveSession: Boolean!
+    endSession(sessionId: ID!): Boolean!
     updateUsername(username: String!, avatarUrl: String): Boolean!
 
     addQueueItem(item: ClimbQueueItemInput!, position: Int): ClimbQueueItem!

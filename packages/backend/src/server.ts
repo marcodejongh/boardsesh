@@ -1,6 +1,8 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'http';
 import type { WebSocketServer } from 'ws';
 import { pubsub } from './pubsub/index.js';
+import { roomManager } from './services/room-manager.js';
+import { redisClientManager } from './redis/client.js';
 import { initCors, applyCorsHeaders } from './handlers/cors.js';
 import { handleHealthCheck } from './handlers/health.js';
 import { handleSessionJoin } from './handlers/join.js';
@@ -20,6 +22,14 @@ export async function startServer(): Promise<{ wss: WebSocketServer; httpServer:
   // Initialize PubSub (connects to Redis if configured)
   // This must happen before we start accepting connections
   await pubsub.initialize();
+
+  // Initialize RoomManager with Redis for session persistence
+  if (redisClientManager.isRedisConfigured() && redisClientManager.isRedisConnected()) {
+    const { publisher } = redisClientManager.getClients();
+    await roomManager.initialize(publisher);
+  } else {
+    await roomManager.initialize(); // Postgres-only mode
+  }
 
   const PORT = parseInt(process.env.PORT || '8080', 10);
   const BOARDSESH_URL = process.env.BOARDSESH_URL || 'https://boardsesh.com';
@@ -110,6 +120,73 @@ export async function startServer(): Promise<{ wss: WebSocketServer; httpServer:
   httpServer.on('error', (error) => {
     console.error('HTTP server error:', error);
   });
+
+  // Graceful shutdown handler - flush pending writes
+  process.on('SIGTERM', async () => {
+    console.log('[Server] SIGTERM received, initiating graceful shutdown...');
+
+    try {
+      // Flush any pending debounced writes to Postgres
+      await roomManager.flushPendingWrites();
+      console.log('[Server] All pending writes flushed successfully');
+    } catch (error) {
+      console.error('[Server] Error flushing pending writes:', error);
+    }
+
+    // Close HTTP server
+    httpServer.close(() => {
+      console.log('[Server] HTTP server closed');
+      process.exit(0);
+    });
+
+    // Force exit after 10 seconds if graceful shutdown fails
+    setTimeout(() => {
+      console.error('[Server] Forcefully shutting down after 10s timeout');
+      process.exit(1);
+    }, 10000);
+  });
+
+  // Also handle SIGINT (Ctrl+C)
+  process.on('SIGINT', async () => {
+    console.log('[Server] SIGINT received, initiating graceful shutdown...');
+
+    try {
+      await roomManager.flushPendingWrites();
+      console.log('[Server] All pending writes flushed successfully');
+    } catch (error) {
+      console.error('[Server] Error flushing pending writes:', error);
+    }
+
+    httpServer.close(() => {
+      console.log('[Server] HTTP server closed');
+      process.exit(0);
+    });
+
+    setTimeout(() => {
+      console.error('[Server] Forcefully shutting down after 10s timeout');
+      process.exit(1);
+    }, 10000);
+  });
+
+  // Optional: Periodic flush as backup (every 60 seconds)
+  setInterval(async () => {
+    try {
+      await roomManager.flushPendingWrites();
+    } catch (error) {
+      console.error('[Server] Error in periodic flush:', error);
+    }
+  }, 60000);
+
+  // Optional: Periodic TTL refresh for active sessions (every minute)
+  setInterval(async () => {
+    try {
+      const activeSessions = roomManager.getAllActiveSessions();
+      // Note: TTL refresh happens automatically in RedisSessionStore methods,
+      // but we can add explicit refresh here if needed for extra safety
+    } catch (error) {
+      console.error('[Server] Error in periodic TTL refresh:', error);
+    }
+  }, 60000);
 
   return { wss, httpServer };
 }
