@@ -18,6 +18,7 @@ import {
 } from './bluetooth';
 import { HoldRenderData } from '../board-renderer/types';
 import { useWakeLock } from './use-wake-lock';
+import { getLedPlacements } from '@/app/lib/__generated__/led-placements-data';
 
 type SendClimbToBoardButtonProps = { boardDetails: BoardDetails };
 
@@ -92,7 +93,7 @@ const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({ boardDe
 
     let { frames } = currentClimbQueueItem.climb;
 
-    const placementPositions = boardDetails.ledPlacements;
+    const placementPositions = getLedPlacements(boardDetails.board_name, boardDetails.layout_id, boardDetails.size_id);
     if (currentClimbQueueItem.climb?.mirrored) {
       frames = convertToMirroredFramesString(frames, boardDetails.holdsData);
     }
@@ -149,7 +150,7 @@ const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({ boardDe
         if (currentClimbQueueItem) {
           try {
             let { frames } = currentClimbQueueItem.climb;
-            const placementPositions = boardDetails.ledPlacements;
+            const placementPositions = getLedPlacements(boardDetails.board_name, boardDetails.layout_id, boardDetails.size_id);
             if (currentClimbQueueItem.climb?.mirrored) {
               frames = convertToMirroredFramesString(frames, boardDetails.holdsData);
             }

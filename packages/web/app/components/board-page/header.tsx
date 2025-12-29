@@ -1,13 +1,20 @@
 'use client';
 import React from 'react';
+import dynamic from 'next/dynamic';
 import { Flex, Button, Dropdown, MenuProps } from 'antd';
 import { Header } from 'antd/es/layout/layout';
 import { useSession, signIn, signOut } from 'next-auth/react';
 import SearchButton from '../search-drawer/search-button';
 import SearchClimbNameInput from '../search-drawer/search-climb-name-input';
 import { UISearchParamsProvider } from '../queue-control/ui-searchparams-provider';
-import SendClimbToBoardButton from '../board-bluetooth-control/send-climb-to-board-button';
 import { BoardDetails } from '@/app/lib/types';
+
+// Dynamically import bluetooth component to reduce initial bundle size
+// LED placement data (~50KB) is only loaded when bluetooth is actually used
+const SendClimbToBoardButton = dynamic(
+  () => import('../board-bluetooth-control/send-climb-to-board-button'),
+  { ssr: false }
+);
 import { generateLayoutSlug, generateSizeSlug, generateSetSlug } from '@/app/lib/url-utils';
 import { ShareBoardButton } from './share-button';
 import { useQueueContext } from '../graphql-queue';
