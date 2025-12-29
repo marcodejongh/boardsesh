@@ -147,10 +147,10 @@ export function validateInput<T>(schema: z.ZodSchema<T>, data: unknown, fieldNam
 // ============================================
 
 /**
- * Board name validation schema (kilter, tension, decoy)
+ * Board name validation schema (kilter, tension)
  */
-export const BoardNameSchema = z.enum(['kilter', 'tension', 'decoy'], {
-  errorMap: () => ({ message: 'Board name must be kilter, tension, or decoy' }),
+export const BoardNameSchema = z.enum(['kilter', 'tension'], {
+  errorMap: () => ({ message: 'Board name must be kilter or tension' }),
 });
 
 // ============================================

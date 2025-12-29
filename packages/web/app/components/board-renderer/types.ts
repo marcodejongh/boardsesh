@@ -31,7 +31,7 @@ export interface HeatmapData {
 }
 
 // If adding mroe boards be sure to increment the DB version number for indexeddb
-export const supported_boards: BoardName[] = ['kilter', 'tension', 'decoy'];
+export const supported_boards: BoardName[] = ['kilter', 'tension'];
 
 // Mapping object for board-specific hold states
 export const HOLD_STATE_MAP: Record<
@@ -57,13 +57,5 @@ export const HOLD_STATE_MAP: Record<
     6: { name: 'HAND', displayColor: '#4444FF', color: '#0000FF' },
     7: { name: 'FINISH', displayColor: '#FF0000', color: '#FF0000' },
     8: { name: 'FOOT', displayColor: '#FF00FF', color: '#FF00FF' },
-  },
-  decoy: {
-    // TODO: Verify actual hold state codes for decoy board from Aurora API
-    // Placeholder values based on kilter/tension pattern
-    42: { name: 'STARTING', color: '#00FF00' },
-    43: { name: 'HAND', color: '#00FFFF' },
-    44: { name: 'FINISH', color: '#FF00FF' },
-    45: { name: 'FOOT', color: '#FFA500' },
   },
 };

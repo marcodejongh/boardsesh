@@ -95,7 +95,7 @@ export type QueueState = {
 // Board Configuration Types
 // ============================================
 
-export type BoardName = 'kilter' | 'tension' | 'decoy';
+export type BoardName = 'kilter' | 'tension';
 
 export type Grade = {
   difficultyId: number;

@@ -17,7 +17,7 @@ export const userFavorites = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    boardName: text("board_name").notNull(), // 'kilter', 'tension', 'decoy'
+    boardName: text("board_name").notNull(), // 'kilter', 'tension'
     climbUuid: text("climb_uuid").notNull(),
     angle: integer("angle").notNull(), // The angle at which the climb was favorited
     createdAt: timestamp("created_at").defaultNow().notNull(),

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { searchClimbs, countClimbs, getClimbByUuid } from '../db/queries/climbs/index.js';
 import type { ParsedBoardRouteParameters, ClimbSearchParams } from '../db/queries/climbs/create-climb-filters.js';
+import { getSizeEdges } from '../db/queries/util/product-sizes-data.js';
 
 describe('Climb Query Functions', () => {
   const testParams: ParsedBoardRouteParameters = {
@@ -196,8 +197,9 @@ describe('Climb Query Functions', () => {
         pageSize: 10,
       };
 
+      const sizeEdges = getSizeEdges(testParams.board_name, testParams.size_id);
       const searchResult = await searchClimbs(testParams, searchParams);
-      const count = await countClimbs(testParams, searchParams);
+      const count = await countClimbs(testParams, searchParams, sizeEdges!);
 
       // Count should match totalCount from search
       expect(count).toBe(searchResult.totalCount);
@@ -215,8 +217,9 @@ describe('Climb Query Functions', () => {
         pageSize: 10,
       };
 
-      const filteredCount = await countClimbs(testParams, filteredParams);
-      const unfilteredCount = await countClimbs(testParams, unfilteredParams);
+      const sizeEdges = getSizeEdges(testParams.board_name, testParams.size_id);
+      const filteredCount = await countClimbs(testParams, filteredParams, sizeEdges!);
+      const unfilteredCount = await countClimbs(testParams, unfilteredParams, sizeEdges!);
 
       // Filtered count should be <= unfiltered count
       expect(filteredCount).toBeLessThanOrEqual(unfilteredCount);

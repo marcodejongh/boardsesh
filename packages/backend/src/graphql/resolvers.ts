@@ -34,6 +34,8 @@ import {
   ClimbSearchInputSchema,
   ToggleFavoriteInputSchema,
   UpdateProfileInputSchema,
+  ExternalUUIDSchema,
+  SaveAuroraCredentialInputSchema,
 } from '../validation/schemas.js';
 import type {
   ConnectionContext,

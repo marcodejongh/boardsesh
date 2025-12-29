@@ -82,7 +82,7 @@ export const writeCharacteristicSeries = async (
 
 export const requestDevice = async () =>
   navigator.bluetooth.requestDevice({
-    // Filter by the Aurora advertised service UUID to find Kilter/Tension/Decoy boards
+    // Filter by the Aurora advertised service UUID to find Kilter/Tension boards
     // Board names can be customized by users so namePrefix filtering doesn't work reliably
     filters: [{ services: [AURORA_ADVERTISED_SERVICE_UUID] }],
     optionalServices: [SERVICE_UUID],

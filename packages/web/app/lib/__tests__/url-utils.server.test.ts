@@ -62,12 +62,11 @@ describe('url-utils.server concepts', () => {
     });
 
     it('should validate board name patterns', () => {
-      const validBoardNames = ['kilter', 'tension', 'decoy'];
+      const validBoardNames = ['kilter', 'tension'];
       const testBoardName = (name: string) => validBoardNames.includes(name);
 
       expect(testBoardName('kilter')).toBe(true);
       expect(testBoardName('tension')).toBe(true);
-      expect(testBoardName('decoy')).toBe(true);
       expect(testBoardName('invalid')).toBe(false);
     });
 
