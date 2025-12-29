@@ -248,11 +248,16 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
     return unsubscribe;
   }, [isPersistentSessionActive, persistentSession, dispatch]);
 
+  // Extract connection state values that we need for the sync effect
+  // These must be extracted before the effect so they can be used as dependencies
+  const hasConnectedForSync = persistentSession.hasConnected;
+  const isLeaderForSync = persistentSession.isLeader;
+
   // Sync pending initial queue after connecting to a new session
   // This handles the case where user starts a session with existing queue items
   useEffect(() => {
     // Only run when we've just connected to a session
-    if (!isPersistentSessionActive || !persistentSession.hasConnected) return;
+    if (!isPersistentSessionActive || !hasConnectedForSync) return;
 
     // Check if we have a pending initial queue for this session
     const pending = pendingInitialQueueRef.current;
@@ -260,7 +265,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
 
     // Only sync if we're the leader (creator of the session)
     // Non-leaders should receive the queue from the session creator
-    if (!persistentSession.isLeader) {
+    if (!isLeaderForSync) {
       pendingInitialQueueRef.current = null;
       return;
     }
@@ -273,7 +278,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
     persistentSession.setQueue(pending.queue, pending.currentClimbQueueItem).catch((error) => {
       console.error('[QueueContext] Failed to sync initial queue:', error);
     });
-  }, [isPersistentSessionActive, persistentSession, sessionId]);
+  }, [isPersistentSessionActive, hasConnectedForSync, isLeaderForSync, sessionId, persistentSession]);
 
   // Use persistent session values when active
   const clientId = isPersistentSessionActive ? persistentSession.clientId : null;
