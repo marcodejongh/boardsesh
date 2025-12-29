@@ -22,9 +22,7 @@ export function FavoriteAction({
   const [showAuthModal, setShowAuthModal] = useState(false);
 
   const { isFavorited, isLoading, toggleFavorite, isAuthenticated } = useFavorite({
-    boardName: boardDetails.board_name,
     climbUuid: climb.uuid,
-    angle,
   });
 
   const handleClick = useCallback(async (e?: React.MouseEvent) => {

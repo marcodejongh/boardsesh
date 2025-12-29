@@ -13,6 +13,7 @@ import { usePartyProfile } from '../party-manager/party-profile-context';
 import { ClientQueueEvent } from '@boardsesh/shared-schema';
 import { saveSessionToHistory } from '../setup-wizard/session-history-panel';
 import { usePersistentSession } from '../persistent-session';
+import { FavoritesProvider } from '../climb-actions/favorites-batch-context';
 
 // Extended context type with session management
 export interface GraphQLQueueContextType extends QueueContextType {
@@ -323,7 +324,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
   // Whether party mode is active
   const isSessionActive = !!sessionId && hasConnected;
 
-  // Data fetching for search results
+  // Data fetching for search results and favorites
   const {
     climbSearchResults,
     suggestedClimbs,
@@ -331,6 +332,12 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
     hasMoreResults,
     isFetchingClimbs,
     fetchMoreClimbs,
+    // Favorites
+    favorites,
+    isFavorited,
+    toggleFavorite,
+    isLoadingFavorites,
+    isAuthenticated,
   } = useQueueDataFetching({
     searchParams: state.climbSearchParams,
     queue: state.queue,
@@ -571,16 +578,29 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
     return null;
   }
 
+  // Wrap children with FavoritesProvider to pass hoisted favorites data
+  const wrappedChildren = (
+    <FavoritesProvider
+      favorites={favorites}
+      isFavorited={isFavorited}
+      toggleFavorite={toggleFavorite}
+      isLoading={isLoadingFavorites}
+      isAuthenticated={isAuthenticated}
+    >
+      {children}
+    </FavoritesProvider>
+  );
+
   // If no backend URL configured, show error or fallback
   if (!backendUrl) {
     return (
       <QueueContext.Provider value={contextValue}>
-        {children}
+        {wrappedChildren}
       </QueueContext.Provider>
     );
   }
 
-  return <QueueContext.Provider value={contextValue}>{children}</QueueContext.Provider>;
+  return <QueueContext.Provider value={contextValue}>{wrappedChildren}</QueueContext.Provider>;
 };
 
 export const useGraphQLQueueContext = (): GraphQLQueueContextType => {

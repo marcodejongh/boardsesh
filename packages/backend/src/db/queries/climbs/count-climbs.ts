@@ -1,0 +1,44 @@
+import { sql, and } from 'drizzle-orm';
+import { db } from '../../client.js';
+import { getBoardTables } from '../util/table-select.js';
+import { createClimbFilters, type ClimbSearchParams, type ParsedBoardRouteParameters } from './create-climb-filters.js';
+import type { SizeEdges } from '../util/product-sizes-data.js';
+
+/**
+ * Counts the total number of climbs matching the search criteria.
+ * This is a separate query from searchClimbs to avoid the expensive count(*) over()
+ * window function that forces a full table scan.
+ *
+ * This follows the GraphQL pattern where `items` and `totalCount` are separate fields
+ * that can be fetched independently.
+ */
+export const countClimbs = async (
+  params: ParsedBoardRouteParameters,
+  searchParams: ClimbSearchParams,
+  sizeEdges: SizeEdges,
+  userId?: number,
+): Promise<number> => {
+  const tables = getBoardTables(params.board_name);
+
+  // Use the shared filter creator with static edge values
+  const filters = createClimbFilters(tables, params, searchParams, sizeEdges, userId);
+
+  const whereConditions = [
+    ...filters.getClimbWhereConditions(),
+    ...filters.getSizeConditions(),
+    ...filters.getClimbStatsConditions(),
+  ];
+
+  try {
+    const result = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(tables.climbs)
+      .leftJoin(tables.climbStats, and(...filters.getClimbStatsJoinConditions()))
+      .where(and(...whereConditions));
+
+    return Number(result[0]?.count ?? 0);
+  } catch (error) {
+    console.error('Error in countClimbs:', error);
+    throw error;
+  }
+};

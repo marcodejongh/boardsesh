@@ -28,9 +28,7 @@ export default function FavoriteButton({
   size = 'default',
 }: FavoriteButtonProps) {
   const { isFavorited, isLoading, toggleFavorite, isAuthenticated } = useFavorite({
-    boardName,
     climbUuid,
-    angle,
   });
 
   const [showAuthModal, setShowAuthModal] = useState(false);

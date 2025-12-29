@@ -8,6 +8,9 @@ import { pubsub } from '../pubsub/index.js';
 import { updateContext, getContext } from './context.js';
 import { checkRateLimit } from '../utils/rate-limiter.js';
 import { db } from '../db/client.js';
+import { searchClimbs as searchClimbsQuery, countClimbs } from '../db/queries/climbs/index.js';
+import { getSizeEdges } from '../db/queries/util/product-sizes-data.js';
+import { isValidBoardName } from '../db/queries/util/table-select.js';
 import * as dbSchema from '@boardsesh/db/schema';
 import {
   validateInput,
@@ -341,14 +344,60 @@ const resolvers = {
     searchClimbs: async (_: unknown, { input }: { input: ClimbSearchInput }, ctx: ConnectionContext): Promise<ClimbSearchResult> => {
       validateInput(ClimbSearchInputSchema, input, 'input');
 
-      // TODO: Implement full search logic - for now return empty result
-      // This will require porting the search-climbs.ts logic from web package
-      console.log('[searchClimbs] Input:', input);
+      // Validate board name
+      if (!isValidBoardName(input.boardName)) {
+        throw new Error(`Invalid board name: ${input.boardName}. Must be 'kilter' or 'tension'`);
+      }
+
+      // Get size edges for filtering
+      const sizeEdges = getSizeEdges(input.boardName, input.sizeId);
+      if (!sizeEdges) {
+        throw new Error(`Invalid size ID: ${input.sizeId} for board: ${input.boardName}`);
+      }
+
+      // Parse setIds from comma-separated string
+      const setIds = input.setIds.split(',').map(id => parseInt(id.trim(), 10)).filter(id => !isNaN(id));
+
+      // Build route parameters
+      const params = {
+        board_name: input.boardName as 'kilter' | 'tension',
+        layout_id: input.layoutId,
+        size_id: input.sizeId,
+        set_ids: setIds,
+        angle: input.angle,
+      };
+
+      // Build search parameters
+      const searchParams = {
+        page: input.page ?? 0,
+        pageSize: input.pageSize ?? 20,
+        gradeAccuracy: input.gradeAccuracy ? parseFloat(input.gradeAccuracy) : undefined,
+        minGrade: input.minGrade,
+        maxGrade: input.maxGrade,
+        minAscents: input.minAscents,
+        sortBy: input.sortBy ?? 'ascents',
+        sortOrder: input.sortOrder ?? 'desc',
+        name: input.name,
+        settername: input.setter ? [input.setter] : undefined,
+        hideAttempted: input.hideAttempted,
+        hideCompleted: input.hideCompleted,
+        showOnlyAttempted: input.showOnlyAttempted,
+        showOnlyCompleted: input.showOnlyCompleted,
+      };
+
+      // Get authenticated user ID for personal progress filters
+      const userId = ctx.isAuthenticated && ctx.userId ? parseInt(ctx.userId, 10) : undefined;
+
+      // Run search and count queries in parallel for better performance
+      const [searchResult, totalCount] = await Promise.all([
+        searchClimbsQuery(params, searchParams, userId),
+        countClimbs(params, searchParams, sizeEdges, userId),
+      ]);
 
       return {
-        climbs: [],
-        totalCount: 0,
-        hasMore: false,
+        climbs: searchResult.climbs,
+        totalCount,
+        hasMore: searchResult.hasMore,
       };
     },
 
