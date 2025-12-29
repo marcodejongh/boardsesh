@@ -255,6 +255,9 @@ const resolvers = {
 
   Query: {
     session: async (_: unknown, { sessionId }: { sessionId: string }) => {
+      // Validate session ID
+      validateInput(SessionIdSchema, sessionId, 'sessionId');
+
       const users = roomManager.getSessionUsers(sessionId);
       if (users.length === 0) return null;
 
@@ -398,7 +401,7 @@ const resolvers = {
         sortBy: input.sortBy ?? 'ascents',
         sortOrder: input.sortOrder ?? 'desc',
         name: input.name,
-        settername: input.setter ? [input.setter] : undefined,
+        settername: input.setter && input.setter.length > 0 ? input.setter : undefined,
         hideAttempted: input.hideAttempted,
         hideCompleted: input.hideCompleted,
         showOnlyAttempted: input.showOnlyAttempted,
@@ -428,11 +431,18 @@ const resolvers = {
         climbUuid: string
       }
     ) => {
+      // Validate board name
       validateInput(BoardNameSchema, boardName, 'boardName');
 
       if (!isValidBoardName(boardName)) {
         throw new Error(`Invalid board name: ${boardName}. Must be 'kilter' or 'tension'`);
       }
+
+      // Validate all parameters
+      if (layoutId <= 0) throw new Error('Invalid layoutId: must be positive');
+      if (sizeId <= 0) throw new Error('Invalid sizeId: must be positive');
+      if (angle < 0 || angle > 90) throw new Error('Invalid angle: must be between 0 and 90');
+      validateInput(ExternalUUIDSchema, climbUuid, 'climbUuid');
 
       if (DEBUG) console.log('[climb] Fetching:', { boardName, layoutId, sizeId, setIds, angle, climbUuid });
 
@@ -740,6 +750,13 @@ const resolvers = {
     ) => {
       applyRateLimit(ctx); // Apply default rate limit
       const sessionId = requireSession(ctx);
+
+      // Validate input
+      validateInput(ClimbQueueItemSchema, item, 'item');
+      if (position !== undefined) {
+        validateInput(QueueIndexSchema, position, 'position');
+      }
+
       if (DEBUG) console.log('[addQueueItem] Adding item:', item.climb?.name, 'by client:', ctx.connectionId, 'at position:', position);
 
       // Track the original queue length for position calculation
@@ -867,6 +884,11 @@ const resolvers = {
       applyRateLimit(ctx);
       const sessionId = requireSession(ctx);
 
+      // Validate input
+      if (item !== null) {
+        validateInput(ClimbQueueItemSchema, item, 'item');
+      }
+
       // Debug: track who's setting null
       if (DEBUG) {
         if (item === null) {
@@ -943,6 +965,10 @@ const resolvers = {
     ) => {
       applyRateLimit(ctx);
       const sessionId = requireSession(ctx);
+
+      // Validate input
+      validateInput(QueueItemIdSchema, uuid, 'uuid');
+      validateInput(ClimbQueueItemSchema, item, 'item');
 
       const currentState = await roomManager.getQueueState(sessionId);
       const queue = currentState.queue.map((i) => (i.uuid === uuid ? item : i));
@@ -1066,6 +1092,9 @@ const resolvers = {
       ctx: ConnectionContext
     ): Promise<AuroraCredentialStatus> => {
       requireAuthenticated(ctx);
+
+      // Validate input
+      validateInput(SaveAuroraCredentialInputSchema, input, 'input');
 
       const userId = ctx.userId!;
 

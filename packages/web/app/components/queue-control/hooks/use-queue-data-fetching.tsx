@@ -80,7 +80,7 @@ export const useQueueDataFetching = ({
         sortBy: searchParams.sortBy || 'ascents',
         sortOrder: searchParams.sortOrder || 'desc',
         name: searchParams.name || undefined,
-        setter: searchParams.settername?.[0] || undefined,
+        setter: searchParams.settername && searchParams.settername.length > 0 ? searchParams.settername : undefined,
         hideAttempted: searchParams.hideAttempted || undefined,
         hideCompleted: searchParams.hideCompleted || undefined,
         showOnlyAttempted: searchParams.showOnlyAttempted || undefined,
@@ -183,6 +183,7 @@ export const useQueueDataFetching = ({
 
   // Toggle favorite mutation
   const toggleFavoriteMutation = useMutation({
+    mutationKey: ['toggleFavorite', parsedParams.board_name, parsedParams.angle],
     mutationFn: async (climbUuid: string): Promise<{ uuid: string; favorited: boolean }> => {
       const client = createGraphQLHttpClient(wsAuthToken);
       try {

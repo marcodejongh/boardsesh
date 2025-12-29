@@ -138,7 +138,12 @@ export function isValidBoardName(boardName: string): boardName is BoardName {
  * @param boardName The board name (kilter, tension)
  * @param tableName The base table name
  * @returns The fully qualified table name
+ * @throws Error if board name is invalid
  */
 export function getTableName(boardName: BoardName, tableName: string): string {
+  // Runtime validation to prevent SQL injection
+  if (!isValidBoardName(boardName)) {
+    throw new Error(`Invalid board name: ${boardName}. Must be 'kilter' or 'tension'`);
+  }
   return `${boardName}_${tableName}`;
 }

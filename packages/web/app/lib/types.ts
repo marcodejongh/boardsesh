@@ -136,7 +136,7 @@ export type ParsedBoardRouteParametersWithUuid = ParsedBoardRouteParameters & {
 
 export type ClimbUuid = string;
 
-export type BoardName = 'kilter' | 'tension';
+export type BoardName = 'kilter' | 'tension' | 'decoy';
 export type LayoutId = number;
 export type Angle = number;
 export type Size = number;

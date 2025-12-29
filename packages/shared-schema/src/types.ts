@@ -127,7 +127,7 @@ export type ClimbSearchInput = {
   sortBy?: string;
   sortOrder?: string;
   name?: string;
-  setter?: string;
+  setter?: string[];
   setterId?: number;
   onlyBenchmarks?: boolean;
   // Personal progress filters
