@@ -7,17 +7,7 @@
   display: none;
 }
 
-.sider {
-  position: fixed !important;
-  right: 0;
-  top: 8vh;
-  height: calc(92vh - 64px);
-  overflow-y: auto;
-  background: #fff;
-  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.08);
-}
-
-/* Only show sider on desktop */
+/* Only show sider placeholder on desktop to reserve space */
 @media (min-width: 768px) {
   .skeletonMain {
     margin-right: 400px;
@@ -25,5 +15,12 @@
 
   .skeletonSider {
     display: block;
+    position: fixed;
+    right: 0;
+    top: 8vh;
+    width: 400px;
+    height: calc(92vh - 64px);
+    background: #fff;
+    box-shadow: -2px 0 8px rgba(0, 0, 0, 0.08);
   }
 }
