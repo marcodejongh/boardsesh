@@ -3,7 +3,8 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { BoardName, ClimbUuid } from '@/app/lib/types';
 import { SaveClimbOptions } from '@/app/lib/api-wrappers/aurora/types';
 import { message } from 'antd';
-import { useSession, getSession } from 'next-auth/react';
+import { useSession } from 'next-auth/react';
+import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
 import {
   GET_TICKS,
@@ -86,6 +87,8 @@ const BoardContext = createContext<BoardContextType | undefined>(undefined);
 
 export function BoardProvider({ boardName, children }: { boardName: BoardName; children: React.ReactNode }) {
   const { status: sessionStatus } = useSession();
+  // Use wsAuthToken for GraphQL backend auth (NextAuth session token)
+  const { token: wsAuthToken } = useWsAuthToken();
   const [authState, setAuthState] = useState<AuthState>({
     token: null,
     user_id: null,
@@ -171,9 +174,7 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
     }
 
     try {
-      const session = await getSession();
-      const authToken = session?.accessToken || null;
-      const client = createGraphQLHttpClient(authToken);
+      const client = createGraphQLHttpClient(wsAuthToken);
 
       const variables: GetTicksQueryVariables = {
         input: {
@@ -268,9 +269,7 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
     setLogbook((currentLogbook) => [optimisticEntry, ...currentLogbook]);
 
     try {
-      const session = await getSession();
-      const authToken = session?.accessToken || null;
-      const client = createGraphQLHttpClient(authToken);
+      const client = createGraphQLHttpClient(wsAuthToken);
 
       const variables: SaveTickMutationVariables = {
         input: {
