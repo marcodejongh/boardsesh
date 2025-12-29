@@ -85,10 +85,10 @@ class PubSub {
 
   /**
    * Subscribe to queue events for a session.
-   * @returns Unsubscribe function
-   * @throws If Redis is required but not connected
+   * @returns Promise that resolves to an unsubscribe function
+   * @throws If Redis is required but not connected, or if Redis subscription fails
    */
-  subscribeQueue(sessionId: string, callback: QueueSubscriber): () => void {
+  async subscribeQueue(sessionId: string, callback: QueueSubscriber): Promise<() => void> {
     this.ensureRedisIfRequired();
 
     const isFirstSubscriber = !this.queueSubscribers.has(sessionId);
@@ -99,17 +99,22 @@ class PubSub {
     this.queueSubscribers.get(sessionId)!.add(callback);
 
     // Subscribe to Redis channel if this is first local subscriber for session
+    // IMPORTANT: We must await this to ensure Redis subscription is active
+    // before returning, otherwise events from other instances could be missed
     if (isFirstSubscriber && this.redisAdapter) {
-      this.redisAdapter.subscribeQueueChannel(sessionId).catch((error) => {
+      try {
+        await this.redisAdapter.subscribeQueueChannel(sessionId);
+      } catch (error) {
         console.error(`[PubSub] Failed to subscribe to Redis queue channel: ${error}`);
         // Remove the subscriber since Redis subscription failed
-        if (this.redisRequired) {
-          this.queueSubscribers.get(sessionId)?.delete(callback);
-          if (this.queueSubscribers.get(sessionId)?.size === 0) {
-            this.queueSubscribers.delete(sessionId);
-          }
+        this.queueSubscribers.get(sessionId)?.delete(callback);
+        if (this.queueSubscribers.get(sessionId)?.size === 0) {
+          this.queueSubscribers.delete(sessionId);
         }
-      });
+        if (this.redisRequired) {
+          throw error;
+        }
+      }
     }
 
     return () => {
@@ -130,10 +135,10 @@ class PubSub {
 
   /**
    * Subscribe to session events (user joins/leaves, leader changes).
-   * @returns Unsubscribe function
-   * @throws If Redis is required but not connected
+   * @returns Promise that resolves to an unsubscribe function
+   * @throws If Redis is required but not connected, or if Redis subscription fails
    */
-  subscribeSession(sessionId: string, callback: SessionSubscriber): () => void {
+  async subscribeSession(sessionId: string, callback: SessionSubscriber): Promise<() => void> {
     this.ensureRedisIfRequired();
 
     const isFirstSubscriber = !this.sessionSubscribers.has(sessionId);
@@ -144,17 +149,22 @@ class PubSub {
     this.sessionSubscribers.get(sessionId)!.add(callback);
 
     // Subscribe to Redis channel if this is first local subscriber for session
+    // IMPORTANT: We must await this to ensure Redis subscription is active
+    // before returning, otherwise events from other instances could be missed
     if (isFirstSubscriber && this.redisAdapter) {
-      this.redisAdapter.subscribeSessionChannel(sessionId).catch((error) => {
+      try {
+        await this.redisAdapter.subscribeSessionChannel(sessionId);
+      } catch (error) {
         console.error(`[PubSub] Failed to subscribe to Redis session channel: ${error}`);
         // Remove the subscriber since Redis subscription failed
-        if (this.redisRequired) {
-          this.sessionSubscribers.get(sessionId)?.delete(callback);
-          if (this.sessionSubscribers.get(sessionId)?.size === 0) {
-            this.sessionSubscribers.delete(sessionId);
-          }
+        this.sessionSubscribers.get(sessionId)?.delete(callback);
+        if (this.sessionSubscribers.get(sessionId)?.size === 0) {
+          this.sessionSubscribers.delete(sessionId);
         }
-      });
+        if (this.redisRequired) {
+          throw error;
+        }
+      }
     }
 
     return () => {
