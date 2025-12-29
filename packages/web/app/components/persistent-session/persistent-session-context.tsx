@@ -326,13 +326,13 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
     let graphqlClient: Client | null = null;
 
     async function joinSession(clientToUse: Client, isInitialConnection = false): Promise<Session | null> {
-      if (DEBUG) console.log('[PersistentSession] Calling joinSession mutation...', { isInitialConnection, hasInitialQueue: !!(activeSession.initialQueue?.length) });
+      if (DEBUG) console.log('[PersistentSession] Calling joinSession mutation...', { isInitialConnection, hasInitialQueue: !!(activeSession?.initialQueue?.length) });
       try {
         // Only pass initial queue on first connection (not reconnects)
-        const initialQueue = isInitialConnection && activeSession.initialQueue?.length
+        const initialQueue = isInitialConnection && activeSession?.initialQueue?.length
           ? activeSession.initialQueue.map(toClimbQueueItemInput)
           : undefined;
-        const initialCurrentClimbQueueItem = isInitialConnection && activeSession.initialCurrentClimbQueueItem
+        const initialCurrentClimbQueueItem = isInitialConnection && activeSession?.initialCurrentClimbQueueItem
           ? toClimbQueueItemInput(activeSession.initialCurrentClimbQueueItem)
           : undefined;
 
