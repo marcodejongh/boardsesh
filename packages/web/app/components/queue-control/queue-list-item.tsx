@@ -94,6 +94,7 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
   const [closestEdge, setClosestEdge] = useState<Edge | null>(null);
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [isSwipeComplete, setIsSwipeComplete] = useState(false);
+  const [isHorizontalSwipe, setIsHorizontalSwipe] = useState<boolean | null>(null);
   const itemRef = useRef<HTMLDivElement>(null);
 
   const handleSwipeLeft = useCallback(() => {
@@ -116,34 +117,55 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
 
   const swipeHandlers = useSwipeable({
     onSwiping: (eventData) => {
-      const { deltaX } = eventData;
-      // Clamp the offset within bounds
+      const { deltaX, deltaY, event } = eventData;
+
+      // On first movement, determine if this is a horizontal or vertical swipe
+      if (isHorizontalSwipe === null) {
+        const absX = Math.abs(deltaX);
+        const absY = Math.abs(deltaY);
+        // Need a minimum movement to determine direction
+        if (absX > 10 || absY > 10) {
+          setIsHorizontalSwipe(absX > absY);
+        }
+        return;
+      }
+
+      // If it's a vertical swipe, don't interfere - let scrolling happen
+      if (!isHorizontalSwipe) {
+        return;
+      }
+
+      // It's a horizontal swipe - prevent scroll and update offset
+      event.preventDefault();
       const clampedOffset = Math.max(-MAX_SWIPE, Math.min(MAX_SWIPE, deltaX));
       setSwipeOffset(clampedOffset);
     },
     onSwipedLeft: (eventData) => {
-      if (Math.abs(eventData.deltaX) >= SWIPE_THRESHOLD) {
+      if (isHorizontalSwipe && Math.abs(eventData.deltaX) >= SWIPE_THRESHOLD) {
         handleSwipeLeft();
       } else {
         setSwipeOffset(0);
       }
+      setIsHorizontalSwipe(null);
     },
     onSwipedRight: (eventData) => {
-      if (Math.abs(eventData.deltaX) >= SWIPE_THRESHOLD) {
+      if (isHorizontalSwipe && Math.abs(eventData.deltaX) >= SWIPE_THRESHOLD) {
         handleSwipeRight();
       } else {
         setSwipeOffset(0);
       }
+      setIsHorizontalSwipe(null);
     },
     onTouchEndOrOnMouseUp: () => {
       // Reset if swipe didn't complete
       if (Math.abs(swipeOffset) < SWIPE_THRESHOLD) {
         setSwipeOffset(0);
       }
+      setIsHorizontalSwipe(null);
     },
     trackMouse: false,
     trackTouch: true,
-    preventScrollOnSwipe: true,
+    preventScrollOnSwipe: false,
   });
 
   useEffect(() => {
@@ -238,6 +260,7 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
 
         {/* Swipeable content */}
         <div
+          {...swipeHandlers}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -260,31 +283,7 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
           }}
           onDoubleClick={() => setCurrentClimbQueueItem(item)}
         >
-          {/* Left swipe zone (25%) - captures swipes on left edge */}
-          <div
-            {...swipeHandlers}
-            style={{
-              position: 'absolute',
-              left: 0,
-              top: 0,
-              bottom: 0,
-              width: '25%',
-              zIndex: 10,
-            }}
-          />
-          {/* Right swipe zone (25%) - captures swipes on right edge */}
-          <div
-            {...swipeHandlers}
-            style={{
-              position: 'absolute',
-              right: 0,
-              top: 0,
-              bottom: 0,
-              width: '25%',
-              zIndex: 10,
-            }}
-          />
-          <Row style={{ width: '100%', pointerEvents: 'none' }} gutter={[8, 8]} align="middle" wrap={false}>
+          <Row style={{ width: '100%' }} gutter={[8, 8]} align="middle" wrap={false}>
             <Col xs={6} sm={5}>
               <ClimbThumbnail
                 boardDetails={boardDetails}
@@ -306,7 +305,7 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
                 </Tooltip>
               </Col>
             )}
-            <Col xs={3} sm={2} style={{ position: 'relative', zIndex: 20, pointerEvents: 'auto' }}>
+            <Col xs={3} sm={2}>
               <Dropdown
                 menu={{
                   items: [
