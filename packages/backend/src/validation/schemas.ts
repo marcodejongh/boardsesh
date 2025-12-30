@@ -180,6 +180,8 @@ export const ClimbSearchInputSchema = z.object({
   setter: z.array(z.string().max(100)).optional(),
   setterId: z.number().int().optional(),
   onlyBenchmarks: z.boolean().optional(),
+  onlyTallClimbs: z.boolean().optional(),
+  holdsFilter: z.record(z.enum(['ANY', 'NOT'])).optional(),
   // Personal progress filters
   hideAttempted: z.boolean().optional(),
   hideCompleted: z.boolean().optional(),
