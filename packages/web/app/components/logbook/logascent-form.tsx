@@ -55,8 +55,32 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boar
     setIsMirrored((prev) => !prev);
   };
 
+  // Validation function matching backend rules
+  const validateTickInput = (values: LogAscentFormValues): string | null => {
+    const status = getTickStatus(values.attempts);
+
+    // Flash requires attemptCount === 1
+    if (status === 'flash' && values.attempts !== 1) {
+      return 'Flash requires exactly 1 attempt';
+    }
+
+    // Send requires attemptCount > 1
+    if (status === 'send' && values.attempts <= 1) {
+      return 'Send requires more than 1 attempt';
+    }
+
+    return null; // Valid
+  };
+
   const handleSubmit = async (values: LogAscentFormValues) => {
     if (!currentClimb?.uuid || !isAuthenticated) {
+      return;
+    }
+
+    // Client-side validation
+    const validationError = validateTickInput(values);
+    if (validationError) {
+      console.error('Validation error:', validationError);
       return;
     }
 

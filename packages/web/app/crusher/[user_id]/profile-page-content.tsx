@@ -24,6 +24,8 @@ import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
 import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 import styles from './profile-page.module.css';
 import type { ChartData } from './profile-stats-charts';
+import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
+import { GET_USER_TICKS, type GetUserTicksQueryVariables, type GetUserTicksQueryResponse } from '@/app/lib/graphql/operations';
 
 dayjs.extend(isoWeek);
 dayjs.extend(isSameOrAfter);
@@ -180,16 +182,29 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
     }
   }, [userId]);
 
-  // Fetch ticks from local database
+  // Fetch ticks from GraphQL backend
   const fetchLogbook = useCallback(async (boardType: string) => {
     setLoadingStats(true);
     try {
-      const response = await fetch(`/api/internal/ticks/user/${userId}?boardType=${boardType}`);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch ticks: ${response.status}`);
-      }
-      const data = await response.json();
-      setLogbook(Array.isArray(data) ? data : []);
+      const client = createGraphQLHttpClient(null); // Public query, no auth needed
+
+      const variables: GetUserTicksQueryVariables = {
+        userId,
+        boardType,
+      };
+
+      const response = await client.request<GetUserTicksQueryResponse>(GET_USER_TICKS, variables);
+
+      // Transform Tick to LogbookEntry format
+      const entries: LogbookEntry[] = response.userTicks.map(tick => ({
+        climbed_at: tick.climbedAt,
+        difficulty: tick.difficulty,
+        tries: tick.attemptCount,
+        angle: tick.angle,
+        status: tick.status,
+      }));
+
+      setLogbook(entries);
     } catch (error) {
       console.error('Error fetching ticks:', error);
       message.error('Failed to load climbing stats');
