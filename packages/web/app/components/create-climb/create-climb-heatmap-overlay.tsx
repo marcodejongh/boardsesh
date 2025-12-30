@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { BoardDetails, SearchRequestPagination } from '@/app/lib/types';
 import { HeatmapData, LitUpHoldsMap, HoldState } from '../board-renderer/types';
 import { scaleLog } from 'd3-scale';
@@ -9,6 +9,7 @@ import { DEFAULT_SEARCH_PARAMS } from '@/app/lib/url-utils';
 
 const BLUR_RADIUS = 10;
 const HEAT_RADIUS_MULTIPLIER = 2;
+const DEBOUNCE_DELAY_MS = 500;
 
 // Color palette for heatmap
 const HEATMAP_COLORS = [
@@ -41,6 +42,17 @@ const CreateClimbHeatmapOverlay: React.FC<CreateClimbHeatmapOverlayProps> = ({
 }) => {
   const { boardWidth, boardHeight, holdsData } = boardDetails;
 
+  // Debounce litUpHoldsMap to prevent rapid API calls when selecting multiple holds
+  const [debouncedHoldsMap, setDebouncedHoldsMap] = useState(litUpHoldsMap);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedHoldsMap(litUpHoldsMap);
+    }, DEBOUNCE_DELAY_MS);
+
+    return () => clearTimeout(timer);
+  }, [litUpHoldsMap]);
+
   // Determine which hold types are currently selected to auto-select heatmap mode
   const selectedHoldTypes = useMemo(() => {
     const types = new Set<HoldState>();
@@ -52,11 +64,11 @@ const CreateClimbHeatmapOverlay: React.FC<CreateClimbHeatmapOverlayProps> = ({
     return types;
   }, [litUpHoldsMap]);
 
-  // Create filters that include the selected holds - this triggers refetch when holds change
+  // Create filters that include the selected holds - uses debounced value to limit API calls
   const filters: SearchRequestPagination = useMemo(() => ({
     ...DEFAULT_SEARCH_PARAMS,
-    holdsFilter: litUpHoldsMap,
-  }), [litUpHoldsMap]);
+    holdsFilter: debouncedHoldsMap,
+  }), [debouncedHoldsMap]);
 
   // Fetch heatmap data with holds filter
   const { data: heatmapData = [], loading } = useHeatmapData({
