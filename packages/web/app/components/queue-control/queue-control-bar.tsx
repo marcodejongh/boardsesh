@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useCallback } from 'react';
 import { Button, Row, Col, Card, Drawer, Space, Popconfirm } from 'antd';
-import { SyncOutlined, DeleteOutlined, ExpandOutlined } from '@ant-design/icons';
+import { SyncOutlined, DeleteOutlined, ExpandOutlined, FastForwardOutlined, FastBackwardOutlined } from '@ant-design/icons';
 import { track } from '@vercel/analytics';
 import { useSwipeable } from 'react-swipeable';
 import { useQueueContext } from '../graphql-queue';
@@ -191,82 +191,11 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
   const canSwipeNext = !viewOnlyMode && !!nextClimb;
   const canSwipePrevious = !viewOnlyMode && !!previousClimb;
 
-  // Render climb content (used for current, previous, and next climbs)
-  const renderClimbContent = (climb: typeof currentClimb, isCurrent: boolean) => (
-    <Row justify="space-between" align="middle" style={{ width: '100%' }}>
-      <Col xs={4}>
-        <div style={boardPreviewContainerStyle}>
-          <ClimbThumbnail
-            boardDetails={boardDetails}
-            currentClimb={climb}
-            enableNavigation={isCurrent}
-            onNavigate={() => setIsQueueOpen(false)}
-          />
-        </div>
-      </Col>
-
-      <Col xs={isCurrent ? 11 : 20} sm={11} style={{ textAlign: 'center' }}>
-        <div
-          onClick={isCurrent ? toggleQueueDrawer : undefined}
-          className={isCurrent ? `${styles.queueToggle} ${isListPage ? styles.listPage : ''}` : undefined}
-        >
-          <ClimbTitle
-            climb={climb}
-            showAngle
-            centered
-            nameAddon={climb?.name && <AscentStatus climbUuid={climb.uuid} />}
-          />
-        </div>
-      </Col>
-
-      {/* Only show button cluster for current climb */}
-      {isCurrent && (
-        <Col xs={9} sm={9} style={{ textAlign: 'right' }}>
-          <Space>
-            {boardDetails.supportsMirroring ? (
-              <Button
-                id="button-mirror"
-                onClick={() => {
-                  mirrorClimb();
-                  track('Mirror Climb Toggled', {
-                    boardLayout: boardDetails.layout_name || '',
-                    mirrored: !currentClimb?.mirrored,
-                  });
-                }}
-                type={currentClimb?.mirrored ? 'primary' : 'default'}
-                style={
-                  currentClimb?.mirrored
-                    ? { backgroundColor: themeTokens.colors.purple, borderColor: themeTokens.colors.purple }
-                    : undefined
-                }
-                icon={<SyncOutlined />}
-              />
-            ) : null}
-            {!isPlayPage && playUrl && (
-              <Link
-                href={playUrl}
-                onClick={() => {
-                  track('Play Mode Entered', {
-                    boardLayout: boardDetails.layout_name || '',
-                  });
-                }}
-              >
-                <Button icon={<ExpandOutlined />} aria-label="Enter play mode" />
-              </Link>
-            )}
-            {/* Navigation buttons - hidden on mobile, shown on desktop */}
-            <span className={styles.navButtons}>
-              <Space>
-                <PreviousClimbButton navigate={isViewPage || isPlayPage} boardDetails={boardDetails} />
-                <NextClimbButton navigate={isViewPage || isPlayPage} boardDetails={boardDetails} />
-              </Space>
-            </span>
-            <TickButton currentClimb={currentClimb} angle={angle} boardDetails={boardDetails} />
-          </Space>
-        </Col>
-      )}
-    </Row>
-  );
+  // Calculate action visibility based on swipe offset (matches queue-list-item pattern)
+  const showLeftAction = swipeOffset > 0; // Swiping right reveals "previous" action on left
+  const showRightAction = swipeOffset < 0; // Swiping left reveals "next" action on right
+  const leftActionOpacity = Math.min(1, swipeOffset / SWIPE_THRESHOLD);
+  const rightActionOpacity = Math.min(1, Math.abs(swipeOffset) / SWIPE_THRESHOLD);
 
   return (
     <div className="queue-bar-shadow" data-testid="queue-control-bar" style={{ flexShrink: 0, width: '100%', backgroundColor: '#fff' }}>
@@ -275,7 +204,7 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
         variant="borderless"
         styles={{
           body: {
-            padding: '4px 12px 0px 12px',
+            padding: 0,
           },
         }}
         style={{
@@ -285,34 +214,135 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
           borderTop: `1px solid ${themeTokens.neutral[200]}`,
         }}
       >
-        {/* Overflow container to clip carousel */}
-        <div style={{ overflow: 'hidden', width: '100%', position: 'relative' }}>
-          {/* Carousel container for swipe navigation */}
+        {/* Swipe container with action backgrounds */}
+        <div style={{ position: 'relative', overflow: 'hidden' }}>
+          {/* Left action background (previous - revealed on swipe right) */}
+          {canSwipePrevious && (
+            <div
+              className={styles.swipeAction}
+              style={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                bottom: 0,
+                width: MAX_SWIPE,
+                backgroundColor: themeTokens.colors.primary,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'flex-start',
+                paddingLeft: themeTokens.spacing[4],
+                opacity: leftActionOpacity,
+                visibility: showLeftAction ? 'visible' : 'hidden',
+              }}
+            >
+              <FastBackwardOutlined style={{ color: 'white', fontSize: 24 }} />
+            </div>
+          )}
+
+          {/* Right action background (next - revealed on swipe left) */}
+          {canSwipeNext && (
+            <div
+              className={styles.swipeAction}
+              style={{
+                position: 'absolute',
+                right: 0,
+                top: 0,
+                bottom: 0,
+                width: MAX_SWIPE,
+                backgroundColor: themeTokens.colors.primary,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'flex-end',
+                paddingRight: themeTokens.spacing[4],
+                opacity: rightActionOpacity,
+                visibility: showRightAction ? 'visible' : 'hidden',
+              }}
+            >
+              <FastForwardOutlined style={{ color: 'white', fontSize: 24 }} />
+            </div>
+          )}
+
+          {/* Swipeable content */}
           <div
             {...swipeHandlers}
             className={styles.swipeContainer}
             style={{
-              display: 'flex',
-              width: '300%',
-              marginLeft: '-100%',
+              padding: '4px 12px 0px 12px',
               transform: `translateX(${swipeOffset}px)`,
               transition: swipeOffset === 0 ? `transform ${themeTokens.transitions.fast}` : 'none',
+              backgroundColor: '#fff',
             }}
           >
-            {/* Previous climb (left) */}
-            <div className={styles.carouselSlide} style={{ width: '33.333%', flexShrink: 0, opacity: canSwipePrevious ? 1 : 0.3 }}>
-              {previousClimb ? renderClimbContent(previousClimb.climb, false) : renderClimbContent(null, false)}
-            </div>
+            <Row justify="space-between" align="middle" style={{ width: '100%' }}>
+              <Col xs={4}>
+                {/* Board preview */}
+                <div style={boardPreviewContainerStyle}>
+                  <ClimbThumbnail
+                    boardDetails={boardDetails}
+                    currentClimb={currentClimb}
+                    enableNavigation={true}
+                    onNavigate={() => setIsQueueOpen(false)}
+                  />
+                </div>
+              </Col>
 
-            {/* Current climb (center) */}
-            <div className={styles.carouselSlide} style={{ width: '33.333%', flexShrink: 0 }}>
-              {renderClimbContent(currentClimb, true)}
-            </div>
+              {/* Clickable main body for opening the queue */}
+              <Col xs={11} style={{ textAlign: 'center' }}>
+                <div onClick={toggleQueueDrawer} className={`${styles.queueToggle} ${isListPage ? styles.listPage : ''}`}>
+                  <ClimbTitle
+                    climb={currentClimb}
+                    showAngle
+                    centered
+                    nameAddon={currentClimb?.name && <AscentStatus climbUuid={currentClimb.uuid} />}
+                  />
+                </div>
+              </Col>
 
-            {/* Next climb (right) */}
-            <div className={styles.carouselSlide} style={{ width: '33.333%', flexShrink: 0, opacity: canSwipeNext ? 1 : 0.3 }}>
-              {nextClimb ? renderClimbContent(nextClimb.climb, false) : renderClimbContent(null, false)}
-            </div>
+              {/* Button cluster */}
+              <Col xs={9} style={{ textAlign: 'right' }}>
+                <Space>
+                  {boardDetails.supportsMirroring ? (
+                    <Button
+                      id="button-mirror"
+                      onClick={() => {
+                        mirrorClimb();
+                        track('Mirror Climb Toggled', {
+                          boardLayout: boardDetails.layout_name || '',
+                          mirrored: !currentClimb?.mirrored,
+                        });
+                      }}
+                      type={currentClimb?.mirrored ? 'primary' : 'default'}
+                      style={
+                        currentClimb?.mirrored
+                          ? { backgroundColor: themeTokens.colors.purple, borderColor: themeTokens.colors.purple }
+                          : undefined
+                      }
+                      icon={<SyncOutlined />}
+                    />
+                  ) : null}
+                  {!isPlayPage && playUrl && (
+                    <Link
+                      href={playUrl}
+                      onClick={() => {
+                        track('Play Mode Entered', {
+                          boardLayout: boardDetails.layout_name || '',
+                        });
+                      }}
+                    >
+                      <Button icon={<ExpandOutlined />} aria-label="Enter play mode" />
+                    </Link>
+                  )}
+                  {/* Navigation buttons - hidden on mobile, shown on desktop */}
+                  <span className={styles.navButtons}>
+                    <Space>
+                      <PreviousClimbButton navigate={isViewPage || isPlayPage} boardDetails={boardDetails} />
+                      <NextClimbButton navigate={isViewPage || isPlayPage} boardDetails={boardDetails} />
+                    </Space>
+                  </span>
+                  <TickButton currentClimb={currentClimb} angle={angle} boardDetails={boardDetails} />
+                </Space>
+              </Col>
+            </Row>
           </div>
         </div>
       </Card>

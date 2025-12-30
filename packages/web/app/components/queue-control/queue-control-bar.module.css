@@ -19,12 +19,18 @@
   }
 }
 
-/* Swipe container for mobile navigation - carousel style */
+/* Swipe container for mobile navigation */
 .swipeContainer {
   touch-action: pan-y;
 }
 
-/* Individual carousel slides */
-.carouselSlide {
-  padding: 0 4px;
+/* Action backgrounds revealed on swipe (hidden on desktop) */
+.swipeAction {
+  z-index: 0;
+}
+
+@media (min-width: 768px) {
+  .swipeAction {
+    display: none !important;
+  }
 }
