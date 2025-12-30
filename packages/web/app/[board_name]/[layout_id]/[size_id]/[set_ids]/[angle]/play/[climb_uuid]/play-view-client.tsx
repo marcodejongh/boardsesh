@@ -9,8 +9,6 @@ import { track } from '@vercel/analytics';
 import { Climb, BoardDetails, Angle } from '@/app/lib/types';
 import { useQueueContext } from '@/app/components/graphql-queue';
 import BoardRenderer from '@/app/components/board-renderer/board-renderer';
-import ClimbTitle from '@/app/components/climb-card/climb-title';
-import { AscentStatus } from '@/app/components/queue-control/queue-list-item';
 import { constructClimbListWithSlugs, constructPlayUrlWithSlugs } from '@/app/lib/url-utils';
 import { themeTokens } from '@/app/theme/theme-config';
 import styles from './play-view.module.css';
@@ -189,30 +187,12 @@ const PlayViewClient: React.FC<PlayViewClientProps> = ({ boardDetails, initialCl
             </div>
           )}
 
-          <div className={styles.climbSection}>
-            <div
-              className={styles.climbCard}
-              style={{ backgroundColor: themeTokens.semantic.surface, boxShadow: themeTokens.shadows.sm }}
-            >
-              <div className={styles.climbHeader} style={{ borderBottom: `1px solid ${themeTokens.neutral[100]}` }}>
-                <ClimbTitle
-                  climb={displayClimb}
-                  showAngle
-                  showSetterInfo
-                  centered
-                  nameAddon={<AscentStatus climbUuid={displayClimb.uuid} />}
-                />
-              </div>
-              <div className={styles.boardContainer}>
-                <div className={styles.boardWrapper}>
-                  <BoardRenderer
-                    boardDetails={boardDetails}
-                    litUpHoldsMap={displayClimb.litUpHoldsMap}
-                    mirrored={!!displayClimb.mirrored}
-                  />
-                </div>
-              </div>
-            </div>
+          <div className={styles.boardContainer}>
+            <BoardRenderer
+              boardDetails={boardDetails}
+              litUpHoldsMap={displayClimb.litUpHoldsMap}
+              mirrored={!!displayClimb.mirrored}
+            />
           </div>
 
           {/* Swipe hint for mobile */}

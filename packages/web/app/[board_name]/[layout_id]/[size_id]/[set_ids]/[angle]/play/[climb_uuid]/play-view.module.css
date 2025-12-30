@@ -1,7 +1,6 @@
 /* Layout-only styles - colors are applied via inline styles using themeTokens */
 
 .pageContainer {
-  min-height: 100dvh;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -15,34 +14,18 @@
   flex-direction: column;
   overflow: hidden;
   position: relative;
+  min-height: 0;
 }
 
 .swipeContainer {
   flex: 1;
   display: flex;
   flex-direction: column;
+  align-items: center;
+  justify-content: center;
   touch-action: pan-y pinch-zoom;
   overflow: hidden;
-}
-
-.climbSection {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  padding: 12px;
-  overflow: auto;
-}
-
-.climbCard {
-  border-radius: 12px;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.climbHeader {
-  padding: 12px 16px;
+  min-height: 0;
 }
 
 .boardContainer {
@@ -50,16 +33,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 12px;
+  padding: 4px;
   min-height: 0;
-}
-
-.boardWrapper {
-  width: 100%;
   max-height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  width: 100%;
 }
 
 .emptyState {
@@ -75,13 +52,13 @@
 
 .swipeHint {
   position: absolute;
-  bottom: 16px;
+  bottom: 8px;
   left: 50%;
   transform: translateX(-50%);
   background-color: rgba(0, 0, 0, 0.6);
   color: white;
-  padding: 8px 16px;
-  border-radius: 20px;
+  padding: 6px 12px;
+  border-radius: 16px;
   font-size: 12px;
   opacity: 0.8;
   pointer-events: none;
@@ -99,42 +76,26 @@
   opacity: 0;
   transition: opacity 0.2s;
   pointer-events: none;
+  z-index: 10;
 }
 
 .swipeIndicatorLeft {
-  left: 16px;
+  left: 8px;
 }
 
 .swipeIndicatorRight {
-  right: 16px;
+  right: 8px;
 }
 
 .swipeIndicatorVisible {
   opacity: 1;
 }
 
-/* Mobile adjustments */
-@media (max-width: 767px) {
-  .climbSection {
-    padding: 8px;
-  }
-
-  .climbHeader {
-    padding: 8px 12px;
-  }
-
-  .boardContainer {
-    padding: 8px;
-  }
-}
-
 /* Desktop adjustments */
 @media (min-width: 768px) {
-  .climbSection {
-    padding: 16px;
-    max-width: 800px;
+  .boardContainer {
+    max-width: 600px;
     margin: 0 auto;
-    width: 100%;
   }
 
   .swipeHint {
