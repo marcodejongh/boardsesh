@@ -70,8 +70,9 @@ const PlayViewClient: React.FC<PlayViewClientProps> = ({ boardDetails, initialCl
     (climb: Climb) => {
       const { board_name, layout_name, size_name, size_description, set_names } = boardDetails;
 
+      let url: string;
       if (layout_name && size_name && set_names) {
-        let url = constructPlayUrlWithSlugs(
+        url = constructPlayUrlWithSlugs(
           board_name,
           layout_name,
           size_name,
@@ -81,13 +82,17 @@ const PlayViewClient: React.FC<PlayViewClientProps> = ({ boardDetails, initialCl
           climb.uuid,
           climb.name,
         );
-        // Preserve the search params when navigating between climbs
-        const queryString = searchParams.toString();
-        if (queryString) {
-          url = `${url}?${queryString}`;
-        }
-        router.push(url);
+      } else {
+        // Fallback to numeric format when slug data is unavailable
+        url = `/${board_name}/${boardDetails.layout_id}/${boardDetails.size_id}/${boardDetails.set_ids.join(',')}/${angle}/play/${climb.uuid}`;
       }
+
+      // Preserve the search params when navigating between climbs
+      const queryString = searchParams.toString();
+      if (queryString) {
+        url = `${url}?${queryString}`;
+      }
+      router.push(url);
     },
     [boardDetails, angle, router, searchParams],
   );
