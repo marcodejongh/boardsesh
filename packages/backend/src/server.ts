@@ -1,6 +1,8 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'http';
 import type { WebSocketServer } from 'ws';
 import { pubsub } from './pubsub/index.js';
+import { roomManager } from './services/room-manager.js';
+import { redisClientManager } from './redis/client.js';
 import { initCors, applyCorsHeaders } from './handlers/cors.js';
 import { handleHealthCheck } from './handlers/health.js';
 import { handleSessionJoin } from './handlers/join.js';
@@ -20,6 +22,14 @@ export async function startServer(): Promise<{ wss: WebSocketServer; httpServer:
   // Initialize PubSub (connects to Redis if configured)
   // This must happen before we start accepting connections
   await pubsub.initialize();
+
+  // Initialize RoomManager with Redis for session persistence
+  if (redisClientManager.isRedisConfigured() && redisClientManager.isRedisConnected()) {
+    const { publisher } = redisClientManager.getClients();
+    await roomManager.initialize(publisher);
+  } else {
+    await roomManager.initialize(); // Postgres-only mode
+  }
 
   const PORT = parseInt(process.env.PORT || '8080', 10);
   const BOARDSESH_URL = process.env.BOARDSESH_URL || 'https://boardsesh.com';
@@ -94,6 +104,9 @@ export async function startServer(): Promise<{ wss: WebSocketServer; httpServer:
   // Setup WebSocket server for GraphQL subscriptions
   const wss = setupWebSocketServer(httpServer);
 
+  // Track intervals for cleanup
+  const intervals: NodeJS.Timeout[] = [];
+
   console.log(`Boardsesh Backend starting on port ${PORT}...`);
 
   // Start HTTP server (WebSocket server is attached to it)
@@ -110,6 +123,107 @@ export async function startServer(): Promise<{ wss: WebSocketServer; httpServer:
   httpServer.on('error', (error) => {
     console.error('HTTP server error:', error);
   });
+
+  /**
+   * Clean up intervals and timers on shutdown
+   */
+  function cleanupIntervals(): void {
+    console.log(`[Server] Cleaning up ${intervals.length} intervals`);
+    intervals.forEach(interval => clearInterval(interval));
+    intervals.length = 0;
+  }
+
+  // Graceful shutdown handler - flush pending writes
+  process.on('SIGTERM', async () => {
+    console.log('[Server] SIGTERM received, initiating graceful shutdown...');
+
+    // Clean up intervals first
+    cleanupIntervals();
+
+    try {
+      // Flush any pending debounced writes to Postgres
+      await roomManager.flushPendingWrites();
+      console.log('[Server] All pending writes flushed successfully');
+    } catch (error) {
+      console.error('[Server] Error flushing pending writes:', error);
+    }
+
+    // Close HTTP server
+    httpServer.close(() => {
+      console.log('[Server] HTTP server closed');
+      process.exit(0);
+    });
+
+    // Force exit after 10 seconds if graceful shutdown fails
+    setTimeout(() => {
+      console.error('[Server] Forcefully shutting down after 10s timeout');
+      process.exit(1);
+    }, 10000);
+  });
+
+  // Also handle SIGINT (Ctrl+C)
+  process.on('SIGINT', async () => {
+    console.log('[Server] SIGINT received, initiating graceful shutdown...');
+
+    // Clean up intervals first
+    cleanupIntervals();
+
+    try {
+      await roomManager.flushPendingWrites();
+      console.log('[Server] All pending writes flushed successfully');
+    } catch (error) {
+      console.error('[Server] Error flushing pending writes:', error);
+    }
+
+    httpServer.close(() => {
+      console.log('[Server] HTTP server closed');
+      process.exit(0);
+    });
+
+    setTimeout(() => {
+      console.error('[Server] Forcefully shutting down after 10s timeout');
+      process.exit(1);
+    }, 10000);
+  });
+
+  // Periodic flush as backup (every 60 seconds)
+  const flushInterval = setInterval(async () => {
+    try {
+      await roomManager.flushPendingWrites();
+    } catch (error) {
+      console.error('[Server] Error in periodic flush:', error);
+    }
+  }, 60000);
+  intervals.push(flushInterval);
+
+  // Periodic TTL refresh for active sessions (every 2 minutes)
+  const ttlRefreshInterval = setInterval(async () => {
+    try {
+      if (redisClientManager.isRedisConnected() && roomManager['redisStore']) {
+        const activeSessions = roomManager.getAllActiveSessions();
+
+        if (activeSessions.length > 0) {
+          console.log(`[Server] Refreshing TTL for ${activeSessions.length} active sessions`);
+
+          // Batch refresh to avoid overwhelming Redis
+          const batchSize = 50;
+          for (let i = 0; i < activeSessions.length; i += batchSize) {
+            const batch = activeSessions.slice(i, i + batchSize);
+            await Promise.all(
+              batch.map(sessionId =>
+                roomManager['redisStore']?.refreshTTL(sessionId).catch(err =>
+                  console.error(`[Server] TTL refresh failed for ${sessionId}:`, err)
+                )
+              )
+            );
+          }
+        }
+      }
+    } catch (error) {
+      console.error('[Server] Error in periodic TTL refresh:', error);
+    }
+  }, 120000); // 2 minutes
+  intervals.push(ttlRefreshInterval);
 
   return { wss, httpServer };
 }

@@ -34,11 +34,13 @@ const createTablesSQL = `
     "board_path" text NOT NULL,
     "created_at" timestamp DEFAULT now() NOT NULL,
     "last_activity" timestamp DEFAULT now() NOT NULL,
+    "status" text DEFAULT 'active' NOT NULL,
     "latitude" double precision,
     "longitude" double precision,
     "discoverable" boolean DEFAULT false NOT NULL,
     "created_by_user_id" text REFERENCES "users"("id") ON DELETE SET NULL,
-    "name" text
+    "name" text,
+    CONSTRAINT "board_sessions_status_check" CHECK (status IN ('active', 'inactive', 'ended'))
   );
 
   -- Create board_session_clients table
@@ -63,6 +65,9 @@ const createTablesSQL = `
   CREATE INDEX IF NOT EXISTS "board_sessions_location_idx" ON "board_sessions" ("latitude", "longitude");
   CREATE INDEX IF NOT EXISTS "board_sessions_discoverable_idx" ON "board_sessions" ("discoverable");
   CREATE INDEX IF NOT EXISTS "board_sessions_user_idx" ON "board_sessions" ("created_by_user_id");
+  CREATE INDEX IF NOT EXISTS "board_sessions_status_idx" ON "board_sessions" ("status");
+  CREATE INDEX IF NOT EXISTS "board_sessions_last_activity_idx" ON "board_sessions" ("last_activity");
+  CREATE INDEX IF NOT EXISTS "board_sessions_discovery_idx" ON "board_sessions" ("discoverable", "status", "last_activity");
 `;
 
 beforeAll(async () => {

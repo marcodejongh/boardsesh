@@ -257,7 +257,16 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
       // Generate a new session ID
       const newSessionId = uuidv4();
 
-      // Update URL with session parameter
+      // Capture current queue state for the new session
+      if (state.queue.length > 0 || state.currentClimbQueueItem) {
+        persistentSession.setInitialQueueForSession(
+          newSessionId,
+          state.queue,
+          state.currentClimbQueueItem
+        );
+      }
+
+      // Update URL with session parameter (this triggers BoardSessionBridge)
       const params = new URLSearchParams(searchParams.toString());
       params.set('session', newSessionId);
       router.replace(`${pathname}?${params.toString()}`, { scroll: false });
@@ -277,7 +286,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
 
       return newSessionId;
     },
-    [backendUrl, pathname, router, searchParams],
+    [backendUrl, pathname, router, searchParams, state.queue, state.currentClimbQueueItem, persistentSession],
   );
 
   const joinSessionHandler = useCallback(
