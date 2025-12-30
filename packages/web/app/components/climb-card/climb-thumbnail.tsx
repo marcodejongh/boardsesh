@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
 
 import { BoardDetails, Climb } from '@/app/lib/types';
 import BoardRenderer from '../board-renderer/board-renderer';
-import ClimbCardModal from './climb-card-modal';
 import { constructClimbViewUrl, constructClimbViewUrlWithSlugs, parseBoardRouteParams } from '@/app/lib/url-utils';
 
 type ClimbThumbnailProps = {
@@ -14,18 +13,6 @@ type ClimbThumbnailProps = {
 };
 
 const ClimbThumbnail = ({ boardDetails, currentClimb, enableNavigation = false, onNavigate }: ClimbThumbnailProps) => {
-  const [modalOpen, setModalOpen] = useState(false);
-
-  const handleModalClick = () => {
-    if (currentClimb) {
-      setModalOpen(true);
-    }
-  };
-
-  const handleLinkClick = () => {
-    onNavigate?.();
-  };
-
   if (enableNavigation && currentClimb) {
     // Use slug-based URL construction if slug names are available
     const climbViewUrl =
@@ -52,7 +39,7 @@ const ClimbThumbnail = ({ boardDetails, currentClimb, enableNavigation = false, 
           })();
 
     return (
-      <Link href={climbViewUrl} onClick={handleLinkClick}>
+      <Link href={climbViewUrl} onClick={() => onNavigate?.()}>
         <BoardRenderer
           litUpHoldsMap={currentClimb?.litUpHoldsMap}
           mirrored={!!currentClimb?.mirrored}
@@ -64,24 +51,12 @@ const ClimbThumbnail = ({ boardDetails, currentClimb, enableNavigation = false, 
   }
 
   return (
-    <>
-      <a onClick={handleModalClick} style={{ cursor: currentClimb ? 'pointer' : 'default' }}>
-        <BoardRenderer
-          litUpHoldsMap={currentClimb?.litUpHoldsMap}
-          mirrored={!!currentClimb?.mirrored}
-          boardDetails={boardDetails}
-          thumbnail
-        />
-      </a>
-      {currentClimb && (
-        <ClimbCardModal
-          isOpen={modalOpen}
-          onClose={() => setModalOpen(false)}
-          climb={currentClimb}
-          boardDetails={boardDetails}
-        />
-      )}
-    </>
+    <BoardRenderer
+      litUpHoldsMap={currentClimb?.litUpHoldsMap}
+      mirrored={!!currentClimb?.mirrored}
+      boardDetails={boardDetails}
+      thumbnail
+    />
   );
 };
 

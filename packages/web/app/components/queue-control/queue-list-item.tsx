@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { Row, Col, Avatar, Tooltip, Dropdown, Button } from 'antd';
-import { CheckOutlined, CloseOutlined, UserOutlined, DeleteOutlined, MoreOutlined } from '@ant-design/icons';
+import { CheckOutlined, CloseOutlined, UserOutlined, DeleteOutlined, MoreOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { BoardDetails, ClimbUuid, Climb } from '@/app/lib/types';
 import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { DropIndicator } from '@atlaskit/pragmatic-drag-and-drop-react-drop-indicator/box';
@@ -13,6 +14,7 @@ import ClimbThumbnail from '../climb-card/climb-thumbnail';
 import ClimbTitle from '../climb-card/climb-title';
 import { useBoardProvider } from '../board-provider/board-provider-context';
 import { themeTokens } from '@/app/theme/theme-config';
+import { constructClimbViewUrl, constructClimbViewUrlWithSlugs, parseBoardRouteParams } from '@/app/lib/url-utils';
 
 type QueueListItemProps = {
   item: ClimbQueueItem;
@@ -91,10 +93,42 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
   onTickClick,
   onClimbNavigate,
 }) => {
+  const router = useRouter();
   const [closestEdge, setClosestEdge] = useState<Edge | null>(null);
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [isSwipeComplete, setIsSwipeComplete] = useState(false);
+  const [isHorizontalSwipe, setIsHorizontalSwipe] = useState<boolean | null>(null);
   const itemRef = useRef<HTMLDivElement>(null);
+
+  const handleViewClimb = useCallback(() => {
+    if (!item.climb) return;
+
+    const climbViewUrl =
+      boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names
+        ? constructClimbViewUrlWithSlugs(
+            boardDetails.board_name,
+            boardDetails.layout_name,
+            boardDetails.size_name,
+            boardDetails.size_description,
+            boardDetails.set_names,
+            item.climb.angle,
+            item.climb.uuid,
+            item.climb.name,
+          )
+        : (() => {
+            const routeParams = parseBoardRouteParams({
+              board_name: boardDetails.board_name,
+              layout_id: boardDetails.layout_id.toString(),
+              size_id: boardDetails.size_id.toString(),
+              set_ids: boardDetails.set_ids.join(','),
+              angle: item.climb.angle.toString(),
+            });
+            return constructClimbViewUrl(routeParams, item.climb.uuid, item.climb.name);
+          })();
+
+    onClimbNavigate?.();
+    router.push(climbViewUrl);
+  }, [item.climb, boardDetails, onClimbNavigate, router]);
 
   const handleSwipeLeft = useCallback(() => {
     // Swipe left = remove from queue
@@ -116,34 +150,60 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
 
   const swipeHandlers = useSwipeable({
     onSwiping: (eventData) => {
-      const { deltaX } = eventData;
-      // Clamp the offset within bounds
+      const { deltaX, deltaY, event } = eventData;
+
+      // On first movement, determine if this is a horizontal or vertical swipe
+      if (isHorizontalSwipe === null) {
+        const absX = Math.abs(deltaX);
+        const absY = Math.abs(deltaY);
+        // Need a minimum movement to determine direction
+        if (absX > 10 || absY > 10) {
+          setIsHorizontalSwipe(absX > absY);
+        }
+        return;
+      }
+
+      // If it's a vertical swipe, don't interfere - let scrolling happen
+      if (!isHorizontalSwipe) {
+        return;
+      }
+
+      // It's a horizontal swipe - prevent scroll and update offset
+      // Access native event for reliable preventDefault on touch events
+      if ('nativeEvent' in event) {
+        event.nativeEvent.preventDefault();
+      } else {
+        event.preventDefault();
+      }
       const clampedOffset = Math.max(-MAX_SWIPE, Math.min(MAX_SWIPE, deltaX));
       setSwipeOffset(clampedOffset);
     },
     onSwipedLeft: (eventData) => {
-      if (Math.abs(eventData.deltaX) >= SWIPE_THRESHOLD) {
+      if (isHorizontalSwipe && Math.abs(eventData.deltaX) >= SWIPE_THRESHOLD) {
         handleSwipeLeft();
       } else {
         setSwipeOffset(0);
       }
+      setIsHorizontalSwipe(null);
     },
     onSwipedRight: (eventData) => {
-      if (Math.abs(eventData.deltaX) >= SWIPE_THRESHOLD) {
+      if (isHorizontalSwipe && Math.abs(eventData.deltaX) >= SWIPE_THRESHOLD) {
         handleSwipeRight();
       } else {
         setSwipeOffset(0);
       }
+      setIsHorizontalSwipe(null);
     },
     onTouchEndOrOnMouseUp: () => {
       // Reset if swipe didn't complete
       if (Math.abs(swipeOffset) < SWIPE_THRESHOLD) {
         setSwipeOffset(0);
       }
+      setIsHorizontalSwipe(null);
     },
     trackMouse: false,
     trackTouch: true,
-    preventScrollOnSwipe: true,
+    preventScrollOnSwipe: false,
   });
 
   useEffect(() => {
@@ -266,8 +326,6 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
               <ClimbThumbnail
                 boardDetails={boardDetails}
                 currentClimb={item.climb}
-                enableNavigation={true}
-                onNavigate={onClimbNavigate}
               />
             </Col>
             <Col xs={item.addedByUser ? 13 : 15} sm={item.addedByUser ? 15 : 17}>
@@ -289,6 +347,12 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
               <Dropdown
                 menu={{
                   items: [
+                    {
+                      key: 'info',
+                      label: 'View Climb',
+                      icon: <InfoCircleOutlined />,
+                      onClick: handleViewClimb,
+                    },
                     {
                       key: 'tick',
                       label: 'Tick Climb',

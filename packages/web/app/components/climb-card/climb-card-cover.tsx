@@ -1,8 +1,7 @@
 'use client';
-import React, { useState } from 'react';
+import React from 'react';
 import { Climb, BoardDetails } from '@/app/lib/types';
 import BoardRenderer from '@/app/components/board-renderer/board-renderer';
-import ClimbCardModal from './climb-card-modal';
 
 type ClimbCardCoverProps = {
   climb?: Climb;
@@ -11,30 +10,19 @@ type ClimbCardCoverProps = {
 };
 
 const ClimbCardCover = ({ climb, boardDetails, onClick }: ClimbCardCoverProps) => {
-  const [modalOpen, setModalOpen] = useState(false);
-
-  const boardRenderer = (
+  return (
     <div
-      onClick={onClick ? undefined : () => setModalOpen(true)}
-      onDoubleClick={onClick ? onClick : undefined}
+      onClick={onClick}
       style={{
         width: '100%',
         height: 'auto',
         position: 'relative',
-        cursor: 'pointer',
+        cursor: onClick ? 'pointer' : 'default',
       }}
     >
       <BoardRenderer boardDetails={boardDetails} litUpHoldsMap={climb?.litUpHoldsMap} mirrored={!!climb?.mirrored} />
-      <ClimbCardModal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        climb={climb}
-        boardDetails={boardDetails}
-      />
     </div>
   );
-
-  return boardRenderer;
 };
 
 export default ClimbCardCover;
