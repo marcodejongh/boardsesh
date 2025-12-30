@@ -1,0 +1,240 @@
+'use client';
+
+import React, { useEffect, useState, useCallback } from 'react';
+import { Button, Space, Empty } from 'antd';
+import { LeftOutlined, RightOutlined } from '@ant-design/icons';
+import { useSwipeable } from 'react-swipeable';
+import { useRouter } from 'next/navigation';
+import { track } from '@vercel/analytics';
+import { Climb, BoardDetails, Angle } from '@/app/lib/types';
+import { useQueueContext } from '@/app/components/graphql-queue';
+import BoardRenderer from '@/app/components/board-renderer/board-renderer';
+import ClimbTitle from '@/app/components/climb-card/climb-title';
+import BackButton from '@/app/components/back-button';
+import { TickButton } from '@/app/components/logbook/tick-button';
+import { AscentStatus } from '@/app/components/queue-control/queue-list-item';
+import { constructClimbListWithSlugs, constructPlayUrlWithSlugs } from '@/app/lib/url-utils';
+import { themeTokens } from '@/app/theme/theme-config';
+import styles from './play-view.module.css';
+
+type PlayViewClientProps = {
+  boardDetails: BoardDetails;
+  initialClimb: Climb | null;
+  angle: Angle;
+};
+
+const SWIPE_THRESHOLD = 80;
+
+const PlayViewClient: React.FC<PlayViewClientProps> = ({ boardDetails, initialClimb, angle }) => {
+  const router = useRouter();
+  const {
+    currentClimb,
+    setCurrentClimbQueueItem,
+    getNextClimbQueueItem,
+    getPreviousClimbQueueItem,
+    queue,
+  } = useQueueContext();
+
+  const [swipeOffset, setSwipeOffset] = useState(0);
+  const [showSwipeHint, setShowSwipeHint] = useState(true);
+
+  // Use queue's current climb if available, otherwise use initial climb from SSR
+  const displayClimb = currentClimb || initialClimb;
+
+  // Hide swipe hint after first interaction
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowSwipeHint(false);
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const getBackToListUrl = useCallback(() => {
+    const { board_name, layout_name, size_name, size_description, set_names } = boardDetails;
+
+    if (layout_name && size_name && set_names) {
+      return constructClimbListWithSlugs(board_name, layout_name, size_name, size_description, set_names, angle);
+    }
+
+    return `/${board_name}/${boardDetails.layout_id}/${boardDetails.size_id}/${boardDetails.set_ids.join(',')}/${angle}/list`;
+  }, [boardDetails, angle]);
+
+  const navigateToClimb = useCallback(
+    (climb: Climb) => {
+      const { board_name, layout_name, size_name, size_description, set_names } = boardDetails;
+
+      if (layout_name && size_name && set_names) {
+        const url = constructPlayUrlWithSlugs(
+          board_name,
+          layout_name,
+          size_name,
+          size_description,
+          set_names,
+          angle,
+          climb.uuid,
+          climb.name,
+        );
+        router.push(url);
+      }
+    },
+    [boardDetails, angle, router],
+  );
+
+  const handleNext = useCallback(() => {
+    const nextItem = getNextClimbQueueItem();
+    if (nextItem) {
+      setCurrentClimbQueueItem(nextItem);
+      navigateToClimb(nextItem.climb);
+      track('Play Mode Navigation', {
+        direction: 'next',
+        boardLayout: boardDetails.layout_name || '',
+      });
+    }
+  }, [getNextClimbQueueItem, setCurrentClimbQueueItem, navigateToClimb, boardDetails.layout_name]);
+
+  const handlePrevious = useCallback(() => {
+    const prevItem = getPreviousClimbQueueItem();
+    if (prevItem) {
+      setCurrentClimbQueueItem(prevItem);
+      navigateToClimb(prevItem.climb);
+      track('Play Mode Navigation', {
+        direction: 'previous',
+        boardLayout: boardDetails.layout_name || '',
+      });
+    }
+  }, [getPreviousClimbQueueItem, setCurrentClimbQueueItem, navigateToClimb, boardDetails.layout_name]);
+
+  const swipeHandlers = useSwipeable({
+    onSwiping: (eventData) => {
+      const { deltaX } = eventData;
+      // Only allow horizontal swiping
+      if (Math.abs(deltaX) > Math.abs(eventData.deltaY)) {
+        setSwipeOffset(deltaX);
+        setShowSwipeHint(false);
+      }
+    },
+    onSwipedLeft: (eventData) => {
+      if (Math.abs(eventData.deltaX) >= SWIPE_THRESHOLD) {
+        handleNext();
+      }
+      setSwipeOffset(0);
+    },
+    onSwipedRight: (eventData) => {
+      if (Math.abs(eventData.deltaX) >= SWIPE_THRESHOLD) {
+        handlePrevious();
+      }
+      setSwipeOffset(0);
+    },
+    onTouchEndOrOnMouseUp: () => {
+      setSwipeOffset(0);
+    },
+    trackMouse: false,
+    trackTouch: true,
+    preventScrollOnSwipe: false,
+    delta: 10,
+  });
+
+  const nextItem = getNextClimbQueueItem();
+  const prevItem = getPreviousClimbQueueItem();
+
+  if (!displayClimb) {
+    return (
+      <div className={styles.pageContainer}>
+        <div className={styles.actionsSection}>
+          <div className={styles.actionsLeft}>
+            <BackButton fallbackUrl={getBackToListUrl()} />
+          </div>
+        </div>
+        <div className={styles.emptyState}>
+          <Empty description="No climb selected" />
+          <Button type="primary" onClick={() => router.push(getBackToListUrl())}>
+            Browse Climbs
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={styles.pageContainer}>
+      {/* Actions Section */}
+      <div className={styles.actionsSection}>
+        <div className={styles.actionsLeft}>
+          <BackButton fallbackUrl={getBackToListUrl()} />
+        </div>
+        <div className={styles.actionsRight}>
+          <Space>
+            <Button
+              icon={<LeftOutlined />}
+              onClick={handlePrevious}
+              disabled={!prevItem}
+              aria-label="Previous climb"
+            />
+            <Button
+              icon={<RightOutlined />}
+              onClick={handleNext}
+              disabled={!nextItem}
+              aria-label="Next climb"
+            />
+            <TickButton currentClimb={displayClimb} angle={angle} boardDetails={boardDetails} />
+          </Space>
+        </div>
+      </div>
+
+      {/* Main Content with Swipe */}
+      <div className={styles.contentWrapper}>
+        <div {...swipeHandlers} className={styles.swipeContainer}>
+          {/* Swipe indicators */}
+          {prevItem && (
+            <div
+              className={`${styles.swipeIndicator} ${styles.swipeIndicatorLeft} ${
+                swipeOffset > SWIPE_THRESHOLD / 2 ? styles.swipeIndicatorVisible : ''
+              }`}
+            >
+              <LeftOutlined style={{ fontSize: 24 }} />
+            </div>
+          )}
+          {nextItem && (
+            <div
+              className={`${styles.swipeIndicator} ${styles.swipeIndicatorRight} ${
+                swipeOffset < -SWIPE_THRESHOLD / 2 ? styles.swipeIndicatorVisible : ''
+              }`}
+            >
+              <RightOutlined style={{ fontSize: 24 }} />
+            </div>
+          )}
+
+          <div className={styles.climbSection}>
+            <div className={styles.climbCard}>
+              <div className={styles.climbHeader}>
+                <ClimbTitle
+                  climb={displayClimb}
+                  showAngle
+                  showSetterInfo
+                  centered
+                  nameAddon={<AscentStatus climbUuid={displayClimb.uuid} />}
+                />
+              </div>
+              <div className={styles.boardContainer}>
+                <div className={styles.boardWrapper}>
+                  <BoardRenderer
+                    boardDetails={boardDetails}
+                    litUpHoldsMap={displayClimb.litUpHoldsMap}
+                    mirrored={!!displayClimb.mirrored}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Swipe hint for mobile */}
+          {showSwipeHint && queue.length > 1 && (
+            <div className={styles.swipeHint}>Swipe left/right to navigate</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default PlayViewClient;

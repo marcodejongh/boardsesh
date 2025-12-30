@@ -3,7 +3,8 @@ import React from 'react';
 import Link from 'next/link';
 import { useQueueContext } from '../graphql-queue';
 import { useParams } from 'next/navigation';
-import { parseBoardRouteParams, constructClimbViewUrlWithSlugs } from '@/app/lib/url-utils';
+import { parseBoardRouteParams, constructClimbViewUrlWithSlugs, constructPlayUrlWithSlugs } from '@/app/lib/url-utils';
+import { usePathname } from 'next/navigation';
 import { BoardRouteParametersWithUuid, BoardDetails } from '@/app/lib/types';
 import { track } from '@vercel/analytics';
 import { FastBackwardOutlined } from '@ant-design/icons';
@@ -22,12 +23,13 @@ export default function PreviousClimbButton({ navigate = false, boardDetails }: 
   const { getPreviousClimbQueueItem, setCurrentClimbQueueItem, viewOnlyMode } = useQueueContext();
   const { board_name, layout_id, size_id, set_ids, angle } =
     parseBoardRouteParams(useParams<BoardRouteParametersWithUuid>());
+  const pathname = usePathname();
+  const isPlayPage = pathname.includes('/play/');
 
   const previousClimb = getPreviousClimbQueueItem();
 
   const handleClick = () => {
     if (previousClimb) {
-      // Remove the next climb from the queue by updating the state
       setCurrentClimbQueueItem(previousClimb);
       track('Queue Navigation', {
         direction: 'previous',
@@ -37,9 +39,12 @@ export default function PreviousClimbButton({ navigate = false, boardDetails }: 
   };
 
   if (!viewOnlyMode && navigate && previousClimb) {
-    const climbViewUrl =
+    const urlConstructor = isPlayPage ? constructPlayUrlWithSlugs : constructClimbViewUrlWithSlugs;
+    const fallbackPath = isPlayPage ? 'play' : 'view';
+
+    const climbUrl =
       boardDetails?.layout_name && boardDetails?.size_name && boardDetails?.set_names
-        ? constructClimbViewUrlWithSlugs(
+        ? urlConstructor(
             boardDetails.board_name,
             boardDetails.layout_name,
             boardDetails.size_name,
@@ -49,12 +54,12 @@ export default function PreviousClimbButton({ navigate = false, boardDetails }: 
             previousClimb.climb.uuid,
             previousClimb.climb.name,
           )
-        : `/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/view/${previousClimb.climb.uuid}`;
+        : `/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/${fallbackPath}/${previousClimb.climb.uuid}`;
 
     return (
       <Link
-        href={climbViewUrl}
-        onClick={handleClick} // Update the queue when the link is clicked
+        href={climbUrl}
+        onClick={handleClick}
       >
         <PreviousButton />
       </Link>

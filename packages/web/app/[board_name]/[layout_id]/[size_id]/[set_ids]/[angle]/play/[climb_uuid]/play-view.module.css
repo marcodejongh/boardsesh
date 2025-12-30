@@ -1,0 +1,171 @@
+.pageContainer {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: #F9FAFB;
+  overflow: hidden;
+  touch-action: pan-y pinch-zoom;
+}
+
+.actionsSection {
+  background-color: #FFFFFF;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
+}
+
+.actionsLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.actionsRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.contentWrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+.swipeContainer {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  touch-action: pan-y pinch-zoom;
+  overflow: hidden;
+}
+
+.climbSection {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  overflow: auto;
+}
+
+.climbCard {
+  background-color: #FFFFFF;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.climbHeader {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.boardContainer {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  min-height: 0;
+}
+
+.boardWrapper {
+  width: 100%;
+  max-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.emptyState {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  gap: 16px;
+  padding: 24px;
+  text-align: center;
+}
+
+.swipeHint {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(0, 0, 0, 0.6);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 12px;
+  opacity: 0.8;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+
+.swipeIndicator {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background-color: rgba(0, 0, 0, 0.3);
+  color: white;
+  padding: 12px;
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+}
+
+.swipeIndicatorLeft {
+  left: 16px;
+}
+
+.swipeIndicatorRight {
+  right: 16px;
+}
+
+.swipeIndicatorVisible {
+  opacity: 1;
+}
+
+/* Mobile adjustments */
+@media (max-width: 767px) {
+  .climbSection {
+    padding: 8px;
+  }
+
+  .climbHeader {
+    padding: 8px 12px;
+  }
+
+  .boardContainer {
+    padding: 8px;
+  }
+
+  .actionsSection {
+    padding: 6px 8px;
+  }
+}
+
+/* Desktop adjustments */
+@media (min-width: 768px) {
+  .climbSection {
+    padding: 16px;
+    max-width: 800px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .swipeHint {
+    display: none;
+  }
+}

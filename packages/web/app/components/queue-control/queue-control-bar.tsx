@@ -1,11 +1,14 @@
 'use client';
 import React, { useState } from 'react';
 import { Button, Row, Col, Card, Drawer, Space, Popconfirm } from 'antd';
-import { SyncOutlined, DeleteOutlined } from '@ant-design/icons';
+import { SyncOutlined, DeleteOutlined, ExpandOutlined } from '@ant-design/icons';
 import { track } from '@vercel/analytics';
 import { useQueueContext } from '../graphql-queue';
 import NextClimbButton from './next-climb-button';
-import { usePathname } from 'next/navigation';
+import { usePathname, useParams } from 'next/navigation';
+import Link from 'next/link';
+import { constructPlayUrlWithSlugs } from '@/app/lib/url-utils';
+import { BoardRouteParameters } from '@/app/lib/types';
 import PreviousClimbButton from './previous-climb-button';
 import { BoardName, BoardDetails, Angle } from '@/app/lib/types';
 import QueueList from './queue-list';
@@ -25,10 +28,36 @@ export interface QueueControlBar {
 const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: QueueControlBar) => {
   const [isQueueOpen, setIsQueueOpen] = useState(false);
   const pathname = usePathname();
+  const params = useParams<BoardRouteParameters>();
 
   const isViewPage = pathname.includes('/view/');
   const isListPage = pathname.includes('/list');
+  const isPlayPage = pathname.includes('/play/');
   const { currentClimb, mirrorClimb, queue, setQueue } = useQueueContext();
+
+  const getPlayUrl = () => {
+    if (!currentClimb) return null;
+
+    const { layout_name, size_name, size_description, set_names, board_name } = boardDetails;
+
+    if (layout_name && size_name && set_names) {
+      return constructPlayUrlWithSlugs(
+        board_name,
+        layout_name,
+        size_name,
+        size_description,
+        set_names,
+        angle,
+        currentClimb.uuid,
+        currentClimb.name,
+      );
+    }
+
+    // Fallback to numeric format
+    return `/${params.board_name}/${params.layout_id}/${params.size_id}/${params.set_ids}/${params.angle}/play/${currentClimb.uuid}`;
+  };
+
+  const playUrl = getPlayUrl();
 
   const handleClearQueue = () => {
     setQueue([]);
@@ -119,8 +148,20 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
                   icon={<SyncOutlined />}
                 />
               ) : null}
-              <PreviousClimbButton navigate={isViewPage} boardDetails={boardDetails} />
-              <NextClimbButton navigate={isViewPage} boardDetails={boardDetails} />
+              {!isPlayPage && playUrl && (
+                <Link
+                  href={playUrl}
+                  onClick={() => {
+                    track('Play Mode Entered', {
+                      boardLayout: boardDetails.layout_name || '',
+                    });
+                  }}
+                >
+                  <Button icon={<ExpandOutlined />} aria-label="Enter play mode" />
+                </Link>
+              )}
+              <PreviousClimbButton navigate={isViewPage || isPlayPage} boardDetails={boardDetails} />
+              <NextClimbButton navigate={isViewPage || isPlayPage} boardDetails={boardDetails} />
               <TickButton currentClimb={currentClimb} angle={angle} boardDetails={boardDetails} />
             </Space>
           </Col>
