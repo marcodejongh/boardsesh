@@ -3,6 +3,7 @@ import { ParsedBoardRouteParameters, SearchRequestPagination } from '@/app/lib/t
 import { TableSet } from '@/lib/db/queries/util/table-select';
 import { getTableName } from '@/app/lib/data-sync/aurora/getTableName';
 import { SizeEdges } from '@/app/lib/__generated__/product-sizes-data';
+import { SUPPORTED_BOARDS } from '@/app/lib/board-data';
 
 /**
  * Creates a shared filtering object that can be used by both search climbs and heatmap queries
@@ -19,6 +20,10 @@ export const createClimbFilters = (
   sizeEdges: SizeEdges,
   userId?: number,
 ) => {
+  // Defense in depth: validate board_name before using in SQL queries
+  if (!SUPPORTED_BOARDS.includes(params.board_name)) {
+    throw new Error(`Invalid board name: ${params.board_name}`);
+  }
   // Process hold filters
   // holdsFilter can have values like:
   // - 'ANY': hold must be present in the climb

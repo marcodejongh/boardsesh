@@ -54,15 +54,16 @@ const CreateClimbHeatmapOverlay: React.FC<CreateClimbHeatmapOverlayProps> = ({
   }, [litUpHoldsMap]);
 
   // Determine which hold types are currently selected to auto-select heatmap mode
+  // Uses debouncedHoldsMap to stay in sync with the API query and avoid stale data
   const selectedHoldTypes = useMemo(() => {
     const types = new Set<HoldState>();
-    Object.values(litUpHoldsMap).forEach((hold) => {
+    Object.values(debouncedHoldsMap).forEach((hold) => {
       if (hold.state !== 'OFF') {
         types.add(hold.state);
       }
     });
     return types;
-  }, [litUpHoldsMap]);
+  }, [debouncedHoldsMap]);
 
   // Create filters that include the selected holds - uses debounced value to limit API calls
   const filters: SearchRequestPagination = useMemo(() => ({
@@ -149,8 +150,8 @@ const CreateClimbHeatmapOverlay: React.FC<CreateClimbHeatmapOverlayProps> = ({
   }
 
   // Use unique filter IDs to avoid conflicts with other SVGs on the page
-  const blurFilterId = 'create-climb-heatmap-blur';
-  const sharpFilterId = 'create-climb-heatmap-sharp';
+  const backgroundBlurFilterId = 'create-climb-heatmap-bg-blur';
+  const foregroundGlowFilterId = 'create-climb-heatmap-fg-glow';
 
   // Always render the SVG container to prevent layout shifts, but hide content when not enabled or loading
   const showContent = enabled && !loading;
@@ -171,16 +172,16 @@ const CreateClimbHeatmapOverlay: React.FC<CreateClimbHeatmapOverlayProps> = ({
       }}
     >
       <defs>
-        <filter id={blurFilterId}>
+        <filter id={backgroundBlurFilterId}>
           <feGaussianBlur stdDeviation={BLUR_RADIUS} />
         </filter>
-        <filter id={sharpFilterId}>
-          <feGaussianBlur in="SourceGraphic" stdDeviation="20" />
+        <filter id={foregroundGlowFilterId}>
+          <feGaussianBlur in="SourceGraphic" stdDeviation="4" />
         </filter>
       </defs>
 
-      {/* Blurred background layer */}
-      <g filter={`url(#${blurFilterId})`}>
+      {/* Blurred background layer - creates diffuse glow effect */}
+      <g filter={`url(#${backgroundBlurFilterId})`}>
         {holdsData.map((hold) => {
           // Skip holds that are already selected
           if (litUpHoldsMap[hold.id]) return null;
@@ -203,7 +204,7 @@ const CreateClimbHeatmapOverlay: React.FC<CreateClimbHeatmapOverlayProps> = ({
         })}
       </g>
 
-      {/* Sharp circles */}
+      {/* Foreground circles with soft glow edges */}
       {holdsData.map((hold) => {
         // Skip holds that are already selected
         if (litUpHoldsMap[hold.id]) return null;
@@ -215,13 +216,13 @@ const CreateClimbHeatmapOverlay: React.FC<CreateClimbHeatmapOverlayProps> = ({
 
         return (
           <circle
-            key={`heat-sharp-${hold.id}`}
+            key={`heat-fg-${hold.id}`}
             cx={hold.cx}
             cy={hold.cy}
             r={hold.r}
             fill={colorScale(value)}
             opacity={opacityScale(value)}
-            filter={`url(#${sharpFilterId})`}
+            filter={`url(#${foregroundGlowFilterId})`}
           />
         );
       })}
