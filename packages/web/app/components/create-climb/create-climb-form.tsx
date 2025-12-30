@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Input, Switch, Button, Typography, Tag, Alert, Flex } from 'antd';
-import { ExperimentOutlined, SettingOutlined, EditOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { SettingOutlined, EditOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import { track } from '@vercel/analytics';
 import BoardRenderer from '../board-renderer/board-renderer';
@@ -13,6 +13,7 @@ import { BoardDetails } from '@/app/lib/types';
 import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { convertLitUpHoldsStringToMap } from '../board-renderer/util';
 import AuthModal from '../auth/auth-modal';
+import { useCreateClimbContext } from './create-climb-context';
 import { themeTokens } from '@/app/theme/theme-config';
 import styles from './create-climb-form.module.css';
 
@@ -55,6 +56,7 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
   } = useCreateClimb(boardDetails.board_name, { initialHoldsMap });
 
   const { isConnected, sendFramesToBoard } = useBoardBluetooth({ boardDetails });
+  const createClimbContext = useCreateClimbContext();
 
   const [isSaving, setIsSaving] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -125,7 +127,7 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
     [handleSaveTitle, handleCancelEditTitle],
   );
 
-  const doSaveClimb = async () => {
+  const doSaveClimb = useCallback(async () => {
     setIsSaving(true);
 
     try {
@@ -166,9 +168,9 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
     } finally {
       setIsSaving(false);
     }
-  };
+  }, [generateFramesString, saveClimb, boardDetails, climbName, description, isDraft, angle, totalHolds, router]);
 
-  const handlePublish = async () => {
+  const handlePublish = useCallback(async () => {
     if (!isValid || !climbName.trim()) {
       return;
     }
@@ -187,7 +189,7 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
     }
 
     await doSaveClimb();
-  };
+  }, [isValid, climbName, isAuthenticated, hasAuroraCredentials, description, isDraft, doSaveClimb]);
 
   const handleAuthSuccess = async () => {
     // After successful auth, check if they have Aurora credentials linked
@@ -203,7 +205,7 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
     }
   };
 
-  const handleCancel = () => {
+  const handleCancel = useCallback(() => {
     const listUrl = constructClimbListWithSlugs(
       boardDetails.board_name,
       boardDetails.layout_name || '',
@@ -213,31 +215,36 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
       angle,
     );
     router.push(listUrl);
-  };
+  }, [boardDetails, angle, router]);
 
   const boardNameCapitalized = boardDetails.board_name.charAt(0).toUpperCase() + boardDetails.board_name.slice(1);
   const canSave = isAuthenticated && hasAuroraCredentials && isValid && climbName.trim().length > 0;
 
+  // Register actions with context for header to use
+  useEffect(() => {
+    if (createClimbContext) {
+      createClimbContext.registerActions({
+        onPublish: handlePublish,
+        onCancel: handleCancel,
+      });
+    }
+  }, [createClimbContext, handlePublish, handleCancel]);
+
+  // Update context state
+  useEffect(() => {
+    if (createClimbContext) {
+      createClimbContext.setCanPublish(canSave);
+    }
+  }, [createClimbContext, canSave]);
+
+  useEffect(() => {
+    if (createClimbContext) {
+      createClimbContext.setIsPublishing(isSaving);
+    }
+  }, [createClimbContext, isSaving]);
+
   return (
     <div className={styles.pageContainer} style={{ backgroundColor: themeTokens.semantic.background }}>
-      {/* Header with publish button */}
-      <div className={styles.headerBar}>
-        <Button onClick={handleCancel} disabled={isSaving}>
-          Cancel
-        </Button>
-        <Flex gap={8} align="center">
-          <ExperimentOutlined style={{ color: themeTokens.colors.primary }} title="Beta Feature" />
-          <Button
-            type="primary"
-            onClick={handlePublish}
-            loading={isSaving}
-            disabled={!canSave || isSaving}
-          >
-            {isSaving ? 'Publishing...' : 'Publish'}
-          </Button>
-        </Flex>
-      </div>
-
       {/* Auth alerts */}
       {!isAuthenticated && (
         <Alert

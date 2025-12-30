@@ -9,6 +9,9 @@ import SearchButton from '../search-drawer/search-button';
 import SearchClimbNameInput from '../search-drawer/search-climb-name-input';
 import { UISearchParamsProvider } from '../queue-control/ui-searchparams-provider';
 import { BoardDetails } from '@/app/lib/types';
+import { useCreateClimbContext } from '../create-climb/create-climb-context';
+import { ExperimentOutlined } from '@ant-design/icons';
+import { themeTokens } from '@/app/theme/theme-config';
 
 // Dynamically import bluetooth component to reduce initial bundle size
 // LED placement data (~50KB) is only loaded when bluetooth is actually used
@@ -48,6 +51,7 @@ function usePageMode(): PageMode {
 export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeaderProps) {
   const { data: session } = useSession();
   const { currentClimb } = useQueueContext();
+  const createClimbContext = useCreateClimbContext();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const pageMode = usePageMode();
   const searchParams = useSearchParams();
@@ -199,46 +203,66 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
 
           {/* Right Section */}
           <Flex gap={4} align="center">
-            {angle !== undefined && <AngleSelector boardName={boardDetails.board_name} currentAngle={angle} currentClimb={currentClimb} />}
-
-            {/* Desktop: show Create Climb button */}
-            {createClimbUrl && (
-              <div className={styles.desktopOnly}>
-                <Link href={createClimbUrl}>
-                  <Button icon={<PlusOutlined />} type="text" title="Create new climb" />
-                </Link>
-              </div>
-            )}
-
-            <ShareBoardButton />
-            <SendClimbToBoardButton boardDetails={boardDetails} />
-
-            {/* Desktop: User menu or login button */}
-            <div className={styles.desktopOnly}>
-              {session?.user ? (
-                <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-                  <Button icon={<UserOutlined />} type="text">
-                    {session.user.name || session.user.email}
-                  </Button>
-                </Dropdown>
-              ) : (
-                <Button
-                  icon={<LoginOutlined />}
-                  type="text"
-                  onClick={() => setShowAuthModal(true)}
-                >
-                  Login
+            {/* Create mode: Show cancel and publish buttons */}
+            {pageMode === 'create' && createClimbContext ? (
+              <>
+                <Button onClick={createClimbContext.onCancel} disabled={createClimbContext.isPublishing}>
+                  Cancel
                 </Button>
-              )}
-            </div>
+                <ExperimentOutlined style={{ color: themeTokens.colors.primary }} title="Beta Feature" />
+                <Button
+                  type="primary"
+                  onClick={createClimbContext.onPublish}
+                  loading={createClimbContext.isPublishing}
+                  disabled={!createClimbContext.canPublish || createClimbContext.isPublishing}
+                >
+                  {createClimbContext.isPublishing ? 'Publishing...' : 'Publish'}
+                </Button>
+              </>
+            ) : (
+              <>
+                {angle !== undefined && <AngleSelector boardName={boardDetails.board_name} currentAngle={angle} currentClimb={currentClimb} />}
 
-            {/* Mobile: meatball menu for Create Climb and Login */}
-            {mobileMenuItems.length > 0 && (
-              <div className={styles.mobileMenuButton}>
-                <Dropdown menu={{ items: mobileMenuItems }} placement="bottomRight" trigger={['click']}>
-                  <Button icon={<MoreOutlined />} type="default" />
-                </Dropdown>
-              </div>
+                {/* Desktop: show Create Climb button */}
+                {createClimbUrl && (
+                  <div className={styles.desktopOnly}>
+                    <Link href={createClimbUrl}>
+                      <Button icon={<PlusOutlined />} type="text" title="Create new climb" />
+                    </Link>
+                  </div>
+                )}
+
+                <ShareBoardButton />
+                <SendClimbToBoardButton boardDetails={boardDetails} />
+
+                {/* Desktop: User menu or login button */}
+                <div className={styles.desktopOnly}>
+                  {session?.user ? (
+                    <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
+                      <Button icon={<UserOutlined />} type="text">
+                        {session.user.name || session.user.email}
+                      </Button>
+                    </Dropdown>
+                  ) : (
+                    <Button
+                      icon={<LoginOutlined />}
+                      type="text"
+                      onClick={() => setShowAuthModal(true)}
+                    >
+                      Login
+                    </Button>
+                  )}
+                </div>
+
+                {/* Mobile: meatball menu for Create Climb and Login */}
+                {mobileMenuItems.length > 0 && (
+                  <div className={styles.mobileMenuButton}>
+                    <Dropdown menu={{ items: mobileMenuItems }} placement="bottomRight" trigger={['click']}>
+                      <Button icon={<MoreOutlined />} type="default" />
+                    </Dropdown>
+                  </div>
+                )}
+              </>
             )}
           </Flex>
         </Flex>

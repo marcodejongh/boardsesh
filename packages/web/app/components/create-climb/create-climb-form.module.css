@@ -8,17 +8,6 @@
   touch-action: pan-y pinch-zoom;
 }
 
-/* Header bar with cancel and publish buttons */
-.headerBar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 12px;
-  flex-shrink: 0;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-  background-color: #fff;
-}
-
 /* Auth alert styling */
 .authAlert {
   margin: 8px 12px;
@@ -88,10 +77,6 @@
 
 /* Mobile adjustments */
 @media (max-width: 767px) {
-  .headerBar {
-    padding: 6px 8px;
-  }
-
   .authAlert {
     margin: 6px 8px;
   }
