@@ -226,7 +226,7 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
           Cancel
         </Button>
         <Flex gap={8} align="center">
-          <ExperimentOutlined style={{ color: themeTokens.colors.info }} title="Beta Feature" />
+          <ExperimentOutlined style={{ color: themeTokens.colors.primary }} title="Beta Feature" />
           <Button
             type="primary"
             onClick={handlePublish}
