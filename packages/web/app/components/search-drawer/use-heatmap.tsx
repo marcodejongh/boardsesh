@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { BoardName, SearchRequestPagination } from '@/app/lib/types';
 import { HeatmapData } from '../board-renderer/types';
 import { searchParamsToUrlParams } from '@/app/lib/url-utils';
@@ -27,6 +27,10 @@ export default function useHeatmapData({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const { token, user_id } = useBoardProvider();
+
+  // Serialize filters to create a stable dependency - prevents re-fetching
+  // when object reference changes but contents are the same
+  const filtersKey = useMemo(() => JSON.stringify(filters), [filters]);
 
   useEffect(() => {
     // Don't fetch if not enabled
@@ -82,7 +86,8 @@ export default function useHeatmapData({
     return () => {
       cancelled = true;
     };
-  }, [boardName, layoutId, sizeId, setIds, angle, filters, token, user_id, enabled]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- filtersKey is a serialized version of filters
+  }, [boardName, layoutId, sizeId, setIds, angle, filtersKey, token, user_id, enabled]);
 
   return { data: heatmapData, loading, error };
 }
