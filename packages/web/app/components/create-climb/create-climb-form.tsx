@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Input, Switch, Button, Typography, Tag, Alert, Flex } from 'antd';
 import type { InputRef } from 'antd';
 import { SettingOutlined, EditOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { track } from '@vercel/analytics';
 import BoardRenderer from '../board-renderer/board-renderer';
 import { useBoardProvider } from '../board-provider/board-provider-context';
@@ -15,7 +15,8 @@ import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { convertLitUpHoldsStringToMap } from '../board-renderer/util';
 import AuthModal from '../auth/auth-modal';
 import { useCreateClimbContext } from './create-climb-context';
-import { themeTokens } from '@/app/theme/theme-config';
+import { useDrafts, DraftClimb } from '../drafts/drafts-context';
+import { getDraftClimb } from '@/app/lib/draft-climbs-db';
 import styles from './create-climb-form.module.css';
 
 const { Text } = Typography;
@@ -36,7 +37,16 @@ interface CreateClimbFormProps {
 
 export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkName }: CreateClimbFormProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const draftIdFromUrl = searchParams.get('draftId');
   const { isAuthenticated, saveClimb } = useBoardProvider();
+  const { createDraft, updateDraft, deleteDraft } = useDrafts();
+
+  const [currentDraft, setCurrentDraft] = useState<DraftClimb | null>(null);
+  const [isLoadingDraft, setIsLoadingDraft] = useState(!!draftIdFromUrl);
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastInitializedDraftIdRef = useRef<string | null | undefined>(undefined);
+  const isMountedRef = useRef(true);
 
   // Convert fork frames to initial holds map if provided
   const initialHoldsMap = useMemo(() => {
@@ -55,6 +65,7 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
     totalHolds,
     isValid,
     resetHolds: originalResetHolds,
+    setLitUpHoldsMap,
   } = useCreateClimb(boardDetails.board_name, { initialHoldsMap });
 
   const { isConnected, sendFramesToBoard } = useBoardBluetooth({ boardDetails });
@@ -72,6 +83,116 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
   const [editingName, setEditingName] = useState('');
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
   const titleInputRef = useRef<InputRef>(null);
+
+  // Track mounted state for cleanup
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  // Load existing draft or create a new one on mount or when draftId changes
+  useEffect(() => {
+    // Skip if we've already initialized with this draftId
+    if (lastInitializedDraftIdRef.current === draftIdFromUrl) return;
+    lastInitializedDraftIdRef.current = draftIdFromUrl;
+
+    const initializeDraft = async () => {
+      setIsLoadingDraft(true);
+      try {
+        if (draftIdFromUrl) {
+          // Resuming an existing draft
+          const existingDraft = await getDraftClimb(draftIdFromUrl);
+          if (!isMountedRef.current) return;
+
+          if (existingDraft) {
+            setCurrentDraft(existingDraft);
+            // Restore form values
+            setClimbName(existingDraft.name);
+            setDescription(existingDraft.description);
+            setIsDraft(existingDraft.isDraft);
+            // Restore holds map
+            if (Object.keys(existingDraft.litUpHoldsMap).length > 0) {
+              setLitUpHoldsMap(existingDraft.litUpHoldsMap);
+            }
+          }
+          setIsLoadingDraft(false);
+        } else {
+          // Create a new draft immediately
+          const newDraft = await createDraft({
+            boardName: boardDetails.board_name,
+            layoutId: boardDetails.layout_id,
+            sizeId: boardDetails.size_id,
+            setIds: boardDetails.set_ids,
+            angle,
+            layoutName: boardDetails.layout_name,
+            sizeName: boardDetails.size_name,
+            sizeDescription: boardDetails.size_description,
+            setNames: boardDetails.set_names,
+          });
+          if (!isMountedRef.current) return;
+
+          setCurrentDraft(newDraft);
+          setIsLoadingDraft(false);
+          // Update ref to prevent re-initialization
+          lastInitializedDraftIdRef.current = newDraft.uuid;
+          // Update URL with draft ID using Next.js router (shallow to avoid re-render)
+          const newParams = new URLSearchParams(searchParams.toString());
+          newParams.set('draftId', newDraft.uuid);
+          router.replace(`?${newParams.toString()}`, { scroll: false });
+        }
+      } catch (error) {
+        console.error('Failed to initialize draft:', error);
+        if (isMountedRef.current) {
+          setIsLoadingDraft(false);
+        }
+      }
+    };
+
+    initializeDraft();
+  }, [draftIdFromUrl, boardDetails, angle, createDraft, setLitUpHoldsMap, searchParams, router]);
+
+  // Use ref for draft UUID to avoid triggering saves when currentDraft reference changes
+  const currentDraftIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    currentDraftIdRef.current = currentDraft?.uuid ?? null;
+  }, [currentDraft]);
+
+  // Debounced auto-save when form data changes
+  useEffect(() => {
+    // Skip if not initialized or loading
+    if (!currentDraftIdRef.current || isLoadingDraft) return;
+
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+    }
+
+    autoSaveTimerRef.current = setTimeout(async () => {
+      if (!currentDraftIdRef.current || !isMountedRef.current) return;
+
+      const frames = generateFramesString();
+
+      try {
+        await updateDraft(currentDraftIdRef.current, {
+          name: climbName || '',
+          description: description || '',
+          frames,
+          litUpHoldsMap,
+          isDraft,
+          angle,
+        });
+      } catch (error) {
+        console.error('Failed to auto-save draft:', error);
+      }
+    }, 500);
+
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+      }
+    };
+  }, [litUpHoldsMap, climbName, description, isDraft, isLoadingDraft, generateFramesString, updateDraft, angle]);
 
   // Send frames to board whenever litUpHoldsMap changes and we're connected
   useEffect(() => {
@@ -151,6 +272,15 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
         angle,
       });
 
+      // Delete the local draft after successful save
+      if (currentDraft) {
+        try {
+          await deleteDraft(currentDraft.uuid);
+        } catch (error) {
+          console.error('Failed to delete draft after save:', error);
+        }
+      }
+
       track('Climb Created', {
         boardLayout: boardDetails.layout_name || '',
         isDraft: isDraft,
@@ -175,7 +305,7 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
     } finally {
       setIsSaving(false);
     }
-  }, [generateFramesString, saveClimb, boardDetails, climbName, description, isDraft, angle, totalHolds, router]);
+  }, [generateFramesString, saveClimb, boardDetails, climbName, description, isDraft, angle, totalHolds, router, currentDraft, deleteDraft]);
 
   const handlePublish = useCallback(async () => {
     if (!isValid || !climbName.trim()) {
@@ -206,7 +336,16 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
     }
   };
 
-  const handleCancel = useCallback(() => {
+  const handleCancel = useCallback(async () => {
+    // Delete the current draft when canceling
+    if (currentDraft) {
+      try {
+        await deleteDraft(currentDraft.uuid);
+      } catch (error) {
+        console.error('Failed to delete draft on cancel:', error);
+      }
+    }
+
     const listUrl = constructClimbListWithSlugs(
       boardDetails.board_name,
       boardDetails.layout_name || '',
@@ -216,7 +355,7 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
       angle,
     );
     router.push(listUrl);
-  }, [boardDetails, angle, router]);
+  }, [boardDetails, angle, router, currentDraft, deleteDraft]);
 
   const canSave = isAuthenticated && isValid && climbName.trim().length > 0;
 
