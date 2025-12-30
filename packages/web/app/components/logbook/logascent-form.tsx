@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Button, DatePicker, Select, Input, Rate, Slider, InputNumber, Form, Space, Tag, Tooltip } from 'antd';
+import { Button, DatePicker, Select, Input, Rate, InputNumber, Form, Space, Tag, Tooltip } from 'antd';
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { track } from '@vercel/analytics';
 import { Climb, BoardDetails } from '@/app/lib/types';
@@ -160,14 +160,7 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boar
       </Form.Item>
 
       <Form.Item name="attempts" label="Attempts" {...formItemLayout}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <Form.Item name="attempts" noStyle>
-            <InputNumber min={1} max={999} style={{ width: '80px' }} />
-          </Form.Item>
-          <Form.Item name="attempts" noStyle>
-            <Slider min={1} max={100} tooltip={{ formatter: (value) => `${value} attempts` }} />
-          </Form.Item>
-        </div>
+        <InputNumber min={1} max={999} style={{ width: '80px' }} />
       </Form.Item>
 
       <Form.Item name="quality" label="Quality" {...formItemLayout}>
