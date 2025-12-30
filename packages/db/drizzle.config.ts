@@ -29,4 +29,7 @@ export default defineConfig({
   schema: './src/schema/index.ts',
   dialect: 'postgresql',
   dbCredentials: getDatabaseConfig(),
+  migrations: {
+    prefix: 'timestamp', // Use timestamps instead of sequential numbers to avoid merge conflicts
+  },
 });
