@@ -276,9 +276,6 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
         styles={{
           body: {
             padding: '4px 12px 0px 12px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
           },
         }}
         style={{
@@ -286,35 +283,36 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
           borderRadius: 0,
           margin: 0,
           borderTop: `1px solid ${themeTokens.neutral[200]}`,
-          position: 'relative',
-          overflow: 'hidden',
         }}
       >
-        {/* Carousel container for swipe navigation */}
-        <div
-          {...swipeHandlers}
-          className={styles.swipeContainer}
-          style={{
-            display: 'flex',
-            width: '300%',
-            marginLeft: '-100%',
-            transform: `translateX(${swipeOffset}px)`,
-            transition: swipeOffset === 0 ? `transform ${themeTokens.transitions.fast}` : 'none',
-          }}
-        >
-          {/* Previous climb (left) */}
-          <div className={styles.carouselSlide} style={{ width: '33.333%', flexShrink: 0, opacity: canSwipePrevious ? 1 : 0.3 }}>
-            {previousClimb ? renderClimbContent(previousClimb.climb, false) : renderClimbContent(null, false)}
-          </div>
+        {/* Overflow container to clip carousel */}
+        <div style={{ overflow: 'hidden', width: '100%', position: 'relative' }}>
+          {/* Carousel container for swipe navigation */}
+          <div
+            {...swipeHandlers}
+            className={styles.swipeContainer}
+            style={{
+              display: 'flex',
+              width: '300%',
+              marginLeft: '-100%',
+              transform: `translateX(${swipeOffset}px)`,
+              transition: swipeOffset === 0 ? `transform ${themeTokens.transitions.fast}` : 'none',
+            }}
+          >
+            {/* Previous climb (left) */}
+            <div className={styles.carouselSlide} style={{ width: '33.333%', flexShrink: 0, opacity: canSwipePrevious ? 1 : 0.3 }}>
+              {previousClimb ? renderClimbContent(previousClimb.climb, false) : renderClimbContent(null, false)}
+            </div>
 
-          {/* Current climb (center) */}
-          <div className={styles.carouselSlide} style={{ width: '33.333%', flexShrink: 0 }}>
-            {renderClimbContent(currentClimb, true)}
-          </div>
+            {/* Current climb (center) */}
+            <div className={styles.carouselSlide} style={{ width: '33.333%', flexShrink: 0 }}>
+              {renderClimbContent(currentClimb, true)}
+            </div>
 
-          {/* Next climb (right) */}
-          <div className={styles.carouselSlide} style={{ width: '33.333%', flexShrink: 0, opacity: canSwipeNext ? 1 : 0.3 }}>
-            {nextClimb ? renderClimbContent(nextClimb.climb, false) : renderClimbContent(null, false)}
+            {/* Next climb (right) */}
+            <div className={styles.carouselSlide} style={{ width: '33.333%', flexShrink: 0, opacity: canSwipeNext ? 1 : 0.3 }}>
+              {nextClimb ? renderClimbContent(nextClimb.climb, false) : renderClimbContent(null, false)}
+            </div>
           </div>
         </div>
       </Card>
