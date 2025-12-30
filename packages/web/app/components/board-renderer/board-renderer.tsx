@@ -3,6 +3,7 @@ import { getImageUrl } from './util';
 import { BoardDetails } from '@/app/lib/types';
 import BoardLitupHolds from './board-litup-holds';
 import { LitUpHoldsMap } from './types';
+import styles from './board-renderer.module.css';
 
 export type BoardProps = {
   boardDetails: BoardDetails;
@@ -20,27 +21,20 @@ const BoardRenderer = React.memo(
   ({ boardDetails, thumbnail, maxHeight, fillHeight, litUpHoldsMap, mirrored, onHoldClick }: BoardProps) => {
     const { boardWidth, boardHeight, holdsData } = boardDetails;
 
-    const resolvedMaxHeight = thumbnail ? '10vh' : (maxHeight ?? '55vh');
-
     // When fillHeight is true, SVG fills container and uses preserveAspectRatio to fit
     // Otherwise, use auto height with maxHeight constraint
-    const svgStyle = fillHeight
-      ? {
-          width: '100%',
-          height: '100%',
-          display: 'block',
-        }
-      : {
-          width: '100%',
-          height: 'auto',
-          display: 'block',
-          maxHeight: resolvedMaxHeight,
-        };
+    const svgClassName = fillHeight
+      ? `${styles.svg} ${styles.svgFillHeight}`
+      : `${styles.svg} ${styles.svgAutoHeight}`;
+
+    // Only compute maxHeight when not using fillHeight
+    const svgStyle = fillHeight ? undefined : { maxHeight: thumbnail ? '10vh' : (maxHeight ?? '55vh') };
 
     return (
       <svg
         viewBox={`0 0 ${boardWidth} ${boardHeight}`}
         preserveAspectRatio="xMidYMid meet"
+        className={svgClassName}
         style={svgStyle}
       >
         {Object.keys(boardDetails.images_to_holds).map((imageUrl) => (
