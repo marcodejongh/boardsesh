@@ -27,43 +27,91 @@ export async function GET(request: Request) {
     }
 
     const pool = getPool();
-    const client = await pool.connect();
 
-    try {
-      const db = drizzle(client);
+    // Get credentials list - acquire and release connection immediately
+    let credentials;
+    {
+      const client = await pool.connect();
+      try {
+        const db = drizzle(client);
+        credentials = await db
+          .select()
+          .from(schema.auroraCredentials)
+          .where(eq(schema.auroraCredentials.syncStatus, 'active'));
+      } finally {
+        client.release();
+      }
+    }
 
-      // Get all users with active Aurora credentials
-      const credentials = await db
-        .select()
-        .from(schema.auroraCredentials)
-        .where(eq(schema.auroraCredentials.syncStatus, 'active'));
+    console.log(`[User Sync Cron] Found ${credentials.length} users with active Aurora credentials`);
 
-      console.log(`[User Sync Cron] Found ${credentials.length} users with active Aurora credentials`);
+    const results = {
+      total: credentials.length,
+      successful: 0,
+      failed: 0,
+      errors: [] as SyncResult[],
+    };
 
-      const results = {
-        total: credentials.length,
-        successful: 0,
-        failed: 0,
-        errors: [] as SyncResult[],
-      };
+    // Sync each user sequentially (to avoid overwhelming Aurora API)
+    // Each iteration acquires its own connections as needed
+    for (const cred of credentials) {
+      try {
+        if (!cred.auroraToken || !cred.auroraUserId) {
+          console.warn(`[User Sync Cron] Skipping user ${cred.userId} (${cred.boardType}): Missing token or user ID`);
+          continue;
+        }
 
-      // Sync each user sequentially (to avoid overwhelming Aurora API)
-      for (const cred of credentials) {
+        // Decrypt token - handle errors gracefully
+        let token: string;
         try {
-          if (!cred.auroraToken || !cred.auroraUserId) {
-            console.warn(`[User Sync Cron] Skipping user ${cred.userId} (${cred.boardType}): Missing token or user ID`);
-            continue;
+          token = decrypt(cred.auroraToken);
+        } catch (decryptError) {
+          const errorMsg = `Failed to decrypt credentials: ${decryptError instanceof Error ? decryptError.message : 'Unknown error'}`;
+          console.error(`[User Sync Cron] ${errorMsg} for user ${cred.userId} (${cred.boardType})`);
+
+          results.failed++;
+          results.errors.push({
+            userId: cred.userId,
+            boardType: cred.boardType,
+            error: errorMsg,
+          });
+
+          // Update status to error
+          const updateClient = await pool.connect();
+          try {
+            const updateDb = drizzle(updateClient);
+            await updateDb
+              .update(schema.auroraCredentials)
+              .set({
+                syncStatus: 'error',
+                syncError: errorMsg,
+                updatedAt: new Date(),
+              })
+              .where(
+                and(
+                  eq(schema.auroraCredentials.userId, cred.userId),
+                  eq(schema.auroraCredentials.boardType, cred.boardType)
+                )
+              );
+          } finally {
+            updateClient.release();
           }
 
-          const token = decrypt(cred.auroraToken);
-          const boardType = cred.boardType as BoardName;
+          continue;
+        }
 
-          console.log(`[User Sync Cron] Syncing user ${cred.userId} for ${boardType}...`);
+        const boardType = cred.boardType as BoardName;
 
-          await syncUserData(boardType, token, cred.auroraUserId);
+        console.log(`[User Sync Cron] Syncing user ${cred.userId} for ${boardType}...`);
 
-          // Update last sync time on success
-          await db
+        // syncUserData manages its own connections internally
+        await syncUserData(boardType, token, cred.auroraUserId);
+
+        // Update last sync time on success - acquire new connection
+        const updateClient = await pool.connect();
+        try {
+          const updateDb = drizzle(updateClient);
+          await updateDb
             .update(schema.auroraCredentials)
             .set({
               lastSyncAt: new Date(),
@@ -77,49 +125,53 @@ export async function GET(request: Request) {
                 eq(schema.auroraCredentials.boardType, boardType)
               )
             );
-
-          results.successful++;
-          console.log(`[User Sync Cron] ✓ Successfully synced user ${cred.userId} for ${boardType}`);
-        } catch (error) {
-          results.failed++;
-          const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-          results.errors.push({
-            userId: cred.userId,
-            boardType: cred.boardType,
-            error: errorMsg,
-          });
-
-          // Update sync status to error
-          try {
-            await db
-              .update(schema.auroraCredentials)
-              .set({
-                syncStatus: 'error',
-                syncError: errorMsg,
-                updatedAt: new Date(),
-              })
-              .where(
-                and(
-                  eq(schema.auroraCredentials.userId, cred.userId),
-                  eq(schema.auroraCredentials.boardType, cred.boardType)
-                )
-              );
-          } catch (updateError) {
-            console.error(`[User Sync Cron] Failed to update error status for user ${cred.userId}:`, updateError);
-          }
-
-          console.error(`[User Sync Cron] ✗ Failed to sync user ${cred.userId} for ${cred.boardType}:`, errorMsg);
+        } finally {
+          updateClient.release();
         }
-      }
 
-      return NextResponse.json({
-        success: true,
-        results,
-        timestamp: new Date().toISOString(),
-      });
-    } finally {
-      client.release();
+        results.successful++;
+        console.log(`[User Sync Cron] ✓ Successfully synced user ${cred.userId} for ${boardType}`);
+      } catch (error) {
+        results.failed++;
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+        results.errors.push({
+          userId: cred.userId,
+          boardType: cred.boardType,
+          error: errorMsg,
+        });
+
+        // Update sync status to error - acquire new connection
+        const updateClient = await pool.connect();
+        try {
+          const updateDb = drizzle(updateClient);
+          await updateDb
+            .update(schema.auroraCredentials)
+            .set({
+              syncStatus: 'error',
+              syncError: errorMsg,
+              updatedAt: new Date(),
+            })
+            .where(
+              and(
+                eq(schema.auroraCredentials.userId, cred.userId),
+                eq(schema.auroraCredentials.boardType, cred.boardType)
+              )
+            );
+        } catch (updateError) {
+          console.error(`[User Sync Cron] Failed to update error status for user ${cred.userId}:`, updateError);
+        } finally {
+          updateClient.release();
+        }
+
+        console.error(`[User Sync Cron] ✗ Failed to sync user ${cred.userId} for ${cred.boardType}:`, errorMsg);
+      }
     }
+
+    return NextResponse.json({
+      success: true,
+      results,
+      timestamp: new Date().toISOString(),
+    });
   } catch (error) {
     console.error('[User Sync Cron] Cron job failed:', error);
     return NextResponse.json(
