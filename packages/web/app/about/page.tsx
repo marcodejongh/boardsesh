@@ -7,6 +7,7 @@ import {
   LockOutlined,
   TeamOutlined,
   ThunderboltOutlined,
+  HeartOutlined,
 } from '@ant-design/icons';
 import Logo from '@/app/components/brand/logo';
 import AboutHeader from './about-header';
@@ -49,19 +50,17 @@ export default function AboutPage() {
                 The Problem
               </Title>
               <Paragraph>
-                LED climbing boards like Kilter, Tension, Decoy, and Grasshopper have become
-                incredibly popular in the climbing community. These boards represent a significant
-                investment—a 7x10 Kilter homewall with mainline holds runs around $15,000 AUD
-                ($10,000 USD), plus another $2,000 or so for the LED lighting system.
+                LED climbing boards like Moonboard, Kilter, Tension, Decoy, and Grasshopper have
+                become incredibly popular in the climbing community. These boards represent a
+                significant investment—a 7x10 Kilter homewall with mainline holds runs around
+                $15,000 AUD ($10,000 USD), plus another $2,000 or so for the LED lighting system.
               </Paragraph>
               <Paragraph>
                 Here&apos;s the thing: those climbing holds will work forever. No apps, no
                 licensing, no connectivity required. But to use the LED system that makes these
-                boards truly interactive, we&apos;re all dependent on{' '}
-                <Link href="https://auroraclimbing.com/" target="_blank" rel="noopener noreferrer">
-                  Aurora Climbing
-                </Link>
-                —the company that develops the app and control system for most major board brands.
+                boards truly interactive, we&apos;re all dependent on Moon Climbing or Aurora
+                Climbing. Each company servicing a large part of the market without
+                cross-compatibility.
               </Paragraph>
 
               <Alert
@@ -70,8 +69,24 @@ export default function AboutPage() {
                 showIcon
                 icon={<LockOutlined />}
                 message="Single Vendor Risk"
-                description="Thousands of dollars worth of climbing equipment relies on software from a single small company. If that software stops working, your expensive LED system becomes unusable."
+                description="Thousands of dollars worth of climbing equipment relies on software from two small companies. If that software stops working, your expensive LED system becomes unusable."
               />
+
+              <Paragraph className={styles.additionalParagraph}>
+                You&apos;re also at the mercy of the whims of the owners of these companies. Not too
+                long ago Moon Board tried to block creation of new problems on one of their older
+                boards:{' '}
+                <Link
+                  href="https://www.reddit.com/r/climbing/s/VqKGxWSfDT"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  see this Reddit discussion
+                </Link>
+                . This was rolled back, but there are no guarantees this won&apos;t happen again.
+                Either of these companies could also change owners. What if a future owner wants to
+                introduce a subscription model?
+              </Paragraph>
             </section>
 
             <Divider />
@@ -83,15 +98,9 @@ export default function AboutPage() {
                 Development Has Stalled
               </Title>
               <Paragraph>
-                The problems with this dependency are already showing. The Aurora app&apos;s last
-                feature update was back in September 2023—a filter for side climbs (which,
-                ironically, doesn&apos;t work properly). Meanwhile, the community has been asking
-                for quality-of-life improvements and bug fixes that never arrive.
-              </Paragraph>
-              <Paragraph>
-                And it&apos;s not just Aurora. Moon Board has already moved to block third-party
-                access entirely, locking users into their official app with no alternatives. This
-                pattern of vendor lock-in puts every board owner at risk.
+                Instead of spending their time building great app experiences, both companies have
+                implemented app attest which blocks external access to the climb data. However, the
+                climb data isn&apos;t theirs—it&apos;s the users&apos;.
               </Paragraph>
             </section>
 
@@ -139,7 +148,7 @@ export default function AboutPage() {
                 Open Source
               </Title>
               <Paragraph>
-                Boardsesh is completely open source under the MIT license. You can view the code,
+                Boardsesh is completely open source under the Apache license. You can view the code,
                 contribute features, report bugs, or fork it entirely to run your own instance.
               </Paragraph>
               <Paragraph>
@@ -150,6 +159,21 @@ export default function AboutPage() {
                 >
                   View on GitHub →
                 </Link>
+              </Paragraph>
+            </section>
+
+            <Divider />
+
+            {/* Collaboration */}
+            <section>
+              <Title level={3}>
+                <HeartOutlined className={`${styles.sectionIcon} ${styles.primaryIcon}`} />
+                Open to Collaboration
+              </Title>
+              <Paragraph>
+                We would welcome collaboration with the official app vendors and would love to
+                integrate through more official means. Unfortunately, so far Aurora has been hostile
+                to any collaboration attempts.
               </Paragraph>
             </section>
 
