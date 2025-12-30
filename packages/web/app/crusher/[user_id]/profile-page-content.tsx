@@ -134,9 +134,16 @@ const angleColors = [
 ];
 
 type TimeframeType = 'all' | 'lastYear' | 'lastMonth' | 'lastWeek' | 'custom';
+type AggregatedTimeframeType = 'today' | 'lastWeek' | 'lastMonth' | 'lastYear' | 'all';
 
 // Board types available in Boardsesh
 const BOARD_TYPES = ['kilter', 'tension'] as const;
+
+// Colors for each board type
+const boardColors: Record<string, string> = {
+  kilter: 'rgba(6, 182, 212, 0.7)', // Cyan - primary brand color
+  tension: 'rgba(239, 68, 68, 0.7)', // Red
+};
 
 export default function ProfilePageContent({ userId }: { userId: string }) {
   const { data: session } = useSession();
@@ -149,6 +156,11 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
   const [timeframe, setTimeframe] = useState<TimeframeType>('all');
   const [fromDate, setFromDate] = useState<string>('');
   const [toDate, setToDate] = useState<string>('');
+
+  // State for aggregated chart (all boards combined)
+  const [aggregatedTimeframe, setAggregatedTimeframe] = useState<AggregatedTimeframeType>('all');
+  const [allBoardsTicks, setAllBoardsTicks] = useState<Record<string, LogbookEntry[]>>({});
+  const [loadingAggregated, setLoadingAggregated] = useState(false);
 
   const isOwnProfile = session?.user?.id === userId;
 
@@ -214,10 +226,50 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
     }
   }, [userId]);
 
+  // Fetch ticks for all boards (for aggregated chart)
+  const fetchAllBoardsTicks = useCallback(async () => {
+    setLoadingAggregated(true);
+    try {
+      const client = createGraphQLHttpClient(null);
+      const results: Record<string, LogbookEntry[]> = {};
+
+      await Promise.all(
+        BOARD_TYPES.map(async (boardType) => {
+          const variables: GetUserTicksQueryVariables = {
+            userId,
+            boardType,
+          };
+
+          const response = await client.request<GetUserTicksQueryResponse>(GET_USER_TICKS, variables);
+
+          results[boardType] = response.userTicks.map(tick => ({
+            climbed_at: tick.climbedAt,
+            difficulty: tick.difficulty,
+            tries: tick.attemptCount,
+            angle: tick.angle,
+            status: tick.status,
+          }));
+        })
+      );
+
+      setAllBoardsTicks(results);
+    } catch (error) {
+      console.error('Error fetching all boards ticks:', error);
+      setAllBoardsTicks({});
+    } finally {
+      setLoadingAggregated(false);
+    }
+  }, [userId]);
+
   // Fetch profile on mount
   useEffect(() => {
     fetchProfile();
   }, [fetchProfile]);
+
+  // Fetch all boards ticks on mount
+  useEffect(() => {
+    fetchAllBoardsTicks();
+  }, [fetchAllBoardsTicks]);
 
   // Fetch ticks when board selection changes
   useEffect(() => {
@@ -247,6 +299,68 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
         return logbook;
     }
   }, [logbook, timeframe, fromDate, toDate]);
+
+  // Generate aggregated chart data (ascents by grade, stacked by board)
+  const chartDataAggregated = useMemo(() => {
+    const now = dayjs();
+
+    // Filter function based on aggregated timeframe
+    const filterByTimeframe = (entry: LogbookEntry) => {
+      const climbedAt = dayjs(entry.climbed_at);
+      switch (aggregatedTimeframe) {
+        case 'today':
+          return climbedAt.isSame(now, 'day');
+        case 'lastWeek':
+          return climbedAt.isAfter(now.subtract(1, 'week'));
+        case 'lastMonth':
+          return climbedAt.isAfter(now.subtract(1, 'month'));
+        case 'lastYear':
+          return climbedAt.isAfter(now.subtract(1, 'year'));
+        case 'all':
+        default:
+          return true;
+      }
+    };
+
+    // Collect ascents by grade for each board
+    const boardGradeCounts: Record<string, Record<string, number>> = {};
+    const allGrades = new Set<string>();
+
+    BOARD_TYPES.forEach((boardType) => {
+      const ticks = allBoardsTicks[boardType] || [];
+      const filteredTicks = ticks.filter(filterByTimeframe);
+      boardGradeCounts[boardType] = {};
+
+      filteredTicks.forEach((entry) => {
+        // Only count ascents (not attempts)
+        if (entry.difficulty === null || entry.status === 'attempt') return;
+        const grade = difficultyMapping[entry.difficulty];
+        if (grade) {
+          boardGradeCounts[boardType][grade] = (boardGradeCounts[boardType][grade] || 0) + 1;
+          allGrades.add(grade);
+        }
+      });
+    });
+
+    if (allGrades.size === 0) {
+      return null;
+    }
+
+    // Sort grades by difficulty order
+    const sortedGrades = Object.values(difficultyMapping).filter((g) => allGrades.has(g));
+
+    // Create datasets for each board
+    const datasets = BOARD_TYPES.map((boardType) => ({
+      label: boardType.charAt(0).toUpperCase() + boardType.slice(1),
+      data: sortedGrades.map((grade) => boardGradeCounts[boardType][grade] || 0),
+      backgroundColor: boardColors[boardType],
+    })).filter((dataset) => dataset.data.some((value) => value > 0));
+
+    return {
+      labels: sortedGrades,
+      datasets,
+    } as ChartData;
+  }, [allBoardsTicks, aggregatedTimeframe]);
 
   // Generate all chart data in a single useMemo
   const { chartDataBar, chartDataPie, chartDataWeeklyBar } = useMemo(() => {
@@ -385,6 +499,14 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
     { label: 'Custom', value: 'custom' },
   ];
 
+  const aggregatedTimeframeOptions = [
+    { label: 'All', value: 'all' },
+    { label: 'Year', value: 'lastYear' },
+    { label: 'Month', value: 'lastMonth' },
+    { label: 'Week', value: 'lastWeek' },
+    { label: 'Today', value: 'today' },
+  ];
+
   return (
     <Layout className={styles.layout}>
       <Header className={styles.header}>
@@ -411,9 +533,42 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
           </div>
         </Card>
 
-        {/* Stats Section */}
+        {/* Aggregated Stats - All Boards */}
         <Card className={styles.statsCard}>
-          <Title level={5}>Climbing Stats</Title>
+          <Title level={5}>Ascents by Grade</Title>
+          <Text type="secondary" className={styles.chartDescription}>
+            Total ascents across all boards
+          </Text>
+
+          <div className={styles.timeframeSelector}>
+            <Segmented
+              options={aggregatedTimeframeOptions}
+              value={aggregatedTimeframe}
+              onChange={(value) => setAggregatedTimeframe(value as AggregatedTimeframeType)}
+            />
+          </div>
+
+          {loadingAggregated ? (
+            <div className={styles.loadingStats}>
+              <Spin />
+            </div>
+          ) : !chartDataAggregated ? (
+            <Empty description="No ascent data for this period" />
+          ) : (
+            <div className={styles.chartsContainer}>
+              <ProfileStatsCharts
+                chartDataAggregated={chartDataAggregated}
+                chartDataWeeklyBar={null}
+                chartDataBar={null}
+                chartDataPie={null}
+              />
+            </div>
+          )}
+        </Card>
+
+        {/* Board-Specific Stats */}
+        <Card className={styles.statsCard}>
+          <Title level={5}>Board Stats</Title>
 
           <>
             {/* Board Selector */}
@@ -460,6 +615,7 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
             ) : (
               <div className={styles.chartsContainer}>
                 <ProfileStatsCharts
+                  chartDataAggregated={null}
                   chartDataWeeklyBar={chartDataWeeklyBar}
                   chartDataBar={chartDataBar}
                   chartDataPie={chartDataPie}

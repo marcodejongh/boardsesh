@@ -64,6 +64,11 @@
   margin-bottom: 24px; /* spacing.6 */
 }
 
+.chartDescription {
+  display: block;
+  margin-bottom: 16px; /* spacing.4 */
+}
+
 .boardSelector {
   margin-bottom: 16px; /* spacing.4 */
 }
