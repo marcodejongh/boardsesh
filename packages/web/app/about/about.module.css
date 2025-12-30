@@ -1,0 +1,98 @@
+.pageLayout {
+  min-height: 100vh;
+  background: #f9fafb;
+}
+
+.header {
+  background: #ffffff;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.headerTitle {
+  margin: 0;
+  flex: 1;
+}
+
+.content {
+  padding: 24px;
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+@media (max-width: 576px) {
+  .content {
+    padding: 16px;
+  }
+}
+
+.heroSection {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.heroTitle {
+  margin-top: 16px;
+  margin-bottom: 8px;
+}
+
+.heroSubtitle {
+  font-size: 16px;
+}
+
+@media (max-width: 576px) {
+  .heroSubtitle {
+    font-size: 14px;
+  }
+}
+
+.sectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sectionIcon {
+  margin-right: 8px;
+}
+
+.warningIcon {
+  color: #f59e0b;
+}
+
+.errorIcon {
+  color: #ef4444;
+}
+
+.successIcon {
+  color: #10b981;
+}
+
+.featureList {
+  line-height: 2;
+  padding-left: 20px;
+}
+
+@media (max-width: 576px) {
+  .featureList {
+    line-height: 1.75;
+    padding-left: 16px;
+  }
+}
+
+.alert {
+  margin-top: 16px;
+}
+
+.callToAction {
+  text-align: center;
+  padding-top: 16px;
+}
+
+.cardContent {
+  width: 100%;
+}
