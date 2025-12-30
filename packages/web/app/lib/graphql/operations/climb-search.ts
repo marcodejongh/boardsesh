@@ -74,6 +74,7 @@ export interface ClimbSearchInputVariables {
     name?: string;
     setter?: string[];
     onlyTallClimbs?: boolean;
+    holdsFilter?: Record<string, 'ANY' | 'NOT'>;
     hideAttempted?: boolean;
     hideCompleted?: boolean;
     showOnlyAttempted?: boolean;

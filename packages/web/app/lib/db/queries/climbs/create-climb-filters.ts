@@ -125,21 +125,21 @@ export const createClimbFilters = (
   // A "tall climb" is one that uses holds in the bottom rows that are only available on the largest size
   const tallClimbsConditions: SQL[] = [];
   const KILTER_HOMEWALL_LAYOUT_ID = 8;
+  const KILTER_HOMEWALL_PRODUCT_ID = 7;
 
   if (searchParams.onlyTallClimbs && params.board_name === 'kilter' && params.layout_id === KILTER_HOMEWALL_LAYOUT_ID) {
     // Find the maximum edge_bottom of all sizes smaller than the current size
     // Climbs with edge_bottom below this threshold use "tall only" holds
+    // For Kilter Homewall (productId=7), 7x10/10x10 sizes have edgeBottom=24, 8x12/10x12 have edgeBottom=-12
+    // So "tall climbs" are those with edgeBottom < 24 (using holds only available on 12-tall sizes)
     const productSizesTable = getTableName(params.board_name, 'product_sizes');
-    const layoutsTable = getTableName(params.board_name, 'layouts');
 
     tallClimbsConditions.push(
       sql`${tables.climbs.edgeBottom} < (
-        SELECT MAX(other_sizes.edge_bottom)
-        FROM ${sql.identifier(productSizesTable)} other_sizes
-        INNER JOIN ${sql.identifier(layoutsTable)} layouts ON other_sizes.product_id = layouts.product_id
-        WHERE layouts.id = ${params.layout_id}
-        AND other_sizes.id != ${params.size_id}
-        AND other_sizes.edge_bottom < ${sizeEdges.edgeTop}
+        SELECT MAX(ps.edge_bottom)
+        FROM ${sql.identifier(productSizesTable)} ps
+        WHERE ps.product_id = ${KILTER_HOMEWALL_PRODUCT_ID}
+        AND ps.id != ${params.size_id}
       )`
     );
   }

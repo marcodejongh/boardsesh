@@ -154,6 +154,8 @@ export const typeDefs = /* GraphQL */ `
     setterId: Int
     onlyBenchmarks: Boolean
     onlyTallClimbs: Boolean
+    # Hold filters (JSON object: { "holdId": "ANY" | "NOT", ... })
+    holdsFilter: JSON
     # Personal progress filters (require auth)
     hideAttempted: Boolean
     hideCompleted: Boolean
