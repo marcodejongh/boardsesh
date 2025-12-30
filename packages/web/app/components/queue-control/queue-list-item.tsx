@@ -285,7 +285,7 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
             }}
           />
           <Row style={{ width: '100%' }} gutter={[8, 8]} align="middle" wrap={false}>
-            <Col xs={6} sm={5}>
+            <Col xs={6} sm={5} style={{ pointerEvents: 'none' }}>
               <ClimbThumbnail
                 boardDetails={boardDetails}
                 currentClimb={item.climb}
