@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button, Form, Select, Typography, Input, Divider, Card, Row, Col, Flex, Collapse, Space, Tabs, Switch, Tooltip } from 'antd';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { GithubOutlined, EditOutlined, TeamOutlined, InfoCircleOutlined, QuestionCircleOutlined } from '@ant-design/icons';
+import { GithubOutlined, EditOutlined, TeamOutlined, InfoCircleOutlined, QuestionCircleOutlined, StarOutlined } from '@ant-design/icons';
 import { openDB } from 'idb';
 import { track } from '@vercel/analytics';
 import { useSession } from 'next-auth/react';
@@ -20,6 +20,7 @@ import { themeTokens } from '@/app/theme/theme-config';
 import JoinSessionTab from './join-session-tab';
 import SessionHistoryPanel from './session-history-panel';
 import AuthModal from '../auth/auth-modal';
+import { setDefaultBoardCookie, clearDefaultBoardCookie, getDefaultBoardCookieClient } from '@/app/lib/default-board-cookie';
 
 const { Option } = Select;
 const { Title, Text } = Typography;
@@ -199,7 +200,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
     prefetchImages();
   }, [boardConfigs.details]);
 
-  // Load configurations on mount
+  // Load configurations on mount and sync useAsDefault state with cookie
   useEffect(() => {
     const loadConfigurations = async () => {
       // Load all saved configurations
@@ -211,47 +212,15 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
         setActiveCollapsePanels((prev) => (prev.includes('saved') ? prev : [...prev, 'saved']));
       }
 
-      // Check for default configuration
-      const defaultConfig = allConfigs.find((config) => config.useAsDefault);
-      if (defaultConfig) {
-        setConfigName(defaultConfig.name);
-        setSelectedBoard(defaultConfig.board);
-        setSelectedLayout(defaultConfig.layoutId);
-        setSelectedSize(defaultConfig.sizeId);
-        setSelectedSets(defaultConfig.setIds);
-        setSelectedAngle(defaultConfig.angle || 40);
-        setUseAsDefault(defaultConfig.useAsDefault);
-
-        // Redirect immediately if there's a default - always use SEO-friendly slug URLs
-        const savedAngle = defaultConfig.angle || 40;
-
-        // Look up names from the pre-loaded board configs data
-        const configLayouts = boardConfigs.layouts[defaultConfig.board as BoardName] || [];
-        const configSizes = boardConfigs.sizes[`${defaultConfig.board}-${defaultConfig.layoutId}`] || [];
-        const configSets = boardConfigs.sets[`${defaultConfig.board}-${defaultConfig.layoutId}-${defaultConfig.sizeId}`] || [];
-
-        const layout = configLayouts.find((l: { id: number; name: string }) => l.id === defaultConfig.layoutId);
-        const size = configSizes.find((s: { id: number; name: string; description: string }) => s.id === defaultConfig.sizeId);
-        const setNames = configSets
-          .filter((s) => defaultConfig.setIds.includes(s.id))
-          .map((s) => s.name);
-
-        if (layout && size && setNames.length > 0) {
-          const slugUrl = constructClimbListWithSlugs(
-            defaultConfig.board,
-            layout.name,
-            size.name,
-            size.description,
-            setNames,
-            savedAngle,
-          );
-          router.push(slugUrl);
-        }
+      // Check if there's a default board cookie set
+      const defaultBoardUrl = getDefaultBoardCookieClient();
+      if (defaultBoardUrl) {
+        setUseAsDefault(true);
       }
     };
 
     loadConfigurations();
-  }, [router, boardConfigs, loadAllConfigurations]);
+  }, [loadAllConfigurations]);
 
   // Set default selections on initial load if no saved configs exist
   useEffect(() => {
@@ -429,6 +398,13 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
       // Refresh the saved configurations list
       const updatedConfigs = await loadAllConfigurations();
       setSavedConfigurations(updatedConfigs);
+
+      // Set or clear the default board cookie based on useAsDefault
+      if (useAsDefault && targetUrl) {
+        setDefaultBoardCookie(targetUrl);
+      } else {
+        clearDefaultBoardCookie();
+      }
 
       // Navigate using the SEO-friendly slug URL (targetUrl is always computed with slugs)
       if (targetUrl) {
@@ -639,20 +615,22 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
             )}
           </Form.Item>
 
-          {/* TODO: Improve UX for default board selection
           <Form.Item>
-            <Checkbox
-              checked={useAsDefault}
-              onChange={(e) => setUseAsDefault(e.target.checked)}
-              disabled={!isFormComplete}
-            >
-              Use this board configuration as default
-              <Tooltip title="When this option is selected, navigating to Boardsesh will always load this board configuration immediately">
-                <InfoCircleOutlined style={{ marginLeft: '4px', color: '#1890ff' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: themeTokens.spacing[2] }}>
+              <Switch
+                checked={useAsDefault}
+                onChange={(checked) => setUseAsDefault(checked)}
+                disabled={!isFormComplete}
+              />
+              <span>
+                <StarOutlined style={{ marginRight: themeTokens.spacing[1] }} />
+                Set as my default board
+              </span>
+              <Tooltip title="When enabled, visiting boardsesh.com will automatically load this board. Click the logo anytime to return to board selection.">
+                <InfoCircleOutlined style={{ color: themeTokens.neutral[400] }} />
               </Tooltip>
-            </Checkbox>
+            </div>
           </Form.Item>
-          */}
 
           {targetUrl ? (
             <Link href={targetUrl} onClick={handleStartClimbing}>

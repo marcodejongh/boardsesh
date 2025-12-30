@@ -129,8 +129,9 @@ export const Logo = ({ size = 'md', showText = true, linkToHome = true }: LogoPr
   );
 
   if (linkToHome) {
+    // Use ?select=true to bypass default board redirect and show board selector
     return (
-      <Link href="/" style={{ textDecoration: 'none', color: 'inherit', display: 'flex' }}>
+      <Link href="/?select=true" style={{ textDecoration: 'none', color: 'inherit', display: 'flex' }}>
         {logoContent}
       </Link>
     );
