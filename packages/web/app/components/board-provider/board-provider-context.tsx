@@ -179,7 +179,6 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
       return; // Will be called again when wsAuthToken becomes available
     }
 
-
     try {
       const client = createGraphQLHttpClient(wsAuthToken);
 
