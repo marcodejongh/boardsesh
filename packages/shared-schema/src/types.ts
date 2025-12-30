@@ -130,6 +130,7 @@ export type ClimbSearchInput = {
   setter?: string[];
   setterId?: number;
   onlyBenchmarks?: boolean;
+  onlyTallClimbs?: boolean;
   // Personal progress filters
   hideAttempted?: boolean;
   hideCompleted?: boolean;
