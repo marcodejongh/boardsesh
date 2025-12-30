@@ -422,6 +422,47 @@ export const isSlugFormat = (value: string): boolean => {
   return !isNumericId(value);
 };
 
+// Construct URL for play mode (fullscreen queue view)
+export const constructPlayUrl = (
+  { board_name, layout_id, angle, size_id, set_ids }: ParsedBoardRouteParameters,
+  climb_uuid: ClimbUuid,
+  climbName?: string,
+) => {
+  const baseUrl = `/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/play/`;
+  if (climbName && climbName.trim()) {
+    const slug = generateClimbSlug(climbName.trim());
+    if (slug) {
+      return `${baseUrl}${slug}-${climb_uuid}`;
+    }
+  }
+  return `${baseUrl}${climb_uuid}`;
+};
+
+// Construct play URL with slug-based board parameters
+export const constructPlayUrlWithSlugs = (
+  board_name: string,
+  layoutName: string,
+  sizeName: string,
+  sizeDescription: string | undefined,
+  setNames: string[],
+  angle: number,
+  climb_uuid: ClimbUuid,
+  climbName?: string,
+) => {
+  const layoutSlug = generateLayoutSlug(layoutName);
+  const sizeSlug = generateSizeSlug(sizeName, sizeDescription);
+  const setSlug = generateSetSlug(setNames);
+
+  const baseUrl = `/${board_name}/${layoutSlug}/${sizeSlug}/${setSlug}/${angle}/play/`;
+  if (climbName && climbName.trim()) {
+    const climbSlug = generateClimbSlug(climbName.trim());
+    if (climbSlug) {
+      return `${baseUrl}${climbSlug}-${climb_uuid}`;
+    }
+  }
+  return `${baseUrl}${climb_uuid}`;
+};
+
 // Construct URL for creating a new climb (with optional fork params)
 export const constructCreateClimbUrl = (
   board_name: string,

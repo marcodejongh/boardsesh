@@ -1,0 +1,104 @@
+/* Layout-only styles - colors are applied via inline styles using themeTokens */
+
+.pageContainer {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  touch-action: pan-y pinch-zoom;
+}
+
+.contentWrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  min-height: 0;
+}
+
+.swipeContainer {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  touch-action: pan-y pinch-zoom;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.boardContainer {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  min-height: 0;
+  max-height: 100%;
+  width: 100%;
+}
+
+.emptyState {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px;
+  text-align: center;
+}
+
+.swipeHint {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(0, 0, 0, 0.6);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 12px;
+  opacity: 0.8;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+
+.swipeIndicator {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background-color: rgba(0, 0, 0, 0.3);
+  color: white;
+  padding: 12px;
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.swipeIndicatorLeft {
+  left: 8px;
+}
+
+.swipeIndicatorRight {
+  right: 8px;
+}
+
+.swipeIndicatorVisible {
+  opacity: 1;
+}
+
+/* Desktop adjustments */
+@media (min-width: 768px) {
+  .boardContainer {
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .swipeHint {
+    display: none;
+  }
+}

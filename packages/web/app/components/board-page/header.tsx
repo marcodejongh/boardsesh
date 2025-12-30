@@ -1,13 +1,15 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { Flex, Button, Dropdown, MenuProps } from 'antd';
 import { Header } from 'antd/es/layout/layout';
 import { useSession, signOut } from 'next-auth/react';
+import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import SearchButton from '../search-drawer/search-button';
 import SearchClimbNameInput from '../search-drawer/search-climb-name-input';
 import { UISearchParamsProvider } from '../queue-control/ui-searchparams-provider';
 import { BoardDetails } from '@/app/lib/types';
+import ClimbTitle from '../climb-card/climb-title';
 
 // Dynamically import bluetooth component to reduce initial bundle size
 // LED placement data (~50KB) is only loaded when bluetooth is actually used
@@ -15,24 +17,61 @@ const SendClimbToBoardButton = dynamic(
   () => import('../board-bluetooth-control/send-climb-to-board-button'),
   { ssr: false }
 );
-import { generateLayoutSlug, generateSizeSlug, generateSetSlug } from '@/app/lib/url-utils';
+import { generateLayoutSlug, generateSizeSlug, generateSetSlug, constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { ShareBoardButton } from './share-button';
 import { useQueueContext } from '../graphql-queue';
-import { UserOutlined, LogoutOutlined, LoginOutlined, PlusOutlined, MoreOutlined, SettingOutlined, LineChartOutlined } from '@ant-design/icons';
+import { UserOutlined, LogoutOutlined, LoginOutlined, PlusOutlined, MoreOutlined, SettingOutlined, LineChartOutlined, SearchOutlined } from '@ant-design/icons';
 import AngleSelector from './angle-selector';
 import Logo from '../brand/logo';
 import styles from './header.module.css';
 import Link from 'next/link';
 import AuthModal from '../auth/auth-modal';
 
+type PageMode = 'list' | 'view' | 'play' | 'create' | 'other';
+
 type BoardSeshHeaderProps = {
   boardDetails: BoardDetails;
   angle?: number;
 };
+
+function usePageMode(): PageMode {
+  const pathname = usePathname();
+
+  return useMemo(() => {
+    if (pathname.includes('/play/')) return 'play';
+    if (pathname.includes('/view/')) return 'view';
+    if (pathname.includes('/list')) return 'list';
+    if (pathname.includes('/create')) return 'create';
+    return 'other';
+  }, [pathname]);
+}
+
 export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeaderProps) {
   const { data: session } = useSession();
   const { currentClimb } = useQueueContext();
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const pageMode = usePageMode();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  // Build back to list URL for play/view pages
+  const getBackToListUrl = () => {
+    const { board_name, layout_name, size_name, size_description, set_names } = boardDetails;
+
+    let baseUrl: string;
+    if (layout_name && size_name && set_names && angle !== undefined) {
+      baseUrl = constructClimbListWithSlugs(board_name, layout_name, size_name, size_description, set_names, angle);
+    } else {
+      baseUrl = `/${board_name}/${boardDetails.layout_id}/${boardDetails.size_id}/${boardDetails.set_ids.join(',')}/${angle}/list`;
+    }
+
+    // Preserve search params when going back
+    const queryString = searchParams.toString();
+    if (queryString) {
+      return `${baseUrl}?${queryString}`;
+    }
+    return baseUrl;
+  };
 
   const handleSignOut = () => {
     signOut();
@@ -116,14 +155,36 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
             <Logo size="sm" showText={false} />
           </Flex>
 
-          {/* Center Section - Mobile only */}
-          <Flex justify="center" gap={2} style={{ flex: 1 }}>
-            <div className={styles.mobileOnly} style={{ flex: 1 }}>
-              <SearchClimbNameInput />
-            </div>
-            <div className={styles.mobileOnly}>
-              <SearchButton boardDetails={boardDetails} />
-            </div>
+          {/* Center Section - Content varies by page mode */}
+          <Flex justify="center" gap={2} style={{ flex: 1 }} align="center">
+            {/* List page: Show search (mobile only) */}
+            {pageMode === 'list' && (
+              <>
+                <div className={styles.mobileOnly} style={{ flex: 1 }}>
+                  <SearchClimbNameInput />
+                </div>
+                <div className={styles.mobileOnly}>
+                  <SearchButton boardDetails={boardDetails} />
+                </div>
+              </>
+            )}
+
+            {/* Play page: Show search/back button and climb name (mobile only) */}
+            {pageMode === 'play' && (
+              <div className={styles.mobileOnly} style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
+                <Button
+                  icon={<SearchOutlined />}
+                  type="text"
+                  aria-label="Back to search"
+                  onClick={() => router.push(getBackToListUrl())}
+                />
+                <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+                  <ClimbTitle climb={currentClimb} showAngle centered />
+                </div>
+              </div>
+            )}
+
+            {/* View page: Empty center on mobile (back button is in the page content) */}
           </Flex>
 
           {/* Right Section */}
