@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Input, Switch, Button, Typography, Tag, Alert, Flex } from 'antd';
+import { Input, Switch, Button, Typography, Tag, Alert, Flex, Slider, Tooltip } from 'antd';
 import type { InputRef } from 'antd';
-import { SettingOutlined, EditOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { SettingOutlined, EditOutlined, CheckOutlined, CloseOutlined, FireOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import { track } from '@vercel/analytics';
 import BoardRenderer from '../board-renderer/board-renderer';
@@ -15,7 +15,7 @@ import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { convertLitUpHoldsStringToMap } from '../board-renderer/util';
 import AuthModal from '../auth/auth-modal';
 import { useCreateClimbContext } from './create-climb-context';
-import { themeTokens } from '@/app/theme/theme-config';
+import CreateClimbHeatmapOverlay from './create-climb-heatmap-overlay';
 import styles from './create-climb-form.module.css';
 
 const { Text } = Typography;
@@ -63,6 +63,8 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
   const [isSaving, setIsSaving] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [pendingFormValues, setPendingFormValues] = useState<CreateClimbFormValues | null>(null);
+  const [showHeatmap, setShowHeatmap] = useState(false);
+  const [heatmapOpacity, setHeatmapOpacity] = useState(0.7);
 
   // Editable title state
   const [climbName, setClimbName] = useState(forkName ? `${forkName} fork` : '');
@@ -224,6 +226,15 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
     setShowSettingsPanel((prev) => !prev);
   }, []);
 
+  const handleToggleHeatmap = useCallback(() => {
+    setShowHeatmap((prev) => {
+      track(`Create Climb Heatmap ${!prev ? 'Shown' : 'Hidden'}`, {
+        boardLayout: boardDetails.layout_name || '',
+      });
+      return !prev;
+    });
+  }, [boardDetails.layout_name]);
+
   // Register actions with context for header to use
   useEffect(() => {
     if (createClimbContext) {
@@ -319,6 +330,16 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
                     </Text>
                     <EditOutlined className={styles.editIcon} />
                   </div>
+                  <Tooltip title={showHeatmap ? 'Hide heatmap' : 'Show hold popularity heatmap'}>
+                    <Button
+                      type={showHeatmap ? 'primary' : 'text'}
+                      icon={<FireOutlined />}
+                      size="small"
+                      onClick={handleToggleHeatmap}
+                      danger={showHeatmap}
+                      className={styles.heatmapButton}
+                    />
+                  </Tooltip>
                   <Button
                     type="text"
                     icon={showSettingsPanel ? <CloseOutlined /> : <SettingOutlined />}
@@ -328,7 +349,7 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
                   />
                 </Flex>
               )}
-              {/* Row 2: Draft toggle */}
+              {/* Row 2: Draft toggle and heatmap opacity */}
               <Flex gap={8} align="center">
                 <Text type="secondary" className={styles.draftLabel}>
                   Draft
@@ -338,6 +359,21 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
                   checked={isDraft}
                   onChange={setIsDraft}
                 />
+                {showHeatmap && (
+                  <>
+                    <Text type="secondary" className={styles.draftLabel}>
+                      Opacity
+                    </Text>
+                    <Slider
+                      min={0.1}
+                      max={1}
+                      step={0.1}
+                      value={heatmapOpacity}
+                      onChange={setHeatmapOpacity}
+                      className={styles.opacitySlider}
+                    />
+                  </>
+                )}
               </Flex>
             </Flex>
           </Flex>
@@ -345,13 +381,22 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
 
         {/* Board section - fills remaining space like play view */}
         <div className={styles.boardContainer}>
-          <BoardRenderer
-            boardDetails={boardDetails}
-            litUpHoldsMap={litUpHoldsMap}
-            mirrored={false}
-            onHoldClick={handleHoldClick}
-            fillHeight
-          />
+          <div className={styles.boardWrapper}>
+            <BoardRenderer
+              boardDetails={boardDetails}
+              litUpHoldsMap={litUpHoldsMap}
+              mirrored={false}
+              onHoldClick={handleHoldClick}
+              fillHeight
+            />
+            <CreateClimbHeatmapOverlay
+              boardDetails={boardDetails}
+              angle={angle}
+              litUpHoldsMap={litUpHoldsMap}
+              opacity={heatmapOpacity}
+              enabled={showHeatmap}
+            />
+          </div>
 
           {/* Settings overlay panel */}
           {showSettingsPanel && (

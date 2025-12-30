@@ -94,6 +94,23 @@
   color: var(--neutral-500);
 }
 
+/* Heatmap button next to title */
+.heatmapButton {
+  /* neutral-400 */
+  color: #9CA3AF;
+}
+
+.heatmapButton:hover {
+  /* neutral-500 */
+  color: #6B7280;
+}
+
+/* Opacity slider for heatmap */
+.opacitySlider {
+  width: 80px;
+  margin: 0;
+}
+
 /* Board container - fills remaining space like play view */
 .boardContainer {
   flex: 1;
@@ -106,6 +123,15 @@
   width: 100%;
   overflow: hidden;
   position: relative;
+}
+
+/* Wrapper for board and heatmap overlay - ensures overlay aligns with board */
+.boardWrapper {
+  position: relative;
+  height: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
 }
 
 /* Settings overlay panel */
@@ -167,6 +193,10 @@
 
   .climbTitleContainer {
     padding: 4px 8px;
+  }
+
+  .opacitySlider {
+    width: 60px;
   }
 }
 

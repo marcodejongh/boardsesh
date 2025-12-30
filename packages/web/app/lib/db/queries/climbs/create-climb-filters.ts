@@ -3,6 +3,7 @@ import { ParsedBoardRouteParameters, SearchRequestPagination } from '@/app/lib/t
 import { TableSet } from '@/lib/db/queries/util/table-select';
 import { getTableName } from '@/app/lib/data-sync/aurora/getTableName';
 import { SizeEdges } from '@/app/lib/__generated__/product-sizes-data';
+import { SUPPORTED_BOARDS } from '@/app/lib/board-data';
 
 /**
  * Creates a shared filtering object that can be used by both search climbs and heatmap queries
@@ -19,14 +20,32 @@ export const createClimbFilters = (
   sizeEdges: SizeEdges,
   userId?: number,
 ) => {
+  // Defense in depth: validate board_name before using in SQL queries
+  if (!SUPPORTED_BOARDS.includes(params.board_name)) {
+    throw new Error(`Invalid board name: ${params.board_name}`);
+  }
   // Process hold filters
-  const holdsToFilter = Object.entries(searchParams.holdsFilter || {}).map(([key, state]) => [
-    key.replace('hold_', ''),
-    state,
-  ]);
+  // holdsFilter can have values like:
+  // - 'ANY': hold must be present in the climb
+  // - 'NOT': hold must NOT be present in the climb
+  // - { state: 'STARTING' | 'HAND' | 'FOOT' | 'FINISH' }: hold must be present with that specific state
+  // - 'STARTING' | 'HAND' | 'FOOT' | 'FINISH': (after URL parsing) same as above
+  const holdsToFilter = Object.entries(searchParams.holdsFilter || {}).map(([key, stateOrValue]) => {
+    const holdId = key.replace('hold_', '');
+    // Handle both object form { state: 'STARTING' } and string form 'STARTING' (after URL parsing)
+    const state = typeof stateOrValue === 'object' && stateOrValue !== null
+      ? (stateOrValue as { state: string }).state
+      : stateOrValue;
+    return [holdId, state] as const;
+  });
 
   const anyHolds = holdsToFilter.filter(([, value]) => value === 'ANY').map(([key]) => Number(key));
   const notHolds = holdsToFilter.filter(([, value]) => value === 'NOT').map(([key]) => Number(key));
+
+  // Hold state filters - hold must be present with specific state (STARTING, HAND, FOOT, FINISH)
+  const holdStateFilters = holdsToFilter
+    .filter(([, value]) => ['STARTING', 'HAND', 'FOOT', 'FINISH'].includes(value as string))
+    .map(([key, state]) => ({ holdId: Number(key), state: state as string }));
 
   // Base conditions for filtering climbs that don't reference the product sizes table
   const baseConditions: SQL[] = [
@@ -89,6 +108,17 @@ export const createClimbFilters = (
     ...anyHolds.map((holdId) => like(tables.climbs.frames, `%${holdId}r%`)),
     ...notHolds.map((holdId) => notLike(tables.climbs.frames, `%${holdId}r%`)),
   ];
+
+  // State-specific hold conditions - use climb_holds table to filter by hold_id AND hold_state
+  const climbHoldsTable = getTableName(params.board_name, 'climb_holds');
+  const holdStateConditions: SQL[] = holdStateFilters.map(({ holdId, state }) =>
+    sql`EXISTS (
+      SELECT 1 FROM ${sql.identifier(climbHoldsTable)} ch
+      WHERE ch.climb_uuid = ${tables.climbs.uuid}
+      AND ch.hold_id = ${holdId}
+      AND ch.hold_state = ${state}
+    )`
+  );
 
   // Tall climbs filter condition
   // Only applies for Kilter Homewall (layout_id = 8) on the largest size
@@ -213,7 +243,7 @@ export const createClimbFilters = (
 
   return {
     // Helper function to get all climb filtering conditions
-    getClimbWhereConditions: () => [...baseConditions, ...nameCondition, ...setterNameCondition, ...holdConditions, ...tallClimbsConditions, ...personalProgressConditions],
+    getClimbWhereConditions: () => [...baseConditions, ...nameCondition, ...setterNameCondition, ...holdConditions, ...holdStateConditions, ...tallClimbsConditions, ...personalProgressConditions],
 
     // Size-specific conditions
     getSizeConditions: () => sizeConditions,
@@ -245,10 +275,12 @@ export const createClimbFilters = (
     nameCondition,
     setterNameCondition,
     holdConditions,
+    holdStateConditions,
     tallClimbsConditions,
     sizeConditions,
     personalProgressConditions,
     anyHolds,
     notHolds,
+    holdStateFilters,
   };
 };
