@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Form, Input, Switch, Button, Typography, Tag, Alert } from 'antd';
-import { ExperimentOutlined, SettingOutlined } from '@ant-design/icons';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { Input, Switch, Button, Typography, Tag, Alert, Flex } from 'antd';
+import { ExperimentOutlined, SettingOutlined, EditOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import { track } from '@vercel/analytics';
 import BoardRenderer from '../board-renderer/board-renderer';
@@ -13,9 +13,9 @@ import { BoardDetails } from '@/app/lib/types';
 import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { convertLitUpHoldsStringToMap } from '../board-renderer/util';
 import AuthModal from '../auth/auth-modal';
+import { themeTokens } from '@/app/theme/theme-config';
 import styles from './create-climb-form.module.css';
 
-const { TextArea } = Input;
 const { Text } = Typography;
 
 interface CreateClimbFormValues {
@@ -56,10 +56,17 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
 
   const { isConnected, sendFramesToBoard } = useBoardBluetooth({ boardDetails });
 
-  const [form] = Form.useForm<CreateClimbFormValues>();
   const [isSaving, setIsSaving] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [pendingFormValues, setPendingFormValues] = useState<CreateClimbFormValues | null>(null);
+
+  // Editable title state
+  const [climbName, setClimbName] = useState(forkName ? `${forkName} fork` : '');
+  const [description, setDescription] = useState('');
+  const [isDraft, setIsDraft] = useState(false);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editingName, setEditingName] = useState('');
+  const titleInputRef = useRef<HTMLInputElement>(null);
 
   // Send frames to board whenever litUpHoldsMap changes and we're connected
   useEffect(() => {
@@ -87,7 +94,38 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
     }
   }, [originalResetHolds, isConnected, sendFramesToBoard]);
 
-  const doSaveClimb = async (values: CreateClimbFormValues) => {
+  // Title editing handlers
+  const handleStartEditTitle = useCallback(() => {
+    setEditingName(climbName);
+    setIsEditingTitle(true);
+    // Focus the input after it renders
+    setTimeout(() => titleInputRef.current?.focus(), 0);
+  }, [climbName]);
+
+  const handleSaveTitle = useCallback(() => {
+    if (editingName.trim()) {
+      setClimbName(editingName.trim());
+    }
+    setIsEditingTitle(false);
+  }, [editingName]);
+
+  const handleCancelEditTitle = useCallback(() => {
+    setIsEditingTitle(false);
+    setEditingName('');
+  }, []);
+
+  const handleTitleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        handleSaveTitle();
+      } else if (e.key === 'Escape') {
+        handleCancelEditTitle();
+      }
+    },
+    [handleSaveTitle, handleCancelEditTitle],
+  );
+
+  const doSaveClimb = async () => {
     setIsSaving(true);
 
     try {
@@ -95,9 +133,9 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
 
       await saveClimb({
         layout_id: boardDetails.layout_id,
-        name: values.name,
-        description: values.description || '',
-        is_draft: values.isDraft,
+        name: climbName,
+        description: description || '',
+        is_draft: isDraft,
         frames,
         frames_count: 1,
         frames_pace: 0,
@@ -106,7 +144,7 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
 
       track('Climb Created', {
         boardLayout: boardDetails.layout_name || '',
-        isDraft: values.isDraft,
+        isDraft: isDraft,
         holdCount: totalHolds,
       });
 
@@ -130,14 +168,14 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
     }
   };
 
-  const handleSubmit = async (values: CreateClimbFormValues) => {
-    if (!isValid) {
+  const handlePublish = async () => {
+    if (!isValid || !climbName.trim()) {
       return;
     }
 
     if (!isAuthenticated) {
       // Store the form values and show auth modal
-      setPendingFormValues(values);
+      setPendingFormValues({ name: climbName, description, isDraft });
       setShowAuthModal(true);
       return;
     }
@@ -148,7 +186,7 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
       return;
     }
 
-    await doSaveClimb(values);
+    await doSaveClimb();
   };
 
   const handleAuthSuccess = async () => {
@@ -178,118 +216,168 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
   };
 
   const boardNameCapitalized = boardDetails.board_name.charAt(0).toUpperCase() + boardDetails.board_name.slice(1);
-  const canSave = isAuthenticated && hasAuroraCredentials && isValid;
+  const canSave = isAuthenticated && hasAuroraCredentials && isValid && climbName.trim().length > 0;
 
   return (
-    <div className={styles.pageContainer}>
-      <Alert
-        message="Beta Feature"
-        type="info"
-        showIcon
-        icon={<ExperimentOutlined />}
-        className={styles.betaBanner}
-        banner
-      />
+    <div className={styles.pageContainer} style={{ backgroundColor: themeTokens.semantic.background }}>
+      {/* Header with publish button */}
+      <div className={styles.headerBar}>
+        <Button onClick={handleCancel} disabled={isSaving}>
+          Cancel
+        </Button>
+        <Flex gap={8} align="center">
+          <ExperimentOutlined style={{ color: themeTokens.colors.info }} title="Beta Feature" />
+          <Button
+            type="primary"
+            onClick={handlePublish}
+            loading={isSaving}
+            disabled={!canSave || isSaving}
+          >
+            {isSaving ? 'Publishing...' : 'Publish'}
+          </Button>
+        </Flex>
+      </div>
 
+      {/* Auth alerts */}
+      {!isAuthenticated && (
+        <Alert
+          message="Sign in required"
+          description="Sign in to your Boardsesh account to save your climb."
+          type="warning"
+          showIcon
+          className={styles.authAlert}
+          action={
+            <Button size="small" type="primary" onClick={() => setShowAuthModal(true)}>
+              Sign In
+            </Button>
+          }
+        />
+      )}
+
+      {isAuthenticated && !hasAuroraCredentials && (
+        <Alert
+          message={`Link your ${boardNameCapitalized} account`}
+          description={`Link your ${boardNameCapitalized} Board account in Settings to save climbs.`}
+          type="warning"
+          showIcon
+          className={styles.authAlert}
+          action={
+            <Button size="small" icon={<SettingOutlined />} onClick={() => router.push('/settings')}>
+              Settings
+            </Button>
+          }
+        />
+      )}
+
+      {/* Main Content - matches play view layout */}
       <div className={styles.contentWrapper}>
-        {/* Board Section */}
-        <div className={styles.boardSection}>
+        {/* Title section - same position as play view */}
+        <div
+          className={styles.climbTitleContainer}
+          style={{
+            padding: `${themeTokens.spacing[1]}px ${themeTokens.spacing[3]}px`,
+          }}
+        >
+          <Flex gap={12} align="center">
+            {/* Left side: Editable Name and draft toggle stacked */}
+            <Flex vertical gap={0} style={{ flex: 1, minWidth: 0 }}>
+              {/* Row 1: Editable Title */}
+              {isEditingTitle ? (
+                <Flex gap={4} align="center">
+                  <Input
+                    ref={titleInputRef as React.Ref<any>}
+                    value={editingName}
+                    onChange={(e) => setEditingName(e.target.value)}
+                    onKeyDown={handleTitleKeyDown}
+                    onBlur={handleSaveTitle}
+                    maxLength={100}
+                    placeholder="Enter climb name"
+                    size="small"
+                    style={{ flex: 1 }}
+                  />
+                  <Button
+                    type="text"
+                    icon={<CheckOutlined />}
+                    size="small"
+                    onClick={handleSaveTitle}
+                  />
+                  <Button
+                    type="text"
+                    icon={<CloseOutlined />}
+                    size="small"
+                    onClick={handleCancelEditTitle}
+                  />
+                </Flex>
+              ) : (
+                <div
+                  className={styles.editableTitle}
+                  onClick={handleStartEditTitle}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => e.key === 'Enter' && handleStartEditTitle()}
+                >
+                  <Text
+                    style={{
+                      fontSize: themeTokens.typography.fontSize.sm,
+                      fontWeight: themeTokens.typography.fontWeight.bold,
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}
+                  >
+                    {climbName || 'Tap to name your climb'}
+                  </Text>
+                  <EditOutlined
+                    style={{
+                      fontSize: themeTokens.typography.fontSize.xs,
+                      color: themeTokens.neutral[400],
+                      marginLeft: 4,
+                    }}
+                  />
+                </div>
+              )}
+              {/* Row 2: Draft toggle */}
+              <Flex gap={8} align="center">
+                <Text
+                  type="secondary"
+                  style={{
+                    fontSize: themeTokens.typography.fontSize.xs,
+                    fontWeight: themeTokens.typography.fontWeight.normal,
+                  }}
+                >
+                  Draft
+                </Text>
+                <Switch
+                  size="small"
+                  checked={isDraft}
+                  onChange={setIsDraft}
+                />
+              </Flex>
+            </Flex>
+          </Flex>
+        </div>
+
+        {/* Board section - fills remaining space like play view */}
+        <div className={styles.boardContainer}>
           <BoardRenderer
             boardDetails={boardDetails}
             litUpHoldsMap={litUpHoldsMap}
             mirrored={false}
             onHoldClick={handleHoldClick}
+            fillHeight
           />
-
-          {/* Hold counts */}
-          <div className={styles.holdCounts}>
-            <Tag color={startingCount > 0 ? 'green' : 'default'}>Starting: {startingCount}/2</Tag>
-            <Tag color={finishCount > 0 ? 'magenta' : 'default'}>Finish: {finishCount}/2</Tag>
-            <Tag color={totalHolds > 0 ? 'blue' : 'default'}>Total holds: {totalHolds}</Tag>
-            {totalHolds > 0 && (
-              <Button size="small" onClick={resetHolds}>
-                Clear All
-              </Button>
-            )}
-          </div>
         </div>
 
-        {/* Form Section */}
-        <div className={styles.formSection}>
-          {!isAuthenticated && (
-            <Alert
-              message="Sign in required"
-              description="Sign in to your Boardsesh account to save your climb."
-              type="warning"
-              showIcon
-              className={styles.authAlert}
-              action={
-                <Button size="small" type="primary" onClick={() => setShowAuthModal(true)}>
-                  Sign In
-                </Button>
-              }
-            />
+        {/* Hold counts bar at bottom */}
+        <div className={styles.holdCountsBar}>
+          <Tag color={startingCount > 0 ? 'green' : 'default'}>Starting: {startingCount}/2</Tag>
+          <Tag color={finishCount > 0 ? 'magenta' : 'default'}>Finish: {finishCount}/2</Tag>
+          <Tag color={totalHolds > 0 ? 'blue' : 'default'}>Total: {totalHolds}</Tag>
+          {totalHolds > 0 && (
+            <Button size="small" onClick={resetHolds}>
+              Clear All
+            </Button>
           )}
-
-          {isAuthenticated && !hasAuroraCredentials && (
-            <Alert
-              message={`Link your ${boardNameCapitalized} account`}
-              description={`Link your ${boardNameCapitalized} Board account in Settings to save climbs.`}
-              type="warning"
-              showIcon
-              className={styles.authAlert}
-              action={
-                <Button size="small" icon={<SettingOutlined />} onClick={() => router.push('/settings')}>
-                  Settings
-                </Button>
-              }
-            />
-          )}
-
-          <Form
-            form={form}
-            layout="vertical"
-            onFinish={handleSubmit}
-            initialValues={{
-              name: forkName ? `${forkName} fork` : '',
-              description: '',
-              isDraft: false,
-            }}
-            className={styles.formContent}
-          >
-            <Form.Item
-              name="name"
-              label="Climb Name"
-              rules={[{ required: true, message: 'Please enter a name for your climb' }]}
-            >
-              <Input placeholder="Enter climb name" maxLength={100} />
-            </Form.Item>
-
-            <Form.Item name="description" label="Description">
-              <TextArea placeholder="Optional description or beta" rows={3} maxLength={500} />
-            </Form.Item>
-
-            <Form.Item name="isDraft" label="Save as Draft" valuePropName="checked">
-              <Switch />
-            </Form.Item>
-
-            <div className={styles.buttonGroup}>
-              <Button
-                type="primary"
-                htmlType="submit"
-                loading={isSaving}
-                disabled={!canSave || isSaving}
-                block
-                size="large"
-              >
-                {isSaving ? 'Saving...' : 'Save Climb'}
-              </Button>
-
-              <Button block size="large" onClick={handleCancel} disabled={isSaving}>
-                Cancel
-              </Button>
-            </div>
-          </Form>
         </div>
       </div>
 
