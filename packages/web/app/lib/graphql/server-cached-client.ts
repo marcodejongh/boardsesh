@@ -3,10 +3,10 @@ import { unstable_cache } from 'next/cache';
 import { GraphQLClient, RequestDocument, Variables } from 'graphql-request';
 
 /**
- * Cache duration for climb search queries (in seconds)
- * 30 days - climb data is synced periodically and rarely changes
+ * Cache durations for climb search queries (in seconds)
  */
-const CLIMB_SEARCH_CACHE_DURATION = 30 * 24 * 60 * 60; // 30 days
+const CACHE_DURATION_DEFAULT_SEARCH = 30 * 24 * 60 * 60; // 30 days for default searches
+const CACHE_DURATION_FILTERED_SEARCH = 60 * 60; // 1 hour for filtered searches
 
 /**
  * Get the HTTP GraphQL endpoint URL
@@ -59,12 +59,12 @@ function createCacheKeyFromVariables(variables: Variables | undefined): string[]
  * @param document - GraphQL query document
  * @param variables - Query variables
  * @param cacheTag - Tag for cache invalidation (e.g., 'climb-search')
- * @param revalidate - Cache duration in seconds (default: 5 minutes)
+ * @param revalidate - Cache duration in seconds
  */
 export function createCachedGraphQLQuery<T = unknown, V extends Variables = Variables>(
   document: RequestDocument,
   cacheTag: string,
-  revalidate: number = CLIMB_SEARCH_CACHE_DURATION,
+  revalidate: number,
 ) {
   return async (variables?: V): Promise<T> => {
     const cachedFn = unstable_cache(
@@ -82,17 +82,25 @@ export function createCachedGraphQLQuery<T = unknown, V extends Variables = Vari
 
 /**
  * Pre-configured cached query for climb search
- * Uses 30-day cache since climb data rarely changes
+ *
+ * @param document - GraphQL query document
+ * @param variables - Query variables
+ * @param isDefaultSearch - Whether this is a default/unfiltered search (caches longer)
  */
 export async function cachedSearchClimbs<T = unknown>(
   document: RequestDocument,
   variables: Variables,
+  isDefaultSearch: boolean = false,
 ): Promise<T> {
+  const revalidate = isDefaultSearch
+    ? CACHE_DURATION_DEFAULT_SEARCH
+    : CACHE_DURATION_FILTERED_SEARCH;
+
   const cachedFn = unstable_cache(
     async () => executeGraphQLInternal<T>(document, variables),
     ['graphql', 'climb-search', ...createCacheKeyFromVariables(variables)],
     {
-      revalidate: CLIMB_SEARCH_CACHE_DURATION,
+      revalidate,
       tags: ['climb-search'],
     }
   );

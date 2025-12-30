@@ -14,8 +14,9 @@ import { SEARCH_CLIMBS, type ClimbSearchResponse } from '@/app/lib/graphql/opera
 import { getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
 import { MAX_PAGE_SIZE } from '@/app/components/board-page/constants';
 
-// Enable route segment caching - matches the unstable_cache revalidate time
-export const revalidate = 30 * 24 * 60 * 60; // 30 days
+// Route segment revalidate uses shorter duration since it can't be dynamic
+// The data cache (unstable_cache) uses longer duration for default searches
+export const revalidate = 60 * 60; // 1 hour
 
 export default async function DynamicResultsPage(props: {
   params: Promise<BoardRouteParametersWithUuid>;
@@ -100,12 +101,24 @@ export default async function DynamicResultsPage(props: {
     setter: searchParamsObject.settername && searchParamsObject.settername.length > 0 ? searchParamsObject.settername : undefined,
   };
 
+  // Check if this is a default search (no custom filters applied)
+  // Default searches can be cached much longer (30 days vs 1 hour)
+  const isDefaultSearch =
+    !searchParamsObject.gradeAccuracy &&
+    !searchParamsObject.minGrade &&
+    !searchParamsObject.maxGrade &&
+    !searchParamsObject.minAscents &&
+    !searchParamsObject.name &&
+    (!searchParamsObject.settername || searchParamsObject.settername.length === 0) &&
+    (searchParamsObject.sortBy || 'ascents') === 'ascents' &&
+    (searchParamsObject.sortOrder || 'desc') === 'desc';
+
   let searchResponse: ClimbSearchResponse;
   let boardDetails: BoardDetails;
 
   try {
     [searchResponse, boardDetails] = await Promise.all([
-      cachedSearchClimbs<ClimbSearchResponse>(SEARCH_CLIMBS, { input: searchInput }),
+      cachedSearchClimbs<ClimbSearchResponse>(SEARCH_CLIMBS, { input: searchInput }, isDefaultSearch),
       getBoardDetails(parsedParams),
     ]);
   } catch (error) {
