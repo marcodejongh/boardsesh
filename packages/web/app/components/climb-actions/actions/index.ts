@@ -7,3 +7,4 @@ export { OpenInAppAction } from './open-in-app-action';
 export { MirrorAction } from './mirror-action';
 export { ShareAction } from './share-action';
 export { AddToListAction } from './add-to-list-action';
+export { PlaylistAction } from './playlist-action';

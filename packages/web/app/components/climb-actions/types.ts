@@ -13,7 +13,8 @@ export type ClimbActionType =
   | 'openInApp'
   | 'mirror'
   | 'share'
-  | 'addToList';
+  | 'addToList'
+  | 'playlist';
 
 /**
  * View modes for rendering climb actions
@@ -133,6 +134,7 @@ export const DEFAULT_ACTION_ORDER: ClimbActionType[] = [
   'tick',
   'share',
   'addToList',
+  'playlist',
   'openInApp',
   'mirror',
 ];
@@ -140,7 +142,7 @@ export const DEFAULT_ACTION_ORDER: ClimbActionType[] = [
 /**
  * Actions that require authentication
  */
-export const AUTH_REQUIRED_ACTIONS: ClimbActionType[] = ['favorite', 'addToList'];
+export const AUTH_REQUIRED_ACTIONS: ClimbActionType[] = ['favorite', 'addToList', 'playlist'];
 
 /**
  * Actions that require Aurora credentials
