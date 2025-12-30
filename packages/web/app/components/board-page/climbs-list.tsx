@@ -128,7 +128,7 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
                 climb={climb}
                 boardDetails={boardDetails}
                 selected={currentClimb?.uuid === climb.uuid}
-                onCoverClick={() => {
+                onCoverDoubleClick={() => {
                   updateHash(climb.uuid);
                   setCurrentClimb(climb);
                   track('Climb List Card Clicked', {

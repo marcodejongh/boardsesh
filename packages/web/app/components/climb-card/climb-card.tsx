@@ -14,6 +14,7 @@ type ClimbCardProps = {
   boardDetails: BoardDetails;
   coverLinkToClimb?: boolean;
   onCoverClick?: () => void;
+  onCoverDoubleClick?: () => void;
   selected?: boolean;
   actions?: React.JSX.Element[];
   /** Optional expanded content to render over the cover */
@@ -49,11 +50,13 @@ function ClimbCardWithActions({
   climb,
   boardDetails,
   onCoverClick,
+  onCoverDoubleClick,
   selected,
 }: {
   climb: Climb;
   boardDetails: BoardDetails;
   onCoverClick?: () => void;
+  onCoverDoubleClick?: () => void;
   selected?: boolean;
 }) {
   // Actions are generated here - hooks inside action components are called during this render
@@ -64,7 +67,7 @@ function ClimbCardWithActions({
     exclude: ['tick', 'openInApp', 'mirror', 'share', 'addToList'],
   });
 
-  const cover = <ClimbCardCover climb={climb} boardDetails={boardDetails} onClick={onCoverClick} />;
+  const cover = <ClimbCardCover climb={climb} boardDetails={boardDetails} onClick={onCoverClick} onDoubleClick={onCoverDoubleClick} />;
   const cardTitle = <ClimbTitle climb={climb} layout="horizontal" showSetterInfo />;
 
   return (
@@ -101,11 +104,12 @@ const ClimbCardStatic = React.memo(
     climb,
     boardDetails,
     onCoverClick,
+    onCoverDoubleClick,
     selected,
     actions,
     expandedContent,
   }: ClimbCardProps) => {
-    const cover = <ClimbCardCover climb={climb} boardDetails={boardDetails} onClick={onCoverClick} />;
+    const cover = <ClimbCardCover climb={climb} boardDetails={boardDetails} onClick={onCoverClick} onDoubleClick={onCoverDoubleClick} />;
     const cardTitle = climb ? (
       <ClimbTitle climb={climb} layout="horizontal" showSetterInfo />
     ) : (
@@ -157,6 +161,7 @@ const ClimbCardStatic = React.memo(
     }
     // Compare callbacks by reference (parent should memoize with useCallback)
     if (prevProps.onCoverClick !== nextProps.onCoverClick) return false;
+    if (prevProps.onCoverDoubleClick !== nextProps.onCoverDoubleClick) return false;
     // Compare actions arrays properly
     if (!areActionsEqual(prevProps.actions, nextProps.actions)) return false;
     // Compare expandedContent by reference
@@ -177,7 +182,7 @@ ClimbCardStatic.displayName = 'ClimbCardStatic';
  * - When no climb, shows loading state
  */
 function ClimbCard(props: ClimbCardProps) {
-  const { climb, boardDetails, onCoverClick, selected, actions, expandedContent } = props;
+  const { climb, boardDetails, onCoverClick, onCoverDoubleClick, selected, actions, expandedContent } = props;
 
   // When actions or expandedContent are provided externally, use the memoized static version
   if (actions !== undefined || expandedContent !== undefined) {
@@ -186,6 +191,7 @@ function ClimbCard(props: ClimbCardProps) {
         climb={climb}
         boardDetails={boardDetails}
         onCoverClick={onCoverClick}
+        onCoverDoubleClick={onCoverDoubleClick}
         selected={selected}
         actions={actions}
         expandedContent={expandedContent}
@@ -201,6 +207,7 @@ function ClimbCard(props: ClimbCardProps) {
         climb={climb}
         boardDetails={boardDetails}
         onCoverClick={onCoverClick}
+        onCoverDoubleClick={onCoverDoubleClick}
         selected={selected}
       />
     );
@@ -212,6 +219,7 @@ function ClimbCard(props: ClimbCardProps) {
       climb={climb}
       boardDetails={boardDetails}
       onCoverClick={onCoverClick}
+      onCoverDoubleClick={onCoverDoubleClick}
       selected={selected}
       actions={[]}
     />
