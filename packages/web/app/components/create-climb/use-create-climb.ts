@@ -134,6 +134,7 @@ export function useCreateClimb(boardName: BoardName, options?: UseCreateClimbOpt
 
   return {
     litUpHoldsMap,
+    setLitUpHoldsMap,
     handleHoldClick,
     generateFramesString,
     startingCount,
