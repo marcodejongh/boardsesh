@@ -67,23 +67,25 @@ const CreateClimbHeatmapOverlay: React.FC<CreateClimbHeatmapOverlayProps> = ({
     [heatmapData],
   );
 
-  // Get value based on the selected hold types
-  const getValue = (data: HeatmapData | undefined): number => {
-    if (!data) return 0;
+  // Get value based on the selected hold types - memoized to avoid stale closures
+  const getValue = useMemo(() => {
+    return (data: HeatmapData | undefined): number => {
+      if (!data) return 0;
 
-    // If specific hold types are selected, sum up their usage
-    if (selectedHoldTypes.size > 0) {
-      let total = 0;
-      if (selectedHoldTypes.has('STARTING')) total += data.startingUses;
-      if (selectedHoldTypes.has('HAND')) total += data.handUses;
-      if (selectedHoldTypes.has('FOOT')) total += data.footUses;
-      if (selectedHoldTypes.has('FINISH')) total += data.finishUses;
-      return total || data.totalUses; // Fallback to total if no specific types
-    }
+      // If specific hold types are selected, sum up their usage
+      if (selectedHoldTypes.size > 0) {
+        let total = 0;
+        if (selectedHoldTypes.has('STARTING')) total += data.startingUses;
+        if (selectedHoldTypes.has('HAND')) total += data.handUses;
+        if (selectedHoldTypes.has('FOOT')) total += data.footUses;
+        if (selectedHoldTypes.has('FINISH')) total += data.finishUses;
+        return total || data.totalUses; // Fallback to total if no specific types
+      }
 
-    // Default to total uses
-    return data.totalUses;
-  };
+      // Default to total uses
+      return data.totalUses;
+    };
+  }, [selectedHoldTypes]);
 
   // Create color and opacity scales
   const { colorScale, opacityScale } = useMemo(() => {
@@ -120,7 +122,7 @@ const CreateClimbHeatmapOverlay: React.FC<CreateClimbHeatmapOverlayProps> = ({
         return Math.max(0.3, Math.min(0.8, logScale(value) / HEATMAP_COLORS.length));
       },
     };
-  }, [heatmapData, litUpHoldsMap, selectedHoldTypes]);
+  }, [heatmapData, litUpHoldsMap, getValue]);
 
   if (!enabled || loading) {
     return null;
@@ -158,7 +160,7 @@ const CreateClimbHeatmapOverlay: React.FC<CreateClimbHeatmapOverlayProps> = ({
           const data = heatmapMap.get(hold.id);
           const value = getValue(data);
 
-          if (value === 0 || value < 1) return null;
+          if (value < 1) return null;
 
           return (
             <circle
