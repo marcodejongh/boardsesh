@@ -138,36 +138,8 @@
     {
       "idx": 19,
       "version": "7",
-      "when": 1766700000000,
-      "tag": "0019_aurora_credentials",
-      "breakpoints": true
-    },
-    {
-      "idx": 20,
-      "version": "7",
-      "when": 1766701000000,
-      "tag": "0020_add_synced_columns",
-      "breakpoints": true
-    },
-    {
-      "idx": 21,
-      "version": "7",
-      "when": 1766702000000,
-      "tag": "0021_add_board_sessions",
-      "breakpoints": true
-    },
-    {
-      "idx": 22,
-      "version": "7",
-      "when": 1766703000000,
-      "tag": "0022_add_session_status",
-      "breakpoints": true
-    },
-    {
-      "idx": 23,
-      "version": "7",
-      "when": 1767055200000,
-      "tag": "0024_add_playlists",
+      "when": 1735516800000,
+      "tag": "0025_fix_missing_tables",
       "breakpoints": true
     }
   ]
