@@ -5,7 +5,7 @@ import { drizzle } from 'drizzle-orm/neon-serverless';
 import { eq, and } from 'drizzle-orm';
 import { decrypt } from '@/app/lib/crypto';
 import { BoardName } from '@/app/lib/types';
-import { auroraCredentials } from '@/packages/db/src/schema/auth/mappings';
+import * as schema from '@/app/lib/db/schema';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // 5 minutes max
@@ -35,8 +35,8 @@ export async function GET(request: Request) {
       // Get all users with active Aurora credentials
       const credentials = await db
         .select()
-        .from(auroraCredentials)
-        .where(eq(auroraCredentials.syncStatus, 'active'));
+        .from(schema.auroraCredentials)
+        .where(eq(schema.auroraCredentials.syncStatus, 'active'));
 
       console.log(`[User Sync Cron] Found ${credentials.length} users with active Aurora credentials`);
 
@@ -64,7 +64,7 @@ export async function GET(request: Request) {
 
           // Update last sync time on success
           await db
-            .update(auroraCredentials)
+            .update(schema.auroraCredentials)
             .set({
               lastSyncAt: new Date(),
               syncStatus: 'active',
@@ -73,8 +73,8 @@ export async function GET(request: Request) {
             })
             .where(
               and(
-                eq(auroraCredentials.userId, cred.userId),
-                eq(auroraCredentials.boardType, boardType)
+                eq(schema.auroraCredentials.userId, cred.userId),
+                eq(schema.auroraCredentials.boardType, boardType)
               )
             );
 
@@ -92,7 +92,7 @@ export async function GET(request: Request) {
           // Update sync status to error
           try {
             await db
-              .update(auroraCredentials)
+              .update(schema.auroraCredentials)
               .set({
                 syncStatus: 'error',
                 syncError: errorMsg,
@@ -100,8 +100,8 @@ export async function GET(request: Request) {
               })
               .where(
                 and(
-                  eq(auroraCredentials.userId, cred.userId),
-                  eq(auroraCredentials.boardType, cred.boardType)
+                  eq(schema.auroraCredentials.userId, cred.userId),
+                  eq(schema.auroraCredentials.boardType, cred.boardType)
                 )
               );
           } catch (updateError) {
