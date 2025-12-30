@@ -37,18 +37,33 @@ const PlayViewClient: React.FC<PlayViewClientProps> = ({ boardDetails, initialCl
   } = useQueueContext();
 
   const [swipeOffset, setSwipeOffset] = useState(0);
-  const [showSwipeHint, setShowSwipeHint] = useState(true);
+  const [showSwipeHint, setShowSwipeHint] = useState(false);
 
   // Use queue's current climb if available, otherwise use initial climb from SSR
   const displayClimb = currentClimb || initialClimb;
 
-  // Hide swipe hint after first interaction
+  // Check if user has already swiped before (persisted in localStorage)
   useEffect(() => {
+    const hasSwipedBefore = localStorage.getItem('playViewSwipeHintDismissed');
+    if (hasSwipedBefore) {
+      setShowSwipeHint(false);
+      return;
+    }
+
+    // Show hint for new users, then auto-hide after 3 seconds
+    setShowSwipeHint(true);
     const timer = setTimeout(() => {
       setShowSwipeHint(false);
     }, 3000);
     return () => clearTimeout(timer);
   }, []);
+
+  const dismissSwipeHintPermanently = useCallback(() => {
+    if (showSwipeHint) {
+      setShowSwipeHint(false);
+      localStorage.setItem('playViewSwipeHintDismissed', 'true');
+    }
+  }, [showSwipeHint]);
 
   const getBackToListUrl = useCallback(() => {
     const { board_name, layout_name, size_name, size_description, set_names } = boardDetails;
@@ -129,7 +144,7 @@ const PlayViewClient: React.FC<PlayViewClientProps> = ({ boardDetails, initialCl
       // Clamp the offset within bounds (matches queue-control-bar)
       const clampedOffset = Math.max(-MAX_SWIPE, Math.min(MAX_SWIPE, deltaX));
       setSwipeOffset(clampedOffset);
-      setShowSwipeHint(false);
+      dismissSwipeHintPermanently();
     },
     onSwipedLeft: (eventData) => {
       setSwipeOffset(0);
