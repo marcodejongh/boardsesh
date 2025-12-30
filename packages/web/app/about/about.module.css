@@ -1,3 +1,9 @@
+/*
+ * Color values match themeTokens from theme-config.ts
+ * CSS modules cannot import JS, so hex values are used directly
+ * (same pattern as index.css)
+ */
+
 .pageLayout {
   min-height: 100vh;
   background: #f9fafb;
@@ -48,12 +54,6 @@
   .heroSubtitle {
     font-size: 14px;
   }
-}
-
-.sectionTitle {
-  display: flex;
-  align-items: center;
-  gap: 8px;
 }
 
 .sectionIcon {
