@@ -101,7 +101,7 @@ function BoardCredentialCard({
           </Title>
         </div>
         <Text type="secondary" className={styles.notConnectedText}>
-          Not connected. Link your {boardName} account to sync your logbook and ascents.
+          Not connected. Link your {boardName} account to import your Aurora data.
         </Text>
         <Button type="primary" icon={<PlusOutlined />} onClick={onAdd} block>
           Link {boardName} Account
@@ -288,8 +288,9 @@ export default function AuroraCredentialsSection() {
       <Card>
         <Title level={5}>Board Accounts</Title>
         <Text type="secondary" className={styles.sectionDescription}>
-          Link your Kilter and Tension board accounts to sync your logbook, track ascents, and save
-          new climbs.
+          Link your Kilter and Tension board accounts to import your Aurora data to Boardsesh.
+          We'll automatically sync your logbook, ascents, and climbs FROM Aurora every 6 hours.
+          Data created in Boardsesh stays local and does not sync back to Aurora.
         </Text>
 
         <Space direction="vertical" size="middle" className={styles.cardsContainer}>
@@ -321,7 +322,8 @@ export default function AuroraCredentialsSection() {
       >
         <Text type="secondary" className={styles.modalDescription}>
           Enter your {selectedBoard.charAt(0).toUpperCase() + selectedBoard.slice(1)} Board
-          username and password. Your credentials are encrypted and securely stored.
+          username and password to import your Aurora data.
+          Your credentials are encrypted and securely stored. Data syncs every 6 hours.
         </Text>
         <Form form={form} layout="vertical" onFinish={handleSaveCredentials}>
           <Form.Item

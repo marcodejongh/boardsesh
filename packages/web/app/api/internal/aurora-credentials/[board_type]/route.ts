@@ -60,11 +60,31 @@ export async function GET(request: Request, { params }: RouteParams) {
     // If the sync status is error or expired, the token might not be valid
     // But we'll still return it and let the API calls fail gracefully
 
+    // Decrypt credentials with error handling
+    let token: string | null = null;
+    let username: string | null = null;
+
+    try {
+      token = credential.auroraToken ? decrypt(credential.auroraToken) : null;
+      username = decrypt(credential.encryptedUsername);
+    } catch (decryptError) {
+      console.error("Failed to decrypt Aurora credentials - encryption secret may have changed:", decryptError);
+      // Return null values - frontend will handle gracefully
+      return NextResponse.json({
+        authenticated: true,
+        token: null,
+        user_id: null,
+        username: null,
+        syncStatus: 'error',
+        error: 'Failed to decrypt credentials',
+      });
+    }
+
     return NextResponse.json({
       authenticated: true,
-      token: credential.auroraToken ? decrypt(credential.auroraToken) : null,
+      token,
       user_id: credential.auroraUserId,
-      username: decrypt(credential.encryptedUsername),
+      username,
       syncStatus: credential.syncStatus,
     });
   } catch (error) {
