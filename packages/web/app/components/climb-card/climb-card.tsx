@@ -43,6 +43,7 @@ const areActionsEqual = (
 /**
  * Inner component that handles dynamic action generation.
  * Separated to allow proper hook usage without affecting memoization of static cases.
+ * Note: This component generates its own actions and expandedContent - external props are not supported.
  */
 function ClimbCardWithActions({
   climb,
@@ -81,7 +82,7 @@ function ClimbCardWithActions({
             backgroundColor: selected ? themeTokens.semantic.selectedLight : undefined,
           },
         }}
-        actions={cardActions as React.JSX.Element[]}
+        actions={cardActions}
       >
         <div style={{ position: 'relative' }}>
           {cover}
@@ -169,14 +170,17 @@ ClimbCardStatic.displayName = 'ClimbCardStatic';
 
 /**
  * ClimbCard component that displays a climb in a card format.
- * When actions prop is provided, uses memoized static component.
- * When actions are not provided, generates them dynamically (allows action state like playlist selector).
+ *
+ * Behavior:
+ * - When `actions` or `expandedContent` props are provided, uses memoized static component
+ * - When neither is provided and climb exists, generates actions dynamically (allows action state like playlist selector)
+ * - When no climb, shows loading state
  */
 function ClimbCard(props: ClimbCardProps) {
   const { climb, boardDetails, onCoverClick, selected, actions, expandedContent } = props;
 
-  // When actions are provided externally, use the memoized static version
-  if (actions !== undefined) {
+  // When actions or expandedContent are provided externally, use the memoized static version
+  if (actions !== undefined || expandedContent !== undefined) {
     return (
       <ClimbCardStatic
         climb={climb}
@@ -189,7 +193,7 @@ function ClimbCard(props: ClimbCardProps) {
     );
   }
 
-  // When no actions provided and we have a climb, generate actions dynamically
+  // When no actions/expandedContent provided and we have a climb, generate actions dynamically
   // This path is not memoized because action components contain internal state
   if (climb) {
     return (

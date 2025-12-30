@@ -60,9 +60,8 @@ export function PlaylistAction({
       }
 
       setPopoverOpen((prev) => !prev);
-      onComplete?.();
     },
-    [isAuthenticated, onComplete]
+    [isAuthenticated]
   );
 
   const handleTogglePlaylist = useCallback(
@@ -85,12 +84,13 @@ export function PlaylistAction({
             playlistId,
           });
         }
+        onComplete?.();
         // Note: No need to call refreshPlaylists() - optimistic updates handle state
       } catch (error) {
         message.error(isInPlaylist ? 'Failed to remove from playlist' : 'Failed to add to playlist');
       }
     },
-    [addToPlaylist, removeFromPlaylist, boardDetails.board_name, climb.uuid]
+    [addToPlaylist, removeFromPlaylist, boardDetails.board_name, climb.uuid, onComplete]
   );
 
   const handleCreatePlaylist = useCallback(async () => {
@@ -98,13 +98,18 @@ export function PlaylistAction({
       const values = await form.validateFields();
       setCreatingPlaylist(true);
 
-      // Extract hex color from ColorPicker value
+      // Extract and validate hex color from ColorPicker value
       let colorHex: string | undefined;
       if (values.color) {
+        let rawColor: string | undefined;
         if (typeof values.color === 'string') {
-          colorHex = values.color;
+          rawColor = values.color;
         } else if (typeof values.color === 'object' && 'toHexString' in values.color) {
-          colorHex = (values.color as Color).toHexString();
+          rawColor = (values.color as Color).toHexString();
+        }
+        // Only use color if it's a valid hex format
+        if (rawColor && isValidHexColor(rawColor)) {
+          colorHex = rawColor;
         }
       }
 
@@ -121,6 +126,7 @@ export function PlaylistAction({
 
       form.resetFields();
       setShowCreateForm(false);
+      onComplete?.();
       // Note: No need to call refreshPlaylists() - optimistic updates handle state
     } catch (error) {
       if (error instanceof Error && 'errorFields' in error) {
@@ -131,7 +137,7 @@ export function PlaylistAction({
     } finally {
       setCreatingPlaylist(false);
     }
-  }, [form, createPlaylist, addToPlaylist, boardDetails.board_name]);
+  }, [form, createPlaylist, addToPlaylist, boardDetails.board_name, onComplete]);
 
   const inlineContent = (
     <div
