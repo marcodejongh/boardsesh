@@ -375,20 +375,22 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
 
         {/* Board section - fills remaining space like play view */}
         <div className={styles.boardContainer}>
-          <BoardRenderer
-            boardDetails={boardDetails}
-            litUpHoldsMap={litUpHoldsMap}
-            mirrored={false}
-            onHoldClick={handleHoldClick}
-            fillHeight
-          />
-          <CreateClimbHeatmapOverlay
-            boardDetails={boardDetails}
-            angle={angle}
-            litUpHoldsMap={litUpHoldsMap}
-            opacity={heatmapOpacity}
-            enabled={showHeatmap}
-          />
+          <div className={styles.boardWrapper}>
+            <BoardRenderer
+              boardDetails={boardDetails}
+              litUpHoldsMap={litUpHoldsMap}
+              mirrored={false}
+              onHoldClick={handleHoldClick}
+              fillHeight
+            />
+            <CreateClimbHeatmapOverlay
+              boardDetails={boardDetails}
+              angle={angle}
+              litUpHoldsMap={litUpHoldsMap}
+              opacity={heatmapOpacity}
+              enabled={showHeatmap}
+            />
+          </div>
 
           {/* Settings overlay panel */}
           {showSettingsPanel && (
