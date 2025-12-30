@@ -130,6 +130,9 @@ export type ClimbSearchInput = {
   setter?: string[];
   setterId?: number;
   onlyBenchmarks?: boolean;
+  onlyTallClimbs?: boolean;
+  // Hold filters
+  holdsFilter?: Record<string, 'ANY' | 'NOT'>;
   // Personal progress filters
   hideAttempted?: boolean;
   hideCompleted?: boolean;
