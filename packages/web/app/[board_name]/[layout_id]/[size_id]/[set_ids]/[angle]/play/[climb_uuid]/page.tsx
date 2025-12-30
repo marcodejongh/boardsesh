@@ -28,7 +28,9 @@ export async function generateMetadata(props: { params: Promise<BoardRouteParame
   }
 }
 
-export default async function PlayPage(props: { params: Promise<BoardRouteParametersWithUuid> }) {
+export default async function PlayPage(props: {
+  params: Promise<BoardRouteParametersWithUuid>;
+}): Promise<React.JSX.Element> {
   const params = await props.params;
 
   // Check if any parameters are in numeric format (old URLs)

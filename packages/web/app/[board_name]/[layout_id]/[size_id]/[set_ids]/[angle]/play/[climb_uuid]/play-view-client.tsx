@@ -23,6 +23,8 @@ type PlayViewClientProps = {
   angle: Angle;
 };
 
+// Minimum horizontal swipe distance (in pixels) required to trigger navigation
+// This value balances responsiveness with preventing accidental swipes
 const SWIPE_THRESHOLD = 80;
 
 const PlayViewClient: React.FC<PlayViewClientProps> = ({ boardDetails, initialClimb, angle }) => {
@@ -153,13 +155,16 @@ const PlayViewClient: React.FC<PlayViewClientProps> = ({ boardDetails, initialCl
 
   if (!displayClimb) {
     return (
-      <div className={styles.pageContainer}>
-        <div className={styles.actionsSection}>
+      <div className={styles.pageContainer} style={{ backgroundColor: themeTokens.semantic.background }}>
+        <div
+          className={styles.actionsSection}
+          style={{ backgroundColor: themeTokens.semantic.surface, boxShadow: themeTokens.shadows.sm }}
+        >
           <div className={styles.actionsLeft}>
             <BackButton fallbackUrl={getBackToListUrl()} />
           </div>
         </div>
-        <div className={styles.emptyState}>
+        <div className={styles.emptyState} style={{ color: themeTokens.neutral[400] }}>
           <Empty description="No climb selected" />
           <Button type="primary" onClick={() => router.push(getBackToListUrl())}>
             Browse Climbs
@@ -170,9 +175,12 @@ const PlayViewClient: React.FC<PlayViewClientProps> = ({ boardDetails, initialCl
   }
 
   return (
-    <div className={styles.pageContainer}>
+    <div className={styles.pageContainer} style={{ backgroundColor: themeTokens.semantic.background }}>
       {/* Actions Section */}
-      <div className={styles.actionsSection}>
+      <div
+        className={styles.actionsSection}
+        style={{ backgroundColor: themeTokens.semantic.surface, boxShadow: themeTokens.shadows.sm }}
+      >
         <div className={styles.actionsLeft}>
           <BackButton fallbackUrl={getBackToListUrl()} />
         </div>
@@ -219,8 +227,11 @@ const PlayViewClient: React.FC<PlayViewClientProps> = ({ boardDetails, initialCl
           )}
 
           <div className={styles.climbSection}>
-            <div className={styles.climbCard}>
-              <div className={styles.climbHeader}>
+            <div
+              className={styles.climbCard}
+              style={{ backgroundColor: themeTokens.semantic.surface, boxShadow: themeTokens.shadows.sm }}
+            >
+              <div className={styles.climbHeader} style={{ borderBottom: `1px solid ${themeTokens.neutral[100]}` }}>
                 <ClimbTitle
                   climb={displayClimb}
                   showAngle
