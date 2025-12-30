@@ -14,6 +14,21 @@ import { ClientQueueEvent } from '@boardsesh/shared-schema';
 import { saveSessionToHistory } from '../setup-wizard/session-history-panel';
 import { usePersistentSession } from '../persistent-session';
 import { FavoritesProvider } from '../climb-actions/favorites-batch-context';
+import { PlaylistsProvider, type Playlist } from '../climb-actions/playlists-batch-context';
+import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
+import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
+import {
+  GET_USER_PLAYLISTS,
+  GET_PLAYLISTS_FOR_CLIMB,
+  ADD_CLIMB_TO_PLAYLIST,
+  REMOVE_CLIMB_FROM_PLAYLIST,
+  CREATE_PLAYLIST,
+  type GetUserPlaylistsQueryResponse,
+  type GetPlaylistsForClimbQueryResponse,
+  type CreatePlaylistMutationResponse,
+  type AddClimbToPlaylistMutationResponse,
+  type RemoveClimbFromPlaylistMutationResponse,
+} from '@/app/lib/graphql/operations/playlists';
 
 // Extended context type with session management
 export interface GraphQLQueueContextType extends QueueContextType {
@@ -355,6 +370,179 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
     setHasDoneFirstFetch: () => dispatch({ type: 'SET_FIRST_FETCH', payload: true }),
   });
 
+  // Playlist state and handlers
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [playlistMemberships, setPlaylistMemberships] = useState<Map<string, Set<string>>>(
+    new Map()
+  );
+  const [playlistsLoading, setPlaylistsLoading] = useState(false);
+  const { token: wsAuthToken, isAuthenticated: isPlaylistAuthenticated } = useWsAuthToken();
+
+  // Fetch user's playlists when authenticated and board details change
+  useEffect(() => {
+    if (!wsAuthToken || !boardDetails) return;
+
+    const fetchPlaylists = async () => {
+      try {
+        setPlaylistsLoading(true);
+        const client = createGraphQLHttpClient(wsAuthToken);
+
+        const response = await client.request<GetUserPlaylistsQueryResponse>(
+          GET_USER_PLAYLISTS,
+          {
+            input: {
+              boardType: boardDetails.board_name,
+              layoutId: boardDetails.layout_id,
+            },
+          }
+        );
+
+        setPlaylists(response.userPlaylists);
+      } catch (error) {
+        console.error('Failed to fetch playlists:', error);
+        setPlaylists([]);
+      } finally {
+        setPlaylistsLoading(false);
+      }
+    };
+
+    fetchPlaylists();
+  }, [wsAuthToken, boardDetails?.board_name, boardDetails?.layout_id]);
+
+  // Fetch playlist memberships for climbs in queue
+  useEffect(() => {
+    if (!wsAuthToken || !boardDetails || state.queue.length === 0) return;
+
+    const fetchPlaylistMemberships = async () => {
+      try {
+        const client = createGraphQLHttpClient(wsAuthToken);
+        const climbUuids = state.queue.map((item) => item.climb.uuid);
+
+        // Batch query for all climbs
+        const memberships = new Map<string, Set<string>>();
+
+        await Promise.all(
+          climbUuids.map(async (uuid) => {
+            const response = await client.request<GetPlaylistsForClimbQueryResponse>(
+              GET_PLAYLISTS_FOR_CLIMB,
+              {
+                input: {
+                  boardType: boardDetails.board_name,
+                  layoutId: boardDetails.layout_id,
+                  climbUuid: uuid,
+                },
+              }
+            );
+            memberships.set(uuid, new Set(response.playlistsForClimb));
+          })
+        );
+
+        setPlaylistMemberships(memberships);
+      } catch (error) {
+        console.error('Failed to fetch playlist memberships:', error);
+      }
+    };
+
+    fetchPlaylistMemberships();
+  }, [wsAuthToken, boardDetails, state.queue]);
+
+  // Playlist operations
+  const addToPlaylistHandler = useCallback(
+    async (playlistId: string, climbUuid: string, angle: number) => {
+      if (!wsAuthToken) throw new Error('Not authenticated');
+
+      const client = createGraphQLHttpClient(wsAuthToken);
+      await client.request<AddClimbToPlaylistMutationResponse>(ADD_CLIMB_TO_PLAYLIST, {
+        input: { playlistId, climbUuid, angle },
+      });
+
+      // Update local state
+      setPlaylistMemberships((prev) => {
+        const updated = new Map(prev);
+        const current = updated.get(climbUuid) || new Set<string>();
+        current.add(playlistId);
+        updated.set(climbUuid, current);
+        return updated;
+      });
+    },
+    [wsAuthToken]
+  );
+
+  const removeFromPlaylistHandler = useCallback(
+    async (playlistId: string, climbUuid: string) => {
+      if (!wsAuthToken) throw new Error('Not authenticated');
+
+      const client = createGraphQLHttpClient(wsAuthToken);
+      await client.request<RemoveClimbFromPlaylistMutationResponse>(REMOVE_CLIMB_FROM_PLAYLIST, {
+        input: { playlistId, climbUuid },
+      });
+
+      // Update local state
+      setPlaylistMemberships((prev) => {
+        const updated = new Map(prev);
+        const current = updated.get(climbUuid);
+        if (current) {
+          current.delete(playlistId);
+          updated.set(climbUuid, current);
+        }
+        return updated;
+      });
+    },
+    [wsAuthToken]
+  );
+
+  const createPlaylistHandler = useCallback(
+    async (
+      name: string,
+      description?: string,
+      color?: string,
+      icon?: string
+    ): Promise<Playlist> => {
+      if (!wsAuthToken) throw new Error('Not authenticated');
+      if (!boardDetails) throw new Error('Board details not available');
+
+      const client = createGraphQLHttpClient(wsAuthToken);
+      const response = await client.request<CreatePlaylistMutationResponse>(CREATE_PLAYLIST, {
+        input: {
+          boardType: boardDetails.board_name,
+          layoutId: boardDetails.layout_id,
+          name,
+          description,
+          color,
+          icon,
+        },
+      });
+
+      // Update local state
+      setPlaylists((prev) => [response.createPlaylist, ...prev]);
+
+      return response.createPlaylist;
+    },
+    [wsAuthToken, boardDetails]
+  );
+
+  const refreshPlaylistsHandler = useCallback(async () => {
+    if (!wsAuthToken || !boardDetails) return;
+
+    try {
+      setPlaylistsLoading(true);
+      const client = createGraphQLHttpClient(wsAuthToken);
+
+      const response = await client.request<GetUserPlaylistsQueryResponse>(GET_USER_PLAYLISTS, {
+        input: {
+          boardType: boardDetails.board_name,
+          layoutId: boardDetails.layout_id,
+        },
+      });
+
+      setPlaylists(response.userPlaylists);
+    } catch (error) {
+      console.error('Failed to refresh playlists:', error);
+    } finally {
+      setPlaylistsLoading(false);
+    }
+  }, [wsAuthToken, boardDetails]);
+
   // Determine view-only mode
   // View-only while still connecting, once connected everyone can modify the queue
   // If no session is active, not view-only (local mode)
@@ -582,7 +770,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
     ],
   );
 
-  // Wrap children with FavoritesProvider to pass hoisted favorites data
+  // Wrap children with FavoritesProvider and PlaylistsProvider to pass hoisted data
   const wrappedChildren = (
     <FavoritesProvider
       favorites={favorites}
@@ -591,7 +779,18 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
       isLoading={isLoadingFavorites}
       isAuthenticated={isAuthenticated}
     >
-      {children}
+      <PlaylistsProvider
+        playlists={playlists}
+        playlistMemberships={playlistMemberships}
+        addToPlaylist={addToPlaylistHandler}
+        removeFromPlaylist={removeFromPlaylistHandler}
+        createPlaylist={createPlaylistHandler}
+        isLoading={playlistsLoading}
+        isAuthenticated={isPlaylistAuthenticated}
+        refreshPlaylists={refreshPlaylistsHandler}
+      >
+        {children}
+      </PlaylistsProvider>
     </FavoritesProvider>
   );
 

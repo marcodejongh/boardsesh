@@ -270,6 +270,75 @@ export const typeDefs = /* GraphQL */ `
     climbUuids: [String!]
   }
 
+  # ============================================
+  # Playlist Types
+  # ============================================
+
+  type Playlist {
+    id: ID!
+    uuid: ID!
+    boardType: String!
+    layoutId: Int!
+    name: String!
+    description: String
+    isPublic: Boolean!
+    color: String
+    icon: String
+    createdAt: String!
+    updatedAt: String!
+    climbCount: Int!
+    userRole: String
+  }
+
+  type PlaylistClimb {
+    id: ID!
+    playlistId: ID!
+    climbUuid: String!
+    angle: Int!
+    position: Int!
+    addedAt: String!
+  }
+
+  input CreatePlaylistInput {
+    boardType: String!
+    layoutId: Int!
+    name: String!
+    description: String
+    color: String
+    icon: String
+  }
+
+  input UpdatePlaylistInput {
+    playlistId: ID!
+    name: String
+    description: String
+    isPublic: Boolean
+    color: String
+    icon: String
+  }
+
+  input AddClimbToPlaylistInput {
+    playlistId: ID!
+    climbUuid: String!
+    angle: Int!
+  }
+
+  input RemoveClimbFromPlaylistInput {
+    playlistId: ID!
+    climbUuid: String!
+  }
+
+  input GetUserPlaylistsInput {
+    boardType: String!
+    layoutId: Int!
+  }
+
+  input GetPlaylistsForClimbInput {
+    boardType: String!
+    layoutId: Int!
+    climbUuid: String!
+  }
+
   type Query {
     session(sessionId: ID!): Session
     # Find discoverable sessions near a location
@@ -328,6 +397,17 @@ export const typeDefs = /* GraphQL */ `
     ticks(input: GetTicksInput!): [Tick!]!
     # Get public ticks for a specific user
     userTicks(userId: ID!, boardType: String!): [Tick!]!
+
+    # ============================================
+    # Playlist Queries (require auth)
+    # ============================================
+
+    # Get current user's playlists for a board+layout
+    userPlaylists(input: GetUserPlaylistsInput!): [Playlist!]!
+    # Get a specific playlist by ID (checks ownership/access)
+    playlist(playlistId: ID!): Playlist
+    # Get playlists that contain a specific climb
+    playlistsForClimb(input: GetPlaylistsForClimbInput!): [ID!]!
   }
 
   type Mutation {
@@ -375,6 +455,21 @@ export const typeDefs = /* GraphQL */ `
 
     # Save a new tick (local ascent tracking)
     saveTick(input: SaveTickInput!): Tick!
+
+    # ============================================
+    # Playlist Mutations (require auth)
+    # ============================================
+
+    # Create a new playlist
+    createPlaylist(input: CreatePlaylistInput!): Playlist!
+    # Update playlist metadata
+    updatePlaylist(input: UpdatePlaylistInput!): Playlist!
+    # Delete a playlist (only owner can delete)
+    deletePlaylist(playlistId: ID!): Boolean!
+    # Add a climb to a playlist
+    addClimbToPlaylist(input: AddClimbToPlaylistInput!): PlaylistClimb!
+    # Remove a climb from a playlist
+    removeClimbFromPlaylist(input: RemoveClimbFromPlaylistInput!): Boolean!
   }
 
   type Subscription {
