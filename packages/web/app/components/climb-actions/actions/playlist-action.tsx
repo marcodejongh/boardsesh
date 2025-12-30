@@ -54,7 +54,7 @@ export function PlaylistAction({
         return;
       }
 
-      setPopoverOpen(true);
+      setPopoverOpen((prev) => !prev);
       onComplete?.();
     },
     [isAuthenticated, onComplete]
