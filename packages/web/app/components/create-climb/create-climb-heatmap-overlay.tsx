@@ -143,11 +143,6 @@ const CreateClimbHeatmapOverlay: React.FC<CreateClimbHeatmapOverlayProps> = ({
     };
   }, [heatmapData, litUpHoldsMap, getValue]);
 
-  // Don't render if not enabled or still loading
-  if (!enabled || loading) {
-    return null;
-  }
-
   // Guard against missing data
   if (!holdsData || holdsData.length === 0) {
     return null;
@@ -156,6 +151,9 @@ const CreateClimbHeatmapOverlay: React.FC<CreateClimbHeatmapOverlayProps> = ({
   // Use unique filter IDs to avoid conflicts with other SVGs on the page
   const blurFilterId = 'create-climb-heatmap-blur';
   const sharpFilterId = 'create-climb-heatmap-sharp';
+
+  // Always render the SVG container to prevent layout shifts, but hide content when not enabled or loading
+  const showContent = enabled && !loading;
 
   return (
     <svg
@@ -168,7 +166,8 @@ const CreateClimbHeatmapOverlay: React.FC<CreateClimbHeatmapOverlayProps> = ({
         width: '100%',
         height: '100%',
         pointerEvents: 'none',
-        opacity,
+        opacity: showContent ? opacity : 0,
+        visibility: showContent ? 'visible' : 'hidden',
       }}
     >
       <defs>
