@@ -1,107 +1,18 @@
 import { BoardName } from '../../types';
-import { WEB_HOSTS, SaveAscentOptions, SaveAscentResponse, Ascent } from './types';
+import { SaveAscentOptions, SaveAscentResponse, Ascent } from './types';
 import dayjs from 'dayjs';
 import { sql } from '@/app/lib/db/db';
 import { getTableName } from '../../data-sync/aurora/getTableName';
 
-interface AuroraSyncResult {
-  success: boolean;
-  ascent?: Ascent;
-  error?: string;
-}
-
 /**
- * Attempts to save an ascent to the Aurora API
- * Returns the result without throwing - caller decides how to handle errors
+ * Saves an ascent to the local database only.
+ *
+ * Note: This function no longer syncs to Aurora directly because Aurora API
+ * requires an apptoken which is not available. Instead, ascents created locally
+ * will be synced FROM Aurora via the user-sync cron job (runs every 6 hours).
+ *
+ * Data flow: Boardsesh (local) ← Aurora (via cron)
  */
-async function syncAscentToAurora(
-  board: BoardName,
-  token: string,
-  requestData: {
-    user_id: number;
-    uuid: string;
-    climb_uuid: string;
-    angle: number;
-    difficulty: number;
-    is_mirror: number;
-    attempt_id: number;
-    bid_count: number;
-    quality: number;
-    is_benchmark: number;
-    comment: string;
-    climbed_at: string;
-  }
-): Promise<AuroraSyncResult> {
-  try {
-    // Build URL-encoded form data - Aurora expects this format!
-    const requestBody = new URLSearchParams();
-    Object.entries(requestData).forEach(([key, value]) => {
-      requestBody.append(key, String(value));
-    });
-
-    // Use the web host endpoint with POST method
-    const url = `${WEB_HOSTS[board]}/ascents/save`;
-    console.log(`Saving ascent to Aurora: ${url}`);
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'User-Agent': 'Kilter%20Board/202 CFNetwork/1568.100.1 Darwin/24.0.0',
-        Cookie: `token=${token}`,
-      },
-      body: requestBody.toString(),
-    });
-
-    console.log(`Save ascent response status: ${response.status}`);
-
-    if (!response.ok) {
-      const responseClone = response.clone();
-      let errorData;
-      try {
-        errorData = await response.json();
-      } catch {
-        try {
-          errorData = await responseClone.text();
-        } catch {
-          errorData = 'Could not read error response';
-        }
-      }
-      return {
-        success: false,
-        error: `HTTP ${response.status}: ${JSON.stringify(errorData)}`,
-      };
-    }
-
-    // Handle potentially empty response body
-    const responseText = await response.text();
-    if (!responseText || responseText.trim() === '') {
-      return {
-        success: false,
-        error: 'Empty response from Aurora API',
-      };
-    }
-
-    const responseData = JSON.parse(responseText) as { ascents?: Ascent[] };
-    if (!responseData.ascents || responseData.ascents.length === 0) {
-      return {
-        success: false,
-        error: 'No ascent data in Aurora response',
-      };
-    }
-
-    return {
-      success: true,
-      ascent: responseData.ascents[0],
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error during Aurora sync',
-    };
-  }
-}
-
 export async function saveAscent(
   board: BoardName,
   token: string,
@@ -127,18 +38,9 @@ export async function saveAscent(
     climbed_at: formattedDate,
   };
 
-  // Try to sync to Aurora API first
-  const auroraResult = await syncAscentToAurora(board, token, requestData);
-
-  if (!auroraResult.success) {
-    console.warn(`Aurora sync failed for ascent ${options.uuid}: ${auroraResult.error}`);
-  }
-
-  // Always save to local database, regardless of Aurora success
+  // Save to local database only
   const fullTableName = getTableName(board, 'ascents');
-  const synced = auroraResult.success;
-  const syncError = auroraResult.success ? null : auroraResult.error;
-  const finalCreatedAt = auroraResult.ascent?.created_at || createdAt;
+  const finalCreatedAt = createdAt;
 
   await sql`
     INSERT INTO ${sql.unsafe(fullTableName)} (
@@ -151,7 +53,7 @@ export async function saveAscent(
       ${requestData.is_mirror}, ${requestData.user_id}, ${requestData.attempt_id},
       ${requestData.bid_count}, ${requestData.quality}, ${requestData.difficulty},
       ${requestData.is_benchmark}, ${requestData.comment || ''},
-      ${requestData.climbed_at}, ${finalCreatedAt}, ${synced}, ${syncError}
+      ${requestData.climbed_at}, ${finalCreatedAt}, ${false}, ${null}
     )
     ON CONFLICT (uuid) DO UPDATE SET
       climb_uuid = EXCLUDED.climb_uuid,
@@ -169,7 +71,7 @@ export async function saveAscent(
   `;
 
   // Create a local ascent object for the response
-  const localAscent: Ascent = auroraResult.ascent || {
+  const localAscent: Ascent = {
     uuid: options.uuid,
     user_id: options.user_id,
     climb_uuid: options.climb_uuid,
