@@ -4,9 +4,9 @@ import { GraphQLClient, RequestDocument, Variables } from 'graphql-request';
 
 /**
  * Cache duration for climb search queries (in seconds)
- * 5 minutes matches the client-side staleTime in React Query
+ * 30 days - climb data is synced periodically and rarely changes
  */
-const CLIMB_SEARCH_CACHE_DURATION = 5 * 60; // 5 minutes
+const CLIMB_SEARCH_CACHE_DURATION = 30 * 24 * 60 * 60; // 30 days
 
 /**
  * Get the HTTP GraphQL endpoint URL
@@ -82,7 +82,7 @@ export function createCachedGraphQLQuery<T = unknown, V extends Variables = Vari
 
 /**
  * Pre-configured cached query for climb search
- * Uses a 5-minute cache to match client-side React Query staleTime
+ * Uses 30-day cache since climb data rarely changes
  */
 export async function cachedSearchClimbs<T = unknown>(
   document: RequestDocument,

@@ -15,7 +15,7 @@ import { getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
 import { MAX_PAGE_SIZE } from '@/app/components/board-page/constants';
 
 // Enable route segment caching - matches the unstable_cache revalidate time
-export const revalidate = 300; // 5 minutes
+export const revalidate = 30 * 24 * 60 * 60; // 30 days
 
 export default async function DynamicResultsPage(props: {
   params: Promise<BoardRouteParametersWithUuid>;
