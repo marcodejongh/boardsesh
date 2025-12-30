@@ -296,7 +296,7 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
                 </Tooltip>
               </Col>
             )}
-            <Col xs={3} sm={2}>
+            <Col xs={3} sm={2} style={{ position: 'relative', zIndex: 2 }}>
               <Dropdown
                 menu={{
                   items: [
