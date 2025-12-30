@@ -33,7 +33,7 @@ let dbPromise: Promise<IDBPDatabase> | null = null;
 
 const initDB = async (): Promise<IDBPDatabase> => {
   if (!dbPromise) {
-    dbPromise = openDB(DB_NAME, DB_VERSION, {
+    const promise = openDB(DB_NAME, DB_VERSION, {
       upgrade(db) {
         if (!db.objectStoreNames.contains(STORE_NAME)) {
           const store = db.createObjectStore(STORE_NAME, { keyPath: 'uuid' });
@@ -43,6 +43,13 @@ const initDB = async (): Promise<IDBPDatabase> => {
         }
       },
     });
+
+    // Clear the promise on error so we can retry
+    promise.catch(() => {
+      dbPromise = null;
+    });
+
+    dbPromise = promise;
   }
   return dbPromise;
 };

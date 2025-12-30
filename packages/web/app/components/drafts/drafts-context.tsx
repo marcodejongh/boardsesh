@@ -89,7 +89,7 @@ export const DraftsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const deleteDraftHandler = useCallback(async (uuid: string): Promise<void> => {
     await deleteDraftClimb(uuid);
     setDrafts((prev) => prev.filter((draft) => draft.uuid !== uuid));
-    setDraftsCount((prev) => prev - 1);
+    setDraftsCount((prev) => Math.max(0, prev - 1));
   }, []);
 
   const reorderDrafts = useCallback((reorderedDrafts: DraftClimb[]) => {

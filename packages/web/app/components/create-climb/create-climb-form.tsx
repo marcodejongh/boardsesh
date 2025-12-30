@@ -46,6 +46,7 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
   const [isLoadingDraft, setIsLoadingDraft] = useState(!!draftIdFromUrl);
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasInitializedRef = useRef(false);
+  const isMountedRef = useRef(true);
 
   // Convert fork frames to initial holds map if provided
   const initialHoldsMap = useMemo(() => {
@@ -83,45 +84,64 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
   const titleInputRef = useRef<InputRef>(null);
 
+  // Track mounted state for cleanup
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   // Load existing draft or create a new one on mount
   useEffect(() => {
     if (hasInitializedRef.current) return;
     hasInitializedRef.current = true;
 
     const initializeDraft = async () => {
-      if (draftIdFromUrl) {
-        // Resuming an existing draft
-        const existingDraft = await getDraftClimb(draftIdFromUrl);
-        if (existingDraft) {
-          setCurrentDraft(existingDraft);
-          // Restore form values
-          setClimbName(existingDraft.name);
-          setDescription(existingDraft.description);
-          setIsDraft(existingDraft.isDraft);
-          // Restore holds map
-          if (Object.keys(existingDraft.litUpHoldsMap).length > 0) {
-            setLitUpHoldsMap(existingDraft.litUpHoldsMap);
+      try {
+        if (draftIdFromUrl) {
+          // Resuming an existing draft
+          const existingDraft = await getDraftClimb(draftIdFromUrl);
+          if (!isMountedRef.current) return;
+
+          if (existingDraft) {
+            setCurrentDraft(existingDraft);
+            // Restore form values
+            setClimbName(existingDraft.name);
+            setDescription(existingDraft.description);
+            setIsDraft(existingDraft.isDraft);
+            // Restore holds map
+            if (Object.keys(existingDraft.litUpHoldsMap).length > 0) {
+              setLitUpHoldsMap(existingDraft.litUpHoldsMap);
+            }
           }
+          setIsLoadingDraft(false);
+        } else {
+          // Create a new draft immediately
+          const newDraft = await createDraft({
+            boardName: boardDetails.board_name,
+            layoutId: boardDetails.layout_id,
+            sizeId: boardDetails.size_id,
+            setIds: boardDetails.set_ids,
+            angle,
+            layoutName: boardDetails.layout_name,
+            sizeName: boardDetails.size_name,
+            sizeDescription: boardDetails.size_description,
+            setNames: boardDetails.set_names,
+          });
+          if (!isMountedRef.current) return;
+
+          setCurrentDraft(newDraft);
+          // Update URL with draft ID (without navigation)
+          const url = new URL(window.location.href);
+          url.searchParams.set('draftId', newDraft.uuid);
+          window.history.replaceState({}, '', url.toString());
         }
-        setIsLoadingDraft(false);
-      } else {
-        // Create a new draft immediately
-        const newDraft = await createDraft({
-          boardName: boardDetails.board_name,
-          layoutId: boardDetails.layout_id,
-          sizeId: boardDetails.size_id,
-          setIds: boardDetails.set_ids,
-          angle,
-          layoutName: boardDetails.layout_name,
-          sizeName: boardDetails.size_name,
-          sizeDescription: boardDetails.size_description,
-          setNames: boardDetails.set_names,
-        });
-        setCurrentDraft(newDraft);
-        // Update URL with draft ID (without navigation)
-        const url = new URL(window.location.href);
-        url.searchParams.set('draftId', newDraft.uuid);
-        window.history.replaceState({}, '', url.toString());
+      } catch (error) {
+        console.error('Failed to initialize draft:', error);
+        if (isMountedRef.current) {
+          setIsLoadingDraft(false);
+        }
       }
     };
 
@@ -130,7 +150,7 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
 
   // Auto-save draft when data changes
   const autoSaveDraft = useCallback(async () => {
-    if (!currentDraft) return;
+    if (!currentDraft || !isMountedRef.current) return;
 
     const frames = generateFramesString();
 
@@ -309,7 +329,16 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
     }
   };
 
-  const handleCancel = useCallback(() => {
+  const handleCancel = useCallback(async () => {
+    // Delete the current draft when canceling
+    if (currentDraft) {
+      try {
+        await deleteDraft(currentDraft.uuid);
+      } catch (error) {
+        console.error('Failed to delete draft on cancel:', error);
+      }
+    }
+
     const listUrl = constructClimbListWithSlugs(
       boardDetails.board_name,
       boardDetails.layout_name || '',
@@ -319,7 +348,7 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
       angle,
     );
     router.push(listUrl);
-  }, [boardDetails, angle, router]);
+  }, [boardDetails, angle, router, currentDraft, deleteDraft]);
 
   const canSave = isAuthenticated && isValid && climbName.trim().length > 0;
 
