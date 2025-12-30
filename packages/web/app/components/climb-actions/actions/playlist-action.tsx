@@ -131,9 +131,15 @@ export function PlaylistAction({
   const inlineContent = (
     <div
       style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
         padding: '12px',
-        borderTop: `1px solid ${themeTokens.neutral[200]}`,
-        backgroundColor: themeTokens.semantic.surface,
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        overflow: 'auto',
+        zIndex: 1,
       }}
       onClick={(e) => e.stopPropagation()}
     >

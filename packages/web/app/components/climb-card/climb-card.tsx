@@ -82,8 +82,10 @@ const ClimbCard = React.memo(
           }}
           actions={cardActions || []}
         >
-          {cover}
-          {inlineExpandedContent}
+          <div style={{ position: 'relative' }}>
+            {cover}
+            {inlineExpandedContent}
+          </div>
         </Card>
       </div>
     );
