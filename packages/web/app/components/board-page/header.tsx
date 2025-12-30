@@ -230,9 +230,22 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
 
           {/* Right Section */}
           <Flex gap={4} align="center">
-            {/* Create mode: Show cancel and publish buttons */}
+            {/* Create mode: Show cancel, drafts, and publish buttons */}
             {pageMode === 'create' ? (
-              <CreateModeButtons />
+              <>
+                <CreateModeButtons />
+                {/* Drafts button with badge - only shown on create page */}
+                {draftsCount > 0 && (
+                  <Badge count={draftsCount} size="small" offset={[-4, 4]}>
+                    <Button
+                      icon={<FileTextOutlined />}
+                      type="text"
+                      title="View drafts"
+                      onClick={() => setShowDraftsDrawer(true)}
+                    />
+                  </Badge>
+                )}
+              </>
             ) : (
               <>
                 {angle !== undefined && <AngleSelector boardName={boardDetails.board_name} currentAngle={angle} currentClimb={currentClimb} />}
@@ -244,18 +257,6 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
                       <Button icon={<PlusOutlined />} type="text" title="Create new climb" />
                     </Link>
                   </div>
-                )}
-
-                {/* Drafts button with badge - shows when there are drafts */}
-                {draftsCount > 0 && (
-                  <Badge count={draftsCount} size="small" offset={[-4, 4]}>
-                    <Button
-                      icon={<FileTextOutlined />}
-                      type="text"
-                      title="View drafts"
-                      onClick={() => setShowDraftsDrawer(true)}
-                    />
-                  </Badge>
                 )}
 
                 <ShareBoardButton />
