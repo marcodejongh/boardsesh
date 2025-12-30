@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useContext, createContext, ReactNode, useCallback, useMemo, useState, useEffect } from 'react';
+import React, { useContext, createContext, ReactNode, useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { v4 as uuidv4 } from 'uuid';
 import { useQueueReducer } from '../queue-control/reducer';
@@ -68,6 +68,11 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
   const pathname = usePathname();
   const initialSearchParams = urlParamsToSearchParams(searchParams);
   const [state, dispatch] = useQueueReducer(initialSearchParams);
+
+  // Track pending optimistic updates to prevent server echoes from overwriting them
+  // This set contains UUIDs of queue items that were recently set as current via optimistic update
+  // Server events matching these UUIDs will be skipped to prevent race conditions
+  const pendingCurrentClimbUpdatesRef = useRef<Set<string>>(new Set());
 
   // Get backend URL from settings
   const { backendUrl } = useConnectionSettings();
@@ -201,6 +206,8 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
     const unsubscribe = persistentSession.subscribeToQueueEvents((event: ClientQueueEvent) => {
       switch (event.__typename) {
         case 'FullSync':
+          // Clear pending updates on full sync since we're getting complete server state
+          pendingCurrentClimbUpdatesRef.current.clear();
           dispatch({
             type: 'INITIAL_QUEUE_DATA',
             payload: {
@@ -234,15 +241,25 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
             },
           });
           break;
-        case 'CurrentClimbChanged':
+        case 'CurrentClimbChanged': {
+          const incomingItem = event.currentItem as ClimbQueueItem | null;
+          // Skip this event if it's an echo of our own optimistic update
+          // This prevents race conditions where rapid navigation would be overwritten
+          // by delayed server responses
+          if (incomingItem && pendingCurrentClimbUpdatesRef.current.has(incomingItem.uuid)) {
+            // Remove from pending set - we've acknowledged this update
+            pendingCurrentClimbUpdatesRef.current.delete(incomingItem.uuid);
+            break;
+          }
           dispatch({
             type: 'DELTA_UPDATE_CURRENT_CLIMB',
             payload: {
-              item: event.currentItem as ClimbQueueItem | null,
+              item: incomingItem,
               shouldAddToQueue: false,
             },
           });
           break;
+        }
         case 'ClimbMirrored':
           dispatch({
             type: 'DELTA_MIRROR_CURRENT_CLIMB',
@@ -687,8 +704,21 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
 
         // Send to server only if connected
         if (hasConnected && isPersistentSessionActive) {
+          // Track this as a pending update so we can skip the server echo
+          // This prevents race conditions when navigating rapidly
+          pendingCurrentClimbUpdatesRef.current.add(item.uuid);
+
+          // Set a timeout to remove from pending set if server event never arrives
+          // This prevents stale entries from blocking future updates
+          const pendingUuid = item.uuid;
+          setTimeout(() => {
+            pendingCurrentClimbUpdatesRef.current.delete(pendingUuid);
+          }, 5000);
+
           persistentSession.setCurrentClimb(item, item.suggested).catch((error) => {
             console.error('Failed to set current climb:', error);
+            // Remove from pending on error so future events aren't incorrectly skipped
+            pendingCurrentClimbUpdatesRef.current.delete(item.uuid);
           });
         }
       },
