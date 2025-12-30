@@ -53,7 +53,7 @@ export default function AboutContent() {
                 LED climbing boards like Moonboard, Kilter, Tension, Decoy, and Grasshopper have
                 become incredibly popular in the climbing community. These boards represent a
                 significant investment—a 7x10 Kilter homewall with mainline holds runs around
-                $15,000 AUD ($10,000 USD), plus another $2,000 or so for the LED lighting system.
+                $10,000, plus another $2,000 or so for the LED lighting system.
               </Paragraph>
               <Paragraph>
                 Here&apos;s the thing: those climbing holds will work forever. No apps, no
