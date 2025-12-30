@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Layout, Card, Typography, Divider, Space, Alert } from 'antd';
+import { Layout, Card, Typography, Space, Alert } from 'antd';
 import {
   GithubOutlined,
   WarningOutlined,
@@ -42,8 +42,6 @@ export default function AboutContent() {
                 An open source alternative for LED climbing board control
               </Text>
             </div>
-
-            <Divider />
 
             {/* The Problem */}
             <section>
@@ -91,8 +89,6 @@ export default function AboutContent() {
               </Paragraph>
             </section>
 
-            <Divider />
-
             {/* Development Stagnation */}
             <section>
               <Title level={3}>
@@ -105,8 +101,6 @@ export default function AboutContent() {
                 climb data isn&apos;t theirs—it&apos;s the users&apos;.
               </Paragraph>
             </section>
-
-            <Divider />
 
             {/* Our Solution */}
             <section>
@@ -141,8 +135,6 @@ export default function AboutContent() {
               </ul>
             </section>
 
-            <Divider />
-
             {/* Open Source */}
             <section>
               <Title level={3}>
@@ -164,8 +156,6 @@ export default function AboutContent() {
               </Paragraph>
             </section>
 
-            <Divider />
-
             {/* Collaboration */}
             <section>
               <Title level={3}>
@@ -178,8 +168,6 @@ export default function AboutContent() {
                 to any collaboration attempts.
               </Paragraph>
             </section>
-
-            <Divider />
 
             {/* Call to Action */}
             <section className={styles.callToAction}>
