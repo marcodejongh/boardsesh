@@ -1,16 +1,16 @@
 'use client';
 
-import React, { useMemo } from 'react';
-import { Drawer, List, Button, Empty, Typography, Popconfirm, Row, Col } from 'antd';
+import React, { useMemo, useCallback } from 'react';
+import { Drawer, Typography } from 'antd';
 import { DeleteOutlined, EditOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import { useDrafts, DraftClimb } from './drafts-context';
 import { generateLayoutSlug, generateSizeSlug, generateSetSlug } from '@/app/lib/url-utils';
 import { BoardDetails } from '@/app/lib/types';
-import BoardRenderer from '../board-renderer/board-renderer';
-import styles from './drafts-drawer.module.css';
+import { ClimbsList, ClimbsListItemProps } from '../climbs-list';
+import { themeTokens } from '@/app/theme/theme-config';
 
-const { Text, Paragraph } = Typography;
+const { Paragraph } = Typography;
 
 interface DraftsDrawerProps {
   open: boolean;
@@ -32,82 +32,9 @@ function formatRelativeTime(timestamp: number): string {
   return new Date(timestamp).toLocaleDateString();
 }
 
-function DraftItem({
-  draft,
-  boardDetails,
-  onEdit,
-  onDelete,
-}: {
-  draft: DraftClimb;
-  boardDetails: BoardDetails;
-  onEdit: (draft: DraftClimb) => void;
-  onDelete: (uuid: string) => void;
-}) {
-  const holdCount = Object.keys(draft.litUpHoldsMap).length;
-
-  return (
-    <List.Item className={styles.draftItem}>
-      <Row gutter={[12, 8]} align="middle" style={{ width: '100%' }}>
-        {/* Thumbnail */}
-        <Col span={6}>
-          <div className={styles.thumbnail}>
-            <BoardRenderer
-              boardDetails={boardDetails}
-              litUpHoldsMap={draft.litUpHoldsMap}
-              mirrored={false}
-              thumbnail
-            />
-          </div>
-        </Col>
-
-        {/* Content */}
-        <Col span={12}>
-          <div className={styles.draftContent}>
-            <Text strong className={styles.draftName}>
-              {draft.name || 'Untitled'}
-            </Text>
-            <div className={styles.draftMeta}>
-              <Text type="secondary">
-                {holdCount} holds · {draft.angle}°
-              </Text>
-              <Text type="secondary" className={styles.timestamp}>
-                {formatRelativeTime(draft.updatedAt)}
-              </Text>
-            </div>
-          </div>
-        </Col>
-
-        {/* Actions */}
-        <Col span={6}>
-          <div className={styles.draftActions}>
-            <Button
-              type="primary"
-              size="small"
-              icon={<EditOutlined />}
-              onClick={() => onEdit(draft)}
-            >
-              Resume
-            </Button>
-            <Popconfirm
-              title="Delete draft?"
-              description="This cannot be undone."
-              onConfirm={() => onDelete(draft.uuid)}
-              okText="Delete"
-              cancelText="Cancel"
-              okButtonProps={{ danger: true }}
-            >
-              <Button type="text" size="small" icon={<DeleteOutlined />} danger />
-            </Popconfirm>
-          </div>
-        </Col>
-      </Row>
-    </List.Item>
-  );
-}
-
 export function DraftsDrawer({ open, onClose, boardDetails }: DraftsDrawerProps) {
   const router = useRouter();
-  const { drafts, isLoading, deleteDraft } = useDrafts();
+  const { drafts, isLoading, deleteDraft, reorderDrafts } = useDrafts();
 
   // Filter drafts to only show those matching the current board configuration
   const filteredDrafts = useMemo(() => {
@@ -119,60 +46,98 @@ export function DraftsDrawer({ open, onClose, boardDetails }: DraftsDrawerProps)
     );
   }, [drafts, boardDetails]);
 
-  const handleEdit = (draft: DraftClimb) => {
-    // Navigate to the create page with the draft ID
-    let createUrl: string;
+  const handleEdit = useCallback(
+    (draft: DraftClimb) => {
+      let createUrl: string;
 
-    if (draft.layoutName && draft.sizeName && draft.setNames) {
-      // Use stored names for proper slug-based URL
-      createUrl = `/${draft.boardName}/${generateLayoutSlug(draft.layoutName)}/${generateSizeSlug(draft.sizeName)}/${generateSetSlug(draft.setNames)}/${draft.angle}/create?draftId=${draft.uuid}`;
-    } else {
-      // Fallback to ID-based URL (older drafts)
-      createUrl = `/${draft.boardName}/${draft.layoutId}/${draft.sizeId}/${draft.setIds.join(',')}/${draft.angle}/create?draftId=${draft.uuid}`;
-    }
+      if (draft.layoutName && draft.sizeName && draft.setNames) {
+        createUrl = `/${draft.boardName}/${generateLayoutSlug(draft.layoutName)}/${generateSizeSlug(draft.sizeName)}/${generateSetSlug(draft.setNames)}/${draft.angle}/create?draftId=${draft.uuid}`;
+      } else {
+        createUrl = `/${draft.boardName}/${draft.layoutId}/${draft.sizeId}/${draft.setIds.join(',')}/${draft.angle}/create?draftId=${draft.uuid}`;
+      }
 
-    router.push(createUrl);
-    onClose();
-  };
+      router.push(createUrl);
+      onClose();
+    },
+    [router, onClose],
+  );
 
-  const handleDelete = async (uuid: string) => {
-    try {
-      await deleteDraft(uuid);
-    } catch (error) {
-      console.error('Failed to delete draft:', error);
-    }
-  };
+  const handleDelete = useCallback(
+    async (uuid: string) => {
+      try {
+        await deleteDraft(uuid);
+      } catch (error) {
+        console.error('Failed to delete draft:', error);
+      }
+    },
+    [deleteDraft],
+  );
+
+  const handleReorder = useCallback(
+    (reorderedDrafts: DraftClimb[]) => {
+      reorderDrafts(reorderedDrafts);
+    },
+    [reorderDrafts],
+  );
+
+  const renderItem = useCallback(
+    (draft: DraftClimb, index: number): ClimbsListItemProps<DraftClimb> => {
+      const holdCount = Object.keys(draft.litUpHoldsMap).length;
+
+      return {
+        item: draft,
+        index,
+        boardDetails,
+        litUpHoldsMap: draft.litUpHoldsMap,
+        mirrored: false,
+        title: draft.name || 'Untitled',
+        subtitle: `${holdCount} holds · ${draft.angle}° · ${formatRelativeTime(draft.updatedAt)}`,
+        draggable: true,
+        menuItems: [
+          {
+            key: 'resume',
+            label: 'Resume',
+            icon: <EditOutlined />,
+            onClick: () => handleEdit(draft),
+          },
+          {
+            key: 'delete',
+            label: 'Delete',
+            icon: <DeleteOutlined />,
+            danger: true,
+            onClick: () => handleDelete(draft.uuid),
+          },
+        ],
+        swipeLeftAction: {
+          icon: <DeleteOutlined style={{ color: 'white', fontSize: 20 }} />,
+          color: themeTokens.colors.error,
+          onSwipe: () => handleDelete(draft.uuid),
+        },
+        swipeRightAction: {
+          icon: <EditOutlined style={{ color: 'white', fontSize: 20 }} />,
+          color: themeTokens.colors.primary,
+          onSwipe: () => handleEdit(draft),
+        },
+        onDoubleClick: () => handleEdit(draft),
+      };
+    },
+    [boardDetails, handleEdit, handleDelete],
+  );
 
   return (
-    <Drawer
-      title="Draft Climbs"
-      placement="right"
-      onClose={onClose}
-      open={open}
-      width={420}
-    >
-      {filteredDrafts.length === 0 && !isLoading ? (
-        <Empty
-          description={
-            <Paragraph type="secondary">
-              No drafts yet. Start creating a climb and it will be automatically saved here.
-            </Paragraph>
-          }
-        />
-      ) : (
-        <List
-          loading={isLoading}
-          dataSource={filteredDrafts}
-          renderItem={(draft) => (
-            <DraftItem
-              draft={draft}
-              boardDetails={boardDetails}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-            />
-          )}
-        />
-      )}
+    <Drawer title="Draft Climbs" placement="right" onClose={onClose} open={open} width={420}>
+      <ClimbsList
+        items={filteredDrafts}
+        boardDetails={boardDetails}
+        loading={isLoading}
+        emptyText={
+          <Paragraph type="secondary">
+            No drafts yet. Start creating a climb and it will be automatically saved here.
+          </Paragraph>
+        }
+        renderItem={renderItem}
+        onReorder={handleReorder}
+      />
     </Drawer>
   );
 }

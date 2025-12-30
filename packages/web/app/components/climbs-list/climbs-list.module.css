@@ -1,0 +1,53 @@
+.itemWrapper {
+  /* Wrapper for drag handle */
+}
+
+.itemContainer {
+  position: relative;
+  overflow: hidden;
+  border-bottom: 1px solid var(--ant-color-border);
+}
+
+.swipeAction {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 120px;
+  display: flex;
+  align-items: center;
+  color: white;
+  font-size: 20px;
+}
+
+.itemContent {
+  display: flex;
+  align-items: center;
+  padding: 12px 8px;
+  position: relative;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+.textContent {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+}
+
+.title {
+  font-size: 14px;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subtitle {
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

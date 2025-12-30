@@ -29,6 +29,7 @@ interface DraftsContextType {
     },
   ) => Promise<void>;
   deleteDraft: (uuid: string) => Promise<void>;
+  reorderDrafts: (reorderedDrafts: DraftClimb[]) => void;
   refreshDrafts: () => Promise<void>;
 }
 
@@ -91,6 +92,16 @@ export const DraftsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setDraftsCount((prev) => prev - 1);
   }, []);
 
+  const reorderDrafts = useCallback((reorderedDrafts: DraftClimb[]) => {
+    // Update local state with new order
+    // We merge the reordered subset back into the full drafts array
+    setDrafts((prev) => {
+      const reorderedIds = new Set(reorderedDrafts.map((d) => d.uuid));
+      const otherDrafts = prev.filter((d) => !reorderedIds.has(d.uuid));
+      return [...reorderedDrafts, ...otherDrafts];
+    });
+  }, []);
+
   const value = useMemo<DraftsContextType>(
     () => ({
       drafts,
@@ -99,9 +110,10 @@ export const DraftsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       createDraft,
       updateDraft,
       deleteDraft: deleteDraftHandler,
+      reorderDrafts,
       refreshDrafts: loadDrafts,
     }),
-    [drafts, draftsCount, isLoading, createDraft, updateDraft, deleteDraftHandler, loadDrafts],
+    [drafts, draftsCount, isLoading, createDraft, updateDraft, deleteDraftHandler, reorderDrafts, loadDrafts],
   );
 
   return <DraftsContext.Provider value={value}>{children}</DraftsContext.Provider>;
