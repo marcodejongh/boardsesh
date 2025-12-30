@@ -143,12 +143,8 @@ export function PlaylistAction({
       }}
       onClick={(e) => e.stopPropagation()}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: themeTokens.spacing[2] }}>
+      <div style={{ marginBottom: themeTokens.spacing[2] }}>
         <Text strong>Add to Playlist</Text>
-        <CloseOutlined
-          onClick={() => setPopoverOpen(false)}
-          style={{ cursor: 'pointer', color: themeTokens.neutral[500] }}
-        />
       </div>
       {playlists.length === 0 && !showCreateForm ? (
         <Space direction="vertical" style={{ width: '100%', textAlign: 'center', padding: themeTokens.spacing[2] }}>
@@ -270,14 +266,15 @@ export function PlaylistAction({
   const iconSize = size === 'small' ? 14 : size === 'large' ? 20 : 16;
 
   const inPlaylistCount = playlistsContainingClimb.size;
-  const icon =
-    inPlaylistCount > 0 ? (
-      <Badge count={inPlaylistCount} size="small" offset={[-2, 2]}>
-        <TagOutlined style={{ fontSize: iconSize }} />
-      </Badge>
-    ) : (
+  const icon = popoverOpen ? (
+    <CloseOutlined style={{ fontSize: iconSize }} />
+  ) : inPlaylistCount > 0 ? (
+    <Badge count={inPlaylistCount} size="small" offset={[-2, 2]}>
       <TagOutlined style={{ fontSize: iconSize }} />
-    );
+    </Badge>
+  ) : (
+    <TagOutlined style={{ fontSize: iconSize }} />
+  );
 
   const authModalElement = (
     <AuthModal
