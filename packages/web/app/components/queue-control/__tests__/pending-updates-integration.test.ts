@@ -123,7 +123,7 @@ describe('Pending Updates - Integration Tests', () => {
         type: 'DELTA_UPDATE_CURRENT_CLIMB',
         payload: { item: item1, shouldAddToQueue: false, isServerEvent: false },
       });
-      expect(state.pendingCurrentClimbUpdates).toEqual(['item-1']);
+      expect(state.pendingCurrentClimbUpdates.map(p => p.uuid)).toEqual(['item-1']);
       expect(state.currentClimbQueueItem).toEqual(item1);
 
       // Local update 2
@@ -131,7 +131,7 @@ describe('Pending Updates - Integration Tests', () => {
         type: 'DELTA_UPDATE_CURRENT_CLIMB',
         payload: { item: item2, shouldAddToQueue: false, isServerEvent: false },
       });
-      expect(state.pendingCurrentClimbUpdates).toEqual(['item-1', 'item-2']);
+      expect(state.pendingCurrentClimbUpdates.map(p => p.uuid)).toEqual(['item-1', 'item-2']);
       expect(state.currentClimbQueueItem).toEqual(item2);
 
       // Server echo of item1 arrives (should be skipped)
@@ -139,7 +139,7 @@ describe('Pending Updates - Integration Tests', () => {
         type: 'DELTA_UPDATE_CURRENT_CLIMB',
         payload: { item: item1, shouldAddToQueue: false, isServerEvent: true },
       });
-      expect(state.pendingCurrentClimbUpdates).toEqual(['item-2']); // item-1 removed
+      expect(state.pendingCurrentClimbUpdates.map(p => p.uuid)).toEqual(['item-2']); // item-1 removed
       expect(state.currentClimbQueueItem).toEqual(item2); // Still item2
 
       // Server event from another user (should be applied)
@@ -147,7 +147,7 @@ describe('Pending Updates - Integration Tests', () => {
         type: 'DELTA_UPDATE_CURRENT_CLIMB',
         payload: { item: item3, shouldAddToQueue: false, isServerEvent: true },
       });
-      expect(state.pendingCurrentClimbUpdates).toEqual(['item-2']); // Unchanged
+      expect(state.pendingCurrentClimbUpdates.map(p => p.uuid)).toEqual(['item-2']); // Unchanged
       expect(state.currentClimbQueueItem).toEqual(item3); // Updated to item3
 
       // Server echo of item2 arrives (should be skipped)
@@ -155,7 +155,7 @@ describe('Pending Updates - Integration Tests', () => {
         type: 'DELTA_UPDATE_CURRENT_CLIMB',
         payload: { item: item2, shouldAddToQueue: false, isServerEvent: true },
       });
-      expect(state.pendingCurrentClimbUpdates).toEqual([]); // item-2 removed
+      expect(state.pendingCurrentClimbUpdates.map(p => p.uuid)).toEqual([]); // item-2 removed
       expect(state.currentClimbQueueItem).toEqual(item3); // Still item3
     });
   });
@@ -182,8 +182,8 @@ describe('Pending Updates - Integration Tests', () => {
       // Should be bounded to 50
       expect(state.pendingCurrentClimbUpdates).toHaveLength(50);
       // Should contain items 5-54 (oldest 5 dropped)
-      expect(state.pendingCurrentClimbUpdates[0]).toBe('item-5');
-      expect(state.pendingCurrentClimbUpdates[49]).toBe('item-54');
+      expect(state.pendingCurrentClimbUpdates[0].uuid).toBe('item-5');
+      expect(state.pendingCurrentClimbUpdates[49].uuid).toBe('item-54');
 
       // Server echoes of dropped items should NOT be skipped
       state = queueReducer(state, {
@@ -198,7 +198,7 @@ describe('Pending Updates - Integration Tests', () => {
         payload: { item: items[10], shouldAddToQueue: false, isServerEvent: true },
       });
       expect(state.currentClimbQueueItem).toEqual(items[0]); // Skipped (still items[0])
-      expect(state.pendingCurrentClimbUpdates).not.toContain('item-10'); // Removed from pending
+      expect(state.pendingCurrentClimbUpdates.find(p => p.uuid === 'item-10')).toBeUndefined(); // Removed from pending
     });
 
     it('should handle full sync clearing all pending updates', () => {
@@ -288,7 +288,7 @@ describe('Pending Updates - Integration Tests', () => {
         payload: { uuid: 'item-2' },
       });
 
-      expect(state.pendingCurrentClimbUpdates).toEqual(['item-0', 'item-1', 'item-3', 'item-4']);
+      expect(state.pendingCurrentClimbUpdates.map(p => p.uuid)).toEqual(['item-0', 'item-1', 'item-3', 'item-4']);
 
       // Server echo of item-2 should now be applied (not skipped)
       state = queueReducer(state, {

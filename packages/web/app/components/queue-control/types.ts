@@ -27,8 +27,9 @@ export interface QueueState {
   climbSearchParams: SearchRequestPagination;
   hasDoneFirstFetch: boolean;
   initialQueueDataReceivedFromPeers: boolean;
-  // Track UUIDs of locally-initiated current climb updates to skip server echoes
-  pendingCurrentClimbUpdates: string[];
+  // Track locally-initiated current climb updates with timestamps to skip server echoes
+  // Stale entries (older than 5 seconds) are automatically filtered during state transitions
+  pendingCurrentClimbUpdates: Array<{ uuid: string; addedAt: number }>;
 }
 
 export type QueueAction =

@@ -786,14 +786,15 @@ describe('queueReducer', () => {
 
       const result = queueReducer(initialState, action);
 
-      expect(result.pendingCurrentClimbUpdates).toContain(mockClimbQueueItem.uuid);
+      expect(result.pendingCurrentClimbUpdates.find(p => p.uuid === mockClimbQueueItem.uuid)).toBeDefined();
       expect(result.pendingCurrentClimbUpdates).toHaveLength(1);
+      expect(result.pendingCurrentClimbUpdates[0].addedAt).toBeGreaterThan(0);
     });
 
     it('should skip server events that match pending updates', () => {
       const stateWithPending: QueueState = {
         ...initialState,
-        pendingCurrentClimbUpdates: [mockClimbQueueItem.uuid],
+        pendingCurrentClimbUpdates: [{ uuid: mockClimbQueueItem.uuid, addedAt: Date.now() }],
         currentClimbQueueItem: null,
       };
 
@@ -811,7 +812,7 @@ describe('queueReducer', () => {
       // Should not update current climb (echo was skipped)
       expect(result.currentClimbQueueItem).toBeNull();
       // Should remove from pending
-      expect(result.pendingCurrentClimbUpdates).not.toContain(mockClimbQueueItem.uuid);
+      expect(result.pendingCurrentClimbUpdates.find(p => p.uuid === mockClimbQueueItem.uuid)).toBeUndefined();
       expect(result.pendingCurrentClimbUpdates).toHaveLength(0);
     });
 
@@ -823,7 +824,7 @@ describe('queueReducer', () => {
 
       const stateWithPending: QueueState = {
         ...initialState,
-        pendingCurrentClimbUpdates: [mockClimbQueueItem.uuid],
+        pendingCurrentClimbUpdates: [{ uuid: mockClimbQueueItem.uuid, addedAt: Date.now() }],
       };
 
       const action: QueueAction = {
@@ -840,12 +841,12 @@ describe('queueReducer', () => {
       // Should apply the update (different UUID)
       expect(result.currentClimbQueueItem).toEqual(otherItem);
       // Should not remove from pending (different UUID)
-      expect(result.pendingCurrentClimbUpdates).toContain(mockClimbQueueItem.uuid);
+      expect(result.pendingCurrentClimbUpdates.find(p => p.uuid === mockClimbQueueItem.uuid)).toBeDefined();
     });
 
     it('should maintain pending array bounded to last 50 items', () => {
       // Create state with 49 pending items
-      const existingPending = Array.from({ length: 49 }, (_, i) => `uuid-${i}`);
+      const existingPending = Array.from({ length: 49 }, (_, i) => ({ uuid: `uuid-${i}`, addedAt: Date.now() }));
       const stateWithPending: QueueState = {
         ...initialState,
         pendingCurrentClimbUpdates: existingPending,
@@ -868,12 +869,12 @@ describe('queueReducer', () => {
       const result = queueReducer(stateWithPending, action);
 
       expect(result.pendingCurrentClimbUpdates).toHaveLength(50);
-      expect(result.pendingCurrentClimbUpdates[49]).toBe('uuid-50');
+      expect(result.pendingCurrentClimbUpdates[49].uuid).toBe('uuid-50');
     });
 
     it('should drop oldest item when exceeding 50 pending items', () => {
       // Create state with 50 pending items
-      const existingPending = Array.from({ length: 50 }, (_, i) => `uuid-${i}`);
+      const existingPending = Array.from({ length: 50 }, (_, i) => ({ uuid: `uuid-${i}`, addedAt: Date.now() }));
       const stateWithPending: QueueState = {
         ...initialState,
         pendingCurrentClimbUpdates: existingPending,
@@ -896,8 +897,8 @@ describe('queueReducer', () => {
       const result = queueReducer(stateWithPending, action);
 
       expect(result.pendingCurrentClimbUpdates).toHaveLength(50);
-      expect(result.pendingCurrentClimbUpdates[0]).toBe('uuid-1'); // uuid-0 dropped
-      expect(result.pendingCurrentClimbUpdates[49]).toBe('uuid-51');
+      expect(result.pendingCurrentClimbUpdates[0].uuid).toBe('uuid-1'); // uuid-0 dropped
+      expect(result.pendingCurrentClimbUpdates[49].uuid).toBe('uuid-51');
     });
 
     it('should not track pending for server events', () => {
@@ -916,9 +917,10 @@ describe('queueReducer', () => {
     });
 
     it('should handle null item from server event', () => {
+      const pendingEntry = { uuid: 'some-uuid', addedAt: Date.now() };
       const stateWithPending: QueueState = {
         ...initialState,
-        pendingCurrentClimbUpdates: ['some-uuid'],
+        pendingCurrentClimbUpdates: [pendingEntry],
         currentClimbQueueItem: mockClimbQueueItem,
       };
 
@@ -934,8 +936,8 @@ describe('queueReducer', () => {
       const result = queueReducer(stateWithPending, action);
 
       expect(result.currentClimbQueueItem).toBeNull();
-      // Pending list unchanged for null items
-      expect(result.pendingCurrentClimbUpdates).toEqual(['some-uuid']);
+      // Pending list should still contain the entry (just filtered for staleness)
+      expect(result.pendingCurrentClimbUpdates.find(p => p.uuid === 'some-uuid')).toBeDefined();
     });
 
     it('should add to queue when shouldAddToQueue is true for local action', () => {
@@ -951,7 +953,7 @@ describe('queueReducer', () => {
       const result = queueReducer(initialState, action);
 
       expect(result.queue).toContain(mockClimbQueueItem);
-      expect(result.pendingCurrentClimbUpdates).toContain(mockClimbQueueItem.uuid);
+      expect(result.pendingCurrentClimbUpdates.find(p => p.uuid === mockClimbQueueItem.uuid)).toBeDefined();
     });
 
     it('should not add duplicate to queue when item already exists', () => {
@@ -972,7 +974,7 @@ describe('queueReducer', () => {
       const result = queueReducer(stateWithQueue, action);
 
       expect(result.queue).toHaveLength(1); // No duplicate
-      expect(result.pendingCurrentClimbUpdates).toContain(mockClimbQueueItem.uuid);
+      expect(result.pendingCurrentClimbUpdates.find(p => p.uuid === mockClimbQueueItem.uuid)).toBeDefined();
     });
   });
 
@@ -980,7 +982,11 @@ describe('queueReducer', () => {
     it('should clear pending updates on initial queue data sync', () => {
       const stateWithPending: QueueState = {
         ...initialState,
-        pendingCurrentClimbUpdates: ['uuid-1', 'uuid-2', 'uuid-3'],
+        pendingCurrentClimbUpdates: [
+          { uuid: 'uuid-1', addedAt: Date.now() },
+          { uuid: 'uuid-2', addedAt: Date.now() },
+          { uuid: 'uuid-3', addedAt: Date.now() }
+        ],
       };
 
       const action: QueueAction = {
@@ -1002,7 +1008,11 @@ describe('queueReducer', () => {
     it('should remove specific UUID from pending updates', () => {
       const stateWithPending: QueueState = {
         ...initialState,
-        pendingCurrentClimbUpdates: ['uuid-1', 'uuid-2', 'uuid-3'],
+        pendingCurrentClimbUpdates: [
+          { uuid: 'uuid-1', addedAt: Date.now() },
+          { uuid: 'uuid-2', addedAt: Date.now() },
+          { uuid: 'uuid-3', addedAt: Date.now() }
+        ],
       };
 
       const action: QueueAction = {
@@ -1012,13 +1022,19 @@ describe('queueReducer', () => {
 
       const result = queueReducer(stateWithPending, action);
 
-      expect(result.pendingCurrentClimbUpdates).toEqual(['uuid-1', 'uuid-3']);
+      expect(result.pendingCurrentClimbUpdates).toHaveLength(2);
+      expect(result.pendingCurrentClimbUpdates.find(p => p.uuid === 'uuid-1')).toBeDefined();
+      expect(result.pendingCurrentClimbUpdates.find(p => p.uuid === 'uuid-3')).toBeDefined();
+      expect(result.pendingCurrentClimbUpdates.find(p => p.uuid === 'uuid-2')).toBeUndefined();
     });
 
     it('should handle cleanup of non-existent UUID gracefully', () => {
       const stateWithPending: QueueState = {
         ...initialState,
-        pendingCurrentClimbUpdates: ['uuid-1', 'uuid-2'],
+        pendingCurrentClimbUpdates: [
+          { uuid: 'uuid-1', addedAt: Date.now() },
+          { uuid: 'uuid-2', addedAt: Date.now() }
+        ],
       };
 
       const action: QueueAction = {
@@ -1028,7 +1044,9 @@ describe('queueReducer', () => {
 
       const result = queueReducer(stateWithPending, action);
 
-      expect(result.pendingCurrentClimbUpdates).toEqual(['uuid-1', 'uuid-2']);
+      expect(result.pendingCurrentClimbUpdates).toHaveLength(2);
+      expect(result.pendingCurrentClimbUpdates.find(p => p.uuid === 'uuid-1')).toBeDefined();
+      expect(result.pendingCurrentClimbUpdates.find(p => p.uuid === 'uuid-2')).toBeDefined();
     });
 
     it('should handle cleanup on empty pending array', () => {
@@ -1040,6 +1058,34 @@ describe('queueReducer', () => {
       const result = queueReducer(initialState, action);
 
       expect(result.pendingCurrentClimbUpdates).toHaveLength(0);
+    });
+
+    it('should filter out stale pending updates older than 5 seconds', () => {
+      const oldTimestamp = Date.now() - 6000; // 6 seconds ago
+      const recentTimestamp = Date.now() - 2000; // 2 seconds ago
+
+      const stateWithPending: QueueState = {
+        ...initialState,
+        pendingCurrentClimbUpdates: [
+          { uuid: 'old-uuid', addedAt: oldTimestamp },
+          { uuid: 'recent-uuid', addedAt: recentTimestamp },
+        ],
+      };
+
+      // Any DELTA_UPDATE_CURRENT_CLIMB action triggers cleanup
+      const action: QueueAction = {
+        type: 'DELTA_UPDATE_CURRENT_CLIMB',
+        payload: { item: mockClimbQueueItem, isServerEvent: false },
+      };
+
+      const result = queueReducer(stateWithPending, action);
+
+      // Old entry should be filtered out
+      expect(result.pendingCurrentClimbUpdates.find(p => p.uuid === 'old-uuid')).toBeUndefined();
+      // Recent entry should remain
+      expect(result.pendingCurrentClimbUpdates.find(p => p.uuid === 'recent-uuid')).toBeDefined();
+      // New entry should be added
+      expect(result.pendingCurrentClimbUpdates.find(p => p.uuid === mockClimbQueueItem.uuid)).toBeDefined();
     });
   });
 });

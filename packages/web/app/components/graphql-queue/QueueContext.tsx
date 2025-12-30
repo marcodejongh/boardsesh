@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useContext, createContext, ReactNode, useCallback, useMemo, useState, useEffect, useRef } from 'react';
+import React, { useContext, createContext, ReactNode, useCallback, useMemo, useState, useEffect } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { v4 as uuidv4 } from 'uuid';
 import { useQueueReducer } from '../queue-control/reducer';
@@ -255,47 +255,6 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
 
     return unsubscribe;
   }, [isPersistentSessionActive, persistentSession, dispatch]);
-
-  // Cleanup stale pending updates after timeout
-  // Use ref to track timeouts so we only create them for NEW items
-  const pendingTimeoutsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
-
-  useEffect(() => {
-    const currentPending = new Set(state.pendingCurrentClimbUpdates);
-    const trackedUuids = new Set(pendingTimeoutsRef.current.keys());
-
-    // Clear timeouts for items no longer in pending list
-    trackedUuids.forEach(uuid => {
-      if (!currentPending.has(uuid)) {
-        const timeout = pendingTimeoutsRef.current.get(uuid);
-        if (timeout) {
-          clearTimeout(timeout);
-          pendingTimeoutsRef.current.delete(uuid);
-        }
-      }
-    });
-
-    // Create timeouts ONLY for new items not already tracked
-    currentPending.forEach(uuid => {
-      if (!trackedUuids.has(uuid)) {
-        const timeout = setTimeout(() => {
-          dispatch({
-            type: 'CLEANUP_PENDING_UPDATE',
-            payload: { uuid },
-          });
-          pendingTimeoutsRef.current.delete(uuid);
-        }, 5000); // 5 second timeout
-
-        pendingTimeoutsRef.current.set(uuid, timeout);
-      }
-    });
-
-    // Cleanup all timeouts on unmount
-    return () => {
-      pendingTimeoutsRef.current.forEach(timeout => clearTimeout(timeout));
-      pendingTimeoutsRef.current.clear();
-    };
-  }, [state.pendingCurrentClimbUpdates]); // Remove dispatch from dependencies
 
   // Use persistent session values when active
   const clientId = isPersistentSessionActive ? persistentSession.clientId : null;

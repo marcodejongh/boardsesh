@@ -150,15 +150,21 @@ export function queueReducer(state: QueueState, action: QueueAction): QueueState
     case 'DELTA_UPDATE_CURRENT_CLIMB': {
       const { item, shouldAddToQueue, isServerEvent } = action.payload;
 
+      // Filter out stale entries (older than 5 seconds) before processing
+      const now = Date.now();
+      const freshPending = state.pendingCurrentClimbUpdates.filter(
+        p => now - p.addedAt <= 5000
+      );
+
       // For server events, check if this is an echo of our own update
       if (isServerEvent && item) {
-        const isPending = state.pendingCurrentClimbUpdates.includes(item.uuid);
+        const isPending = freshPending.find(p => p.uuid === item.uuid);
         if (isPending) {
           // Remove from pending list and skip applying this update
           // (we already applied it optimistically)
           return {
             ...state,
-            pendingCurrentClimbUpdates: state.pendingCurrentClimbUpdates.filter(uuid => uuid !== item.uuid),
+            pendingCurrentClimbUpdates: freshPending.filter(p => p.uuid !== item.uuid),
           };
         }
       }
@@ -169,18 +175,20 @@ export function queueReducer(state: QueueState, action: QueueAction): QueueState
       }
 
       let newQueue = state.queue;
-      let newPendingUpdates = state.pendingCurrentClimbUpdates;
+      let newPendingUpdates = freshPending;
 
       // Add to queue if requested and item doesn't exist
       if (item && shouldAddToQueue && !state.queue.find(qItem => qItem.uuid === item.uuid)) {
         newQueue = [...state.queue, item];
       }
 
-      // For local updates (not server events), track as pending
+      // For local updates (not server events), track as pending with timestamp
       if (!isServerEvent && item) {
-        // Add to pending list, keeping only last 50 to prevent unbounded growth
-        // Increased from 10 to handle rapid navigation scenarios where server is slow
-        newPendingUpdates = [...state.pendingCurrentClimbUpdates, item.uuid].slice(-50);
+        // Add to pending list with timestamp, keeping only last 50 to prevent unbounded growth
+        newPendingUpdates = [
+          ...freshPending,
+          { uuid: item.uuid, addedAt: Date.now() }
+        ].slice(-50);
       }
 
       return {
@@ -195,7 +203,7 @@ export function queueReducer(state: QueueState, action: QueueAction): QueueState
       return {
         ...state,
         pendingCurrentClimbUpdates: state.pendingCurrentClimbUpdates.filter(
-          uuid => uuid !== action.payload.uuid
+          p => p.uuid !== action.payload.uuid
         ),
       };
     }
