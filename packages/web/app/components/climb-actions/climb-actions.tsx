@@ -193,4 +193,59 @@ ClimbActions.asCardActions = function asCardActions(
   return results;
 };
 
+/**
+ * Helper function to get actions with expanded content for Ant Design Card
+ * Returns both the action icons and any expanded content that should render inline
+ * Usage: const { actions, expandedContent } = ClimbActions.asCardActionsWithContent({ climb, boardDetails, angle });
+ */
+ClimbActions.asCardActionsWithContent = function asCardActionsWithContent(
+  props: Omit<ClimbActionsProps, 'viewMode'>
+): { actions: React.ReactNode[]; expandedContent: React.ReactNode } {
+  const { climb, boardDetails, angle, include, exclude = [], size, onActionComplete, auroraAppUrl } = props;
+
+  // Determine which actions to show
+  let actions = include || DEFAULT_ACTION_ORDER;
+  actions = actions.filter((action) => !exclude.includes(action));
+
+  const commonProps = {
+    climb,
+    boardDetails,
+    angle,
+    viewMode: 'icon' as const,
+    size,
+    auroraAppUrl,
+  };
+
+  const actionElements: React.ReactNode[] = [];
+  const expandedElements: React.ReactNode[] = [];
+
+  for (const actionType of actions) {
+    const ActionComponent = ACTION_COMPONENTS[actionType];
+    if (!ActionComponent) continue;
+
+    const result = ActionComponent({
+      ...commonProps,
+      onComplete: onActionComplete ? () => onActionComplete(actionType) : undefined,
+    });
+
+    if (result && result.available) {
+      if (result.element) {
+        actionElements.push(
+          <React.Fragment key={result.key}>{result.element}</React.Fragment>
+        );
+      }
+      if (result.expandedContent) {
+        expandedElements.push(
+          <React.Fragment key={`expanded:${result.key}`}>{result.expandedContent}</React.Fragment>
+        );
+      }
+    }
+  }
+
+  return {
+    actions: actionElements,
+    expandedContent: expandedElements.length > 0 ? <>{expandedElements}</> : null,
+  };
+};
+
 export default ClimbActions;

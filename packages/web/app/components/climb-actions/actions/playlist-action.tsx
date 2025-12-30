@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { Button, Popover, List, Input, Form, Space, Typography, Badge, ColorPicker, message } from 'antd';
+import { Button, List, Input, Form, Space, Typography, Badge, ColorPicker, message } from 'antd';
 import { ActionTooltip } from '../action-tooltip';
-import { TagOutlined, PlusOutlined, CheckOutlined } from '@ant-design/icons';
+import { TagOutlined, PlusOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { track } from '@vercel/analytics';
 import type { ClimbActionProps, ClimbActionResult } from '../types';
 import { usePlaylists } from '../use-playlists';
@@ -13,6 +13,11 @@ import type { Color } from 'antd/es/color-picker';
 import { themeTokens } from '@/app/theme/theme-config';
 
 const { Text } = Typography;
+
+// Validate hex color format to prevent CSS injection
+const isValidHexColor = (color: string): boolean => {
+  return /^#([0-9A-Fa-f]{3}){1,2}$/.test(color);
+};
 
 export function PlaylistAction({
   climb,
@@ -54,10 +59,9 @@ export function PlaylistAction({
         return;
       }
 
-      setPopoverOpen(true);
-      onComplete?.();
+      setPopoverOpen((prev) => !prev);
     },
-    [isAuthenticated, onComplete]
+    [isAuthenticated]
   );
 
   const handleTogglePlaylist = useCallback(
@@ -80,12 +84,13 @@ export function PlaylistAction({
             playlistId,
           });
         }
+        onComplete?.();
         // Note: No need to call refreshPlaylists() - optimistic updates handle state
       } catch (error) {
         message.error(isInPlaylist ? 'Failed to remove from playlist' : 'Failed to add to playlist');
       }
     },
-    [addToPlaylist, removeFromPlaylist, boardDetails.board_name, climb.uuid]
+    [addToPlaylist, removeFromPlaylist, boardDetails.board_name, climb.uuid, onComplete]
   );
 
   const handleCreatePlaylist = useCallback(async () => {
@@ -93,13 +98,18 @@ export function PlaylistAction({
       const values = await form.validateFields();
       setCreatingPlaylist(true);
 
-      // Extract hex color from ColorPicker value
+      // Extract and validate hex color from ColorPicker value
       let colorHex: string | undefined;
       if (values.color) {
+        let rawColor: string | undefined;
         if (typeof values.color === 'string') {
-          colorHex = values.color;
+          rawColor = values.color;
         } else if (typeof values.color === 'object' && 'toHexString' in values.color) {
-          colorHex = (values.color as Color).toHexString();
+          rawColor = (values.color as Color).toHexString();
+        }
+        // Only use color if it's a valid hex format
+        if (rawColor && isValidHexColor(rawColor)) {
+          colorHex = rawColor;
         }
       }
 
@@ -116,6 +126,7 @@ export function PlaylistAction({
 
       form.resetFields();
       setShowCreateForm(false);
+      onComplete?.();
       // Note: No need to call refreshPlaylists() - optimistic updates handle state
     } catch (error) {
       if (error instanceof Error && 'errorFields' in error) {
@@ -126,18 +137,35 @@ export function PlaylistAction({
     } finally {
       setCreatingPlaylist(false);
     }
-  }, [form, createPlaylist, addToPlaylist, boardDetails.board_name]);
+  }, [form, createPlaylist, addToPlaylist, boardDetails.board_name, onComplete]);
 
-  const popoverContent = (
-    <div style={{ width: 300, maxHeight: 400, overflow: 'auto' }}>
+  const inlineContent = (
+    <div
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        padding: themeTokens.spacing[3],
+        backgroundColor: themeTokens.semantic.surfaceOverlay,
+        overflow: 'auto',
+        zIndex: themeTokens.zIndex.dropdown,
+      }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div style={{ marginBottom: themeTokens.spacing[2] }}>
+        <Text strong>Add to Playlist</Text>
+      </div>
       {playlists.length === 0 && !showCreateForm ? (
-        <Space direction="vertical" style={{ width: '100%', textAlign: 'center', padding: 16 }}>
+        <Space direction="vertical" style={{ width: '100%', textAlign: 'center', padding: themeTokens.spacing[2] }}>
           <Text type="secondary">No playlists yet</Text>
           <Button
             type="primary"
             icon={<PlusOutlined />}
             onClick={() => setShowCreateForm(true)}
             block
+            size="small"
           >
             Create Your First Playlist
           </Button>
@@ -149,53 +177,54 @@ export function PlaylistAction({
               <List
                 dataSource={playlists}
                 loading={isLoading}
+                size="small"
+                split={false}
                 renderItem={(playlist: Playlist) => {
                   const isInPlaylist = playlistsContainingClimb.has(playlist.id);
+                  const validColor = playlist.color && isValidHexColor(playlist.color) ? playlist.color : null;
                   return (
                     <List.Item
                       style={{
-                        padding: '8px 16px',
+                        padding: `${themeTokens.spacing[1] + 2}px ${themeTokens.spacing[2]}px`,
                         cursor: 'pointer',
-                        borderLeft: playlist.color ? `4px solid ${playlist.color}` : undefined,
+                        borderLeft: validColor ? `3px solid ${validColor}` : '3px solid transparent',
+                        borderRadius: themeTokens.borderRadius.sm,
+                        marginBottom: themeTokens.spacing[1],
+                        backgroundColor: isInPlaylist ? themeTokens.semantic.selectedLight : undefined,
                       }}
                       onClick={() => handleTogglePlaylist(playlist.id, isInPlaylist)}
                     >
                       <Space style={{ width: '100%', justifyContent: 'space-between' }}>
                         <Space direction="vertical" size={0}>
-                          <Text strong>{playlist.name}</Text>
-                          {playlist.description && (
-                            <Text type="secondary" style={{ fontSize: 12 }}>
-                              {playlist.description}
-                            </Text>
-                          )}
-                          <Text type="secondary" style={{ fontSize: 12 }}>
+                          <Text strong style={{ fontSize: 13 }}>{playlist.name}</Text>
+                          <Text type="secondary" style={{ fontSize: 11 }}>
                             {playlist.climbCount} {playlist.climbCount === 1 ? 'climb' : 'climbs'}
                           </Text>
                         </Space>
                         {isInPlaylist && (
-                          <CheckOutlined style={{ color: themeTokens.colors.success, fontSize: 16 }} />
+                          <CheckOutlined style={{ color: themeTokens.colors.success, fontSize: 14 }} />
                         )}
                       </Space>
                     </List.Item>
                   );
                 }}
               />
-              <div style={{ padding: '8px 16px', borderTop: '1px solid #f0f0f0' }}>
-                <Button
-                  type="dashed"
-                  icon={<PlusOutlined />}
-                  onClick={() => setShowCreateForm(true)}
-                  block
-                >
-                  Create New Playlist
-                </Button>
-              </div>
+              <Button
+                type="dashed"
+                icon={<PlusOutlined />}
+                onClick={() => setShowCreateForm(true)}
+                block
+                size="small"
+                style={{ marginTop: themeTokens.spacing[2] }}
+              >
+                Create New Playlist
+              </Button>
             </>
           )}
 
           {showCreateForm && (
-            <div style={{ padding: 16 }}>
-              <Form form={form} layout="vertical">
+            <div>
+              <Form form={form} layout="vertical" size="small">
                 <Form.Item
                   name="name"
                   label="Playlist Name"
@@ -203,6 +232,7 @@ export function PlaylistAction({
                     { required: true, message: 'Please enter a playlist name' },
                     { max: 100, message: 'Name too long' },
                   ]}
+                  style={{ marginBottom: 8 }}
                 >
                   <Input placeholder="e.g., Hard Crimps" autoFocus />
                 </Form.Item>
@@ -210,6 +240,7 @@ export function PlaylistAction({
                   name="description"
                   label="Description (optional)"
                   rules={[{ max: 500, message: 'Description too long' }]}
+                  style={{ marginBottom: 8 }}
                 >
                   <Input.TextArea
                     placeholder="Optional description..."
@@ -217,12 +248,13 @@ export function PlaylistAction({
                     maxLength={500}
                   />
                 </Form.Item>
-                <Form.Item name="color" label="Color (optional)">
-                  <ColorPicker format="hex" showText />
+                <Form.Item name="color" label="Color (optional)" style={{ marginBottom: 8 }}>
+                  <ColorPicker format="hex" showText size="small" />
                 </Form.Item>
               </Form>
               <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
                 <Button
+                  size="small"
                   onClick={() => {
                     setShowCreateForm(false);
                     form.resetFields();
@@ -230,7 +262,7 @@ export function PlaylistAction({
                 >
                   Cancel
                 </Button>
-                <Button type="primary" onClick={handleCreatePlaylist} loading={creatingPlaylist}>
+                <Button type="primary" size="small" onClick={handleCreatePlaylist} loading={creatingPlaylist}>
                   Create
                 </Button>
               </Space>
@@ -246,14 +278,15 @@ export function PlaylistAction({
   const iconSize = size === 'small' ? 14 : size === 'large' ? 20 : 16;
 
   const inPlaylistCount = playlistsContainingClimb.size;
-  const icon =
-    inPlaylistCount > 0 ? (
-      <Badge count={inPlaylistCount} size="small" offset={[-2, 2]}>
-        <TagOutlined style={{ fontSize: iconSize }} />
-      </Badge>
-    ) : (
+  const icon = popoverOpen ? (
+    <CloseOutlined style={{ fontSize: iconSize }} />
+  ) : inPlaylistCount > 0 ? (
+    <Badge count={inPlaylistCount} size="small" offset={[-2, 2]}>
       <TagOutlined style={{ fontSize: iconSize }} />
-    );
+    </Badge>
+  ) : (
+    <TagOutlined style={{ fontSize: iconSize }} />
+  );
 
   const authModalElement = (
     <AuthModal
@@ -265,23 +298,14 @@ export function PlaylistAction({
     />
   );
 
-  // Icon mode - for Card actions
+  // Icon mode - for Card actions (renders inline content below when expanded)
   const iconElement = (
     <>
-      <Popover
-        content={popoverContent}
-        title="Add to Playlist"
-        trigger="click"
-        open={popoverOpen}
-        onOpenChange={setPopoverOpen}
-        placement="bottomLeft"
-      >
-        <ActionTooltip title={label}>
-          <span onClick={handleClick} style={{ cursor: 'pointer' }} className={className}>
-            {icon}
-          </span>
-        </ActionTooltip>
-      </Popover>
+      <ActionTooltip title={label}>
+        <span onClick={handleClick} style={{ cursor: 'pointer' }} className={className}>
+          {icon}
+        </span>
+      </ActionTooltip>
       {authModalElement}
     </>
   );
@@ -289,24 +313,15 @@ export function PlaylistAction({
   // Button mode
   const buttonElement = (
     <>
-      <Popover
-        content={popoverContent}
-        title="Add to Playlist"
-        trigger="click"
-        open={popoverOpen}
-        onOpenChange={setPopoverOpen}
-        placement="bottomLeft"
+      <Button
+        icon={icon}
+        onClick={handleClick}
+        size={size === 'large' ? 'large' : size === 'small' ? 'small' : 'middle'}
+        disabled={disabled}
+        className={className}
       >
-        <Button
-          icon={icon}
-          onClick={handleClick}
-          size={size === 'large' ? 'large' : size === 'small' ? 'small' : 'middle'}
-          disabled={disabled}
-          className={className}
-        >
-          {shouldShowLabel && label}
-        </Button>
-      </Popover>
+        {shouldShowLabel && label}
+      </Button>
       {authModalElement}
     </>
   );
@@ -318,6 +333,9 @@ export function PlaylistAction({
     icon: <TagOutlined />,
     onClick: () => handleClick(),
   };
+
+  // Inline expandable content for card mode
+  const expandedContent = popoverOpen ? inlineContent : null;
 
   let element: React.ReactNode;
   switch (viewMode) {
@@ -337,6 +355,7 @@ export function PlaylistAction({
 
   return {
     element,
+    expandedContent,
     menuItem,
     key: 'playlist',
     available: true,

@@ -16,6 +16,8 @@ type ClimbCardProps = {
   onCoverClick?: () => void;
   selected?: boolean;
   actions?: React.JSX.Element[];
+  /** Optional expanded content to render over the cover */
+  expandedContent?: React.ReactNode;
 };
 
 /**
@@ -38,10 +40,72 @@ const areActionsEqual = (
   return prev.every((el, i) => el.key === next[i].key);
 };
 
-const ClimbCard = React.memo(
-  ({ climb, boardDetails, onCoverClick, selected, actions }: ClimbCardProps) => {
-    const cover = <ClimbCardCover climb={climb} boardDetails={boardDetails} onClick={onCoverClick} />;
+/**
+ * Inner component that handles dynamic action generation.
+ * Separated to allow proper hook usage without affecting memoization of static cases.
+ * Note: This component generates its own actions and expandedContent - external props are not supported.
+ */
+function ClimbCardWithActions({
+  climb,
+  boardDetails,
+  onCoverClick,
+  selected,
+}: {
+  climb: Climb;
+  boardDetails: BoardDetails;
+  onCoverClick?: () => void;
+  selected?: boolean;
+}) {
+  // Actions are generated here - hooks inside action components are called during this render
+  const { actions: cardActions, expandedContent } = ClimbActions.asCardActionsWithContent({
+    climb,
+    boardDetails,
+    angle: climb.angle,
+    exclude: ['tick', 'openInApp', 'mirror', 'share', 'addToList'],
+  });
 
+  const cover = <ClimbCardCover climb={climb} boardDetails={boardDetails} onClick={onCoverClick} />;
+  const cardTitle = <ClimbTitle climb={climb} layout="horizontal" showSetterInfo />;
+
+  return (
+    <div data-testid="climb-card">
+      <Card
+        title={cardTitle}
+        size="small"
+        style={{
+          borderColor: selected ? themeTokens.colors.primary : undefined,
+        }}
+        styles={{
+          header: { paddingTop: themeTokens.spacing[2], paddingBottom: themeTokens.spacing[1] + 2 },
+          body: {
+            padding: themeTokens.spacing[1] + 2,
+            backgroundColor: selected ? themeTokens.semantic.selectedLight : undefined,
+          },
+        }}
+        actions={cardActions}
+      >
+        <div style={{ position: 'relative' }}>
+          {cover}
+          {expandedContent}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+/**
+ * Memoized component for when actions are provided externally.
+ */
+const ClimbCardStatic = React.memo(
+  ({
+    climb,
+    boardDetails,
+    onCoverClick,
+    selected,
+    actions,
+    expandedContent,
+  }: ClimbCardProps) => {
+    const cover = <ClimbCardCover climb={climb} boardDetails={boardDetails} onClick={onCoverClick} />;
     const cardTitle = climb ? (
       <ClimbTitle climb={climb} layout="horizontal" showSetterInfo />
     ) : (
@@ -57,20 +121,18 @@ const ClimbCard = React.memo(
             borderColor: selected ? themeTokens.colors.primary : undefined,
           }}
           styles={{
-            header: { paddingTop: 8, paddingBottom: 6 },
+            header: { paddingTop: themeTokens.spacing[2], paddingBottom: themeTokens.spacing[1] + 2 },
             body: {
-              padding: 6,
+              padding: themeTokens.spacing[1] + 2,
               backgroundColor: selected ? themeTokens.semantic.selectedLight : undefined,
             },
           }}
-          actions={actions || (climb ? ClimbActions.asCardActions({
-            climb,
-            boardDetails,
-            angle: climb.angle,
-            exclude: ['tick', 'openInApp', 'mirror', 'share', 'addToList'],
-          }) : [])}
+          actions={actions || []}
         >
-          {cover}
+          <div style={{ position: 'relative' }}>
+            {cover}
+            {expandedContent}
+          </div>
         </Card>
       </div>
     );
@@ -97,11 +159,63 @@ const ClimbCard = React.memo(
     if (prevProps.onCoverClick !== nextProps.onCoverClick) return false;
     // Compare actions arrays properly
     if (!areActionsEqual(prevProps.actions, nextProps.actions)) return false;
+    // Compare expandedContent by reference
+    if (prevProps.expandedContent !== nextProps.expandedContent) return false;
 
     return true;
   },
 );
 
-ClimbCard.displayName = 'ClimbCard';
+ClimbCardStatic.displayName = 'ClimbCardStatic';
+
+/**
+ * ClimbCard component that displays a climb in a card format.
+ *
+ * Behavior:
+ * - When `actions` or `expandedContent` props are provided, uses memoized static component
+ * - When neither is provided and climb exists, generates actions dynamically (allows action state like playlist selector)
+ * - When no climb, shows loading state
+ */
+function ClimbCard(props: ClimbCardProps) {
+  const { climb, boardDetails, onCoverClick, selected, actions, expandedContent } = props;
+
+  // When actions or expandedContent are provided externally, use the memoized static version
+  if (actions !== undefined || expandedContent !== undefined) {
+    return (
+      <ClimbCardStatic
+        climb={climb}
+        boardDetails={boardDetails}
+        onCoverClick={onCoverClick}
+        selected={selected}
+        actions={actions}
+        expandedContent={expandedContent}
+      />
+    );
+  }
+
+  // When no actions/expandedContent provided and we have a climb, generate actions dynamically
+  // This path is not memoized because action components contain internal state
+  if (climb) {
+    return (
+      <ClimbCardWithActions
+        climb={climb}
+        boardDetails={boardDetails}
+        onCoverClick={onCoverClick}
+        selected={selected}
+      />
+    );
+  }
+
+  // Loading state
+  return (
+    <ClimbCardStatic
+      climb={climb}
+      boardDetails={boardDetails}
+      onCoverClick={onCoverClick}
+      selected={selected}
+      actions={[]}
+    />
+  );
+}
 
 export default ClimbCard;
