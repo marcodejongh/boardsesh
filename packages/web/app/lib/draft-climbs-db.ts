@@ -14,6 +14,12 @@ export interface DraftClimb {
   sizeId: number;
   setIds: number[];
   angle: number;
+  // Names for URL generation
+  layoutName?: string;
+  sizeName?: string;
+  sizeDescription?: string;
+  setNames?: string[];
+  // Form data
   name: string;
   description: string;
   frames: string;
@@ -41,24 +47,34 @@ const initDB = async (): Promise<IDBPDatabase> => {
   return dbPromise;
 };
 
+export interface CreateDraftOptions {
+  boardName: BoardName;
+  layoutId: number;
+  sizeId: number;
+  setIds: number[];
+  angle: number;
+  layoutName?: string;
+  sizeName?: string;
+  sizeDescription?: string;
+  setNames?: string[];
+}
+
 /**
  * Create a new draft climb with a UUID
  */
-export const createDraftClimb = async (
-  boardName: BoardName,
-  layoutId: number,
-  sizeId: number,
-  setIds: number[],
-  angle: number,
-): Promise<DraftClimb> => {
+export const createDraftClimb = async (options: CreateDraftOptions): Promise<DraftClimb> => {
   const now = Date.now();
   const draft: DraftClimb = {
     uuid: uuidv4(),
-    boardName,
-    layoutId,
-    sizeId,
-    setIds,
-    angle,
+    boardName: options.boardName,
+    layoutId: options.layoutId,
+    sizeId: options.sizeId,
+    setIds: options.setIds,
+    angle: options.angle,
+    layoutName: options.layoutName,
+    sizeName: options.sizeName,
+    sizeDescription: options.sizeDescription,
+    setNames: options.setNames,
     name: '',
     description: '',
     frames: '',

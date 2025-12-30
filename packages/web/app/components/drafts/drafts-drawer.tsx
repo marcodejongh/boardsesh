@@ -5,7 +5,7 @@ import { Drawer, List, Button, Empty, Typography, Popconfirm, Space, Tag } from 
 import { DeleteOutlined, EditOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import { useDrafts, DraftClimb } from './drafts-context';
-import { generateLayoutSlug, generateSizeSlug, generateSetSlug } from '@/app/lib/url-utils';
+import { generateLayoutSlug, generateSizeSlug, generateSetSlug, constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import styles from './drafts-drawer.module.css';
 
 const { Text, Paragraph } = Typography;
@@ -94,7 +94,16 @@ export function DraftsDrawer({ open, onClose }: DraftsDrawerProps) {
 
   const handleEdit = (draft: DraftClimb) => {
     // Navigate to the create page with the draft ID
-    const createUrl = `/${draft.boardName}/${generateLayoutSlug(String(draft.layoutId))}/${generateSizeSlug(String(draft.sizeId))}/${generateSetSlug(draft.setIds.map(String))}/${draft.angle}/create?draftId=${draft.uuid}`;
+    let createUrl: string;
+
+    if (draft.layoutName && draft.sizeName && draft.setNames) {
+      // Use stored names for proper slug-based URL
+      createUrl = `/${draft.boardName}/${generateLayoutSlug(draft.layoutName)}/${generateSizeSlug(draft.sizeName)}/${generateSetSlug(draft.setNames)}/${draft.angle}/create?draftId=${draft.uuid}`;
+    } else {
+      // Fallback to ID-based URL (older drafts)
+      createUrl = `/${draft.boardName}/${draft.layoutId}/${draft.sizeId}/${draft.setIds.join(',')}/${draft.angle}/create?draftId=${draft.uuid}`;
+    }
+
     router.push(createUrl);
     onClose();
   };

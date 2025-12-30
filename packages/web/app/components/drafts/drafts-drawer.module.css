@@ -1,0 +1,13 @@
+.draftItem {
+  padding: 12px 0;
+}
+
+.draftMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.timestamp {
+  font-size: 12px;
+}

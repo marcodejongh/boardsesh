@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
-import { Flex, Button, Dropdown, MenuProps } from 'antd';
+import { Flex, Button, Dropdown, MenuProps, Badge } from 'antd';
 import { Header } from 'antd/es/layout/layout';
 import { useSession, signOut } from 'next-auth/react';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
@@ -9,8 +9,10 @@ import SearchButton from '../search-drawer/search-button';
 import SearchClimbNameInput from '../search-drawer/search-climb-name-input';
 import { UISearchParamsProvider } from '../queue-control/ui-searchparams-provider';
 import { BoardDetails } from '@/app/lib/types';
-import { ExperimentOutlined } from '@ant-design/icons';
+import { ExperimentOutlined, FileTextOutlined } from '@ant-design/icons';
 import { themeTokens } from '@/app/theme/theme-config';
+import { useDrafts } from '../drafts/drafts-context';
+import { DraftsDrawer } from '../drafts/drafts-drawer';
 
 // Dynamically import bluetooth component to reduce initial bundle size
 // LED placement data (~50KB) is only loaded when bluetooth is actually used
@@ -75,7 +77,9 @@ function usePageMode(): PageMode {
 export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeaderProps) {
   const { data: session } = useSession();
   const { currentClimb } = useQueueContext();
+  const { draftsCount } = useDrafts();
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showDraftsDrawer, setShowDraftsDrawer] = useState(false);
   const pageMode = usePageMode();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -242,6 +246,18 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
                   </div>
                 )}
 
+                {/* Drafts button with badge - shows when there are drafts */}
+                {draftsCount > 0 && (
+                  <Badge count={draftsCount} size="small" offset={[-4, 4]}>
+                    <Button
+                      icon={<FileTextOutlined />}
+                      type="text"
+                      title="View drafts"
+                      onClick={() => setShowDraftsDrawer(true)}
+                    />
+                  </Badge>
+                )}
+
                 <ShareBoardButton />
                 <SendClimbToBoardButton boardDetails={boardDetails} />
 
@@ -283,6 +299,11 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
         onClose={() => setShowAuthModal(false)}
         title="Sign in to Boardsesh"
         description="Sign in to access all features including saving favorites, tracking ascents, and more."
+      />
+
+      <DraftsDrawer
+        open={showDraftsDrawer}
+        onClose={() => setShowDraftsDrawer(false)}
       />
     </Header>
   );

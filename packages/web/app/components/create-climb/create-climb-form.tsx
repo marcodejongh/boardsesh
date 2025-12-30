@@ -106,13 +106,17 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
         setIsLoadingDraft(false);
       } else {
         // Create a new draft immediately
-        const newDraft = await createDraft(
-          boardDetails.board_name,
-          boardDetails.layout_id,
-          boardDetails.size_id,
-          boardDetails.set_ids,
+        const newDraft = await createDraft({
+          boardName: boardDetails.board_name,
+          layoutId: boardDetails.layout_id,
+          sizeId: boardDetails.size_id,
+          setIds: boardDetails.set_ids,
           angle,
-        );
+          layoutName: boardDetails.layout_name,
+          sizeName: boardDetails.size_name,
+          sizeDescription: boardDetails.size_description,
+          setNames: boardDetails.set_names,
+        });
         setCurrentDraft(newDraft);
         // Update URL with draft ID (without navigation)
         const url = new URL(window.location.href);

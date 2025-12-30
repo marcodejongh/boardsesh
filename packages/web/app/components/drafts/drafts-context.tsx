@@ -3,26 +3,20 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import {
   DraftClimb,
+  CreateDraftOptions,
   getAllDraftClimbs,
   createDraftClimb,
   updateDraftClimb,
   deleteDraftClimb,
   getDraftClimbsCount,
 } from '@/app/lib/draft-climbs-db';
-import { BoardName } from '@/app/lib/types';
 import { LitUpHoldsMap } from '../board-renderer/types';
 
 interface DraftsContextType {
   drafts: DraftClimb[];
   draftsCount: number;
   isLoading: boolean;
-  createDraft: (
-    boardName: BoardName,
-    layoutId: number,
-    sizeId: number,
-    setIds: number[],
-    angle: number,
-  ) => Promise<DraftClimb>;
+  createDraft: (options: CreateDraftOptions) => Promise<DraftClimb>;
   updateDraft: (
     uuid: string,
     updates: {
@@ -62,21 +56,12 @@ export const DraftsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     loadDrafts();
   }, [loadDrafts]);
 
-  const createDraft = useCallback(
-    async (
-      boardName: BoardName,
-      layoutId: number,
-      sizeId: number,
-      setIds: number[],
-      angle: number,
-    ): Promise<DraftClimb> => {
-      const newDraft = await createDraftClimb(boardName, layoutId, sizeId, setIds, angle);
-      setDrafts((prev) => [newDraft, ...prev]);
-      setDraftsCount((prev) => prev + 1);
-      return newDraft;
-    },
-    [],
-  );
+  const createDraft = useCallback(async (options: CreateDraftOptions): Promise<DraftClimb> => {
+    const newDraft = await createDraftClimb(options);
+    setDrafts((prev) => [newDraft, ...prev]);
+    setDraftsCount((prev) => prev + 1);
+    return newDraft;
+  }, []);
 
   const updateDraft = useCallback(
     async (
