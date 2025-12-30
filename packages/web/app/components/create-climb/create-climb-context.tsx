@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback, useRef, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef, useMemo, ReactNode } from 'react';
 
 interface CreateClimbActions {
   onPublish: () => void;
@@ -47,18 +47,22 @@ export function CreateClimbProvider({ children }: { children: ReactNode }) {
     actionsRef.current.onCancel();
   }, []);
 
+  // Memoize context value to prevent unnecessary re-renders of consumers
+  const contextValue = useMemo(
+    () => ({
+      canPublish,
+      isPublishing,
+      onPublish,
+      onCancel,
+      registerActions,
+      setCanPublish,
+      setIsPublishing,
+    }),
+    [canPublish, isPublishing, onPublish, onCancel, registerActions],
+  );
+
   return (
-    <CreateClimbContext.Provider
-      value={{
-        canPublish,
-        isPublishing,
-        onPublish,
-        onCancel,
-        registerActions,
-        setCanPublish,
-        setIsPublishing,
-      }}
-    >
+    <CreateClimbContext.Provider value={contextValue}>
       {children}
     </CreateClimbContext.Provider>
   );

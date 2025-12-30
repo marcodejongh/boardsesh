@@ -9,7 +9,6 @@ import SearchButton from '../search-drawer/search-button';
 import SearchClimbNameInput from '../search-drawer/search-climb-name-input';
 import { UISearchParamsProvider } from '../queue-control/ui-searchparams-provider';
 import { BoardDetails } from '@/app/lib/types';
-import { useCreateClimbContext } from '../create-climb/create-climb-context';
 import { ExperimentOutlined } from '@ant-design/icons';
 import { themeTokens } from '@/app/theme/theme-config';
 
@@ -28,8 +27,33 @@ import Logo from '../brand/logo';
 import styles from './header.module.css';
 import Link from 'next/link';
 import AuthModal from '../auth/auth-modal';
+import { useCreateClimbContext } from '../create-climb/create-climb-context';
 
 type PageMode = 'list' | 'view' | 'play' | 'create' | 'other';
+
+// Separate component for create mode buttons to avoid unnecessary context subscription on non-create pages
+function CreateModeButtons() {
+  const createClimbContext = useCreateClimbContext();
+
+  if (!createClimbContext) return null;
+
+  return (
+    <>
+      <Button onClick={createClimbContext.onCancel} disabled={createClimbContext.isPublishing}>
+        Cancel
+      </Button>
+      <ExperimentOutlined style={{ color: themeTokens.colors.primary }} title="Beta Feature" />
+      <Button
+        type="primary"
+        onClick={createClimbContext.onPublish}
+        loading={createClimbContext.isPublishing}
+        disabled={!createClimbContext.canPublish || createClimbContext.isPublishing}
+      >
+        {createClimbContext.isPublishing ? 'Publishing...' : 'Publish'}
+      </Button>
+    </>
+  );
+}
 
 type BoardSeshHeaderProps = {
   boardDetails: BoardDetails;
@@ -51,7 +75,6 @@ function usePageMode(): PageMode {
 export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeaderProps) {
   const { data: session } = useSession();
   const { currentClimb } = useQueueContext();
-  const createClimbContext = useCreateClimbContext();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const pageMode = usePageMode();
   const searchParams = useSearchParams();
@@ -204,21 +227,8 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
           {/* Right Section */}
           <Flex gap={4} align="center">
             {/* Create mode: Show cancel and publish buttons */}
-            {pageMode === 'create' && createClimbContext ? (
-              <>
-                <Button onClick={createClimbContext.onCancel} disabled={createClimbContext.isPublishing}>
-                  Cancel
-                </Button>
-                <ExperimentOutlined style={{ color: themeTokens.colors.primary }} title="Beta Feature" />
-                <Button
-                  type="primary"
-                  onClick={createClimbContext.onPublish}
-                  loading={createClimbContext.isPublishing}
-                  disabled={!createClimbContext.canPublish || createClimbContext.isPublishing}
-                >
-                  {createClimbContext.isPublishing ? 'Publishing...' : 'Publish'}
-                </Button>
-              </>
+            {pageMode === 'create' ? (
+              <CreateModeButtons />
             ) : (
               <>
                 {angle !== undefined && <AngleSelector boardName={boardDetails.board_name} currentAngle={angle} currentClimb={currentClimb} />}
