@@ -1,14 +1,15 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Button, Row, Col, Card, Drawer, Space, Popconfirm } from 'antd';
-import { SyncOutlined, DeleteOutlined, ExpandOutlined } from '@ant-design/icons';
+import { SyncOutlined, DeleteOutlined, ExpandOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons';
 import { track } from '@vercel/analytics';
+import { useSwipeable } from 'react-swipeable';
 import { useQueueContext } from '../graphql-queue';
 import NextClimbButton from './next-climb-button';
-import { usePathname, useParams, useSearchParams } from 'next/navigation';
+import { usePathname, useParams, useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { constructPlayUrlWithSlugs } from '@/app/lib/url-utils';
-import { BoardRouteParameters } from '@/app/lib/types';
+import { constructPlayUrlWithSlugs, constructClimbViewUrlWithSlugs, parseBoardRouteParams } from '@/app/lib/url-utils';
+import { BoardRouteParameters, BoardRouteParametersWithUuid } from '@/app/lib/types';
 import PreviousClimbButton from './previous-climb-button';
 import { BoardName, BoardDetails, Angle } from '@/app/lib/types';
 import QueueList from './queue-list';
@@ -19,6 +20,9 @@ import { AscentStatus } from './queue-list-item';
 import { themeTokens } from '@/app/theme/theme-config';
 import styles from './queue-control-bar.module.css';
 
+// Swipe threshold in pixels to trigger navigation
+const SWIPE_THRESHOLD = 60;
+
 export interface QueueControlBar {
   boardDetails: BoardDetails;
   board: BoardName;
@@ -27,14 +31,106 @@ export interface QueueControlBar {
 
 const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: QueueControlBar) => {
   const [isQueueOpen, setIsQueueOpen] = useState(false);
+  const [swipeOffset, setSwipeOffset] = useState(0);
   const pathname = usePathname();
   const params = useParams<BoardRouteParameters>();
   const searchParams = useSearchParams();
+  const router = useRouter();
 
   const isViewPage = pathname.includes('/view/');
   const isListPage = pathname.includes('/list');
   const isPlayPage = pathname.includes('/play/');
-  const { currentClimb, mirrorClimb, queue, setQueue } = useQueueContext();
+  const { currentClimb, mirrorClimb, queue, setQueue, getNextClimbQueueItem, getPreviousClimbQueueItem, setCurrentClimbQueueItem, viewOnlyMode } = useQueueContext();
+
+  const nextClimb = getNextClimbQueueItem();
+  const previousClimb = getPreviousClimbQueueItem();
+  const shouldNavigate = isViewPage || isPlayPage;
+
+  // Build URL for a climb item (for navigation on view/play pages)
+  const buildClimbUrl = useCallback((climb: { uuid: string; name: string }) => {
+    const urlConstructor = isPlayPage ? constructPlayUrlWithSlugs : constructClimbViewUrlWithSlugs;
+    const fallbackPath = isPlayPage ? 'play' : 'view';
+
+    let climbUrl = boardDetails?.layout_name && boardDetails?.size_name && boardDetails?.set_names
+      ? urlConstructor(
+          boardDetails.board_name,
+          boardDetails.layout_name,
+          boardDetails.size_name,
+          boardDetails.size_description,
+          boardDetails.set_names,
+          angle,
+          climb.uuid,
+          climb.name,
+        )
+      : `/${params.board_name}/${params.layout_id}/${params.size_id}/${params.set_ids}/${params.angle}/${fallbackPath}/${climb.uuid}`;
+
+    // Preserve search params in play mode
+    if (isPlayPage) {
+      const queryString = searchParams.toString();
+      if (queryString) {
+        climbUrl = `${climbUrl}?${queryString}`;
+      }
+    }
+    return climbUrl;
+  }, [boardDetails, angle, params, searchParams, isPlayPage]);
+
+  // Handle swipe navigation
+  const handleSwipeNext = useCallback(() => {
+    if (!nextClimb || viewOnlyMode) return;
+
+    setCurrentClimbQueueItem(nextClimb);
+    track('Queue Navigation', {
+      direction: 'next',
+      method: 'swipe',
+      boardLayout: boardDetails?.layout_name || '',
+    });
+
+    if (shouldNavigate) {
+      router.push(buildClimbUrl(nextClimb.climb));
+    }
+  }, [nextClimb, viewOnlyMode, setCurrentClimbQueueItem, shouldNavigate, router, buildClimbUrl, boardDetails]);
+
+  const handleSwipePrevious = useCallback(() => {
+    if (!previousClimb || viewOnlyMode) return;
+
+    setCurrentClimbQueueItem(previousClimb);
+    track('Queue Navigation', {
+      direction: 'previous',
+      method: 'swipe',
+      boardLayout: boardDetails?.layout_name || '',
+    });
+
+    if (shouldNavigate) {
+      router.push(buildClimbUrl(previousClimb.climb));
+    }
+  }, [previousClimb, viewOnlyMode, setCurrentClimbQueueItem, shouldNavigate, router, buildClimbUrl, boardDetails]);
+
+  const swipeHandlers = useSwipeable({
+    onSwiping: (eventData) => {
+      const { deltaX } = eventData;
+      // Clamp the offset for visual feedback
+      const clampedOffset = Math.max(-100, Math.min(100, deltaX));
+      setSwipeOffset(clampedOffset);
+    },
+    onSwipedLeft: (eventData) => {
+      setSwipeOffset(0);
+      if (Math.abs(eventData.deltaX) >= SWIPE_THRESHOLD) {
+        handleSwipeNext();
+      }
+    },
+    onSwipedRight: (eventData) => {
+      setSwipeOffset(0);
+      if (Math.abs(eventData.deltaX) >= SWIPE_THRESHOLD) {
+        handleSwipePrevious();
+      }
+    },
+    onTouchEndOrOnMouseUp: () => {
+      setSwipeOffset(0);
+    },
+    trackMouse: false,
+    trackTouch: true,
+    preventScrollOnSwipe: true,
+  });
 
   const getPlayUrl = () => {
     if (!currentClimb) return null;
@@ -90,6 +186,12 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
     });
   };
 
+  // Calculate swipe indicator opacity
+  const swipeLeftOpacity = Math.min(1, Math.max(0, -swipeOffset / SWIPE_THRESHOLD));
+  const swipeRightOpacity = Math.min(1, Math.max(0, swipeOffset / SWIPE_THRESHOLD));
+  const canSwipeNext = !viewOnlyMode && !!nextClimb;
+  const canSwipePrevious = !viewOnlyMode && !!previousClimb;
+
   return (
     <div className="queue-bar-shadow" data-testid="queue-control-bar" style={{ flexShrink: 0, width: '100%', backgroundColor: '#fff' }}>
       {/* Main Control Bar */}
@@ -108,73 +210,114 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
           borderRadius: 0,
           margin: 0,
           borderTop: `1px solid ${themeTokens.neutral[200]}`,
+          position: 'relative',
+          overflow: 'hidden',
         }}
       >
-        <Row justify="space-between" align="middle" style={{ width: '100%' }}>
-          <Col xs={4}>
-            {/* Board preview */}
-            <div style={boardPreviewContainerStyle}>
-              <ClimbThumbnail
-                boardDetails={boardDetails}
-                currentClimb={currentClimb}
-                enableNavigation={true}
-                onNavigate={() => setIsQueueOpen(false)}
-              />
-            </div>
-          </Col>
+        {/* Swipe indicators for mobile */}
+        {canSwipePrevious && (
+          <div
+            className={`${styles.swipeIndicator} ${styles.swipeIndicatorLeft}`}
+            style={{
+              opacity: swipeRightOpacity,
+              backgroundColor: themeTokens.colors.primary,
+            }}
+          >
+            <LeftOutlined style={{ color: '#fff', fontSize: 16 }} />
+          </div>
+        )}
+        {canSwipeNext && (
+          <div
+            className={`${styles.swipeIndicator} ${styles.swipeIndicatorRight}`}
+            style={{
+              opacity: swipeLeftOpacity,
+              backgroundColor: themeTokens.colors.primary,
+            }}
+          >
+            <RightOutlined style={{ color: '#fff', fontSize: 16 }} />
+          </div>
+        )}
 
-          {/* Clickable main body for opening the queue */}
-          <Col xs={11} style={{ textAlign: 'center' }}>
-            <div onClick={toggleQueueDrawer} className={`${styles.queueToggle} ${isListPage ? styles.listPage : ''}`}>
-              <ClimbTitle
-                climb={currentClimb}
-                showAngle
-                centered
-                nameAddon={currentClimb?.name && <AscentStatus climbUuid={currentClimb.uuid} />}
-              />
-            </div>
-          </Col>
-
-          {/* Button cluster */}
-          <Col xs={9} style={{ textAlign: 'right' }}>
-            <Space>
-              {boardDetails.supportsMirroring ? (
-                <Button
-                  id="button-mirror"
-                  onClick={() => {
-                    mirrorClimb();
-                    track('Mirror Climb Toggled', {
-                      boardLayout: boardDetails.layout_name || '',
-                      mirrored: !currentClimb?.mirrored,
-                    });
-                  }}
-                  type={currentClimb?.mirrored ? 'primary' : 'default'}
-                  style={
-                    currentClimb?.mirrored
-                      ? { backgroundColor: themeTokens.colors.purple, borderColor: themeTokens.colors.purple }
-                      : undefined
-                  }
-                  icon={<SyncOutlined />}
+        {/* Swipeable container for mobile navigation */}
+        <div
+          {...swipeHandlers}
+          className={styles.swipeContainer}
+          style={{
+            transform: `translateX(${swipeOffset * 0.3}px)`,
+            transition: swipeOffset === 0 ? `transform ${themeTokens.transitions.fast}` : 'none',
+          }}
+        >
+          <Row justify="space-between" align="middle" style={{ width: '100%' }}>
+            <Col xs={4}>
+              {/* Board preview */}
+              <div style={boardPreviewContainerStyle}>
+                <ClimbThumbnail
+                  boardDetails={boardDetails}
+                  currentClimb={currentClimb}
+                  enableNavigation={true}
+                  onNavigate={() => setIsQueueOpen(false)}
                 />
-              ) : null}
-              {!isPlayPage && playUrl && (
-                <Link
-                  href={playUrl}
-                  onClick={() => {
-                    track('Play Mode Entered', {
-                      boardLayout: boardDetails.layout_name || '',
-                    });
-                  }}
-                >
-                  <Button icon={<ExpandOutlined />} aria-label="Enter play mode" />
-                </Link>
-              )}
-              <PreviousClimbButton navigate={isViewPage || isPlayPage} boardDetails={boardDetails} />
-              <NextClimbButton navigate={isViewPage || isPlayPage} boardDetails={boardDetails} />
-              <TickButton currentClimb={currentClimb} angle={angle} boardDetails={boardDetails} />
-            </Space>
-          </Col>
-        </Row>
+              </div>
+            </Col>
+
+            {/* Clickable main body for opening the queue */}
+            <Col xs={11} sm={11} style={{ textAlign: 'center' }}>
+              <div onClick={toggleQueueDrawer} className={`${styles.queueToggle} ${isListPage ? styles.listPage : ''}`}>
+                <ClimbTitle
+                  climb={currentClimb}
+                  showAngle
+                  centered
+                  nameAddon={currentClimb?.name && <AscentStatus climbUuid={currentClimb.uuid} />}
+                />
+              </div>
+            </Col>
+
+            {/* Button cluster */}
+            <Col xs={9} sm={9} style={{ textAlign: 'right' }}>
+              <Space>
+                {boardDetails.supportsMirroring ? (
+                  <Button
+                    id="button-mirror"
+                    onClick={() => {
+                      mirrorClimb();
+                      track('Mirror Climb Toggled', {
+                        boardLayout: boardDetails.layout_name || '',
+                        mirrored: !currentClimb?.mirrored,
+                      });
+                    }}
+                    type={currentClimb?.mirrored ? 'primary' : 'default'}
+                    style={
+                      currentClimb?.mirrored
+                        ? { backgroundColor: themeTokens.colors.purple, borderColor: themeTokens.colors.purple }
+                        : undefined
+                    }
+                    icon={<SyncOutlined />}
+                  />
+                ) : null}
+                {!isPlayPage && playUrl && (
+                  <Link
+                    href={playUrl}
+                    onClick={() => {
+                      track('Play Mode Entered', {
+                        boardLayout: boardDetails.layout_name || '',
+                      });
+                    }}
+                  >
+                    <Button icon={<ExpandOutlined />} aria-label="Enter play mode" />
+                  </Link>
+                )}
+                {/* Navigation buttons - hidden on mobile, shown on desktop */}
+                <span className={styles.navButtons}>
+                  <Space>
+                    <PreviousClimbButton navigate={isViewPage || isPlayPage} boardDetails={boardDetails} />
+                    <NextClimbButton navigate={isViewPage || isPlayPage} boardDetails={boardDetails} />
+                  </Space>
+                </span>
+                <TickButton currentClimb={currentClimb} angle={angle} boardDetails={boardDetails} />
+              </Space>
+            </Col>
+          </Row>
+        </div>
       </Card>
 
       {/* Drawer for showing the queue */}
