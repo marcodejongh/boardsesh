@@ -9,39 +9,6 @@
   touch-action: pan-y pinch-zoom;
 }
 
-.actionsSection {
-  padding: 8px 12px;
-  display: flex;
-  align-items: center;
-  /* On mobile, back button is in header, so right-align nav buttons */
-  justify-content: flex-end;
-  flex-shrink: 0;
-}
-
-/* Hide back button on mobile - it's in the header */
-.actionsLeft {
-  display: none;
-}
-
-.actionsRight {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-/* Desktop: show back button in actions section since header doesn't have it */
-@media (min-width: 768px) {
-  .actionsSection {
-    justify-content: space-between;
-  }
-
-  .actionsLeft {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-}
-
 .contentWrapper {
   flex: 1;
   display: flex;
@@ -158,10 +125,6 @@
 
   .boardContainer {
     padding: 8px;
-  }
-
-  .actionsSection {
-    padding: 6px 8px;
   }
 }
 

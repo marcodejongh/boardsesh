@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { Button, Space, Empty } from 'antd';
+import { Button, Empty } from 'antd';
 import { LeftOutlined, RightOutlined } from '@ant-design/icons';
 import { useSwipeable } from 'react-swipeable';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -10,8 +10,6 @@ import { Climb, BoardDetails, Angle } from '@/app/lib/types';
 import { useQueueContext } from '@/app/components/graphql-queue';
 import BoardRenderer from '@/app/components/board-renderer/board-renderer';
 import ClimbTitle from '@/app/components/climb-card/climb-title';
-import BackButton from '@/app/components/back-button';
-import { TickButton } from '@/app/components/logbook/tick-button';
 import { AscentStatus } from '@/app/components/queue-control/queue-list-item';
 import { constructClimbListWithSlugs, constructPlayUrlWithSlugs } from '@/app/lib/url-utils';
 import { themeTokens } from '@/app/theme/theme-config';
@@ -156,14 +154,6 @@ const PlayViewClient: React.FC<PlayViewClientProps> = ({ boardDetails, initialCl
   if (!displayClimb) {
     return (
       <div className={styles.pageContainer} style={{ backgroundColor: themeTokens.semantic.background }}>
-        <div
-          className={styles.actionsSection}
-          style={{ backgroundColor: themeTokens.semantic.surface, boxShadow: themeTokens.shadows.sm }}
-        >
-          <div className={styles.actionsLeft}>
-            <BackButton fallbackUrl={getBackToListUrl()} />
-          </div>
-        </div>
         <div className={styles.emptyState} style={{ color: themeTokens.neutral[400] }}>
           <Empty description="No climb selected" />
           <Button type="primary" onClick={() => router.push(getBackToListUrl())}>
@@ -176,33 +166,6 @@ const PlayViewClient: React.FC<PlayViewClientProps> = ({ boardDetails, initialCl
 
   return (
     <div className={styles.pageContainer} style={{ backgroundColor: themeTokens.semantic.background }}>
-      {/* Actions Section */}
-      <div
-        className={styles.actionsSection}
-        style={{ backgroundColor: themeTokens.semantic.surface, boxShadow: themeTokens.shadows.sm }}
-      >
-        <div className={styles.actionsLeft}>
-          <BackButton fallbackUrl={getBackToListUrl()} />
-        </div>
-        <div className={styles.actionsRight}>
-          <Space>
-            <Button
-              icon={<LeftOutlined />}
-              onClick={handlePrevious}
-              disabled={!prevItem}
-              aria-label="Previous climb"
-            />
-            <Button
-              icon={<RightOutlined />}
-              onClick={handleNext}
-              disabled={!nextItem}
-              aria-label="Next climb"
-            />
-            <TickButton currentClimb={displayClimb} angle={angle} boardDetails={boardDetails} />
-          </Space>
-        </div>
-      </div>
-
       {/* Main Content with Swipe */}
       <div className={styles.contentWrapper}>
         <div {...swipeHandlers} className={styles.swipeContainer}>
