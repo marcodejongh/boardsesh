@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { Button } from 'antd';
-import { ActionTooltip } from '../action-tooltip';
+import { Button, Tooltip } from 'antd';
 import { PlusCircleOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import { track } from '@vercel/analytics';
 import { ClimbActionProps, ClimbActionResult } from '../types';
@@ -55,7 +54,7 @@ export function QueueAction({
 
   // Icon mode - for Card actions
   const iconElement = (
-    <ActionTooltip title={recentlyAdded ? 'Added to queue' : 'Add to queue'}>
+    <Tooltip title={recentlyAdded ? 'Added to queue' : 'Add to queue'}>
       <span
         onClick={handleClick}
         style={{ cursor: recentlyAdded ? 'not-allowed' : 'pointer' }}
@@ -63,7 +62,7 @@ export function QueueAction({
       >
         {icon}
       </span>
-    </ActionTooltip>
+    </Tooltip>
   );
 
   // Button mode

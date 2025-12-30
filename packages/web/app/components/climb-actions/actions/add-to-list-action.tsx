@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { Button, message } from 'antd';
-import { ActionTooltip } from '../action-tooltip';
+import { Button, Tooltip, message } from 'antd';
 import { UnorderedListOutlined } from '@ant-design/icons';
 import { useSession } from 'next-auth/react';
 import { track } from '@vercel/analytics';
@@ -61,11 +60,11 @@ export function AddToListAction({
   // Icon mode - for Card actions
   const iconElement = (
     <>
-      <ActionTooltip title={label}>
+      <Tooltip title={label}>
         <span onClick={handleClick} style={{ cursor: 'pointer' }} className={className}>
           {icon}
         </span>
-      </ActionTooltip>
+      </Tooltip>
       {authModalElement}
     </>
   );

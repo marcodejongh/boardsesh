@@ -1,8 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Button } from 'antd';
-import { ActionTooltip } from '../action-tooltip';
+import { Button, Tooltip } from 'antd';
 import { ForkOutlined } from '@ant-design/icons';
 import Link from 'next/link';
 import { track } from '@vercel/analytics';
@@ -50,11 +49,11 @@ export function ForkAction({
 
   // Icon mode - for Card actions
   const iconElement = url ? (
-    <ActionTooltip title="Fork this climb">
+    <Tooltip title="Fork this climb">
       <Link href={url} onClick={handleClick} className={className}>
         {icon}
       </Link>
-    </ActionTooltip>
+    </Tooltip>
   ) : null;
 
   // Button mode

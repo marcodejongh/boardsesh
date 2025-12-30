@@ -1,8 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Button } from 'antd';
-import { ActionTooltip } from '../action-tooltip';
+import { Button, Tooltip } from 'antd';
 import { InfoCircleOutlined } from '@ant-design/icons';
 import Link from 'next/link';
 import { track } from '@vercel/analytics';
@@ -62,11 +61,11 @@ export function ViewDetailsAction({
 
   // Icon mode - for Card actions
   const iconElement = (
-    <ActionTooltip title={label}>
+    <Tooltip title={label}>
       <Link href={url} onClick={handleClick} className={className}>
         {icon}
       </Link>
-    </ActionTooltip>
+    </Tooltip>
   );
 
   // Button mode

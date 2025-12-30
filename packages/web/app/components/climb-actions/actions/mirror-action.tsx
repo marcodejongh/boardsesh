@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useCallback } from 'react';
-import { Button } from 'antd';
-import { ActionTooltip } from '../action-tooltip';
+import { Button, Tooltip } from 'antd';
 import { SwapOutlined } from '@ant-design/icons';
 import { track } from '@vercel/analytics';
 import { ClimbActionProps, ClimbActionResult } from '../types';
@@ -51,11 +50,11 @@ export function MirrorAction({
 
   // Icon mode - for Card actions
   const iconElement = canMirror ? (
-    <ActionTooltip title={isMirrored ? 'Mirrored (click to reset)' : 'Mirror climb'}>
+    <Tooltip title={isMirrored ? 'Mirrored (click to reset)' : 'Mirror climb'}>
       <span onClick={handleClick} style={{ cursor: 'pointer' }} className={className}>
         {icon}
       </span>
-    </ActionTooltip>
+    </Tooltip>
   ) : null;
 
   // Button mode
