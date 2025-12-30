@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Form, Input, Switch, Button, Typography, Tag, Alert } from 'antd';
-import { ExperimentOutlined, SettingOutlined } from '@ant-design/icons';
+import { Form, Input, Switch, Button, Typography, Tag, Alert, Space } from 'antd';
+import { SettingOutlined, CloseOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import { track } from '@vercel/analytics';
 import BoardRenderer from '../board-renderer/board-renderer';
@@ -13,6 +13,7 @@ import { BoardDetails } from '@/app/lib/types';
 import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { convertLitUpHoldsStringToMap } from '../board-renderer/util';
 import AuthModal from '../auth/auth-modal';
+import { themeTokens } from '@/app/theme/theme-config';
 import styles from './create-climb-form.module.css';
 
 const { TextArea } = Input;
@@ -60,6 +61,7 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
   const [isSaving, setIsSaving] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [pendingFormValues, setPendingFormValues] = useState<CreateClimbFormValues | null>(null);
+  const [showSettingsOverlay, setShowSettingsOverlay] = useState(false);
 
   // Send frames to board whenever litUpHoldsMap changes and we're connected
   useEffect(() => {
@@ -95,7 +97,7 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
 
       await saveClimb({
         layout_id: boardDetails.layout_id,
-        name: values.name,
+        name: values.name || 'Untitled',
         description: values.description || '',
         is_draft: values.isDraft,
         frames,
@@ -144,26 +146,19 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
 
     if (!hasAuroraCredentials) {
       // User is logged in but hasn't linked their Aurora account
-      // This shouldn't happen due to the UI, but handle it gracefully
+      // Redirect to settings
+      router.push('/settings');
       return;
     }
 
     await doSaveClimb(values);
   };
 
-  const handleAuthSuccess = async () => {
-    // After successful auth, check if they have Aurora credentials linked
-    // If not, they'll see the message in the form
-    // If yes and we have pending form values, we need to wait for the credentials to load
-    if (pendingFormValues) {
-      // Give time for the board provider to refresh credentials
-      setTimeout(async () => {
-        // The component will re-render with new auth state
-        // User needs to click save again after linking their account
-        setPendingFormValues(null);
-      }, 1000);
-    }
-  };
+  const handleAuthSuccess = useCallback(() => {
+    // After successful auth, clear pending form values
+    // The component will re-render with new auth state and user can click save again
+    setPendingFormValues(null);
+  }, []);
 
   const handleCancel = () => {
     const listUrl = constructClimbListWithSlugs(
@@ -177,40 +172,66 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
     router.push(listUrl);
   };
 
-  const boardNameCapitalized = boardDetails.board_name.charAt(0).toUpperCase() + boardDetails.board_name.slice(1);
   const canSave = isAuthenticated && hasAuroraCredentials && isValid;
+  const climbName = Form.useWatch('name', form);
+
+  // Settings overlay content
+  const settingsOverlay = showSettingsOverlay && (
+    <div
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        padding: themeTokens.spacing[3],
+        backgroundColor: themeTokens.semantic.surfaceOverlay,
+        overflow: 'auto',
+        zIndex: themeTokens.zIndex.dropdown,
+      }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: themeTokens.spacing[3] }}>
+        <Text strong>Climb Settings</Text>
+        <CloseOutlined
+          onClick={() => setShowSettingsOverlay(false)}
+          style={{ cursor: 'pointer', color: themeTokens.neutral[500] }}
+        />
+      </div>
+
+      <Form.Item name="description" label="Description" style={{ marginBottom: themeTokens.spacing[3] }}>
+        <TextArea placeholder="Optional description or beta" rows={3} maxLength={500} />
+      </Form.Item>
+
+      <Form.Item name="isDraft" label="Save as Draft" valuePropName="checked" style={{ marginBottom: 0 }}>
+        <Switch />
+      </Form.Item>
+    </div>
+  );
 
   return (
     <div className={styles.pageContainer}>
-      <Alert
-        message="Beta Feature"
-        type="info"
-        showIcon
-        icon={<ExperimentOutlined />}
-        className={styles.betaBanner}
-        banner
-      />
-
       <div className={styles.contentWrapper}>
         {/* Board Section */}
         <div className={styles.boardSection}>
-          <BoardRenderer
-            boardDetails={boardDetails}
-            litUpHoldsMap={litUpHoldsMap}
-            mirrored={false}
-            onHoldClick={handleHoldClick}
-          />
+          <div style={{ position: 'relative' }}>
+            <BoardRenderer
+              boardDetails={boardDetails}
+              litUpHoldsMap={litUpHoldsMap}
+              mirrored={false}
+              onHoldClick={handleHoldClick}
+            />
+            {settingsOverlay}
+          </div>
 
           {/* Hold counts */}
           <div className={styles.holdCounts}>
             <Tag color={startingCount > 0 ? 'green' : 'default'}>Starting: {startingCount}/2</Tag>
             <Tag color={finishCount > 0 ? 'magenta' : 'default'}>Finish: {finishCount}/2</Tag>
             <Tag color={totalHolds > 0 ? 'blue' : 'default'}>Total holds: {totalHolds}</Tag>
-            {totalHolds > 0 && (
-              <Button size="small" onClick={resetHolds}>
-                Clear All
-              </Button>
-            )}
+            <Button size="small" onClick={resetHolds} disabled={totalHolds === 0}>
+              Clear All
+            </Button>
           </div>
         </div>
 
@@ -231,21 +252,6 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
             />
           )}
 
-          {isAuthenticated && !hasAuroraCredentials && (
-            <Alert
-              message={`Link your ${boardNameCapitalized} account`}
-              description={`Link your ${boardNameCapitalized} Board account in Settings to save climbs.`}
-              type="warning"
-              showIcon
-              className={styles.authAlert}
-              action={
-                <Button size="small" icon={<SettingOutlined />} onClick={() => router.push('/settings')}>
-                  Settings
-                </Button>
-              }
-            />
-          )}
-
           <Form
             form={form}
             layout="vertical"
@@ -253,24 +259,28 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
             initialValues={{
               name: forkName ? `${forkName} fork` : '',
               description: '',
-              isDraft: false,
+              isDraft: true,
             }}
             className={styles.formContent}
           >
+            {/* Title with settings button */}
             <Form.Item
               name="name"
-              label="Climb Name"
+              style={{ marginBottom: themeTokens.spacing[3] }}
               rules={[{ required: true, message: 'Please enter a name for your climb' }]}
             >
-              <Input placeholder="Enter climb name" maxLength={100} />
-            </Form.Item>
-
-            <Form.Item name="description" label="Description">
-              <TextArea placeholder="Optional description or beta" rows={3} maxLength={500} />
-            </Form.Item>
-
-            <Form.Item name="isDraft" label="Save as Draft" valuePropName="checked">
-              <Switch />
+              <Space.Compact style={{ width: '100%' }}>
+                <Input
+                  placeholder="Enter climb name"
+                  maxLength={100}
+                  style={{ flex: 1 }}
+                />
+                <Button
+                  icon={showSettingsOverlay ? <CloseOutlined /> : <SettingOutlined />}
+                  onClick={() => setShowSettingsOverlay(!showSettingsOverlay)}
+                  title="Climb settings"
+                />
+              </Space.Compact>
             </Form.Item>
 
             <div className={styles.buttonGroup}>
