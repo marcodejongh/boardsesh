@@ -3,3 +3,5 @@ import { CreateClimbProvider } from '@/app/components/create-climb/create-climb-
 export default function CreateClimbLayout({ children }: { children: React.ReactNode }) {
   return <CreateClimbProvider>{children}</CreateClimbProvider>;
 }
+
+CreateClimbLayout.displayName = 'CreateClimbLayout';

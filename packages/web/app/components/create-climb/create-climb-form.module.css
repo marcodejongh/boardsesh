@@ -6,6 +6,7 @@
   flex-direction: column;
   overflow: hidden;
   touch-action: pan-y pinch-zoom;
+  background-color: var(--semantic-background, #F9FAFB);
 }
 
 /* Auth alert styling */
@@ -28,6 +29,7 @@
 .climbTitleContainer {
   width: 100%;
   flex-shrink: 0;
+  padding: 4px 12px;
 }
 
 /* Editable title styling */
@@ -47,6 +49,39 @@
 .editableTitle:focus {
   outline: none;
   background-color: rgba(0, 0, 0, 0.04);
+}
+
+/* Title wrapper for flex content */
+.titleWrapper {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Title input when editing */
+.titleInput {
+  flex: 1;
+}
+
+/* Title text styling */
+.titleText {
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Edit icon next to title */
+.editIcon {
+  font-size: 12px;
+  color: #9CA3AF;
+  margin-left: 4px;
+}
+
+/* Draft label */
+.draftLabel {
+  font-size: 12px;
+  font-weight: 400;
 }
 
 /* Board container - fills remaining space like play view */
@@ -84,6 +119,10 @@
   .holdCountsBar {
     padding: 6px 8px;
     gap: 6px;
+  }
+
+  .climbTitleContainer {
+    padding: 4px 8px;
   }
 }
 

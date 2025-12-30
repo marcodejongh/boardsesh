@@ -14,7 +14,6 @@ import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { convertLitUpHoldsStringToMap } from '../board-renderer/util';
 import AuthModal from '../auth/auth-modal';
 import { useCreateClimbContext } from './create-climb-context';
-import { themeTokens } from '@/app/theme/theme-config';
 import styles from './create-climb-form.module.css';
 
 const { Text } = Typography;
@@ -105,10 +104,12 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
   }, [climbName]);
 
   const handleSaveTitle = useCallback(() => {
-    if (editingName.trim()) {
-      setClimbName(editingName.trim());
+    const trimmedName = editingName.trim();
+    if (trimmedName) {
+      setClimbName(trimmedName);
     }
     setIsEditingTitle(false);
+    setEditingName('');
   }, [editingName]);
 
   const handleCancelEditTitle = useCallback(() => {
@@ -244,7 +245,7 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
   }, [createClimbContext, isSaving]);
 
   return (
-    <div className={styles.pageContainer} style={{ backgroundColor: themeTokens.semantic.background }}>
+    <div className={styles.pageContainer}>
       {/* Auth alerts */}
       {!isAuthenticated && (
         <Alert
@@ -279,15 +280,10 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
       {/* Main Content - matches play view layout */}
       <div className={styles.contentWrapper}>
         {/* Title section - same position as play view */}
-        <div
-          className={styles.climbTitleContainer}
-          style={{
-            padding: `${themeTokens.spacing[1]}px ${themeTokens.spacing[3]}px`,
-          }}
-        >
+        <div className={styles.climbTitleContainer}>
           <Flex gap={12} align="center">
             {/* Left side: Editable Name and draft toggle stacked */}
-            <Flex vertical gap={0} style={{ flex: 1, minWidth: 0 }}>
+            <Flex vertical gap={0} className={styles.titleWrapper}>
               {/* Row 1: Editable Title */}
               {isEditingTitle ? (
                 <Flex gap={4} align="center">
@@ -300,7 +296,7 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
                     maxLength={100}
                     placeholder="Enter climb name"
                     size="small"
-                    style={{ flex: 1 }}
+                    className={styles.titleInput}
                   />
                   <Button
                     type="text"
@@ -323,35 +319,15 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
                   tabIndex={0}
                   onKeyDown={(e) => e.key === 'Enter' && handleStartEditTitle()}
                 >
-                  <Text
-                    style={{
-                      fontSize: themeTokens.typography.fontSize.sm,
-                      fontWeight: themeTokens.typography.fontWeight.bold,
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                    }}
-                  >
+                  <Text className={styles.titleText}>
                     {climbName || 'Tap to name your climb'}
                   </Text>
-                  <EditOutlined
-                    style={{
-                      fontSize: themeTokens.typography.fontSize.xs,
-                      color: themeTokens.neutral[400],
-                      marginLeft: 4,
-                    }}
-                  />
+                  <EditOutlined className={styles.editIcon} />
                 </div>
               )}
               {/* Row 2: Draft toggle */}
               <Flex gap={8} align="center">
-                <Text
-                  type="secondary"
-                  style={{
-                    fontSize: themeTokens.typography.fontSize.xs,
-                    fontWeight: themeTokens.typography.fontWeight.normal,
-                  }}
-                >
+                <Text type="secondary" className={styles.draftLabel}>
                   Draft
                 </Text>
                 <Switch
