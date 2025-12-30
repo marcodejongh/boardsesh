@@ -9,6 +9,7 @@ import { track } from '@vercel/analytics';
 import { Climb, BoardDetails, Angle } from '@/app/lib/types';
 import { useQueueContext } from '@/app/components/graphql-queue';
 import BoardRenderer from '@/app/components/board-renderer/board-renderer';
+import ClimbTitle from '@/app/components/climb-card/climb-title';
 import { constructClimbListWithSlugs, constructPlayUrlWithSlugs } from '@/app/lib/url-utils';
 import { themeTokens } from '@/app/theme/theme-config';
 import styles from './play-view.module.css';
@@ -171,6 +172,15 @@ const PlayViewClient: React.FC<PlayViewClientProps> = ({ boardDetails, initialCl
     <div className={styles.pageContainer} style={{ backgroundColor: themeTokens.semantic.background }}>
       {/* Main Content with Swipe */}
       <div className={styles.contentWrapper}>
+        {/* Climb title - horizontal layout with grade on right */}
+        <div
+          className={styles.climbTitleContainer}
+          style={{
+            padding: `${themeTokens.spacing[1]}px ${themeTokens.spacing[3]}px`,
+          }}
+        >
+          <ClimbTitle climb={displayClimb} layout="horizontal" showSetterInfo />
+        </div>
         <div {...swipeHandlers} className={styles.swipeContainer}>
           {/* Swipe indicators */}
           {prevItem && (
@@ -197,6 +207,7 @@ const PlayViewClient: React.FC<PlayViewClientProps> = ({ boardDetails, initialCl
               boardDetails={boardDetails}
               litUpHoldsMap={displayClimb.litUpHoldsMap}
               mirrored={!!displayClimb.mirrored}
+              maxHeight="80vh"
             />
           </div>
 

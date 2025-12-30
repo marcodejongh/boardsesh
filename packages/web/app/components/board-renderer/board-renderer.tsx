@@ -9,12 +9,16 @@ export type BoardProps = {
   litUpHoldsMap?: LitUpHoldsMap;
   mirrored: boolean;
   thumbnail?: boolean;
+  /** Custom max-height for the board SVG. Defaults to '55vh', or '10vh' for thumbnails */
+  maxHeight?: string;
   onHoldClick?: (holdId: number) => void;
 };
 
 const BoardRenderer = React.memo(
-  ({ boardDetails, thumbnail, litUpHoldsMap, mirrored, onHoldClick }: BoardProps) => {
+  ({ boardDetails, thumbnail, maxHeight, litUpHoldsMap, mirrored, onHoldClick }: BoardProps) => {
     const { boardWidth, boardHeight, holdsData } = boardDetails;
+
+    const resolvedMaxHeight = thumbnail ? '10vh' : (maxHeight ?? '55vh');
 
     return (
       <svg
@@ -24,7 +28,7 @@ const BoardRenderer = React.memo(
           width: '100%',
           height: 'auto',
           display: 'block',
-          maxHeight: thumbnail ? '10vh' : '55vh',
+          maxHeight: resolvedMaxHeight,
         }}
       >
         {Object.keys(boardDetails.images_to_holds).map((imageUrl) => (
@@ -42,8 +46,9 @@ const BoardRenderer = React.memo(
     );
   },
   (prevProps, nextProps) => {
-    // Compare thumbnail (affects SVG maxHeight)
+    // Compare thumbnail and maxHeight (affects SVG maxHeight)
     if (prevProps.thumbnail !== nextProps.thumbnail) return false;
+    if (prevProps.maxHeight !== nextProps.maxHeight) return false;
 
     // Compare mirrored and onHoldClick (passed to BoardLitupHolds)
     if (prevProps.mirrored !== nextProps.mirrored) return false;
