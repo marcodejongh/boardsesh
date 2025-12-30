@@ -240,6 +240,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
             payload: {
               item: event.currentItem as ClimbQueueItem | null,
               shouldAddToQueue: false,
+              isServerEvent: true,
             },
           });
           break;

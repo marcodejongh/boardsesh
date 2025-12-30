@@ -8,6 +8,7 @@ const initialState = (initialSearchParams: SearchRequestPagination): QueueState 
   climbSearchParams: initialSearchParams,
   hasDoneFirstFetch: false,
   initialQueueDataReceivedFromPeers: false,
+  pendingCurrentClimbUpdates: [],
 });
 
 export function queueReducer(state: QueueState, action: QueueAction): QueueState {
@@ -47,6 +48,8 @@ export function queueReducer(state: QueueState, action: QueueAction): QueueState
         queue: action.payload.queue,
         currentClimbQueueItem: action.payload.currentClimbQueueItem ?? state.currentClimbQueueItem,
         initialQueueDataReceivedFromPeers: true,
+        // Clear pending updates on full sync since we're getting complete server state
+        pendingCurrentClimbUpdates: [],
       };
 
     case 'UPDATE_QUEUE':
@@ -145,24 +148,45 @@ export function queueReducer(state: QueueState, action: QueueAction): QueueState
     }
 
     case 'DELTA_UPDATE_CURRENT_CLIMB': {
-      const { item, shouldAddToQueue } = action.payload;
+      const { item, shouldAddToQueue, isServerEvent } = action.payload;
 
       // Skip if this is the same item (deduplication for optimistic updates)
       if (item && state.currentClimbQueueItem?.uuid === item.uuid) {
         return state;
       }
 
+      // For server events, check if this is an echo of our own update
+      if (isServerEvent && item) {
+        const isPending = state.pendingCurrentClimbUpdates.includes(item.uuid);
+        if (isPending) {
+          // Remove from pending list and skip applying this update
+          // (we already applied it optimistically)
+          return {
+            ...state,
+            pendingCurrentClimbUpdates: state.pendingCurrentClimbUpdates.filter(uuid => uuid !== item.uuid),
+          };
+        }
+      }
+
       let newQueue = state.queue;
+      let newPendingUpdates = state.pendingCurrentClimbUpdates;
 
       // Add to queue if requested and item doesn't exist
       if (item && shouldAddToQueue && !state.queue.find(qItem => qItem.uuid === item.uuid)) {
         newQueue = [...state.queue, item];
       }
 
+      // For local updates (not server events), track as pending
+      if (!isServerEvent && item) {
+        // Add to pending list, keeping only last 10 to prevent unbounded growth
+        newPendingUpdates = [...state.pendingCurrentClimbUpdates, item.uuid].slice(-10);
+      }
+
       return {
         ...state,
         queue: newQueue,
         currentClimbQueueItem: item,
+        pendingCurrentClimbUpdates: newPendingUpdates,
       };
     }
 
