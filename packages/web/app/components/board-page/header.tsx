@@ -9,7 +9,6 @@ import SearchButton from '../search-drawer/search-button';
 import SearchClimbNameInput from '../search-drawer/search-climb-name-input';
 import { UISearchParamsProvider } from '../queue-control/ui-searchparams-provider';
 import { BoardDetails } from '@/app/lib/types';
-import ClimbTitle from '../climb-card/climb-title';
 
 // Dynamically import bluetooth component to reduce initial bundle size
 // LED placement data (~50KB) is only loaded when bluetooth is actually used
@@ -169,18 +168,15 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
               </>
             )}
 
-            {/* Play page: Show search/back button and climb name (mobile only) */}
+            {/* Play page: Show search/back button (mobile only) */}
             {pageMode === 'play' && (
-              <div className={styles.mobileOnly} style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
+              <div className={styles.mobileOnly}>
                 <Button
                   icon={<SearchOutlined />}
                   type="text"
                   aria-label="Back to search"
                   onClick={() => router.push(getBackToListUrl())}
                 />
-                <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
-                  <ClimbTitle climb={currentClimb} showAngle centered />
-                </div>
               </div>
             )}
 
