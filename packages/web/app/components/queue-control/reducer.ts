@@ -150,11 +150,6 @@ export function queueReducer(state: QueueState, action: QueueAction): QueueState
     case 'DELTA_UPDATE_CURRENT_CLIMB': {
       const { item, shouldAddToQueue, isServerEvent } = action.payload;
 
-      // Skip if this is the same item (deduplication for optimistic updates)
-      if (item && state.currentClimbQueueItem?.uuid === item.uuid) {
-        return state;
-      }
-
       // For server events, check if this is an echo of our own update
       if (isServerEvent && item) {
         const isPending = state.pendingCurrentClimbUpdates.includes(item.uuid);
@@ -168,6 +163,11 @@ export function queueReducer(state: QueueState, action: QueueAction): QueueState
         }
       }
 
+      // Skip if this is the same item (deduplication for optimistic updates)
+      if (item && state.currentClimbQueueItem?.uuid === item.uuid) {
+        return state;
+      }
+
       let newQueue = state.queue;
       let newPendingUpdates = state.pendingCurrentClimbUpdates;
 
@@ -178,8 +178,9 @@ export function queueReducer(state: QueueState, action: QueueAction): QueueState
 
       // For local updates (not server events), track as pending
       if (!isServerEvent && item) {
-        // Add to pending list, keeping only last 10 to prevent unbounded growth
-        newPendingUpdates = [...state.pendingCurrentClimbUpdates, item.uuid].slice(-10);
+        // Add to pending list, keeping only last 50 to prevent unbounded growth
+        // Increased from 10 to handle rapid navigation scenarios where server is slow
+        newPendingUpdates = [...state.pendingCurrentClimbUpdates, item.uuid].slice(-50);
       }
 
       return {
@@ -187,6 +188,15 @@ export function queueReducer(state: QueueState, action: QueueAction): QueueState
         queue: newQueue,
         currentClimbQueueItem: item,
         pendingCurrentClimbUpdates: newPendingUpdates,
+      };
+    }
+
+    case 'CLEANUP_PENDING_UPDATE': {
+      return {
+        ...state,
+        pendingCurrentClimbUpdates: state.pendingCurrentClimbUpdates.filter(
+          uuid => uuid !== action.payload.uuid
+        ),
       };
     }
 

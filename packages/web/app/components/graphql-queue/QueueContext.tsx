@@ -256,6 +256,25 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
     return unsubscribe;
   }, [isPersistentSessionActive, persistentSession, dispatch]);
 
+  // Cleanup stale pending updates after timeout
+  useEffect(() => {
+    if (state.pendingCurrentClimbUpdates.length === 0) return;
+
+    // Set up timeouts for all pending updates
+    const timeouts = state.pendingCurrentClimbUpdates.map(uuid => {
+      return setTimeout(() => {
+        dispatch({
+          type: 'CLEANUP_PENDING_UPDATE',
+          payload: { uuid },
+        });
+      }, 5000); // 5 second timeout
+    });
+
+    return () => {
+      timeouts.forEach(clearTimeout);
+    };
+  }, [state.pendingCurrentClimbUpdates, dispatch]);
+
   // Use persistent session values when active
   const clientId = isPersistentSessionActive ? persistentSession.clientId : null;
   const isLeader = isPersistentSessionActive ? persistentSession.isLeader : false;
@@ -690,6 +709,11 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
         if (hasConnected && isPersistentSessionActive) {
           persistentSession.setCurrentClimb(item, item.suggested).catch((error) => {
             console.error('Failed to set current climb:', error);
+            // Remove from pending on error to prevent blocking future updates
+            dispatch({
+              type: 'CLEANUP_PENDING_UPDATE',
+              payload: { uuid: item.uuid },
+            });
           });
         }
       },

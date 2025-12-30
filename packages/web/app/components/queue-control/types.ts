@@ -47,7 +47,8 @@ export type QueueAction =
   | { type: 'DELTA_REORDER_QUEUE_ITEM'; payload: { uuid: string; oldIndex: number; newIndex: number } }
   | { type: 'DELTA_UPDATE_CURRENT_CLIMB'; payload: { item: ClimbQueueItem | null; shouldAddToQueue?: boolean; isServerEvent?: boolean } }
   | { type: 'DELTA_MIRROR_CURRENT_CLIMB'; payload: { mirrored: boolean } }
-  | { type: 'DELTA_REPLACE_QUEUE_ITEM'; payload: { uuid: string; item: ClimbQueueItem } };
+  | { type: 'DELTA_REPLACE_QUEUE_ITEM'; payload: { uuid: string; item: ClimbQueueItem } }
+  | { type: 'CLEANUP_PENDING_UPDATE'; payload: { uuid: string } };
 
 export interface QueueContextType {
   queue: ClimbQueue;

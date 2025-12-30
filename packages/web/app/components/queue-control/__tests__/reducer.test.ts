@@ -56,7 +56,8 @@ const initialState: QueueState = {
   currentClimbQueueItem: null,
   climbSearchParams: mockSearchParams,
   hasDoneFirstFetch: false,
-  initialQueueDataReceivedFromPeers: false
+  initialQueueDataReceivedFromPeers: false,
+  pendingCurrentClimbUpdates: [],
 };
 
 describe('queueReducer', () => {
@@ -769,6 +770,276 @@ describe('queueReducer', () => {
       const result = queueReducer(initialState, unknownAction);
 
       expect(result).toEqual(initialState);
+    });
+  });
+
+  describe('DELTA_UPDATE_CURRENT_CLIMB - Server Event Handling', () => {
+    it('should track pending updates for local actions', () => {
+      const action: QueueAction = {
+        type: 'DELTA_UPDATE_CURRENT_CLIMB',
+        payload: {
+          item: mockClimbQueueItem,
+          shouldAddToQueue: false,
+          isServerEvent: false,
+        },
+      };
+
+      const result = queueReducer(initialState, action);
+
+      expect(result.pendingCurrentClimbUpdates).toContain(mockClimbQueueItem.uuid);
+      expect(result.pendingCurrentClimbUpdates).toHaveLength(1);
+    });
+
+    it('should skip server events that match pending updates', () => {
+      const stateWithPending: QueueState = {
+        ...initialState,
+        pendingCurrentClimbUpdates: [mockClimbQueueItem.uuid],
+        currentClimbQueueItem: null,
+      };
+
+      const action: QueueAction = {
+        type: 'DELTA_UPDATE_CURRENT_CLIMB',
+        payload: {
+          item: mockClimbQueueItem,
+          shouldAddToQueue: false,
+          isServerEvent: true,
+        },
+      };
+
+      const result = queueReducer(stateWithPending, action);
+
+      // Should not update current climb (echo was skipped)
+      expect(result.currentClimbQueueItem).toBeNull();
+      // Should remove from pending
+      expect(result.pendingCurrentClimbUpdates).not.toContain(mockClimbQueueItem.uuid);
+      expect(result.pendingCurrentClimbUpdates).toHaveLength(0);
+    });
+
+    it('should apply server events that do not match pending updates', () => {
+      const otherItem: ClimbQueueItem = {
+        ...mockClimbQueueItem,
+        uuid: 'other-uuid',
+      };
+
+      const stateWithPending: QueueState = {
+        ...initialState,
+        pendingCurrentClimbUpdates: [mockClimbQueueItem.uuid],
+      };
+
+      const action: QueueAction = {
+        type: 'DELTA_UPDATE_CURRENT_CLIMB',
+        payload: {
+          item: otherItem,
+          shouldAddToQueue: false,
+          isServerEvent: true,
+        },
+      };
+
+      const result = queueReducer(stateWithPending, action);
+
+      // Should apply the update (different UUID)
+      expect(result.currentClimbQueueItem).toEqual(otherItem);
+      // Should not remove from pending (different UUID)
+      expect(result.pendingCurrentClimbUpdates).toContain(mockClimbQueueItem.uuid);
+    });
+
+    it('should maintain pending array bounded to last 50 items', () => {
+      // Create state with 49 pending items
+      const existingPending = Array.from({ length: 49 }, (_, i) => `uuid-${i}`);
+      const stateWithPending: QueueState = {
+        ...initialState,
+        pendingCurrentClimbUpdates: existingPending,
+      };
+
+      const newItem: ClimbQueueItem = {
+        ...mockClimbQueueItem,
+        uuid: 'uuid-50',
+      };
+
+      const action: QueueAction = {
+        type: 'DELTA_UPDATE_CURRENT_CLIMB',
+        payload: {
+          item: newItem,
+          shouldAddToQueue: false,
+          isServerEvent: false,
+        },
+      };
+
+      const result = queueReducer(stateWithPending, action);
+
+      expect(result.pendingCurrentClimbUpdates).toHaveLength(50);
+      expect(result.pendingCurrentClimbUpdates[49]).toBe('uuid-50');
+    });
+
+    it('should drop oldest item when exceeding 50 pending items', () => {
+      // Create state with 50 pending items
+      const existingPending = Array.from({ length: 50 }, (_, i) => `uuid-${i}`);
+      const stateWithPending: QueueState = {
+        ...initialState,
+        pendingCurrentClimbUpdates: existingPending,
+      };
+
+      const newItem: ClimbQueueItem = {
+        ...mockClimbQueueItem,
+        uuid: 'uuid-51',
+      };
+
+      const action: QueueAction = {
+        type: 'DELTA_UPDATE_CURRENT_CLIMB',
+        payload: {
+          item: newItem,
+          shouldAddToQueue: false,
+          isServerEvent: false,
+        },
+      };
+
+      const result = queueReducer(stateWithPending, action);
+
+      expect(result.pendingCurrentClimbUpdates).toHaveLength(50);
+      expect(result.pendingCurrentClimbUpdates[0]).toBe('uuid-1'); // uuid-0 dropped
+      expect(result.pendingCurrentClimbUpdates[49]).toBe('uuid-51');
+    });
+
+    it('should not track pending for server events', () => {
+      const action: QueueAction = {
+        type: 'DELTA_UPDATE_CURRENT_CLIMB',
+        payload: {
+          item: mockClimbQueueItem,
+          shouldAddToQueue: false,
+          isServerEvent: true,
+        },
+      };
+
+      const result = queueReducer(initialState, action);
+
+      expect(result.pendingCurrentClimbUpdates).toHaveLength(0);
+    });
+
+    it('should handle null item from server event', () => {
+      const stateWithPending: QueueState = {
+        ...initialState,
+        pendingCurrentClimbUpdates: ['some-uuid'],
+        currentClimbQueueItem: mockClimbQueueItem,
+      };
+
+      const action: QueueAction = {
+        type: 'DELTA_UPDATE_CURRENT_CLIMB',
+        payload: {
+          item: null,
+          shouldAddToQueue: false,
+          isServerEvent: true,
+        },
+      };
+
+      const result = queueReducer(stateWithPending, action);
+
+      expect(result.currentClimbQueueItem).toBeNull();
+      // Pending list unchanged for null items
+      expect(result.pendingCurrentClimbUpdates).toEqual(['some-uuid']);
+    });
+
+    it('should add to queue when shouldAddToQueue is true for local action', () => {
+      const action: QueueAction = {
+        type: 'DELTA_UPDATE_CURRENT_CLIMB',
+        payload: {
+          item: mockClimbQueueItem,
+          shouldAddToQueue: true,
+          isServerEvent: false,
+        },
+      };
+
+      const result = queueReducer(initialState, action);
+
+      expect(result.queue).toContain(mockClimbQueueItem);
+      expect(result.pendingCurrentClimbUpdates).toContain(mockClimbQueueItem.uuid);
+    });
+
+    it('should not add duplicate to queue when item already exists', () => {
+      const stateWithQueue: QueueState = {
+        ...initialState,
+        queue: [mockClimbQueueItem],
+      };
+
+      const action: QueueAction = {
+        type: 'DELTA_UPDATE_CURRENT_CLIMB',
+        payload: {
+          item: mockClimbQueueItem,
+          shouldAddToQueue: true,
+          isServerEvent: false,
+        },
+      };
+
+      const result = queueReducer(stateWithQueue, action);
+
+      expect(result.queue).toHaveLength(1); // No duplicate
+      expect(result.pendingCurrentClimbUpdates).toContain(mockClimbQueueItem.uuid);
+    });
+  });
+
+  describe('INITIAL_QUEUE_DATA - Pending Updates', () => {
+    it('should clear pending updates on initial queue data sync', () => {
+      const stateWithPending: QueueState = {
+        ...initialState,
+        pendingCurrentClimbUpdates: ['uuid-1', 'uuid-2', 'uuid-3'],
+      };
+
+      const action: QueueAction = {
+        type: 'INITIAL_QUEUE_DATA',
+        payload: {
+          queue: [mockClimbQueueItem],
+          currentClimbQueueItem: mockClimbQueueItem,
+        },
+      };
+
+      const result = queueReducer(stateWithPending, action);
+
+      expect(result.pendingCurrentClimbUpdates).toHaveLength(0);
+      expect(result.initialQueueDataReceivedFromPeers).toBe(true);
+    });
+  });
+
+  describe('CLEANUP_PENDING_UPDATE', () => {
+    it('should remove specific UUID from pending updates', () => {
+      const stateWithPending: QueueState = {
+        ...initialState,
+        pendingCurrentClimbUpdates: ['uuid-1', 'uuid-2', 'uuid-3'],
+      };
+
+      const action: QueueAction = {
+        type: 'CLEANUP_PENDING_UPDATE',
+        payload: { uuid: 'uuid-2' },
+      };
+
+      const result = queueReducer(stateWithPending, action);
+
+      expect(result.pendingCurrentClimbUpdates).toEqual(['uuid-1', 'uuid-3']);
+    });
+
+    it('should handle cleanup of non-existent UUID gracefully', () => {
+      const stateWithPending: QueueState = {
+        ...initialState,
+        pendingCurrentClimbUpdates: ['uuid-1', 'uuid-2'],
+      };
+
+      const action: QueueAction = {
+        type: 'CLEANUP_PENDING_UPDATE',
+        payload: { uuid: 'uuid-999' },
+      };
+
+      const result = queueReducer(stateWithPending, action);
+
+      expect(result.pendingCurrentClimbUpdates).toEqual(['uuid-1', 'uuid-2']);
+    });
+
+    it('should handle cleanup on empty pending array', () => {
+      const action: QueueAction = {
+        type: 'CLEANUP_PENDING_UPDATE',
+        payload: { uuid: 'uuid-1' },
+      };
+
+      const result = queueReducer(initialState, action);
+
+      expect(result.pendingCurrentClimbUpdates).toHaveLength(0);
     });
   });
 });
