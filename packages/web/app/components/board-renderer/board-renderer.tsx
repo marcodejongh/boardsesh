@@ -24,7 +24,7 @@ const BoardRenderer = React.memo(
           width: '100%',
           height: 'auto',
           display: 'block',
-          maxHeight: thumbnail ? '10vh' : '55vh',
+          maxHeight: thumbnail ? '10vh' : '80vh',
         }}
       >
         {Object.keys(boardDetails.images_to_holds).map((imageUrl) => (
