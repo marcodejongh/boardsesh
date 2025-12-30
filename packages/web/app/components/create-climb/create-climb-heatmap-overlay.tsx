@@ -9,6 +9,9 @@ import useHeatmapData from '../search-drawer/use-heatmap';
 const BLUR_RADIUS = 10;
 const HEAT_RADIUS_MULTIPLIER = 2;
 
+// Stable empty filters object to avoid re-fetching on every render
+const EMPTY_FILTERS = {} as SearchRequestPagination;
+
 // Color palette for heatmap
 const HEATMAP_COLORS = [
   '#4caf50', // Light green
@@ -58,7 +61,7 @@ const CreateClimbHeatmapOverlay: React.FC<CreateClimbHeatmapOverlayProps> = ({
     sizeId: boardDetails.size_id,
     setIds: boardDetails.set_ids.join(','),
     angle,
-    filters: {} as SearchRequestPagination,
+    filters: EMPTY_FILTERS,
     enabled,
   });
 
