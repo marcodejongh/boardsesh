@@ -245,32 +245,37 @@ export const playlistMutations = {
       };
     }
 
-    // Get max position
-    const maxPosition = await db
-      .select({ max: sql<number>`coalesce(max(${dbSchema.playlistClimbs.position}), -1)` })
-      .from(dbSchema.playlistClimbs)
-      .where(eq(dbSchema.playlistClimbs.playlistId, playlistId))
-      .limit(1);
+    // Use transaction to prevent race condition in position assignment
+    const playlistClimb = await db.transaction(async (tx) => {
+      // Get max position within transaction
+      const maxPosition = await tx
+        .select({ max: sql<number>`coalesce(max(${dbSchema.playlistClimbs.position}), -1)` })
+        .from(dbSchema.playlistClimbs)
+        .where(eq(dbSchema.playlistClimbs.playlistId, playlistId))
+        .limit(1);
 
-    const nextPosition = (maxPosition[0]?.max ?? -1) + 1;
+      const nextPosition = (maxPosition[0]?.max ?? -1) + 1;
 
-    // Add climb to playlist
-    const [playlistClimb] = await db
-      .insert(dbSchema.playlistClimbs)
-      .values({
-        playlistId,
-        climbUuid: validatedInput.climbUuid,
-        angle: validatedInput.angle,
-        position: nextPosition,
-        addedAt: new Date(),
-      })
-      .returning();
+      // Add climb to playlist
+      const [newClimb] = await tx
+        .insert(dbSchema.playlistClimbs)
+        .values({
+          playlistId,
+          climbUuid: validatedInput.climbUuid,
+          angle: validatedInput.angle,
+          position: nextPosition,
+          addedAt: new Date(),
+        })
+        .returning();
 
-    // Update playlist updatedAt
-    await db
-      .update(dbSchema.playlists)
-      .set({ updatedAt: new Date() })
-      .where(eq(dbSchema.playlists.id, playlistId));
+      // Update playlist updatedAt
+      await tx
+        .update(dbSchema.playlists)
+        .set({ updatedAt: new Date() })
+        .where(eq(dbSchema.playlists.id, playlistId));
+
+      return newClimb;
+    });
 
     return {
       id: playlistClimb.id.toString(),
@@ -318,6 +323,9 @@ export const playlistMutations = {
     const playlistId = ownership[0].id;
 
     // Remove climb from playlist
+    // Note: Position gaps are acceptable after deletion. The position field is only used
+    // for ordering (ORDER BY position), so gaps don't affect functionality. Reordering
+    // positions after each deletion would be expensive for large playlists.
     await db
       .delete(dbSchema.playlistClimbs)
       .where(

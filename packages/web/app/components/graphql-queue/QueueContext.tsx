@@ -456,7 +456,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
         input: { playlistId, climbUuid, angle },
       });
 
-      // Update local state
+      // Update local state - membership tracking
       setPlaylistMemberships((prev) => {
         const updated = new Map(prev);
         const current = updated.get(climbUuid) || new Set<string>();
@@ -464,6 +464,11 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
         updated.set(climbUuid, current);
         return updated;
       });
+
+      // Update local state - increment climbCount for the playlist
+      setPlaylists((prev) =>
+        prev.map((p) => (p.uuid === playlistId ? { ...p, climbCount: p.climbCount + 1 } : p))
+      );
     },
     [wsAuthToken]
   );
@@ -477,7 +482,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
         input: { playlistId, climbUuid },
       });
 
-      // Update local state
+      // Update local state - membership tracking
       setPlaylistMemberships((prev) => {
         const updated = new Map(prev);
         const current = updated.get(climbUuid);
@@ -487,6 +492,13 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
         }
         return updated;
       });
+
+      // Update local state - decrement climbCount for the playlist
+      setPlaylists((prev) =>
+        prev.map((p) =>
+          p.uuid === playlistId ? { ...p, climbCount: Math.max(0, p.climbCount - 1) } : p
+        )
+      );
     },
     [wsAuthToken]
   );

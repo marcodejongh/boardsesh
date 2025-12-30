@@ -1,6 +1,7 @@
 import {
   pgTable,
   bigserial,
+  bigint,
   text,
   integer,
   boolean,
@@ -41,6 +42,8 @@ export const playlists = pgTable(
     ),
     // Index for UUID lookups
     uuidIdx: index('playlists_uuid_idx').on(table.uuid),
+    // Index for ordering by updatedAt (used in userPlaylists query)
+    updatedAtIdx: index('playlists_updated_at_idx').on(table.updatedAt),
   })
 );
 
@@ -51,7 +54,7 @@ export const playlistClimbs = pgTable(
   'playlist_climbs',
   {
     id: bigserial({ mode: 'bigint' }).primaryKey().notNull(),
-    playlistId: bigserial({ mode: 'bigint' })
+    playlistId: bigint('playlist_id', { mode: 'bigint' })
       .notNull()
       .references(() => playlists.id, { onDelete: 'cascade' }),
     climbUuid: text('climb_uuid').notNull(), // Aurora climb UUID
@@ -86,7 +89,7 @@ export const playlistOwnership = pgTable(
   'playlist_ownership',
   {
     id: bigserial({ mode: 'bigint' }).primaryKey().notNull(),
-    playlistId: bigserial({ mode: 'bigint' })
+    playlistId: bigint('playlist_id', { mode: 'bigint' })
       .notNull()
       .references(() => playlists.id, { onDelete: 'cascade' }),
     userId: text('user_id')
