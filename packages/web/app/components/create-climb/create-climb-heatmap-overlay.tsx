@@ -127,9 +127,19 @@ const CreateClimbHeatmapOverlay: React.FC<CreateClimbHeatmapOverlayProps> = ({
     };
   }, [heatmapData, litUpHoldsMap, getValue]);
 
+  // Don't render if not enabled or still loading
   if (!enabled || loading) {
     return null;
   }
+
+  // Guard against missing data
+  if (!holdsData || holdsData.length === 0) {
+    return null;
+  }
+
+  // Use unique filter IDs to avoid conflicts with other SVGs on the page
+  const blurFilterId = 'create-climb-heatmap-blur';
+  const sharpFilterId = 'create-climb-heatmap-sharp';
 
   return (
     <svg
@@ -146,16 +156,16 @@ const CreateClimbHeatmapOverlay: React.FC<CreateClimbHeatmapOverlayProps> = ({
       }}
     >
       <defs>
-        <filter id="create-climb-blur">
+        <filter id={blurFilterId}>
           <feGaussianBlur stdDeviation={BLUR_RADIUS} />
         </filter>
-        <filter id="create-climb-blur-sharp">
+        <filter id={sharpFilterId}>
           <feGaussianBlur in="SourceGraphic" stdDeviation="20" />
         </filter>
       </defs>
 
       {/* Blurred background layer */}
-      <g filter="url(#create-climb-blur)">
+      <g filter={`url(#${blurFilterId})`}>
         {holdsData.map((hold) => {
           // Skip holds that are already selected
           if (litUpHoldsMap[hold.id]) return null;
@@ -196,7 +206,7 @@ const CreateClimbHeatmapOverlay: React.FC<CreateClimbHeatmapOverlayProps> = ({
             r={hold.r}
             fill={colorScale(value)}
             opacity={opacityScale(value)}
-            filter="url(#create-climb-blur-sharp)"
+            filter={`url(#${sharpFilterId})`}
           />
         );
       })}
