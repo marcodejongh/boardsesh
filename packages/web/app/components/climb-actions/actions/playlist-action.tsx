@@ -136,14 +136,14 @@ export function PlaylistAction({
         left: 0,
         right: 0,
         bottom: 0,
-        padding: '12px',
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        padding: themeTokens.spacing[3],
+        backgroundColor: themeTokens.semantic.surfaceOverlay,
         overflow: 'auto',
-        zIndex: 1,
+        zIndex: themeTokens.zIndex.dropdown,
       }}
       onClick={(e) => e.stopPropagation()}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: themeTokens.spacing[2] }}>
         <Text strong>Add to Playlist</Text>
         <CloseOutlined
           onClick={() => setPopoverOpen(false)}
@@ -151,7 +151,7 @@ export function PlaylistAction({
         />
       </div>
       {playlists.length === 0 && !showCreateForm ? (
-        <Space direction="vertical" style={{ width: '100%', textAlign: 'center', padding: 8 }}>
+        <Space direction="vertical" style={{ width: '100%', textAlign: 'center', padding: themeTokens.spacing[2] }}>
           <Text type="secondary">No playlists yet</Text>
           <Button
             type="primary"

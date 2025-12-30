@@ -40,6 +40,7 @@ export const themeTokens = {
     background: '#F9FAFB',
     surface: '#FFFFFF',
     surfaceElevated: '#FFFFFF',
+    surfaceOverlay: 'rgba(255, 255, 255, 0.95)', // Semi-transparent overlay
   },
 
   // Shadows
