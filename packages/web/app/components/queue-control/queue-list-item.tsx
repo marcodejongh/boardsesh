@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Row, Col, Avatar, Tooltip, Dropdown, Button } from 'antd';
-import { CheckOutlined, CloseOutlined, UserOutlined, DeleteOutlined, MoreOutlined } from '@ant-design/icons';
+import { CheckOutlined, CloseOutlined, UserOutlined, DeleteOutlined, MoreOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { BoardDetails, ClimbUuid, Climb } from '@/app/lib/types';
 import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { DropIndicator } from '@atlaskit/pragmatic-drag-and-drop-react-drop-indicator/box';
@@ -285,12 +285,10 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
             }}
           />
           <Row style={{ width: '100%' }} gutter={[8, 8]} align="middle" wrap={false}>
-            <Col xs={6} sm={5} style={{ position: 'relative', zIndex: 2 }}>
+            <Col xs={6} sm={5}>
               <ClimbThumbnail
                 boardDetails={boardDetails}
                 currentClimb={item.climb}
-                enableNavigation={true}
-                onNavigate={onClimbNavigate}
               />
             </Col>
             <Col xs={item.addedByUser ? 13 : 15} sm={item.addedByUser ? 15 : 17}>
@@ -312,6 +310,12 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
               <Dropdown
                 menu={{
                   items: [
+                    {
+                      key: 'info',
+                      label: 'View Climb',
+                      icon: <InfoCircleOutlined />,
+                      onClick: () => onClimbNavigate?.(),
+                    },
                     {
                       key: 'tick',
                       label: 'Tick Climb',
