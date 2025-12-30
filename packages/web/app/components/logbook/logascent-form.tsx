@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Button, DatePicker, Select, Input, Rate, Slider, InputNumber, Form, Space, Tag, Tooltip } from 'antd';
+import { Button, DatePicker, Select, Input, Rate, InputNumber, Form, Space, Tag, Tooltip } from 'antd';
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { track } from '@vercel/analytics';
 import { Climb, BoardDetails } from '@/app/lib/types';
@@ -46,7 +46,6 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boar
       angle: currentClimb?.angle,
       difficulty: grades.find((grade) => grade.difficulty_name === currentClimb?.difficulty)?.difficulty_id,
       attempts: 1,
-      quality: 3, // Default to middle of 1-5 scale
     });
     setIsMirrored(!!currentClimb?.mirrored);
   }, [currentClimb, form, grades]);
@@ -160,18 +159,11 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boar
       </Form.Item>
 
       <Form.Item name="attempts" label="Attempts" {...formItemLayout}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <Form.Item name="attempts" noStyle>
-            <InputNumber min={1} max={999} style={{ width: '80px' }} />
-          </Form.Item>
-          <Form.Item name="attempts" noStyle>
-            <Slider min={1} max={100} tooltip={{ formatter: (value) => `${value} attempts` }} />
-          </Form.Item>
-        </div>
+        <InputNumber min={1} max={999} style={{ width: '80px' }} />
       </Form.Item>
 
-      <Form.Item name="quality" label="Quality" {...formItemLayout}>
-        <Rate allowClear={false} count={5} />
+      <Form.Item name="quality" label="Quality" {...formItemLayout} rules={[{ required: true, message: 'Please rate the climb' }]}>
+        <Rate count={5} />
       </Form.Item>
 
       <Form.Item name="difficulty" label="Difficulty" {...formItemLayout}>

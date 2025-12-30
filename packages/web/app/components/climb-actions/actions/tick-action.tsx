@@ -6,7 +6,7 @@ import { CheckOutlined, LoginOutlined } from '@ant-design/icons';
 import { ClimbActionProps, ClimbActionResult } from '../types';
 import { useBoardProvider } from '../../board-provider/board-provider-context';
 import AuthModal from '../../auth/auth-modal';
-import { LogbookDrawer } from '../../logbook/logbook-drawer';
+import { LogAscentDrawer } from '../../logbook/log-ascent-drawer';
 import { track } from '@vercel/analytics';
 
 const { Text, Paragraph } = Typography;
@@ -80,9 +80,9 @@ export function TickAction({
   const drawers = (
     <>
       {isAuthenticated ? (
-        <LogbookDrawer
-          drawerVisible={drawerVisible}
-          closeDrawer={closeDrawer}
+        <LogAscentDrawer
+          open={drawerVisible}
+          onClose={closeDrawer}
           currentClimb={climb}
           boardDetails={boardDetails}
         />

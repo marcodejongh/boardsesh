@@ -5,6 +5,7 @@ import { getClimb } from '@/app/lib/data/queries';
 import { getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
 import ClimbCard from '@/app/components/climb-card/climb-card';
 import BetaVideos from '@/app/components/beta-videos/beta-videos';
+import { LogbookSection } from '@/app/components/logbook/logbook-section';
 import {
   constructClimbInfoUrl,
   extractUuidFromSlug,
@@ -207,8 +208,13 @@ export default async function DynamicResultsPage(props: { params: Promise<BoardR
           <div className={styles.climbSection}>
             <ClimbCard climb={climbWithProcessedData} boardDetails={boardDetails} actions={[]} />
           </div>
-          <div className={styles.betaSection}>
-            <BetaVideos betaLinks={betaLinks} />
+          <div className={styles.sidebarSection}>
+            <div className={styles.betaSection}>
+              <BetaVideos betaLinks={betaLinks} />
+            </div>
+            <div className={styles.logbookSection}>
+              <LogbookSection climb={climbWithProcessedData} />
+            </div>
           </div>
         </div>
       </div>

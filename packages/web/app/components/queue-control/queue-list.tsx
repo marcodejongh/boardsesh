@@ -12,7 +12,7 @@ import ClimbThumbnail from '../climb-card/climb-thumbnail';
 import ClimbTitle from '../climb-card/climb-title';
 import { themeTokens } from '@/app/theme/theme-config';
 import { useBoardProvider } from '../board-provider/board-provider-context';
-import { LogbookDrawer } from '../logbook/logbook-drawer';
+import { LogAscentDrawer } from '../logbook/log-ascent-drawer';
 import AuthModal from '../auth/auth-modal';
 
 const { Text, Paragraph } = Typography;
@@ -152,9 +152,9 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails, onClimbNavigate }) 
 
       {/* Tick drawer - now works with just NextAuth authentication */}
       {isAuthenticated ? (
-        <LogbookDrawer
-          drawerVisible={tickDrawerVisible}
-          closeDrawer={closeTickDrawer}
+        <LogAscentDrawer
+          open={tickDrawerVisible}
+          onClose={closeTickDrawer}
           currentClimb={tickClimb}
           boardDetails={boardDetails}
         />
