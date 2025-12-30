@@ -20,6 +20,16 @@
 .climbTitleContainer {
   width: 100%;
   flex-shrink: 0;
+  padding: 4px 12px;
+}
+
+.swipeWrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  min-height: 0;
 }
 
 .swipeContainer {
@@ -31,6 +41,36 @@
   touch-action: pan-y pinch-zoom;
   overflow: hidden;
   min-height: 0;
+  position: relative;
+  z-index: 1;
+}
+
+/* Action backgrounds revealed on swipe (hidden on desktop) */
+.swipeAction {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 120px;
+  display: flex;
+  align-items: center;
+  z-index: 0;
+}
+
+.swipeActionLeft {
+  left: 0;
+  justify-content: flex-start;
+  padding-left: 16px;
+}
+
+.swipeActionRight {
+  right: 0;
+  justify-content: flex-end;
+  padding-right: 16px;
+}
+
+.swipeActionIcon {
+  color: white;
+  font-size: 24px;
 }
 
 .boardContainer {
@@ -70,32 +110,6 @@
   transition: opacity 0.3s;
 }
 
-.swipeIndicator {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  background-color: rgba(0, 0, 0, 0.3);
-  color: white;
-  padding: 12px;
-  border-radius: 50%;
-  opacity: 0;
-  transition: opacity 0.2s;
-  pointer-events: none;
-  z-index: 10;
-}
-
-.swipeIndicatorLeft {
-  left: 8px;
-}
-
-.swipeIndicatorRight {
-  right: 8px;
-}
-
-.swipeIndicatorVisible {
-  opacity: 1;
-}
-
 /* Desktop adjustments */
 @media (min-width: 768px) {
   .boardContainer {
@@ -105,5 +119,9 @@
 
   .swipeHint {
     display: none;
+  }
+
+  .swipeAction {
+    display: none !important;
   }
 }

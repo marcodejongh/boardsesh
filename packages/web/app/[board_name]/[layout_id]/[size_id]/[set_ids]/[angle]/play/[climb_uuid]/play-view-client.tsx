@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { Button, Empty } from 'antd';
-import { LeftOutlined, RightOutlined } from '@ant-design/icons';
+import { FastForwardOutlined, FastBackwardOutlined } from '@ant-design/icons';
 import { useSwipeable } from 'react-swipeable';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { track } from '@vercel/analytics';
@@ -20,9 +20,10 @@ type PlayViewClientProps = {
   angle: Angle;
 };
 
-// Minimum horizontal swipe distance (in pixels) required to trigger navigation
-// This value balances responsiveness with preventing accidental swipes
-const SWIPE_THRESHOLD = 80;
+// Swipe threshold in pixels to trigger navigation
+const SWIPE_THRESHOLD = 100;
+// Maximum swipe distance (matches queue-control-bar)
+const MAX_SWIPE = 120;
 
 const PlayViewClient: React.FC<PlayViewClientProps> = ({ boardDetails, initialClimb, angle }) => {
   const router = useRouter();
@@ -36,18 +37,43 @@ const PlayViewClient: React.FC<PlayViewClientProps> = ({ boardDetails, initialCl
   } = useQueueContext();
 
   const [swipeOffset, setSwipeOffset] = useState(0);
-  const [showSwipeHint, setShowSwipeHint] = useState(true);
+  const [showSwipeHint, setShowSwipeHint] = useState(false);
+  const [isClient, setIsClient] = useState(false);
 
   // Use queue's current climb if available, otherwise use initial climb from SSR
   const displayClimb = currentClimb || initialClimb;
 
-  // Hide swipe hint after first interaction
+  // Check if user has already swiped before (persisted in localStorage)
+  // Only runs on client to avoid SSR hydration mismatch
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowSwipeHint(false);
-    }, 3000);
-    return () => clearTimeout(timer);
+    setIsClient(true);
+    try {
+      const hasSwipedBefore = localStorage.getItem('playViewSwipeHintDismissed');
+      if (hasSwipedBefore) {
+        return;
+      }
+
+      // Show hint for new users, then auto-hide after 3 seconds
+      setShowSwipeHint(true);
+      const timer = setTimeout(() => {
+        setShowSwipeHint(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    } catch {
+      // localStorage unavailable (private browsing, quota exceeded, etc.)
+    }
   }, []);
+
+  const dismissSwipeHintPermanently = useCallback(() => {
+    if (showSwipeHint) {
+      setShowSwipeHint(false);
+      try {
+        localStorage.setItem('playViewSwipeHintDismissed', 'true');
+      } catch {
+        // localStorage unavailable (private browsing, quota exceeded, etc.)
+      }
+    }
+  }, [showSwipeHint]);
 
   const getBackToListUrl = useCallback(() => {
     const { board_name, layout_name, size_name, size_description, set_names } = boardDetails;
@@ -125,31 +151,29 @@ const PlayViewClient: React.FC<PlayViewClientProps> = ({ boardDetails, initialCl
   const swipeHandlers = useSwipeable({
     onSwiping: (eventData) => {
       const { deltaX } = eventData;
-      // Only allow horizontal swiping
-      if (Math.abs(deltaX) > Math.abs(eventData.deltaY)) {
-        setSwipeOffset(deltaX);
-        setShowSwipeHint(false);
-      }
+      // Clamp the offset within bounds (matches queue-control-bar)
+      const clampedOffset = Math.max(-MAX_SWIPE, Math.min(MAX_SWIPE, deltaX));
+      setSwipeOffset(clampedOffset);
+      dismissSwipeHintPermanently();
     },
     onSwipedLeft: (eventData) => {
+      setSwipeOffset(0);
       if (Math.abs(eventData.deltaX) >= SWIPE_THRESHOLD) {
         handleNext();
       }
-      setSwipeOffset(0);
     },
     onSwipedRight: (eventData) => {
+      setSwipeOffset(0);
       if (Math.abs(eventData.deltaX) >= SWIPE_THRESHOLD) {
         handlePrevious();
       }
-      setSwipeOffset(0);
     },
     onTouchEndOrOnMouseUp: () => {
       setSwipeOffset(0);
     },
     trackMouse: false,
     trackTouch: true,
-    preventScrollOnSwipe: false,
-    delta: 10,
+    preventScrollOnSwipe: true,
   });
 
   const nextItem = getNextClimbQueueItem();
@@ -173,48 +197,61 @@ const PlayViewClient: React.FC<PlayViewClientProps> = ({ boardDetails, initialCl
       {/* Main Content with Swipe */}
       <div className={styles.contentWrapper}>
         {/* Climb title - horizontal layout with grade on right */}
-        <div
-          className={styles.climbTitleContainer}
-          style={{
-            padding: `${themeTokens.spacing[1]}px ${themeTokens.spacing[3]}px`,
-          }}
-        >
+        <div className={styles.climbTitleContainer}>
           <ClimbTitle climb={displayClimb} layout="horizontal" showSetterInfo />
         </div>
-        <div {...swipeHandlers} className={styles.swipeContainer}>
-          {/* Swipe indicators */}
-          {prevItem && (
+        <div className={styles.swipeWrapper}>
+          {/* Left action background (previous - revealed on swipe right) */}
+          {prevItem && isClient && (
             <div
-              className={`${styles.swipeIndicator} ${styles.swipeIndicatorLeft} ${
-                swipeOffset > SWIPE_THRESHOLD / 2 ? styles.swipeIndicatorVisible : ''
-              }`}
+              className={`${styles.swipeAction} ${styles.swipeActionLeft}`}
+              style={{
+                backgroundColor: themeTokens.colors.primary,
+                opacity: Math.min(1, swipeOffset / SWIPE_THRESHOLD),
+                visibility: swipeOffset > 0 ? 'visible' : 'hidden',
+              }}
             >
-              <LeftOutlined style={{ fontSize: 24 }} />
-            </div>
-          )}
-          {nextItem && (
-            <div
-              className={`${styles.swipeIndicator} ${styles.swipeIndicatorRight} ${
-                swipeOffset < -SWIPE_THRESHOLD / 2 ? styles.swipeIndicatorVisible : ''
-              }`}
-            >
-              <RightOutlined style={{ fontSize: 24 }} />
+              <FastBackwardOutlined className={styles.swipeActionIcon} />
             </div>
           )}
 
-          <div className={styles.boardContainer}>
-            <BoardRenderer
-              boardDetails={boardDetails}
-              litUpHoldsMap={displayClimb.litUpHoldsMap}
-              mirrored={!!displayClimb.mirrored}
-              fillHeight
-            />
+          {/* Right action background (next - revealed on swipe left) */}
+          {nextItem && isClient && (
+            <div
+              className={`${styles.swipeAction} ${styles.swipeActionRight}`}
+              style={{
+                backgroundColor: themeTokens.colors.primary,
+                opacity: Math.min(1, Math.abs(swipeOffset) / SWIPE_THRESHOLD),
+                visibility: swipeOffset < 0 ? 'visible' : 'hidden',
+              }}
+            >
+              <FastForwardOutlined className={styles.swipeActionIcon} />
+            </div>
+          )}
+
+          {/* Swipeable content */}
+          <div
+            {...swipeHandlers}
+            className={styles.swipeContainer}
+            style={{
+              transform: isClient ? `translateX(${swipeOffset}px)` : undefined,
+              transition: swipeOffset === 0 ? `transform ${themeTokens.transitions.fast}` : 'none',
+            }}
+          >
+            <div className={styles.boardContainer}>
+              <BoardRenderer
+                boardDetails={boardDetails}
+                litUpHoldsMap={displayClimb.litUpHoldsMap}
+                mirrored={!!displayClimb.mirrored}
+                fillHeight
+              />
+            </div>
+
+            {/* Swipe hint for mobile */}
+            {showSwipeHint && queue.length > 1 && (
+              <div className={styles.swipeHint}>Swipe left/right to navigate</div>
+            )}
           </div>
-
-          {/* Swipe hint for mobile */}
-          {showSwipeHint && queue.length > 1 && (
-            <div className={styles.swipeHint}>Swipe left/right to navigate</div>
-          )}
         </div>
       </div>
     </div>
