@@ -20,6 +20,7 @@
 .climbTitleContainer {
   width: 100%;
   flex-shrink: 0;
+  padding: 4px 12px;
 }
 
 .swipeWrapper {
@@ -46,7 +47,30 @@
 
 /* Action backgrounds revealed on swipe (hidden on desktop) */
 .swipeAction {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 120px;
+  display: flex;
+  align-items: center;
   z-index: 0;
+}
+
+.swipeActionLeft {
+  left: 0;
+  justify-content: flex-start;
+  padding-left: 16px;
+}
+
+.swipeActionRight {
+  right: 0;
+  justify-content: flex-end;
+  padding-right: 16px;
+}
+
+.swipeActionIcon {
+  color: white;
+  font-size: 24px;
 }
 
 .boardContainer {

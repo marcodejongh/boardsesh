@@ -38,30 +38,40 @@ const PlayViewClient: React.FC<PlayViewClientProps> = ({ boardDetails, initialCl
 
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [showSwipeHint, setShowSwipeHint] = useState(false);
+  const [isClient, setIsClient] = useState(false);
 
   // Use queue's current climb if available, otherwise use initial climb from SSR
   const displayClimb = currentClimb || initialClimb;
 
   // Check if user has already swiped before (persisted in localStorage)
+  // Only runs on client to avoid SSR hydration mismatch
   useEffect(() => {
-    const hasSwipedBefore = localStorage.getItem('playViewSwipeHintDismissed');
-    if (hasSwipedBefore) {
-      setShowSwipeHint(false);
-      return;
-    }
+    setIsClient(true);
+    try {
+      const hasSwipedBefore = localStorage.getItem('playViewSwipeHintDismissed');
+      if (hasSwipedBefore) {
+        return;
+      }
 
-    // Show hint for new users, then auto-hide after 3 seconds
-    setShowSwipeHint(true);
-    const timer = setTimeout(() => {
-      setShowSwipeHint(false);
-    }, 3000);
-    return () => clearTimeout(timer);
+      // Show hint for new users, then auto-hide after 3 seconds
+      setShowSwipeHint(true);
+      const timer = setTimeout(() => {
+        setShowSwipeHint(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    } catch {
+      // localStorage unavailable (private browsing, quota exceeded, etc.)
+    }
   }, []);
 
   const dismissSwipeHintPermanently = useCallback(() => {
     if (showSwipeHint) {
       setShowSwipeHint(false);
-      localStorage.setItem('playViewSwipeHintDismissed', 'true');
+      try {
+        localStorage.setItem('playViewSwipeHintDismissed', 'true');
+      } catch {
+        // localStorage unavailable (private browsing, quota exceeded, etc.)
+      }
     }
   }, [showSwipeHint]);
 
@@ -187,60 +197,35 @@ const PlayViewClient: React.FC<PlayViewClientProps> = ({ boardDetails, initialCl
       {/* Main Content with Swipe */}
       <div className={styles.contentWrapper}>
         {/* Climb title - horizontal layout with grade on right */}
-        <div
-          className={styles.climbTitleContainer}
-          style={{
-            padding: `${themeTokens.spacing[1]}px ${themeTokens.spacing[3]}px`,
-          }}
-        >
+        <div className={styles.climbTitleContainer}>
           <ClimbTitle climb={displayClimb} layout="horizontal" showSetterInfo />
         </div>
         <div className={styles.swipeWrapper}>
           {/* Left action background (previous - revealed on swipe right) */}
-          {prevItem && (
+          {prevItem && isClient && (
             <div
-              className={styles.swipeAction}
+              className={`${styles.swipeAction} ${styles.swipeActionLeft}`}
               style={{
-                position: 'absolute',
-                left: 0,
-                top: 0,
-                bottom: 0,
-                width: MAX_SWIPE,
                 backgroundColor: themeTokens.colors.primary,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'flex-start',
-                paddingLeft: themeTokens.spacing[4],
                 opacity: Math.min(1, swipeOffset / SWIPE_THRESHOLD),
                 visibility: swipeOffset > 0 ? 'visible' : 'hidden',
-                zIndex: 0,
               }}
             >
-              <FastBackwardOutlined style={{ color: 'white', fontSize: 24 }} />
+              <FastBackwardOutlined className={styles.swipeActionIcon} />
             </div>
           )}
 
           {/* Right action background (next - revealed on swipe left) */}
-          {nextItem && (
+          {nextItem && isClient && (
             <div
-              className={styles.swipeAction}
+              className={`${styles.swipeAction} ${styles.swipeActionRight}`}
               style={{
-                position: 'absolute',
-                right: 0,
-                top: 0,
-                bottom: 0,
-                width: MAX_SWIPE,
                 backgroundColor: themeTokens.colors.primary,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'flex-end',
-                paddingRight: themeTokens.spacing[4],
                 opacity: Math.min(1, Math.abs(swipeOffset) / SWIPE_THRESHOLD),
                 visibility: swipeOffset < 0 ? 'visible' : 'hidden',
-                zIndex: 0,
               }}
             >
-              <FastForwardOutlined style={{ color: 'white', fontSize: 24 }} />
+              <FastForwardOutlined className={styles.swipeActionIcon} />
             </div>
           )}
 
@@ -249,9 +234,8 @@ const PlayViewClient: React.FC<PlayViewClientProps> = ({ boardDetails, initialCl
             {...swipeHandlers}
             className={styles.swipeContainer}
             style={{
-              transform: `translateX(${swipeOffset}px)`,
+              transform: isClient ? `translateX(${swipeOffset}px)` : undefined,
               transition: swipeOffset === 0 ? `transform ${themeTokens.transitions.fast}` : 'none',
-              backgroundColor: themeTokens.semantic.background,
             }}
           >
             <div className={styles.boardContainer}>
