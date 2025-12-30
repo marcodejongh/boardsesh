@@ -9,6 +9,7 @@ import { usePlaylists } from '../use-playlists';
 import AuthModal from '../../auth/auth-modal';
 import type { Playlist } from '../playlists-batch-context';
 import type { Color } from 'antd/es/color-picker';
+import { themeTokens } from '@/app/theme/theme-config';
 
 const { Text } = Typography;
 
@@ -37,7 +38,6 @@ export function PlaylistAction({
     createPlaylist,
     isAuthenticated,
     isLoading,
-    refreshPlaylists,
   } = usePlaylists({
     climbUuid: climb.uuid,
     angle,
@@ -79,13 +79,12 @@ export function PlaylistAction({
             playlistId,
           });
         }
-        await refreshPlaylists();
+        // Note: No need to call refreshPlaylists() - optimistic updates handle state
       } catch (error) {
         message.error(isInPlaylist ? 'Failed to remove from playlist' : 'Failed to add to playlist');
-        console.error('Playlist toggle error:', error);
       }
     },
-    [addToPlaylist, removeFromPlaylist, refreshPlaylists, boardDetails.board_name, climb.uuid]
+    [addToPlaylist, removeFromPlaylist, boardDetails.board_name, climb.uuid]
   );
 
   const handleCreatePlaylist = useCallback(async () => {
@@ -116,18 +115,17 @@ export function PlaylistAction({
 
       form.resetFields();
       setShowCreateForm(false);
-      await refreshPlaylists();
+      // Note: No need to call refreshPlaylists() - optimistic updates handle state
     } catch (error) {
       if (error instanceof Error && 'errorFields' in error) {
         // Form validation error - don't show message
         return;
       }
       message.error('Failed to create playlist');
-      console.error('Create playlist error:', error);
     } finally {
       setCreatingPlaylist(false);
     }
-  }, [form, createPlaylist, addToPlaylist, refreshPlaylists, boardDetails.board_name]);
+  }, [form, createPlaylist, addToPlaylist, boardDetails.board_name]);
 
   const popoverContent = (
     <div style={{ width: 300, maxHeight: 400, overflow: 'auto' }}>
@@ -174,7 +172,7 @@ export function PlaylistAction({
                           </Text>
                         </Space>
                         {isInPlaylist && (
-                          <CheckOutlined style={{ color: '#52c41a', fontSize: 16 }} />
+                          <CheckOutlined style={{ color: themeTokens.colors.success, fontSize: 16 }} />
                         )}
                       </Space>
                     </List.Item>

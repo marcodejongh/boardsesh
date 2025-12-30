@@ -163,10 +163,7 @@ export const playlistQueries = {
     { input }: { input: { boardType: string; layoutId: number; climbUuid: string } },
     ctx: ConnectionContext
   ): Promise<string[]> => {
-    if (!ctx.isAuthenticated || !ctx.userId) {
-      return [];
-    }
-
+    requireAuthenticated(ctx);
     validateInput(GetPlaylistsForClimbInputSchema, input, 'input');
 
     const userId = ctx.userId!;

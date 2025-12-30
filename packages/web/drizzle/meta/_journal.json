@@ -148,6 +148,13 @@
       "when": 1767046015112,
       "tag": "0020_sticky_morg",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1767072957098,
+      "tag": "0021_mixed_namorita",
+      "breakpoints": true
     }
   ]
 }

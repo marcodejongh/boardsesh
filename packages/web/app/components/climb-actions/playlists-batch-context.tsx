@@ -1,22 +1,10 @@
 'use client';
 
 import React, { createContext, useContext, useMemo } from 'react';
+import type { Playlist } from '@/app/lib/graphql/operations/playlists';
 
-export interface Playlist {
-  id: string;
-  uuid: string;
-  boardType: string;
-  layoutId: number;
-  name: string;
-  description?: string;
-  isPublic: boolean;
-  color?: string;
-  icon?: string;
-  createdAt: string;
-  updatedAt: string;
-  climbCount: number;
-  userRole?: string;
-}
+// Re-export Playlist type for convenience
+export type { Playlist } from '@/app/lib/graphql/operations/playlists';
 
 interface PlaylistsContextValue {
   // List of user's playlists for this board+layout
