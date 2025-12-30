@@ -285,3 +285,66 @@ export const GetTicksInputSchema = z.object({
   boardType: BoardNameSchema,
   climbUuids: z.array(ExternalUUIDSchema).optional(),
 });
+
+/**
+ * Playlist validation schemas
+ */
+export const PlaylistNameSchema = z
+  .string()
+  .min(1, 'Playlist name cannot be empty')
+  .max(100, 'Playlist name too long');
+
+export const PlaylistDescriptionSchema = z
+  .string()
+  .max(500, 'Playlist description too long')
+  .optional();
+
+export const PlaylistColorSchema = z
+  .string()
+  .regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid color format (must be hex)')
+  .optional();
+
+export const PlaylistIconSchema = z
+  .string()
+  .max(50, 'Icon name too long')
+  .optional();
+
+export const CreatePlaylistInputSchema = z.object({
+  boardType: BoardNameSchema,
+  layoutId: z.number().int().positive(),
+  name: PlaylistNameSchema,
+  description: PlaylistDescriptionSchema,
+  color: PlaylistColorSchema,
+  icon: PlaylistIconSchema,
+});
+
+export const UpdatePlaylistInputSchema = z.object({
+  playlistId: z.string().min(1),
+  name: PlaylistNameSchema.optional(),
+  description: PlaylistDescriptionSchema,
+  isPublic: z.boolean().optional(),
+  color: PlaylistColorSchema,
+  icon: PlaylistIconSchema,
+});
+
+export const AddClimbToPlaylistInputSchema = z.object({
+  playlistId: z.string().min(1),
+  climbUuid: ExternalUUIDSchema,
+  angle: z.number().int().min(0).max(90),
+});
+
+export const RemoveClimbFromPlaylistInputSchema = z.object({
+  playlistId: z.string().min(1),
+  climbUuid: ExternalUUIDSchema,
+});
+
+export const GetUserPlaylistsInputSchema = z.object({
+  boardType: BoardNameSchema,
+  layoutId: z.number().int().positive(),
+});
+
+export const GetPlaylistsForClimbInputSchema = z.object({
+  boardType: BoardNameSchema,
+  layoutId: z.number().int().positive(),
+  climbUuid: ExternalUUIDSchema,
+});

@@ -10,6 +10,8 @@ import { climbQueries } from './climbs/queries.js';
 import { climbFieldResolvers } from './climbs/field-resolvers.js';
 import { favoriteQueries } from './favorites/queries.js';
 import { favoriteMutations } from './favorites/mutations.js';
+import { playlistQueries } from './playlists/queries.js';
+import { playlistMutations } from './playlists/mutations.js';
 import { sessionQueries } from './sessions/queries.js';
 import { sessionMutations } from './sessions/mutations.js';
 import { sessionSubscriptions } from './sessions/subscriptions.js';
@@ -30,6 +32,7 @@ export const resolvers = {
     ...tickQueries,
     ...userQueries,
     ...favoriteQueries,
+    ...playlistQueries,
   },
 
   Mutation: {
@@ -38,6 +41,7 @@ export const resolvers = {
     ...tickMutations,
     ...userMutations,
     ...favoriteMutations,
+    ...playlistMutations,
   },
 
   Subscription: {

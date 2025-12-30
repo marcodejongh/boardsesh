@@ -21,6 +21,7 @@ import {
   MirrorAction,
   ShareAction,
   AddToListAction,
+  PlaylistAction,
 } from './actions';
 import styles from './climb-actions.module.css';
 
@@ -43,6 +44,7 @@ const ACTION_COMPONENTS: Record<
   mirror: MirrorAction,
   share: ShareAction,
   addToList: AddToListAction,
+  playlist: PlaylistAction,
 };
 
 export function ClimbActions({
