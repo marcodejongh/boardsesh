@@ -77,12 +77,22 @@ function usePageMode(): PageMode {
 export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeaderProps) {
   const { data: session } = useSession();
   const { currentClimb } = useQueueContext();
-  const { draftsCount } = useDrafts();
+  const { drafts } = useDrafts();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showDraftsDrawer, setShowDraftsDrawer] = useState(false);
   const pageMode = usePageMode();
   const searchParams = useSearchParams();
   const router = useRouter();
+
+  // Filter drafts count for current board configuration
+  const filteredDraftsCount = useMemo(() => {
+    return drafts.filter(
+      (draft) =>
+        draft.boardName === boardDetails.board_name &&
+        draft.layoutId === boardDetails.layout_id &&
+        draft.sizeId === boardDetails.size_id,
+    ).length;
+  }, [drafts, boardDetails]);
 
   // Build back to list URL for play/view pages
   const getBackToListUrl = () => {
@@ -235,8 +245,8 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
               <>
                 <CreateModeButtons />
                 {/* Drafts button with badge - only shown on create page */}
-                {draftsCount > 0 && (
-                  <Badge count={draftsCount} size="small" offset={[-4, 4]}>
+                {filteredDraftsCount > 0 && (
+                  <Badge count={filteredDraftsCount} size="small" offset={[-4, 4]}>
                     <Button
                       icon={<FileTextOutlined />}
                       type="text"
@@ -305,6 +315,7 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
       <DraftsDrawer
         open={showDraftsDrawer}
         onClose={() => setShowDraftsDrawer(false)}
+        boardDetails={boardDetails}
       />
     </Header>
   );

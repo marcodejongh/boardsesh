@@ -1,11 +1,13 @@
 'use client';
 
-import React from 'react';
-import { Drawer, List, Button, Empty, Typography, Popconfirm, Space, Tag } from 'antd';
+import React, { useMemo } from 'react';
+import { Drawer, List, Button, Empty, Typography, Popconfirm, Row, Col } from 'antd';
 import { DeleteOutlined, EditOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import { useDrafts, DraftClimb } from './drafts-context';
-import { generateLayoutSlug, generateSizeSlug, generateSetSlug, constructClimbListWithSlugs } from '@/app/lib/url-utils';
+import { generateLayoutSlug, generateSizeSlug, generateSetSlug } from '@/app/lib/url-utils';
+import { BoardDetails } from '@/app/lib/types';
+import BoardRenderer from '../board-renderer/board-renderer';
 import styles from './drafts-drawer.module.css';
 
 const { Text, Paragraph } = Typography;
@@ -13,6 +15,7 @@ const { Text, Paragraph } = Typography;
 interface DraftsDrawerProps {
   open: boolean;
   onClose: () => void;
+  boardDetails: BoardDetails;
 }
 
 function formatRelativeTime(timestamp: number): string {
@@ -31,66 +34,90 @@ function formatRelativeTime(timestamp: number): string {
 
 function DraftItem({
   draft,
+  boardDetails,
   onEdit,
   onDelete,
 }: {
   draft: DraftClimb;
+  boardDetails: BoardDetails;
   onEdit: (draft: DraftClimb) => void;
   onDelete: (uuid: string) => void;
 }) {
   const holdCount = Object.keys(draft.litUpHoldsMap).length;
-  const boardNameCapitalized = draft.boardName.charAt(0).toUpperCase() + draft.boardName.slice(1);
 
   return (
-    <List.Item
-      className={styles.draftItem}
-      actions={[
-        <Button
-          key="edit"
-          type="text"
-          icon={<EditOutlined />}
-          onClick={() => onEdit(draft)}
-        >
-          Resume
-        </Button>,
-        <Popconfirm
-          key="delete"
-          title="Delete draft?"
-          description="This cannot be undone."
-          onConfirm={() => onDelete(draft.uuid)}
-          okText="Delete"
-          cancelText="Cancel"
-          okButtonProps={{ danger: true }}
-        >
-          <Button type="text" icon={<DeleteOutlined />} danger />
-        </Popconfirm>,
-      ]}
-    >
-      <List.Item.Meta
-        title={
-          <Space>
-            <Text strong>{draft.name || 'Untitled'}</Text>
-            <Tag color="blue">{boardNameCapitalized}</Tag>
-          </Space>
-        }
-        description={
-          <div className={styles.draftMeta}>
-            <Text type="secondary">
-              {holdCount} holds at {draft.angle}°
-            </Text>
-            <Text type="secondary" className={styles.timestamp}>
-              {formatRelativeTime(draft.updatedAt)}
-            </Text>
+    <List.Item className={styles.draftItem}>
+      <Row gutter={[12, 8]} align="middle" style={{ width: '100%' }}>
+        {/* Thumbnail */}
+        <Col span={6}>
+          <div className={styles.thumbnail}>
+            <BoardRenderer
+              boardDetails={boardDetails}
+              litUpHoldsMap={draft.litUpHoldsMap}
+              mirrored={false}
+              thumbnail
+            />
           </div>
-        }
-      />
+        </Col>
+
+        {/* Content */}
+        <Col span={12}>
+          <div className={styles.draftContent}>
+            <Text strong className={styles.draftName}>
+              {draft.name || 'Untitled'}
+            </Text>
+            <div className={styles.draftMeta}>
+              <Text type="secondary">
+                {holdCount} holds · {draft.angle}°
+              </Text>
+              <Text type="secondary" className={styles.timestamp}>
+                {formatRelativeTime(draft.updatedAt)}
+              </Text>
+            </div>
+          </div>
+        </Col>
+
+        {/* Actions */}
+        <Col span={6}>
+          <div className={styles.draftActions}>
+            <Button
+              type="primary"
+              size="small"
+              icon={<EditOutlined />}
+              onClick={() => onEdit(draft)}
+            >
+              Resume
+            </Button>
+            <Popconfirm
+              title="Delete draft?"
+              description="This cannot be undone."
+              onConfirm={() => onDelete(draft.uuid)}
+              okText="Delete"
+              cancelText="Cancel"
+              okButtonProps={{ danger: true }}
+            >
+              <Button type="text" size="small" icon={<DeleteOutlined />} danger />
+            </Popconfirm>
+          </div>
+        </Col>
+      </Row>
     </List.Item>
   );
 }
 
-export function DraftsDrawer({ open, onClose }: DraftsDrawerProps) {
+export function DraftsDrawer({ open, onClose, boardDetails }: DraftsDrawerProps) {
   const router = useRouter();
   const { drafts, isLoading, deleteDraft } = useDrafts();
+
+  // Filter drafts to only show those matching the current board configuration
+  const filteredDrafts = useMemo(() => {
+    return drafts.filter(
+      (draft) =>
+        draft.boardName === boardDetails.board_name &&
+        draft.layoutId === boardDetails.layout_id &&
+        draft.sizeId === boardDetails.size_id,
+    );
+  }, [drafts, boardDetails]);
 
   const handleEdit = (draft: DraftClimb) => {
     // Navigate to the create page with the draft ID
@@ -122,9 +149,9 @@ export function DraftsDrawer({ open, onClose }: DraftsDrawerProps) {
       placement="right"
       onClose={onClose}
       open={open}
-      width={400}
+      width={420}
     >
-      {drafts.length === 0 && !isLoading ? (
+      {filteredDrafts.length === 0 && !isLoading ? (
         <Empty
           description={
             <Paragraph type="secondary">
@@ -135,9 +162,14 @@ export function DraftsDrawer({ open, onClose }: DraftsDrawerProps) {
       ) : (
         <List
           loading={isLoading}
-          dataSource={drafts}
+          dataSource={filteredDrafts}
           renderItem={(draft) => (
-            <DraftItem draft={draft} onEdit={handleEdit} onDelete={handleDelete} />
+            <DraftItem
+              draft={draft}
+              boardDetails={boardDetails}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+            />
           )}
         />
       )}
