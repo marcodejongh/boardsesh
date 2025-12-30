@@ -19,7 +19,6 @@
 
 .climbTitleContainer {
   width: 100%;
-  padding: 4px 12px 2px;
   flex-shrink: 0;
 }
 
@@ -37,7 +36,7 @@
 .boardContainer {
   flex: 1;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
   padding: 0;
   min-height: 0;

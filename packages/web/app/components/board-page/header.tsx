@@ -157,7 +157,7 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
                 <Button
                   icon={<LeftOutlined />}
                   type="text"
-                  aria-label="Back to search"
+                  aria-label="Back to climb list"
                   onClick={() => router.push(getBackToListUrl())}
                 />
               </div>

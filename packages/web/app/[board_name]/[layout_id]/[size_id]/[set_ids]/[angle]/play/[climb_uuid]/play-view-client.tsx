@@ -172,8 +172,13 @@ const PlayViewClient: React.FC<PlayViewClientProps> = ({ boardDetails, initialCl
     <div className={styles.pageContainer} style={{ backgroundColor: themeTokens.semantic.background }}>
       {/* Main Content with Swipe */}
       <div className={styles.contentWrapper}>
-        {/* Climb title - left aligned above board */}
-        <div className={styles.climbTitleContainer}>
+        {/* Climb title - horizontal layout with grade on right */}
+        <div
+          className={styles.climbTitleContainer}
+          style={{
+            padding: `${themeTokens.spacing[1]}px ${themeTokens.spacing[3]}px`,
+          }}
+        >
           <ClimbTitle climb={displayClimb} layout="horizontal" showSetterInfo />
         </div>
         <div {...swipeHandlers} className={styles.swipeContainer}>
