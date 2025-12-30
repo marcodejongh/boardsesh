@@ -383,11 +383,9 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
           <Tag color={startingCount > 0 ? 'green' : 'default'}>Starting: {startingCount}/2</Tag>
           <Tag color={finishCount > 0 ? 'magenta' : 'default'}>Finish: {finishCount}/2</Tag>
           <Tag color={totalHolds > 0 ? 'blue' : 'default'}>Total: {totalHolds}</Tag>
-          {totalHolds > 0 && (
-            <Button size="small" onClick={resetHolds}>
-              Clear All
-            </Button>
-          )}
+          <Button size="small" onClick={resetHolds} disabled={totalHolds === 0}>
+            Clear All
+          </Button>
         </div>
       </div>
 
