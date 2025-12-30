@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { BulbOutlined, BulbFilled, AppleOutlined } from '@ant-design/icons';
-import { Button, Modal, Typography } from 'antd';
+import { Button, Modal, Typography, message } from 'antd';
 import { track } from '@vercel/analytics';
 
 const { Text, Paragraph } = Typography;
@@ -16,37 +16,10 @@ import {
   splitMessages,
   writeCharacteristicSeries,
 } from './bluetooth';
-import { HoldRenderData } from '../board-renderer/types';
 import { useWakeLock } from './use-wake-lock';
-import { getLedPlacements } from '@/app/lib/__generated__/led-placements-data';
+import { convertToMirroredFramesString, createLedPlacementsFetcher } from './bluetooth-utils';
 
 type SendClimbToBoardButtonProps = { boardDetails: BoardDetails };
-
-export const convertToMirroredFramesString = (frames: string, holdsData: HoldRenderData[]): string => {
-  // Create a map for quick lookup of mirroredHoldId
-  const holdIdToMirroredIdMap = new Map<number, number>();
-  holdsData.forEach((hold) => {
-    if (hold.mirroredHoldId) {
-      holdIdToMirroredIdMap.set(hold.id, hold.mirroredHoldId);
-    }
-  });
-
-  return frames
-    .split('p') // Split into hold data entries
-    .filter((hold) => hold) // Remove empty entries
-    .map((holdData) => {
-      const [holdId, stateCode] = holdData.split('r').map((str) => Number(str)); // Split hold data into holdId and stateCode
-      const mirroredHoldId = holdIdToMirroredIdMap.get(holdId);
-
-      if (mirroredHoldId === undefined) {
-        throw new Error(`Mirrored hold ID is not defined for hold ID ${holdId}.`);
-      }
-
-      // Construct the mirrored hold data
-      return `p${mirroredHoldId}r${stateCode}`;
-    })
-    .join(''); // Reassemble into a single string
-};
 
 // React component
 const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({ boardDetails }) => {
@@ -70,6 +43,9 @@ const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({ boardDe
   const bluetoothDeviceRef = useRef<BluetoothDevice | null>(null);
   const characteristicRef = useRef<BluetoothRemoteGATTCharacteristic | null>(null);
 
+  // Create a cached LED placements fetcher (stable across renders)
+  const fetchLedPlacementsCached = useRef(createLedPlacementsFetcher()).current;
+
   // Handler for device disconnection
   const handleDisconnection = useCallback(() => {
     setIsConnected(false);
@@ -88,33 +64,43 @@ const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({ boardDe
   );
 
   // Function to send climb data to the board
-  const sendClimbToBoard = useCallback(async () => {
-    if (!currentClimbQueueItem || !characteristicRef.current) return;
+  const sendClimbToBoard = useCallback(async (): Promise<boolean> => {
+    if (!currentClimbQueueItem || !characteristicRef.current) return false;
 
     let { frames } = currentClimbQueueItem.climb;
 
-    const placementPositions = getLedPlacements(boardDetails.board_name, boardDetails.layout_id, boardDetails.size_id);
+    const placementPositions = await fetchLedPlacementsCached(
+      boardDetails.board_name,
+      boardDetails.layout_id,
+      boardDetails.size_id
+    );
+    if (!placementPositions) {
+      console.error('Failed to get LED placements');
+      message.error('Failed to load board LED configuration');
+      return false;
+    }
+
     if (currentClimbQueueItem.climb?.mirrored) {
       frames = convertToMirroredFramesString(frames, boardDetails.holdsData);
     }
     const bluetoothPacket = getBluetoothPacket(frames, placementPositions, boardDetails.board_name);
 
     try {
-      if (characteristicRef.current) {
-        await writeCharacteristicSeries(characteristicRef.current, splitMessages(bluetoothPacket));
-        track('Climb Sent to Board Success', {
-          climbUuid: currentClimbQueueItem.climb?.uuid,
-          boardLayout: `${boardDetails.layout_name}`,
-        });
-      }
+      await writeCharacteristicSeries(characteristicRef.current, splitMessages(bluetoothPacket));
+      track('Climb Sent to Board Success', {
+        climbUuid: currentClimbQueueItem.climb?.uuid,
+        boardLayout: `${boardDetails.layout_name}`,
+      });
+      return true;
     } catch (error) {
       console.error('Error sending climb to board:', error);
       track('Climb Sent to Board Failure', {
         climbUuid: currentClimbQueueItem.climb?.uuid,
         boardLayout: `${boardDetails.layout_name}`,
       });
+      return false;
     }
-  }, [currentClimbQueueItem, boardDetails]);
+  }, [currentClimbQueueItem, boardDetails, fetchLedPlacementsCached]);
 
   // Handle button click to initiate Bluetooth connection
   const handleClick = useCallback(async () => {
@@ -145,28 +131,14 @@ const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({ boardDe
           boardLayout: `${boardDetails.layout_name}`,
         });
 
+        // Set connected state before sending climb
+        setIsConnected(true);
+
         // Send the current climb immediately after connection is established
         // Button is disabled when no climb is selected, so currentClimbQueueItem should always exist here
         if (currentClimbQueueItem) {
-          try {
-            let { frames } = currentClimbQueueItem.climb;
-            const placementPositions = getLedPlacements(boardDetails.board_name, boardDetails.layout_id, boardDetails.size_id);
-            if (currentClimbQueueItem.climb?.mirrored) {
-              frames = convertToMirroredFramesString(frames, boardDetails.holdsData);
-            }
-            const bluetoothPacket = getBluetoothPacket(frames, placementPositions, boardDetails.board_name);
-            await writeCharacteristicSeries(characteristic, splitMessages(bluetoothPacket));
-            track('Climb Sent to Board Success', {
-              climbUuid: currentClimbQueueItem.climb?.uuid,
-              boardLayout: `${boardDetails.layout_name}`,
-            });
-          } catch (sendError) {
-            console.error('Error sending climb after connection:', sendError);
-          }
+          await sendClimbToBoard();
         }
-
-        // Set connected state after successful send attempt
-        setIsConnected(true);
       }
     } catch (error) {
       console.error('Error connecting to Bluetooth:', error);
@@ -178,7 +150,7 @@ const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({ boardDe
     } finally {
       setLoading(false);
     }
-  }, [cleanupDeviceListeners, handleDisconnection, boardDetails, currentClimbQueueItem]);
+  }, [cleanupDeviceListeners, handleDisconnection, boardDetails, currentClimbQueueItem, sendClimbToBoard]);
 
   // Clean up on unmount
   useEffect(() => {

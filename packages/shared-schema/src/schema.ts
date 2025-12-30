@@ -129,6 +129,73 @@ export const typeDefs = /* GraphQL */ `
     angle: Int!
   }
 
+  type ProductSize {
+    id: Int!
+    name: String!
+    description: String!
+    edgeLeft: Int!
+    edgeRight: Int!
+    edgeBottom: Int!
+    edgeTop: Int!
+    productId: Int!
+  }
+
+  type Layout {
+    id: Int!
+    name: String!
+    productId: Int!
+  }
+
+  type HoldSet {
+    id: Int!
+    name: String!
+  }
+
+  # Board details for rendering - contains all data needed to display a board
+  type BoardDetails {
+    boardName: String!
+    layoutId: Int!
+    sizeId: Int!
+    setIds: [Int!]!
+    edgeLeft: Int!
+    edgeRight: Int!
+    edgeBottom: Int!
+    edgeTop: Int!
+    boardWidth: Int!
+    boardHeight: Int!
+    supportsMirroring: Boolean!
+    layoutName: String
+    sizeName: String
+    sizeDescription: String
+    setNames: [String!]!
+    imagesToHolds: JSON!
+    holdsData: JSON!
+  }
+
+  # LED placements for Bluetooth board control
+  type LedPlacements {
+    placements: JSON!
+  }
+
+  # Board selector option for the setup wizard
+  type BoardLayoutOption {
+    id: Int!
+    name: String!
+    sizes: [BoardSizeOption!]!
+  }
+
+  type BoardSizeOption {
+    id: Int!
+    name: String!
+    description: String!
+    sets: [HoldSet!]!
+  }
+
+  type BoardSelectorOptions {
+    kilter: [BoardLayoutOption!]!
+    tension: [BoardLayoutOption!]!
+  }
+
   # ============================================
   # Climb Search Types
   # ============================================
@@ -355,6 +422,22 @@ export const typeDefs = /* GraphQL */ `
     grades(boardName: String!): [Grade!]!
     # Get available angles for a board layout
     angles(boardName: String!, layoutId: Int!): [Angle!]!
+
+    # Get all layouts for a board type
+    layouts(boardName: String!): [Layout!]!
+    # Get all sizes for a layout
+    sizesForLayout(boardName: String!, layoutId: Int!): [ProductSize!]!
+    # Get all sets for a layout and size combination
+    setsForLayoutAndSize(boardName: String!, layoutId: Int!, sizeId: Int!): [HoldSet!]!
+
+    # Get complete board details for rendering
+    boardDetails(boardName: String!, layoutId: Int!, sizeId: Int!, setIds: [Int!]!): BoardDetails
+
+    # Get LED placements for Bluetooth control
+    ledPlacements(boardName: String!, layoutId: Int!, sizeId: Int!): LedPlacements
+
+    # Get all board selector options for the setup wizard
+    boardSelectorOptions: BoardSelectorOptions!
 
     # ============================================
     # Climb Queries

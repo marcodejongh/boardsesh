@@ -153,6 +153,23 @@ export const BoardNameSchema = z.enum(['kilter', 'tension'], {
   errorMap: () => ({ message: 'Board name must be kilter or tension' }),
 });
 
+/**
+ * Layout ID validation schema
+ */
+export const LayoutIdSchema = z.number().int('Layout ID must be an integer').positive('Layout ID must be positive');
+
+/**
+ * Size ID validation schema
+ */
+export const SizeIdSchema = z.number().int('Size ID must be an integer').positive('Size ID must be positive');
+
+/**
+ * Set IDs array validation schema (for board configuration)
+ */
+export const SetIdsArraySchema = z.array(
+  z.number().int('Set ID must be an integer').positive('Set ID must be positive')
+).min(1, 'At least one set ID is required').max(50, 'Too many set IDs');
+
 // ============================================
 // Climb Search Schemas
 // ============================================
