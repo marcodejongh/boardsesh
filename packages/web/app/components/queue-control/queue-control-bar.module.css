@@ -19,38 +19,12 @@
   }
 }
 
-/* Swipe container for mobile navigation */
+/* Swipe container for mobile navigation - carousel style */
 .swipeContainer {
-  width: 100%;
   touch-action: pan-y;
 }
 
-/* Visual feedback during swipe */
-.swipeIndicator {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  transition: opacity 150ms ease, transform 150ms ease;
-  pointer-events: none;
-}
-
-.swipeIndicatorLeft {
-  left: 8px;
-}
-
-.swipeIndicatorRight {
-  right: 8px;
-}
-
-/* Hide swipe indicators on desktop */
-@media (min-width: 768px) {
-  .swipeIndicator {
-    display: none;
-  }
+/* Individual carousel slides */
+.carouselSlide {
+  padding: 0 4px;
 }
