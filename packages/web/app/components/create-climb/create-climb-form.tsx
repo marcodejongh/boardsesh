@@ -45,7 +45,7 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
   const [currentDraft, setCurrentDraft] = useState<DraftClimb | null>(null);
   const [isLoadingDraft, setIsLoadingDraft] = useState(!!draftIdFromUrl);
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const hasInitializedRef = useRef(false);
+  const lastInitializedDraftIdRef = useRef<string | null | undefined>(undefined);
   const isMountedRef = useRef(true);
 
   // Convert fork frames to initial holds map if provided
@@ -92,12 +92,14 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
     };
   }, []);
 
-  // Load existing draft or create a new one on mount
+  // Load existing draft or create a new one on mount or when draftId changes
   useEffect(() => {
-    if (hasInitializedRef.current) return;
-    hasInitializedRef.current = true;
+    // Skip if we've already initialized with this draftId
+    if (lastInitializedDraftIdRef.current === draftIdFromUrl) return;
+    lastInitializedDraftIdRef.current = draftIdFromUrl;
 
     const initializeDraft = async () => {
+      setIsLoadingDraft(true);
       try {
         if (draftIdFromUrl) {
           // Resuming an existing draft
@@ -133,10 +135,12 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
 
           setCurrentDraft(newDraft);
           setIsLoadingDraft(false);
-          // Update URL with draft ID (without navigation)
-          const url = new URL(window.location.href);
-          url.searchParams.set('draftId', newDraft.uuid);
-          window.history.replaceState({}, '', url.toString());
+          // Update ref to prevent re-initialization
+          lastInitializedDraftIdRef.current = newDraft.uuid;
+          // Update URL with draft ID using Next.js router (shallow to avoid re-render)
+          const newParams = new URLSearchParams(searchParams.toString());
+          newParams.set('draftId', newDraft.uuid);
+          router.replace(`?${newParams.toString()}`, { scroll: false });
         }
       } catch (error) {
         console.error('Failed to initialize draft:', error);
@@ -147,7 +151,7 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
     };
 
     initializeDraft();
-  }, [draftIdFromUrl, boardDetails, angle, createDraft, setLitUpHoldsMap]);
+  }, [draftIdFromUrl, boardDetails, angle, createDraft, setLitUpHoldsMap, searchParams, router]);
 
   // Use ref for draft UUID to avoid triggering saves when currentDraft reference changes
   const currentDraftIdRef = useRef<string | null>(null);

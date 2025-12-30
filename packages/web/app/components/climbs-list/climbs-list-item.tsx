@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { Row, Col, Dropdown, Button, Typography } from 'antd';
 import { MoreOutlined } from '@ant-design/icons';
 import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
@@ -21,6 +21,10 @@ const SWIPE_THRESHOLD = 100;
 // Maximum swipe distance
 const MAX_SWIPE = 120;
 
+// Pre-computed transition strings
+const TRANSITION_FAST = `transform ${themeTokens.transitions.fast}, opacity ${themeTokens.transitions.fast}`;
+const TRANSITION_NONE = 'none';
+
 function ClimbsListItemComponent<T extends ClimbsListItem>({
   item,
   index,
@@ -38,43 +42,63 @@ function ClimbsListItemComponent<T extends ClimbsListItem>({
   draggable: isDraggable = true,
 }: ClimbsListItemProps<T>) {
   const [closestEdge, setClosestEdge] = useState<Edge | null>(null);
-  const [swipeOffset, setSwipeOffset] = useState(0);
   const [isSwipeComplete, setIsSwipeComplete] = useState(false);
-  const [isHorizontalSwipe, setIsHorizontalSwipe] = useState<boolean | null>(null);
+  const isHorizontalSwipeRef = useRef<boolean | null>(null);
   const itemRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const leftActionRef = useRef<HTMLDivElement>(null);
+  const rightActionRef = useRef<HTMLDivElement>(null);
+
+  // Update swipe visuals via DOM directly for smoother performance
+  const updateSwipeVisuals = useCallback((offset: number) => {
+    if (contentRef.current) {
+      contentRef.current.style.transform = `translateX(${offset}px)`;
+      contentRef.current.style.transition = offset === 0 ? TRANSITION_FAST : TRANSITION_NONE;
+    }
+    if (leftActionRef.current && swipeLeftAction) {
+      const opacity = Math.min(1, Math.abs(offset) / SWIPE_THRESHOLD);
+      leftActionRef.current.style.opacity = String(offset < 0 ? opacity : 0);
+      leftActionRef.current.style.visibility = offset < 0 ? 'visible' : 'hidden';
+    }
+    if (rightActionRef.current && swipeRightAction) {
+      const opacity = Math.min(1, offset / SWIPE_THRESHOLD);
+      rightActionRef.current.style.opacity = String(offset > 0 ? opacity : 0);
+      rightActionRef.current.style.visibility = offset > 0 ? 'visible' : 'hidden';
+    }
+  }, [swipeLeftAction, swipeRightAction]);
 
   const handleSwipeLeft = useCallback(() => {
     if (!swipeLeftAction) return;
     setIsSwipeComplete(true);
     setTimeout(() => {
       swipeLeftAction.onSwipe();
-      setSwipeOffset(0);
+      updateSwipeVisuals(0);
       setIsSwipeComplete(false);
     }, 200);
-  }, [swipeLeftAction]);
+  }, [swipeLeftAction, updateSwipeVisuals]);
 
   const handleSwipeRight = useCallback(() => {
     if (!swipeRightAction) return;
-    setSwipeOffset(0);
+    updateSwipeVisuals(0);
     swipeRightAction.onSwipe();
-  }, [swipeRightAction]);
+  }, [swipeRightAction, updateSwipeVisuals]);
 
   const swipeHandlers = useSwipeable({
     onSwiping: (eventData) => {
       const { deltaX, deltaY, event } = eventData;
 
       // On first movement, determine if this is a horizontal or vertical swipe
-      if (isHorizontalSwipe === null) {
+      if (isHorizontalSwipeRef.current === null) {
         const absX = Math.abs(deltaX);
         const absY = Math.abs(deltaY);
         if (absX > 10 || absY > 10) {
-          setIsHorizontalSwipe(absX > absY);
+          isHorizontalSwipeRef.current = absX > absY;
         }
         return;
       }
 
       // If it's a vertical swipe, don't interfere
-      if (!isHorizontalSwipe) {
+      if (!isHorizontalSwipeRef.current) {
         return;
       }
 
@@ -90,29 +114,28 @@ function ClimbsListItemComponent<T extends ClimbsListItem>({
       if (!swipeLeftAction && deltaX < 0) clampedOffset = 0;
       if (!swipeRightAction && deltaX > 0) clampedOffset = 0;
       clampedOffset = Math.max(-MAX_SWIPE, Math.min(MAX_SWIPE, clampedOffset));
-      setSwipeOffset(clampedOffset);
+
+      // Update visuals via DOM for smoother performance (no re-render)
+      updateSwipeVisuals(clampedOffset);
     },
     onSwipedLeft: (eventData) => {
-      if (isHorizontalSwipe && swipeLeftAction && Math.abs(eventData.deltaX) >= SWIPE_THRESHOLD) {
+      if (isHorizontalSwipeRef.current && swipeLeftAction && Math.abs(eventData.deltaX) >= SWIPE_THRESHOLD) {
         handleSwipeLeft();
       } else {
-        setSwipeOffset(0);
+        updateSwipeVisuals(0);
       }
-      setIsHorizontalSwipe(null);
+      isHorizontalSwipeRef.current = null;
     },
     onSwipedRight: (eventData) => {
-      if (isHorizontalSwipe && swipeRightAction && Math.abs(eventData.deltaX) >= SWIPE_THRESHOLD) {
+      if (isHorizontalSwipeRef.current && swipeRightAction && Math.abs(eventData.deltaX) >= SWIPE_THRESHOLD) {
         handleSwipeRight();
       } else {
-        setSwipeOffset(0);
+        updateSwipeVisuals(0);
       }
-      setIsHorizontalSwipe(null);
+      isHorizontalSwipeRef.current = null;
     },
     onTouchEndOrOnMouseUp: () => {
-      if (Math.abs(swipeOffset) < SWIPE_THRESHOLD) {
-        setSwipeOffset(0);
-      }
-      setIsHorizontalSwipe(null);
+      isHorizontalSwipeRef.current = null;
     },
     trackMouse: false,
     trackTouch: true,
@@ -154,11 +177,24 @@ function ClimbsListItemComponent<T extends ClimbsListItem>({
     }
   }, [index, item.uuid, isDraggable]);
 
-  // Calculate action visibility based on swipe offset
-  const showLeftAction = swipeOffset < 0 && swipeLeftAction;
-  const showRightAction = swipeOffset > 0 && swipeRightAction;
-  const leftActionOpacity = Math.min(1, Math.abs(swipeOffset) / SWIPE_THRESHOLD);
-  const rightActionOpacity = Math.min(1, swipeOffset / SWIPE_THRESHOLD);
+  // Memoize swipe action styles (static parts only, dynamic handled via refs)
+  const rightActionStyle = useMemo(() => swipeRightAction ? ({
+    left: 0,
+    backgroundColor: swipeRightAction.color,
+    justifyContent: 'flex-start' as const,
+    paddingLeft: themeTokens.spacing[4],
+    opacity: 0,
+    visibility: 'hidden' as const,
+  }) : undefined, [swipeRightAction]);
+
+  const leftActionStyle = useMemo(() => swipeLeftAction ? ({
+    right: 0,
+    backgroundColor: swipeLeftAction.color,
+    justifyContent: 'flex-end' as const,
+    paddingRight: themeTokens.spacing[4],
+    opacity: 0,
+    visibility: 'hidden' as const,
+  }) : undefined, [swipeLeftAction]);
 
   return (
     <div ref={itemRef} data-testid="climbs-list-item" className={styles.itemWrapper}>
@@ -166,15 +202,9 @@ function ClimbsListItemComponent<T extends ClimbsListItem>({
         {/* Left action background (revealed on swipe right) */}
         {swipeRightAction && (
           <div
+            ref={rightActionRef}
             className={styles.swipeAction}
-            style={{
-              left: 0,
-              backgroundColor: swipeRightAction.color,
-              justifyContent: 'flex-start',
-              paddingLeft: themeTokens.spacing[4],
-              opacity: rightActionOpacity,
-              visibility: showRightAction ? 'visible' : 'hidden',
-            }}
+            style={rightActionStyle}
           >
             {swipeRightAction.icon}
           </div>
@@ -183,15 +213,9 @@ function ClimbsListItemComponent<T extends ClimbsListItem>({
         {/* Right action background (revealed on swipe left) */}
         {swipeLeftAction && (
           <div
+            ref={leftActionRef}
             className={styles.swipeAction}
-            style={{
-              right: 0,
-              backgroundColor: swipeLeftAction.color,
-              justifyContent: 'flex-end',
-              paddingRight: themeTokens.spacing[4],
-              opacity: leftActionOpacity,
-              visibility: showLeftAction ? 'visible' : 'hidden',
-            }}
+            style={leftActionStyle}
           >
             {swipeLeftAction.icon}
           </div>
@@ -199,9 +223,10 @@ function ClimbsListItemComponent<T extends ClimbsListItem>({
 
         {/* Swipeable content */}
         <div
+          ref={contentRef}
           {...swipeHandlers}
           className={styles.itemContent}
-          style={{
+          style={useMemo(() => ({
             backgroundColor: isSelected
               ? themeTokens.semantic.selected
               : isDisabled
@@ -210,12 +235,8 @@ function ClimbsListItemComponent<T extends ClimbsListItem>({
             opacity: isSwipeComplete ? 0 : isDisabled ? 0.6 : 1,
             cursor: isDraggable ? 'grab' : 'default',
             borderLeft: isSelected ? `3px solid ${themeTokens.colors.primary}` : undefined,
-            transform: `translateX(${swipeOffset}px)`,
-            transition:
-              swipeOffset === 0 || isSwipeComplete
-                ? `transform ${themeTokens.transitions.fast}, opacity ${themeTokens.transitions.fast}`
-                : 'none',
-          }}
+            // transform and transition handled via ref for smoother swiping
+          }), [isSelected, isDisabled, isSwipeComplete, isDraggable])}
           onDoubleClick={onDoubleClick}
         >
           <Row style={{ width: '100%' }} gutter={[8, 8]} align="middle" wrap={false}>

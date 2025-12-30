@@ -12,7 +12,7 @@ const { Paragraph } = Typography;
 
 function ClimbsList<T extends ClimbsListItemType>({
   items,
-  boardDetails,
+  boardDetails: _boardDetails,
   loading = false,
   emptyText = 'No items',
   renderItem,
@@ -32,6 +32,9 @@ function ClimbsList<T extends ClimbsListItemType>({
 
         if (isNaN(sourceIndex) || isNaN(targetIndex)) return;
 
+        // Skip if dropping on itself
+        if (sourceIndex === targetIndex) return;
+
         const edge = extractClosestEdge(target.data);
         let finalIndex = edge === 'bottom' ? targetIndex + 1 : targetIndex;
 
@@ -39,6 +42,9 @@ function ClimbsList<T extends ClimbsListItemType>({
         if (sourceIndex < finalIndex) {
           finalIndex = finalIndex - 1;
         }
+
+        // Skip if final position is the same
+        if (sourceIndex === finalIndex) return;
 
         const newItems = reorder({
           list: items,
