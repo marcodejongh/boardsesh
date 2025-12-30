@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useCallback } from 'react';
-import { Button, Tooltip, message } from 'antd';
+import { Button, message } from 'antd';
+import { ActionTooltip } from '../action-tooltip';
 import { ShareAltOutlined } from '@ant-design/icons';
 import { track } from '@vercel/analytics';
 import { ClimbActionProps, ClimbActionResult } from '../types';
@@ -98,11 +99,11 @@ export function ShareAction({
 
   // Icon mode - for Card actions
   const iconElement = (
-    <Tooltip title={label}>
+    <ActionTooltip title={label}>
       <span onClick={handleClick} style={{ cursor: 'pointer' }} className={className}>
         {icon}
       </span>
-    </Tooltip>
+    </ActionTooltip>
   );
 
   // Button mode

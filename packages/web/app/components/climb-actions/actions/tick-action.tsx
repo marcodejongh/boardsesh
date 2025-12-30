@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useCallback, useMemo } from 'react';
-import { Button, Tooltip, Badge, Drawer, Typography, Space } from 'antd';
+import { Button, Badge, Drawer, Typography, Space } from 'antd';
+import { ActionTooltip } from '../action-tooltip';
 import { CheckOutlined, LoginOutlined } from '@ant-design/icons';
 import { ClimbActionProps, ClimbActionResult } from '../types';
 import { useBoardProvider } from '../../board-provider/board-provider-context';
@@ -109,13 +110,13 @@ export function TickAction({
   // Icon mode - for Card actions
   const iconElement = (
     <>
-      <Tooltip title={label}>
+      <ActionTooltip title={label}>
         <Badge count={badgeCount} size="small" color={badgeColor} overflowCount={99} showZero={false}>
           <span onClick={handleClick} style={{ cursor: 'pointer' }} className={className}>
             {icon}
           </span>
         </Badge>
-      </Tooltip>
+      </ActionTooltip>
       {drawers}
     </>
   );

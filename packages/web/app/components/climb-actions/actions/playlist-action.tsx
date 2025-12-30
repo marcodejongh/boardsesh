@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { Button, Tooltip, Popover, List, Input, Form, Space, Typography, Badge, ColorPicker, message } from 'antd';
+import { Button, Popover, List, Input, Form, Space, Typography, Badge, ColorPicker, message } from 'antd';
+import { ActionTooltip } from '../action-tooltip';
 import { TagOutlined, PlusOutlined, CheckOutlined } from '@ant-design/icons';
 import { track } from '@vercel/analytics';
 import type { ClimbActionProps, ClimbActionResult } from '../types';
@@ -275,11 +276,11 @@ export function PlaylistAction({
         onOpenChange={setPopoverOpen}
         placement="bottomLeft"
       >
-        <Tooltip title={label}>
+        <ActionTooltip title={label}>
           <span onClick={handleClick} style={{ cursor: 'pointer' }} className={className}>
             {icon}
           </span>
-        </Tooltip>
+        </ActionTooltip>
       </Popover>
       {authModalElement}
     </>
