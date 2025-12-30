@@ -40,18 +40,25 @@ jobs:
             REPO: ${{ github.repository }}
             PR NUMBER: ${{ github.event.pull_request.number }}
 
-            Please review this pull request and provide feedback on:
-            - Code quality and best practices
-            - Potential bugs or issues
-            - Performance considerations
-            - Security concerns
-            - Test coverage
+            Review this PR for issues only. Be brief and direct.
 
-            Use the repository's CLAUDE.md for guidance on style and conventions. Be constructive and helpful in your feedback.
+            RULES:
+            - ONLY report problems (bugs, security issues, performance problems, code smells)
+            - Do NOT mention positives or what's done well
+            - Keep feedback concise - one line per issue when possible
+            - Reference specific files and line numbers
+            - Skip the review entirely if there are no significant issues (just say "No issues found")
 
-            Use `gh pr comment` with your Bash tool to leave your review as a comment on the PR.
+            Use the repository's CLAUDE.md for guidance on conventions.
+
+            IMPORTANT: Check if a previous Claude review comment exists on this PR. If so, update it instead of creating a new comment.
+            - First run: `gh pr view ${{ github.event.pull_request.number }} --json comments --jq '.comments[] | select(.author.login == "github-actions[bot]" or .author.login == "github-actions") | select(.body | contains("Claude Review")) | .url'`
+            - If a comment URL is found, extract the comment ID and use `gh api` to update it
+            - If no existing comment, create a new one with `gh pr comment`
+
+            Start your comment with "## Claude Review" as a header.
 
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
-          claude_args: '--allowed-tools "Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*)"'
+          claude_args: '--allowed-tools "Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*),Bash(gh api:*)"'
 
