@@ -22,6 +22,15 @@
   flex-shrink: 0;
 }
 
+.swipeWrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  min-height: 0;
+}
+
 .swipeContainer {
   flex: 1;
   display: flex;
@@ -31,6 +40,13 @@
   touch-action: pan-y pinch-zoom;
   overflow: hidden;
   min-height: 0;
+  position: relative;
+  z-index: 1;
+}
+
+/* Action backgrounds revealed on swipe (hidden on desktop) */
+.swipeAction {
+  z-index: 0;
 }
 
 .boardContainer {
@@ -70,32 +86,6 @@
   transition: opacity 0.3s;
 }
 
-.swipeIndicator {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  background-color: rgba(0, 0, 0, 0.3);
-  color: white;
-  padding: 12px;
-  border-radius: 50%;
-  opacity: 0;
-  transition: opacity 0.2s;
-  pointer-events: none;
-  z-index: 10;
-}
-
-.swipeIndicatorLeft {
-  left: 8px;
-}
-
-.swipeIndicatorRight {
-  right: 8px;
-}
-
-.swipeIndicatorVisible {
-  opacity: 1;
-}
-
 /* Desktop adjustments */
 @media (min-width: 768px) {
   .boardContainer {
@@ -105,5 +95,9 @@
 
   .swipeHint {
     display: none;
+  }
+
+  .swipeAction {
+    display: none !important;
   }
 }
