@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button, Form, Select, Typography, Input, Divider, Card, Row, Col, Flex, Collapse, Space, Tabs, Switch, Tooltip } from 'antd';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { GithubOutlined, EditOutlined, TeamOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import { GithubOutlined, EditOutlined, TeamOutlined, InfoCircleOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import { openDB } from 'idb';
 import { track } from '@vercel/analytics';
 import { useSession } from 'next-auth/react';
@@ -753,6 +753,11 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
               Discord
             </Button>
           </a>
+          <Link href="/about">
+            <Button type="text" icon={<QuestionCircleOutlined />}>
+              About
+            </Button>
+          </Link>
         </Space>
       </Card>
 

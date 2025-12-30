@@ -19,7 +19,7 @@ const SendClimbToBoardButton = dynamic(
 import { generateLayoutSlug, generateSizeSlug, generateSetSlug, constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { ShareBoardButton } from './share-button';
 import { useQueueContext } from '../graphql-queue';
-import { UserOutlined, LogoutOutlined, LoginOutlined, PlusOutlined, MoreOutlined, SettingOutlined, LineChartOutlined, LeftOutlined } from '@ant-design/icons';
+import { UserOutlined, LogoutOutlined, LoginOutlined, PlusOutlined, MoreOutlined, SettingOutlined, LineChartOutlined, LeftOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import AngleSelector from './angle-selector';
 import Logo from '../brand/logo';
 import styles from './header.module.css';
@@ -120,6 +120,11 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
         label: <Link href="/settings">Settings</Link>,
       },
       {
+        key: 'about',
+        icon: <InfoCircleOutlined />,
+        label: <Link href="/about">About</Link>,
+      },
+      {
         type: 'divider' as const,
       },
       {
@@ -129,12 +134,22 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
         onClick: handleSignOut,
       },
     ] : []),
-    ...(!session?.user ? [{
-      key: 'login',
-      icon: <LoginOutlined />,
-      label: 'Login',
-      onClick: () => setShowAuthModal(true),
-    }] : []),
+    ...(!session?.user ? [
+      {
+        key: 'about',
+        icon: <InfoCircleOutlined />,
+        label: <Link href="/about">About</Link>,
+      },
+      {
+        type: 'divider' as const,
+      },
+      {
+        key: 'login',
+        icon: <LoginOutlined />,
+        label: 'Login',
+        onClick: () => setShowAuthModal(true),
+      },
+    ] : []),
   ];
   return (
     <Header
