@@ -14,10 +14,6 @@ import { SEARCH_CLIMBS, type ClimbSearchResponse } from '@/app/lib/graphql/opera
 import { getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
 import { MAX_PAGE_SIZE } from '@/app/components/board-page/constants';
 
-// Route segment revalidate uses shorter duration since it can't be dynamic
-// The data cache (unstable_cache) uses longer duration for default searches
-export const revalidate = 60 * 60; // 1 hour
-
 export default async function DynamicResultsPage(props: {
   params: Promise<BoardRouteParametersWithUuid>;
   searchParams: Promise<SearchRequestPagination>;
