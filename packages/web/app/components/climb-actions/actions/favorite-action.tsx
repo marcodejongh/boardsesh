@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { Button, Tooltip } from 'antd';
+import { Button } from 'antd';
+import { ActionTooltip } from '../action-tooltip';
 import { HeartOutlined, HeartFilled } from '@ant-design/icons';
 import { track } from '@vercel/analytics';
 import { ClimbActionProps, ClimbActionResult } from '../types';
@@ -91,11 +92,11 @@ export function FavoriteAction({
   // Icon mode - for Card actions
   const iconElement = (
     <>
-      <Tooltip title={label}>
+      <ActionTooltip title={label}>
         <span onClick={handleClick} style={{ cursor: 'pointer' }} className={className}>
           {icon}
         </span>
-      </Tooltip>
+      </ActionTooltip>
       {authModalElement}
     </>
   );
