@@ -122,7 +122,8 @@ export const boardQueries = {
         imagesToHolds: details.images_to_holds,
         holdsData: details.holdsData,
       };
-    } catch {
+    } catch (error) {
+      console.error('[boardDetails] Error getting board details:', error);
       return null;
     }
   },

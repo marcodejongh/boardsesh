@@ -16,37 +16,10 @@ import {
   splitMessages,
   writeCharacteristicSeries,
 } from './bluetooth';
-import { HoldRenderData } from '../board-renderer/types';
 import { useWakeLock } from './use-wake-lock';
-import { fetchLedPlacements } from '@/app/lib/graphql/operations/board-config.client';
+import { convertToMirroredFramesString, createLedPlacementsFetcher } from './bluetooth-utils';
 
 type SendClimbToBoardButtonProps = { boardDetails: BoardDetails };
-
-export const convertToMirroredFramesString = (frames: string, holdsData: HoldRenderData[]): string => {
-  // Create a map for quick lookup of mirroredHoldId
-  const holdIdToMirroredIdMap = new Map<number, number>();
-  holdsData.forEach((hold) => {
-    if (hold.mirroredHoldId) {
-      holdIdToMirroredIdMap.set(hold.id, hold.mirroredHoldId);
-    }
-  });
-
-  return frames
-    .split('p') // Split into hold data entries
-    .filter((hold) => hold) // Remove empty entries
-    .map((holdData) => {
-      const [holdId, stateCode] = holdData.split('r').map((str) => Number(str)); // Split hold data into holdId and stateCode
-      const mirroredHoldId = holdIdToMirroredIdMap.get(holdId);
-
-      if (mirroredHoldId === undefined) {
-        throw new Error(`Mirrored hold ID is not defined for hold ID ${holdId}.`);
-      }
-
-      // Construct the mirrored hold data
-      return `p${mirroredHoldId}r${stateCode}`;
-    })
-    .join(''); // Reassemble into a single string
-};
 
 // React component
 const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({ boardDetails }) => {
@@ -70,9 +43,8 @@ const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({ boardDe
   const bluetoothDeviceRef = useRef<BluetoothDevice | null>(null);
   const characteristicRef = useRef<BluetoothRemoteGATTCharacteristic | null>(null);
 
-  // Cache LED placements to avoid refetching on each send
-  const ledPlacementsRef = useRef<Record<number, number> | null>(null);
-  const ledPlacementsKeyRef = useRef<string | null>(null);
+  // Create a cached LED placements fetcher (stable across renders)
+  const fetchLedPlacementsCached = useRef(createLedPlacementsFetcher()).current;
 
   // Handler for device disconnection
   const handleDisconnection = useCallback(() => {
@@ -91,37 +63,17 @@ const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({ boardDe
     [handleDisconnection],
   );
 
-  // Helper to get LED placements with caching
-  const getLedPlacementsCached = useCallback(async () => {
-    const cacheKey = `${boardDetails.board_name}-${boardDetails.layout_id}-${boardDetails.size_id}`;
-
-    // Return cached value if available and matches current board config
-    if (ledPlacementsRef.current && ledPlacementsKeyRef.current === cacheKey) {
-      return ledPlacementsRef.current;
-    }
-
-    // Fetch from API
-    const placements = await fetchLedPlacements(
-      boardDetails.board_name,
-      boardDetails.layout_id,
-      boardDetails.size_id
-    );
-
-    if (placements) {
-      ledPlacementsRef.current = placements;
-      ledPlacementsKeyRef.current = cacheKey;
-    }
-
-    return placements;
-  }, [boardDetails.board_name, boardDetails.layout_id, boardDetails.size_id]);
-
   // Function to send climb data to the board
   const sendClimbToBoard = useCallback(async () => {
     if (!currentClimbQueueItem || !characteristicRef.current) return;
 
     let { frames } = currentClimbQueueItem.climb;
 
-    const placementPositions = await getLedPlacementsCached();
+    const placementPositions = await fetchLedPlacementsCached(
+      boardDetails.board_name,
+      boardDetails.layout_id,
+      boardDetails.size_id
+    );
     if (!placementPositions) {
       console.error('Failed to get LED placements');
       return;
@@ -147,7 +99,7 @@ const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({ boardDe
         boardLayout: `${boardDetails.layout_name}`,
       });
     }
-  }, [currentClimbQueueItem, boardDetails, getLedPlacementsCached]);
+  }, [currentClimbQueueItem, boardDetails, fetchLedPlacementsCached]);
 
   // Handle button click to initiate Bluetooth connection
   const handleClick = useCallback(async () => {
@@ -183,7 +135,11 @@ const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({ boardDe
         if (currentClimbQueueItem) {
           try {
             let { frames } = currentClimbQueueItem.climb;
-            const placementPositions = await getLedPlacementsCached();
+            const placementPositions = await fetchLedPlacementsCached(
+              boardDetails.board_name,
+              boardDetails.layout_id,
+              boardDetails.size_id
+            );
             if (!placementPositions) {
               console.error('Failed to get LED placements');
             } else {
@@ -215,7 +171,7 @@ const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({ boardDe
     } finally {
       setLoading(false);
     }
-  }, [cleanupDeviceListeners, handleDisconnection, boardDetails, currentClimbQueueItem, getLedPlacementsCached]);
+  }, [cleanupDeviceListeners, handleDisconnection, boardDetails, currentClimbQueueItem, fetchLedPlacementsCached]);
 
   // Clean up on unmount
   useEffect(() => {

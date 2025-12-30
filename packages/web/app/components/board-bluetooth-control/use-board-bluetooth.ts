@@ -11,35 +11,8 @@ import {
   splitMessages,
   writeCharacteristicSeries,
 } from './bluetooth';
-import { HoldRenderData } from '../board-renderer/types';
 import { useWakeLock } from './use-wake-lock';
-import { fetchLedPlacements } from '@/app/lib/graphql/operations/board-config.client';
-
-export const convertToMirroredFramesString = (frames: string, holdsData: HoldRenderData[]): string => {
-  // Create a map for quick lookup of mirroredHoldId
-  const holdIdToMirroredIdMap = new Map<number, number>();
-  holdsData.forEach((hold) => {
-    if (hold.mirroredHoldId) {
-      holdIdToMirroredIdMap.set(hold.id, hold.mirroredHoldId);
-    }
-  });
-
-  return frames
-    .split('p') // Split into hold data entries
-    .filter((hold) => hold) // Remove empty entries
-    .map((holdData) => {
-      const [holdId, stateCode] = holdData.split('r').map((str) => Number(str)); // Split hold data into holdId and stateCode
-      const mirroredHoldId = holdIdToMirroredIdMap.get(holdId);
-
-      if (mirroredHoldId === undefined) {
-        throw new Error(`Mirrored hold ID is not defined for hold ID ${holdId}.`);
-      }
-
-      // Construct the mirrored hold data
-      return `p${mirroredHoldId}r${stateCode}`;
-    })
-    .join(''); // Reassemble into a single string
-};
+import { convertToMirroredFramesString, createLedPlacementsFetcher } from './bluetooth-utils';
 
 interface UseBoardBluetoothOptions {
   boardDetails: BoardDetails;
@@ -57,9 +30,8 @@ export function useBoardBluetooth({ boardDetails, onConnectionChange }: UseBoard
   const bluetoothDeviceRef = useRef<BluetoothDevice | null>(null);
   const characteristicRef = useRef<BluetoothRemoteGATTCharacteristic | null>(null);
 
-  // Cache LED placements to avoid refetching on each send
-  const ledPlacementsRef = useRef<Record<number, number> | null>(null);
-  const ledPlacementsKeyRef = useRef<string | null>(null);
+  // Create a cached LED placements fetcher (stable across renders)
+  const fetchLedPlacementsCached = useRef(createLedPlacementsFetcher()).current;
 
   // Handler for device disconnection
   const handleDisconnection = useCallback(() => {
@@ -78,37 +50,17 @@ export function useBoardBluetooth({ boardDetails, onConnectionChange }: UseBoard
     [handleDisconnection],
   );
 
-  // Helper to get LED placements with caching
-  const getLedPlacementsCached = useCallback(async () => {
-    const cacheKey = `${boardDetails.board_name}-${boardDetails.layout_id}-${boardDetails.size_id}`;
-
-    // Return cached value if available and matches current board config
-    if (ledPlacementsRef.current && ledPlacementsKeyRef.current === cacheKey) {
-      return ledPlacementsRef.current;
-    }
-
-    // Fetch from API
-    const placements = await fetchLedPlacements(
-      boardDetails.board_name,
-      boardDetails.layout_id,
-      boardDetails.size_id
-    );
-
-    if (placements) {
-      ledPlacementsRef.current = placements;
-      ledPlacementsKeyRef.current = cacheKey;
-    }
-
-    return placements;
-  }, [boardDetails.board_name, boardDetails.layout_id, boardDetails.size_id]);
-
   // Function to send frames string to the board
   const sendFramesToBoard = useCallback(
     async (frames: string, mirrored: boolean = false) => {
       if (!characteristicRef.current || !frames) return;
 
       let framesToSend = frames;
-      const placementPositions = await getLedPlacementsCached();
+      const placementPositions = await fetchLedPlacementsCached(
+        boardDetails.board_name,
+        boardDetails.layout_id,
+        boardDetails.size_id
+      );
 
       if (!placementPositions) {
         console.error('Failed to get LED placements');
@@ -129,7 +81,7 @@ export function useBoardBluetooth({ boardDetails, onConnectionChange }: UseBoard
         return false;
       }
     },
-    [boardDetails, getLedPlacementsCached],
+    [boardDetails, fetchLedPlacementsCached],
   );
 
   // Handle connection initiation
