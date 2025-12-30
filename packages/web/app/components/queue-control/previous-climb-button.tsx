@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useQueueContext } from '../graphql-queue';
 import { useParams } from 'next/navigation';
 import { parseBoardRouteParams, constructClimbViewUrlWithSlugs, constructPlayUrlWithSlugs } from '@/app/lib/url-utils';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { BoardRouteParametersWithUuid, BoardDetails } from '@/app/lib/types';
 import { track } from '@vercel/analytics';
 import { FastBackwardOutlined } from '@ant-design/icons';
@@ -24,6 +24,7 @@ export default function PreviousClimbButton({ navigate = false, boardDetails }: 
   const { board_name, layout_id, size_id, set_ids, angle } =
     parseBoardRouteParams(useParams<BoardRouteParametersWithUuid>());
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const isPlayPage = pathname.includes('/play/');
 
   const previousClimb = getPreviousClimbQueueItem();
@@ -42,7 +43,7 @@ export default function PreviousClimbButton({ navigate = false, boardDetails }: 
     const urlConstructor = isPlayPage ? constructPlayUrlWithSlugs : constructClimbViewUrlWithSlugs;
     const fallbackPath = isPlayPage ? 'play' : 'view';
 
-    const climbUrl =
+    let climbUrl =
       boardDetails?.layout_name && boardDetails?.size_name && boardDetails?.set_names
         ? urlConstructor(
             boardDetails.board_name,
@@ -55,6 +56,14 @@ export default function PreviousClimbButton({ navigate = false, boardDetails }: 
             previousClimb.climb.name,
           )
         : `/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/${fallbackPath}/${previousClimb.climb.uuid}`;
+
+    // Preserve search params in play mode to maintain filter state for back navigation
+    if (isPlayPage) {
+      const queryString = searchParams.toString();
+      if (queryString) {
+        climbUrl = `${climbUrl}?${queryString}`;
+      }
+    }
 
     return (
       <Link

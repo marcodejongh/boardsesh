@@ -5,7 +5,7 @@ import { SyncOutlined, DeleteOutlined, ExpandOutlined } from '@ant-design/icons'
 import { track } from '@vercel/analytics';
 import { useQueueContext } from '../graphql-queue';
 import NextClimbButton from './next-climb-button';
-import { usePathname, useParams } from 'next/navigation';
+import { usePathname, useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { constructPlayUrlWithSlugs } from '@/app/lib/url-utils';
 import { BoardRouteParameters } from '@/app/lib/types';
@@ -29,6 +29,7 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
   const [isQueueOpen, setIsQueueOpen] = useState(false);
   const pathname = usePathname();
   const params = useParams<BoardRouteParameters>();
+  const searchParams = useSearchParams();
 
   const isViewPage = pathname.includes('/view/');
   const isListPage = pathname.includes('/list');
@@ -40,8 +41,9 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
 
     const { layout_name, size_name, size_description, set_names, board_name } = boardDetails;
 
+    let baseUrl: string;
     if (layout_name && size_name && set_names) {
-      return constructPlayUrlWithSlugs(
+      baseUrl = constructPlayUrlWithSlugs(
         board_name,
         layout_name,
         size_name,
@@ -51,10 +53,17 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
         currentClimb.uuid,
         currentClimb.name,
       );
+    } else {
+      // Fallback to numeric format
+      baseUrl = `/${params.board_name}/${params.layout_id}/${params.size_id}/${params.set_ids}/${params.angle}/play/${currentClimb.uuid}`;
     }
 
-    // Fallback to numeric format
-    return `/${params.board_name}/${params.layout_id}/${params.size_id}/${params.set_ids}/${params.angle}/play/${currentClimb.uuid}`;
+    // Preserve the current search/filter params when entering play mode
+    const queryString = searchParams.toString();
+    if (queryString) {
+      return `${baseUrl}?${queryString}`;
+    }
+    return baseUrl;
   };
 
   const playUrl = getPlayUrl();

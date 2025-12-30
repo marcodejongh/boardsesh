@@ -4,7 +4,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Button, Space, Empty } from 'antd';
 import { LeftOutlined, RightOutlined } from '@ant-design/icons';
 import { useSwipeable } from 'react-swipeable';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { track } from '@vercel/analytics';
 import { Climb, BoardDetails, Angle } from '@/app/lib/types';
 import { useQueueContext } from '@/app/components/graphql-queue';
@@ -27,6 +27,7 @@ const SWIPE_THRESHOLD = 80;
 
 const PlayViewClient: React.FC<PlayViewClientProps> = ({ boardDetails, initialClimb, angle }) => {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const {
     currentClimb,
     setCurrentClimbQueueItem,
@@ -52,19 +53,27 @@ const PlayViewClient: React.FC<PlayViewClientProps> = ({ boardDetails, initialCl
   const getBackToListUrl = useCallback(() => {
     const { board_name, layout_name, size_name, size_description, set_names } = boardDetails;
 
+    let baseUrl: string;
     if (layout_name && size_name && set_names) {
-      return constructClimbListWithSlugs(board_name, layout_name, size_name, size_description, set_names, angle);
+      baseUrl = constructClimbListWithSlugs(board_name, layout_name, size_name, size_description, set_names, angle);
+    } else {
+      baseUrl = `/${board_name}/${boardDetails.layout_id}/${boardDetails.size_id}/${boardDetails.set_ids.join(',')}/${angle}/list`;
     }
 
-    return `/${board_name}/${boardDetails.layout_id}/${boardDetails.size_id}/${boardDetails.set_ids.join(',')}/${angle}/list`;
-  }, [boardDetails, angle]);
+    // Preserve the search/filter params from when the user entered play mode
+    const queryString = searchParams.toString();
+    if (queryString) {
+      return `${baseUrl}?${queryString}`;
+    }
+    return baseUrl;
+  }, [boardDetails, angle, searchParams]);
 
   const navigateToClimb = useCallback(
     (climb: Climb) => {
       const { board_name, layout_name, size_name, size_description, set_names } = boardDetails;
 
       if (layout_name && size_name && set_names) {
-        const url = constructPlayUrlWithSlugs(
+        let url = constructPlayUrlWithSlugs(
           board_name,
           layout_name,
           size_name,
@@ -74,10 +83,15 @@ const PlayViewClient: React.FC<PlayViewClientProps> = ({ boardDetails, initialCl
           climb.uuid,
           climb.name,
         );
+        // Preserve the search params when navigating between climbs
+        const queryString = searchParams.toString();
+        if (queryString) {
+          url = `${url}?${queryString}`;
+        }
         router.push(url);
       }
     },
-    [boardDetails, angle, router],
+    [boardDetails, angle, router, searchParams],
   );
 
   const handleNext = useCallback(() => {
