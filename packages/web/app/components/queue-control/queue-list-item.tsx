@@ -260,7 +260,19 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
           }}
           onDoubleClick={() => setCurrentClimbQueueItem(item)}
         >
-          {/* Right swipe zone (35%) - captures swipes on right edge, avoiding thumbnail on left */}
+          {/* Left swipe zone (25%) - captures swipes on left edge */}
+          <div
+            {...swipeHandlers}
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: '25%',
+              zIndex: 1,
+            }}
+          />
+          {/* Right swipe zone (25%) - captures swipes on right edge */}
           <div
             {...swipeHandlers}
             style={{
@@ -268,12 +280,12 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
               right: 0,
               top: 0,
               bottom: 0,
-              width: '35%',
+              width: '25%',
               zIndex: 1,
             }}
           />
           <Row style={{ width: '100%' }} gutter={[8, 8]} align="middle" wrap={false}>
-            <Col xs={6} sm={5}>
+            <Col xs={6} sm={5} style={{ position: 'relative', zIndex: 2 }}>
               <ClimbThumbnail
                 boardDetails={boardDetails}
                 currentClimb={item.climb}
