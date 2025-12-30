@@ -290,13 +290,19 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
                     type="text"
                     icon={<CheckOutlined />}
                     size="small"
-                    onClick={handleSaveTitle}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      handleSaveTitle();
+                    }}
                   />
                   <Button
                     type="text"
                     icon={<CloseOutlined />}
                     size="small"
-                    onClick={handleCancelEditTitle}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      handleCancelEditTitle();
+                    }}
                   />
                 </Flex>
               ) : (

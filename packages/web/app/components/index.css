@@ -1,5 +1,34 @@
 /* Boardsesh Global Styles */
 
+/* Design tokens as CSS custom properties - derived from theme-config.ts */
+:root {
+  /* Primary colors */
+  --color-primary: #06B6D4;
+  --color-primary-hover: #0891B2;
+
+  /* Neutral palette */
+  --neutral-50: #F9FAFB;
+  --neutral-100: #F3F4F6;
+  --neutral-200: #E5E7EB;
+  --neutral-300: #D1D5DB;
+  --neutral-400: #9CA3AF;
+  --neutral-500: #6B7280;
+  --neutral-600: #4B5563;
+  --neutral-700: #374151;
+  --neutral-800: #1F2937;
+  --neutral-900: #111827;
+
+  /* Semantic colors */
+  --semantic-background: #F9FAFB;
+  --semantic-surface: #FFFFFF;
+  --semantic-surface-overlay: rgba(255, 255, 255, 0.95);
+  --semantic-selected-light: rgba(6, 182, 212, 0.08);
+  --semantic-selected-border: #06B6D4;
+
+  /* Borders */
+  --border-subtle: rgba(0, 0, 0, 0.06);
+}
+
 /* Base styles */
 body {
   margin: 0;

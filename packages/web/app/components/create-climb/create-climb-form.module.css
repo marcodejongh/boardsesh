@@ -44,14 +44,12 @@
 }
 
 .editableTitle:hover {
-  /* semantic.selectedLight */
-  background-color: rgba(6, 182, 212, 0.08);
+  background-color: var(--semantic-selected-light);
 }
 
 .editableTitle:focus {
   outline: none;
-  /* semantic.selectedLight */
-  background-color: rgba(6, 182, 212, 0.08);
+  background-color: var(--semantic-selected-light);
 }
 
 /* Title wrapper for flex content */
@@ -77,8 +75,7 @@
 /* Edit icon next to title */
 .editIcon {
   font-size: 12px;
-  /* neutral-400 */
-  color: #9CA3AF;
+  color: var(--neutral-400);
   margin-left: 4px;
 }
 
@@ -90,13 +87,11 @@
 
 /* Settings button next to title */
 .settingsButton {
-  /* neutral-400 */
-  color: #9CA3AF;
+  color: var(--neutral-400);
 }
 
 .settingsButton:hover {
-  /* neutral-500 */
-  color: #6B7280;
+  color: var(--neutral-500);
 }
 
 /* Board container - fills remaining space like play view */
@@ -121,8 +116,7 @@
   right: 0;
   bottom: 0;
   padding: 12px;
-  /* semantic.surfaceOverlay */
-  background-color: rgba(255, 255, 255, 0.95);
+  background-color: var(--semantic-surface-overlay);
   overflow: auto;
   z-index: 10;
 }
@@ -156,10 +150,8 @@
   justify-content: center;
   padding: 8px 12px;
   flex-shrink: 0;
-  /* semantic.surface */
-  background-color: #FFFFFF;
-  /* neutral-100 with low opacity */
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  background-color: var(--semantic-surface);
+  border-top: 1px solid var(--border-subtle);
 }
 
 /* Mobile adjustments */
