@@ -46,7 +46,6 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boar
       angle: currentClimb?.angle,
       difficulty: grades.find((grade) => grade.difficulty_name === currentClimb?.difficulty)?.difficulty_id,
       attempts: 1,
-      quality: 3, // Default to middle of 1-5 scale
     });
     setIsMirrored(!!currentClimb?.mirrored);
   }, [currentClimb, form, grades]);
@@ -163,8 +162,8 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boar
         <InputNumber min={1} max={999} style={{ width: '80px' }} />
       </Form.Item>
 
-      <Form.Item name="quality" label="Quality" {...formItemLayout}>
-        <Rate allowClear={false} count={5} />
+      <Form.Item name="quality" label="Quality" {...formItemLayout} rules={[{ required: true, message: 'Please rate the climb' }]}>
+        <Rate count={5} />
       </Form.Item>
 
       <Form.Item name="difficulty" label="Difficulty" {...formItemLayout}>
