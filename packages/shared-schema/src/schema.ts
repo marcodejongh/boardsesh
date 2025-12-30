@@ -153,6 +153,7 @@ export const typeDefs = /* GraphQL */ `
     setter: [String!]
     setterId: Int
     onlyBenchmarks: Boolean
+    onlyTallClimbs: Boolean
     # Personal progress filters (require auth)
     hideAttempted: Boolean
     hideCompleted: Boolean

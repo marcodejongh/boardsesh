@@ -73,6 +73,7 @@ export interface ClimbSearchInputVariables {
     sortOrder?: string;
     name?: string;
     setter?: string[];
+    onlyTallClimbs?: boolean;
     hideAttempted?: boolean;
     hideCompleted?: boolean;
     showOnlyAttempted?: boolean;

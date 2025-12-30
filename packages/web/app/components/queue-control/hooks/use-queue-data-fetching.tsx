@@ -81,6 +81,7 @@ export const useQueueDataFetching = ({
         sortOrder: searchParams.sortOrder || 'desc',
         name: searchParams.name || undefined,
         setter: searchParams.settername && searchParams.settername.length > 0 ? searchParams.settername : undefined,
+        onlyTallClimbs: searchParams.onlyTallClimbs || undefined,
         hideAttempted: searchParams.hideAttempted || undefined,
         hideCompleted: searchParams.hideCompleted || undefined,
         showOnlyAttempted: searchParams.showOnlyAttempted || undefined,
