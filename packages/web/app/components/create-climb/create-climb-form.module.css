@@ -99,6 +99,23 @@
   color: #6B7280;
 }
 
+/* Heatmap button next to title */
+.heatmapButton {
+  /* neutral-400 */
+  color: #9CA3AF;
+}
+
+.heatmapButton:hover {
+  /* neutral-500 */
+  color: #6B7280;
+}
+
+/* Opacity slider for heatmap */
+.opacitySlider {
+  width: 80px;
+  margin: 0;
+}
+
 /* Board container - fills remaining space like play view */
 .boardContainer {
   flex: 1;
@@ -175,6 +192,10 @@
 
   .climbTitleContainer {
     padding: 4px 8px;
+  }
+
+  .opacitySlider {
+    width: 60px;
   }
 }
 
