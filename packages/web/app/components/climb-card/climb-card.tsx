@@ -16,6 +16,8 @@ type ClimbCardProps = {
   onCoverClick?: () => void;
   selected?: boolean;
   actions?: React.JSX.Element[];
+  /** Optional expanded content to render below the cover */
+  expandedContent?: React.ReactNode;
 };
 
 /**
@@ -39,7 +41,7 @@ const areActionsEqual = (
 };
 
 const ClimbCard = React.memo(
-  ({ climb, boardDetails, onCoverClick, selected, actions }: ClimbCardProps) => {
+  ({ climb, boardDetails, onCoverClick, selected, actions, expandedContent }: ClimbCardProps) => {
     const cover = <ClimbCardCover climb={climb} boardDetails={boardDetails} onClick={onCoverClick} />;
 
     const cardTitle = climb ? (
@@ -47,6 +49,21 @@ const ClimbCard = React.memo(
     ) : (
       'Loading...'
     );
+
+    // Get actions and expanded content if not provided
+    let cardActions = actions;
+    let inlineExpandedContent = expandedContent;
+
+    if (!actions && climb) {
+      const result = ClimbActions.asCardActionsWithContent({
+        climb,
+        boardDetails,
+        angle: climb.angle,
+        exclude: ['tick', 'openInApp', 'mirror', 'share', 'addToList'],
+      });
+      cardActions = result.actions as React.JSX.Element[];
+      inlineExpandedContent = result.expandedContent;
+    }
 
     return (
       <div data-testid="climb-card">
@@ -63,14 +80,10 @@ const ClimbCard = React.memo(
               backgroundColor: selected ? themeTokens.semantic.selectedLight : undefined,
             },
           }}
-          actions={actions || (climb ? ClimbActions.asCardActions({
-            climb,
-            boardDetails,
-            angle: climb.angle,
-            exclude: ['tick', 'openInApp', 'mirror', 'share', 'addToList'],
-          }) : [])}
+          actions={cardActions || []}
         >
           {cover}
+          {inlineExpandedContent}
         </Card>
       </div>
     );

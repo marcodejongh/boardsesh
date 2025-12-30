@@ -88,6 +88,8 @@ export interface ClimbActionResult {
   key: ClimbActionType;
   /** Whether the action is currently available */
   available: boolean;
+  /** Optional expanded content to render inline (e.g., playlist selector) */
+  expandedContent?: React.ReactNode;
 }
 
 /**
