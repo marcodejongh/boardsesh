@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic';
 import { Flex, Button, Dropdown, MenuProps } from 'antd';
 import { Header } from 'antd/es/layout/layout';
 import { useSession, signOut } from 'next-auth/react';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import SearchButton from '../search-drawer/search-button';
 import SearchClimbNameInput from '../search-drawer/search-climb-name-input';
 import { UISearchParamsProvider } from '../queue-control/ui-searchparams-provider';
@@ -52,6 +52,7 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
   const [showAuthModal, setShowAuthModal] = useState(false);
   const pageMode = usePageMode();
   const searchParams = useSearchParams();
+  const router = useRouter();
 
   // Build back to list URL for play/view pages
   const getBackToListUrl = () => {
@@ -171,9 +172,12 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
             {/* Play page: Show search/back button and climb name (mobile only) */}
             {pageMode === 'play' && (
               <div className={styles.mobileOnly} style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
-                <Link href={getBackToListUrl()}>
-                  <Button icon={<SearchOutlined />} type="text" aria-label="Back to search" />
-                </Link>
+                <Button
+                  icon={<SearchOutlined />}
+                  type="text"
+                  aria-label="Back to search"
+                  onClick={() => router.push(getBackToListUrl())}
+                />
                 <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
                   <ClimbTitle climb={currentClimb} showAngle centered />
                 </div>
