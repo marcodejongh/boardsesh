@@ -269,7 +269,7 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
               top: 0,
               bottom: 0,
               width: '25%',
-              zIndex: 1,
+              zIndex: 10,
             }}
           />
           {/* Right swipe zone (25%) - captures swipes on right edge */}
@@ -281,11 +281,11 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
               top: 0,
               bottom: 0,
               width: '25%',
-              zIndex: 1,
+              zIndex: 10,
             }}
           />
-          <Row style={{ width: '100%' }} gutter={[8, 8]} align="middle" wrap={false}>
-            <Col xs={6} sm={5} style={{ pointerEvents: 'none' }}>
+          <Row style={{ width: '100%', pointerEvents: 'none' }} gutter={[8, 8]} align="middle" wrap={false}>
+            <Col xs={6} sm={5}>
               <ClimbThumbnail
                 boardDetails={boardDetails}
                 currentClimb={item.climb}
@@ -306,7 +306,7 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
                 </Tooltip>
               </Col>
             )}
-            <Col xs={3} sm={2} style={{ position: 'relative', zIndex: 2 }}>
+            <Col xs={3} sm={2} style={{ position: 'relative', zIndex: 20, pointerEvents: 'auto' }}>
               <Dropdown
                 menu={{
                   items: [
