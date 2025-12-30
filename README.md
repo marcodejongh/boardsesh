@@ -41,12 +41,26 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 ### Keeping local data up to date
 
+#### Shared Data Sync (Public Climbs)
+
 Once your server is running, you can manually trigger shared sync by visiting:
 
 - **Kilter**: [http://localhost:3000/api/internal/shared-sync/kilter](http://localhost:3000/api/internal/shared-sync/kilter)
 - **Tension**: [http://localhost:3000/api/internal/shared-sync/tension](http://localhost:3000/api/internal/shared-sync/tension)
 
 This will sync the latest climbs, climb stats, beta links, and other data from Aurora's servers.
+
+#### Aurora User Data Sync (One-Way Only)
+
+**Important**: Aurora user data sync is **one-way only** (Aurora → Boardsesh).
+
+When you link your Aurora account in the app settings:
+- Your Aurora data (logbook, ascents, climbs) is automatically imported to Boardsesh
+- Data syncs immediately when you first link your account
+- Automatic background sync runs every 6 hours to keep your data up-to-date
+- **Data created in Boardsesh stays local and does NOT sync back to Aurora**
+
+This is due to Aurora API limitations. Any ascents, climbs, or other data you create in Boardsesh will only exist locally in your Boardsesh account.
 
 # Current status
 

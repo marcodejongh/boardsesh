@@ -49,15 +49,25 @@ export async function GET() {
       .where(eq(schema.auroraCredentials.userId, session.user.id));
 
     // Return credentials without sensitive data
-    const credentialStatuses: AuroraCredentialStatus[] = credentials.map((cred) => ({
-      boardType: cred.boardType,
-      auroraUsername: decrypt(cred.encryptedUsername),
-      auroraUserId: cred.auroraUserId,
-      lastSyncAt: cred.lastSyncAt?.toISOString() ?? null,
-      syncStatus: cred.syncStatus,
-      syncError: cred.syncError,
-      createdAt: cred.createdAt.toISOString(),
-    }));
+    const credentialStatuses: AuroraCredentialStatus[] = credentials.map((cred) => {
+      let username: string;
+      try {
+        username = decrypt(cred.encryptedUsername);
+      } catch (decryptError) {
+        console.error(`Failed to decrypt username for ${cred.boardType} credential:`, decryptError);
+        username = '[Decryption Failed]';
+      }
+
+      return {
+        boardType: cred.boardType,
+        auroraUsername: username,
+        auroraUserId: cred.auroraUserId,
+        lastSyncAt: cred.lastSyncAt?.toISOString() ?? null,
+        syncStatus: cred.syncStatus,
+        syncError: cred.syncError,
+        createdAt: cred.createdAt.toISOString(),
+      };
+    });
 
     return NextResponse.json({ credentials: credentialStatuses });
   } catch (error) {
