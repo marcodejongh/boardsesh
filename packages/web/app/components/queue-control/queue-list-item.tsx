@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { Row, Col, Avatar, Tooltip, Dropdown, Button } from 'antd';
 import { CheckOutlined, CloseOutlined, UserOutlined, DeleteOutlined, MoreOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { BoardDetails, ClimbUuid, Climb } from '@/app/lib/types';
@@ -13,6 +14,7 @@ import ClimbThumbnail from '../climb-card/climb-thumbnail';
 import ClimbTitle from '../climb-card/climb-title';
 import { useBoardProvider } from '../board-provider/board-provider-context';
 import { themeTokens } from '@/app/theme/theme-config';
+import { constructClimbViewUrl, constructClimbViewUrlWithSlugs, parseBoardRouteParams } from '@/app/lib/url-utils';
 
 type QueueListItemProps = {
   item: ClimbQueueItem;
@@ -91,11 +93,42 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
   onTickClick,
   onClimbNavigate,
 }) => {
+  const router = useRouter();
   const [closestEdge, setClosestEdge] = useState<Edge | null>(null);
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [isSwipeComplete, setIsSwipeComplete] = useState(false);
   const [isHorizontalSwipe, setIsHorizontalSwipe] = useState<boolean | null>(null);
   const itemRef = useRef<HTMLDivElement>(null);
+
+  const handleViewClimb = useCallback(() => {
+    if (!item.climb) return;
+
+    const climbViewUrl =
+      boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names
+        ? constructClimbViewUrlWithSlugs(
+            boardDetails.board_name,
+            boardDetails.layout_name,
+            boardDetails.size_name,
+            boardDetails.size_description,
+            boardDetails.set_names,
+            item.climb.angle,
+            item.climb.uuid,
+            item.climb.name,
+          )
+        : (() => {
+            const routeParams = parseBoardRouteParams({
+              board_name: boardDetails.board_name,
+              layout_id: boardDetails.layout_id.toString(),
+              size_id: boardDetails.size_id.toString(),
+              set_ids: boardDetails.set_ids.join(','),
+              angle: item.climb.angle.toString(),
+            });
+            return constructClimbViewUrl(routeParams, item.climb.uuid, item.climb.name);
+          })();
+
+    onClimbNavigate?.();
+    router.push(climbViewUrl);
+  }, [item.climb, boardDetails, onClimbNavigate, router]);
 
   const handleSwipeLeft = useCallback(() => {
     // Swipe left = remove from queue
@@ -136,7 +169,12 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
       }
 
       // It's a horizontal swipe - prevent scroll and update offset
-      event.preventDefault();
+      // Access native event for reliable preventDefault on touch events
+      if ('nativeEvent' in event) {
+        event.nativeEvent.preventDefault();
+      } else {
+        event.preventDefault();
+      }
       const clampedOffset = Math.max(-MAX_SWIPE, Math.min(MAX_SWIPE, deltaX));
       setSwipeOffset(clampedOffset);
     },
@@ -313,7 +351,7 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
                       key: 'info',
                       label: 'View Climb',
                       icon: <InfoCircleOutlined />,
-                      onClick: () => onClimbNavigate?.(),
+                      onClick: handleViewClimb,
                     },
                     {
                       key: 'tick',
