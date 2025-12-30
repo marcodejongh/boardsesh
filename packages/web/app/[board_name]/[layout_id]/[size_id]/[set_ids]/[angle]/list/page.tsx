@@ -1,7 +1,7 @@
 import React from 'react';
 
 import { notFound, permanentRedirect } from 'next/navigation';
-import { BoardRouteParametersWithUuid, SearchRequestPagination } from '@/app/lib/types';
+import { BoardRouteParametersWithUuid, SearchRequestPagination, BoardDetails } from '@/app/lib/types';
 import {
   parseBoardRouteParams,
   parsedRouteSearchParamsToSearchParams,
@@ -9,10 +9,13 @@ import {
 } from '@/app/lib/url-utils';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import ClimbsList from '@/app/components/board-page/climbs-list';
-import { executeGraphQL } from '@/app/lib/graphql/client';
+import { cachedSearchClimbs } from '@/app/lib/graphql/server-cached-client';
 import { SEARCH_CLIMBS, type ClimbSearchResponse } from '@/app/lib/graphql/operations/climb-search';
 import { getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
 import { MAX_PAGE_SIZE } from '@/app/components/board-page/constants';
+
+// Enable route segment caching - matches the unstable_cache revalidate time
+export const revalidate = 300; // 5 minutes
 
 export default async function DynamicResultsPage(props: {
   params: Promise<BoardRouteParametersWithUuid>;
@@ -76,35 +79,39 @@ export default async function DynamicResultsPage(props: {
   searchParamsObject.pageSize = Math.min(requestedPageSize, MAX_PAGE_SIZE);
   searchParamsObject.page = 0;
 
-  const [searchResponse, boardDetails] = await Promise.all([
-    executeGraphQL<ClimbSearchResponse>(SEARCH_CLIMBS, {
-      input: {
-        boardName: parsedParams.board_name,
-        layoutId: parsedParams.layout_id,
-        sizeId: parsedParams.size_id,
-        setIds: parsedParams.set_ids.join(','),
-        angle: parsedParams.angle,
-        page: searchParamsObject.page,
-        pageSize: searchParamsObject.pageSize,
-        gradeAccuracy: searchParamsObject.gradeAccuracy ? String(searchParamsObject.gradeAccuracy) : undefined,
-        minGrade: searchParamsObject.minGrade || undefined,
-        maxGrade: searchParamsObject.maxGrade || undefined,
-        minAscents: searchParamsObject.minAscents || undefined,
-        sortBy: searchParamsObject.sortBy || 'ascents',
-        sortOrder: searchParamsObject.sortOrder || 'desc',
-        name: searchParamsObject.name || undefined,
-        setter: searchParamsObject.settername && searchParamsObject.settername.length > 0 ? searchParamsObject.settername : undefined,
-        hideAttempted: searchParamsObject.hideAttempted || undefined,
-        hideCompleted: searchParamsObject.hideCompleted || undefined,
-        showOnlyAttempted: searchParamsObject.showOnlyAttempted || undefined,
-        showOnlyCompleted: searchParamsObject.showOnlyCompleted || undefined,
-      },
-    }),
-    getBoardDetails(parsedParams),
-  ]).catch((error) => {
+  // Build the search input for caching
+  // Note: We only cache non-personalized queries (no auth-dependent filters)
+  // User-specific filters (hideAttempted, hideCompleted, etc.) are applied client-side
+  const searchInput = {
+    boardName: parsedParams.board_name,
+    layoutId: parsedParams.layout_id,
+    sizeId: parsedParams.size_id,
+    setIds: parsedParams.set_ids.join(','),
+    angle: parsedParams.angle,
+    page: searchParamsObject.page,
+    pageSize: searchParamsObject.pageSize,
+    gradeAccuracy: searchParamsObject.gradeAccuracy ? String(searchParamsObject.gradeAccuracy) : undefined,
+    minGrade: searchParamsObject.minGrade || undefined,
+    maxGrade: searchParamsObject.maxGrade || undefined,
+    minAscents: searchParamsObject.minAscents || undefined,
+    sortBy: searchParamsObject.sortBy || 'ascents',
+    sortOrder: searchParamsObject.sortOrder || 'desc',
+    name: searchParamsObject.name || undefined,
+    setter: searchParamsObject.settername && searchParamsObject.settername.length > 0 ? searchParamsObject.settername : undefined,
+  };
+
+  let searchResponse: ClimbSearchResponse;
+  let boardDetails: BoardDetails;
+
+  try {
+    [searchResponse, boardDetails] = await Promise.all([
+      cachedSearchClimbs<ClimbSearchResponse>(SEARCH_CLIMBS, { input: searchInput }),
+      getBoardDetails(parsedParams),
+    ]);
+  } catch (error) {
     console.error('Error fetching results or climb:', error);
     notFound();
-  });
+  }
 
   return <ClimbsList {...parsedParams} boardDetails={boardDetails} initialClimbs={searchResponse.searchClimbs.climbs} />;
 }
