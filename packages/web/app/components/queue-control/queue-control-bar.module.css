@@ -7,3 +7,30 @@
     cursor: default;
   }
 }
+
+/* Hide navigation buttons on mobile - use swipe instead */
+.navButtons {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .navButtons {
+    display: inline-flex;
+  }
+}
+
+/* Swipe container for mobile navigation */
+.swipeContainer {
+  touch-action: pan-y;
+}
+
+/* Action backgrounds revealed on swipe (hidden on desktop) */
+.swipeAction {
+  z-index: 0;
+}
+
+@media (min-width: 768px) {
+  .swipeAction {
+    display: none !important;
+  }
+}
