@@ -2,7 +2,7 @@ import { WebSocketServer, type WebSocket } from 'ws';
 import type { Server as HttpServer, IncomingMessage } from 'http';
 import { useServer, type Extra as WsExtra } from 'graphql-ws/use/ws';
 import type { Context as GqlWsContext } from 'graphql-ws';
-import { schema } from '../graphql/resolvers.js';
+import { schema } from '../graphql/index.js';
 import { createContext, removeContext, getContext } from '../graphql/context.js';
 import { roomManager } from '../services/room-manager.js';
 import { pubsub } from '../pubsub/index.js';

@@ -173,6 +173,12 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
       return;
     }
 
+    // CRITICAL: Wait for wsAuthToken to be available
+    if (!wsAuthToken) {
+      console.log('[fetchLogbook] Waiting for auth token...');
+      return; // Will be called again when wsAuthToken becomes available
+    }
+
     try {
       const client = createGraphQLHttpClient(wsAuthToken);
 
@@ -220,7 +226,7 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
     // Store the UUIDs in ref to avoid re-render loops
     currentClimbUuidsRef.current = climbUuids;
     await fetchLogbook(climbUuids);
-  }, [boardName, sessionStatus]);
+  }, [boardName, sessionStatus, wsAuthToken]);
 
   // Refetch logbook only when session status changes from non-authenticated to authenticated
   useEffect(() => {
@@ -228,13 +234,13 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
     const isNowAuthenticated = sessionStatus === 'authenticated';
     lastSessionStatusRef.current = sessionStatus;
 
-    // Only refetch if we just became authenticated and have climb UUIDs
-    if (!wasAuthenticated && isNowAuthenticated && currentClimbUuidsRef.current.length > 0) {
+    // Only refetch if we just became authenticated, have token, and have climb UUIDs
+    if (!wasAuthenticated && isNowAuthenticated && wsAuthToken && currentClimbUuidsRef.current.length > 0) {
       fetchLogbook(currentClimbUuidsRef.current);
     } else if (!isNowAuthenticated) {
       setLogbook([]);
     }
-  }, [sessionStatus, boardName]);
+  }, [sessionStatus, boardName, wsAuthToken]);
 
   // Save a tick to local storage (no Aurora credentials required)
   const saveTick = async (options: SaveTickOptions) => {
@@ -305,7 +311,24 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
         )
       );
     } catch (err) {
-      message.error('Failed to save tick');
+      console.error('Failed to save tick:', err);
+
+      // Extract error message for user display
+      let errorMessage = 'Failed to save tick';
+      if (err instanceof Error) {
+        // GraphQL errors often have structured error info
+        if ('response' in err && typeof err.response === 'object' && err.response !== null) {
+          const response = err.response as { errors?: Array<{ message: string }> };
+          if (response.errors && response.errors.length > 0) {
+            errorMessage = response.errors[0].message;
+          }
+        } else {
+          errorMessage = err.message;
+        }
+      }
+
+      message.error(errorMessage);
+
       // Rollback on error
       setLogbook((currentLogbook) =>
         currentLogbook.filter((entry) => entry.uuid !== tempUuid)

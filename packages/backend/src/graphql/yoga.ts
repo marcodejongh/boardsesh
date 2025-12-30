@@ -1,6 +1,6 @@
 import { createYoga } from 'graphql-yoga';
 import type { IncomingMessage } from 'http';
-import { schema } from './resolvers.js';
+import { schema } from './index.js';
 import { validateNextAuthToken } from '../middleware/auth.js';
 import { createContext } from './context.js';
 import type { ConnectionContext } from '@boardsesh/shared-schema';
