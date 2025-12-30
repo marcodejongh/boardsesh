@@ -13,7 +13,7 @@ import {
 } from './bluetooth';
 import { HoldRenderData } from '../board-renderer/types';
 import { useWakeLock } from './use-wake-lock';
-import { getLedPlacements } from '@/app/lib/__generated__/led-placements-data';
+import { fetchLedPlacements } from '@/app/lib/graphql/operations/board-config.client';
 
 export const convertToMirroredFramesString = (frames: string, holdsData: HoldRenderData[]): string => {
   // Create a map for quick lookup of mirroredHoldId
@@ -57,6 +57,10 @@ export function useBoardBluetooth({ boardDetails, onConnectionChange }: UseBoard
   const bluetoothDeviceRef = useRef<BluetoothDevice | null>(null);
   const characteristicRef = useRef<BluetoothRemoteGATTCharacteristic | null>(null);
 
+  // Cache LED placements to avoid refetching on each send
+  const ledPlacementsRef = useRef<Record<number, number> | null>(null);
+  const ledPlacementsKeyRef = useRef<string | null>(null);
+
   // Handler for device disconnection
   const handleDisconnection = useCallback(() => {
     setIsConnected(false);
@@ -74,13 +78,42 @@ export function useBoardBluetooth({ boardDetails, onConnectionChange }: UseBoard
     [handleDisconnection],
   );
 
+  // Helper to get LED placements with caching
+  const getLedPlacementsCached = useCallback(async () => {
+    const cacheKey = `${boardDetails.board_name}-${boardDetails.layout_id}-${boardDetails.size_id}`;
+
+    // Return cached value if available and matches current board config
+    if (ledPlacementsRef.current && ledPlacementsKeyRef.current === cacheKey) {
+      return ledPlacementsRef.current;
+    }
+
+    // Fetch from API
+    const placements = await fetchLedPlacements(
+      boardDetails.board_name,
+      boardDetails.layout_id,
+      boardDetails.size_id
+    );
+
+    if (placements) {
+      ledPlacementsRef.current = placements;
+      ledPlacementsKeyRef.current = cacheKey;
+    }
+
+    return placements;
+  }, [boardDetails.board_name, boardDetails.layout_id, boardDetails.size_id]);
+
   // Function to send frames string to the board
   const sendFramesToBoard = useCallback(
     async (frames: string, mirrored: boolean = false) => {
       if (!characteristicRef.current || !frames) return;
 
       let framesToSend = frames;
-      const placementPositions = getLedPlacements(boardDetails.board_name, boardDetails.layout_id, boardDetails.size_id);
+      const placementPositions = await getLedPlacementsCached();
+
+      if (!placementPositions) {
+        console.error('Failed to get LED placements');
+        return false;
+      }
 
       if (mirrored) {
         framesToSend = convertToMirroredFramesString(frames, boardDetails.holdsData);
@@ -96,7 +129,7 @@ export function useBoardBluetooth({ boardDetails, onConnectionChange }: UseBoard
         return false;
       }
     },
-    [boardDetails],
+    [boardDetails, getLedPlacementsCached],
   );
 
   // Handle connection initiation

@@ -106,6 +106,84 @@ export type Angle = {
   angle: number;
 };
 
+export type ProductSize = {
+  id: number;
+  name: string;
+  description: string;
+  edgeLeft: number;
+  edgeRight: number;
+  edgeBottom: number;
+  edgeTop: number;
+  productId: number;
+};
+
+export type Layout = {
+  id: number;
+  name: string;
+  productId: number;
+};
+
+export type HoldSet = {
+  id: number;
+  name: string;
+};
+
+// Hold tuple: [placementId, mirroredPlacementId | null, x, y]
+export type HoldTuple = [number, number | null, number, number];
+
+export type HoldRenderData = {
+  id: number;
+  mirroredHoldId: number | null;
+  cx: number;
+  cy: number;
+  r: number;
+};
+
+export type ImageFileName = string;
+export type ImagesToHolds = Record<ImageFileName, HoldTuple[]>;
+
+export type BoardDetails = {
+  boardName: string;
+  layoutId: number;
+  sizeId: number;
+  setIds: number[];
+  edgeLeft: number;
+  edgeRight: number;
+  edgeBottom: number;
+  edgeTop: number;
+  boardWidth: number;
+  boardHeight: number;
+  supportsMirroring: boolean;
+  layoutName?: string;
+  sizeName?: string;
+  sizeDescription?: string;
+  setNames: string[];
+  imagesToHolds: ImagesToHolds;
+  holdsData: HoldRenderData[];
+};
+
+export type LedPlacements = {
+  placements: Record<number, number>;
+};
+
+export type BoardSizeOption = {
+  id: number;
+  name: string;
+  description: string;
+  sets: HoldSet[];
+};
+
+export type BoardLayoutOption = {
+  id: number;
+  name: string;
+  sizes: BoardSizeOption[];
+};
+
+export type BoardSelectorOptions = {
+  kilter: BoardLayoutOption[];
+  tension: BoardLayoutOption[];
+};
+
 // ============================================
 // Climb Search Types
 // ============================================
