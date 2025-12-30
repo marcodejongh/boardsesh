@@ -132,6 +132,7 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
           if (!isMountedRef.current) return;
 
           setCurrentDraft(newDraft);
+          setIsLoadingDraft(false);
           // Update URL with draft ID (without navigation)
           const url = new URL(window.location.href);
           url.searchParams.set('draftId', newDraft.uuid);
@@ -148,36 +149,38 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
     initializeDraft();
   }, [draftIdFromUrl, boardDetails, angle, createDraft, setLitUpHoldsMap]);
 
-  // Auto-save draft when data changes
-  const autoSaveDraft = useCallback(async () => {
-    if (!currentDraft || !isMountedRef.current) return;
-
-    const frames = generateFramesString();
-
-    try {
-      await updateDraft(currentDraft.uuid, {
-        name: climbName || '',
-        description: description || '',
-        frames,
-        litUpHoldsMap,
-        isDraft,
-        angle,
-      });
-    } catch (error) {
-      console.error('Failed to auto-save draft:', error);
-    }
-  }, [currentDraft, generateFramesString, climbName, description, litUpHoldsMap, updateDraft, angle, isDraft]);
-
-  // Debounced auto-save when data changes
+  // Use ref for draft UUID to avoid triggering saves when currentDraft reference changes
+  const currentDraftIdRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!currentDraft || isLoadingDraft) return;
+    currentDraftIdRef.current = currentDraft?.uuid ?? null;
+  }, [currentDraft]);
+
+  // Debounced auto-save when form data changes
+  useEffect(() => {
+    // Skip if not initialized or loading
+    if (!currentDraftIdRef.current || isLoadingDraft) return;
 
     if (autoSaveTimerRef.current) {
       clearTimeout(autoSaveTimerRef.current);
     }
 
-    autoSaveTimerRef.current = setTimeout(() => {
-      autoSaveDraft();
+    autoSaveTimerRef.current = setTimeout(async () => {
+      if (!currentDraftIdRef.current || !isMountedRef.current) return;
+
+      const frames = generateFramesString();
+
+      try {
+        await updateDraft(currentDraftIdRef.current, {
+          name: climbName || '',
+          description: description || '',
+          frames,
+          litUpHoldsMap,
+          isDraft,
+          angle,
+        });
+      } catch (error) {
+        console.error('Failed to auto-save draft:', error);
+      }
     }, 500);
 
     return () => {
@@ -185,7 +188,7 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
         clearTimeout(autoSaveTimerRef.current);
       }
     };
-  }, [litUpHoldsMap, climbName, description, isDraft, currentDraft, isLoadingDraft, autoSaveDraft]);
+  }, [litUpHoldsMap, climbName, description, isDraft, isLoadingDraft, generateFramesString, updateDraft, angle]);
 
   // Send frames to board whenever litUpHoldsMap changes and we're connected
   useEffect(() => {

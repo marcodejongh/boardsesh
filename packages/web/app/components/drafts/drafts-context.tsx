@@ -9,6 +9,7 @@ import {
   updateDraftClimb,
   deleteDraftClimb,
   getDraftClimbsCount,
+  reorderDraftClimbs,
 } from '@/app/lib/draft-climbs-db';
 import { LitUpHoldsMap } from '../board-renderer/types';
 
@@ -29,7 +30,7 @@ interface DraftsContextType {
     },
   ) => Promise<void>;
   deleteDraft: (uuid: string) => Promise<void>;
-  reorderDrafts: (reorderedDrafts: DraftClimb[]) => void;
+  reorderDrafts: (reorderedDrafts: DraftClimb[]) => Promise<void>;
   refreshDrafts: () => Promise<void>;
 }
 
@@ -92,7 +93,7 @@ export const DraftsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setDraftsCount((prev) => Math.max(0, prev - 1));
   }, []);
 
-  const reorderDrafts = useCallback((reorderedDrafts: DraftClimb[]) => {
+  const reorderDrafts = useCallback(async (reorderedDrafts: DraftClimb[]) => {
     // Update local state with new order
     // We merge the reordered subset back into the full drafts array
     setDrafts((prev) => {
@@ -100,6 +101,13 @@ export const DraftsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const otherDrafts = prev.filter((d) => !reorderedIds.has(d.uuid));
       return [...reorderedDrafts, ...otherDrafts];
     });
+
+    // Persist the new order to IndexedDB
+    try {
+      await reorderDraftClimbs(reorderedDrafts.map((d) => d.uuid));
+    } catch (error) {
+      console.error('Failed to persist draft order:', error);
+    }
   }, []);
 
   const value = useMemo<DraftsContextType>(

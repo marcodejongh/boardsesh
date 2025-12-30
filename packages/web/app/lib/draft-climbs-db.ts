@@ -32,6 +32,11 @@ export interface DraftClimb {
 let dbPromise: Promise<IDBPDatabase> | null = null;
 
 const initDB = async (): Promise<IDBPDatabase> => {
+  // Guard against SSR - IndexedDB is browser-only
+  if (typeof window === 'undefined') {
+    throw new Error('IndexedDB is not available in server-side rendering');
+  }
+
   if (!dbPromise) {
     const promise = openDB(DB_NAME, DB_VERSION, {
       upgrade(db) {
@@ -211,5 +216,34 @@ export const getDraftClimbsCount = async (): Promise<number> => {
   } catch (error) {
     console.error('Failed to count draft climbs:', error);
     return 0;
+  }
+};
+
+/**
+ * Reorder drafts by updating their updatedAt timestamps to preserve order
+ * The first item in the array will have the newest timestamp (appears first when sorted)
+ */
+export const reorderDraftClimbs = async (orderedUuids: string[]): Promise<void> => {
+  try {
+    const db = await initDB();
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+
+    // Update timestamps in reverse order so first item has newest timestamp
+    const now = Date.now();
+    for (let i = orderedUuids.length - 1; i >= 0; i--) {
+      const uuid = orderedUuids[i];
+      const draft = await store.get(uuid);
+      if (draft) {
+        // Give each draft a unique timestamp, with earlier items getting newer timestamps
+        draft.updatedAt = now + (orderedUuids.length - i);
+        await store.put(draft);
+      }
+    }
+
+    await tx.done;
+  } catch (error) {
+    console.error('Failed to reorder draft climbs:', error);
+    throw error;
   }
 };
