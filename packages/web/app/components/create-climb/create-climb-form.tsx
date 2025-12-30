@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Input, Switch, Button, Typography, Tag, Alert, Flex } from 'antd';
+import type { InputRef } from 'antd';
 import { SettingOutlined, EditOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import { track } from '@vercel/analytics';
@@ -35,7 +36,7 @@ interface CreateClimbFormProps {
 
 export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkName }: CreateClimbFormProps) {
   const router = useRouter();
-  const { isAuthenticated, hasAuroraCredentials, saveClimb } = useBoardProvider();
+  const { isAuthenticated, saveClimb } = useBoardProvider();
 
   // Convert fork frames to initial holds map if provided
   const initialHoldsMap = useMemo(() => {
@@ -70,7 +71,7 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editingName, setEditingName] = useState('');
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
-  const titleInputRef = useRef<HTMLInputElement>(null);
+  const titleInputRef = useRef<InputRef>(null);
 
   // Send frames to board whenever litUpHoldsMap changes and we're connected
   useEffect(() => {
@@ -108,9 +109,11 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
 
   const handleSaveTitle = useCallback(() => {
     const trimmedName = editingName.trim();
+    // Only update if we have a valid name, otherwise keep the original
     if (trimmedName) {
       setClimbName(trimmedName);
     }
+    // Always exit edit mode and clear the editing state
     setIsEditingTitle(false);
     setEditingName('');
   }, [editingName]);
@@ -186,14 +189,8 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
       return;
     }
 
-    if (!hasAuroraCredentials) {
-      // User is logged in but hasn't linked their Aurora account
-      // This shouldn't happen due to the UI, but handle it gracefully
-      return;
-    }
-
     await doSaveClimb();
-  }, [isValid, climbName, isAuthenticated, hasAuroraCredentials, description, isDraft, doSaveClimb]);
+  }, [isValid, climbName, isAuthenticated, description, isDraft, doSaveClimb]);
 
   const handleAuthSuccess = async () => {
     // After successful auth, check if they have Aurora credentials linked
@@ -221,7 +218,7 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
     router.push(listUrl);
   }, [boardDetails, angle, router]);
 
-  const canSave = isAuthenticated && hasAuroraCredentials && isValid && climbName.trim().length > 0;
+  const canSave = isAuthenticated && isValid && climbName.trim().length > 0;
 
   const handleToggleSettings = useCallback(() => {
     setShowSettingsPanel((prev) => !prev);
@@ -279,7 +276,7 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
               {isEditingTitle ? (
                 <Flex gap={4} align="center">
                   <Input
-                    ref={titleInputRef as React.Ref<any>}
+                    ref={titleInputRef}
                     value={editingName}
                     onChange={(e) => setEditingName(e.target.value)}
                     onKeyDown={handleTitleKeyDown}
