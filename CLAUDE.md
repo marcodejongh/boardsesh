@@ -13,6 +13,7 @@ Boardsesh is a monorepo containing a Next.js 15 application for controlling stan
   /web/           # Next.js web application
   /backend/       # WebSocket backend for party mode (graphql-ws)
   /shared-schema/ # Shared GraphQL schema and TypeScript types
+  /db/            # Shared database schema, client, and migrations (drizzle)
 ```
 
 ## Commands
@@ -55,11 +56,11 @@ npm run backend:dev
 - `npm run backend:start` - Start backend in production mode
 - `npm run db:up` - Start development databases (PostgreSQL, Neon proxy, Redis)
 
-### Database Commands (run from packages/web/)
+### Database Commands (run from root or packages/db/)
 
-- `npx drizzle-kit generate` - Generate new migrations
-- `npx drizzle-kit migrate` - Apply migrations (also runs on build)
-- `npx drizzle-kit studio` - Open Drizzle Studio for database exploration
+- `npm run db:migrate` - Apply migrations (also runs on Vercel build)
+- `npm run db:studio` - Open Drizzle Studio for database exploration
+- From packages/db: `npx drizzle-kit generate` - Generate new migrations
 
 ## Architecture Overview
 
@@ -105,7 +106,7 @@ We are using next.js app router, it's important we try to use server side compon
 - Separate tables for each board type (kilter*\*, tension*\*)
 - Key entities: climbs, holds, layouts, sizes, sets, user_syncs
 - Stats tracking with history tables
-- See `packages/web/app/lib/db/schema.ts` for full schema
+- See `packages/db/src/schema/` for full schema (re-exported via `packages/web/app/lib/db/schema.ts`)
 
 ### Key Integration Points
 
