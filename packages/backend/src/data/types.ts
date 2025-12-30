@@ -1,25 +1,22 @@
 /**
  * Board configuration types for the backend data module.
- * These types mirror the web package types but are self-contained for the backend.
+ *
+ * Shared types are imported from @boardsesh/shared-schema.
+ * Backend-specific types (using snake_case for internal processing) are defined here.
  */
 
-export type BoardName = 'kilter' | 'tension';
+// Re-export shared types used by backend data processing
+export type {
+  BoardName,
+  HoldTuple,
+  HoldRenderData,
+  ImageFileName,
+  ImagesToHolds,
+} from '@boardsesh/shared-schema';
+
+// Backend-specific type aliases
 export type Angle = number;
 export type SetIdList = number[];
-export type ImageFileName = string;
-
-// HoldTuple: [placementId, mirroredPlacementId | null, x, y]
-export type HoldTuple = [number, number | null, number, number];
-
-export interface HoldRenderData {
-  id: number;
-  mirroredHoldId: number | null;
-  cx: number;
-  cy: number;
-  r: number;
-}
-
-export type ImagesToHolds = Record<ImageFileName, HoldTuple[]>;
 
 export interface BoardDetails {
   images_to_holds: ImagesToHolds;

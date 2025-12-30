@@ -3,7 +3,7 @@ import type { Grade, Angle } from '@boardsesh/shared-schema';
 import { db } from '../../../db/client.js';
 import * as dbSchema from '@boardsesh/db/schema';
 import { validateInput } from '../shared/helpers.js';
-import { BoardNameSchema } from '../../../validation/schemas.js';
+import { BoardNameSchema, LayoutIdSchema, SizeIdSchema, SetIdsArraySchema } from '../../../validation/schemas.js';
 import {
   getAllLayouts,
   getSizesForLayoutId,
@@ -79,6 +79,7 @@ export const boardQueries = {
    */
   sizesForLayout: (_: unknown, { boardName, layoutId }: { boardName: string; layoutId: number }) => {
     validateInput(BoardNameSchema, boardName, 'boardName');
+    validateInput(LayoutIdSchema, layoutId, 'layoutId');
     return getSizesForLayoutId(boardName as BoardName, layoutId);
   },
 
@@ -87,6 +88,8 @@ export const boardQueries = {
    */
   setsForLayoutAndSize: (_: unknown, { boardName, layoutId, sizeId }: { boardName: string; layoutId: number; sizeId: number }) => {
     validateInput(BoardNameSchema, boardName, 'boardName');
+    validateInput(LayoutIdSchema, layoutId, 'layoutId');
+    validateInput(SizeIdSchema, sizeId, 'sizeId');
     return getSetsForLayoutAndSize(boardName as BoardName, layoutId, sizeId);
   },
 
@@ -95,6 +98,9 @@ export const boardQueries = {
    */
   boardDetails: (_: unknown, { boardName, layoutId, sizeId, setIds }: { boardName: string; layoutId: number; sizeId: number; setIds: number[] }) => {
     validateInput(BoardNameSchema, boardName, 'boardName');
+    validateInput(LayoutIdSchema, layoutId, 'layoutId');
+    validateInput(SizeIdSchema, sizeId, 'sizeId');
+    validateInput(SetIdsArraySchema, setIds, 'setIds');
     try {
       const details = getBoardDetails({
         board_name: boardName as BoardName,
@@ -133,6 +139,8 @@ export const boardQueries = {
    */
   ledPlacements: (_: unknown, { boardName, layoutId, sizeId }: { boardName: string; layoutId: number; sizeId: number }) => {
     validateInput(BoardNameSchema, boardName, 'boardName');
+    validateInput(LayoutIdSchema, layoutId, 'layoutId');
+    validateInput(SizeIdSchema, sizeId, 'sizeId');
     const placements = getLedPlacements(boardName as BoardName, layoutId, sizeId);
     return { placements };
   },
