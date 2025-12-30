@@ -9,7 +9,6 @@ import SearchButton from '../search-drawer/search-button';
 import SearchClimbNameInput from '../search-drawer/search-climb-name-input';
 import { UISearchParamsProvider } from '../queue-control/ui-searchparams-provider';
 import { BoardDetails } from '@/app/lib/types';
-import BackButton from '../back-button';
 import ClimbTitle from '../climb-card/climb-title';
 
 // Dynamically import bluetooth component to reduce initial bundle size
@@ -21,7 +20,7 @@ const SendClimbToBoardButton = dynamic(
 import { generateLayoutSlug, generateSizeSlug, generateSetSlug, constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { ShareBoardButton } from './share-button';
 import { useQueueContext } from '../graphql-queue';
-import { UserOutlined, LogoutOutlined, LoginOutlined, PlusOutlined, MoreOutlined, SettingOutlined, LineChartOutlined } from '@ant-design/icons';
+import { UserOutlined, LogoutOutlined, LoginOutlined, PlusOutlined, MoreOutlined, SettingOutlined, LineChartOutlined, SearchOutlined } from '@ant-design/icons';
 import AngleSelector from './angle-selector';
 import Logo from '../brand/logo';
 import styles from './header.module.css';
@@ -169,10 +168,12 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
               </>
             )}
 
-            {/* Play page: Show back button and climb name (mobile only) */}
+            {/* Play page: Show search/back button and climb name (mobile only) */}
             {pageMode === 'play' && (
               <div className={styles.mobileOnly} style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
-                <BackButton fallbackUrl={getBackToListUrl()} />
+                <Link href={getBackToListUrl()}>
+                  <Button icon={<SearchOutlined />} type="text" aria-label="Back to search" />
+                </Link>
                 <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
                   <ClimbTitle climb={currentClimb} showAngle centered />
                 </div>
