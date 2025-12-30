@@ -1,0 +1,12 @@
+.svg {
+  width: 100%;
+  display: block;
+}
+
+.svgAutoHeight {
+  height: auto;
+}
+
+.svgFillHeight {
+  height: 100%;
+}

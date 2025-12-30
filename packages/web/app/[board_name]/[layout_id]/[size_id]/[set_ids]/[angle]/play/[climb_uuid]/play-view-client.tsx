@@ -207,7 +207,7 @@ const PlayViewClient: React.FC<PlayViewClientProps> = ({ boardDetails, initialCl
               boardDetails={boardDetails}
               litUpHoldsMap={displayClimb.litUpHoldsMap}
               mirrored={!!displayClimb.mirrored}
-              maxHeight="80vh"
+              fillHeight
             />
           </div>
 
