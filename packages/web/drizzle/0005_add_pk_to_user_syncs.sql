@@ -1,2 +1,0 @@
-ALTER TABLE "kilter_user_syncs" ADD CONSTRAINT "kilter_user_sync_pk" PRIMARY KEY("user_id","table_name");--> statement-breakpoint
-ALTER TABLE "tension_user_syncs" ADD CONSTRAINT "tension_user_sync_pk" PRIMARY KEY("user_id","table_name"); 
