@@ -2,12 +2,22 @@ import React from 'react';
 import { BoardDetails, HoldState } from '@/app/lib/types';
 import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
 import { Select, Typography, Space, Tag } from 'antd';
-import { CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
+import { CheckCircleOutlined, CloseCircleOutlined, PlayCircleOutlined, StopOutlined } from '@ant-design/icons';
 import BoardHeatmap from '../board-renderer/board-heatmap';
 import { track } from '@vercel/analytics';
 import styles from './search-form.module.css';
 
 const { Text } = Typography;
+
+// Color configuration for each hold state filter
+const HOLD_STATE_COLORS: Record<string, { color: string; label: string; tagColor: string }> = {
+  ANY: { color: '#06B6D4', label: 'Include', tagColor: 'cyan' },
+  NOT: { color: '#EF4444', label: 'Exclude', tagColor: 'red' },
+  STARTING: { color: '#00FF00', label: 'Starting', tagColor: 'green' },
+  HAND: { color: '#00FFFF', label: 'Hand', tagColor: 'cyan' },
+  FOOT: { color: '#FFA500', label: 'Foot', tagColor: 'orange' },
+  FINISH: { color: '#FF00FF', label: 'Finish', tagColor: 'magenta' },
+};
 
 interface ClimbHoldSearchFormProps {
   boardDetails: BoardDetails;
@@ -21,16 +31,15 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
     const updatedHoldsFilter = { ...uiSearchParams.holdsFilter };
     const wasSelected = updatedHoldsFilter[holdId]?.state === selectedState;
 
-    if (selectedState === 'ANY' || selectedState === 'NOT') {
-      if (wasSelected) {
-        delete updatedHoldsFilter[holdId];
-      } else {
-        updatedHoldsFilter[holdId] = {
-          state: selectedState,
-          color: selectedState === 'ANY' ? '#06B6D4' : '#EF4444',
-          displayColor: selectedState === 'ANY' ? '#06B6D4' : '#EF4444',
-        };
-      }
+    if (wasSelected) {
+      delete updatedHoldsFilter[holdId];
+    } else {
+      const stateConfig = HOLD_STATE_COLORS[selectedState];
+      updatedHoldsFilter[holdId] = {
+        state: selectedState,
+        color: stateConfig.color,
+        displayColor: stateConfig.color,
+      };
     }
 
     updateFilters({
@@ -39,13 +48,22 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
   };
 
   const stateItems = [
-    { value: 'ANY', label: 'Include', icon: <CheckCircleOutlined style={{ color: '#06B6D4' }} /> },
-    { value: 'NOT', label: 'Exclude', icon: <CloseCircleOutlined style={{ color: '#EF4444' }} /> },
+    { value: 'ANY', label: 'Include', icon: <CheckCircleOutlined style={{ color: HOLD_STATE_COLORS.ANY.color }} /> },
+    { value: 'NOT', label: 'Exclude', icon: <CloseCircleOutlined style={{ color: HOLD_STATE_COLORS.NOT.color }} /> },
+    { value: 'STARTING', label: 'Starting', icon: <PlayCircleOutlined style={{ color: HOLD_STATE_COLORS.STARTING.color }} /> },
+    { value: 'HAND', label: 'Hand', icon: <span style={{ color: HOLD_STATE_COLORS.HAND.color, fontWeight: 'bold' }}>✋</span> },
+    { value: 'FOOT', label: 'Foot', icon: <span style={{ color: HOLD_STATE_COLORS.FOOT.color, fontWeight: 'bold' }}>👣</span> },
+    { value: 'FINISH', label: 'Finish', icon: <StopOutlined style={{ color: HOLD_STATE_COLORS.FINISH.color }} /> },
   ];
 
-  const selectedHoldsCount = Object.keys(uiSearchParams.holdsFilter || {}).length;
-  const anyHoldsCount = Object.values(uiSearchParams.holdsFilter || {}).filter(h => h.state === 'ANY').length;
-  const notHoldsCount = Object.values(uiSearchParams.holdsFilter || {}).filter(h => h.state === 'NOT').length;
+  // Count holds by state for display
+  const holdStateCounts = React.useMemo(() => {
+    const counts: Record<string, number> = {};
+    Object.values(uiSearchParams.holdsFilter || {}).forEach(h => {
+      counts[h.state] = (counts[h.state] || 0) + 1;
+    });
+    return counts;
+  }, [uiSearchParams.holdsFilter]);
 
   return (
     <div className={styles.holdSearchForm}>
@@ -62,7 +80,7 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
               });
             }}
             size="small"
-            style={{ width: 110 }}
+            style={{ width: 120 }}
             options={stateItems.map(item => ({
               value: item.value,
               label: (
@@ -73,8 +91,16 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
               ),
             }))}
           />
-          {anyHoldsCount > 0 && <Tag color="cyan" style={{ margin: 0 }}>{anyHoldsCount} in</Tag>}
-          {notHoldsCount > 0 && <Tag color="red" style={{ margin: 0 }}>{notHoldsCount} out</Tag>}
+          {Object.entries(holdStateCounts).map(([state, count]) => {
+            const config = HOLD_STATE_COLORS[state];
+            if (!config) return null;
+            const shortLabel = state === 'ANY' ? 'in' : state === 'NOT' ? 'out' : state.toLowerCase();
+            return (
+              <Tag key={state} color={config.tagColor} style={{ margin: 0 }}>
+                {count} {shortLabel}
+              </Tag>
+            );
+          })}
         </Space>
       </div>
 
