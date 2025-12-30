@@ -14,9 +14,11 @@ import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { convertLitUpHoldsStringToMap } from '../board-renderer/util';
 import AuthModal from '../auth/auth-modal';
 import { useCreateClimbContext } from './create-climb-context';
+import { themeTokens } from '@/app/theme/theme-config';
 import styles from './create-climb-form.module.css';
 
 const { Text } = Typography;
+const { TextArea } = Input;
 
 interface CreateClimbFormValues {
   name: string;
@@ -67,6 +69,7 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
   const [isDraft, setIsDraft] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editingName, setEditingName] = useState('');
+  const [showSettingsPanel, setShowSettingsPanel] = useState(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
 
   // Send frames to board whenever litUpHoldsMap changes and we're connected
@@ -218,8 +221,11 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
     router.push(listUrl);
   }, [boardDetails, angle, router]);
 
-  const boardNameCapitalized = boardDetails.board_name.charAt(0).toUpperCase() + boardDetails.board_name.slice(1);
   const canSave = isAuthenticated && hasAuroraCredentials && isValid && climbName.trim().length > 0;
+
+  const handleToggleSettings = useCallback(() => {
+    setShowSettingsPanel((prev) => !prev);
+  }, []);
 
   // Register actions with context for header to use
   useEffect(() => {
@@ -262,21 +268,6 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
         />
       )}
 
-      {isAuthenticated && !hasAuroraCredentials && (
-        <Alert
-          message={`Link your ${boardNameCapitalized} account`}
-          description={`Link your ${boardNameCapitalized} Board account in Settings to save climbs.`}
-          type="warning"
-          showIcon
-          className={styles.authAlert}
-          action={
-            <Button size="small" icon={<SettingOutlined />} onClick={() => router.push('/settings')}>
-              Settings
-            </Button>
-          }
-        />
-      )}
-
       {/* Main Content - matches play view layout */}
       <div className={styles.contentWrapper}>
         {/* Title section - same position as play view */}
@@ -312,18 +303,27 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
                   />
                 </Flex>
               ) : (
-                <div
-                  className={styles.editableTitle}
-                  onClick={handleStartEditTitle}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => e.key === 'Enter' && handleStartEditTitle()}
-                >
-                  <Text className={styles.titleText}>
-                    {climbName || 'Tap to name your climb'}
-                  </Text>
-                  <EditOutlined className={styles.editIcon} />
-                </div>
+                <Flex gap={4} align="center">
+                  <div
+                    className={styles.editableTitle}
+                    onClick={handleStartEditTitle}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && handleStartEditTitle()}
+                  >
+                    <Text className={styles.titleText}>
+                      {climbName || 'Tap to name your climb'}
+                    </Text>
+                    <EditOutlined className={styles.editIcon} />
+                  </div>
+                  <Button
+                    type="text"
+                    icon={showSettingsPanel ? <CloseOutlined /> : <SettingOutlined />}
+                    size="small"
+                    onClick={handleToggleSettings}
+                    className={styles.settingsButton}
+                  />
+                </Flex>
               )}
               {/* Row 2: Draft toggle */}
               <Flex gap={8} align="center">
@@ -349,6 +349,33 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
             onHoldClick={handleHoldClick}
             fillHeight
           />
+
+          {/* Settings overlay panel */}
+          {showSettingsPanel && (
+            <div
+              className={styles.settingsPanel}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className={styles.settingsPanelHeader}>
+                <Text strong>Climb Settings</Text>
+              </div>
+              <div className={styles.settingsPanelContent}>
+                <div className={styles.settingsField}>
+                  <Text type="secondary" className={styles.settingsLabel}>
+                    Description (optional)
+                  </Text>
+                  <TextArea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Add beta or notes about your climb..."
+                    rows={3}
+                    maxLength={500}
+                    showCount
+                  />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Hold counts bar at bottom */}

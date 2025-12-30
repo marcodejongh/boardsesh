@@ -84,6 +84,15 @@
   font-weight: 400;
 }
 
+/* Settings button next to title */
+.settingsButton {
+  color: #9CA3AF;
+}
+
+.settingsButton:hover {
+  color: #6B7280;
+}
+
 /* Board container - fills remaining space like play view */
 .boardContainer {
   flex: 1;
@@ -95,6 +104,40 @@
   max-height: 100%;
   width: 100%;
   overflow: hidden;
+  position: relative;
+}
+
+/* Settings overlay panel */
+.settingsPanel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 12px;
+  background-color: rgba(255, 255, 255, 0.95);
+  overflow: auto;
+  z-index: 10;
+}
+
+.settingsPanelHeader {
+  margin-bottom: 12px;
+}
+
+.settingsPanelContent {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.settingsField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.settingsLabel {
+  font-size: 12px;
 }
 
 /* Hold counts bar at bottom */
