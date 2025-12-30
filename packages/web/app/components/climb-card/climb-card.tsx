@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React from 'react';
 import Card from 'antd/es/card';
 
 import ClimbCardCover from './climb-card-cover';
@@ -104,11 +104,7 @@ const ClimbCardStatic = React.memo(
     actions,
     expandedContent,
   }: ClimbCardProps) => {
-    const cover = useMemo(
-      () => <ClimbCardCover climb={climb} boardDetails={boardDetails} onClick={onCoverClick} />,
-      [climb, boardDetails, onCoverClick]
-    );
-
+    const cover = <ClimbCardCover climb={climb} boardDetails={boardDetails} onClick={onCoverClick} />;
     const cardTitle = climb ? (
       <ClimbTitle climb={climb} layout="horizontal" showSetterInfo />
     ) : (

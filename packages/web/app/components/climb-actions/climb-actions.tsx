@@ -236,7 +236,7 @@ ClimbActions.asCardActionsWithContent = function asCardActionsWithContent(
       }
       if (result.expandedContent) {
         expandedElements.push(
-          <React.Fragment key={`${result.key}-expanded`}>{result.expandedContent}</React.Fragment>
+          <React.Fragment key={`expanded:${result.key}`}>{result.expandedContent}</React.Fragment>
         );
       }
     }

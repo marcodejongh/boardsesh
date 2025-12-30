@@ -14,6 +14,11 @@ import { themeTokens } from '@/app/theme/theme-config';
 
 const { Text } = Typography;
 
+// Validate hex color format to prevent CSS injection
+const isValidHexColor = (color: string): boolean => {
+  return /^#([0-9A-Fa-f]{3}){1,2}$/.test(color);
+};
+
 export function PlaylistAction({
   climb,
   boardDetails,
@@ -170,14 +175,15 @@ export function PlaylistAction({
                 split={false}
                 renderItem={(playlist: Playlist) => {
                   const isInPlaylist = playlistsContainingClimb.has(playlist.id);
+                  const validColor = playlist.color && isValidHexColor(playlist.color) ? playlist.color : null;
                   return (
                     <List.Item
                       style={{
-                        padding: '6px 8px',
+                        padding: `${themeTokens.spacing[1] + 2}px ${themeTokens.spacing[2]}px`,
                         cursor: 'pointer',
-                        borderLeft: playlist.color ? `3px solid ${playlist.color}` : `3px solid transparent`,
-                        borderRadius: 4,
-                        marginBottom: 4,
+                        borderLeft: validColor ? `3px solid ${validColor}` : '3px solid transparent',
+                        borderRadius: themeTokens.borderRadius.sm,
+                        marginBottom: themeTokens.spacing[1],
                         backgroundColor: isInPlaylist ? themeTokens.semantic.selectedLight : undefined,
                       }}
                       onClick={() => handleTogglePlaylist(playlist.id, isInPlaylist)}
@@ -203,7 +209,7 @@ export function PlaylistAction({
                 onClick={() => setShowCreateForm(true)}
                 block
                 size="small"
-                style={{ marginTop: 8 }}
+                style={{ marginTop: themeTokens.spacing[2] }}
               >
                 Create New Playlist
               </Button>
