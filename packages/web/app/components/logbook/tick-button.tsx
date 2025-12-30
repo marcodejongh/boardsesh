@@ -4,7 +4,7 @@ import { useBoardProvider } from '../board-provider/board-provider-context';
 import { Button, Badge, Drawer, Typography, Space } from 'antd';
 import { CheckOutlined, LoginOutlined } from '@ant-design/icons';
 import { track } from '@vercel/analytics';
-import { LogbookDrawer } from './logbook-drawer';
+import { LogAscentDrawer } from './log-ascent-drawer';
 import AuthModal from '../auth/auth-modal';
 
 const { Text, Paragraph } = Typography;
@@ -45,9 +45,9 @@ export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boa
       </Badge>
 
       {isAuthenticated ? (
-        <LogbookDrawer
-          drawerVisible={drawerVisible}
-          closeDrawer={closeDrawer}
+        <LogAscentDrawer
+          open={drawerVisible}
+          onClose={closeDrawer}
           currentClimb={currentClimb}
           boardDetails={boardDetails}
         />

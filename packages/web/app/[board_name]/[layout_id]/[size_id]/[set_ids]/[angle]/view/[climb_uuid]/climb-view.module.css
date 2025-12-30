@@ -30,8 +30,23 @@
   min-width: 0; /* Prevent flex overflow */
 }
 
+/* Sidebar section container for beta videos and logbook */
+.sidebarSection {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 /* Beta videos section with white background */
 .betaSection {
+  background-color: #FFFFFF;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* Logbook section with white background */
+.logbookSection {
   background-color: #FFFFFF;
   border-radius: 12px;
   padding: 20px;
@@ -50,7 +65,16 @@
     margin-bottom: 12px;
   }
 
+  .sidebarSection {
+    gap: 12px;
+  }
+
   .betaSection {
+    padding: 16px;
+    border-radius: 8px;
+  }
+
+  .logbookSection {
     padding: 16px;
     border-radius: 8px;
   }
@@ -80,7 +104,7 @@
     flex: 2;
   }
 
-  .betaSection {
+  .sidebarSection {
     flex: 1;
     max-width: 400px;
     position: sticky;
