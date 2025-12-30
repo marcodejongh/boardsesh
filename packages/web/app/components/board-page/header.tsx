@@ -19,7 +19,7 @@ const SendClimbToBoardButton = dynamic(
 import { generateLayoutSlug, generateSizeSlug, generateSetSlug, constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { ShareBoardButton } from './share-button';
 import { useQueueContext } from '../graphql-queue';
-import { UserOutlined, LogoutOutlined, LoginOutlined, PlusOutlined, MoreOutlined, SettingOutlined, LineChartOutlined, SearchOutlined } from '@ant-design/icons';
+import { UserOutlined, LogoutOutlined, LoginOutlined, PlusOutlined, MoreOutlined, SettingOutlined, LineChartOutlined, LeftOutlined } from '@ant-design/icons';
 import AngleSelector from './angle-selector';
 import Logo from '../brand/logo';
 import styles from './header.module.css';
@@ -149,8 +149,19 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
     >
       <UISearchParamsProvider>
         <Flex justify="space-between" align="center" style={{ width: '100%' }} gap={8}>
-          {/* Logo - Fixed to left */}
-          <Flex align="center">
+          {/* Logo and back button - Fixed to left */}
+          <Flex align="center" gap={4}>
+            {/* Play page: Show back button next to logo (mobile only) */}
+            {pageMode === 'play' && (
+              <div className={styles.mobileOnly}>
+                <Button
+                  icon={<LeftOutlined />}
+                  type="text"
+                  aria-label="Back to search"
+                  onClick={() => router.push(getBackToListUrl())}
+                />
+              </div>
+            )}
             <Logo size="sm" showText={false} />
           </Flex>
 
@@ -166,18 +177,6 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
                   <SearchButton boardDetails={boardDetails} />
                 </div>
               </>
-            )}
-
-            {/* Play page: Show search/back button (mobile only) */}
-            {pageMode === 'play' && (
-              <div className={styles.mobileOnly}>
-                <Button
-                  icon={<SearchOutlined />}
-                  type="text"
-                  aria-label="Back to search"
-                  onClick={() => router.push(getBackToListUrl())}
-                />
-              </div>
             )}
 
             {/* View page: Empty center on mobile (back button is in the page content) */}
