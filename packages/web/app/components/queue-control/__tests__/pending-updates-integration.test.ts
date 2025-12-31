@@ -51,6 +51,8 @@ const initialState: QueueState = {
   hasDoneFirstFetch: false,
   initialQueueDataReceivedFromPeers: false,
   pendingCurrentClimbUpdates: [],
+  lastReceivedSequence: null,
+  lastReceivedStateHash: null,
 };
 
 describe('Pending Updates - Integration Tests', () => {

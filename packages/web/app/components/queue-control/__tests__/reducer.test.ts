@@ -58,6 +58,8 @@ const initialState: QueueState = {
   hasDoneFirstFetch: false,
   initialQueueDataReceivedFromPeers: false,
   pendingCurrentClimbUpdates: [],
+  lastReceivedSequence: null,
+  lastReceivedStateHash: null,
 };
 
 describe('queueReducer', () => {
@@ -921,10 +923,9 @@ describe('queueReducer', () => {
     });
 
     it('should handle null item from server event', () => {
-      const pendingEntry = { uuid: 'some-uuid', addedAt: Date.now() };
       const stateWithPending: QueueState = {
         ...initialState,
-        pendingCurrentClimbUpdates: [pendingEntry],
+        pendingCurrentClimbUpdates: ['client-123-1'],
         currentClimbQueueItem: mockClimbQueueItem,
       };
 
@@ -940,8 +941,8 @@ describe('queueReducer', () => {
       const result = queueReducer(stateWithPending, action);
 
       expect(result.currentClimbQueueItem).toBeNull();
-      // Pending list should still contain the entry (just filtered for staleness)
-      expect(result.pendingCurrentClimbUpdates.find(p => p.uuid === 'some-uuid')).toBeDefined();
+      // Pending list should still contain the entry (server event without matching correlationId)
+      expect(result.pendingCurrentClimbUpdates).toContain('client-123-1');
     });
 
     it('should add to queue when shouldAddToQueue is true for local action', () => {
@@ -988,11 +989,7 @@ describe('queueReducer', () => {
     it('should clear pending updates on initial queue data sync', () => {
       const stateWithPending: QueueState = {
         ...initialState,
-        pendingCurrentClimbUpdates: [
-          { uuid: 'uuid-1', addedAt: Date.now() },
-          { uuid: 'uuid-2', addedAt: Date.now() },
-          { uuid: 'uuid-3', addedAt: Date.now() }
-        ],
+        pendingCurrentClimbUpdates: ['client-123-1', 'client-123-2', 'client-123-3'],
       };
 
       const action: QueueAction = {
@@ -1011,7 +1008,7 @@ describe('queueReducer', () => {
   });
 
   describe('CLEANUP_PENDING_UPDATE', () => {
-    it('should remove specific UUID from pending updates', () => {
+    it('should remove specific correlationId from pending updates', () => {
       const stateWithPending: QueueState = {
         ...initialState,
         pendingCurrentClimbUpdates: ['client-123-1', 'client-123-2', 'client-123-3'],
@@ -1030,31 +1027,28 @@ describe('queueReducer', () => {
       expect(result.pendingCurrentClimbUpdates).not.toContain('client-123-2');
     });
 
-    it('should handle cleanup of non-existent UUID gracefully', () => {
+    it('should handle cleanup of non-existent correlationId gracefully', () => {
       const stateWithPending: QueueState = {
         ...initialState,
-        pendingCurrentClimbUpdates: [
-          { uuid: 'uuid-1', addedAt: Date.now() },
-          { uuid: 'uuid-2', addedAt: Date.now() }
-        ],
+        pendingCurrentClimbUpdates: ['client-123-1', 'client-123-2'],
       };
 
       const action: QueueAction = {
         type: 'CLEANUP_PENDING_UPDATE',
-        payload: { uuid: 'uuid-999' },
+        payload: { correlationId: 'client-999-1' },
       };
 
       const result = queueReducer(stateWithPending, action);
 
       expect(result.pendingCurrentClimbUpdates).toHaveLength(2);
-      expect(result.pendingCurrentClimbUpdates.find(p => p.uuid === 'uuid-1')).toBeDefined();
-      expect(result.pendingCurrentClimbUpdates.find(p => p.uuid === 'uuid-2')).toBeDefined();
+      expect(result.pendingCurrentClimbUpdates).toContain('client-123-1');
+      expect(result.pendingCurrentClimbUpdates).toContain('client-123-2');
     });
 
     it('should handle cleanup on empty pending array', () => {
       const action: QueueAction = {
         type: 'CLEANUP_PENDING_UPDATE',
-        payload: { uuid: 'uuid-1' },
+        payload: { correlationId: 'client-123-1' },
       };
 
       const result = queueReducer(initialState, action);

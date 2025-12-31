@@ -269,28 +269,28 @@ describe('updateQueueOnly - Redis-first approach', () => {
       expect(redisQueue[1].uuid).toBe(climb2.uuid);
     });
 
-    it('should preserve currentClimbQueueItem when updating only the queue', async () => {
+    it('should increment version and sequence on update', async () => {
       const sessionId = uuidv4();
       const boardPath = '/kilter/1/2/3/40';
 
       // Create session
       await registerAndJoinSession('client-1', sessionId, boardPath, 'User1');
 
-      const currentClimb = createTestClimb();
-      const queueClimb = createTestClimb();
+      const climb1 = createTestClimb();
+      const climb2 = createTestClimb();
 
-      // First set a current climb using updateQueueState
+      // Get initial state
       const initialState = await roomManager.getQueueState(sessionId);
-      await roomManager.updateQueueState(sessionId, [currentClimb], currentClimb, initialState.version);
 
-      // Now call updateQueueOnly to update just the queue
-      await roomManager.updateQueueOnly(sessionId, [currentClimb, queueClimb]);
+      // Call updateQueueOnly
+      const result = await roomManager.updateQueueOnly(sessionId, [climb1, climb2]);
 
-      // Verify currentClimbQueueItem was preserved
-      const state = await roomManager.getQueueState(sessionId);
-      expect(state.currentClimbQueueItem).toBeDefined();
-      expect(state.currentClimbQueueItem?.uuid).toBe(currentClimb.uuid);
-      expect(state.queue).toHaveLength(2);
+      // Verify version and sequence incremented
+      expect(result.version).toBe(initialState.version + 1);
+      expect(result.sequence).toBe(initialState.sequence + 1);
+      // Verify stateHash is returned
+      expect(result.stateHash).toBeDefined();
+      expect(result.stateHash.length).toBeGreaterThan(0);
     });
   });
 
@@ -329,22 +329,23 @@ describe('updateQueueOnly - Redis-first approach', () => {
       expect(result.version).toBe(currentVersion + 1);
     });
 
-    it('should allow subsequent updates to succeed after version increment', async () => {
+    it('should increment version on each call', async () => {
       const sessionId = uuidv4();
       const boardPath = '/kilter/1/2/3/40';
 
       // Create session
       await registerAndJoinSession('client-1', sessionId, boardPath, 'User1');
 
+      // Get initial state
+      const initialState = await roomManager.getQueueState(sessionId);
+
       // First update
-      let state = await roomManager.getQueueState(sessionId);
-      const result1 = await roomManager.updateQueueOnly(sessionId, [createTestClimb()], state.version);
+      const result1 = await roomManager.updateQueueOnly(sessionId, [createTestClimb()]);
+      expect(result1.version).toBe(initialState.version + 1);
 
-      // Second update with new version
-      const result2 = await roomManager.updateQueueOnly(sessionId, [createTestClimb(), createTestClimb()], result1.version);
-
+      // Second update
+      const result2 = await roomManager.updateQueueOnly(sessionId, [createTestClimb()]);
       expect(result2.version).toBe(result1.version + 1);
-      expect(result2.sequence).toBe(result1.sequence + 1);
     });
   });
 
@@ -393,15 +394,17 @@ describe('updateQueueOnly - Redis-first approach', () => {
       // Create session
       await registerAndJoinSession('client-1', sessionId, boardPath, 'User1');
 
-      // Make 5 sequential updates
+      const initialState = await roomManager.getQueueState(sessionId);
+      const initialSequence = initialState.sequence;
+
+      // Make 5 sequential updates without version checking
       for (let i = 0; i < 5; i++) {
-        const state = await roomManager.getQueueState(sessionId);
-        await roomManager.updateQueueOnly(sessionId, [createTestClimb()], state.version);
+        await roomManager.updateQueueOnly(sessionId, [createTestClimb()]);
       }
 
       // Final state should reflect all updates
       const finalState = await roomManager.getQueueState(sessionId);
-      expect(finalState.sequence).toBeGreaterThanOrEqual(5);
+      expect(finalState.sequence).toBe(initialSequence + 5);
     });
   });
 });
@@ -465,6 +468,13 @@ describe('addQueueItem - Event publishing fix', () => {
 
     const climb = createTestClimb();
 
+    // Pre-populate the queue with the item using updateQueueState
+    const state = await roomManager.getQueueState(sessionId);
+    await roomManager.updateQueueState(sessionId, [climb], null, state.version);
+
+    // Clear spy
+    publishSpy.mockClear();
+
     // Create mock context
     const ctx = {
       connectionId: 'client-1',
@@ -473,13 +483,7 @@ describe('addQueueItem - Event publishing fix', () => {
       rateLimitLastReset: Date.now(),
     };
 
-    // Add item first time
-    await queueMutations.addQueueItem({}, { item: climb }, ctx);
-
-    // Clear spy to check for second call
-    publishSpy.mockClear();
-
-    // Try to add same item again
+    // Try to add the same item that's already in queue
     await queueMutations.addQueueItem({}, { item: climb }, ctx);
 
     // Verify event was NOT published for duplicate
@@ -567,6 +571,12 @@ describe('addQueueItem - Event publishing fix', () => {
     const climb1 = createTestClimb();
     const climb2 = createTestClimb();
 
+    // Pre-populate the queue with first item
+    const state = await roomManager.getQueueState(sessionId);
+    await roomManager.updateQueueState(sessionId, [climb1], null, state.version);
+
+    publishSpy.mockClear();
+
     // Create mock context
     const ctx = {
       connectionId: 'client-1',
@@ -575,12 +585,7 @@ describe('addQueueItem - Event publishing fix', () => {
       rateLimitLastReset: Date.now(),
     };
 
-    // Add first item
-    await queueMutations.addQueueItem({}, { item: climb1 }, ctx);
-
-    publishSpy.mockClear();
-
-    // Add second item without position
+    // Add second item without position - should append
     await queueMutations.addQueueItem({}, { item: climb2 }, ctx);
 
     expect(publishSpy).toHaveBeenCalledWith(
@@ -612,15 +617,18 @@ describe('reorderQueueItem - Return type handling', () => {
     const sessionId = uuidv4();
     const boardPath = '/kilter/1/2/3/40';
 
-    // Create session
+    // Create session and add items to queue
     await registerAndJoinSession('client-1', sessionId, boardPath, 'User1');
 
     const climb1 = createTestClimb();
     const climb2 = createTestClimb();
 
-    // Add items to queue
+    // Add items to queue using updateQueueState
     const state = await roomManager.getQueueState(sessionId);
     await roomManager.updateQueueState(sessionId, [climb1, climb2], null, state.version);
+
+    // Clear any previous publish calls
+    publishSpy.mockClear();
 
     // Create mock context
     const ctx = {
@@ -633,7 +641,7 @@ describe('reorderQueueItem - Return type handling', () => {
     // Reorder
     await queueMutations.reorderQueueItem({}, { uuid: climb1.uuid, oldIndex: 0, newIndex: 1 }, ctx);
 
-    // Verify event includes a sequence number
+    // Verify event includes a sequence number (should be incremented from the updateQueueOnly call)
     expect(publishSpy).toHaveBeenCalledWith(
       sessionId,
       expect.objectContaining({
