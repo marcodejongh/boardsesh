@@ -94,6 +94,18 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
     [hasMoreResults, fetchMoreClimbs, climbs.length],
   );
 
+  // Memoized handler for climb card double-click
+  const handleClimbDoubleClick = useCallback(
+    (climb: Climb) => {
+      updateHash(climb.uuid);
+      setCurrentClimb(climb);
+      track('Climb List Card Clicked', {
+        climbUuid: climb.uuid,
+      });
+    },
+    [setCurrentClimb],
+  );
+
   // Set up Intersection Observer
   useEffect(() => {
     const element = loadMoreRef.current;
@@ -128,13 +140,7 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
                 climb={climb}
                 boardDetails={boardDetails}
                 selected={currentClimb?.uuid === climb.uuid}
-                onCoverClick={() => {
-                  updateHash(climb.uuid);
-                  setCurrentClimb(climb);
-                  track('Climb List Card Clicked', {
-                    climbUuid: climb.uuid,
-                  });
-                }}
+                onCoverDoubleClick={() => handleClimbDoubleClick(climb)}
               />
             </div>
           </Col>
