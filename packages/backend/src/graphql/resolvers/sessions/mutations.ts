@@ -10,7 +10,10 @@ import {
   UsernameSchema,
   AvatarUrlSchema,
   CreateSessionInputSchema,
+  ClimbQueueItemSchema,
+  QueueArraySchema,
 } from '../../../validation/schemas.js';
+import type { ClimbQueueItem } from '@boardsesh/shared-schema';
 import type { CreateSessionInput } from '../shared/types.js';
 
 // Debug logging flag - only log in development
@@ -18,15 +21,24 @@ const DEBUG = process.env.NODE_ENV === 'development';
 
 export const sessionMutations = {
   /**
-   * Join an existing session
-   * Creates or joins a session and updates connection context
+   * Join an existing session or create a new one
+   * Creates or joins a session and updates connection context.
+   * When creating a new session, initialQueue and initialCurrentClimb can be provided
+   * to seed the session with existing queue items (e.g., when starting party mode with an existing local queue).
    */
   joinSession: async (
     _: unknown,
-    { sessionId, boardPath, username, avatarUrl }: { sessionId: string; boardPath: string; username?: string; avatarUrl?: string },
+    { sessionId, boardPath, username, avatarUrl, initialQueue, initialCurrentClimb }: {
+      sessionId: string;
+      boardPath: string;
+      username?: string;
+      avatarUrl?: string;
+      initialQueue?: ClimbQueueItem[];
+      initialCurrentClimb?: ClimbQueueItem;
+    },
     ctx: ConnectionContext
   ) => {
-    if (DEBUG) console.log(`[joinSession] START - connectionId: ${ctx.connectionId}, sessionId: ${sessionId}, username: ${username}`);
+    if (DEBUG) console.log(`[joinSession] START - connectionId: ${ctx.connectionId}, sessionId: ${sessionId}, username: ${username}, initialQueueLength: ${initialQueue?.length || 0}`);
 
     applyRateLimit(ctx, 10); // Limit session joins to prevent abuse
 
@@ -35,8 +47,18 @@ export const sessionMutations = {
     validateInput(BoardPathSchema, boardPath, 'boardPath');
     if (username) validateInput(UsernameSchema, username, 'username');
     if (avatarUrl) validateInput(AvatarUrlSchema, avatarUrl, 'avatarUrl');
+    if (initialQueue) validateInput(QueueArraySchema, initialQueue, 'initialQueue');
+    if (initialCurrentClimb) validateInput(ClimbQueueItemSchema, initialCurrentClimb, 'initialCurrentClimb');
 
-    const result = await roomManager.joinSession(ctx.connectionId, sessionId, boardPath, username || undefined, avatarUrl || undefined);
+    const result = await roomManager.joinSession(
+      ctx.connectionId,
+      sessionId,
+      boardPath,
+      username || undefined,
+      avatarUrl || undefined,
+      initialQueue,
+      initialCurrentClimb || null
+    );
     if (DEBUG) console.log(`[joinSession] roomManager.joinSession completed - clientId: ${result.clientId}, isLeader: ${result.isLeader}`);
 
     // Update context with session info
