@@ -207,12 +207,12 @@ async function upsertTableData(
             difficulty: Number(item.difficulty),
             isBenchmark: Boolean(item.is_benchmark || 0),
             comment: item.comment || '',
-            climbedAt: new Date(item.climbed_at),
-            createdAt: new Date(item.created_at),
-            updatedAt: new Date(),
+            climbedAt: new Date(item.climbed_at).toISOString(),
+            createdAt: new Date(item.created_at).toISOString(),
+            updatedAt: new Date().toISOString(),
             auroraType: 'ascents',
             auroraId: item.uuid,
-            auroraSyncedAt: new Date(),
+            auroraSyncedAt: new Date().toISOString(),
           })
           .onConflictDoUpdate({
             target: boardseshTicks.auroraId,
@@ -226,9 +226,9 @@ async function upsertTableData(
               difficulty: Number(item.difficulty),
               isBenchmark: Boolean(item.is_benchmark || 0),
               comment: item.comment || '',
-              climbedAt: new Date(item.climbed_at),
-              updatedAt: new Date(),
-              auroraSyncedAt: new Date(),
+              climbedAt: new Date(item.climbed_at).toISOString(),
+              updatedAt: new Date().toISOString(),
+              auroraSyncedAt: new Date().toISOString(),
             },
           });
       }
@@ -280,12 +280,12 @@ async function upsertTableData(
             difficulty: null,
             isBenchmark: false,
             comment: item.comment || '',
-            climbedAt: new Date(item.climbed_at),
-            createdAt: new Date(item.created_at),
-            updatedAt: new Date(),
+            climbedAt: new Date(item.climbed_at).toISOString(),
+            createdAt: new Date(item.created_at).toISOString(),
+            updatedAt: new Date().toISOString(),
             auroraType: 'bids',
             auroraId: item.uuid,
-            auroraSyncedAt: new Date(),
+            auroraSyncedAt: new Date().toISOString(),
           })
           .onConflictDoUpdate({
             target: boardseshTicks.auroraId,
@@ -295,9 +295,9 @@ async function upsertTableData(
               isMirror: Boolean(item.is_mirror),
               attemptCount: Number(item.bid_count || 1),
               comment: item.comment || '',
-              climbedAt: new Date(item.climbed_at),
-              updatedAt: new Date(),
-              auroraSyncedAt: new Date(),
+              climbedAt: new Date(item.climbed_at).toISOString(),
+              updatedAt: new Date().toISOString(),
+              auroraSyncedAt: new Date().toISOString(),
             },
           });
       }

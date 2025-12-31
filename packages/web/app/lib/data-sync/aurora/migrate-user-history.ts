@@ -84,12 +84,12 @@ export async function migrateUserAuroraHistory(
         difficulty: Number(ascent.difficulty),
         isBenchmark: Boolean(ascent.isBenchmark || 0),
         comment: ascent.comment || '',
-        climbedAt: new Date(ascent.climbedAt),
-        createdAt: new Date(ascent.createdAt),
-        updatedAt: new Date(),
+        climbedAt: new Date(ascent.climbedAt).toISOString(),
+        createdAt: new Date(ascent.createdAt).toISOString(),
+        updatedAt: new Date().toISOString(),
         auroraType: 'ascents',
         auroraId: ascent.uuid,
-        auroraSyncedAt: new Date(),
+        auroraSyncedAt: new Date().toISOString(),
       });
 
       totalMigrated++;
@@ -116,12 +116,12 @@ export async function migrateUserAuroraHistory(
         difficulty: null,
         isBenchmark: false,
         comment: bid.comment || '',
-        climbedAt: new Date(bid.climbedAt),
-        createdAt: new Date(bid.createdAt),
-        updatedAt: new Date(),
+        climbedAt: new Date(bid.climbedAt).toISOString(),
+        createdAt: new Date(bid.createdAt).toISOString(),
+        updatedAt: new Date().toISOString(),
         auroraType: 'bids',
         auroraId: bid.uuid,
-        auroraSyncedAt: new Date(),
+        auroraSyncedAt: new Date().toISOString(),
       });
 
       totalMigrated++;
