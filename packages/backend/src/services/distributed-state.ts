@@ -255,6 +255,35 @@ const REFRESH_TTL_SCRIPT = `
  *
  * This enables true horizontal scaling without sticky sessions.
  */
+/**
+ * Validate connectionId format to prevent Redis key injection.
+ * ConnectionIds should be UUIDs or similar safe identifiers.
+ */
+function validateConnectionId(connectionId: string): void {
+  // Allow alphanumeric, hyphens, and underscores (UUID-compatible)
+  // Max length prevents memory attacks
+  if (!connectionId || connectionId.length > 128 || !/^[a-zA-Z0-9_-]+$/.test(connectionId)) {
+    throw new Error(`Invalid connectionId format: ${connectionId.slice(0, 20)}`);
+  }
+}
+
+/**
+ * Validate sessionId format to prevent Redis key injection.
+ */
+function validateSessionId(sessionId: string): void {
+  if (!sessionId || sessionId.length > 128 || !/^[a-zA-Z0-9_-]+$/.test(sessionId)) {
+    throw new Error(`Invalid sessionId format: ${sessionId.slice(0, 20)}`);
+  }
+}
+
+/**
+ * DistributedStateManager provides cross-instance state management for:
+ * - Connection tracking
+ * - Session membership
+ * - Leader election
+ *
+ * This enables true horizontal scaling without sticky sessions.
+ */
 export class DistributedStateManager {
   private readonly instanceId: string;
   private heartbeatInterval: NodeJS.Timeout | null = null;
@@ -300,15 +329,30 @@ export class DistributedStateManager {
    * Stop background tasks and clean up instance state.
    */
   async stop(): Promise<void> {
-    if (this.heartbeatInterval) {
-      clearInterval(this.heartbeatInterval);
-      this.heartbeatInterval = null;
-    }
+    this.stopHeartbeat();
 
     // Clean up all connections for this instance
     await this.cleanupInstanceConnections();
 
     console.log(`[DistributedState] Stopped instance: ${this.instanceId.slice(0, 8)}`);
+  }
+
+  /**
+   * Stop only the heartbeat interval synchronously.
+   * Used by forceResetDistributedState to prevent memory leaks.
+   */
+  stopHeartbeat(): void {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+    }
+  }
+
+  /**
+   * Check if the manager has been stopped (heartbeat cleared).
+   */
+  isStopped(): boolean {
+    return this.heartbeatInterval === null;
   }
 
   /**
@@ -320,6 +364,8 @@ export class DistributedStateManager {
     userId?: string | null,
     avatarUrl?: string | null
   ): Promise<void> {
+    validateConnectionId(connectionId);
+
     const connection: DistributedConnection = {
       connectionId,
       instanceId: this.instanceId,
@@ -355,6 +401,8 @@ export class DistributedStateManager {
     connectionId: string,
     electNewLeader: boolean = true
   ): Promise<{ sessionId: string | null; wasLeader: boolean; newLeaderId: string | null }> {
+    validateConnectionId(connectionId);
+
     // Get current connection state
     const connection = await this.getConnection(connectionId);
     if (!connection) {
@@ -441,6 +489,9 @@ export class DistributedStateManager {
     username?: string,
     avatarUrl?: string | null
   ): Promise<{ isLeader: boolean }> {
+    validateConnectionId(connectionId);
+    validateSessionId(sessionId);
+
     // Update connection with session info
     const updates: Record<string, string> = {
       sessionId,
@@ -487,6 +538,9 @@ export class DistributedStateManager {
    * Returns the new leader's connectionId if leadership changed.
    */
   async leaveSession(connectionId: string, sessionId: string): Promise<{ newLeaderId: string | null }> {
+    validateConnectionId(connectionId);
+    validateSessionId(sessionId);
+
     try {
       // Use atomic script that checks leader, updates connection, and elects new leader
       const result = await this.redis.eval(
@@ -517,12 +571,41 @@ export class DistributedStateManager {
       return { newLeaderId: result };
     } catch (err) {
       console.error(`[DistributedState] Failed to leave session ${sessionId.slice(0, 8)}:`, err);
-      // Fallback: try to clean up manually
+      // Fallback: try to clean up manually and handle leader election
       try {
+        // First check if this connection was the leader before cleanup
+        const currentLeader = await this.redis.get(KEYS.sessionLeader(sessionId));
+        const wasLeader = currentLeader === connectionId;
+
+        // Clean up the connection's session state
         const multi = this.redis.multi();
         multi.hmset(KEYS.connection(connectionId), { sessionId: '', isLeader: 'false' });
         multi.srem(KEYS.sessionMembers(sessionId), connectionId);
         await multi.exec();
+
+        // If was leader, try to elect a new one
+        if (wasLeader) {
+          try {
+            const newLeaderId = await this.redis.eval(
+              ELECT_NEW_LEADER_SCRIPT,
+              2,
+              KEYS.sessionMembers(sessionId),
+              KEYS.sessionLeader(sessionId),
+              connectionId,
+              TTL.sessionMembership.toString(),
+              TTL.sessionMembership.toString()
+            ) as string | null;
+
+            if (newLeaderId) {
+              console.log(`[DistributedState] Fallback: elected new leader ${newLeaderId.slice(0, 8)} for session ${sessionId.slice(0, 8)}`);
+              return { newLeaderId };
+            }
+          } catch (electionErr) {
+            console.error(`[DistributedState] Fallback leader election failed:`, electionErr);
+            // Clear the leader key to allow next join to become leader
+            await this.redis.del(KEYS.sessionLeader(sessionId)).catch(() => {});
+          }
+        }
       } catch {
         // Ignore fallback error
       }
@@ -651,19 +734,31 @@ export class DistributedStateManager {
 
   /**
    * Clean up all connections belonging to this instance.
-   * Called on graceful shutdown. removeConnection handles leader election automatically.
+   * Called on graceful shutdown. Uses parallel cleanup with Promise.allSettled.
+   * removeConnection handles leader election automatically.
    */
   private async cleanupInstanceConnections(): Promise<void> {
     const connectionIds = await this.redis.smembers(KEYS.instanceConnections(this.instanceId));
-    const failedConnectionIds: string[] = [];
 
-    for (const connectionId of connectionIds) {
-      try {
-        // removeConnection now handles leader election automatically
-        await this.removeConnection(connectionId);
-      } catch (err) {
-        console.error(`[DistributedState] Failed to remove connection ${connectionId.slice(0, 8)} during cleanup:`, err);
-        failedConnectionIds.push(connectionId);
+    if (connectionIds.length === 0) {
+      return;
+    }
+
+    // Use Promise.allSettled for parallel cleanup - faster than sequential
+    const results = await Promise.allSettled(
+      connectionIds.map((connectionId) => this.removeConnection(connectionId))
+    );
+
+    // Collect failed connection IDs
+    const failedConnectionIds: string[] = [];
+    for (let i = 0; i < results.length; i++) {
+      const result = results[i];
+      if (result.status === 'rejected') {
+        console.error(
+          `[DistributedState] Failed to remove connection ${connectionIds[i].slice(0, 8)} during cleanup:`,
+          result.reason
+        );
+        failedConnectionIds.push(connectionIds[i]);
       }
     }
 
@@ -786,14 +881,24 @@ export async function resetDistributedState(): Promise<void> {
 }
 
 /**
- * Force reset the singleton state synchronously without cleanup.
- * WARNING: Only use this if you've already called stop() on the manager,
- * or in test teardown where cleanup is handled separately.
- * This can leave orphaned heartbeat intervals and connections in Redis.
+ * Force reset the singleton state synchronously.
+ * This clears the heartbeat interval to prevent memory leaks, but does NOT
+ * clean up Redis state (connections, sessions). Use this in tests where
+ * Redis cleanup is handled separately, or when you need a synchronous reset.
+ *
+ * For proper cleanup including Redis state, use shutdownDistributedState() instead.
  */
 export function forceResetDistributedState(): void {
   if (distributedStateManager) {
-    console.warn('[DistributedState] Force resetting singleton - ensure stop() was called first');
+    // Check if stop() was already called by checking if heartbeat is cleared
+    if (!distributedStateManager.isStopped()) {
+      console.warn(
+        '[DistributedState] Force resetting without prior stop() - ' +
+          'clearing heartbeat interval but Redis state may be orphaned'
+      );
+      // Clear the heartbeat interval to prevent memory leak
+      distributedStateManager.stopHeartbeat();
+    }
   }
   distributedStateManager = null;
 }
