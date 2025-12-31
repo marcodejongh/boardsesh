@@ -101,23 +101,32 @@ sequenceDiagram
     WS->>C: ConnectionAck
 
     C->>WS: Execute joinSession mutation
-    WS->>RM: joinSession(connectionId, sessionId, boardPath)
+    Note over C,WS: With optional initialQueue & initialCurrentClimb
+    WS->>RM: joinSession(connectionId, sessionId, boardPath, initialQueue?)
 
     alt Session exists in memory
         RM->>RM: Add client to session
+        Note over RM: initialQueue ignored (session has state)
     else Session exists in Redis (inactive)
         RM->>R: getSession(sessionId)
         R-->>RM: Session data
         RM->>RM: Restore to memory
+        Note over RM: initialQueue ignored (restored state)
     else Session exists in Postgres (dormant)
         RM->>PG: SELECT session, queue
         PG-->>RM: Session data
         RM->>R: saveSession()
         RM->>RM: Restore to memory
+        Note over RM: initialQueue ignored (restored state)
     else New session
         RM->>PG: INSERT session
         RM->>R: saveSession()
         RM->>RM: Create in memory
+        alt Has initialQueue
+            RM->>RM: Initialize queue with provided items
+            RM->>PG: INSERT queue state (immediate)
+            RM->>R: Save queue state
+        end
     end
 
     RM-->>WS: {clientId, users, queueState, isLeader}
@@ -140,6 +149,45 @@ sequenceDiagram
 2. **Authentication**: Optional auth token passed in `connectionParams`
 3. **Eager Subscription**: Queue subscription starts BEFORE fetching state to prevent race conditions
 4. **Session Restoration**: Sessions can be restored from Redis (hot) or PostgreSQL (cold)
+5. **Initial Queue Seeding**: When creating a new session, clients can provide `initialQueue` and `initialCurrentClimb` to seed the session with an existing local queue (e.g., when starting party mode with climbs already queued)
+
+### Initial Queue Seeding
+
+When a user starts party mode while they already have climbs in their local queue, the client sends the existing queue along with the `joinSession` mutation. This ensures users don't lose their queued climbs when transitioning to party mode.
+
+**GraphQL Mutation Parameters:**
+```graphql
+mutation JoinSession(
+  $sessionId: ID!
+  $boardPath: String!
+  $username: String
+  $avatarUrl: String
+  $initialQueue: [ClimbQueueItemInput!]    # Optional: existing queue items
+  $initialCurrentClimb: ClimbQueueItemInput # Optional: current climb
+) {
+  joinSession(
+    sessionId: $sessionId
+    boardPath: $boardPath
+    username: $username
+    avatarUrl: $avatarUrl
+    initialQueue: $initialQueue
+    initialCurrentClimb: $initialCurrentClimb
+  ) { ... }
+}
+```
+
+**Behavior:**
+- `initialQueue` and `initialCurrentClimb` are **only applied when creating a new session**
+- If joining an existing session (active, inactive, or dormant), the initial queue is ignored and the existing session state is used
+- The queue is persisted immediately to Postgres (not debounced) to ensure durability for new sessions
+- All users who join after the initial seed will receive the seeded queue state
+
+**Client Flow (PersistentSessionContext):**
+1. User calls `startSession()` which generates a new session ID
+2. Client stores current queue in `pendingInitialQueue` via `setInitialQueueForSession()`
+3. On WebSocket connection, the `joinSession` mutation includes the initial queue data
+4. Server initializes the new session with the provided queue items
+5. Client clears `pendingInitialQueue` after successful join
 
 ---
 
