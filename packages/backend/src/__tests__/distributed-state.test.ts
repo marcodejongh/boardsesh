@@ -547,3 +547,208 @@ describe('DistributedStateManager - Edge Cases', () => {
     expect(leader).toBeNull();
   });
 });
+
+describe('DistributedStateManager - removeConnection with leader election', () => {
+  let redis: Redis;
+  let manager: DistributedStateManager;
+
+  beforeAll(async () => {
+    redis = new Redis(REDIS_URL);
+    await new Promise<void>((resolve) => redis.once('ready', resolve));
+  });
+
+  afterAll(async () => {
+    await redis.quit();
+  });
+
+  beforeEach(async () => {
+    try {
+      const keys = await redis.keys('boardsesh:*');
+      if (keys.length > 0) {
+        await redis.del(...keys);
+      }
+    } catch (err) {
+      console.warn('Failed to clean up test keys:', err);
+    }
+    manager = new DistributedStateManager(redis, 'remove-test-instance');
+  });
+
+  afterEach(async () => {
+    await manager.stop();
+  });
+
+  it('should automatically elect new leader when removing leader connection', async () => {
+    await manager.registerConnection('leader-conn', 'Leader');
+    await manager.registerConnection('member-conn', 'Member');
+
+    await manager.joinSession('leader-conn', 'auto-elect-session');
+    await manager.joinSession('member-conn', 'auto-elect-session');
+
+    // Verify leader-conn is leader
+    const initialLeader = await manager.getSessionLeader('auto-elect-session');
+    expect(initialLeader).toBe('leader-conn');
+
+    // Remove leader using removeConnection (should auto-elect)
+    const result = await manager.removeConnection('leader-conn');
+
+    expect(result.sessionId).toBe('auto-elect-session');
+    expect(result.wasLeader).toBe(true);
+    expect(result.newLeaderId).toBe('member-conn');
+
+    // Verify new leader is set
+    const newLeader = await manager.getSessionLeader('auto-elect-session');
+    expect(newLeader).toBe('member-conn');
+
+    // Verify new leader has isLeader flag
+    const memberConn = await manager.getConnection('member-conn');
+    expect(memberConn!.isLeader).toBe(true);
+  });
+
+  it('should skip leader election when electNewLeader is false', async () => {
+    await manager.registerConnection('leader-conn', 'Leader');
+    await manager.registerConnection('member-conn', 'Member');
+
+    await manager.joinSession('leader-conn', 'skip-elect-session');
+    await manager.joinSession('member-conn', 'skip-elect-session');
+
+    // Remove leader but skip auto-election
+    const result = await manager.removeConnection('leader-conn', false);
+
+    expect(result.wasLeader).toBe(true);
+    expect(result.newLeaderId).toBeNull(); // No election happened
+
+    // Leader key still points to removed connection (stale)
+    const leaderKey = await manager.getSessionLeader('skip-elect-session');
+    expect(leaderKey).toBe('leader-conn');
+  });
+
+  it('should return newLeaderId as null when removing non-leader', async () => {
+    await manager.registerConnection('leader-conn', 'Leader');
+    await manager.registerConnection('member-conn', 'Member');
+
+    await manager.joinSession('leader-conn', 'non-leader-session');
+    await manager.joinSession('member-conn', 'non-leader-session');
+
+    // Remove member (not leader)
+    const result = await manager.removeConnection('member-conn');
+
+    expect(result.wasLeader).toBe(false);
+    expect(result.newLeaderId).toBeNull();
+
+    // Leader should still be leader-conn
+    const leader = await manager.getSessionLeader('non-leader-session');
+    expect(leader).toBe('leader-conn');
+  });
+});
+
+describe('DistributedStateManager - refreshConnection', () => {
+  let redis: Redis;
+  let manager: DistributedStateManager;
+
+  beforeAll(async () => {
+    redis = new Redis(REDIS_URL);
+    await new Promise<void>((resolve) => redis.once('ready', resolve));
+  });
+
+  afterAll(async () => {
+    await redis.quit();
+  });
+
+  beforeEach(async () => {
+    try {
+      const keys = await redis.keys('boardsesh:*');
+      if (keys.length > 0) {
+        await redis.del(...keys);
+      }
+    } catch (err) {
+      console.warn('Failed to clean up test keys:', err);
+    }
+    manager = new DistributedStateManager(redis, 'refresh-test-instance');
+  });
+
+  afterEach(async () => {
+    await manager.stop();
+  });
+
+  it('should return true when refreshing existing connection', async () => {
+    await manager.registerConnection('refresh-conn', 'RefreshUser');
+
+    const result = await manager.refreshConnection('refresh-conn');
+    expect(result).toBe(true);
+  });
+
+  it('should return false when refreshing non-existent connection', async () => {
+    const result = await manager.refreshConnection('non-existent-conn');
+    expect(result).toBe(false);
+  });
+
+  it('should refresh session membership TTL when connection is in session', async () => {
+    await manager.registerConnection('session-refresh-conn', 'SessionUser');
+    await manager.joinSession('session-refresh-conn', 'refresh-session');
+
+    // Get initial TTL (should be around 4 hours = 14400 seconds)
+    const initialTTL = await redis.ttl('boardsesh:session:refresh-session:members');
+    expect(initialTTL).toBeGreaterThan(14000);
+
+    // Wait a tiny bit and refresh
+    await new Promise((r) => setTimeout(r, 100));
+    await manager.refreshConnection('session-refresh-conn');
+
+    // TTL should still be high (refreshed)
+    const afterTTL = await redis.ttl('boardsesh:session:refresh-session:members');
+    expect(afterTTL).toBeGreaterThan(14000);
+  });
+});
+
+describe('DistributedStateManager - old leader flag reset', () => {
+  let redis: Redis;
+  let manager: DistributedStateManager;
+
+  beforeAll(async () => {
+    redis = new Redis(REDIS_URL);
+    await new Promise<void>((resolve) => redis.once('ready', resolve));
+  });
+
+  afterAll(async () => {
+    await redis.quit();
+  });
+
+  beforeEach(async () => {
+    try {
+      const keys = await redis.keys('boardsesh:*');
+      if (keys.length > 0) {
+        await redis.del(...keys);
+      }
+    } catch (err) {
+      console.warn('Failed to clean up test keys:', err);
+    }
+    manager = new DistributedStateManager(redis, 'flag-reset-instance');
+  });
+
+  afterEach(async () => {
+    await manager.stop();
+  });
+
+  it('should reset old leader isLeader flag when electing new leader', async () => {
+    await manager.registerConnection('old-leader', 'OldLeader');
+    await manager.registerConnection('new-leader', 'NewLeader');
+
+    await manager.joinSession('old-leader', 'flag-reset-session');
+    await manager.joinSession('new-leader', 'flag-reset-session');
+
+    // Verify old-leader is leader with isLeader=true
+    const oldLeaderBefore = await manager.getConnection('old-leader');
+    expect(oldLeaderBefore!.isLeader).toBe(true);
+
+    // Old leader leaves, new leader should be elected
+    await manager.leaveSession('old-leader', 'flag-reset-session');
+
+    // Verify old leader's isLeader flag is now false
+    const oldLeaderAfter = await manager.getConnection('old-leader');
+    expect(oldLeaderAfter!.isLeader).toBe(false);
+
+    // Verify new leader has isLeader=true
+    const newLeaderAfter = await manager.getConnection('new-leader');
+    expect(newLeaderAfter!.isLeader).toBe(true);
+  });
+});

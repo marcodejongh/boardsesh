@@ -90,7 +90,7 @@ const LEADER_TRANSFER_SCRIPT = `
 /**
  * Lua script to elect new leader from session members.
  * Picks the member with the earliest connectedAt timestamp.
- * Also refreshes the TTL on session members to prevent expiry during long sessions.
+ * Also clears the old leader's isLeader flag and refreshes TTL.
  * Returns: connectionId of new leader, or nil if no members
  */
 const ELECT_NEW_LEADER_SCRIPT = `
@@ -98,6 +98,15 @@ const ELECT_NEW_LEADER_SCRIPT = `
   local leaderKey = KEYS[2]
   local leavingConnectionId = ARGV[1]
   local membersTTL = tonumber(ARGV[2])
+
+  -- Get and clear old leader's isLeader flag first
+  local oldLeader = redis.call('GET', leaderKey)
+  if oldLeader and oldLeader ~= leavingConnectionId then
+    local oldLeaderConnKey = 'boardsesh:conn:' .. oldLeader
+    if redis.call('EXISTS', oldLeaderConnKey) == 1 then
+      redis.call('HSET', oldLeaderConnKey, 'isLeader', 'false')
+    end
+  end
 
   -- Get all members except the leaving one
   local members = redis.call('SMEMBERS', sessionMembersKey)
@@ -127,7 +136,7 @@ const ELECT_NEW_LEADER_SCRIPT = `
   -- Set new leader
   redis.call('SET', leaderKey, newLeaderId)
 
-  -- Update isLeader flag on the connection
+  -- Update isLeader flag on the new leader connection
   local connKey = 'boardsesh:conn:' .. newLeaderId
   redis.call('HSET', connKey, 'isLeader', 'true')
 
@@ -137,6 +146,34 @@ const ELECT_NEW_LEADER_SCRIPT = `
   end
 
   return newLeaderId
+`;
+
+/**
+ * Lua script for atomic TTL refresh of connection and session membership.
+ * Atomically refreshes both TTLs based on the connection's current session.
+ * Returns: 1 if successful, 0 if connection doesn't exist
+ */
+const REFRESH_TTL_SCRIPT = `
+  local connKey = KEYS[1]
+  local connTTL = tonumber(ARGV[1])
+  local sessionTTL = tonumber(ARGV[2])
+
+  -- Check if connection exists
+  if redis.call('EXISTS', connKey) == 0 then
+    return 0
+  end
+
+  -- Refresh connection TTL
+  redis.call('EXPIRE', connKey, connTTL)
+
+  -- Get session ID and refresh session membership TTL if in a session
+  local sessionId = redis.call('HGET', connKey, 'sessionId')
+  if sessionId and sessionId ~= '' then
+    local sessionMembersKey = 'boardsesh:session:' .. sessionId .. ':members'
+    redis.call('EXPIRE', sessionMembersKey, sessionTTL)
+  end
+
+  return 1
 `;
 
 /**
@@ -239,12 +276,18 @@ export class DistributedStateManager {
 
   /**
    * Remove a connection from distributed state.
+   * Automatically handles leader election if the removed connection was a leader.
+   * @param connectionId - The connection to remove
+   * @param electNewLeader - Whether to automatically elect a new leader (default: true)
    */
-  async removeConnection(connectionId: string): Promise<{ sessionId: string | null; wasLeader: boolean }> {
+  async removeConnection(
+    connectionId: string,
+    electNewLeader: boolean = true
+  ): Promise<{ sessionId: string | null; wasLeader: boolean; newLeaderId: string | null }> {
     // Get current connection state
     const connection = await this.getConnection(connectionId);
     if (!connection) {
-      return { sessionId: null, wasLeader: false };
+      return { sessionId: null, wasLeader: false, newLeaderId: null };
     }
 
     const sessionId = connection.sessionId;
@@ -267,7 +310,34 @@ export class DistributedStateManager {
 
     console.log(`[DistributedState] Removed connection: ${connectionId.slice(0, 8)}`);
 
-    return { sessionId, wasLeader };
+    // Automatically elect new leader if was leader and requested
+    let newLeaderId: string | null = null;
+    if (sessionId && wasLeader && electNewLeader) {
+      try {
+        newLeaderId = await this.redis.eval(
+          ELECT_NEW_LEADER_SCRIPT,
+          2,
+          KEYS.sessionMembers(sessionId),
+          KEYS.sessionLeader(sessionId),
+          connectionId,
+          TTL.sessionMembership.toString()
+        ) as string | null;
+
+        if (newLeaderId) {
+          console.log(`[DistributedState] Elected new leader: ${newLeaderId.slice(0, 8)} after removing ${connectionId.slice(0, 8)}`);
+        }
+      } catch (err) {
+        console.error(`[DistributedState] Failed to elect new leader after removing ${connectionId.slice(0, 8)}:`, err);
+        // Clear the leader key to allow next join to become leader
+        try {
+          await this.redis.del(KEYS.sessionLeader(sessionId));
+        } catch {
+          // Ignore cleanup error
+        }
+      }
+    }
+
+    return { sessionId, wasLeader, newLeaderId };
   }
 
   /**
@@ -453,22 +523,21 @@ export class DistributedStateManager {
   }
 
   /**
-   * Refresh connection TTL and session membership TTL (call periodically for active connections).
-   * This prevents long sessions from having their membership expire.
+   * Refresh connection TTL and session membership TTL atomically.
+   * Uses a Lua script to avoid race conditions where the session might change
+   * between reading the connection and refreshing TTLs.
+   * @returns true if connection exists and was refreshed, false otherwise
    */
-  async refreshConnection(connectionId: string): Promise<void> {
-    // Get connection to check if in a session
-    const connection = await this.getConnection(connectionId);
+  async refreshConnection(connectionId: string): Promise<boolean> {
+    const result = await this.redis.eval(
+      REFRESH_TTL_SCRIPT,
+      1,
+      KEYS.connection(connectionId),
+      TTL.connection.toString(),
+      TTL.sessionMembership.toString()
+    ) as number;
 
-    const multi = this.redis.multi();
-    multi.expire(KEYS.connection(connectionId), TTL.connection);
-
-    // Also refresh session membership TTL if in a session
-    if (connection?.sessionId) {
-      multi.expire(KEYS.sessionMembers(connection.sessionId), TTL.sessionMembership);
-    }
-
-    await multi.exec();
+    return result === 1;
   }
 
   /**
@@ -511,7 +580,7 @@ export class DistributedStateManager {
 
   /**
    * Clean up all connections belonging to this instance.
-   * Called on graceful shutdown.
+   * Called on graceful shutdown. removeConnection handles leader election automatically.
    */
   private async cleanupInstanceConnections(): Promise<void> {
     const connectionIds = await this.redis.smembers(KEYS.instanceConnections(this.instanceId));
@@ -519,23 +588,8 @@ export class DistributedStateManager {
 
     for (const connectionId of connectionIds) {
       try {
-        const { sessionId, wasLeader } = await this.removeConnection(connectionId);
-
-        // Handle leader election if needed
-        if (sessionId && wasLeader) {
-          try {
-            await this.redis.eval(
-              ELECT_NEW_LEADER_SCRIPT,
-              2,
-              KEYS.sessionMembers(sessionId),
-              KEYS.sessionLeader(sessionId),
-              connectionId,
-              TTL.sessionMembership.toString()
-            );
-          } catch (err) {
-            console.error(`[DistributedState] Failed to elect new leader during cleanup for ${connectionId.slice(0, 8)}:`, err);
-          }
-        }
+        // removeConnection now handles leader election automatically
+        await this.removeConnection(connectionId);
       } catch (err) {
         console.error(`[DistributedState] Failed to remove connection ${connectionId.slice(0, 8)} during cleanup:`, err);
         failedConnectionIds.push(connectionId);
@@ -642,9 +696,25 @@ export async function shutdownDistributedState(): Promise<void> {
 
 /**
  * Reset the singleton state (for testing and hot-reload scenarios).
- * This clears the singleton without calling stop() on it.
- * Use shutdownDistributedState() for graceful cleanup.
+ * This stops the manager (clearing intervals and cleaning up connections) before clearing.
+ * For synchronous reset without cleanup (e.g., after manual stop()), use forceResetDistributedState().
  */
-export function resetDistributedState(): void {
+export async function resetDistributedState(): Promise<void> {
+  if (distributedStateManager) {
+    await distributedStateManager.stop();
+    distributedStateManager = null;
+  }
+}
+
+/**
+ * Force reset the singleton state synchronously without cleanup.
+ * WARNING: Only use this if you've already called stop() on the manager,
+ * or in test teardown where cleanup is handled separately.
+ * This can leave orphaned heartbeat intervals and connections in Redis.
+ */
+export function forceResetDistributedState(): void {
+  if (distributedStateManager) {
+    console.warn('[DistributedState] Force resetting singleton - ensure stop() was called first');
+  }
   distributedStateManager = null;
 }

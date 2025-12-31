@@ -404,17 +404,37 @@ class RoomManager {
     return { sessionId, newLeaderId };
   }
 
-  async removeClient(connectionId: string): Promise<void> {
+  /**
+   * Remove a client from the system.
+   * @returns Object indicating success/failure of distributed state cleanup.
+   *          Local cleanup always succeeds.
+   */
+  async removeClient(connectionId: string): Promise<{ distributedStateCleanedUp: boolean }> {
+    let distributedStateCleanedUp = true;
+
     // Remove from distributed state first to ensure consistency
     if (this.distributedState) {
       try {
-        await this.distributedState.removeConnection(connectionId);
+        const result = await this.distributedState.removeConnection(connectionId);
+        // Log if there was a leader change from this removal
+        if (result.newLeaderId) {
+          console.log(`[RoomManager] New leader ${result.newLeaderId.slice(0, 8)} elected after client removal`);
+        }
       } catch (err) {
         // Log but continue with local cleanup - don't leave ghost clients locally
-        console.error(`[RoomManager] Failed to remove connection from distributed state: ${err}`);
+        // The distributed state may have partial data that will eventually expire via TTL
+        distributedStateCleanedUp = false;
+        console.error(
+          `[RoomManager] Failed to remove connection ${connectionId.slice(0, 8)} from distributed state. ` +
+          `Redis data may remain until TTL expires. Error: ${err}`
+        );
       }
     }
+
+    // Always clean up local state to prevent memory leaks
     this.clients.delete(connectionId);
+
+    return { distributedStateCleanedUp };
   }
 
   /**
