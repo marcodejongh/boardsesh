@@ -15,6 +15,10 @@
     {
       "path": "/api/internal/user-sync-cron",
       "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/internal/migrate-users-cron",
+      "schedule": "0 3 * * *"
     }
   ]
 }

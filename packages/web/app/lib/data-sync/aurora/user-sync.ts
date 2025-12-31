@@ -6,12 +6,33 @@ import { eq, and, inArray } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/neon-serverless';
 import { NeonDatabase } from 'drizzle-orm/neon-serverless';
 import { getTable } from '../../db/queries/util/table-select';
+import { boardseshTicks, auroraCredentials } from '../../db/schema';
+import { randomUUID } from 'crypto';
+import { convertQuality } from './convert-quality';
+
+/**
+ * Get NextAuth user ID from Aurora user ID
+ */
+async function getNextAuthUserId(
+  db: NeonDatabase<Record<string, never>>,
+  boardName: BoardName,
+  auroraUserId: number,
+): Promise<string | null> {
+  const result = await db
+    .select({ userId: auroraCredentials.userId })
+    .from(auroraCredentials)
+    .where(and(eq(auroraCredentials.boardType, boardName), eq(auroraCredentials.auroraUserId, auroraUserId)))
+    .limit(1);
+
+  return result[0]?.userId || null;
+}
 
 async function upsertTableData(
   db: NeonDatabase<Record<string, never>>,
   boardName: BoardName,
   tableName: string,
-  userId: number,
+  auroraUserId: number,
+  nextAuthUserId: string,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data: any[],
 ) {
@@ -45,7 +66,7 @@ async function upsertTableData(
           .insert(wallsSchema)
           .values({
             uuid: item.uuid,
-            userId: Number(userId),
+            userId: Number(auroraUserId),
             name: item.name,
             productId: Number(item.product_id),
             isAdjustable: Boolean(item.is_adjustable),
@@ -80,7 +101,7 @@ async function upsertTableData(
           .values({
             uuid: item.uuid,
             layoutId: Number(item.layout_id),
-            setterId: Number(userId),
+            setterId: Number(auroraUserId),
             setterUsername: item.setter_username || '',
             name: item.name || 'Untitled Draft',
             description: item.description || '',
@@ -101,7 +122,7 @@ async function upsertTableData(
             target: climbsSchema.uuid,
             set: {
               layoutId: Number(item.layout_id),
-              setterId: Number(userId),
+              setterId: Number(auroraUserId),
               setterUsername: item.setter_username || '',
               name: item.name || 'Untitled Draft',
               description: item.description || '',
@@ -125,6 +146,7 @@ async function upsertTableData(
     case 'ascents': {
       const ascentsSchema = getTable('ascents', boardName);
       for (const item of data) {
+        // Write to Aurora table
         await db
           .insert(ascentsSchema)
           .values({
@@ -132,7 +154,7 @@ async function upsertTableData(
             climbUuid: item.climb_uuid,
             angle: Number(item.angle),
             isMirror: Boolean(item.is_mirror),
-            userId: Number(userId),
+            userId: Number(auroraUserId),
             attemptId: Number(item.attempt_id),
             bidCount: Number(item.bid_count || 1),
             quality: Number(item.quality),
@@ -157,6 +179,52 @@ async function upsertTableData(
               climbedAt: item.climbed_at,
             },
           });
+
+        // Dual write to boardsesh_ticks (only if we have NextAuth user ID)
+        if (nextAuthUserId) {
+          const status = Number(item.attempt_id) === 1 ? 'flash' : 'send';
+          const convertedQuality = convertQuality(item.quality);
+
+          await db
+            .insert(boardseshTicks)
+            .values({
+              uuid: randomUUID(),
+              userId: nextAuthUserId,
+              boardType: boardName,
+              climbUuid: item.climb_uuid,
+              angle: Number(item.angle),
+              isMirror: Boolean(item.is_mirror),
+              status: status,
+              attemptCount: Number(item.bid_count || 1),
+              quality: convertedQuality,
+              difficulty: item.difficulty ? Number(item.difficulty) : null,
+              isBenchmark: Boolean(item.is_benchmark || 0),
+              comment: item.comment || '',
+              climbedAt: new Date(item.climbed_at).toISOString(),
+              createdAt: item.created_at ? new Date(item.created_at).toISOString() : new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              auroraType: 'ascents',
+              auroraId: item.uuid,
+              auroraSyncedAt: new Date().toISOString(),
+            })
+            .onConflictDoUpdate({
+              target: boardseshTicks.auroraId,
+              set: {
+                climbUuid: item.climb_uuid,
+                angle: Number(item.angle),
+                isMirror: Boolean(item.is_mirror),
+                status: status,
+                attemptCount: Number(item.bid_count || 1),
+                quality: convertedQuality,
+                difficulty: item.difficulty ? Number(item.difficulty) : null,
+                isBenchmark: Boolean(item.is_benchmark || 0),
+                comment: item.comment || '',
+                climbedAt: new Date(item.climbed_at).toISOString(),
+                updatedAt: new Date().toISOString(),
+                auroraSyncedAt: new Date().toISOString(),
+              },
+            });
+        }
       }
       break;
     }
@@ -164,11 +232,12 @@ async function upsertTableData(
     case 'bids': {
       const bidsSchema = getTable('bids', boardName);
       for (const item of data) {
+        // Write to Aurora table
         await db
           .insert(bidsSchema)
           .values({
             uuid: item.uuid,
-            userId: Number(userId),
+            userId: Number(auroraUserId),
             climbUuid: item.climb_uuid,
             angle: Number(item.angle),
             isMirror: Boolean(item.is_mirror),
@@ -188,6 +257,45 @@ async function upsertTableData(
               climbedAt: item.climbed_at,
             },
           });
+
+        // Dual write to boardsesh_ticks (only if we have NextAuth user ID)
+        if (nextAuthUserId) {
+          await db
+            .insert(boardseshTicks)
+            .values({
+              uuid: randomUUID(),
+              userId: nextAuthUserId,
+              boardType: boardName,
+              climbUuid: item.climb_uuid,
+              angle: Number(item.angle),
+              isMirror: Boolean(item.is_mirror),
+              status: 'attempt',
+              attemptCount: Number(item.bid_count || 1),
+              quality: null,
+              difficulty: null,
+              isBenchmark: false,
+              comment: item.comment || '',
+              climbedAt: new Date(item.climbed_at).toISOString(),
+              createdAt: new Date(item.created_at).toISOString(),
+              updatedAt: new Date().toISOString(),
+              auroraType: 'bids',
+              auroraId: item.uuid,
+              auroraSyncedAt: new Date().toISOString(),
+            })
+            .onConflictDoUpdate({
+              target: boardseshTicks.auroraId,
+              set: {
+                climbUuid: item.climb_uuid,
+                angle: Number(item.angle),
+                isMirror: Boolean(item.is_mirror),
+                attemptCount: Number(item.bid_count || 1),
+                comment: item.comment || '',
+                climbedAt: new Date(item.climbed_at).toISOString(),
+                updatedAt: new Date().toISOString(),
+                auroraSyncedAt: new Date().toISOString(),
+              },
+            });
+        }
       }
       break;
     }
@@ -204,7 +312,7 @@ async function upsertTableData(
           .where(
             and(
               eq(tagsSchema.entityUuid, item.entity_uuid),
-              eq(tagsSchema.userId, Number(userId)),
+              eq(tagsSchema.userId, Number(auroraUserId)),
               eq(tagsSchema.name, item.name),
             ),
           )
@@ -214,7 +322,7 @@ async function upsertTableData(
         if (result.length === 0) {
           await db.insert(tagsSchema).values({
             entityUuid: item.entity_uuid,
-            userId: Number(userId),
+            userId: Number(auroraUserId),
             name: item.name,
             isListed: Boolean(item.is_listed),
           });
@@ -233,7 +341,7 @@ async function upsertTableData(
             name: item.name,
             description: item.description,
             color: item.color,
-            userId: Number(userId),
+            userId: Number(auroraUserId),
             isPublic: Boolean(item.is_public),
             createdAt: item.created_at,
             updatedAt: item.updated_at,
@@ -368,12 +476,26 @@ export async function syncUserData(
         // Create a drizzle instance for this transaction
         const tx = drizzle(client);
 
+        // Get NextAuth user ID for dual write to boardsesh_ticks
+        const nextAuthUserId = await getNextAuthUserId(tx, board, userId);
+        if (!nextAuthUserId) {
+          console.warn(`No NextAuth user found for Aurora user ${userId} on ${board}, skipping ascents/bids sync`);
+          // We can still sync other tables (users, walls, etc.) that don't need NextAuth user ID
+        }
+
         // Process each table - data is directly under table names
         for (const tableName of tables) {
           console.log(`Syncing ${tableName} for user ${userId} (batch ${syncAttempts})`);
           if (syncResults[tableName] && Array.isArray(syncResults[tableName])) {
             const data = syncResults[tableName];
-            await upsertTableData(tx, board, tableName, userId, data);
+
+            // Skip ascents/bids if no NextAuth user (can't dual write)
+            if ((tableName === 'ascents' || tableName === 'bids') && !nextAuthUserId) {
+              console.warn(`Skipping ${tableName} sync for Aurora user ${userId} - no NextAuth mapping`);
+              continue;
+            }
+
+            await upsertTableData(tx, board, tableName, userId, nextAuthUserId || '', data);
 
             // Accumulate results
             if (!totalResults[tableName]) {
