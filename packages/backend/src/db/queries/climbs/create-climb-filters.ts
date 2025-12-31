@@ -1,8 +1,7 @@
 import { eq, gte, sql, like, notLike, inArray, SQL } from 'drizzle-orm';
 import { TableSet, getTableName, type BoardName } from '../util/table-select.js';
 import type { SizeEdges } from '../util/product-sizes-data.js';
-
-export type HoldState = 'STARTING' | 'HAND' | 'FOOT' | 'FINISH' | 'OFF' | 'ANY' | 'NOT';
+import type { HoldState } from '@boardsesh/shared-schema';
 
 export interface ClimbSearchParams {
   // Pagination
