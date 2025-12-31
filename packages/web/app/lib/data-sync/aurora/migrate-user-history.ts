@@ -5,6 +5,7 @@ import { NeonDatabase } from 'drizzle-orm/neon-serverless';
 import { getTable } from '../../db/queries/util/table-select';
 import { boardseshTicks } from '../../db/schema';
 import { randomUUID } from 'crypto';
+import { eq, and, isNotNull } from 'drizzle-orm';
 
 /**
  * Convert Aurora quality (1-5) to Boardsesh quality (1-5)
@@ -44,7 +45,13 @@ export async function migrateUserAuroraHistory(
     const existingTicks = await db
       .select({ count: boardseshTicks.id })
       .from(boardseshTicks)
-      .where((bt) => bt.userId === nextAuthUserId && bt.boardType === boardType && bt.auroraId !== null)
+      .where(
+        and(
+          eq(boardseshTicks.userId, nextAuthUserId),
+          eq(boardseshTicks.boardType, boardType),
+          isNotNull(boardseshTicks.auroraId)
+        )
+      )
       .limit(1);
 
     if (existingTicks.length > 0) {
@@ -58,7 +65,7 @@ export async function migrateUserAuroraHistory(
     const ascents = await db
       .select()
       .from(ascentsSchema)
-      .where((a) => a.userId === auroraUserId);
+      .where(eq(ascentsSchema.userId, auroraUserId));
 
     for (const ascent of ascents) {
       const status = Number(ascent.attemptId) === 1 ? 'flash' : 'send';
@@ -93,7 +100,7 @@ export async function migrateUserAuroraHistory(
     const bids = await db
       .select()
       .from(bidsSchema)
-      .where((b) => b.userId === auroraUserId);
+      .where(eq(bidsSchema.userId, auroraUserId));
 
     for (const bid of bids) {
       await db.insert(boardseshTicks).values({
