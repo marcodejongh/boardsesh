@@ -16,6 +16,7 @@ import {
   EVENTS_REPLAY,
   SessionUser,
   QueueEvent,
+  SubscriptionQueueEvent,
   SessionEvent,
   QueueState,
   EventsReplayResponse,
@@ -27,6 +28,34 @@ import { usePartyProfile } from '../party-manager/party-profile-context';
 import { computeQueueStateHash } from '@/app/utils/hash';
 
 const DEBUG = process.env.NODE_ENV === 'development';
+
+/**
+ * Transform QueueEvent (from eventsReplay) to SubscriptionQueueEvent format.
+ * eventsReplay returns server format with `item`, but handlers expect subscription
+ * format with `addedItem`/`currentItem`.
+ */
+function transformToSubscriptionEvent(event: QueueEvent): SubscriptionQueueEvent {
+  switch (event.__typename) {
+    case 'QueueItemAdded':
+      return {
+        __typename: 'QueueItemAdded',
+        sequence: event.sequence,
+        addedItem: event.item,
+        position: event.position,
+      };
+    case 'CurrentClimbChanged':
+      return {
+        __typename: 'CurrentClimbChanged',
+        sequence: event.sequence,
+        currentItem: event.item,
+        clientId: event.clientId,
+        correlationId: event.correlationId,
+      };
+    default:
+      // Other event types have identical structure
+      return event as SubscriptionQueueEvent;
+  }
+}
 
 // Default backend URL from environment variable
 const DEFAULT_BACKEND_URL = process.env.NEXT_PUBLIC_WS_URL || null;
@@ -136,7 +165,7 @@ export interface PersistentSessionContextType {
   setQueue: (queue: LocalClimbQueueItem[], currentClimbQueueItem?: LocalClimbQueueItem | null) => Promise<void>;
 
   // Event subscription for board-level components
-  subscribeToQueueEvents: (callback: (event: QueueEvent) => void) => () => void;
+  subscribeToQueueEvents: (callback: (event: SubscriptionQueueEvent) => void) => () => void;
   subscribeToSessionEvents: (callback: (event: SessionEvent) => void) => () => void;
 }
 
@@ -209,7 +238,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
   const triggerResyncRef = useRef<(() => void) | null>(null);
 
   // Event subscribers
-  const queueEventSubscribersRef = useRef<Set<(event: QueueEvent) => void>>(new Set());
+  const queueEventSubscribersRef = useRef<Set<(event: SubscriptionQueueEvent) => void>>(new Set());
   const sessionEventSubscribersRef = useRef<Set<(event: SessionEvent) => void>>(new Set());
 
   // Keep refs in sync
@@ -222,7 +251,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
   }, [activeSession]);
 
   // Notify queue event subscribers
-  const notifyQueueSubscribers = useCallback((event: QueueEvent) => {
+  const notifyQueueSubscribers = useCallback((event: SubscriptionQueueEvent) => {
     queueEventSubscribersRef.current.forEach((callback) => callback(event));
   }, []);
 
@@ -238,7 +267,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
   }, []);
 
   // Handle queue events internally
-  const handleQueueEvent = useCallback((event: QueueEvent) => {
+  const handleQueueEvent = useCallback((event: SubscriptionQueueEvent) => {
     // Sequence validation for gap detection (use ref to avoid stale closure)
     const lastSeq = lastReceivedSequenceRef.current;
     if (event.__typename !== 'FullSync' && lastSeq !== null) {
@@ -266,9 +295,9 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
         setQueueState((prev) => {
           const newQueue = [...prev];
           if (event.position !== undefined && event.position >= 0) {
-            newQueue.splice(event.position, 0, event.item as LocalClimbQueueItem);
+            newQueue.splice(event.position, 0, event.addedItem as LocalClimbQueueItem);
           } else {
-            newQueue.push(event.item as LocalClimbQueueItem);
+            newQueue.push(event.addedItem as LocalClimbQueueItem);
           }
           return newQueue;
         });
@@ -288,7 +317,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
         updateLastReceivedSequence(event.sequence);
         break;
       case 'CurrentClimbChanged':
-        setCurrentClimbQueueItem(event.item as LocalClimbQueueItem | null);
+        setCurrentClimbQueueItem(event.currentItem as LocalClimbQueueItem | null);
         updateLastReceivedSequence(event.sequence);
         break;
       case 'ClimbMirrored':
@@ -461,9 +490,9 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
             if (response.eventsReplay.events.length > 0) {
               if (DEBUG) console.log(`[PersistentSession] Replaying ${response.eventsReplay.events.length} events`);
 
-              // Apply each event in order
+              // Apply each event in order (transform from server to subscription format)
               response.eventsReplay.events.forEach(event => {
-                handleQueueEvent(event);
+                handleQueueEvent(transformToSubscriptionEvent(event));
               });
 
               if (DEBUG) console.log('[PersistentSession] Delta sync completed successfully');
@@ -556,7 +585,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
         }
 
         // Subscribe to queue updates
-        queueUnsubscribeRef.current = subscribe<{ queueUpdates: QueueEvent }>(
+        queueUnsubscribeRef.current = subscribe<{ queueUpdates: SubscriptionQueueEvent }>(
           graphqlClient,
           { query: QUEUE_UPDATES, variables: { sessionId } },
           {
@@ -797,7 +826,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
   );
 
   // Event subscription functions
-  const subscribeToQueueEvents = useCallback((callback: (event: QueueEvent) => void) => {
+  const subscribeToQueueEvents = useCallback((callback: (event: SubscriptionQueueEvent) => void) => {
     queueEventSubscribersRef.current.add(callback);
     return () => {
       queueEventSubscribersRef.current.delete(callback);

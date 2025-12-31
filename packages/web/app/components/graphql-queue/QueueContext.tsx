@@ -10,7 +10,7 @@ import { urlParamsToSearchParams, searchParamsToUrlParams } from '@/app/lib/url-
 import { Climb, ParsedBoardRouteParameters, BoardDetails } from '@/app/lib/types';
 import { useConnectionSettings } from '../connection-manager/connection-settings-context';
 import { usePartyProfile } from '../party-manager/party-profile-context';
-import { QueueEvent } from '@boardsesh/shared-schema';
+import { SubscriptionQueueEvent } from '@boardsesh/shared-schema';
 import { saveSessionToHistory } from '../setup-wizard/session-history-panel';
 import { usePersistentSession } from '../persistent-session';
 import { FavoritesProvider } from '../climb-actions/favorites-batch-context';
@@ -201,7 +201,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
   useEffect(() => {
     if (!isPersistentSessionActive) return;
 
-    const unsubscribe = persistentSession.subscribeToQueueEvents((event: QueueEvent) => {
+    const unsubscribe = persistentSession.subscribeToQueueEvents((event: SubscriptionQueueEvent) => {
       switch (event.__typename) {
         case 'FullSync':
           dispatch({
@@ -216,7 +216,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
           dispatch({
             type: 'DELTA_ADD_QUEUE_ITEM',
             payload: {
-              item: event.item as ClimbQueueItem,
+              item: event.addedItem as ClimbQueueItem,
               position: event.position,
             },
           });
@@ -241,7 +241,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
           dispatch({
             type: 'DELTA_UPDATE_CURRENT_CLIMB',
             payload: {
-              item: event.item as ClimbQueueItem | null,
+              item: event.currentItem as ClimbQueueItem | null,
               shouldAddToQueue: false,
               isServerEvent: true,
               eventClientId: event.clientId || undefined,

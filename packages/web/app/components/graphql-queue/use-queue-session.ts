@@ -13,7 +13,7 @@ import {
   SESSION_UPDATES,
   QUEUE_UPDATES,
   SessionUser,
-  QueueEvent,
+  SubscriptionQueueEvent,
   SessionEvent,
   QueueState,
 } from '@boardsesh/shared-schema';
@@ -74,7 +74,7 @@ export interface UseQueueSessionOptions {
   avatarUrl?: string;
   /** Auth token for backend authentication (e.g., NextAuth session token) */
   authToken?: string | null;
-  onQueueEvent?: (event: QueueEvent) => void;
+  onQueueEvent?: (event: SubscriptionQueueEvent) => void;
   onSessionEvent?: (event: SessionEvent) => void;
 }
 
@@ -241,7 +241,7 @@ export function useQueueSession({
 
         // Subscribe to queue updates AFTER joining session
         if (DEBUG) console.log('[QueueSession] Setting up queue subscription...');
-        queueUnsubscribeRef.current = subscribe<{ queueUpdates: QueueEvent }>(
+        queueUnsubscribeRef.current = subscribe<{ queueUpdates: SubscriptionQueueEvent }>(
           graphqlClient,
           {
             query: QUEUE_UPDATES,
