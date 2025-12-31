@@ -20,6 +20,12 @@ const createTablesSQL = `
   DROP TABLE IF EXISTS "board_session_clients" CASCADE;
   DROP TABLE IF EXISTS "board_sessions" CASCADE;
   DROP TABLE IF EXISTS "users" CASCADE;
+  DROP TABLE IF EXISTS "kilter_climbs" CASCADE;
+  DROP TABLE IF EXISTS "kilter_climb_stats" CASCADE;
+  DROP TABLE IF EXISTS "kilter_difficulty_grades" CASCADE;
+  DROP TABLE IF EXISTS "tension_climbs" CASCADE;
+  DROP TABLE IF EXISTS "tension_climb_stats" CASCADE;
+  DROP TABLE IF EXISTS "tension_difficulty_grades" CASCADE;
 
   -- Create users table (minimal, needed for FK reference)
   CREATE TABLE IF NOT EXISTS "users" (
@@ -66,7 +72,89 @@ const createTablesSQL = `
     "updated_at" timestamp DEFAULT now() NOT NULL
   );
 
-  -- Create indexes
+  -- Create kilter tables for climb query tests
+  CREATE TABLE IF NOT EXISTS "kilter_climbs" (
+    "uuid" text PRIMARY KEY NOT NULL,
+    "layout_id" integer,
+    "setter_id" integer,
+    "setter_username" text,
+    "name" text,
+    "description" text,
+    "hsm" integer,
+    "edge_left" integer,
+    "edge_right" integer,
+    "edge_bottom" integer,
+    "edge_top" integer,
+    "frames_count" integer DEFAULT 1,
+    "frames_pace" integer,
+    "frames" text,
+    "is_draft" boolean DEFAULT false,
+    "is_listed" boolean DEFAULT true,
+    "created_at" text
+  );
+
+  CREATE TABLE IF NOT EXISTS "kilter_climb_stats" (
+    "climb_uuid" text NOT NULL,
+    "angle" integer NOT NULL,
+    "display_difficulty" double precision,
+    "benchmark_difficulty" double precision,
+    "ascensionist_count" bigint,
+    "difficulty_average" double precision,
+    "quality_average" double precision,
+    "fa_username" text,
+    "fa_at" timestamp,
+    PRIMARY KEY ("climb_uuid", "angle")
+  );
+
+  CREATE TABLE IF NOT EXISTS "kilter_difficulty_grades" (
+    "difficulty" integer PRIMARY KEY NOT NULL,
+    "boulder_name" text,
+    "route_name" text,
+    "is_listed" boolean DEFAULT true
+  );
+
+  -- Create tension tables for climb query tests
+  CREATE TABLE IF NOT EXISTS "tension_climbs" (
+    "uuid" text PRIMARY KEY NOT NULL,
+    "layout_id" integer,
+    "setter_id" integer,
+    "setter_username" text,
+    "name" text,
+    "description" text,
+    "hsm" integer,
+    "edge_left" integer,
+    "edge_right" integer,
+    "edge_bottom" integer,
+    "edge_top" integer,
+    "frames_count" integer DEFAULT 1,
+    "frames_pace" integer,
+    "frames" text,
+    "is_draft" boolean DEFAULT false,
+    "is_listed" boolean DEFAULT true,
+    "created_at" text
+  );
+
+  CREATE TABLE IF NOT EXISTS "tension_climb_stats" (
+    "climb_uuid" text NOT NULL,
+    "angle" integer NOT NULL,
+    "display_difficulty" double precision,
+    "benchmark_difficulty" double precision,
+    "ascensionist_count" bigint,
+    "difficulty_average" double precision,
+    "quality_average" double precision,
+    "fa_username" text,
+    "fa_at" timestamp,
+    PRIMARY KEY ("climb_uuid", "angle")
+  );
+
+  CREATE TABLE IF NOT EXISTS "tension_difficulty_grades" (
+    "difficulty" integer PRIMARY KEY NOT NULL,
+    "boulder_name" text,
+    "route_name" text,
+    "is_listed" boolean DEFAULT true
+  );
+
+  -- Create indexes for board_sessions
   CREATE INDEX IF NOT EXISTS "board_sessions_location_idx" ON "board_sessions" ("latitude", "longitude");
   CREATE INDEX IF NOT EXISTS "board_sessions_discoverable_idx" ON "board_sessions" ("discoverable");
   CREATE INDEX IF NOT EXISTS "board_sessions_user_idx" ON "board_sessions" ("created_by_user_id");
