@@ -43,7 +43,7 @@ const TTL = {
 
 /**
  * Lua script for atomic leader election.
- * Atomically sets both the leader key AND the isLeader flag on the connection hash.
+ * Atomically sets both the leader key (with TTL) AND the isLeader flag on the connection hash.
  * This prevents race conditions where process crashes between operations.
  * Returns: 1 if leader was set, 0 if leader already exists
  */
@@ -51,6 +51,7 @@ const LEADER_ELECTION_SCRIPT = `
   local leaderKey = KEYS[1]
   local connKey = KEYS[2]
   local connectionId = ARGV[1]
+  local leaderTTL = tonumber(ARGV[2])
 
   -- Check if leader already exists
   local currentLeader = redis.call('GET', leaderKey)
@@ -58,8 +59,8 @@ const LEADER_ELECTION_SCRIPT = `
     return 0
   end
 
-  -- Atomically set this connection as leader AND update isLeader flag
-  redis.call('SET', leaderKey, connectionId)
+  -- Atomically set this connection as leader with TTL AND update isLeader flag
+  redis.call('SET', leaderKey, connectionId, 'EX', leaderTTL)
   redis.call('HSET', connKey, 'isLeader', 'true')
   return 1
 `;
@@ -98,6 +99,7 @@ const ELECT_NEW_LEADER_SCRIPT = `
   local leaderKey = KEYS[2]
   local leavingConnectionId = ARGV[1]
   local membersTTL = tonumber(ARGV[2])
+  local leaderTTL = tonumber(ARGV[3])
 
   -- Get and clear old leader's isLeader flag first
   local oldLeader = redis.call('GET', leaderKey)
@@ -133,14 +135,83 @@ const ELECT_NEW_LEADER_SCRIPT = `
 
   local newLeaderId = candidates[1][1]
 
-  -- Set new leader
-  redis.call('SET', leaderKey, newLeaderId)
+  -- Set new leader with TTL
+  redis.call('SET', leaderKey, newLeaderId, 'EX', leaderTTL)
 
   -- Update isLeader flag on the new leader connection
   local connKey = 'boardsesh:conn:' .. newLeaderId
   redis.call('HSET', connKey, 'isLeader', 'true')
 
   -- Refresh TTL on session members set to prevent expiry during long sessions
+  if membersTTL and membersTTL > 0 then
+    redis.call('EXPIRE', sessionMembersKey, membersTTL)
+  end
+
+  return newLeaderId
+`;
+
+/**
+ * Lua script for atomic leave session operation.
+ * Atomically checks leader status, updates connection, removes from session, and elects new leader.
+ * This prevents race conditions where leader status could change between read and update.
+ * Returns: newLeaderId if was leader and new leader elected, empty string if was leader but no candidates, nil if not leader
+ */
+const LEAVE_SESSION_SCRIPT = `
+  local connKey = KEYS[1]
+  local sessionMembersKey = KEYS[2]
+  local leaderKey = KEYS[3]
+  local connectionId = ARGV[1]
+  local membersTTL = tonumber(ARGV[2])
+  local leaderTTL = tonumber(ARGV[3])
+
+  -- Get current leader to check if this connection is leader (atomically)
+  local currentLeader = redis.call('GET', leaderKey)
+  local wasLeader = (currentLeader == connectionId)
+
+  -- Update connection state
+  redis.call('HMSET', connKey, 'sessionId', '', 'isLeader', 'false')
+
+  -- Remove from session members
+  redis.call('SREM', sessionMembersKey, connectionId)
+
+  -- If not leader, return nil (no leader election needed)
+  if not wasLeader then
+    return nil
+  end
+
+  -- Was leader, need to elect new one
+  local members = redis.call('SMEMBERS', sessionMembersKey)
+  local candidates = {}
+
+  for _, memberId in ipairs(members) do
+    if memberId ~= connectionId then
+      local memberConnKey = 'boardsesh:conn:' .. memberId
+      local connectedAt = redis.call('HGET', memberConnKey, 'connectedAt')
+      if connectedAt then
+        table.insert(candidates, {memberId, tonumber(connectedAt)})
+      end
+    end
+  end
+
+  -- No candidates left
+  if #candidates == 0 then
+    redis.call('DEL', leaderKey)
+    return ''  -- Empty string means was leader but no new leader
+  end
+
+  -- Sort by connectedAt (earliest first)
+  table.sort(candidates, function(a, b) return a[2] < b[2] end)
+
+  local newLeaderId = candidates[1][1]
+
+  -- Set new leader with TTL
+  redis.call('SET', leaderKey, newLeaderId, 'EX', leaderTTL)
+
+  -- Update isLeader flag on new leader
+  local newLeaderConnKey = 'boardsesh:conn:' .. newLeaderId
+  redis.call('HSET', newLeaderConnKey, 'isLeader', 'true')
+
+  -- Refresh session members TTL
   if membersTTL and membersTTL > 0 then
     redis.call('EXPIRE', sessionMembersKey, membersTTL)
   end
@@ -320,7 +391,8 @@ export class DistributedStateManager {
           KEYS.sessionMembers(sessionId),
           KEYS.sessionLeader(sessionId),
           connectionId,
-          TTL.sessionMembership.toString()
+          TTL.sessionMembership.toString(),
+          TTL.sessionMembership.toString() // Leader TTL matches session TTL
         ) as string | null;
 
         if (newLeaderId) {
@@ -392,13 +464,14 @@ export class DistributedStateManager {
 
     await multi.exec();
 
-    // Try to become leader (atomic operation - sets both leader key and isLeader flag)
+    // Try to become leader (atomic operation - sets both leader key with TTL and isLeader flag)
     const becameLeader = await this.redis.eval(
       LEADER_ELECTION_SCRIPT,
       2,
       KEYS.sessionLeader(sessionId),
       KEYS.connection(connectionId),
-      connectionId
+      connectionId,
+      TTL.sessionMembership.toString() // Leader TTL matches session TTL
     ) as number;
 
     if (becameLeader === 1) {
@@ -410,53 +483,51 @@ export class DistributedStateManager {
 
   /**
    * Leave a session. Handles leader election if leaving member was leader.
+   * Uses atomic Lua script to prevent race conditions.
    * Returns the new leader's connectionId if leadership changed.
    */
   async leaveSession(connectionId: string, sessionId: string): Promise<{ newLeaderId: string | null }> {
-    const connection = await this.getConnection(connectionId);
-    const wasLeader = connection?.isLeader || false;
+    try {
+      // Use atomic script that checks leader, updates connection, and elects new leader
+      const result = await this.redis.eval(
+        LEAVE_SESSION_SCRIPT,
+        3,
+        KEYS.connection(connectionId),
+        KEYS.sessionMembers(sessionId),
+        KEYS.sessionLeader(sessionId),
+        connectionId,
+        TTL.sessionMembership.toString(),
+        TTL.sessionMembership.toString() // Use same TTL for leader key
+      ) as string | null;
 
-    const multi = this.redis.multi();
-
-    // Update connection
-    multi.hmset(KEYS.connection(connectionId), {
-      sessionId: '',
-      isLeader: 'false',
-    });
-
-    // Remove from session members
-    multi.srem(KEYS.sessionMembers(sessionId), connectionId);
-
-    await multi.exec();
-
-    // If was leader, elect new leader
-    let newLeaderId: string | null = null;
-    if (wasLeader) {
-      try {
-        newLeaderId = await this.redis.eval(
-          ELECT_NEW_LEADER_SCRIPT,
-          2,
-          KEYS.sessionMembers(sessionId),
-          KEYS.sessionLeader(sessionId),
-          connectionId,
-          TTL.sessionMembership.toString()
-        ) as string | null;
-
-        if (newLeaderId) {
-          console.log(`[DistributedState] Elected new leader: ${newLeaderId.slice(0, 8)} for session ${sessionId.slice(0, 8)}`);
-        }
-      } catch (err) {
-        console.error(`[DistributedState] Failed to elect new leader for session ${sessionId.slice(0, 8)}:`, err);
-        // Clear the leader key to allow next join to become leader
-        try {
-          await this.redis.del(KEYS.sessionLeader(sessionId));
-        } catch {
-          // Ignore cleanup error
-        }
+      // Result: null = wasn't leader, '' = was leader but no new leader, otherwise = new leader ID
+      if (result === null) {
+        // Wasn't leader, no election needed
+        return { newLeaderId: null };
       }
-    }
 
-    return { newLeaderId };
+      if (result === '') {
+        // Was leader but no candidates for new leader
+        console.log(`[DistributedState] Session ${sessionId.slice(0, 8)} has no remaining members after leader left`);
+        return { newLeaderId: null };
+      }
+
+      // New leader elected
+      console.log(`[DistributedState] Elected new leader: ${result.slice(0, 8)} for session ${sessionId.slice(0, 8)}`);
+      return { newLeaderId: result };
+    } catch (err) {
+      console.error(`[DistributedState] Failed to leave session ${sessionId.slice(0, 8)}:`, err);
+      // Fallback: try to clean up manually
+      try {
+        const multi = this.redis.multi();
+        multi.hmset(KEYS.connection(connectionId), { sessionId: '', isLeader: 'false' });
+        multi.srem(KEYS.sessionMembers(sessionId), connectionId);
+        await multi.exec();
+      } catch {
+        // Ignore fallback error
+      }
+      return { newLeaderId: null };
+    }
   }
 
   /**
@@ -637,15 +708,23 @@ export class DistributedStateManager {
 
   /**
    * Convert Redis hash fields to connection object.
+   * Note: Empty strings in Redis are treated as null/not set.
+   * This is consistent with connectionToHash which converts null to empty string.
    */
   private hashToConnection(hash: Record<string, string>): DistributedConnection {
+    // Empty string in Redis means "not set" - convert to null for consistency
+    // This matches the pattern: null -> '' (storage) -> null (retrieval)
+    const sessionId = hash.sessionId && hash.sessionId !== '' ? hash.sessionId : null;
+    const userId = hash.userId && hash.userId !== '' ? hash.userId : null;
+    const avatarUrl = hash.avatarUrl && hash.avatarUrl !== '' ? hash.avatarUrl : null;
+
     return {
       connectionId: hash.connectionId,
       instanceId: hash.instanceId,
-      sessionId: hash.sessionId || null,
-      userId: hash.userId || null,
+      sessionId,
+      userId,
       username: hash.username,
-      avatarUrl: hash.avatarUrl || null,
+      avatarUrl,
       isLeader: hash.isLeader === 'true',
       connectedAt: parseInt(hash.connectedAt, 10) || Date.now(),
     };

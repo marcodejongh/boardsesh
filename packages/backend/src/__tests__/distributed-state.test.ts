@@ -1,11 +1,36 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
 import Redis from 'ioredis';
-import { DistributedStateManager } from '../services/distributed-state.js';
+import { DistributedStateManager, forceResetDistributedState } from '../services/distributed-state.js';
 
 // Integration tests require Redis to be running
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6380';
 
-describe('DistributedStateManager', () => {
+// Helper to check if Redis is available
+async function isRedisAvailable(): Promise<boolean> {
+  const testRedis = new Redis(REDIS_URL, {
+    connectTimeout: 1000,
+    maxRetriesPerRequest: 0,
+    lazyConnect: true,
+  });
+  try {
+    await testRedis.connect();
+    await testRedis.ping();
+    await testRedis.quit();
+    return true;
+  } catch {
+    try {
+      await testRedis.quit();
+    } catch {
+      // Ignore quit errors
+    }
+    return false;
+  }
+}
+
+// Skip all tests if Redis is not available
+const redisAvailable = await isRedisAvailable();
+
+describe.skipIf(!redisAvailable)('DistributedStateManager', () => {
   let redis: Redis;
   let manager: DistributedStateManager;
 
@@ -15,10 +40,15 @@ describe('DistributedStateManager', () => {
   });
 
   afterAll(async () => {
+    // Force reset singleton to prevent state pollution between test runs
+    forceResetDistributedState();
     await redis.quit();
   });
 
   beforeEach(async () => {
+    // Force reset singleton state before each test to prevent pollution
+    forceResetDistributedState();
+
     // Clean up any existing test keys with try-catch for robustness
     try {
       const keys = await redis.keys('boardsesh:*');
@@ -33,6 +63,8 @@ describe('DistributedStateManager', () => {
 
   afterEach(async () => {
     await manager.stop();
+    // Force reset singleton after each test
+    forceResetDistributedState();
   });
 
   describe('Connection Management', () => {
@@ -277,7 +309,7 @@ describe('DistributedStateManager', () => {
   });
 });
 
-describe('DistributedStateManager - Multi-Instance', () => {
+describe.skipIf(!redisAvailable)('DistributedStateManager - Multi-Instance', () => {
   let redis1: Redis;
   let redis2: Redis;
   let manager1: DistributedStateManager;
@@ -293,10 +325,12 @@ describe('DistributedStateManager - Multi-Instance', () => {
   });
 
   afterAll(async () => {
+    forceResetDistributedState();
     await Promise.all([redis1.quit(), redis2.quit()]);
   });
 
   beforeEach(async () => {
+    forceResetDistributedState();
     // Clean up any existing test keys with try-catch for robustness
     try {
       const keys = await redis1.keys('boardsesh:*');
@@ -313,6 +347,7 @@ describe('DistributedStateManager - Multi-Instance', () => {
   afterEach(async () => {
     await manager1.stop();
     await manager2.stop();
+    forceResetDistributedState();
   });
 
   it('should see connections across instances', async () => {
@@ -445,7 +480,7 @@ describe('DistributedStateManager - Multi-Instance', () => {
   });
 });
 
-describe('DistributedStateManager - Edge Cases', () => {
+describe.skipIf(!redisAvailable)('DistributedStateManager - Edge Cases', () => {
   let redis: Redis;
   let manager: DistributedStateManager;
 
@@ -455,10 +490,12 @@ describe('DistributedStateManager - Edge Cases', () => {
   });
 
   afterAll(async () => {
+    forceResetDistributedState();
     await redis.quit();
   });
 
   beforeEach(async () => {
+    forceResetDistributedState();
     // Clean up any existing test keys with try-catch for robustness
     try {
       const keys = await redis.keys('boardsesh:*');
@@ -473,6 +510,7 @@ describe('DistributedStateManager - Edge Cases', () => {
 
   afterEach(async () => {
     await manager.stop();
+    forceResetDistributedState();
   });
 
   it('should handle rapid join/leave cycles', async () => {
@@ -548,7 +586,7 @@ describe('DistributedStateManager - Edge Cases', () => {
   });
 });
 
-describe('DistributedStateManager - removeConnection with leader election', () => {
+describe.skipIf(!redisAvailable)('DistributedStateManager - removeConnection with leader election', () => {
   let redis: Redis;
   let manager: DistributedStateManager;
 
@@ -558,10 +596,12 @@ describe('DistributedStateManager - removeConnection with leader election', () =
   });
 
   afterAll(async () => {
+    forceResetDistributedState();
     await redis.quit();
   });
 
   beforeEach(async () => {
+    forceResetDistributedState();
     try {
       const keys = await redis.keys('boardsesh:*');
       if (keys.length > 0) {
@@ -575,6 +615,7 @@ describe('DistributedStateManager - removeConnection with leader election', () =
 
   afterEach(async () => {
     await manager.stop();
+    forceResetDistributedState();
   });
 
   it('should automatically elect new leader when removing leader connection', async () => {
@@ -641,7 +682,7 @@ describe('DistributedStateManager - removeConnection with leader election', () =
   });
 });
 
-describe('DistributedStateManager - refreshConnection', () => {
+describe.skipIf(!redisAvailable)('DistributedStateManager - refreshConnection', () => {
   let redis: Redis;
   let manager: DistributedStateManager;
 
@@ -651,10 +692,12 @@ describe('DistributedStateManager - refreshConnection', () => {
   });
 
   afterAll(async () => {
+    forceResetDistributedState();
     await redis.quit();
   });
 
   beforeEach(async () => {
+    forceResetDistributedState();
     try {
       const keys = await redis.keys('boardsesh:*');
       if (keys.length > 0) {
@@ -668,6 +711,7 @@ describe('DistributedStateManager - refreshConnection', () => {
 
   afterEach(async () => {
     await manager.stop();
+    forceResetDistributedState();
   });
 
   it('should return true when refreshing existing connection', async () => {
@@ -700,7 +744,7 @@ describe('DistributedStateManager - refreshConnection', () => {
   });
 });
 
-describe('DistributedStateManager - old leader flag reset', () => {
+describe.skipIf(!redisAvailable)('DistributedStateManager - old leader flag reset', () => {
   let redis: Redis;
   let manager: DistributedStateManager;
 
@@ -710,10 +754,12 @@ describe('DistributedStateManager - old leader flag reset', () => {
   });
 
   afterAll(async () => {
+    forceResetDistributedState();
     await redis.quit();
   });
 
   beforeEach(async () => {
+    forceResetDistributedState();
     try {
       const keys = await redis.keys('boardsesh:*');
       if (keys.length > 0) {
@@ -727,6 +773,7 @@ describe('DistributedStateManager - old leader flag reset', () => {
 
   afterEach(async () => {
     await manager.stop();
+    forceResetDistributedState();
   });
 
   it('should reset old leader isLeader flag when electing new leader', async () => {

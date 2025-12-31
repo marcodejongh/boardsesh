@@ -431,7 +431,19 @@ class RoomManager {
       }
     }
 
-    // Always clean up local state to prevent memory leaks
+    // Clean up local state to prevent memory leaks
+    const client = this.clients.get(connectionId);
+    if (client?.sessionId) {
+      // Remove from session membership set
+      const sessionSet = this.sessions.get(client.sessionId);
+      if (sessionSet) {
+        sessionSet.delete(connectionId);
+        // Clean up empty session sets to prevent memory buildup
+        if (sessionSet.size === 0) {
+          this.sessions.delete(client.sessionId);
+        }
+      }
+    }
     this.clients.delete(connectionId);
 
     return { distributedStateCleanedUp };
