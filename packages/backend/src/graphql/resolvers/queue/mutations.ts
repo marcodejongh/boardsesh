@@ -209,6 +209,7 @@ export const queueMutations = {
     pubsub.publishQueueEvent(sessionId, {
       __typename: 'CurrentClimbChanged',
       item: item,
+      clientId: ctx.connectionId,
     });
 
     return item;

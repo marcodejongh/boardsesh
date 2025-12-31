@@ -211,6 +211,7 @@ export const QUEUE_UPDATES = `
         currentItem: item {
           ${QUEUE_ITEM_FIELDS}
         }
+        clientId
       }
       ... on ClimbMirrored {
         mirrored

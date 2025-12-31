@@ -292,7 +292,7 @@ export type QueueEvent =
   | { __typename: 'QueueItemAdded'; item: ClimbQueueItem; position?: number }
   | { __typename: 'QueueItemRemoved'; uuid: string }
   | { __typename: 'QueueReordered'; uuid: string; oldIndex: number; newIndex: number }
-  | { __typename: 'CurrentClimbChanged'; item: ClimbQueueItem | null }
+  | { __typename: 'CurrentClimbChanged'; item: ClimbQueueItem | null; clientId: string }
   | { __typename: 'ClimbMirrored'; mirrored: boolean };
 
 // Client-side event type - uses aliased field names from subscription query
@@ -301,7 +301,7 @@ export type ClientQueueEvent =
   | { __typename: 'QueueItemAdded'; addedItem: ClimbQueueItem; position?: number }
   | { __typename: 'QueueItemRemoved'; uuid: string }
   | { __typename: 'QueueReordered'; uuid: string; oldIndex: number; newIndex: number }
-  | { __typename: 'CurrentClimbChanged'; currentItem: ClimbQueueItem | null }
+  | { __typename: 'CurrentClimbChanged'; currentItem: ClimbQueueItem | null; clientId: string }
   | { __typename: 'ClimbMirrored'; mirrored: boolean };
 
 export type SessionEvent =

@@ -299,4 +299,175 @@ describe('Pending Updates - Integration Tests', () => {
       expect(state.currentClimbQueueItem).toEqual(items[2]); // Applied (not in pending anymore)
     });
   });
+
+  describe('ClientId-based echo detection', () => {
+    const myClientId = 'client-123';
+    const otherClientId = 'client-456';
+
+    it('should skip server events from own client (our echo)', () => {
+      const item: ClimbQueueItem = {
+        climb: mockClimb,
+        addedBy: 'user-1',
+        uuid: 'item-1',
+        suggested: false,
+      };
+
+      let state = initialState;
+
+      // Local update from our client
+      state = queueReducer(state, {
+        type: 'DELTA_UPDATE_CURRENT_CLIMB',
+        payload: { item, shouldAddToQueue: false, isServerEvent: false },
+      });
+
+      expect(state.currentClimbQueueItem).toEqual(item);
+      expect(state.pendingCurrentClimbUpdates).toHaveLength(1);
+
+      // Server echo with our own clientId - should be skipped
+      state = queueReducer(state, {
+        type: 'DELTA_UPDATE_CURRENT_CLIMB',
+        payload: {
+          item,
+          shouldAddToQueue: false,
+          isServerEvent: true,
+          eventClientId: myClientId,
+          myClientId: myClientId,
+        },
+      });
+
+      // State should not change (echo skipped)
+      expect(state.currentClimbQueueItem).toEqual(item);
+      // Pending should be cleared
+      expect(state.pendingCurrentClimbUpdates).toHaveLength(0);
+    });
+
+    it('should apply server events from other clients', () => {
+      const item1: ClimbQueueItem = {
+        climb: { ...mockClimb, uuid: 'climb-1' },
+        addedBy: 'user-1',
+        uuid: 'item-1',
+        suggested: false,
+      };
+
+      const item2: ClimbQueueItem = {
+        climb: { ...mockClimb, uuid: 'climb-2' },
+        addedBy: 'user-2',
+        uuid: 'item-2',
+        suggested: false,
+      };
+
+      let state = initialState;
+
+      // Local update from our client
+      state = queueReducer(state, {
+        type: 'DELTA_UPDATE_CURRENT_CLIMB',
+        payload: { item: item1, shouldAddToQueue: false, isServerEvent: false },
+      });
+
+      expect(state.currentClimbQueueItem).toEqual(item1);
+
+      // Server event from OTHER client - should be applied
+      state = queueReducer(state, {
+        type: 'DELTA_UPDATE_CURRENT_CLIMB',
+        payload: {
+          item: item2,
+          shouldAddToQueue: false,
+          isServerEvent: true,
+          eventClientId: otherClientId,
+          myClientId: myClientId,
+        },
+      });
+
+      // Should update to item2 (from other client)
+      expect(state.currentClimbQueueItem).toEqual(item2);
+    });
+
+    it('should handle the same climb from different clients correctly', () => {
+      const sharedClimb: ClimbQueueItem = {
+        climb: mockClimb,
+        addedBy: 'user-1',
+        uuid: 'item-shared',
+        suggested: false,
+      };
+
+      let state = initialState;
+
+      // Our client navigates to this climb
+      state = queueReducer(state, {
+        type: 'DELTA_UPDATE_CURRENT_CLIMB',
+        payload: { item: sharedClimb, shouldAddToQueue: false, isServerEvent: false },
+      });
+
+      expect(state.currentClimbQueueItem).toEqual(sharedClimb);
+      expect(state.pendingCurrentClimbUpdates).toHaveLength(1);
+
+      // Other client also navigates to same climb - should be applied
+      state = queueReducer(state, {
+        type: 'DELTA_UPDATE_CURRENT_CLIMB',
+        payload: {
+          item: sharedClimb,
+          shouldAddToQueue: false,
+          isServerEvent: true,
+          eventClientId: otherClientId,
+          myClientId: myClientId,
+        },
+      });
+
+      // Should still show the climb (applied from other client)
+      expect(state.currentClimbQueueItem).toEqual(sharedClimb);
+      // Pending should still have our update
+      expect(state.pendingCurrentClimbUpdates).toHaveLength(1);
+
+      // Now our echo arrives - should be skipped
+      state = queueReducer(state, {
+        type: 'DELTA_UPDATE_CURRENT_CLIMB',
+        payload: {
+          item: sharedClimb,
+          shouldAddToQueue: false,
+          isServerEvent: true,
+          eventClientId: myClientId,
+          myClientId: myClientId,
+        },
+      });
+
+      // Still showing the climb
+      expect(state.currentClimbQueueItem).toEqual(sharedClimb);
+      // Pending cleared (our echo removed)
+      expect(state.pendingCurrentClimbUpdates).toHaveLength(0);
+    });
+
+    it('should fallback to pending list when clientIds unavailable', () => {
+      const item: ClimbQueueItem = {
+        climb: mockClimb,
+        addedBy: 'user-1',
+        uuid: 'item-1',
+        suggested: false,
+      };
+
+      let state = initialState;
+
+      // Local update
+      state = queueReducer(state, {
+        type: 'DELTA_UPDATE_CURRENT_CLIMB',
+        payload: { item, shouldAddToQueue: false, isServerEvent: false },
+      });
+
+      expect(state.pendingCurrentClimbUpdates).toHaveLength(1);
+
+      // Server event WITHOUT clientId - should use pending list fallback
+      state = queueReducer(state, {
+        type: 'DELTA_UPDATE_CURRENT_CLIMB',
+        payload: {
+          item,
+          shouldAddToQueue: false,
+          isServerEvent: true,
+          // No clientIds provided
+        },
+      });
+
+      // Should skip based on pending list
+      expect(state.currentClimbQueueItem).toEqual(item);
+      expect(state.pendingCurrentClimbUpdates).toHaveLength(0); // Removed from pending
+    });
+  });
 });

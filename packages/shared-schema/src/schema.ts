@@ -531,6 +531,7 @@ export const typeDefs = /* GraphQL */ `
 
   type CurrentClimbChanged {
     item: ClimbQueueItem
+    clientId: ID!
   }
 
   type ClimbMirrored {

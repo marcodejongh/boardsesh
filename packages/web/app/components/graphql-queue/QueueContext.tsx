@@ -241,6 +241,8 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
               item: event.currentItem as ClimbQueueItem | null,
               shouldAddToQueue: false,
               isServerEvent: true,
+              eventClientId: event.clientId,
+              myClientId: persistentSession.clientId || undefined,
             },
           });
           break;

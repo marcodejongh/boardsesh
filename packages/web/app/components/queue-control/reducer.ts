@@ -148,7 +148,7 @@ export function queueReducer(state: QueueState, action: QueueAction): QueueState
     }
 
     case 'DELTA_UPDATE_CURRENT_CLIMB': {
-      const { item, shouldAddToQueue, isServerEvent } = action.payload;
+      const { item, shouldAddToQueue, isServerEvent, eventClientId, myClientId } = action.payload;
 
       // Filter out stale entries (older than 5 seconds) before processing
       const now = Date.now();
@@ -158,10 +158,21 @@ export function queueReducer(state: QueueState, action: QueueAction): QueueState
 
       // For server events, check if this is an echo of our own update
       if (isServerEvent && item) {
+        // Primary echo detection: check if event came from our own client
+        const isOurOwnEcho = eventClientId && myClientId && eventClientId === myClientId;
+
+        if (isOurOwnEcho) {
+          // This is our own update echoed back - skip it and remove from pending
+          return {
+            ...state,
+            pendingCurrentClimbUpdates: freshPending.filter(p => p.uuid !== item.uuid),
+          };
+        }
+
+        // Fallback: check pending list (for backward compatibility or if clientIds unavailable)
         const isPending = freshPending.find(p => p.uuid === item.uuid);
-        if (isPending) {
-          // Remove from pending list and skip applying this update
-          // (we already applied it optimistically)
+        if (isPending && !eventClientId) {
+          // No clientId available, use pending list as fallback
           return {
             ...state,
             pendingCurrentClimbUpdates: freshPending.filter(p => p.uuid !== item.uuid),
