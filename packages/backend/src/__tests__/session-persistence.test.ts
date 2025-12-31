@@ -300,7 +300,7 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
 
       // Verify all joined successfully
       expect(results).toHaveLength(3);
-      const users = roomManager.getSessionUsers(sessionId);
+      const users = await roomManager.getSessionUsers(sessionId);
       expect(users).toHaveLength(3);
     });
   });

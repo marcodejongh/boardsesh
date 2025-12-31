@@ -1,6 +1,7 @@
 import type { ConnectionContext } from '@boardsesh/shared-schema';
 import { checkRateLimit } from '../../../utils/rate-limiter.js';
 import { getContext } from '../../context.js';
+import { getDistributedState } from '../../../services/distributed-state.js';
 
 // Re-export validateInput from validation schemas
 export { validateInput } from '../../../validation/schemas.js';
@@ -36,7 +37,8 @@ export function requireAuthenticated(ctx: ConnectionContext): void {
  *
  * This function includes retry logic with exponential backoff to handle race conditions
  * where subscriptions may be authorized before joinSession has completed updating the context.
- * It re-fetches the context from the Map on each retry to get the latest state.
+ *
+ * In multi-instance mode, it also checks distributed state for cross-instance validation.
  */
 export async function requireSessionMember(
   ctx: ConnectionContext,
@@ -44,12 +46,21 @@ export async function requireSessionMember(
   maxRetries = 8,
   initialDelayMs = 50
 ): Promise<void> {
-  for (let i = 0; i < maxRetries; i++) {
-    // Re-fetch context to get latest state (joinSession may have updated it)
-    const latestCtx = getContext(ctx.connectionId);
+  const distributedState = getDistributedState();
 
+  for (let i = 0; i < maxRetries; i++) {
+    // First check local context (fast path for same-instance)
+    const latestCtx = getContext(ctx.connectionId);
     if (latestCtx?.sessionId === sessionId) {
-      return; // Success - session matches
+      return; // Success - session matches locally
+    }
+
+    // If distributed state is enabled, check cross-instance
+    if (distributedState) {
+      const isInSession = await distributedState.isConnectionInSession(ctx.connectionId, sessionId);
+      if (isInSession) {
+        return; // Success - session matches in distributed state
+      }
     }
 
     if (i < maxRetries - 1) {
@@ -60,8 +71,17 @@ export async function requireSessionMember(
     }
   }
 
-  // Final check after all retries
+  // Final check after all retries - check both local and distributed state
   const finalCtx = getContext(ctx.connectionId);
+
+  // Check distributed state one more time
+  if (distributedState) {
+    const isInSession = await distributedState.isConnectionInSession(ctx.connectionId, sessionId);
+    if (isInSession) {
+      return; // Success via distributed state
+    }
+  }
+
   if (!finalCtx?.sessionId) {
     console.error(`[Auth] requireSessionMember failed after ${maxRetries} retries: not in any session. connectionId=${ctx.connectionId}, requested=${sessionId}`);
     throw new Error(`Unauthorized: not in any session (connectionId: ${ctx.connectionId}, requested: ${sessionId})`);

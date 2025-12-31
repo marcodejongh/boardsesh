@@ -13,7 +13,7 @@ export const sessionQueries = {
     // Validate session ID
     validateInput(SessionIdSchema, sessionId, 'sessionId');
 
-    const users = roomManager.getSessionUsers(sessionId);
+    const users = await roomManager.getSessionUsers(sessionId);
     if (users.length === 0) return null;
 
     const queueState = await roomManager.getQueueState(sessionId);
