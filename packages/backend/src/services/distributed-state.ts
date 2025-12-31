@@ -48,7 +48,6 @@ const TTL = {
 const LEADER_ELECTION_SCRIPT = `
   local leaderKey = KEYS[1]
   local connectionId = ARGV[1]
-  local connectedAt = ARGV[2]
 
   -- Check if leader already exists
   local currentLeader = redis.call('GET', leaderKey)
@@ -87,12 +86,14 @@ const LEADER_TRANSFER_SCRIPT = `
 /**
  * Lua script to elect new leader from session members.
  * Picks the member with the earliest connectedAt timestamp.
+ * Also refreshes the TTL on session members to prevent expiry during long sessions.
  * Returns: connectionId of new leader, or nil if no members
  */
 const ELECT_NEW_LEADER_SCRIPT = `
   local sessionMembersKey = KEYS[1]
   local leaderKey = KEYS[2]
   local leavingConnectionId = ARGV[1]
+  local membersTTL = tonumber(ARGV[2])
 
   -- Get all members except the leaving one
   local members = redis.call('SMEMBERS', sessionMembersKey)
@@ -125,6 +126,11 @@ const ELECT_NEW_LEADER_SCRIPT = `
   -- Update isLeader flag on the connection
   local connKey = 'boardsesh:conn:' .. newLeaderId
   redis.call('HSET', connKey, 'isLeader', 'true')
+
+  -- Refresh TTL on session members set to prevent expiry during long sessions
+  if membersTTL and membersTTL > 0 then
+    redis.call('EXPIRE', sessionMembersKey, membersTTL)
+  end
 
   return newLeaderId
 `;
@@ -313,15 +319,11 @@ export class DistributedStateManager {
     await multi.exec();
 
     // Try to become leader (atomic operation)
-    const connection = await this.getConnection(connectionId);
-    const connectedAt = connection?.connectedAt || Date.now();
-
     const becameLeader = await this.redis.eval(
       LEADER_ELECTION_SCRIPT,
       1,
       KEYS.sessionLeader(sessionId),
-      connectionId,
-      connectedAt.toString()
+      connectionId
     ) as number;
 
     if (becameLeader === 1) {
@@ -362,7 +364,8 @@ export class DistributedStateManager {
         2,
         KEYS.sessionMembers(sessionId),
         KEYS.sessionLeader(sessionId),
-        connectionId
+        connectionId,
+        TTL.sessionMembership.toString()
       ) as string | null;
 
       if (newLeaderId) {
@@ -491,7 +494,8 @@ export class DistributedStateManager {
           2,
           KEYS.sessionMembers(sessionId),
           KEYS.sessionLeader(sessionId),
-          connectionId
+          connectionId,
+          TTL.sessionMembership.toString()
         );
       }
     }

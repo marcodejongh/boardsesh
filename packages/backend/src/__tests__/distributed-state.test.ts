@@ -19,10 +19,14 @@ describe('DistributedStateManager', () => {
   });
 
   beforeEach(async () => {
-    // Clean up any existing test keys
-    const keys = await redis.keys('boardsesh:*');
-    if (keys.length > 0) {
-      await redis.del(...keys);
+    // Clean up any existing test keys with try-catch for robustness
+    try {
+      const keys = await redis.keys('boardsesh:*');
+      if (keys.length > 0) {
+        await redis.del(...keys);
+      }
+    } catch (err) {
+      console.warn('Failed to clean up test keys:', err);
     }
     manager = new DistributedStateManager(redis, 'test-instance-1');
   });
@@ -293,10 +297,14 @@ describe('DistributedStateManager - Multi-Instance', () => {
   });
 
   beforeEach(async () => {
-    // Clean up any existing test keys
-    const keys = await redis1.keys('boardsesh:*');
-    if (keys.length > 0) {
-      await redis1.del(...keys);
+    // Clean up any existing test keys with try-catch for robustness
+    try {
+      const keys = await redis1.keys('boardsesh:*');
+      if (keys.length > 0) {
+        await redis1.del(...keys);
+      }
+    } catch (err) {
+      console.warn('Failed to clean up test keys:', err);
     }
     manager1 = new DistributedStateManager(redis1, 'instance-1');
     manager2 = new DistributedStateManager(redis2, 'instance-2');
@@ -451,9 +459,14 @@ describe('DistributedStateManager - Edge Cases', () => {
   });
 
   beforeEach(async () => {
-    const keys = await redis.keys('boardsesh:*');
-    if (keys.length > 0) {
-      await redis.del(...keys);
+    // Clean up any existing test keys with try-catch for robustness
+    try {
+      const keys = await redis.keys('boardsesh:*');
+      if (keys.length > 0) {
+        await redis.del(...keys);
+      }
+    } catch (err) {
+      console.warn('Failed to clean up test keys:', err);
     }
     manager = new DistributedStateManager(redis, 'edge-instance');
   });

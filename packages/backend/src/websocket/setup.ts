@@ -79,7 +79,7 @@ export function setupWebSocketServer(httpServer: HttpServer): WebSocketServer {
 
         // Create context on initial connection with auth info
         const context = createContext(undefined, isAuthenticated, authenticatedUserId);
-        roomManager.registerClient(context.connectionId);
+        await roomManager.registerClient(context.connectionId);
         console.log(`Client connected: ${context.connectionId} (authenticated: ${isAuthenticated})`);
 
         // Store context in ctx.extra for access in other hooks
@@ -139,7 +139,7 @@ export function setupWebSocketServer(httpServer: HttpServer): WebSocketServer {
             }
           }
 
-          roomManager.removeClient(context.connectionId);
+          await roomManager.removeClient(context.connectionId);
           removeContext(context.connectionId);
         }
       },

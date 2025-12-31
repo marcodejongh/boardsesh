@@ -97,7 +97,7 @@ class RoomManager {
     return this.distributedState !== null;
   }
 
-  registerClient(connectionId: string, username?: string, userId?: string, avatarUrl?: string): string {
+  async registerClient(connectionId: string, username?: string, userId?: string, avatarUrl?: string): Promise<string> {
     const defaultUsername = username || `User-${connectionId.substring(0, 6)}`;
     this.clients.set(connectionId, {
       connectionId,
@@ -109,10 +109,16 @@ class RoomManager {
     });
 
     // Register in distributed state for cross-instance visibility
+    // Await to ensure consistency - if this fails, the client is not properly registered
     if (this.distributedState) {
-      this.distributedState.registerConnection(connectionId, defaultUsername, userId, avatarUrl).catch((err) => {
+      try {
+        await this.distributedState.registerConnection(connectionId, defaultUsername, userId, avatarUrl);
+      } catch (err) {
+        // Remove local client on distributed state failure to maintain consistency
+        this.clients.delete(connectionId);
         console.error(`[RoomManager] Failed to register connection in distributed state: ${err}`);
-      });
+        throw new Error(`Failed to register client: distributed state error`);
+      }
     }
 
     return connectionId;
@@ -398,12 +404,15 @@ class RoomManager {
     return { sessionId, newLeaderId };
   }
 
-  removeClient(connectionId: string): void {
-    // Remove from distributed state
+  async removeClient(connectionId: string): Promise<void> {
+    // Remove from distributed state first to ensure consistency
     if (this.distributedState) {
-      this.distributedState.removeConnection(connectionId).catch((err) => {
+      try {
+        await this.distributedState.removeConnection(connectionId);
+      } catch (err) {
+        // Log but continue with local cleanup - don't leave ghost clients locally
         console.error(`[RoomManager] Failed to remove connection from distributed state: ${err}`);
-      });
+      }
     }
     this.clients.delete(connectionId);
   }
@@ -841,7 +850,13 @@ class RoomManager {
 
     const result: DiscoverableSession[] = [];
     for (const { session, distance } of sessionsWithDistance) {
-      const participantCount = this.sessions.get(session.id)?.size || 0;
+      // Use distributed state for accurate cross-instance participant count
+      let participantCount: number;
+      if (this.distributedState) {
+        participantCount = await this.distributedState.getSessionMemberCount(session.id);
+      } else {
+        participantCount = this.sessions.get(session.id)?.size || 0;
+      }
 
       // Session is active if it has connected users OR exists in Redis (within 4h TTL)
       let isActive = participantCount > 0;
