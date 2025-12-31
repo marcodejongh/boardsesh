@@ -1,0 +1,632 @@
+# WebSocket Implementation for Party Sessions
+
+This document describes the WebSocket implementation used for real-time party session synchronization in Boardsesh. Party mode allows multiple climbers to collaborate on a shared queue of climbs, with real-time synchronization across all connected clients.
+
+## Table of Contents
+
+1. [Architecture Overview](#architecture-overview)
+2. [Technology Stack](#technology-stack)
+3. [Connection Flow](#connection-flow)
+4. [Session Management](#session-management)
+5. [Queue State Synchronization](#queue-state-synchronization)
+6. [Multi-Instance Support](#multi-instance-support)
+7. [Failure States and Recovery](#failure-states-and-recovery)
+8. [Data Persistence Strategy](#data-persistence-strategy)
+
+---
+
+## Architecture Overview
+
+The party session system uses a GraphQL-over-WebSocket architecture with the following key components:
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                              Frontend (Next.js)                          │
+├─────────────────────────────────────────────────────────────────────────┤
+│  ┌─────────────────────┐    ┌─────────────────────────────────────────┐ │
+│  │ PersistentSession   │◄───┤ GraphQL Client (graphql-ws)             │ │
+│  │ Context             │    │ - Connection management                  │ │
+│  └─────────┬───────────┘    │ - Subscription handling                  │ │
+│            │                │ - Reconnection with exponential backoff  │ │
+│  ┌─────────▼───────────┐    └─────────────────────────────────────────┘ │
+│  │ QueueContext        │                                                 │
+│  │ - Local state       │                                                 │
+│  │ - Optimistic updates│                                                 │
+│  └─────────────────────┘                                                 │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    │ WebSocket (graphql-ws protocol)
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                           Backend (Node.js)                              │
+├─────────────────────────────────────────────────────────────────────────┤
+│  ┌─────────────────────┐    ┌─────────────────────┐                     │
+│  │ WebSocket Server    │    │ GraphQL Yoga        │                     │
+│  │ (graphql-ws)        │◄───┤ - Schema            │                     │
+│  │ - Auth validation   │    │ - Resolvers         │                     │
+│  │ - Connection mgmt   │    └─────────────────────┘                     │
+│  └─────────┬───────────┘                                                 │
+│            │                                                             │
+│  ┌─────────▼───────────┐    ┌─────────────────────┐                     │
+│  │ RoomManager         │◄───┤ PubSub              │                     │
+│  │ - Session state     │    │ - Local dispatch    │                     │
+│  │ - Client tracking   │    │ - Redis pub/sub     │                     │
+│  │ - Leader election   │    └─────────────────────┘                     │
+│  └─────────┬───────────┘                                                 │
+│            │                                                             │
+│  ┌─────────▼───────────┐    ┌─────────────────────┐                     │
+│  │ RedisSessionStore   │    │ PostgreSQL          │                     │
+│  │ - Hot cache (4h TTL)│    │ - Persistent storage│                     │
+│  │ - User presence     │    │ - Session history   │                     │
+│  │ - Distributed locks │    │ - Queue state       │                     │
+│  └─────────────────────┘    └─────────────────────┘                     │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+## Technology Stack
+
+| Component | Technology | Purpose |
+|-----------|------------|---------|
+| WebSocket Protocol | `graphql-ws` | GraphQL subscriptions over WebSocket |
+| Backend Framework | GraphQL Yoga | HTTP + WS GraphQL server |
+| Frontend Client | `graphql-ws` client | Connection management |
+| Pub/Sub | Redis | Multi-instance event distribution |
+| Hot Cache | Redis | Real-time session state (4h TTL) |
+| Persistent Storage | PostgreSQL | Durable session & queue history |
+
+---
+
+## Connection Flow
+
+### Initial Connection Sequence
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant WS as WebSocket Server
+    participant A as Auth Middleware
+    participant RM as RoomManager
+    participant R as Redis
+    participant PG as PostgreSQL
+
+    C->>WS: WebSocket Connect (origin check)
+    WS->>WS: Verify origin
+    WS->>C: Connection Accepted
+
+    C->>WS: ConnectionInit (with authToken)
+    WS->>A: validateNextAuthToken(token)
+    A-->>WS: userId (or null)
+    WS->>RM: registerClient(connectionId)
+    RM-->>WS: Client registered
+    WS->>C: ConnectionAck
+
+    C->>WS: Execute joinSession mutation
+    WS->>RM: joinSession(connectionId, sessionId, boardPath)
+
+    alt Session exists in memory
+        RM->>RM: Add client to session
+    else Session exists in Redis (inactive)
+        RM->>R: getSession(sessionId)
+        R-->>RM: Session data
+        RM->>RM: Restore to memory
+    else Session exists in Postgres (dormant)
+        RM->>PG: SELECT session, queue
+        PG-->>RM: Session data
+        RM->>R: saveSession()
+        RM->>RM: Restore to memory
+    else New session
+        RM->>PG: INSERT session
+        RM->>R: saveSession()
+        RM->>RM: Create in memory
+    end
+
+    RM-->>WS: {clientId, users, queueState, isLeader}
+    WS-->>C: joinSession response
+
+    C->>WS: Subscribe queueUpdates
+    WS->>WS: Subscribe FIRST (eager)
+    WS->>R: Subscribe to Redis channel
+    WS->>RM: getQueueState()
+    WS->>C: FullSync event
+    WS->>C: Stream incremental events
+
+    C->>WS: Subscribe sessionUpdates
+    WS->>C: Stream session events
+```
+
+### Key Points
+
+1. **Origin Validation**: WebSocket connections are validated against allowed origins
+2. **Authentication**: Optional auth token passed in `connectionParams`
+3. **Eager Subscription**: Queue subscription starts BEFORE fetching state to prevent race conditions
+4. **Session Restoration**: Sessions can be restored from Redis (hot) or PostgreSQL (cold)
+
+---
+
+## Session Management
+
+### Session Lifecycle States
+
+```
+                    ┌─────────────┐
+                    │   Created   │
+                    └──────┬──────┘
+                           │ First user joins
+                           ▼
+    ┌──────────────────────────────────────────────┐
+    │                   ACTIVE                      │
+    │  - Users connected                            │
+    │  - Real-time sync enabled                     │
+    │  - Redis cache hot                            │
+    └──────────────────────────┬───────────────────┘
+                               │ Last user leaves
+                               ▼
+    ┌──────────────────────────────────────────────┐
+    │                  INACTIVE                     │
+    │  - No connected users                         │
+    │  - Redis cache retained (4h TTL)              │
+    │  - Can be restored                            │
+    └──────────────────────────┬───────────────────┘
+                               │ TTL expires OR explicit end
+                               ▼
+    ┌──────────────────────────────────────────────┐
+    │                   ENDED                       │
+    │  - Removed from Redis                         │
+    │  - Postgres record kept for history           │
+    │  - Cannot be rejoined                         │
+    └──────────────────────────────────────────────┘
+```
+
+### Leader Election
+
+Leader election uses deterministic selection based on connection time:
+
+```mermaid
+sequenceDiagram
+    participant U1 as User 1 (Leader)
+    participant U2 as User 2
+    participant RM as RoomManager
+    participant PS as PubSub
+
+    Note over U1,PS: User 1 is current leader
+
+    U1->>RM: disconnect()
+    RM->>RM: wasLeader = true
+    RM->>RM: Sort remaining clients by connectedAt
+    RM->>RM: New leader = earliest connected
+    RM->>PS: publishSessionEvent(LeaderChanged)
+    PS->>U2: LeaderChanged{leaderId: U2}
+
+    Note over U2: User 2 is now leader
+```
+
+---
+
+## Queue State Synchronization
+
+### Event Types
+
+| Event | Description | Fields |
+|-------|-------------|--------|
+| `FullSync` | Complete state snapshot | `sequence`, `state` (queue + currentClimb) |
+| `QueueItemAdded` | Item added to queue | `sequence`, `item`, `position` |
+| `QueueItemRemoved` | Item removed from queue | `sequence`, `uuid` |
+| `QueueReordered` | Item moved in queue | `sequence`, `uuid`, `oldIndex`, `newIndex` |
+| `CurrentClimbChanged` | Active climb changed | `sequence`, `item`, `clientId`, `correlationId` |
+| `ClimbMirrored` | Mirror state toggled | `sequence`, `mirrored` |
+
+### Optimistic Updates with Correlation IDs
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant R as Reducer
+    participant PS as PersistentSession
+    participant S as Server
+
+    C->>R: setCurrentClimbQueueItem(climb)
+    R->>R: Generate correlationId
+    R->>R: Add to pendingCurrentClimbUpdates
+    R->>R: Apply optimistic update
+    R-->>C: UI updated immediately
+
+    PS->>S: setCurrentClimb(climb, correlationId)
+    S->>S: Update state
+    S->>PS: CurrentClimbChanged event
+
+    PS->>R: DELTA_UPDATE_CURRENT_CLIMB
+
+    alt correlationId matches pending
+        R->>R: Remove from pending
+        R->>R: Skip update (already applied)
+    else correlationId doesn't match
+        R->>R: Apply server state
+    end
+```
+
+### Sequence Gap Detection
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant S as Server
+
+    Note over C: lastReceivedSequence = 5
+
+    S->>C: Event (sequence: 6)
+    C->>C: 6 == 5+1 ✓ Apply event
+
+    S->>C: Event (sequence: 8)
+    C->>C: 8 != 6+1 ⚠️ Gap detected!
+    C->>C: Log warning
+    C->>C: Apply anyway (hash will catch drift)
+
+    Note over C: Periodic hash verification (60s)
+    C->>C: Compute local state hash
+
+    alt Hash matches server
+        C->>C: State verified ✓
+    else Hash mismatch
+        C->>S: Trigger resync
+        S->>C: FullSync event
+    end
+```
+
+---
+
+## Multi-Instance Support
+
+### Redis Pub/Sub for Cross-Instance Events
+
+```mermaid
+sequenceDiagram
+    participant C1 as Client (Instance 1)
+    participant I1 as Backend Instance 1
+    participant R as Redis
+    participant I2 as Backend Instance 2
+    participant C2 as Client (Instance 2)
+
+    C1->>I1: addQueueItem mutation
+    I1->>I1: Update state
+    I1->>I1: Dispatch to local subscribers
+    I1->>R: PUBLISH boardsesh:queue:sessionId
+
+    R->>I2: Message received
+    I2->>I2: Check instanceId (skip if self)
+    I2->>I2: Dispatch to local subscribers
+    I2->>C2: QueueItemAdded event
+
+    I1->>C1: QueueItemAdded event
+```
+
+### Channel Naming Convention
+
+- Queue events: `boardsesh:queue:{sessionId}`
+- Session events: `boardsesh:session:{sessionId}`
+
+### Event Buffer for Delta Sync
+
+Events are buffered in Redis for reconnection recovery:
+
+```
+boardsesh:session:{sessionId}:events
+├── Most recent event (index 0)
+├── ...
+└── Oldest event (max 100 events, 5 min TTL)
+```
+
+---
+
+## Failure States and Recovery
+
+### 1. Client Disconnection
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant WS as WebSocket
+    participant G as graphql-ws Client
+
+    Note over C,G: Connection Lost
+
+    WS--xC: Connection closed
+    G->>G: Detect disconnection
+    G->>G: Start retry (attempt 1)
+    G->>G: Wait 1s (exponential backoff)
+    G->>WS: Reconnect attempt
+
+    alt Reconnect succeeds
+        WS->>G: Connected
+        G->>G: Call onReconnect callback
+        G->>WS: joinSession mutation
+        WS-->>G: Session state
+        G->>G: Delta sync or full sync
+    else Reconnect fails
+        G->>G: Retry with backoff
+        Note over G: 1s → 2s → 4s → 8s → ... → 30s max
+        Note over G: Up to 10 retries
+    end
+```
+
+**Recovery mechanism:**
+- Exponential backoff: 1s, 2s, 4s, 8s, 16s, 30s (max)
+- Up to 10 retry attempts
+- On reconnection: re-join session and sync state
+- Delta sync attempted if gap ≤ 100 events
+- Falls back to full sync if gap too large
+
+### 2. Redis Connection Failure
+
+```mermaid
+sequenceDiagram
+    participant B as Backend
+    participant R as Redis
+    participant PG as PostgreSQL
+
+    B->>R: Publish event
+    R--xB: Connection error
+
+    alt Redis Required Mode
+        B->>B: Throw error
+        B->>B: Health check fails
+    else Fallback Mode
+        B->>B: Log error, continue
+        B->>B: Local dispatch succeeds
+        B->>PG: Write to Postgres directly
+        Note over B: Other instances won't receive event
+    end
+```
+
+**Key behavior:**
+- If `REDIS_URL` is configured, Redis is **required** (fail-closed)
+- Without Redis config: local-only mode (single instance)
+- Publish failures logged but don't block local dispatch
+- Health endpoint reports Redis status
+
+### 3. PostgreSQL Write Failure
+
+```mermaid
+sequenceDiagram
+    participant RM as RoomManager
+    participant R as Redis
+    participant PG as PostgreSQL
+
+    Note over RM: Queue mutation occurs
+
+    RM->>R: Update immediately (source of truth)
+    RM->>RM: Schedule Postgres write (30s debounce)
+
+    Note over RM,PG: After 30s debounce timer
+
+    RM->>PG: Write queue state
+
+    alt Write succeeds
+        RM->>RM: Clear pending write
+    else Write fails
+        RM->>RM: Schedule retry (exponential backoff)
+        Note over RM: 1s → 2s → 4s → ... → 30s max
+        Note over RM: Up to 3 retries
+
+        alt Max retries reached
+            RM->>RM: Log error with state
+            RM->>RM: Data may be lost
+            Note over RM: Redis still has data
+        end
+    end
+```
+
+**Mitigation:**
+- Redis is the real-time source of truth
+- Postgres writes are debounced (30s) and retried
+- Graceful shutdown flushes all pending writes
+- Session can be recovered from Redis (4h TTL)
+
+### 4. Session Restoration Race Condition
+
+```mermaid
+sequenceDiagram
+    participant C1 as Client 1
+    participant I1 as Instance 1
+    participant R as Redis Lock
+    participant I2 as Instance 2
+    participant C2 as Client 2
+
+    C1->>I1: Join session (not in memory)
+    C2->>I2: Join session (not in memory)
+
+    I1->>R: acquireLock(session:restore:id)
+    R-->>I1: Lock acquired ✓
+
+    I2->>R: acquireLock(session:restore:id)
+    R-->>I2: Lock NOT acquired
+    I2->>I2: Wait with exponential backoff
+
+    I1->>R: Restore session from Redis/Postgres
+    I1->>R: releaseLock()
+
+    I2->>I2: Check if session now in memory
+    I2->>I2: Proceed with join
+```
+
+**Lock mechanism:**
+- Redis-based distributed lock (10s TTL)
+- Lua script ensures only owner can release
+- Backoff waiting: 50ms → 100ms → 200ms → ... (5 attempts)
+
+### 5. State Hash Mismatch (Drift Detection)
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant S as Server
+
+    Note over C: Every 60 seconds
+
+    C->>C: Compute local hash
+    C->>C: Compare to last server hash
+
+    alt Hashes match
+        C->>C: State verified ✓
+    else Hashes differ
+        C->>C: Log "State drift detected"
+        C->>S: Trigger resync
+        S->>S: Re-join session
+        S->>C: FullSync event
+        C->>C: Apply full state
+    end
+```
+
+**Additional checks:**
+- Current climb must exist in queue
+- Sequence numbers must increment by 1
+- Hash updated after each delta event
+
+### 6. Subscription Error / Complete
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant PS as PersistentSession
+    participant S as Server
+
+    S->>PS: Subscription error/complete
+    PS->>PS: Clean up subscription ref
+    PS->>PS: Set error state
+
+    Note over PS: graphql-ws handles reconnection
+
+    PS->>S: Automatic reconnect
+    S->>PS: Connected
+    PS->>PS: Re-join session
+    PS->>PS: Re-establish subscriptions
+```
+
+---
+
+## Data Persistence Strategy
+
+### Hybrid Storage Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         Write Path                               │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│   Queue Mutation ──────► Redis (immediate)                       │
+│         │                                                        │
+│         └──────────────► Postgres (30s debounced)                │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│                         Read Path                                │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│   Get State ──► Redis (hot cache) ──► Postgres (cold storage)   │
+│                      │                       │                   │
+│                      ▼                       ▼                   │
+│                 Active sessions         Dormant sessions         │
+│                 (< 4 hours)             (> 4 hours)              │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Session State Tiers
+
+| Tier | Storage | TTL | Use Case |
+|------|---------|-----|----------|
+| **Hot** | In-Memory + Redis | 4 hours | Active sessions with connected users |
+| **Warm** | Redis only | 4 hours | Recently inactive (users left) |
+| **Cold** | PostgreSQL | Indefinite | Historical sessions, dormant restoration |
+
+### Key Redis Data Structures
+
+```
+boardsesh:session:{id}              # Hash - session data
+boardsesh:session:{id}:users        # Hash - connected users
+boardsesh:session:{id}:events       # List - event buffer (delta sync)
+boardsesh:session:active            # Set - active session IDs
+boardsesh:session:recent            # Sorted Set - recent sessions (by time)
+boardsesh:queue:{id}                # Pub/Sub channel - queue events
+boardsesh:lock:session:restore:{id} # String - distributed lock
+```
+
+### Graceful Shutdown
+
+```mermaid
+sequenceDiagram
+    participant P as Process
+    participant RM as RoomManager
+    participant R as Redis
+    participant PG as PostgreSQL
+    participant WS as WebSocket
+
+    P->>P: SIGTERM received
+    P->>RM: flushPendingWrites()
+
+    loop For each pending session
+        RM->>RM: Clear debounce timer
+        RM->>PG: Write queue state
+    end
+
+    RM-->>P: Writes flushed
+
+    P->>WS: Close all connections
+    WS->>WS: Send close frame (1000)
+
+    P->>R: Disconnect
+    P->>P: Exit
+```
+
+---
+
+## Configuration
+
+### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `REDIS_URL` | Redis connection string | None (local-only mode) |
+| `PORT` | HTTP/WS server port | 8080 |
+| `BOARDSESH_URL` | Allowed CORS origin | https://boardsesh.com |
+
+### Timeouts and Limits
+
+| Setting | Value | Purpose |
+|---------|-------|---------|
+| Retry attempts | 10 | WebSocket reconnection |
+| Max retry delay | 30s | Exponential backoff cap |
+| Keep-alive interval | 10s | Connection health check |
+| Mutation timeout | 30s | Prevent hanging mutations |
+| Redis TTL | 4 hours | Session cache expiry |
+| Postgres debounce | 30s | Batch writes |
+| Event buffer size | 100 | Delta sync limit |
+| Event buffer TTL | 5 min | Old events cleanup |
+| Hash verification | 60s | State drift detection |
+| Subscription queue | 1000 | Max pending events |
+
+---
+
+## Related Files
+
+### Backend
+
+- `packages/backend/src/websocket/setup.ts` - WebSocket server configuration
+- `packages/backend/src/pubsub/index.ts` - Event pub/sub system
+- `packages/backend/src/pubsub/redis-adapter.ts` - Redis pub/sub adapter
+- `packages/backend/src/services/room-manager.ts` - Session & queue management
+- `packages/backend/src/services/redis-session-store.ts` - Redis session persistence
+- `packages/backend/src/graphql/resolvers/queue/` - Queue mutations & subscriptions
+- `packages/backend/src/graphql/resolvers/sessions/` - Session mutations & subscriptions
+
+### Frontend
+
+- `packages/web/app/components/graphql-queue/graphql-client.ts` - WebSocket client
+- `packages/web/app/components/graphql-queue/use-queue-session.ts` - Session hook
+- `packages/web/app/components/persistent-session/persistent-session-context.tsx` - Root-level session management
+- `packages/web/app/components/graphql-queue/QueueContext.tsx` - Queue state context
+
+### Shared
+
+- `packages/shared-schema/src/schema.ts` - GraphQL schema definition
+- `packages/shared-schema/src/types.ts` - TypeScript types
