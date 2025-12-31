@@ -270,7 +270,8 @@ class PubSub {
     // Store event in buffer for delta sync (Phase 2)
     // Fire and forget - don't block on buffer storage
     this.storeEventInBuffer(sessionId, event).catch((error) => {
-      // Already logged in storeEventInBuffer
+      console.error(`[PubSub] Failed to buffer event for session ${sessionId}:`, error);
+      // Non-fatal: clients will fall back to full sync if delta sync fails
     });
 
     // Also publish to Redis if available

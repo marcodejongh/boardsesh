@@ -207,7 +207,7 @@ export const EVENTS_REPLAY = `
         }
         ... on QueueItemAdded {
           sequence
-          addedItem: item {
+          item {
             ${QUEUE_ITEM_FIELDS}
           }
           position
@@ -224,7 +224,7 @@ export const EVENTS_REPLAY = `
         }
         ... on CurrentClimbChanged {
           sequence
-          currentItem: item {
+          item {
             ${QUEUE_ITEM_FIELDS}
           }
           clientId
@@ -258,7 +258,7 @@ export const QUEUE_UPDATES = `
       }
       ... on QueueItemAdded {
         sequence
-        addedItem: item {
+        item {
           ${QUEUE_ITEM_FIELDS}
         }
         position
@@ -275,7 +275,7 @@ export const QUEUE_UPDATES = `
       }
       ... on CurrentClimbChanged {
         sequence
-        currentItem: item {
+        item {
           ${QUEUE_ITEM_FIELDS}
         }
         clientId

@@ -43,7 +43,7 @@ class RoomManager {
   private sessions: Map<string, Set<string>> = new Map();
   private redisStore: RedisSessionStore | null = null;
   private postgresWriteTimers: Map<string, NodeJS.Timeout> = new Map();
-  private pendingWrites: Map<string, { queue: ClimbQueueItem[]; currentClimbQueueItem: ClimbQueueItem | null; version: number }> = new Map();
+  private pendingWrites: Map<string, { queue: ClimbQueueItem[]; currentClimbQueueItem: ClimbQueueItem | null; version: number; sequence: number }> = new Map();
   private readonly MAX_RETRY_ATTEMPTS = 3;
   private readonly RETRY_BASE_DELAY = 1000; // 1 second
   private writeRetryAttempts: Map<string, number> = new Map();
@@ -180,12 +180,28 @@ class RoomManager {
             await this.redisStore.releaseLock(lockKey, lockValue);
           }
         } else {
-          // Lock not acquired, wait briefly for restoration to complete
-          console.log(`[RoomManager] Lock not acquired for session ${sessionId}, waiting...`);
-          await new Promise(resolve => setTimeout(resolve, 100));
+          // Lock not acquired - wait with exponential backoff for restoration to complete
+          console.log(`[RoomManager] Lock not acquired for session ${sessionId}, waiting with backoff...`);
+          let waitTime = 50;
+          const maxWait = 2000;
+          const maxAttempts = 5;
+
+          for (let attempt = 0; attempt < maxAttempts; attempt++) {
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+
+            // Check if session was restored by another instance
+            if (this.sessions.has(sessionId)) {
+              console.log(`[RoomManager] Session ${sessionId} restored by another instance after ${attempt + 1} attempts`);
+              break;
+            }
+
+            // Exponential backoff
+            waitTime = Math.min(waitTime * 2, maxWait);
+          }
 
           // After waiting, session should exist if another instance initialized it
           if (!this.sessions.has(sessionId)) {
+            console.log(`[RoomManager] Session ${sessionId} not restored after backoff, creating local entry`);
             this.sessions.set(sessionId, new Set());
           }
         }
@@ -408,7 +424,7 @@ class RoomManager {
     }
 
     // Debounce Postgres write (30 seconds) - eventual consistency
-    this.schedulePostgresWrite(sessionId, queue, currentClimbQueueItem, newVersion);
+    this.schedulePostgresWrite(sessionId, queue, currentClimbQueueItem, newVersion, newSequence);
 
     return { version: newVersion, sequence: newSequence, stateHash };
   }
@@ -433,6 +449,7 @@ class RoomManager {
             queue,
             currentClimbQueueItem,
             version: 1,
+            sequence: 1, // Initial sequence for new session
             updatedAt: new Date(),
           })
           .onConflictDoNothing()
@@ -444,7 +461,8 @@ class RoomManager {
 
         // Also update Redis
         if (this.redisStore) {
-          await this.redisStore.updateQueueState(sessionId, queue, currentClimbQueueItem, result[0].version);
+          const stateHash = computeQueueStateHash(queue, currentClimbQueueItem?.uuid || null);
+          await this.redisStore.updateQueueState(sessionId, queue, currentClimbQueueItem, result[0].version, result[0].sequence, stateHash);
         }
 
         return result[0].version;
@@ -457,6 +475,7 @@ class RoomManager {
           queue,
           currentClimbQueueItem,
           version: sql`${sessionQueues.version} + 1`,
+          sequence: sql`${sessionQueues.sequence} + 1`,
           updatedAt: new Date(),
         })
         .where(and(
@@ -471,7 +490,8 @@ class RoomManager {
 
       // Also update Redis
       if (this.redisStore) {
-        await this.redisStore.updateQueueState(sessionId, queue, currentClimbQueueItem, result[0].version);
+        const stateHash = computeQueueStateHash(queue, currentClimbQueueItem?.uuid || null);
+        await this.redisStore.updateQueueState(sessionId, queue, currentClimbQueueItem, result[0].version, result[0].sequence, stateHash);
       }
 
       return result[0].version;
@@ -485,6 +505,7 @@ class RoomManager {
         queue,
         currentClimbQueueItem,
         version: 1,
+        sequence: 1, // Initial sequence for new session
         updatedAt: new Date(),
       })
       .onConflictDoUpdate({
@@ -493,16 +514,19 @@ class RoomManager {
           queue,
           currentClimbQueueItem,
           version: sql`${sessionQueues.version} + 1`,
+          sequence: sql`${sessionQueues.sequence} + 1`,
           updatedAt: new Date(),
         },
       })
       .returning();
 
     const newVersion = result[0]?.version ?? 1;
+    const newSequence = result[0]?.sequence ?? 1;
 
     // Also update Redis
     if (this.redisStore) {
-      await this.redisStore.updateQueueState(sessionId, queue, currentClimbQueueItem, newVersion);
+      const stateHash = computeQueueStateHash(queue, currentClimbQueueItem?.uuid || null);
+      await this.redisStore.updateQueueState(sessionId, queue, currentClimbQueueItem, newVersion, newSequence, stateHash);
     }
 
     return newVersion;
@@ -525,6 +549,7 @@ class RoomManager {
             queue,
             currentClimbQueueItem: null,
             version: 1,
+            sequence: 1, // Initial sequence for new session
             updatedAt: new Date(),
           })
           .onConflictDoNothing()
@@ -543,6 +568,7 @@ class RoomManager {
         .set({
           queue,
           version: sql`${sessionQueues.version} + 1`,
+          sequence: sql`${sessionQueues.sequence} + 1`,
           updatedAt: new Date(),
         })
         .where(and(
@@ -563,6 +589,7 @@ class RoomManager {
       .set({
         queue,
         version: sql`${sessionQueues.version} + 1`,
+        sequence: sql`${sessionQueues.sequence} + 1`,
         updatedAt: new Date(),
       })
       .where(eq(sessionQueues.sessionId, sessionId))
@@ -601,7 +628,7 @@ class RoomManager {
       queue: result[0].queue,
       currentClimbQueueItem: result[0].currentClimbQueueItem,
       version: result[0].version,
-      sequence: result[0].version, // Use version as sequence for now (will be separate column later)
+      sequence: result[0].sequence,
       stateHash,
     };
   }
@@ -887,10 +914,11 @@ class RoomManager {
     sessionId: string,
     queue: ClimbQueueItem[],
     currentClimbQueueItem: ClimbQueueItem | null,
-    version: number
+    version: number,
+    sequence: number
   ): void {
     // Store latest state
-    this.pendingWrites.set(sessionId, { queue, currentClimbQueueItem, version });
+    this.pendingWrites.set(sessionId, { queue, currentClimbQueueItem, version, sequence });
 
     // Clear existing timer
     const existingTimer = this.postgresWriteTimers.get(sessionId);
@@ -926,7 +954,7 @@ class RoomManager {
    */
   private async writeQueueStateToPostgres(
     sessionId: string,
-    state: { queue: ClimbQueueItem[]; currentClimbQueueItem: ClimbQueueItem | null; version: number }
+    state: { queue: ClimbQueueItem[]; currentClimbQueueItem: ClimbQueueItem | null; version: number; sequence: number }
   ): Promise<void> {
     await db
       .insert(sessionQueues)
@@ -935,6 +963,7 @@ class RoomManager {
         queue: state.queue,
         currentClimbQueueItem: state.currentClimbQueueItem,
         version: state.version,
+        sequence: state.sequence,
         updatedAt: new Date(),
       })
       .onConflictDoUpdate({
@@ -943,6 +972,7 @@ class RoomManager {
           queue: state.queue,
           currentClimbQueueItem: state.currentClimbQueueItem,
           version: state.version,
+          sequence: state.sequence,
           updatedAt: new Date(),
         },
       });

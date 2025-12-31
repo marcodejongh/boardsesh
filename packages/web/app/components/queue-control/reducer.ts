@@ -184,15 +184,10 @@ export function queueReducer(state: QueueState, action: QueueAction): QueueState
           };
         }
 
-        // Fallback 2: UUID-based detection (backward compatibility)
-        if (!eventClientId && !serverCorrelationId) {
-          // Old server without correlation ID or clientId - use UUID heuristic
-          const hasPendingWithSameUUID = item.uuid && pendingUpdates.length > 0;
-          if (hasPendingWithSameUUID) {
-            // Likely our echo, skip it
-            return state;
-          }
-        }
+        // Note: UUID-based fallback was removed because it was incorrectly skipping
+        // legitimate server updates. Without correlation ID or clientId from the server,
+        // we cannot reliably detect echoes. The UI may briefly flash on legacy servers,
+        // but state will converge correctly.
       }
 
       // Skip if this is the same item (deduplication for optimistic updates)
@@ -228,6 +223,17 @@ export function queueReducer(state: QueueState, action: QueueAction): QueueState
         ...state,
         pendingCurrentClimbUpdates: state.pendingCurrentClimbUpdates.filter(
           id => id !== action.payload.correlationId
+        ),
+      };
+    }
+
+    case 'CLEANUP_PENDING_UPDATES_BATCH': {
+      // Batch cleanup to avoid multiple re-renders
+      const idsToRemove = new Set(action.payload.correlationIds);
+      return {
+        ...state,
+        pendingCurrentClimbUpdates: state.pendingCurrentClimbUpdates.filter(
+          id => !idsToRemove.has(id)
         ),
       };
     }

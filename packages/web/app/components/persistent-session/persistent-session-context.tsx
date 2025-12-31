@@ -15,7 +15,7 @@ import {
   QUEUE_UPDATES,
   EVENTS_REPLAY,
   SessionUser,
-  ClientQueueEvent,
+  QueueEvent,
   SessionEvent,
   QueueState,
   EventsReplayResponse,
@@ -24,6 +24,7 @@ import { ClimbQueueItem as LocalClimbQueueItem } from '../queue-control/types';
 import { BoardDetails, ParsedBoardRouteParameters } from '@/app/lib/types';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { usePartyProfile } from '../party-manager/party-profile-context';
+import { computeQueueStateHash } from '@/app/utils/hash';
 
 const DEBUG = process.env.NODE_ENV === 'development';
 
@@ -135,7 +136,7 @@ export interface PersistentSessionContextType {
   setQueue: (queue: LocalClimbQueueItem[], currentClimbQueueItem?: LocalClimbQueueItem | null) => Promise<void>;
 
   // Event subscription for board-level components
-  subscribeToQueueEvents: (callback: (event: ClientQueueEvent) => void) => () => void;
+  subscribeToQueueEvents: (callback: (event: QueueEvent) => void) => () => void;
   subscribeToSessionEvents: (callback: (event: SessionEvent) => void) => () => void;
 }
 
@@ -181,6 +182,8 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
   // Sequence tracking for gap detection and state verification
   const [lastReceivedSequence, setLastReceivedSequence] = useState<number | null>(null);
   const [lastReceivedStateHash, setLastReceivedStateHash] = useState<string | null>(null);
+  // Ref for synchronous access to sequence (avoids stale closure in handleQueueEvent)
+  const lastReceivedSequenceRef = useRef<number | null>(null);
 
   // Local queue state (persists without WebSocket session)
   const [localQueue, setLocalQueue] = useState<LocalClimbQueueItem[]>([]);
@@ -202,9 +205,11 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
   const isReconnectingRef = useRef(false);
   const activeSessionRef = useRef<ActiveSessionInfo | null>(null);
   const mountedRef = useRef(false);
+  // Ref to store reconnect handler for use by hash verification
+  const triggerResyncRef = useRef<(() => void) | null>(null);
 
   // Event subscribers
-  const queueEventSubscribersRef = useRef<Set<(event: ClientQueueEvent) => void>>(new Set());
+  const queueEventSubscribersRef = useRef<Set<(event: QueueEvent) => void>>(new Set());
   const sessionEventSubscribersRef = useRef<Set<(event: SessionEvent) => void>>(new Set());
 
   // Keep refs in sync
@@ -217,7 +222,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
   }, [activeSession]);
 
   // Notify queue event subscribers
-  const notifyQueueSubscribers = useCallback((event: ClientQueueEvent) => {
+  const notifyQueueSubscribers = useCallback((event: QueueEvent) => {
     queueEventSubscribersRef.current.forEach((callback) => callback(event));
   }, []);
 
@@ -226,11 +231,18 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
     sessionEventSubscribersRef.current.forEach((callback) => callback(event));
   }, []);
 
+  // Helper to update sequence in both ref and state
+  const updateLastReceivedSequence = useCallback((sequence: number) => {
+    lastReceivedSequenceRef.current = sequence;
+    setLastReceivedSequence(sequence);
+  }, []);
+
   // Handle queue events internally
-  const handleQueueEvent = useCallback((event: ClientQueueEvent) => {
-    // Sequence validation for gap detection
-    if (event.__typename !== 'FullSync' && lastReceivedSequence !== null) {
-      const expectedSequence = lastReceivedSequence + 1;
+  const handleQueueEvent = useCallback((event: QueueEvent) => {
+    // Sequence validation for gap detection (use ref to avoid stale closure)
+    const lastSeq = lastReceivedSequenceRef.current;
+    if (event.__typename !== 'FullSync' && lastSeq !== null) {
+      const expectedSequence = lastSeq + 1;
       if (event.sequence !== expectedSequence) {
         console.warn(
           `[PersistentSession] Sequence gap detected: expected ${expectedSequence}, got ${event.sequence}. ` +
@@ -247,24 +259,24 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
         setQueueState(event.state.queue as LocalClimbQueueItem[]);
         setCurrentClimbQueueItem(event.state.currentClimbQueueItem as LocalClimbQueueItem | null);
         // Reset sequence tracking on full sync
-        setLastReceivedSequence(event.sequence);
+        updateLastReceivedSequence(event.sequence);
         setLastReceivedStateHash(event.state.stateHash);
         break;
       case 'QueueItemAdded':
         setQueueState((prev) => {
           const newQueue = [...prev];
           if (event.position !== undefined && event.position >= 0) {
-            newQueue.splice(event.position, 0, event.addedItem as LocalClimbQueueItem);
+            newQueue.splice(event.position, 0, event.item as LocalClimbQueueItem);
           } else {
-            newQueue.push(event.addedItem as LocalClimbQueueItem);
+            newQueue.push(event.item as LocalClimbQueueItem);
           }
           return newQueue;
         });
-        setLastReceivedSequence(event.sequence);
+        updateLastReceivedSequence(event.sequence);
         break;
       case 'QueueItemRemoved':
         setQueueState((prev) => prev.filter((item) => item.uuid !== event.uuid));
-        setLastReceivedSequence(event.sequence);
+        updateLastReceivedSequence(event.sequence);
         break;
       case 'QueueReordered':
         setQueueState((prev) => {
@@ -273,11 +285,11 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
           newQueue.splice(event.newIndex, 0, item);
           return newQueue;
         });
-        setLastReceivedSequence(event.sequence);
+        updateLastReceivedSequence(event.sequence);
         break;
       case 'CurrentClimbChanged':
-        setCurrentClimbQueueItem(event.currentItem as LocalClimbQueueItem | null);
-        setLastReceivedSequence(event.sequence);
+        setCurrentClimbQueueItem(event.item as LocalClimbQueueItem | null);
+        updateLastReceivedSequence(event.sequence);
         break;
       case 'ClimbMirrored':
         setCurrentClimbQueueItem((prev) => {
@@ -290,13 +302,21 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
             },
           };
         });
-        setLastReceivedSequence(event.sequence);
+        updateLastReceivedSequence(event.sequence);
         break;
     }
 
     // Notify external subscribers
     notifyQueueSubscribers(event);
-  }, [notifyQueueSubscribers, lastReceivedSequence]);
+  }, [notifyQueueSubscribers, updateLastReceivedSequence]);
+
+  // Keep state hash in sync with local state after delta events
+  // This ensures hash verification compares against current state, not stale FullSync hash
+  useEffect(() => {
+    if (!session) return; // Only update hash when connected
+    const newHash = computeQueueStateHash(queue, currentClimbQueueItem?.uuid || null);
+    setLastReceivedStateHash(newHash);
+  }, [session, queue, currentClimbQueueItem]);
 
   // Handle session events internally
   const handleSessionEvent = useCallback((event: SessionEvent) => {
@@ -475,6 +495,9 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
       }
     }
 
+    // Store reconnect handler for use by hash verification
+    triggerResyncRef.current = handleReconnect;
+
     // Helper to apply full sync from session data
     function applyFullSync(sessionData: any) {
       if (sessionData.queueState) {
@@ -533,7 +556,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
         }
 
         // Subscribe to queue updates
-        queueUnsubscribeRef.current = subscribe<{ queueUpdates: ClientQueueEvent }>(
+        queueUnsubscribeRef.current = subscribe<{ queueUpdates: QueueEvent }>(
           graphqlClient,
           { query: QUEUE_UPDATES, variables: { sessionId } },
           {
@@ -624,8 +647,8 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
   // Note: username, avatarUrl, wsAuthToken are accessed via refs to prevent reconnection on changes
   }, [activeSession, isAuthLoading, handleQueueEvent, handleSessionEvent]);
 
-  // Periodic state hash verification (Phase 1)
-  // Runs every 60 seconds to detect state drift
+  // Periodic state hash verification
+  // Runs every 60 seconds to detect state drift and auto-resync if needed
   useEffect(() => {
     if (!session || !lastReceivedStateHash || queue.length === 0) {
       // Skip if not connected or no state to verify
@@ -634,18 +657,19 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
 
     const verifyInterval = setInterval(() => {
       // Compute local state hash
-      const { computeQueueStateHash } = require('@/app/utils/hash');
       const localHash = computeQueueStateHash(queue, currentClimbQueueItem?.uuid || null);
 
       if (localHash !== lastReceivedStateHash) {
         console.warn(
           '[PersistentSession] State hash mismatch detected!',
           `Local: ${localHash}, Server: ${lastReceivedStateHash}`,
-          'This indicates state drift from server. Reconnection will trigger delta sync.'
+          'Triggering automatic resync...'
         );
-        // Note: Reconnection already handles delta sync/full sync.
-        // For hash mismatch during active session, could trigger reconnect,
-        // but that's aggressive. Current approach: log and rely on next reconnect.
+        // Trigger resync to get back in sync with server
+        // The reconnect handler will do delta sync or full sync as appropriate
+        if (triggerResyncRef.current) {
+          triggerResyncRef.current();
+        }
       } else {
         if (DEBUG) console.log('[PersistentSession] State hash verification passed');
       }
@@ -773,7 +797,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
   );
 
   // Event subscription functions
-  const subscribeToQueueEvents = useCallback((callback: (event: ClientQueueEvent) => void) => {
+  const subscribeToQueueEvents = useCallback((callback: (event: QueueEvent) => void) => {
     queueEventSubscribersRef.current.add(callback);
     return () => {
       queueEventSubscribersRef.current.delete(callback);

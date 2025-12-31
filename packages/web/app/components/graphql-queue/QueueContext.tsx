@@ -10,7 +10,7 @@ import { urlParamsToSearchParams, searchParamsToUrlParams } from '@/app/lib/url-
 import { Climb, ParsedBoardRouteParameters, BoardDetails } from '@/app/lib/types';
 import { useConnectionSettings } from '../connection-manager/connection-settings-context';
 import { usePartyProfile } from '../party-manager/party-profile-context';
-import { ClientQueueEvent } from '@boardsesh/shared-schema';
+import { QueueEvent } from '@boardsesh/shared-schema';
 import { saveSessionToHistory } from '../setup-wizard/session-history-panel';
 import { usePersistentSession } from '../persistent-session';
 import { FavoritesProvider } from '../climb-actions/favorites-batch-context';
@@ -201,7 +201,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
   useEffect(() => {
     if (!isPersistentSessionActive) return;
 
-    const unsubscribe = persistentSession.subscribeToQueueEvents((event: ClientQueueEvent) => {
+    const unsubscribe = persistentSession.subscribeToQueueEvents((event: QueueEvent) => {
       switch (event.__typename) {
         case 'FullSync':
           dispatch({
@@ -216,7 +216,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
           dispatch({
             type: 'DELTA_ADD_QUEUE_ITEM',
             payload: {
-              item: event.addedItem as ClimbQueueItem,
+              item: event.item as ClimbQueueItem,
               position: event.position,
             },
           });
@@ -241,7 +241,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
           dispatch({
             type: 'DELTA_UPDATE_CURRENT_CLIMB',
             payload: {
-              item: event.currentItem as ClimbQueueItem | null,
+              item: event.item as ClimbQueueItem | null,
               shouldAddToQueue: false,
               isServerEvent: true,
               eventClientId: event.clientId || undefined,
@@ -289,27 +289,28 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
       }
     });
 
-    // Set up cleanup timer for stale entries (>10 seconds)
+    // Set up cleanup timer for stale entries (>5 seconds)
+    // Reduced from 10s/5s to 5s/2s to minimize stale update window
     const cleanupTimer = setInterval(() => {
       const now = Date.now();
       const staleIds: string[] = [];
 
       pendingTimestamps.forEach((timestamp, id) => {
-        if (now - timestamp > 10000) {  // 10 seconds (generous timeout)
+        if (now - timestamp > 5000) {  // 5 seconds (reduced from 10s)
           staleIds.push(id);
         }
       });
 
-      // Dispatch cleanup actions for stale IDs
-      staleIds.forEach(id => {
-        console.warn('[QueueContext] Cleaning up orphaned pending update:', id);
+      // Batch cleanup to avoid multiple re-renders
+      if (staleIds.length > 0) {
+        console.warn('[QueueContext] Cleaning up orphaned pending updates:', staleIds);
         dispatch({
-          type: 'CLEANUP_PENDING_UPDATE',
-          payload: { correlationId: id },
+          type: 'CLEANUP_PENDING_UPDATES_BATCH',
+          payload: { correlationIds: staleIds },
         });
-        pendingTimestamps.delete(id);
-      });
-    }, 5000);  // Check every 5 seconds
+        staleIds.forEach(id => pendingTimestamps.delete(id));
+      }
+    }, 2000);  // Check every 2 seconds (reduced from 5s)
 
     return () => {
       clearInterval(cleanupTimer);
