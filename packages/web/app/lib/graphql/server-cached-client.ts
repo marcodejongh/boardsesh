@@ -1,6 +1,7 @@
 import 'server-only';
 import { unstable_cache } from 'next/cache';
 import { GraphQLClient, RequestDocument, Variables } from 'graphql-request';
+import { sortObjectKeys } from '@/app/lib/cache-utils';
 
 /**
  * Cache durations for climb search queries (in seconds)
@@ -36,28 +37,6 @@ async function executeGraphQLInternal<T = unknown, V extends Variables = Variabl
   });
 
   return client.request<T>(document, variables);
-}
-
-/**
- * Recursively sort object keys for consistent JSON serialization
- */
-function sortObjectKeys<T>(obj: T): T {
-  if (obj === null || typeof obj !== 'object') {
-    return obj;
-  }
-
-  if (Array.isArray(obj)) {
-    return obj.map(sortObjectKeys) as T;
-  }
-
-  const sortedObj: Record<string, unknown> = {};
-  const keys = Object.keys(obj as Record<string, unknown>).sort();
-
-  for (const key of keys) {
-    sortedObj[key] = sortObjectKeys((obj as Record<string, unknown>)[key]);
-  }
-
-  return sortedObj as T;
 }
 
 /**
