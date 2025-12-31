@@ -17,6 +17,12 @@ let db: ReturnType<typeof drizzle>;
 
 // SQL to create only the tables needed for backend tests
 const createTablesSQL = `
+  -- Drop existing tables to ensure schema is up-to-date
+  DROP TABLE IF EXISTS "board_session_queues" CASCADE;
+  DROP TABLE IF EXISTS "board_session_clients" CASCADE;
+  DROP TABLE IF EXISTS "board_sessions" CASCADE;
+  DROP TABLE IF EXISTS "users" CASCADE;
+
   -- Create users table (minimal, needed for FK reference)
   CREATE TABLE IF NOT EXISTS "users" (
     "id" text PRIMARY KEY NOT NULL,
@@ -58,6 +64,7 @@ const createTablesSQL = `
     "queue" jsonb DEFAULT '[]'::jsonb NOT NULL,
     "current_climb_queue_item" jsonb DEFAULT 'null'::jsonb,
     "version" integer DEFAULT 1 NOT NULL,
+    "sequence" integer DEFAULT 0 NOT NULL,
     "updated_at" timestamp DEFAULT now() NOT NULL
   );
 

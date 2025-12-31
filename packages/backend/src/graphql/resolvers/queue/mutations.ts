@@ -35,6 +35,8 @@ export const queueMutations = {
 
     // Track the original queue length for position calculation
     let originalQueueLength = 0;
+    let itemWasAdded = false;
+    let resultSequence = 0;
 
     // Retry loop for optimistic locking
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
@@ -46,8 +48,9 @@ export const queueMutations = {
 
       // Only add if not already in queue
       if (queue.some((i) => i.uuid === item.uuid)) {
-        // Item already in queue, just return it
-        break;
+        // Item already in queue - return without publishing event
+        if (DEBUG) console.log('[addQueueItem] Item already in queue, skipping');
+        return item;
       }
 
       if (position !== undefined && position >= 0 && position <= queue.length) {
@@ -58,7 +61,9 @@ export const queueMutations = {
 
       try {
         // Use updateQueueOnly with version check to avoid race conditions
-        await roomManager.updateQueueOnly(sessionId, queue, currentState.version);
+        const result = await roomManager.updateQueueOnly(sessionId, queue, currentState.version);
+        itemWasAdded = true;
+        resultSequence = result.sequence;
         break; // Success, exit retry loop
       } catch (error) {
         if (error instanceof VersionConflictError && attempt < MAX_RETRIES - 1) {
@@ -69,23 +74,23 @@ export const queueMutations = {
       }
     }
 
-    // Calculate actual position where item was inserted
-    // If position was valid, item is at that index; otherwise it was appended
-    const actualPosition =
-      position !== undefined && position >= 0 && position <= originalQueueLength
-        ? position
-        : originalQueueLength; // Item was appended at end of original queue
+    // Only publish event if item was actually added
+    if (itemWasAdded) {
+      // Calculate actual position where item was inserted
+      // If position was valid, item is at that index; otherwise it was appended
+      const actualPosition =
+        position !== undefined && position >= 0 && position <= originalQueueLength
+          ? position
+          : originalQueueLength; // Item was appended at end of original queue
 
-    // Get current sequence and hash for the event
-    const finalState = await roomManager.getQueueState(sessionId);
-
-    // Broadcast to subscribers with the actual position
-    pubsub.publishQueueEvent(sessionId, {
-      __typename: 'QueueItemAdded',
-      sequence: finalState.sequence,
-      item: item,
-      position: actualPosition,
-    });
+      // Broadcast to subscribers with the actual position
+      pubsub.publishQueueEvent(sessionId, {
+        __typename: 'QueueItemAdded',
+        sequence: resultSequence,
+        item: item,
+        position: actualPosition,
+      });
+    }
 
     return item;
   },
@@ -145,19 +150,19 @@ export const queueMutations = {
       throw new Error(`Invalid index: queue has ${queue.length} items`);
     }
 
+    let resultSequence = currentState.sequence;
+
     if (oldIndex >= 0 && oldIndex < queue.length && newIndex >= 0 && newIndex < queue.length) {
       const [movedItem] = queue.splice(oldIndex, 1);
       queue.splice(newIndex, 0, movedItem);
       // Use updateQueueOnly to avoid overwriting currentClimbQueueItem
-      await roomManager.updateQueueOnly(sessionId, queue);
+      const result = await roomManager.updateQueueOnly(sessionId, queue);
+      resultSequence = result.sequence;
     }
-
-    // Get current sequence for the event
-    const finalState = await roomManager.getQueueState(sessionId);
 
     pubsub.publishQueueEvent(sessionId, {
       __typename: 'QueueReordered',
-      sequence: finalState.sequence,
+      sequence: resultSequence,
       uuid,
       oldIndex,
       newIndex,

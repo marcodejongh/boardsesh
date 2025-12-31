@@ -232,6 +232,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
   const sessionUnsubscribeRef = useRef<(() => void) | null>(null);
   const sessionRef = useRef<Session | null>(null);
   const isReconnectingRef = useRef(false);
+  const isConnectingRef = useRef(false); // Prevents duplicate connections during React re-renders
   const activeSessionRef = useRef<ActiveSessionInfo | null>(null);
   const mountedRef = useRef(false);
   // Ref to store reconnect handler for use by hash verification
@@ -465,7 +466,8 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
         if (DEBUG) console.log('[PersistentSession] Reconnecting...');
 
         // Save last received sequence before rejoining
-        const lastSeq = lastReceivedSequence;
+        // Use ref to avoid stale closure (state variable would capture value from effect creation)
+        const lastSeq = lastReceivedSequenceRef.current;
 
         const sessionData = await joinSession(graphqlClient);
         // Double-check mounted state after async operation
@@ -508,13 +510,19 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
           // Gap too large - use full sync
           if (DEBUG) console.log(`[PersistentSession] Gap too large (${gap}), using full sync`);
           applyFullSync(sessionData);
-        } else if (gap === 0) {
-          // No missed events
-          if (DEBUG) console.log('[PersistentSession] No missed events, already in sync');
         } else if (lastSeq === null) {
-          // First connection - apply initial state
+          // First connection after state was reset - apply initial state
           if (DEBUG) console.log('[PersistentSession] First connection, applying initial state');
           applyFullSync(sessionData);
+        } else if (gap === 0) {
+          // No sequence gap, but verify state is actually in sync via hash
+          const localHash = computeQueueStateHash(queue, currentClimbQueueItem?.uuid || null);
+          if (localHash !== sessionData.queueState.stateHash) {
+            if (DEBUG) console.log('[PersistentSession] Hash mismatch on reconnect despite gap=0, applying full sync');
+            applyFullSync(sessionData);
+          } else {
+            if (DEBUG) console.log('[PersistentSession] No missed events, already in sync');
+          }
         }
 
         setSession(sessionData);
@@ -539,6 +547,13 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
     }
 
     async function connect() {
+      // Prevent duplicate connections during React re-renders or Strict Mode
+      if (isConnectingRef.current) {
+        if (DEBUG) console.log('[PersistentSession] Connection already in progress, skipping');
+        return;
+      }
+      isConnectingRef.current = true;
+
       if (DEBUG) console.log('[PersistentSession] Connecting to session:', sessionId);
       setIsConnecting(true);
       setError(null);
@@ -553,6 +568,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
 
         if (!mountedRef.current) {
           graphqlClient.dispose();
+          isConnectingRef.current = false;
           return;
         }
 
@@ -632,8 +648,11 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
             },
           },
         );
+        // Mark connection as complete
+        isConnectingRef.current = false;
       } catch (err) {
         console.error('[PersistentSession] Connection failed:', err);
+        isConnectingRef.current = false;
         if (mountedRef.current) {
           setError(err instanceof Error ? err : new Error(String(err)));
           setIsConnecting(false);
@@ -650,22 +669,28 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
       if (DEBUG) console.log('[PersistentSession] Cleaning up connection');
       // Set mounted ref to false FIRST to prevent any reconnect callbacks from executing
       mountedRef.current = false;
+      // Reset connecting ref to allow new connections after cleanup
+      isConnectingRef.current = false;
 
-      // Clean up subscriptions
-      if (queueUnsubscribeRef.current) {
-        queueUnsubscribeRef.current();
-        queueUnsubscribeRef.current = null;
-      }
-      if (sessionUnsubscribeRef.current) {
-        sessionUnsubscribeRef.current();
-        sessionUnsubscribeRef.current = null;
-      }
+      // Capture client reference before cleanup to avoid race conditions
+      const clientToCleanup = graphqlClient;
+      graphqlClient = null; // Prevent new operations on this client
 
-      if (graphqlClient) {
-        if (sessionRef.current) {
-          execute(graphqlClient, { query: LEAVE_SESSION }).catch(() => {});
-        }
-        graphqlClient.dispose();
+      // Clean up subscriptions synchronously
+      queueUnsubscribeRef.current?.();
+      queueUnsubscribeRef.current = null;
+      sessionUnsubscribeRef.current?.();
+      sessionUnsubscribeRef.current = null;
+
+      // Dispose client - use microtask to let pending operations complete
+      // This prevents "WebSocket already in CLOSING state" errors
+      if (clientToCleanup) {
+        Promise.resolve().then(() => {
+          if (sessionRef.current) {
+            execute(clientToCleanup, { query: LEAVE_SESSION }).catch(() => {});
+          }
+          clientToCleanup.dispose();
+        });
       }
 
       setClient(null);
@@ -706,6 +731,25 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
 
     return () => clearInterval(verifyInterval);
   }, [session, lastReceivedStateHash, queue, currentClimbQueueItem]);
+
+  // Defensive state consistency check
+  // If currentClimbQueueItem exists but is not found in queue, trigger resync
+  useEffect(() => {
+    if (!session || !currentClimbQueueItem || queue.length === 0) {
+      return;
+    }
+
+    const isCurrentInQueue = queue.some(item => item.uuid === currentClimbQueueItem.uuid);
+
+    if (!isCurrentInQueue) {
+      console.warn(
+        '[PersistentSession] Current climb not found in queue - state inconsistency detected. Triggering resync.'
+      );
+      if (triggerResyncRef.current) {
+        triggerResyncRef.current();
+      }
+    }
+  }, [session, currentClimbQueueItem, queue]);
 
   // Session lifecycle functions
   const activateSession = useCallback((info: ActiveSessionInfo) => {

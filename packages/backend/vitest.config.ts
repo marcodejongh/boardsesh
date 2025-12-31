@@ -10,6 +10,12 @@ export default defineConfig({
     setupFiles: ['./src/__tests__/setup.ts'],
     testTimeout: 10000,
     hookTimeout: 30000,
+    // Run test files sequentially because:
+    // 1. Tests share a singleton roomManager (reset in beforeEach can conflict)
+    // 2. Tests share a database with truncation in setup.ts beforeEach
+    // 3. Integration tests start servers on specific ports
+    // To enable parallelism, each test file would need isolated state.
+    fileParallelism: false,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

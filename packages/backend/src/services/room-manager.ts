@@ -534,68 +534,56 @@ class RoomManager {
 
   /**
    * Update only the queue without touching currentClimbQueueItem.
+   * Uses Redis as source of truth for real-time state. Postgres writes are debounced.
    * This avoids race conditions when other operations are modifying currentClimbQueueItem.
    */
-  async updateQueueOnly(sessionId: string, queue: ClimbQueueItem[], expectedVersion?: number): Promise<number> {
-    if (expectedVersion !== undefined) {
-      if (expectedVersion === 0) {
-        // Version 0 means no row exists yet - try to insert
-        // If a row was created between our read and this insert, the conflict will
-        // cause us to return nothing, triggering a VersionConflictError and retry
-        const result = await db
-          .insert(sessionQueues)
-          .values({
-            sessionId,
-            queue,
-            currentClimbQueueItem: null,
-            version: 1,
-            sequence: 1, // Initial sequence for new session
-            updatedAt: new Date(),
-          })
-          .onConflictDoNothing()
-          .returning();
+  async updateQueueOnly(
+    sessionId: string,
+    queue: ClimbQueueItem[],
+    expectedVersion?: number
+  ): Promise<{ version: number; sequence: number; stateHash: string }> {
+    // Get current state from Redis (source of truth for real-time sync)
+    let currentVersion = 0;
+    let currentSequence = 0;
+    let currentClimbQueueItem: ClimbQueueItem | null = null;
 
-        if (result.length === 0) {
-          // Row was created by a concurrent operation, trigger retry
-          throw new VersionConflictError(sessionId, expectedVersion);
-        }
-        return result[0].version;
+    if (this.redisStore) {
+      const redisSession = await this.redisStore.getSession(sessionId);
+      if (redisSession) {
+        currentVersion = redisSession.version;
+        currentSequence = redisSession.sequence;
+        currentClimbQueueItem = redisSession.currentClimbQueueItem;
       }
-
-      // Optimistic locking: only update if version matches
-      const result = await db
-        .update(sessionQueues)
-        .set({
-          queue,
-          version: sql`${sessionQueues.version} + 1`,
-          sequence: sql`${sessionQueues.sequence} + 1`,
-          updatedAt: new Date(),
-        })
-        .where(and(
-          eq(sessionQueues.sessionId, sessionId),
-          eq(sessionQueues.version, expectedVersion)
-        ))
-        .returning();
-
-      if (result.length === 0) {
-        throw new VersionConflictError(sessionId, expectedVersion);
-      }
-      return result[0].version;
     }
 
-    // No version check
-    const result = await db
-      .update(sessionQueues)
-      .set({
-        queue,
-        version: sql`${sessionQueues.version} + 1`,
-        sequence: sql`${sessionQueues.sequence} + 1`,
-        updatedAt: new Date(),
-      })
-      .where(eq(sessionQueues.sessionId, sessionId))
-      .returning();
+    // Fallback to Postgres if Redis doesn't have the data
+    if (currentVersion === 0 && currentSequence === 0) {
+      const pgState = await this.getQueueState(sessionId);
+      currentVersion = pgState.version;
+      currentSequence = pgState.sequence;
+      currentClimbQueueItem = pgState.currentClimbQueueItem;
+    }
 
-    return result[0]?.version ?? 1;
+    // Validate expectedVersion if provided (optimistic locking)
+    if (expectedVersion !== undefined && currentVersion !== expectedVersion) {
+      throw new VersionConflictError(sessionId, expectedVersion);
+    }
+
+    const newVersion = currentVersion + 1;
+    const newSequence = currentSequence + 1;
+    const stateHash = computeQueueStateHash(queue, currentClimbQueueItem?.uuid || null);
+
+    // Write to Redis immediately (source of truth for real-time state)
+    if (this.redisStore) {
+      await this.redisStore.updateQueueState(
+        sessionId, queue, currentClimbQueueItem, newVersion, newSequence, stateHash
+      );
+    }
+
+    // Debounce Postgres write (for queue history - eventual consistency)
+    this.schedulePostgresWrite(sessionId, queue, currentClimbQueueItem, newVersion, newSequence);
+
+    return { version: newVersion, sequence: newSequence, stateHash };
   }
 
   async getQueueState(sessionId: string): Promise<{
@@ -605,6 +593,22 @@ class RoomManager {
     sequence: number;
     stateHash: string;
   }> {
+    // Check Redis first (source of truth for active sessions)
+    // Redis is written to immediately, while Postgres writes are debounced (30s)
+    if (this.redisStore) {
+      const redisSession = await this.redisStore.getSession(sessionId);
+      if (redisSession) {
+        return {
+          queue: redisSession.queue,
+          currentClimbQueueItem: redisSession.currentClimbQueueItem,
+          version: redisSession.version,
+          sequence: redisSession.sequence,
+          stateHash: redisSession.stateHash,
+        };
+      }
+    }
+
+    // Fall back to Postgres (for dormant sessions or when Redis is unavailable)
     const result = await db.select().from(sessionQueues).where(eq(sessionQueues.sessionId, sessionId)).limit(1);
 
     if (result.length === 0) {

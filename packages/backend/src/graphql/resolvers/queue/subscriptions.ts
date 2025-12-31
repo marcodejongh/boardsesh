@@ -28,22 +28,26 @@ export const queueSubscriptions = {
 
       // Now fetch the current state (any events during this time are queued)
       const queueState = await roomManager.getQueueState(sessionId);
+      const fullSyncSequence = queueState.sequence;
 
       // Send initial FullSync
       yield {
         queueUpdates: {
           __typename: 'FullSync',
-          sequence: queueState.sequence,
+          sequence: fullSyncSequence,
           state: queueState,
         } as QueueEvent,
       };
 
       // Continue with queued and new events
-      // Note: The client's reducer handles duplicate events via UUID deduplication,
-      // so any events that occurred before FullSync but are also in FullSync
-      // will be safely ignored.
+      // Filter out events with sequence <= fullSyncSequence to prevent:
+      // 1. Duplicate events (already included in FullSync state)
+      // 2. Sequence gap detection on client (e.g., FullSync seq=7, then event seq=3)
+      // Events queued between subscribing and fetching state will have lower sequences.
       for await (const event of asyncIterator) {
-        yield { queueUpdates: event };
+        if (event.sequence > fullSyncSequence) {
+          yield { queueUpdates: event };
+        }
       }
     },
   },
