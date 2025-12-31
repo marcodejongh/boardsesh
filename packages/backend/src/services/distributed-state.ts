@@ -43,10 +43,13 @@ const TTL = {
 
 /**
  * Lua script for atomic leader election.
+ * Atomically sets both the leader key AND the isLeader flag on the connection hash.
+ * This prevents race conditions where process crashes between operations.
  * Returns: 1 if leader was set, 0 if leader already exists
  */
 const LEADER_ELECTION_SCRIPT = `
   local leaderKey = KEYS[1]
+  local connKey = KEYS[2]
   local connectionId = ARGV[1]
 
   -- Check if leader already exists
@@ -55,8 +58,9 @@ const LEADER_ELECTION_SCRIPT = `
     return 0
   end
 
-  -- Set this connection as leader
+  -- Atomically set this connection as leader AND update isLeader flag
   redis.call('SET', leaderKey, connectionId)
+  redis.call('HSET', connKey, 'isLeader', 'true')
   return 1
 `;
 
@@ -318,17 +322,16 @@ export class DistributedStateManager {
 
     await multi.exec();
 
-    // Try to become leader (atomic operation)
+    // Try to become leader (atomic operation - sets both leader key and isLeader flag)
     const becameLeader = await this.redis.eval(
       LEADER_ELECTION_SCRIPT,
-      1,
+      2,
       KEYS.sessionLeader(sessionId),
+      KEYS.connection(connectionId),
       connectionId
     ) as number;
 
     if (becameLeader === 1) {
-      // Update connection to mark as leader
-      await this.redis.hset(KEYS.connection(connectionId), 'isLeader', 'true');
       console.log(`[DistributedState] Connection ${connectionId.slice(0, 8)} became leader of session ${sessionId.slice(0, 8)}`);
     }
 
@@ -359,17 +362,27 @@ export class DistributedStateManager {
     // If was leader, elect new leader
     let newLeaderId: string | null = null;
     if (wasLeader) {
-      newLeaderId = await this.redis.eval(
-        ELECT_NEW_LEADER_SCRIPT,
-        2,
-        KEYS.sessionMembers(sessionId),
-        KEYS.sessionLeader(sessionId),
-        connectionId,
-        TTL.sessionMembership.toString()
-      ) as string | null;
+      try {
+        newLeaderId = await this.redis.eval(
+          ELECT_NEW_LEADER_SCRIPT,
+          2,
+          KEYS.sessionMembers(sessionId),
+          KEYS.sessionLeader(sessionId),
+          connectionId,
+          TTL.sessionMembership.toString()
+        ) as string | null;
 
-      if (newLeaderId) {
-        console.log(`[DistributedState] Elected new leader: ${newLeaderId.slice(0, 8)} for session ${sessionId.slice(0, 8)}`);
+        if (newLeaderId) {
+          console.log(`[DistributedState] Elected new leader: ${newLeaderId.slice(0, 8)} for session ${sessionId.slice(0, 8)}`);
+        }
+      } catch (err) {
+        console.error(`[DistributedState] Failed to elect new leader for session ${sessionId.slice(0, 8)}:`, err);
+        // Clear the leader key to allow next join to become leader
+        try {
+          await this.redis.del(KEYS.sessionLeader(sessionId));
+        } catch {
+          // Ignore cleanup error
+        }
       }
     }
 
@@ -440,10 +453,29 @@ export class DistributedStateManager {
   }
 
   /**
-   * Refresh connection TTL (call periodically for active connections).
+   * Refresh connection TTL and session membership TTL (call periodically for active connections).
+   * This prevents long sessions from having their membership expire.
    */
   async refreshConnection(connectionId: string): Promise<void> {
-    await this.redis.expire(KEYS.connection(connectionId), TTL.connection);
+    // Get connection to check if in a session
+    const connection = await this.getConnection(connectionId);
+
+    const multi = this.redis.multi();
+    multi.expire(KEYS.connection(connectionId), TTL.connection);
+
+    // Also refresh session membership TTL if in a session
+    if (connection?.sessionId) {
+      multi.expire(KEYS.sessionMembers(connection.sessionId), TTL.sessionMembership);
+    }
+
+    await multi.exec();
+  }
+
+  /**
+   * Refresh session membership TTL directly (for long-running sessions).
+   */
+  async refreshSessionMembership(sessionId: string): Promise<void> {
+    await this.redis.expire(KEYS.sessionMembers(sessionId), TTL.sessionMembership);
   }
 
   /**
@@ -483,20 +515,44 @@ export class DistributedStateManager {
    */
   private async cleanupInstanceConnections(): Promise<void> {
     const connectionIds = await this.redis.smembers(KEYS.instanceConnections(this.instanceId));
+    const failedConnectionIds: string[] = [];
 
     for (const connectionId of connectionIds) {
-      const { sessionId, wasLeader } = await this.removeConnection(connectionId);
+      try {
+        const { sessionId, wasLeader } = await this.removeConnection(connectionId);
 
-      // Handle leader election if needed
-      if (sessionId && wasLeader) {
-        await this.redis.eval(
-          ELECT_NEW_LEADER_SCRIPT,
-          2,
-          KEYS.sessionMembers(sessionId),
-          KEYS.sessionLeader(sessionId),
-          connectionId,
-          TTL.sessionMembership.toString()
-        );
+        // Handle leader election if needed
+        if (sessionId && wasLeader) {
+          try {
+            await this.redis.eval(
+              ELECT_NEW_LEADER_SCRIPT,
+              2,
+              KEYS.sessionMembers(sessionId),
+              KEYS.sessionLeader(sessionId),
+              connectionId,
+              TTL.sessionMembership.toString()
+            );
+          } catch (err) {
+            console.error(`[DistributedState] Failed to elect new leader during cleanup for ${connectionId.slice(0, 8)}:`, err);
+          }
+        }
+      } catch (err) {
+        console.error(`[DistributedState] Failed to remove connection ${connectionId.slice(0, 8)} during cleanup:`, err);
+        failedConnectionIds.push(connectionId);
+      }
+    }
+
+    // Force cleanup of failed connections to prevent orphaned data
+    if (failedConnectionIds.length > 0) {
+      console.warn(`[DistributedState] Force cleaning ${failedConnectionIds.length} failed connections`);
+      const cleanupMulti = this.redis.multi();
+      for (const connectionId of failedConnectionIds) {
+        cleanupMulti.del(KEYS.connection(connectionId));
+      }
+      try {
+        await cleanupMulti.exec();
+      } catch (err) {
+        console.error('[DistributedState] Failed to force cleanup connections:', err);
       }
     }
 
@@ -582,4 +638,13 @@ export async function shutdownDistributedState(): Promise<void> {
     await distributedStateManager.stop();
     distributedStateManager = null;
   }
+}
+
+/**
+ * Reset the singleton state (for testing and hot-reload scenarios).
+ * This clears the singleton without calling stop() on it.
+ * Use shutdownDistributedState() for graceful cleanup.
+ */
+export function resetDistributedState(): void {
+  distributedStateManager = null;
 }
