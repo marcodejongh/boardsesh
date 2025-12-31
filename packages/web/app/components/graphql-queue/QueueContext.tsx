@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useContext, createContext, ReactNode, useCallback, useMemo, useState, useEffect } from 'react';
+import React, { useContext, createContext, ReactNode, useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { v4 as uuidv4 } from 'uuid';
 import { useQueueReducer } from '../queue-control/reducer';
@@ -68,6 +68,9 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
   const pathname = usePathname();
   const initialSearchParams = urlParamsToSearchParams(searchParams);
   const [state, dispatch] = useQueueReducer(initialSearchParams);
+
+  // Correlation ID counter for tracking local updates (keeps reducer pure)
+  const correlationCounterRef = useRef(0);
 
   // Get backend URL from settings
   const { backendUrl } = useConnectionSettings();
@@ -241,8 +244,9 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
               item: event.currentItem as ClimbQueueItem | null,
               shouldAddToQueue: false,
               isServerEvent: true,
-              eventClientId: event.clientId,
+              eventClientId: event.clientId || undefined,
               myClientId: persistentSession.clientId || undefined,
+              serverCorrelationId: event.correlationId || undefined,
             },
           });
           break;
@@ -257,6 +261,60 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
 
     return unsubscribe;
   }, [isPersistentSessionActive, persistentSession, dispatch]);
+
+  // Cleanup orphaned pending updates (network failures, timeouts)
+  // This is the ONLY place with time-based logic, isolated from reducer
+  // FIX: Use ref to persist timestamps across renders (was being recreated every render)
+  const pendingTimestampsRef = useRef(new Map<string, number>());
+
+  useEffect(() => {
+    if (!isPersistentSessionActive || state.pendingCurrentClimbUpdates.length === 0) {
+      return;
+    }
+
+    // Get persisted timestamp map from ref
+    const pendingTimestamps = pendingTimestampsRef.current;
+
+    // Add timestamps for NEW correlation IDs only
+    state.pendingCurrentClimbUpdates.forEach(id => {
+      if (!pendingTimestamps.has(id)) {
+        pendingTimestamps.set(id, Date.now());
+      }
+    });
+
+    // Remove timestamps for correlation IDs no longer pending
+    Array.from(pendingTimestamps.keys()).forEach(id => {
+      if (!state.pendingCurrentClimbUpdates.includes(id)) {
+        pendingTimestamps.delete(id);
+      }
+    });
+
+    // Set up cleanup timer for stale entries (>10 seconds)
+    const cleanupTimer = setInterval(() => {
+      const now = Date.now();
+      const staleIds: string[] = [];
+
+      pendingTimestamps.forEach((timestamp, id) => {
+        if (now - timestamp > 10000) {  // 10 seconds (generous timeout)
+          staleIds.push(id);
+        }
+      });
+
+      // Dispatch cleanup actions for stale IDs
+      staleIds.forEach(id => {
+        console.warn('[QueueContext] Cleaning up orphaned pending update:', id);
+        dispatch({
+          type: 'CLEANUP_PENDING_UPDATE',
+          payload: { correlationId: id },
+        });
+        pendingTimestamps.delete(id);
+      });
+    }, 5000);  // Check every 5 seconds
+
+    return () => {
+      clearInterval(cleanupTimer);
+    };
+  }, [isPersistentSessionActive, state.pendingCurrentClimbUpdates, dispatch]);
 
   // Use persistent session values when active
   const clientId = isPersistentSessionActive ? persistentSession.clientId : null;
@@ -682,21 +740,31 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
       },
 
       setCurrentClimbQueueItem: (item: ClimbQueueItem) => {
-        // Optimistic update
+        // Generate correlation ID OUTSIDE reducer (keeps reducer pure)
+        // Format: clientId-counter (e.g., "client-abc123-5")
+        const correlationId = clientId ? `${clientId}-${++correlationCounterRef.current}` : undefined;
+
+        // Optimistic update with correlation ID
         dispatch({
           type: 'DELTA_UPDATE_CURRENT_CLIMB',
-          payload: { item, shouldAddToQueue: item.suggested },
+          payload: {
+            item,
+            shouldAddToQueue: item.suggested,
+            correlationId,
+          },
         });
 
         // Send to server only if connected
         if (hasConnected && isPersistentSessionActive) {
-          persistentSession.setCurrentClimb(item, item.suggested).catch((error) => {
+          persistentSession.setCurrentClimb(item, item.suggested, correlationId).catch((error) => {
             console.error('Failed to set current climb:', error);
             // Remove from pending on error to prevent blocking future updates
-            dispatch({
-              type: 'CLEANUP_PENDING_UPDATE',
-              payload: { uuid: item.uuid },
-            });
+            if (correlationId) {
+              dispatch({
+                type: 'CLEANUP_PENDING_UPDATE',
+                payload: { correlationId },
+              });
+            }
           });
         }
       },

@@ -65,15 +65,15 @@ describe('Pending Updates - Integration Tests', () => {
 
       let state = initialState;
 
-      // Simulate rapid navigation (15 local updates)
-      items.forEach(item => {
+      // Simulate rapid navigation (15 local updates with correlation IDs)
+      items.forEach((item, i) => {
         state = queueReducer(state, {
           type: 'DELTA_UPDATE_CURRENT_CLIMB',
-          payload: { item, shouldAddToQueue: false, isServerEvent: false },
+          payload: { item, shouldAddToQueue: false, isServerEvent: false, correlationId: `client-123-${i}` },
         });
       });
 
-      // Should have 15 pending updates
+      // Should have 15 pending updates (correlation IDs)
       expect(state.pendingCurrentClimbUpdates).toHaveLength(15);
       expect(state.currentClimbQueueItem).toEqual(items[14]); // Last item
 
@@ -81,7 +81,7 @@ describe('Pending Updates - Integration Tests', () => {
       items.forEach((item, index) => {
         state = queueReducer(state, {
           type: 'DELTA_UPDATE_CURRENT_CLIMB',
-          payload: { item, shouldAddToQueue: false, isServerEvent: true },
+          payload: { item, shouldAddToQueue: false, isServerEvent: true, serverCorrelationId: `client-123-${index}` },
         });
 
         // Each echo should be skipped and removed from pending
@@ -121,41 +121,41 @@ describe('Pending Updates - Integration Tests', () => {
       // Local update 1
       state = queueReducer(state, {
         type: 'DELTA_UPDATE_CURRENT_CLIMB',
-        payload: { item: item1, shouldAddToQueue: false, isServerEvent: false },
+        payload: { item: item1, shouldAddToQueue: false, isServerEvent: false, correlationId: 'client-123-1' },
       });
-      expect(state.pendingCurrentClimbUpdates.map(p => p.uuid)).toEqual(['item-1']);
+      expect(state.pendingCurrentClimbUpdates).toEqual(['client-123-1']);
       expect(state.currentClimbQueueItem).toEqual(item1);
 
       // Local update 2
       state = queueReducer(state, {
         type: 'DELTA_UPDATE_CURRENT_CLIMB',
-        payload: { item: item2, shouldAddToQueue: false, isServerEvent: false },
+        payload: { item: item2, shouldAddToQueue: false, isServerEvent: false, correlationId: 'client-123-2' },
       });
-      expect(state.pendingCurrentClimbUpdates.map(p => p.uuid)).toEqual(['item-1', 'item-2']);
+      expect(state.pendingCurrentClimbUpdates).toEqual(['client-123-1', 'client-123-2']);
       expect(state.currentClimbQueueItem).toEqual(item2);
 
       // Server echo of item1 arrives (should be skipped)
       state = queueReducer(state, {
         type: 'DELTA_UPDATE_CURRENT_CLIMB',
-        payload: { item: item1, shouldAddToQueue: false, isServerEvent: true },
+        payload: { item: item1, shouldAddToQueue: false, isServerEvent: true, serverCorrelationId: 'client-123-1' },
       });
-      expect(state.pendingCurrentClimbUpdates.map(p => p.uuid)).toEqual(['item-2']); // item-1 removed
+      expect(state.pendingCurrentClimbUpdates).toEqual(['client-123-2']); // client-123-1 removed
       expect(state.currentClimbQueueItem).toEqual(item2); // Still item2
 
       // Server event from another user (should be applied)
       state = queueReducer(state, {
         type: 'DELTA_UPDATE_CURRENT_CLIMB',
-        payload: { item: item3, shouldAddToQueue: false, isServerEvent: true },
+        payload: { item: item3, shouldAddToQueue: false, isServerEvent: true, serverCorrelationId: 'client-456-1', eventClientId: 'client-456', myClientId: 'client-123' },
       });
-      expect(state.pendingCurrentClimbUpdates.map(p => p.uuid)).toEqual(['item-2']); // Unchanged
+      expect(state.pendingCurrentClimbUpdates).toEqual(['client-123-2']); // Unchanged
       expect(state.currentClimbQueueItem).toEqual(item3); // Updated to item3
 
       // Server echo of item2 arrives (should be skipped)
       state = queueReducer(state, {
         type: 'DELTA_UPDATE_CURRENT_CLIMB',
-        payload: { item: item2, shouldAddToQueue: false, isServerEvent: true },
+        payload: { item: item2, shouldAddToQueue: false, isServerEvent: true, serverCorrelationId: 'client-123-2' },
       });
-      expect(state.pendingCurrentClimbUpdates.map(p => p.uuid)).toEqual([]); // item-2 removed
+      expect(state.pendingCurrentClimbUpdates).toEqual([]); // client-123-2 removed
       expect(state.currentClimbQueueItem).toEqual(item3); // Still item3
     });
   });
@@ -172,33 +172,33 @@ describe('Pending Updates - Integration Tests', () => {
       let state = initialState;
 
       // Rapid navigation through 55 items
-      items.forEach(item => {
+      items.forEach((item, i) => {
         state = queueReducer(state, {
           type: 'DELTA_UPDATE_CURRENT_CLIMB',
-          payload: { item, shouldAddToQueue: false, isServerEvent: false },
+          payload: { item, shouldAddToQueue: false, isServerEvent: false, correlationId: `client-123-${i}` },
         });
       });
 
       // Should be bounded to 50
       expect(state.pendingCurrentClimbUpdates).toHaveLength(50);
-      // Should contain items 5-54 (oldest 5 dropped)
-      expect(state.pendingCurrentClimbUpdates[0].uuid).toBe('item-5');
-      expect(state.pendingCurrentClimbUpdates[49].uuid).toBe('item-54');
+      // Should contain correlation IDs 5-54 (oldest 5 dropped)
+      expect(state.pendingCurrentClimbUpdates[0]).toBe('client-123-5');
+      expect(state.pendingCurrentClimbUpdates[49]).toBe('client-123-54');
 
-      // Server echoes of dropped items should NOT be skipped
+      // Server echoes of dropped correlation IDs should NOT be skipped
       state = queueReducer(state, {
         type: 'DELTA_UPDATE_CURRENT_CLIMB',
-        payload: { item: items[0], shouldAddToQueue: false, isServerEvent: true },
+        payload: { item: items[0], shouldAddToQueue: false, isServerEvent: true, serverCorrelationId: 'client-123-0' },
       });
       expect(state.currentClimbQueueItem).toEqual(items[0]); // Applied (not in pending)
 
       // Server echoes of retained items SHOULD be skipped
       state = queueReducer(state, {
         type: 'DELTA_UPDATE_CURRENT_CLIMB',
-        payload: { item: items[10], shouldAddToQueue: false, isServerEvent: true },
+        payload: { item: items[10], shouldAddToQueue: false, isServerEvent: true, serverCorrelationId: 'client-123-10' },
       });
       expect(state.currentClimbQueueItem).toEqual(items[0]); // Skipped (still items[0])
-      expect(state.pendingCurrentClimbUpdates.find(p => p.uuid === 'item-10')).toBeUndefined(); // Removed from pending
+      expect(state.pendingCurrentClimbUpdates.includes('client-123-10')).toBe(false); // Removed from pending
     });
 
     it('should handle full sync clearing all pending updates', () => {
@@ -212,10 +212,10 @@ describe('Pending Updates - Integration Tests', () => {
       let state = initialState;
 
       // Add 20 pending updates
-      items.forEach(item => {
+      items.forEach((item, i) => {
         state = queueReducer(state, {
           type: 'DELTA_UPDATE_CURRENT_CLIMB',
-          payload: { item, shouldAddToQueue: false, isServerEvent: false },
+          payload: { item, shouldAddToQueue: false, isServerEvent: false, correlationId: `client-123-${i}` },
         });
       });
 
@@ -273,10 +273,10 @@ describe('Pending Updates - Integration Tests', () => {
       let state = initialState;
 
       // Add 5 pending updates
-      items.forEach(item => {
+      items.forEach((item, i) => {
         state = queueReducer(state, {
           type: 'DELTA_UPDATE_CURRENT_CLIMB',
-          payload: { item, shouldAddToQueue: false, isServerEvent: false },
+          payload: { item, shouldAddToQueue: false, isServerEvent: false, correlationId: `client-123-${i}` },
         });
       });
 
@@ -285,15 +285,15 @@ describe('Pending Updates - Integration Tests', () => {
       // Cleanup item-2 (simulating timeout)
       state = queueReducer(state, {
         type: 'CLEANUP_PENDING_UPDATE',
-        payload: { uuid: 'item-2' },
+        payload: { correlationId: 'client-123-2' },
       });
 
-      expect(state.pendingCurrentClimbUpdates.map(p => p.uuid)).toEqual(['item-0', 'item-1', 'item-3', 'item-4']);
+      expect(state.pendingCurrentClimbUpdates).toEqual(['client-123-0', 'client-123-1', 'client-123-3', 'client-123-4']);
 
       // Server echo of item-2 should now be applied (not skipped)
       state = queueReducer(state, {
         type: 'DELTA_UPDATE_CURRENT_CLIMB',
-        payload: { item: items[2], shouldAddToQueue: false, isServerEvent: true },
+        payload: { item: items[2], shouldAddToQueue: false, isServerEvent: true, serverCorrelationId: 'client-123-2' },
       });
 
       expect(state.currentClimbQueueItem).toEqual(items[2]); // Applied (not in pending anymore)
@@ -317,13 +317,13 @@ describe('Pending Updates - Integration Tests', () => {
       // Local update from our client
       state = queueReducer(state, {
         type: 'DELTA_UPDATE_CURRENT_CLIMB',
-        payload: { item, shouldAddToQueue: false, isServerEvent: false },
+        payload: { item, shouldAddToQueue: false, isServerEvent: false, correlationId: 'client-123-1' },
       });
 
       expect(state.currentClimbQueueItem).toEqual(item);
       expect(state.pendingCurrentClimbUpdates).toHaveLength(1);
 
-      // Server echo with our own clientId - should be skipped
+      // Server echo with our own clientId and correlationId - should be skipped
       state = queueReducer(state, {
         type: 'DELTA_UPDATE_CURRENT_CLIMB',
         payload: {
@@ -332,6 +332,7 @@ describe('Pending Updates - Integration Tests', () => {
           isServerEvent: true,
           eventClientId: myClientId,
           myClientId: myClientId,
+          serverCorrelationId: 'client-123-1',
         },
       });
 
@@ -361,7 +362,7 @@ describe('Pending Updates - Integration Tests', () => {
       // Local update from our client
       state = queueReducer(state, {
         type: 'DELTA_UPDATE_CURRENT_CLIMB',
-        payload: { item: item1, shouldAddToQueue: false, isServerEvent: false },
+        payload: { item: item1, shouldAddToQueue: false, isServerEvent: false, correlationId: 'client-123-1' },
       });
 
       expect(state.currentClimbQueueItem).toEqual(item1);
@@ -375,6 +376,7 @@ describe('Pending Updates - Integration Tests', () => {
           isServerEvent: true,
           eventClientId: otherClientId,
           myClientId: myClientId,
+          serverCorrelationId: 'client-456-1',
         },
       });
 
@@ -395,7 +397,7 @@ describe('Pending Updates - Integration Tests', () => {
       // Our client navigates to this climb
       state = queueReducer(state, {
         type: 'DELTA_UPDATE_CURRENT_CLIMB',
-        payload: { item: sharedClimb, shouldAddToQueue: false, isServerEvent: false },
+        payload: { item: sharedClimb, shouldAddToQueue: false, isServerEvent: false, correlationId: 'client-123-1' },
       });
 
       expect(state.currentClimbQueueItem).toEqual(sharedClimb);
@@ -410,6 +412,7 @@ describe('Pending Updates - Integration Tests', () => {
           isServerEvent: true,
           eventClientId: otherClientId,
           myClientId: myClientId,
+          serverCorrelationId: 'client-456-1',
         },
       });
 
@@ -427,6 +430,7 @@ describe('Pending Updates - Integration Tests', () => {
           isServerEvent: true,
           eventClientId: myClientId,
           myClientId: myClientId,
+          serverCorrelationId: 'client-123-1',
         },
       });
 
@@ -449,23 +453,24 @@ describe('Pending Updates - Integration Tests', () => {
       // Local update
       state = queueReducer(state, {
         type: 'DELTA_UPDATE_CURRENT_CLIMB',
-        payload: { item, shouldAddToQueue: false, isServerEvent: false },
+        payload: { item, shouldAddToQueue: false, isServerEvent: false, correlationId: 'client-123-1' },
       });
 
       expect(state.pendingCurrentClimbUpdates).toHaveLength(1);
 
-      // Server event WITHOUT clientId - should use pending list fallback
+      // Server event WITHOUT clientId - should use correlation ID if available
       state = queueReducer(state, {
         type: 'DELTA_UPDATE_CURRENT_CLIMB',
         payload: {
           item,
           shouldAddToQueue: false,
           isServerEvent: true,
+          serverCorrelationId: 'client-123-1',
           // No clientIds provided
         },
       });
 
-      // Should skip based on pending list
+      // Should skip based on correlation ID match
       expect(state.currentClimbQueueItem).toEqual(item);
       expect(state.pendingCurrentClimbUpdates).toHaveLength(0); // Removed from pending
     });

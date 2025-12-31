@@ -22,6 +22,8 @@ export interface RedisSessionData {
   queue: ClimbQueueItem[];
   currentClimbQueueItem: ClimbQueueItem | null;
   version: number;
+  sequence: number;
+  stateHash: string;
   lastActivity: Date;
   discoverable: boolean;
   latitude: number | null;
@@ -59,6 +61,8 @@ export class RedisSessionStore {
         ? JSON.stringify(data.currentClimbQueueItem)
         : '',
       version: data.version.toString(),
+      sequence: data.sequence.toString(),
+      stateHash: data.stateHash,
       lastActivity: data.lastActivity.getTime().toString(),
       discoverable: data.discoverable ? '1' : '0',
       latitude: data.latitude?.toString() || '',
@@ -84,7 +88,9 @@ export class RedisSessionStore {
     sessionId: string,
     queue: ClimbQueueItem[],
     currentClimbQueueItem: ClimbQueueItem | null,
-    version: number
+    version: number,
+    sequence: number,
+    stateHash: string
   ): Promise<void> {
     const key = `boardsesh:session:${sessionId}`;
     const multi = this.redis.multi();
@@ -95,6 +101,8 @@ export class RedisSessionStore {
         ? JSON.stringify(currentClimbQueueItem)
         : '',
       version: version.toString(),
+      sequence: sequence.toString(),
+      stateHash: stateHash,
       lastActivity: Date.now().toString(),
     });
 
@@ -120,7 +128,9 @@ export class RedisSessionStore {
       boardPath: data.boardPath,
       queue: safeJSONParse(data.queue, []),
       currentClimbQueueItem: safeJSONParse(data.currentClimbQueueItem, null),
-      version: parseInt(data.version, 10),
+      version: parseInt(data.version, 10) || 0,
+      sequence: parseInt(data.sequence, 10) || 0,
+      stateHash: data.stateHash || '',
       lastActivity: new Date(parseInt(data.lastActivity, 10)),
       discoverable: data.discoverable === '1',
       latitude: data.latitude ? parseFloat(data.latitude) : null,

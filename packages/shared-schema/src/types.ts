@@ -87,8 +87,17 @@ export type SessionUser = {
 };
 
 export type QueueState = {
+  sequence: number;
+  stateHash: string;
   queue: ClimbQueueItem[];
   currentClimbQueueItem: ClimbQueueItem | null;
+};
+
+// Response for delta sync event replay (Phase 2)
+// Uses ClientQueueEvent because the query uses aliased field names (addedItem, currentItem)
+export type EventsReplayResponse = {
+  events: ClientQueueEvent[];
+  currentSequence: number;
 };
 
 // ============================================
@@ -288,21 +297,21 @@ export type GetTicksInput = {
 
 // Server-side event type - uses actual GraphQL field names
 export type QueueEvent =
-  | { __typename: 'FullSync'; state: QueueState }
-  | { __typename: 'QueueItemAdded'; item: ClimbQueueItem; position?: number }
-  | { __typename: 'QueueItemRemoved'; uuid: string }
-  | { __typename: 'QueueReordered'; uuid: string; oldIndex: number; newIndex: number }
-  | { __typename: 'CurrentClimbChanged'; item: ClimbQueueItem | null; clientId: string }
-  | { __typename: 'ClimbMirrored'; mirrored: boolean };
+  | { __typename: 'FullSync'; sequence: number; state: QueueState }
+  | { __typename: 'QueueItemAdded'; sequence: number; item: ClimbQueueItem; position?: number }
+  | { __typename: 'QueueItemRemoved'; sequence: number; uuid: string }
+  | { __typename: 'QueueReordered'; sequence: number; uuid: string; oldIndex: number; newIndex: number }
+  | { __typename: 'CurrentClimbChanged'; sequence: number; item: ClimbQueueItem | null; clientId: string | null; correlationId: string | null }
+  | { __typename: 'ClimbMirrored'; sequence: number; mirrored: boolean };
 
 // Client-side event type - uses aliased field names from subscription query
 export type ClientQueueEvent =
-  | { __typename: 'FullSync'; state: QueueState }
-  | { __typename: 'QueueItemAdded'; addedItem: ClimbQueueItem; position?: number }
-  | { __typename: 'QueueItemRemoved'; uuid: string }
-  | { __typename: 'QueueReordered'; uuid: string; oldIndex: number; newIndex: number }
-  | { __typename: 'CurrentClimbChanged'; currentItem: ClimbQueueItem | null; clientId: string }
-  | { __typename: 'ClimbMirrored'; mirrored: boolean };
+  | { __typename: 'FullSync'; sequence: number; state: QueueState }
+  | { __typename: 'QueueItemAdded'; sequence: number; addedItem: ClimbQueueItem; position?: number }
+  | { __typename: 'QueueItemRemoved'; sequence: number; uuid: string }
+  | { __typename: 'QueueReordered'; sequence: number; uuid: string; oldIndex: number; newIndex: number }
+  | { __typename: 'CurrentClimbChanged'; sequence: number; currentItem: ClimbQueueItem | null; clientId: string | null; correlationId: string | null }
+  | { __typename: 'ClimbMirrored'; sequence: number; mirrored: boolean };
 
 export type SessionEvent =
   | { __typename: 'UserJoined'; user: SessionUser }

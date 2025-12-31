@@ -6,6 +6,7 @@ import { eq, and, sql, gt, gte, lte, ne } from 'drizzle-orm';
 import type { ClimbQueueItem, SessionUser } from '@boardsesh/shared-schema';
 import { haversineDistance, getBoundingBox, DEFAULT_SEARCH_RADIUS_METERS } from '../utils/geo.js';
 import { RedisSessionStore } from './redis-session-store.js';
+import { computeQueueStateHash } from '../utils/hash.js';
 
 // Custom error for version conflicts
 export class VersionConflictError extends Error {
@@ -100,6 +101,8 @@ class RoomManager {
     users: SessionUser[];
     queue: ClimbQueueItem[];
     currentClimbQueueItem: ClimbQueueItem | null;
+    sequence: number;
+    stateHash: string;
     isLeader: boolean;
   }> {
     const client = this.clients.get(connectionId);
@@ -154,6 +157,8 @@ class RoomManager {
                     queue: queueState.queue,
                     currentClimbQueueItem: queueState.currentClimbQueueItem,
                     version: queueState.version,
+                    sequence: queueState.sequence,
+                    stateHash: queueState.stateHash,
                     lastActivity: pgSession.lastActivity,
                     discoverable: pgSession.discoverable,
                     latitude: pgSession.latitude,
@@ -238,6 +243,8 @@ class RoomManager {
       users,
       queue: queueState.queue,
       currentClimbQueueItem: queueState.currentClimbQueueItem,
+      sequence: queueState.sequence,
+      stateHash: queueState.stateHash,
       isLeader,
     };
   }
@@ -363,31 +370,47 @@ class RoomManager {
     queue: ClimbQueueItem[],
     currentClimbQueueItem: ClimbQueueItem | null,
     expectedVersion?: number
-  ): Promise<number> {
-    // Get current version from Redis if available, otherwise from Postgres
+  ): Promise<{ version: number; sequence: number; stateHash: string }> {
+    // Get current version and sequence from Redis if available, otherwise from Postgres
     let currentVersion = expectedVersion;
+    let currentSequence = 0;
+
     if (currentVersion === undefined) {
       if (this.redisStore) {
         const redisSession = await this.redisStore.getSession(sessionId);
         currentVersion = redisSession?.version ?? 0;
+        currentSequence = redisSession?.sequence ?? 0;
       }
       if (currentVersion === undefined || currentVersion === 0) {
         const pgState = await this.getQueueState(sessionId);
         currentVersion = pgState.version;
+        currentSequence = pgState.sequence;
+      }
+    } else {
+      // If version is provided, get sequence from Redis or Postgres
+      if (this.redisStore) {
+        const redisSession = await this.redisStore.getSession(sessionId);
+        currentSequence = redisSession?.sequence ?? 0;
+      }
+      if (currentSequence === 0) {
+        const pgState = await this.getQueueState(sessionId);
+        currentSequence = pgState.sequence;
       }
     }
 
     const newVersion = currentVersion + 1;
+    const newSequence = currentSequence + 1;
+    const stateHash = computeQueueStateHash(queue, currentClimbQueueItem?.uuid || null);
 
     // Write to Redis immediately (source of truth for active sessions)
     if (this.redisStore) {
-      await this.redisStore.updateQueueState(sessionId, queue, currentClimbQueueItem, newVersion);
+      await this.redisStore.updateQueueState(sessionId, queue, currentClimbQueueItem, newVersion, newSequence, stateHash);
     }
 
     // Debounce Postgres write (30 seconds) - eventual consistency
     this.schedulePostgresWrite(sessionId, queue, currentClimbQueueItem, newVersion);
 
-    return newVersion;
+    return { version: newVersion, sequence: newSequence, stateHash };
   }
 
   /**
@@ -552,17 +575,34 @@ class RoomManager {
     queue: ClimbQueueItem[];
     currentClimbQueueItem: ClimbQueueItem | null;
     version: number;
+    sequence: number;
+    stateHash: string;
   }> {
     const result = await db.select().from(sessionQueues).where(eq(sessionQueues.sessionId, sessionId)).limit(1);
 
     if (result.length === 0) {
-      return { queue: [], currentClimbQueueItem: null, version: 0 };
+      // Return initial state with empty hash
+      return {
+        queue: [],
+        currentClimbQueueItem: null,
+        version: 0,
+        sequence: 0,
+        stateHash: computeQueueStateHash([], null),
+      };
     }
+
+    // Compute hash from current state
+    const stateHash = computeQueueStateHash(
+      result[0].queue,
+      result[0].currentClimbQueueItem?.uuid || null
+    );
 
     return {
       queue: result[0].queue,
       currentClimbQueueItem: result[0].currentClimbQueueItem,
       version: result[0].version,
+      sequence: result[0].version, // Use version as sequence for now (will be separate column later)
+      stateHash,
     };
   }
 

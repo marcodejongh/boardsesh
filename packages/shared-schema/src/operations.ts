@@ -55,6 +55,8 @@ export const JOIN_SESSION = `
         avatarUrl
       }
       queueState {
+        sequence
+        stateHash
         queue {
           ${QUEUE_ITEM_FIELDS}
         }
@@ -99,8 +101,8 @@ export const REORDER_QUEUE_ITEM = `
 `;
 
 export const SET_CURRENT_CLIMB = `
-  mutation SetCurrentClimb($item: ClimbQueueItemInput, $shouldAddToQueue: Boolean) {
-    setCurrentClimb(item: $item, shouldAddToQueue: $shouldAddToQueue) {
+  mutation SetCurrentClimb($item: ClimbQueueItemInput, $shouldAddToQueue: Boolean, $correlationId: ID) {
+    setCurrentClimb(item: $item, shouldAddToQueue: $shouldAddToQueue, correlationId: $correlationId) {
       ${QUEUE_ITEM_FIELDS}
     }
   }
@@ -117,6 +119,8 @@ export const MIRROR_CURRENT_CLIMB = `
 export const SET_QUEUE = `
   mutation SetQueue($queue: [ClimbQueueItemInput!]!, $currentClimbQueueItem: ClimbQueueItemInput) {
     setQueue(queue: $queue, currentClimbQueueItem: $currentClimbQueueItem) {
+      sequence
+      stateHash
       queue {
         ${QUEUE_ITEM_FIELDS}
       }
@@ -141,6 +145,8 @@ export const CREATE_SESSION = `
         avatarUrl
       }
       queueState {
+        sequence
+        stateHash
         queue {
           ${QUEUE_ITEM_FIELDS}
         }
@@ -179,12 +185,69 @@ export const SESSION_UPDATES = `
   }
 `;
 
+// Query for delta sync event replay (Phase 2)
+export const EVENTS_REPLAY = `
+  query EventsReplay($sessionId: ID!, $sinceSequence: Int!) {
+    eventsReplay(sessionId: $sessionId, sinceSequence: $sinceSequence) {
+      currentSequence
+      events {
+        __typename
+        ... on FullSync {
+          sequence
+          state {
+            sequence
+            stateHash
+            queue {
+              ${QUEUE_ITEM_FIELDS}
+            }
+            currentClimbQueueItem {
+              ${QUEUE_ITEM_FIELDS}
+            }
+          }
+        }
+        ... on QueueItemAdded {
+          sequence
+          addedItem: item {
+            ${QUEUE_ITEM_FIELDS}
+          }
+          position
+        }
+        ... on QueueItemRemoved {
+          sequence
+          uuid
+        }
+        ... on QueueReordered {
+          sequence
+          uuid
+          oldIndex
+          newIndex
+        }
+        ... on CurrentClimbChanged {
+          sequence
+          currentItem: item {
+            ${QUEUE_ITEM_FIELDS}
+          }
+          clientId
+          correlationId
+        }
+        ... on ClimbMirrored {
+          sequence
+          mirrored
+        }
+      }
+    }
+  }
+`;
+
 export const QUEUE_UPDATES = `
   subscription QueueUpdates($sessionId: ID!) {
     queueUpdates(sessionId: $sessionId) {
       __typename
       ... on FullSync {
+        sequence
         state {
+          sequence
+          stateHash
           queue {
             ${QUEUE_ITEM_FIELDS}
           }
@@ -194,26 +257,32 @@ export const QUEUE_UPDATES = `
         }
       }
       ... on QueueItemAdded {
+        sequence
         addedItem: item {
           ${QUEUE_ITEM_FIELDS}
         }
         position
       }
       ... on QueueItemRemoved {
+        sequence
         uuid
       }
       ... on QueueReordered {
+        sequence
         uuid
         oldIndex
         newIndex
       }
       ... on CurrentClimbChanged {
+        sequence
         currentItem: item {
           ${QUEUE_ITEM_FIELDS}
         }
         clientId
+        correlationId
       }
       ... on ClimbMirrored {
+        sequence
         mirrored
       }
     }

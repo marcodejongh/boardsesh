@@ -1,6 +1,7 @@
-import type { ConnectionContext } from '@boardsesh/shared-schema';
+import type { ConnectionContext, EventsReplayResponse } from '@boardsesh/shared-schema';
 import { roomManager, type DiscoverableSession } from '../../../services/room-manager.js';
-import { validateInput } from '../shared/helpers.js';
+import { pubsub } from '../../../pubsub/index.js';
+import { validateInput, requireSessionMember } from '../shared/helpers.js';
 import { SessionIdSchema, LatitudeSchema, LongitudeSchema, RadiusMetersSchema } from '../../../validation/schemas.js';
 
 export const sessionQueries = {
@@ -26,6 +27,33 @@ export const sessionQueries = {
       // These need connection context, but for Query we return defaults
       isLeader: false,
       clientId: '',
+    };
+  },
+
+  /**
+   * Get buffered events since a sequence number for delta sync (Phase 2)
+   * Used during reconnection to catch up on missed events
+   */
+  eventsReplay: async (
+    _: unknown,
+    { sessionId, sinceSequence }: { sessionId: string; sinceSequence: number },
+    ctx: ConnectionContext
+  ): Promise<EventsReplayResponse> => {
+    // Validate inputs
+    validateInput(SessionIdSchema, sessionId, 'sessionId');
+
+    // Verify user is a member of the session
+    await requireSessionMember(ctx, sessionId);
+
+    // Get events from buffer
+    const events = await pubsub.getEventsSince(sessionId, sinceSequence);
+
+    // Get current sequence from queue state
+    const queueState = await roomManager.getQueueState(sessionId);
+
+    return {
+      events,
+      currentSequence: queueState.sequence,
     };
   },
 

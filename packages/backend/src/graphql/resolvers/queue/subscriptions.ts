@@ -33,6 +33,7 @@ export const queueSubscriptions = {
       yield {
         queueUpdates: {
           __typename: 'FullSync',
+          sequence: queueState.sequence,
           state: queueState,
         } as QueueEvent,
       };

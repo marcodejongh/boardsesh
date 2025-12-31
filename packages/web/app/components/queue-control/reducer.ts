@@ -9,6 +9,8 @@ const initialState = (initialSearchParams: SearchRequestPagination): QueueState 
   hasDoneFirstFetch: false,
   initialQueueDataReceivedFromPeers: false,
   pendingCurrentClimbUpdates: [],
+  lastReceivedSequence: null,
+  lastReceivedStateHash: null,
 });
 
 export function queueReducer(state: QueueState, action: QueueAction): QueueState {
@@ -148,35 +150,48 @@ export function queueReducer(state: QueueState, action: QueueAction): QueueState
     }
 
     case 'DELTA_UPDATE_CURRENT_CLIMB': {
-      const { item, shouldAddToQueue, isServerEvent, eventClientId, myClientId } = action.payload;
+      const {
+        item,
+        shouldAddToQueue,
+        isServerEvent,
+        eventClientId,
+        myClientId,
+        correlationId,
+        serverCorrelationId
+      } = action.payload;
 
-      // Filter out stale entries (older than 5 seconds) before processing
-      const now = Date.now();
-      const freshPending = state.pendingCurrentClimbUpdates.filter(
-        p => now - p.addedAt <= 5000
-      );
+      // NO MORE TIMESTAMP FILTERING - reducer is now pure!
+      let pendingUpdates = state.pendingCurrentClimbUpdates;
 
       // For server events, check if this is an echo of our own update
       if (isServerEvent && item) {
-        // Primary echo detection: check if event came from our own client
-        const isOurOwnEcho = eventClientId && myClientId && eventClientId === myClientId;
-
-        if (isOurOwnEcho) {
+        // Primary: Correlation ID matching (most precise)
+        if (serverCorrelationId && pendingUpdates.includes(serverCorrelationId)) {
           // This is our own update echoed back - skip it and remove from pending
           return {
             ...state,
-            pendingCurrentClimbUpdates: freshPending.filter(p => p.uuid !== item.uuid),
+            pendingCurrentClimbUpdates: pendingUpdates.filter(id => id !== serverCorrelationId),
           };
         }
 
-        // Fallback: check pending list (for backward compatibility or if clientIds unavailable)
-        const isPending = freshPending.find(p => p.uuid === item.uuid);
-        if (isPending && !eventClientId) {
-          // No clientId available, use pending list as fallback
+        // Fallback 1: ClientId-based detection
+        const isOurOwnEcho = eventClientId && myClientId && eventClientId === myClientId;
+        if (isOurOwnEcho) {
+          // Our echo, but without correlation ID - keep pending as-is (will be cleaned by effect)
           return {
             ...state,
-            pendingCurrentClimbUpdates: freshPending.filter(p => p.uuid !== item.uuid),
+            pendingCurrentClimbUpdates: pendingUpdates,
           };
+        }
+
+        // Fallback 2: UUID-based detection (backward compatibility)
+        if (!eventClientId && !serverCorrelationId) {
+          // Old server without correlation ID or clientId - use UUID heuristic
+          const hasPendingWithSameUUID = item.uuid && pendingUpdates.length > 0;
+          if (hasPendingWithSameUUID) {
+            // Likely our echo, skip it
+            return state;
+          }
         }
       }
 
@@ -186,27 +201,25 @@ export function queueReducer(state: QueueState, action: QueueAction): QueueState
       }
 
       let newQueue = state.queue;
-      let newPendingUpdates = freshPending;
 
       // Add to queue if requested and item doesn't exist
       if (item && shouldAddToQueue && !state.queue.find(qItem => qItem.uuid === item.uuid)) {
         newQueue = [...state.queue, item];
       }
 
-      // For local updates (not server events), track as pending with timestamp
-      if (!isServerEvent && item) {
-        // Add to pending list with timestamp, keeping only last 50 to prevent unbounded growth
-        newPendingUpdates = [
-          ...freshPending,
-          { uuid: item.uuid, addedAt: Date.now() }
-        ].slice(-50);
+      // For local updates, track correlation ID (no timestamp!)
+      if (!isServerEvent && item && correlationId) {
+        pendingUpdates = [
+          ...pendingUpdates,
+          correlationId
+        ].slice(-50);  // Still bound to 50 items for safety
       }
 
       return {
         ...state,
         queue: newQueue,
         currentClimbQueueItem: item,
-        pendingCurrentClimbUpdates: newPendingUpdates,
+        pendingCurrentClimbUpdates: pendingUpdates,
       };
     }
 
@@ -214,7 +227,7 @@ export function queueReducer(state: QueueState, action: QueueAction): QueueState
       return {
         ...state,
         pendingCurrentClimbUpdates: state.pendingCurrentClimbUpdates.filter(
-          p => p.uuid !== action.payload.uuid
+          id => id !== action.payload.correlationId
         ),
       };
     }

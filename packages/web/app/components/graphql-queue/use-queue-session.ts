@@ -234,6 +234,7 @@ export function useQueueSession({
         if (onQueueEventRef.current && sessionData.queueState) {
           onQueueEventRef.current({
             __typename: 'FullSync',
+            sequence: sessionData.queueState.sequence,
             state: sessionData.queueState,
           });
         }

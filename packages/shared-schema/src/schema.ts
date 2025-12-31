@@ -80,8 +80,16 @@ export const typeDefs = /* GraphQL */ `
   }
 
   type QueueState {
+    sequence: Int!
+    stateHash: String!
     queue: [ClimbQueueItem!]!
     currentClimbQueueItem: ClimbQueueItem
+  }
+
+  # Response for delta sync event replay (Phase 2)
+  type EventsReplayResponse {
+    events: [QueueEvent!]!
+    currentSequence: Int!
   }
 
   type Session {
@@ -345,6 +353,8 @@ export const typeDefs = /* GraphQL */ `
 
   type Query {
     session(sessionId: ID!): Session
+    # Get buffered events since a sequence number for delta sync (Phase 2)
+    eventsReplay(sessionId: ID!, sinceSequence: Int!): EventsReplayResponse!
     # Find discoverable sessions near a location
     nearbySessions(latitude: Float!, longitude: Float!, radiusMeters: Float): [DiscoverableSession!]!
     # Get current user's recent sessions (requires auth context)
@@ -425,7 +435,7 @@ export const typeDefs = /* GraphQL */ `
     addQueueItem(item: ClimbQueueItemInput!, position: Int): ClimbQueueItem!
     removeQueueItem(uuid: ID!): Boolean!
     reorderQueueItem(uuid: ID!, oldIndex: Int!, newIndex: Int!): Boolean!
-    setCurrentClimb(item: ClimbQueueItemInput, shouldAddToQueue: Boolean): ClimbQueueItem
+    setCurrentClimb(item: ClimbQueueItemInput, shouldAddToQueue: Boolean, correlationId: ID): ClimbQueueItem
     mirrorCurrentClimb(mirrored: Boolean!): ClimbQueueItem
     replaceQueueItem(uuid: ID!, item: ClimbQueueItemInput!): ClimbQueueItem!
     setQueue(queue: [ClimbQueueItemInput!]!, currentClimbQueueItem: ClimbQueueItemInput): QueueState!
@@ -511,30 +521,37 @@ export const typeDefs = /* GraphQL */ `
     | ClimbMirrored
 
   type FullSync {
+    sequence: Int!
     state: QueueState!
   }
 
   type QueueItemAdded {
+    sequence: Int!
     item: ClimbQueueItem!
     position: Int
   }
 
   type QueueItemRemoved {
+    sequence: Int!
     uuid: ID!
   }
 
   type QueueReordered {
+    sequence: Int!
     uuid: ID!
     oldIndex: Int!
     newIndex: Int!
   }
 
   type CurrentClimbChanged {
+    sequence: Int!
     item: ClimbQueueItem
-    clientId: ID!
+    clientId: ID
+    correlationId: ID
   }
 
   type ClimbMirrored {
+    sequence: Int!
     mirrored: Boolean!
   }
 `;
