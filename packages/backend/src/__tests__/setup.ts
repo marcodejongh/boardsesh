@@ -116,6 +116,15 @@ beforeEach(async () => {
   await db.execute(sql`TRUNCATE TABLE board_session_queues CASCADE`);
   await db.execute(sql`TRUNCATE TABLE board_session_clients CASCADE`);
   await db.execute(sql`TRUNCATE TABLE board_sessions CASCADE`);
+  await db.execute(sql`TRUNCATE TABLE users CASCADE`);
+
+  // Create test users that are referenced by tests
+  // The session-persistence tests use 'user-123' for discoverable sessions
+  await db.execute(sql`
+    INSERT INTO users (id, email, name)
+    VALUES ('user-123', 'test@example.com', 'Test User')
+    ON CONFLICT (id) DO NOTHING
+  `);
 });
 
 afterAll(async () => {
