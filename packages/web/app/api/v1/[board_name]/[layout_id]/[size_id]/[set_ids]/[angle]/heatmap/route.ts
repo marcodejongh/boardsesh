@@ -3,6 +3,7 @@ import { getSession } from '@/app/lib/session';
 import { BoardRouteParameters, ErrorResponse, ParsedBoardRouteParameters, SearchRequestPagination } from '@/app/lib/types';
 import { urlParamsToSearchParams } from '@/app/lib/url-utils';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
+import { sortObjectKeys } from '@/app/lib/cache-utils';
 import { cookies } from 'next/headers';
 import { unstable_cache } from 'next/cache';
 import { NextResponse } from 'next/server';
@@ -12,28 +13,6 @@ import { NextResponse } from 'next/server';
  * Anonymous heatmap queries are cached for 30 days since aggregate data doesn't change meaningfully
  */
 const CACHE_DURATION_HEATMAP = 30 * 24 * 60 * 60; // 30 days
-
-/**
- * Recursively sort object keys for consistent JSON serialization
- */
-function sortObjectKeys<T>(obj: T): T {
-  if (obj === null || typeof obj !== 'object') {
-    return obj;
-  }
-
-  if (Array.isArray(obj)) {
-    return obj.map(sortObjectKeys) as T;
-  }
-
-  const sortedObj: Record<string, unknown> = {};
-  const keys = Object.keys(obj as Record<string, unknown>).sort();
-
-  for (const key of keys) {
-    sortedObj[key] = sortObjectKeys((obj as Record<string, unknown>)[key]);
-  }
-
-  return sortedObj as T;
-}
 
 /**
  * Cached version of getHoldHeatmapData
@@ -58,10 +37,14 @@ async function cachedGetHoldHeatmapData(
       minGrade: searchParams.minGrade,
       maxGrade: searchParams.maxGrade,
       minAscents: searchParams.minAscents,
+      minRating: searchParams.minRating,
       sortBy: searchParams.sortBy,
       sortOrder: searchParams.sortOrder,
       name: searchParams.name,
       settername: searchParams.settername,
+      onlyClassics: searchParams.onlyClassics,
+      onlyTallClimbs: searchParams.onlyTallClimbs,
+      holdsFilter: searchParams.holdsFilter,
     })),
   ];
 
