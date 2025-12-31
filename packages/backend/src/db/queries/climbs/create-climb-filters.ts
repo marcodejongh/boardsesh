@@ -3,6 +3,14 @@ import { TableSet, getTableName, type BoardName } from '../util/table-select.js'
 import type { SizeEdges } from '../util/product-sizes-data.js';
 import type { HoldState } from '@boardsesh/shared-schema';
 
+// Valid hold states that can be used for state-specific filtering
+// Note: 'OFF' is excluded as it represents "hold not used" and isn't useful as a filter
+const VALID_HOLD_STATE_FILTERS = ['STARTING', 'HAND', 'FOOT', 'FINISH'] as const;
+type ValidHoldStateFilter = typeof VALID_HOLD_STATE_FILTERS[number];
+
+const isValidHoldStateFilter = (state: string): state is ValidHoldStateFilter =>
+  VALID_HOLD_STATE_FILTERS.includes(state as ValidHoldStateFilter);
+
 export interface ClimbSearchParams {
   // Pagination
   page?: number;
@@ -19,8 +27,8 @@ export interface ClimbSearchParams {
   settername?: string[];
   onlyClassics?: boolean;
   onlyTallClimbs?: boolean;
-  // Hold filters - supports ANY, NOT, or specific hold states (STARTING, HAND, FOOT, FINISH)
-  holdsFilter?: Record<string, HoldState | { state: HoldState }>;
+  // Hold filters - accepts HoldState strings (normalized during URL parsing)
+  holdsFilter?: Record<string, HoldState>;
   // Personal progress filters
   hideAttempted?: boolean;
   hideCompleted?: boolean;
@@ -52,17 +60,9 @@ export const createClimbFilters = (
   userId?: number,
 ) => {
   // Process hold filters
-  // holdsFilter can have values like:
-  // - 'ANY': hold must be present in the climb
-  // - 'NOT': hold must NOT be present in the climb
-  // - { state: 'STARTING' | 'HAND' | 'FOOT' | 'FINISH' }: hold must be present with that specific state
-  // - 'STARTING' | 'HAND' | 'FOOT' | 'FINISH': (after URL parsing) same as above
-  const holdsToFilter = Object.entries(searchParams.holdsFilter || {}).map(([key, stateOrValue]) => {
+  // holdsFilter values are HoldState strings: 'ANY', 'NOT', 'STARTING', 'HAND', 'FOOT', 'FINISH'
+  const holdsToFilter = Object.entries(searchParams.holdsFilter || {}).map(([key, state]) => {
     const holdId = key.replace('hold_', '');
-    // Handle both object form { state: 'STARTING' } and string form 'STARTING' (after URL parsing)
-    const state = typeof stateOrValue === 'object' && stateOrValue !== null
-      ? (stateOrValue as { state: string }).state
-      : stateOrValue;
     return [holdId, state] as const;
   });
 
@@ -70,9 +70,10 @@ export const createClimbFilters = (
   const notHolds = holdsToFilter.filter(([, value]) => value === 'NOT').map(([key]) => Number(key));
 
   // Hold state filters - hold must be present with specific state (STARTING, HAND, FOOT, FINISH)
+  // Uses type guard to validate state before including in SQL query
   const holdStateFilters = holdsToFilter
-    .filter(([, value]) => ['STARTING', 'HAND', 'FOOT', 'FINISH'].includes(value as string))
-    .map(([key, state]) => ({ holdId: Number(key), state: state as string }));
+    .filter(([, value]) => isValidHoldStateFilter(value))
+    .map(([key, state]) => ({ holdId: Number(key), state: state as ValidHoldStateFilter }));
 
   // Base conditions for filtering climbs that don't reference the product sizes table
   const baseConditions: SQL[] = [
