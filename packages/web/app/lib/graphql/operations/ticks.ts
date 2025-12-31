@@ -49,6 +49,7 @@ export const GET_USER_TICKS = gql`
       auroraType
       auroraId
       auroraSyncedAt
+      layoutId
     }
   }
 `;

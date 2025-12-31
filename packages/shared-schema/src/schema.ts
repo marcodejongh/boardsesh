@@ -251,6 +251,7 @@ export const typeDefs = /* GraphQL */ `
     auroraType: String
     auroraId: String
     auroraSyncedAt: String
+    layoutId: Int
   }
 
   input SaveTickInput {

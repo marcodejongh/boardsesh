@@ -5,6 +5,16 @@ import * as dbSchema from '@boardsesh/db/schema';
 import { requireAuthenticated, validateInput } from '../shared/helpers.js';
 import { GetTicksInputSchema, BoardNameSchema } from '../../../validation/schemas.js';
 
+// Helper to get the climbs table based on board type
+const getClimbsTable = (boardType: string) => {
+  if (boardType === 'kilter') {
+    return dbSchema.kilterClimbs;
+  } else if (boardType === 'tension') {
+    return dbSchema.tensionClimbs;
+  }
+  return null;
+};
+
 export const tickQueries = {
   /**
    * Get ticks for the authenticated user with optional filtering by climb UUIDs
@@ -18,6 +28,7 @@ export const tickQueries = {
     validateInput(GetTicksInputSchema, input, 'input');
 
     const userId = ctx.userId!;
+    const climbsTable = getClimbsTable(input.boardType);
 
     // Build query conditions
     const conditions = [
@@ -29,7 +40,43 @@ export const tickQueries = {
       conditions.push(inArray(dbSchema.boardseshTicks.climbUuid, input.climbUuids));
     }
 
-    // Fetch ticks
+    // Fetch ticks with layoutId from climbs table
+    if (climbsTable) {
+      const results = await db
+        .select({
+          tick: dbSchema.boardseshTicks,
+          layoutId: climbsTable.layoutId,
+        })
+        .from(dbSchema.boardseshTicks)
+        .leftJoin(climbsTable, eq(dbSchema.boardseshTicks.climbUuid, climbsTable.uuid))
+        .where(and(...conditions))
+        .orderBy(desc(dbSchema.boardseshTicks.climbedAt));
+
+      return results.map(({ tick, layoutId }) => ({
+        uuid: tick.uuid,
+        userId: tick.userId,
+        boardType: tick.boardType,
+        climbUuid: tick.climbUuid,
+        angle: tick.angle,
+        isMirror: tick.isMirror,
+        status: tick.status,
+        attemptCount: tick.attemptCount,
+        quality: tick.quality,
+        difficulty: tick.difficulty,
+        isBenchmark: tick.isBenchmark,
+        comment: tick.comment,
+        climbedAt: tick.climbedAt,
+        createdAt: tick.createdAt,
+        updatedAt: tick.updatedAt,
+        sessionId: tick.sessionId,
+        auroraType: tick.auroraType,
+        auroraId: tick.auroraId,
+        auroraSyncedAt: tick.auroraSyncedAt,
+        layoutId,
+      }));
+    }
+
+    // Fallback without join (shouldn't happen for valid board types)
     const ticks = await db
       .select()
       .from(dbSchema.boardseshTicks)
@@ -56,6 +103,7 @@ export const tickQueries = {
       auroraType: tick.auroraType,
       auroraId: tick.auroraId,
       auroraSyncedAt: tick.auroraSyncedAt,
+      layoutId: null,
     }));
   },
 
@@ -68,11 +116,50 @@ export const tickQueries = {
   ): Promise<unknown[]> => {
     validateInput(BoardNameSchema, boardType, 'boardType');
 
+    const climbsTable = getClimbsTable(boardType);
+
     const conditions = [
       eq(dbSchema.boardseshTicks.userId, userId),
       eq(dbSchema.boardseshTicks.boardType, boardType),
     ];
 
+    // Fetch ticks with layoutId from climbs table
+    if (climbsTable) {
+      const results = await db
+        .select({
+          tick: dbSchema.boardseshTicks,
+          layoutId: climbsTable.layoutId,
+        })
+        .from(dbSchema.boardseshTicks)
+        .leftJoin(climbsTable, eq(dbSchema.boardseshTicks.climbUuid, climbsTable.uuid))
+        .where(and(...conditions))
+        .orderBy(desc(dbSchema.boardseshTicks.climbedAt));
+
+      return results.map(({ tick, layoutId }) => ({
+        uuid: tick.uuid,
+        userId: tick.userId,
+        boardType: tick.boardType,
+        climbUuid: tick.climbUuid,
+        angle: tick.angle,
+        isMirror: tick.isMirror,
+        status: tick.status,
+        attemptCount: tick.attemptCount,
+        quality: tick.quality,
+        difficulty: tick.difficulty,
+        isBenchmark: tick.isBenchmark,
+        comment: tick.comment,
+        climbedAt: tick.climbedAt,
+        createdAt: tick.createdAt,
+        updatedAt: tick.updatedAt,
+        sessionId: tick.sessionId,
+        auroraType: tick.auroraType,
+        auroraId: tick.auroraId,
+        auroraSyncedAt: tick.auroraSyncedAt,
+        layoutId,
+      }));
+    }
+
+    // Fallback without join (shouldn't happen for valid board types)
     const ticks = await db
       .select()
       .from(dbSchema.boardseshTicks)
@@ -99,6 +186,7 @@ export const tickQueries = {
       auroraType: tick.auroraType,
       auroraId: tick.auroraId,
       auroraSyncedAt: tick.auroraSyncedAt,
+      layoutId: null,
     }));
   },
 };
