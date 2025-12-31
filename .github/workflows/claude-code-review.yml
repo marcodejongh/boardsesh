@@ -49,6 +49,20 @@ jobs:
             - Reference specific files and line numbers
             - Skip the review entirely if there are no significant issues (just say "No issues found")
 
+            DOCUMENTATION CHECK:
+            - Check if the PR changes any systems documented in the `docs/` directory
+            - If changes affect documented systems (e.g., WebSocket party sessions, architecture), verify the docs are updated accordingly
+            - Flag if significant changes to documented features lack corresponding documentation updates
+            - Reference the specific doc file that needs updating (e.g., `docs/websocket-implementation.md`)
+
+            TEST QUALITY CHECK:
+            - Verify that new features or bug fixes include appropriate tests
+            - Check test coverage for critical code paths (error handling, edge cases, main functionality)
+            - Flag tests that only cover happy paths without edge cases
+            - Identify missing tests for public APIs, utility functions, or complex logic
+            - Check that test descriptions accurately describe what's being tested
+            - Flag any tests that appear to be testing implementation details rather than behavior
+
             Use the repository's CLAUDE.md for guidance on conventions.
 
             IMPORTANT: Check if a previous Claude review comment exists on this PR. If so, update it instead of creating a new comment.
