@@ -8,15 +8,7 @@ import { NeonDatabase } from 'drizzle-orm/neon-serverless';
 import { getTable } from '../../db/queries/util/table-select';
 import { boardseshTicks, auroraCredentials } from '../../db/schema';
 import { randomUUID } from 'crypto';
-
-/**
- * Convert Aurora quality (1-5) to Boardsesh quality (1-5)
- * Formula: quality / 3.0 * 5
- */
-function convertQuality(auroraQuality: number | null | undefined): number | null {
-  if (auroraQuality == null) return null;
-  return Math.round((auroraQuality / 3.0) * 5);
-}
+import { convertQuality } from './convert-quality';
 
 /**
  * Get NextAuth user ID from Aurora user ID
@@ -188,49 +180,51 @@ async function upsertTableData(
             },
           });
 
-        // Dual write to boardsesh_ticks
-        const status = Number(item.attempt_id) === 1 ? 'flash' : 'send';
-        const convertedQuality = convertQuality(item.quality);
+        // Dual write to boardsesh_ticks (only if we have NextAuth user ID)
+        if (nextAuthUserId) {
+          const status = Number(item.attempt_id) === 1 ? 'flash' : 'send';
+          const convertedQuality = convertQuality(item.quality);
 
-        await db
-          .insert(boardseshTicks)
-          .values({
-            uuid: randomUUID(),
-            userId: nextAuthUserId,
-            boardType: boardName,
-            climbUuid: item.climb_uuid,
-            angle: Number(item.angle),
-            isMirror: Boolean(item.is_mirror),
-            status: status,
-            attemptCount: Number(item.bid_count || 1),
-            quality: convertedQuality,
-            difficulty: Number(item.difficulty),
-            isBenchmark: Boolean(item.is_benchmark || 0),
-            comment: item.comment || '',
-            climbedAt: new Date(item.climbed_at).toISOString(),
-            createdAt: new Date(item.created_at).toISOString(),
-            updatedAt: new Date().toISOString(),
-            auroraType: 'ascents',
-            auroraId: item.uuid,
-            auroraSyncedAt: new Date().toISOString(),
-          })
-          .onConflictDoUpdate({
-            target: boardseshTicks.auroraId,
-            set: {
+          await db
+            .insert(boardseshTicks)
+            .values({
+              uuid: randomUUID(),
+              userId: nextAuthUserId,
+              boardType: boardName,
               climbUuid: item.climb_uuid,
               angle: Number(item.angle),
               isMirror: Boolean(item.is_mirror),
               status: status,
               attemptCount: Number(item.bid_count || 1),
               quality: convertedQuality,
-              difficulty: Number(item.difficulty),
+              difficulty: item.difficulty ? Number(item.difficulty) : null,
               isBenchmark: Boolean(item.is_benchmark || 0),
               comment: item.comment || '',
               climbedAt: new Date(item.climbed_at).toISOString(),
+              createdAt: item.created_at ? new Date(item.created_at).toISOString() : new Date().toISOString(),
               updatedAt: new Date().toISOString(),
+              auroraType: 'ascents',
+              auroraId: item.uuid,
               auroraSyncedAt: new Date().toISOString(),
-            },
-          });
+            })
+            .onConflictDoUpdate({
+              target: boardseshTicks.auroraId,
+              set: {
+                climbUuid: item.climb_uuid,
+                angle: Number(item.angle),
+                isMirror: Boolean(item.is_mirror),
+                status: status,
+                attemptCount: Number(item.bid_count || 1),
+                quality: convertedQuality,
+                difficulty: item.difficulty ? Number(item.difficulty) : null,
+                isBenchmark: Boolean(item.is_benchmark || 0),
+                comment: item.comment || '',
+                climbedAt: new Date(item.climbed_at).toISOString(),
+                updatedAt: new Date().toISOString(),
+                auroraSyncedAt: new Date().toISOString(),
+              },
+            });
+        }
       }
       break;
     }
@@ -264,42 +258,44 @@ async function upsertTableData(
             },
           });
 
-        // Dual write to boardsesh_ticks
-        await db
-          .insert(boardseshTicks)
-          .values({
-            uuid: randomUUID(),
-            userId: nextAuthUserId,
-            boardType: boardName,
-            climbUuid: item.climb_uuid,
-            angle: Number(item.angle),
-            isMirror: Boolean(item.is_mirror),
-            status: 'attempt',
-            attemptCount: Number(item.bid_count || 1),
-            quality: null,
-            difficulty: null,
-            isBenchmark: false,
-            comment: item.comment || '',
-            climbedAt: new Date(item.climbed_at).toISOString(),
-            createdAt: new Date(item.created_at).toISOString(),
-            updatedAt: new Date().toISOString(),
-            auroraType: 'bids',
-            auroraId: item.uuid,
-            auroraSyncedAt: new Date().toISOString(),
-          })
-          .onConflictDoUpdate({
-            target: boardseshTicks.auroraId,
-            set: {
+        // Dual write to boardsesh_ticks (only if we have NextAuth user ID)
+        if (nextAuthUserId) {
+          await db
+            .insert(boardseshTicks)
+            .values({
+              uuid: randomUUID(),
+              userId: nextAuthUserId,
+              boardType: boardName,
               climbUuid: item.climb_uuid,
               angle: Number(item.angle),
               isMirror: Boolean(item.is_mirror),
+              status: 'attempt',
               attemptCount: Number(item.bid_count || 1),
+              quality: null,
+              difficulty: null,
+              isBenchmark: false,
               comment: item.comment || '',
               climbedAt: new Date(item.climbed_at).toISOString(),
+              createdAt: new Date(item.created_at).toISOString(),
               updatedAt: new Date().toISOString(),
+              auroraType: 'bids',
+              auroraId: item.uuid,
               auroraSyncedAt: new Date().toISOString(),
-            },
-          });
+            })
+            .onConflictDoUpdate({
+              target: boardseshTicks.auroraId,
+              set: {
+                climbUuid: item.climb_uuid,
+                angle: Number(item.angle),
+                isMirror: Boolean(item.is_mirror),
+                attemptCount: Number(item.bid_count || 1),
+                comment: item.comment || '',
+                climbedAt: new Date(item.climbed_at).toISOString(),
+                updatedAt: new Date().toISOString(),
+                auroraSyncedAt: new Date().toISOString(),
+              },
+            });
+        }
       }
       break;
     }

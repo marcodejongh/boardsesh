@@ -20,9 +20,11 @@ interface MigrationResult {
 
 export async function GET(request: Request) {
   try {
-    // Auth check
+    // Auth check: skip in development only, require secret in all other environments
     const authHeader = request.headers.get('authorization');
-    if (process.env.VERCEL_ENV !== 'development' && authHeader !== `Bearer ${CRON_SECRET}`) {
+    const isDevelopment = process.env.VERCEL_ENV === 'development' || process.env.NODE_ENV === 'development';
+
+    if (!isDevelopment && authHeader !== `Bearer ${CRON_SECRET}`) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

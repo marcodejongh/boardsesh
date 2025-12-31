@@ -1,20 +1,11 @@
 import { getPool } from '@/app/lib/db/db';
 import { BoardName } from '../../types';
 import { drizzle } from 'drizzle-orm/neon-serverless';
-import { NeonDatabase } from 'drizzle-orm/neon-serverless';
 import { getTable } from '../../db/queries/util/table-select';
 import { boardseshTicks } from '../../db/schema';
 import { randomUUID } from 'crypto';
 import { eq, and, isNotNull } from 'drizzle-orm';
-
-/**
- * Convert Aurora quality (1-5) to Boardsesh quality (1-5)
- * Formula: quality / 3.0 * 5
- */
-function convertQuality(auroraQuality: number | null | undefined): number | null {
-  if (auroraQuality == null) return null;
-  return Math.round((auroraQuality / 3.0) * 5);
-}
+import { convertQuality } from './convert-quality';
 
 /**
  * Migrate a single user's historical Aurora data to boardsesh_ticks
@@ -38,6 +29,18 @@ export async function migrateUserAuroraHistory(
   try {
     await client.query('BEGIN');
     const db = drizzle(client);
+
+    // Use advisory lock to prevent concurrent migrations for same user+board
+    // Hash the user ID and board type to create a unique lock ID
+    const lockId = `${nextAuthUserId}-${boardType}`;
+    const lockHash = lockId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const acquired = await client.query('SELECT pg_try_advisory_xact_lock($1)', [lockHash]);
+
+    if (!acquired.rows[0].pg_try_advisory_xact_lock) {
+      console.log(`Migration already in progress for user ${nextAuthUserId} (${boardType}), skipping`);
+      await client.query('ROLLBACK');
+      return { migrated: 0 };
+    }
 
     let totalMigrated = 0;
 
@@ -67,11 +70,19 @@ export async function migrateUserAuroraHistory(
       .from(ascentsSchema)
       .where(eq(ascentsSchema.userId, auroraUserId));
 
+    // Prepare batch insert values for ascents
+    const ascentValues = [];
     for (const ascent of ascents) {
+      // Skip if missing required fields
+      if (!ascent.climbUuid || !ascent.climbedAt) {
+        console.warn(`Skipping ascent ${ascent.uuid} - missing required fields`);
+        continue;
+      }
+
       const status = Number(ascent.attemptId) === 1 ? 'flash' : 'send';
       const convertedQuality = convertQuality(ascent.quality);
 
-      await db.insert(boardseshTicks).values({
+      ascentValues.push({
         uuid: randomUUID(),
         userId: nextAuthUserId,
         boardType: boardType,
@@ -81,18 +92,22 @@ export async function migrateUserAuroraHistory(
         status: status,
         attemptCount: Number(ascent.bidCount || 1),
         quality: convertedQuality,
-        difficulty: Number(ascent.difficulty),
+        difficulty: ascent.difficulty ? Number(ascent.difficulty) : null,
         isBenchmark: Boolean(ascent.isBenchmark || 0),
         comment: ascent.comment || '',
         climbedAt: new Date(ascent.climbedAt).toISOString(),
-        createdAt: new Date(ascent.createdAt).toISOString(),
+        createdAt: ascent.createdAt ? new Date(ascent.createdAt).toISOString() : new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        auroraType: 'ascents',
+        auroraType: 'ascents' as const,
         auroraId: ascent.uuid,
         auroraSyncedAt: new Date().toISOString(),
       });
+    }
 
-      totalMigrated++;
+    // Batch insert ascents (if any)
+    if (ascentValues.length > 0) {
+      await db.insert(boardseshTicks).values(ascentValues);
+      totalMigrated += ascentValues.length;
     }
 
     // Migrate bids (failed attempts)
@@ -102,29 +117,41 @@ export async function migrateUserAuroraHistory(
       .from(bidsSchema)
       .where(eq(bidsSchema.userId, auroraUserId));
 
+    // Prepare batch insert values for bids
+    const bidValues = [];
     for (const bid of bids) {
-      await db.insert(boardseshTicks).values({
+      // Skip if missing required fields
+      if (!bid.climbUuid || !bid.climbedAt) {
+        console.warn(`Skipping bid ${bid.uuid} - missing required fields`);
+        continue;
+      }
+
+      bidValues.push({
         uuid: randomUUID(),
         userId: nextAuthUserId,
         boardType: boardType,
         climbUuid: bid.climbUuid,
         angle: Number(bid.angle),
         isMirror: Boolean(bid.isMirror),
-        status: 'attempt',
+        status: 'attempt' as const,
         attemptCount: Number(bid.bidCount || 1),
         quality: null,
         difficulty: null,
         isBenchmark: false,
         comment: bid.comment || '',
         climbedAt: new Date(bid.climbedAt).toISOString(),
-        createdAt: new Date(bid.createdAt).toISOString(),
+        createdAt: bid.createdAt ? new Date(bid.createdAt).toISOString() : new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        auroraType: 'bids',
+        auroraType: 'bids' as const,
         auroraId: bid.uuid,
         auroraSyncedAt: new Date().toISOString(),
       });
+    }
 
-      totalMigrated++;
+    // Batch insert bids (if any)
+    if (bidValues.length > 0) {
+      await db.insert(boardseshTicks).values(bidValues);
+      totalMigrated += bidValues.length;
     }
 
     await client.query('COMMIT');
