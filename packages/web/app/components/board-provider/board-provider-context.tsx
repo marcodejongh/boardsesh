@@ -173,10 +173,9 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
       return;
     }
 
-    // CRITICAL: Wait for wsAuthToken to be available
+    // Wait for wsAuthToken to be available - will be called again when token is ready
     if (!wsAuthToken) {
-      console.log('[fetchLogbook] Waiting for auth token...');
-      return; // Will be called again when wsAuthToken becomes available
+      return;
     }
 
     try {
@@ -216,7 +215,10 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
 
       setLogbook(entries);
     } catch (err) {
-      console.error('Failed to fetch logbook:', err);
+      // Log unexpected errors (auth failures are now handled gracefully by backend returning empty array)
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Failed to fetch logbook:', err);
+      }
       setLogbook([]);
     }
   };

@@ -2,7 +2,7 @@ import { eq, and, desc, inArray } from 'drizzle-orm';
 import type { ConnectionContext } from '@boardsesh/shared-schema';
 import { db } from '../../../db/client.js';
 import * as dbSchema from '@boardsesh/db/schema';
-import { requireAuthenticated, validateInput } from '../shared/helpers.js';
+import { validateInput } from '../shared/helpers.js';
 import { GetTicksInputSchema, BoardNameSchema } from '../../../validation/schemas.js';
 
 // Helper to get the climbs table based on board type
@@ -18,13 +18,17 @@ const getClimbsTable = (boardType: string) => {
 export const tickQueries = {
   /**
    * Get ticks for the authenticated user with optional filtering by climb UUIDs
+   * Returns empty array if not authenticated (graceful handling for unauthenticated users)
    */
   ticks: async (
     _: unknown,
     { input }: { input: { boardType: string; climbUuids?: string[] } },
     ctx: ConnectionContext
   ): Promise<unknown[]> => {
-    requireAuthenticated(ctx);
+    // Return empty array if not authenticated (no need to throw error for logbook)
+    if (!ctx.isAuthenticated || !ctx.userId) {
+      return [];
+    }
     validateInput(GetTicksInputSchema, input, 'input');
 
     const userId = ctx.userId!;
