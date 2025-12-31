@@ -1,8 +1,7 @@
 import { beforeAll, beforeEach, afterAll } from 'vitest';
-import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { sql } from 'drizzle-orm';
-import * as schema from '../db/schema.js';
+import { db as sharedDb } from '../db/client.js';
 import { roomManager } from '../services/room-manager.js';
 
 const TEST_DB_NAME = 'boardsesh_backend_test';
@@ -13,7 +12,6 @@ const connectionString =
 const baseConnectionString = connectionString.replace(/\/[^/]+$/, '/postgres');
 
 let migrationClient: ReturnType<typeof postgres>;
-let db: ReturnType<typeof drizzle>;
 
 // SQL to create only the tables needed for backend tests
 const createTablesSQL = `
@@ -100,9 +98,8 @@ beforeAll(async () => {
     await adminClient.end();
   }
 
-  // Now connect to the test database
+  // Now connect to the test database for schema creation
   migrationClient = postgres(connectionString, { max: 1, onnotice: () => {} });
-  db = drizzle(migrationClient, { schema });
 
   // Create tables directly (backend tests only need session tables)
   await migrationClient.unsafe(createTablesSQL);
@@ -113,14 +110,15 @@ beforeEach(async () => {
   roomManager.reset();
 
   // Clear all tables in correct order (respect foreign keys)
-  await db.execute(sql`TRUNCATE TABLE board_session_queues CASCADE`);
-  await db.execute(sql`TRUNCATE TABLE board_session_clients CASCADE`);
-  await db.execute(sql`TRUNCATE TABLE board_sessions CASCADE`);
-  await db.execute(sql`TRUNCATE TABLE users CASCADE`);
+  // Use sharedDb (same instance as roomManager) to ensure consistency
+  await sharedDb.execute(sql`TRUNCATE TABLE board_session_queues CASCADE`);
+  await sharedDb.execute(sql`TRUNCATE TABLE board_session_clients CASCADE`);
+  await sharedDb.execute(sql`TRUNCATE TABLE board_sessions CASCADE`);
+  await sharedDb.execute(sql`TRUNCATE TABLE users CASCADE`);
 
   // Create test users that are referenced by tests
   // The session-persistence tests use 'user-123' for discoverable sessions
-  await db.execute(sql`
+  await sharedDb.execute(sql`
     INSERT INTO users (id, email, name)
     VALUES ('user-123', 'test@example.com', 'Test User')
     ON CONFLICT (id) DO NOTHING
