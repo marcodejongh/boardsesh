@@ -63,22 +63,23 @@ export const CreateSessionInputSchema = z.object({
 
 /**
  * Climb validation schema (simplified for input)
+ * Note: Several fields are made optional/nullable to handle edge cases in real climb data
  */
 export const ClimbInputSchema = z.object({
   uuid: ExternalUUIDSchema, // Aurora API uses non-standard UUID format (no dashes)
-  setter_username: z.string().max(100),
-  name: z.string().max(200),
-  description: z.string().max(2000),
-  frames: z.string().max(10000),
+  setter_username: z.string().max(100).nullish().transform(v => v ?? ''),
+  name: z.string().max(200).nullish().transform(v => v ?? ''),
+  description: z.string().max(2000).nullish().transform(v => v ?? ''),
+  frames: z.string().max(10000).nullish().transform(v => v ?? ''),
   angle: z.number().min(0).max(90),
-  ascensionist_count: z.number().min(0),
-  difficulty: z.string().max(50),
-  quality_average: z.string().max(20),
-  stars: z.number().min(0).max(15),
-  difficulty_error: z.string().max(50),
-  litUpHoldsMap: z.record(z.any()), // JSON object
+  ascensionist_count: z.number().min(0).nullish().transform(v => v ?? 0),
+  difficulty: z.string().max(50).nullish().transform(v => v ?? ''),
+  quality_average: z.string().max(20).nullish().transform(v => v ?? ''),
+  stars: z.number().min(0).max(15).nullish().transform(v => v ?? 0),
+  difficulty_error: z.string().max(50).nullish().transform(v => v ?? ''),
+  litUpHoldsMap: z.record(z.any()).nullish().transform(v => v ?? {}), // JSON object
   mirrored: z.boolean().nullish(),
-  benchmark_difficulty: z.string().max(50).nullable().optional(),
+  benchmark_difficulty: z.string().max(50).nullish(),
   userAscents: z.number().min(0).nullish(),
   userAttempts: z.number().min(0).nullish(),
 });
@@ -98,10 +99,10 @@ export const QueueItemUserSchema = z.object({
 export const ClimbQueueItemSchema = z.object({
   uuid: UUIDSchema,
   climb: ClimbInputSchema,
-  addedBy: z.string().max(100).optional(),
-  addedByUser: QueueItemUserSchema.optional(),
+  addedBy: z.string().max(100).nullish(),
+  addedByUser: QueueItemUserSchema.nullish(),
   tickedBy: z.array(z.string()).max(100).nullish(),
-  suggested: z.boolean().optional(),
+  suggested: z.boolean().nullish(),
 });
 
 /**
