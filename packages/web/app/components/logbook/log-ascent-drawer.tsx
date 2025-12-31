@@ -22,7 +22,7 @@ export const LogAscentDrawer: React.FC<LogAscentDrawerProps> = ({
       placement="bottom"
       onClose={onClose}
       open={open}
-      height="90%"
+      height="100%"
     >
       {currentClimb && (
         <LogAscentForm

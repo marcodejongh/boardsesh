@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Button, DatePicker, Select, Input, Rate, InputNumber, Form, Space, Tag, Tooltip } from 'antd';
+import { Button, DatePicker, Select, Input, Rate, InputNumber, Form, Space, Tag, Tooltip, Segmented } from 'antd';
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { track } from '@vercel/analytics';
 import { Climb, BoardDetails } from '@/app/lib/types';
@@ -8,6 +8,8 @@ import { TENSION_KILTER_GRADES, ANGLES } from '@/app/lib/board-data';
 import dayjs from 'dayjs';
 
 const { TextArea } = Input;
+
+type LogType = 'ascent' | 'attempt';
 
 interface LogAscentFormValues {
   date: dayjs.Dayjs;
@@ -18,9 +20,17 @@ interface LogAscentFormValues {
   notes?: string;
 }
 
-// Helper to determine tick status from attempt count
-const getTickStatus = (attempts: number): TickStatus => {
+// Helper to determine tick status from attempt count (for ascents)
+const getAscentStatus = (attempts: number): TickStatus => {
   return attempts === 1 ? 'flash' : 'send';
+};
+
+// Helper to determine tick status based on log type
+const getTickStatus = (logType: LogType, attempts: number): TickStatus => {
+  if (logType === 'attempt') {
+    return 'attempt';
+  }
+  return getAscentStatus(attempts);
 };
 
 interface LogAscentFormProps {
@@ -36,6 +46,7 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boar
   const [form] = Form.useForm<LogAscentFormValues>();
   const [isMirrored, setIsMirrored] = useState(!!currentClimb?.mirrored);
   const [isSaving, setIsSaving] = useState(false);
+  const [logType, setLogType] = useState<LogType>('ascent');
 
   // TODO: Tension spray doesnt support mirroring
   const showMirrorTag = boardDetails.supportsMirroring;
@@ -56,7 +67,12 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boar
 
   // Validation function matching backend rules
   const validateTickInput = (values: LogAscentFormValues): string | null => {
-    const status = getTickStatus(values.attempts);
+    // Attempts don't need flash/send validation
+    if (logType === 'attempt') {
+      return null;
+    }
+
+    const status = getTickStatus(logType, values.attempts);
 
     // Flash requires attemptCount === 1
     if (status === 'flash' && values.attempts !== 1) {
@@ -85,12 +101,14 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boar
 
     setIsSaving(true);
 
+    const status = getTickStatus(logType, values.attempts);
+
     try {
       await saveTick({
         climbUuid: currentClimb.uuid,
         angle: Number(values.angle),
         isMirror: isMirrored,
-        status: getTickStatus(values.attempts),
+        status,
         attemptCount: values.attempts,
         quality: values.quality,
         difficulty: values.difficulty,
@@ -101,10 +119,11 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boar
 
       track('Tick Logged', {
         boardLayout: boardDetails.layout_name || '',
-        status: getTickStatus(values.attempts),
+        status,
       });
 
       form.resetFields();
+      setLogType('ascent');
       onClose();
     } catch (error) {
       console.error('Failed to save tick:', error);
@@ -124,6 +143,18 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boar
 
   return (
     <Form form={form} layout="horizontal" onFinish={handleSubmit}>
+      <Form.Item wrapperCol={{ span: 24 }} style={{ marginBottom: '16px' }}>
+        <Segmented
+          block
+          options={[
+            { label: 'Ascent', value: 'ascent' },
+            { label: 'Attempt', value: 'attempt' },
+          ]}
+          value={logType}
+          onChange={(value) => setLogType(value as LogType)}
+        />
+      </Form.Item>
+
       <Form.Item label="Boulder" {...formItemLayout}>
         <Space>
           <strong>{currentClimb?.name || 'N/A'}</strong>
