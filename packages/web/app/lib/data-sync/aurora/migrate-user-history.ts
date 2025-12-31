@@ -79,7 +79,7 @@ export async function migrateUserAuroraHistory(
         continue;
       }
 
-      const status = Number(ascent.attemptId) === 1 ? 'flash' : 'send';
+      const status = Number(ascent.attemptId) === 1 ? ('flash' as const) : ('send' as const);
       const convertedQuality = convertQuality(ascent.quality);
 
       ascentValues.push({
