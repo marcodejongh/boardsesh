@@ -6,6 +6,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Boardsesh is a monorepo containing a Next.js 15 application for controlling standardized interactive climbing training boards (Kilter, Tension). It adds missing functionality to boards using Aurora Climbing's software, including queue management and real-time collaborative control.
 
+## Documentation
+
+Before working on a specific part of the codebase, check the `docs/` directory for relevant documentation:
+
+- `docs/websocket-implementation.md` - WebSocket party session architecture, connection flow, failure states and recovery mechanisms
+
+**Important:**
+- Read the relevant documentation first to understand the architecture and design decisions before making changes
+- When making significant changes to documented systems, update the corresponding documentation to keep it in sync
+
 ## Monorepo Structure
 
 ```
