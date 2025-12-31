@@ -65,14 +65,14 @@ const optionsAggregated = {
   },
   scales: {
     x: {
-      stacked: true,
+      stacked: false,
       title: {
         display: true,
         text: 'Grade',
       },
     },
     y: {
-      stacked: true,
+      stacked: false,
       title: {
         display: true,
         text: 'Ascents',
