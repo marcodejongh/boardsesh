@@ -61,6 +61,8 @@ interface LogbookEntry {
   tries: number;
   angle: number;
   status?: 'flash' | 'send' | 'attempt';
+  layoutId?: number | null;
+  boardType?: string;
 }
 
 const difficultyMapping: Record<number, string> = {
@@ -139,10 +141,42 @@ type AggregatedTimeframeType = 'today' | 'lastWeek' | 'lastMonth' | 'lastYear' |
 // Board types available in Boardsesh
 const BOARD_TYPES = ['kilter', 'tension'] as const;
 
-// Colors for each board type
-const boardColors: Record<string, string> = {
-  kilter: 'rgba(6, 182, 212, 0.7)', // Cyan - primary brand color
-  tension: 'rgba(239, 68, 68, 0.7)', // Red
+// Layout name mapping: boardType-layoutId -> display name
+const layoutNames: Record<string, string> = {
+  'kilter-1': 'Kilter Original',
+  'kilter-8': 'Kilter Homewall',
+  'tension-9': 'Tension Classic',
+  'tension-10': 'Tension 2 Mirror',
+  'tension-11': 'Tension 2 Spray',
+};
+
+// Colors for each layout
+const layoutColors: Record<string, string> = {
+  'kilter-1': 'rgba(6, 182, 212, 0.7)',    // Cyan - Kilter Original
+  'kilter-8': 'rgba(14, 165, 233, 0.7)',   // Sky blue - Kilter Homewall
+  'tension-9': 'rgba(239, 68, 68, 0.7)',   // Red - Tension Classic
+  'tension-10': 'rgba(249, 115, 22, 0.7)', // Orange - Tension 2 Mirror
+  'tension-11': 'rgba(234, 179, 8, 0.7)',  // Yellow - Tension 2 Spray
+};
+
+// Get layout key from board type and layout ID
+const getLayoutKey = (boardType: string, layoutId: number | null | undefined): string => {
+  if (layoutId === null || layoutId === undefined) {
+    return `${boardType}-unknown`;
+  }
+  return `${boardType}-${layoutId}`;
+};
+
+// Get display name for a layout
+const getLayoutDisplayName = (boardType: string, layoutId: number | null | undefined): string => {
+  const key = getLayoutKey(boardType, layoutId);
+  return layoutNames[key] || `${boardType.charAt(0).toUpperCase() + boardType.slice(1)} (Layout ${layoutId ?? 'Unknown'})`;
+};
+
+// Get color for a layout
+const getLayoutColor = (boardType: string, layoutId: number | null | undefined): string => {
+  const key = getLayoutKey(boardType, layoutId);
+  return layoutColors[key] || (boardType === 'kilter' ? 'rgba(6, 182, 212, 0.5)' : 'rgba(239, 68, 68, 0.5)');
 };
 
 export default function ProfilePageContent({ userId }: { userId: string }) {
@@ -248,6 +282,8 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
             tries: tick.attemptCount,
             angle: tick.angle,
             status: tick.status,
+            layoutId: tick.layoutId,
+            boardType,
           }));
         })
       );
@@ -300,7 +336,7 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
     }
   }, [logbook, timeframe, fromDate, toDate]);
 
-  // Generate aggregated chart data (ascents by grade, stacked by board)
+  // Generate aggregated chart data (ascents by grade, stacked by layout)
   const chartDataAggregated = useMemo(() => {
     const now = dayjs();
 
@@ -322,22 +358,27 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
       }
     };
 
-    // Collect ascents by grade for each board
-    const boardGradeCounts: Record<string, Record<string, number>> = {};
+    // Collect ascents by grade for each layout
+    const layoutGradeCounts: Record<string, Record<string, number>> = {};
     const allGrades = new Set<string>();
+    const allLayouts = new Set<string>();
 
     BOARD_TYPES.forEach((boardType) => {
       const ticks = allBoardsTicks[boardType] || [];
       const filteredTicks = ticks.filter(filterByTimeframe);
-      boardGradeCounts[boardType] = {};
 
       filteredTicks.forEach((entry) => {
         // Only count ascents (not attempts)
         if (entry.difficulty === null || entry.status === 'attempt') return;
         const grade = difficultyMapping[entry.difficulty];
         if (grade) {
-          boardGradeCounts[boardType][grade] = (boardGradeCounts[boardType][grade] || 0) + 1;
+          const layoutKey = getLayoutKey(boardType, entry.layoutId);
+          if (!layoutGradeCounts[layoutKey]) {
+            layoutGradeCounts[layoutKey] = {};
+          }
+          layoutGradeCounts[layoutKey][grade] = (layoutGradeCounts[layoutKey][grade] || 0) + 1;
           allGrades.add(grade);
+          allLayouts.add(layoutKey);
         }
       });
     });
@@ -349,12 +390,30 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
     // Sort grades by difficulty order
     const sortedGrades = Object.values(difficultyMapping).filter((g) => allGrades.has(g));
 
-    // Create datasets for each board
-    const datasets = BOARD_TYPES.map((boardType) => ({
-      label: boardType.charAt(0).toUpperCase() + boardType.slice(1),
-      data: sortedGrades.map((grade) => boardGradeCounts[boardType][grade] || 0),
-      backgroundColor: boardColors[boardType],
-    })).filter((dataset) => dataset.data.some((value) => value > 0));
+    // Define the order for layouts (Kilter first, then Tension)
+    const layoutOrder = ['kilter-1', 'kilter-8', 'tension-9', 'tension-10', 'tension-11'];
+    const sortedLayouts = Array.from(allLayouts).sort((a, b) => {
+      const indexA = layoutOrder.indexOf(a);
+      const indexB = layoutOrder.indexOf(b);
+      // If both are in the order array, sort by their position
+      if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+      // If only one is in the order array, it comes first
+      if (indexA !== -1) return -1;
+      if (indexB !== -1) return 1;
+      // Otherwise, sort alphabetically
+      return a.localeCompare(b);
+    });
+
+    // Create datasets for each layout
+    const datasets = sortedLayouts.map((layoutKey) => {
+      const [boardType, layoutIdStr] = layoutKey.split('-');
+      const layoutId = layoutIdStr === 'unknown' ? null : parseInt(layoutIdStr, 10);
+      return {
+        label: getLayoutDisplayName(boardType, layoutId),
+        data: sortedGrades.map((grade) => layoutGradeCounts[layoutKey]?.[grade] || 0),
+        backgroundColor: getLayoutColor(boardType, layoutId),
+      };
+    }).filter((dataset) => dataset.data.some((value) => value > 0));
 
     return {
       labels: sortedGrades,
@@ -537,7 +596,7 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
         <Card className={styles.statsCard}>
           <Title level={5}>Ascents by Grade</Title>
           <Text type="secondary" className={styles.chartDescription}>
-            Total ascents across all boards
+            Total ascents by board layout
           </Text>
 
           <div className={styles.timeframeSelector}>

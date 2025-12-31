@@ -224,6 +224,7 @@ export type Tick = {
   auroraType: string | null;
   auroraId: string | null;
   auroraSyncedAt: string | null;
+  layoutId: number | null;
 };
 
 export type SaveTickInput = {
