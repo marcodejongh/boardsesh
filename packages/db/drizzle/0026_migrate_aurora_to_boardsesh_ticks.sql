@@ -24,8 +24,8 @@ BEGIN
       ka.difficulty,
       COALESCE(ka.is_benchmark::boolean, false) AS is_benchmark,
       COALESCE(ka.comment, '') AS comment,
-      ka.climbed_at::timestamp::text AS climbed_at,
-      ka.created_at::timestamp::text AS created_at,
+      ka.climbed_at::timestamp AS climbed_at,
+      ka.created_at::timestamp AS created_at,
       'ascents'::aurora_table_type AS aurora_type,
       ka.uuid AS aurora_id
     FROM kilter_ascents ka
@@ -53,8 +53,8 @@ BEGIN
       NULL::integer AS difficulty,
       false AS is_benchmark,
       COALESCE(kb.comment, '') AS comment,
-      kb.climbed_at::timestamp::text AS climbed_at,
-      kb.created_at::timestamp::text AS created_at,
+      kb.climbed_at::timestamp AS climbed_at,
+      kb.created_at::timestamp AS created_at,
       'bids'::aurora_table_type AS aurora_type,
       kb.uuid AS aurora_id
     FROM kilter_bids kb
@@ -85,8 +85,8 @@ BEGIN
       ta.difficulty,
       COALESCE(ta.is_benchmark::boolean, false) AS is_benchmark,
       COALESCE(ta.comment, '') AS comment,
-      ta.climbed_at::timestamp::text AS climbed_at,
-      ta.created_at::timestamp::text AS created_at,
+      ta.climbed_at::timestamp AS climbed_at,
+      ta.created_at::timestamp AS created_at,
       'ascents'::aurora_table_type AS aurora_type,
       ta.uuid AS aurora_id
     FROM tension_ascents ta
@@ -114,8 +114,8 @@ BEGIN
       NULL::integer AS difficulty,
       false AS is_benchmark,
       COALESCE(tb.comment, '') AS comment,
-      tb.climbed_at::timestamp::text AS climbed_at,
-      tb.created_at::timestamp::text AS created_at,
+      tb.climbed_at::timestamp AS climbed_at,
+      tb.created_at::timestamp AS created_at,
       'bids'::aurora_table_type AS aurora_type,
       tb.uuid AS aurora_id
     FROM tension_bids tb
@@ -175,10 +175,10 @@ BEGIN
     comment,
     climbed_at,
     created_at,
-    NOW()::text, -- updated_at
+    NOW(), -- updated_at
     aurora_type,
     aurora_id,
-    NOW()::text  -- aurora_synced_at
+    NOW()  -- aurora_synced_at
   FROM all_ticks_to_migrate;
 
   -- Log migration count
