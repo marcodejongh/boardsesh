@@ -45,6 +45,8 @@ export const boardSessionQueues = pgTable('board_session_queues', {
   queue: jsonb('queue').$type<ClimbQueueItem[]>().default([]).notNull(),
   currentClimbQueueItem: jsonb('current_climb_queue_item').$type<ClimbQueueItem | null>().default(null),
   version: integer('version').default(1).notNull(),
+  // Sequence number for event ordering (separate from version used for optimistic locking)
+  sequence: integer('sequence').default(0).notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 

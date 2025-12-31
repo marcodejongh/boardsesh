@@ -35,6 +35,8 @@ export const queueMutations = {
 
     // Track the original queue length for position calculation
     let originalQueueLength = 0;
+    let itemWasAdded = false;
+    let resultSequence = 0;
 
     // Retry loop for optimistic locking
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
@@ -46,8 +48,9 @@ export const queueMutations = {
 
       // Only add if not already in queue
       if (queue.some((i) => i.uuid === item.uuid)) {
-        // Item already in queue, just return it
-        break;
+        // Item already in queue - return without publishing event
+        if (DEBUG) console.log('[addQueueItem] Item already in queue, skipping');
+        return item;
       }
 
       if (position !== undefined && position >= 0 && position <= queue.length) {
@@ -58,7 +61,9 @@ export const queueMutations = {
 
       try {
         // Use updateQueueOnly with version check to avoid race conditions
-        await roomManager.updateQueueOnly(sessionId, queue, currentState.version);
+        const result = await roomManager.updateQueueOnly(sessionId, queue, currentState.version);
+        itemWasAdded = true;
+        resultSequence = result.sequence;
         break; // Success, exit retry loop
       } catch (error) {
         if (error instanceof VersionConflictError && attempt < MAX_RETRIES - 1) {
@@ -69,19 +74,23 @@ export const queueMutations = {
       }
     }
 
-    // Calculate actual position where item was inserted
-    // If position was valid, item is at that index; otherwise it was appended
-    const actualPosition =
-      position !== undefined && position >= 0 && position <= originalQueueLength
-        ? position
-        : originalQueueLength; // Item was appended at end of original queue
+    // Only publish event if item was actually added
+    if (itemWasAdded) {
+      // Calculate actual position where item was inserted
+      // If position was valid, item is at that index; otherwise it was appended
+      const actualPosition =
+        position !== undefined && position >= 0 && position <= originalQueueLength
+          ? position
+          : originalQueueLength; // Item was appended at end of original queue
 
-    // Broadcast to subscribers with the actual position
-    pubsub.publishQueueEvent(sessionId, {
-      __typename: 'QueueItemAdded',
-      item: item,
-      position: actualPosition,
-    });
+      // Broadcast to subscribers with the actual position
+      pubsub.publishQueueEvent(sessionId, {
+        __typename: 'QueueItemAdded',
+        sequence: resultSequence,
+        item: item,
+        position: actualPosition,
+      });
+    }
 
     return item;
   },
@@ -106,10 +115,11 @@ export const queueMutations = {
       currentClimb = null;
     }
 
-    await roomManager.updateQueueState(sessionId, queue, currentClimb);
+    const { sequence } = await roomManager.updateQueueState(sessionId, queue, currentClimb);
 
     pubsub.publishQueueEvent(sessionId, {
       __typename: 'QueueItemRemoved',
+      sequence,
       uuid,
     });
 
@@ -140,15 +150,19 @@ export const queueMutations = {
       throw new Error(`Invalid index: queue has ${queue.length} items`);
     }
 
+    let resultSequence = currentState.sequence;
+
     if (oldIndex >= 0 && oldIndex < queue.length && newIndex >= 0 && newIndex < queue.length) {
       const [movedItem] = queue.splice(oldIndex, 1);
       queue.splice(newIndex, 0, movedItem);
       // Use updateQueueOnly to avoid overwriting currentClimbQueueItem
-      await roomManager.updateQueueOnly(sessionId, queue);
+      const result = await roomManager.updateQueueOnly(sessionId, queue);
+      resultSequence = result.sequence;
     }
 
     pubsub.publishQueueEvent(sessionId, {
       __typename: 'QueueReordered',
+      sequence: resultSequence,
       uuid,
       oldIndex,
       newIndex,
@@ -164,7 +178,7 @@ export const queueMutations = {
    */
   setCurrentClimb: async (
     _: unknown,
-    { item, shouldAddToQueue }: { item: ClimbQueueItem | null; shouldAddToQueue?: boolean },
+    { item, shouldAddToQueue, correlationId }: { item: ClimbQueueItem | null; shouldAddToQueue?: boolean; correlationId?: string },
     ctx: ConnectionContext
   ) => {
     applyRateLimit(ctx);
@@ -180,11 +194,12 @@ export const queueMutations = {
       if (item === null) {
         console.log('[setCurrentClimb] Setting current climb to NULL by client:', ctx.connectionId, 'session:', sessionId);
       } else {
-        console.log('[setCurrentClimb] Setting current climb to:', item.climb?.name, 'by client:', ctx.connectionId);
+        console.log('[setCurrentClimb] Setting current climb to:', item.climb?.name, 'by client:', ctx.connectionId, 'correlationId:', correlationId);
       }
     }
 
     // Retry loop for optimistic locking
+    let sequence = 0;
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
       const currentState = await roomManager.getQueueState(sessionId);
       let queue = currentState.queue;
@@ -195,7 +210,8 @@ export const queueMutations = {
       }
 
       try {
-        await roomManager.updateQueueState(sessionId, queue, item, currentState.version);
+        const result = await roomManager.updateQueueState(sessionId, queue, item, currentState.version);
+        sequence = result.sequence;
         break; // Success, exit retry loop
       } catch (error) {
         if (error instanceof VersionConflictError && attempt < MAX_RETRIES - 1) {
@@ -208,7 +224,10 @@ export const queueMutations = {
 
     pubsub.publishQueueEvent(sessionId, {
       __typename: 'CurrentClimbChanged',
+      sequence,
       item: item,
+      clientId: ctx.connectionId || null,
+      correlationId: correlationId || null,
     });
 
     return item;
@@ -224,6 +243,7 @@ export const queueMutations = {
 
     const currentState = await roomManager.getQueueState(sessionId);
     let currentClimb = currentState.currentClimbQueueItem;
+    let sequence = currentState.sequence;
 
     if (currentClimb) {
       // Update the mirrored state
@@ -237,11 +257,13 @@ export const queueMutations = {
         i.uuid === currentClimb!.uuid ? { ...i, climb: { ...i.climb, mirrored } } : i
       );
 
-      await roomManager.updateQueueState(sessionId, queue, currentClimb);
+      const result = await roomManager.updateQueueState(sessionId, queue, currentClimb);
+      sequence = result.sequence;
     }
 
     pubsub.publishQueueEvent(sessionId, {
       __typename: 'ClimbMirrored',
+      sequence,
       mirrored,
     });
 
@@ -273,12 +295,13 @@ export const queueMutations = {
       currentClimb = item;
     }
 
-    await roomManager.updateQueueState(sessionId, queue, currentClimb);
+    const { sequence, stateHash } = await roomManager.updateQueueState(sessionId, queue, currentClimb);
 
     // Publish as FullSync since replace is less common
     pubsub.publishQueueEvent(sessionId, {
       __typename: 'FullSync',
-      state: { queue, currentClimbQueueItem: currentClimb },
+      sequence,
+      state: { sequence, stateHash, queue, currentClimbQueueItem: currentClimb },
     });
 
     return item;
@@ -302,15 +325,18 @@ export const queueMutations = {
       validateInput(ClimbQueueItemSchema, currentClimbQueueItem, 'currentClimbQueueItem');
     }
 
-    await roomManager.updateQueueState(sessionId, queue, currentClimbQueueItem || null);
+    const { sequence, stateHash } = await roomManager.updateQueueState(sessionId, queue, currentClimbQueueItem || null);
 
     const state: QueueState = {
+      sequence,
+      stateHash,
       queue,
       currentClimbQueueItem: currentClimbQueueItem || null,
     };
 
     pubsub.publishQueueEvent(sessionId, {
       __typename: 'FullSync',
+      sequence,
       state,
     });
 

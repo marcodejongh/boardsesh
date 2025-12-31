@@ -8,6 +8,9 @@ const initialState = (initialSearchParams: SearchRequestPagination): QueueState 
   climbSearchParams: initialSearchParams,
   hasDoneFirstFetch: false,
   initialQueueDataReceivedFromPeers: false,
+  pendingCurrentClimbUpdates: [],
+  lastReceivedSequence: null,
+  lastReceivedStateHash: null,
 });
 
 export function queueReducer(state: QueueState, action: QueueAction): QueueState {
@@ -47,6 +50,8 @@ export function queueReducer(state: QueueState, action: QueueAction): QueueState
         queue: action.payload.queue,
         currentClimbQueueItem: action.payload.currentClimbQueueItem ?? state.currentClimbQueueItem,
         initialQueueDataReceivedFromPeers: true,
+        // Clear pending updates on full sync since we're getting complete server state
+        pendingCurrentClimbUpdates: [],
       };
 
     case 'UPDATE_QUEUE':
@@ -145,7 +150,45 @@ export function queueReducer(state: QueueState, action: QueueAction): QueueState
     }
 
     case 'DELTA_UPDATE_CURRENT_CLIMB': {
-      const { item, shouldAddToQueue } = action.payload;
+      const {
+        item,
+        shouldAddToQueue,
+        isServerEvent,
+        eventClientId,
+        myClientId,
+        correlationId,
+        serverCorrelationId
+      } = action.payload;
+
+      // NO MORE TIMESTAMP FILTERING - reducer is now pure!
+      let pendingUpdates = state.pendingCurrentClimbUpdates;
+
+      // For server events, check if this is an echo of our own update
+      if (isServerEvent && item) {
+        // Primary: Correlation ID matching (most precise)
+        if (serverCorrelationId && pendingUpdates.includes(serverCorrelationId)) {
+          // This is our own update echoed back - skip it and remove from pending
+          return {
+            ...state,
+            pendingCurrentClimbUpdates: pendingUpdates.filter(id => id !== serverCorrelationId),
+          };
+        }
+
+        // Fallback 1: ClientId-based detection
+        const isOurOwnEcho = eventClientId && myClientId && eventClientId === myClientId;
+        if (isOurOwnEcho) {
+          // Our echo, but without correlation ID - keep pending as-is (will be cleaned by effect)
+          return {
+            ...state,
+            pendingCurrentClimbUpdates: pendingUpdates,
+          };
+        }
+
+        // Note: UUID-based fallback was removed because it was incorrectly skipping
+        // legitimate server updates. Without correlation ID or clientId from the server,
+        // we cannot reliably detect echoes. The UI may briefly flash on legacy servers,
+        // but state will converge correctly.
+      }
 
       // Skip if this is the same item (deduplication for optimistic updates)
       if (item && state.currentClimbQueueItem?.uuid === item.uuid) {
@@ -159,10 +202,39 @@ export function queueReducer(state: QueueState, action: QueueAction): QueueState
         newQueue = [...state.queue, item];
       }
 
+      // For local updates, track correlation ID (no timestamp!)
+      if (!isServerEvent && item && correlationId) {
+        pendingUpdates = [
+          ...pendingUpdates,
+          correlationId
+        ].slice(-50);  // Still bound to 50 items for safety
+      }
+
       return {
         ...state,
         queue: newQueue,
         currentClimbQueueItem: item,
+        pendingCurrentClimbUpdates: pendingUpdates,
+      };
+    }
+
+    case 'CLEANUP_PENDING_UPDATE': {
+      return {
+        ...state,
+        pendingCurrentClimbUpdates: state.pendingCurrentClimbUpdates.filter(
+          id => id !== action.payload.correlationId
+        ),
+      };
+    }
+
+    case 'CLEANUP_PENDING_UPDATES_BATCH': {
+      // Batch cleanup to avoid multiple re-renders
+      const idsToRemove = new Set(action.payload.correlationIds);
+      return {
+        ...state,
+        pendingCurrentClimbUpdates: state.pendingCurrentClimbUpdates.filter(
+          id => !idsToRemove.has(id)
+        ),
       };
     }
 

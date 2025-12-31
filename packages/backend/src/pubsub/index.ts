@@ -5,6 +5,10 @@ import { createRedisPubSubAdapter, type RedisPubSubAdapter } from './redis-adapt
 type QueueSubscriber = (event: QueueEvent) => void;
 type SessionSubscriber = (event: SessionEvent) => void;
 
+// Event buffer configuration (Phase 2: Delta sync)
+const EVENT_BUFFER_SIZE = 100; // Store last 100 events per session
+const EVENT_BUFFER_TTL = 300;  // 5 minutes
+
 /**
  * Hybrid PubSub that supports both local-only and Redis-backed modes.
  *
@@ -184,8 +188,76 @@ class PubSub {
   }
 
   /**
+   * Store a queue event in the event buffer for delta sync (Phase 2).
+   * Events are stored in a Redis list with a TTL.
+   */
+  private async storeEventInBuffer(sessionId: string, event: QueueEvent): Promise<void> {
+    if (!this.redisAdapter) {
+      // No Redis - skip event buffering (will fallback to full sync)
+      return;
+    }
+
+    try {
+      const { publisher } = redisClientManager.getClients();
+      const bufferKey = `session:${sessionId}:events`;
+      const eventJson = JSON.stringify(event);
+
+      // Add to front of list (newest events first)
+      await publisher.lpush(bufferKey, eventJson);
+      // Trim to keep only last N events
+      await publisher.ltrim(bufferKey, 0, EVENT_BUFFER_SIZE - 1);
+      // Set TTL (5 minutes)
+      await publisher.expire(bufferKey, EVENT_BUFFER_TTL);
+    } catch (error) {
+      console.error('[PubSub] Failed to store event in buffer:', error);
+      // Don't throw - event buffering is optional (will fallback to full sync)
+    }
+  }
+
+  /**
+   * Retrieve events since a given sequence number (Phase 2).
+   * Used for delta sync on reconnection.
+   * Returns events in ascending sequence order.
+   */
+  async getEventsSince(sessionId: string, sinceSequence: number): Promise<QueueEvent[]> {
+    if (!this.redisAdapter) {
+      throw new Error('Event buffer requires Redis');
+    }
+
+    try {
+      const { publisher } = redisClientManager.getClients();
+      const bufferKey = `session:${sessionId}:events`;
+
+      // Get all events from buffer (newest first due to lpush)
+      const eventJsons = await publisher.lrange(bufferKey, 0, -1);
+
+      // Parse and filter events
+      const events: QueueEvent[] = [];
+      for (const json of eventJsons) {
+        try {
+          const event = JSON.parse(json) as QueueEvent;
+          if (event.sequence > sinceSequence) {
+            events.push(event);
+          }
+        } catch (parseError) {
+          console.error('[PubSub] Failed to parse buffered event:', parseError);
+        }
+      }
+
+      // Sort by sequence (ascending) since buffer is newest-first
+      events.sort((a, b) => a.sequence - b.sequence);
+
+      return events;
+    } catch (error) {
+      console.error('[PubSub] Failed to retrieve events from buffer:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Publish a queue event to all subscribers of a session.
    * Dispatches locally first, then publishes to Redis for other instances.
+   * Also stores event in buffer for delta sync (Phase 2).
    *
    * Note: Redis publish errors are logged but not thrown to avoid blocking
    * the local dispatch. In Redis mode, events may not reach other instances
@@ -194,6 +266,13 @@ class PubSub {
   publishQueueEvent(sessionId: string, event: QueueEvent): void {
     // Always dispatch to local subscribers first (low latency)
     this.dispatchToLocalQueueSubscribers(sessionId, event);
+
+    // Store event in buffer for delta sync (Phase 2)
+    // Fire and forget - don't block on buffer storage
+    this.storeEventInBuffer(sessionId, event).catch((error) => {
+      console.error(`[PubSub] Failed to buffer event for session ${sessionId}:`, error);
+      // Non-fatal: clients will fall back to full sync if delta sync fails
+    });
 
     // Also publish to Redis if available
     if (this.redisAdapter) {

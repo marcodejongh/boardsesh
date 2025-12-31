@@ -87,8 +87,17 @@ export type SessionUser = {
 };
 
 export type QueueState = {
+  sequence: number;
+  stateHash: string;
   queue: ClimbQueueItem[];
   currentClimbQueueItem: ClimbQueueItem | null;
+};
+
+// Response for delta sync event replay (Phase 2)
+// Uses QueueEvent since this is a query returning buffered events with standard field names
+export type EventsReplayResponse = {
+  events: QueueEvent[];
+  currentSequence: number;
 };
 
 // ============================================
@@ -252,57 +261,34 @@ export type GetTicksInput = {
  *
  * ## Type Aliasing Strategy
  *
- * There are TWO event types because of GraphQL field aliasing:
+ * There are TWO event types due to GraphQL union type constraints:
  *
- * 1. **QueueEvent** (Server-side)
- *    - Used by the backend when publishing events via PubSub
- *    - Uses the actual GraphQL field names defined in the schema (e.g., `item`)
+ * 1. `QueueEvent` - Server-side type using `item` field. Used by backend PubSub
+ *    and for eventsReplay query responses.
  *
- * 2. **ClientQueueEvent** (Client-side)
- *    - Used by the web app when receiving subscription events
- *    - Uses aliased field names from the subscription query (e.g., `addedItem`, `currentItem`)
- *
- * The reason for this split is that the GraphQL subscription query in operations.ts
- * uses aliases to give more descriptive names to fields:
- *
- *   ```graphql
- *   subscription QueueUpdates($sessionId: String!) {
- *     queueUpdates(sessionId: $sessionId) {
- *       ... on QueueItemAdded {
- *         addedItem: item { ... }  # 'item' aliased to 'addedItem'
- *       }
- *       ... on CurrentClimbChanged {
- *         currentItem: item { ... }  # 'item' aliased to 'currentItem'
- *       }
- *     }
- *   }
- *   ```
- *
- * This aliasing is intentional for clarity in client code, but it means the
- * TypeScript types must reflect what the client actually receives.
- *
- * When working with these types:
- * - In the backend (server): use `QueueEvent`
- * - In the web app (client): use `ClientQueueEvent`
+ * 2. `SubscriptionQueueEvent` - Client-side type using aliased fields (`addedItem`,
+ *    `currentItem`). Required because GraphQL doesn't allow the same field name
+ *    with different nullability in a union (QueueItemAdded.item is non-null,
+ *    CurrentClimbChanged.item is nullable).
  */
 
 // Server-side event type - uses actual GraphQL field names
 export type QueueEvent =
-  | { __typename: 'FullSync'; state: QueueState }
-  | { __typename: 'QueueItemAdded'; item: ClimbQueueItem; position?: number }
-  | { __typename: 'QueueItemRemoved'; uuid: string }
-  | { __typename: 'QueueReordered'; uuid: string; oldIndex: number; newIndex: number }
-  | { __typename: 'CurrentClimbChanged'; item: ClimbQueueItem | null }
-  | { __typename: 'ClimbMirrored'; mirrored: boolean };
+  | { __typename: 'FullSync'; sequence: number; state: QueueState }
+  | { __typename: 'QueueItemAdded'; sequence: number; item: ClimbQueueItem; position?: number }
+  | { __typename: 'QueueItemRemoved'; sequence: number; uuid: string }
+  | { __typename: 'QueueReordered'; sequence: number; uuid: string; oldIndex: number; newIndex: number }
+  | { __typename: 'CurrentClimbChanged'; sequence: number; item: ClimbQueueItem | null; clientId: string | null; correlationId: string | null }
+  | { __typename: 'ClimbMirrored'; sequence: number; mirrored: boolean };
 
-// Client-side event type - uses aliased field names from subscription query
-export type ClientQueueEvent =
-  | { __typename: 'FullSync'; state: QueueState }
-  | { __typename: 'QueueItemAdded'; addedItem: ClimbQueueItem; position?: number }
-  | { __typename: 'QueueItemRemoved'; uuid: string }
-  | { __typename: 'QueueReordered'; uuid: string; oldIndex: number; newIndex: number }
-  | { __typename: 'CurrentClimbChanged'; currentItem: ClimbQueueItem | null }
-  | { __typename: 'ClimbMirrored'; mirrored: boolean };
+// Client-side subscription event type - uses aliased field names to avoid GraphQL union conflicts
+export type SubscriptionQueueEvent =
+  | { __typename: 'FullSync'; sequence: number; state: QueueState }
+  | { __typename: 'QueueItemAdded'; sequence: number; addedItem: ClimbQueueItem; position?: number }
+  | { __typename: 'QueueItemRemoved'; sequence: number; uuid: string }
+  | { __typename: 'QueueReordered'; sequence: number; uuid: string; oldIndex: number; newIndex: number }
+  | { __typename: 'CurrentClimbChanged'; sequence: number; currentItem: ClimbQueueItem | null; clientId: string | null; correlationId: string | null }
+  | { __typename: 'ClimbMirrored'; sequence: number; mirrored: boolean };
 
 export type SessionEvent =
   | { __typename: 'UserJoined'; user: SessionUser }

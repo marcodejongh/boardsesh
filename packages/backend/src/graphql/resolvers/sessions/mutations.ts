@@ -61,6 +61,8 @@ export const sessionMutations = {
       boardPath,
       users: result.users,
       queueState: {
+        sequence: result.sequence,
+        stateHash: result.stateHash,
         queue: result.queue,
         currentClimbQueueItem: result.currentClimbQueueItem,
       },
@@ -126,6 +128,8 @@ export const sessionMutations = {
       boardPath: input.boardPath,
       users: result.users,
       queueState: {
+        sequence: result.sequence,
+        stateHash: result.stateHash,
         queue: result.queue,
         currentClimbQueueItem: result.currentClimbQueueItem,
       },

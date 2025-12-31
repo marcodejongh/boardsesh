@@ -27,6 +27,12 @@ export interface QueueState {
   climbSearchParams: SearchRequestPagination;
   hasDoneFirstFetch: boolean;
   initialQueueDataReceivedFromPeers: boolean;
+  // Track locally-initiated current climb updates by correlation ID to skip server echoes
+  // Correlation IDs enable precise echo detection without time-based logic in the reducer
+  pendingCurrentClimbUpdates: string[];
+  // Sequence tracking for gap detection and state verification
+  lastReceivedSequence: number | null;
+  lastReceivedStateHash: string | null;
 }
 
 export type QueueAction =
@@ -43,9 +49,11 @@ export type QueueAction =
   | { type: 'DELTA_ADD_QUEUE_ITEM'; payload: { item: ClimbQueueItem; position?: number } }
   | { type: 'DELTA_REMOVE_QUEUE_ITEM'; payload: { uuid: string } }
   | { type: 'DELTA_REORDER_QUEUE_ITEM'; payload: { uuid: string; oldIndex: number; newIndex: number } }
-  | { type: 'DELTA_UPDATE_CURRENT_CLIMB'; payload: { item: ClimbQueueItem | null; shouldAddToQueue?: boolean } }
+  | { type: 'DELTA_UPDATE_CURRENT_CLIMB'; payload: { item: ClimbQueueItem | null; shouldAddToQueue?: boolean; isServerEvent?: boolean; eventClientId?: string; myClientId?: string; correlationId?: string; serverCorrelationId?: string } }
   | { type: 'DELTA_MIRROR_CURRENT_CLIMB'; payload: { mirrored: boolean } }
-  | { type: 'DELTA_REPLACE_QUEUE_ITEM'; payload: { uuid: string; item: ClimbQueueItem } };
+  | { type: 'DELTA_REPLACE_QUEUE_ITEM'; payload: { uuid: string; item: ClimbQueueItem } }
+  | { type: 'CLEANUP_PENDING_UPDATE'; payload: { correlationId: string } }
+  | { type: 'CLEANUP_PENDING_UPDATES_BATCH'; payload: { correlationIds: string[] } };
 
 export interface QueueContextType {
   queue: ClimbQueue;

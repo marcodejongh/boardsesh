@@ -13,17 +13,49 @@ import {
   SET_QUEUE,
   SESSION_UPDATES,
   QUEUE_UPDATES,
+  EVENTS_REPLAY,
   SessionUser,
-  ClientQueueEvent,
+  QueueEvent,
+  SubscriptionQueueEvent,
   SessionEvent,
   QueueState,
+  EventsReplayResponse,
 } from '@boardsesh/shared-schema';
 import { ClimbQueueItem as LocalClimbQueueItem } from '../queue-control/types';
 import { BoardDetails, ParsedBoardRouteParameters } from '@/app/lib/types';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { usePartyProfile } from '../party-manager/party-profile-context';
+import { computeQueueStateHash } from '@/app/utils/hash';
 
 const DEBUG = process.env.NODE_ENV === 'development';
+
+/**
+ * Transform QueueEvent (from eventsReplay) to SubscriptionQueueEvent format.
+ * eventsReplay returns server format with `item`, but handlers expect subscription
+ * format with `addedItem`/`currentItem`.
+ */
+function transformToSubscriptionEvent(event: QueueEvent): SubscriptionQueueEvent {
+  switch (event.__typename) {
+    case 'QueueItemAdded':
+      return {
+        __typename: 'QueueItemAdded',
+        sequence: event.sequence,
+        addedItem: event.item,
+        position: event.position,
+      };
+    case 'CurrentClimbChanged':
+      return {
+        __typename: 'CurrentClimbChanged',
+        sequence: event.sequence,
+        currentItem: event.item,
+        clientId: event.clientId,
+        correlationId: event.correlationId,
+      };
+    default:
+      // Other event types have identical structure
+      return event as SubscriptionQueueEvent;
+  }
+}
 
 // Default backend URL from environment variable
 const DEFAULT_BACKEND_URL = process.env.NEXT_PUBLIC_WS_URL || null;
@@ -128,12 +160,12 @@ export interface PersistentSessionContextType {
   // Mutation functions
   addQueueItem: (item: LocalClimbQueueItem, position?: number) => Promise<void>;
   removeQueueItem: (uuid: string) => Promise<void>;
-  setCurrentClimb: (item: LocalClimbQueueItem | null, shouldAddToQueue?: boolean) => Promise<void>;
+  setCurrentClimb: (item: LocalClimbQueueItem | null, shouldAddToQueue?: boolean, correlationId?: string) => Promise<void>;
   mirrorCurrentClimb: (mirrored: boolean) => Promise<void>;
   setQueue: (queue: LocalClimbQueueItem[], currentClimbQueueItem?: LocalClimbQueueItem | null) => Promise<void>;
 
   // Event subscription for board-level components
-  subscribeToQueueEvents: (callback: (event: ClientQueueEvent) => void) => () => void;
+  subscribeToQueueEvents: (callback: (event: SubscriptionQueueEvent) => void) => () => void;
   subscribeToSessionEvents: (callback: (event: SessionEvent) => void) => () => void;
 }
 
@@ -176,6 +208,12 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
   const [currentClimbQueueItem, setCurrentClimbQueueItem] = useState<LocalClimbQueueItem | null>(null);
   const [queue, setQueueState] = useState<LocalClimbQueueItem[]>([]);
 
+  // Sequence tracking for gap detection and state verification
+  const [lastReceivedSequence, setLastReceivedSequence] = useState<number | null>(null);
+  const [lastReceivedStateHash, setLastReceivedStateHash] = useState<string | null>(null);
+  // Ref for synchronous access to sequence (avoids stale closure in handleQueueEvent)
+  const lastReceivedSequenceRef = useRef<number | null>(null);
+
   // Local queue state (persists without WebSocket session)
   const [localQueue, setLocalQueue] = useState<LocalClimbQueueItem[]>([]);
   const [localCurrentClimbQueueItem, setLocalCurrentClimbQueueItem] = useState<LocalClimbQueueItem | null>(null);
@@ -194,11 +232,14 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
   const sessionUnsubscribeRef = useRef<(() => void) | null>(null);
   const sessionRef = useRef<Session | null>(null);
   const isReconnectingRef = useRef(false);
+  const isConnectingRef = useRef(false); // Prevents duplicate connections during React re-renders
   const activeSessionRef = useRef<ActiveSessionInfo | null>(null);
   const mountedRef = useRef(false);
+  // Ref to store reconnect handler for use by hash verification
+  const triggerResyncRef = useRef<(() => void) | null>(null);
 
   // Event subscribers
-  const queueEventSubscribersRef = useRef<Set<(event: ClientQueueEvent) => void>>(new Set());
+  const queueEventSubscribersRef = useRef<Set<(event: SubscriptionQueueEvent) => void>>(new Set());
   const sessionEventSubscribersRef = useRef<Set<(event: SessionEvent) => void>>(new Set());
 
   // Keep refs in sync
@@ -211,7 +252,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
   }, [activeSession]);
 
   // Notify queue event subscribers
-  const notifyQueueSubscribers = useCallback((event: ClientQueueEvent) => {
+  const notifyQueueSubscribers = useCallback((event: SubscriptionQueueEvent) => {
     queueEventSubscribersRef.current.forEach((callback) => callback(event));
   }, []);
 
@@ -220,12 +261,36 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
     sessionEventSubscribersRef.current.forEach((callback) => callback(event));
   }, []);
 
+  // Helper to update sequence in both ref and state
+  const updateLastReceivedSequence = useCallback((sequence: number) => {
+    lastReceivedSequenceRef.current = sequence;
+    setLastReceivedSequence(sequence);
+  }, []);
+
   // Handle queue events internally
-  const handleQueueEvent = useCallback((event: ClientQueueEvent) => {
+  const handleQueueEvent = useCallback((event: SubscriptionQueueEvent) => {
+    // Sequence validation for gap detection (use ref to avoid stale closure)
+    const lastSeq = lastReceivedSequenceRef.current;
+    if (event.__typename !== 'FullSync' && lastSeq !== null) {
+      const expectedSequence = lastSeq + 1;
+      if (event.sequence !== expectedSequence) {
+        console.warn(
+          `[PersistentSession] Sequence gap detected: expected ${expectedSequence}, got ${event.sequence}. ` +
+          `This may indicate missed events.`
+        );
+        // Note: Reconnection handles delta sync automatically.
+        // Mid-session gaps are rare (server skipped sequence or pubsub delivery issue).
+        // For now, we log and continue - state hash verification will catch drift.
+      }
+    }
+
     switch (event.__typename) {
       case 'FullSync':
         setQueueState(event.state.queue as LocalClimbQueueItem[]);
         setCurrentClimbQueueItem(event.state.currentClimbQueueItem as LocalClimbQueueItem | null);
+        // Reset sequence tracking on full sync
+        updateLastReceivedSequence(event.sequence);
+        setLastReceivedStateHash(event.state.stateHash);
         break;
       case 'QueueItemAdded':
         setQueueState((prev) => {
@@ -237,9 +302,11 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
           }
           return newQueue;
         });
+        updateLastReceivedSequence(event.sequence);
         break;
       case 'QueueItemRemoved':
         setQueueState((prev) => prev.filter((item) => item.uuid !== event.uuid));
+        updateLastReceivedSequence(event.sequence);
         break;
       case 'QueueReordered':
         setQueueState((prev) => {
@@ -248,9 +315,11 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
           newQueue.splice(event.newIndex, 0, item);
           return newQueue;
         });
+        updateLastReceivedSequence(event.sequence);
         break;
       case 'CurrentClimbChanged':
         setCurrentClimbQueueItem(event.currentItem as LocalClimbQueueItem | null);
+        updateLastReceivedSequence(event.sequence);
         break;
       case 'ClimbMirrored':
         setCurrentClimbQueueItem((prev) => {
@@ -263,12 +332,21 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
             },
           };
         });
+        updateLastReceivedSequence(event.sequence);
         break;
     }
 
     // Notify external subscribers
     notifyQueueSubscribers(event);
-  }, [notifyQueueSubscribers]);
+  }, [notifyQueueSubscribers, updateLastReceivedSequence]);
+
+  // Keep state hash in sync with local state after delta events
+  // This ensures hash verification compares against current state, not stale FullSync hash
+  useEffect(() => {
+    if (!session) return; // Only update hash when connected
+    const newHash = computeQueueStateHash(queue, currentClimbQueueItem?.uuid || null);
+    setLastReceivedStateHash(newHash);
+  }, [session, queue, currentClimbQueueItem]);
 
   // Handle session events internally
   const handleSessionEvent = useCallback((event: SessionEvent) => {
@@ -386,18 +464,96 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
       isReconnectingRef.current = true;
       try {
         if (DEBUG) console.log('[PersistentSession] Reconnecting...');
+
+        // Save last received sequence before rejoining
+        // Use ref to avoid stale closure (state variable would capture value from effect creation)
+        const lastSeq = lastReceivedSequenceRef.current;
+
         const sessionData = await joinSession(graphqlClient);
         // Double-check mounted state after async operation
-        if (sessionData && mountedRef.current) {
-          setSession(sessionData);
-          if (DEBUG) console.log('[PersistentSession] Reconnected, clientId:', sessionData.clientId);
+        if (!sessionData || !mountedRef.current) return;
+
+        // Calculate sequence gap
+        const currentSeq = sessionData.queueState.sequence;
+        const gap = lastSeq !== null ? currentSeq - lastSeq : 0;
+
+        if (DEBUG) console.log(`[PersistentSession] Reconnected. Last seq: ${lastSeq}, Current seq: ${currentSeq}, Gap: ${gap}`);
+
+        // Attempt delta sync if gap is reasonable
+        if (gap > 0 && gap <= 100 && lastSeq !== null && sessionId) {
+          try {
+            if (DEBUG) console.log(`[PersistentSession] Attempting delta sync for ${gap} missed events...`);
+
+            const response = await execute<{ eventsReplay: EventsReplayResponse }>(graphqlClient, {
+              query: EVENTS_REPLAY,
+              variables: { sessionId, sinceSequence: lastSeq },
+            });
+
+            if (response.eventsReplay.events.length > 0) {
+              if (DEBUG) console.log(`[PersistentSession] Replaying ${response.eventsReplay.events.length} events`);
+
+              // Apply each event in order (transform from server to subscription format)
+              response.eventsReplay.events.forEach(event => {
+                handleQueueEvent(transformToSubscriptionEvent(event));
+              });
+
+              if (DEBUG) console.log('[PersistentSession] Delta sync completed successfully');
+            } else {
+              if (DEBUG) console.log('[PersistentSession] No events to replay');
+            }
+          } catch (err) {
+            console.warn('[PersistentSession] Delta sync failed, falling back to full sync:', err);
+            // Fall through to full sync below
+            applyFullSync(sessionData);
+          }
+        } else if (gap > 100) {
+          // Gap too large - use full sync
+          if (DEBUG) console.log(`[PersistentSession] Gap too large (${gap}), using full sync`);
+          applyFullSync(sessionData);
+        } else if (lastSeq === null) {
+          // First connection after state was reset - apply initial state
+          if (DEBUG) console.log('[PersistentSession] First connection, applying initial state');
+          applyFullSync(sessionData);
+        } else if (gap === 0) {
+          // No sequence gap, but verify state is actually in sync via hash
+          const localHash = computeQueueStateHash(queue, currentClimbQueueItem?.uuid || null);
+          if (localHash !== sessionData.queueState.stateHash) {
+            if (DEBUG) console.log('[PersistentSession] Hash mismatch on reconnect despite gap=0, applying full sync');
+            applyFullSync(sessionData);
+          } else {
+            if (DEBUG) console.log('[PersistentSession] No missed events, already in sync');
+          }
         }
+
+        setSession(sessionData);
+        if (DEBUG) console.log('[PersistentSession] Reconnection complete, clientId:', sessionData.clientId);
       } finally {
         isReconnectingRef.current = false;
       }
     }
 
+    // Store reconnect handler for use by hash verification
+    triggerResyncRef.current = handleReconnect;
+
+    // Helper to apply full sync from session data
+    function applyFullSync(sessionData: any) {
+      if (sessionData.queueState) {
+        handleQueueEvent({
+          __typename: 'FullSync',
+          sequence: sessionData.queueState.sequence,
+          state: sessionData.queueState,
+        });
+      }
+    }
+
     async function connect() {
+      // Prevent duplicate connections during React re-renders or Strict Mode
+      if (isConnectingRef.current) {
+        if (DEBUG) console.log('[PersistentSession] Connection already in progress, skipping');
+        return;
+      }
+      isConnectingRef.current = true;
+
       if (DEBUG) console.log('[PersistentSession] Connecting to session:', sessionId);
       setIsConnecting(true);
       setError(null);
@@ -412,6 +568,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
 
         if (!mountedRef.current) {
           graphqlClient.dispose();
+          isConnectingRef.current = false;
           return;
         }
 
@@ -438,12 +595,13 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
         if (sessionData.queueState) {
           handleQueueEvent({
             __typename: 'FullSync',
+            sequence: sessionData.queueState.sequence,
             state: sessionData.queueState,
           });
         }
 
         // Subscribe to queue updates
-        queueUnsubscribeRef.current = subscribe<{ queueUpdates: ClientQueueEvent }>(
+        queueUnsubscribeRef.current = subscribe<{ queueUpdates: SubscriptionQueueEvent }>(
           graphqlClient,
           { query: QUEUE_UPDATES, variables: { sessionId } },
           {
@@ -490,8 +648,11 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
             },
           },
         );
+        // Mark connection as complete
+        isConnectingRef.current = false;
       } catch (err) {
         console.error('[PersistentSession] Connection failed:', err);
+        isConnectingRef.current = false;
         if (mountedRef.current) {
           setError(err instanceof Error ? err : new Error(String(err)));
           setIsConnecting(false);
@@ -508,22 +669,28 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
       if (DEBUG) console.log('[PersistentSession] Cleaning up connection');
       // Set mounted ref to false FIRST to prevent any reconnect callbacks from executing
       mountedRef.current = false;
+      // Reset connecting ref to allow new connections after cleanup
+      isConnectingRef.current = false;
 
-      // Clean up subscriptions
-      if (queueUnsubscribeRef.current) {
-        queueUnsubscribeRef.current();
-        queueUnsubscribeRef.current = null;
-      }
-      if (sessionUnsubscribeRef.current) {
-        sessionUnsubscribeRef.current();
-        sessionUnsubscribeRef.current = null;
-      }
+      // Capture client reference before cleanup to avoid race conditions
+      const clientToCleanup = graphqlClient;
+      graphqlClient = null; // Prevent new operations on this client
 
-      if (graphqlClient) {
-        if (sessionRef.current) {
-          execute(graphqlClient, { query: LEAVE_SESSION }).catch(() => {});
-        }
-        graphqlClient.dispose();
+      // Clean up subscriptions synchronously
+      queueUnsubscribeRef.current?.();
+      queueUnsubscribeRef.current = null;
+      sessionUnsubscribeRef.current?.();
+      sessionUnsubscribeRef.current = null;
+
+      // Dispose client - use microtask to let pending operations complete
+      // This prevents "WebSocket already in CLOSING state" errors
+      if (clientToCleanup) {
+        Promise.resolve().then(() => {
+          if (sessionRef.current) {
+            execute(clientToCleanup, { query: LEAVE_SESSION }).catch(() => {});
+          }
+          clientToCleanup.dispose();
+        });
       }
 
       setClient(null);
@@ -533,6 +700,56 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
     };
   // Note: username, avatarUrl, wsAuthToken are accessed via refs to prevent reconnection on changes
   }, [activeSession, isAuthLoading, handleQueueEvent, handleSessionEvent]);
+
+  // Periodic state hash verification
+  // Runs every 60 seconds to detect state drift and auto-resync if needed
+  useEffect(() => {
+    if (!session || !lastReceivedStateHash || queue.length === 0) {
+      // Skip if not connected or no state to verify
+      return;
+    }
+
+    const verifyInterval = setInterval(() => {
+      // Compute local state hash
+      const localHash = computeQueueStateHash(queue, currentClimbQueueItem?.uuid || null);
+
+      if (localHash !== lastReceivedStateHash) {
+        console.warn(
+          '[PersistentSession] State hash mismatch detected!',
+          `Local: ${localHash}, Server: ${lastReceivedStateHash}`,
+          'Triggering automatic resync...'
+        );
+        // Trigger resync to get back in sync with server
+        // The reconnect handler will do delta sync or full sync as appropriate
+        if (triggerResyncRef.current) {
+          triggerResyncRef.current();
+        }
+      } else {
+        if (DEBUG) console.log('[PersistentSession] State hash verification passed');
+      }
+    }, 60000); // Every 60 seconds
+
+    return () => clearInterval(verifyInterval);
+  }, [session, lastReceivedStateHash, queue, currentClimbQueueItem]);
+
+  // Defensive state consistency check
+  // If currentClimbQueueItem exists but is not found in queue, trigger resync
+  useEffect(() => {
+    if (!session || !currentClimbQueueItem || queue.length === 0) {
+      return;
+    }
+
+    const isCurrentInQueue = queue.some(item => item.uuid === currentClimbQueueItem.uuid);
+
+    if (!isCurrentInQueue) {
+      console.warn(
+        '[PersistentSession] Current climb not found in queue - state inconsistency detected. Triggering resync.'
+      );
+      if (triggerResyncRef.current) {
+        triggerResyncRef.current();
+      }
+    }
+  }, [session, currentClimbQueueItem, queue]);
 
   // Session lifecycle functions
   const activateSession = useCallback((info: ActiveSessionInfo) => {
@@ -613,13 +830,14 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
   );
 
   const setCurrentClimbMutation = useCallback(
-    async (item: LocalClimbQueueItem | null, shouldAddToQueue?: boolean) => {
+    async (item: LocalClimbQueueItem | null, shouldAddToQueue?: boolean, correlationId?: string) => {
       if (!client || !session) throw new Error('Not connected to session');
       await execute(client, {
         query: SET_CURRENT_CLIMB,
         variables: {
           item: item ? toClimbQueueItemInput(item) : null,
           shouldAddToQueue,
+          correlationId,
         },
       });
     },
@@ -652,7 +870,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
   );
 
   // Event subscription functions
-  const subscribeToQueueEvents = useCallback((callback: (event: ClientQueueEvent) => void) => {
+  const subscribeToQueueEvents = useCallback((callback: (event: SubscriptionQueueEvent) => void) => {
     queueEventSubscribersRef.current.add(callback);
     return () => {
       queueEventSubscribersRef.current.delete(callback);

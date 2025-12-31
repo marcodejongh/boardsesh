@@ -56,7 +56,10 @@ const initialState: QueueState = {
   currentClimbQueueItem: null,
   climbSearchParams: mockSearchParams,
   hasDoneFirstFetch: false,
-  initialQueueDataReceivedFromPeers: false
+  initialQueueDataReceivedFromPeers: false,
+  pendingCurrentClimbUpdates: [],
+  lastReceivedSequence: null,
+  lastReceivedStateHash: null,
 };
 
 describe('queueReducer', () => {
@@ -770,5 +773,288 @@ describe('queueReducer', () => {
 
       expect(result).toEqual(initialState);
     });
+  });
+
+  describe('DELTA_UPDATE_CURRENT_CLIMB - Server Event Handling', () => {
+    it('should track pending updates for local actions', () => {
+      const action: QueueAction = {
+        type: 'DELTA_UPDATE_CURRENT_CLIMB',
+        payload: {
+          item: mockClimbQueueItem,
+          shouldAddToQueue: false,
+          isServerEvent: false,
+          correlationId: 'client-123-1',
+        },
+      };
+
+      const result = queueReducer(initialState, action);
+
+      expect(result.pendingCurrentClimbUpdates).toContain('client-123-1');
+      expect(result.pendingCurrentClimbUpdates).toHaveLength(1);
+    });
+
+    it('should skip server events that match pending updates', () => {
+      const stateWithPending: QueueState = {
+        ...initialState,
+        pendingCurrentClimbUpdates: ['client-123-1'],
+        currentClimbQueueItem: null,
+      };
+
+      const action: QueueAction = {
+        type: 'DELTA_UPDATE_CURRENT_CLIMB',
+        payload: {
+          item: mockClimbQueueItem,
+          shouldAddToQueue: false,
+          isServerEvent: true,
+          serverCorrelationId: 'client-123-1',
+        },
+      };
+
+      const result = queueReducer(stateWithPending, action);
+
+      // Should not update current climb (echo was skipped)
+      expect(result.currentClimbQueueItem).toBeNull();
+      // Should remove from pending
+      expect(result.pendingCurrentClimbUpdates).not.toContain('client-123-1');
+      expect(result.pendingCurrentClimbUpdates).toHaveLength(0);
+    });
+
+    it('should apply server events that do not match pending updates', () => {
+      const otherItem: ClimbQueueItem = {
+        ...mockClimbQueueItem,
+        uuid: 'other-uuid',
+      };
+
+      const stateWithPending: QueueState = {
+        ...initialState,
+        pendingCurrentClimbUpdates: ['client-123-1'],
+      };
+
+      const action: QueueAction = {
+        type: 'DELTA_UPDATE_CURRENT_CLIMB',
+        payload: {
+          item: otherItem,
+          shouldAddToQueue: false,
+          isServerEvent: true,
+          serverCorrelationId: 'client-456-1', // Different correlation ID
+        },
+      };
+
+      const result = queueReducer(stateWithPending, action);
+
+      // Should apply the update (different correlation ID)
+      expect(result.currentClimbQueueItem).toEqual(otherItem);
+      // Should not remove from pending (different correlation ID)
+      expect(result.pendingCurrentClimbUpdates).toContain('client-123-1');
+    });
+
+    it('should maintain pending array bounded to last 50 items', () => {
+      // Create state with 49 pending correlation IDs
+      const existingPending = Array.from({ length: 49 }, (_, i) => `client-123-${i}`);
+      const stateWithPending: QueueState = {
+        ...initialState,
+        pendingCurrentClimbUpdates: existingPending,
+      };
+
+      const newItem: ClimbQueueItem = {
+        ...mockClimbQueueItem,
+        uuid: 'uuid-50',
+      };
+
+      const action: QueueAction = {
+        type: 'DELTA_UPDATE_CURRENT_CLIMB',
+        payload: {
+          item: newItem,
+          shouldAddToQueue: false,
+          isServerEvent: false,
+          correlationId: 'client-123-50',
+        },
+      };
+
+      const result = queueReducer(stateWithPending, action);
+
+      expect(result.pendingCurrentClimbUpdates).toHaveLength(50);
+      expect(result.pendingCurrentClimbUpdates[49]).toBe('client-123-50');
+    });
+
+    it('should drop oldest item when exceeding 50 pending items', () => {
+      // Create state with 50 pending correlation IDs
+      const existingPending = Array.from({ length: 50 }, (_, i) => `client-123-${i}`);
+      const stateWithPending: QueueState = {
+        ...initialState,
+        pendingCurrentClimbUpdates: existingPending,
+      };
+
+      const newItem: ClimbQueueItem = {
+        ...mockClimbQueueItem,
+        uuid: 'uuid-51',
+      };
+
+      const action: QueueAction = {
+        type: 'DELTA_UPDATE_CURRENT_CLIMB',
+        payload: {
+          item: newItem,
+          shouldAddToQueue: false,
+          isServerEvent: false,
+          correlationId: 'client-123-51',
+        },
+      };
+
+      const result = queueReducer(stateWithPending, action);
+
+      expect(result.pendingCurrentClimbUpdates).toHaveLength(50);
+      expect(result.pendingCurrentClimbUpdates[0]).toBe('client-123-1'); // client-123-0 dropped
+      expect(result.pendingCurrentClimbUpdates[49]).toBe('client-123-51');
+    });
+
+    it('should not track pending for server events', () => {
+      const action: QueueAction = {
+        type: 'DELTA_UPDATE_CURRENT_CLIMB',
+        payload: {
+          item: mockClimbQueueItem,
+          shouldAddToQueue: false,
+          isServerEvent: true,
+        },
+      };
+
+      const result = queueReducer(initialState, action);
+
+      expect(result.pendingCurrentClimbUpdates).toHaveLength(0);
+    });
+
+    it('should handle null item from server event', () => {
+      const stateWithPending: QueueState = {
+        ...initialState,
+        pendingCurrentClimbUpdates: ['client-123-1'],
+        currentClimbQueueItem: mockClimbQueueItem,
+      };
+
+      const action: QueueAction = {
+        type: 'DELTA_UPDATE_CURRENT_CLIMB',
+        payload: {
+          item: null,
+          shouldAddToQueue: false,
+          isServerEvent: true,
+        },
+      };
+
+      const result = queueReducer(stateWithPending, action);
+
+      expect(result.currentClimbQueueItem).toBeNull();
+      // Pending list should still contain the entry (server event without matching correlationId)
+      expect(result.pendingCurrentClimbUpdates).toContain('client-123-1');
+    });
+
+    it('should add to queue when shouldAddToQueue is true for local action', () => {
+      const action: QueueAction = {
+        type: 'DELTA_UPDATE_CURRENT_CLIMB',
+        payload: {
+          item: mockClimbQueueItem,
+          shouldAddToQueue: true,
+          isServerEvent: false,
+          correlationId: 'client-123-1',
+        },
+      };
+
+      const result = queueReducer(initialState, action);
+
+      expect(result.queue).toContain(mockClimbQueueItem);
+      expect(result.pendingCurrentClimbUpdates).toContain('client-123-1');
+    });
+
+    it('should not add duplicate to queue when item already exists', () => {
+      const stateWithQueue: QueueState = {
+        ...initialState,
+        queue: [mockClimbQueueItem],
+      };
+
+      const action: QueueAction = {
+        type: 'DELTA_UPDATE_CURRENT_CLIMB',
+        payload: {
+          item: mockClimbQueueItem,
+          shouldAddToQueue: true,
+          isServerEvent: false,
+          correlationId: 'client-123-1',
+        },
+      };
+
+      const result = queueReducer(stateWithQueue, action);
+
+      expect(result.queue).toHaveLength(1); // No duplicate
+      expect(result.pendingCurrentClimbUpdates).toContain('client-123-1');
+    });
+  });
+
+  describe('INITIAL_QUEUE_DATA - Pending Updates', () => {
+    it('should clear pending updates on initial queue data sync', () => {
+      const stateWithPending: QueueState = {
+        ...initialState,
+        pendingCurrentClimbUpdates: ['client-123-1', 'client-123-2', 'client-123-3'],
+      };
+
+      const action: QueueAction = {
+        type: 'INITIAL_QUEUE_DATA',
+        payload: {
+          queue: [mockClimbQueueItem],
+          currentClimbQueueItem: mockClimbQueueItem,
+        },
+      };
+
+      const result = queueReducer(stateWithPending, action);
+
+      expect(result.pendingCurrentClimbUpdates).toHaveLength(0);
+      expect(result.initialQueueDataReceivedFromPeers).toBe(true);
+    });
+  });
+
+  describe('CLEANUP_PENDING_UPDATE', () => {
+    it('should remove specific correlationId from pending updates', () => {
+      const stateWithPending: QueueState = {
+        ...initialState,
+        pendingCurrentClimbUpdates: ['client-123-1', 'client-123-2', 'client-123-3'],
+      };
+
+      const action: QueueAction = {
+        type: 'CLEANUP_PENDING_UPDATE',
+        payload: { correlationId: 'client-123-2' },
+      };
+
+      const result = queueReducer(stateWithPending, action);
+
+      expect(result.pendingCurrentClimbUpdates).toHaveLength(2);
+      expect(result.pendingCurrentClimbUpdates).toContain('client-123-1');
+      expect(result.pendingCurrentClimbUpdates).toContain('client-123-3');
+      expect(result.pendingCurrentClimbUpdates).not.toContain('client-123-2');
+    });
+
+    it('should handle cleanup of non-existent correlationId gracefully', () => {
+      const stateWithPending: QueueState = {
+        ...initialState,
+        pendingCurrentClimbUpdates: ['client-123-1', 'client-123-2'],
+      };
+
+      const action: QueueAction = {
+        type: 'CLEANUP_PENDING_UPDATE',
+        payload: { correlationId: 'client-999-1' },
+      };
+
+      const result = queueReducer(stateWithPending, action);
+
+      expect(result.pendingCurrentClimbUpdates).toHaveLength(2);
+      expect(result.pendingCurrentClimbUpdates).toContain('client-123-1');
+      expect(result.pendingCurrentClimbUpdates).toContain('client-123-2');
+    });
+
+    it('should handle cleanup on empty pending array', () => {
+      const action: QueueAction = {
+        type: 'CLEANUP_PENDING_UPDATE',
+        payload: { correlationId: 'client-123-1' },
+      };
+
+      const result = queueReducer(initialState, action);
+
+      expect(result.pendingCurrentClimbUpdates).toHaveLength(0);
+    });
+
   });
 });
