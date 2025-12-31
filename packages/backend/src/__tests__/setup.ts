@@ -23,9 +23,13 @@ const createTablesSQL = `
   DROP TABLE IF EXISTS "kilter_climbs" CASCADE;
   DROP TABLE IF EXISTS "kilter_climb_stats" CASCADE;
   DROP TABLE IF EXISTS "kilter_difficulty_grades" CASCADE;
+  DROP TABLE IF EXISTS "kilter_ascents" CASCADE;
+  DROP TABLE IF EXISTS "kilter_bids" CASCADE;
   DROP TABLE IF EXISTS "tension_climbs" CASCADE;
   DROP TABLE IF EXISTS "tension_climb_stats" CASCADE;
   DROP TABLE IF EXISTS "tension_difficulty_grades" CASCADE;
+  DROP TABLE IF EXISTS "tension_ascents" CASCADE;
+  DROP TABLE IF EXISTS "tension_bids" CASCADE;
 
   -- Create users table (minimal, needed for FK reference)
   CREATE TABLE IF NOT EXISTS "users" (
@@ -113,6 +117,38 @@ const createTablesSQL = `
     "is_listed" boolean DEFAULT true
   );
 
+  CREATE TABLE IF NOT EXISTS "kilter_ascents" (
+    "uuid" text PRIMARY KEY NOT NULL,
+    "climb_uuid" text,
+    "angle" integer,
+    "is_mirror" boolean,
+    "user_id" integer,
+    "attempt_id" integer,
+    "bid_count" integer DEFAULT 1,
+    "quality" integer,
+    "difficulty" integer,
+    "is_benchmark" integer DEFAULT 0,
+    "comment" text DEFAULT '',
+    "climbed_at" text,
+    "created_at" text,
+    "synced" boolean DEFAULT true NOT NULL,
+    "sync_error" text
+  );
+
+  CREATE TABLE IF NOT EXISTS "kilter_bids" (
+    "uuid" text PRIMARY KEY NOT NULL,
+    "user_id" integer,
+    "climb_uuid" text,
+    "angle" integer,
+    "is_mirror" boolean,
+    "bid_count" integer DEFAULT 1,
+    "comment" text DEFAULT '',
+    "climbed_at" text,
+    "created_at" text,
+    "synced" boolean DEFAULT true NOT NULL,
+    "sync_error" text
+  );
+
   -- Create tension tables for climb query tests
   CREATE TABLE IF NOT EXISTS "tension_climbs" (
     "uuid" text PRIMARY KEY NOT NULL,
@@ -152,6 +188,38 @@ const createTablesSQL = `
     "boulder_name" text,
     "route_name" text,
     "is_listed" boolean DEFAULT true
+  );
+
+  CREATE TABLE IF NOT EXISTS "tension_ascents" (
+    "uuid" text PRIMARY KEY NOT NULL,
+    "climb_uuid" text,
+    "angle" integer,
+    "is_mirror" boolean,
+    "user_id" integer,
+    "attempt_id" integer,
+    "bid_count" integer DEFAULT 1,
+    "quality" integer,
+    "difficulty" integer,
+    "is_benchmark" integer DEFAULT 0,
+    "comment" text DEFAULT '',
+    "climbed_at" text,
+    "created_at" text,
+    "synced" boolean DEFAULT true NOT NULL,
+    "sync_error" text
+  );
+
+  CREATE TABLE IF NOT EXISTS "tension_bids" (
+    "uuid" text PRIMARY KEY NOT NULL,
+    "user_id" integer,
+    "climb_uuid" text,
+    "angle" integer,
+    "is_mirror" boolean,
+    "bid_count" integer DEFAULT 1,
+    "comment" text DEFAULT '',
+    "climbed_at" text,
+    "created_at" text,
+    "synced" boolean DEFAULT true NOT NULL,
+    "sync_error" text
   );
 
   -- Create indexes for board_sessions
