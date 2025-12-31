@@ -51,8 +51,15 @@ The party session system uses a GraphQL-over-WebSocket architecture with the fol
 │  │ RoomManager         │◄───┤ PubSub              │                     │
 │  │ - Session state     │    │ - Local dispatch    │                     │
 │  │ - Client tracking   │    │ - Redis pub/sub     │                     │
-│  │ - Leader election   │    └─────────────────────┘                     │
-│  └─────────┬───────────┘                                                 │
+│  └─────────┬───────────┘    └─────────────────────┘                     │
+│            │                                                             │
+│  ┌─────────▼─────────────────────────────────────────────────────────┐  │
+│  │ DistributedStateManager (multi-instance support)                   │  │
+│  │ - Cross-instance connection tracking                               │  │
+│  │ - Distributed leader election (Lua scripts)                        │  │
+│  │ - Session membership across instances                              │  │
+│  │ - Instance heartbeating & cleanup                                  │  │
+│  └─────────┬─────────────────────────────────────────────────────────┘  │
 │            │                                                             │
 │  ┌─────────▼───────────┐    ┌─────────────────────┐                     │
 │  │ RedisSessionStore   │    │ PostgreSQL          │                     │
@@ -179,25 +186,47 @@ sequenceDiagram
 
 ### Leader Election
 
-Leader election uses deterministic selection based on connection time:
+Leader election uses Redis-backed atomic operations for consistency across instances:
+
+**Single Instance Mode:**
+- First client to join becomes leader
+- On leader disconnect, earliest connected client is elected
+
+**Multi-Instance Mode (Distributed):**
+- Uses Lua scripts for atomic leader election
+- Leader stored in Redis: `boardsesh:session:{id}:leader`
+- Consistent across all backend instances
 
 ```mermaid
 sequenceDiagram
     participant U1 as User 1 (Leader)
-    participant U2 as User 2
+    participant U2 as User 2 (Instance 2)
     participant RM as RoomManager
+    participant DS as DistributedState
+    participant R as Redis
     participant PS as PubSub
 
     Note over U1,PS: User 1 is current leader
 
     U1->>RM: disconnect()
-    RM->>RM: wasLeader = true
-    RM->>RM: Sort remaining clients by connectedAt
-    RM->>RM: New leader = earliest connected
+    RM->>DS: leaveSession(connectionId, sessionId)
+    DS->>R: Execute ELECT_NEW_LEADER Lua script
+    R->>R: Find earliest connected member
+    R->>R: SET leader key atomically
+    R-->>DS: newLeaderId = U2
+    DS-->>RM: {newLeaderId: U2}
     RM->>PS: publishSessionEvent(LeaderChanged)
     PS->>U2: LeaderChanged{leaderId: U2}
 
-    Note over U2: User 2 is now leader
+    Note over U2: User 2 is now leader (on Instance 2)
+```
+
+**Lua Script Atomicity:**
+```lua
+-- ELECT_NEW_LEADER_SCRIPT
+-- Gets all session members, filters out leaving connection
+-- Sorts by connectedAt, picks earliest
+-- Atomically sets new leader
 ```
 
 ---
@@ -276,6 +305,36 @@ sequenceDiagram
 
 ## Multi-Instance Support
 
+The backend supports horizontal scaling with multiple instances behind a load balancer. **No sticky sessions are required** - any instance can handle any client.
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        Load Balancer                             │
+│              (No sticky sessions required)                       │
+└─────────────────────────────────────────────────────────────────┘
+           │                    │                    │
+    ┌──────▼───────┐    ┌──────▼───────┐    ┌──────▼───────┐
+    │  Instance A  │    │  Instance B  │    │  Instance C  │
+    │              │    │              │    │              │
+    │ DistState ───┼────┼──────────────┼────┼─── Redis ◄──┤
+    │  Manager     │    │              │    │              │
+    └──────────────┘    └──────────────┘    └──────────────┘
+```
+
+### DistributedStateManager
+
+The `DistributedStateManager` enables true horizontal scaling:
+
+| Feature | Description |
+|---------|-------------|
+| Connection Tracking | All connections visible across instances via Redis |
+| Session Membership | Aggregated user list from all instances |
+| Leader Election | Atomic Lua scripts ensure consistent leader |
+| Instance Heartbeat | 30s heartbeat detects dead instances |
+| Graceful Cleanup | Connections cleaned up on instance shutdown |
+
 ### Redis Pub/Sub for Cross-Instance Events
 
 ```mermaid
@@ -297,6 +356,26 @@ sequenceDiagram
     I2->>C2: QueueItemAdded event
 
     I1->>C1: QueueItemAdded event
+```
+
+### Cross-Instance Session Membership Validation
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant I1 as Instance 1
+    participant DS as DistributedState
+    participant R as Redis
+
+    C->>I1: Subscribe to session (via Instance 1)
+    I1->>I1: Check local context
+    Note over I1: Not found locally
+
+    I1->>DS: isConnectionInSession(connId, sessionId)
+    DS->>R: HGET connection data
+    R-->>DS: {sessionId: "session-123"}
+    DS-->>I1: true (valid member)
+    I1->>C: Subscription authorized
 ```
 
 ### Channel Naming Convention
@@ -541,14 +620,29 @@ sequenceDiagram
 
 ### Key Redis Data Structures
 
+**Session State (RedisSessionStore):**
 ```
-boardsesh:session:{id}              # Hash - session data
-boardsesh:session:{id}:users        # Hash - connected users
+boardsesh:session:{id}              # Hash - session data (queue, version, etc.)
+boardsesh:session:{id}:users        # Hash - connected users (legacy)
 boardsesh:session:{id}:events       # List - event buffer (delta sync)
 boardsesh:session:active            # Set - active session IDs
 boardsesh:session:recent            # Sorted Set - recent sessions (by time)
-boardsesh:queue:{id}                # Pub/Sub channel - queue events
-boardsesh:lock:session:restore:{id} # String - distributed lock
+boardsesh:lock:session:restore:{id} # String - distributed lock (10s TTL)
+```
+
+**Distributed State (DistributedStateManager):**
+```
+boardsesh:conn:{connectionId}       # Hash - connection data (instanceId, sessionId, username, etc.)
+boardsesh:session:{id}:members      # Set - connection IDs in session (cross-instance)
+boardsesh:session:{id}:leader       # String - leader connection ID
+boardsesh:instance:{id}:conns       # Set - connections owned by instance
+boardsesh:instance:{id}:heartbeat   # String - instance heartbeat timestamp (60s TTL)
+```
+
+**Pub/Sub Channels:**
+```
+boardsesh:queue:{sessionId}         # Queue events (add, remove, reorder, etc.)
+boardsesh:session:{sessionId}       # Session events (join, leave, leader change)
 ```
 
 ### Graceful Shutdown
@@ -557,19 +651,33 @@ boardsesh:lock:session:restore:{id} # String - distributed lock
 sequenceDiagram
     participant P as Process
     participant RM as RoomManager
+    participant DS as DistributedState
     participant R as Redis
     participant PG as PostgreSQL
     participant WS as WebSocket
 
     P->>P: SIGTERM received
-    P->>RM: flushPendingWrites()
+    P->>RM: shutdown()
+    RM->>RM: flushPendingWrites()
 
     loop For each pending session
         RM->>RM: Clear debounce timer
         RM->>PG: Write queue state
     end
 
-    RM-->>P: Writes flushed
+    RM->>DS: stop()
+    DS->>DS: Stop heartbeat interval
+
+    loop For each connection on this instance
+        DS->>R: Remove connection data
+        DS->>R: Remove from session members
+        DS->>R: Elect new leader if needed
+    end
+
+    DS->>R: Remove instance tracking keys
+    DS-->>RM: Cleanup complete
+
+    RM-->>P: Shutdown complete
 
     P->>WS: Close all connections
     WS->>WS: Send close frame (1000)
@@ -604,6 +712,10 @@ sequenceDiagram
 | Event buffer TTL | 5 min | Old events cleanup |
 | Hash verification | 60s | State drift detection |
 | Subscription queue | 1000 | Max pending events |
+| Connection TTL | 1 hour | Distributed connection expiry |
+| Instance heartbeat | 30s | Heartbeat update interval |
+| Instance heartbeat TTL | 60s | Dead instance detection |
+| Session members TTL | 4 hours | Matches session TTL |
 
 ---
 
@@ -616,8 +728,10 @@ sequenceDiagram
 - `packages/backend/src/pubsub/redis-adapter.ts` - Redis pub/sub adapter
 - `packages/backend/src/services/room-manager.ts` - Session & queue management
 - `packages/backend/src/services/redis-session-store.ts` - Redis session persistence
+- `packages/backend/src/services/distributed-state.ts` - Multi-instance state management
 - `packages/backend/src/graphql/resolvers/queue/` - Queue mutations & subscriptions
 - `packages/backend/src/graphql/resolvers/sessions/` - Session mutations & subscriptions
+- `packages/backend/src/graphql/resolvers/shared/helpers.ts` - Cross-instance auth validation
 
 ### Frontend
 
