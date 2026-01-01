@@ -55,6 +55,7 @@ export const ShareBoardButton = () => {
   const [joinSessionId, setJoinSessionId] = useState('');
   const [discoverable, setDiscoverable] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [sessionName, setSessionName] = useState('');
 
   const isLoggedIn = authStatus === 'authenticated';
 
@@ -91,8 +92,9 @@ export const ShareBoardButton = () => {
 
     setIsStartingSession(true);
     try {
-      await startSession({ discoverable });
+      await startSession({ discoverable, name: sessionName.trim() || undefined });
       message.success('Party mode started!');
+      setSessionName(''); // Clear the input after starting
     } catch (error) {
       console.error('Failed to start session:', error);
       message.error('Failed to start party mode');
@@ -223,6 +225,16 @@ export const ShareBoardButton = () => {
 
                           {isLoggedIn && (
                             <>
+                              <Flex vertical gap="small">
+                                <Text strong>Session Name (optional)</Text>
+                                <Input
+                                  placeholder="e.g., Tuesday Night Climbs"
+                                  value={sessionName}
+                                  onChange={(e) => setSessionName(e.target.value)}
+                                  maxLength={50}
+                                />
+                              </Flex>
+
                               <Flex align="center" justify="space-between">
                                 <Space orientation="vertical" size={0}>
                                   <Text strong>Allow others to discover this session</Text>

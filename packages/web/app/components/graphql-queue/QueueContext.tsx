@@ -347,7 +347,8 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
         persistentSession.setInitialQueueForSession(
           newSessionId,
           state.queue,
-          state.currentClimbQueueItem
+          state.currentClimbQueueItem,
+          options?.name
         );
       }
 

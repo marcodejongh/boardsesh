@@ -66,6 +66,7 @@ const BOARD_NAMES = ['kilter', 'tension'];
 // Session type matching the GraphQL response
 export interface Session {
   id: string;
+  name: string | null;
   boardPath: string;
   users: SessionUser[];
   queueState: QueueState;
@@ -76,6 +77,7 @@ export interface Session {
 // Active session info stored at root level
 export interface ActiveSessionInfo {
   sessionId: string;
+  sessionName?: string;
   boardPath: string;
   boardDetails: BoardDetails;
   parsedParams: ParsedBoardRouteParameters;
@@ -155,6 +157,7 @@ export interface PersistentSessionContextType {
     sessionId: string,
     queue: LocalClimbQueueItem[],
     currentClimb: LocalClimbQueueItem | null,
+    sessionName?: string,
   ) => void;
 
   // Mutation functions
@@ -225,6 +228,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
     sessionId: string;
     queue: LocalClimbQueueItem[];
     currentClimb: LocalClimbQueueItem | null;
+    sessionName?: string;
   } | null>(null);
 
   // Refs for cleanup and callbacks
@@ -424,7 +428,9 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
           console.log('[PersistentSession] Sending initial queue with', initialQueueData.queue.length, 'items');
         }
 
-        // Build variables with optional initial queue
+        // Build variables with optional initial queue and session name
+        // Session name comes from activeSession (for new sessions) or pending queue data
+        const sessionName = activeSession?.sessionName || initialQueueData?.sessionName;
         const variables = {
           sessionId,
           boardPath,
@@ -434,6 +440,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
             initialQueue: initialQueueData.queue.map(toClimbQueueItemInput),
             initialCurrentClimb: initialQueueData.currentClimb ? toClimbQueueItemInput(initialQueueData.currentClimb) : null,
           }),
+          ...(sessionName && { sessionName }),
         };
 
         const response = await execute<{ joinSession: Session }>(clientToUse, {
@@ -772,9 +779,9 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
   }, []);
 
   const setInitialQueueForSession = useCallback(
-    (sessionId: string, queue: LocalClimbQueueItem[], currentClimb: LocalClimbQueueItem | null) => {
-      if (DEBUG) console.log(`[PersistentSession] Setting initial queue for session ${sessionId}:`, queue.length, 'items');
-      setPendingInitialQueue({ sessionId, queue, currentClimb });
+    (sessionId: string, queue: LocalClimbQueueItem[], currentClimb: LocalClimbQueueItem | null, sessionName?: string) => {
+      if (DEBUG) console.log(`[PersistentSession] Setting initial queue for session ${sessionId}:`, queue.length, 'items', sessionName ? `name: ${sessionName}` : '');
+      setPendingInitialQueue({ sessionId, queue, currentClimb, sessionName });
     },
     []
   );
