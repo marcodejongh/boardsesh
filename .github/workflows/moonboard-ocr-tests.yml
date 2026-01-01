@@ -1,0 +1,37 @@
+name: MoonBoard OCR Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'packages/moonboard-ocr/**'
+      - '.github/workflows/moonboard-ocr-tests.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'packages/moonboard-ocr/**'
+      - '.github/workflows/moonboard-ocr-tests.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install system dependencies for canvas
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
+
+    - name: Install dependencies
+      run: npm ci --legacy-peer-deps
+
+    - name: Run OCR tests
+      run: npm test --workspace=@boardsesh/moonboard-ocr

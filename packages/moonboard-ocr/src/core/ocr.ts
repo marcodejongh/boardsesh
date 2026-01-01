@@ -1,5 +1,4 @@
 import Tesseract from 'tesseract.js';
-import sharp from 'sharp';
 
 export interface OcrResult {
   name: string;
@@ -12,37 +11,19 @@ export interface OcrResult {
 }
 
 /**
- * Extract text from the header region of a MoonBoard screenshot
+ * Run OCR on image data and parse the result.
+ * Accepts Buffer (Node) or ImageData (Browser).
  */
-export async function extractHeaderText(
-  imageBuffer: Buffer,
-  headerRegion: { x: number; y: number; width: number; height: number }
+export async function runOCR(
+  imageData: Buffer | ImageData
 ): Promise<OcrResult> {
-  const warnings: string[] = [];
-
-  // Crop to header region and enhance for OCR
-  const croppedBuffer = await sharp(imageBuffer)
-    .extract({
-      left: headerRegion.x,
-      top: headerRegion.y,
-      width: headerRegion.width,
-      height: headerRegion.height,
-    })
-    // Convert to grayscale and increase contrast for better OCR
-    .grayscale()
-    .normalize()
-    .toBuffer();
-
-  // Run OCR on the header
-  const result = await Tesseract.recognize(croppedBuffer, 'eng', {
-    // logger: (m) => console.log(m), // Uncomment for debugging
-  });
-
+  const result = await Tesseract.recognize(imageData, 'eng');
   const text = result.data.text;
-  const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
-
-  // Parse the extracted text
-  return parseHeaderText(lines, warnings);
+  const lines = text
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean);
+  return parseHeaderText(lines);
 }
 
 /**
@@ -53,7 +34,8 @@ export async function extractHeaderText(
  * Line 2: "Set by [setter] @ [angle]°"
  * Line 3: "Grade: User [grade]/ Setter [grade]"
  */
-function parseHeaderText(lines: string[], warnings: string[]): OcrResult {
+export function parseHeaderText(lines: string[]): OcrResult {
+  const warnings: string[] = [];
   let name = '';
   let setter = '';
   let angle = 40; // Default angle
@@ -61,12 +43,17 @@ function parseHeaderText(lines: string[], warnings: string[]): OcrResult {
   let setterGrade = '';
   let isBenchmark = false;
 
-  // Check for benchmark indicator (orange "B" icon)
-  // OCR often reads it as "8" or "B" - can be standalone or appended to climb name
+  // Check for benchmark indicator (orange "B" appears as standalone "B" or "8" in OCR)
+  // It's typically on a line by itself near the climb name
   for (const line of lines) {
     const trimmed = line.trim();
     // Look for standalone "B" or "8" (OCR might read orange B as 8)
-    if (trimmed === 'B' || trimmed === '8' || trimmed === '[B]' || trimmed === '(B)') {
+    if (
+      trimmed === 'B' ||
+      trimmed === '8' ||
+      trimmed === '[B]' ||
+      trimmed === '(B)'
+    ) {
       isBenchmark = true;
       break;
     }
@@ -78,11 +65,13 @@ function parseHeaderText(lines: string[], warnings: string[]): OcrResult {
 
   for (const line of lines) {
     // Skip lines that look like metadata
-    if (line.toLowerCase().includes('set by') ||
-        line.toLowerCase().includes('grade:') ||
-        line.toLowerCase().includes('any marked') ||
-        line.toLowerCase().includes('user') ||
-        line.toLowerCase().includes('setter')) {
+    if (
+      line.toLowerCase().includes('set by') ||
+      line.toLowerCase().includes('grade:') ||
+      line.toLowerCase().includes('any marked') ||
+      line.toLowerCase().includes('user') ||
+      line.toLowerCase().includes('setter')
+    ) {
       continue;
     }
     // Skip very short lines (likely OCR noise)
@@ -90,18 +79,17 @@ function parseHeaderText(lines: string[], warnings: string[]): OcrResult {
       continue;
     }
     // Remove heart emoji and OCR artifacts, trim
-    let cleaned = line
-      .replace(/[♡❤️🤍&©®]/g, '')  // Remove heart, ampersand, copyright symbols
-      .replace(/\s*[QO@()]+\s*$/i, '')  // Remove trailing Q/O/@/() (OCR error for heart/icons)
-      .replace(/^\d+[)\]]\s*/, '')  // Remove leading numbers like "0)"
-      .replace(/^[yl]\s+/i, '')  // Remove leading y/l (OCR artifacts)
+    const cleaned = line
+      .replace(/[♡❤️🤍©®]/g, '') // Remove heart, copyright symbols
+      .replace(/\s*[QO@()&]+\s*$/i, '') // Remove trailing Q/O/@/()/& (OCR error for heart/icons)
+      .replace(/^\d+[)\]]\s*/, '') // Remove leading numbers like "0)"
+      .replace(/^[yl]\s+/i, '') // Remove leading y/l (OCR artifacts)
       .trim();
 
-    // Check for benchmark indicator at end of name (orange "B" icon often OCR'd as "8" or "B")
-    const benchmarkMatch = cleaned.match(/\s+[8B]$/);
-    if (benchmarkMatch) {
-      isBenchmark = true;
-      cleaned = cleaned.replace(/\s+[8B]$/, '').trim();
+    // Skip lines that are mostly garbage characters (underscores, dashes, equals)
+    const alphaNumeric = cleaned.replace(/[^a-zA-Z0-9]/g, '');
+    if (alphaNumeric.length < 3) {
+      continue;
     }
 
     if (cleaned.length >= 3) {
@@ -117,9 +105,14 @@ function parseHeaderText(lines: string[], warnings: string[]): OcrResult {
       const bAllCaps = b === b.toUpperCase();
       if (aAllCaps && !bAllCaps) return -1;
       if (!aAllCaps && bAllCaps) return 1;
-      return b.length - a.length;  // Longer names first
+      return b.length - a.length; // Longer names first
     });
     name = nameCandidates[0];
+
+    // Clean up trailing "8" or "B" which may come from heart icon or benchmark indicator
+    // We can't reliably distinguish them via OCR, so just remove the trailing chars
+    // Benchmark detection relies on standalone "B" or "8" lines (checked earlier)
+    name = name.replace(/\s+[\[(]?[8B]\]?$/i, '').trim();
   }
 
   // Find setter and angle
@@ -140,7 +133,9 @@ function parseHeaderText(lines: string[], warnings: string[]): OcrResult {
   // Find grades
   for (const line of lines) {
     // Format: "Grade: User 8A/V11/ Setter 8A/V11"
-    const gradeMatch = line.match(/grade[:\s]+user\s+([^\s/]+(?:\/[^\s/]+)?)\s*[/|]\s*setter\s+([^\s]+)/i);
+    const gradeMatch = line.match(
+      /grade[:\s]+user\s+([^\s/]+(?:\/[^\s/]+)?)\s*[/|]\s*setter\s+([^\s]+)/i
+    );
     if (gradeMatch) {
       userGrade = gradeMatch[1].trim();
       setterGrade = gradeMatch[2].trim();
@@ -171,15 +166,4 @@ function parseHeaderText(lines: string[], warnings: string[]): OcrResult {
     isBenchmark,
     warnings,
   };
-}
-
-/**
- * Pre-process image for better OCR results
- */
-export async function preprocessForOcr(imageBuffer: Buffer): Promise<Buffer> {
-  return sharp(imageBuffer)
-    .grayscale()
-    .normalize()
-    .sharpen()
-    .toBuffer();
 }

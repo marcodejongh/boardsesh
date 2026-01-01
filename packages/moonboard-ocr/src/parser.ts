@@ -1,42 +1,32 @@
-import sharp from 'sharp';
 import path from 'path';
-import { extractHeaderText } from './ocr.js';
-import { detectHolds } from './holds.js';
+import { ImageProcessor } from './image-processor/types.js';
+import { SharpImageProcessor } from './image-processor/sharp-processor.js';
+import { runOCR } from './core/ocr.js';
+import { detectHoldsFromPixelData } from './core/holds.js';
+import { calculateRegions } from './core/regions.js';
 import { MoonBoardClimb, ParseResult, GridCoordinate } from './types.js';
 
-// Region definitions for MoonBoard app screenshots
-// These values are calibrated for typical phone screenshots
-// May need adjustment based on device resolution
-
-interface ImageRegions {
-  header: { x: number; y: number; width: number; height: number };
-  board: { x: number; y: number; width: number; height: number };
-}
-
 /**
- * Parse a single MoonBoard screenshot and extract climb data
+ * Parse a MoonBoard screenshot using the provided ImageProcessor.
+ * This is the core parsing function used by both Node and browser implementations.
  */
-export async function parseScreenshot(imagePath: string): Promise<ParseResult> {
+export async function parseWithProcessor(
+  processor: ImageProcessor
+): Promise<ParseResult> {
   const warnings: string[] = [];
 
   try {
-    // Load image and get dimensions
-    const imageBuffer = await sharp(imagePath).toBuffer();
-    const metadata = await sharp(imageBuffer).metadata();
-
-    if (!metadata.width || !metadata.height) {
-      return { success: false, error: 'Could not read image dimensions', warnings };
-    }
-
-    // Calculate regions based on image dimensions (calibrated for MoonBoard app)
+    const metadata = processor.getMetadata();
     const regions = calculateRegions(metadata.width, metadata.height);
 
-    // Extract text from header
-    const ocrResult = await extractHeaderText(imageBuffer, regions.header);
+    // Extract header for OCR
+    const ocrImageData = await processor.extractForOCR(regions.header);
+    const ocrResult = await runOCR(ocrImageData);
     warnings.push(...ocrResult.warnings);
 
-    // Detect holds on the board (using calibrated region with nearest-neighbor matching)
-    const detectedHolds = await detectHolds(imageBuffer, regions.board);
+    // Extract board region for hold detection
+    const boardPixels = await processor.extractRegion(regions.board);
+    const detectedHolds = detectHoldsFromPixelData(boardPixels, regions.board);
 
     // Group holds by type
     const startHolds: GridCoordinate[] = [];
@@ -81,7 +71,7 @@ export async function parseScreenshot(imagePath: string): Promise<ParseResult> {
         hand: [...new Set(handHolds)],
         finish: [...new Set(finishHolds)],
       },
-      sourceFile: path.basename(imagePath),
+      sourceFile: processor.getSourceName(),
       parseWarnings: warnings.length > 0 ? warnings : undefined,
     };
 
@@ -93,53 +83,17 @@ export async function parseScreenshot(imagePath: string): Promise<ParseResult> {
 }
 
 /**
- * Calculate header and board regions based on image dimensions
- *
- * The MoonBoard app has a consistent layout:
- * - Status bar + nav bar at top (dark area)
- * - Header with climb name, setter, grade (white area)
- * - "Any marked holds" button
- * - Board grid (yellow background with holds)
- * - Controls at bottom
- *
- * Calibrated for iPhone screenshots (1290x2796)
+ * Parse a single MoonBoard screenshot from file path (Node.js API).
+ * This maintains backward compatibility with the original API.
  */
-function calculateRegions(width: number, height: number): ImageRegions {
-  // Header region: starts after nav bar, includes name/setter/grade
-  // On 2796px height: roughly y=308 to y=504
-  const headerTop = Math.round(height * 0.11);
-  const headerHeight = Math.round(height * 0.07);
-
-  // Board region: the actual 11x18 grid of holds
-  // Calibrated for labeled MoonBoard screenshots with "Show hold markers" enabled
-  // These values are fine-tuned to align grid cells with actual hold positions
-  const boardTop = Math.round(height * 0.249);   // Start at row 18 (top)
-  const boardBottom = Math.round(height * 0.88); // End at row 1 (bottom)
-  const boardHeight = boardBottom - boardTop;
-
-  // Skip the row number labels on left
-  const boardLeft = Math.round(width * 0.10);
-  const boardRight = Math.round(width * 0.95);
-  const boardWidth = boardRight - boardLeft;
-
-  return {
-    header: {
-      x: 0,
-      y: headerTop,
-      width: width,
-      height: headerHeight,
-    },
-    board: {
-      x: boardLeft,
-      y: boardTop,
-      width: boardWidth,
-      height: boardHeight,
-    },
-  };
+export async function parseScreenshot(imagePath: string): Promise<ParseResult> {
+  const processor = new SharpImageProcessor();
+  await processor.load(imagePath);
+  return parseWithProcessor(processor);
 }
 
 /**
- * Parse multiple screenshots and combine results
+ * Parse multiple screenshots and combine results (Node.js API)
  */
 export async function parseMultipleScreenshots(
   imagePaths: string[],
