@@ -141,6 +141,20 @@
       "when": 1735516800000,
       "tag": "0025_fix_missing_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1735603200000,
+      "tag": "0026_migrate_aurora_to_boardsesh_ticks",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1735689600000,
+      "tag": "0027_add_sequence_column",
+      "breakpoints": true
     }
   ]
 }

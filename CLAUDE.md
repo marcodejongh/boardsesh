@@ -72,6 +72,23 @@ npm run backend:dev
 - `npm run db:studio` - Open Drizzle Studio for database exploration
 - From packages/db: `npx drizzle-kit generate` - Generate new migrations
 
+### Creating Database Migrations
+
+**IMPORTANT**: Always use `npx drizzle-kit generate` from `packages/db/` to create new migrations. This command:
+1. Detects schema changes in `packages/db/src/schema/`
+2. Generates the SQL migration file in `packages/db/drizzle/`
+3. Automatically adds the migration to `packages/db/drizzle/meta/_journal.json`
+
+**Never manually create migration SQL files** without adding them to `_journal.json`. The journal tracks which migrations drizzle-kit should run - migrations missing from the journal will be silently skipped during deployment.
+
+```bash
+# From packages/db directory:
+npx drizzle-kit generate
+
+# Then apply locally to test:
+npm run db:migrate
+```
+
 ## Architecture Overview
 
 ### Routing Pattern
