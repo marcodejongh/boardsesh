@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { useQueueReducer } from '../queue-control/reducer';
 import { useQueueDataFetching } from '../queue-control/hooks/use-queue-data-fetching';
 import { QueueContextType, ClimbQueueItem, UserName, QueueItemUser } from '../queue-control/types';
-import { urlParamsToSearchParams, searchParamsToUrlParams } from '@/app/lib/url-utils';
+import { urlParamsToSearchParams, searchParamsToUrlParams, getBaseBoardPath } from '@/app/lib/url-utils';
 import { Climb, ParsedBoardRouteParameters, BoardDetails } from '@/app/lib/types';
 import { useConnectionSettings } from '../connection-manager/connection-settings-context';
 import { usePartyProfile } from '../party-manager/party-profile-context';
@@ -29,43 +29,6 @@ import {
   type AddClimbToPlaylistMutationResponse,
   type RemoveClimbFromPlaylistMutationResponse,
 } from '@/app/lib/graphql/operations/playlists';
-
-/**
- * Extracts the base board configuration path from a full pathname.
- * This removes dynamic segments that can change during a session:
- * - /play/[climb_uuid] - viewing different climbs
- * - /list, /create - different views
- * - /{angle} - the board angle is adjustable during a session
- *
- * The base path represents the physical board setup: /{board}/{layout}/{size}/{sets}
- */
-function getBaseBoardPath(pathname: string): string {
-  // First, strip off /play/[uuid], /list, or /create if present
-  let path = pathname;
-
-  const playMatch = path.match(/^(.+?)\/play\/[^/]+$/);
-  if (playMatch) {
-    path = playMatch[1];
-  } else {
-    const listMatch = path.match(/^(.+?)\/list$/);
-    if (listMatch) {
-      path = listMatch[1];
-    } else {
-      const createMatch = path.match(/^(.+?)\/create$/);
-      if (createMatch) {
-        path = createMatch[1];
-      }
-    }
-  }
-
-  // Strip off the angle (last segment, which is a number)
-  const angleMatch = path.match(/^(.+?)\/\d+$/);
-  if (angleMatch) {
-    return angleMatch[1];
-  }
-
-  return path;
-}
 
 // Extended context type with session management
 export interface GraphQLQueueContextType extends QueueContextType {

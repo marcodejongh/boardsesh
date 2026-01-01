@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect } from 'vitest';
-import { 
-  searchParamsToUrlParams, 
-  parsedRouteSearchParamsToSearchParams, 
+import {
+  searchParamsToUrlParams,
+  parsedRouteSearchParamsToSearchParams,
   urlParamsToSearchParams,
   parseBoardRouteParams,
   constructClimbViewUrl,
@@ -17,7 +17,8 @@ import {
   isUuidOnly,
   isNumericId,
   isSlugFormat,
-  DEFAULT_SEARCH_PARAMS 
+  getBaseBoardPath,
+  DEFAULT_SEARCH_PARAMS
 } from '../url-utils';
 
 describe('searchParamsToUrlParams', () => {
@@ -749,6 +750,132 @@ describe('Utility functions', () => {
     it('should return false for numeric strings', () => {
       expect(isSlugFormat('123')).toBe(false);
       expect(isSlugFormat('0')).toBe(false);
+    });
+  });
+});
+
+describe('getBaseBoardPath', () => {
+  describe('stripping /play/[uuid] segments', () => {
+    it('should strip /play/[uuid] from path with angle', () => {
+      expect(getBaseBoardPath('/kilter/original/12x12/default/45/play/abc-123'))
+        .toBe('/kilter/original/12x12/default');
+    });
+
+    it('should strip /play/[slug-uuid] from path', () => {
+      expect(getBaseBoardPath('/kilter/original/12x12/default/45/play/test-climb-name-abc123def456'))
+        .toBe('/kilter/original/12x12/default');
+    });
+
+    it('should handle different angles', () => {
+      expect(getBaseBoardPath('/kilter/original/12x12/default/50/play/abc-123'))
+        .toBe('/kilter/original/12x12/default');
+      expect(getBaseBoardPath('/tension/original/8x10/bolt/30/play/xyz-789'))
+        .toBe('/tension/original/8x10/bolt');
+    });
+  });
+
+  describe('stripping /view/[uuid] segments', () => {
+    it('should strip /view/[uuid] from path', () => {
+      expect(getBaseBoardPath('/kilter/original/12x12/default/45/view/abc123'))
+        .toBe('/kilter/original/12x12/default');
+    });
+
+    it('should strip /view/[slug-uuid] from path', () => {
+      expect(getBaseBoardPath('/kilter/original/12x12/default/45/view/test-climb-abc123def456'))
+        .toBe('/kilter/original/12x12/default');
+    });
+  });
+
+  describe('stripping /list segment', () => {
+    it('should strip /list from path with angle', () => {
+      expect(getBaseBoardPath('/kilter/original/12x12/default/45/list'))
+        .toBe('/kilter/original/12x12/default');
+    });
+
+    it('should handle different board configurations', () => {
+      expect(getBaseBoardPath('/tension/two-zone/10x12/main_aux/40/list'))
+        .toBe('/tension/two-zone/10x12/main_aux');
+    });
+  });
+
+  describe('stripping /create segment', () => {
+    it('should strip /create from path with angle', () => {
+      expect(getBaseBoardPath('/kilter/original/12x12/default/45/create'))
+        .toBe('/kilter/original/12x12/default');
+    });
+  });
+
+  describe('stripping angle from base path', () => {
+    it('should strip angle from path without view segment', () => {
+      expect(getBaseBoardPath('/kilter/original/12x12/default/45'))
+        .toBe('/kilter/original/12x12/default');
+    });
+
+    it('should strip different angle values', () => {
+      expect(getBaseBoardPath('/kilter/original/12x12/default/0'))
+        .toBe('/kilter/original/12x12/default');
+      expect(getBaseBoardPath('/kilter/original/12x12/default/70'))
+        .toBe('/kilter/original/12x12/default');
+    });
+  });
+
+  describe('edge cases', () => {
+    it('should return path as-is if no matching segments', () => {
+      expect(getBaseBoardPath('/kilter/original/12x12/default'))
+        .toBe('/kilter/original/12x12/default');
+    });
+
+    it('should handle paths with complex set slugs', () => {
+      expect(getBaseBoardPath('/kilter/homewall/10x12-full-ride/main-kicker_main_aux-kicker_aux/45/play/abc-123'))
+        .toBe('/kilter/homewall/10x12-full-ride/main-kicker_main_aux-kicker_aux');
+    });
+
+    it('should handle tension board paths', () => {
+      expect(getBaseBoardPath('/tension/original/8x10/screw_bolt/35/list'))
+        .toBe('/tension/original/8x10/screw_bolt');
+    });
+
+    it('should handle empty string', () => {
+      expect(getBaseBoardPath('')).toBe('');
+    });
+
+    it('should handle root path', () => {
+      expect(getBaseBoardPath('/')).toBe('/');
+    });
+
+    it('should not strip segments that look like angle but are part of set names', () => {
+      // Sets like "main_aux" should not have digits stripped
+      // This is handled correctly because we only strip the last segment if it's purely numeric
+      expect(getBaseBoardPath('/kilter/original/12x12/main_aux'))
+        .toBe('/kilter/original/12x12/main_aux');
+    });
+  });
+
+  describe('session continuity scenarios', () => {
+    it('should return same base path for same board with different climbs', () => {
+      const path1 = getBaseBoardPath('/kilter/original/12x12/default/45/play/climb-uuid-1');
+      const path2 = getBaseBoardPath('/kilter/original/12x12/default/45/play/climb-uuid-2');
+      expect(path1).toBe(path2);
+    });
+
+    it('should return same base path for same board with different angles', () => {
+      const path1 = getBaseBoardPath('/kilter/original/12x12/default/45/list');
+      const path2 = getBaseBoardPath('/kilter/original/12x12/default/50/list');
+      expect(path1).toBe(path2);
+    });
+
+    it('should return same base path for same board with different views', () => {
+      const path1 = getBaseBoardPath('/kilter/original/12x12/default/45/list');
+      const path2 = getBaseBoardPath('/kilter/original/12x12/default/45/play/abc-123');
+      const path3 = getBaseBoardPath('/kilter/original/12x12/default/45/create');
+      expect(path1).toBe(path2);
+      expect(path2).toBe(path3);
+    });
+
+    it('should return different base paths for different board configurations', () => {
+      const path1 = getBaseBoardPath('/kilter/original/12x12/default/45/list');
+      const path2 = getBaseBoardPath('/kilter/homewall/10x12/main_aux/45/list');
+      expect(path1).not.toBe(path2);
     });
   });
 });

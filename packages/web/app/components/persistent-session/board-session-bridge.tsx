@@ -4,58 +4,12 @@ import React, { useEffect, useMemo } from 'react';
 import { useSearchParams, usePathname } from 'next/navigation';
 import { usePersistentSession } from './persistent-session-context';
 import { BoardDetails, ParsedBoardRouteParameters } from '@/app/lib/types';
+import { getBaseBoardPath } from '@/app/lib/url-utils';
 
 interface BoardSessionBridgeProps {
   boardDetails: BoardDetails;
   parsedParams: ParsedBoardRouteParameters;
   children: React.ReactNode;
-}
-
-/**
- * Extracts the base board configuration path from a full pathname.
- * This removes dynamic segments that can change during a session:
- * - /play/[climb_uuid] - viewing different climbs
- * - /list, /create - different views
- * - /{angle} - the board angle is adjustable during a session
- *
- * The base path represents the physical board setup: /{board}/{layout}/{size}/{sets}
- *
- * Examples:
- *   /kilter/original/12x12/default/45/play/abc-123 -> /kilter/original/12x12/default
- *   /kilter/original/12x12/default/45/list -> /kilter/original/12x12/default
- *   /kilter/original/12x12/default/45 -> /kilter/original/12x12/default
- *   /kilter/original/12x12/default/50 -> /kilter/original/12x12/default
- */
-function getBaseBoardPath(pathname: string): string {
-  // URL structure: /{board}/{layout}/{size}/{sets}/{angle}[/play/uuid|/list|/create]
-  // We want to extract: /{board}/{layout}/{size}/{sets}
-
-  // First, strip off /play/[uuid], /list, or /create if present
-  let path = pathname;
-
-  const playMatch = path.match(/^(.+?)\/play\/[^/]+$/);
-  if (playMatch) {
-    path = playMatch[1];
-  } else {
-    const listMatch = path.match(/^(.+?)\/list$/);
-    if (listMatch) {
-      path = listMatch[1];
-    } else {
-      const createMatch = path.match(/^(.+?)\/create$/);
-      if (createMatch) {
-        path = createMatch[1];
-      }
-    }
-  }
-
-  // Now strip off the angle (last segment, which is a number)
-  // Path is now: /{board}/{layout}/{size}/{sets}/{angle}
-  const angleMatch = path.match(/^(.+?)\/\d+$/);
-  if (angleMatch) {
-    return angleMatch[1];
-  }
-
-  return path;
 }
 
 /**

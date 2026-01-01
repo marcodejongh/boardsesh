@@ -189,6 +189,39 @@ mutation JoinSession(
 4. Server initializes the new session with the provided queue items
 5. Client clears `pendingInitialQueue` after successful join
 
+### Session Path Continuity
+
+The WebSocket connection should remain stable when users navigate within the same board configuration. This is controlled by the **base board path** concept.
+
+**URL Structure:**
+```
+/{board}/{layout}/{size}/{sets}/{angle}/{view}/{climb}
+  │       │        │      │      │       │       │
+  └───────┴────────┴──────┴──────┴───────┴───────┴──── Dynamic segments
+  │       │        │      │      │
+  └───────┴────────┴──────┴──────┴──────────────────── Base board path (session identity)
+```
+
+**What triggers session reconnection:**
+| Change Type | Reconnects? | Reason |
+|-------------|-------------|--------|
+| Different board (kilter vs tension) | ✅ Yes | Different physical board |
+| Different layout | ✅ Yes | Different hold arrangement |
+| Different size | ✅ Yes | Different board dimensions |
+| Different sets | ✅ Yes | Different hold selection |
+| Different angle | ❌ No | Board angle is adjustable during session |
+| Different view (/list, /play, /create) | ❌ No | Just navigation state |
+| Different climb (in /play view) | ❌ No | Just viewing different climb |
+
+**Implementation:**
+The `getBaseBoardPath()` utility in `url-utils.ts` extracts the stable board configuration path by stripping:
+- `/play/[climb_uuid]` - climb being viewed
+- `/view/[climb_slug]` - climb detail view
+- `/list`, `/create` - view type
+- `/{angle}` - board angle (numeric segment at end)
+
+This ensures `BoardSessionBridge` only calls `activateSession()` when the actual board configuration changes, not when users swipe between climbs or adjust the board angle.
+
 ---
 
 ## Session Management
