@@ -111,6 +111,8 @@ class RoomManager {
 
     // Register in distributed state for cross-instance visibility
     // Await to ensure consistency - if this fails, the client is not properly registered
+    // Note: Postgres sessionClients table is only written on joinSession, not here,
+    // so rollback only needs to clean up the local map (no Postgres cleanup needed)
     if (this.distributedState) {
       try {
         await this.distributedState.registerConnection(connectionId, defaultUsername, userId, avatarUrl);
@@ -232,6 +234,7 @@ class RoomManager {
           let waitTime = 50;
           const maxWait = 2000;
           const maxAttempts = 5;
+          let sessionRestored = false;
 
           for (let attempt = 0; attempt < maxAttempts; attempt++) {
             await new Promise(resolve => setTimeout(resolve, waitTime));
@@ -239,6 +242,7 @@ class RoomManager {
             // Check if session was restored by another instance
             if (this.sessions.has(sessionId)) {
               console.log(`[RoomManager] Session ${sessionId} restored by another instance after ${attempt + 1} attempts`);
+              sessionRestored = true;
               break;
             }
 
@@ -246,10 +250,42 @@ class RoomManager {
             waitTime = Math.min(waitTime * 2, maxWait);
           }
 
-          // After waiting, session should exist if another instance initialized it
-          if (!this.sessions.has(sessionId)) {
-            console.log(`[RoomManager] Session ${sessionId} not restored after backoff, creating local entry`);
-            this.sessions.set(sessionId, new Set());
+          // After waiting, verify session state from Redis to ensure consistency
+          if (!sessionRestored && !this.sessions.has(sessionId)) {
+            // Check Redis to see if the session was restored by another instance
+            const redisSession = await this.redisStore.getSession(sessionId);
+            if (redisSession) {
+              console.log(`[RoomManager] Session ${sessionId} found in Redis after backoff, using restored state`);
+              this.sessions.set(sessionId, new Set());
+            } else {
+              // Session doesn't exist in Redis - check Postgres as fallback
+              const pgSession = await this.getSessionById(sessionId);
+              if (pgSession && pgSession.status !== 'ended') {
+                console.log(`[RoomManager] Session ${sessionId} found in Postgres after backoff, restoring`);
+                const queueState = await this.getQueueState(sessionId);
+                await this.redisStore.saveSession({
+                  sessionId: pgSession.id,
+                  boardPath: pgSession.boardPath,
+                  queue: queueState.queue,
+                  currentClimbQueueItem: queueState.currentClimbQueueItem,
+                  version: queueState.version,
+                  sequence: queueState.sequence,
+                  stateHash: queueState.stateHash,
+                  lastActivity: pgSession.lastActivity,
+                  discoverable: pgSession.discoverable,
+                  latitude: pgSession.latitude,
+                  longitude: pgSession.longitude,
+                  name: pgSession.name,
+                  createdByUserId: pgSession.createdByUserId,
+                  createdAt: pgSession.createdAt,
+                });
+              } else {
+                // This is genuinely a new session
+                isNewSession = true;
+                console.log(`[RoomManager] Session ${sessionId} not found after backoff, treating as new session`);
+              }
+              this.sessions.set(sessionId, new Set());
+            }
           }
         }
       } else {

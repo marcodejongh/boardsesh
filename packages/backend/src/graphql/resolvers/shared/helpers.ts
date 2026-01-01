@@ -63,14 +63,6 @@ export async function requireSessionMember(
   maxRetries = SESSION_MEMBER_RETRY_CONFIG.maxRetries,
   initialDelayMs = SESSION_MEMBER_RETRY_CONFIG.initialDelayMs
 ): Promise<void> {
-  // Cache whether distributed state is available (this doesn't change during retries)
-  // We intentionally call isConnectionInSession on EACH retry because:
-  // 1. The session membership may have been updated between retries (joinSession completing)
-  // 2. This is the whole point of the retry loop - waiting for state to propagate
-  // 3. The Redis call is fast (~1ms) and we only do it after the local check fails
-  const distributedState = getDistributedState();
-  const hasDistributedState = distributedState !== null;
-
   for (let i = 0; i < maxRetries; i++) {
     // First check local context (fast path for same-instance)
     const latestCtx = getContext(ctx.connectionId);
@@ -78,8 +70,12 @@ export async function requireSessionMember(
       return; // Success - session matches locally
     }
 
-    // Check distributed state - must be done each iteration as membership may have changed
-    if (hasDistributedState) {
+    // Check distributed state on each iteration
+    // We re-fetch on each retry to handle cases where distributed state becomes available
+    // after initial retries (e.g., Redis reconnection). The getDistributedState() call is
+    // synchronous and cheap - it just returns a cached singleton reference.
+    const distributedState = getDistributedState();
+    if (distributedState) {
       const isInSession = await distributedState.isConnectionInSession(ctx.connectionId, sessionId);
       if (isInSession) {
         return; // Success - session matches in distributed state
@@ -98,7 +94,8 @@ export async function requireSessionMember(
   const finalCtx = getContext(ctx.connectionId);
 
   // Check distributed state one more time
-  if (hasDistributedState) {
+  const distributedState = getDistributedState();
+  if (distributedState) {
     const isInSession = await distributedState.isConnectionInSession(ctx.connectionId, sessionId);
     if (isInSession) {
       return; // Success via distributed state

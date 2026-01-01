@@ -310,6 +310,9 @@ function validateSessionId(sessionId: string): void {
 export class DistributedStateManager {
   private readonly instanceId: string;
   private heartbeatInterval: NodeJS.Timeout | null = null;
+  private consecutiveHeartbeatFailures = 0;
+  private readonly maxHeartbeatFailures = 5;
+  private isHealthy = true;
 
   constructor(
     private readonly redis: Redis,
@@ -326,6 +329,13 @@ export class DistributedStateManager {
   }
 
   /**
+   * Check if the distributed state manager is healthy (heartbeat succeeding).
+   */
+  isRedisHealthy(): boolean {
+    return this.isHealthy;
+  }
+
+  /**
    * Start the heartbeat and cleanup background tasks.
    */
   start(): void {
@@ -333,19 +343,53 @@ export class DistributedStateManager {
       return;
     }
 
-    // Update heartbeat every 30 seconds
+    // Update heartbeat every 30 seconds with recovery logic
     this.heartbeatInterval = setInterval(() => {
-      this.updateHeartbeat().catch((err) => {
-        console.error('[DistributedState] Heartbeat update failed:', err);
-      });
+      this.updateHeartbeatWithRecovery();
     }, 30_000);
 
     // Initial heartbeat
-    this.updateHeartbeat().catch((err) => {
-      console.error('[DistributedState] Initial heartbeat failed:', err);
-    });
+    this.updateHeartbeatWithRecovery();
 
     console.log(`[DistributedState] Started with instance ID: ${this.instanceId.slice(0, 8)}`);
+  }
+
+  /**
+   * Update heartbeat with automatic recovery on failure.
+   */
+  private async updateHeartbeatWithRecovery(): Promise<void> {
+    try {
+      await this.updateHeartbeat();
+
+      // Heartbeat succeeded - reset failure counter and restore health
+      if (this.consecutiveHeartbeatFailures > 0) {
+        console.log(
+          `[DistributedState] Heartbeat recovered after ${this.consecutiveHeartbeatFailures} failures`
+        );
+        this.consecutiveHeartbeatFailures = 0;
+      }
+      if (!this.isHealthy) {
+        console.log('[DistributedState] Redis connection restored, marking as healthy');
+        this.isHealthy = true;
+      }
+    } catch (err) {
+      this.consecutiveHeartbeatFailures++;
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+
+      if (this.consecutiveHeartbeatFailures >= this.maxHeartbeatFailures) {
+        if (this.isHealthy) {
+          console.error(
+            `[DistributedState] Heartbeat failed ${this.consecutiveHeartbeatFailures} times, ` +
+              `marking as unhealthy: ${errorMessage}`
+          );
+          this.isHealthy = false;
+        }
+      } else {
+        console.warn(
+          `[DistributedState] Heartbeat failed (${this.consecutiveHeartbeatFailures}/${this.maxHeartbeatFailures}): ${errorMessage}`
+        );
+      }
+    }
   }
 
   /**
@@ -471,11 +515,58 @@ export class DistributedStateManager {
         }
       } catch (err) {
         console.error(`[DistributedState] Failed to elect new leader after removing ${connectionId.slice(0, 8)}:`, err);
-        // Clear the leader key to allow next join to become leader
+        // Fallback: try to manually elect a leader from remaining members
         try {
-          await this.redis.del(KEYS.sessionLeader(sessionId));
+          const remainingMembers = await this.redis.smembers(KEYS.sessionMembers(sessionId));
+          const candidates = remainingMembers.filter((id) => id !== connectionId);
+
+          if (candidates.length > 0) {
+            // Get connection data to find earliest connected
+            const pipeline = this.redis.pipeline();
+            for (const candidateId of candidates) {
+              pipeline.hget(KEYS.connection(candidateId), 'connectedAt');
+            }
+            const results = await pipeline.exec();
+
+            // Find earliest connected candidate
+            let earliestCandidate: string | null = null;
+            let earliestTime = Infinity;
+
+            if (results) {
+              for (let i = 0; i < candidates.length; i++) {
+                const result = results[i];
+                if (result && result[1]) {
+                  const connectedAt = parseInt(result[1] as string, 10);
+                  if (!isNaN(connectedAt) && connectedAt < earliestTime) {
+                    earliestTime = connectedAt;
+                    earliestCandidate = candidates[i];
+                  }
+                }
+              }
+            }
+
+            // Fall back to first candidate if no valid timestamps
+            const chosenLeader = earliestCandidate || candidates[0];
+            await this.redis.set(
+              KEYS.sessionLeader(sessionId),
+              chosenLeader,
+              'EX',
+              TTL.sessionMembership
+            );
+            await this.redis.hset(KEYS.connection(chosenLeader), 'isLeader', 'true');
+            newLeaderId = chosenLeader;
+            console.log(`[DistributedState] Fallback elected leader: ${chosenLeader.slice(0, 8)} after removing ${connectionId.slice(0, 8)}`);
+          } else {
+            // No candidates, clear the leader key
+            await this.redis.del(KEYS.sessionLeader(sessionId));
+          }
         } catch {
-          // Ignore cleanup error
+          // Last resort: clear leader to allow next join to become leader
+          try {
+            await this.redis.del(KEYS.sessionLeader(sessionId));
+          } catch {
+            // Ignore cleanup error
+          }
         }
       }
     }
@@ -876,25 +967,26 @@ export class DistributedStateManager {
 
 // Singleton instance - initialized when Redis is available
 let distributedStateManager: DistributedStateManager | null = null;
-// Track if we've already warned about re-initialization to avoid log spam during hot-reload
-let hasWarnedAboutReinitialization = false;
 
 /**
  * Initialize the distributed state manager.
  * Call this during server startup when Redis is available.
+ *
+ * Safe for hot module reload: if already initialized, returns existing instance
+ * and logs a warning (once per instance to avoid log spam).
  */
 export function initializeDistributedState(redis: Redis, instanceId?: string): DistributedStateManager {
   if (distributedStateManager) {
-    // Only warn once to avoid log spam during development hot-reload
-    if (!hasWarnedAboutReinitialization) {
+    // Check if this instance has already warned about re-initialization
+    // Using a property on the manager itself avoids module-level mutable state issues with HMR
+    if (!(distributedStateManager as DistributedStateManager & { _hasWarnedReInit?: boolean })._hasWarnedReInit) {
       console.warn('[DistributedState] Already initialized, returning existing instance');
-      hasWarnedAboutReinitialization = true;
+      (distributedStateManager as DistributedStateManager & { _hasWarnedReInit?: boolean })._hasWarnedReInit = true;
     }
     return distributedStateManager;
   }
 
   distributedStateManager = new DistributedStateManager(redis, instanceId);
-  hasWarnedAboutReinitialization = false; // Reset warning flag for new instance
   return distributedStateManager;
 }
 
@@ -920,7 +1012,6 @@ export async function shutdownDistributedState(): Promise<void> {
   if (distributedStateManager) {
     await distributedStateManager.stop();
     distributedStateManager = null;
-    hasWarnedAboutReinitialization = false;
   }
 }
 
@@ -933,7 +1024,6 @@ export async function resetDistributedState(): Promise<void> {
   if (distributedStateManager) {
     await distributedStateManager.stop();
     distributedStateManager = null;
-    hasWarnedAboutReinitialization = false;
   }
 }
 
@@ -958,5 +1048,4 @@ export function forceResetDistributedState(): void {
     }
   }
   distributedStateManager = null;
-  hasWarnedAboutReinitialization = false;
 }
