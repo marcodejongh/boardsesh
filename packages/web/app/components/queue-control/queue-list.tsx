@@ -1,6 +1,6 @@
 'use client';
-import React, { useEffect, useState, useCallback } from 'react';
-import { Divider, Row, Col, Button, Flex, Drawer, Space, Typography } from 'antd';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { Divider, Row, Col, Button, Flex, Drawer, Space, Typography, Skeleton } from 'antd';
 import { PlusOutlined, LoginOutlined } from '@ant-design/icons';
 import { useQueueContext } from '../graphql-queue';
 import { Climb, BoardDetails } from '@/app/lib/types';
@@ -11,6 +11,7 @@ import QueueListItem from './queue-list-item';
 import ClimbThumbnail from '../climb-card/climb-thumbnail';
 import ClimbTitle from '../climb-card/climb-title';
 import { themeTokens } from '@/app/theme/theme-config';
+import { SUGGESTIONS_THRESHOLD } from '../board-page/constants';
 import { useBoardProvider } from '../board-provider/board-provider-context';
 import { LogAscentDrawer } from '../logbook/log-ascent-drawer';
 import AuthModal from '../auth/auth-modal';
@@ -27,7 +28,11 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails, onClimbNavigate }) 
     viewOnlyMode,
     currentClimbQueueItem,
     queue,
-    climbSearchResults,
+    suggestedClimbs,
+    hasMoreResults,
+    isFetchingClimbs,
+    isFetchingNextPage,
+    fetchMoreClimbs,
     setCurrentClimbQueueItem,
     setQueue,
     addToQueue,
@@ -84,9 +89,45 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails, onClimbNavigate }) 
     return cleanup; // Cleanup listener on component unmount
   }, [queue, setQueue]);
 
-  const suggestedClimbs = (climbSearchResults || []).filter(
-    (item) => !queue.find((queueItem) => queueItem.climb?.uuid === item.uuid),
+  // Ref for the intersection observer sentinel element
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  // Intersection Observer callback for infinite scroll
+  // Skip if suggestions are below threshold - proactive fetch in QueueContext handles that case
+  const handleObserver = useCallback(
+    (entries: IntersectionObserverEntry[]) => {
+      const [target] = entries;
+      if (
+        target.isIntersecting &&
+        hasMoreResults &&
+        !isFetchingNextPage &&
+        suggestedClimbs.length >= SUGGESTIONS_THRESHOLD
+      ) {
+        fetchMoreClimbs();
+      }
+    },
+    [hasMoreResults, isFetchingNextPage, fetchMoreClimbs, suggestedClimbs.length],
   );
+
+  // Set up Intersection Observer for infinite scroll
+  // Using root: null (viewport) is more robust than querying for specific DOM elements
+  // and works correctly with any scrollable ancestor
+  useEffect(() => {
+    const element = loadMoreRef.current;
+    if (!element || viewOnlyMode) return;
+
+    const observer = new IntersectionObserver(handleObserver, {
+      root: null,
+      rootMargin: '100px',
+      threshold: 0,
+    });
+
+    observer.observe(element);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [handleObserver, viewOnlyMode]);
 
   return (
     <>
@@ -147,6 +188,43 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails, onClimbNavigate }) 
               </div>
             ))}
           </Flex>
+          {/* Sentinel element for Intersection Observer - only render when needed */}
+          {/* Include isFetchingClimbs to show skeleton during initial page load */}
+          {(suggestedClimbs.length > 0 || isFetchingClimbs || isFetchingNextPage || hasMoreResults) && (
+            <div
+              ref={loadMoreRef}
+              style={{ minHeight: themeTokens.spacing[5], marginTop: themeTokens.spacing[2] }}
+            >
+              {(isFetchingClimbs || isFetchingNextPage) && (
+                <Flex vertical gap={themeTokens.spacing[2]} style={{ padding: themeTokens.spacing[2] }}>
+                  {[1, 2, 3].map((i) => (
+                    <Row key={i} gutter={[8, 8]} align="middle" wrap={false}>
+                      <Col xs={6} sm={5}>
+                        <Skeleton.Image active style={{ width: '100%', height: 60 }} />
+                      </Col>
+                      <Col xs={15} sm={17}>
+                        <Skeleton active paragraph={{ rows: 1 }} title={false} />
+                      </Col>
+                      <Col xs={3} sm={2}>
+                        <Skeleton.Button active size="small" />
+                      </Col>
+                    </Row>
+                  ))}
+                </Flex>
+              )}
+              {!hasMoreResults && !isFetchingClimbs && suggestedClimbs.length > 0 && (
+                <div
+                  style={{
+                    textAlign: 'center',
+                    padding: themeTokens.spacing[4],
+                    color: themeTokens.neutral[400],
+                  }}
+                >
+                  No more suggestions
+                </div>
+              )}
+            </div>
+          )}
         </>
       )}
 

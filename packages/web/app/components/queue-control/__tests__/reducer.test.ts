@@ -471,9 +471,22 @@ describe('queueReducer', () => {
     });
 
     it('should add item at specific position', () => {
-      const item1: ClimbQueueItem = { ...mockClimbQueueItem, uuid: 'item-1' };
-      const item2: ClimbQueueItem = { ...mockClimbQueueItem, uuid: 'item-2' };
-      const newItem: ClimbQueueItem = { ...mockClimbQueueItem, uuid: 'new-item' };
+      // Each item needs a unique climb.uuid since deduplication is by climb, not queue item
+      const item1: ClimbQueueItem = {
+        ...mockClimbQueueItem,
+        uuid: 'item-1',
+        climb: { ...mockClimb, uuid: 'climb-1' }
+      };
+      const item2: ClimbQueueItem = {
+        ...mockClimbQueueItem,
+        uuid: 'item-2',
+        climb: { ...mockClimb, uuid: 'climb-2' }
+      };
+      const newItem: ClimbQueueItem = {
+        ...mockClimbQueueItem,
+        uuid: 'new-item',
+        climb: { ...mockClimb, uuid: 'climb-new' }
+      };
 
       const stateWithQueue: QueueState = {
         ...initialState,
