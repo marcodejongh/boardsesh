@@ -452,6 +452,59 @@ describe.skipIf(!redisAvailable)('DistributedStateManager - Multi-Instance', () 
     expect(leaders.length).toBe(1);
   });
 
+  it('should handle concurrent leader and member departures correctly', async () => {
+    const sessionId = 'concurrent-leave-session-' + Date.now();
+
+    // Setup: 3 members, conn-a is leader (earliest connected)
+    await manager1.registerConnection('conn-concurrent-a', 'Leader');
+    await manager1.joinSession('conn-concurrent-a', sessionId);
+
+    // Small delay to ensure conn-a is earliest
+    await new Promise((r) => setTimeout(r, 20));
+
+    await manager2.registerConnection('conn-concurrent-b', 'Member1');
+    await manager2.joinSession('conn-concurrent-b', sessionId);
+
+    await new Promise((r) => setTimeout(r, 20));
+
+    await manager1.registerConnection('conn-concurrent-c', 'Member2');
+    await manager1.joinSession('conn-concurrent-c', sessionId);
+
+    // Verify initial state
+    const initialLeader = await manager1.getSessionLeader(sessionId);
+    expect(initialLeader).toBe('conn-concurrent-a');
+
+    const initialMembers = await manager1.getSessionMembers(sessionId);
+    expect(initialMembers.length).toBe(3);
+
+    // Concurrent leaves: leader + one member
+    const [result1, result2] = await Promise.all([
+      manager1.leaveSession('conn-concurrent-a', sessionId),
+      manager2.leaveSession('conn-concurrent-b', sessionId),
+    ]);
+
+    // Small delay to allow Redis state to settle
+    await new Promise((r) => setTimeout(r, 50));
+
+    // Verify session state after concurrent departures
+    const members = await manager1.getSessionMembers(sessionId);
+    const leader = await manager1.getSessionLeader(sessionId);
+
+    // At least one leader election should have succeeded
+    expect(result1.newLeaderId || result2.newLeaderId).toBeTruthy();
+
+    // The remaining member should be conn-concurrent-c
+    expect(members.length).toBe(1);
+
+    // Verify conn-concurrent-c is the remaining member (SessionUser uses `id` field)
+    const remainingMember = members.find((m) => m.id === 'conn-concurrent-c');
+    expect(remainingMember).toBeDefined();
+    expect(remainingMember?.isLeader).toBe(true);
+
+    // Verify leader key is correctly set
+    expect(leader).toBe('conn-concurrent-c');
+  });
+
   it('should clean up connections when instance stops', async () => {
     // Register connection on instance 1
     await manager1.registerConnection('conn-k', 'UserK');

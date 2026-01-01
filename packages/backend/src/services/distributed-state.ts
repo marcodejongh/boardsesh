@@ -585,48 +585,60 @@ export class DistributedStateManager {
     } catch (err) {
       console.error(`[DistributedState] Failed to leave session ${sessionId.slice(0, 8)}:`, err);
       // Fallback: try to clean up manually and handle leader election.
-      // Note: This fallback has a potential race condition where leadership could change
-      // between reading the leader and cleanup. This is acceptable because:
-      // 1. This path only runs when the atomic LEAVE_SESSION_SCRIPT fails (rare)
-      // 2. The worst case is we skip leader election when we should have done it
-      // 3. The next joinSession will fix this by electing a leader if none exists
-      // 4. Using another Lua script here would just fail again if Redis is having issues
+      // Uses WATCH for optimistic locking to detect concurrent leader changes.
+      // Note: This fallback is rare (only when Lua script fails) and self-healing:
+      // - If WATCH detects a leader change, we abort and let the new flow handle it
+      // - The next joinSession will elect a leader if none exists
       try {
-        // Check if this connection was the leader before cleanup (non-atomic, best-effort)
-        const currentLeader = await this.redis.get(KEYS.sessionLeader(sessionId));
-        const wasLeader = currentLeader === connectionId;
+        // Watch the leader key for concurrent modifications
+        await this.redis.watch(KEYS.sessionLeader(sessionId));
 
-        // Clean up the connection's session state
-        const multi = this.redis.multi();
-        multi.hmset(KEYS.connection(connectionId), { sessionId: '', isLeader: 'false' });
-        multi.srem(KEYS.sessionMembers(sessionId), connectionId);
-        await multi.exec();
+        try {
+          // Check if this connection was the leader
+          const currentLeader = await this.redis.get(KEYS.sessionLeader(sessionId));
+          const wasLeader = currentLeader === connectionId;
 
-        // If was leader, try to elect a new one (best-effort)
-        if (wasLeader) {
-          try {
-            const newLeaderId = await this.redis.eval(
-              ELECT_NEW_LEADER_SCRIPT,
-              2,
-              KEYS.sessionMembers(sessionId),
-              KEYS.sessionLeader(sessionId),
-              connectionId,
-              TTL.sessionMembership.toString(),
-              TTL.sessionMembership.toString()
-            ) as string | null;
+          // Clean up the connection's session state using MULTI
+          const multi = this.redis.multi();
+          multi.hmset(KEYS.connection(connectionId), { sessionId: '', isLeader: 'false' });
+          multi.srem(KEYS.sessionMembers(sessionId), connectionId);
+          const execResult = await multi.exec();
 
-            if (newLeaderId) {
-              console.log(`[DistributedState] Fallback: elected new leader ${newLeaderId.slice(0, 8)} for session ${sessionId.slice(0, 8)}`);
-              return { newLeaderId };
-            }
-          } catch (electionErr) {
-            console.error(`[DistributedState] Fallback leader election failed:`, electionErr);
-            // Clear the leader key to allow next join to become leader
-            await this.redis.del(KEYS.sessionLeader(sessionId)).catch(() => {});
+          // If WATCH detected a change, exec returns null - abort gracefully
+          if (execResult === null) {
+            console.log(`[DistributedState] Fallback aborted: leader changed during cleanup for session ${sessionId.slice(0, 8)}`);
+            return { newLeaderId: null };
           }
+
+          // If was leader, try to elect a new one (best-effort)
+          if (wasLeader) {
+            try {
+              const newLeaderId = await this.redis.eval(
+                ELECT_NEW_LEADER_SCRIPT,
+                2,
+                KEYS.sessionMembers(sessionId),
+                KEYS.sessionLeader(sessionId),
+                connectionId,
+                TTL.sessionMembership.toString(),
+                TTL.sessionMembership.toString()
+              ) as string | null;
+
+              if (newLeaderId) {
+                console.log(`[DistributedState] Fallback: elected new leader ${newLeaderId.slice(0, 8)} for session ${sessionId.slice(0, 8)}`);
+                return { newLeaderId };
+              }
+            } catch (electionErr) {
+              console.error(`[DistributedState] Fallback leader election failed:`, electionErr);
+              // Clear the leader key to allow next join to become leader
+              await this.redis.del(KEYS.sessionLeader(sessionId)).catch(() => {});
+            }
+          }
+        } finally {
+          // Always unwatch to clean up
+          await this.redis.unwatch().catch(() => {});
         }
       } catch {
-        // Ignore fallback error
+        // Ignore fallback error - self-healing via next join
       }
       return { newLeaderId: null };
     }

@@ -54,6 +54,7 @@ class RoomManager {
   private readonly MAX_RETRY_ATTEMPTS = 3;
   private readonly RETRY_BASE_DELAY = 1000; // 1 second
   private writeRetryAttempts: Map<string, number> = new Map();
+  private retryTimers: Map<string, NodeJS.Timeout> = new Map();
 
   /**
    * Reset all state (for testing purposes)
@@ -390,7 +391,15 @@ class RoomManager {
         if (localNewLeader) {
           localNewLeader.isLeader = true;
         }
-        await this.persistLeaderChange(sessionId, newLeaderId);
+        // Persist to Postgres - distributed state is source of truth, so log but don't fail
+        try {
+          await this.persistLeaderChange(sessionId, newLeaderId);
+        } catch (error) {
+          console.error(
+            `[RoomManager] Failed to persist leader change to Postgres for session ${sessionId}:`,
+            error
+          );
+        }
       }
     } else if (wasLeader && sessionClientIds && sessionClientIds.size > 0) {
       // Single instance mode: pick earliest connected client
@@ -403,7 +412,14 @@ class RoomManager {
         const newLeader = clientsArray[0];
         newLeader.isLeader = true;
         newLeaderId = newLeader.connectionId;
-        await this.persistLeaderChange(sessionId, newLeaderId);
+        try {
+          await this.persistLeaderChange(sessionId, newLeaderId);
+        } catch (error) {
+          console.error(
+            `[RoomManager] Failed to persist leader change to Postgres for session ${sessionId}:`,
+            error
+          );
+        }
       }
     }
 
@@ -986,15 +1002,6 @@ class RoomManager {
     await db.delete(sessionClients).where(eq(sessionClients.id, clientId));
   }
 
-  /**
-   * Clean up session queue state from database when session becomes empty.
-   * This prevents orphaned queue data from accumulating.
-   */
-  private async cleanupSessionQueue(sessionId: string): Promise<void> {
-    console.log(`[RoomManager] Cleaning up queue state for session: ${sessionId}`);
-    await db.delete(sessionQueues).where(eq(sessionQueues.sessionId, sessionId));
-  }
-
   private async persistLeaderChange(sessionId: string, newLeaderId: string): Promise<void> {
     // Remove leader status from all clients in session
     await db.update(sessionClients).set({ isLeader: false }).where(eq(sessionClients.sessionId, sessionId));
@@ -1037,6 +1044,7 @@ class RoomManager {
       );
       this.pendingWrites.delete(sessionId);
       this.writeRetryAttempts.delete(sessionId);
+      this.retryTimers.delete(sessionId);
       return;
     }
 
@@ -1048,14 +1056,22 @@ class RoomManager {
       `for session ${sessionId} in ${delay}ms`
     );
 
+    // Clear any existing retry timer for this session
+    const existingTimer = this.retryTimers.get(sessionId);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+    }
+
     const timer = setTimeout(async () => {
+      // Clean up timer reference when it executes
+      this.retryTimers.delete(sessionId);
+
       const currentState = this.pendingWrites.get(sessionId);
       if (currentState) {
         try {
           await this.writeQueueStateToPostgres(sessionId, currentState);
           this.pendingWrites.delete(sessionId);
           this.writeRetryAttempts.delete(sessionId);
-          this.postgresWriteTimers.delete(sessionId);
           console.log(`[RoomManager] Retry successful for session ${sessionId}`);
         } catch (error) {
           console.error(
@@ -1067,7 +1083,7 @@ class RoomManager {
       }
     }, delay);
 
-    this.postgresWriteTimers.set(sessionId, timer);
+    this.retryTimers.set(sessionId, timer);
   }
 
   /**
@@ -1081,6 +1097,13 @@ class RoomManager {
     version: number,
     sequence: number
   ): void {
+    // Refresh session membership TTL on activity to prevent expiry during long sessions
+    if (this.distributedState) {
+      this.distributedState.refreshSessionMembership(sessionId).catch((err) => {
+        console.warn(`[RoomManager] Failed to refresh session TTL for ${sessionId}:`, err);
+      });
+    }
+
     // Store latest state
     this.pendingWrites.set(sessionId, { queue, currentClimbQueueItem, version, sequence });
 
@@ -1152,7 +1175,7 @@ class RoomManager {
     const writePromises: Promise<void>[] = [];
 
     for (const [sessionId, state] of this.pendingWrites.entries()) {
-      // Clear the timer
+      // Clear the debounce timer
       const timer = this.postgresWriteTimers.get(sessionId);
       if (timer) {
         clearTimeout(timer);
@@ -1169,6 +1192,14 @@ class RoomManager {
 
     await Promise.all(writePromises);
     this.pendingWrites.clear();
+
+    // Clear retry state to prevent memory leaks from abandoned sessions
+    for (const timer of this.retryTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.retryTimers.clear();
+    this.writeRetryAttempts.clear();
+
     console.log('[RoomManager] All pending writes flushed');
   }
 

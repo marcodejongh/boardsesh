@@ -9,6 +9,21 @@ export { validateInput } from '../../../validation/schemas.js';
 export { MAX_RETRIES } from './types.js';
 
 /**
+ * Configuration for session membership retry behavior.
+ *
+ * With defaults (8 retries, 50ms initial delay):
+ * - Delays: 50, 100, 200, 400, 800, 1600, 3200ms
+ * - Total max wait: ~6.35 seconds
+ *
+ * GraphQL subscription timeout should exceed this value to avoid
+ * subscription failures during high-latency join operations.
+ */
+export const SESSION_MEMBER_RETRY_CONFIG = {
+  maxRetries: 8,
+  initialDelayMs: 50,
+} as const;
+
+/**
  * Helper to require a session context.
  * Throws if the user is not in a session.
  */
@@ -39,12 +54,14 @@ export function requireAuthenticated(ctx: ConnectionContext): void {
  * where subscriptions may be authorized before joinSession has completed updating the context.
  *
  * In multi-instance mode, it also checks distributed state for cross-instance validation.
+ *
+ * @see SESSION_MEMBER_RETRY_CONFIG for timing configuration details
  */
 export async function requireSessionMember(
   ctx: ConnectionContext,
   sessionId: string,
-  maxRetries = 8,
-  initialDelayMs = 50
+  maxRetries = SESSION_MEMBER_RETRY_CONFIG.maxRetries,
+  initialDelayMs = SESSION_MEMBER_RETRY_CONFIG.initialDelayMs
 ): Promise<void> {
   // Cache whether distributed state is available (this doesn't change during retries)
   // We intentionally call isConnectionInSession on EACH retry because:
