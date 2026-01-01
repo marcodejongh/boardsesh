@@ -290,6 +290,14 @@ export const GetTicksInputSchema = z.object({
 });
 
 /**
+ * Ascent feed input validation schema
+ */
+export const AscentFeedInputSchema = z.object({
+  limit: z.number().int().min(1).max(50).optional().default(20),
+  offset: z.number().int().min(0).optional().default(0),
+});
+
+/**
  * Playlist validation schemas
  */
 export const PlaylistNameSchema = z
