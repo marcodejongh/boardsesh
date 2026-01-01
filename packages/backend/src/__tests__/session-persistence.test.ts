@@ -132,6 +132,25 @@ const createMockRedis = (): Redis => {
   return mockRedis;
 };
 
+// Helper function to register a client before joining
+// This is needed because roomManager.joinSession requires the client to be registered first
+const registerAndJoinSession = async (
+  clientId: string,
+  sessionId: string,
+  boardPath: string,
+  username: string
+) => {
+  roomManager.registerClient(clientId);
+  return roomManager.joinSession(clientId, sessionId, boardPath, username);
+};
+
+// Helper for registering multiple clients
+const registerClients = (...clientIds: string[]) => {
+  for (const clientId of clientIds) {
+    roomManager.registerClient(clientId);
+  }
+};
+
 const createTestClimb = (): ClimbQueueItem => ({
   uuid: uuidv4(),
   climb: {
@@ -177,7 +196,7 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
       const boardPath = '/kilter/1/2/3/40';
 
       // Create and join session
-      await roomManager.joinSession('client-1', sessionId, boardPath, 'User1');
+      await registerAndJoinSession('client-1', sessionId, boardPath, 'User1');
 
       // Verify active status
       let session = await db
@@ -207,7 +226,7 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
       const boardPath = '/kilter/1/2/3/40';
 
       // Create session, join, and leave
-      await roomManager.joinSession('client-1', sessionId, boardPath, 'User1');
+      await registerAndJoinSession('client-1', sessionId, boardPath, 'User1');
       await roomManager.leaveSession('client-1');
 
       // Verify inactive
@@ -219,7 +238,7 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
       expect(session[0]?.status).toBe('inactive');
 
       // Rejoin
-      await roomManager.joinSession('client-2', sessionId, boardPath, 'User2');
+      await registerAndJoinSession('client-2', sessionId, boardPath, 'User2');
 
       // Verify back to active
       session = await db
@@ -235,7 +254,7 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
       const boardPath = '/kilter/1/2/3/40';
 
       // Create session
-      await roomManager.joinSession('client-1', sessionId, boardPath, 'User1');
+      await registerAndJoinSession('client-1', sessionId, boardPath, 'User1');
 
       // End session
       await roomManager.endSession(sessionId);
@@ -260,7 +279,7 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
       const climb = createTestClimb();
 
       // Create session and add climb to queue
-      await roomManager.joinSession('client-1', sessionId, boardPath, 'User1');
+      await registerAndJoinSession('client-1', sessionId, boardPath, 'User1');
       const currentState = await roomManager.getQueueState(sessionId);
       await roomManager.updateQueueState(sessionId, [climb], null, currentState.version);
 
@@ -272,7 +291,7 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
       await roomManager.initialize(mockRedis);
 
       // Rejoin should restore from Redis
-      const result = await roomManager.joinSession('client-2', sessionId, boardPath, 'User2');
+      const result = await registerAndJoinSession('client-2', sessionId, boardPath, 'User2');
 
       // Verify queue was restored from Redis
       expect(result.queue).toHaveLength(1);
@@ -284,7 +303,7 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
       const boardPath = '/kilter/1/2/3/40';
 
       // Create session and make it inactive
-      await roomManager.joinSession('client-1', sessionId, boardPath, 'User1');
+      await registerAndJoinSession('client-1', sessionId, boardPath, 'User1');
       await roomManager.leaveSession('client-1');
 
       // Clear in-memory state
@@ -292,6 +311,7 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
       await roomManager.initialize(mockRedis);
 
       // Multiple users join concurrently
+      registerClients('client-2', 'client-3', 'client-4');
       const results = await Promise.all([
         roomManager.joinSession('client-2', sessionId, boardPath, 'User2'),
         roomManager.joinSession('client-3', sessionId, boardPath, 'User3'),
@@ -312,7 +332,7 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
       const climb = createTestClimb();
 
       // Create session and add climb to queue
-      await roomManager.joinSession('client-1', sessionId, boardPath, 'User1');
+      await registerAndJoinSession('client-1', sessionId, boardPath, 'User1');
       const currentState = await roomManager.getQueueState(sessionId);
       await roomManager.updateQueueState(sessionId, [climb], null, currentState.version);
 
@@ -330,7 +350,7 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
       await roomManager.initialize(mockRedis);
 
       // Rejoin should restore from Postgres
-      const result = await roomManager.joinSession('client-2', sessionId, boardPath, 'User2');
+      const result = await registerAndJoinSession('client-2', sessionId, boardPath, 'User2');
 
       // Verify queue was restored from Postgres
       expect(result.queue).toHaveLength(1);
@@ -342,7 +362,7 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
       const boardPath = '/kilter/1/2/3/40';
 
       // Create and end session
-      await roomManager.joinSession('client-1', sessionId, boardPath, 'User1');
+      await registerAndJoinSession('client-1', sessionId, boardPath, 'User1');
       await roomManager.endSession(sessionId);
 
       // Clear in-memory state
@@ -350,7 +370,7 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
       await roomManager.initialize(mockRedis);
 
       // Try to rejoin ended session - should create a new session instead of restoring
-      const result = await roomManager.joinSession('client-2', sessionId, boardPath, 'User2');
+      const result = await registerAndJoinSession('client-2', sessionId, boardPath, 'User2');
 
       // Session should be created fresh (empty queue)
       expect(result.queue).toHaveLength(0);
@@ -373,7 +393,7 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
       const climb2 = createTestClimb();
 
       // Create session
-      await roomManager.joinSession('client-1', sessionId, boardPath, 'User1');
+      await registerAndJoinSession('client-1', sessionId, boardPath, 'User1');
 
       // Add multiple climbs rapidly
       let currentState = await roomManager.getQueueState(sessionId);
@@ -414,7 +434,7 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
       const climb = createTestClimb();
 
       // Create session and update queue
-      await roomManager.joinSession('client-1', sessionId, boardPath, 'User1');
+      await registerAndJoinSession('client-1', sessionId, boardPath, 'User1');
       const currentState = await roomManager.getQueueState(sessionId);
       await roomManager.updateQueueState(sessionId, [climb], null, currentState.version);
 
@@ -439,7 +459,7 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
       const climb2 = createTestClimb();
 
       // Create session
-      await roomManager.joinSession('client-1', sessionId, boardPath, 'User1');
+      await registerAndJoinSession('client-1', sessionId, boardPath, 'User1');
 
       // First update
       let currentState = await roomManager.getQueueState(sessionId);
@@ -496,7 +516,7 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
         'Test Session'
       );
 
-      await roomManager.joinSession('client-1', sessionId, boardPath, 'User1');
+      await registerAndJoinSession('client-1', sessionId, boardPath, 'User1');
 
       // Query nearby sessions
       const nearby = await roomManager.findNearbySessions(37.7749, -122.4194, 10000);
@@ -520,7 +540,7 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
         'Test Session'
       );
 
-      await roomManager.joinSession('client-1', sessionId, boardPath, 'User1');
+      await registerAndJoinSession('client-1', sessionId, boardPath, 'User1');
       await roomManager.leaveSession('client-1');
 
       // Clear in-memory state but Redis still has it
@@ -549,7 +569,7 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
         'Test Session'
       );
 
-      await roomManager.joinSession('client-1', sessionId, boardPath, 'User1');
+      await registerAndJoinSession('client-1', sessionId, boardPath, 'User1');
       await roomManager.leaveSession('client-1');
 
       // Clear both in-memory and Redis (simulate TTL expiry)
@@ -581,7 +601,7 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
         'Test Session'
       );
 
-      await roomManager.joinSession('client-1', sessionId, boardPath, 'User1');
+      await registerAndJoinSession('client-1', sessionId, boardPath, 'User1');
       await roomManager.endSession(sessionId);
 
       // Query nearby sessions
@@ -603,7 +623,7 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
       const climb = createTestClimb();
 
       // Should still work
-      await roomManager.joinSession('client-1', sessionId, boardPath, 'User1');
+      await registerAndJoinSession('client-1', sessionId, boardPath, 'User1');
       const currentState = await roomManager.getQueueState(sessionId);
       await roomManager.updateQueueState(sessionId, [climb], null, currentState.version);
 
@@ -633,7 +653,7 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
       const boardPath = '/kilter/1/2/3/40';
 
       // Create session and leave
-      await roomManager.joinSession('client-1', sessionId, boardPath, 'User1');
+      await registerAndJoinSession('client-1', sessionId, boardPath, 'User1');
       await roomManager.leaveSession('client-1');
 
       // Reset (simulate server restart)
@@ -641,7 +661,7 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
       await roomManager.initialize();
 
       // Try to rejoin - should create new session (no restoration in Postgres-only mode)
-      const result = await roomManager.joinSession('client-2', sessionId, boardPath, 'User2');
+      const result = await registerAndJoinSession('client-2', sessionId, boardPath, 'User2');
 
       // Should be fresh session
       expect(result.queue).toHaveLength(0);
@@ -655,7 +675,7 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
       const climb = createTestClimb();
 
       // Create session and update queue
-      await roomManager.joinSession('client-1', sessionId, boardPath, 'User1');
+      await registerAndJoinSession('client-1', sessionId, boardPath, 'User1');
       const currentState = await roomManager.getQueueState(sessionId);
       await roomManager.updateQueueState(sessionId, [climb], null, currentState.version);
 
@@ -681,8 +701,8 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
       const boardPath = '/kilter/1/2/3/40';
 
       // Create session
-      await roomManager.joinSession('client-1', sessionId, boardPath, 'User1');
-      await roomManager.joinSession('client-2', sessionId, boardPath, 'User2');
+      await registerAndJoinSession('client-1', sessionId, boardPath, 'User1');
+      await registerAndJoinSession('client-2', sessionId, boardPath, 'User2');
 
       // Verify users in Redis
       const redisHashes = (mockRedis as any)._hashes as Map<string, Record<string, string>>;
@@ -700,7 +720,7 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
       const sessionId = uuidv4();
       const boardPath = '/kilter/1/2/3/40';
 
-      await roomManager.joinSession('client-1', sessionId, boardPath, 'User1');
+      await registerAndJoinSession('client-1', sessionId, boardPath, 'User1');
 
       // Simulate concurrent updates with same version
       const currentState = await roomManager.getQueueState(sessionId);
@@ -733,7 +753,7 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
 
       // Should not crash, might fall back to Postgres-only behavior
       await expect(async () => {
-        await roomManager.joinSession('client-1', sessionId, boardPath, 'User1');
+        await registerAndJoinSession('client-1', sessionId, boardPath, 'User1');
       }).rejects.toThrow();
     });
   });
