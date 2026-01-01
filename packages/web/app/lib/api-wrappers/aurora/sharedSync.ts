@@ -67,6 +67,7 @@ export async function sharedSync(
     method: 'POST',
     headers,
     cache: 'no-store',
+    next: { revalidate: 0 }, // Ensure no Vercel/Next.js caching
     body: requestBody,
   });
 
