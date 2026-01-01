@@ -25,20 +25,22 @@ export const sessionMutations = {
    * Creates or joins a session and updates connection context.
    * When creating a new session, initialQueue and initialCurrentClimb can be provided
    * to seed the session with existing queue items (e.g., when starting party mode with an existing local queue).
+   * sessionName is only used when creating a new session - ignored when joining an existing one.
    */
   joinSession: async (
     _: unknown,
-    { sessionId, boardPath, username, avatarUrl, initialQueue, initialCurrentClimb }: {
+    { sessionId, boardPath, username, avatarUrl, initialQueue, initialCurrentClimb, sessionName }: {
       sessionId: string;
       boardPath: string;
       username?: string;
       avatarUrl?: string;
       initialQueue?: ClimbQueueItem[];
       initialCurrentClimb?: ClimbQueueItem;
+      sessionName?: string;
     },
     ctx: ConnectionContext
   ) => {
-    if (DEBUG) console.log(`[joinSession] START - connectionId: ${ctx.connectionId}, sessionId: ${sessionId}, username: ${username}, initialQueueLength: ${initialQueue?.length || 0}`);
+    if (DEBUG) console.log(`[joinSession] START - connectionId: ${ctx.connectionId}, sessionId: ${sessionId}, username: ${username}, sessionName: ${sessionName}, initialQueueLength: ${initialQueue?.length || 0}`);
 
     applyRateLimit(ctx, 10); // Limit session joins to prevent abuse
 
@@ -57,7 +59,8 @@ export const sessionMutations = {
       username || undefined,
       avatarUrl || undefined,
       initialQueue,
-      initialCurrentClimb || null
+      initialCurrentClimb || null,
+      sessionName || undefined
     );
     if (DEBUG) console.log(`[joinSession] roomManager.joinSession completed - clientId: ${result.clientId}, isLeader: ${result.isLeader}`);
 
@@ -80,6 +83,7 @@ export const sessionMutations = {
 
     return {
       id: sessionId,
+      name: result.sessionName || null,
       boardPath,
       users: result.users,
       queueState: {

@@ -42,9 +42,10 @@ const QUEUE_ITEM_FIELDS = `
 
 // Mutations
 export const JOIN_SESSION = `
-  mutation JoinSession($sessionId: ID!, $boardPath: String!, $username: String, $avatarUrl: String, $initialQueue: [ClimbQueueItemInput!], $initialCurrentClimb: ClimbQueueItemInput) {
-    joinSession(sessionId: $sessionId, boardPath: $boardPath, username: $username, avatarUrl: $avatarUrl, initialQueue: $initialQueue, initialCurrentClimb: $initialCurrentClimb) {
+  mutation JoinSession($sessionId: ID!, $boardPath: String!, $username: String, $avatarUrl: String, $initialQueue: [ClimbQueueItemInput!], $initialCurrentClimb: ClimbQueueItemInput, $sessionName: String) {
+    joinSession(sessionId: $sessionId, boardPath: $boardPath, username: $username, avatarUrl: $avatarUrl, initialQueue: $initialQueue, initialCurrentClimb: $initialCurrentClimb, sessionName: $sessionName) {
       id
+      name
       boardPath
       clientId
       isLeader
@@ -135,6 +136,7 @@ export const CREATE_SESSION = `
   mutation CreateSession($input: CreateSessionInput!) {
     createSession(input: $input) {
       id
+      name
       boardPath
       clientId
       isLeader

@@ -144,7 +144,8 @@ class RoomManager {
     username?: string,
     avatarUrl?: string,
     initialQueue?: ClimbQueueItem[],
-    initialCurrentClimb?: ClimbQueueItem | null
+    initialCurrentClimb?: ClimbQueueItem | null,
+    sessionName?: string
   ): Promise<{
     clientId: string;
     users: SessionUser[];
@@ -153,6 +154,7 @@ class RoomManager {
     sequence: number;
     stateHash: string;
     isLeader: boolean;
+    sessionName: string | null;
   }> {
     const client = this.clients.get(connectionId);
     if (!client) {
@@ -321,7 +323,8 @@ class RoomManager {
     sessionClientIds.add(connectionId);
 
     // Persist to database (update session metadata, not user list)
-    await this.persistSessionJoin(sessionId, boardPath, connectionId, client.username, isLeader);
+    // Only pass sessionName for new sessions (ignored for existing sessions)
+    await this.persistSessionJoin(sessionId, boardPath, connectionId, client.username, isLeader, isNewSession ? sessionName : undefined);
 
     // Update Postgres session status to 'active' and lastActivity
     await db
@@ -357,6 +360,10 @@ class RoomManager {
     const users = await this.getSessionUsers(sessionId);
     const queueState = await this.getQueueState(sessionId);
 
+    // Get session name from database
+    const sessionData = await this.getSessionById(sessionId);
+    const resolvedSessionName = sessionData?.name || null;
+
     return {
       clientId: connectionId,
       users,
@@ -365,6 +372,7 @@ class RoomManager {
       sequence: queueState.sequence,
       stateHash: queueState.stateHash,
       isLeader,
+      sessionName: resolvedSessionName,
     };
   }
 
@@ -996,7 +1004,8 @@ class RoomManager {
     boardPath: string,
     clientId: string,
     username: string,
-    isLeader: boolean
+    isLeader: boolean,
+    sessionName?: string
   ): Promise<void> {
     // Ensure session exists
     // Note: Explicitly provide all column values to avoid DEFAULT keyword issues with Neon driver
@@ -1012,7 +1021,7 @@ class RoomManager {
         longitude: null,
         discoverable: false,
         createdByUserId: null,
-        name: null,
+        name: sessionName || null,
       })
       .onConflictDoUpdate({
         target: sessions.id,
