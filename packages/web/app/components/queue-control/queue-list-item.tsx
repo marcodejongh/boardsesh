@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Row, Col, Avatar, Tooltip, Dropdown, Button } from 'antd';
-import { CheckOutlined, CloseOutlined, UserOutlined, DeleteOutlined, MoreOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import { CheckOutlined, CloseOutlined, UserOutlined, DeleteOutlined, MoreOutlined, InfoCircleOutlined, InstagramOutlined } from '@ant-design/icons';
 import { BoardDetails, ClimbUuid, Climb } from '@/app/lib/types';
 import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { DropIndicator } from '@atlaskit/pragmatic-drag-and-drop-react-drop-indicator/box';
@@ -26,6 +26,7 @@ type QueueListItemProps = {
   setCurrentClimbQueueItem: (item: ClimbQueueItem) => void;
   removeFromQueue: (item: ClimbQueueItem) => void;
   onTickClick: (climb: Climb) => void;
+  onInstagramClick: (climb: Climb) => void;
   onClimbNavigate?: () => void;
 };
 
@@ -91,6 +92,7 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
   setCurrentClimbQueueItem,
   removeFromQueue,
   onTickClick,
+  onInstagramClick,
   onClimbNavigate,
 }) => {
   const router = useRouter();
@@ -352,6 +354,12 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
                       label: 'View Climb',
                       icon: <InfoCircleOutlined />,
                       onClick: handleViewClimb,
+                    },
+                    {
+                      key: 'instagram',
+                      label: 'Beta Videos',
+                      icon: <InstagramOutlined />,
+                      onClick: () => item.climb && onInstagramClick(item.climb),
                     },
                     {
                       key: 'tick',
