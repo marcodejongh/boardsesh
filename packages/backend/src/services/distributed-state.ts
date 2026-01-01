@@ -273,14 +273,6 @@ const REFRESH_TTL_SCRIPT = `
 `;
 
 /**
- * DistributedStateManager provides cross-instance state management for:
- * - Connection tracking
- * - Session membership
- * - Leader election
- *
- * This enables true horizontal scaling without sticky sessions.
- */
-/**
  * Validate connectionId format to prevent Redis key injection.
  * ConnectionIds should be UUIDs or similar safe identifiers.
  */
@@ -584,9 +576,15 @@ export class DistributedStateManager {
       return { newLeaderId: result };
     } catch (err) {
       console.error(`[DistributedState] Failed to leave session ${sessionId.slice(0, 8)}:`, err);
-      // Fallback: try to clean up manually and handle leader election
+      // Fallback: try to clean up manually and handle leader election.
+      // Note: This fallback has a potential race condition where leadership could change
+      // between reading the leader and cleanup. This is acceptable because:
+      // 1. This path only runs when the atomic LEAVE_SESSION_SCRIPT fails (rare)
+      // 2. The worst case is we skip leader election when we should have done it
+      // 3. The next joinSession will fix this by electing a leader if none exists
+      // 4. Using another Lua script here would just fail again if Redis is having issues
       try {
-        // First check if this connection was the leader before cleanup
+        // Check if this connection was the leader before cleanup (non-atomic, best-effort)
         const currentLeader = await this.redis.get(KEYS.sessionLeader(sessionId));
         const wasLeader = currentLeader === connectionId;
 
@@ -596,7 +594,7 @@ export class DistributedStateManager {
         multi.srem(KEYS.sessionMembers(sessionId), connectionId);
         await multi.exec();
 
-        // If was leader, try to elect a new one
+        // If was leader, try to elect a new one (best-effort)
         if (wasLeader) {
           try {
             const newLeaderId = await this.redis.eval(
