@@ -443,13 +443,26 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
   // Proactively fetch more suggestions when running low
   // This handles the case where users navigate via next/prev buttons without viewing the queue
   const SUGGESTIONS_THRESHOLD = 3;
+  const hasFetchedForCurrentThreshold = useRef(false);
+
+  // Reset the fetch guard when we get new data (suggestedClimbs count increases)
+  const prevSuggestedCount = useRef(suggestedClimbs.length);
+  useEffect(() => {
+    if (suggestedClimbs.length > prevSuggestedCount.current) {
+      hasFetchedForCurrentThreshold.current = false;
+    }
+    prevSuggestedCount.current = suggestedClimbs.length;
+  }, [suggestedClimbs.length]);
+
   useEffect(() => {
     if (
       suggestedClimbs.length < SUGGESTIONS_THRESHOLD &&
       hasMoreResults &&
       !isFetchingNextPage &&
-      state.hasDoneFirstFetch
+      state.hasDoneFirstFetch &&
+      !hasFetchedForCurrentThreshold.current
     ) {
+      hasFetchedForCurrentThreshold.current = true;
       fetchMoreClimbs();
     }
   }, [suggestedClimbs.length, hasMoreResults, isFetchingNextPage, fetchMoreClimbs, state.hasDoneFirstFetch]);
