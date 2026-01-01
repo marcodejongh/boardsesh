@@ -9,6 +9,15 @@ import NearbySessionCard from './nearby-session-card';
 
 const { Text, Paragraph } = Typography;
 
+// Backend URL from environment variable
+const BACKEND_WS_URL = process.env.NEXT_PUBLIC_WS_URL || null;
+
+// Convert WebSocket URL to HTTP URL for API calls
+function getBackendHttpUrl(): string | null {
+  if (!BACKEND_WS_URL) return null;
+  return BACKEND_WS_URL.replace('ws://', 'http://').replace('wss://', 'https://').replace('/graphql', '');
+}
+
 // Type for discoverable sessions from GraphQL
 type DiscoverableSession = {
   id: string;
@@ -22,11 +31,8 @@ type DiscoverableSession = {
   distance: number | null;
 };
 
-type JoinSessionTabProps = {
-  backendUrl?: string;
-};
-
-const JoinSessionTab = ({ backendUrl }: JoinSessionTabProps) => {
+const JoinSessionTab = () => {
+  const backendHttpUrl = getBackendHttpUrl();
   const { coordinates, error, loading, permissionState, requestPermission, refresh } = useGeolocation();
   const [nearbySessions, setNearbySessions] = useState<DiscoverableSession[]>([]);
   const [fetchingNearby, setFetchingNearby] = useState(false);
@@ -34,7 +40,7 @@ const JoinSessionTab = ({ backendUrl }: JoinSessionTabProps) => {
 
   // Fetch nearby sessions when we have coordinates
   useEffect(() => {
-    if (!coordinates || !backendUrl) return;
+    if (!coordinates || !backendHttpUrl) return;
 
     const fetchNearbySessions = async () => {
       setFetchingNearby(true);
@@ -42,7 +48,7 @@ const JoinSessionTab = ({ backendUrl }: JoinSessionTabProps) => {
 
       try {
         // Use HTTP endpoint for simple query (no WebSocket needed)
-        const response = await fetch(`${backendUrl.replace('ws://', 'http://').replace('wss://', 'https://').replace('/graphql', '')}/api/sessions/nearby`, {
+        const response = await fetch(`${backendHttpUrl}/api/sessions/nearby`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -69,7 +75,7 @@ const JoinSessionTab = ({ backendUrl }: JoinSessionTabProps) => {
     };
 
     fetchNearbySessions();
-  }, [coordinates, backendUrl]);
+  }, [coordinates, backendHttpUrl]);
 
   // Show permission request UI
   if (permissionState !== 'granted' && !loading) {
@@ -111,7 +117,7 @@ const JoinSessionTab = ({ backendUrl }: JoinSessionTabProps) => {
   }
 
   // No backend URL configured
-  if (!backendUrl) {
+  if (!backendHttpUrl) {
     return (
       <div style={{ textAlign: 'center', padding: themeTokens.spacing[8] }}>
         <Empty
@@ -189,7 +195,6 @@ const JoinSessionTab = ({ backendUrl }: JoinSessionTabProps) => {
           <NearbySessionCard
             key={session.id}
             session={session}
-            backendUrl={backendUrl}
           />
         ))}
       </div>

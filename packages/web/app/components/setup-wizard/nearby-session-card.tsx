@@ -23,7 +23,6 @@ type DiscoverableSession = {
 
 type NearbySessionCardProps = {
   session: DiscoverableSession;
-  backendUrl: string;
 };
 
 /**
@@ -49,14 +48,13 @@ function extractBoardName(boardPath: string): string {
   return 'Unknown Board';
 }
 
-const NearbySessionCard = ({ session, backendUrl }: NearbySessionCardProps) => {
+const NearbySessionCard = ({ session }: NearbySessionCardProps) => {
   const router = useRouter();
 
   const handleJoin = () => {
-    // Navigate to the board path with the session ID and backend URL
+    // Navigate to the board path with the session ID
     const url = new URL(session.boardPath, window.location.origin);
-    url.searchParams.set('backendUrl', backendUrl);
-    url.searchParams.set('sessionId', session.id);
+    url.searchParams.set('session', session.id);
     router.push(url.pathname + url.search);
   };
 
