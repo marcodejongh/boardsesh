@@ -77,9 +77,12 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
   ];
 
   // Count holds by state for display
+  // Note: 'OFF' state is excluded as it's not a valid filter option
   const holdStateCounts = React.useMemo(() => {
     const counts: Record<string, number> = {};
     Object.values(uiSearchParams.holdsFilter || {}).forEach(h => {
+      // Skip OFF state - it means "hold not used" and shouldn't appear in filters
+      if (h.state === 'OFF') return;
       counts[h.state] = (counts[h.state] || 0) + 1;
     });
     return counts;
@@ -111,9 +114,10 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
               ),
             }))}
           />
+          {/* Render tags for each state with count - unknown states are safely skipped */}
           {Object.entries(holdStateCounts).map(([state, count]) => {
             const config = holdStateColors[state as keyof typeof holdStateColors];
-            if (!config) return null;
+            if (!config) return null; // Skip unknown states defensively
             const shortLabel = state === 'ANY' ? 'in' : state === 'NOT' ? 'out' : state.toLowerCase();
             return (
               <Tag key={state} color={config.tagColor} style={{ margin: 0 }}>

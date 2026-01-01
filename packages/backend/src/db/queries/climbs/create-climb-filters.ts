@@ -61,10 +61,13 @@ export const createClimbFilters = (
 ) => {
   // Process hold filters
   // holdsFilter values are HoldState strings: 'ANY', 'NOT', 'STARTING', 'HAND', 'FOOT', 'FINISH'
-  const holdsToFilter = Object.entries(searchParams.holdsFilter || {}).map(([key, state]) => {
-    const holdId = key.replace('hold_', '');
-    return [holdId, state] as const;
-  });
+  // Note: 'OFF' state is filtered out as it represents "hold not used" and has no filter meaning
+  const holdsToFilter = Object.entries(searchParams.holdsFilter || {})
+    .filter(([, state]) => state !== 'OFF') // Explicitly filter out OFF state
+    .map(([key, state]) => {
+      const holdId = key.replace('hold_', '');
+      return [holdId, state] as const;
+    });
 
   const anyHolds = holdsToFilter.filter(([, value]) => value === 'ANY').map(([key]) => Number(key));
   const notHolds = holdsToFilter.filter(([, value]) => value === 'NOT').map(([key]) => Number(key));
@@ -138,6 +141,8 @@ export const createClimbFilters = (
   ];
 
   // State-specific hold conditions - use climb_holds table to filter by hold_id AND hold_state
+  // Note: state values are safe - validated by isValidHoldStateFilter to only be STARTING/HAND/FOOT/FINISH
+  // The sql template literal parameterizes the value, preventing SQL injection
   const climbHoldsTable = getTableName(params.board_name, 'climb_holds');
   const holdStateConditions: SQL[] = holdStateFilters.map(({ holdId, state }) =>
     sql`EXISTS (
