@@ -11,6 +11,7 @@ import QueueListItem from './queue-list-item';
 import ClimbThumbnail from '../climb-card/climb-thumbnail';
 import ClimbTitle from '../climb-card/climb-title';
 import { themeTokens } from '@/app/theme/theme-config';
+import { SUGGESTIONS_THRESHOLD } from '../board-page/constants';
 import { useBoardProvider } from '../board-provider/board-provider-context';
 import { LogAscentDrawer } from '../logbook/log-ascent-drawer';
 import AuthModal from '../auth/auth-modal';
@@ -92,14 +93,20 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails, onClimbNavigate }) 
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   // Intersection Observer callback for infinite scroll
+  // Skip if suggestions are below threshold - proactive fetch in QueueContext handles that case
   const handleObserver = useCallback(
     (entries: IntersectionObserverEntry[]) => {
       const [target] = entries;
-      if (target.isIntersecting && hasMoreResults && !isFetchingNextPage) {
+      if (
+        target.isIntersecting &&
+        hasMoreResults &&
+        !isFetchingNextPage &&
+        suggestedClimbs.length >= SUGGESTIONS_THRESHOLD
+      ) {
         fetchMoreClimbs();
       }
     },
-    [hasMoreResults, isFetchingNextPage, fetchMoreClimbs],
+    [hasMoreResults, isFetchingNextPage, fetchMoreClimbs, suggestedClimbs.length],
   );
 
   // Set up Intersection Observer for infinite scroll

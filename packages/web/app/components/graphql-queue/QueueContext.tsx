@@ -29,6 +29,7 @@ import {
   type AddClimbToPlaylistMutationResponse,
   type RemoveClimbFromPlaylistMutationResponse,
 } from '@/app/lib/graphql/operations/playlists';
+import { SUGGESTIONS_THRESHOLD } from '../board-page/constants';
 
 // Extended context type with session management
 export interface GraphQLQueueContextType extends QueueContextType {
@@ -442,29 +443,34 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
 
   // Proactively fetch more suggestions when running low
   // This handles the case where users navigate via next/prev buttons without viewing the queue
-  // Threshold of 3 chosen to ensure smooth UX - fetch before running out, but not too aggressively
-  // (PAGE_LIMIT is 10, so we fetch when 70% consumed)
-  const SUGGESTIONS_THRESHOLD = 3;
-
-  // Track fetch state to prevent rapid consecutive fetches
-  const prevIsFetchingNextPage = useRef(isFetchingNextPage);
+  // Track state to prevent infinite loops when fetched climbs are filtered out (already in queue)
+  const proactiveFetchState = useRef({
+    lastSuggestedCount: suggestedClimbs.length,
+    hasFetchedForCurrentLowState: false,
+  });
 
   useEffect(() => {
-    // Reset ability to fetch when a fetch completes (transitions from true to false)
-    // This handles the case where fetched climbs are already in queue and get filtered out
-    const fetchJustCompleted = prevIsFetchingNextPage.current && !isFetchingNextPage;
-    prevIsFetchingNextPage.current = isFetchingNextPage;
+    const prev = proactiveFetchState.current;
 
-    // Don't trigger fetch if we're currently fetching or just completed one this cycle
-    if (isFetchingNextPage || fetchJustCompleted) {
+    // If suggestions increased, reset the fetch guard (successful fetch or items removed from queue)
+    if (suggestedClimbs.length > prev.lastSuggestedCount) {
+      prev.hasFetchedForCurrentLowState = false;
+    }
+    prev.lastSuggestedCount = suggestedClimbs.length;
+
+    // Don't trigger fetch if currently fetching
+    if (isFetchingNextPage) {
       return;
     }
 
+    // Fetch if below threshold, more results available, and haven't already tried for this state
     if (
       suggestedClimbs.length < SUGGESTIONS_THRESHOLD &&
       hasMoreResults &&
-      state.hasDoneFirstFetch
+      state.hasDoneFirstFetch &&
+      !prev.hasFetchedForCurrentLowState
     ) {
+      prev.hasFetchedForCurrentLowState = true;
       fetchMoreClimbs();
     }
   }, [suggestedClimbs.length, hasMoreResults, isFetchingNextPage, fetchMoreClimbs, state.hasDoneFirstFetch]);
