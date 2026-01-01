@@ -15,6 +15,7 @@ import { SUGGESTIONS_THRESHOLD } from '../board-page/constants';
 import { useBoardProvider } from '../board-provider/board-provider-context';
 import { LogAscentDrawer } from '../logbook/log-ascent-drawer';
 import AuthModal from '../auth/auth-modal';
+import InstagramDrawer from '../instagram-drawer/instagram-drawer';
 
 const { Text, Paragraph } = Typography;
 
@@ -46,6 +47,10 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails, onClimbNavigate }) 
   const [tickClimb, setTickClimb] = useState<Climb | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
 
+  // Instagram drawer state
+  const [instagramDrawerVisible, setInstagramDrawerVisible] = useState(false);
+  const [instagramClimb, setInstagramClimb] = useState<Climb | null>(null);
+
   const handleTickClick = useCallback((climb: Climb) => {
     setTickClimb(climb);
     setTickDrawerVisible(true);
@@ -54,6 +59,16 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails, onClimbNavigate }) 
   const closeTickDrawer = useCallback(() => {
     setTickDrawerVisible(false);
     setTickClimb(null);
+  }, []);
+
+  const handleInstagramClick = useCallback((climb: Climb) => {
+    setInstagramClimb(climb);
+    setInstagramDrawerVisible(true);
+  }, []);
+
+  const closeInstagramDrawer = useCallback(() => {
+    setInstagramDrawerVisible(false);
+    setInstagramClimb(null);
   }, []);
 
   // Monitor for drag-and-drop events
@@ -150,6 +165,7 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails, onClimbNavigate }) 
               setCurrentClimbQueueItem={setCurrentClimbQueueItem}
               removeFromQueue={removeFromQueue}
               onTickClick={handleTickClick}
+              onInstagramClick={handleInstagramClick}
               onClimbNavigate={onClimbNavigate}
             />
           );
@@ -261,6 +277,14 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails, onClimbNavigate }) 
         onClose={() => setShowAuthModal(false)}
         title="Sign in to record ticks"
         description="Create an account to log your climbs and track your progress."
+      />
+
+      {/* Instagram Drawer for Beta Videos */}
+      <InstagramDrawer
+        open={instagramDrawerVisible}
+        onClose={closeInstagramDrawer}
+        climb={instagramClimb}
+        boardName={boardDetails.board_name}
       />
     </>
   );

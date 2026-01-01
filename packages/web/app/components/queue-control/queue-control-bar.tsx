@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useCallback } from 'react';
-import { Button, Row, Col, Card, Drawer, Space, Popconfirm } from 'antd';
-import { SyncOutlined, DeleteOutlined, ExpandOutlined, FastForwardOutlined, FastBackwardOutlined } from '@ant-design/icons';
+import { Button, Row, Col, Card, Drawer, Space, Popconfirm, Dropdown, Badge } from 'antd';
+import { SyncOutlined, DeleteOutlined, ExpandOutlined, FastForwardOutlined, FastBackwardOutlined, EllipsisOutlined, InstagramOutlined } from '@ant-design/icons';
 import { track } from '@vercel/analytics';
 import { useSwipeable } from 'react-swipeable';
 import { useQueueContext } from '../graphql-queue';
@@ -18,6 +18,8 @@ import ClimbThumbnail from '../climb-card/climb-thumbnail';
 import ClimbTitle from '../climb-card/climb-title';
 import { AscentStatus } from './queue-list-item';
 import { themeTokens } from '@/app/theme/theme-config';
+import InstagramDrawer from '../instagram-drawer/instagram-drawer';
+import { useBetaCount } from '../instagram-drawer/use-beta-count';
 import styles from './queue-control-bar.module.css';
 
 // Swipe threshold in pixels to trigger navigation
@@ -34,6 +36,7 @@ export interface QueueControlBar {
 const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: QueueControlBar) => {
   const [isQueueOpen, setIsQueueOpen] = useState(false);
   const [swipeOffset, setSwipeOffset] = useState(0);
+  const [isInstagramDrawerOpen, setIsInstagramDrawerOpen] = useState(false);
   const pathname = usePathname();
   const params = useParams<BoardRouteParameters>();
   const searchParams = useSearchParams();
@@ -43,6 +46,11 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
   const isListPage = pathname.includes('/list');
   const isPlayPage = pathname.includes('/play/');
   const { currentClimb, mirrorClimb, queue, setQueue, getNextClimbQueueItem, getPreviousClimbQueueItem, setCurrentClimbQueueItem, viewOnlyMode } = useQueueContext();
+
+  const betaCount = useBetaCount({
+    climbUuid: currentClimb?.uuid,
+    boardName: boardDetails.board_name,
+  });
 
   const nextClimb = getNextClimbQueueItem();
   const previousClimb = getPreviousClimbQueueItem();
@@ -300,7 +308,7 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
 
               {/* Button cluster */}
               <Col xs={9} style={{ textAlign: 'right' }}>
-                <Space>
+                <Space size={4}>
                   {boardDetails.supportsMirroring ? (
                     <Button
                       id="button-mirror"
@@ -340,6 +348,35 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
                     </Space>
                   </span>
                   <TickButton currentClimb={currentClimb} angle={angle} boardDetails={boardDetails} />
+                  <Dropdown
+                    menu={{
+                      items: [
+                        {
+                          key: 'instagram',
+                          label: (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              Beta Videos
+                              {betaCount !== null && betaCount > 0 && (
+                                <Badge count={betaCount} size="small" />
+                              )}
+                            </span>
+                          ),
+                          icon: <InstagramOutlined />,
+                          onClick: () => {
+                            setIsInstagramDrawerOpen(true);
+                            track('Instagram Drawer Opened', {
+                              source: 'queue-control-bar',
+                              boardLayout: boardDetails.layout_name || '',
+                            });
+                          },
+                        },
+                      ],
+                    }}
+                    trigger={['click']}
+                    placement="topRight"
+                  >
+                    <Button type="text" icon={<EllipsisOutlined />} />
+                  </Dropdown>
                 </Space>
               </Col>
             </Row>
@@ -373,6 +410,14 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
       >
         <QueueList boardDetails={boardDetails} onClimbNavigate={() => setIsQueueOpen(false)} />
       </Drawer>
+
+      {/* Instagram Drawer for Beta Videos */}
+      <InstagramDrawer
+        open={isInstagramDrawerOpen}
+        onClose={() => setIsInstagramDrawerOpen(false)}
+        climb={currentClimb}
+        boardName={boardDetails.board_name}
+      />
     </div>
   );
 };

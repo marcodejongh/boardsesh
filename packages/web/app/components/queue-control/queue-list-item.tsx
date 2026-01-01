@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Row, Col, Avatar, Tooltip, Dropdown, Button } from 'antd';
-import { CheckOutlined, CloseOutlined, UserOutlined, DeleteOutlined, MoreOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import { Row, Col, Avatar, Tooltip, Dropdown, Button, Badge } from 'antd';
+import { CheckOutlined, CloseOutlined, UserOutlined, DeleteOutlined, EllipsisOutlined, InfoCircleOutlined, InstagramOutlined } from '@ant-design/icons';
 import { BoardDetails, ClimbUuid, Climb } from '@/app/lib/types';
 import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { DropIndicator } from '@atlaskit/pragmatic-drag-and-drop-react-drop-indicator/box';
@@ -15,6 +15,7 @@ import ClimbTitle from '../climb-card/climb-title';
 import { useBoardProvider } from '../board-provider/board-provider-context';
 import { themeTokens } from '@/app/theme/theme-config';
 import { constructClimbViewUrl, constructClimbViewUrlWithSlugs, parseBoardRouteParams } from '@/app/lib/url-utils';
+import { useBetaCount } from '../instagram-drawer/use-beta-count';
 
 type QueueListItemProps = {
   item: ClimbQueueItem;
@@ -26,6 +27,7 @@ type QueueListItemProps = {
   setCurrentClimbQueueItem: (item: ClimbQueueItem) => void;
   removeFromQueue: (item: ClimbQueueItem) => void;
   onTickClick: (climb: Climb) => void;
+  onInstagramClick: (climb: Climb) => void;
   onClimbNavigate?: () => void;
 };
 
@@ -91,6 +93,7 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
   setCurrentClimbQueueItem,
   removeFromQueue,
   onTickClick,
+  onInstagramClick,
   onClimbNavigate,
 }) => {
   const router = useRouter();
@@ -99,6 +102,11 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
   const [isSwipeComplete, setIsSwipeComplete] = useState(false);
   const [isHorizontalSwipe, setIsHorizontalSwipe] = useState<boolean | null>(null);
   const itemRef = useRef<HTMLDivElement>(null);
+
+  const betaCount = useBetaCount({
+    climbUuid: item.climb?.uuid,
+    boardName: boardDetails.board_name,
+  });
 
   const handleViewClimb = useCallback(() => {
     if (!item.climb) return;
@@ -354,6 +362,19 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
                       onClick: handleViewClimb,
                     },
                     {
+                      key: 'instagram',
+                      label: (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          Beta Videos
+                          {betaCount !== null && betaCount > 0 && (
+                            <Badge count={betaCount} size="small" />
+                          )}
+                        </span>
+                      ),
+                      icon: <InstagramOutlined />,
+                      onClick: () => item.climb && onInstagramClick(item.climb),
+                    },
+                    {
                       key: 'tick',
                       label: 'Tick Climb',
                       icon: <CheckOutlined />,
@@ -371,7 +392,7 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
                 trigger={['click']}
                 placement="bottomRight"
               >
-                <Button type="text" icon={<MoreOutlined />} />
+                <Button type="text" icon={<EllipsisOutlined />} />
               </Dropdown>
             </Col>
           </Row>
