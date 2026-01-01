@@ -3,9 +3,10 @@ import { syncUserData } from '@/app/lib/data-sync/aurora/user-sync';
 import { getPool } from '@/app/lib/db/db';
 import { drizzle } from 'drizzle-orm/neon-serverless';
 import { eq, and, or, isNotNull } from 'drizzle-orm';
-import { decrypt } from '@/app/lib/crypto';
+import { decrypt, encrypt } from '@/app/lib/crypto';
 import { BoardName } from '@/app/lib/types';
 import * as schema from '@/app/lib/db/schema';
+import AuroraClimbingClient from '@/app/lib/api-wrappers/aurora-rest-client/aurora-rest-client';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // 5 minutes max
@@ -44,7 +45,9 @@ export async function GET(request: Request) {
                 eq(schema.auroraCredentials.syncStatus, 'active'),
                 eq(schema.auroraCredentials.syncStatus, 'error')
               ),
-              isNotNull(schema.auroraCredentials.auroraToken)
+              isNotNull(schema.auroraCredentials.encryptedUsername),
+              isNotNull(schema.auroraCredentials.encryptedPassword),
+              isNotNull(schema.auroraCredentials.auroraUserId)
             )
           );
       } finally {
@@ -65,15 +68,20 @@ export async function GET(request: Request) {
     // Each iteration acquires its own connections as needed
     for (const cred of credentials) {
       try {
-        if (!cred.auroraToken || !cred.auroraUserId) {
-          console.warn(`[User Sync Cron] Skipping user ${cred.userId} (${cred.boardType}): Missing token or user ID`);
+        if (!cred.encryptedUsername || !cred.encryptedPassword || !cred.auroraUserId) {
+          console.warn(`[User Sync Cron] Skipping user ${cred.userId} (${cred.boardType}): Missing credentials or user ID`);
           continue;
         }
 
-        // Decrypt token - handle errors gracefully
+        const boardType = cred.boardType as BoardName;
+
+        // Decrypt credentials and get a fresh token
         let token: string;
+        let username: string;
+        let password: string;
         try {
-          token = decrypt(cred.auroraToken);
+          username = decrypt(cred.encryptedUsername);
+          password = decrypt(cred.encryptedPassword);
         } catch (decryptError) {
           const errorMsg = `Failed to decrypt credentials: ${decryptError instanceof Error ? decryptError.message : 'Unknown error'}`;
           console.error(`[User Sync Cron] ${errorMsg} for user ${cred.userId} (${cred.boardType})`);
@@ -109,7 +117,77 @@ export async function GET(request: Request) {
           continue;
         }
 
-        const boardType = cred.boardType as BoardName;
+        // Get a fresh token by logging in
+        console.log(`[User Sync Cron] Getting fresh token for user ${cred.userId} (${boardType})...`);
+        const auroraClient = new AuroraClimbingClient({ boardName: boardType });
+        let loginResponse;
+        try {
+          loginResponse = await auroraClient.signIn(username, password);
+        } catch (loginError) {
+          const errorMsg = `Failed to login: ${loginError instanceof Error ? loginError.message : 'Unknown error'}`;
+          console.error(`[User Sync Cron] ${errorMsg} for user ${cred.userId} (${cred.boardType})`);
+
+          results.failed++;
+          results.errors.push({
+            userId: cred.userId,
+            boardType: cred.boardType,
+            error: errorMsg,
+          });
+
+          // Update status to error
+          const updateClient = await pool.connect();
+          try {
+            const updateDb = drizzle(updateClient);
+            await updateDb
+              .update(schema.auroraCredentials)
+              .set({
+                syncStatus: 'error',
+                syncError: errorMsg,
+                updatedAt: new Date(),
+              })
+              .where(
+                and(
+                  eq(schema.auroraCredentials.userId, cred.userId),
+                  eq(schema.auroraCredentials.boardType, cred.boardType)
+                )
+              );
+          } finally {
+            updateClient.release();
+          }
+
+          continue;
+        }
+
+        if (!loginResponse.token) {
+          const errorMsg = 'Login succeeded but no token returned';
+          console.error(`[User Sync Cron] ${errorMsg} for user ${cred.userId} (${cred.boardType})`);
+          results.failed++;
+          results.errors.push({ userId: cred.userId, boardType: cred.boardType, error: errorMsg });
+          continue;
+        }
+
+        token = loginResponse.token;
+
+        // Update the stored token
+        const encryptedToken = encrypt(token);
+        const tokenUpdateClient = await pool.connect();
+        try {
+          const tokenUpdateDb = drizzle(tokenUpdateClient);
+          await tokenUpdateDb
+            .update(schema.auroraCredentials)
+            .set({
+              auroraToken: encryptedToken,
+              updatedAt: new Date(),
+            })
+            .where(
+              and(
+                eq(schema.auroraCredentials.userId, cred.userId),
+                eq(schema.auroraCredentials.boardType, cred.boardType)
+              )
+            );
+        } finally {
+          tokenUpdateClient.release();
+        }
 
         console.log(`[User Sync Cron] Syncing user ${cred.userId} for ${boardType}...`);
 
