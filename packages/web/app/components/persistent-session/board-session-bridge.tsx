@@ -12,34 +12,50 @@ interface BoardSessionBridgeProps {
 }
 
 /**
- * Extracts the base board path from a full pathname.
- * This removes dynamic segments like /play/[climb_uuid] or /list that change during navigation
- * but don't represent a change in board configuration.
+ * Extracts the base board configuration path from a full pathname.
+ * This removes dynamic segments that can change during a session:
+ * - /play/[climb_uuid] - viewing different climbs
+ * - /list, /create - different views
+ * - /{angle} - the board angle is adjustable during a session
+ *
+ * The base path represents the physical board setup: /{board}/{layout}/{size}/{sets}
  *
  * Examples:
- *   /kilter/original/12x12/default/45/play/abc-123 -> /kilter/original/12x12/default/45
- *   /kilter/original/12x12/default/45/list -> /kilter/original/12x12/default/45
- *   /kilter/original/12x12/default/45 -> /kilter/original/12x12/default/45
+ *   /kilter/original/12x12/default/45/play/abc-123 -> /kilter/original/12x12/default
+ *   /kilter/original/12x12/default/45/list -> /kilter/original/12x12/default
+ *   /kilter/original/12x12/default/45 -> /kilter/original/12x12/default
+ *   /kilter/original/12x12/default/50 -> /kilter/original/12x12/default
  */
 function getBaseBoardPath(pathname: string): string {
-  // Remove /play/[uuid] or /list segments from the end
-  // The base board path is: /{board}/{layout}/{size}/{sets}/{angle}
-  const playMatch = pathname.match(/^(.+?)\/play\/[^/]+$/);
+  // URL structure: /{board}/{layout}/{size}/{sets}/{angle}[/play/uuid|/list|/create]
+  // We want to extract: /{board}/{layout}/{size}/{sets}
+
+  // First, strip off /play/[uuid], /list, or /create if present
+  let path = pathname;
+
+  const playMatch = path.match(/^(.+?)\/play\/[^/]+$/);
   if (playMatch) {
-    return playMatch[1];
+    path = playMatch[1];
+  } else {
+    const listMatch = path.match(/^(.+?)\/list$/);
+    if (listMatch) {
+      path = listMatch[1];
+    } else {
+      const createMatch = path.match(/^(.+?)\/create$/);
+      if (createMatch) {
+        path = createMatch[1];
+      }
+    }
   }
 
-  const listMatch = pathname.match(/^(.+?)\/list$/);
-  if (listMatch) {
-    return listMatch[1];
+  // Now strip off the angle (last segment, which is a number)
+  // Path is now: /{board}/{layout}/{size}/{sets}/{angle}
+  const angleMatch = path.match(/^(.+?)\/\d+$/);
+  if (angleMatch) {
+    return angleMatch[1];
   }
 
-  const createMatch = pathname.match(/^(.+?)\/create$/);
-  if (createMatch) {
-    return createMatch[1];
-  }
-
-  return pathname;
+  return path;
 }
 
 /**

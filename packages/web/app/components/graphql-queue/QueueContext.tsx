@@ -31,21 +31,40 @@ import {
 } from '@/app/lib/graphql/operations/playlists';
 
 /**
- * Extracts the base board path from a full pathname.
- * This removes dynamic segments like /play/[climb_uuid] or /list that change during navigation
- * but don't represent a change in board configuration.
+ * Extracts the base board configuration path from a full pathname.
+ * This removes dynamic segments that can change during a session:
+ * - /play/[climb_uuid] - viewing different climbs
+ * - /list, /create - different views
+ * - /{angle} - the board angle is adjustable during a session
+ *
+ * The base path represents the physical board setup: /{board}/{layout}/{size}/{sets}
  */
 function getBaseBoardPath(pathname: string): string {
-  const playMatch = pathname.match(/^(.+?)\/play\/[^/]+$/);
-  if (playMatch) return playMatch[1];
+  // First, strip off /play/[uuid], /list, or /create if present
+  let path = pathname;
 
-  const listMatch = pathname.match(/^(.+?)\/list$/);
-  if (listMatch) return listMatch[1];
+  const playMatch = path.match(/^(.+?)\/play\/[^/]+$/);
+  if (playMatch) {
+    path = playMatch[1];
+  } else {
+    const listMatch = path.match(/^(.+?)\/list$/);
+    if (listMatch) {
+      path = listMatch[1];
+    } else {
+      const createMatch = path.match(/^(.+?)\/create$/);
+      if (createMatch) {
+        path = createMatch[1];
+      }
+    }
+  }
 
-  const createMatch = pathname.match(/^(.+?)\/create$/);
-  if (createMatch) return createMatch[1];
+  // Strip off the angle (last segment, which is a number)
+  const angleMatch = path.match(/^(.+?)\/\d+$/);
+  if (angleMatch) {
+    return angleMatch[1];
+  }
 
-  return pathname;
+  return path;
 }
 
 // Extended context type with session management
