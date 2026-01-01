@@ -9,6 +9,7 @@ import {
   BoardPathSchema,
   UsernameSchema,
   AvatarUrlSchema,
+  SessionNameSchema,
   CreateSessionInputSchema,
   ClimbQueueItemSchema,
   QueueArraySchema,
@@ -49,6 +50,7 @@ export const sessionMutations = {
     validateInput(BoardPathSchema, boardPath, 'boardPath');
     if (username) validateInput(UsernameSchema, username, 'username');
     if (avatarUrl) validateInput(AvatarUrlSchema, avatarUrl, 'avatarUrl');
+    if (sessionName) validateInput(SessionNameSchema, sessionName, 'sessionName');
     if (initialQueue) validateInput(QueueArraySchema, initialQueue, 'initialQueue');
     if (initialCurrentClimb) validateInput(ClimbQueueItemSchema, initialCurrentClimb, 'initialCurrentClimb');
 
@@ -135,12 +137,16 @@ export const sessionMutations = {
     }
 
     // Join the session as the creator
+    // Pass session name for non-discoverable sessions (discoverable sessions already have name set)
     const result = await roomManager.joinSession(
       ctx.connectionId,
       sessionId,
       input.boardPath,
       undefined, // username will be set later
-      undefined  // avatarUrl will be set later
+      undefined, // avatarUrl will be set later
+      undefined, // initialQueue
+      null,      // initialCurrentClimb
+      input.discoverable ? undefined : input.name // Only pass name for non-discoverable (discoverable already set via createDiscoverableSession)
     );
     if (DEBUG) console.log(`[createSession] Joined session - clientId: ${result.clientId}, isLeader: ${result.isLeader}`);
 
@@ -151,6 +157,7 @@ export const sessionMutations = {
 
     return {
       id: sessionId,
+      name: input.name || null,
       boardPath: input.boardPath,
       users: result.users,
       queueState: {

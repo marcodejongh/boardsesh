@@ -171,6 +171,7 @@ mutation JoinSession(
   $avatarUrl: String
   $initialQueue: [ClimbQueueItemInput!]    # Optional: existing queue items
   $initialCurrentClimb: ClimbQueueItemInput # Optional: current climb
+  $sessionName: String                      # Optional: display name for the session
 ) {
   joinSession(
     sessionId: $sessionId
@@ -179,13 +180,14 @@ mutation JoinSession(
     avatarUrl: $avatarUrl
     initialQueue: $initialQueue
     initialCurrentClimb: $initialCurrentClimb
+    sessionName: $sessionName
   ) { ... }
 }
 ```
 
 **Behavior:**
-- `initialQueue` and `initialCurrentClimb` are **only applied when creating a new session**
-- If joining an existing session (active, inactive, or dormant), the initial queue is ignored and the existing session state is used
+- `initialQueue`, `initialCurrentClimb`, and `sessionName` are **only applied when creating a new session**
+- If joining an existing session (active, inactive, or dormant), these values are ignored and the existing session state is used
 - The queue is persisted immediately to Postgres (not debounced) to ensure durability for new sessions
 - All users who join after the initial seed will receive the seeded queue state
 
