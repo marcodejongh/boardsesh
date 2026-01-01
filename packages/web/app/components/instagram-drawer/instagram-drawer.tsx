@@ -1,13 +1,14 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { Drawer, Card, Row, Col, Typography, Empty, Modal, Spin, Button } from 'antd';
-import { InstagramOutlined, UserOutlined, CloseOutlined } from '@ant-design/icons';
+import React, { useState } from 'react';
+import { Drawer, Card, Row, Col, Typography, Empty, Modal, Spin } from 'antd';
+import { InstagramOutlined, UserOutlined } from '@ant-design/icons';
 import { BetaLink } from '@/app/lib/api-wrappers/sync-api-types';
 import { BoardName, Climb } from '@/app/lib/types';
 import { themeTokens } from '@/app/theme/theme-config';
+import { useBetaLinks } from './use-beta-links';
 
-const { Text, Title } = Typography;
+const { Text } = Typography;
 
 interface InstagramDrawerProps {
   open: boolean;
@@ -28,39 +29,15 @@ const getInstagramEmbedUrl = (link: string) => {
 };
 
 const InstagramDrawer: React.FC<InstagramDrawerProps> = ({ open, onClose, climb, boardName }) => {
-  const [betaLinks, setBetaLinks] = useState<BetaLink[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedVideo, setSelectedVideo] = useState<BetaLink | null>(null);
   const [iframeKey, setIframeKey] = useState(0);
 
-  const fetchBetaLinks = useCallback(async () => {
-    if (!climb?.uuid || !boardName) return;
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch(`/api/v1/${boardName}/beta/${climb.uuid}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch beta videos');
-      }
-      const data = await response.json();
-      setBetaLinks(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-      setBetaLinks([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [climb?.uuid, boardName]);
-
-  useEffect(() => {
-    if (open && climb?.uuid) {
-      fetchBetaLinks();
-    }
-  }, [open, climb?.uuid, fetchBetaLinks]);
+  const { betaLinks, loading, error } = useBetaLinks({
+    climbUuid: climb?.uuid,
+    boardName,
+    enabled: open,
+  });
 
   const handleVideoClick = (betaLink: BetaLink) => {
     setSelectedVideo(betaLink);
@@ -96,7 +73,7 @@ const InstagramDrawer: React.FC<InstagramDrawerProps> = ({ open, onClose, climb,
           const embedUrl = getInstagramEmbedUrl(betaLink.link);
 
           return (
-            <Col xs={24} sm={12} key={index}>
+            <Col xs={24} sm={12} key={betaLink.link}>
               <Card
                 hoverable
                 size="small"
