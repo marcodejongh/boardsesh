@@ -17,11 +17,12 @@ config({ path: path.resolve(__dirname, '../../web/.env.development.local') });
 neonConfig.webSocketConstructor = ws;
 
 async function runMigrations() {
-  const databaseUrl = process.env.DATABASE_URL;
+  // Check for DATABASE_URL first, then POSTGRES_URL (Vercel Neon integration)
+  const databaseUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL;
 
-  // Validation: DATABASE_URL must be set
+  // Validation: A database URL must be set
   if (!databaseUrl) {
-    console.error('❌ DATABASE_URL is not set');
+    console.error('❌ DATABASE_URL or POSTGRES_URL is not set');
     console.error('   Available env vars:', Object.keys(process.env).filter(k =>
       k.includes('DATABASE') || k.includes('POSTGRES')
     ).join(', ') || 'none');
