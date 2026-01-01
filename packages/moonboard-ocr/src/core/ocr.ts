@@ -11,13 +11,52 @@ export interface OcrResult {
 }
 
 /**
+ * Convert ImageData to a PNG Blob for better Tesseract.js compatibility in browsers.
+ */
+async function imageDataToBlob(imageData: ImageData): Promise<Blob> {
+  // Check if we're in a browser environment with OffscreenCanvas support
+  if (typeof OffscreenCanvas !== 'undefined') {
+    const canvas = new OffscreenCanvas(imageData.width, imageData.height);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Could not get canvas context');
+    ctx.putImageData(imageData, 0, 0);
+    return canvas.convertToBlob({ type: 'image/png' });
+  }
+
+  // Fallback to regular canvas if OffscreenCanvas not available
+  if (typeof document !== 'undefined') {
+    const canvas = document.createElement('canvas');
+    canvas.width = imageData.width;
+    canvas.height = imageData.height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Could not get canvas context');
+    ctx.putImageData(imageData, 0, 0);
+
+    return new Promise((resolve, reject) => {
+      canvas.toBlob((blob) => {
+        if (blob) resolve(blob);
+        else reject(new Error('Failed to convert canvas to blob'));
+      }, 'image/png');
+    });
+  }
+
+  throw new Error('No canvas implementation available');
+}
+
+/**
  * Run OCR on image data and parse the result.
  * Accepts Buffer (Node) or ImageData (Browser).
  */
 export async function runOCR(
   imageData: Buffer | ImageData
 ): Promise<OcrResult> {
-  const result = await Tesseract.recognize(imageData, 'eng');
+  // Convert ImageData to Blob for browser compatibility
+  let ocrInput: Buffer | Blob = imageData as Buffer;
+  if (imageData instanceof ImageData) {
+    ocrInput = await imageDataToBlob(imageData);
+  }
+
+  const result = await Tesseract.recognize(ocrInput, 'eng');
   const text = result.data.text;
   const lines = text
     .split('\n')

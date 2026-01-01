@@ -99,6 +99,7 @@ export function useMoonBoardCreateClimb(options?: UseMoonBoardCreateClimbOptions
 
   return {
     litUpHoldsMap,
+    setLitUpHoldsMap,
     handleHoldClick,
     startingCount,
     finishCount,

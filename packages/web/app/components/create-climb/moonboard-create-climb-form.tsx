@@ -1,16 +1,48 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Form, Input, Button, Typography, Tag, Alert } from 'antd';
-import { ExperimentOutlined } from '@ant-design/icons';
-import { useRouter } from 'next/navigation';
+import { Form, Input, Button, Typography, Tag, Alert, Upload } from 'antd';
+import { ExperimentOutlined, UploadOutlined, LoadingOutlined, ImportOutlined } from '@ant-design/icons';
+import { useRouter, usePathname } from 'next/navigation';
+import Link from 'next/link';
 import MoonBoardRenderer from '../moonboard-renderer/moonboard-renderer';
 import { useMoonBoardCreateClimb } from './use-moonboard-create-climb';
-import { holdIdToCoordinate } from '@/app/lib/moonboard-config';
+import { holdIdToCoordinate, coordinateToHoldId, MOONBOARD_HOLD_STATES } from '@/app/lib/moonboard-config';
+import type { MoonBoardLitUpHoldsMap } from '../moonboard-renderer/types';
+import { parseScreenshot } from '@boardsesh/moonboard-ocr/browser';
+import type { GridCoordinate as OcrGridCoordinate } from '@boardsesh/moonboard-ocr/browser';
 import styles from './create-climb-form.module.css';
 
 const { TextArea } = Input;
 const { Text } = Typography;
+
+/**
+ * Convert OCR hold coordinates to the lit up holds map format
+ */
+function convertOcrHoldsToMap(holds: {
+  start: OcrGridCoordinate[];
+  hand: OcrGridCoordinate[];
+  finish: OcrGridCoordinate[];
+}): MoonBoardLitUpHoldsMap {
+  const map: MoonBoardLitUpHoldsMap = {};
+
+  holds.start.forEach((coord) => {
+    const holdId = coordinateToHoldId(coord);
+    map[holdId] = { type: 'start', color: MOONBOARD_HOLD_STATES.start.color };
+  });
+
+  holds.hand.forEach((coord) => {
+    const holdId = coordinateToHoldId(coord);
+    map[holdId] = { type: 'hand', color: MOONBOARD_HOLD_STATES.hand.color };
+  });
+
+  holds.finish.forEach((coord) => {
+    const holdId = coordinateToHoldId(coord);
+    map[holdId] = { type: 'finish', color: MOONBOARD_HOLD_STATES.finish.color };
+  });
+
+  return map;
+}
 
 interface MoonBoardCreateClimbFormValues {
   name: string;
@@ -31,9 +63,14 @@ export default function MoonBoardCreateClimbForm({
   angle,
 }: MoonBoardCreateClimbFormProps) {
   const router = useRouter();
+  const pathname = usePathname();
+
+  // Construct the bulk import URL (replace /create with /import)
+  const bulkImportUrl = pathname.replace(/\/create$/, '/import');
 
   const {
     litUpHoldsMap,
+    setLitUpHoldsMap,
     handleHoldClick,
     startingCount,
     finishCount,
@@ -46,6 +83,56 @@ export default function MoonBoardCreateClimbForm({
   const [form] = Form.useForm<MoonBoardCreateClimbFormValues>();
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+
+  // OCR import state
+  const [isOcrProcessing, setIsOcrProcessing] = useState(false);
+  const [ocrError, setOcrError] = useState<string | null>(null);
+  const [ocrWarnings, setOcrWarnings] = useState<string[]>([]);
+
+  const handleOcrImport = async (file: File) => {
+    setIsOcrProcessing(true);
+    setOcrError(null);
+    setOcrWarnings([]);
+
+    try {
+      const result = await parseScreenshot(file);
+
+      if (!result.success || !result.climb) {
+        setOcrError(result.error || 'Failed to parse screenshot');
+        return;
+      }
+
+      const climb = result.climb;
+      const warnings = [...result.warnings];
+
+      // Check angle mismatch
+      if (climb.angle !== angle) {
+        warnings.push(`Screenshot is for ${climb.angle}° but current page is ${angle}°. Holds imported anyway.`);
+      }
+
+      setOcrWarnings(warnings);
+
+      // Convert OCR holds to form state
+      const newHoldsMap = convertOcrHoldsToMap(climb.holds);
+      setLitUpHoldsMap(newHoldsMap);
+
+      // Build description with setter info
+      const descriptionParts: string[] = [];
+      if (climb.setter) descriptionParts.push(`Setter: ${climb.setter}`);
+      if (climb.userGrade) descriptionParts.push(`Grade: ${climb.userGrade}`);
+      if (climb.isBenchmark) descriptionParts.push('(Benchmark)');
+
+      // Populate form fields
+      form.setFieldsValue({
+        name: climb.name || '',
+        description: descriptionParts.join('\n'),
+      });
+    } catch (error) {
+      setOcrError(error instanceof Error ? error.message : 'Unknown error during OCR');
+    } finally {
+      setIsOcrProcessing(false);
+    }
+  };
 
   const handleSubmit = async (values: MoonBoardCreateClimbFormValues) => {
     if (!isValid) {
@@ -127,6 +214,30 @@ export default function MoonBoardCreateClimbForm({
         />
       )}
 
+      {ocrError && (
+        <Alert
+          message="Import Failed"
+          description={ocrError}
+          type="error"
+          showIcon
+          closable
+          onClose={() => setOcrError(null)}
+          className={styles.betaBanner}
+        />
+      )}
+
+      {ocrWarnings.length > 0 && (
+        <Alert
+          message="Import Warnings"
+          description={ocrWarnings.map((w, i) => <div key={i}>{w}</div>)}
+          type="warning"
+          showIcon
+          closable
+          onClose={() => setOcrWarnings([])}
+          className={styles.betaBanner}
+        />
+      )}
+
       <div className={styles.contentWrapper}>
         {/* Board Section */}
         <div className={styles.boardSection}>
@@ -136,6 +247,26 @@ export default function MoonBoardCreateClimbForm({
             litUpHoldsMap={litUpHoldsMap}
             onHoldClick={handleHoldClick}
           />
+
+          {/* Import from Screenshot */}
+          <div className={styles.holdCounts}>
+            <Upload
+              accept="image/png,image/jpeg,image/webp"
+              showUploadList={false}
+              beforeUpload={(file) => {
+                handleOcrImport(file);
+                return false; // Prevent default upload behavior
+              }}
+              disabled={isOcrProcessing}
+            >
+              <Button icon={isOcrProcessing ? <LoadingOutlined /> : <UploadOutlined />} disabled={isOcrProcessing}>
+                {isOcrProcessing ? 'Processing...' : 'Import Screenshot'}
+              </Button>
+            </Upload>
+            <Link href={bulkImportUrl}>
+              <Button icon={<ImportOutlined />}>Bulk Import</Button>
+            </Link>
+          </div>
 
           {/* Hold counts */}
           <div className={styles.holdCounts}>
