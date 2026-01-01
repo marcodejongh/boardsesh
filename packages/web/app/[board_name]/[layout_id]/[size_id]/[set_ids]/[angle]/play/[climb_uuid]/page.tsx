@@ -1,6 +1,6 @@
 import React from 'react';
 import { BoardRouteParametersWithUuid, ParsedBoardRouteParameters } from '@/app/lib/types';
-import { parseBoardRouteParams, extractUuidFromSlug } from '@/app/lib/url-utils';
+import { parseBoardRouteParams, extractUuidFromSlug, constructClimbViewUrl } from '@/app/lib/url-utils';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import { getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
 import { getClimb } from '@/app/lib/data/queries';
@@ -17,13 +17,47 @@ export async function generateMetadata(props: { params: Promise<BoardRouteParame
 
     const climbName = currentClimb.name || `${boardDetails.board_name} Climb`;
     const climbGrade = currentClimb.difficulty || 'Unknown Grade';
+    const setter = currentClimb.setter_username || 'Unknown Setter';
+    const description = `Play ${climbName} - ${climbGrade} by ${setter}. Control your LED board with Bluetooth.`;
+    const climbUrl = constructClimbViewUrl(parsedParams, parsedParams.climb_uuid, climbName);
+
+    // Generate OG image URL - reuse the same climb image as view page
+    const ogImageUrl = new URL('/api/og/climb', 'https://boardsesh.com');
+    ogImageUrl.searchParams.set('board_name', parsedParams.board_name);
+    ogImageUrl.searchParams.set('layout_id', parsedParams.layout_id.toString());
+    ogImageUrl.searchParams.set('size_id', parsedParams.size_id.toString());
+    ogImageUrl.searchParams.set('set_ids', parsedParams.set_ids.join(','));
+    ogImageUrl.searchParams.set('angle', parsedParams.angle.toString());
+    ogImageUrl.searchParams.set('climb_uuid', parsedParams.climb_uuid);
 
     return {
       title: `${climbName} - ${climbGrade} | Play Mode | Boardsesh`,
+      description,
+      openGraph: {
+        title: `${climbName} - ${climbGrade} | Play Mode`,
+        description,
+        type: 'website',
+        url: climbUrl,
+        images: [
+          {
+            url: ogImageUrl.toString(),
+            width: 1200,
+            height: 630,
+            alt: `${climbName} - ${climbGrade} on ${boardDetails.board_name} board`,
+          },
+        ],
+      },
+      twitter: {
+        card: 'summary_large_image',
+        title: `${climbName} - ${climbGrade} | Play Mode`,
+        description,
+        images: [ogImageUrl.toString()],
+      },
     };
   } catch {
     return {
       title: 'Play Mode | Boardsesh',
+      description: 'Control your LED climbing board with Bluetooth',
     };
   }
 }

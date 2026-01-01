@@ -1,9 +1,30 @@
 import React from 'react';
+import { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import ConsolidatedBoardConfig from './components/setup-wizard/consolidated-board-config';
 import { getAllBoardConfigs } from './lib/server-board-configs';
 import { DEFAULT_BOARD_COOKIE_NAME } from './lib/default-board-cookie';
+
+export const metadata: Metadata = {
+  title: 'Boardsesh - LED Climbing Board Control',
+  description:
+    'Control your Kilter or Tension LED climbing board with Bluetooth. Browse climbs, manage queues, and track your progress with Boardsesh.',
+  openGraph: {
+    title: 'Boardsesh - LED Climbing Board Control',
+    description:
+      'Control your Kilter or Tension LED climbing board with Bluetooth. Browse climbs, manage queues, and track your progress.',
+    type: 'website',
+    url: 'https://boardsesh.com',
+    siteName: 'Boardsesh',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'Boardsesh - LED Climbing Board Control',
+    description:
+      'Control your Kilter or Tension LED climbing board with Bluetooth. Browse climbs, manage queues, and track your progress.',
+  },
+};
 
 type HomeProps = {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
