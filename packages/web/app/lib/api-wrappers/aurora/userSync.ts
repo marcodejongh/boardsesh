@@ -37,7 +37,7 @@ export async function userSync(
     cache: 'no-store',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
-      'User-Agent': 'Kilter%20Board/202 CFNetwork/1568.100.1 Darwin/24.0.0',
+      'User-Agent': 'Kilter Board/202 CFNetwork/1568.100.1 Darwin/24.0.0',
       Cookie: `token=${token}`,
     },
     body: requestBody,

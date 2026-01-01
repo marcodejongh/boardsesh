@@ -64,7 +64,7 @@ class AuroraClimbingClient {
       Connection: 'keep-alive',
       'Accept-Language': 'en-AU,en;q=0.9',
       'Accept-Encoding': 'gzip, deflate, br',
-      'User-Agent': 'Kilter%20Board/202 CFNetwork/1568.100.1 Darwin/24.0.0',
+      'User-Agent': 'Kilter Board/202 CFNetwork/1568.100.1 Darwin/24.0.0',
     };
 
     if (this.token) {
