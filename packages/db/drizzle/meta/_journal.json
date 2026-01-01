@@ -162,6 +162,13 @@
       "when": 1735776000000,
       "tag": "0028_add_instagram_url",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1735862400000,
+      "tag": "0029_add_aurora_id_unique_index",
+      "breakpoints": true
     }
   ]
 }
