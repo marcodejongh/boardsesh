@@ -110,21 +110,41 @@ export function holdIdToCoordinate(holdId: number): MoonBoardCoordinate {
   return `${col}${row}` as MoonBoardCoordinate;
 }
 
+// Grid calibration based on actual hold positions in MoonBoard images
+// These margins match the board region detection in the OCR library
+const GRID_CALIBRATION = {
+  // X margins: the grid doesn't fill the full image width
+  leftMargin: 0.1, // 10% left margin
+  rightMargin: 0.05, // 5% right margin
+  // Y margins: the grid doesn't fill the full image height
+  topMargin: 0.06, // 6% top margin
+  bottomMargin: 0.04, // 4% bottom margin
+};
+
 /**
  * Get the relative position (0-1) for a hold ID on the board.
  * X: 0 = left edge, 1 = right edge
  * Y: 0 = top edge, 1 = bottom edge (SVG coordinate system)
+ *
+ * Positions are calibrated to match actual hold positions in the MoonBoard images.
  */
 export function getGridPosition(holdId: number): { x: number; y: number } {
   const id = holdId - 1;
   const colIndex = id % MOONBOARD_GRID.numColumns;
   const rowIndex = Math.floor(id / MOONBOARD_GRID.numColumns);
 
-  // X: cell center position
-  const x = (colIndex + 0.5) / MOONBOARD_GRID.numColumns;
+  const { leftMargin, rightMargin, topMargin, bottomMargin } = GRID_CALIBRATION;
+  const gridWidth = 1 - leftMargin - rightMargin;
+  const gridHeight = 1 - topMargin - bottomMargin;
+
+  // X: cell center position within the grid region
+  const relativeX = (colIndex + 0.5) / MOONBOARD_GRID.numColumns;
+  const x = leftMargin + relativeX * gridWidth;
+
   // Y: row 1 at bottom (rowIndex 0), row 18 at top (rowIndex 17)
   // In SVG, Y increases downward, so we invert
-  const y = 1 - (rowIndex + 0.5) / MOONBOARD_GRID.numRows;
+  const relativeY = 1 - (rowIndex + 0.5) / MOONBOARD_GRID.numRows;
+  const y = topMargin + relativeY * gridHeight;
 
   return { x, y };
 }

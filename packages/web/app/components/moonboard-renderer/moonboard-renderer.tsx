@@ -70,7 +70,14 @@ const MoonBoardRenderer: React.FC<MoonBoardRendererProps> = ({
         transform: mirrored ? 'scaleX(-1)' : undefined,
       }}
     >
-      {/* Render hold set images as background layers */}
+      {/* Render MoonBoard background first */}
+      <image
+        href="/images/moonboard/moonboard-bg.jpg"
+        width="100%"
+        height="100%"
+      />
+
+      {/* Render hold set images as overlay layers */}
       {holdSetImages.map((imageFile) => (
         <image
           key={imageFile}
