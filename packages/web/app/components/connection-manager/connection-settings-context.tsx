@@ -1,19 +1,17 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { useSearchParams } from 'next/navigation';
 
 const PARTY_MODE_STORAGE_KEY = 'boardsesh:partyMode';
 
-// Default backend URL from environment variable (for production deployment)
-const DEFAULT_BACKEND_URL = process.env.NEXT_PUBLIC_WS_URL || null;
+// Backend URL from environment variable (for production deployment)
+const BACKEND_URL = process.env.NEXT_PUBLIC_WS_URL || null;
 
 export type PartyMode = 'direct' | 'backend';
 
 interface ConnectionSettingsContextType {
-  // Backend URL (from URL param or env var - no longer stored in localStorage)
+  // Backend URL (from env var only)
   backendUrl: string | null;
-  hasUrlParam: boolean;
 
   // Party Mode
   partyMode: PartyMode;
@@ -26,10 +24,6 @@ interface ConnectionSettingsContextType {
 const ConnectionSettingsContext = createContext<ConnectionSettingsContextType | undefined>(undefined);
 
 export const ConnectionSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const searchParams = useSearchParams();
-  const urlBackendUrl = searchParams.get('backendUrl');
-  const hasUrlParam = !!urlBackendUrl;
-
   const [storedPartyMode, setStoredPartyMode] = useState<PartyMode>('direct');
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -42,31 +36,20 @@ export const ConnectionSettingsProvider: React.FC<{ children: React.ReactNode }>
         setStoredPartyMode(storedMode);
       }
 
-      // Clean up old localStorage key if it exists
+      // Clean up old localStorage keys if they exist
       localStorage.removeItem('boardsesh:backendUrl');
 
       setIsLoaded(true);
     }
   }, []);
 
-  // Set party mode to backend when URL param is present
-  useEffect(() => {
-    if (urlBackendUrl && typeof window !== 'undefined') {
-      localStorage.setItem(PARTY_MODE_STORAGE_KEY, 'backend');
-      setStoredPartyMode('backend');
-    }
-  }, [urlBackendUrl]);
-
-  // Backend URL - URL param takes precedence, then env var default
-  const backendUrl = useMemo(() => urlBackendUrl || DEFAULT_BACKEND_URL, [urlBackendUrl]);
-
-  // Effective party mode - URL param or env var forces backend mode
+  // Effective party mode - env var forces backend mode
   const partyMode = useMemo<PartyMode>(() => {
-    if (hasUrlParam || DEFAULT_BACKEND_URL) {
+    if (BACKEND_URL) {
       return 'backend';
     }
     return storedPartyMode;
-  }, [hasUrlParam, storedPartyMode]);
+  }, [storedPartyMode]);
 
   const setPartyMode = useCallback((mode: PartyMode) => {
     if (typeof window !== 'undefined') {
@@ -77,13 +60,12 @@ export const ConnectionSettingsProvider: React.FC<{ children: React.ReactNode }>
 
   const value = useMemo<ConnectionSettingsContextType>(
     () => ({
-      backendUrl,
-      hasUrlParam,
+      backendUrl: BACKEND_URL,
       partyMode,
       setPartyMode,
       isLoaded,
     }),
-    [backendUrl, hasUrlParam, partyMode, setPartyMode, isLoaded],
+    [partyMode, setPartyMode, isLoaded],
   );
 
   return <ConnectionSettingsContext.Provider value={value}>{children}</ConnectionSettingsContext.Provider>;
@@ -99,8 +81,8 @@ export function useConnectionSettings() {
 
 // Convenience hook for backwards compatibility
 export function useBackendUrl() {
-  const { backendUrl, isLoaded, hasUrlParam } = useConnectionSettings();
-  return { backendUrl, isLoaded, hasUrlParam };
+  const { backendUrl, isLoaded } = useConnectionSettings();
+  return { backendUrl, isLoaded };
 }
 
 export function usePartyMode() {

@@ -365,7 +365,6 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
         boardPath: pathname,
         createdAt: new Date().toISOString(),
         lastActivity: new Date().toISOString(),
-        backendUrl: backendUrl,
       });
 
       return newSessionId;
@@ -394,7 +393,6 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
         boardPath: pathname,
         createdAt: new Date().toISOString(),
         lastActivity: new Date().toISOString(),
-        backendUrl: backendUrl,
       });
     },
     [backendUrl, pathname, router, searchParams],
