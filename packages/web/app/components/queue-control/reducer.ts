@@ -96,8 +96,9 @@ export function queueReducer(state: QueueState, action: QueueAction): QueueState
     case 'DELTA_ADD_QUEUE_ITEM': {
       const { item, position } = action.payload;
 
-      // Skip if item already exists (prevents duplicate from optimistic update + subscription)
-      if (state.queue.some(qItem => qItem.uuid === item.uuid)) {
+      // Skip if climb already exists in queue (check by climb.uuid, not item.uuid)
+      // This makes the operation idempotent and prevents duplicate climbs
+      if (state.queue.some(qItem => qItem.climb?.uuid === item.climb?.uuid)) {
         return state;
       }
 
