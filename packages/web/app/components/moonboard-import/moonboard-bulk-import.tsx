@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useReducer, useCallback } from 'react';
-import { Upload, Button, Alert, Progress, Typography, Row, Col, Space, Empty, Result } from 'antd';
+import { Upload, Button, Alert, Progress, Typography, Row, Col, Space, Result } from 'antd';
 import { InboxOutlined, SaveOutlined, ClearOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import { parseMultipleScreenshots, deduplicateClimbs } from '@boardsesh/moonboard-ocr/browser';
 import type { MoonBoardClimb } from '@boardsesh/moonboard-ocr/browser';
+import type { RcFile } from 'antd/es/upload/interface';
 import MoonBoardImportCard from './moonboard-import-card';
 import MoonBoardEditModal from './moonboard-edit-modal';
 import { coordinateToHoldId, MOONBOARD_HOLD_STATES } from '@/app/lib/moonboard-config';
@@ -133,7 +134,7 @@ export default function MoonBoardBulkImport({
   const [state, dispatch] = useReducer(importReducer, initialState);
 
   const handleFilesUpload = useCallback(
-    async (fileList: File[]) => {
+    async (fileList: RcFile[]) => {
       if (fileList.length === 0) return;
 
       dispatch({ type: 'START_PROCESSING', total: fileList.length });
@@ -168,24 +169,28 @@ export default function MoonBoardBulkImport({
   const handleSaveAll = useCallback(() => {
     if (state.climbs.length === 0) return;
 
-    // Save all climbs to localStorage
-    const existingClimbs = JSON.parse(localStorage.getItem('moonboard_climbs') || '[]');
+    try {
+      // Save all climbs to localStorage
+      const existingClimbs = JSON.parse(localStorage.getItem('moonboard_climbs') || '[]');
 
-    const newClimbs = state.climbs.map((climb) => ({
-      name: climb.name,
-      description: `Setter: ${climb.setter}\nGrade: ${climb.userGrade}${climb.isBenchmark ? '\n(Benchmark)' : ''}`,
-      holds: climb.holds,
-      angle: climb.angle,
-      layoutFolder,
-      createdAt: new Date().toISOString(),
-      importedFrom: climb.sourceFile,
-    }));
+      const newClimbs = state.climbs.map((climb) => ({
+        name: climb.name,
+        description: `Setter: ${climb.setter}\nGrade: ${climb.userGrade}${climb.isBenchmark ? '\n(Benchmark)' : ''}`,
+        holds: climb.holds,
+        angle: climb.angle,
+        layoutFolder,
+        createdAt: new Date().toISOString(),
+        importedFrom: climb.sourceFile,
+      }));
 
-    localStorage.setItem('moonboard_climbs', JSON.stringify([...existingClimbs, ...newClimbs]));
+      localStorage.setItem('moonboard_climbs', JSON.stringify([...existingClimbs, ...newClimbs]));
 
-    // Show success and reset
-    dispatch({ type: 'RESET' });
-    router.back();
+      // Show success and reset
+      dispatch({ type: 'RESET' });
+      router.back();
+    } catch (error) {
+      console.error('Failed to save climbs to localStorage:', error);
+    }
   }, [state.climbs, layoutFolder, router]);
 
   const handleRemoveClimb = useCallback((sourceFile: string) => {
@@ -233,7 +238,7 @@ export default function MoonBoardBulkImport({
             beforeUpload={(file, fileList) => {
               // Only process when all files are ready
               if (file === fileList[0]) {
-                handleFilesUpload(fileList as unknown as File[]);
+                handleFilesUpload(fileList);
               }
               return false;
             }}

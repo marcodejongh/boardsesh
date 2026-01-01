@@ -4,8 +4,16 @@ import { Command } from 'commander';
 import fs from 'fs/promises';
 import path from 'path';
 import { parseScreenshot, parseMultipleScreenshots, deduplicateClimbs } from './parser.js';
-import { extractFrames, isVideoFile, isImageFile } from './video.js';
 import { MoonBoardClimb } from './types.js';
+
+/**
+ * Check if a file is an image based on extension
+ */
+function isImageFile(filePath: string): boolean {
+  const imageExtensions = ['.png', '.jpg', '.jpeg', '.webp', '.bmp', '.tiff'];
+  const ext = path.extname(filePath).toLowerCase();
+  return imageExtensions.includes(ext);
+}
 
 const program = new Command();
 
@@ -17,11 +25,8 @@ program
 // Parse command - main entry point
 program
   .command('parse <input>')
-  .description('Parse MoonBoard screenshot(s) or video and extract climb data')
+  .description('Parse MoonBoard screenshot(s) and extract climb data')
   .option('-o, --output <file>', 'Output JSON file', 'climbs.json')
-  .option('-i, --interval <seconds>', 'Frame extraction interval for videos', '2')
-  .option('--frames-dir <dir>', 'Directory to store extracted frames', './frames')
-  .option('--keep-frames', 'Keep extracted frames after processing', false)
   .option('--no-dedupe', 'Skip deduplication of climbs')
   .action(async (input: string, options) => {
     try {
@@ -39,26 +44,11 @@ program
           .map((f) => path.join(inputPath, f))
           .sort();
         console.log(`Found ${imagePaths.length} image files`);
-      } else if (isVideoFile(inputPath)) {
-        // Extract frames from video first
-        console.log('Extracting frames from video...');
-        const framesDir = path.resolve(options.framesDir);
-        const interval = parseInt(options.interval, 10);
-
-        imagePaths = await extractFrames({
-          inputPath,
-          outputDir: framesDir,
-          intervalSeconds: interval,
-          onProgress: (percent) => {
-            process.stdout.write(`\rExtracting frames: ${percent.toFixed(1)}%`);
-          },
-        });
-        console.log(`\nExtracted ${imagePaths.length} frames`);
       } else if (isImageFile(inputPath)) {
         // Single image
         imagePaths = [inputPath];
       } else {
-        console.error('Input must be an image, video, or directory of images');
+        console.error('Input must be an image or directory of images');
         process.exit(1);
       }
 
@@ -97,44 +87,6 @@ program
       await fs.writeFile(outputPath, JSON.stringify(finalClimbs, null, 2));
       console.log(`\nOutput written to: ${outputPath}`);
       console.log(`Total climbs extracted: ${finalClimbs.length}`);
-
-      // Cleanup frames if requested
-      if (isVideoFile(inputPath) && !options.keepFrames) {
-        console.log('Cleaning up temporary frames...');
-        await fs.rm(path.resolve(options.framesDir), { recursive: true, force: true });
-      }
-    } catch (error) {
-      console.error('Error:', error instanceof Error ? error.message : error);
-      process.exit(1);
-    }
-  });
-
-// Extract frames command - for manual workflow
-program
-  .command('extract-frames <video>')
-  .description('Extract frames from a video file')
-  .option('-o, --output <dir>', 'Output directory for frames', './frames')
-  .option('-i, --interval <seconds>', 'Extraction interval in seconds', '2')
-  .action(async (video: string, options) => {
-    try {
-      const inputPath = path.resolve(video);
-      const outputDir = path.resolve(options.output);
-      const interval = parseInt(options.interval, 10);
-
-      console.log(`Extracting frames from: ${video}`);
-      console.log(`Output directory: ${outputDir}`);
-      console.log(`Interval: ${interval} seconds`);
-
-      const frames = await extractFrames({
-        inputPath,
-        outputDir,
-        intervalSeconds: interval,
-        onProgress: (percent) => {
-          process.stdout.write(`\rProgress: ${percent.toFixed(1)}%`);
-        },
-      });
-
-      console.log(`\nExtracted ${frames.length} frames to ${outputDir}`);
     } catch (error) {
       console.error('Error:', error instanceof Error ? error.message : error);
       process.exit(1);

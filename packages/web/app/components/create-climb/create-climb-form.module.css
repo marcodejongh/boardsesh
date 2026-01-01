@@ -200,6 +200,12 @@
   }
 }
 
+/* Validation hint text */
+.validationHint {
+  margin-top: 8px;
+  display: block;
+}
+
 /* Desktop adjustments */
 @media (min-width: 768px) {
   .boardContainer {

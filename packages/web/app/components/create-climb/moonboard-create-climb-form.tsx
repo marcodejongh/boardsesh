@@ -165,9 +165,13 @@ export default function MoonBoardCreateClimbForm({
       };
 
       // For now, save to localStorage (database integration coming later)
-      const existingClimbs = JSON.parse(localStorage.getItem('moonboard_climbs') || '[]');
-      existingClimbs.push(climbData);
-      localStorage.setItem('moonboard_climbs', JSON.stringify(existingClimbs));
+      try {
+        const existingClimbs = JSON.parse(localStorage.getItem('moonboard_climbs') || '[]');
+        existingClimbs.push(climbData);
+        localStorage.setItem('moonboard_climbs', JSON.stringify(existingClimbs));
+      } catch (error) {
+        console.error('Failed to save climb to localStorage:', error);
+      }
 
       console.log('MoonBoard climb saved:', climbData);
       setSaveSuccess(true);
@@ -282,7 +286,7 @@ export default function MoonBoardCreateClimbForm({
           </div>
 
           {!isValid && totalHolds > 0 && (
-            <Text type="secondary" style={{ marginTop: 8, display: 'block' }}>
+            <Text type="secondary" className={styles.validationHint}>
               A valid climb needs at least 1 start hold and 1 finish hold
             </Text>
           )}
