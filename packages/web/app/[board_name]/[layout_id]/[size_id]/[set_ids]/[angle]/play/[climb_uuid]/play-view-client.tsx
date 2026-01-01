@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { Button, Empty } from 'antd';
+import { Button, Empty, Badge } from 'antd';
 import { LeftOutlined, RightOutlined, InstagramOutlined } from '@ant-design/icons';
 import { useSwipeable } from 'react-swipeable';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -13,6 +13,7 @@ import ClimbTitle from '@/app/components/climb-card/climb-title';
 import { constructClimbListWithSlugs, constructPlayUrlWithSlugs } from '@/app/lib/url-utils';
 import { themeTokens } from '@/app/theme/theme-config';
 import InstagramDrawer from '@/app/components/instagram-drawer/instagram-drawer';
+import { useBetaCount } from '@/app/components/instagram-drawer/use-beta-count';
 import styles from './play-view.module.css';
 
 type PlayViewClientProps = {
@@ -42,6 +43,11 @@ const PlayViewClient: React.FC<PlayViewClientProps> = ({ boardDetails, initialCl
 
   // Use queue's current climb if available, otherwise use initial climb from SSR
   const displayClimb = currentClimb || initialClimb;
+
+  const betaCount = useBetaCount({
+    climbUuid: displayClimb?.uuid,
+    boardName: boardDetails.board_name,
+  });
 
   // Hide swipe hint after first interaction
   useEffect(() => {
@@ -188,18 +194,20 @@ const PlayViewClient: React.FC<PlayViewClientProps> = ({ boardDetails, initialCl
           <div style={{ flex: 1, minWidth: 0 }}>
             <ClimbTitle climb={displayClimb} layout="horizontal" showSetterInfo />
           </div>
-          <Button
-            type="text"
-            icon={<InstagramOutlined />}
-            onClick={() => {
-              setIsInstagramDrawerOpen(true);
-              track('Instagram Drawer Opened', {
-                source: 'play-screen',
-                boardLayout: boardDetails.layout_name || '',
-              });
-            }}
-            aria-label="View beta videos"
-          />
+          <Badge count={betaCount ?? 0} size="small" offset={[-4, 4]}>
+            <Button
+              type="text"
+              icon={<InstagramOutlined />}
+              onClick={() => {
+                setIsInstagramDrawerOpen(true);
+                track('Instagram Drawer Opened', {
+                  source: 'play-screen',
+                  boardLayout: boardDetails.layout_name || '',
+                });
+              }}
+              aria-label="View beta videos"
+            />
+          </Badge>
         </div>
         <div {...swipeHandlers} className={styles.swipeContainer}>
           {/* Swipe indicators */}
