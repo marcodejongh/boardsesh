@@ -1,7 +1,14 @@
 import React from 'react';
 
 import { notFound, permanentRedirect } from 'next/navigation';
-import { BoardRouteParametersWithUuid, SearchRequestPagination, BoardDetails } from '@/app/lib/types';
+import { Metadata } from 'next';
+import {
+  BoardRouteParametersWithUuid,
+  SearchRequestPagination,
+  BoardDetails,
+  BoardRouteParameters,
+  ParsedBoardRouteParameters,
+} from '@/app/lib/types';
 import {
   parseBoardRouteParams,
   parsedRouteSearchParamsToSearchParams,
@@ -13,6 +20,104 @@ import { cachedSearchClimbs } from '@/app/lib/graphql/server-cached-client';
 import { SEARCH_CLIMBS, type ClimbSearchResponse } from '@/app/lib/graphql/operations/climb-search';
 import { getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
 import { MAX_PAGE_SIZE } from '@/app/components/board-page/constants';
+
+/**
+ * Generates a user-friendly board description for metadata
+ */
+function generateBoardDescription(boardDetails: BoardDetails, angle: number): string {
+  const boardName = boardDetails.board_name.charAt(0).toUpperCase() + boardDetails.board_name.slice(1);
+  const layoutName = boardDetails.layout_name || '';
+  const sizeName = boardDetails.size_name || boardDetails.size_description || '';
+
+  return `Browse climbs on ${boardName} ${layoutName} ${sizeName} at ${angle}°. Find routes by grade, setter, and more.`.trim();
+}
+
+/**
+ * Generates a user-friendly page title from board details
+ */
+function generateBoardTitle(boardDetails: BoardDetails): string {
+  const parts: string[] = [];
+
+  const boardName = boardDetails.board_name.charAt(0).toUpperCase() + boardDetails.board_name.slice(1);
+  parts.push(boardName);
+
+  if (boardDetails.layout_name) {
+    const layoutName = boardDetails.layout_name
+      .replace(new RegExp(`^${boardDetails.board_name}\\s*(board)?\\s*`, 'i'), '')
+      .trim();
+    if (layoutName) {
+      parts.push(layoutName);
+    }
+  }
+
+  if (boardDetails.size_name) {
+    const sizeMatch = boardDetails.size_name.match(/(\d+)\s*x\s*(\d+)/i);
+    if (sizeMatch) {
+      parts.push(`${sizeMatch[1]}x${sizeMatch[2]}`);
+    } else {
+      parts.push(boardDetails.size_name);
+    }
+  } else if (boardDetails.size_description) {
+    parts.push(boardDetails.size_description);
+  }
+
+  return parts.join(' ');
+}
+
+export async function generateMetadata(props: {
+  params: Promise<BoardRouteParameters>;
+}): Promise<Metadata> {
+  const params = await props.params;
+
+  try {
+    const hasNumericParams = [params.layout_id, params.size_id, params.set_ids].some((param) =>
+      param.includes(',') ? param.split(',').every((id) => /^\d+$/.test(id.trim())) : /^\d+$/.test(param),
+    );
+
+    let parsedParams: ParsedBoardRouteParameters;
+
+    if (hasNumericParams) {
+      parsedParams = parseBoardRouteParams(params);
+    } else {
+      parsedParams = await parseBoardRouteParamsWithSlugs(params);
+    }
+
+    const boardDetails = await getBoardDetails(parsedParams);
+    const boardTitle = generateBoardTitle(boardDetails);
+    const title = `${boardTitle} Climbs | Boardsesh`;
+    const description = generateBoardDescription(boardDetails, parsedParams.angle);
+
+    const listUrl = constructClimbListWithSlugs(
+      boardDetails.board_name,
+      boardDetails.layout_name || '',
+      boardDetails.size_name || '',
+      boardDetails.size_description,
+      boardDetails.set_names || [],
+      parsedParams.angle,
+    );
+
+    return {
+      title,
+      description,
+      openGraph: {
+        title: `${boardTitle} Climbs`,
+        description,
+        type: 'website',
+        url: `https://boardsesh.com${listUrl}`,
+      },
+      twitter: {
+        card: 'summary',
+        title: `${boardTitle} Climbs`,
+        description,
+      },
+    };
+  } catch {
+    return {
+      title: 'Browse Climbs | Boardsesh',
+      description: 'Browse and search climbing routes on your LED training board',
+    };
+  }
+}
 
 export default async function DynamicResultsPage(props: {
   params: Promise<BoardRouteParametersWithUuid>;
