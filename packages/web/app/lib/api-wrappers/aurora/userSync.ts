@@ -27,12 +27,9 @@ export async function userSync(
   });
 
   const requestBody = searchParams.toString();
-  console.log('requestBody', requestBody);
 
   const webUrl = `${WEB_HOSTS[board]}/sync`;
   const hostName = new URL(webUrl).hostname;
-  console.log(`Calling user sync endpoint: ${webUrl}`);
-  console.log(`Token length: ${token?.length}, Token prefix: ${token?.substring(0, 10)}...`);
 
   // Match headers from AuroraClimbingClient for consistency with login request
   // Explicitly set Host header in case Vercel's fetch doesn't set it correctly
@@ -47,8 +44,6 @@ export async function userSync(
     Cookie: `token=${token}`,
   };
 
-  console.log('Request headers:', JSON.stringify(headers, null, 2));
-
   const response = await fetch(webUrl, {
     method: 'POST',
     cache: 'no-store',
@@ -57,12 +52,9 @@ export async function userSync(
     body: requestBody,
   });
 
-  console.log(`Response status: ${response.status} ${response.statusText}`);
-  console.log('Response headers:', JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2));
-
   if (!response.ok) {
     const errorText = await response.text();
-    console.error('Error response body:', errorText);
+    console.error(`User sync failed for ${board}: ${response.status}`, errorText);
     throw new Error(`HTTP error! status: ${response.status}`);
   }
 

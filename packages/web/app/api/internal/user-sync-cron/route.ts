@@ -168,20 +168,6 @@ export async function GET(request: Request) {
 
         token = loginResponse.token;
 
-        // DEBUG: Test with static env var token to compare
-        const STATIC_TOKENS: Record<string, string | undefined> = {
-          kilter: process.env.KILTER_SYNC_TOKEN,
-          tension: process.env.TENSION_SYNC_TOKEN,
-        };
-        const staticToken = STATIC_TOKENS[boardType];
-        if (staticToken) {
-          console.log(`[User Sync Cron] DEBUG: Also have static token available, length: ${staticToken.length}, prefix: ${staticToken.substring(0, 10)}...`);
-          console.log(`[User Sync Cron] DEBUG: Dynamic token from login, length: ${token.length}, prefix: ${token.substring(0, 10)}...`);
-          // Try with static token instead to see if that works
-          console.log(`[User Sync Cron] DEBUG: Using STATIC token instead of dynamic token for testing`);
-          token = staticToken;
-        }
-
         // Update the stored token
         const encryptedToken = encrypt(token);
         const tokenUpdateClient = await pool.connect();

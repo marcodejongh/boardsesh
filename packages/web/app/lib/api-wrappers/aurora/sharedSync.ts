@@ -44,11 +44,9 @@ export async function sharedSync(
   });
 
   const requestBody = searchParams.toString();
-  console.log('Shared sync request body:', requestBody);
 
   const webUrl = `${WEB_HOSTS[board]}/sync`;
   const hostName = new URL(webUrl).hostname;
-  console.log(`Calling sync endpoint: ${webUrl}`);
 
   // Match headers from AuroraClimbingClient for consistency
   // Explicitly set Host header in case Vercel's fetch doesn't set it correctly
@@ -73,6 +71,5 @@ export async function sharedSync(
 
   if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
-  console.log(`Shared sync successful with status: ${response.status}`);
   return response.json();
 }
