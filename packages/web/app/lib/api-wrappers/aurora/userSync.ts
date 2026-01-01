@@ -13,28 +13,31 @@ export async function userSync(
 
   // Try multiple sync endpoints
 
-  // Build URL-encoded form data - Aurora expects this format!
-  const params: string[] = [];
+  // Build URL-encoded form data using URLSearchParams for proper encoding
+  const searchParams = new URLSearchParams();
 
   // Add shared sync timestamps
   sharedSyncs.forEach((sync) => {
-    params.push(`${encodeURIComponent(sync.table_name)}=${encodeURIComponent(sync.last_synchronized_at)}`);
+    searchParams.append(sync.table_name, sync.last_synchronized_at);
   });
 
   // Add user sync timestamps
   userSyncs.forEach((sync) => {
-    params.push(`${encodeURIComponent(sync.table_name)}=${encodeURIComponent(sync.last_synchronized_at)}`);
+    searchParams.append(sync.table_name, sync.last_synchronized_at);
   });
 
-  const requestBody = params.join('&');
+  const requestBody = searchParams.toString();
   console.log('requestBody', requestBody);
 
   const webUrl = `${WEB_HOSTS[board]}/sync`;
+  const hostName = new URL(webUrl).hostname;
   console.log(`Calling user sync endpoint: ${webUrl}`);
   console.log(`Token length: ${token?.length}, Token prefix: ${token?.substring(0, 10)}...`);
 
   // Match headers from AuroraClimbingClient for consistency with login request
+  // Explicitly set Host header in case Vercel's fetch doesn't set it correctly
   const headers = {
+    Host: hostName,
     Accept: 'application/json',
     'Content-Type': 'application/x-www-form-urlencoded',
     Connection: 'keep-alive',
@@ -49,6 +52,7 @@ export async function userSync(
   const response = await fetch(webUrl, {
     method: 'POST',
     cache: 'no-store',
+    next: { revalidate: 0 }, // Ensure no Vercel/Next.js caching
     headers,
     body: requestBody,
   });

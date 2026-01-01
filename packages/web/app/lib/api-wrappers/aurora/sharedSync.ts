@@ -13,9 +13,7 @@ export async function sharedSync(
 
   // Try multiple sync endpoints for shared sync
 
-  // Build URL-encoded form data - Aurora expects this format!
-  const params: string[] = [];
-
+  // Build URL-encoded form data using URLSearchParams for proper encoding
   // Add shared sync timestamps - matching Android app's table order
   const orderedTables = [
     'products',
@@ -39,19 +37,23 @@ export async function sharedSync(
   const syncMap = new Map(sharedSyncs.map((s) => [s.table_name, s.last_synchronized_at]));
 
   // Add parameters in the same order as Android app
+  const searchParams = new URLSearchParams();
   orderedTables.forEach((tableName) => {
     const timestamp = syncMap.get(tableName) || '1970-01-01 00:00:00.000000';
-    params.push(`${encodeURIComponent(tableName)}=${encodeURIComponent(timestamp)}`);
+    searchParams.append(tableName, timestamp);
   });
 
-  const requestBody = params.join('&');
+  const requestBody = searchParams.toString();
   console.log('Shared sync request body:', requestBody);
 
   const webUrl = `${WEB_HOSTS[board]}/sync`;
+  const hostName = new URL(webUrl).hostname;
   console.log(`Calling sync endpoint: ${webUrl}`);
 
   // Match headers from AuroraClimbingClient for consistency
+  // Explicitly set Host header in case Vercel's fetch doesn't set it correctly
   const headers = {
+    Host: hostName,
     Accept: 'application/json',
     'Content-Type': 'application/x-www-form-urlencoded',
     Connection: 'keep-alive',
@@ -65,6 +67,7 @@ export async function sharedSync(
     method: 'POST',
     headers,
     cache: 'no-store',
+    next: { revalidate: 0 }, // Ensure no Vercel/Next.js caching
     body: requestBody,
   });
 
