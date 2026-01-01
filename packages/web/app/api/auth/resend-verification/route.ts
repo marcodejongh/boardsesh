@@ -24,18 +24,13 @@ export async function POST(request: NextRequest) {
       .where(eq(schema.users.email, email))
       .limit(1);
 
-    if (user.length === 0) {
-      // Don't reveal if user exists - return success anyway
-      return NextResponse.json(
-        { message: "If an account exists, a verification email will be sent" },
-        { status: 200 }
-      );
-    }
+    // Don't reveal user status - return same message for all cases
+    const genericMessage = "If an account exists and needs verification, a verification email will be sent";
 
-    if (user[0].emailVerified) {
+    if (user.length === 0 || user[0].emailVerified) {
       return NextResponse.json(
-        { error: "Email is already verified" },
-        { status: 400 }
+        { message: genericMessage },
+        { status: 200 }
       );
     }
 

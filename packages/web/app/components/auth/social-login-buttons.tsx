@@ -3,6 +3,10 @@
 import React from 'react';
 import { Button, Space } from 'antd';
 import { signIn } from 'next-auth/react';
+import { themeTokens } from '@/app/theme/theme-config';
+
+// Note: OAuth provider icons and button colors use brand-specific colors
+// per Google/Apple/Facebook brand guidelines, not design system tokens
 
 const GoogleIcon = () => (
   <svg viewBox="0 0 24 24" width="16" height="16">
@@ -73,9 +77,9 @@ export default function SocialLoginButtons({
           alignItems: 'center',
           justifyContent: 'center',
           gap: 8,
-          backgroundColor: '#000',
-          color: '#fff',
-          borderColor: '#000',
+          backgroundColor: themeTokens.neutral[900],
+          color: themeTokens.semantic.surface,
+          borderColor: themeTokens.neutral[900],
         }}
       >
         <AppleIcon />
