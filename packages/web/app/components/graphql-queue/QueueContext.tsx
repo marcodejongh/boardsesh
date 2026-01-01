@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { useQueueReducer } from '../queue-control/reducer';
 import { useQueueDataFetching } from '../queue-control/hooks/use-queue-data-fetching';
 import { QueueContextType, ClimbQueueItem, UserName, QueueItemUser } from '../queue-control/types';
-import { urlParamsToSearchParams, searchParamsToUrlParams } from '@/app/lib/url-utils';
+import { urlParamsToSearchParams, searchParamsToUrlParams, getBaseBoardPath } from '@/app/lib/url-utils';
 import { Climb, ParsedBoardRouteParameters, BoardDetails } from '@/app/lib/types';
 import { useConnectionSettings } from '../connection-manager/connection-settings-context';
 import { usePartyProfile } from '../party-manager/party-profile-context';
@@ -110,9 +110,13 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
   // Session ID for connection - only connect if we have an active session
   const sessionId = activeSessionId;
 
+  // Compute base board path for session comparison (excludes /play/[uuid] segments)
+  const baseBoardPath = useMemo(() => getBaseBoardPath(pathname), [pathname]);
+
   // Check if persistent session is active for this board
+  // Uses baseBoardPath to ensure navigation between climbs doesn't break the session check
   const isPersistentSessionActive = persistentSession.activeSession?.sessionId === sessionId &&
-    persistentSession.activeSession?.boardPath === pathname;
+    persistentSession.activeSession?.boardPath === baseBoardPath;
 
   // Build current user info for queue items
   const currentUserInfo: QueueItemUser | undefined = useMemo(() => {
@@ -151,8 +155,9 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
     if (isPersistentSessionActive || sessionId) return;
 
     // Check if we have saved local queue for this board path
+    // Use baseBoardPath for comparison to handle navigation between climbs
     if (
-      persistentSession.localBoardPath === pathname &&
+      persistentSession.localBoardPath === baseBoardPath &&
       (persistentSession.localQueue.length > 0 || persistentSession.localCurrentClimbQueueItem)
     ) {
       dispatch({
@@ -169,10 +174,11 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
 
   // Clear local queue if navigating to a different board configuration
   useEffect(() => {
-    if (persistentSession.localBoardPath && persistentSession.localBoardPath !== pathname) {
+    // Use baseBoardPath to avoid clearing queue when just navigating between climbs
+    if (persistentSession.localBoardPath && persistentSession.localBoardPath !== baseBoardPath) {
       persistentSession.clearLocalQueue();
     }
-  }, [pathname, persistentSession]);
+  }, [baseBoardPath, persistentSession]);
 
   // Sync queue changes to local queue when not in party mode
   useEffect(() => {
@@ -180,16 +186,17 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
     if (isPersistentSessionActive || sessionId) return;
 
     // Sync queue state to persistent session for local storage
+    // Use baseBoardPath to ensure consistent path storage across navigation
     persistentSession.setLocalQueueState(
       state.queue,
       state.currentClimbQueueItem,
-      pathname,
+      baseBoardPath,
       boardDetails,
     );
   }, [
     state.queue,
     state.currentClimbQueueItem,
-    pathname,
+    baseBoardPath,
     boardDetails,
     isPersistentSessionActive,
     sessionId,
