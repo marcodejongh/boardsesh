@@ -4,6 +4,12 @@ import { getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
 import { parseBoardRouteParams } from '@/app/lib/url-utils';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import CreateClimbForm from '@/app/components/create-climb/create-climb-form';
+import MoonBoardCreateClimbForm from '@/app/components/create-climb/moonboard-create-climb-form';
+import {
+  MOONBOARD_LAYOUTS,
+  MOONBOARD_SETS,
+  MoonBoardLayoutKey,
+} from '@/app/lib/moonboard-config';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -14,6 +20,20 @@ export const metadata: Metadata = {
 interface CreateClimbPageProps {
   params: Promise<BoardRouteParameters>;
   searchParams: Promise<{ forkFrames?: string; forkName?: string }>;
+}
+
+// Helper to get MoonBoard layout info from layout ID
+function getMoonBoardLayoutInfo(layoutId: number) {
+  const entry = Object.entries(MOONBOARD_LAYOUTS).find(([, layout]) => layout.id === layoutId);
+  if (!entry) return null;
+  const [layoutKey, layout] = entry;
+  return { layoutKey: layoutKey as MoonBoardLayoutKey, ...layout };
+}
+
+// Helper to get MoonBoard hold set images from set IDs
+function getMoonBoardHoldSetImages(layoutKey: MoonBoardLayoutKey, setIds: number[]): string[] {
+  const sets = MOONBOARD_SETS[layoutKey] || [];
+  return sets.filter((s) => setIds.includes(s.id)).map((s) => s.imageFile);
 }
 
 export default async function CreateClimbPage(props: CreateClimbPageProps) {
@@ -32,6 +52,26 @@ export default async function CreateClimbPage(props: CreateClimbPageProps) {
     parsedParams = await parseBoardRouteParamsWithSlugs(params);
   }
 
+  // Handle MoonBoard separately (no database, different renderer)
+  if (parsedParams.board_name === 'moonboard') {
+    const layoutInfo = getMoonBoardLayoutInfo(parsedParams.layout_id);
+    if (!layoutInfo) {
+      return <div>Invalid MoonBoard layout</div>;
+    }
+
+    const holdSetImages = getMoonBoardHoldSetImages(layoutInfo.layoutKey, parsedParams.set_ids);
+
+    return (
+      <MoonBoardCreateClimbForm
+        layoutFolder={layoutInfo.folder}
+        layoutName={layoutInfo.name}
+        holdSetImages={holdSetImages}
+        angle={parsedParams.angle}
+      />
+    );
+  }
+
+  // Aurora boards (kilter, tension) - use database
   const boardDetails = await getBoardDetails(parsedParams);
 
   return (

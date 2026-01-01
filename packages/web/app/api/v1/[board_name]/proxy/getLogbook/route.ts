@@ -1,14 +1,15 @@
 // app/api/login/route.ts
 import { getLogbook } from '@/app/lib/data/get-logbook';
 import { getSession } from '@/app/lib/session';
-import { BoardName, BoardOnlyRouteParameters } from '@/app/lib/types';
+import { BoardOnlyRouteParameters, BoardName } from '@/app/lib/types';
+import { AuroraBoardName } from '@/app/lib/api-wrappers/aurora/types';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 export async function POST(request: Request, props: { params: Promise<BoardOnlyRouteParameters> }) {
   const params = await props.params;
-  const board_name = params.board_name as BoardName;
+  const board_name = params.board_name as AuroraBoardName;
   try {
     // Parse and validate request body
     const validatedData = await request.json();

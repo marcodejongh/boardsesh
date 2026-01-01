@@ -1,8 +1,7 @@
-import { BoardName } from '../../types';
-import { WEB_HOSTS } from './types';
+import { WEB_HOSTS, AuroraBoardName } from './types';
 
- 
-export async function getClimbName(board: BoardName, climbId: string): Promise<string | null> {
+
+export async function getClimbName(board: AuroraBoardName, climbId: string): Promise<string | null> {
   const response = await fetch(`${WEB_HOSTS[board]}/climbs/${climbId}`);
   if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
   const text = await response.text();

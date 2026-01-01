@@ -1,6 +1,13 @@
 import { BoardName, BoardDetails } from '@/app/lib/types';
 import { LayoutRow, SizeRow, SetRow } from '@/app/lib/data/queries';
 import { getBoardDetails, getBoardSelectorOptions } from '@/app/lib/__generated__/product-sizes-data';
+import {
+  MOONBOARD_ENABLED,
+  MOONBOARD_LAYOUTS,
+  MOONBOARD_SETS,
+  MOONBOARD_SIZE,
+  MoonBoardLayoutKey,
+} from '@/app/lib/moonboard-config';
 
 export type BoardConfigData = {
   layouts: Record<BoardName, LayoutRow[]>;
@@ -19,6 +26,41 @@ export async function getAllBoardConfigs(): Promise<BoardConfigData> {
     sets: selectorOptions.sets,
     details: {},
   };
+
+  // Add MoonBoard configurations if enabled
+  if (MOONBOARD_ENABLED) {
+    // Add moonboard layouts
+    configData.layouts.moonboard = Object.entries(MOONBOARD_LAYOUTS).map(([, layout]) => ({
+      id: layout.id,
+      name: layout.name,
+    }));
+
+    // Add sizes for each moonboard layout (same size for all)
+    Object.entries(MOONBOARD_LAYOUTS).forEach(([, layout]) => {
+      const sizeKey = `moonboard-${layout.id}`;
+      configData.sizes[sizeKey] = [
+        {
+          id: MOONBOARD_SIZE.id,
+          name: MOONBOARD_SIZE.name,
+          description: MOONBOARD_SIZE.description,
+        },
+      ];
+
+      // Add sets for each layout-size combination
+      const layoutKey = Object.entries(MOONBOARD_LAYOUTS).find(
+        ([, l]) => l.id === layout.id,
+      )?.[0] as MoonBoardLayoutKey | undefined;
+
+      if (layoutKey) {
+        const sets = MOONBOARD_SETS[layoutKey] || [];
+        const setKey = `moonboard-${layout.id}-${MOONBOARD_SIZE.id}`;
+        configData.sets[setKey] = sets.map((s) => ({
+          id: s.id,
+          name: s.name,
+        }));
+      }
+    });
+  }
 
   // Fetch board details for common configurations
   const commonConfigs = [

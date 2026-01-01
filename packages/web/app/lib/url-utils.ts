@@ -288,6 +288,20 @@ export const constructClimbListWithSlugs = (
   return `/${board_name}/${layoutSlug}/${sizeSlug}/${setSlug}/${angle}/list`;
 };
 
+export const constructCreateClimbWithSlugs = (
+  board_name: string,
+  layoutName: string,
+  sizeName: string,
+  sizeDescription: string | undefined,
+  setNames: string[],
+  angle: number,
+) => {
+  const layoutSlug = generateLayoutSlug(layoutName);
+  const sizeSlug = generateSizeSlug(sizeName, sizeDescription);
+  const setSlug = generateSetSlug(setNames);
+  return `/${board_name}/${layoutSlug}/${sizeSlug}/${setSlug}/${angle}/create`;
+};
+
 export const generateClimbSlug = (climbName: string): string => {
   return climbName
     .toLowerCase()

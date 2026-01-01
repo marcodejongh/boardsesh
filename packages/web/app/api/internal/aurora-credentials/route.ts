@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
     const { boardType, username, password } = validationResult.data;
 
     // First, verify credentials by attempting login
-    const auroraClient = new AuroraClimbingClient({ boardName: boardType as BoardName });
+    const auroraClient = new AuroraClimbingClient({ boardName: boardType as AuroraBoardName });
     let loginResponse;
     try {
       loginResponse = await auroraClient.signIn(username, password);
