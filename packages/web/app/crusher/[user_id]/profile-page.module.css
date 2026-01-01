@@ -60,6 +60,26 @@
   margin: 0 !important;
 }
 
+.instagramLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px; /* spacing between icon and text */
+  color: #E1306C; /* Instagram brand color */
+  font-size: 14px;
+  margin-top: 4px;
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+}
+
+.instagramLink:hover {
+  opacity: 0.8;
+  text-decoration: none;
+}
+
+.instagramIcon {
+  font-size: 16px;
+}
+
 .statsCard {
   margin-bottom: 24px; /* spacing.6 */
 }

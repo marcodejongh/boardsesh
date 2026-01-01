@@ -25,6 +25,7 @@ export const userProfiles = pgTable("user_profiles", {
     .references(() => users.id, { onDelete: "cascade" }),
   displayName: text("display_name"), // Custom display name (optional, falls back to users.name)
   avatarUrl: text("avatar_url"), // URL to avatar image (S3 or external)
+  instagramUrl: text("instagram_url"), // Instagram profile URL (optional)
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

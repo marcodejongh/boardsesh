@@ -14,7 +14,7 @@ import {
   DatePicker,
   message,
 } from 'antd';
-import { UserOutlined } from '@ant-design/icons';
+import { UserOutlined, InstagramOutlined } from '@ant-design/icons';
 import { useSession } from 'next-auth/react';
 import Logo from '@/app/components/brand/logo';
 import BackButton from '@/app/components/back-button';
@@ -52,6 +52,7 @@ interface UserProfile {
   profile: {
     displayName: string | null;
     avatarUrl: string | null;
+    instagramUrl: string | null;
   } | null;
 }
 
@@ -543,6 +544,7 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
 
   const displayName = profile?.profile?.displayName || profile?.name || 'Crusher';
   const avatarUrl = profile?.profile?.avatarUrl || profile?.image;
+  const instagramUrl = profile?.profile?.instagramUrl;
 
   // Board options are now available for all users (no Aurora credentials required)
   const boardOptions = BOARD_TYPES.map((boardType) => ({
@@ -587,6 +589,17 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
               </Title>
               {isOwnProfile && (
                 <Text type="secondary">{profile?.email}</Text>
+              )}
+              {instagramUrl && (
+                <a
+                  href={instagramUrl.startsWith('http') ? instagramUrl : `https://${instagramUrl}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.instagramLink}
+                >
+                  <InstagramOutlined className={styles.instagramIcon} />
+                  <span>{instagramUrl.replace(/^https?:\/\/(www\.)?instagram\.com\//, '@').replace(/\/$/, '')}</span>
+                </a>
               )}
             </div>
           </div>

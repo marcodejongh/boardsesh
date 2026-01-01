@@ -9,6 +9,7 @@ import { authOptions } from "@/app/lib/auth/auth-options";
 const updateProfileSchema = z.object({
   displayName: z.string().max(100, "Display name must be less than 100 characters").optional().nullable(),
   avatarUrl: z.string().url("Invalid avatar URL").optional().nullable(),
+  instagramUrl: z.string().url("Invalid Instagram URL").optional().nullable(),
 });
 
 export async function GET() {
@@ -51,6 +52,7 @@ export async function GET() {
         ? {
             displayName: profile.displayName,
             avatarUrl: profile.avatarUrl,
+            instagramUrl: profile.instagramUrl,
           }
         : null,
     });
@@ -79,7 +81,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const { displayName, avatarUrl } = validationResult.data;
+    const { displayName, avatarUrl, instagramUrl } = validationResult.data;
     const db = getDb();
 
     // Check if profile exists
@@ -98,6 +100,7 @@ export async function PUT(request: NextRequest) {
         .set({
           displayName: displayName ?? null,
           avatarUrl: avatarUrl ?? null,
+          instagramUrl: instagramUrl ?? null,
           updatedAt: now,
         })
         .where(eq(schema.userProfiles.userId, session.user.id));
@@ -107,6 +110,7 @@ export async function PUT(request: NextRequest) {
         userId: session.user.id,
         displayName: displayName ?? null,
         avatarUrl: avatarUrl ?? null,
+        instagramUrl: instagramUrl ?? null,
       });
     }
 
