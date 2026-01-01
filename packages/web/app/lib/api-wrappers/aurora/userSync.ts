@@ -31,19 +31,31 @@ export async function userSync(
 
   const webUrl = `${WEB_HOSTS[board]}/sync`;
   console.log(`Calling user sync endpoint: ${webUrl}`);
+  console.log(`Token length: ${token?.length}, Token prefix: ${token?.substring(0, 10)}...`);
+
+  const headers = {
+    'Content-Type': 'application/x-www-form-urlencoded',
+    'User-Agent': 'Kilter Board/202 CFNetwork/1568.100.1 Darwin/24.0.0',
+    Cookie: `token=${token}`,
+  };
+
+  console.log('Request headers:', JSON.stringify(headers, null, 2));
 
   const response = await fetch(webUrl, {
     method: 'POST',
     cache: 'no-store',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'User-Agent': 'Kilter Board/202 CFNetwork/1568.100.1 Darwin/24.0.0',
-      Cookie: `token=${token}`,
-    },
+    headers,
     body: requestBody,
   });
 
-  if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+  console.log(`Response status: ${response.status} ${response.statusText}`);
+  console.log('Response headers:', JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2));
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Error response body:', errorText);
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
 
   return response.json();
 }
