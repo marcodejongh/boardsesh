@@ -207,6 +207,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Trigger sync in background
+    let finalSyncStatus = "active";
+    let finalSyncError: string | null = null;
+
     try {
       // First sync ongoing data
       await syncUserData(boardType as BoardName, loginResponse.token, loginResponse.user_id);
@@ -219,12 +222,15 @@ export async function POST(request: NextRequest) {
       );
     } catch (syncError) {
       console.error("Sync/migration error (non-blocking):", syncError);
+      finalSyncStatus = "error";
+      finalSyncError = syncError instanceof Error ? syncError.message : "Sync/migration failed";
+
       // Update sync status to reflect error
       await db
         .update(schema.auroraCredentials)
         .set({
           syncStatus: "error",
-          syncError: syncError instanceof Error ? syncError.message : "Sync/migration failed",
+          syncError: finalSyncError,
           updatedAt: new Date(),
         })
         .where(
@@ -242,8 +248,8 @@ export async function POST(request: NextRequest) {
         auroraUsername: username,
         auroraUserId: loginResponse.user_id,
         lastSyncAt: now.toISOString(),
-        syncStatus: "active",
-        syncError: null,
+        syncStatus: finalSyncStatus,
+        syncError: finalSyncError,
         createdAt: now.toISOString(),
       },
     });
