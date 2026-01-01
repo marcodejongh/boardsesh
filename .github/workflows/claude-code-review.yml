@@ -42,12 +42,21 @@ jobs:
 
             Review this PR for issues only. Be brief and direct.
 
+            MERGE RECOMMENDATION:
+            - Start EVERY review with a short merge recommendation (1-2 sentences max)
+            - Use one of these formats:
+              - "✅ **Ready to merge** - No significant issues found."
+              - "✅ **Ready to merge** - Minor issues noted below, but nothing blocking."
+              - "⚠️ **Needs attention** - [brief summary of concerns, e.g., 'missing tests for edge cases, potential null pointer']"
+              - "❌ **Do not merge** - [brief summary of critical issues, e.g., 'security vulnerability in auth flow, breaking API change']"
+            - The recommendation should reflect the severity and count of issues found
+
             RULES:
             - ONLY report problems (bugs, security issues, performance problems, code smells)
             - Do NOT mention positives or what's done well
             - Keep feedback concise - one line per issue when possible
             - Reference specific files and line numbers
-            - Skip the review entirely if there are no significant issues (just say "No issues found")
+            - Skip the detailed review if there are no significant issues (the merge recommendation is sufficient)
 
             DOCUMENTATION CHECK:
             - Check if the PR changes any systems documented in the `docs/` directory
