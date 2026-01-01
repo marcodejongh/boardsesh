@@ -1,5 +1,9 @@
 import nodemailer, { Transporter } from 'nodemailer';
+import { z } from 'zod';
 import { themeTokens } from '@/app/theme/theme-config';
+
+// Email validation schema - validates format before using in URLs
+const emailSchema = z.string().email();
 
 // Email color palette derived from design tokens
 // These are inline styles for HTML emails, so we extract the actual hex values
@@ -50,12 +54,15 @@ export async function sendVerificationEmail(
   token: string,
   baseUrl: string
 ): Promise<void> {
-  const verifyUrl = `${baseUrl}/api/auth/verify-email?token=${token}&email=${encodeURIComponent(email)}`;
+  // Validate email format before using in URL to prevent injection
+  const validatedEmail = emailSchema.parse(email);
+
+  const verifyUrl = `${baseUrl}/api/auth/verify-email?token=${token}&email=${encodeURIComponent(validatedEmail)}`;
   const safeVerifyUrl = escapeHtml(verifyUrl);
 
   await getTransporter().sendMail({
     from: process.env.EMAIL_FROM || process.env.SMTP_USER,
-    to: email,
+    to: validatedEmail,
     subject: 'Verify your Boardsesh email',
     html: `
       <div style="font-family: ${themeTokens.typography.fontFamily}; max-width: 600px; margin: 0 auto; padding: 20px;">

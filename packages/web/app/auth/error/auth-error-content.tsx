@@ -43,15 +43,15 @@ export default function AuthErrorContent() {
   };
 
   return (
-    <Layout style={{ minHeight: '100vh', background: '#f5f5f5' }}>
+    <Layout style={{ minHeight: '100vh', background: themeTokens.semantic.background }}>
       <Header
         style={{
-          background: '#fff',
+          background: themeTokens.semantic.surface,
           padding: '0 16px',
           display: 'flex',
           alignItems: 'center',
           gap: 16,
-          boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+          boxShadow: themeTokens.shadows.xs,
         }}
       >
         <BackButton />

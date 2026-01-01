@@ -11,10 +11,14 @@ const resendVerificationSchema = z.object({
   email: z.string().email("Invalid email address"),
 });
 
+// Minimum response time to prevent timing attacks
+// Set high enough to cover typical email sending time (1-3 seconds)
+const MIN_RESPONSE_TIME_MS = 2500;
+
 // Helper to introduce consistent delay to prevent timing attacks
-async function consistentDelay(startTime: number, minDurationMs: number = 200): Promise<void> {
+async function consistentDelay(startTime: number): Promise<void> {
   const elapsed = Date.now() - startTime;
-  const remaining = minDurationMs - elapsed;
+  const remaining = MIN_RESPONSE_TIME_MS - elapsed;
   if (remaining > 0) {
     await new Promise((resolve) => setTimeout(resolve, remaining));
   }
@@ -65,10 +69,9 @@ export async function POST(request: NextRequest) {
       .limit(1);
 
     // Don't reveal user status - return same message for all cases
-    // But still perform the same operations to prevent timing attacks
+    // Use consistent delay for all paths to prevent timing attacks
     if (user.length === 0 || user[0].emailVerified) {
-      // Still wait the same amount of time as sending an email would take
-      await consistentDelay(startTime, 500);
+      await consistentDelay(startTime);
       return NextResponse.json(
         { message: genericMessage },
         { status: 200 }
