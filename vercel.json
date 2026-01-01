@@ -1,5 +1,5 @@
 {
-  "installCommand": "npm ci --legacy-peer-deps",
+  "installCommand": "npm ci --legacy-peer-deps --omit=optional",
   "buildCommand": "npm run build:shared && npm run build:db && npm run db:migrate && cd packages/web && npm run build",
   "outputDirectory": "packages/web/.next",
   "framework": "nextjs",
