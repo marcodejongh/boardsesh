@@ -446,34 +446,42 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
   // Track state to prevent infinite loops when fetched climbs are filtered out (already in queue)
   const proactiveFetchState = useRef({
     lastSuggestedCount: suggestedClimbs.length,
+    lastQueueLength: state.queue.length,
     hasFetchedForCurrentLowState: false,
   });
 
   useEffect(() => {
     const prev = proactiveFetchState.current;
 
-    // If suggestions increased, reset the fetch guard (successful fetch or items removed from queue)
-    if (suggestedClimbs.length > prev.lastSuggestedCount) {
+    // Reset fetch guard when:
+    // 1. Suggestions increased (successful fetch or items removed from queue)
+    // 2. Queue shrunk (items removed, so more climbs become available as suggestions)
+    // 3. No more results (reset for when new search/filters are applied)
+    if (
+      suggestedClimbs.length > prev.lastSuggestedCount ||
+      state.queue.length < prev.lastQueueLength ||
+      !hasMoreResults
+    ) {
       prev.hasFetchedForCurrentLowState = false;
     }
     prev.lastSuggestedCount = suggestedClimbs.length;
+    prev.lastQueueLength = state.queue.length;
 
-    // Don't trigger fetch if currently fetching
-    if (isFetchingNextPage) {
+    // Don't trigger fetch if currently fetching or no more results
+    if (isFetchingNextPage || !hasMoreResults) {
       return;
     }
 
-    // Fetch if below threshold, more results available, and haven't already tried for this state
+    // Fetch if below threshold and haven't already tried for this state
     if (
       suggestedClimbs.length < SUGGESTIONS_THRESHOLD &&
-      hasMoreResults &&
       state.hasDoneFirstFetch &&
       !prev.hasFetchedForCurrentLowState
     ) {
       prev.hasFetchedForCurrentLowState = true;
       fetchMoreClimbs();
     }
-  }, [suggestedClimbs.length, hasMoreResults, isFetchingNextPage, fetchMoreClimbs, state.hasDoneFirstFetch]);
+  }, [suggestedClimbs.length, state.queue.length, hasMoreResults, isFetchingNextPage, fetchMoreClimbs, state.hasDoneFirstFetch]);
 
   // Playlist state and handlers
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
