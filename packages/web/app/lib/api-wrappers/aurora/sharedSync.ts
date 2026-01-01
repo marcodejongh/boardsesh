@@ -50,13 +50,20 @@ export async function sharedSync(
   const webUrl = `${WEB_HOSTS[board]}/sync`;
   console.log(`Calling sync endpoint: ${webUrl}`);
 
+  // Match headers from AuroraClimbingClient for consistency
+  const headers = {
+    Accept: 'application/json',
+    'Content-Type': 'application/x-www-form-urlencoded',
+    Connection: 'keep-alive',
+    'Accept-Language': 'en-AU,en;q=0.9',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'User-Agent': 'Kilter Board/202 CFNetwork/1568.100.1 Darwin/24.0.0',
+    Cookie: `token=${token}`,
+  };
+
   const response = await fetch(webUrl, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'User-Agent': 'Kilter Board/202 CFNetwork/1568.100.1 Darwin/24.0.0',
-      Cookie: `token=${token}`,
-    },
+    headers,
     cache: 'no-store',
     body: requestBody,
   });
