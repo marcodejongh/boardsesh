@@ -6,8 +6,10 @@ import {
   timestamp,
   bigserial,
   index,
+  uniqueIndex,
   pgEnum,
 } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 import { users } from '../auth/users.js';
 import { boardSessions } from './sessions.js';
 
@@ -77,6 +79,11 @@ export const boardseshTicks = pgTable(
       table.climbUuid,
       table.boardType
     ),
+    // Unique index for Aurora sync - allows upsert on aurora_id
+    // NULL values are allowed (for local-only ticks not yet synced to Aurora)
+    auroraIdUnique: uniqueIndex('boardsesh_ticks_aurora_id_unique')
+      .on(table.auroraId)
+      .where(sql`${table.auroraId} IS NOT NULL`),
     // Index for pending sync queries (ticks without aurora_id)
     syncPendingIdx: index('boardsesh_ticks_sync_pending_idx').on(
       table.auroraId,
