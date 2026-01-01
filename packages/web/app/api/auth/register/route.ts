@@ -100,14 +100,24 @@ export async function POST(request: NextRequest) {
       expires,
     });
 
-    // Send verification email
+    // Send verification email (don't fail registration if email fails)
     const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
-    await sendVerificationEmail(email, token, baseUrl);
+    let emailSent = false;
+    try {
+      await sendVerificationEmail(email, token, baseUrl);
+      emailSent = true;
+    } catch (emailError) {
+      console.error("Failed to send verification email:", emailError);
+      // User is created, they can use resend functionality
+    }
 
     return NextResponse.json(
       {
-        message: "Account created. Please check your email to verify your account.",
+        message: emailSent
+          ? "Account created. Please check your email to verify your account."
+          : "Account created. Please request a new verification email.",
         requiresVerification: true,
+        emailSent,
         userId
       },
       { status: 201 }

@@ -9,27 +9,43 @@ import * as schema from "@/app/lib/db/schema";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
-export const authOptions: NextAuthOptions = {
-  adapter: DrizzleAdapter(getDb(), {
-    usersTable: schema.users,
-    accountsTable: schema.accounts,
-    sessionsTable: schema.sessions,
-    verificationTokensTable: schema.verificationTokens,
-  }),
-  providers: [
+// Build providers array conditionally based on available env vars
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const providers: any[] = [];
+
+// Only add Google provider if credentials are configured
+if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+  providers.push(
     GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    })
+  );
+}
+
+// Only add Apple provider if credentials are configured
+if (process.env.APPLE_ID && process.env.APPLE_SECRET) {
+  providers.push(
     AppleProvider({
-      clientId: process.env.APPLE_ID!,
-      clientSecret: process.env.APPLE_SECRET!,
-    }),
+      clientId: process.env.APPLE_ID,
+      clientSecret: process.env.APPLE_SECRET,
+    })
+  );
+}
+
+// Only add Facebook provider if credentials are configured
+if (process.env.FACEBOOK_CLIENT_ID && process.env.FACEBOOK_CLIENT_SECRET) {
+  providers.push(
     FacebookProvider({
-      clientId: process.env.FACEBOOK_CLIENT_ID!,
-      clientSecret: process.env.FACEBOOK_CLIENT_SECRET!,
-    }),
-    CredentialsProvider({
+      clientId: process.env.FACEBOOK_CLIENT_ID,
+      clientSecret: process.env.FACEBOOK_CLIENT_SECRET,
+    })
+  );
+}
+
+// Always add credentials provider
+providers.push(
+  CredentialsProvider({
       name: "Email",
       credentials: {
         email: { label: "Email", type: "email", placeholder: "your@email.com" },
@@ -84,8 +100,17 @@ export const authOptions: NextAuthOptions = {
           image: user.image,
         };
       },
-    }),
-  ],
+    })
+);
+
+export const authOptions: NextAuthOptions = {
+  adapter: DrizzleAdapter(getDb(), {
+    usersTable: schema.users,
+    accountsTable: schema.accounts,
+    sessionsTable: schema.sessions,
+    verificationTokensTable: schema.verificationTokens,
+  }),
+  providers,
   session: {
     strategy: "jwt", // Required for credentials provider
   },

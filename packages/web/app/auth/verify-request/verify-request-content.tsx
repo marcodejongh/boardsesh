@@ -6,6 +6,7 @@ import { MailOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import { useSearchParams } from 'next/navigation';
 import Logo from '@/app/components/brand/logo';
 import BackButton from '@/app/components/back-button';
+import { themeTokens } from '@/app/theme/theme-config';
 
 const { Content, Header } = Layout;
 const { Title, Text, Paragraph } = Typography;
@@ -88,12 +89,12 @@ export default function VerifyRequestContent() {
           <Space direction="vertical" size="large" style={{ width: '100%' }}>
             {errorMessage ? (
               <>
-                <CloseCircleOutlined style={{ fontSize: 48, color: '#EF4444' }} />
+                <CloseCircleOutlined style={{ fontSize: 48, color: themeTokens.colors.error }} />
                 <Alert type="error" message={errorMessage} showIcon />
               </>
             ) : (
               <>
-                <MailOutlined style={{ fontSize: 48, color: '#06B6D4' }} />
+                <MailOutlined style={{ fontSize: 48, color: themeTokens.colors.primary }} />
                 <Title level={3}>Check your email</Title>
                 <Paragraph type="secondary">
                   We sent you a verification link. Click the link in your email to verify your account.

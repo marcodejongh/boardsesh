@@ -6,6 +6,7 @@ import { CloseCircleOutlined } from '@ant-design/icons';
 import { useSearchParams } from 'next/navigation';
 import Logo from '@/app/components/brand/logo';
 import BackButton from '@/app/components/back-button';
+import { themeTokens } from '@/app/theme/theme-config';
 
 const { Content, Header } = Layout;
 const { Title } = Typography;
@@ -71,7 +72,7 @@ export default function AuthErrorContent() {
       >
         <Card style={{ width: '100%', maxWidth: 400, textAlign: 'center' }}>
           <Space direction="vertical" size="large" style={{ width: '100%' }}>
-            <CloseCircleOutlined style={{ fontSize: 48, color: '#EF4444' }} />
+            <CloseCircleOutlined style={{ fontSize: 48, color: themeTokens.colors.error }} />
             <Title level={3}>Authentication Error</Title>
             <Alert type="error" message={getErrorMessage()} showIcon />
             <Button type="primary" href="/auth/login" block size="large">
