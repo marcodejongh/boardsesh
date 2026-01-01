@@ -61,8 +61,8 @@ function parseHeaderText(lines: string[], warnings: string[]): OcrResult {
   let setterGrade = '';
   let isBenchmark = false;
 
-  // Check for benchmark indicator (orange "B" appears as standalone "B" or "8" in OCR)
-  // It's typically on a line by itself near the climb name
+  // Check for benchmark indicator (orange "B" icon)
+  // OCR often reads it as "8" or "B" - can be standalone or appended to climb name
   for (const line of lines) {
     const trimmed = line.trim();
     // Look for standalone "B" or "8" (OCR might read orange B as 8)
@@ -90,12 +90,19 @@ function parseHeaderText(lines: string[], warnings: string[]): OcrResult {
       continue;
     }
     // Remove heart emoji and OCR artifacts, trim
-    const cleaned = line
+    let cleaned = line
       .replace(/[♡❤️🤍&©®]/g, '')  // Remove heart, ampersand, copyright symbols
       .replace(/\s*[QO@()]+\s*$/i, '')  // Remove trailing Q/O/@/() (OCR error for heart/icons)
       .replace(/^\d+[)\]]\s*/, '')  // Remove leading numbers like "0)"
       .replace(/^[yl]\s+/i, '')  // Remove leading y/l (OCR artifacts)
       .trim();
+
+    // Check for benchmark indicator at end of name (orange "B" icon often OCR'd as "8" or "B")
+    const benchmarkMatch = cleaned.match(/\s+[8B]$/);
+    if (benchmarkMatch) {
+      isBenchmark = true;
+      cleaned = cleaned.replace(/\s+[8B]$/, '').trim();
+    }
 
     if (cleaned.length >= 3) {
       nameCandidates.push(cleaned);

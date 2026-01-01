@@ -1,5 +1,5 @@
 import sharp from 'sharp';
-import { DetectedHold, HoldType, GridCoordinate, Column, GRID_CONFIG } from './types.js';
+import { DetectedHold, HoldType, GridCoordinate, GRID_POSITIONS } from './types.js';
 
 interface PixelColor {
   r: number;
@@ -14,13 +14,88 @@ interface CircleCenter {
   pixelCount: number;
 }
 
+interface DetectedBoardRegion {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * Auto-detect the yellow MoonBoard region in a screenshot.
+ * The board is yellow (#eedf50) surrounded by gray UI elements.
+ */
+export async function detectBoardRegion(imageBuffer: Buffer): Promise<DetectedBoardRegion | null> {
+  const { data, info } = await sharp(imageBuffer)
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+
+  const { width, height, channels } = info;
+
+  // Find bounding box of yellow pixels
+  // MoonBoard yellow: ~RGB(238, 223, 80) = #eedf50
+  let minX = width, maxX = 0, minY = height, maxY = 0;
+  let yellowCount = 0;
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const idx = (y * width + x) * channels;
+      const r = data[idx];
+      const g = data[idx + 1];
+      const b = data[idx + 2];
+
+      // Check if pixel is yellow (MoonBoard background color)
+      if (isYellowPixel(r, g, b)) {
+        yellowCount++;
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+
+  // Need a significant amount of yellow to be valid
+  if (yellowCount < 1000) {
+    return null;
+  }
+
+  // The detected yellow region may include UI elements above/below the actual grid
+  // Trim a small percentage from top and bottom to exclude buttons/labels
+  const detectedWidth = maxX - minX;
+  const detectedHeight = maxY - minY;
+
+  // Trim 2% from top and bottom to exclude any UI elements
+  const topTrim = Math.round(detectedHeight * 0.02);
+  const bottomTrim = Math.round(detectedHeight * 0.02);
+
+  return {
+    x: minX,
+    y: minY + topTrim,
+    width: detectedWidth,
+    height: detectedHeight - topTrim - bottomTrim,
+  };
+}
+
+/**
+ * Check if a pixel is the MoonBoard yellow color.
+ */
+function isYellowPixel(r: number, g: number, b: number): boolean {
+  // MoonBoard yellow: ~RGB(238, 223, 80)
+  // Allow some tolerance for compression artifacts
+  return r >= 200 && r <= 255 &&
+         g >= 180 && g <= 240 &&
+         b >= 40 && b <= 120 &&
+         r > b && g > b; // Yellow has high R and G, low B
+}
+
 /**
  * Detect colored hold markers using flood-fill connected component analysis.
  *
  * Strategy:
  * 1. Find colored circles by flood-filling connected pixels of same color
  * 2. Calculate center of mass for each circle
- * 3. Map circle position to grid coordinate based on cell dimensions
+ * 3. Map circle position to nearest grid coordinate using reference positions
  */
 export async function detectHolds(
   imageBuffer: Buffer,
@@ -42,35 +117,51 @@ export async function detectHolds(
   // Find all colored circles using flood fill
   const circles = findCircleCenters(data, width, height, channels);
 
-  // Calculate grid cell dimensions
-  const cellWidth = width / GRID_CONFIG.numColumns;
-  const cellHeight = height / GRID_CONFIG.numRows;
-
-  // Convert circle positions to grid coordinates
+  // Convert circle positions to grid coordinates using nearest-neighbor matching
   const detectedHolds: DetectedHold[] = circles.map(circle => {
-    // Calculate column (A-K)
-    const colIdx = Math.min(
-      Math.floor(circle.x / cellWidth),
-      GRID_CONFIG.numColumns - 1
-    );
-    const column = GRID_CONFIG.columns[colIdx];
+    // Convert pixel position to relative position (0-1)
+    const relX = circle.x / width;
+    const relY = circle.y / height;
 
-    // Calculate row (18 at top, 1 at bottom)
-    const rowIdx = Math.floor(circle.y / cellHeight);
-    const row = Math.min(18, Math.max(1, 18 - rowIdx)) as typeof GRID_CONFIG.rows[number];
+    // Find nearest grid position
+    const { coordinate, distance } = findNearestGridPosition(relX, relY);
 
-    const coordinate = `${column}${row}` as GridCoordinate;
+    // Calculate confidence based on distance (closer = higher confidence)
+    // Max reasonable distance is ~0.05 (half a cell width)
+    const confidence = Math.max(0, 1 - distance / 0.1);
 
     return {
       type: circle.type,
       coordinate,
       pixelX: boardRegion.x + circle.x,
       pixelY: boardRegion.y + circle.y,
-      confidence: 1,
+      confidence,
     };
   });
 
-  return detectedHolds;
+  // Filter out low-confidence matches (likely noise)
+  return detectedHolds.filter(hold => hold.confidence > 0.5);
+}
+
+/**
+ * Find the nearest grid coordinate to a relative position.
+ */
+function findNearestGridPosition(relX: number, relY: number): { coordinate: GridCoordinate; distance: number } {
+  let nearestCoord: GridCoordinate = 'A1';
+  let minDistance = Infinity;
+
+  for (const [coord, pos] of Object.entries(GRID_POSITIONS)) {
+    const dx = relX - pos.x;
+    const dy = relY - pos.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    if (distance < minDistance) {
+      minDistance = distance;
+      nearestCoord = coord as GridCoordinate;
+    }
+  }
+
+  return { coordinate: nearestCoord, distance: minDistance };
 }
 
 /**

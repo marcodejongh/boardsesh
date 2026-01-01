@@ -28,14 +28,14 @@ export async function parseScreenshot(imagePath: string): Promise<ParseResult> {
       return { success: false, error: 'Could not read image dimensions', warnings };
     }
 
-    // Calculate regions based on image dimensions
+    // Calculate regions based on image dimensions (calibrated for MoonBoard app)
     const regions = calculateRegions(metadata.width, metadata.height);
 
     // Extract text from header
     const ocrResult = await extractHeaderText(imageBuffer, regions.header);
     warnings.push(...ocrResult.warnings);
 
-    // Detect holds on the board
+    // Detect holds on the board (using calibrated region with nearest-neighbor matching)
     const detectedHolds = await detectHolds(imageBuffer, regions.board);
 
     // Group holds by type

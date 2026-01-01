@@ -278,4 +278,40 @@ describe('MoonBoard OCR Parser', () => {
       expect(result.climb!.holds.finish).toEqual(['I18']);
     });
   });
+
+  describe('ALIEN (benchmark)', () => {
+    it('should extract correct climb data', async () => {
+      const result = await parseScreenshot(path.join(FIXTURES_DIR, 'ALIEN.png'));
+
+      expect(result.success).toBe(true);
+      expect(result.climb).toBeDefined();
+      expect(result.climb!.name).toBe('ALIEN');
+      expect(result.climb!.setter).toBe('Enea B');
+      expect(result.climb!.angle).toBe(40);
+      expect(result.climb!.userGrade).toBe('6B+/V4');
+      expect(result.climb!.setterGrade).toBe('6B+/V4');
+      expect(result.climb!.isBenchmark).toBe(true);
+      expect(result.climb!.holds.start).toEqual(['K5']);
+      expect(result.climb!.holds.hand.sort()).toEqual(['E16', 'G12', 'H15', 'I9', 'J11', 'K3'].sort());
+      expect(result.climb!.holds.finish).toEqual(['I18']);
+    });
+  });
+
+  describe('FOR_THE_BIRDS (benchmark)', () => {
+    it('should extract correct climb data', async () => {
+      const result = await parseScreenshot(path.join(FIXTURES_DIR, 'FOR_THE_BIRDS.png'));
+
+      expect(result.success).toBe(true);
+      expect(result.climb).toBeDefined();
+      expect(result.climb!.name).toBe('FOR THE BIRDS');
+      expect(result.climb!.setter).toBe('CalumMaclintosh');
+      expect(result.climb!.angle).toBe(40);
+      expect(result.climb!.userGrade).toBe('6B+/V4');
+      expect(result.climb!.setterGrade).toBe('6B+/V4');
+      expect(result.climb!.isBenchmark).toBe(true);
+      expect(result.climb!.holds.start.sort()).toEqual(['B4', 'C6'].sort());
+      expect(result.climb!.holds.hand.sort()).toEqual(['A8', 'C12', 'D10', 'D16', 'G14', 'H9'].sort());
+      expect(result.climb!.holds.finish).toEqual(['F18']);
+    });
+  });
 });

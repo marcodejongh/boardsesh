@@ -111,3 +111,31 @@ export const GRID_CONFIG = {
   numColumns: 11,
   numRows: 18,
 };
+
+/**
+ * Relative grid positions for each hold coordinate.
+ * Values are 0-1 representing percentage of board width/height.
+ * Positions are at cell centers to match the original cell-based detection.
+ *
+ * For 11 columns: cell width = 1/11, centers at (colIdx + 0.5) / 11
+ * For 18 rows: cell height = 1/18, centers at (rowIdx + 0.5) / 18
+ * Row 18 is at top (rowIdx 0), row 1 is at bottom (rowIdx 17)
+ */
+export const GRID_POSITIONS: Record<GridCoordinate, { x: number; y: number }> = (() => {
+  const positions: Record<string, { x: number; y: number }> = {};
+  const columns: Column[] = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K'];
+
+  for (let colIdx = 0; colIdx < 11; colIdx++) {
+    for (let row = 1; row <= 18; row++) {
+      const coord = `${columns[colIdx]}${row}` as GridCoordinate;
+      // X: cell center position (colIdx + 0.5) / 11
+      const x = (colIdx + 0.5) / 11;
+      // Y: row 18 at top (rowIdx 0), row 1 at bottom (rowIdx 17)
+      const rowIdx = 18 - row;
+      const y = (rowIdx + 0.5) / 18;
+      positions[coord] = { x, y };
+    }
+  }
+
+  return positions as Record<GridCoordinate, { x: number; y: number }>;
+})();
