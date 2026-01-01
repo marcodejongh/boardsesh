@@ -59,6 +59,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         ? {
             displayName: profile.displayName,
             avatarUrl: profile.avatarUrl,
+            instagramUrl: profile.instagramUrl,
           }
         : null,
       credentials,

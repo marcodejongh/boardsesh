@@ -15,7 +15,7 @@ import {
   message,
   Spin,
 } from 'antd';
-import { UserOutlined, UploadOutlined, LoadingOutlined } from '@ant-design/icons';
+import { UserOutlined, UploadOutlined, LoadingOutlined, InstagramOutlined } from '@ant-design/icons';
 import type { UploadFile, UploadProps } from 'antd/es/upload/interface';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -59,6 +59,7 @@ interface UserProfile {
   profile: {
     displayName: string | null;
     avatarUrl: string | null;
+    instagramUrl: string | null;
   } | null;
 }
 
@@ -108,6 +109,7 @@ export default function SettingsPageContent() {
       setProfile(data);
       form.setFieldsValue({
         displayName: data.profile?.displayName || data.name || '',
+        instagramUrl: data.profile?.instagramUrl || '',
       });
       setPreviewUrl(data.profile?.avatarUrl || data.image || undefined);
     } catch (error) {
@@ -220,6 +222,7 @@ export default function SettingsPageContent() {
         body: JSON.stringify({
           displayName: values.displayName?.trim() || null,
           avatarUrl,
+          instagramUrl: values.instagramUrl?.trim() || null,
         }),
       });
 
@@ -318,6 +321,22 @@ export default function SettingsPageContent() {
               rules={[{ max: 100, message: 'Display name must be less than 100 characters' }]}
             >
               <Input placeholder="Enter your display name" prefix={<UserOutlined />} maxLength={100} />
+            </Form.Item>
+
+            <Form.Item
+              name="instagramUrl"
+              label="Instagram Profile"
+              rules={[
+                {
+                  pattern: /^(https?:\/\/)?(www\.)?instagram\.com\/[a-zA-Z0-9._]+\/?$/,
+                  message: 'Please enter a valid Instagram profile URL',
+                },
+              ]}
+            >
+              <Input
+                placeholder="https://instagram.com/username"
+                prefix={<InstagramOutlined />}
+              />
             </Form.Item>
 
             <Divider />
