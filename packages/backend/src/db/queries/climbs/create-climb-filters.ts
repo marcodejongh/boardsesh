@@ -1,6 +1,15 @@
 import { eq, gte, sql, like, notLike, inArray, SQL } from 'drizzle-orm';
 import { TableSet, getTableName, type BoardName } from '../util/table-select.js';
 import type { SizeEdges } from '../util/product-sizes-data.js';
+import type { HoldState } from '@boardsesh/shared-schema';
+
+// Valid hold states that can be used for state-specific filtering
+// Note: 'OFF' is excluded as it represents "hold not used" and isn't useful as a filter
+const VALID_HOLD_STATE_FILTERS = ['STARTING', 'HAND', 'FOOT', 'FINISH'] as const;
+type ValidHoldStateFilter = typeof VALID_HOLD_STATE_FILTERS[number];
+
+const isValidHoldStateFilter = (state: string): state is ValidHoldStateFilter =>
+  VALID_HOLD_STATE_FILTERS.includes(state as ValidHoldStateFilter);
 
 export interface ClimbSearchParams {
   // Pagination
@@ -18,8 +27,8 @@ export interface ClimbSearchParams {
   settername?: string[];
   onlyClassics?: boolean;
   onlyTallClimbs?: boolean;
-  // Hold filters
-  holdsFilter?: Record<string, 'ANY' | 'NOT'>;
+  // Hold filters - accepts HoldState strings (normalized during URL parsing)
+  holdsFilter?: Record<string, HoldState>;
   // Personal progress filters
   hideAttempted?: boolean;
   hideCompleted?: boolean;
@@ -51,13 +60,23 @@ export const createClimbFilters = (
   userId?: number,
 ) => {
   // Process hold filters
-  const holdsToFilter = Object.entries(searchParams.holdsFilter || {}).map(([key, state]) => [
-    key.replace('hold_', ''),
-    state,
-  ]);
+  // holdsFilter values are HoldState strings: 'ANY', 'NOT', 'STARTING', 'HAND', 'FOOT', 'FINISH'
+  // Note: 'OFF' state is filtered out as it represents "hold not used" and has no filter meaning
+  const holdsToFilter = Object.entries(searchParams.holdsFilter || {})
+    .filter(([, state]) => state !== 'OFF') // Explicitly filter out OFF state
+    .map(([key, state]) => {
+      const holdId = key.replace('hold_', '');
+      return [holdId, state] as const;
+    });
 
   const anyHolds = holdsToFilter.filter(([, value]) => value === 'ANY').map(([key]) => Number(key));
   const notHolds = holdsToFilter.filter(([, value]) => value === 'NOT').map(([key]) => Number(key));
+
+  // Hold state filters - hold must be present with specific state (STARTING, HAND, FOOT, FINISH)
+  // Uses type guard to validate state before including in SQL query
+  const holdStateFilters = holdsToFilter
+    .filter(([, value]) => isValidHoldStateFilter(value))
+    .map(([key, state]) => ({ holdId: Number(key), state: state as ValidHoldStateFilter }));
 
   // Base conditions for filtering climbs that don't reference the product sizes table
   const baseConditions: SQL[] = [
@@ -120,6 +139,19 @@ export const createClimbFilters = (
     ...anyHolds.map((holdId) => like(tables.climbs.frames, `%${holdId}r%`)),
     ...notHolds.map((holdId) => notLike(tables.climbs.frames, `%${holdId}r%`)),
   ];
+
+  // State-specific hold conditions - use climb_holds table to filter by hold_id AND hold_state
+  // Note: state values are safe - validated by isValidHoldStateFilter to only be STARTING/HAND/FOOT/FINISH
+  // The sql template literal parameterizes the value, preventing SQL injection
+  const climbHoldsTable = getTableName(params.board_name, 'climb_holds');
+  const holdStateConditions: SQL[] = holdStateFilters.map(({ holdId, state }) =>
+    sql`EXISTS (
+      SELECT 1 FROM ${sql.identifier(climbHoldsTable)} ch
+      WHERE ch.climb_uuid = ${tables.climbs.uuid}
+      AND ch.hold_id = ${holdId}
+      AND ch.hold_state = ${state}
+    )`
+  );
 
   // Tall climbs filter condition
   // Only applies for Kilter Homewall (layout_id = 8) on the largest size
@@ -221,7 +253,7 @@ export const createClimbFilters = (
 
   return {
     // Helper function to get all climb filtering conditions
-    getClimbWhereConditions: () => [...baseConditions, ...nameCondition, ...setterNameCondition, ...holdConditions, ...tallClimbsConditions, ...personalProgressConditions],
+    getClimbWhereConditions: () => [...baseConditions, ...nameCondition, ...setterNameCondition, ...holdConditions, ...holdStateConditions, ...tallClimbsConditions, ...personalProgressConditions],
 
     // Size-specific conditions
     getSizeConditions: () => sizeConditions,
@@ -244,10 +276,12 @@ export const createClimbFilters = (
     nameCondition,
     setterNameCondition,
     holdConditions,
+    holdStateConditions,
     tallClimbsConditions,
     sizeConditions,
     personalProgressConditions,
     anyHolds,
     notHolds,
+    holdStateFilters,
   };
 };
