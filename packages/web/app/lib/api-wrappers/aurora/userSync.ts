@@ -33,8 +33,13 @@ export async function userSync(
   console.log(`Calling user sync endpoint: ${webUrl}`);
   console.log(`Token length: ${token?.length}, Token prefix: ${token?.substring(0, 10)}...`);
 
+  // Match headers from AuroraClimbingClient for consistency with login request
   const headers = {
+    Accept: 'application/json',
     'Content-Type': 'application/x-www-form-urlencoded',
+    Connection: 'keep-alive',
+    'Accept-Language': 'en-AU,en;q=0.9',
+    'Accept-Encoding': 'gzip, deflate, br',
     'User-Agent': 'Kilter Board/202 CFNetwork/1568.100.1 Darwin/24.0.0',
     Cookie: `token=${token}`,
   };
