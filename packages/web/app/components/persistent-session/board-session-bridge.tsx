@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useSearchParams, usePathname } from 'next/navigation';
 import { usePersistentSession } from './persistent-session-context';
 import { BoardDetails, ParsedBoardRouteParameters } from '@/app/lib/types';
@@ -9,6 +9,37 @@ interface BoardSessionBridgeProps {
   boardDetails: BoardDetails;
   parsedParams: ParsedBoardRouteParameters;
   children: React.ReactNode;
+}
+
+/**
+ * Extracts the base board path from a full pathname.
+ * This removes dynamic segments like /play/[climb_uuid] or /list that change during navigation
+ * but don't represent a change in board configuration.
+ *
+ * Examples:
+ *   /kilter/original/12x12/default/45/play/abc-123 -> /kilter/original/12x12/default/45
+ *   /kilter/original/12x12/default/45/list -> /kilter/original/12x12/default/45
+ *   /kilter/original/12x12/default/45 -> /kilter/original/12x12/default/45
+ */
+function getBaseBoardPath(pathname: string): string {
+  // Remove /play/[uuid] or /list segments from the end
+  // The base board path is: /{board}/{layout}/{size}/{sets}/{angle}
+  const playMatch = pathname.match(/^(.+?)\/play\/[^/]+$/);
+  if (playMatch) {
+    return playMatch[1];
+  }
+
+  const listMatch = pathname.match(/^(.+?)\/list$/);
+  if (listMatch) {
+    return listMatch[1];
+  }
+
+  const createMatch = pathname.match(/^(.+?)\/create$/);
+  if (createMatch) {
+    return createMatch[1];
+  }
+
+  return pathname;
 }
 
 /**
@@ -26,6 +57,10 @@ const BoardSessionBridge: React.FC<BoardSessionBridgeProps> = ({
 
   const { activeSession, activateSession } = usePersistentSession();
 
+  // Compute the base board path (without /play/[uuid] or /list segments)
+  // This ensures navigation between climbs doesn't trigger session reconnection
+  const baseBoardPath = useMemo(() => getBaseBoardPath(pathname), [pathname]);
+
   // Refs to hold stable references to boardDetails and parsedParams
   // These values change reference on every render but we only need their current values
   const boardDetailsRef = React.useRef(boardDetails);
@@ -36,16 +71,18 @@ const BoardSessionBridge: React.FC<BoardSessionBridgeProps> = ({
   // Activate or update session when we have a session param and board details
   // This effect handles:
   // 1. Initial session activation when joining via shared link
-  // 2. Updates when pathname changes (e.g., angle change) while session remains active
+  // 2. Updates when board configuration changes (e.g., angle change) while session remains active
+  // Note: Navigation within the same board (e.g., swiping between climbs) should NOT trigger reconnection
   useEffect(() => {
     if (sessionIdFromUrl && boardDetailsRef.current) {
       // Activate session when URL has session param and either:
       // - Session ID changed
-      // - Board path changed (e.g., navigating to different angle)
-      if (activeSession?.sessionId !== sessionIdFromUrl || activeSession?.boardPath !== pathname) {
+      // - Board configuration path changed (e.g., navigating to different angle)
+      // Note: We use baseBoardPath to ignore changes to /play/[uuid] segments
+      if (activeSession?.sessionId !== sessionIdFromUrl || activeSession?.boardPath !== baseBoardPath) {
         activateSession({
           sessionId: sessionIdFromUrl,
-          boardPath: pathname,
+          boardPath: baseBoardPath,
           boardDetails: boardDetailsRef.current,
           parsedParams: parsedParamsRef.current,
         });
@@ -55,7 +92,7 @@ const BoardSessionBridge: React.FC<BoardSessionBridgeProps> = ({
     // The session connection persists even if URL param is temporarily removed
   }, [
     sessionIdFromUrl,
-    pathname,
+    baseBoardPath,
     // boardDetails and parsedParams removed - accessed via refs to prevent unnecessary reconnections
     // Their object references change on every render but the actual values don't affect session activation
     activeSession?.sessionId,
