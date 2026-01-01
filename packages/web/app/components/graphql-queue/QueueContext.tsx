@@ -242,7 +242,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
             type: 'DELTA_UPDATE_CURRENT_CLIMB',
             payload: {
               item: event.currentItem as ClimbQueueItem | null,
-              shouldAddToQueue: false,
+              shouldAddToQueue: (event.currentItem as ClimbQueueItem | null)?.suggested ?? false,
               isServerEvent: true,
               eventClientId: event.clientId || undefined,
               myClientId: persistentSession.clientId || undefined,
