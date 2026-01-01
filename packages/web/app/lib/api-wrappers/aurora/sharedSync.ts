@@ -47,10 +47,13 @@ export async function sharedSync(
   console.log('Shared sync request body:', requestBody);
 
   const webUrl = `${WEB_HOSTS[board]}/sync`;
+  const hostName = new URL(webUrl).hostname;
   console.log(`Calling sync endpoint: ${webUrl}`);
 
   // Match headers from AuroraClimbingClient for consistency
+  // Explicitly set Host header in case Vercel's fetch doesn't set it correctly
   const headers = {
+    Host: hostName,
     Accept: 'application/json',
     'Content-Type': 'application/x-www-form-urlencoded',
     Connection: 'keep-alive',
