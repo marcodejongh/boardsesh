@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { syncUserData } from '@/app/lib/data-sync/aurora/user-sync';
 import { getPool } from '@/app/lib/db/db';
 import { drizzle } from 'drizzle-orm/neon-serverless';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, or, isNotNull } from 'drizzle-orm';
 import { decrypt } from '@/app/lib/crypto';
 import { BoardName } from '@/app/lib/types';
 import * as schema from '@/app/lib/db/schema';
@@ -29,6 +29,7 @@ export async function GET(request: Request) {
     const pool = getPool();
 
     // Get credentials list - acquire and release connection immediately
+    // Include both 'active' and 'error' status to retry failed syncs
     let credentials;
     {
       const client = await pool.connect();
@@ -37,13 +38,21 @@ export async function GET(request: Request) {
         credentials = await db
           .select()
           .from(schema.auroraCredentials)
-          .where(eq(schema.auroraCredentials.syncStatus, 'active'));
+          .where(
+            and(
+              or(
+                eq(schema.auroraCredentials.syncStatus, 'active'),
+                eq(schema.auroraCredentials.syncStatus, 'error')
+              ),
+              isNotNull(schema.auroraCredentials.auroraToken)
+            )
+          );
       } finally {
         client.release();
       }
     }
 
-    console.log(`[User Sync Cron] Found ${credentials.length} users with active Aurora credentials`);
+    console.log(`[User Sync Cron] Found ${credentials.length} users with Aurora credentials to sync (active + retry)`);
 
     const results = {
       total: credentials.length,
