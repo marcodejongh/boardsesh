@@ -14,7 +14,7 @@ export async function auroraGetApi<T>(url: string, token: string): Promise<T> {
     Accept: '*/*', // Accept any content type
     'Accept-Encoding': 'gzip, deflate, br',
     Host: 'kilterboardapp.com', // Explicitly set the host
-    'User-Agent': 'Kilter%20Board/300 CFNetwork/1568.200.51 Darwin/24.1.0', // Simulate the specific user-agent
+    'User-Agent': 'Kilter Board/300 CFNetwork/1568.200.51 Darwin/24.1.0', // Simulate the specific user-agent
     'Accept-Language': 'en-AU,en;q=0.9', // Accept preferred languages
   };
 
