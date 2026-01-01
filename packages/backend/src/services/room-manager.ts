@@ -7,6 +7,12 @@ import type { ClimbQueueItem, SessionUser } from '@boardsesh/shared-schema';
 import { haversineDistance, getBoundingBox, DEFAULT_SEARCH_RADIUS_METERS } from '../utils/geo.js';
 import { RedisSessionStore } from './redis-session-store.js';
 import { computeQueueStateHash } from '../utils/hash.js';
+import {
+  DistributedStateManager,
+  initializeDistributedState,
+  getDistributedState,
+  shutdownDistributedState,
+} from './distributed-state.js';
 
 // Custom error for version conflicts
 export class VersionConflictError extends Error {
@@ -42,11 +48,13 @@ class RoomManager {
   private clients: Map<string, ConnectedClient> = new Map();
   private sessions: Map<string, Set<string>> = new Map();
   private redisStore: RedisSessionStore | null = null;
+  private distributedState: DistributedStateManager | null = null;
   private postgresWriteTimers: Map<string, NodeJS.Timeout> = new Map();
   private pendingWrites: Map<string, { queue: ClimbQueueItem[]; currentClimbQueueItem: ClimbQueueItem | null; version: number; sequence: number }> = new Map();
   private readonly MAX_RETRY_ATTEMPTS = 3;
   private readonly RETRY_BASE_DELAY = 1000; // 1 second
   private writeRetryAttempts: Map<string, number> = new Map();
+  private retryTimers: Map<string, NodeJS.Timeout> = new Map();
 
   /**
    * Reset all state (for testing purposes)
@@ -57,26 +65,67 @@ class RoomManager {
   }
 
   /**
-   * Initialize RoomManager with Redis for session persistence.
-   * If Redis is not provided, falls back to Postgres-only mode.
+   * Initialize RoomManager with Redis for session persistence and distributed state.
+   * If Redis is not provided, falls back to Postgres-only mode (single instance).
    */
   async initialize(redis?: Redis): Promise<void> {
     if (redis) {
       this.redisStore = new RedisSessionStore(redis);
       console.log('[RoomManager] Redis session storage enabled');
+
+      // Initialize distributed state for multi-instance support
+      this.distributedState = initializeDistributedState(redis);
+      this.distributedState.start();
+      console.log('[RoomManager] Distributed state enabled for multi-instance support');
     } else {
-      console.log('[RoomManager] Redis not available - using Postgres only mode');
+      console.log('[RoomManager] Redis not available - using Postgres only mode (single instance)');
     }
   }
 
-  registerClient(connectionId: string): string {
+  /**
+   * Shutdown RoomManager and clean up distributed state.
+   */
+  async shutdown(): Promise<void> {
+    await this.flushPendingWrites();
+    await shutdownDistributedState();
+    console.log('[RoomManager] Shutdown complete');
+  }
+
+  /**
+   * Check if distributed state is enabled (multi-instance mode).
+   */
+  isDistributedStateEnabled(): boolean {
+    return this.distributedState !== null;
+  }
+
+  async registerClient(connectionId: string, username?: string, userId?: string, avatarUrl?: string): Promise<string> {
+    const defaultUsername = username || `User-${connectionId.substring(0, 6)}`;
     this.clients.set(connectionId, {
       connectionId,
       sessionId: null,
-      username: `User-${connectionId.substring(0, 6)}`,
+      username: defaultUsername,
       isLeader: false,
       connectedAt: new Date(),
+      avatarUrl,
     });
+
+    // Register in distributed state for cross-instance visibility
+    // Await to ensure consistency - if this fails, the client is not properly registered
+    // Note: Postgres sessionClients table is only written on joinSession, not here,
+    // so rollback only needs to clean up the local map (no Postgres cleanup needed)
+    if (this.distributedState) {
+      try {
+        await this.distributedState.registerConnection(connectionId, defaultUsername, userId, avatarUrl);
+      } catch (err) {
+        // Remove local client on distributed state failure to maintain consistency
+        this.clients.delete(connectionId);
+        // Log only the error message, not the full error object which may contain sensitive Redis connection info
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+        console.error(`[RoomManager] Failed to register connection in distributed state: ${errorMessage}`);
+        throw new Error(`Failed to register client: distributed state error`);
+      }
+    }
+
     return connectionId;
   }
 
@@ -185,6 +234,7 @@ class RoomManager {
           let waitTime = 50;
           const maxWait = 2000;
           const maxAttempts = 5;
+          let sessionRestored = false;
 
           for (let attempt = 0; attempt < maxAttempts; attempt++) {
             await new Promise(resolve => setTimeout(resolve, waitTime));
@@ -192,6 +242,7 @@ class RoomManager {
             // Check if session was restored by another instance
             if (this.sessions.has(sessionId)) {
               console.log(`[RoomManager] Session ${sessionId} restored by another instance after ${attempt + 1} attempts`);
+              sessionRestored = true;
               break;
             }
 
@@ -199,10 +250,42 @@ class RoomManager {
             waitTime = Math.min(waitTime * 2, maxWait);
           }
 
-          // After waiting, session should exist if another instance initialized it
-          if (!this.sessions.has(sessionId)) {
-            console.log(`[RoomManager] Session ${sessionId} not restored after backoff, creating local entry`);
-            this.sessions.set(sessionId, new Set());
+          // After waiting, verify session state from Redis to ensure consistency
+          if (!sessionRestored && !this.sessions.has(sessionId)) {
+            // Check Redis to see if the session was restored by another instance
+            const redisSession = await this.redisStore.getSession(sessionId);
+            if (redisSession) {
+              console.log(`[RoomManager] Session ${sessionId} found in Redis after backoff, using restored state`);
+              this.sessions.set(sessionId, new Set());
+            } else {
+              // Session doesn't exist in Redis - check Postgres as fallback
+              const pgSession = await this.getSessionById(sessionId);
+              if (pgSession && pgSession.status !== 'ended') {
+                console.log(`[RoomManager] Session ${sessionId} found in Postgres after backoff, restoring`);
+                const queueState = await this.getQueueState(sessionId);
+                await this.redisStore.saveSession({
+                  sessionId: pgSession.id,
+                  boardPath: pgSession.boardPath,
+                  queue: queueState.queue,
+                  currentClimbQueueItem: queueState.currentClimbQueueItem,
+                  version: queueState.version,
+                  sequence: queueState.sequence,
+                  stateHash: queueState.stateHash,
+                  lastActivity: pgSession.lastActivity,
+                  discoverable: pgSession.discoverable,
+                  latitude: pgSession.latitude,
+                  longitude: pgSession.longitude,
+                  name: pgSession.name,
+                  createdByUserId: pgSession.createdByUserId,
+                  createdAt: pgSession.createdAt,
+                });
+              } else {
+                // This is genuinely a new session
+                isNewSession = true;
+                console.log(`[RoomManager] Session ${sessionId} not found after backoff, treating as new session`);
+              }
+              this.sessions.set(sessionId, new Set());
+            }
           }
         }
       } else {
@@ -217,8 +300,23 @@ class RoomManager {
     }
     const sessionClientIds = this.sessions.get(sessionId)!;
 
-    // First client becomes leader
-    const isLeader = sessionClientIds.size === 0;
+    // Determine leader status
+    let isLeader: boolean;
+
+    if (this.distributedState) {
+      // Use distributed state for atomic leader election across instances
+      const result = await this.distributedState.joinSession(
+        connectionId,
+        sessionId,
+        client.username,
+        client.avatarUrl
+      );
+      isLeader = result.isLeader;
+    } else {
+      // Single instance mode: first local client becomes leader
+      isLeader = sessionClientIds.size === 0;
+    }
+
     client.isLeader = isLeader;
     sessionClientIds.add(connectionId);
 
@@ -242,16 +340,21 @@ class RoomManager {
       );
     }
 
-    // Save users to Redis (ephemeral state, not persisted to Postgres)
+    // Update Redis session state
     if (this.redisStore) {
-      const users = this.getSessionUsers(sessionId);
-      await this.redisStore.saveUsers(sessionId, users);
       await this.redisStore.markActive(sessionId);
       await this.redisStore.refreshTTL(sessionId);
+
+      // Only save users to Redis store if NOT using distributed state
+      // (distributed state handles user list separately)
+      if (!this.distributedState) {
+        const users = this.getSessionUsersLocal(sessionId);
+        await this.redisStore.saveUsers(sessionId, users);
+      }
     }
 
     // Get current session state
-    const users = this.getSessionUsers(sessionId);
+    const users = await this.getSessionUsers(sessionId);
     const queueState = await this.getQueueState(sessionId);
 
     return {
@@ -286,7 +389,11 @@ class RoomManager {
         // Mark session as inactive in Redis but DON'T delete (4h TTL starts)
         if (this.redisStore) {
           await this.redisStore.markInactive(sessionId);
-          await this.redisStore.saveUsers(sessionId, []); // Clear users from Redis
+          // Only clear legacy users store if distributed state is not enabled
+          // When distributed state is enabled, user data is handled by DistributedStateManager
+          if (!this.distributedState) {
+            await this.redisStore.saveUsers(sessionId, []);
+          }
           console.log(`[RoomManager] Session ${sessionId} marked inactive - will expire from Redis in 4 hours`);
         }
 
@@ -307,31 +414,114 @@ class RoomManager {
     // Remove from database
     await this.persistSessionLeave(connectionId);
 
-    // Elect new leader if needed (deterministic: pick earliest connected client)
+    // Elect new leader
     let newLeaderId: string | undefined;
-    if (wasLeader && sessionClientIds && sessionClientIds.size > 0) {
-      // Convert Set to array and sort by connectedAt for deterministic leader election
+
+    if (this.distributedState) {
+      // Use distributed state for cross-instance leader election
+      const result = await this.distributedState.leaveSession(connectionId, sessionId);
+      if (result.newLeaderId) {
+        newLeaderId = result.newLeaderId;
+        // Update local client state if the new leader is on this instance
+        const localNewLeader = this.clients.get(newLeaderId);
+        if (localNewLeader) {
+          localNewLeader.isLeader = true;
+        }
+        // Persist to Postgres - distributed state is source of truth, so log but don't fail
+        try {
+          await this.persistLeaderChange(sessionId, newLeaderId);
+        } catch (error) {
+          console.error(
+            `[RoomManager] Failed to persist leader change to Postgres for session ${sessionId}:`,
+            error
+          );
+        }
+      }
+    } else if (wasLeader && sessionClientIds && sessionClientIds.size > 0) {
+      // Single instance mode: pick earliest connected client
       const clientsArray = Array.from(sessionClientIds)
         .map((id) => this.clients.get(id))
-        .filter((client): client is ConnectedClient => client !== undefined)
+        .filter((c): c is ConnectedClient => c !== undefined)
         .sort((a, b) => a.connectedAt.getTime() - b.connectedAt.getTime());
 
       if (clientsArray.length > 0) {
         const newLeader = clientsArray[0];
         newLeader.isLeader = true;
         newLeaderId = newLeader.connectionId;
-        await this.persistLeaderChange(sessionId, newLeaderId);
+        try {
+          await this.persistLeaderChange(sessionId, newLeaderId);
+        } catch (error) {
+          console.error(
+            `[RoomManager] Failed to persist leader change to Postgres for session ${sessionId}:`,
+            error
+          );
+        }
       }
     }
 
     return { sessionId, newLeaderId };
   }
 
-  removeClient(connectionId: string): void {
+  /**
+   * Remove a client from the system.
+   * @returns Object indicating success/failure of distributed state cleanup.
+   *          Local cleanup always succeeds.
+   */
+  async removeClient(connectionId: string): Promise<{ distributedStateCleanedUp: boolean }> {
+    let distributedStateCleanedUp = true;
+
+    // Remove from distributed state first to ensure consistency
+    if (this.distributedState) {
+      try {
+        const result = await this.distributedState.removeConnection(connectionId);
+        // Log if there was a leader change from this removal
+        if (result.newLeaderId) {
+          console.log(`[RoomManager] New leader ${result.newLeaderId.slice(0, 8)} elected after client removal`);
+        }
+      } catch (err) {
+        // Log but continue with local cleanup - don't leave ghost clients locally
+        // The distributed state may have partial data that will eventually expire via TTL
+        distributedStateCleanedUp = false;
+        console.error(
+          `[RoomManager] Failed to remove connection ${connectionId.slice(0, 8)} from distributed state. ` +
+          `Redis data may remain until TTL expires. Error: ${err}`
+        );
+      }
+    }
+
+    // Clean up local state to prevent memory leaks
+    const client = this.clients.get(connectionId);
+    if (client?.sessionId) {
+      // Remove from session membership set
+      const sessionSet = this.sessions.get(client.sessionId);
+      if (sessionSet) {
+        sessionSet.delete(connectionId);
+        // Clean up empty session sets to prevent memory buildup
+        if (sessionSet.size === 0) {
+          this.sessions.delete(client.sessionId);
+        }
+      }
+    }
     this.clients.delete(connectionId);
+
+    return { distributedStateCleanedUp };
   }
 
-  getSessionUsers(sessionId: string): SessionUser[] {
+  /**
+   * Get session users from all instances (async, uses distributed state if available).
+   */
+  async getSessionUsers(sessionId: string): Promise<SessionUser[]> {
+    if (this.distributedState) {
+      return this.distributedState.getSessionMembers(sessionId);
+    }
+    return this.getSessionUsersLocal(sessionId);
+  }
+
+  /**
+   * Get session users from local instance only.
+   * Used when distributed state is not available or for internal operations.
+   */
+  getSessionUsersLocal(sessionId: string): SessionUser[] {
     const sessionClientIds = this.sessions.get(sessionId);
     if (!sessionClientIds) return [];
 
@@ -356,13 +546,24 @@ class RoomManager {
   }
 
   /**
-   * Check if a session is active (has connected users OR exists in Redis within TTL)
+   * Check if a session is active (has connected users across all instances OR exists in Redis within TTL)
    */
   async isSessionActive(sessionId: string): Promise<boolean> {
-    const participantCount = this.sessions.get(sessionId)?.size || 0;
-    if (participantCount > 0) {
-      return true;
+    // Check distributed state first for cross-instance member count
+    if (this.distributedState) {
+      const hasMembers = await this.distributedState.hasSessionMembers(sessionId);
+      if (hasMembers) {
+        return true;
+      }
+    } else {
+      // Single instance mode: check local sessions
+      const participantCount = this.sessions.get(sessionId)?.size || 0;
+      if (participantCount > 0) {
+        return true;
+      }
     }
+
+    // Check Redis session store for inactive-but-recoverable sessions
     if (this.redisStore) {
       return this.redisStore.exists(sessionId);
     }
@@ -378,6 +579,11 @@ class RoomManager {
       }
       // Persist to database
       await db.update(sessionClients).set({ username }).where(eq(sessionClients.id, connectionId));
+
+      // Update distributed state
+      if (this.distributedState) {
+        await this.distributedState.updateUsername(connectionId, username, avatarUrl);
+      }
     }
   }
 
@@ -734,7 +940,13 @@ class RoomManager {
 
     const result: DiscoverableSession[] = [];
     for (const { session, distance } of sessionsWithDistance) {
-      const participantCount = this.sessions.get(session.id)?.size || 0;
+      // Use distributed state for accurate cross-instance participant count
+      let participantCount: number;
+      if (this.distributedState) {
+        participantCount = await this.distributedState.getSessionMemberCount(session.id);
+      } else {
+        participantCount = this.sessions.get(session.id)?.size || 0;
+      }
 
       // Session is active if it has connected users OR exists in Redis (within 4h TTL)
       let isActive = participantCount > 0;
@@ -826,15 +1038,6 @@ class RoomManager {
     await db.delete(sessionClients).where(eq(sessionClients.id, clientId));
   }
 
-  /**
-   * Clean up session queue state from database when session becomes empty.
-   * This prevents orphaned queue data from accumulating.
-   */
-  private async cleanupSessionQueue(sessionId: string): Promise<void> {
-    console.log(`[RoomManager] Cleaning up queue state for session: ${sessionId}`);
-    await db.delete(sessionQueues).where(eq(sessionQueues.sessionId, sessionId));
-  }
-
   private async persistLeaderChange(sessionId: string, newLeaderId: string): Promise<void> {
     // Remove leader status from all clients in session
     await db.update(sessionClients).set({ isLeader: false }).where(eq(sessionClients.sessionId, sessionId));
@@ -877,6 +1080,7 @@ class RoomManager {
       );
       this.pendingWrites.delete(sessionId);
       this.writeRetryAttempts.delete(sessionId);
+      this.retryTimers.delete(sessionId);
       return;
     }
 
@@ -888,14 +1092,22 @@ class RoomManager {
       `for session ${sessionId} in ${delay}ms`
     );
 
+    // Clear any existing retry timer for this session
+    const existingTimer = this.retryTimers.get(sessionId);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+    }
+
     const timer = setTimeout(async () => {
+      // Clean up timer reference when it executes
+      this.retryTimers.delete(sessionId);
+
       const currentState = this.pendingWrites.get(sessionId);
       if (currentState) {
         try {
           await this.writeQueueStateToPostgres(sessionId, currentState);
           this.pendingWrites.delete(sessionId);
           this.writeRetryAttempts.delete(sessionId);
-          this.postgresWriteTimers.delete(sessionId);
           console.log(`[RoomManager] Retry successful for session ${sessionId}`);
         } catch (error) {
           console.error(
@@ -907,7 +1119,7 @@ class RoomManager {
       }
     }, delay);
 
-    this.postgresWriteTimers.set(sessionId, timer);
+    this.retryTimers.set(sessionId, timer);
   }
 
   /**
@@ -921,6 +1133,13 @@ class RoomManager {
     version: number,
     sequence: number
   ): void {
+    // Refresh session membership TTL on activity to prevent expiry during long sessions
+    if (this.distributedState) {
+      this.distributedState.refreshSessionMembership(sessionId).catch((err) => {
+        console.warn(`[RoomManager] Failed to refresh session TTL for ${sessionId}:`, err);
+      });
+    }
+
     // Store latest state
     this.pendingWrites.set(sessionId, { queue, currentClimbQueueItem, version, sequence });
 
@@ -992,7 +1211,7 @@ class RoomManager {
     const writePromises: Promise<void>[] = [];
 
     for (const [sessionId, state] of this.pendingWrites.entries()) {
-      // Clear the timer
+      // Clear the debounce timer
       const timer = this.postgresWriteTimers.get(sessionId);
       if (timer) {
         clearTimeout(timer);
@@ -1009,6 +1228,14 @@ class RoomManager {
 
     await Promise.all(writePromises);
     this.pendingWrites.clear();
+
+    // Clear retry state to prevent memory leaks from abandoned sessions
+    for (const timer of this.retryTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.retryTimers.clear();
+    this.writeRetryAttempts.clear();
+
     console.log('[RoomManager] All pending writes flushed');
   }
 

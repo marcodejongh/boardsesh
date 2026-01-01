@@ -133,7 +133,7 @@ export async function startServer(): Promise<{ wss: WebSocketServer; httpServer:
     intervals.length = 0;
   }
 
-  // Graceful shutdown handler - flush pending writes
+  // Graceful shutdown handler - flush pending writes and clean up distributed state
   process.on('SIGTERM', async () => {
     console.log('[Server] SIGTERM received, initiating graceful shutdown...');
 
@@ -141,11 +141,11 @@ export async function startServer(): Promise<{ wss: WebSocketServer; httpServer:
     cleanupIntervals();
 
     try {
-      // Flush any pending debounced writes to Postgres
-      await roomManager.flushPendingWrites();
-      console.log('[Server] All pending writes flushed successfully');
+      // Shutdown RoomManager (flushes writes + cleans up distributed state)
+      await roomManager.shutdown();
+      console.log('[Server] RoomManager shutdown complete');
     } catch (error) {
-      console.error('[Server] Error flushing pending writes:', error);
+      console.error('[Server] Error during RoomManager shutdown:', error);
     }
 
     // Close HTTP server
@@ -169,10 +169,10 @@ export async function startServer(): Promise<{ wss: WebSocketServer; httpServer:
     cleanupIntervals();
 
     try {
-      await roomManager.flushPendingWrites();
-      console.log('[Server] All pending writes flushed successfully');
+      await roomManager.shutdown();
+      console.log('[Server] RoomManager shutdown complete');
     } catch (error) {
-      console.error('[Server] Error flushing pending writes:', error);
+      console.error('[Server] Error during RoomManager shutdown:', error);
     }
 
     httpServer.close(() => {

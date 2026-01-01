@@ -1,11 +1,27 @@
 import type { ConnectionContext } from '@boardsesh/shared-schema';
 import { checkRateLimit } from '../../../utils/rate-limiter.js';
 import { getContext } from '../../context.js';
+import { getDistributedState } from '../../../services/distributed-state.js';
 
 // Re-export validateInput from validation schemas
 export { validateInput } from '../../../validation/schemas.js';
 // Re-export MAX_RETRIES from types
 export { MAX_RETRIES } from './types.js';
+
+/**
+ * Configuration for session membership retry behavior.
+ *
+ * With defaults (8 retries, 50ms initial delay):
+ * - Delays: 50, 100, 200, 400, 800, 1600, 3200ms
+ * - Total max wait: ~6.35 seconds
+ *
+ * GraphQL subscription timeout should exceed this value to avoid
+ * subscription failures during high-latency join operations.
+ */
+export const SESSION_MEMBER_RETRY_CONFIG = {
+  maxRetries: 8,
+  initialDelayMs: 50,
+} as const;
 
 /**
  * Helper to require a session context.
@@ -36,20 +52,34 @@ export function requireAuthenticated(ctx: ConnectionContext): void {
  *
  * This function includes retry logic with exponential backoff to handle race conditions
  * where subscriptions may be authorized before joinSession has completed updating the context.
- * It re-fetches the context from the Map on each retry to get the latest state.
+ *
+ * In multi-instance mode, it also checks distributed state for cross-instance validation.
+ *
+ * @see SESSION_MEMBER_RETRY_CONFIG for timing configuration details
  */
 export async function requireSessionMember(
   ctx: ConnectionContext,
   sessionId: string,
-  maxRetries = 8,
-  initialDelayMs = 50
+  maxRetries = SESSION_MEMBER_RETRY_CONFIG.maxRetries,
+  initialDelayMs = SESSION_MEMBER_RETRY_CONFIG.initialDelayMs
 ): Promise<void> {
   for (let i = 0; i < maxRetries; i++) {
-    // Re-fetch context to get latest state (joinSession may have updated it)
+    // First check local context (fast path for same-instance)
     const latestCtx = getContext(ctx.connectionId);
-
     if (latestCtx?.sessionId === sessionId) {
-      return; // Success - session matches
+      return; // Success - session matches locally
+    }
+
+    // Check distributed state on each iteration
+    // We re-fetch on each retry to handle cases where distributed state becomes available
+    // after initial retries (e.g., Redis reconnection). The getDistributedState() call is
+    // synchronous and cheap - it just returns a cached singleton reference.
+    const distributedState = getDistributedState();
+    if (distributedState) {
+      const isInSession = await distributedState.isConnectionInSession(ctx.connectionId, sessionId);
+      if (isInSession) {
+        return; // Success - session matches in distributed state
+      }
     }
 
     if (i < maxRetries - 1) {
@@ -60,8 +90,18 @@ export async function requireSessionMember(
     }
   }
 
-  // Final check after all retries
+  // Final check after all retries - check both local and distributed state
   const finalCtx = getContext(ctx.connectionId);
+
+  // Check distributed state one more time
+  const distributedState = getDistributedState();
+  if (distributedState) {
+    const isInSession = await distributedState.isConnectionInSession(ctx.connectionId, sessionId);
+    if (isInSession) {
+      return; // Success via distributed state
+    }
+  }
+
   if (!finalCtx?.sessionId) {
     console.error(`[Auth] requireSessionMember failed after ${maxRetries} retries: not in any session. connectionId=${ctx.connectionId}, requested=${sessionId}`);
     throw new Error(`Unauthorized: not in any session (connectionId: ${ctx.connectionId}, requested: ${sessionId})`);

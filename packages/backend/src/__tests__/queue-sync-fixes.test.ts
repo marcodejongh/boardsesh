@@ -169,7 +169,7 @@ const registerAndJoinSession = async (
   boardPath: string,
   username: string
 ) => {
-  roomManager.registerClient(clientId);
+  await roomManager.registerClient(clientId);
   return roomManager.joinSession(clientId, sessionId, boardPath, username);
 };
 
