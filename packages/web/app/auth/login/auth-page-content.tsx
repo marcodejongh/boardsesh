@@ -12,7 +12,7 @@ const { Content, Header } = Layout;
 const { Title, Text } = Typography;
 
 export default function AuthPageContent() {
-  const { status } = useSession();
+  const { status, update: updateSession } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get('callbackUrl') || '/';
@@ -56,6 +56,8 @@ export default function AuthPageContent() {
       if (result?.error) {
         message.error('Invalid email or password');
       } else if (result?.ok) {
+        // Force session refresh so all components get the updated auth state
+        await updateSession();
         message.success('Logged in successfully');
         router.push(callbackUrl);
       }
@@ -101,6 +103,8 @@ export default function AuthPageContent() {
       });
 
       if (loginResult?.ok) {
+        // Force session refresh so all components get the updated auth state
+        await updateSession();
         router.push(callbackUrl);
       } else {
         // If auto-login fails, switch to login tab

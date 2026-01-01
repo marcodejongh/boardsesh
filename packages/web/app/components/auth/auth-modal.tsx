@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { Modal, Form, Input, Button, Tabs, Typography, Divider, message, Space } from 'antd';
 import { UserOutlined, LockOutlined, MailOutlined, HeartFilled } from '@ant-design/icons';
-import { signIn } from 'next-auth/react';
+import { signIn, useSession } from 'next-auth/react';
 
 const { Text } = Typography;
 
@@ -22,6 +22,7 @@ export default function AuthModal({
   title = "Sign in to continue",
   description = "Create an account or sign in to save your favorites and more."
 }: AuthModalProps) {
+  const { update: updateSession } = useSession();
   const [loginForm] = Form.useForm();
   const [registerForm] = Form.useForm();
   const [loginLoading, setLoginLoading] = useState(false);
@@ -42,6 +43,8 @@ export default function AuthModal({
       if (result?.error) {
         message.error('Invalid email or password');
       } else if (result?.ok) {
+        // Force session refresh so all components get the updated auth state
+        await updateSession();
         message.success('Logged in successfully');
         loginForm.resetFields();
         onClose();
@@ -87,6 +90,8 @@ export default function AuthModal({
       });
 
       if (loginResult?.ok) {
+        // Force session refresh so all components get the updated auth state
+        await updateSession();
         registerForm.resetFields();
         onClose();
         onSuccess?.();
