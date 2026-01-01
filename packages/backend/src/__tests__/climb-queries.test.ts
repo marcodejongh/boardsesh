@@ -4,10 +4,12 @@ import type { ParsedBoardRouteParameters, ClimbSearchParams } from '../db/querie
 import { getSizeEdges } from '../db/queries/util/product-sizes-data.js';
 
 describe('Climb Query Functions', () => {
+  // Use valid size_id for kilter (7 = 12x14 Commercial)
+  // See packages/backend/src/db/queries/util/product-sizes-data.ts for valid IDs
   const testParams: ParsedBoardRouteParameters = {
     board_name: 'kilter',
     layout_id: 1,
-    size_id: 1,
+    size_id: 7,
     set_ids: [1, 2],
     angle: 40,
   };
@@ -231,7 +233,7 @@ describe('Climb Query Functions', () => {
       const result = await getClimbByUuid({
         board_name: 'kilter',
         layout_id: 1,
-        size_id: 1,
+        size_id: 7, // Valid kilter size_id
         angle: 40,
         climb_uuid: 'non-existent-uuid-12345',
       });
@@ -240,16 +242,16 @@ describe('Climb Query Functions', () => {
     });
 
     it('should handle different board names', async () => {
-      // Test with kilter
+      // Test with kilter (size_id 7 = 12x14 Commercial)
       const kilterResult = await getClimbByUuid({
         board_name: 'kilter',
         layout_id: 1,
-        size_id: 1,
+        size_id: 7,
         angle: 40,
         climb_uuid: 'test-uuid',
       });
 
-      // Test with tension
+      // Test with tension (size_id 1 = Full Wall)
       const tensionResult = await getClimbByUuid({
         board_name: 'tension',
         layout_id: 1,
