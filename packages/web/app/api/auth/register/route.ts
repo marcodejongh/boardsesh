@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { sendVerificationEmail } from "@/app/lib/email/email-service";
+import { checkRateLimit, getClientIp } from "@/app/lib/auth/rate-limiter";
 
 const registerSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -17,6 +18,22 @@ const registerSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting - 10 requests per minute per IP for registration
+    const clientIp = getClientIp(request);
+    const rateLimitResult = checkRateLimit(`register:${clientIp}`, 10, 60_000);
+
+    if (rateLimitResult.limited) {
+      return NextResponse.json(
+        { error: "Too many requests. Please try again later." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(rateLimitResult.retryAfterSeconds),
+          },
+        }
+      );
+    }
+
     const body = await request.json();
 
     // Validate input

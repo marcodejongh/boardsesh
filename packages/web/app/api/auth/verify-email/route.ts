@@ -53,6 +53,29 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  // Verify user exists before updating
+  const user = await db
+    .select()
+    .from(schema.users)
+    .where(eq(schema.users.email, email))
+    .limit(1);
+
+  if (user.length === 0) {
+    // Token exists but user doesn't - cleanup the orphan token
+    await db
+      .delete(schema.verificationTokens)
+      .where(
+        and(
+          eq(schema.verificationTokens.identifier, email),
+          eq(schema.verificationTokens.token, token)
+        )
+      );
+
+    return NextResponse.redirect(
+      new URL("/auth/verify-request?error=InvalidToken", request.url)
+    );
+  }
+
   // Update user emailVerified
   await db
     .update(schema.users)

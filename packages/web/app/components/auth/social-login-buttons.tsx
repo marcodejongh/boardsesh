@@ -1,7 +1,7 @@
 'use client';
 
-import React from 'react';
-import { Button, Space } from 'antd';
+import React, { useEffect, useState } from 'react';
+import { Button, Space, Skeleton } from 'antd';
 import { signIn } from 'next-auth/react';
 import { themeTokens } from '@/app/theme/theme-config';
 
@@ -41,6 +41,12 @@ const FacebookIcon = () => (
   </svg>
 );
 
+type ProvidersConfig = {
+  google: boolean;
+  apple: boolean;
+  facebook: boolean;
+};
+
 type SocialLoginButtonsProps = {
   callbackUrl?: string;
   disabled?: boolean;
@@ -50,52 +56,92 @@ export default function SocialLoginButtons({
   callbackUrl = '/',
   disabled = false,
 }: SocialLoginButtonsProps) {
+  const [providers, setProviders] = useState<ProvidersConfig | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/auth/providers-config')
+      .then((res) => res.json())
+      .then((data) => {
+        setProviders(data);
+        setLoading(false);
+      })
+      .catch(() => {
+        // On error, don't show any OAuth buttons
+        setProviders({ google: false, apple: false, facebook: false });
+        setLoading(false);
+      });
+  }, []);
+
   const handleSocialSignIn = (provider: string) => {
     signIn(provider, { callbackUrl });
   };
 
+  // Don't render anything if no providers are configured
+  const hasAnyProvider = providers && (providers.google || providers.apple || providers.facebook);
+
+  if (loading) {
+    return (
+      <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        <Skeleton.Button active block size="large" />
+        <Skeleton.Button active block size="large" />
+        <Skeleton.Button active block size="large" />
+      </Space>
+    );
+  }
+
+  if (!hasAnyProvider) {
+    return null;
+  }
+
   return (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-      <Button
-        block
-        size="large"
-        onClick={() => handleSocialSignIn('google')}
-        disabled={disabled}
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-      >
-        <GoogleIcon />
-        Continue with Google
-      </Button>
+      {providers.google && (
+        <Button
+          block
+          size="large"
+          onClick={() => handleSocialSignIn('google')}
+          disabled={disabled}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+        >
+          <GoogleIcon />
+          Continue with Google
+        </Button>
+      )}
 
-      <Button
-        block
-        size="large"
-        onClick={() => handleSocialSignIn('apple')}
-        disabled={disabled}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 8,
-          backgroundColor: themeTokens.neutral[900],
-          color: themeTokens.semantic.surface,
-          borderColor: themeTokens.neutral[900],
-        }}
-      >
-        <AppleIcon />
-        Continue with Apple
-      </Button>
+      {providers.apple && (
+        <Button
+          block
+          size="large"
+          onClick={() => handleSocialSignIn('apple')}
+          disabled={disabled}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            backgroundColor: themeTokens.neutral[900],
+            color: themeTokens.semantic.surface,
+            borderColor: themeTokens.neutral[900],
+          }}
+        >
+          <AppleIcon />
+          Continue with Apple
+        </Button>
+      )}
 
-      <Button
-        block
-        size="large"
-        onClick={() => handleSocialSignIn('facebook')}
-        disabled={disabled}
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-      >
-        <FacebookIcon />
-        Continue with Facebook
-      </Button>
+      {providers.facebook && (
+        <Button
+          block
+          size="large"
+          onClick={() => handleSocialSignIn('facebook')}
+          disabled={disabled}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+        >
+          <FacebookIcon />
+          Continue with Facebook
+        </Button>
+      )}
     </Space>
   );
 }
