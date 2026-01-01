@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import { createClient, Client } from 'graphql-ws';
 import WebSocket from 'ws';
+import { v4 as uuidv4 } from 'uuid';
 import { startServer } from '../server.js';
 import type { ClimbQueueItem } from '@boardsesh/shared-schema';
 
@@ -12,12 +13,14 @@ const TEST_PORT = 8082;
 let testCounter = 0;
 const createTestSessionId = () => `test-session-${Date.now()}-${testCounter++}`;
 
-const createTestClimb = (uuid: string): ClimbQueueItem => ({
-  uuid,
+// Creates a test climb with valid UUIDs
+// The label parameter is just for debugging/naming, not used as UUID
+const createTestClimb = (label: string): ClimbQueueItem => ({
+  uuid: uuidv4(),
   climb: {
-    uuid: `climb-${uuid}`,
+    uuid: uuidv4(),
     setter_username: 'test-setter',
-    name: `Test Climb ${uuid}`,
+    name: `Test Climb ${label}`,
     description: 'A test climb',
     frames: 'test-frames',
     angle: 40,
