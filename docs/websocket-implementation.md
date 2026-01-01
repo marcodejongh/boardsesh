@@ -686,6 +686,64 @@ sequenceDiagram
     P->>P: Exit
 ```
 
+### Dead Instance Detection and TTL Cleanup
+
+When an instance crashes or terminates without graceful shutdown, the system relies on TTL-based cleanup:
+
+**1. Instance Heartbeat Expiry (60s TTL)**
+
+Each instance updates its heartbeat every 30 seconds:
+```
+boardsesh:instance:{id}:heartbeat = timestamp (60s TTL)
+```
+
+When an instance dies unexpectedly:
+- The heartbeat key expires after 60 seconds
+- Redis automatically removes the heartbeat key
+
+**2. Connection Data Expiry (1 hour TTL)**
+
+Connection data has its own TTL:
+```
+boardsesh:conn:{connectionId} = {...} (1 hour TTL)
+```
+
+Connections from dead instances:
+- Continue to exist until their 1-hour TTL expires
+- Are refreshed on client activity (extends TTL)
+- Eventually expire if no activity
+
+**3. Session Member Sets (4 hour TTL)**
+
+Session member sets track all connection IDs:
+```
+boardsesh:session:{id}:members = Set of connectionIds (4 hour TTL)
+```
+
+**Limitation: No Active Cleanup for Dead Instances**
+
+Currently, there is no background job that actively scans for dead instances and cleans up their orphaned connections. This means:
+
+- Session member sets may temporarily contain connection IDs from dead instances
+- `getSessionMembers()` may return connections that no longer exist (gracefully handled by filtering out missing connection data)
+- Leader election may initially select a connection from a dead instance (but will re-elect on next leader action)
+- Connection data remains until TTL expires naturally
+
+**Implications for Clients**
+
+- Clients should handle the case where a session "member" is no longer reachable
+- Leader changes may occur when the elected leader from a dead instance is detected as unresponsive
+- User lists may temporarily show stale entries that get filtered out on refresh
+
+**Future Improvement**
+
+A background cleanup job could periodically:
+1. Scan for instances with expired heartbeats
+2. Remove their orphaned connections from session member sets
+3. Trigger leader re-election if the current leader's instance is dead
+
+This would reduce the window of stale data but is not currently implemented.
+
 ---
 
 ## Configuration

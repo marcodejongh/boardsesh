@@ -464,6 +464,7 @@ export class DistributedStateManager {
    * Get connection data from Redis.
    */
   async getConnection(connectionId: string): Promise<DistributedConnection | null> {
+    validateConnectionId(connectionId);
     const data = await this.redis.hgetall(KEYS.connection(connectionId));
     if (!data || !data.connectionId) {
       return null;
@@ -475,6 +476,8 @@ export class DistributedStateManager {
    * Check if a connection exists and belongs to a specific session.
    */
   async isConnectionInSession(connectionId: string, sessionId: string): Promise<boolean> {
+    validateConnectionId(connectionId);
+    validateSessionId(sessionId);
     const connection = await this.getConnection(connectionId);
     return connection !== null && connection.sessionId === sessionId;
   }
@@ -618,6 +621,7 @@ export class DistributedStateManager {
    * This aggregates data from all instances.
    */
   async getSessionMembers(sessionId: string): Promise<SessionUser[]> {
+    validateSessionId(sessionId);
     const memberIds = await this.redis.smembers(KEYS.sessionMembers(sessionId));
 
     if (memberIds.length === 0) {
@@ -655,6 +659,7 @@ export class DistributedStateManager {
    * Get the current leader of a session.
    */
   async getSessionLeader(sessionId: string): Promise<string | null> {
+    validateSessionId(sessionId);
     return this.redis.get(KEYS.sessionLeader(sessionId));
   }
 
@@ -662,6 +667,7 @@ export class DistributedStateManager {
    * Get count of members in a session.
    */
   async getSessionMemberCount(sessionId: string): Promise<number> {
+    validateSessionId(sessionId);
     return this.redis.scard(KEYS.sessionMembers(sessionId));
   }
 
@@ -669,6 +675,7 @@ export class DistributedStateManager {
    * Update connection username.
    */
   async updateUsername(connectionId: string, username: string, avatarUrl?: string): Promise<void> {
+    validateConnectionId(connectionId);
     const updates: Record<string, string> = { username };
     if (avatarUrl !== undefined) {
       updates.avatarUrl = avatarUrl || '';
@@ -683,6 +690,7 @@ export class DistributedStateManager {
    * @returns true if connection exists and was refreshed, false otherwise
    */
   async refreshConnection(connectionId: string): Promise<boolean> {
+    validateConnectionId(connectionId);
     const result = await this.redis.eval(
       REFRESH_TTL_SCRIPT,
       1,
@@ -698,6 +706,7 @@ export class DistributedStateManager {
    * Refresh session membership TTL directly (for long-running sessions).
    */
   async refreshSessionMembership(sessionId: string): Promise<void> {
+    validateSessionId(sessionId);
     await this.redis.expire(KEYS.sessionMembers(sessionId), TTL.sessionMembership);
   }
 
@@ -705,6 +714,7 @@ export class DistributedStateManager {
    * Check if session has any members.
    */
   async hasSessionMembers(sessionId: string): Promise<boolean> {
+    validateSessionId(sessionId);
     const count = await this.redis.scard(KEYS.sessionMembers(sessionId));
     return count > 0;
   }
@@ -713,6 +723,7 @@ export class DistributedStateManager {
    * Clean up session state when it becomes empty.
    */
   async cleanupEmptySession(sessionId: string): Promise<void> {
+    validateSessionId(sessionId);
     const multi = this.redis.multi();
     multi.del(KEYS.sessionMembers(sessionId));
     multi.del(KEYS.sessionLeader(sessionId));

@@ -195,7 +195,8 @@ describe.skipIf(!redisAvailable)('DistributedStateManager', () => {
       expect(result.newLeaderId).toBeNull(); // No other members
 
       const connection = await manager.getConnection('conn-11');
-      expect(connection!.sessionId).toBe('');
+      // After leaving, sessionId is stored as '' in Redis but hashToConnection converts it to null
+      expect(connection!.sessionId).toBeNull();
       expect(connection!.isLeader).toBe(false);
 
       const hasMembers = await manager.hasSessionMembers('session-5');
@@ -522,7 +523,8 @@ describe.skipIf(!redisAvailable)('DistributedStateManager - Edge Cases', () => {
     }
 
     const connection = await manager.getConnection('rapid-conn');
-    expect(connection!.sessionId).toBe('');
+    // After leaving, sessionId is stored as '' in Redis but hashToConnection converts it to null
+    expect(connection!.sessionId).toBeNull();
     expect(connection!.isLeader).toBe(false);
   });
 
@@ -548,13 +550,17 @@ describe.skipIf(!redisAvailable)('DistributedStateManager - Edge Cases', () => {
     expect(connection!.username).toBe('');
   });
 
-  it('should return unique instance IDs', () => {
+  it('should return unique instance IDs', async () => {
     const manager2 = new DistributedStateManager(redis);
     const manager3 = new DistributedStateManager(redis);
 
     expect(manager.getInstanceId()).toBe('edge-instance');
     expect(manager2.getInstanceId()).not.toBe(manager.getInstanceId());
     expect(manager3.getInstanceId()).not.toBe(manager2.getInstanceId());
+
+    // Clean up managers to prevent memory leaks
+    await manager2.stop();
+    await manager3.stop();
   });
 
   it('should handle getSessionMembers with stale connection data', async () => {
@@ -797,5 +803,165 @@ describe.skipIf(!redisAvailable)('DistributedStateManager - old leader flag rese
     // Verify new leader has isLeader=true
     const newLeaderAfter = await manager.getConnection('new-leader');
     expect(newLeaderAfter!.isLeader).toBe(true);
+  });
+});
+
+describe.skipIf(!redisAvailable)('DistributedStateManager - start() idempotency', () => {
+  let redis: Redis;
+  let manager: DistributedStateManager;
+
+  beforeAll(async () => {
+    redis = new Redis(REDIS_URL);
+    await new Promise<void>((resolve) => redis.once('ready', resolve));
+  });
+
+  afterAll(async () => {
+    forceResetDistributedState();
+    await redis.quit();
+  });
+
+  beforeEach(async () => {
+    forceResetDistributedState();
+    try {
+      const keys = await redis.keys('boardsesh:*');
+      if (keys.length > 0) {
+        await redis.del(...keys);
+      }
+    } catch (err) {
+      console.warn('Failed to clean up test keys:', err);
+    }
+    manager = new DistributedStateManager(redis, 'idempotent-instance');
+  });
+
+  afterEach(async () => {
+    await manager.stop();
+    forceResetDistributedState();
+  });
+
+  it('should be idempotent - multiple start calls should not create multiple intervals', async () => {
+    // Register a connection so cleanup will run fully (including heartbeat key deletion)
+    await manager.registerConnection('idempotent-conn', 'IdempotentUser');
+
+    // Call start multiple times
+    manager.start();
+    manager.start();
+    manager.start();
+
+    // Give heartbeat time to run
+    await new Promise((r) => setTimeout(r, 100));
+
+    // Verify heartbeat was created (instance heartbeat key exists)
+    const heartbeatKey = `boardsesh:instance:${manager.getInstanceId()}:heartbeat`;
+    const heartbeatValue = await redis.get(heartbeatKey);
+    expect(heartbeatValue).toBeTruthy();
+
+    // Stop should succeed without issues (would throw if multiple intervals)
+    await manager.stop();
+    expect(manager.isStopped()).toBe(true);
+
+    // Heartbeat should be cleared (cleanup runs because we have a connection)
+    const heartbeatAfterStop = await redis.get(heartbeatKey);
+    expect(heartbeatAfterStop).toBeNull();
+  });
+});
+
+describe.skipIf(!redisAvailable)('DistributedStateManager - Redis error handling', () => {
+  let redis: Redis;
+
+  beforeAll(async () => {
+    redis = new Redis(REDIS_URL);
+    await new Promise<void>((resolve) => redis.once('ready', resolve));
+  });
+
+  afterAll(async () => {
+    forceResetDistributedState();
+    await redis.quit();
+  });
+
+  beforeEach(async () => {
+    forceResetDistributedState();
+    try {
+      const keys = await redis.keys('boardsesh:*');
+      if (keys.length > 0) {
+        await redis.del(...keys);
+      }
+    } catch (err) {
+      console.warn('Failed to clean up test keys:', err);
+    }
+  });
+
+  afterEach(() => {
+    forceResetDistributedState();
+  });
+
+  it('should throw error for invalid connectionId format', async () => {
+    const manager = new DistributedStateManager(redis, 'validation-test');
+
+    // Invalid characters in connectionId
+    await expect(manager.getConnection('conn:with:colons')).rejects.toThrow('Invalid connectionId format');
+    await expect(manager.getConnection('../path/traversal')).rejects.toThrow('Invalid connectionId format');
+    await expect(manager.getConnection('')).rejects.toThrow('Invalid connectionId format');
+
+    await manager.stop();
+  });
+
+  it('should throw error for invalid sessionId format', async () => {
+    const manager = new DistributedStateManager(redis, 'validation-test');
+    await manager.registerConnection('valid-conn', 'TestUser');
+
+    // Invalid characters in sessionId
+    await expect(manager.joinSession('valid-conn', 'session:with:colons')).rejects.toThrow(
+      'Invalid sessionId format'
+    );
+    await expect(manager.getSessionMembers('../path/traversal')).rejects.toThrow('Invalid sessionId format');
+    await expect(manager.getSessionLeader('')).rejects.toThrow('Invalid sessionId format');
+
+    await manager.stop();
+  });
+
+  it('should handle disconnected Redis gracefully in getConnection', async () => {
+    const disconnectedRedis = new Redis({
+      host: 'localhost',
+      port: 9999, // Non-existent port
+      connectTimeout: 100,
+      maxRetriesPerRequest: 0,
+      lazyConnect: true,
+    });
+
+    const errorManager = new DistributedStateManager(disconnectedRedis, 'error-test');
+
+    // Should reject with connection error
+    await expect(errorManager.getConnection('test-id')).rejects.toThrow();
+
+    // Clean up
+    errorManager.stopHeartbeat();
+    try {
+      await disconnectedRedis.quit();
+    } catch {
+      // Ignore quit errors on disconnected redis
+    }
+  });
+
+  it('should handle disconnected Redis gracefully in registerConnection', async () => {
+    const disconnectedRedis = new Redis({
+      host: 'localhost',
+      port: 9999, // Non-existent port
+      connectTimeout: 100,
+      maxRetriesPerRequest: 0,
+      lazyConnect: true,
+    });
+
+    const errorManager = new DistributedStateManager(disconnectedRedis, 'error-test');
+
+    // Should reject with connection error
+    await expect(errorManager.registerConnection('test-id', 'TestUser')).rejects.toThrow();
+
+    // Clean up
+    errorManager.stopHeartbeat();
+    try {
+      await disconnectedRedis.quit();
+    } catch {
+      // Ignore quit errors on disconnected redis
+    }
   });
 });
