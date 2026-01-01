@@ -66,33 +66,14 @@ const LEADER_ELECTION_SCRIPT = `
 `;
 
 /**
- * Lua script for atomic leader transfer.
- * Only transfers leadership if current leader matches expected.
- * Returns: 1 if transferred, 0 if not
- */
-const LEADER_TRANSFER_SCRIPT = `
-  local leaderKey = KEYS[1]
-  local expectedLeader = ARGV[1]
-  local newLeader = ARGV[2]
-
-  local currentLeader = redis.call('GET', leaderKey)
-  if currentLeader ~= expectedLeader then
-    return 0
-  end
-
-  if newLeader == '' then
-    redis.call('DEL', leaderKey)
-  else
-    redis.call('SET', leaderKey, newLeader)
-  end
-  return 1
-`;
-
-/**
  * Lua script to elect new leader from session members.
  * Picks the member with the earliest connectedAt timestamp.
  * Also clears the old leader's isLeader flag and refreshes TTL.
  * Returns: connectionId of new leader, or nil if no members
+ *
+ * Note: This script clears isLeader for the old leader regardless of whether
+ * they are the leaving connection. This ensures no stale isLeader flags remain
+ * even if the calling code order changes (e.g., if script runs before connection deletion).
  */
 const ELECT_NEW_LEADER_SCRIPT = `
   local sessionMembersKey = KEYS[1]
@@ -101,9 +82,9 @@ const ELECT_NEW_LEADER_SCRIPT = `
   local membersTTL = tonumber(ARGV[2])
   local leaderTTL = tonumber(ARGV[3])
 
-  -- Get and clear old leader's isLeader flag first
+  -- Get and clear old leader's isLeader flag first (including leaving connection for robustness)
   local oldLeader = redis.call('GET', leaderKey)
-  if oldLeader and oldLeader ~= leavingConnectionId then
+  if oldLeader then
     local oldLeaderConnKey = 'boardsesh:conn:' .. oldLeader
     if redis.call('EXISTS', oldLeaderConnKey) == 1 then
       redis.call('HSET', oldLeaderConnKey, 'isLeader', 'false')
@@ -217,6 +198,50 @@ const LEAVE_SESSION_SCRIPT = `
   end
 
   return newLeaderId
+`;
+
+/**
+ * Lua script for atomic session join with leader election.
+ * Atomically updates connection, adds to session members, and attempts leader election.
+ * This prevents race conditions where a crash between these operations could leave
+ * a connection in the members set without proper leader election.
+ * Returns: 1 if became leader, 0 if not
+ */
+const JOIN_SESSION_SCRIPT = `
+  local connKey = KEYS[1]
+  local sessionMembersKey = KEYS[2]
+  local leaderKey = KEYS[3]
+  local connectionId = ARGV[1]
+  local sessionId = ARGV[2]
+  local connTTL = tonumber(ARGV[3])
+  local sessionTTL = tonumber(ARGV[4])
+  local username = ARGV[5]
+  local avatarUrl = ARGV[6]
+
+  -- Update connection with session info
+  redis.call('HSET', connKey, 'sessionId', sessionId)
+  if username and username ~= '' then
+    redis.call('HSET', connKey, 'username', username)
+  end
+  if avatarUrl then
+    redis.call('HSET', connKey, 'avatarUrl', avatarUrl)
+  end
+  redis.call('EXPIRE', connKey, connTTL)
+
+  -- Add to session members
+  redis.call('SADD', sessionMembersKey, connectionId)
+  redis.call('EXPIRE', sessionMembersKey, sessionTTL)
+
+  -- Try to become leader (only if no leader exists)
+  local currentLeader = redis.call('GET', leaderKey)
+  if currentLeader then
+    return 0  -- Already has a leader
+  end
+
+  -- Become leader
+  redis.call('SET', leaderKey, connectionId, 'EX', sessionTTL)
+  redis.call('HSET', connKey, 'isLeader', 'true')
+  return 1
 `;
 
 /**
@@ -484,6 +509,7 @@ export class DistributedStateManager {
 
   /**
    * Join a session. Handles leader election for first member.
+   * Uses atomic Lua script to prevent race conditions between session join and leader election.
    * Returns whether this connection became leader.
    */
   async joinSession(
@@ -495,38 +521,22 @@ export class DistributedStateManager {
     validateConnectionId(connectionId);
     validateSessionId(sessionId);
 
-    // Update connection with session info
-    const updates: Record<string, string> = {
-      sessionId,
-    };
-    if (username) {
-      updates.username = username;
-    }
-    if (avatarUrl !== undefined) {
-      updates.avatarUrl = avatarUrl || '';
-    }
-
-    const multi = this.redis.multi();
-
-    // Update connection
-    multi.hmset(KEYS.connection(connectionId), updates);
-    multi.expire(KEYS.connection(connectionId), TTL.connection);
-
-    // Add to session members
-    multi.sadd(KEYS.sessionMembers(sessionId), connectionId);
-    multi.expire(KEYS.sessionMembers(sessionId), TTL.sessionMembership);
-
-    await multi.exec();
-
-    // Try to become leader (atomic operation - sets both leader key with TTL and isLeader flag)
-    const becameLeader = await this.redis.eval(
-      LEADER_ELECTION_SCRIPT,
-      2,
-      KEYS.sessionLeader(sessionId),
+    // Use atomic script that handles session join and leader election together
+    // This prevents race conditions where a crash between operations could leave
+    // a connection in the members set without proper leader election
+    const becameLeader = (await this.redis.eval(
+      JOIN_SESSION_SCRIPT,
+      3,
       KEYS.connection(connectionId),
+      KEYS.sessionMembers(sessionId),
+      KEYS.sessionLeader(sessionId),
       connectionId,
-      TTL.sessionMembership.toString() // Leader TTL matches session TTL
-    ) as number;
+      sessionId,
+      TTL.connection.toString(),
+      TTL.sessionMembership.toString(),
+      username || '',
+      avatarUrl !== undefined ? (avatarUrl || '') : ''
+    )) as number;
 
     if (becameLeader === 1) {
       console.log(`[DistributedState] Connection ${connectionId.slice(0, 8)} became leader of session ${sessionId.slice(0, 8)}`);
@@ -839,6 +849,8 @@ export class DistributedStateManager {
 
 // Singleton instance - initialized when Redis is available
 let distributedStateManager: DistributedStateManager | null = null;
+// Track if we've already warned about re-initialization to avoid log spam during hot-reload
+let hasWarnedAboutReinitialization = false;
 
 /**
  * Initialize the distributed state manager.
@@ -846,11 +858,16 @@ let distributedStateManager: DistributedStateManager | null = null;
  */
 export function initializeDistributedState(redis: Redis, instanceId?: string): DistributedStateManager {
   if (distributedStateManager) {
-    console.warn('[DistributedState] Already initialized, returning existing instance');
+    // Only warn once to avoid log spam during development hot-reload
+    if (!hasWarnedAboutReinitialization) {
+      console.warn('[DistributedState] Already initialized, returning existing instance');
+      hasWarnedAboutReinitialization = true;
+    }
     return distributedStateManager;
   }
 
   distributedStateManager = new DistributedStateManager(redis, instanceId);
+  hasWarnedAboutReinitialization = false; // Reset warning flag for new instance
   return distributedStateManager;
 }
 
@@ -876,6 +893,7 @@ export async function shutdownDistributedState(): Promise<void> {
   if (distributedStateManager) {
     await distributedStateManager.stop();
     distributedStateManager = null;
+    hasWarnedAboutReinitialization = false;
   }
 }
 
@@ -888,6 +906,7 @@ export async function resetDistributedState(): Promise<void> {
   if (distributedStateManager) {
     await distributedStateManager.stop();
     distributedStateManager = null;
+    hasWarnedAboutReinitialization = false;
   }
 }
 
@@ -912,4 +931,5 @@ export function forceResetDistributedState(): void {
     }
   }
   distributedStateManager = null;
+  hasWarnedAboutReinitialization = false;
 }

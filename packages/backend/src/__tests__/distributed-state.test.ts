@@ -965,3 +965,75 @@ describe.skipIf(!redisAvailable)('DistributedStateManager - Redis error handling
     }
   });
 });
+
+describe.skipIf(!redisAvailable)('DistributedStateManager - cleanup error handling', () => {
+  let redis: Redis;
+  let manager: DistributedStateManager;
+
+  beforeAll(async () => {
+    redis = new Redis(REDIS_URL);
+    await new Promise<void>((resolve) => redis.once('ready', resolve));
+  });
+
+  afterAll(async () => {
+    forceResetDistributedState();
+    await redis.quit();
+  });
+
+  beforeEach(async () => {
+    forceResetDistributedState();
+    try {
+      const keys = await redis.keys('boardsesh:*');
+      if (keys.length > 0) {
+        await redis.del(...keys);
+      }
+    } catch (err) {
+      console.warn('Failed to clean up test keys:', err);
+    }
+    manager = new DistributedStateManager(redis, 'cleanup-test');
+  });
+
+  afterEach(async () => {
+    await manager.stop();
+    forceResetDistributedState();
+  });
+
+  it('should complete cleanup even when some connections are already removed', async () => {
+    // Register multiple connections
+    await manager.registerConnection('cleanup-conn-1', 'User1');
+    await manager.registerConnection('cleanup-conn-2', 'User2');
+    await manager.registerConnection('cleanup-conn-3', 'User3');
+
+    // Manually delete one connection to simulate it being removed by another process
+    await redis.del('boardsesh:conn:cleanup-conn-2');
+
+    // Stop should complete successfully, handling the missing connection gracefully
+    await manager.stop();
+    expect(manager.isStopped()).toBe(true);
+
+    // Verify all connections are cleaned up
+    const conn1 = await redis.hgetall('boardsesh:conn:cleanup-conn-1');
+    const conn2 = await redis.hgetall('boardsesh:conn:cleanup-conn-2');
+    const conn3 = await redis.hgetall('boardsesh:conn:cleanup-conn-3');
+
+    expect(Object.keys(conn1).length).toBe(0);
+    expect(Object.keys(conn2).length).toBe(0);
+    expect(Object.keys(conn3).length).toBe(0);
+  });
+
+  it('should handle cleanup when instance tracking is corrupted', async () => {
+    // Register a connection
+    await manager.registerConnection('corrupt-conn', 'CorruptUser');
+
+    // Corrupt the instance tracking by adding a non-existent connection
+    await redis.sadd(`boardsesh:instance:${manager.getInstanceId()}:conns`, 'non-existent-conn');
+
+    // Stop should complete successfully, handling the non-existent connection gracefully
+    await manager.stop();
+    expect(manager.isStopped()).toBe(true);
+
+    // Verify the real connection is cleaned up
+    const conn = await redis.hgetall('boardsesh:conn:corrupt-conn');
+    expect(Object.keys(conn).length).toBe(0);
+  });
+});

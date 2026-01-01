@@ -46,7 +46,9 @@ export async function requireSessionMember(
   maxRetries = 8,
   initialDelayMs = 50
 ): Promise<void> {
+  // Cache distributed state check outside loop to avoid repeated async overhead
   const distributedState = getDistributedState();
+  const hasDistributedState = distributedState !== null;
 
   for (let i = 0; i < maxRetries; i++) {
     // First check local context (fast path for same-instance)
@@ -56,7 +58,7 @@ export async function requireSessionMember(
     }
 
     // If distributed state is enabled, check cross-instance
-    if (distributedState) {
+    if (hasDistributedState) {
       const isInSession = await distributedState.isConnectionInSession(ctx.connectionId, sessionId);
       if (isInSession) {
         return; // Success - session matches in distributed state
@@ -75,7 +77,7 @@ export async function requireSessionMember(
   const finalCtx = getContext(ctx.connectionId);
 
   // Check distributed state one more time
-  if (distributedState) {
+  if (hasDistributedState) {
     const isInSession = await distributedState.isConnectionInSession(ctx.connectionId, sessionId);
     if (isInSession) {
       return; // Success via distributed state
