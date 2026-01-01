@@ -39,10 +39,12 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
-    "canvas": "^2.11.2",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "vitest": "^4.0.16"
+  },
+  "optionalDependencies": {
+    "canvas": "^2.11.2"
   },
   "engines": {
     "node": ">=18"
