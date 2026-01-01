@@ -424,6 +424,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
     totalSearchResultCount,
     hasMoreResults,
     isFetchingClimbs,
+    isFetchingNextPage,
     fetchMoreClimbs,
     // Favorites
     favorites,
@@ -645,6 +646,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
       totalSearchResultCount,
       hasMoreResults,
       isFetchingClimbs,
+      isFetchingNextPage,
       hasDoneFirstFetch: state.hasDoneFirstFetch,
       viewOnlyMode,
       parsedParams,
@@ -843,6 +845,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
       totalSearchResultCount,
       hasMoreResults,
       isFetchingClimbs,
+      isFetchingNextPage,
       viewOnlyMode,
       parsedParams,
       clientId,

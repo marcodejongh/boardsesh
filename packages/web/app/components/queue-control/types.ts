@@ -65,6 +65,7 @@ export interface QueueContextType {
   totalSearchResultCount: number | null;
   hasMoreResults: boolean;
   isFetchingClimbs: boolean;
+  isFetchingNextPage: boolean;
   hasDoneFirstFetch: boolean;
   viewOnlyMode: boolean;
   parsedParams: ParsedBoardRouteParameters;

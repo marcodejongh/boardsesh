@@ -1,6 +1,6 @@
 'use client';
-import React, { useEffect, useState, useCallback } from 'react';
-import { Divider, Row, Col, Button, Flex, Drawer, Space, Typography } from 'antd';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { Divider, Row, Col, Button, Flex, Drawer, Space, Typography, Skeleton } from 'antd';
 import { PlusOutlined, LoginOutlined } from '@ant-design/icons';
 import { useQueueContext } from '../graphql-queue';
 import { Climb, BoardDetails } from '@/app/lib/types';
@@ -27,7 +27,10 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails, onClimbNavigate }) 
     viewOnlyMode,
     currentClimbQueueItem,
     queue,
-    climbSearchResults,
+    suggestedClimbs,
+    hasMoreResults,
+    isFetchingNextPage,
+    fetchMoreClimbs,
     setCurrentClimbQueueItem,
     setQueue,
     addToQueue,
@@ -84,9 +87,40 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails, onClimbNavigate }) 
     return cleanup; // Cleanup listener on component unmount
   }, [queue, setQueue]);
 
-  const suggestedClimbs = (climbSearchResults || []).filter(
-    (item) => !queue.find((queueItem) => queueItem.climb?.uuid === item.uuid),
+  // Ref for the intersection observer sentinel element
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  // Intersection Observer callback for infinite scroll
+  const handleObserver = useCallback(
+    (entries: IntersectionObserverEntry[]) => {
+      const [target] = entries;
+      if (target.isIntersecting && hasMoreResults && !isFetchingNextPage) {
+        fetchMoreClimbs();
+      }
+    },
+    [hasMoreResults, isFetchingNextPage, fetchMoreClimbs],
   );
+
+  // Set up Intersection Observer for infinite scroll
+  useEffect(() => {
+    const element = loadMoreRef.current;
+    if (!element || viewOnlyMode) return;
+
+    // Find the scrollable container - the drawer content
+    const scrollContainer = element.closest('.ant-drawer-body');
+
+    const observer = new IntersectionObserver(handleObserver, {
+      root: scrollContainer,
+      rootMargin: '100px',
+      threshold: 0,
+    });
+
+    observer.observe(element);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [handleObserver, viewOnlyMode]);
 
   return (
     <>
@@ -147,6 +181,31 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails, onClimbNavigate }) 
               </div>
             ))}
           </Flex>
+          {/* Sentinel element for Intersection Observer - triggers fetch when visible */}
+          <div ref={loadMoreRef} style={{ minHeight: '20px', marginTop: '8px' }}>
+            {isFetchingNextPage && (
+              <Flex vertical gap={8} style={{ padding: '8px' }}>
+                {[1, 2, 3].map((i) => (
+                  <Row key={i} gutter={[8, 8]} align="middle" wrap={false}>
+                    <Col xs={6} sm={5}>
+                      <Skeleton.Image active style={{ width: '100%', height: 60 }} />
+                    </Col>
+                    <Col xs={15} sm={17}>
+                      <Skeleton active paragraph={{ rows: 1 }} title={false} />
+                    </Col>
+                    <Col xs={3} sm={2}>
+                      <Skeleton.Button active size="small" />
+                    </Col>
+                  </Row>
+                ))}
+              </Flex>
+            )}
+            {!hasMoreResults && suggestedClimbs.length > 0 && (
+              <div style={{ textAlign: 'center', padding: '16px', color: themeTokens.neutral[400] }}>
+                No more suggestions
+              </div>
+            )}
+          </div>
         </>
       )}
 
