@@ -197,8 +197,10 @@ export function queueReducer(state: QueueState, action: QueueAction): QueueState
 
       let newQueue = state.queue;
 
-      // Add to queue if requested and item doesn't exist
-      if (item && shouldAddToQueue && !state.queue.find(qItem => qItem.uuid === item.uuid)) {
+      // Add to queue if requested and climb doesn't already exist in queue
+      // IMPORTANT: Check by climb.uuid (the actual content), not item.uuid (the wrapper)
+      // This makes the operation idempotent and prevents duplicates when user swipes fast
+      if (item && shouldAddToQueue && !state.queue.find(qItem => qItem.climb?.uuid === item.climb?.uuid)) {
         newQueue = [...state.queue, item];
       }
 

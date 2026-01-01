@@ -840,7 +840,11 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
           climbSearchResults &&
           climbSearchResults?.length > 0
         ) {
-          const nextClimb = suggestedClimbs[0];
+          // Find the first suggested climb that isn't already in the queue
+          // This handles race conditions where suggestedClimbs hasn't been recomputed yet
+          const nextClimb = suggestedClimbs.find(
+            climb => !state.queue.some(qItem => qItem.climb?.uuid === climb.uuid)
+          );
           return nextClimb ? createClimbQueueItem(nextClimb, clientId, currentUserInfo, true) : null;
         }
 
