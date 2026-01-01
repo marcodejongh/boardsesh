@@ -1,25 +1,51 @@
 import { NextAuthOptions } from "next-auth";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import GoogleProvider from "next-auth/providers/google";
+import AppleProvider from "next-auth/providers/apple";
+import FacebookProvider from "next-auth/providers/facebook";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { getDb } from "@/app/lib/db/db";
 import * as schema from "@/app/lib/db/schema";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
-export const authOptions: NextAuthOptions = {
-  adapter: DrizzleAdapter(getDb(), {
-    usersTable: schema.users,
-    accountsTable: schema.accounts,
-    sessionsTable: schema.sessions,
-    verificationTokensTable: schema.verificationTokens,
-  }),
-  providers: [
+// Build providers array conditionally based on available env vars
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const providers: any[] = [];
+
+// Only add Google provider if credentials are configured
+if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+  providers.push(
     GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
-    CredentialsProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    })
+  );
+}
+
+// Only add Apple provider if credentials are configured
+if (process.env.APPLE_ID && process.env.APPLE_SECRET) {
+  providers.push(
+    AppleProvider({
+      clientId: process.env.APPLE_ID,
+      clientSecret: process.env.APPLE_SECRET,
+    })
+  );
+}
+
+// Only add Facebook provider if credentials are configured
+if (process.env.FACEBOOK_CLIENT_ID && process.env.FACEBOOK_CLIENT_SECRET) {
+  providers.push(
+    FacebookProvider({
+      clientId: process.env.FACEBOOK_CLIENT_ID,
+      clientSecret: process.env.FACEBOOK_CLIENT_SECRET,
+    })
+  );
+}
+
+// Always add credentials provider
+providers.push(
+  CredentialsProvider({
       name: "Email",
       credentials: {
         email: { label: "Email", type: "email", placeholder: "your@email.com" },
@@ -74,15 +100,51 @@ export const authOptions: NextAuthOptions = {
           image: user.image,
         };
       },
-    }),
-  ],
+    })
+);
+
+export const authOptions: NextAuthOptions = {
+  adapter: DrizzleAdapter(getDb(), {
+    usersTable: schema.users,
+    accountsTable: schema.accounts,
+    sessionsTable: schema.sessions,
+    verificationTokensTable: schema.verificationTokens,
+  }),
+  providers,
   session: {
     strategy: "jwt", // Required for credentials provider
   },
   pages: {
     signIn: "/auth/login",
+    verifyRequest: "/auth/verify-request",
+    error: "/auth/error",
   },
   callbacks: {
+    async signIn({ user, account }) {
+      // OAuth providers - allow sign in (emails are pre-verified by provider)
+      if (account?.provider !== "credentials") {
+        return true;
+      }
+
+      // For credentials, check if email is verified
+      if (!user.email) {
+        return false;
+      }
+
+      const db = getDb();
+      const existingUser = await db
+        .select()
+        .from(schema.users)
+        .where(eq(schema.users.email, user.email))
+        .limit(1);
+
+      if (existingUser.length > 0 && !existingUser[0].emailVerified) {
+        // Redirect to verification page with error
+        return "/auth/verify-request?error=EmailNotVerified";
+      }
+
+      return true;
+    },
     async session({ session, token }) {
       // Include user ID in session from JWT
       if (session?.user && token?.sub) {
@@ -96,6 +158,17 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id;
       }
       return token;
+    },
+  },
+  events: {
+    async createUser({ user }) {
+      // Create profile for new OAuth users
+      if (user.id) {
+        const db = getDb();
+        await db.insert(schema.userProfiles).values({
+          userId: user.id,
+        }).onConflictDoNothing();
+      }
     },
   },
 };
