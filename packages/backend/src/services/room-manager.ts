@@ -116,7 +116,9 @@ class RoomManager {
       } catch (err) {
         // Remove local client on distributed state failure to maintain consistency
         this.clients.delete(connectionId);
-        console.error(`[RoomManager] Failed to register connection in distributed state: ${err}`);
+        // Log only the error message, not the full error object which may contain sensitive Redis connection info
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+        console.error(`[RoomManager] Failed to register connection in distributed state: ${errorMessage}`);
         throw new Error(`Failed to register client: distributed state error`);
       }
     }
@@ -350,7 +352,11 @@ class RoomManager {
         // Mark session as inactive in Redis but DON'T delete (4h TTL starts)
         if (this.redisStore) {
           await this.redisStore.markInactive(sessionId);
-          await this.redisStore.saveUsers(sessionId, []); // Clear users from Redis
+          // Only clear legacy users store if distributed state is not enabled
+          // When distributed state is enabled, user data is handled by DistributedStateManager
+          if (!this.distributedState) {
+            await this.redisStore.saveUsers(sessionId, []);
+          }
           console.log(`[RoomManager] Session ${sessionId} marked inactive - will expire from Redis in 4 hours`);
         }
 

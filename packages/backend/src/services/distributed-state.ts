@@ -200,6 +200,9 @@ const LEAVE_SESSION_SCRIPT = `
   return newLeaderId
 `;
 
+// Sentinel value to indicate "don't update this field" in Lua scripts
+const UNSET_SENTINEL = '__UNSET__';
+
 /**
  * Lua script for atomic session join with leader election.
  * Atomically updates connection, adds to session members, and attempts leader election.
@@ -217,13 +220,16 @@ const JOIN_SESSION_SCRIPT = `
   local sessionTTL = tonumber(ARGV[4])
   local username = ARGV[5]
   local avatarUrl = ARGV[6]
+  local UNSET = '__UNSET__'
 
   -- Update connection with session info
   redis.call('HSET', connKey, 'sessionId', sessionId)
-  if username and username ~= '' then
+  if username and username ~= '' and username ~= UNSET then
     redis.call('HSET', connKey, 'username', username)
   end
-  if avatarUrl then
+  -- Only update avatarUrl if explicitly provided (not the sentinel value)
+  -- Empty string is valid (means clear avatar), sentinel means don't update
+  if avatarUrl ~= UNSET then
     redis.call('HSET', connKey, 'avatarUrl', avatarUrl)
   end
   redis.call('EXPIRE', connKey, connTTL)
@@ -526,8 +532,10 @@ export class DistributedStateManager {
       sessionId,
       TTL.connection.toString(),
       TTL.sessionMembership.toString(),
-      username || '',
-      avatarUrl !== undefined ? (avatarUrl || '') : ''
+      username || UNSET_SENTINEL,
+      // Use sentinel when avatarUrl is undefined (not provided), otherwise use actual value
+      // This allows empty string to explicitly clear the avatar
+      avatarUrl !== undefined ? (avatarUrl || '') : UNSET_SENTINEL
     )) as number;
 
     if (becameLeader === 1) {
@@ -832,6 +840,15 @@ export class DistributedStateManager {
     const userId = hash.userId && hash.userId !== '' ? hash.userId : null;
     const avatarUrl = hash.avatarUrl && hash.avatarUrl !== '' ? hash.avatarUrl : null;
 
+    // Parse connectedAt with warning for invalid values
+    let connectedAt = parseInt(hash.connectedAt, 10);
+    if (isNaN(connectedAt)) {
+      console.warn(
+        `[DistributedState] Invalid connectedAt value "${hash.connectedAt}" for connection ${hash.connectionId?.slice(0, 8)}, using current time`
+      );
+      connectedAt = Date.now();
+    }
+
     return {
       connectionId: hash.connectionId,
       instanceId: hash.instanceId,
@@ -840,7 +857,7 @@ export class DistributedStateManager {
       username: hash.username,
       avatarUrl,
       isLeader: hash.isLeader === 'true',
-      connectedAt: parseInt(hash.connectedAt, 10) || Date.now(),
+      connectedAt,
     };
   }
 }

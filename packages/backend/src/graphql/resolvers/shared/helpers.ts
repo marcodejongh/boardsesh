@@ -46,7 +46,11 @@ export async function requireSessionMember(
   maxRetries = 8,
   initialDelayMs = 50
 ): Promise<void> {
-  // Cache distributed state check outside loop to avoid repeated async overhead
+  // Cache whether distributed state is available (this doesn't change during retries)
+  // We intentionally call isConnectionInSession on EACH retry because:
+  // 1. The session membership may have been updated between retries (joinSession completing)
+  // 2. This is the whole point of the retry loop - waiting for state to propagate
+  // 3. The Redis call is fast (~1ms) and we only do it after the local check fails
   const distributedState = getDistributedState();
   const hasDistributedState = distributedState !== null;
 
@@ -57,7 +61,7 @@ export async function requireSessionMember(
       return; // Success - session matches locally
     }
 
-    // If distributed state is enabled, check cross-instance
+    // Check distributed state - must be done each iteration as membership may have changed
     if (hasDistributedState) {
       const isInSession = await distributedState.isConnectionInSession(ctx.connectionId, sessionId);
       if (isInSession) {
