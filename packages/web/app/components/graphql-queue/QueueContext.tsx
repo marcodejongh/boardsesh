@@ -440,6 +440,20 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
     setHasDoneFirstFetch: () => dispatch({ type: 'SET_FIRST_FETCH', payload: true }),
   });
 
+  // Proactively fetch more suggestions when running low
+  // This handles the case where users navigate via next/prev buttons without viewing the queue
+  const SUGGESTIONS_THRESHOLD = 3;
+  useEffect(() => {
+    if (
+      suggestedClimbs.length < SUGGESTIONS_THRESHOLD &&
+      hasMoreResults &&
+      !isFetchingNextPage &&
+      state.hasDoneFirstFetch
+    ) {
+      fetchMoreClimbs();
+    }
+  }, [suggestedClimbs.length, hasMoreResults, isFetchingNextPage, fetchMoreClimbs, state.hasDoneFirstFetch]);
+
   // Playlist state and handlers
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [playlistMemberships, setPlaylistMemberships] = useState<Map<string, Set<string>>>(
