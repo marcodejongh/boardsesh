@@ -442,27 +442,29 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
 
   // Proactively fetch more suggestions when running low
   // This handles the case where users navigate via next/prev buttons without viewing the queue
+  // Threshold of 3 chosen to ensure smooth UX - fetch before running out, but not too aggressively
+  // (PAGE_LIMIT is 10, so we fetch when 70% consumed)
   const SUGGESTIONS_THRESHOLD = 3;
-  const hasFetchedForCurrentThreshold = useRef(false);
 
-  // Reset the fetch guard when we get new data (suggestedClimbs count increases)
-  const prevSuggestedCount = useRef(suggestedClimbs.length);
+  // Track fetch state to prevent rapid consecutive fetches
+  const prevIsFetchingNextPage = useRef(isFetchingNextPage);
+
   useEffect(() => {
-    if (suggestedClimbs.length > prevSuggestedCount.current) {
-      hasFetchedForCurrentThreshold.current = false;
+    // Reset ability to fetch when a fetch completes (transitions from true to false)
+    // This handles the case where fetched climbs are already in queue and get filtered out
+    const fetchJustCompleted = prevIsFetchingNextPage.current && !isFetchingNextPage;
+    prevIsFetchingNextPage.current = isFetchingNextPage;
+
+    // Don't trigger fetch if we're currently fetching or just completed one this cycle
+    if (isFetchingNextPage || fetchJustCompleted) {
+      return;
     }
-    prevSuggestedCount.current = suggestedClimbs.length;
-  }, [suggestedClimbs.length]);
 
-  useEffect(() => {
     if (
       suggestedClimbs.length < SUGGESTIONS_THRESHOLD &&
       hasMoreResults &&
-      !isFetchingNextPage &&
-      state.hasDoneFirstFetch &&
-      !hasFetchedForCurrentThreshold.current
+      state.hasDoneFirstFetch
     ) {
-      hasFetchedForCurrentThreshold.current = true;
       fetchMoreClimbs();
     }
   }, [suggestedClimbs.length, hasMoreResults, isFetchingNextPage, fetchMoreClimbs, state.hasDoneFirstFetch]);

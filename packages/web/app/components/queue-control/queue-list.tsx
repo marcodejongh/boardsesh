@@ -29,6 +29,7 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails, onClimbNavigate }) 
     queue,
     suggestedClimbs,
     hasMoreResults,
+    isFetchingClimbs,
     isFetchingNextPage,
     fetchMoreClimbs,
     setCurrentClimbQueueItem,
@@ -181,12 +182,13 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails, onClimbNavigate }) 
             ))}
           </Flex>
           {/* Sentinel element for Intersection Observer - only render when needed */}
-          {(suggestedClimbs.length > 0 || isFetchingNextPage || hasMoreResults) && (
+          {/* Include isFetchingClimbs to show skeleton during initial page load */}
+          {(suggestedClimbs.length > 0 || isFetchingClimbs || isFetchingNextPage || hasMoreResults) && (
             <div
               ref={loadMoreRef}
               style={{ minHeight: themeTokens.spacing[5], marginTop: themeTokens.spacing[2] }}
             >
-              {isFetchingNextPage && (
+              {(isFetchingClimbs || isFetchingNextPage) && (
                 <Flex vertical gap={themeTokens.spacing[2]} style={{ padding: themeTokens.spacing[2] }}>
                   {[1, 2, 3].map((i) => (
                     <Row key={i} gutter={[8, 8]} align="middle" wrap={false}>
@@ -203,7 +205,7 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails, onClimbNavigate }) 
                   ))}
                 </Flex>
               )}
-              {!hasMoreResults && suggestedClimbs.length > 0 && (
+              {!hasMoreResults && !isFetchingClimbs && suggestedClimbs.length > 0 && (
                 <div
                   style={{
                     textAlign: 'center',
