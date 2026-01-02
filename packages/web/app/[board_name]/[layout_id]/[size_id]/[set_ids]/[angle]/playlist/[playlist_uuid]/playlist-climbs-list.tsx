@@ -12,6 +12,7 @@ import {
   GetPlaylistClimbsQueryVariables,
 } from '@/app/lib/graphql/operations/playlists';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
+import { useQueueContext } from '@/app/components/graphql-queue';
 import ClimbCard from '@/app/components/climb-card/climb-card';
 import { ClimbCardSkeleton } from '@/app/components/board-page/board-page-skeleton';
 import styles from './playlist-view.module.css';
@@ -42,6 +43,7 @@ export default function PlaylistClimbsList({
   angle,
 }: PlaylistClimbsListProps) {
   const { token, isLoading: tokenLoading } = useWsAuthToken();
+  const { setCurrentClimb } = useQueueContext();
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const [selectedClimbUuid, setSelectedClimbUuid] = useState<string | null>(null);
 
@@ -89,7 +91,7 @@ export default function PlaylistClimbsList({
   const allClimbs: Climb[] = data?.pages.flatMap((page) => page.climbs as Climb[]) ?? [];
   const totalCount = data?.pages[0]?.totalCount ?? 0;
 
-  // Filter out cross-layout climbs and count how many are hidden
+  // Filter out cross-layout climbs, count how many are hidden, and update angle to route angle
   const { visibleClimbs, hiddenCount } = useMemo(() => {
     const visible: Climb[] = [];
     let hidden = 0;
@@ -99,12 +101,13 @@ export default function PlaylistClimbsList({
       if (isCrossLayout) {
         hidden++;
       } else {
-        visible.push(climb);
+        // Use the route angle instead of the climb's stored angle
+        visible.push({ ...climb, angle });
       }
     }
 
     return { visibleClimbs: visible, hiddenCount: hidden };
-  }, [allClimbs, boardDetails.layout_id]);
+  }, [allClimbs, boardDetails.layout_id, angle]);
 
   // Intersection Observer callback for infinite scroll
   const handleObserver = useCallback(
@@ -142,14 +145,16 @@ export default function PlaylistClimbsList({
     };
   }, [handleObserver]);
 
-  // Handle climb selection
-  const handleClimbClick = useCallback((climb: Climb) => {
+  // Handle climb double-click - add to queue and make it the active climb
+  const handleClimbDoubleClick = useCallback((climb: Climb) => {
     setSelectedClimbUuid(climb.uuid);
-    track('Playlist Climb Card Clicked', {
+    setCurrentClimb(climb);
+    track('Playlist Climb Card Double Clicked', {
       climbUuid: climb.uuid,
       playlistUuid,
+      angle: climb.angle,
     });
-  }, [playlistUuid]);
+  }, [playlistUuid, setCurrentClimb]);
 
   const aspectRatio = boardDetails.boardWidth / boardDetails.boardHeight;
 
@@ -233,7 +238,7 @@ export default function PlaylistClimbsList({
               climb={climb}
               boardDetails={boardDetails}
               selected={selectedClimbUuid === climb.uuid}
-              onCoverDoubleClick={() => handleClimbClick(climb)}
+              onCoverDoubleClick={() => handleClimbDoubleClick(climb)}
             />
           </Col>
         ))}
