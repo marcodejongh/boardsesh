@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useReducer, useCallback } from 'react';
-import { Upload, Button, Alert, Progress, Typography, Row, Col, Space, Result } from 'antd';
+import React, { useReducer, useCallback, useState } from 'react';
+import { Upload, Button, Alert, Progress, Typography, Row, Col, Space, Result, message } from 'antd';
 import { InboxOutlined, SaveOutlined, ClearOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import { parseMultipleScreenshots, deduplicateClimbs } from '@boardsesh/moonboard-ocr/browser';
@@ -9,8 +9,7 @@ import type { MoonBoardClimb } from '@boardsesh/moonboard-ocr/browser';
 import type { RcFile } from 'antd/es/upload/interface';
 import MoonBoardImportCard from './moonboard-import-card';
 import MoonBoardEditModal from './moonboard-edit-modal';
-import { coordinateToHoldId, MOONBOARD_HOLD_STATES } from '@/app/lib/moonboard-config';
-import type { MoonBoardLitUpHoldsMap } from '../moonboard-renderer/types';
+import { saveMoonBoardClimbs, convertOcrHoldsToMap } from '@/app/lib/moonboard-climbs-db';
 import styles from './moonboard-bulk-import.module.css';
 
 const { Dragger } = Upload;
@@ -100,30 +99,6 @@ function importReducer(state: ImportState, action: ImportAction): ImportState {
   }
 }
 
-/**
- * Convert OCR climb holds to the lit up holds map format for the renderer
- */
-function convertClimbToHoldsMap(climb: MoonBoardClimb): MoonBoardLitUpHoldsMap {
-  const map: MoonBoardLitUpHoldsMap = {};
-
-  climb.holds.start.forEach((coord) => {
-    const holdId = coordinateToHoldId(coord);
-    map[holdId] = { type: 'start', color: MOONBOARD_HOLD_STATES.start.color };
-  });
-
-  climb.holds.hand.forEach((coord) => {
-    const holdId = coordinateToHoldId(coord);
-    map[holdId] = { type: 'hand', color: MOONBOARD_HOLD_STATES.hand.color };
-  });
-
-  climb.holds.finish.forEach((coord) => {
-    const holdId = coordinateToHoldId(coord);
-    map[holdId] = { type: 'finish', color: MOONBOARD_HOLD_STATES.finish.color };
-  });
-
-  return map;
-}
-
 export default function MoonBoardBulkImport({
   layoutFolder,
   layoutName,
@@ -132,6 +107,7 @@ export default function MoonBoardBulkImport({
 }: MoonBoardBulkImportProps) {
   const router = useRouter();
   const [state, dispatch] = useReducer(importReducer, initialState);
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleFilesUpload = useCallback(
     async (fileList: RcFile[]) => {
@@ -166,13 +142,11 @@ export default function MoonBoardBulkImport({
     [angle],
   );
 
-  const handleSaveAll = useCallback(() => {
+  const handleSaveAll = useCallback(async () => {
     if (state.climbs.length === 0) return;
 
+    setIsSaving(true);
     try {
-      // Save all climbs to localStorage
-      const existingClimbs = JSON.parse(localStorage.getItem('moonboard_climbs') || '[]');
-
       const newClimbs = state.climbs.map((climb) => ({
         name: climb.name,
         description: `Setter: ${climb.setter}\nGrade: ${climb.userGrade}${climb.isBenchmark ? '\n(Benchmark)' : ''}`,
@@ -183,13 +157,16 @@ export default function MoonBoardBulkImport({
         importedFrom: climb.sourceFile,
       }));
 
-      localStorage.setItem('moonboard_climbs', JSON.stringify([...existingClimbs, ...newClimbs]));
+      await saveMoonBoardClimbs(newClimbs);
 
-      // Show success and reset
+      message.success(`Successfully saved ${newClimbs.length} climb(s)`);
       dispatch({ type: 'RESET' });
       router.back();
     } catch (error) {
-      console.error('Failed to save climbs to localStorage:', error);
+      console.error('Failed to save climbs:', error);
+      message.error('Failed to save climbs. Please try again.');
+    } finally {
+      setIsSaving(false);
     }
   }, [state.climbs, layoutFolder, router]);
 
@@ -306,7 +283,14 @@ export default function MoonBoardBulkImport({
           {state.climbs.length > 0 && (
             <div className={styles.actions}>
               <Space>
-                <Button type="primary" icon={<SaveOutlined />} onClick={handleSaveAll} size="large">
+                <Button
+                  type="primary"
+                  icon={<SaveOutlined />}
+                  onClick={handleSaveAll}
+                  size="large"
+                  loading={isSaving}
+                  disabled={isSaving}
+                >
                   Save All ({state.climbs.length})
                 </Button>
                 <Button icon={<ClearOutlined />} onClick={handleReset}>
@@ -325,7 +309,7 @@ export default function MoonBoardBulkImport({
                     climb={climb}
                     layoutFolder={layoutFolder}
                     holdSetImages={holdSetImages}
-                    litUpHoldsMap={convertClimbToHoldsMap(climb)}
+                    litUpHoldsMap={convertOcrHoldsToMap(climb.holds)}
                     onEdit={() => handleEditClimb(climb)}
                     onRemove={() => handleRemoveClimb(climb.sourceFile)}
                   />

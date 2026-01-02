@@ -1,48 +1,19 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Form, Input, Button, Typography, Tag, Alert, Upload } from 'antd';
+import { Form, Input, Button, Typography, Tag, Alert, Upload, message } from 'antd';
 import { ExperimentOutlined, UploadOutlined, LoadingOutlined, ImportOutlined } from '@ant-design/icons';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import MoonBoardRenderer from '../moonboard-renderer/moonboard-renderer';
 import { useMoonBoardCreateClimb } from './use-moonboard-create-climb';
-import { holdIdToCoordinate, coordinateToHoldId, MOONBOARD_HOLD_STATES } from '@/app/lib/moonboard-config';
-import type { MoonBoardLitUpHoldsMap } from '../moonboard-renderer/types';
+import { holdIdToCoordinate } from '@/app/lib/moonboard-config';
 import { parseScreenshot } from '@boardsesh/moonboard-ocr/browser';
-import type { GridCoordinate as OcrGridCoordinate } from '@boardsesh/moonboard-ocr/browser';
+import { saveMoonBoardClimb, convertOcrHoldsToMap } from '@/app/lib/moonboard-climbs-db';
 import styles from './create-climb-form.module.css';
 
 const { TextArea } = Input;
 const { Text } = Typography;
-
-/**
- * Convert OCR hold coordinates to the lit up holds map format
- */
-function convertOcrHoldsToMap(holds: {
-  start: OcrGridCoordinate[];
-  hand: OcrGridCoordinate[];
-  finish: OcrGridCoordinate[];
-}): MoonBoardLitUpHoldsMap {
-  const map: MoonBoardLitUpHoldsMap = {};
-
-  holds.start.forEach((coord) => {
-    const holdId = coordinateToHoldId(coord);
-    map[holdId] = { type: 'start', color: MOONBOARD_HOLD_STATES.start.color };
-  });
-
-  holds.hand.forEach((coord) => {
-    const holdId = coordinateToHoldId(coord);
-    map[holdId] = { type: 'hand', color: MOONBOARD_HOLD_STATES.hand.color };
-  });
-
-  holds.finish.forEach((coord) => {
-    const holdId = coordinateToHoldId(coord);
-    map[holdId] = { type: 'finish', color: MOONBOARD_HOLD_STATES.finish.color };
-  });
-
-  return map;
-}
 
 interface MoonBoardCreateClimbFormValues {
   name: string;
@@ -164,16 +135,9 @@ export default function MoonBoardCreateClimbForm({
         createdAt: new Date().toISOString(),
       };
 
-      // For now, save to localStorage (database integration coming later)
-      try {
-        const existingClimbs = JSON.parse(localStorage.getItem('moonboard_climbs') || '[]');
-        existingClimbs.push(climbData);
-        localStorage.setItem('moonboard_climbs', JSON.stringify(existingClimbs));
-      } catch (error) {
-        console.error('Failed to save climb to localStorage:', error);
-      }
+      await saveMoonBoardClimb(climbData);
 
-      console.log('MoonBoard climb saved:', climbData);
+      message.success('Climb saved successfully!');
       setSaveSuccess(true);
 
       // Reset the form and holds
@@ -186,6 +150,7 @@ export default function MoonBoardCreateClimbForm({
       }, 3000);
     } catch (error) {
       console.error('Failed to save climb:', error);
+      message.error('Failed to save climb. Please try again.');
     } finally {
       setIsSaving(false);
     }

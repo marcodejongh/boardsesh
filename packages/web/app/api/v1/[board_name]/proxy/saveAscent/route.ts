@@ -27,6 +27,12 @@ const saveAscentSchema = z.object({
 
 export async function POST(request: Request, props: { params: Promise<BoardOnlyRouteParameters> }) {
   const params = await props.params;
+
+  // MoonBoard doesn't use Aurora APIs
+  if (params.board_name === 'moonboard') {
+    return NextResponse.json({ error: 'MoonBoard does not support this endpoint' }, { status: 400 });
+  }
+
   const board_name = params.board_name as AuroraBoardName;
 
   try {
