@@ -13,7 +13,8 @@ import { users } from '../auth/users.js';
 
 /**
  * Playlists - User-created collections of climbs
- * Scoped to boardType + layoutId (can contain climbs from different sizes)
+ * Scoped to boardType, optionally to layoutId (can contain climbs from different sizes/layouts)
+ * Can be synced from Aurora circuits via user sync
  */
 export const playlists = pgTable(
   'playlists',
@@ -21,7 +22,7 @@ export const playlists = pgTable(
     id: bigserial({ mode: 'bigint' }).primaryKey().notNull(),
     uuid: text('uuid').notNull().unique(),
     boardType: text('board_type').notNull(), // 'kilter' | 'tension'
-    layoutId: integer('layout_id').notNull(),
+    layoutId: integer('layout_id'), // Nullable for Aurora-synced circuits
 
     // Metadata
     name: text('name').notNull(),
@@ -29,6 +30,11 @@ export const playlists = pgTable(
     isPublic: boolean('is_public').default(false).notNull(),
     color: text('color'), // Hex color (e.g., '#06B6D4')
     icon: text('icon'), // Ant Design icon name (e.g., 'StarOutlined')
+
+    // Aurora sync tracking (for circuits synced from Aurora)
+    auroraType: text('aurora_type'), // 'circuits' when synced from Aurora
+    auroraId: text('aurora_id'), // The circuit UUID from Aurora
+    auroraSyncedAt: timestamp('aurora_synced_at'), // Last sync timestamp
 
     // Timestamps
     createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -44,6 +50,8 @@ export const playlists = pgTable(
     uuidIdx: index('playlists_uuid_idx').on(table.uuid),
     // Index for ordering by updatedAt (used in userPlaylists query)
     updatedAtIdx: index('playlists_updated_at_idx').on(table.updatedAt),
+    // Index for Aurora sync conflict resolution
+    auroraIdIdx: uniqueIndex('playlists_aurora_id_idx').on(table.auroraId),
   })
 );
 
@@ -58,7 +66,7 @@ export const playlistClimbs = pgTable(
       .notNull()
       .references(() => playlists.id, { onDelete: 'cascade' }),
     climbUuid: text('climb_uuid').notNull(), // Aurora climb UUID
-    angle: integer('angle').notNull(),
+    angle: integer('angle'), // Nullable for Aurora-synced circuits
 
     // Position for manual ordering within playlist
     position: integer('position').notNull().default(0),
