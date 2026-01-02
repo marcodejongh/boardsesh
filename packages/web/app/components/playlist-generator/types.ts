@@ -15,6 +15,7 @@ export interface BaseGeneratorOptions {
   climbBias: ClimbBias;
   minAscents: number;
   minRating: number;
+  onlyTallClimbs: boolean;
 }
 
 // Volume workout - high volume at consistent grade
@@ -109,6 +110,7 @@ export const DEFAULT_VOLUME_OPTIONS: Omit<VolumeOptions, 'targetGrade'> = {
   climbBias: 'unfamiliar',
   minAscents: 5,
   minRating: 1.5,
+  onlyTallClimbs: false,
 };
 
 export const DEFAULT_PYRAMID_OPTIONS: Omit<PyramidOptions, 'targetGrade'> = {
@@ -119,6 +121,7 @@ export const DEFAULT_PYRAMID_OPTIONS: Omit<PyramidOptions, 'targetGrade'> = {
   climbBias: 'unfamiliar',
   minAscents: 5,
   minRating: 1.5,
+  onlyTallClimbs: false,
 };
 
 export const DEFAULT_LADDER_OPTIONS: Omit<LadderOptions, 'targetGrade'> = {
@@ -129,6 +132,7 @@ export const DEFAULT_LADDER_OPTIONS: Omit<LadderOptions, 'targetGrade'> = {
   climbBias: 'unfamiliar',
   minAscents: 5,
   minRating: 1.5,
+  onlyTallClimbs: false,
 };
 
 export const DEFAULT_GRADE_FOCUS_OPTIONS: Omit<GradeFocusOptions, 'targetGrade'> = {
@@ -138,6 +142,7 @@ export const DEFAULT_GRADE_FOCUS_OPTIONS: Omit<GradeFocusOptions, 'targetGrade'>
   climbBias: 'unfamiliar',
   minAscents: 5,
   minRating: 1.5,
+  onlyTallClimbs: false,
 };
 
 // Warm-up configuration
