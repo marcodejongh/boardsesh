@@ -17,6 +17,7 @@ import {
   type GetUserAscentsFeedQueryVariables,
   type GetUserAscentsFeedQueryResponse,
 } from '@/app/lib/graphql/operations';
+import AscentThumbnail from './ascent-thumbnail';
 import styles from './ascents-feed.module.css';
 
 dayjs.extend(relativeTime);
@@ -85,62 +86,78 @@ const FeedItem: React.FC<{ item: AscentFeedItem }> = ({ item }) => {
 
   return (
     <Card className={styles.feedItem} size="small">
-      <Flex vertical gap={8}>
-        {/* Header with status and time */}
-        <Flex justify="space-between" align="center" wrap="wrap" gap={8}>
-          <Flex align="center" gap={8}>
-            <Tag
-              icon={getStatusIcon(item.status)}
-              color={getStatusColor(item.status)}
-              className={styles.statusTag}
-            >
-              {statusText}
-            </Tag>
-            <Text strong className={styles.climbName}>
-              {item.climbName}
+      <Flex gap={12}>
+        {/* Thumbnail */}
+        {item.frames && item.layoutId && (
+          <AscentThumbnail
+            boardType={item.boardType}
+            layoutId={item.layoutId}
+            angle={item.angle}
+            climbUuid={item.climbUuid}
+            climbName={item.climbName}
+            frames={item.frames}
+            isMirror={item.isMirror}
+          />
+        )}
+
+        {/* Content */}
+        <Flex vertical gap={8} className={styles.feedItemContent}>
+          {/* Header with status and time */}
+          <Flex justify="space-between" align="center" wrap="wrap" gap={8}>
+            <Flex align="center" gap={8}>
+              <Tag
+                icon={getStatusIcon(item.status)}
+                color={getStatusColor(item.status)}
+                className={styles.statusTag}
+              >
+                {statusText}
+              </Tag>
+              <Text strong className={styles.climbName}>
+                {item.climbName}
+              </Text>
+            </Flex>
+            <Text type="secondary" className={styles.timeAgo}>
+              {timeAgo}
             </Text>
           </Flex>
-          <Text type="secondary" className={styles.timeAgo}>
-            {timeAgo}
-          </Text>
-        </Flex>
 
-        {/* Climb details */}
-        <Flex gap={8} wrap="wrap" align="center">
-          {item.difficultyName && (
-            <Tag color="blue">{item.difficultyName}</Tag>
+          {/* Climb details */}
+          <Flex gap={8} wrap="wrap" align="center">
+            {item.difficultyName && (
+              <Tag color="blue">{item.difficultyName}</Tag>
+            )}
+            <Tag icon={<EnvironmentOutlined />}>{item.angle}°</Tag>
+            <Text type="secondary" className={styles.boardType}>
+              {boardDisplay}
+            </Text>
+            {item.isMirror && <Tag color="purple">Mirrored</Tag>}
+            {item.isBenchmark && <Tag color="cyan">Benchmark</Tag>}
+          </Flex>
+
+          {/* Attempts count for sends */}
+          {item.status === 'send' && item.attemptCount > 1 && (
+            <Text type="secondary" className={styles.attempts}>
+              {item.attemptCount} attempts
+            </Text>
           )}
-          <Tag icon={<EnvironmentOutlined />}>{item.angle}°</Tag>
-          <Text type="secondary" className={styles.boardType}>
-            {boardDisplay}
-          </Text>
-          {item.isMirror && <Tag color="purple">Mirrored</Tag>}
-          {item.isBenchmark && <Tag color="cyan">Benchmark</Tag>}
+
+          {/* Rating for successful sends */}
+          {isSuccess && item.quality && (
+            <Rate disabled value={item.quality} count={5} className={styles.rating} />
+          )}
+
+          {/* Setter info */}
+          {item.setterUsername && (
+            <Text type="secondary" className={styles.setter}>
+              Set by {item.setterUsername}
+            </Text>
+          )}
+
+          {/* Comment */}
+          {item.comment && (
+            <Text className={styles.comment}>{item.comment}</Text>
+          )}
         </Flex>
-
-        {/* Attempts count for sends */}
-        {item.status === 'send' && item.attemptCount > 1 && (
-          <Text type="secondary" className={styles.attempts}>
-            {item.attemptCount} attempts
-          </Text>
-        )}
-
-        {/* Rating for successful sends */}
-        {isSuccess && item.quality && (
-          <Rate disabled value={item.quality} count={5} className={styles.rating} />
-        )}
-
-        {/* Setter info */}
-        {item.setterUsername && (
-          <Text type="secondary" className={styles.setter}>
-            Set by {item.setterUsername}
-          </Text>
-        )}
-
-        {/* Comment */}
-        {item.comment && (
-          <Text className={styles.comment}>{item.comment}</Text>
-        )}
       </Flex>
     </Card>
   );

@@ -305,6 +305,8 @@ export const typeDefs = /* GraphQL */ `
     isBenchmark: Boolean!
     comment: String!
     climbedAt: String!
+    # Climb display data for thumbnails
+    frames: String
   }
 
   type AscentFeedResult {

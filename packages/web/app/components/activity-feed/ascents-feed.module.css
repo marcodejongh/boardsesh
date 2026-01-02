@@ -16,6 +16,40 @@
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
 }
 
+.feedItemContent {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Thumbnail styles */
+.thumbnailLink {
+  display: block;
+  flex-shrink: 0;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.thumbnailLink:hover {
+  transform: scale(1.02);
+  opacity: 0.9;
+}
+
+.thumbnailContainer {
+  width: 64px;
+  height: 64px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--neutral-100, #F3F4F6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.thumbnailContainer svg {
+  width: 100%;
+  height: 100%;
+  max-height: none;
+}
+
 .statusTag {
   font-weight: 500;
 }
@@ -77,5 +111,10 @@
 
   .feedItem {
     padding: 8px; /* spacing.2 */
+  }
+
+  .thumbnailContainer {
+    width: 56px;
+    height: 56px;
   }
 }

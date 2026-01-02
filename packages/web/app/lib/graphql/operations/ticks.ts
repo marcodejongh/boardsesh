@@ -135,6 +135,7 @@ export const GET_USER_ASCENTS_FEED = gql`
         isBenchmark
         comment
         climbedAt
+        frames
       }
       totalCount
       hasMore
@@ -160,6 +161,7 @@ export interface AscentFeedItem {
   isBenchmark: boolean;
   comment: string;
   climbedAt: string;
+  frames: string | null;
 }
 
 // Type for the feed query variables
