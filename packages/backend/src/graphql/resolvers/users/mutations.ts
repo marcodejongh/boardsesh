@@ -4,7 +4,7 @@ import { db } from '../../../db/client.js';
 import * as dbSchema from '@boardsesh/db/schema';
 import { requireAuthenticated, validateInput } from '../shared/helpers.js';
 import { UpdateProfileInputSchema, SaveAuroraCredentialInputSchema, BoardNameSchema } from '../../../validation/schemas.js';
-import { encrypt } from '../../../utils/encryption.js';
+import { encrypt } from '@boardsesh/crypto';
 
 export const userMutations = {
   /**

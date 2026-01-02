@@ -21,6 +21,7 @@
     "sync:user": "tsx src/cli/index.ts user"
   },
   "dependencies": {
+    "@boardsesh/crypto": "*",
     "@boardsesh/db": "*",
     "@neondatabase/serverless": "1.0.2",
     "commander": "^12.1.0",

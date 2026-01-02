@@ -4,7 +4,7 @@ import { getDb } from "@/app/lib/db/db";
 import * as schema from "@/app/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { authOptions } from "@/app/lib/auth/auth-options";
-import { decrypt } from "@/app/lib/crypto";
+import { decrypt } from "@boardsesh/crypto";
 
 interface RouteParams {
   params: Promise<{ board_type: string }>;

@@ -6,10 +6,11 @@
   ],
   "scripts": {
     "dev": "npm run dev --workspace=@boardsesh/web",
-    "build": "npm run build --workspace=@boardsesh/shared-schema && npm run build --workspace=@boardsesh/db && npm run build --workspaces --if-present",
+    "build": "npm run build --workspace=@boardsesh/shared-schema && npm run build --workspace=@boardsesh/crypto && npm run build --workspace=@boardsesh/db && npm run build --workspaces --if-present",
     "build:web": "npm run build --workspace=@boardsesh/web",
     "build:backend": "npm run build --workspace=boardsesh-backend",
     "build:shared": "npm run build --workspace=@boardsesh/shared-schema",
+    "build:crypto": "npm run build --workspace=@boardsesh/crypto",
     "build:db": "npm run build --workspace=@boardsesh/db",
     "lint": "npm run lint --workspace=@boardsesh/web",
     "test": "npm run test --workspaces --if-present",
