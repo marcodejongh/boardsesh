@@ -916,9 +916,8 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
   );
 
   // Warn user before leaving page if queue has items
+  const hasQueueItems = state.queue.length > 0;
   useEffect(() => {
-    const hasQueueItems = state.queue.length > 0;
-
     if (!hasQueueItems) {
       return;
     }
@@ -936,7 +935,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [state.queue.length]);
+  }, [hasQueueItems]);
 
   // Wrap children with FavoritesProvider and PlaylistsProvider to pass hoisted data
   const wrappedChildren = (
