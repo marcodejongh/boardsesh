@@ -1,0 +1,37 @@
+{
+  "name": "@boardsesh/aurora-sync",
+  "version": "1.0.0",
+  "description": "Aurora board sync utility for Boardsesh",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "aurora-sync": "./dist/cli/index.js"
+  },
+  "exports": {
+    ".": "./dist/index.js",
+    "./runner": "./dist/runner/index.js",
+    "./api": "./dist/api/index.js",
+    "./sync": "./dist/sync/index.js"
+  },
+  "scripts": {
+    "dev": "tsx watch src/cli/index.ts",
+    "build": "tsc",
+    "start": "node dist/cli/index.js",
+    "sync:all": "tsx src/cli/index.ts all",
+    "sync:user": "tsx src/cli/index.ts user"
+  },
+  "dependencies": {
+    "@boardsesh/db": "*",
+    "@neondatabase/serverless": "1.0.2",
+    "commander": "^12.1.0",
+    "dotenv": "^17.2.3",
+    "drizzle-orm": "^0.45.1",
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/ws": "^8.18.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}
