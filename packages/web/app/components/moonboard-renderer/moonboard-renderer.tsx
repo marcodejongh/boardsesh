@@ -72,7 +72,7 @@ const MoonBoardRenderer: React.FC<MoonBoardRendererProps> = ({
     >
       {/* Render MoonBoard background first */}
       <image
-        href="/images/moonboard/moonboard-bg.jpg"
+        href="/images/moonboard/moonboard-bg.png"
         width="100%"
         height="100%"
       />

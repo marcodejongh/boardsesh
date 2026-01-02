@@ -170,3 +170,46 @@ export function getHoldSetImages(layoutKey: MoonBoardLayoutKey, setIds: number[]
   const sets = MOONBOARD_SETS[layoutKey] || [];
   return sets.filter((s) => setIds.includes(s.id)).map((s) => s.imageFile);
 }
+
+/**
+ * Get MoonBoard details in a format compatible with BoardDetails type.
+ * This allows MoonBoard pages to use the same layout structure as Aurora boards.
+ */
+export function getMoonBoardDetails({
+  layout_id,
+  set_ids,
+}: {
+  layout_id: number;
+  set_ids: number[];
+}) {
+  const layoutEntry = getLayoutById(layout_id);
+  if (!layoutEntry) {
+    throw new Error(`MoonBoard layout not found: ${layout_id}`);
+  }
+
+  const [layoutKey, layoutData] = layoutEntry;
+  const sets = MOONBOARD_SETS[layoutKey as MoonBoardLayoutKey] || [];
+  const selectedSets = sets.filter((s) => set_ids.includes(s.id));
+
+  return {
+    board_name: 'moonboard' as const,
+    layout_id,
+    size_id: MOONBOARD_SIZE.id,
+    set_ids,
+    layout_name: layoutData.name,
+    size_name: MOONBOARD_SIZE.name,
+    size_description: MOONBOARD_SIZE.description,
+    set_names: selectedSets.map((s) => s.name),
+    boardWidth: MOONBOARD_SIZE.width,
+    boardHeight: MOONBOARD_SIZE.height,
+    supportsMirroring: false,
+    // MoonBoard uses grid-based rendering, not edge-based
+    edge_left: 0,
+    edge_right: MOONBOARD_GRID.numColumns,
+    edge_bottom: 0,
+    edge_top: MOONBOARD_GRID.numRows,
+    // Empty - MoonBoard uses its own renderer
+    images_to_holds: {},
+    holdsData: [],
+  };
+}
