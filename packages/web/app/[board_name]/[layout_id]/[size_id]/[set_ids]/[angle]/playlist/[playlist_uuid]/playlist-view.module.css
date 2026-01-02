@@ -242,6 +242,25 @@
   }
 }
 
+/* Climbs section */
+.climbsSection {
+  background-color: #FFFFFF;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+}
+
+.climbsSectionHeader {
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+.climbsSectionTitle {
+  font-size: 16px;
+  color: #111827;
+}
+
 /* Desktop layout */
 @media (min-width: 992px) {
   .pageContainer {
@@ -271,5 +290,26 @@
 
   .playlistName {
     font-size: 28px !important;
+  }
+
+  .climbsSection {
+    padding: 24px;
+  }
+}
+
+/* Mobile adjustments for climbs section */
+@media (max-width: 767px) {
+  .climbsSection {
+    padding: 16px;
+    border-radius: 8px;
+  }
+
+  .climbsSectionHeader {
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+  }
+
+  .climbsSectionTitle {
+    font-size: 14px;
   }
 }
