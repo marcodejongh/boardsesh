@@ -14,7 +14,7 @@
     },
     {
       "path": "/api/internal/user-sync-cron",
-      "schedule": "0 */6 * * *"
+      "schedule": "0 */2 * * *"
     },
     {
       "path": "/api/internal/migrate-users-cron",
