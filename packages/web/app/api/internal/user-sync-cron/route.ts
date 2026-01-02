@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { syncUserData } from '@/app/lib/data-sync/aurora/user-sync';
 import { getPool } from '@/app/lib/db/db';
 import { drizzle } from 'drizzle-orm/neon-serverless';
-import { eq, and, or, isNotNull } from 'drizzle-orm';
+import { eq, and, or, isNotNull, asc } from 'drizzle-orm';
 import { decrypt, encrypt } from '@/app/lib/crypto';
 import * as schema from '@/app/lib/db/schema';
 import AuroraClimbingClient from '@/app/lib/api-wrappers/aurora-rest-client/aurora-rest-client';
@@ -29,7 +29,7 @@ export async function GET(request: Request) {
 
     const pool = getPool();
 
-    // Get credentials list - acquire and release connection immediately
+    // Get ONE credential to sync - prioritize users who haven't synced longest (NULLS FIRST)
     // Include both 'active' and 'error' status to retry failed syncs
     let credentials;
     {
@@ -49,13 +49,24 @@ export async function GET(request: Request) {
               isNotNull(schema.auroraCredentials.encryptedPassword),
               isNotNull(schema.auroraCredentials.auroraUserId)
             )
-          );
+          )
+          .orderBy(asc(schema.auroraCredentials.lastSyncAt)) // NULLS FIRST is default in PostgreSQL
+          .limit(1);
       } finally {
         client.release();
       }
     }
 
-    console.log(`[User Sync Cron] Found ${credentials.length} users with Aurora credentials to sync (active + retry)`);
+    if (credentials.length === 0) {
+      console.log('[User Sync Cron] No users to sync');
+      return NextResponse.json({
+        success: true,
+        results: { total: 0, successful: 0, failed: 0, errors: [] },
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    console.log(`[User Sync Cron] Syncing 1 user (oldest lastSyncAt): ${credentials[0].userId} (${credentials[0].boardType})`);
 
     const results = {
       total: credentials.length,
