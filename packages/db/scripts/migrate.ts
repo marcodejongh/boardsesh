@@ -16,6 +16,21 @@ config({ path: path.resolve(__dirname, '../../web/.env.development.local') });
 // Enable WebSocket for Neon
 neonConfig.webSocketConstructor = ws;
 
+// Configure Neon for local development (uses neon-proxy on port 4444)
+function configureNeonForLocal(connectionString: string): void {
+  const connectionStringUrl = new URL(connectionString);
+  const isLocalDb = connectionStringUrl.hostname === 'db.localtest.me';
+
+  if (isLocalDb) {
+    neonConfig.fetchEndpoint = (host) => {
+      const [protocol, port] = host === 'db.localtest.me' ? ['http', 4444] : ['https', 443];
+      return `${protocol}://${host}:${port}/sql`;
+    };
+    neonConfig.useSecureWebSocket = false;
+    neonConfig.wsProxy = (host) => (host === 'db.localtest.me' ? `${host}:4444/v2` : `${host}/v2`);
+  }
+}
+
 async function runMigrations() {
   // Check for DATABASE_URL first, then POSTGRES_URL (Vercel Neon integration)
   const databaseUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL;
@@ -45,6 +60,9 @@ async function runMigrations() {
   console.log(`🔄 Running migrations on: ${dbHost}`);
 
   try {
+    // Configure Neon for local proxy if using local database
+    configureNeonForLocal(databaseUrl);
+
     const pool = new Pool({ connectionString: databaseUrl });
     const db = drizzle(pool);
 
