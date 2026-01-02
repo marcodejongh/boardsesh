@@ -33,8 +33,14 @@ jobs:
       - name: Build shared-schema
         run: npm run build --workspace=@boardsesh/shared-schema
 
+      - name: Build crypto package
+        run: npm run build --workspace=@boardsesh/crypto
+
       - name: Build db package
         run: npm run build --workspace=@boardsesh/db
+
+      - name: Build aurora-sync package
+        run: npm run build --workspace=@boardsesh/aurora-sync
 
       - name: TypeScript check backend
         run: npm run build --workspace=boardsesh-backend
