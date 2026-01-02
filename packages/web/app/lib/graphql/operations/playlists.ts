@@ -100,7 +100,7 @@ export interface Playlist {
   id: string;
   uuid: string;
   boardType: string;
-  layoutId: number;
+  layoutId?: number | null; // Nullable for Aurora-synced circuits
   name: string;
   description?: string;
   isPublic: boolean;

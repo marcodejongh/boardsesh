@@ -5,7 +5,7 @@ import { eq, and, inArray } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/neon-serverless';
 import { NeonDatabase } from 'drizzle-orm/neon-serverless';
 import { getTable } from '../../db/queries/util/table-select';
-import { boardseshTicks, auroraCredentials } from '../../db/schema';
+import { boardseshTicks, auroraCredentials, playlists, playlistClimbs, playlistOwnership } from '../../db/schema';
 import { randomUUID } from 'crypto';
 import { convertQuality } from './convert-quality';
 
@@ -333,6 +333,7 @@ async function upsertTableData(
     case 'circuits': {
       const circuitsSchema = getTable('circuits', boardName);
       for (const item of data) {
+        // 1. Write to Aurora circuits table (existing logic)
         await db
           .insert(circuitsSchema)
           .values({
@@ -355,6 +356,76 @@ async function upsertTableData(
               updatedAt: item.updated_at,
             },
           });
+
+        // 2. Dual write to playlists table (only if NextAuth user exists)
+        if (nextAuthUserId) {
+          // Format color - Aurora uses hex without #, we store with #
+          const formattedColor = item.color ? `#${item.color}` : null;
+
+          // Insert/update playlist
+          const [playlist] = await db
+            .insert(playlists)
+            .values({
+              uuid: item.uuid, // Use same UUID as Aurora circuit
+              boardType: boardName,
+              layoutId: null, // Nullable for Aurora-synced circuits
+              name: item.name || 'Untitled Circuit',
+              description: item.description || null,
+              isPublic: Boolean(item.is_public),
+              color: formattedColor,
+              auroraType: 'circuits',
+              auroraId: item.uuid,
+              auroraSyncedAt: new Date(),
+              createdAt: item.created_at ? new Date(item.created_at) : new Date(),
+              updatedAt: item.updated_at ? new Date(item.updated_at) : new Date(),
+            })
+            .onConflictDoUpdate({
+              target: playlists.auroraId,
+              set: {
+                name: item.name || 'Untitled Circuit',
+                description: item.description || null,
+                isPublic: Boolean(item.is_public),
+                color: formattedColor,
+                updatedAt: item.updated_at ? new Date(item.updated_at) : new Date(),
+                auroraSyncedAt: new Date(),
+              },
+            })
+            .returning({ id: playlists.id });
+
+          // 3. Create ownership if not exists
+          await db
+            .insert(playlistOwnership)
+            .values({
+              playlistId: playlist.id,
+              userId: nextAuthUserId,
+              role: 'owner',
+            })
+            .onConflictDoNothing();
+
+          // 4. Sync playlist climbs (from nested climbs array)
+          if (item.climbs && Array.isArray(item.climbs)) {
+            // Delete existing climbs for this playlist to handle removals
+            await db.delete(playlistClimbs).where(eq(playlistClimbs.playlistId, playlist.id));
+
+            // Insert new climbs
+            for (let i = 0; i < item.climbs.length; i++) {
+              const climb = item.climbs[i];
+              // Handle different possible structures of climb data
+              const climbUuid = climb.climb_uuid || climb.uuid || climb;
+              const climbAngle = climb.angle ?? null;
+              const climbPosition = climb.position ?? i;
+
+              if (typeof climbUuid === 'string') {
+                await db.insert(playlistClimbs).values({
+                  playlistId: playlist.id,
+                  climbUuid: climbUuid,
+                  angle: climbAngle,
+                  position: climbPosition,
+                });
+              }
+            }
+          }
+        }
       }
       break;
     }

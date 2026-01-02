@@ -6,11 +6,23 @@ const TAG_LENGTH = 16;
 const SALT_LENGTH = 32;
 const KEY_LENGTH = 32;
 
-function getEncryptionKey(): Buffer {
+function getEncryptionKeyFromEnvironment(): string {
+  if (process.env.VERCEL_ENV === 'development') {
+    return 'changeme-development-key';
+  }
+  
   const secret = process.env.AURORA_CREDENTIALS_SECRET;
+
   if (!secret) {
     throw new Error('AURORA_CREDENTIALS_SECRET environment variable is not set');
   }
+
+  return secret;
+}
+
+function getEncryptionKey(): Buffer {
+  const secret = getEncryptionKeyFromEnvironment();
+  
   // Use PBKDF2 to derive a consistent key from the secret
   return crypto.pbkdf2Sync(secret, 'aurora-credentials-salt', 100000, KEY_LENGTH, 'sha256');
 }

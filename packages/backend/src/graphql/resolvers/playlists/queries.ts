@@ -1,4 +1,4 @@
-import { eq, and, inArray, desc, sql } from 'drizzle-orm';
+import { eq, and, inArray, desc, sql, or, isNull } from 'drizzle-orm';
 import type { ConnectionContext } from '@boardsesh/shared-schema';
 import { db } from '../../../db/client.js';
 import * as dbSchema from '@boardsesh/db/schema';
@@ -47,7 +47,11 @@ export const playlistQueries = {
         and(
           eq(dbSchema.playlistOwnership.userId, userId),
           eq(dbSchema.playlists.boardType, input.boardType),
-          eq(dbSchema.playlists.layoutId, input.layoutId)
+          // Include playlists with matching layoutId OR null layoutId (Aurora-synced circuits)
+          or(
+            eq(dbSchema.playlists.layoutId, input.layoutId),
+            isNull(dbSchema.playlists.layoutId)
+          )
         )
       )
       .orderBy(desc(dbSchema.playlists.updatedAt));
@@ -169,8 +173,9 @@ export const playlistQueries = {
     const userId = ctx.userId!;
 
     // Get playlists containing this climb (only user's playlists)
+    // Returns UUIDs (not numeric IDs) for consistency with mutations
     const results = await db
-      .select({ playlistId: dbSchema.playlistClimbs.playlistId })
+      .select({ playlistUuid: dbSchema.playlists.uuid })
       .from(dbSchema.playlistClimbs)
       .innerJoin(
         dbSchema.playlists,
@@ -184,11 +189,15 @@ export const playlistQueries = {
         and(
           eq(dbSchema.playlistClimbs.climbUuid, input.climbUuid),
           eq(dbSchema.playlists.boardType, input.boardType),
-          eq(dbSchema.playlists.layoutId, input.layoutId),
+          // Include playlists with matching layoutId OR null layoutId (Aurora-synced circuits)
+          or(
+            eq(dbSchema.playlists.layoutId, input.layoutId),
+            isNull(dbSchema.playlists.layoutId)
+          ),
           eq(dbSchema.playlistOwnership.userId, userId)
         )
       );
 
-    return results.map(r => r.playlistId.toString());
+    return results.map(r => r.playlistUuid);
   },
 };

@@ -326,7 +326,7 @@ export const typeDefs = /* GraphQL */ `
     id: ID!
     uuid: ID!
     boardType: String!
-    layoutId: Int!
+    layoutId: Int # Nullable for Aurora-synced circuits
     name: String!
     description: String
     isPublic: Boolean!
@@ -342,7 +342,7 @@ export const typeDefs = /* GraphQL */ `
     id: ID!
     playlistId: ID!
     climbUuid: String!
-    angle: Int!
+    angle: Int # Nullable for Aurora-synced circuits
     position: Int!
     addedAt: String!
   }

@@ -180,7 +180,7 @@ export function PlaylistAction({
                 size="small"
                 split={false}
                 renderItem={(playlist: Playlist) => {
-                  const isInPlaylist = playlistsContainingClimb.has(playlist.id);
+                  const isInPlaylist = playlistsContainingClimb.has(playlist.uuid);
                   const validColor = playlist.color && isValidHexColor(playlist.color) ? playlist.color : null;
                   return (
                     <List.Item
@@ -192,7 +192,7 @@ export function PlaylistAction({
                         marginBottom: themeTokens.spacing[1],
                         backgroundColor: isInPlaylist ? themeTokens.semantic.selectedLight : undefined,
                       }}
-                      onClick={() => handleTogglePlaylist(playlist.id, isInPlaylist)}
+                      onClick={() => handleTogglePlaylist(playlist.uuid, isInPlaylist)}
                     >
                       <Space style={{ width: '100%', justifyContent: 'space-between' }}>
                         <Space direction="vertical" size={0}>
