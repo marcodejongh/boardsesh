@@ -1,8 +1,7 @@
 'use client';
 
-import React, { useEffect, useRef, useCallback, useState } from 'react';
-import { Row, Col, Empty, Typography, Tooltip } from 'antd';
-import { ExclamationCircleOutlined } from '@ant-design/icons';
+import React, { useEffect, useRef, useCallback, useState, useMemo } from 'react';
+import { Row, Col, Empty, Typography, Alert } from 'antd';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { track } from '@vercel/analytics';
 import { Climb, BoardDetails } from '@/app/lib/types';
@@ -87,8 +86,25 @@ export default function PlaylistClimbsList({
   });
 
   // Flatten all pages of climbs
-  const climbs: Climb[] = data?.pages.flatMap((page) => page.climbs as Climb[]) ?? [];
+  const allClimbs: Climb[] = data?.pages.flatMap((page) => page.climbs as Climb[]) ?? [];
   const totalCount = data?.pages[0]?.totalCount ?? 0;
+
+  // Filter out cross-layout climbs and count how many are hidden
+  const { visibleClimbs, hiddenCount } = useMemo(() => {
+    const visible: Climb[] = [];
+    let hidden = 0;
+
+    for (const climb of allClimbs) {
+      const isCrossLayout = climb.layoutId != null && climb.layoutId !== boardDetails.layout_id;
+      if (isCrossLayout) {
+        hidden++;
+      } else {
+        visible.push(climb);
+      }
+    }
+
+    return { visibleClimbs: visible, hiddenCount: hidden };
+  }, [allClimbs, boardDetails.layout_id]);
 
   // Intersection Observer callback for infinite scroll
   const handleObserver = useCallback(
@@ -97,13 +113,13 @@ export default function PlaylistClimbsList({
       if (target.isIntersecting && hasNextPage && !isFetchingNextPage) {
         track('Playlist Infinite Scroll Load More', {
           playlistUuid,
-          currentCount: climbs.length,
+          currentCount: allClimbs.length,
           hasMore: hasNextPage,
         });
         fetchNextPage();
       }
     },
-    [hasNextPage, isFetchingNextPage, fetchNextPage, climbs.length, playlistUuid],
+    [hasNextPage, isFetchingNextPage, fetchNextPage, allClimbs.length, playlistUuid],
   );
 
   // Set up Intersection Observer
@@ -138,7 +154,7 @@ export default function PlaylistClimbsList({
   const aspectRatio = boardDetails.boardWidth / boardDetails.boardHeight;
 
   // Loading state
-  if ((isLoading || tokenLoading) && climbs.length === 0) {
+  if ((isLoading || tokenLoading) && allClimbs.length === 0) {
     return (
       <div className={styles.climbsSection}>
         <div className={styles.climbsSectionHeader}>
@@ -166,8 +182,8 @@ export default function PlaylistClimbsList({
     );
   }
 
-  // Empty state
-  if (climbs.length === 0 && !isFetching) {
+  // Empty state (considering both visible and hidden climbs)
+  if (visibleClimbs.length === 0 && hiddenCount === 0 && !isFetching) {
     return (
       <div className={styles.climbsSection}>
         <div className={styles.climbsSectionHeader}>
@@ -181,47 +197,47 @@ export default function PlaylistClimbsList({
     );
   }
 
+  // Calculate visible count for display
+  const visibleCount = visibleClimbs.length;
+
   return (
     <div className={styles.climbsSection}>
       <div className={styles.climbsSectionHeader}>
         <Text strong className={styles.climbsSectionTitle}>
-          Climbs ({totalCount})
+          Climbs ({visibleCount})
         </Text>
       </div>
 
-      <Row gutter={[16, 16]}>
-        {climbs.map((climb) => {
-          // Check if this climb is from a different layout
-          const isCrossLayout = climb.layoutId != null && climb.layoutId !== boardDetails.layout_id;
+      {/* Notice for hidden cross-layout climbs */}
+      {hiddenCount > 0 && (
+        <Alert
+          type="info"
+          showIcon
+          message={`Not showing ${hiddenCount} ${hiddenCount === 1 ? 'climb' : 'climbs'} from other layouts`}
+          className={styles.hiddenClimbsNotice}
+        />
+      )}
 
-          const climbCard = (
+      {/* Empty state when all climbs are from other layouts */}
+      {visibleClimbs.length === 0 && hiddenCount > 0 && !isFetching && (
+        <Empty
+          description="All climbs in this playlist are from other layouts"
+          image={Empty.PRESENTED_IMAGE_SIMPLE}
+        />
+      )}
+
+      <Row gutter={[16, 16]}>
+        {visibleClimbs.map((climb) => (
+          <Col xs={24} lg={12} xl={12} key={climb.uuid}>
             <ClimbCard
               climb={climb}
               boardDetails={boardDetails}
               selected={selectedClimbUuid === climb.uuid}
               onCoverDoubleClick={() => handleClimbClick(climb)}
             />
-          );
-
-          return (
-            <Col xs={24} lg={12} xl={12} key={climb.uuid}>
-              {isCrossLayout ? (
-                <Tooltip title="This climb is from a different layout and may not display correctly on your board">
-                  <div className={styles.crossLayoutClimb}>
-                    <div className={styles.crossLayoutBadge}>
-                      <ExclamationCircleOutlined />
-                      Different layout
-                    </div>
-                    {climbCard}
-                  </div>
-                </Tooltip>
-              ) : (
-                climbCard
-              )}
-            </Col>
-          );
-        })}
-        {isFetching && climbs.length === 0 && (
+          </Col>
+        ))}
+        {isFetching && allClimbs.length === 0 && (
           <ClimbsListSkeleton aspectRatio={aspectRatio} />
         )}
       </Row>
@@ -233,9 +249,9 @@ export default function PlaylistClimbsList({
             <ClimbsListSkeleton aspectRatio={aspectRatio} />
           </Row>
         )}
-        {!hasNextPage && climbs.length > 0 && (
+        {!hasNextPage && visibleClimbs.length > 0 && (
           <div style={{ textAlign: 'center', padding: '20px', color: '#888' }}>
-            {climbs.length === totalCount ? `All ${totalCount} climbs loaded` : 'No more climbs'}
+            {allClimbs.length >= totalCount ? `All ${visibleCount} climbs loaded` : 'No more climbs'}
           </div>
         )}
       </div>
