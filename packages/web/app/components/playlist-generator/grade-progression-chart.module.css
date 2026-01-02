@@ -1,0 +1,47 @@
+.chartContainer {
+  display: flex;
+  width: 100%;
+  padding: 8px 0;
+}
+
+.yAxis {
+  width: 52px;
+  position: relative;
+  flex-shrink: 0;
+  margin-right: 8px;
+}
+
+.yLabel {
+  position: absolute;
+  right: 0;
+  transform: translateY(-50%);
+  font-size: 11px;
+  color: #6B7280;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.chartArea {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+}
+
+.svg {
+  display: block;
+  overflow: visible;
+}
+
+.emptyChart {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #F9FAFB;
+  border-radius: 8px;
+  border: 1px dashed #D1D5DB;
+}
+
+.emptyText {
+  color: #9CA3AF;
+  font-size: 14px;
+}

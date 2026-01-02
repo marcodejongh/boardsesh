@@ -49,6 +49,7 @@ export default function PlaylistViewContent({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);
+  const [listRefreshKey, setListRefreshKey] = useState(0);
   const { token, isLoading: tokenLoading } = useWsAuthToken();
 
   const fetchPlaylist = useCallback(async () => {
@@ -85,6 +86,13 @@ export default function PlaylistViewContent({
   const handleEditSuccess = useCallback((updatedPlaylist: Playlist) => {
     setPlaylist(updatedPlaylist);
   }, []);
+
+  const handlePlaylistUpdated = useCallback(() => {
+    // Refresh the climbs list
+    setListRefreshKey((prev) => prev + 1);
+    // Refetch playlist to update count
+    fetchPlaylist();
+  }, [fetchPlaylist]);
 
   // Check if current user is the owner
   const isOwner = playlist?.userRole === 'owner';
@@ -140,7 +148,9 @@ export default function PlaylistViewContent({
           boardDetails={boardDetails}
           angle={angle}
           isOwner={isOwner}
+          playlistUuid={playlistUuid}
           onEditClick={() => setEditDrawerOpen(true)}
+          onPlaylistUpdated={handlePlaylistUpdated}
         />
       </div>
 
@@ -223,6 +233,7 @@ export default function PlaylistViewContent({
 
         {/* Climbs List */}
         <PlaylistClimbsList
+          key={listRefreshKey}
           playlistUuid={playlistUuid}
           boardDetails={boardDetails}
           angle={angle}

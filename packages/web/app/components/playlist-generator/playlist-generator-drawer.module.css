@@ -1,0 +1,90 @@
+.drawerHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.backButton {
+  margin-left: -8px;
+  color: #06B6D4;
+}
+
+.drawerTitle {
+  flex: 1;
+  font-weight: 600;
+}
+
+.headerSpacer {
+  width: 32px;
+}
+
+.configureContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.chartSection {
+  background: #FFFFFF;
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid #E5E7EB;
+}
+
+.summarySection {
+  background: #F9FAFB;
+  border-radius: 12px;
+  padding: 12px 16px;
+}
+
+.summaryRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+}
+
+.totalRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0 0;
+  margin-top: 8px;
+  border-top: 1px solid #E5E7EB;
+}
+
+.optionsSection {
+  background: #FFFFFF;
+  border-radius: 12px;
+  padding: 4px 16px;
+  border: 1px solid #E5E7EB;
+}
+
+.generatingContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 60px 20px;
+}
+
+.generatingText {
+  font-size: 16px;
+  color: #6B7280;
+}
+
+/* Mobile optimizations */
+@media (max-width: 767px) {
+  .chartSection {
+    padding: 12px;
+  }
+
+  .summarySection {
+    padding: 10px 12px;
+  }
+
+  .optionsSection {
+    padding: 0 12px;
+  }
+}

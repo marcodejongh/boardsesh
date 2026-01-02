@@ -1,0 +1,115 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+}
+
+.formRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 0;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+.formRow:last-child {
+  border-bottom: none;
+}
+
+.label {
+  font-size: 15px;
+  color: #111827;
+  font-weight: 500;
+}
+
+.select {
+  min-width: 140px;
+  text-align: right;
+}
+
+.select :global(.ant-select-selector) {
+  border: none !important;
+  background: transparent !important;
+  padding-right: 0 !important;
+  box-shadow: none !important;
+}
+
+.select :global(.ant-select-selection-item) {
+  color: #6B7280;
+  text-align: right;
+  padding-right: 24px !important;
+}
+
+.select :global(.ant-select-arrow) {
+  color: #9CA3AF;
+}
+
+.stepperContainer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.stepperValue {
+  font-size: 15px;
+  color: #6B7280;
+  min-width: 24px;
+  text-align: right;
+}
+
+.stepperButtons {
+  display: flex;
+  background: #F3F4F6;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.stepperButton {
+  border: none !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  height: 32px;
+  width: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stepperButton:first-child {
+  border-right: 1px solid #E5E7EB !important;
+}
+
+.stepperButton:hover:not(:disabled) {
+  background: #E5E7EB !important;
+}
+
+.stepperButton:disabled {
+  opacity: 0.4;
+}
+
+.inputNumber {
+  width: 80px;
+}
+
+.inputNumber :global(.ant-input-number-input) {
+  text-align: right;
+}
+
+.resetContainer {
+  display: flex;
+  justify-content: center;
+  padding-top: 8px;
+}
+
+.resetButton {
+  color: #06B6D4;
+}
+
+.resetButton:hover {
+  color: #0891B2;
+}
