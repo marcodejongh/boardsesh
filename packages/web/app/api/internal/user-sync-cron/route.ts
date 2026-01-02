@@ -3,7 +3,7 @@ import { syncUserData } from '@/app/lib/data-sync/aurora/user-sync';
 import { getPool } from '@/app/lib/db/db';
 import { drizzle } from 'drizzle-orm/neon-serverless';
 import { eq, and, or, isNotNull, asc } from 'drizzle-orm';
-import { decrypt, encrypt } from '@/app/lib/crypto';
+import { decrypt, encrypt } from '@boardsesh/crypto';
 import * as schema from '@/app/lib/db/schema';
 import AuroraClimbingClient from '@/app/lib/api-wrappers/aurora-rest-client/aurora-rest-client';
 import { BoardName as AuroraBoardName } from '@/app/lib/api-wrappers/aurora-rest-client/types';

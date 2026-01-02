@@ -9,8 +9,8 @@ export * from './sync/index.js';
 // Runner exports
 export * from './runner/index.js';
 
-// Crypto exports
-export { encrypt, decrypt } from './crypto/index.js';
+// Crypto exports (re-exported from shared package)
+export { encrypt, decrypt } from '@boardsesh/crypto';
 
 // DB utilities
 export { getTable, getBoardTables, isValidBoardName, getBoardPrefix } from './db/table-select.js';
