@@ -333,6 +333,8 @@ export const playlistQueries = {
     const totalCount = countResult[0]?.count || 0;
 
     // Get playlist climbs with full climb data
+    // Note: We use a subquery approach to avoid duplicates when joining stats
+    // The issue: when playlistClimbs.angle is NULL, directly using COALESCE causes cartesian product
     const results = await db
       .select({
         // Playlist climb data
@@ -341,11 +343,12 @@ export const playlistQueries = {
         position: dbSchema.playlistClimbs.position,
         // Climb data
         uuid: tables.climbs.uuid,
+        layoutId: tables.climbs.layoutId,
         setter_username: tables.climbs.setterUsername,
         name: tables.climbs.name,
         description: tables.climbs.description,
         frames: tables.climbs.frames,
-        // Stats data - use the angle from playlist if available
+        // Stats data - use the angle from playlist if available, otherwise use climb's default angle
         ascensionist_count: tables.climbStats.ascensionistCount,
         difficulty: tables.difficultyGrades.boulderName,
         quality_average: sql<number>`ROUND(${tables.climbStats.qualityAverage}::numeric, 2)`,
@@ -361,7 +364,9 @@ export const playlistQueries = {
         tables.climbStats,
         and(
           eq(tables.climbStats.climbUuid, dbSchema.playlistClimbs.climbUuid),
-          eq(tables.climbStats.angle, sql`COALESCE(${dbSchema.playlistClimbs.angle}, ${tables.climbStats.angle})`)
+          // Only join stats when we have a specific angle to match
+          // Use playlist angle if set, otherwise use climb's default angle
+          eq(tables.climbStats.angle, sql`COALESCE(${dbSchema.playlistClimbs.angle}, ${tables.climbs.angle})`)
         )
       )
       .leftJoin(
@@ -380,6 +385,7 @@ export const playlistQueries = {
     // Transform results to Climb type
     const climbs: Climb[] = trimmedResults.map((result) => ({
       uuid: result.uuid || result.climbUuid,
+      layoutId: result.layoutId,
       setter_username: result.setter_username || '',
       name: result.name || '',
       description: result.description || '',

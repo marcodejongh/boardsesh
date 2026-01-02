@@ -313,3 +313,31 @@
     font-size: 14px;
   }
 }
+
+/* Cross-layout climb styling - climbs from a different layout */
+.crossLayoutClimb {
+  position: relative;
+  opacity: 0.5;
+  filter: grayscale(30%);
+  transition: opacity 0.2s, filter 0.2s;
+}
+
+.crossLayoutClimb:hover {
+  opacity: 0.7;
+  filter: grayscale(15%);
+}
+
+.crossLayoutBadge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: #FFFFFF;
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}

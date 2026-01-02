@@ -10,6 +10,7 @@ export type LitUpHoldsMap = Record<number, LitupHold>;
 
 export type Climb = {
   uuid: string;
+  layoutId?: number | null; // GraphQL nullable Int - layout the climb belongs to
   setter_username: string;
   name: string;
   description: string;

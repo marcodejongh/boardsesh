@@ -6,6 +6,7 @@ export const typeDefs = /* GraphQL */ `
 
   type Climb {
     uuid: ID!
+    layoutId: Int
     setter_username: String!
     name: String!
     description: String!

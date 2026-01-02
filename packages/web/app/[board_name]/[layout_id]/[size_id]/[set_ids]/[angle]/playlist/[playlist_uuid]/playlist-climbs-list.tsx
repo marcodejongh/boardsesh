@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useRef, useCallback, useState } from 'react';
-import { Row, Col, Empty, Typography } from 'antd';
+import { Row, Col, Empty, Typography, Tooltip } from 'antd';
+import { ExclamationCircleOutlined } from '@ant-design/icons';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { track } from '@vercel/analytics';
 import { Climb, BoardDetails } from '@/app/lib/types';
@@ -189,16 +190,37 @@ export default function PlaylistClimbsList({
       </div>
 
       <Row gutter={[16, 16]}>
-        {climbs.map((climb) => (
-          <Col xs={24} lg={12} xl={12} key={climb.uuid}>
+        {climbs.map((climb) => {
+          // Check if this climb is from a different layout
+          const isCrossLayout = climb.layoutId != null && climb.layoutId !== boardDetails.layout_id;
+
+          const climbCard = (
             <ClimbCard
               climb={climb}
               boardDetails={boardDetails}
               selected={selectedClimbUuid === climb.uuid}
               onCoverDoubleClick={() => handleClimbClick(climb)}
             />
-          </Col>
-        ))}
+          );
+
+          return (
+            <Col xs={24} lg={12} xl={12} key={climb.uuid}>
+              {isCrossLayout ? (
+                <Tooltip title="This climb is from a different layout and may not display correctly on your board">
+                  <div className={styles.crossLayoutClimb}>
+                    <div className={styles.crossLayoutBadge}>
+                      <ExclamationCircleOutlined />
+                      Different layout
+                    </div>
+                    {climbCard}
+                  </div>
+                </Tooltip>
+              ) : (
+                climbCard
+              )}
+            </Col>
+          );
+        })}
         {isFetching && climbs.length === 0 && (
           <ClimbsListSkeleton aspectRatio={aspectRatio} />
         )}

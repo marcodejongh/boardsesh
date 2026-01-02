@@ -3,6 +3,7 @@ import { SetIdList } from './board-data';
 
 export type Climb = {
   uuid: string;
+  layoutId?: number | null; // Layout the climb belongs to - used to identify cross-layout climbs
   setter_username: string;
   name: string;
   description: string;
