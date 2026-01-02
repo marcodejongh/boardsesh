@@ -915,6 +915,29 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
     ],
   );
 
+  // Warn user before leaving page if queue has items
+  useEffect(() => {
+    const hasQueueItems = state.queue.length > 0;
+
+    if (!hasQueueItems) {
+      return;
+    }
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      // Modern browsers require both preventDefault and returnValue
+      event.preventDefault();
+      // Legacy support - some browsers need returnValue to be set
+      event.returnValue = '';
+      return '';
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [state.queue.length]);
+
   // Wrap children with FavoritesProvider and PlaylistsProvider to pass hoisted data
   const wrappedChildren = (
     <FavoritesProvider
