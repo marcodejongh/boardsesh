@@ -274,6 +274,7 @@ export const playlistQueries = {
       layoutId: number;
       sizeId: number;
       setIds: string;
+      angle: number;
       page?: number;
       pageSize?: number;
     } },
@@ -364,9 +365,8 @@ export const playlistQueries = {
         tables.climbStats,
         and(
           eq(tables.climbStats.climbUuid, dbSchema.playlistClimbs.climbUuid),
-          // Only join stats when we have a specific angle to match
-          // Use playlist angle if set, otherwise use climb's default angle
-          eq(tables.climbStats.angle, sql`COALESCE(${dbSchema.playlistClimbs.angle}, ${tables.climbs.angle})`)
+          // Use the route angle (from input) to fetch stats for the current board angle
+          eq(tables.climbStats.angle, input.angle)
         )
       )
       .leftJoin(
@@ -383,6 +383,7 @@ export const playlistQueries = {
     const trimmedResults = hasMore ? results.slice(0, pageSize) : results;
 
     // Transform results to Climb type
+    // Use the input angle (route angle) for consistent stats display
     const climbs: Climb[] = trimmedResults.map((result) => ({
       uuid: result.uuid || result.climbUuid,
       layoutId: result.layoutId,
@@ -390,7 +391,7 @@ export const playlistQueries = {
       name: result.name || '',
       description: result.description || '',
       frames: result.frames || '',
-      angle: result.angle ?? 0,
+      angle: input.angle,
       ascensionist_count: Number(result.ascensionist_count || 0),
       difficulty: result.difficulty || '',
       quality_average: result.quality_average?.toString() || '0',

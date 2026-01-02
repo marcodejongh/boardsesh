@@ -396,6 +396,7 @@ export const typeDefs = /* GraphQL */ `
     layoutId: Int!
     sizeId: Int!
     setIds: String!
+    angle: Int!
     page: Int
     pageSize: Int
   }

@@ -70,6 +70,7 @@ export default function PlaylistClimbsList({
             layoutId: boardDetails.layout_id,
             sizeId: boardDetails.size_id,
             setIds: boardDetails.set_ids.join(','),
+            angle: angle,
             page: pageParam,
             pageSize: 20,
           },
