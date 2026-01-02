@@ -200,6 +200,11 @@ export async function GET(request: Request) {
           tokenUpdateClient.release();
         }
 
+        // Wait for Aurora session replication across their backend servers
+        // Testing if this fixes the 404 errors on Vercel (works locally)
+        console.log('[User Sync Cron] Waiting 5 seconds for Aurora session replication...');
+        await new Promise(resolve => setTimeout(resolve, 5000));
+
         console.log(`[User Sync Cron] Syncing user ${cred.userId} for ${boardType}...`);
 
         // syncUserData manages its own connections internally
