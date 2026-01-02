@@ -3,28 +3,28 @@
   "version": "1.0.0",
   "description": "Shared GraphQL schema and types for Boardsesh",
   "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "default": "./dist/index.js"
+      "types": "./src/index.ts",
+      "import": "./src/index.ts",
+      "default": "./src/index.ts"
     },
     "./types": {
-      "types": "./dist/types.d.ts",
-      "import": "./dist/types.js",
-      "default": "./dist/types.js"
+      "types": "./src/types.ts",
+      "import": "./src/types.ts",
+      "default": "./src/types.ts"
     },
     "./schema": {
-      "types": "./dist/schema.d.ts",
-      "import": "./dist/schema.js",
-      "default": "./dist/schema.js"
+      "types": "./src/schema.ts",
+      "import": "./src/schema.ts",
+      "default": "./src/schema.ts"
     },
     "./operations": {
-      "types": "./dist/operations.d.ts",
-      "import": "./dist/operations.js",
-      "default": "./dist/operations.js"
+      "types": "./src/operations.ts",
+      "import": "./src/operations.ts",
+      "default": "./src/operations.ts"
     }
   },
   "scripts": {

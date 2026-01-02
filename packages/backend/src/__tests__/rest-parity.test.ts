@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { startServer } from '../server.js';
+import { startServer } from '../server';
 
 const BACKEND_PORT = 8083; // Use different port to avoid conflicts with other tests
 const PUBLIC_API_BASE = 'https://www.boardsesh.com';

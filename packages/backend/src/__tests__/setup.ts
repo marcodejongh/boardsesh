@@ -2,8 +2,8 @@ import { beforeAll, beforeEach, afterAll } from 'vitest';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { sql } from 'drizzle-orm';
-import * as schema from '../db/schema.js';
-import { roomManager } from '../services/room-manager.js';
+import * as schema from '../db/schema';
+import { roomManager } from '../services/room-manager';
 
 const TEST_DB_NAME = 'boardsesh_backend_test';
 const connectionString =

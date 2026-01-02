@@ -9,7 +9,7 @@ import {
   index,
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
-import { users } from '../auth/users.js';
+import { users } from '../auth/users';
 
 /**
  * Playlists - User-created collections of climbs

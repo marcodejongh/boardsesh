@@ -4,7 +4,7 @@ import {
   ImageMetadata,
   ImageRegion,
   BrowserImageSource,
-} from './types.js';
+} from './types';
 
 /**
  * Canvas-based image processor for browser environment.

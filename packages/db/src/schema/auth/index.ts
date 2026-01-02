@@ -1,3 +1,3 @@
-export * from './users.js';
-export * from './credentials.js';
-export * from './mappings.js';
+export * from './users';
+export * from './credentials';
+export * from './mappings';

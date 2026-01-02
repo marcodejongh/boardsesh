@@ -1,6 +1,6 @@
 import { relations } from 'drizzle-orm/relations';
-import { boardSessions, boardSessionClients, boardSessionQueues } from '../schema/app/sessions.js';
-import { users } from '../schema/auth/users.js';
+import { boardSessions, boardSessionClients, boardSessionQueues } from '../schema/app/sessions';
+import { users } from '../schema/auth/users';
 
 export const boardSessionsRelations = relations(boardSessions, ({ one, many }) => ({
   createdByUser: one(users, {

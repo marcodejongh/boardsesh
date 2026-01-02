@@ -1,10 +1,10 @@
 import path from 'path';
-import { ImageProcessor } from './image-processor/types.js';
-import { SharpImageProcessor } from './image-processor/sharp-processor.js';
-import { runOCR } from './core/ocr.js';
-import { detectHoldsFromPixelData } from './core/holds.js';
-import { calculateRegions } from './core/regions.js';
-import { MoonBoardClimb, ParseResult, GridCoordinate } from './types.js';
+import { ImageProcessor } from './image-processor/types';
+import { SharpImageProcessor } from './image-processor/sharp-processor';
+import { runOCR } from './core/ocr';
+import { detectHoldsFromPixelData } from './core/holds';
+import { calculateRegions } from './core/regions';
+import { MoonBoardClimb, ParseResult, GridCoordinate } from './types';
 
 /**
  * Parse a MoonBoard screenshot using the provided ImageProcessor.

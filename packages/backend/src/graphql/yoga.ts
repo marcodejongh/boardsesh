@@ -1,8 +1,8 @@
 import { createYoga } from 'graphql-yoga';
 import type { IncomingMessage } from 'http';
-import { schema } from './index.js';
-import { validateNextAuthToken } from '../middleware/auth.js';
-import { createContext } from './context.js';
+import { schema } from './index';
+import { validateNextAuthToken } from '../middleware/auth';
+import { createContext } from './context';
 import type { ConnectionContext } from '@boardsesh/shared-schema';
 
 /**

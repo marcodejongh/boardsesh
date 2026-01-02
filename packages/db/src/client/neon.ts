@@ -4,9 +4,9 @@ import { drizzle as drizzleServerless } from 'drizzle-orm/neon-serverless';
 import { drizzle as drizzlePostgres } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import ws from 'ws';
-import { getConnectionConfig, configureNeonForEnvironment, isTestEnvironment } from './config.js';
-import * as schema from '../schema/index.js';
-import * as relations from '../relations/index.js';
+import { getConnectionConfig, configureNeonForEnvironment, isTestEnvironment } from './config';
+import * as schema from '../schema/index';
+import * as relations from '../relations/index';
 
 // Configure WebSocket constructor
 neonConfig.webSocketConstructor = ws;

@@ -1,3 +1,3 @@
-export { syncUserData, getLastSyncTimes, getLastSharedSyncTimes } from './user-sync.js';
-export type { SyncUserDataResult } from './user-sync.js';
-export { convertQuality } from './convert-quality.js';
+export { syncUserData, getLastSyncTimes, getLastSharedSyncTimes } from './user-sync';
+export type { SyncUserDataResult } from './user-sync';
+export { convertQuality } from './convert-quality';

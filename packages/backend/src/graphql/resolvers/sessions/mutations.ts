@@ -1,9 +1,9 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { ConnectionContext, SessionEvent } from '@boardsesh/shared-schema';
-import { roomManager } from '../../../services/room-manager.js';
-import { pubsub } from '../../../pubsub/index.js';
-import { updateContext } from '../../context.js';
-import { requireAuthenticated, applyRateLimit, validateInput } from '../shared/helpers.js';
+import { roomManager } from '../../../services/room-manager';
+import { pubsub } from '../../../pubsub/index';
+import { updateContext } from '../../context';
+import { requireAuthenticated, applyRateLimit, validateInput } from '../shared/helpers';
 import {
   SessionIdSchema,
   BoardPathSchema,
@@ -13,9 +13,9 @@ import {
   CreateSessionInputSchema,
   ClimbQueueItemSchema,
   QueueArraySchema,
-} from '../../../validation/schemas.js';
+} from '../../../validation/schemas';
 import type { ClimbQueueItem } from '@boardsesh/shared-schema';
-import type { CreateSessionInput } from '../shared/types.js';
+import type { CreateSessionInput } from '../shared/types';
 
 // Debug logging flag - only log in development
 const DEBUG = process.env.NODE_ENV === 'development';

@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm';
-import { db } from '../../client.js';
-import { getBoardTables, type BoardName } from '../util/table-select.js';
+import { db } from '../../client';
+import { getBoardTables, type BoardName } from '../util/table-select';
 import type { Climb, LitUpHoldsMap, HoldState } from '@boardsesh/shared-schema';
 
 // Hold state mapping for converting frames string to lit up holds map

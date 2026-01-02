@@ -2,12 +2,12 @@ import { WebSocketServer, type WebSocket } from 'ws';
 import type { Server as HttpServer, IncomingMessage } from 'http';
 import { useServer, type Extra as WsExtra } from 'graphql-ws/use/ws';
 import type { Context as GqlWsContext } from 'graphql-ws';
-import { schema } from '../graphql/index.js';
-import { createContext, removeContext, getContext } from '../graphql/context.js';
-import { roomManager } from '../services/room-manager.js';
-import { pubsub } from '../pubsub/index.js';
-import { validateNextAuthToken, extractAuthToken } from '../middleware/auth.js';
-import { isOriginAllowed } from '../handlers/cors.js';
+import { schema } from '../graphql/index';
+import { createContext, removeContext, getContext } from '../graphql/context';
+import { roomManager } from '../services/room-manager';
+import { pubsub } from '../pubsub/index';
+import { validateNextAuthToken, extractAuthToken } from '../middleware/auth';
+import { isOriginAllowed } from '../handlers/cors';
 import type { ConnectionContext } from '@boardsesh/shared-schema';
 
 // Extend Extra type with our custom context

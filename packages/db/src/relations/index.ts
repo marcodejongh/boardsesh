@@ -1,3 +1,3 @@
-export * from './kilter-relations.js';
-export * from './tension-relations.js';
-export * from './session-relations.js';
+export * from './kilter-relations';
+export * from './tension-relations';
+export * from './session-relations';

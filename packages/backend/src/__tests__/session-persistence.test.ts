@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import Redis from 'ioredis';
 import { v4 as uuidv4 } from 'uuid';
-import { roomManager } from '../services/room-manager.js';
-import { RedisSessionStore } from '../services/redis-session-store.js';
-import { db } from '../db/client.js';
-import { boardSessions, boardSessionQueues } from '../db/schema.js';
+import { roomManager } from '../services/room-manager';
+import { RedisSessionStore } from '../services/redis-session-store';
+import { db } from '../db/client';
+import { boardSessions, boardSessionQueues } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import type { ClimbQueueItem } from '@boardsesh/shared-schema';
 

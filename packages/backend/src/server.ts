@@ -1,16 +1,16 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'http';
 import type { WebSocketServer } from 'ws';
-import { pubsub } from './pubsub/index.js';
-import { roomManager } from './services/room-manager.js';
-import { redisClientManager } from './redis/client.js';
-import { initCors, applyCorsHeaders } from './handlers/cors.js';
-import { handleHealthCheck } from './handlers/health.js';
-import { handleSessionJoin } from './handlers/join.js';
-import { handleAvatarUpload } from './handlers/avatars.js';
-import { handleStaticAvatar } from './handlers/static.js';
-import { handleSyncCron } from './handlers/sync.js';
-import { createYogaInstance } from './graphql/yoga.js';
-import { setupWebSocketServer } from './websocket/setup.js';
+import { pubsub } from './pubsub/index';
+import { roomManager } from './services/room-manager';
+import { redisClientManager } from './redis/client';
+import { initCors, applyCorsHeaders } from './handlers/cors';
+import { handleHealthCheck } from './handlers/health';
+import { handleSessionJoin } from './handlers/join';
+import { handleAvatarUpload } from './handlers/avatars';
+import { handleStaticAvatar } from './handlers/static';
+import { handleSyncCron } from './handlers/sync';
+import { createYogaInstance } from './graphql/yoga';
+import { setupWebSocketServer } from './websocket/setup';
 
 /**
  * Start the Boardsesh Backend server

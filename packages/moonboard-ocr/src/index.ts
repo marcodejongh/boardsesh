@@ -21,17 +21,17 @@ export {
   parseMultipleScreenshots,
   parseWithProcessor,
   deduplicateClimbs,
-} from './parser.js';
+} from './parser';
 
 // Image processor for advanced use cases
-export { SharpImageProcessor } from './image-processor/sharp-processor.js';
+export { SharpImageProcessor } from './image-processor/sharp-processor';
 export type {
   ImageProcessor,
   RawPixelData,
   ImageMetadata,
   ImageRegion,
   NodeImageSource,
-} from './image-processor/types.js';
+} from './image-processor/types';
 
 // Core algorithms (for advanced use cases)
 export {
@@ -40,9 +40,9 @@ export {
   detectHoldsFromPixelData,
   classifyPixelColor,
   findNearestGridPosition,
-} from './core/holds.js';
-export { runOCR, parseHeaderText } from './core/ocr.js';
-export { calculateRegions } from './core/regions.js';
+} from './core/holds';
+export { runOCR, parseHeaderText } from './core/ocr';
+export { calculateRegions } from './core/regions';
 
 // Types
 export type {
@@ -55,7 +55,7 @@ export type {
   Row,
   BoardRegion,
   HeaderRegion,
-} from './types.js';
+} from './types';
 
 // Constants
-export { GRID_POSITIONS, GRID_CONFIG, HOLD_COLORS } from './types.js';
+export { GRID_POSITIONS, GRID_CONFIG, HOLD_COLORS } from './types';

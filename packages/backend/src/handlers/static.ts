@@ -3,9 +3,9 @@ import { createReadStream } from 'fs';
 import { stat } from 'fs/promises';
 import { extname } from 'path';
 import path from 'path';
-import { applyCorsHeaders } from './cors.js';
-import { getAvatarsDir } from './avatars.js';
-import { isS3Configured, getFromS3 } from '../storage/s3.js';
+import { applyCorsHeaders } from './cors';
+import { getAvatarsDir } from './avatars';
+import { isS3Configured, getFromS3 } from '../storage/s3';
 
 const MIME_TYPES: Record<string, string> = {
   '.jpg': 'image/jpeg',

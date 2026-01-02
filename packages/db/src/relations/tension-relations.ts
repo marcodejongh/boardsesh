@@ -19,7 +19,7 @@ import {
   tensionUserSyncs,
   tensionBetaLinks,
   tensionClimbStats,
-} from '../schema/boards/tension.js';
+} from '../schema/boards/tension';
 
 export const tensionClimbStatsRelations = relations(tensionClimbStats, ({ one }) => ({
   climb: one(tensionClimbs, {

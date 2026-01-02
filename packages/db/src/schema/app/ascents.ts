@@ -9,8 +9,8 @@ import {
   uniqueIndex,
   pgEnum,
 } from 'drizzle-orm/pg-core';
-import { users } from '../auth/users.js';
-import { boardSessions } from './sessions.js';
+import { users } from '../auth/users';
+import { boardSessions } from './sessions';
 
 /**
  * Tick status enum

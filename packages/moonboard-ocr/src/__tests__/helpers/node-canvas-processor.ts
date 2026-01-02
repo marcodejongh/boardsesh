@@ -11,7 +11,7 @@ import {
   RawPixelData,
   ImageMetadata,
   ImageRegion,
-} from '../../image-processor/types.js';
+} from '../../image-processor/types';
 
 /**
  * Node-canvas implementation of ImageProcessor for testing.

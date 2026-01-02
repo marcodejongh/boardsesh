@@ -1,15 +1,15 @@
 import { eq, and, inArray, desc, sql, or, isNull, asc } from 'drizzle-orm';
 import type { ConnectionContext, Climb } from '@boardsesh/shared-schema';
-import { db } from '../../../db/client.js';
+import { db } from '../../../db/client';
 import * as dbSchema from '@boardsesh/db/schema';
-import { requireAuthenticated, validateInput } from '../shared/helpers.js';
+import { requireAuthenticated, validateInput } from '../shared/helpers';
 import {
   GetUserPlaylistsInputSchema,
   GetPlaylistsForClimbInputSchema,
   GetPlaylistClimbsInputSchema,
-} from '../../../validation/schemas.js';
-import { getBoardTables, isValidBoardName } from '../../../db/queries/util/table-select.js';
-import { getSizeEdges } from '../../../db/queries/util/product-sizes-data.js';
+} from '../../../validation/schemas';
+import { getBoardTables, isValidBoardName } from '../../../db/queries/util/table-select';
+import { getSizeEdges } from '../../../db/queries/util/product-sizes-data';
 import type { LitUpHoldsMap, HoldState } from '@boardsesh/shared-schema';
 
 // Hold state mapping for converting frames string to lit up holds map

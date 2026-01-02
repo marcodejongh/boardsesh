@@ -1,8 +1,8 @@
 import type { ConnectionContext, EventsReplayResponse } from '@boardsesh/shared-schema';
-import { roomManager, type DiscoverableSession } from '../../../services/room-manager.js';
-import { pubsub } from '../../../pubsub/index.js';
-import { validateInput, requireSessionMember } from '../shared/helpers.js';
-import { SessionIdSchema, LatitudeSchema, LongitudeSchema, RadiusMetersSchema } from '../../../validation/schemas.js';
+import { roomManager, type DiscoverableSession } from '../../../services/room-manager';
+import { pubsub } from '../../../pubsub/index';
+import { validateInput, requireSessionMember } from '../shared/helpers';
+import { SessionIdSchema, LatitudeSchema, LongitudeSchema, RadiusMetersSchema } from '../../../validation/schemas';
 
 export const sessionQueries = {
   /**

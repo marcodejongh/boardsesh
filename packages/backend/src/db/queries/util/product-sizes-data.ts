@@ -4,7 +4,7 @@
  * to eliminate database queries.
  */
 
-import type { BoardName } from './table-select.js';
+import type { BoardName } from './table-select';
 
 export interface SizeEdges {
   edgeLeft: number;

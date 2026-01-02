@@ -1,8 +1,8 @@
 import { eq, desc, sql, and } from 'drizzle-orm';
-import { db } from '../../client.js';
-import { getBoardTables, type BoardName } from '../util/table-select.js';
-import { createClimbFilters, type ClimbSearchParams, type ParsedBoardRouteParameters } from './create-climb-filters.js';
-import { getSizeEdges } from '../util/product-sizes-data.js';
+import { db } from '../../client';
+import { getBoardTables, type BoardName } from '../util/table-select';
+import { createClimbFilters, type ClimbSearchParams, type ParsedBoardRouteParameters } from './create-climb-filters';
+import { getSizeEdges } from '../util/product-sizes-data';
 import type { Climb, ClimbSearchResult, LitUpHoldsMap, HoldState } from '@boardsesh/shared-schema';
 
 // Hold state mapping for converting frames string to lit up holds map

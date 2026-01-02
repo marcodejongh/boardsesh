@@ -1,6 +1,6 @@
 import { pgTable, text, timestamp, boolean, jsonb, integer, doublePrecision, index } from 'drizzle-orm/pg-core';
 import type { ClimbQueueItem } from '@boardsesh/shared-schema';
-import { users } from '../auth/users.js';
+import { users } from '../auth/users';
 
 // Board sessions for party mode (renamed from 'sessions' to avoid conflict with NextAuth sessions)
 export const boardSessions = pgTable('board_sessions', {

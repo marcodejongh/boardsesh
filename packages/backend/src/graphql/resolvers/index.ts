@@ -1,24 +1,24 @@
 import GraphQLJSON from 'graphql-type-json';
 
 // Import domain resolvers
-import { boardQueries } from './board/queries.js';
-import { tickQueries } from './ticks/queries.js';
-import { tickMutations } from './ticks/mutations.js';
-import { userQueries } from './users/queries.js';
-import { userMutations } from './users/mutations.js';
-import { climbQueries } from './climbs/queries.js';
-import { climbFieldResolvers } from './climbs/field-resolvers.js';
-import { favoriteQueries } from './favorites/queries.js';
-import { favoriteMutations } from './favorites/mutations.js';
-import { playlistQueries } from './playlists/queries.js';
-import { playlistMutations } from './playlists/mutations.js';
-import { sessionQueries } from './sessions/queries.js';
-import { sessionMutations } from './sessions/mutations.js';
-import { sessionSubscriptions } from './sessions/subscriptions.js';
-import { sessionEventResolver } from './sessions/type-resolvers.js';
-import { queueMutations } from './queue/mutations.js';
-import { queueSubscriptions } from './queue/subscriptions.js';
-import { queueEventResolver } from './queue/type-resolvers.js';
+import { boardQueries } from './board/queries';
+import { tickQueries } from './ticks/queries';
+import { tickMutations } from './ticks/mutations';
+import { userQueries } from './users/queries';
+import { userMutations } from './users/mutations';
+import { climbQueries } from './climbs/queries';
+import { climbFieldResolvers } from './climbs/field-resolvers';
+import { favoriteQueries } from './favorites/queries';
+import { favoriteMutations } from './favorites/mutations';
+import { playlistQueries } from './playlists/queries';
+import { playlistMutations } from './playlists/mutations';
+import { sessionQueries } from './sessions/queries';
+import { sessionMutations } from './sessions/mutations';
+import { sessionSubscriptions } from './sessions/subscriptions';
+import { sessionEventResolver } from './sessions/type-resolvers';
+import { queueMutations } from './queue/mutations';
+import { queueSubscriptions } from './queue/subscriptions';
+import { queueEventResolver } from './queue/type-resolvers';
 
 export const resolvers = {
   // Scalar types

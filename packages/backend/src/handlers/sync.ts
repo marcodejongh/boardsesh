@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'http';
 import { SyncRunner } from '@boardsesh/aurora-sync/runner';
-import { applyCorsHeaders } from './cors.js';
+import { applyCorsHeaders } from './cors';
 
 const CRON_SECRET = process.env.CRON_SECRET;
 

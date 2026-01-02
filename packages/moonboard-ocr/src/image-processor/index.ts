@@ -6,7 +6,7 @@ export type {
   ImageSource,
   NodeImageSource,
   BrowserImageSource,
-} from './types.js';
+} from './types';
 
-export { SharpImageProcessor } from './sharp-processor.js';
-export { CanvasImageProcessor } from './canvas-processor.js';
+export { SharpImageProcessor } from './sharp-processor';
+export { CanvasImageProcessor } from './canvas-processor';

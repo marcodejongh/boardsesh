@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 import Redis from 'ioredis';
-import { createRedisPubSubAdapter, type RedisPubSubAdapter } from '../pubsub/redis-adapter.js';
+import { createRedisPubSubAdapter, type RedisPubSubAdapter } from '../pubsub/redis-adapter';
 import type { QueueEvent, SessionEvent } from '@boardsesh/shared-schema';
 
 // Integration tests require Redis to be running

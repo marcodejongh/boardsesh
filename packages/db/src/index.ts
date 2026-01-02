@@ -1,6 +1,6 @@
 // Re-export schema and relations
-export * from './schema/index.js';
-export * from './relations/index.js';
+export * from './schema/index';
+export * from './relations/index';
 
 // Re-export client
-export * from './client/index.js';
+export * from './client/index';

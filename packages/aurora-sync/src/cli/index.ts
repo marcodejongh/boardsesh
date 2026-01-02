@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { program } from 'commander';
-import { SyncRunner } from '../runner/sync-runner.js';
+import { SyncRunner } from '../runner/sync-runner';
 
 // Load environment variables from .env files if available
 import { config } from 'dotenv';

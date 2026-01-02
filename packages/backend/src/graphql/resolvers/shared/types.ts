@@ -1,6 +1,6 @@
 import type { Climb } from '@boardsesh/shared-schema';
-import type { ParsedBoardRouteParameters, ClimbSearchParams } from '../../../db/queries/climbs/index.js';
-import type { SizeEdges } from '../../../db/queries/util/product-sizes-data.js';
+import type { ParsedBoardRouteParameters, ClimbSearchParams } from '../../../db/queries/climbs/index';
+import type { SizeEdges } from '../../../db/queries/util/product-sizes-data';
 
 /**
  * Context object passed from searchClimbs query to ClimbSearchResult field resolvers.

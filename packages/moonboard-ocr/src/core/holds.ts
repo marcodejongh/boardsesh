@@ -1,5 +1,5 @@
-import { HoldType, GridCoordinate, GRID_POSITIONS, DetectedHold } from '../types.js';
-import { RawPixelData, ImageRegion } from '../image-processor/types.js';
+import { HoldType, GridCoordinate, GRID_POSITIONS, DetectedHold } from '../types';
+import { RawPixelData, ImageRegion } from '../image-processor/types';
 
 interface CircleCenter {
   x: number;

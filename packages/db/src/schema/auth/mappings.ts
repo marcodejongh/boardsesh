@@ -7,7 +7,7 @@ import {
   index,
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
-import { users } from './users.js';
+import { users } from './users';
 
 // User board mappings table to link NextAuth users with Aurora board users
 export const userBoardMappings = pgTable(

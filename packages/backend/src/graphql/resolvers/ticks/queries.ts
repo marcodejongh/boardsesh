@@ -1,9 +1,9 @@
 import { eq, and, desc, inArray, sql, count } from 'drizzle-orm';
 import type { ConnectionContext } from '@boardsesh/shared-schema';
-import { db } from '../../../db/client.js';
+import { db } from '../../../db/client';
 import * as dbSchema from '@boardsesh/db/schema';
-import { requireAuthenticated, validateInput } from '../shared/helpers.js';
-import { GetTicksInputSchema, BoardNameSchema, AscentFeedInputSchema } from '../../../validation/schemas.js';
+import { requireAuthenticated, validateInput } from '../shared/helpers';
+import { GetTicksInputSchema, BoardNameSchema, AscentFeedInputSchema } from '../../../validation/schemas';
 
 // Helper to get the climbs table based on board type
 const getClimbsTable = (boardType: string) => {

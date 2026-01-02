@@ -1,9 +1,9 @@
 import { eq, and } from 'drizzle-orm';
 import type { ConnectionContext, ToggleFavoriteInput, ToggleFavoriteResult } from '@boardsesh/shared-schema';
-import { db } from '../../../db/client.js';
+import { db } from '../../../db/client';
 import * as dbSchema from '@boardsesh/db/schema';
-import { requireAuthenticated, validateInput } from '../shared/helpers.js';
-import { ToggleFavoriteInputSchema } from '../../../validation/schemas.js';
+import { requireAuthenticated, validateInput } from '../shared/helpers';
+import { ToggleFavoriteInputSchema } from '../../../validation/schemas';
 
 export const favoriteMutations = {
   /**

@@ -2,9 +2,9 @@ import type { IncomingMessage, ServerResponse } from 'http';
 import Busboy from 'busboy';
 import path from 'path';
 import { mkdir, writeFile, unlink, access } from 'fs/promises';
-import { applyCorsHeaders } from './cors.js';
-import { validateNextAuthToken } from '../middleware/auth.js';
-import { isS3Configured, uploadToS3, deleteUserAvatarsFromS3 } from '../storage/s3.js';
+import { applyCorsHeaders } from './cors';
+import { validateNextAuthToken } from '../middleware/auth';
+import { isS3Configured, uploadToS3, deleteUserAvatarsFromS3 } from '../storage/s3';
 
 // Avatar upload configuration
 const AVATARS_DIR = './avatars';

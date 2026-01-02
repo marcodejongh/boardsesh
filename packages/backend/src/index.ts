@@ -1,6 +1,6 @@
 import 'dotenv/config';
-import { startServer } from './server.js';
-import { redisClientManager } from './redis/client.js';
+import { startServer } from './server';
+import { redisClientManager } from './redis/client';
 
 async function main() {
   // Start the server (initializes PubSub/Redis)

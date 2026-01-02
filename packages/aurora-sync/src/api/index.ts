@@ -1,5 +1,5 @@
-export * from './types.js';
-export * from './sync-api-types.js';
-export { userSync } from './user-sync-api.js';
-export { sharedSync } from './shared-sync-api.js';
-export { AuroraClimbingClient } from './aurora-client.js';
+export * from './types';
+export * from './sync-api-types';
+export { userSync } from './user-sync-api';
+export { sharedSync } from './shared-sync-api';
+export { AuroraClimbingClient } from './aurora-client';
