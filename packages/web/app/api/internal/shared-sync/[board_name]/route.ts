@@ -1,9 +1,9 @@
 // app/api/cron/sync-shared-data/route.ts
 import { NextResponse } from 'next/server';
 import { syncSharedData as syncSharedDataFunction } from '@/lib/data-sync/aurora/shared-sync';
-import { BoardName } from '@/app/lib/types';
+import { BoardName as AuroraBoardName } from '@/app/lib/api-wrappers/aurora-rest-client/types';
 
-const VALID_BOARD_NAMES: BoardName[] = ['kilter', 'tension'];
+const VALID_BOARD_NAMES: AuroraBoardName[] = ['kilter', 'tension'];
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -15,7 +15,7 @@ type SharedSyncRouteParams = {
 };
 
 const internalSyncSharedData = async (
-  board_name: BoardName,
+  board_name: AuroraBoardName,
   token: string,
   previousResults: { results: Record<string, { synced: number; complete: boolean }>; complete: boolean } = {
     results: {},
@@ -69,11 +69,11 @@ export async function GET(request: Request, props: { params: Promise<SharedSyncR
   try {
     const { board_name: boardNameParam } = params;
 
-    // Validate board_name is a valid BoardName
-    if (!VALID_BOARD_NAMES.includes(boardNameParam as BoardName)) {
+    // Validate board_name is a valid AuroraBoardName
+    if (!VALID_BOARD_NAMES.includes(boardNameParam as AuroraBoardName)) {
       return NextResponse.json({ error: `Invalid board name: ${boardNameParam}` }, { status: 400 });
     }
-    const board_name = boardNameParam as BoardName;
+    const board_name = boardNameParam as AuroraBoardName;
 
     console.log(`Starting shared sync for ${board_name}`);
 

@@ -2,9 +2,9 @@ import { sql } from '@/app/lib/db/db';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import AuroraClimbingClient from '@/app/lib/api-wrappers/aurora-rest-client/aurora-rest-client';
-import { BoardName, BoardOnlyRouteParameters } from '@/app/lib/types';
+import { BoardOnlyRouteParameters } from '@/app/lib/types';
 import { syncUserData } from '@/app/lib/data-sync/aurora/user-sync';
-import { Session } from '@/app/lib/api-wrappers/aurora-rest-client/types';
+import { Session, BoardName as AuroraBoardName } from '@/app/lib/api-wrappers/aurora-rest-client/types';
 import { getSession } from '@/app/lib/session';
 
 // Input validation schema
@@ -20,7 +20,7 @@ const loginSchema = z.object({
  * @param password - User's password
  * @returns Login response from the board's API
  */
-async function login(boardName: BoardName, username: string, password: string): Promise<Session> {
+async function login(boardName: AuroraBoardName, username: string, password: string): Promise<Session> {
   const auroraClient = new AuroraClimbingClient({ boardName: boardName });
   const loginResponse = await auroraClient.signIn(username, password);
 
@@ -65,7 +65,13 @@ async function login(boardName: BoardName, username: string, password: string): 
  */
 export async function POST(request: Request, props: { params: Promise<BoardOnlyRouteParameters> }) {
   const params = await props.params;
-  const board_name = params.board_name as BoardName;
+
+  // MoonBoard doesn't use Aurora APIs
+  if (params.board_name === 'moonboard') {
+    return NextResponse.json({ error: 'MoonBoard does not support this endpoint' }, { status: 400 });
+  }
+
+  const board_name = params.board_name as AuroraBoardName;
 
   try {
     // Parse and validate request body

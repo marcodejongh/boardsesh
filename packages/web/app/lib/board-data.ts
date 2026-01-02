@@ -1,4 +1,5 @@
 import { Angle, BoardName } from './types';
+import { MOONBOARD_ENABLED, MOONBOARD_ANGLES } from './moonboard-config';
 
 type ImageDimensions = {
   [imageName: string]: {
@@ -9,7 +10,10 @@ type ImageDimensions = {
 
 export type SetIdList = number[];
 
-export const SUPPORTED_BOARDS = ['kilter', 'tension'];
+// Conditionally include moonboard based on feature flag
+export const SUPPORTED_BOARDS: BoardName[] = MOONBOARD_ENABLED
+  ? ['kilter', 'tension', 'moonboard']
+  : ['kilter', 'tension'];
 
 export const BOARD_IMAGE_DIMENSIONS: Record<BoardName, ImageDimensions> = {
   kilter: {
@@ -83,11 +87,42 @@ export const BOARD_IMAGE_DIMENSIONS: Record<BoardName, ImageDimensions> = {
     'product_sizes_layouts_sets/8x12-tb2-wood.png': { width: 1080, height: 1767 },
     'product_sizes_layouts_sets/9.png': { width: 1080, height: 1665 },
   },
+  moonboard: {
+    // MoonBoard 2010
+    'moonboard2010/originalschoolholds.png': { width: 650, height: 1000 },
+    // MoonBoard 2016
+    'moonboard2016/holdseta.png': { width: 650, height: 1000 },
+    'moonboard2016/holdsetb.png': { width: 650, height: 1000 },
+    'moonboard2016/originalschoolholds.png': { width: 650, height: 1000 },
+    // MoonBoard 2024
+    'moonboard2024/holdsetd.png': { width: 650, height: 1000 },
+    'moonboard2024/holdsete.png': { width: 650, height: 1000 },
+    'moonboard2024/holdsetf.png': { width: 650, height: 1000 },
+    'moonboard2024/woodenholds.png': { width: 650, height: 1000 },
+    'moonboard2024/woodenholdsb.png': { width: 650, height: 1000 },
+    'moonboard2024/woodenholdsc.png': { width: 650, height: 1000 },
+    // MoonBoard Masters 2017
+    'moonboardmasters2017/holdseta.png': { width: 650, height: 1000 },
+    'moonboardmasters2017/holdsetb.png': { width: 650, height: 1000 },
+    'moonboardmasters2017/holdsetc.png': { width: 650, height: 1000 },
+    'moonboardmasters2017/originalschoolholds.png': { width: 650, height: 1000 },
+    'moonboardmasters2017/screw-onfeet.png': { width: 650, height: 1000 },
+    'moonboardmasters2017/woodenholds.png': { width: 650, height: 1000 },
+    // MoonBoard Masters 2019
+    'moonboardmasters2019/holdseta.png': { width: 650, height: 1000 },
+    'moonboardmasters2019/holdsetb.png': { width: 650, height: 1000 },
+    'moonboardmasters2019/originalschoolholds.png': { width: 650, height: 1000 },
+    'moonboardmasters2019/screw-onfeet.png': { width: 650, height: 1000 },
+    'moonboardmasters2019/woodenholds.png': { width: 650, height: 1000 },
+    'moonboardmasters2019/woodenholdsb.png': { width: 650, height: 1000 },
+    'moonboardmasters2019/woodenholdsc.png': { width: 650, height: 1000 },
+  },
 };
 
 export const ANGLES: Record<BoardName, Angle[]> = {
   kilter: [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70],
   tension: [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70],
+  moonboard: [...MOONBOARD_ANGLES],
 };
 
 export const TENSION_KILTER_GRADES = [

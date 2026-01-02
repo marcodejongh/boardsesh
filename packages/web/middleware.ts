@@ -28,7 +28,7 @@ export function middleware(request: NextRequest) {
       }
 
       // For all other routes, validate board name
-      if (!SUPPORTED_BOARDS.includes(routeIdentifier)) {
+      if (!(SUPPORTED_BOARDS as readonly string[]).includes(routeIdentifier)) {
         console.info('Middleware board_name check returned 404');
         return new NextResponse(null, {
           status: 404,

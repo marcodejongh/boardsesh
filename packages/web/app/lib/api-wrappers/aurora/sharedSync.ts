@@ -1,10 +1,9 @@
-import { BoardName } from '../../types';
 import { SyncData } from '../sync-api-types';
-import { WEB_HOSTS, SyncOptions } from './types';
+import { WEB_HOSTS, SyncOptions, AuroraBoardName } from './types';
 
 //TODO: Can probably be consolidated with userSync
 export async function sharedSync(
-  board: BoardName,
+  board: AuroraBoardName,
   options: Omit<SyncOptions, 'walls' | 'wallExpungements'> = {},
   token: string,
    

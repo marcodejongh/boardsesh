@@ -37,8 +37,10 @@ import {
   kilterTags,
   tensionTags,
 } from '@/lib/db/schema';
+import { AuroraBoardName } from '@/app/lib/api-wrappers/aurora/types';
 
-export type BoardName = 'kilter' | 'tension';
+// Re-export AuroraBoardName as BoardName for backward compatibility within this module
+export type BoardName = AuroraBoardName;
 
 // Define the base table structure
 export type TableSet = {

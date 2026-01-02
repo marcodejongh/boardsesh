@@ -14,7 +14,6 @@ import dayjs from 'dayjs';
  *
  * Data flow: Boardsesh (local) ← Aurora (via cron)
  */
-
 export interface SaveClimbResponse {
   uuid: string;
   synced: boolean;

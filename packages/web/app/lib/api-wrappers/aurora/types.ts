@@ -1,4 +1,5 @@
-import { BoardName } from '../../types';
+// Aurora boards only (kilter/tension) - different from main BoardName which includes moonboard
+export type AuroraBoardName = 'kilter' | 'tension';
 
 export interface BoardUser {
   id: number;
@@ -108,7 +109,7 @@ export interface SaveClimbOptions {
   frames_pace?: number;
   angle: number;
 }
-export const HOST_BASES: Record<BoardName, string> = {
+export const HOST_BASES: Record<AuroraBoardName, string> = {
   // aurora: 'auroraboardapp',
   // decoy: 'decoyboardapp',
   // grasshopper: 'grasshopperboardapp',
@@ -118,13 +119,13 @@ export const HOST_BASES: Record<BoardName, string> = {
 };
 
 //
-export const API_HOSTS: Record<BoardName, string> = Object.fromEntries(
+export const API_HOSTS: Record<AuroraBoardName, string> = Object.fromEntries(
   Object.entries(HOST_BASES).map(([board, hostBase]) => [board, `https://api.${hostBase}.com`]),
-) as Record<BoardName, string>;
+) as Record<AuroraBoardName, string>;
 
-export const WEB_HOSTS: Record<BoardName, string> = Object.fromEntries(
+export const WEB_HOSTS: Record<AuroraBoardName, string> = Object.fromEntries(
   Object.entries(HOST_BASES).map(([board, hostBase]) => [board, `https://${hostBase}.com`]),
-) as Record<BoardName, string>;
+) as Record<AuroraBoardName, string>;
 
 export interface Ascent {
   uuid: string;

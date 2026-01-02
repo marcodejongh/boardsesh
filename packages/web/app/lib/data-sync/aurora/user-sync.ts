@@ -1,7 +1,6 @@
 import { getPool } from '@/app/lib/db/db';
-import { BoardName } from '../../types';
 import { userSync } from '../../api-wrappers/aurora/userSync';
-import { SyncOptions, USER_TABLES, UserSyncData } from '../../api-wrappers/aurora/types';
+import { SyncOptions, USER_TABLES, UserSyncData, AuroraBoardName } from '../../api-wrappers/aurora/types';
 import { eq, and, inArray } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/neon-serverless';
 import { NeonDatabase } from 'drizzle-orm/neon-serverless';
@@ -15,7 +14,7 @@ import { convertQuality } from './convert-quality';
  */
 async function getNextAuthUserId(
   db: NeonDatabase<Record<string, never>>,
-  boardName: BoardName,
+  boardName: AuroraBoardName,
   auroraUserId: number,
 ): Promise<string | null> {
   const result = await db
@@ -29,7 +28,7 @@ async function getNextAuthUserId(
 
 async function upsertTableData(
   db: NeonDatabase<Record<string, never>>,
-  boardName: BoardName,
+  boardName: AuroraBoardName,
   tableName: string,
   auroraUserId: number,
   nextAuthUserId: string,
@@ -368,7 +367,7 @@ async function upsertTableData(
 
 async function updateUserSyncs(
   tx: NeonDatabase<Record<string, never>>,
-  boardName: BoardName,
+  boardName: AuroraBoardName,
   userSyncs: UserSyncData[],
 ) {
   const userSyncsSchema = getTable('userSyncs', boardName);
@@ -390,7 +389,7 @@ async function updateUserSyncs(
   }
 }
 
-export async function getLastSyncTimes(boardName: BoardName, userId: number, tableNames: string[]) {
+export async function getLastSyncTimes(boardName: AuroraBoardName, userId: number, tableNames: string[]) {
   const userSyncsSchema = getTable('userSyncs', boardName);
   const pool = getPool();
   const client = await pool.connect();
@@ -408,7 +407,7 @@ export async function getLastSyncTimes(boardName: BoardName, userId: number, tab
   }
 }
 
-export async function getLastSharedSyncTimes(boardName: BoardName, tableNames: string[]) {
+export async function getLastSharedSyncTimes(boardName: AuroraBoardName, tableNames: string[]) {
   const sharedSyncsSchema = getTable('sharedSyncs', boardName);
   const pool = getPool();
   const client = await pool.connect();
@@ -424,7 +423,7 @@ export async function getLastSharedSyncTimes(boardName: BoardName, tableNames: s
 }
 
 export async function syncUserData(
-  board: BoardName,
+  board: AuroraBoardName,
   token: string,
   userId: number,
   tables: string[] = USER_TABLES,

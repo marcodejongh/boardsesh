@@ -5,6 +5,11 @@ import { LitUpHoldsMap, HOLD_STATE_MAP } from './types';
 const USE_SELF_HOSTED_IMAGES = true;
 
 export const getImageUrl = (imageUrl: string, board: BoardName) => {
+  // If the URL already starts with /, it's a full path (e.g., MoonBoard images)
+  if (imageUrl.startsWith('/')) {
+    return imageUrl;
+  }
+
   if (USE_SELF_HOSTED_IMAGES) {
     return `/images/${board}/${imageUrl}`;
   }

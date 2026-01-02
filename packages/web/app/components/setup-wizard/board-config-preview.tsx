@@ -6,6 +6,7 @@ import { DeleteOutlined, StarFilled } from '@ant-design/icons';
 import Link from 'next/link';
 import { BoardDetails, BoardName } from '@/app/lib/types';
 import { getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
+import { getMoonBoardDetails } from '@/app/lib/moonboard-config';
 import BoardRenderer from '../board-renderer/board-renderer';
 import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { BoardConfigData } from '@/app/lib/server-board-configs';
@@ -87,12 +88,20 @@ export default function BoardConfigPreview({ config, onDelete, onSelect, boardCo
         let details = cachedDetails;
         if (!details && isValidConfig) {
           try {
-            details = getBoardDetails({
-              board_name: config.board as BoardName,
-              layout_id: config.layoutId,
-              size_id: config.sizeId,
-              set_ids: config.setIds,
-            });
+            // Use moonboard-specific details for moonboard configs
+            if (config.board === 'moonboard') {
+              details = getMoonBoardDetails({
+                layout_id: config.layoutId,
+                set_ids: config.setIds,
+              }) as BoardDetails;
+            } else {
+              details = getBoardDetails({
+                board_name: config.board as BoardName,
+                layout_id: config.layoutId,
+                size_id: config.sizeId,
+                set_ids: config.setIds,
+              });
+            }
             setBoardDetails(details);
           } catch (error) {
             console.error('Failed to get board details:', error);

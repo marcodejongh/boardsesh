@@ -1,9 +1,9 @@
 import { sql } from '@/app/lib/db/db';
-import { BoardName, ClimbUuid } from '../types';
-import { LogbookEntry } from '../api-wrappers/aurora/types';
+import { ClimbUuid } from '../types';
+import { LogbookEntry, AuroraBoardName } from '../api-wrappers/aurora/types';
 import { getTableName } from '../data-sync/aurora/getTableName';
 
-export async function getLogbook(board: BoardName, userId: string, climbUuids?: ClimbUuid[]): Promise<LogbookEntry[]> {
+export async function getLogbook(board: AuroraBoardName, userId: string, climbUuids?: ClimbUuid[]): Promise<LogbookEntry[]> {
   const ascentsTable = getTableName(board, 'ascents');
   const bidsTable = getTableName(board, 'bids');
 

@@ -1,6 +1,5 @@
 import { getPool } from '@/app/lib/db/db';
-import { BoardName } from '../../types';
-import { SyncOptions } from '../../api-wrappers/aurora/types';
+import { SyncOptions, AuroraBoardName } from '../../api-wrappers/aurora/types';
 import { sharedSync } from '../../api-wrappers/aurora/sharedSync';
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/neon-serverless';
@@ -32,7 +31,7 @@ export const SHARED_SYNC_TABLES: string[] = [
 // Tables we actually want to process and store
 const TABLES_TO_PROCESS = new Set(['climbs', 'climb_stats', 'beta_links', 'attempts', 'shared_syncs']);
 
-const upsertAttempts = (db: NeonDatabase<Record<string, never>>, board: BoardName, data: Attempt[]) =>
+const upsertAttempts = (db: NeonDatabase<Record<string, never>>, board: AuroraBoardName, data: Attempt[]) =>
   Promise.all(
     data.map(async (item) => {
       const attemptsSchema = getTable('attempts', board);
@@ -55,7 +54,7 @@ const upsertAttempts = (db: NeonDatabase<Record<string, never>>, board: BoardNam
     }),
   );
 
-async function upsertClimbStats(db: NeonDatabase<Record<string, never>>, board: BoardName, data: ClimbStats[]) {
+async function upsertClimbStats(db: NeonDatabase<Record<string, never>>, board: AuroraBoardName, data: ClimbStats[]) {
   // Filter data to only include stats for valid climbs
 
   await Promise.all(
@@ -108,7 +107,7 @@ async function upsertClimbStats(db: NeonDatabase<Record<string, never>>, board: 
   );
 }
 
-async function upsertBetaLinks(db: NeonDatabase<Record<string, never>>, board: BoardName, data: BetaLink[]) {
+async function upsertBetaLinks(db: NeonDatabase<Record<string, never>>, board: AuroraBoardName, data: BetaLink[]) {
   await Promise.all(
     data.map((item) => {
       const betaLinksSchema = getTable('betaLinks', board);
@@ -137,7 +136,7 @@ async function upsertBetaLinks(db: NeonDatabase<Record<string, never>>, board: B
   );
 }
 
-async function upsertClimbs(db: NeonDatabase<Record<string, never>>, board: BoardName, data: Climb[]) {
+async function upsertClimbs(db: NeonDatabase<Record<string, never>>, board: AuroraBoardName, data: Climb[]) {
   await Promise.all(
     data.map(async (item: Climb) => {
       const climbsSchema = getTable('climbs', board);
@@ -211,7 +210,7 @@ async function upsertClimbs(db: NeonDatabase<Record<string, never>>, board: Boar
 
 async function upsertSharedTableData(
   db: NeonDatabase<Record<string, never>>,
-  boardName: BoardName,
+  boardName: AuroraBoardName,
   tableName: string,
   data: SyncPutFields[],
 ) {
@@ -239,7 +238,7 @@ async function upsertSharedTableData(
 }
 async function updateSharedSyncs(
   tx: NeonDatabase<Record<string, never>>,
-  boardName: BoardName,
+  boardName: AuroraBoardName,
   sharedSyncs: SharedSync[],
 ) {
   const sharedSyncsSchema = getTable('sharedSyncs', boardName);
@@ -260,7 +259,7 @@ async function updateSharedSyncs(
   }
 }
 
-export async function getLastSharedSyncTimes(boardName: BoardName) {
+export async function getLastSharedSyncTimes(boardName: AuroraBoardName) {
   const sharedSyncsSchema = getTable('sharedSyncs', boardName);
   const pool = getPool();
   const client = await pool.connect();
@@ -281,7 +280,7 @@ export async function getLastSharedSyncTimes(boardName: BoardName) {
 }
 
 export async function syncSharedData(
-  board: BoardName,
+  board: AuroraBoardName,
   token: string,
 ): Promise<{ complete: boolean; results: Record<string, { synced: number; complete: boolean }> }> {
   try {

@@ -1,7 +1,7 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { dbz as db } from '@/app/lib/db/db';
 import { ParsedBoardRouteParameters, SearchRequestPagination } from '@/app/lib/types';
-import { getBoardTables } from '@/lib/db/queries/util/table-select';
+import { getBoardTables, BoardName as AuroraBoardName } from '@/lib/db/queries/util/table-select';
 import { createClimbFilters } from './create-climb-filters';
 import { getTableName } from '@/app/lib/data-sync/aurora/getTableName';
 import { getSizeEdges } from '@/app/lib/__generated__/product-sizes-data';
@@ -24,7 +24,7 @@ export const getHoldHeatmapData = async (
   searchParams: SearchRequestPagination,
   userId?: number,
 ): Promise<HoldHeatmapData[]> => {
-  const tables = getBoardTables(params.board_name);
+  const tables = getBoardTables(params.board_name as AuroraBoardName);
   const climbHolds = tables.climbHolds;
 
   // Get hardcoded size edges (eliminates database query)

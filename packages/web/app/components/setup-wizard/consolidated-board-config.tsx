@@ -13,7 +13,7 @@ import { BoardName, BoardDetails } from '@/app/lib/types';
 import { getDefaultSizeForLayout, getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
 import BoardConfigPreview from './board-config-preview';
 import BoardRenderer from '../board-renderer/board-renderer';
-import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
+import { constructClimbListWithSlugs, constructCreateClimbWithSlugs } from '@/app/lib/url-utils';
 import { BoardConfigData } from '@/app/lib/server-board-configs';
 import Logo from '../brand/logo';
 import { themeTokens } from '@/app/theme/theme-config';
@@ -306,7 +306,20 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
       .map((s) => s.name);
 
     if (layout && size && selectedSetNames.length > 0) {
-      // Always use slug-based URL for SEO
+      // For MoonBoard, go to create climb page instead of list
+      // (database/list view not implemented yet)
+      if (selectedBoard === 'moonboard') {
+        return constructCreateClimbWithSlugs(
+          selectedBoard,
+          layout.name,
+          size.name,
+          size.description,
+          selectedSetNames,
+          selectedAngle,
+        );
+      }
+
+      // For Aurora boards (kilter, tension), go to list view
       return constructClimbListWithSlugs(
         selectedBoard,
         layout.name,

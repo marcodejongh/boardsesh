@@ -1,6 +1,6 @@
 // app/api/v1/[board_name]/proxy/saveClimb/route.ts
 import { saveClimb } from '@/app/lib/api-wrappers/aurora/saveClimb';
-import { BoardName } from '@/app/lib/types';
+import { AuroraBoardName } from '@/app/lib/api-wrappers/aurora/types';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -23,7 +23,13 @@ const saveClimbSchema = z.object({
 
 export async function POST(request: Request, props: { params: Promise<{ board_name: string }> }) {
   const params = await props.params;
-  const board_name = params.board_name as BoardName;
+
+  // MoonBoard doesn't use Aurora APIs
+  if (params.board_name === 'moonboard') {
+    return NextResponse.json({ error: 'MoonBoard does not support this endpoint' }, { status: 400 });
+  }
+
+  const board_name = params.board_name as AuroraBoardName;
 
   try {
     const body = await request.json();

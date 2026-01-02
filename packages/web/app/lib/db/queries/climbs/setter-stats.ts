@@ -1,7 +1,7 @@
 import { eq, sql, and, ilike } from 'drizzle-orm';
 import { dbz as db } from '@/app/lib/db/db';
 import { ParsedBoardRouteParameters } from '@/app/lib/types';
-import { getBoardTables } from '@/lib/db/queries/util/table-select';
+import { getBoardTables, BoardName as AuroraBoardName } from '@/lib/db/queries/util/table-select';
 
 export interface SetterStat {
   setter_username: string;
@@ -12,7 +12,7 @@ export const getSetterStats = async (
   params: ParsedBoardRouteParameters,
   searchQuery?: string,
 ): Promise<SetterStat[]> => {
-  const tables = getBoardTables(params.board_name);
+  const tables = getBoardTables(params.board_name as AuroraBoardName);
 
   try {
     // Build WHERE conditions

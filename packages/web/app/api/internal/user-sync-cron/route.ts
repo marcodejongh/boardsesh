@@ -4,9 +4,9 @@ import { getPool } from '@/app/lib/db/db';
 import { drizzle } from 'drizzle-orm/neon-serverless';
 import { eq, and, or, isNotNull } from 'drizzle-orm';
 import { decrypt, encrypt } from '@/app/lib/crypto';
-import { BoardName } from '@/app/lib/types';
 import * as schema from '@/app/lib/db/schema';
 import AuroraClimbingClient from '@/app/lib/api-wrappers/aurora-rest-client/aurora-rest-client';
+import { BoardName as AuroraBoardName } from '@/app/lib/api-wrappers/aurora-rest-client/types';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // 5 minutes max
@@ -73,7 +73,7 @@ export async function GET(request: Request) {
           continue;
         }
 
-        const boardType = cred.boardType as BoardName;
+        const boardType = cred.boardType as AuroraBoardName;
 
         // Decrypt credentials and get a fresh token
         let token: string;

@@ -21,6 +21,13 @@ const STATE_TO_CODE: Record<BoardName, Partial<Record<HoldState, HoldCode>>> = {
     FINISH: 3,
     FOOT: 4,
   },
+  // MoonBoard uses different hook (use-moonboard-create-climb), but include for type safety
+  moonboard: {
+    STARTING: 1,
+    HAND: 2,
+    FINISH: 3,
+    // No FOOT holds on MoonBoard
+  },
 };
 
 interface UseCreateClimbOptions {

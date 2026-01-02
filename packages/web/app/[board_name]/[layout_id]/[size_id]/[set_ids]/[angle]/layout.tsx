@@ -8,6 +8,7 @@ import { permanentRedirect } from 'next/navigation';
 import { Content } from 'antd/es/layout/layout';
 import QueueControlBar from '@/app/components/queue-control/queue-control-bar';
 import { getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
+import { getMoonBoardDetails } from '@/app/lib/moonboard-config';
 import BoardSeshHeader from '@/app/components/board-page/header';
 import { GraphQLQueueProvider } from '@/app/components/graphql-queue';
 import { ConnectionSettingsProvider } from '@/app/components/connection-manager/connection-settings-context';
@@ -15,6 +16,17 @@ import { PartyProvider } from '@/app/components/party-manager/party-context';
 import { BoardSessionBridge } from '@/app/components/persistent-session';
 import { Metadata } from 'next';
 import BoardPageSkeleton from '@/app/components/board-page/board-page-skeleton';
+
+// Helper to get board details for any board type
+function getBoardDetailsUniversal(parsedParams: ParsedBoardRouteParameters): BoardDetails {
+  if (parsedParams.board_name === 'moonboard') {
+    return getMoonBoardDetails({
+      layout_id: parsedParams.layout_id,
+      set_ids: parsedParams.set_ids,
+    }) as BoardDetails;
+  }
+  return getBoardDetails(parsedParams);
+}
 
 /**
  * Generates a user-friendly page title from board details.
@@ -71,7 +83,7 @@ export async function generateMetadata(props: { params: Promise<BoardRouteParame
       parsedParams = await parseBoardRouteParamsWithSlugs(params);
     }
 
-    const boardDetails = await getBoardDetails(parsedParams);
+    const boardDetails = getBoardDetailsUniversal(parsedParams);
     const title = generateBoardTitle(boardDetails);
 
     return {
@@ -108,7 +120,7 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
     parsedParams = parseBoardRouteParams(params);
 
     // Redirect old URLs to new slug format
-    const boardDetails = await getBoardDetails(parsedParams);
+    const boardDetails = getBoardDetailsUniversal(parsedParams);
 
     if (boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names) {
       const newUrl = constructClimbListWithSlugs(
@@ -130,7 +142,7 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
   const { board_name, angle } = parsedParams;
 
   // Fetch the board details server-side
-  const boardDetails = await getBoardDetails(parsedParams);
+  const boardDetails = getBoardDetailsUniversal(parsedParams);
 
   return (
     <Layout style={{ height: '100dvh', display: 'flex', flexDirection: 'column', padding: 0 }}>

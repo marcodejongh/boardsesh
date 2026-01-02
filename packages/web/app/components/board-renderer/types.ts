@@ -1,4 +1,5 @@
-import { BoardName } from '@/lib/types';
+import { BoardName } from '@/app/lib/types';
+import { MOONBOARD_ENABLED } from '@/app/lib/moonboard-config';
 
 export type LitUpHolds = string;
 
@@ -30,8 +31,10 @@ export interface HeatmapData {
   userAttempts?: number; // Added for user-specific attempt data
 }
 
-// If adding mroe boards be sure to increment the DB version number for indexeddb
-export const supported_boards: BoardName[] = ['kilter', 'tension'];
+// If adding more boards be sure to increment the DB version number for indexeddb
+export const supported_boards: BoardName[] = MOONBOARD_ENABLED
+  ? ['kilter', 'tension', 'moonboard']
+  : ['kilter', 'tension'];
 
 // Mapping object for board-specific hold states
 export const HOLD_STATE_MAP: Record<
@@ -57,5 +60,11 @@ export const HOLD_STATE_MAP: Record<
     6: { name: 'HAND', displayColor: '#4444FF', color: '#0000FF' },
     7: { name: 'FINISH', displayColor: '#FF0000', color: '#FF0000' },
     8: { name: 'FOOT', displayColor: '#FF00FF', color: '#FF00FF' },
+  },
+  // MoonBoard uses simple codes: 1=start, 2=hand, 3=finish (no foot holds)
+  moonboard: {
+    1: { name: 'STARTING', displayColor: '#FF3333', color: '#FF0000' }, // Red
+    2: { name: 'HAND', displayColor: '#4444FF', color: '#0000FF' }, // Blue
+    3: { name: 'FINISH', displayColor: '#44FF44', color: '#00FF00' }, // Green
   },
 };
