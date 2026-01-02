@@ -1,0 +1,81 @@
+/*
+ * Ascents Feed styles
+ * Values match themeTokens from @/app/theme/theme-config.ts
+ * spacing: 1=4px, 2=8px, 3=12px, 4=16px, 5=20px, 6=24px, 8=32px
+ */
+
+.feed {
+  width: 100%;
+}
+
+.feedItem {
+  transition: box-shadow 0.2s ease;
+}
+
+.feedItem:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+}
+
+.statusTag {
+  font-weight: 500;
+}
+
+.climbName {
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200px;
+}
+
+.timeAgo {
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.boardType {
+  font-size: 12px;
+}
+
+.attempts {
+  font-size: 12px;
+}
+
+.rating {
+  font-size: 12px;
+}
+
+.setter {
+  font-size: 12px;
+  font-style: italic;
+}
+
+.comment {
+  font-size: 13px;
+  background: var(--neutral-50, #F9FAFB);
+  padding: 8px 12px; /* spacing.2 spacing.3 */
+  border-radius: 4px; /* borderRadius.sm */
+  margin-top: 4px;
+  white-space: pre-wrap;
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  padding: 48px 0; /* spacing.12 */
+}
+
+.loadMoreContainer {
+  margin-top: 16px; /* spacing.4 */
+  padding: 8px 0; /* spacing.2 */
+}
+
+@media (max-width: 768px) {
+  .climbName {
+    max-width: 150px;
+  }
+
+  .feedItem {
+    padding: 8px; /* spacing.2 */
+  }
+}

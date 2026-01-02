@@ -18,6 +18,7 @@ import { UserOutlined, InstagramOutlined } from '@ant-design/icons';
 import { useSession } from 'next-auth/react';
 import Logo from '@/app/components/brand/logo';
 import BackButton from '@/app/components/back-button';
+import AscentsFeed from '@/app/components/activity-feed';
 import dayjs from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
@@ -603,6 +604,15 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
               )}
             </div>
           </div>
+        </Card>
+
+        {/* Recent Ascents Feed */}
+        <Card className={styles.statsCard}>
+          <Title level={5}>Recent Activity</Title>
+          <Text type="secondary" className={styles.chartDescription}>
+            Latest ascents and attempts
+          </Text>
+          <AscentsFeed userId={userId} pageSize={10} />
         </Card>
 
         {/* Aggregated Stats - All Boards */}

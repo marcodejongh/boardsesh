@@ -284,6 +284,41 @@ export const typeDefs = /* GraphQL */ `
   }
 
   # ============================================
+  # Activity Feed Types
+  # ============================================
+
+  # A feed item representing a climb ascent with enriched data
+  type AscentFeedItem {
+    uuid: ID!
+    climbUuid: String!
+    climbName: String!
+    setterUsername: String
+    boardType: String!
+    layoutId: Int
+    angle: Int!
+    isMirror: Boolean!
+    status: TickStatus!
+    attemptCount: Int!
+    quality: Int
+    difficulty: Int
+    difficultyName: String
+    isBenchmark: Boolean!
+    comment: String!
+    climbedAt: String!
+  }
+
+  type AscentFeedResult {
+    items: [AscentFeedItem!]!
+    totalCount: Int!
+    hasMore: Boolean!
+  }
+
+  input AscentFeedInput {
+    limit: Int
+    offset: Int
+  }
+
+  # ============================================
   # Playlist Types
   # ============================================
 
@@ -412,6 +447,8 @@ export const typeDefs = /* GraphQL */ `
     ticks(input: GetTicksInput!): [Tick!]!
     # Get public ticks for a specific user
     userTicks(userId: ID!, boardType: String!): [Tick!]!
+    # Get public ascent activity feed for a specific user (all boards, with climb details)
+    userAscentsFeed(userId: ID!, input: AscentFeedInput): AscentFeedResult!
 
     # ============================================
     # Playlist Queries (require auth)
