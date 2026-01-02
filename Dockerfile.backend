@@ -7,19 +7,22 @@ WORKDIR /app
 COPY package*.json ./
 COPY packages/shared-schema/package*.json ./packages/shared-schema/
 COPY packages/db/package*.json ./packages/db/
+COPY packages/aurora-sync/package*.json ./packages/aurora-sync/
 COPY packages/backend/package*.json ./packages/backend/
 
 # Install all dependencies (including workspace dependencies)
 RUN npm ci
 
-# Copy source code for shared-schema, db, and backend only
+# Copy source code for shared-schema, db, aurora-sync, and backend
 COPY packages/shared-schema ./packages/shared-schema
 COPY packages/db ./packages/db
+COPY packages/aurora-sync ./packages/aurora-sync
 COPY packages/backend ./packages/backend
 
-# Build in dependency order: shared-schema -> db -> backend
+# Build in dependency order: shared-schema -> db -> aurora-sync -> backend
 RUN npm run build --workspace=@boardsesh/shared-schema
 RUN npm run build --workspace=@boardsesh/db
+RUN npm run build --workspace=@boardsesh/aurora-sync
 RUN npm run build --workspace=boardsesh-backend
 
 # Production stage
@@ -31,14 +34,16 @@ WORKDIR /app
 COPY package*.json ./
 COPY packages/shared-schema/package*.json ./packages/shared-schema/
 COPY packages/db/package*.json ./packages/db/
+COPY packages/aurora-sync/package*.json ./packages/aurora-sync/
 COPY packages/backend/package*.json ./packages/backend/
 
-# Copy built shared-schema and db dist BEFORE npm ci (so main entry points exist)
+# Copy built shared-schema, db, and aurora-sync dist BEFORE npm ci (so main entry points exist)
 COPY --from=builder /app/packages/shared-schema/dist ./packages/shared-schema/dist
 COPY --from=builder /app/packages/db/dist ./packages/db/dist
+COPY --from=builder /app/packages/aurora-sync/dist ./packages/aurora-sync/dist
 
 # Install production dependencies only
-RUN npm ci --omit=dev --workspace=boardsesh-backend --workspace=@boardsesh/shared-schema --workspace=@boardsesh/db
+RUN npm ci --omit=dev --workspace=boardsesh-backend --workspace=@boardsesh/shared-schema --workspace=@boardsesh/db --workspace=@boardsesh/aurora-sync
 
 # Copy built backend files
 COPY --from=builder /app/packages/backend/dist ./packages/backend/dist
