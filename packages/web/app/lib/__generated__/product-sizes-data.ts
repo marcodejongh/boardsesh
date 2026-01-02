@@ -363,6 +363,54 @@ export const getDefaultSizeForLayout = (boardName: BoardName, layoutId: number):
 };
 
 /**
+ * Get the default layout ID for a given board.
+ * Returns the first available layout.
+ */
+export const getDefaultLayoutForBoard = (boardName: BoardName): number | null => {
+  const layouts = getAllLayouts(boardName);
+  return layouts.length > 0 ? layouts[0].id : null;
+};
+
+/**
+ * Get the default set IDs for a given board, layout, and size.
+ * Returns all available sets for the combination.
+ */
+export const getDefaultSetsForLayoutSize = (boardName: BoardName, layoutId: number, sizeId: number): number[] => {
+  const sets = getSetsForLayoutAndSize(boardName, layoutId, sizeId);
+  return sets.map(s => s.id);
+};
+
+/**
+ * Get default board details for a given board type and optional layout.
+ * Used when we need board details but only have partial information (e.g., from a playlist).
+ * Returns null if the board configuration is invalid.
+ */
+export const getDefaultBoardDetails = (boardName: BoardName, layoutId?: number | null): BoardDetails | null => {
+  // Get layout, using provided or default
+  const resolvedLayoutId = layoutId ?? getDefaultLayoutForBoard(boardName);
+  if (!resolvedLayoutId) return null;
+
+  // Get default size for this layout
+  const sizeId = getDefaultSizeForLayout(boardName, resolvedLayoutId);
+  if (!sizeId) return null;
+
+  // Get default sets for this layout/size
+  const setIds = getDefaultSetsForLayoutSize(boardName, resolvedLayoutId, sizeId);
+  if (setIds.length === 0) return null;
+
+  try {
+    return getBoardDetails({
+      board_name: boardName,
+      layout_id: resolvedLayoutId,
+      size_id: sizeId,
+      set_ids: setIds as SetIdList,
+    });
+  } catch {
+    return null;
+  }
+};
+
+/**
  * Get all board selector options (layouts, sizes, sets) from hardcoded data.
  * This replaces the database query in getAllBoardSelectorOptions.
  */

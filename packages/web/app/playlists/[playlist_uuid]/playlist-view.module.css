@@ -1,0 +1,315 @@
+/* Playlist View Page Styles */
+
+.pageContainer {
+  padding: 16px;
+  min-height: 100vh;
+  background-color: #F9FAFB;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Actions section - white card container */
+.actionsSection {
+  background-color: #FFFFFF;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* Main content wrapper */
+.contentWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Playlist details section */
+.detailsSection {
+  background-color: #FFFFFF;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* Header with color indicator */
+.playlistHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.colorIndicator {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.colorIndicatorIcon {
+  font-size: 24px;
+  color: #FFFFFF;
+}
+
+.headerContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.playlistName {
+  margin: 0 0 4px 0 !important;
+  font-size: 24px !important;
+  font-weight: 600 !important;
+  word-break: break-word;
+}
+
+.playlistMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  color: #6B7280;
+  font-size: 14px;
+}
+
+.metaItem {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Description section */
+.descriptionSection {
+  padding-top: 16px;
+  border-top: 1px solid #E5E7EB;
+}
+
+.descriptionLabel {
+  font-size: 12px;
+  color: #9CA3AF;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.descriptionText {
+  color: #374151;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.noDescription {
+  color: #9CA3AF;
+  font-style: italic;
+}
+
+/* Stats section */
+.statsSection {
+  display: flex;
+  gap: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #E5E7EB;
+  margin-top: 16px;
+}
+
+.statItem {
+  display: flex;
+  flex-direction: column;
+}
+
+.statValue {
+  font-size: 24px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.statLabel {
+  font-size: 12px;
+  color: #6B7280;
+}
+
+/* Loading and error states */
+.loadingContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+}
+
+.errorContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+  background-color: #FFFFFF;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+}
+
+.errorIcon {
+  font-size: 48px;
+  color: #9CA3AF;
+  margin-bottom: 16px;
+}
+
+.errorTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 8px;
+}
+
+.errorMessage {
+  color: #6B7280;
+  margin-bottom: 20px;
+}
+
+/* Visibility badge */
+.visibilityBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.publicBadge {
+  background-color: #ECFDF5;
+  color: #059669;
+}
+
+.privateBadge {
+  background-color: #F3F4F6;
+  color: #6B7280;
+}
+
+/* Mobile adjustments */
+@media (max-width: 767px) {
+  .pageContainer {
+    padding: 12px;
+  }
+
+  .actionsSection {
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+  }
+
+  .detailsSection {
+    padding: 16px;
+    border-radius: 8px;
+  }
+
+  .contentWrapper {
+    gap: 12px;
+  }
+
+  .playlistHeader {
+    gap: 12px;
+  }
+
+  .colorIndicator {
+    width: 40px;
+    height: 40px;
+  }
+
+  .colorIndicatorIcon {
+    font-size: 20px;
+  }
+
+  .playlistName {
+    font-size: 20px !important;
+  }
+
+  .playlistMeta {
+    gap: 8px;
+    font-size: 13px;
+  }
+
+  .statsSection {
+    gap: 16px;
+  }
+
+  .statValue {
+    font-size: 20px;
+  }
+}
+
+/* Climbs section */
+.climbsSection {
+  background-color: #FFFFFF;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+}
+
+.climbsSectionHeader {
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+.climbsSectionTitle {
+  font-size: 16px;
+  color: #111827;
+}
+
+/* Desktop layout */
+@media (min-width: 992px) {
+  .pageContainer {
+    padding: 24px;
+  }
+
+  .actionsSection {
+    padding: 20px;
+  }
+
+  .detailsSection {
+    padding: 24px;
+  }
+
+  .contentWrapper {
+    gap: 24px;
+  }
+
+  .colorIndicator {
+    width: 56px;
+    height: 56px;
+  }
+
+  .colorIndicatorIcon {
+    font-size: 28px;
+  }
+
+  .playlistName {
+    font-size: 28px !important;
+  }
+
+  .climbsSection {
+    padding: 24px;
+  }
+}
+
+/* Mobile adjustments for climbs section */
+@media (max-width: 767px) {
+  .climbsSection {
+    padding: 16px;
+    border-radius: 8px;
+  }
+
+  .climbsSectionHeader {
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+  }
+
+  .climbsSectionTitle {
+    font-size: 14px;
+  }
+}

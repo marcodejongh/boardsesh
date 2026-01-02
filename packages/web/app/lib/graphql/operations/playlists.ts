@@ -19,6 +19,16 @@ export const PLAYLIST_FIELDS = gql`
   }
 `;
 
+// Get all user's playlists across all boards
+export const GET_ALL_USER_PLAYLISTS = gql`
+  ${PLAYLIST_FIELDS}
+  query GetAllUserPlaylists {
+    allUserPlaylists {
+      ...PlaylistFields
+    }
+  }
+`;
+
 // Get user's playlists for a board+layout
 export const GET_USER_PLAYLISTS = gql`
   ${PLAYLIST_FIELDS}
@@ -135,6 +145,10 @@ export interface Playlist {
   updatedAt: string;
   climbCount: number;
   userRole?: string;
+}
+
+export interface GetAllUserPlaylistsQueryResponse {
+  allUserPlaylists: Playlist[];
 }
 
 export interface GetUserPlaylistsInput {
