@@ -606,15 +606,6 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
           </div>
         </Card>
 
-        {/* Recent Ascents Feed */}
-        <Card className={styles.statsCard}>
-          <Title level={5}>Recent Activity</Title>
-          <Text type="secondary" className={styles.chartDescription}>
-            Latest ascents and attempts
-          </Text>
-          <AscentsFeed userId={userId} pageSize={10} />
-        </Card>
-
         {/* Aggregated Stats - All Boards */}
         <Card className={styles.statsCard}>
           <Title level={5}>Ascents by Grade</Title>
@@ -705,6 +696,15 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
               </div>
             )}
           </>
+        </Card>
+
+        {/* Recent Ascents Feed */}
+        <Card className={styles.statsCard}>
+          <Title level={5}>Recent Activity</Title>
+          <Text type="secondary" className={styles.chartDescription}>
+            Latest ascents and attempts
+          </Text>
+          <AscentsFeed userId={userId} pageSize={10} />
         </Card>
       </Content>
     </Layout>
