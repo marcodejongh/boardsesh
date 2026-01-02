@@ -22,6 +22,7 @@ import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { themeTokens } from '@/app/theme/theme-config';
 import PlaylistViewActions from './playlist-view-actions';
 import PlaylistEditDrawer from './playlist-edit-drawer';
+import PlaylistClimbsList from './playlist-climbs-list';
 import styles from './playlist-view.module.css';
 
 const { Title, Text } = Typography;
@@ -219,6 +220,13 @@ export default function PlaylistViewContent({
             )}
           </div>
         </div>
+
+        {/* Climbs List */}
+        <PlaylistClimbsList
+          playlistUuid={playlistUuid}
+          boardDetails={boardDetails}
+          angle={angle}
+        />
       </div>
 
       {/* Edit Drawer */}

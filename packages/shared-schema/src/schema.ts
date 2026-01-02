@@ -389,6 +389,22 @@ export const typeDefs = /* GraphQL */ `
     climbUuid: String!
   }
 
+  input GetPlaylistClimbsInput {
+    playlistId: ID!
+    boardName: String!
+    layoutId: Int!
+    sizeId: Int!
+    setIds: String!
+    page: Int
+    pageSize: Int
+  }
+
+  type PlaylistClimbsResult {
+    climbs: [Climb!]!
+    totalCount: Int!
+    hasMore: Boolean!
+  }
+
   type Query {
     session(sessionId: ID!): Session
     # Get buffered events since a sequence number for delta sync (Phase 2)
@@ -462,6 +478,8 @@ export const typeDefs = /* GraphQL */ `
     playlist(playlistId: ID!): Playlist
     # Get playlists that contain a specific climb
     playlistsForClimb(input: GetPlaylistsForClimbInput!): [ID!]!
+    # Get climbs in a playlist with full climb data
+    playlistClimbs(input: GetPlaylistClimbsInput!): PlaylistClimbsResult!
   }
 
   type Mutation {

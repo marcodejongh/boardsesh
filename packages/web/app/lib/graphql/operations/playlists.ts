@@ -94,6 +94,31 @@ export const REMOVE_CLIMB_FROM_PLAYLIST = gql`
   }
 `;
 
+// Get climbs in a playlist with full climb data
+export const GET_PLAYLIST_CLIMBS = gql`
+  query GetPlaylistClimbs($input: GetPlaylistClimbsInput!) {
+    playlistClimbs(input: $input) {
+      climbs {
+        uuid
+        setter_username
+        name
+        description
+        frames
+        angle
+        ascensionist_count
+        difficulty
+        quality_average
+        stars
+        difficulty_error
+        litUpHoldsMap
+        benchmark_difficulty
+      }
+      totalCount
+      hasMore
+    }
+  }
+`;
+
 // TypeScript types for operations
 
 export interface Playlist {
@@ -221,4 +246,42 @@ export interface RemoveClimbFromPlaylistMutationVariables {
 
 export interface RemoveClimbFromPlaylistMutationResponse {
   removeClimbFromPlaylist: boolean;
+}
+
+export interface GetPlaylistClimbsInput {
+  playlistId: string;
+  boardName: string;
+  layoutId: number;
+  sizeId: number;
+  setIds: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface GetPlaylistClimbsQueryVariables {
+  input: GetPlaylistClimbsInput;
+}
+
+export interface PlaylistClimbsResult {
+  climbs: Array<{
+    uuid: string;
+    setter_username: string;
+    name: string;
+    description: string;
+    frames: string;
+    angle: number;
+    ascensionist_count: number;
+    difficulty: string;
+    quality_average: string;
+    stars: number;
+    difficulty_error: string;
+    litUpHoldsMap: Record<string, unknown>;
+    benchmark_difficulty: string | null;
+  }>;
+  totalCount: number;
+  hasMore: boolean;
+}
+
+export interface GetPlaylistClimbsQueryResponse {
+  playlistClimbs: PlaylistClimbsResult;
 }
