@@ -1,3 +1,4 @@
+import { fetch } from 'undici';
 import { SyncData } from '../sync-api-types';
 import { WEB_HOSTS, SyncOptions, AuroraBoardName } from './types';
 
@@ -45,8 +46,6 @@ export async function userSync(
 
   const response = await fetch(webUrl, {
     method: 'POST',
-    cache: 'no-store',
-    next: { revalidate: 0 }, // Ensure no Vercel/Next.js caching
     headers,
     body: requestBody,
   });
@@ -57,5 +56,5 @@ export async function userSync(
     throw new Error(`HTTP error! status: ${response.status}`);
   }
 
-  return response.json();
+  return response.json() as Promise<SyncData>;
 }

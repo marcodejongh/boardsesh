@@ -1,3 +1,4 @@
+import { fetch } from 'undici';
 import { SyncData } from '../sync-api-types';
 import { WEB_HOSTS, SyncOptions, AuroraBoardName } from './types';
 
@@ -63,12 +64,10 @@ export async function sharedSync(
   const response = await fetch(webUrl, {
     method: 'POST',
     headers,
-    cache: 'no-store',
-    next: { revalidate: 0 }, // Ensure no Vercel/Next.js caching
     body: requestBody,
   });
 
   if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
-  return response.json();
+  return response.json() as Promise<SyncData>;
 }
