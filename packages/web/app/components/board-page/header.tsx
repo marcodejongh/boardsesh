@@ -21,7 +21,7 @@ const SendClimbToBoardButton = dynamic(
 import { generateLayoutSlug, generateSizeSlug, generateSetSlug, constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { ShareBoardButton } from './share-button';
 import { useQueueContext } from '../graphql-queue';
-import { UserOutlined, LogoutOutlined, LoginOutlined, PlusOutlined, MoreOutlined, SettingOutlined, LineChartOutlined, LeftOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import { UserOutlined, LogoutOutlined, LoginOutlined, PlusOutlined, MoreOutlined, SettingOutlined, LineChartOutlined, LeftOutlined, InfoCircleOutlined, TagOutlined } from '@ant-design/icons';
 import AngleSelector from './angle-selector';
 import Logo from '../brand/logo';
 import styles from './header.module.css';
@@ -103,7 +103,20 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
     signOut();
   };
 
+  const createClimbUrl = angle !== undefined && boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names
+    ? `/${boardDetails.board_name}/${generateLayoutSlug(boardDetails.layout_name)}/${generateSizeSlug(boardDetails.size_name)}/${generateSetSlug(boardDetails.set_names)}/${angle}/create`
+    : null;
+
+  const playlistsUrl = angle !== undefined && boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names
+    ? `/${boardDetails.board_name}/${generateLayoutSlug(boardDetails.layout_name)}/${generateSizeSlug(boardDetails.size_name)}/${generateSetSlug(boardDetails.set_names)}/${angle}/playlists`
+    : null;
+
   const userMenuItems: MenuProps['items'] = [
+    ...(playlistsUrl ? [{
+      key: 'playlists',
+      icon: <TagOutlined />,
+      label: <Link href={playlistsUrl}>My Playlists</Link>,
+    }] : []),
     {
       key: 'profile',
       icon: <LineChartOutlined />,
@@ -125,15 +138,16 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
     },
   ];
 
-  const createClimbUrl = angle !== undefined && boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names
-    ? `/${boardDetails.board_name}/${generateLayoutSlug(boardDetails.layout_name)}/${generateSizeSlug(boardDetails.size_name)}/${generateSetSlug(boardDetails.set_names)}/${angle}/create`
-    : null;
-
   const mobileMenuItems: MenuProps['items'] = [
     ...(createClimbUrl ? [{
       key: 'create-climb',
       icon: <PlusOutlined />,
       label: <Link href={createClimbUrl}>Create Climb</Link>,
+    }] : []),
+    ...(session?.user && playlistsUrl ? [{
+      key: 'playlists',
+      icon: <TagOutlined />,
+      label: <Link href={playlistsUrl}>My Playlists</Link>,
     }] : []),
     ...(session?.user ? [
       {
