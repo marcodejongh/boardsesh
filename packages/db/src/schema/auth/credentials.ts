@@ -3,7 +3,7 @@ import {
   text,
   timestamp,
 } from 'drizzle-orm/pg-core';
-import { users } from './users.js';
+import { users } from './users';
 
 // User credentials for email/password authentication
 // Kept separate from NextAuth users table to maintain adapter compatibility

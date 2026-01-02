@@ -1,8 +1,8 @@
 import type { ConnectionContext, QueueEvent } from '@boardsesh/shared-schema';
-import { roomManager } from '../../../services/room-manager.js';
-import { pubsub } from '../../../pubsub/index.js';
-import { requireSessionMember } from '../shared/helpers.js';
-import { createEagerAsyncIterator } from '../shared/async-iterators.js';
+import { roomManager } from '../../../services/room-manager';
+import { pubsub } from '../../../pubsub/index';
+import { requireSessionMember } from '../shared/helpers';
+import { createEagerAsyncIterator } from '../shared/async-iterators';
 
 export const queueSubscriptions = {
   /**

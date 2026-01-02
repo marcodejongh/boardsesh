@@ -1,6 +1,6 @@
 import type { Climb } from '@boardsesh/shared-schema';
-import { searchClimbs as searchClimbsQuery, countClimbs } from '../../../db/queries/climbs/index.js';
-import type { ClimbSearchContext } from '../shared/types.js';
+import { searchClimbs as searchClimbsQuery, countClimbs } from '../../../db/queries/climbs/index';
+import type { ClimbSearchContext } from '../shared/types';
 
 /**
  * Field-level resolvers for ClimbSearchResult

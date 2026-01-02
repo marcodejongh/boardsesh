@@ -1,18 +1,18 @@
 import { v4 as uuidv4 } from 'uuid';
 import type Redis from 'ioredis';
-import { db } from '../db/client.js';
-import { sessions, sessionClients, sessionQueues, type Session } from '../db/schema.js';
+import { db } from '../db/client';
+import { sessions, sessionClients, sessionQueues, type Session } from '../db/schema';
 import { eq, and, sql, gt, gte, lte, ne } from 'drizzle-orm';
 import type { ClimbQueueItem, SessionUser } from '@boardsesh/shared-schema';
-import { haversineDistance, getBoundingBox, DEFAULT_SEARCH_RADIUS_METERS } from '../utils/geo.js';
-import { RedisSessionStore } from './redis-session-store.js';
-import { computeQueueStateHash } from '../utils/hash.js';
+import { haversineDistance, getBoundingBox, DEFAULT_SEARCH_RADIUS_METERS } from '../utils/geo';
+import { RedisSessionStore } from './redis-session-store';
+import { computeQueueStateHash } from '../utils/hash';
 import {
   DistributedStateManager,
   initializeDistributedState,
   getDistributedState,
   shutdownDistributedState,
-} from './distributed-state.js';
+} from './distributed-state';
 
 // Custom error for version conflicts
 export class VersionConflictError extends Error {

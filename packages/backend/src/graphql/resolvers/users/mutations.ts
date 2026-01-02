@@ -1,9 +1,9 @@
 import { eq, and } from 'drizzle-orm';
 import type { ConnectionContext, UserProfile, AuroraCredentialStatus } from '@boardsesh/shared-schema';
-import { db } from '../../../db/client.js';
+import { db } from '../../../db/client';
 import * as dbSchema from '@boardsesh/db/schema';
-import { requireAuthenticated, validateInput } from '../shared/helpers.js';
-import { UpdateProfileInputSchema, SaveAuroraCredentialInputSchema, BoardNameSchema } from '../../../validation/schemas.js';
+import { requireAuthenticated, validateInput } from '../shared/helpers';
+import { UpdateProfileInputSchema, SaveAuroraCredentialInputSchema, BoardNameSchema } from '../../../validation/schemas';
 import { encrypt } from '@boardsesh/crypto';
 
 export const userMutations = {

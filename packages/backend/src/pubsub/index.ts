@@ -1,6 +1,6 @@
 import type { QueueEvent, SessionEvent } from '@boardsesh/shared-schema';
-import { redisClientManager } from '../redis/client.js';
-import { createRedisPubSubAdapter, type RedisPubSubAdapter } from './redis-adapter.js';
+import { redisClientManager } from '../redis/client';
+import { createRedisPubSubAdapter, type RedisPubSubAdapter } from './redis-adapter';
 
 type QueueSubscriber = (event: QueueEvent) => void;
 type SessionSubscriber = (event: SessionEvent) => void;

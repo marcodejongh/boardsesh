@@ -1,15 +1,15 @@
 import { eq, and, sql } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 import type { ConnectionContext } from '@boardsesh/shared-schema';
-import { db } from '../../../db/client.js';
+import { db } from '../../../db/client';
 import * as dbSchema from '@boardsesh/db/schema';
-import { requireAuthenticated, validateInput } from '../shared/helpers.js';
+import { requireAuthenticated, validateInput } from '../shared/helpers';
 import {
   CreatePlaylistInputSchema,
   UpdatePlaylistInputSchema,
   AddClimbToPlaylistInputSchema,
   RemoveClimbFromPlaylistInputSchema,
-} from '../../../validation/schemas.js';
+} from '../../../validation/schemas';
 
 export const playlistMutations = {
   /**

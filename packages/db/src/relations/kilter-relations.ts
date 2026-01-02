@@ -19,7 +19,7 @@ import {
   kilterUserSyncs,
   kilterBetaLinks,
   kilterClimbStats,
-} from '../schema/boards/kilter.js';
+} from '../schema/boards/kilter';
 
 export const kilterClimbStatsRelations = relations(kilterClimbStats, ({ one }) => ({
   climb: one(kilterClimbs, {

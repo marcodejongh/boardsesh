@@ -5,11 +5,11 @@ import { eq, and, or, isNotNull } from 'drizzle-orm';
 import ws from 'ws';
 
 import { auroraCredentials } from '@boardsesh/db/schema/auth';
-import { syncUserData } from '../sync/user-sync.js';
-import { AuroraClimbingClient } from '../api/aurora-client.js';
+import { syncUserData } from '../sync/user-sync';
+import { AuroraClimbingClient } from '../api/aurora-client';
 import { decrypt, encrypt } from '@boardsesh/crypto';
-import type { AuroraBoardName } from '../api/types.js';
-import type { SyncRunnerConfig, SyncSummary, CredentialRecord } from './types.js';
+import type { AuroraBoardName } from '../api/types';
+import type { SyncRunnerConfig, SyncSummary, CredentialRecord } from './types';
 
 // Configure WebSocket constructor for Node.js environment
 neonConfig.webSocketConstructor = ws;

@@ -1,12 +1,12 @@
 import type { ConnectionContext } from '@boardsesh/shared-schema';
-import { checkRateLimit } from '../../../utils/rate-limiter.js';
-import { getContext } from '../../context.js';
-import { getDistributedState } from '../../../services/distributed-state.js';
+import { checkRateLimit } from '../../../utils/rate-limiter';
+import { getContext } from '../../context';
+import { getDistributedState } from '../../../services/distributed-state';
 
 // Re-export validateInput from validation schemas
-export { validateInput } from '../../../validation/schemas.js';
+export { validateInput } from '../../../validation/schemas';
 // Re-export MAX_RETRIES from types
-export { MAX_RETRIES } from './types.js';
+export { MAX_RETRIES } from './types';
 
 /**
  * Configuration for session membership retry behavior.

@@ -3,8 +3,8 @@
 import { Command } from 'commander';
 import fs from 'fs/promises';
 import path from 'path';
-import { parseScreenshot, parseMultipleScreenshots, deduplicateClimbs } from './parser.js';
-import { MoonBoardClimb } from './types.js';
+import { parseScreenshot, parseMultipleScreenshots, deduplicateClimbs } from './parser';
+import { MoonBoardClimb } from './types';
 
 /**
  * Check if a file is an image based on extension

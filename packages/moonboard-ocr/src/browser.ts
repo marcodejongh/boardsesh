@@ -20,9 +20,9 @@
  * ```
  */
 
-import { CanvasImageProcessor } from './image-processor/canvas-processor.js';
-import { parseWithProcessor, deduplicateClimbs } from './parser.js';
-import type { ParseResult, MoonBoardClimb, DetectedHold, GridCoordinate, HoldType } from './types.js';
+import { CanvasImageProcessor } from './image-processor/canvas-processor';
+import { parseWithProcessor, deduplicateClimbs } from './parser';
+import type { ParseResult, MoonBoardClimb, DetectedHold, GridCoordinate, HoldType } from './types';
 
 // Re-export types for consumers
 export type { ParseResult, MoonBoardClimb, DetectedHold, GridCoordinate, HoldType };
@@ -78,6 +78,6 @@ export async function parseMultipleScreenshots(
 export { deduplicateClimbs };
 
 // Re-export the CanvasImageProcessor for advanced use cases
-export { CanvasImageProcessor } from './image-processor/canvas-processor.js';
-export { parseWithProcessor } from './parser.js';
-export type { ImageProcessor, RawPixelData, ImageMetadata, ImageRegion } from './image-processor/types.js';
+export { CanvasImageProcessor } from './image-processor/canvas-processor';
+export { parseWithProcessor } from './parser';
+export type { ImageProcessor, RawPixelData, ImageMetadata, ImageRegion } from './image-processor/types';

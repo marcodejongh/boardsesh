@@ -1,3 +1,3 @@
 // Main exports for @boardsesh/crypto package
 
-export { encrypt, decrypt, isEncrypted } from './crypto.js';
+export { encrypt, decrypt, isEncrypted } from './crypto';

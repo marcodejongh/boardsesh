@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import { createClient, Client } from 'graphql-ws';
 import WebSocket from 'ws';
-import { startServer } from '../server.js';
+import { startServer } from '../server';
 import type { ClimbQueueItem } from '@boardsesh/shared-schema';
 
 // Test fixtures

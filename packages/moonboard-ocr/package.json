@@ -3,23 +3,23 @@
   "version": "0.2.0",
   "description": "Extract MoonBoard climb data from screenshots - works in Node.js and browser",
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "default": "./dist/index.js"
+      "types": "./src/index.ts",
+      "import": "./src/index.ts",
+      "default": "./src/index.ts"
     },
     "./browser": {
-      "types": "./dist/browser.d.ts",
-      "import": "./dist/browser.js",
-      "default": "./dist/browser.js"
+      "types": "./src/browser.ts",
+      "import": "./src/browser.ts",
+      "default": "./src/browser.ts"
     }
   },
   "browser": {
-    "./dist/index.js": "./dist/browser.js",
-    "./dist/image-processor/sharp-processor.js": false,
+    "./src/index.ts": "./src/browser.ts",
+    "./src/image-processor/sharp-processor.ts": false,
     "sharp": false
   },
   "bin": {

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
 import Redis from 'ioredis';
-import { DistributedStateManager, forceResetDistributedState } from '../services/distributed-state.js';
+import { DistributedStateManager, forceResetDistributedState } from '../services/distributed-state';
 
 // Integration tests require Redis to be running
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6380';

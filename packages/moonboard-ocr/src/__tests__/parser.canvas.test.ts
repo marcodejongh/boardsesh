@@ -11,10 +11,10 @@
 
 import { describe, it } from 'vitest';
 import path from 'path';
-import { NodeCanvasImageProcessor } from './helpers/node-canvas-processor.js';
-import { parseWithProcessor } from '../parser.js';
-import { EXPECTED_RESULTS } from './fixtures/expected-results.js';
-import { validateParseResult } from './helpers/test-utils.js';
+import { NodeCanvasImageProcessor } from './helpers/node-canvas-processor';
+import { parseWithProcessor } from '../parser';
+import { EXPECTED_RESULTS } from './fixtures/expected-results';
+import { validateParseResult } from './helpers/test-utils';
 
 const FIXTURES_DIR = path.join(__dirname, 'fixtures');
 

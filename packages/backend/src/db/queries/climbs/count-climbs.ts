@@ -1,8 +1,8 @@
 import { sql, and } from 'drizzle-orm';
-import { db } from '../../client.js';
-import { getBoardTables } from '../util/table-select.js';
-import { createClimbFilters, type ClimbSearchParams, type ParsedBoardRouteParameters } from './create-climb-filters.js';
-import type { SizeEdges } from '../util/product-sizes-data.js';
+import { db } from '../../client';
+import { getBoardTables } from '../util/table-select';
+import { createClimbFilters, type ClimbSearchParams, type ParsedBoardRouteParameters } from './create-climb-filters';
+import type { SizeEdges } from '../util/product-sizes-data';
 
 /**
  * Counts the total number of climbs matching the search criteria.

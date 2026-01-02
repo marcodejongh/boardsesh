@@ -6,7 +6,7 @@ import {
   ImageMetadata,
   ImageRegion,
   NodeImageSource,
-} from './types.js';
+} from './types';
 
 /**
  * Sharp-based image processor for Node.js environment.

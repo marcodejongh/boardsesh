@@ -3,7 +3,7 @@
  * Used by both Sharp and Canvas test suites.
  */
 
-import type { GridCoordinate } from '../../types.js';
+import type { GridCoordinate } from '../../types';
 
 export interface ExpectedClimbResult {
   /** Fixture filename */

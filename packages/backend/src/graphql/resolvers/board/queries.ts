@@ -1,9 +1,9 @@
 import { eq, asc, sql } from 'drizzle-orm';
 import type { Grade, Angle } from '@boardsesh/shared-schema';
-import { db } from '../../../db/client.js';
+import { db } from '../../../db/client';
 import * as dbSchema from '@boardsesh/db/schema';
-import { validateInput } from '../shared/helpers.js';
-import { BoardNameSchema } from '../../../validation/schemas.js';
+import { validateInput } from '../shared/helpers';
+import { BoardNameSchema } from '../../../validation/schemas';
 
 export const boardQueries = {
   /**

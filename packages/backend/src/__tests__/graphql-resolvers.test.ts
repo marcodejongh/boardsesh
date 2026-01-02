@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { createClient, Client } from 'graphql-ws';
 import WebSocket from 'ws';
-import { startServer } from '../server.js';
+import { startServer } from '../server';
 
 const TEST_PORT = 8084; // Different port to avoid conflicts
 

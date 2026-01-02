@@ -1,6 +1,6 @@
 import crypto from 'crypto';
-import { deriveKey } from './key-derivation.js';
-import { getEncryptionSecret } from './env.js';
+import { deriveKey } from './key-derivation';
+import { getEncryptionSecret } from './env';
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 16;

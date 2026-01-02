@@ -1,13 +1,13 @@
-import { userSync } from '../api/user-sync-api.js';
-import { SyncOptions, USER_TABLES, UserSyncData, AuroraBoardName } from '../api/types.js';
+import { userSync } from '../api/user-sync-api';
+import { SyncOptions, USER_TABLES, UserSyncData, AuroraBoardName } from '../api/types';
 import { eq, and, inArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/neon-serverless';
 import type { NeonDatabase } from 'drizzle-orm/neon-serverless';
 import type { Pool } from '@neondatabase/serverless';
-import { getTable } from '../db/table-select.js';
+import { getTable } from '../db/table-select';
 import { boardseshTicks, playlists, playlistClimbs, playlistOwnership } from '@boardsesh/db/schema/app';
 import { randomUUID } from 'crypto';
-import { convertQuality } from './convert-quality.js';
+import { convertQuality } from './convert-quality';
 
 // Batch size for bulk inserts
 const BATCH_SIZE = 100;

@@ -6,13 +6,13 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import Redis from 'ioredis';
 import { v4 as uuidv4 } from 'uuid';
-import { roomManager, VersionConflictError } from '../services/room-manager.js';
-import { db } from '../db/client.js';
-import { boardSessions, boardSessionQueues } from '../db/schema.js';
+import { roomManager, VersionConflictError } from '../services/room-manager';
+import { db } from '../db/client';
+import { boardSessions, boardSessionQueues } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import type { ClimbQueueItem } from '@boardsesh/shared-schema';
-import { queueMutations } from '../graphql/resolvers/queue/mutations.js';
-import { pubsub } from '../pubsub/index.js';
+import { queueMutations } from '../graphql/resolvers/queue/mutations';
+import { pubsub } from '../pubsub/index';
 
 // Mock Redis for testing
 const createMockRedis = (): Redis & { _store: Map<string, string>; _hashes: Map<string, Record<string, string>> } => {

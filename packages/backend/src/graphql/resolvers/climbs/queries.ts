@@ -1,11 +1,11 @@
 import type { ClimbSearchInput, ConnectionContext } from '@boardsesh/shared-schema';
-import type { ClimbSearchParams, ParsedBoardRouteParameters } from '../../../db/queries/climbs/index.js';
-import { getClimbByUuid } from '../../../db/queries/climbs/index.js';
-import { getSizeEdges } from '../../../db/queries/util/product-sizes-data.js';
-import { isValidBoardName } from '../../../db/queries/util/table-select.js';
-import { validateInput } from '../shared/helpers.js';
-import { ClimbSearchInputSchema, BoardNameSchema, ExternalUUIDSchema } from '../../../validation/schemas.js';
-import type { ClimbSearchContext } from '../shared/types.js';
+import type { ClimbSearchParams, ParsedBoardRouteParameters } from '../../../db/queries/climbs/index';
+import { getClimbByUuid } from '../../../db/queries/climbs/index';
+import { getSizeEdges } from '../../../db/queries/util/product-sizes-data';
+import { isValidBoardName } from '../../../db/queries/util/table-select';
+import { validateInput } from '../shared/helpers';
+import { ClimbSearchInputSchema, BoardNameSchema, ExternalUUIDSchema } from '../../../validation/schemas';
+import type { ClimbSearchContext } from '../shared/types';
 
 // Debug logging flag - only log in development
 const DEBUG = process.env.NODE_ENV === 'development';

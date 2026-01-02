@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { randomUUID } from 'crypto';
-import { roomManager } from '../services/room-manager.js';
-import { db } from '../db/client.js';
-import { sessions, sessionQueues } from '../db/schema.js';
+import { roomManager } from '../services/room-manager';
+import { db } from '../db/client';
+import { sessions, sessionQueues } from '../db/schema';
 import type { ClimbQueueItem } from '@boardsesh/shared-schema';
 
 // Generate unique session IDs to prevent conflicts with parallel tests

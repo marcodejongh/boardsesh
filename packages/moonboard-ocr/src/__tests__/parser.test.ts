@@ -7,9 +7,9 @@
 
 import { describe, it } from 'vitest';
 import path from 'path';
-import { parseScreenshot } from '../parser.js';
-import { EXPECTED_RESULTS } from './fixtures/expected-results.js';
-import { validateParseResult } from './helpers/test-utils.js';
+import { parseScreenshot } from '../parser';
+import { EXPECTED_RESULTS } from './fixtures/expected-results';
+import { validateParseResult } from './helpers/test-utils';
 
 const FIXTURES_DIR = path.join(__dirname, 'fixtures');
 

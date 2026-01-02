@@ -3,8 +3,8 @@
  */
 
 import { expect } from 'vitest';
-import type { ParseResult } from '../../types.js';
-import type { ExpectedClimbResult } from '../fixtures/expected-results.js';
+import type { ParseResult } from '../../types';
+import type { ExpectedClimbResult } from '../fixtures/expected-results';
 
 export interface ValidationOptions {
   /** Whether to validate OCR fields (name, setter, grades) */

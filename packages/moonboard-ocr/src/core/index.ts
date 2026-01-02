@@ -5,8 +5,8 @@ export {
   findNearestGridPosition,
   mapCirclesToHolds,
   detectHoldsFromPixelData,
-} from './holds.js';
+} from './holds';
 
-export { runOCR, parseHeaderText, type OcrResult } from './ocr.js';
+export { runOCR, parseHeaderText, type OcrResult } from './ocr';
 
-export { calculateRegions, type ImageRegions } from './regions.js';
+export { calculateRegions, type ImageRegions } from './regions';

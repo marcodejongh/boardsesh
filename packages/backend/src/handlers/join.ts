@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'http';
-import { applyCorsHeaders } from './cors.js';
-import { roomManager } from '../services/room-manager.js';
+import { applyCorsHeaders } from './cors';
+import { roomManager } from '../services/room-manager';
 
 /**
  * Determine WebSocket protocol based on request headers and environment

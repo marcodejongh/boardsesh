@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { searchClimbs, countClimbs, getClimbByUuid } from '../db/queries/climbs/index.js';
-import type { ParsedBoardRouteParameters, ClimbSearchParams } from '../db/queries/climbs/create-climb-filters.js';
-import { getSizeEdges } from '../db/queries/util/product-sizes-data.js';
+import { searchClimbs, countClimbs, getClimbByUuid } from '../db/queries/climbs/index';
+import type { ParsedBoardRouteParameters, ClimbSearchParams } from '../db/queries/climbs/create-climb-filters';
+import { getSizeEdges } from '../db/queries/util/product-sizes-data';
 
 describe('Climb Query Functions', () => {
   const testParams: ParsedBoardRouteParameters = {

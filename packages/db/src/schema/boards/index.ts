@@ -1,3 +1,3 @@
-export * from './kilter.js';
-export * from './tension.js';
-export * from './unified.js';
+export * from './kilter';
+export * from './tension';
+export * from './unified';

@@ -1,6 +1,6 @@
 import { eq, gte, sql, like, notLike, inArray, SQL } from 'drizzle-orm';
-import { TableSet, getTableName, type BoardName } from '../util/table-select.js';
-import type { SizeEdges } from '../util/product-sizes-data.js';
+import { TableSet, getTableName, type BoardName } from '../util/table-select';
+import type { SizeEdges } from '../util/product-sizes-data';
 
 export interface ClimbSearchParams {
   // Pagination

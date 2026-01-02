@@ -7,7 +7,7 @@ import {
   index,
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
-import { users } from '../auth/users.js';
+import { users } from '../auth/users';
 
 // User favorites for saved/hearted climbs
 export const userFavorites = pgTable(

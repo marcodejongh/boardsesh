@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'http';
-import { applyCorsHeaders } from './cors.js';
-import { pubsub } from '../pubsub/index.js';
+import { applyCorsHeaders } from './cors';
+import { pubsub } from '../pubsub/index';
 
 /**
  * Health check endpoint handler

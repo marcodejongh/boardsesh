@@ -1,13 +1,13 @@
 import type { ConnectionContext, ClimbQueueItem, QueueState } from '@boardsesh/shared-schema';
-import { roomManager, VersionConflictError } from '../../../services/room-manager.js';
-import { pubsub } from '../../../pubsub/index.js';
-import { requireSession, applyRateLimit, validateInput, MAX_RETRIES } from '../shared/helpers.js';
+import { roomManager, VersionConflictError } from '../../../services/room-manager';
+import { pubsub } from '../../../pubsub/index';
+import { requireSession, applyRateLimit, validateInput, MAX_RETRIES } from '../shared/helpers';
 import {
   ClimbQueueItemSchema,
   QueueIndexSchema,
   QueueItemIdSchema,
   QueueArraySchema,
-} from '../../../validation/schemas.js';
+} from '../../../validation/schemas';
 
 // Debug logging flag - only log in development
 const DEBUG = process.env.NODE_ENV === 'development';

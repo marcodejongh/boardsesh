@@ -1,52 +1,25 @@
-# Build stage for the backend service in monorepo
-FROM node:22-alpine AS builder
+# Backend service - runs TypeScript directly via tsx
+FROM node:22-alpine
 
 WORKDIR /app
 
 # Copy package files for all workspaces
 COPY package*.json ./
 COPY packages/shared-schema/package*.json ./packages/shared-schema/
+COPY packages/crypto/package*.json ./packages/crypto/
 COPY packages/db/package*.json ./packages/db/
 COPY packages/aurora-sync/package*.json ./packages/aurora-sync/
 COPY packages/backend/package*.json ./packages/backend/
 
-# Install all dependencies (including workspace dependencies)
-RUN npm ci
+# Copy source code for all shared packages and backend
+COPY packages/shared-schema/src ./packages/shared-schema/src
+COPY packages/crypto/src ./packages/crypto/src
+COPY packages/db/src ./packages/db/src
+COPY packages/aurora-sync/src ./packages/aurora-sync/src
+COPY packages/backend/src ./packages/backend/src
 
-# Copy source code for shared-schema, db, aurora-sync, and backend
-COPY packages/shared-schema ./packages/shared-schema
-COPY packages/db ./packages/db
-COPY packages/aurora-sync ./packages/aurora-sync
-COPY packages/backend ./packages/backend
-
-# Build in dependency order: shared-schema -> db -> aurora-sync -> backend
-RUN npm run build --workspace=@boardsesh/shared-schema
-RUN npm run build --workspace=@boardsesh/db
-RUN npm run build --workspace=@boardsesh/aurora-sync
-RUN npm run build --workspace=boardsesh-backend
-
-# Production stage
-FROM node:22-alpine
-
-WORKDIR /app
-
-# Copy package files (need full workspace structure for npm to resolve)
-COPY package*.json ./
-COPY packages/shared-schema/package*.json ./packages/shared-schema/
-COPY packages/db/package*.json ./packages/db/
-COPY packages/aurora-sync/package*.json ./packages/aurora-sync/
-COPY packages/backend/package*.json ./packages/backend/
-
-# Copy built shared-schema, db, and aurora-sync dist BEFORE npm ci (so main entry points exist)
-COPY --from=builder /app/packages/shared-schema/dist ./packages/shared-schema/dist
-COPY --from=builder /app/packages/db/dist ./packages/db/dist
-COPY --from=builder /app/packages/aurora-sync/dist ./packages/aurora-sync/dist
-
-# Install production dependencies only
-RUN npm ci --omit=dev --workspace=boardsesh-backend --workspace=@boardsesh/shared-schema --workspace=@boardsesh/db --workspace=@boardsesh/aurora-sync
-
-# Copy built backend files
-COPY --from=builder /app/packages/backend/dist ./packages/backend/dist
+# Install production dependencies (tsx is now a production dep for running TypeScript)
+RUN npm ci --omit=dev --workspace=boardsesh-backend --workspace=@boardsesh/shared-schema --workspace=@boardsesh/crypto --workspace=@boardsesh/db --workspace=@boardsesh/aurora-sync
 
 # Expose port
 EXPOSE 8080
@@ -55,6 +28,6 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
 
-# Start the server
+# Start the server using tsx to run TypeScript directly
 WORKDIR /app/packages/backend
-CMD ["node", "dist/index.js"]
+CMD ["npx", "tsx", "src/index.ts"]

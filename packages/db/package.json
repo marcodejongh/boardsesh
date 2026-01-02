@@ -3,43 +3,43 @@
   "version": "1.0.0",
   "description": "Shared database schema and client for Boardsesh",
   "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "default": "./dist/index.js"
+      "types": "./src/index.ts",
+      "import": "./src/index.ts",
+      "default": "./src/index.ts"
     },
     "./schema": {
-      "types": "./dist/schema/index.d.ts",
-      "import": "./dist/schema/index.js",
-      "default": "./dist/schema/index.js"
+      "types": "./src/schema/index.ts",
+      "import": "./src/schema/index.ts",
+      "default": "./src/schema/index.ts"
     },
     "./schema/boards": {
-      "types": "./dist/schema/boards/index.d.ts",
-      "import": "./dist/schema/boards/index.js",
-      "default": "./dist/schema/boards/index.js"
+      "types": "./src/schema/boards/index.ts",
+      "import": "./src/schema/boards/index.ts",
+      "default": "./src/schema/boards/index.ts"
     },
     "./schema/auth": {
-      "types": "./dist/schema/auth/index.d.ts",
-      "import": "./dist/schema/auth/index.js",
-      "default": "./dist/schema/auth/index.js"
+      "types": "./src/schema/auth/index.ts",
+      "import": "./src/schema/auth/index.ts",
+      "default": "./src/schema/auth/index.ts"
     },
     "./schema/app": {
-      "types": "./dist/schema/app/index.d.ts",
-      "import": "./dist/schema/app/index.js",
-      "default": "./dist/schema/app/index.js"
+      "types": "./src/schema/app/index.ts",
+      "import": "./src/schema/app/index.ts",
+      "default": "./src/schema/app/index.ts"
     },
     "./relations": {
-      "types": "./dist/relations/index.d.ts",
-      "import": "./dist/relations/index.js",
-      "default": "./dist/relations/index.js"
+      "types": "./src/relations/index.ts",
+      "import": "./src/relations/index.ts",
+      "default": "./src/relations/index.ts"
     },
     "./client": {
-      "types": "./dist/client/index.d.ts",
-      "import": "./dist/client/index.js",
-      "default": "./dist/client/index.js"
+      "types": "./src/client/index.ts",
+      "import": "./src/client/index.ts",
+      "default": "./src/client/index.ts"
     }
   },
   "scripts": {

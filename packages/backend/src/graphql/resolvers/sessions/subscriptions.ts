@@ -1,7 +1,7 @@
 import type { ConnectionContext, SessionEvent } from '@boardsesh/shared-schema';
-import { pubsub } from '../../../pubsub/index.js';
-import { requireSessionMember } from '../shared/helpers.js';
-import { createAsyncIterator } from '../shared/async-iterators.js';
+import { pubsub } from '../../../pubsub/index';
+import { requireSessionMember } from '../shared/helpers';
+import { createAsyncIterator } from '../shared/async-iterators';
 
 export const sessionSubscriptions = {
   /**
