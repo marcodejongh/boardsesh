@@ -232,12 +232,15 @@ export const tickQueries = {
         let setterUsername: string | null = null;
         let layoutId: number | null = null;
 
+        let frames: string | null = null;
+
         if (tick.boardType === 'kilter') {
           const climb = await db
             .select({
               name: dbSchema.kilterClimbs.name,
               setterUsername: dbSchema.kilterClimbs.setterUsername,
               layoutId: dbSchema.kilterClimbs.layoutId,
+              frames: dbSchema.kilterClimbs.frames,
             })
             .from(dbSchema.kilterClimbs)
             .where(eq(dbSchema.kilterClimbs.uuid, tick.climbUuid))
@@ -247,6 +250,7 @@ export const tickQueries = {
             climbName = climb[0].name || 'Unnamed Climb';
             setterUsername = climb[0].setterUsername;
             layoutId = climb[0].layoutId;
+            frames = climb[0].frames;
           }
         } else if (tick.boardType === 'tension') {
           const climb = await db
@@ -254,6 +258,7 @@ export const tickQueries = {
               name: dbSchema.tensionClimbs.name,
               setterUsername: dbSchema.tensionClimbs.setterUsername,
               layoutId: dbSchema.tensionClimbs.layoutId,
+              frames: dbSchema.tensionClimbs.frames,
             })
             .from(dbSchema.tensionClimbs)
             .where(eq(dbSchema.tensionClimbs.uuid, tick.climbUuid))
@@ -263,6 +268,7 @@ export const tickQueries = {
             climbName = climb[0].name || 'Unnamed Climb';
             setterUsername = climb[0].setterUsername;
             layoutId = climb[0].layoutId;
+            frames = climb[0].frames;
           }
         }
 
@@ -303,6 +309,7 @@ export const tickQueries = {
           isBenchmark: tick.isBenchmark,
           comment: tick.comment || '',
           climbedAt: tick.climbedAt,
+          frames,
         };
       })
     );
