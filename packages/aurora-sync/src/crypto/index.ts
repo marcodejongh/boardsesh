@@ -1,60 +1,56 @@
-import crypto from 'crypto';
+import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'crypto';
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 16;
-const TAG_LENGTH = 16;
+const AUTH_TAG_LENGTH = 16;
+const SALT_LENGTH = 16;
 const KEY_LENGTH = 32;
 
-function getEncryptionKey(): Buffer {
-  const secret = process.env.AURORA_CREDENTIALS_SECRET;
-  if (!secret) {
-    throw new Error('AURORA_CREDENTIALS_SECRET environment variable is not set');
+// Get encryption key from environment
+function getEncryptionKey(): string {
+  const key = process.env.CREDENTIALS_ENCRYPTION_KEY;
+  if (!key) {
+    throw new Error('CREDENTIALS_ENCRYPTION_KEY environment variable is not set');
   }
-  // Use PBKDF2 to derive a consistent key from the secret
-  return crypto.pbkdf2Sync(secret, 'aurora-credentials-salt', 100000, KEY_LENGTH, 'sha256');
+  return key;
 }
 
 /**
- * Encrypts a string using AES-256-GCM
- * @param text - The plaintext to encrypt
- * @returns Base64-encoded encrypted string with IV and auth tag
+ * Encrypt a string value.
+ * Returns a base64-encoded string containing salt, IV, auth tag, and ciphertext.
  */
-export function encrypt(text: string): string {
-  const key = getEncryptionKey();
-  const iv = crypto.randomBytes(IV_LENGTH);
+export function encrypt(plaintext: string): string {
+  const salt = randomBytes(SALT_LENGTH);
+  const key = scryptSync(getEncryptionKey(), salt, KEY_LENGTH);
+  const iv = randomBytes(IV_LENGTH);
 
-  const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
-
-  let encrypted = cipher.update(text, 'utf8', 'hex');
-  encrypted += cipher.final('hex');
-
+  const cipher = createCipheriv(ALGORITHM, key, iv);
+  const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
   const authTag = cipher.getAuthTag();
 
-  // Combine IV + authTag + encrypted data
-  const combined = Buffer.concat([iv, authTag, Buffer.from(encrypted, 'hex')]);
-
+  // Combine salt + iv + authTag + encrypted data
+  const combined = Buffer.concat([salt, iv, authTag, encrypted]);
   return combined.toString('base64');
 }
 
 /**
- * Decrypts an AES-256-GCM encrypted string
- * @param encryptedText - Base64-encoded encrypted string with IV and auth tag
- * @returns The decrypted plaintext
+ * Decrypt a string value that was encrypted with encrypt().
+ * Returns the original plaintext string.
  */
-export function decrypt(encryptedText: string): string {
-  const key = getEncryptionKey();
-  const combined = Buffer.from(encryptedText, 'base64');
+export function decrypt(encryptedData: string): string {
+  const combined = Buffer.from(encryptedData, 'base64');
 
-  // Extract IV, authTag, and encrypted data
-  const iv = combined.subarray(0, IV_LENGTH);
-  const authTag = combined.subarray(IV_LENGTH, IV_LENGTH + TAG_LENGTH);
-  const encrypted = combined.subarray(IV_LENGTH + TAG_LENGTH);
+  // Extract components
+  const salt = combined.subarray(0, SALT_LENGTH);
+  const iv = combined.subarray(SALT_LENGTH, SALT_LENGTH + IV_LENGTH);
+  const authTag = combined.subarray(SALT_LENGTH + IV_LENGTH, SALT_LENGTH + IV_LENGTH + AUTH_TAG_LENGTH);
+  const encrypted = combined.subarray(SALT_LENGTH + IV_LENGTH + AUTH_TAG_LENGTH);
 
-  const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
+  const key = scryptSync(getEncryptionKey(), salt, KEY_LENGTH);
+
+  const decipher = createDecipheriv(ALGORITHM, key, iv);
   decipher.setAuthTag(authTag);
 
-  let decrypted = decipher.update(encrypted.toString('hex'), 'hex', 'utf8');
-  decrypted += decipher.final('utf8');
-
-  return decrypted;
+  const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
+  return decrypted.toString('utf8');
 }
