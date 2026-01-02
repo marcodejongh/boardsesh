@@ -30,8 +30,8 @@ export async function handleSyncCron(req: IncomingMessage, res: ServerResponse):
   console.log('[Sync] Starting sync cron job...');
 
   const runner = new SyncRunner({
-    onLog: (msg) => console.log(`[Sync] ${msg}`),
-    onError: (error, context) => {
+    onLog: (msg: string) => console.log(`[Sync] ${msg}`),
+    onError: (error: Error, context: { userId?: string; board?: string }) => {
       console.error(`[Sync] Error for ${context.userId}/${context.board}:`, error.message);
     },
   });

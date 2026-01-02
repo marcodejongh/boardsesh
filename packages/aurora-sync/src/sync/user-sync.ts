@@ -199,7 +199,7 @@ async function upsertTableData(
             climbUuid: item.climb_uuid,
             angle: Number(item.angle),
             isMirror: Boolean(item.is_mirror),
-            status: Number(item.attempt_id) === 1 ? 'flash' : 'send',
+            status: (Number(item.attempt_id) === 1 ? 'flash' : 'send') as 'flash' | 'send' | 'attempt',
             attemptCount: Number(item.bid_count || 1),
             quality: convertQuality(item.quality),
             difficulty: item.difficulty ? Number(item.difficulty) : null,

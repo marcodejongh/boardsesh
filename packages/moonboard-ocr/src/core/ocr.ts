@@ -52,7 +52,8 @@ export async function runOCR(
 ): Promise<OcrResult> {
   // Convert ImageData to Blob for browser compatibility
   let ocrInput: Buffer | Blob = imageData as Buffer;
-  if (imageData instanceof ImageData) {
+  // Guard against ImageData not being defined in Node.js environment
+  if (typeof ImageData !== 'undefined' && imageData instanceof ImageData) {
     ocrInput = await imageDataToBlob(imageData);
   }
 
