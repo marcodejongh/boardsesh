@@ -26,7 +26,7 @@ const getDatabaseConfig = () => {
 
 export default defineConfig({
   out: './drizzle',
-  schema: './src/schema/index.ts',
+  schema: './dist/schema/index.js',
   dialect: 'postgresql',
   dbCredentials: getDatabaseConfig(),
 });
