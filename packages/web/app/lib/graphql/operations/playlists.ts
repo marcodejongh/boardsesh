@@ -100,6 +100,7 @@ export const GET_PLAYLIST_CLIMBS = gql`
     playlistClimbs(input: $input) {
       climbs {
         uuid
+        layoutId
         setter_username
         name
         description
@@ -265,6 +266,7 @@ export interface GetPlaylistClimbsQueryVariables {
 export interface PlaylistClimbsResult {
   climbs: Array<{
     uuid: string;
+    layoutId?: number | null;
     setter_username: string;
     name: string;
     description: string;
