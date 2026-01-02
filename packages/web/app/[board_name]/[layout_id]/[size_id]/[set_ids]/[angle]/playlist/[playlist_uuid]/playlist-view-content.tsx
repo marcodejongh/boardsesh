@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { Spin, Typography, Button } from 'antd';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Spin, Typography, Button, message } from 'antd';
 import {
   TagOutlined,
   CalendarOutlined,
@@ -10,15 +10,21 @@ import {
   LockOutlined,
   FrownOutlined,
 } from '@ant-design/icons';
-import { BoardDetails } from '@/app/lib/types';
+import { track } from '@vercel/analytics';
+import { BoardDetails, Climb } from '@/app/lib/types';
 import { executeGraphQL } from '@/app/lib/graphql/client';
 import {
   GET_PLAYLIST,
+  GET_PLAYLIST_CLIMBS,
   GetPlaylistQueryResponse,
   GetPlaylistQueryVariables,
+  GetPlaylistClimbsQueryResponse,
+  GetPlaylistClimbsQueryVariables,
+  PlaylistClimbsResult,
   Playlist,
 } from '@/app/lib/graphql/operations/playlists';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
+import { useQueueContext } from '@/app/components/graphql-queue';
 import { themeTokens } from '@/app/theme/theme-config';
 import PlaylistViewActions from './playlist-view-actions';
 import PlaylistEditDrawer from './playlist-edit-drawer';
@@ -50,7 +56,11 @@ export default function PlaylistViewContent({
   const [error, setError] = useState<string | null>(null);
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);
   const [listRefreshKey, setListRefreshKey] = useState(0);
+  const [isAddingToQueue, setIsAddingToQueue] = useState(false);
+  const addingToQueueRef = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const { token, isLoading: tokenLoading } = useWsAuthToken();
+  const { addToQueue } = useQueueContext();
 
   const fetchPlaylist = useCallback(async () => {
     if (tokenLoading) return;
@@ -83,6 +93,13 @@ export default function PlaylistViewContent({
     fetchPlaylist();
   }, [fetchPlaylist]);
 
+  // Cleanup abort controller on unmount
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
+
   const handleEditSuccess = useCallback((updatedPlaylist: Playlist) => {
     setPlaylist(updatedPlaylist);
   }, []);
@@ -93,6 +110,99 @@ export default function PlaylistViewContent({
     // Refetch playlist to update count
     fetchPlaylist();
   }, [fetchPlaylist]);
+
+  const handleAddAllToQueue = useCallback(async () => {
+    // Use ref to prevent race conditions from rapid clicks
+    if (!token || addingToQueueRef.current) return;
+
+    // Cancel any in-flight request
+    abortControllerRef.current?.abort();
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
+    addingToQueueRef.current = true;
+    setIsAddingToQueue(true);
+
+    try {
+      // Fetch all climbs from the playlist (paginate through all pages)
+      type PlaylistClimb = PlaylistClimbsResult['climbs'][number];
+      const allClimbs: Array<PlaylistClimb & { angle: number }> = [];
+      let page = 0;
+      let hasMore = true;
+      const pageSize = 100; // Larger page size for efficiency
+
+      while (hasMore) {
+        // Check if aborted before each fetch
+        if (abortController.signal.aborted) {
+          return;
+        }
+
+        const response = await executeGraphQL<
+          GetPlaylistClimbsQueryResponse,
+          GetPlaylistClimbsQueryVariables
+        >(
+          GET_PLAYLIST_CLIMBS,
+          {
+            input: {
+              playlistId: playlistUuid,
+              boardName: boardDetails.board_name,
+              layoutId: boardDetails.layout_id,
+              sizeId: boardDetails.size_id,
+              setIds: boardDetails.set_ids.join(','),
+              angle,
+              page,
+              pageSize,
+            },
+          },
+          token,
+        );
+
+        // Check if aborted after fetch completes
+        if (abortController.signal.aborted) {
+          return;
+        }
+
+        const climbs = response.playlistClimbs.climbs;
+
+        // Filter out cross-layout climbs and update angle to route angle
+        for (const climb of climbs) {
+          const isCrossLayout = climb.layoutId != null && climb.layoutId !== boardDetails.layout_id;
+          if (!isCrossLayout) {
+            allClimbs.push({ ...climb, angle });
+          }
+        }
+        hasMore = response.playlistClimbs.hasMore;
+        page++;
+      }
+
+      if (allClimbs.length === 0) {
+        message.info('No climbs to add from this playlist');
+        return;
+      }
+
+      // Add all climbs to queue (cast to Climb - the queue only uses fields we have)
+      for (const climb of allClimbs) {
+        addToQueue(climb as Climb);
+      }
+
+      track('Playlist Add All To Queue', {
+        playlistUuid,
+        climbCount: allClimbs.length,
+      });
+
+      message.success(`Added ${allClimbs.length} ${allClimbs.length === 1 ? 'climb' : 'climbs'} to queue`);
+    } catch (err) {
+      // Don't show error if aborted
+      if (abortController.signal.aborted) {
+        return;
+      }
+      console.error('Error adding climbs to queue:', err);
+      message.error('Failed to add climbs to queue');
+    } finally {
+      addingToQueueRef.current = false;
+      setIsAddingToQueue(false);
+    }
+  }, [token, playlistUuid, boardDetails, angle, addToQueue]);
 
   // Check if current user is the owner
   const isOwner = playlist?.userRole === 'owner';
@@ -151,6 +261,9 @@ export default function PlaylistViewContent({
           playlistUuid={playlistUuid}
           onEditClick={() => setEditDrawerOpen(true)}
           onPlaylistUpdated={handlePlaylistUpdated}
+          onAddAllToQueue={handleAddAllToQueue}
+          isAddingToQueue={isAddingToQueue}
+          climbCount={playlist.climbCount}
         />
       </div>
 
