@@ -38,8 +38,16 @@ const PlayViewClient: React.FC<PlayViewClientProps> = ({ boardDetails, initialCl
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [showSwipeHint, setShowSwipeHint] = useState(true);
 
-  // Use queue's current climb if available, otherwise use initial climb from SSR
+  // Use queue's current climb if available (has real-time state like mirrored),
+  // otherwise fall back to the initial climb from SSR.
+  // When both exist and match, prefer currentClimb for its up-to-date mirrored state.
   const displayClimb = currentClimb || initialClimb;
+
+  // Get the mirrored state from currentClimb when it matches the displayed climb,
+  // ensuring we reflect the queue's mirrored state even when displayClimb came from initialClimb
+  const isMirrored = currentClimb?.uuid === displayClimb?.uuid
+    ? !!currentClimb?.mirrored
+    : !!displayClimb?.mirrored;
 
   // Hide swipe hint after first interaction
   useEffect(() => {
@@ -206,7 +214,7 @@ const PlayViewClient: React.FC<PlayViewClientProps> = ({ boardDetails, initialCl
             <BoardRenderer
               boardDetails={boardDetails}
               litUpHoldsMap={displayClimb.litUpHoldsMap}
-              mirrored={!!displayClimb.mirrored}
+              mirrored={isMirrored}
               fillHeight
             />
           </div>
