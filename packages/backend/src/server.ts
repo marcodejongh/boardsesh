@@ -8,6 +8,7 @@ import { handleHealthCheck } from './handlers/health.js';
 import { handleSessionJoin } from './handlers/join.js';
 import { handleAvatarUpload } from './handlers/avatars.js';
 import { handleStaticAvatar } from './handlers/static.js';
+import { handleSyncCron } from './handlers/sync.js';
 import { createYogaInstance } from './graphql/yoga.js';
 import { setupWebSocketServer } from './websocket/setup.js';
 
@@ -76,6 +77,12 @@ export async function startServer(): Promise<{ wss: WebSocketServer; httpServer:
         }
       }
 
+      // Sync cron endpoint (triggered by external cron service)
+      if (pathname === '/sync-cron' && (req.method === 'POST' || req.method === 'OPTIONS')) {
+        await handleSyncCron(req, res);
+        return;
+      }
+
       // GraphQL endpoint - delegate to Yoga
       if (pathname === '/graphql') {
         // Apply CORS for GraphQL requests
@@ -118,6 +125,7 @@ export async function startServer(): Promise<{ wss: WebSocketServer; httpServer:
     console.log(`  Join session: http://0.0.0.0:${PORT}/join/:sessionId`);
     console.log(`  Avatar upload: http://0.0.0.0:${PORT}/api/avatars`);
     console.log(`  Avatar files: http://0.0.0.0:${PORT}/static/avatars/`);
+    console.log(`  Sync cron: http://0.0.0.0:${PORT}/sync-cron`);
   });
 
   httpServer.on('error', (error) => {

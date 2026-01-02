@@ -23,7 +23,12 @@ export function createPool(): Pool {
   if (!pool) {
     configureNeonForEnvironment();
     const { connectionString } = getConnectionConfig();
-    pool = new Pool({ connectionString });
+    pool = new Pool({
+      connectionString,
+      connectionTimeoutMillis: 30000, // 30s to establish connection
+      idleTimeoutMillis: 120000, // 2 min idle before closing
+      max: 10, // max connections in pool
+    });
   }
   return pool;
 }
