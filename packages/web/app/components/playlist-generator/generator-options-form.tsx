@@ -1,9 +1,10 @@
 'use client';
 
 import React from 'react';
-import { Typography, Select, Button, Row, Col, InputNumber } from 'antd';
+import { Typography, Select, Button, Row, Col, InputNumber, Switch, Tooltip } from 'antd';
 import { MinusOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import { TENSION_KILTER_GRADES } from '@/app/lib/board-data';
+import { BoardDetails } from '@/app/lib/types';
 import {
   WorkoutType,
   GeneratorOptions,
@@ -22,11 +23,15 @@ import styles from './generator-options-form.module.css';
 
 const { Text } = Typography;
 
+// Kilter Homewall layout ID
+const KILTER_HOMEWALL_LAYOUT_ID = 8;
+
 interface GeneratorOptionsFormProps {
   workoutType: WorkoutType;
   options: GeneratorOptions;
   onChange: (options: GeneratorOptions) => void;
   onReset: () => void;
+  boardDetails: BoardDetails;
 }
 
 const GeneratorOptionsForm: React.FC<GeneratorOptionsFormProps> = ({
@@ -34,8 +39,15 @@ const GeneratorOptionsForm: React.FC<GeneratorOptionsFormProps> = ({
   options,
   onChange,
   onReset,
+  boardDetails,
 }) => {
   const grades = TENSION_KILTER_GRADES;
+
+  // Check if we should show the tall climbs filter
+  // Only show for Kilter Homewall on the largest size (10x12)
+  const isKilterHomewall = boardDetails.board_name === 'kilter' && boardDetails.layout_id === KILTER_HOMEWALL_LAYOUT_ID;
+  const isLargestSize = boardDetails.size_name?.toLowerCase().includes('12');
+  const showTallClimbsFilter = isKilterHomewall && isLargestSize;
 
   // Helper to update options
   const updateOption = <K extends keyof GeneratorOptions>(key: K, value: GeneratorOptions[K]) => {
@@ -151,6 +163,19 @@ const GeneratorOptionsForm: React.FC<GeneratorOptionsFormProps> = ({
 
       {/* Climb Bias */}
       {renderSelect('Climb Bias', options.climbBias, CLIMB_BIAS_OPTIONS, (v) => updateOption('climbBias', v))}
+
+      {/* Tall Climbs Only - only for Kilter Homewall large size */}
+      {showTallClimbsFilter && (
+        <div className={styles.formRow}>
+          <Tooltip title="Show only climbs that use holds in the bottom 8 rows (only available on 10x12 boards)">
+            <Text className={styles.label}>Tall Climbs Only</Text>
+          </Tooltip>
+          <Switch
+            checked={options.onlyTallClimbs}
+            onChange={(checked) => updateOption('onlyTallClimbs', checked)}
+          />
+        </div>
+      )}
     </>
   );
 

@@ -113,6 +113,7 @@ const PlaylistGeneratorDrawer: React.FC<PlaylistGeneratorDrawerProps> = ({
       sortOrder: 'desc',
       page: 1,
       pageSize: 50, // Get a pool of climbs to choose from
+      onlyTallClimbs: options?.onlyTallClimbs || false,
     };
 
     // Apply climb bias filters if user is authenticated
@@ -307,6 +308,7 @@ const PlaylistGeneratorDrawer: React.FC<PlaylistGeneratorDrawerProps> = ({
               options={options}
               onChange={setOptions}
               onReset={handleReset}
+              boardDetails={boardDetails}
             />
           </div>
         </div>
