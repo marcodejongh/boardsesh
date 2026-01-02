@@ -1,5 +1,5 @@
 import { getPool } from '@/app/lib/db/db';
-import { BoardName } from '../../types';
+import { BoardName as AuroraBoardName } from '../../api-wrappers/aurora-rest-client/types';
 import { drizzle } from 'drizzle-orm/neon-serverless';
 import { getTable } from '../../db/queries/util/table-select';
 import { boardseshTicks } from '../../db/schema';
@@ -20,7 +20,7 @@ import { convertQuality } from './convert-quality';
  */
 export async function migrateUserAuroraHistory(
   nextAuthUserId: string,
-  boardType: BoardName,
+  boardType: AuroraBoardName,
   auroraUserId: number,
 ): Promise<{ migrated: number }> {
   const pool = getPool();

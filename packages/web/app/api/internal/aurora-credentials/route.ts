@@ -7,9 +7,9 @@ import { z } from "zod";
 import { authOptions } from "@/app/lib/auth/auth-options";
 import { encrypt, decrypt } from "@/app/lib/crypto";
 import AuroraClimbingClient from "@/app/lib/api-wrappers/aurora-rest-client/aurora-rest-client";
+import { BoardName as AuroraBoardName } from "@/app/lib/api-wrappers/aurora-rest-client/types";
 import { syncUserData } from "@/app/lib/data-sync/aurora/user-sync";
 import { migrateUserAuroraHistory } from "@/app/lib/data-sync/aurora/migrate-user-history";
-import { BoardName } from "@/app/lib/types";
 
 const saveCredentialsSchema = z.object({
   boardType: z.enum(["kilter", "tension"]),
@@ -212,12 +212,12 @@ export async function POST(request: NextRequest) {
 
     try {
       // First sync ongoing data
-      await syncUserData(boardType as BoardName, loginResponse.token, loginResponse.user_id);
+      await syncUserData(boardType as AuroraBoardName, loginResponse.token, loginResponse.user_id);
 
       // Then migrate historical data
       await migrateUserAuroraHistory(
         session.user.id,           // NextAuth user ID
-        boardType as BoardName,
+        boardType as AuroraBoardName,
         loginResponse.user_id      // Aurora user ID
       );
     } catch (syncError) {

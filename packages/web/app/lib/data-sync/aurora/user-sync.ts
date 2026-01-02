@@ -14,7 +14,7 @@ import { convertQuality } from './convert-quality';
  */
 async function getNextAuthUserId(
   db: NeonDatabase<Record<string, never>>,
-  boardName: BoardName,
+  boardName: AuroraBoardName,
   auroraUserId: number,
 ): Promise<string | null> {
   const result = await db
