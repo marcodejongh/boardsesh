@@ -1,6 +1,6 @@
 {
   "installCommand": "npm ci --legacy-peer-deps --omit=optional",
-  "buildCommand": "npm run build:shared && npm run build:db && npm run build --workspace=@boardsesh/moonboard-ocr && if [ \"$VERCEL_ENV\" != \"preview\" ]; then npm run db:migrate; fi && cd packages/web && npm run build",
+  "buildCommand": "npm run build:shared && npm run build --workspace=@boardsesh/crypto && npm run build:db && npm run build --workspace=@boardsesh/moonboard-ocr && if [ \"$VERCEL_ENV\" != \"preview\" ]; then npm run db:migrate; fi && cd packages/web && npm run build",
   "outputDirectory": "packages/web/.next",
   "framework": "nextjs",
   "crons": [
