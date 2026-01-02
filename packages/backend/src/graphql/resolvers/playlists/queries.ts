@@ -72,6 +72,76 @@ function convertLitUpHoldsStringToMap(litUpHolds: string, board: BoardName): Rec
 
 export const playlistQueries = {
   /**
+   * Get all playlists owned by the authenticated user across all boards
+   */
+  allUserPlaylists: async (
+    _: unknown,
+    _args: unknown,
+    ctx: ConnectionContext
+  ): Promise<unknown[]> => {
+    requireAuthenticated(ctx);
+
+    const userId = ctx.userId!;
+
+    // Get all user's playlists across all boards
+    const userPlaylists = await db
+      .select({
+        id: dbSchema.playlists.id,
+        uuid: dbSchema.playlists.uuid,
+        boardType: dbSchema.playlists.boardType,
+        layoutId: dbSchema.playlists.layoutId,
+        name: dbSchema.playlists.name,
+        description: dbSchema.playlists.description,
+        isPublic: dbSchema.playlists.isPublic,
+        color: dbSchema.playlists.color,
+        icon: dbSchema.playlists.icon,
+        createdAt: dbSchema.playlists.createdAt,
+        updatedAt: dbSchema.playlists.updatedAt,
+        role: dbSchema.playlistOwnership.role,
+      })
+      .from(dbSchema.playlists)
+      .innerJoin(
+        dbSchema.playlistOwnership,
+        eq(dbSchema.playlistOwnership.playlistId, dbSchema.playlists.id)
+      )
+      .where(eq(dbSchema.playlistOwnership.userId, userId))
+      .orderBy(desc(dbSchema.playlists.updatedAt));
+
+    // Get climb counts for each playlist
+    const playlistIds = userPlaylists.map(p => p.id);
+
+    const climbCounts =
+      playlistIds.length > 0
+        ? await db
+            .select({
+              playlistId: dbSchema.playlistClimbs.playlistId,
+              count: sql<number>`count(*)::int`,
+            })
+            .from(dbSchema.playlistClimbs)
+            .where(inArray(dbSchema.playlistClimbs.playlistId, playlistIds))
+            .groupBy(dbSchema.playlistClimbs.playlistId)
+        : [];
+
+    const countMap = new Map(climbCounts.map(c => [c.playlistId.toString(), c.count]));
+
+    return userPlaylists.map(p => ({
+      id: p.id.toString(),
+      uuid: p.uuid,
+      boardType: p.boardType,
+      layoutId: p.layoutId,
+      name: p.name,
+      description: p.description,
+      isPublic: p.isPublic,
+      color: p.color,
+      icon: p.icon,
+      createdAt: p.createdAt.toISOString(),
+      updatedAt: p.updatedAt.toISOString(),
+      climbCount: countMap.get(p.id.toString()) || 0,
+      userRole: p.role,
+    }));
+  },
+
+  /**
    * Get all playlists owned by the authenticated user for a specific board and layout
    */
   userPlaylists: async (
@@ -361,7 +431,9 @@ export const playlistQueries = {
         tables.climbStats,
         and(
           eq(tables.climbStats.climbUuid, dbSchema.playlistClimbs.climbUuid),
-          eq(tables.climbStats.angle, sql`COALESCE(${dbSchema.playlistClimbs.angle}, ${tables.climbStats.angle})`)
+          // Only join stats when we have a specific angle in the playlist item
+          // When angle is NULL (Aurora-synced), stats won't match - this prevents duplicates
+          eq(tables.climbStats.angle, dbSchema.playlistClimbs.angle)
         )
       )
       .leftJoin(

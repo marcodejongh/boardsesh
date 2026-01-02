@@ -1,0 +1,264 @@
+/* Playlists List Page Styles */
+
+.pageContainer {
+  padding: 16px;
+  min-height: 100vh;
+  background-color: #F9FAFB;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+/* Actions section */
+.actionsSection {
+  background-color: #FFFFFF;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+}
+
+.actionsContainer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Content wrapper */
+.contentWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* List section */
+.listSection {
+  background-color: #FFFFFF;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+/* Board header for grouped display */
+.boardHeader {
+  padding: 12px 16px;
+  background-color: #F9FAFB;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+/* Playlist item styles */
+.playlistLink {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.playlistLink:hover {
+  text-decoration: none;
+}
+
+.playlistItem {
+  padding: 16px !important;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  border-bottom: 1px solid #E5E7EB;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+}
+
+.playlistItem:last-child {
+  border-bottom: none;
+}
+
+.playlistItem:hover {
+  background-color: #F9FAFB;
+}
+
+.playlistItemContent {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.playlistColor {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.playlistColorIcon {
+  font-size: 18px;
+  color: #FFFFFF;
+}
+
+.playlistInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.playlistName {
+  font-size: 16px;
+  font-weight: 500;
+  color: #111827;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.playlistMeta {
+  font-size: 13px;
+  color: #6B7280;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.metaDot {
+  color: #D1D5DB;
+}
+
+.visibilityText {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.playlistArrow {
+  color: #9CA3AF;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+/* Empty state */
+.emptyContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+  background-color: #FFFFFF;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+}
+
+.emptyIcon {
+  font-size: 48px;
+  color: #D1D5DB;
+  margin-bottom: 16px;
+}
+
+.emptyTitle {
+  margin-bottom: 8px !important;
+}
+
+.emptyText {
+  max-width: 300px;
+}
+
+/* Loading and error states */
+.loadingContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+}
+
+.errorContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+  background-color: #FFFFFF;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+}
+
+.errorIcon {
+  font-size: 48px;
+  color: #9CA3AF;
+  margin-bottom: 16px;
+}
+
+.errorTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 8px;
+}
+
+.errorMessage {
+  color: #6B7280;
+  margin-bottom: 20px;
+}
+
+/* Mobile adjustments */
+@media (max-width: 767px) {
+  .pageContainer {
+    padding: 12px;
+  }
+
+  .actionsSection {
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+  }
+
+  .listSection {
+    border-radius: 8px;
+  }
+
+  .playlistItem {
+    padding: 12px !important;
+  }
+
+  .playlistColor {
+    width: 36px;
+    height: 36px;
+  }
+
+  .playlistColorIcon {
+    font-size: 16px;
+  }
+
+  .playlistName {
+    font-size: 15px;
+  }
+
+  .playlistMeta {
+    font-size: 12px;
+  }
+}
+
+/* Desktop layout */
+@media (min-width: 992px) {
+  .pageContainer {
+    padding: 24px;
+  }
+
+  .actionsSection {
+    padding: 20px;
+  }
+
+  .playlistItem {
+    padding: 20px !important;
+  }
+
+  .playlistColor {
+    width: 44px;
+    height: 44px;
+  }
+
+  .playlistColorIcon {
+    font-size: 20px;
+  }
+}

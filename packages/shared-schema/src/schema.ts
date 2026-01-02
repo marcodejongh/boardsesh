@@ -472,6 +472,8 @@ export const typeDefs = /* GraphQL */ `
     # Playlist Queries (require auth)
     # ============================================
 
+    # Get all playlists for current user (across all boards)
+    allUserPlaylists: [Playlist!]!
     # Get current user's playlists for a board+layout
     userPlaylists(input: GetUserPlaylistsInput!): [Playlist!]!
     # Get a specific playlist by ID (checks ownership/access)

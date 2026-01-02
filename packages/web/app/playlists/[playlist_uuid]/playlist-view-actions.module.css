@@ -1,0 +1,50 @@
+/* Playlist View Actions Styles */
+
+.container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.actionButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Mobile layout */
+.mobileActions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  gap: 8px;
+}
+
+.mobileLeft {
+  flex-shrink: 0;
+}
+
+.mobileRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.desktopActions {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .desktopActions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+  }
+
+  .mobileActions {
+    display: none;
+  }
+}
