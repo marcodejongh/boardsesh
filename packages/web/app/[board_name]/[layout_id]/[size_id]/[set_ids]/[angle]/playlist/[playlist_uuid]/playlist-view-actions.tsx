@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Button } from 'antd';
-import { EditOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import { EditOutlined, ThunderboltOutlined, PlusOutlined } from '@ant-design/icons';
 import { BoardDetails } from '@/app/lib/types';
 import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import BackButton from '@/app/components/back-button';
@@ -16,6 +16,9 @@ type PlaylistViewActionsProps = {
   playlistUuid: string;
   onEditClick: () => void;
   onPlaylistUpdated?: () => void;
+  onAddAllToQueue: () => void;
+  isAddingToQueue: boolean;
+  climbCount: number;
 };
 
 const PlaylistViewActions = ({
@@ -25,8 +28,12 @@ const PlaylistViewActions = ({
   playlistUuid,
   onEditClick,
   onPlaylistUpdated,
+  onAddAllToQueue,
+  isAddingToQueue,
+  climbCount,
 }: PlaylistViewActionsProps) => {
   const [generatorOpen, setGeneratorOpen] = useState(false);
+
   const getBackToListUrl = () => {
     const { board_name, layout_name, size_name, size_description, set_names } = boardDetails;
 
@@ -43,6 +50,17 @@ const PlaylistViewActions = ({
     onPlaylistUpdated?.();
   };
 
+  const addAllButton = (
+    <Button
+      icon={<PlusOutlined />}
+      onClick={onAddAllToQueue}
+      loading={isAddingToQueue}
+      disabled={climbCount === 0}
+    >
+      {isAddingToQueue ? 'Adding...' : 'Queue All'}
+    </Button>
+  );
+
   return (
     <>
       <div className={styles.container}>
@@ -52,38 +70,44 @@ const PlaylistViewActions = ({
             <BackButton fallbackUrl={getBackToListUrl()} />
           </div>
 
-          {isOwner && (
-            <div className={styles.mobileRight}>
-              <Button
-                icon={<ThunderboltOutlined />}
-                onClick={() => setGeneratorOpen(true)}
-              >
-                Generate
-              </Button>
-              <Button icon={<EditOutlined />} onClick={onEditClick}>
-                Edit
-              </Button>
-            </div>
-          )}
+          <div className={styles.mobileRight}>
+            {addAllButton}
+            {isOwner && (
+              <>
+                <Button
+                  icon={<ThunderboltOutlined />}
+                  onClick={() => setGeneratorOpen(true)}
+                >
+                  Generate
+                </Button>
+                <Button icon={<EditOutlined />} onClick={onEditClick}>
+                  Edit
+                </Button>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Desktop view */}
         <div className={styles.desktopActions}>
           <BackButton fallbackUrl={getBackToListUrl()} className={styles.backButton} />
 
-          {isOwner && (
-            <div className={styles.actionButtons}>
-              <Button
-                icon={<ThunderboltOutlined />}
-                onClick={() => setGeneratorOpen(true)}
-              >
-                Generate Playlist
-              </Button>
-              <Button icon={<EditOutlined />} onClick={onEditClick}>
-                Edit Playlist
-              </Button>
-            </div>
-          )}
+          <div className={styles.actionButtons}>
+            {addAllButton}
+            {isOwner && (
+              <>
+                <Button
+                  icon={<ThunderboltOutlined />}
+                  onClick={() => setGeneratorOpen(true)}
+                >
+                  Generate Playlist
+                </Button>
+                <Button icon={<EditOutlined />} onClick={onEditClick}>
+                  Edit Playlist
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
