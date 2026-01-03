@@ -5,7 +5,7 @@ import {
   timestamp,
   bigserial,
   index,
-  primaryKey,
+  uniqueIndex,
   pgEnum,
 } from 'drizzle-orm/pg-core';
 import { users } from '../auth/users';
@@ -59,7 +59,7 @@ export const userHoldClassifications = pgTable(
       table.sizeId
     ),
     // Unique constraint: one classification per user per hold per board configuration
-    uniqueClassification: index('user_hold_classifications_unique_idx').on(
+    uniqueClassification: uniqueIndex('user_hold_classifications_unique_idx').on(
       table.userId,
       table.boardType,
       table.layoutId,

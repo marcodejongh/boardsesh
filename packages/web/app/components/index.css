@@ -22,8 +22,12 @@
   --semantic-background: #F9FAFB;
   --semantic-surface: #FFFFFF;
   --semantic-surface-overlay: rgba(255, 255, 255, 0.95);
+  --semantic-selected: #ECFEFF;
   --semantic-selected-light: rgba(6, 182, 212, 0.08);
   --semantic-selected-border: #06B6D4;
+
+  /* Status colors */
+  --color-success: #10B981;
 
   /* Borders */
   --border-subtle: rgba(0, 0, 0, 0.06);
