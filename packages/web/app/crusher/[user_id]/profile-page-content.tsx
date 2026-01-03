@@ -34,7 +34,6 @@ import {
   GET_USER_PROFILE_STATS,
   type GetUserProfileStatsQueryVariables,
   type GetUserProfileStatsQueryResponse,
-  type LayoutStats as GqlLayoutStats,
 } from '@/app/lib/graphql/operations';
 import { FONT_GRADE_COLORS, getGradeColorWithOpacity } from '@/app/lib/grade-colors';
 
@@ -244,6 +243,7 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
         tries: tick.attemptCount,
         angle: tick.angle,
         status: tick.status,
+        climbUuid: tick.climbUuid,
       }));
 
       setLogbook(entries);
@@ -479,19 +479,26 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
       ],
     };
 
-    // Pie chart - Routes by Angle
-    const angles = filteredLogbook.reduce((acc: Record<string, number>, entry) => {
+    // Pie chart - Ascents by Angle (distinct climbs per angle, using climbUuid+angle as key)
+    const angleClimbs: Record<string, Set<string>> = {};
+    filteredLogbook.forEach((entry) => {
+      // Only count successful ascents with a climbUuid
+      if (entry.status === 'attempt' || !entry.climbUuid) return;
       const angle = `${entry.angle}°`;
-      acc[angle] = (acc[angle] || 0) + 1;
-      return acc;
-    }, {});
+      if (!angleClimbs[angle]) {
+        angleClimbs[angle] = new Set();
+      }
+      // Use climbUuid+angle as the unique key (same climb at different angles counts separately)
+      angleClimbs[angle].add(`${entry.climbUuid}-${entry.angle}`);
+    });
+    const angleLabels = Object.keys(angleClimbs).sort((a, b) => parseInt(a) - parseInt(b));
     const chartDataPie: ChartData = {
-      labels: Object.keys(angles),
+      labels: angleLabels,
       datasets: [
         {
-          label: 'Routes by Angle',
-          data: Object.values(angles),
-          backgroundColor: Object.keys(angles).map((_, index) => angleColors[index] || 'rgba(200,200,200,0.7)'),
+          label: 'Ascents by Angle',
+          data: angleLabels.map((angle) => angleClimbs[angle]?.size || 0),
+          backgroundColor: angleLabels.map((_, index) => angleColors[index] || 'rgba(200,200,200,0.7)'),
         },
       ],
     };
@@ -550,9 +557,12 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
         // Convert grade counts array to Record format
         const grades: Record<string, number> = {};
         stats.gradeCounts.forEach(({ grade, count }) => {
-          const gradeName = difficultyMapping[parseInt(grade)];
-          if (gradeName) {
-            grades[gradeName] = count;
+          const difficultyNum = parseInt(grade, 10);
+          if (!isNaN(difficultyNum)) {
+            const gradeName = difficultyMapping[difficultyNum];
+            if (gradeName) {
+              grades[gradeName] = count;
+            }
           }
         });
         return {

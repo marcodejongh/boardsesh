@@ -338,6 +338,11 @@ export const tickQueries = {
       gradeCounts: Array<{ grade: string; count: number }>;
     }>;
   }> => {
+    // Validate userId
+    if (!userId || typeof userId !== 'string' || userId.trim() === '') {
+      return { totalDistinctClimbs: 0, layoutStats: [] };
+    }
+
     const boardTypes = ['kilter', 'tension'] as const;
     const layoutStatsMap: Record<string, {
       boardType: string;
@@ -346,40 +351,52 @@ export const tickQueries = {
     }> = {};
     const allClimbUuids = new Set<string>();
 
-    for (const boardType of boardTypes) {
+    // Helper function to fetch stats for a single board type
+    const fetchBoardStats = async (boardType: 'kilter' | 'tension') => {
       const climbsTable = getClimbsTable(boardType);
-      if (!climbsTable) continue;
+      if (!climbsTable) return { gradeResults: [], distinctClimbs: [], boardType };
 
-      // Get distinct climb counts grouped by layoutId and difficulty using SQL aggregation
-      const gradeResults = await db
-        .select({
-          layoutId: climbsTable.layoutId,
-          difficulty: dbSchema.boardseshTicks.difficulty,
-          distinctCount: sql<number>`count(distinct ${dbSchema.boardseshTicks.climbUuid})`.as('distinct_count'),
-        })
-        .from(dbSchema.boardseshTicks)
-        .leftJoin(climbsTable, eq(dbSchema.boardseshTicks.climbUuid, climbsTable.uuid))
-        .where(
-          and(
-            eq(dbSchema.boardseshTicks.userId, userId),
-            eq(dbSchema.boardseshTicks.boardType, boardType),
-            sql`${dbSchema.boardseshTicks.status} != 'attempt'`
+      // Run both queries in parallel for this board type
+      const [gradeResults, distinctClimbs] = await Promise.all([
+        // Get distinct climb counts grouped by layoutId and difficulty using SQL aggregation
+        db
+          .select({
+            layoutId: climbsTable.layoutId,
+            difficulty: dbSchema.boardseshTicks.difficulty,
+            distinctCount: sql<number>`count(distinct ${dbSchema.boardseshTicks.climbUuid})`.as('distinct_count'),
+          })
+          .from(dbSchema.boardseshTicks)
+          .leftJoin(climbsTable, eq(dbSchema.boardseshTicks.climbUuid, climbsTable.uuid))
+          .where(
+            and(
+              eq(dbSchema.boardseshTicks.userId, userId),
+              eq(dbSchema.boardseshTicks.boardType, boardType),
+              sql`${dbSchema.boardseshTicks.status} != 'attempt'`
+            )
           )
-        )
-        .groupBy(climbsTable.layoutId, dbSchema.boardseshTicks.difficulty);
+          .groupBy(climbsTable.layoutId, dbSchema.boardseshTicks.difficulty),
 
-      // Also get all distinct climbUuids for total count (need to track across layouts)
-      const distinctClimbs = await db
-        .selectDistinct({ climbUuid: dbSchema.boardseshTicks.climbUuid })
-        .from(dbSchema.boardseshTicks)
-        .where(
-          and(
-            eq(dbSchema.boardseshTicks.userId, userId),
-            eq(dbSchema.boardseshTicks.boardType, boardType),
-            sql`${dbSchema.boardseshTicks.status} != 'attempt'`
-          )
-        );
+        // Get all distinct climbUuids for total count
+        db
+          .selectDistinct({ climbUuid: dbSchema.boardseshTicks.climbUuid })
+          .from(dbSchema.boardseshTicks)
+          .where(
+            and(
+              eq(dbSchema.boardseshTicks.userId, userId),
+              eq(dbSchema.boardseshTicks.boardType, boardType),
+              sql`${dbSchema.boardseshTicks.status} != 'attempt'`
+            )
+          ),
+      ]);
 
+      return { gradeResults, distinctClimbs, boardType };
+    };
+
+    // Fetch stats for all board types in parallel
+    const boardResults = await Promise.all(boardTypes.map(fetchBoardStats));
+
+    // Process results from all boards
+    for (const { gradeResults, distinctClimbs, boardType } of boardResults) {
       // Add to total distinct climbs set
       for (const row of distinctClimbs) {
         allClimbUuids.add(row.climbUuid);
