@@ -56,3 +56,4 @@ packages/shared-schema/dist
 # user uploads (local development)
 packages/web/public/uploads
 !packages/web/public/uploads/.gitkeep
+.env.sentry-build-plugin
