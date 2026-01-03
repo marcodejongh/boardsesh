@@ -4,6 +4,7 @@ import React from 'react';
 import { Flex, Typography } from 'antd';
 import { CopyrightOutlined } from '@ant-design/icons';
 import { themeTokens } from '@/app/theme/theme-config';
+import { getVGradeColor, getGradeTextColor } from '@/app/lib/grade-colors';
 
 const { Text } = Typography;
 
@@ -129,13 +130,19 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
     </Text>
   );
 
+  const gradeColor = vGrade ? getVGradeColor(vGrade) : undefined;
+  const gradeTextColor = getGradeTextColor(gradeColor);
+
   const largeGradeElement = vGrade && (
     <Text
       style={{
-        fontSize: 28,
+        fontSize: 20,
         fontWeight: themeTokens.typography.fontWeight.bold,
         lineHeight: 1,
-        color: 'var(--ant-color-text-secondary)',
+        color: gradeTextColor,
+        backgroundColor: gradeColor,
+        padding: '6px 10px',
+        borderRadius: 6,
       }}
     >
       {vGrade}
