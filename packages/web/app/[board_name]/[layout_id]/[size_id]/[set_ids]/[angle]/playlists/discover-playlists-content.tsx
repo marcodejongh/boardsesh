@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
-import { Spin, Typography, List, Empty, Input, Form } from 'antd';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { Spin, Typography, List, Input, Form, Button } from 'antd';
 import {
   TagOutlined,
   SearchOutlined,
@@ -24,6 +24,9 @@ import styles from './playlists.module.css';
 
 const { Title, Text } = Typography;
 
+const SEARCH_DEBOUNCE_MS = 300;
+const PAGE_SIZE = 20;
+
 // Validate hex color format
 const isValidHexColor = (color: string): boolean => {
   return /^#([0-9A-Fa-f]{3}){1,2}$/.test(color);
@@ -40,22 +43,39 @@ export default function DiscoverPlaylistsContent({
 }: DiscoverPlaylistsContentProps) {
   const [playlists, setPlaylists] = useState<DiscoverablePlaylist[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchName, setSearchName] = useState('');
   const [selectedCreators, setSelectedCreators] = useState<string[]>([]);
   const [debouncedSearchName, setDebouncedSearchName] = useState('');
+  const [hasMore, setHasMore] = useState(false);
+  const [page, setPage] = useState(0);
+  const isInitialLoad = useRef(true);
 
   // Debounce search name
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchName(searchName);
-    }, 300);
+    }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
   }, [searchName]);
 
-  const fetchPlaylists = useCallback(async () => {
+  // Reset pagination when filters change
+  useEffect(() => {
+    if (!isInitialLoad.current) {
+      setPage(0);
+      setPlaylists([]);
+    }
+    isInitialLoad.current = false;
+  }, [debouncedSearchName, selectedCreators]);
+
+  const fetchPlaylists = useCallback(async (pageNum: number, append: boolean = false) => {
     try {
-      setLoading(true);
+      if (append) {
+        setLoadingMore(true);
+      } else {
+        setLoading(true);
+      }
       setError(null);
 
       const input: DiscoverPlaylistsInput = {
@@ -63,6 +83,8 @@ export default function DiscoverPlaylistsContent({
         layoutId: boardDetails.layout_id,
         name: debouncedSearchName || undefined,
         creatorIds: selectedCreators.length > 0 ? selectedCreators : undefined,
+        page: pageNum,
+        pageSize: PAGE_SIZE,
       };
 
       const response = await executeGraphQL<DiscoverPlaylistsQueryResponse, { input: DiscoverPlaylistsInput }>(
@@ -71,18 +93,33 @@ export default function DiscoverPlaylistsContent({
         undefined // No auth token needed for public discovery
       );
 
-      setPlaylists(response.discoverPlaylists.playlists);
+      const newPlaylists = response.discoverPlaylists.playlists;
+      setHasMore(response.discoverPlaylists.hasMore);
+
+      if (append) {
+        setPlaylists(prev => [...prev, ...newPlaylists]);
+      } else {
+        setPlaylists(newPlaylists);
+      }
     } catch (err) {
       console.error('Error fetching playlists:', err);
       setError('Failed to load playlists');
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   }, [boardDetails.board_name, boardDetails.layout_id, debouncedSearchName, selectedCreators]);
 
+  // Fetch when filters change (page 0)
   useEffect(() => {
-    fetchPlaylists();
-  }, [fetchPlaylists]);
+    fetchPlaylists(0, false);
+  }, [debouncedSearchName, selectedCreators, boardDetails.board_name, boardDetails.layout_id]);
+
+  const handleLoadMore = () => {
+    const nextPage = page + 1;
+    setPage(nextPage);
+    fetchPlaylists(nextPage, true);
+  };
 
   const getPlaylistUrl = (playlistUuid: string) => {
     const { board_name, layout_name, size_name, size_description, set_names } = boardDetails;
@@ -159,6 +196,18 @@ export default function DiscoverPlaylistsContent({
         <div className={styles.listSection}>
           <List
             dataSource={playlists}
+            loadMore={
+              hasMore ? (
+                <div className={styles.loadMoreContainer}>
+                  <Button
+                    onClick={handleLoadMore}
+                    loading={loadingMore}
+                  >
+                    Load more
+                  </Button>
+                </div>
+              ) : null
+            }
             renderItem={(playlist) => (
               <Link href={getPlaylistUrl(playlist.uuid)} className={styles.playlistLink}>
                 <List.Item className={styles.playlistItem}>
