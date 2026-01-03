@@ -60,6 +60,7 @@ const initialState: QueueState = {
   pendingCurrentClimbUpdates: [],
   lastReceivedSequence: null,
   lastReceivedStateHash: null,
+  needsResync: false,
 };
 
 describe('queueReducer', () => {

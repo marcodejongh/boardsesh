@@ -33,6 +33,8 @@ export interface QueueState {
   // Sequence tracking for gap detection and state verification
   lastReceivedSequence: number | null;
   lastReceivedStateHash: string | null;
+  // Flag to indicate corrupted data was filtered and a resync is needed
+  needsResync: boolean;
 }
 
 export type QueueAction =
@@ -53,7 +55,8 @@ export type QueueAction =
   | { type: 'DELTA_MIRROR_CURRENT_CLIMB'; payload: { mirrored: boolean } }
   | { type: 'DELTA_REPLACE_QUEUE_ITEM'; payload: { uuid: string; item: ClimbQueueItem } }
   | { type: 'CLEANUP_PENDING_UPDATE'; payload: { correlationId: string } }
-  | { type: 'CLEANUP_PENDING_UPDATES_BATCH'; payload: { correlationIds: string[] } };
+  | { type: 'CLEANUP_PENDING_UPDATES_BATCH'; payload: { correlationIds: string[] } }
+  | { type: 'CLEAR_RESYNC_FLAG' };
 
 export interface QueueContextType {
   queue: ClimbQueue;
