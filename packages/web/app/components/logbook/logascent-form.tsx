@@ -110,8 +110,8 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boar
         isMirror: isMirrored,
         status,
         attemptCount: values.attempts,
-        quality: values.quality,
-        difficulty: values.difficulty,
+        quality: logType === 'ascent' ? values.quality : undefined,
+        difficulty: logType === 'ascent' ? values.difficulty : undefined,
         isBenchmark: false,
         comment: values.notes || '',
         climbedAt: values.date.toISOString(),
@@ -193,19 +193,23 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boar
         <InputNumber min={1} max={999} style={{ width: '80px' }} />
       </Form.Item>
 
-      <Form.Item name="quality" label="Quality" {...formItemLayout} rules={[{ required: true, message: 'Please rate the climb' }]}>
-        <Rate count={5} />
-      </Form.Item>
+      {logType === 'ascent' && (
+        <Form.Item name="quality" label="Quality" {...formItemLayout} rules={[{ required: true, message: 'Please rate the climb' }]}>
+          <Rate count={5} />
+        </Form.Item>
+      )}
 
-      <Form.Item name="difficulty" label="Difficulty" {...formItemLayout}>
-        <Select
-          options={grades.map((grade) => ({
-            label: grade.difficulty_name,
-            value: grade.difficulty_id,
-          }))}
-          style={{ width: '120px' }}
-        />
-      </Form.Item>
+      {logType === 'ascent' && (
+        <Form.Item name="difficulty" label="Difficulty" {...formItemLayout}>
+          <Select
+            options={grades.map((grade) => ({
+              label: grade.difficulty_name,
+              value: grade.difficulty_id,
+            }))}
+            style={{ width: '120px' }}
+          />
+        </Form.Item>
+      )}
 
       <Form.Item name="notes" label="Notes" {...formItemLayout}>
         <TextArea rows={3} />
