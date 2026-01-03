@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { Button, Row, Col, Card, Drawer, Space, Popconfirm } from 'antd';
 import { SyncOutlined, DeleteOutlined, ExpandOutlined, FastForwardOutlined, FastBackwardOutlined } from '@ant-design/icons';
 import { track } from '@vercel/analytics';
@@ -12,7 +12,7 @@ import { constructPlayUrlWithSlugs, constructClimbViewUrlWithSlugs, parseBoardRo
 import { BoardRouteParameters, BoardRouteParametersWithUuid } from '@/app/lib/types';
 import PreviousClimbButton from './previous-climb-button';
 import { BoardName, BoardDetails, Angle } from '@/app/lib/types';
-import QueueList from './queue-list';
+import QueueList, { QueueListHandle } from './queue-list';
 import { TickButton } from '../logbook/tick-button';
 import ClimbThumbnail from '../climb-card/climb-thumbnail';
 import ClimbTitle from '../climb-card/climb-title';
@@ -38,6 +38,17 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
   const params = useParams<BoardRouteParameters>();
   const searchParams = useSearchParams();
   const router = useRouter();
+  const queueListRef = useRef<QueueListHandle>(null);
+
+  // Scroll to current climb when drawer finishes opening
+  const handleDrawerOpenChange = useCallback((open: boolean) => {
+    if (open) {
+      // Small delay to ensure the drawer content is rendered
+      setTimeout(() => {
+        queueListRef.current?.scrollToCurrentClimb();
+      }, 100);
+    }
+  }, []);
 
   const isViewPage = pathname.includes('/view/');
   const isListPage = pathname.includes('/list');
@@ -354,6 +365,7 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
         height="70%" // Adjust as per design preference
         open={isQueueOpen}
         onClose={toggleQueueDrawer}
+        afterOpenChange={handleDrawerOpenChange}
         styles={{ body: { padding: 0 } }}
         extra={
           queue.length > 0 && (
@@ -371,7 +383,7 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
           )
         }
       >
-        <QueueList boardDetails={boardDetails} onClimbNavigate={() => setIsQueueOpen(false)} />
+        <QueueList ref={queueListRef} boardDetails={boardDetails} onClimbNavigate={() => setIsQueueOpen(false)} />
       </Drawer>
     </div>
   );
