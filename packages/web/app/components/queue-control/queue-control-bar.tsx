@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Button, Row, Col, Card, Drawer, Space, Popconfirm } from 'antd';
 import { SyncOutlined, DeleteOutlined, ExpandOutlined, FastForwardOutlined, FastBackwardOutlined } from '@ant-design/icons';
 import { track } from '@vercel/analytics';
@@ -39,12 +39,22 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
   const searchParams = useSearchParams();
   const router = useRouter();
   const queueListRef = useRef<QueueListHandle>(null);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Scroll to current climb when drawer finishes opening
   const handleDrawerOpenChange = useCallback((open: boolean) => {
     if (open) {
       // Small delay to ensure the drawer content is rendered
-      setTimeout(() => {
+      scrollTimeoutRef.current = setTimeout(() => {
         queueListRef.current?.scrollToCurrentClimb();
       }, 100);
     }

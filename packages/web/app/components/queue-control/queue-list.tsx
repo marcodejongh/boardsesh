@@ -15,6 +15,7 @@ import { SUGGESTIONS_THRESHOLD } from '../board-page/constants';
 import { useBoardProvider } from '../board-provider/board-provider-context';
 import { LogAscentDrawer } from '../logbook/log-ascent-drawer';
 import AuthModal from '../auth/auth-modal';
+import styles from './queue-list.module.css';
 
 const { Text, Paragraph } = Typography;
 
@@ -183,7 +184,7 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
         {/* History items (displayed below current/upcoming) */}
         {historyItems.length > 0 && (
           <>
-            <Divider style={{ margin: `${themeTokens.spacing[2]} 0` }}>History</Divider>
+            <Divider className={styles.historyDivider}>History</Divider>
             {historyItems.map((climbQueueItem) => {
               // Get the original index in the queue for drag-and-drop
               const originalIndex = queue.findIndex((item) => item.uuid === climbQueueItem.uuid);
