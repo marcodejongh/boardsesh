@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { Angle, Climb, BoardDetails } from '@/app/lib/types';
 import { useBoardProvider } from '../board-provider/board-provider-context';
 import { Button, Badge, Drawer, Typography, Space } from 'antd';
-import { CheckOutlined, LoginOutlined } from '@ant-design/icons';
+import { CheckOutlined, LoginOutlined, AppstoreOutlined } from '@ant-design/icons';
 import { track } from '@vercel/analytics';
 import { LogAscentDrawer } from './log-ascent-drawer';
 import AuthModal from '../auth/auth-modal';
+import { constructClimbInfoUrl } from '@/app/lib/url-utils';
 
 const { Text, Paragraph } = Typography;
 
@@ -28,6 +29,13 @@ export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boa
     });
   };
   const closeDrawer = () => setDrawerVisible(false);
+
+  const handleOpenInApp = () => {
+    if (!currentClimb) return;
+    const url = constructClimbInfoUrl(boardDetails, currentClimb.uuid, angle);
+    window.open(url, '_blank', 'noopener');
+    closeDrawer();
+  };
 
   const filteredLogbook = logbook.filter((asc) => asc.climb_uuid === currentClimb?.uuid && Number(asc.angle) === angle);
   const hasSuccessfulAscent = filteredLogbook.some((asc) => asc.is_ascent);
@@ -66,6 +74,12 @@ export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boa
             </Paragraph>
             <Button type="primary" icon={<LoginOutlined />} onClick={() => setShowAuthModal(true)} block>
               Sign In
+            </Button>
+            <Paragraph type="secondary">
+              Or log your tick in the official app:
+            </Paragraph>
+            <Button icon={<AppstoreOutlined />} onClick={handleOpenInApp} block>
+              Open in App
             </Button>
           </Space>
         </Drawer>

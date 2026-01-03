@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Row, Col, Avatar, Tooltip, Dropdown, Button } from 'antd';
-import { CheckOutlined, CloseOutlined, UserOutlined, DeleteOutlined, MoreOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import { CheckOutlined, CloseOutlined, UserOutlined, DeleteOutlined, MoreOutlined, InfoCircleOutlined, AppstoreOutlined } from '@ant-design/icons';
 import { BoardDetails, ClimbUuid, Climb } from '@/app/lib/types';
 import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { DropIndicator } from '@atlaskit/pragmatic-drag-and-drop-react-drop-indicator/box';
@@ -14,7 +14,7 @@ import ClimbThumbnail from '../climb-card/climb-thumbnail';
 import ClimbTitle from '../climb-card/climb-title';
 import { useBoardProvider } from '../board-provider/board-provider-context';
 import { themeTokens } from '@/app/theme/theme-config';
-import { constructClimbViewUrl, constructClimbViewUrlWithSlugs, parseBoardRouteParams } from '@/app/lib/url-utils';
+import { constructClimbViewUrl, constructClimbViewUrlWithSlugs, parseBoardRouteParams, constructClimbInfoUrl } from '@/app/lib/url-utils';
 
 type QueueListItemProps = {
   item: ClimbQueueItem;
@@ -147,6 +147,12 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
       onTickClick(item.climb);
     }
   }, [item.climb, onTickClick]);
+
+  const handleOpenInApp = useCallback(() => {
+    if (!item.climb) return;
+    const url = constructClimbInfoUrl(boardDetails, item.climb.uuid, item.climb.angle);
+    window.open(url, '_blank', 'noopener');
+  }, [item.climb, boardDetails]);
 
   const swipeHandlers = useSwipeable({
     onSwiping: (eventData) => {
@@ -358,6 +364,12 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
                       label: 'Tick Climb',
                       icon: <CheckOutlined />,
                       onClick: () => item.climb && onTickClick(item.climb),
+                    },
+                    {
+                      key: 'openInApp',
+                      label: 'Open in App',
+                      icon: <AppstoreOutlined />,
+                      onClick: handleOpenInApp,
                     },
                     {
                       key: 'remove',
