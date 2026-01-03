@@ -13,8 +13,9 @@ import {
   Space,
   DatePicker,
   message,
+  Tooltip,
 } from 'antd';
-import { UserOutlined, InstagramOutlined } from '@ant-design/icons';
+import { UserOutlined, InstagramOutlined, FireOutlined, TrophyOutlined } from '@ant-design/icons';
 import { useSession } from 'next-auth/react';
 import Logo from '@/app/components/brand/logo';
 import BackButton from '@/app/components/back-button';
@@ -516,6 +517,96 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
     return { chartDataBar, chartDataPie, chartDataWeeklyBar };
   }, [filteredLogbook]);
 
+  // Calculate overall statistics summary (for the header)
+  const statisticsSummary = useMemo(() => {
+    const layoutStats: Record<string, { count: number; flashes: number; sends: number; attempts: number; grades: Record<string, number> }> = {};
+    let totalAscents = 0;
+    let totalFlashes = 0;
+    let totalSends = 0;
+
+    BOARD_TYPES.forEach((boardType) => {
+      const ticks = allBoardsTicks[boardType] || [];
+
+      ticks.forEach((entry) => {
+        const layoutKey = getLayoutKey(boardType, entry.layoutId);
+
+        if (!layoutStats[layoutKey]) {
+          layoutStats[layoutKey] = { count: 0, flashes: 0, sends: 0, attempts: 0, grades: {} };
+        }
+
+        // Only count successful ascents (not attempts)
+        if (entry.status !== 'attempt') {
+          layoutStats[layoutKey].count += 1;
+          totalAscents += 1;
+
+          // Track flash vs send
+          if (entry.status === 'flash' || entry.tries === 1) {
+            layoutStats[layoutKey].flashes += 1;
+            totalFlashes += 1;
+          } else {
+            layoutStats[layoutKey].sends += 1;
+            totalSends += 1;
+          }
+
+          // Track grades for each layout
+          if (entry.difficulty !== null) {
+            const grade = difficultyMapping[entry.difficulty];
+            if (grade) {
+              layoutStats[layoutKey].grades[grade] = (layoutStats[layoutKey].grades[grade] || 0) + 1;
+            }
+          }
+        } else {
+          layoutStats[layoutKey].attempts += 1;
+        }
+      });
+    });
+
+    // Calculate percentages using largest remainder method to ensure they sum to 100%
+    const layoutsWithExactPercentages = Object.entries(layoutStats)
+      .map(([layoutKey, stats]) => {
+        const [boardType, layoutIdStr] = layoutKey.split('-');
+        const layoutId = layoutIdStr === 'unknown' ? null : parseInt(layoutIdStr, 10);
+        const exactPercentage = totalAscents > 0 ? (stats.count / totalAscents) * 100 : 0;
+        return {
+          layoutKey,
+          boardType,
+          layoutId,
+          displayName: getLayoutDisplayName(boardType, layoutId),
+          color: getLayoutColor(boardType, layoutId),
+          count: stats.count,
+          flashes: stats.flashes,
+          sends: stats.sends,
+          attempts: stats.attempts,
+          grades: stats.grades,
+          exactPercentage,
+          percentage: Math.floor(exactPercentage),
+          remainder: exactPercentage - Math.floor(exactPercentage),
+        };
+      })
+      .filter((layout) => layout.count > 0)
+      .sort((a, b) => b.count - a.count);
+
+    // Distribute remaining percentage points to items with largest remainders
+    const totalFloored = layoutsWithExactPercentages.reduce((sum, l) => sum + l.percentage, 0);
+    const remaining = 100 - totalFloored;
+
+    // Sort by remainder descending to distribute extra points
+    const sortedByRemainder = [...layoutsWithExactPercentages].sort((a, b) => b.remainder - a.remainder);
+    for (let i = 0; i < remaining && i < sortedByRemainder.length; i++) {
+      sortedByRemainder[i].percentage += 1;
+    }
+
+    // Remove helper fields and return sorted by count
+    const layoutPercentages = layoutsWithExactPercentages.map(({ exactPercentage, remainder, ...rest }) => rest);
+
+    return {
+      totalAscents,
+      totalFlashes,
+      totalSends,
+      layoutPercentages,
+    };
+  }, [allBoardsTicks]);
+
   if (loading) {
     return (
       <Layout className={styles.layout}>
@@ -605,6 +696,116 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
             </div>
           </div>
         </Card>
+
+        {/* Statistics Summary Card */}
+        {!loadingAggregated && statisticsSummary.totalAscents > 0 && (
+          <Card className={styles.statsCard}>
+            {/* Total Ascents Header */}
+            <div className={styles.statsSummaryHeader}>
+              <div className={styles.totalAscentsContainer}>
+                <Text className={styles.totalAscentsLabel}>Total Ascents</Text>
+                <Title level={2} className={styles.totalAscentsValue}>
+                  {statisticsSummary.totalAscents}
+                </Title>
+              </div>
+              <div className={styles.quickStats}>
+                <div className={styles.quickStat}>
+                  <FireOutlined className={styles.quickStatIcon} />
+                  <div className={styles.quickStatContent}>
+                    <Text className={styles.quickStatValue}>{statisticsSummary.totalFlashes}</Text>
+                    <Text type="secondary" className={styles.quickStatLabel}>Flashes</Text>
+                  </div>
+                </div>
+                <div className={styles.quickStat}>
+                  <TrophyOutlined className={styles.quickStatIcon} />
+                  <div className={styles.quickStatContent}>
+                    <Text className={styles.quickStatValue}>{statisticsSummary.totalSends}</Text>
+                    <Text type="secondary" className={styles.quickStatLabel}>Sends</Text>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Board/Layout Percentage Bar */}
+            <div className={styles.percentageBarContainer}>
+              <div className={styles.percentageBar}>
+                {statisticsSummary.layoutPercentages.map((layout) => (
+                  <Tooltip
+                    key={layout.layoutKey}
+                    title={`${layout.displayName}: ${layout.count} ascents (${layout.percentage}%)`}
+                  >
+                    <div
+                      className={styles.percentageSegment}
+                      style={{
+                        width: `${layout.percentage}%`,
+                        backgroundColor: layout.color,
+                      }}
+                    >
+                      {layout.percentage >= 15 && (
+                        <span className={styles.percentageLabel}>
+                          {layout.displayName.split(' ').slice(-1)[0]} {layout.percentage}%
+                        </span>
+                      )}
+                    </div>
+                  </Tooltip>
+                ))}
+              </div>
+              <div className={styles.percentageLegend}>
+                {statisticsSummary.layoutPercentages.map((layout) => (
+                  <div key={layout.layoutKey} className={styles.legendItem}>
+                    <div
+                      className={styles.legendColor}
+                      style={{ backgroundColor: layout.color }}
+                    />
+                    <Text className={styles.legendText}>
+                      {layout.displayName} ({layout.percentage}%)
+                    </Text>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Grade Blocks by Layout */}
+            <div className={styles.gradeBlocksContainer}>
+              <Text strong className={styles.gradeBlocksTitle}>Grades by Board</Text>
+              {statisticsSummary.layoutPercentages.map((layout) => (
+                <div key={layout.layoutKey} className={styles.layoutGradeRow}>
+                  <div className={styles.layoutGradeHeader}>
+                    <div
+                      className={styles.layoutIndicator}
+                      style={{ backgroundColor: layout.color }}
+                    />
+                    <Text className={styles.layoutName}>{layout.displayName}</Text>
+                    <Text type="secondary" className={styles.layoutCount}>
+                      {layout.count} ascents
+                    </Text>
+                  </div>
+                  <div className={styles.gradeBlocks}>
+                    {Object.entries(layout.grades)
+                      .sort((a, b) => {
+                        const gradeOrder = Object.values(difficultyMapping);
+                        return gradeOrder.indexOf(a[0]) - gradeOrder.indexOf(b[0]);
+                      })
+                      .map(([grade, count]) => (
+                        <Tooltip
+                          key={grade}
+                          title={`${grade}: ${count} ascent${count !== 1 ? 's' : ''}`}
+                        >
+                          <div
+                            className={styles.gradeBlock}
+                            style={{ backgroundColor: gradeColors[grade] || '#ccc' }}
+                          >
+                            <span className={styles.gradeBlockLabel}>{grade}</span>
+                            <span className={styles.gradeBlockCount}>{count}</span>
+                          </div>
+                        </Tooltip>
+                      ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
 
         {/* Aggregated Stats - All Boards */}
         <Card className={styles.statsCard}>
