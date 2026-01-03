@@ -27,12 +27,12 @@
 .progressSection {
   text-align: center;
   padding-bottom: 8px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--neutral-200, #E5E7EB);
 }
 
 .progressText {
   font-size: 14px;
-  color: #6b7280;
+  color: var(--neutral-500, #6B7280);
   margin-bottom: 8px;
 }
 
@@ -44,7 +44,7 @@
   justify-content: center;
   min-height: 200px;
   max-height: 40vh;
-  background: #f9fafb;
+  background: var(--neutral-50, #F9FAFB);
   border-radius: 12px;
   overflow: hidden;
 }
@@ -67,7 +67,7 @@
 .sectionTitle {
   font-size: 14px;
   font-weight: 600;
-  color: #374151;
+  color: var(--neutral-700, #374151);
   margin-bottom: 4px;
 }
 
@@ -83,35 +83,35 @@
   display: flex;
   align-items: center;
   padding: 10px 12px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--neutral-200, #E5E7EB);
   border-radius: 8px;
   cursor: pointer;
   transition: all 150ms ease;
-  background: #ffffff;
+  background: var(--semantic-surface, #FFFFFF);
 }
 
 .holdTypeItem:hover {
-  background: #f3f4f6;
-  border-color: #d1d5db;
+  background: var(--neutral-100, #F3F4F6);
+  border-color: var(--neutral-300, #D1D5DB);
 }
 
 .holdTypeItemSelected {
-  background: #ecfeff;
-  border-color: #06b6d4;
+  background: var(--semantic-selected, #ECFEFF);
+  border-color: var(--color-primary, #06B6D4);
 }
 
 .holdTypeItemSelected:hover {
-  background: #ecfeff;
+  background: var(--semantic-selected, #ECFEFF);
 }
 
 .holdTypeLabel {
   flex: 1;
   font-size: 15px;
-  color: #111827;
+  color: var(--neutral-900, #111827);
 }
 
 .holdTypeCheck {
-  color: #06b6d4;
+  color: var(--color-primary, #06B6D4);
   font-size: 16px;
 }
 
@@ -121,7 +121,7 @@
 
 .ratingLabel {
   font-size: 14px;
-  color: #6b7280;
+  color: var(--neutral-500, #6B7280);
   margin-bottom: 8px;
 }
 
@@ -129,7 +129,7 @@
   display: flex;
   gap: 12px;
   padding-top: 8px;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--neutral-200, #E5E7EB);
 }
 
 .navButton {
@@ -151,7 +151,7 @@
 }
 
 .loadingText {
-  color: #6b7280;
+  color: var(--neutral-500, #6B7280);
 }
 
 .completeContainer {
@@ -167,18 +167,18 @@
 
 .completeIcon {
   font-size: 64px;
-  color: #10b981;
+  color: var(--color-success, #10B981);
 }
 
 .completeTitle {
   font-size: 24px;
   font-weight: 600;
-  color: #111827;
+  color: var(--neutral-900, #111827);
 }
 
 .completeSubtitle {
   font-size: 16px;
-  color: #6b7280;
+  color: var(--neutral-500, #6B7280);
   max-width: 300px;
 }
 
@@ -191,5 +191,5 @@
   gap: 16px;
   text-align: center;
   padding: 40px 20px;
-  color: #6b7280;
+  color: var(--neutral-500, #6B7280);
 }

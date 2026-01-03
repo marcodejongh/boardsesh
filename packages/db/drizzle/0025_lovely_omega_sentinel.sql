@@ -312,7 +312,7 @@ CREATE INDEX "board_climbs_board_type_idx" ON "board_climbs" USING btree ("board
 CREATE INDEX "board_climbs_layout_filter_idx" ON "board_climbs" USING btree ("board_type","layout_id","is_listed","is_draft","frames_count");--> statement-breakpoint
 CREATE INDEX "board_climbs_edges_idx" ON "board_climbs" USING btree ("board_type","edge_left","edge_right","edge_bottom","edge_top");--> statement-breakpoint
 CREATE INDEX "user_hold_classifications_user_board_idx" ON "user_hold_classifications" USING btree ("user_id","board_type","layout_id","size_id");--> statement-breakpoint
-CREATE INDEX "user_hold_classifications_unique_idx" ON "user_hold_classifications" USING btree ("user_id","board_type","layout_id","size_id","hold_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "user_hold_classifications_unique_idx" ON "user_hold_classifications" USING btree ("user_id","board_type","layout_id","size_id","hold_id");--> statement-breakpoint
 CREATE INDEX "user_hold_classifications_hold_idx" ON "user_hold_classifications" USING btree ("board_type","hold_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "boardsesh_ticks_aurora_id_unique" ON "boardsesh_ticks" USING btree ("aurora_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "playlists_aurora_id_idx" ON "playlists" USING btree ("aurora_id");

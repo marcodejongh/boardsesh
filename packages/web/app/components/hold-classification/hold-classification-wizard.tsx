@@ -107,18 +107,10 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
 
   const currentHold = holds[currentIndex];
 
-  // Load existing classifications when the wizard opens
-  useEffect(() => {
-    if (open && sessionStatus === 'authenticated' && boardDetails) {
-      loadClassifications();
-    }
-    if (open) {
-      setCurrentIndex(0);
-      setIsComplete(false);
-    }
-  }, [open, sessionStatus, boardDetails]);
+  // Load existing classifications
+  const loadClassifications = useCallback(async () => {
+    if (!boardDetails) return;
 
-  const loadClassifications = async () => {
     setLoading(true);
     try {
       const response = await fetch(
@@ -147,7 +139,18 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [boardDetails]);
+
+  // Load existing classifications when the wizard opens
+  useEffect(() => {
+    if (open && sessionStatus === 'authenticated' && boardDetails) {
+      loadClassifications();
+    }
+    if (open) {
+      setCurrentIndex(0);
+      setIsComplete(false);
+    }
+  }, [open, sessionStatus, boardDetails, loadClassifications]);
 
   const saveClassification = async (holdId: number, classification: HoldClassification) => {
     setSaving(true);
