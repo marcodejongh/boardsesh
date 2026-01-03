@@ -370,3 +370,26 @@ export const GetPlaylistClimbsInputSchema = z.object({
   page: z.number().int().min(0).optional(),
   pageSize: z.number().int().min(1).max(100).optional(),
 });
+
+/**
+ * Discover playlists input validation schema
+ */
+export const DiscoverPlaylistsInputSchema = z.object({
+  boardType: BoardNameSchema,
+  layoutId: z.number().int().positive(),
+  // Optional filters
+  name: z.string().max(100).optional(),
+  creatorIds: z.array(z.string().min(1)).optional(),
+  // Pagination
+  page: z.number().int().min(0).optional(),
+  pageSize: z.number().int().min(1).max(100).optional(),
+});
+
+/**
+ * Get playlist creators input validation schema
+ */
+export const GetPlaylistCreatorsInputSchema = z.object({
+  boardType: BoardNameSchema,
+  layoutId: z.number().int().positive(),
+  searchQuery: z.string().max(100).optional(),
+});

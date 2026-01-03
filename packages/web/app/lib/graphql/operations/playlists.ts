@@ -288,3 +288,104 @@ export interface PlaylistClimbsResult {
 export interface GetPlaylistClimbsQueryResponse {
   playlistClimbs: PlaylistClimbsResult;
 }
+
+// ============================================
+// Discover Playlists Types and Operations
+// ============================================
+
+// Playlist creator info for autocomplete
+export interface PlaylistCreator {
+  userId: string;
+  displayName: string;
+  playlistCount: number;
+}
+
+// Discoverable playlist with creator info
+export interface DiscoverablePlaylist {
+  id: string;
+  uuid: string;
+  boardType: string;
+  layoutId?: number | null;
+  name: string;
+  description?: string;
+  color?: string;
+  icon?: string;
+  createdAt: string;
+  updatedAt: string;
+  climbCount: number;
+  creatorId: string;
+  creatorName: string;
+}
+
+export interface DiscoverPlaylistsInput {
+  boardType: string;
+  layoutId: number;
+  name?: string;
+  creatorIds?: string[];
+  page?: number;
+  pageSize?: number;
+}
+
+export interface DiscoverPlaylistsResult {
+  playlists: DiscoverablePlaylist[];
+  totalCount: number;
+  hasMore: boolean;
+}
+
+export interface DiscoverPlaylistsQueryVariables {
+  input: DiscoverPlaylistsInput;
+}
+
+export interface DiscoverPlaylistsQueryResponse {
+  discoverPlaylists: DiscoverPlaylistsResult;
+}
+
+export interface GetPlaylistCreatorsInput {
+  boardType: string;
+  layoutId: number;
+  searchQuery?: string;
+}
+
+export interface GetPlaylistCreatorsQueryVariables {
+  input: GetPlaylistCreatorsInput;
+}
+
+export interface GetPlaylistCreatorsQueryResponse {
+  playlistCreators: PlaylistCreator[];
+}
+
+// Discover public playlists
+export const DISCOVER_PLAYLISTS = gql`
+  query DiscoverPlaylists($input: DiscoverPlaylistsInput!) {
+    discoverPlaylists(input: $input) {
+      playlists {
+        id
+        uuid
+        boardType
+        layoutId
+        name
+        description
+        color
+        icon
+        createdAt
+        updatedAt
+        climbCount
+        creatorId
+        creatorName
+      }
+      totalCount
+      hasMore
+    }
+  }
+`;
+
+// Get playlist creators for autocomplete
+export const GET_PLAYLIST_CREATORS = gql`
+  query GetPlaylistCreators($input: GetPlaylistCreatorsInput!) {
+    playlistCreators(input: $input) {
+      userId
+      displayName
+      playlistCount
+    }
+  }
+`;

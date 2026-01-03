@@ -407,6 +407,53 @@ export const typeDefs = /* GraphQL */ `
     hasMore: Boolean!
   }
 
+  # Playlist creator info for discover playlists
+  type PlaylistCreator {
+    userId: ID!
+    displayName: String!
+    playlistCount: Int!
+  }
+
+  # Discoverable playlist with creator info
+  type DiscoverablePlaylist {
+    id: ID!
+    uuid: ID!
+    boardType: String!
+    layoutId: Int
+    name: String!
+    description: String
+    color: String
+    icon: String
+    createdAt: String!
+    updatedAt: String!
+    climbCount: Int!
+    creatorId: ID!
+    creatorName: String!
+  }
+
+  input DiscoverPlaylistsInput {
+    boardType: String!
+    layoutId: Int!
+    # Optional filters
+    name: String
+    creatorIds: [ID!]
+    # Pagination
+    page: Int
+    pageSize: Int
+  }
+
+  type DiscoverPlaylistsResult {
+    playlists: [DiscoverablePlaylist!]!
+    totalCount: Int!
+    hasMore: Boolean!
+  }
+
+  input GetPlaylistCreatorsInput {
+    boardType: String!
+    layoutId: Int!
+    searchQuery: String
+  }
+
   type Query {
     session(sessionId: ID!): Session
     # Get buffered events since a sequence number for delta sync (Phase 2)
@@ -482,6 +529,15 @@ export const typeDefs = /* GraphQL */ `
     playlistsForClimb(input: GetPlaylistsForClimbInput!): [ID!]!
     # Get climbs in a playlist with full climb data
     playlistClimbs(input: GetPlaylistClimbsInput!): PlaylistClimbsResult!
+
+    # ============================================
+    # Playlist Discovery Queries (no auth required)
+    # ============================================
+
+    # Discover public playlists with at least 1 climb
+    discoverPlaylists(input: DiscoverPlaylistsInput!): DiscoverPlaylistsResult!
+    # Get playlist creators for autocomplete
+    playlistCreators(input: GetPlaylistCreatorsInput!): [PlaylistCreator!]!
   }
 
   type Mutation {

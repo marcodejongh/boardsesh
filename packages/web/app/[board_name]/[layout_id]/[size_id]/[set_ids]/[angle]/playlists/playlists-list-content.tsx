@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Spin, Typography, Button, List, Empty } from 'antd';
+import { Spin, Typography, Button, List, Tabs } from 'antd';
 import {
   TagOutlined,
   PlusOutlined,
@@ -10,6 +10,7 @@ import {
   LockOutlined,
   FrownOutlined,
   LoginOutlined,
+  CompassOutlined,
 } from '@ant-design/icons';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
@@ -26,6 +27,7 @@ import { constructClimbListWithSlugs, generateLayoutSlug, generateSizeSlug, gene
 import { themeTokens } from '@/app/theme/theme-config';
 import BackButton from '@/app/components/back-button';
 import AuthModal from '@/app/components/auth/auth-modal';
+import DiscoverPlaylistsContent from './discover-playlists-content';
 import styles from './playlists.module.css';
 
 const { Title, Text } = Typography;
@@ -117,46 +119,6 @@ export default function PlaylistsListContent({
     return themeTokens.colors.primary;
   };
 
-  // Not authenticated
-  if (!isAuthenticated && sessionStatus !== 'loading') {
-    return (
-      <>
-        <div className={styles.actionsSection}>
-          <BackButton fallbackUrl={getBackToListUrl()} />
-        </div>
-        <div className={styles.emptyContainer}>
-          <TagOutlined className={styles.emptyIcon} />
-          <Title level={4} className={styles.emptyTitle}>Sign in to view playlists</Title>
-          <Text type="secondary" className={styles.emptyText}>
-            Create and manage your own climb playlists by signing in.
-          </Text>
-          <Button
-            type="primary"
-            icon={<LoginOutlined />}
-            onClick={() => setShowAuthModal(true)}
-            style={{ marginTop: themeTokens.spacing[4] }}
-          >
-            Sign In
-          </Button>
-        </div>
-        <AuthModal
-          open={showAuthModal}
-          onClose={() => setShowAuthModal(false)}
-          title="Sign in to Boardsesh"
-          description="Sign in to create and manage your climb playlists."
-        />
-      </>
-    );
-  }
-
-  if (loading || tokenLoading || sessionStatus === 'loading') {
-    return (
-      <div className={styles.loadingContainer}>
-        <Spin size="large" />
-      </div>
-    );
-  }
-
   if (error) {
     return (
       <>
@@ -175,74 +137,155 @@ export default function PlaylistsListContent({
     );
   }
 
+  // Render the "Your playlists" content
+  const renderYourPlaylists = () => {
+    // Not authenticated
+    if (!isAuthenticated && sessionStatus !== 'loading') {
+      return (
+        <div className={styles.emptyContainer}>
+          <TagOutlined className={styles.emptyIcon} />
+          <Title level={4} className={styles.emptyTitle}>Sign in to view your playlists</Title>
+          <Text type="secondary" className={styles.emptyText}>
+            Create and manage your own climb playlists by signing in.
+          </Text>
+          <Button
+            type="primary"
+            icon={<LoginOutlined />}
+            onClick={() => setShowAuthModal(true)}
+            style={{ marginTop: themeTokens.spacing[4] }}
+          >
+            Sign In
+          </Button>
+        </div>
+      );
+    }
+
+    if (loading || tokenLoading || sessionStatus === 'loading') {
+      return (
+        <div className={styles.loadingContainer}>
+          <Spin size="large" />
+        </div>
+      );
+    }
+
+    if (playlists.length === 0) {
+      return (
+        <div className={styles.emptyContainer}>
+          <TagOutlined className={styles.emptyIcon} />
+          <Title level={4} className={styles.emptyTitle}>No playlists yet</Title>
+          <Text type="secondary" className={styles.emptyText}>
+            Create your first playlist by adding climbs from the climb list.
+          </Text>
+          <Link href={getBackToListUrl()}>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              style={{ marginTop: themeTokens.spacing[4] }}
+            >
+              Browse Climbs
+            </Button>
+          </Link>
+        </div>
+      );
+    }
+
+    return (
+      <div className={styles.listSection}>
+        <List
+          dataSource={playlists}
+          renderItem={(playlist) => (
+            <Link href={getPlaylistUrl(playlist.uuid)} className={styles.playlistLink}>
+              <List.Item className={styles.playlistItem}>
+                <div className={styles.playlistItemContent}>
+                  <div
+                    className={styles.playlistColor}
+                    style={{ backgroundColor: getPlaylistColor(playlist) }}
+                  >
+                    <TagOutlined className={styles.playlistColorIcon} />
+                  </div>
+                  <div className={styles.playlistInfo}>
+                    <div className={styles.playlistName}>{playlist.name}</div>
+                    <div className={styles.playlistMeta}>
+                      <span>{playlist.climbCount} {playlist.climbCount === 1 ? 'climb' : 'climbs'}</span>
+                      <span className={styles.metaDot}>·</span>
+                      {playlist.isPublic ? (
+                        <span className={styles.visibilityText}>
+                          <GlobalOutlined /> Public
+                        </span>
+                      ) : (
+                        <span className={styles.visibilityText}>
+                          <LockOutlined /> Private
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <RightOutlined className={styles.playlistArrow} />
+              </List.Item>
+            </Link>
+          )}
+        />
+      </div>
+    );
+  };
+
+  const tabItems = [
+    {
+      key: 'your',
+      label: (
+        <span>
+          <TagOutlined />
+          Your playlists
+        </span>
+      ),
+      children: (
+        <div className={styles.contentWrapper}>
+          {renderYourPlaylists()}
+        </div>
+      ),
+    },
+    {
+      key: 'discover',
+      label: (
+        <span>
+          <CompassOutlined />
+          Discover
+        </span>
+      ),
+      children: (
+        <DiscoverPlaylistsContent
+          boardDetails={boardDetails}
+          angle={angle}
+        />
+      ),
+    },
+  ];
+
   return (
     <>
       {/* Actions Section */}
       <div className={styles.actionsSection}>
         <div className={styles.actionsContainer}>
           <BackButton fallbackUrl={getBackToListUrl()} />
-          <Title level={4} style={{ margin: 0 }}>My Playlists</Title>
+          <Title level={4} style={{ margin: 0 }}>Playlists</Title>
         </div>
       </div>
 
-      {/* Content */}
-      <div className={styles.contentWrapper}>
-        {playlists.length === 0 ? (
-          <div className={styles.emptyContainer}>
-            <TagOutlined className={styles.emptyIcon} />
-            <Title level={4} className={styles.emptyTitle}>No playlists yet</Title>
-            <Text type="secondary" className={styles.emptyText}>
-              Create your first playlist by adding climbs from the climb list.
-            </Text>
-            <Link href={getBackToListUrl()}>
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                style={{ marginTop: themeTokens.spacing[4] }}
-              >
-                Browse Climbs
-              </Button>
-            </Link>
-          </div>
-        ) : (
-          <div className={styles.listSection}>
-            <List
-              dataSource={playlists}
-              renderItem={(playlist) => (
-                <Link href={getPlaylistUrl(playlist.uuid)} className={styles.playlistLink}>
-                  <List.Item className={styles.playlistItem}>
-                    <div className={styles.playlistItemContent}>
-                      <div
-                        className={styles.playlistColor}
-                        style={{ backgroundColor: getPlaylistColor(playlist) }}
-                      >
-                        <TagOutlined className={styles.playlistColorIcon} />
-                      </div>
-                      <div className={styles.playlistInfo}>
-                        <div className={styles.playlistName}>{playlist.name}</div>
-                        <div className={styles.playlistMeta}>
-                          <span>{playlist.climbCount} {playlist.climbCount === 1 ? 'climb' : 'climbs'}</span>
-                          <span className={styles.metaDot}>·</span>
-                          {playlist.isPublic ? (
-                            <span className={styles.visibilityText}>
-                              <GlobalOutlined /> Public
-                            </span>
-                          ) : (
-                            <span className={styles.visibilityText}>
-                              <LockOutlined /> Private
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <RightOutlined className={styles.playlistArrow} />
-                  </List.Item>
-                </Link>
-              )}
-            />
-          </div>
-        )}
+      {/* Tabs */}
+      <div className={styles.tabsContainer}>
+        <Tabs
+          defaultActiveKey="your"
+          items={tabItems}
+          className={styles.playlistTabs}
+        />
       </div>
+
+      <AuthModal
+        open={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        title="Sign in to Boardsesh"
+        description="Sign in to create and manage your climb playlists."
+      />
     </>
   );
 }
