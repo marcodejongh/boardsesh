@@ -76,7 +76,7 @@ export function useBoardBluetooth({ boardDetails, onConnectionChange }: UseBoard
 
   // Function to send frames string to the board
   const sendFramesToBoard = useCallback(
-    async (frames: string, mirrored: boolean = false) => {
+    async (frames: string, mirrored: boolean = false, operationKey?: string) => {
       if (!characteristicRef.current || !frames) return;
 
       let framesToSend = frames;
@@ -89,7 +89,7 @@ export function useBoardBluetooth({ boardDetails, onConnectionChange }: UseBoard
       const bluetoothPacket = getBluetoothPacket(framesToSend, placementPositions, boardDetails.board_name);
 
       try {
-        await writeCharacteristicSeries(characteristicRef.current, splitMessages(bluetoothPacket));
+        await writeCharacteristicSeries(characteristicRef.current, splitMessages(bluetoothPacket), operationKey);
         return true;
       } catch (error) {
         console.error('Error sending frames to board:', error);

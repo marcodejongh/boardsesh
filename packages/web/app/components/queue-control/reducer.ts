@@ -45,9 +45,13 @@ export function queueReducer(state: QueueState, action: QueueAction): QueueState
         climbSearchParams: action.payload,
       };
     case 'INITIAL_QUEUE_DATA':
+      // Filter out any undefined/null items that could corrupt queue operations
+      // This handles edge cases from corrupted IndexedDB or WebSocket data
       return {
         ...state,
-        queue: action.payload.queue,
+        queue: action.payload.queue.filter((item): item is NonNullable<typeof item> =>
+          item != null && item.climb != null
+        ),
         currentClimbQueueItem: action.payload.currentClimbQueueItem ?? state.currentClimbQueueItem,
         initialQueueDataReceivedFromPeers: true,
         // Clear pending updates on full sync since we're getting complete server state
@@ -55,9 +59,12 @@ export function queueReducer(state: QueueState, action: QueueAction): QueueState
       };
 
     case 'UPDATE_QUEUE':
+      // Filter out any undefined/null items that could corrupt queue operations
       return {
         ...state,
-        queue: action.payload.queue,
+        queue: action.payload.queue.filter((item): item is NonNullable<typeof item> =>
+          item != null && item.climb != null
+        ),
         currentClimbQueueItem: action.payload.currentClimbQueueItem ?? state.currentClimbQueueItem,
       };
 
@@ -96,9 +103,15 @@ export function queueReducer(state: QueueState, action: QueueAction): QueueState
     case 'DELTA_ADD_QUEUE_ITEM': {
       const { item, position } = action.payload;
 
+      // Skip if item or its climb is undefined
+      if (!item || !item.climb) {
+        return state;
+      }
+
       // Skip if climb already exists in queue (check by climb.uuid, not item.uuid)
       // This makes the operation idempotent and prevents duplicate climbs
-      if (state.queue.some(qItem => qItem.climb?.uuid === item.climb?.uuid)) {
+      // Filter out any corrupted queue items during the check
+      if (state.queue.some(qItem => qItem?.climb?.uuid === item.climb.uuid)) {
         return state;
       }
 
@@ -201,7 +214,8 @@ export function queueReducer(state: QueueState, action: QueueAction): QueueState
       // Add to queue if requested and climb doesn't already exist in queue
       // IMPORTANT: Check by climb.uuid (the actual content), not item.uuid (the wrapper)
       // This makes the operation idempotent and prevents duplicates when user swipes fast
-      if (item && shouldAddToQueue && !state.queue.find(qItem => qItem.climb?.uuid === item.climb?.uuid)) {
+      // Use defensive check to handle corrupted queue items
+      if (item && item.climb && shouldAddToQueue && !state.queue.find(qItem => qItem?.climb?.uuid === item.climb.uuid)) {
         newQueue = [...state.queue, item];
       }
 

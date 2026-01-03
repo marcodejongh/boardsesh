@@ -87,6 +87,10 @@ const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({ boardDe
     [handleDisconnection],
   );
 
+  // Operation key for "latest only" semantics when auto-sending climbs
+  // This ensures that if multiple climbs are queued rapidly, only the latest one is sent
+  const CLIMB_SEND_OPERATION_KEY = 'send-climb';
+
   // Function to send climb data to the board
   const sendClimbToBoard = useCallback(async () => {
     if (!currentClimbQueueItem || !characteristicRef.current) return;
@@ -101,7 +105,8 @@ const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({ boardDe
 
     try {
       if (characteristicRef.current) {
-        await writeCharacteristicSeries(characteristicRef.current, splitMessages(bluetoothPacket));
+        // Use the operation key to cancel any pending climb sends if a new one comes in
+        await writeCharacteristicSeries(characteristicRef.current, splitMessages(bluetoothPacket), CLIMB_SEND_OPERATION_KEY);
         track('Climb Sent to Board Success', {
           climbUuid: currentClimbQueueItem.climb?.uuid,
           boardLayout: `${boardDetails.layout_name}`,
