@@ -342,8 +342,7 @@ export const tickQueries = {
     const layoutStatsMap: Record<string, {
       boardType: string;
       layoutId: number | null;
-      climbUuids: Set<string>;
-      gradeClimbs: Record<number, Set<string>>; // difficulty -> set of climbUuids
+      gradeCounts: Array<{ grade: string; count: number }>;
     }> = {};
     const allClimbUuids = new Set<string>();
 
@@ -351,65 +350,75 @@ export const tickQueries = {
       const climbsTable = getClimbsTable(boardType);
       if (!climbsTable) continue;
 
-      // Get all successful ticks (not attempts) with layoutId and difficulty
-      const results = await db
+      // Get distinct climb counts grouped by layoutId and difficulty using SQL aggregation
+      const gradeResults = await db
         .select({
-          climbUuid: dbSchema.boardseshTicks.climbUuid,
-          difficulty: dbSchema.boardseshTicks.difficulty,
           layoutId: climbsTable.layoutId,
-          status: dbSchema.boardseshTicks.status,
+          difficulty: dbSchema.boardseshTicks.difficulty,
+          distinctCount: sql<number>`count(distinct ${dbSchema.boardseshTicks.climbUuid})`.as('distinct_count'),
         })
         .from(dbSchema.boardseshTicks)
         .leftJoin(climbsTable, eq(dbSchema.boardseshTicks.climbUuid, climbsTable.uuid))
         .where(
           and(
             eq(dbSchema.boardseshTicks.userId, userId),
-            eq(dbSchema.boardseshTicks.boardType, boardType)
+            eq(dbSchema.boardseshTicks.boardType, boardType),
+            sql`${dbSchema.boardseshTicks.status} != 'attempt'`
+          )
+        )
+        .groupBy(climbsTable.layoutId, dbSchema.boardseshTicks.difficulty);
+
+      // Also get all distinct climbUuids for total count (need to track across layouts)
+      const distinctClimbs = await db
+        .selectDistinct({ climbUuid: dbSchema.boardseshTicks.climbUuid })
+        .from(dbSchema.boardseshTicks)
+        .where(
+          and(
+            eq(dbSchema.boardseshTicks.userId, userId),
+            eq(dbSchema.boardseshTicks.boardType, boardType),
+            sql`${dbSchema.boardseshTicks.status} != 'attempt'`
           )
         );
 
-      for (const row of results) {
-        // Only count successful ascents (not attempts)
-        if (row.status === 'attempt') continue;
+      // Add to total distinct climbs set
+      for (const row of distinctClimbs) {
+        allClimbUuids.add(row.climbUuid);
+      }
 
+      // Process grade results into layout stats
+      for (const row of gradeResults) {
         const layoutKey = `${boardType}-${row.layoutId ?? 'unknown'}`;
 
         if (!layoutStatsMap[layoutKey]) {
           layoutStatsMap[layoutKey] = {
             boardType,
             layoutId: row.layoutId,
-            climbUuids: new Set(),
-            gradeClimbs: {},
+            gradeCounts: [],
           };
         }
 
-        // Track distinct climbs per layout
-        layoutStatsMap[layoutKey].climbUuids.add(row.climbUuid);
-        allClimbUuids.add(row.climbUuid);
-
-        // Track distinct climbs per grade per layout
         if (row.difficulty !== null) {
-          if (!layoutStatsMap[layoutKey].gradeClimbs[row.difficulty]) {
-            layoutStatsMap[layoutKey].gradeClimbs[row.difficulty] = new Set();
-          }
-          layoutStatsMap[layoutKey].gradeClimbs[row.difficulty].add(row.climbUuid);
+          layoutStatsMap[layoutKey].gradeCounts.push({
+            grade: String(row.difficulty),
+            count: Number(row.distinctCount),
+          });
         }
       }
     }
 
-    // Convert to response format
-    const layoutStats = Object.entries(layoutStatsMap).map(([layoutKey, stats]) => ({
-      layoutKey,
-      boardType: stats.boardType,
-      layoutId: stats.layoutId,
-      distinctClimbCount: stats.climbUuids.size,
-      gradeCounts: Object.entries(stats.gradeClimbs)
-        .map(([difficulty, climbSet]) => ({
-          grade: difficulty,
-          count: climbSet.size,
-        }))
-        .sort((a, b) => parseInt(a.grade) - parseInt(b.grade)),
-    }));
+    // Convert to response format with sorted grade counts
+    const layoutStats = Object.entries(layoutStatsMap).map(([layoutKey, stats]) => {
+      // Calculate total distinct climbs for this layout by summing grade counts
+      const distinctClimbCount = stats.gradeCounts.reduce((sum, gc) => sum + gc.count, 0);
+
+      return {
+        layoutKey,
+        boardType: stats.boardType,
+        layoutId: stats.layoutId,
+        distinctClimbCount,
+        gradeCounts: stats.gradeCounts.sort((a, b) => parseInt(a.grade) - parseInt(b.grade)),
+      };
+    });
 
     return {
       totalDistinctClimbs: allClimbUuids.size,
