@@ -49,12 +49,10 @@ export const LogbookSection: React.FC<LogbookSectionProps> = ({ climb }) => {
   // If no logbook entries, show empty state without collapse
   if (!summary) {
     return (
-      <>
-        <Text type="secondary" style={{ display: 'block', textAlign: 'center', padding: '16px 0' }}>
-          <BookOutlined style={{ marginRight: 8 }} />
-          No ascents logged for this climb
-        </Text>
-      </>
+      <Text type="secondary" style={{ display: 'block', textAlign: 'center', padding: '16px 0' }}>
+        <BookOutlined style={{ marginRight: 8 }} />
+        No ascents logged for this climb
+      </Text>
     );
   }
 

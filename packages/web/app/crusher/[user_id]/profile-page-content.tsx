@@ -561,11 +561,12 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
       });
     });
 
-    // Calculate percentages and sort by count
-    const layoutPercentages = Object.entries(layoutStats)
+    // Calculate percentages using largest remainder method to ensure they sum to 100%
+    const layoutsWithExactPercentages = Object.entries(layoutStats)
       .map(([layoutKey, stats]) => {
         const [boardType, layoutIdStr] = layoutKey.split('-');
         const layoutId = layoutIdStr === 'unknown' ? null : parseInt(layoutIdStr, 10);
+        const exactPercentage = totalAscents > 0 ? (stats.count / totalAscents) * 100 : 0;
         return {
           layoutKey,
           boardType,
@@ -577,11 +578,26 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
           sends: stats.sends,
           attempts: stats.attempts,
           grades: stats.grades,
-          percentage: totalAscents > 0 ? Math.round((stats.count / totalAscents) * 100) : 0,
+          exactPercentage,
+          percentage: Math.floor(exactPercentage),
+          remainder: exactPercentage - Math.floor(exactPercentage),
         };
       })
       .filter((layout) => layout.count > 0)
       .sort((a, b) => b.count - a.count);
+
+    // Distribute remaining percentage points to items with largest remainders
+    const totalFloored = layoutsWithExactPercentages.reduce((sum, l) => sum + l.percentage, 0);
+    const remaining = 100 - totalFloored;
+
+    // Sort by remainder descending to distribute extra points
+    const sortedByRemainder = [...layoutsWithExactPercentages].sort((a, b) => b.remainder - a.remainder);
+    for (let i = 0; i < remaining && i < sortedByRemainder.length; i++) {
+      sortedByRemainder[i].percentage += 1;
+    }
+
+    // Remove helper fields and return sorted by count
+    const layoutPercentages = layoutsWithExactPercentages.map(({ exactPercentage, remainder, ...rest }) => rest);
 
     return {
       totalAscents,
