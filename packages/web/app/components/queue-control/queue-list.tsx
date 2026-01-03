@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useImperativeHandle, forwardRef } from 'react';
 import { Divider, Row, Col, Button, Flex, Drawer, Space, Typography, Skeleton } from 'antd';
 import { PlusOutlined, LoginOutlined } from '@ant-design/icons';
 import { useQueueContext } from '../graphql-queue';
@@ -15,15 +15,20 @@ import { SUGGESTIONS_THRESHOLD } from '../board-page/constants';
 import { useBoardProvider } from '../board-provider/board-provider-context';
 import { LogAscentDrawer } from '../logbook/log-ascent-drawer';
 import AuthModal from '../auth/auth-modal';
+import styles from './queue-list.module.css';
 
 const { Text, Paragraph } = Typography;
+
+export type QueueListHandle = {
+  scrollToCurrentClimb: () => void;
+};
 
 type QueueListProps = {
   boardDetails: BoardDetails;
   onClimbNavigate?: () => void;
 };
 
-const QueueList: React.FC<QueueListProps> = ({ boardDetails, onClimbNavigate }) => {
+const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, onClimbNavigate }, ref) => {
   const {
     viewOnlyMode,
     currentClimbQueueItem,
@@ -45,6 +50,18 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails, onClimbNavigate }) 
   const [tickDrawerVisible, setTickDrawerVisible] = useState(false);
   const [tickClimb, setTickClimb] = useState<Climb | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
+
+  // Ref for scrolling to current climb
+  const currentClimbRef = useRef<HTMLDivElement>(null);
+
+  // Expose scroll method to parent via ref
+  useImperativeHandle(ref, () => ({
+    scrollToCurrentClimb: () => {
+      if (currentClimbRef.current) {
+        currentClimbRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    },
+  }));
 
   const handleTickClick = useCallback((climb: Climb) => {
     setTickClimb(climb);
@@ -129,31 +146,67 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails, onClimbNavigate }) 
     };
   }, [handleObserver, viewOnlyMode]);
 
+  // Find the index of the current climb in the queue
+  const currentIndex = queue.findIndex((item) => item.uuid === currentClimbQueueItem?.uuid);
+
+  // Split queue into upcoming (current + future) and history (past)
+  // Upcoming items are displayed first, then history items below
+  const upcomingItems = currentIndex >= 0 ? queue.slice(currentIndex) : queue;
+  const historyItems = currentIndex > 0 ? queue.slice(0, currentIndex) : [];
+
   return (
     <>
       <Flex vertical>
-        {queue.map((climbQueueItem, index) => {
+        {/* Current and upcoming items (displayed first) */}
+        {upcomingItems.map((climbQueueItem) => {
           const isCurrent = currentClimbQueueItem?.uuid === climbQueueItem.uuid;
-          const isHistory =
-            queue.findIndex((item) => item.uuid === currentClimbQueueItem?.uuid) >
-            queue.findIndex((item) => item.uuid === climbQueueItem.uuid);
+          // Get the original index in the queue for drag-and-drop
+          const originalIndex = queue.findIndex((item) => item.uuid === climbQueueItem.uuid);
 
           return (
-            <QueueListItem
-              key={climbQueueItem.uuid}
-              item={climbQueueItem}
-              index={index}
-              isCurrent={isCurrent}
-              isHistory={isHistory}
-              viewOnlyMode={viewOnlyMode}
-              boardDetails={boardDetails}
-              setCurrentClimbQueueItem={setCurrentClimbQueueItem}
-              removeFromQueue={removeFromQueue}
-              onTickClick={handleTickClick}
-              onClimbNavigate={onClimbNavigate}
-            />
+            <div key={climbQueueItem.uuid} ref={isCurrent ? currentClimbRef : undefined}>
+              <QueueListItem
+                item={climbQueueItem}
+                index={originalIndex}
+                isCurrent={isCurrent}
+                isHistory={false}
+                viewOnlyMode={viewOnlyMode}
+                boardDetails={boardDetails}
+                setCurrentClimbQueueItem={setCurrentClimbQueueItem}
+                removeFromQueue={removeFromQueue}
+                onTickClick={handleTickClick}
+                onClimbNavigate={onClimbNavigate}
+              />
+            </div>
           );
         })}
+
+        {/* History items (displayed below current/upcoming) */}
+        {historyItems.length > 0 && (
+          <>
+            <Divider className={styles.historyDivider}>History</Divider>
+            {historyItems.map((climbQueueItem) => {
+              // Get the original index in the queue for drag-and-drop
+              const originalIndex = queue.findIndex((item) => item.uuid === climbQueueItem.uuid);
+
+              return (
+                <QueueListItem
+                  key={climbQueueItem.uuid}
+                  item={climbQueueItem}
+                  index={originalIndex}
+                  isCurrent={false}
+                  isHistory={true}
+                  viewOnlyMode={viewOnlyMode}
+                  boardDetails={boardDetails}
+                  setCurrentClimbQueueItem={setCurrentClimbQueueItem}
+                  removeFromQueue={removeFromQueue}
+                  onTickClick={handleTickClick}
+                  onClimbNavigate={onClimbNavigate}
+                />
+              );
+            })}
+          </>
+        )}
       </Flex>
       {!viewOnlyMode && (
         <>
@@ -264,6 +317,8 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails, onClimbNavigate }) 
       />
     </>
   );
-};
+});
+
+QueueList.displayName = 'QueueList';
 
 export default QueueList;
