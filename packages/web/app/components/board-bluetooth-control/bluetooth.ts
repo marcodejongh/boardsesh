@@ -1,6 +1,5 @@
 import { BoardName, LedPlacements } from '@/app/lib/types';
 import { HOLD_STATE_MAP } from '../board-renderer/types';
-import { getGlobalGattQueue } from './gatt-queue';
 
 // Bluetooth constants
 const MAX_BLUETOOTH_MESSAGE_SIZE = 20;
@@ -72,28 +71,13 @@ export const splitMessages = (buffer: Uint8Array) =>
     buffer.slice(i * MAX_BLUETOOTH_MESSAGE_SIZE, (i + 1) * MAX_BLUETOOTH_MESSAGE_SIZE),
   );
 
-/**
- * Writes a series of messages to a Bluetooth characteristic.
- * Uses a global queue to prevent "GATT operation already in progress" errors
- * that occur when multiple write operations are attempted concurrently.
- *
- * @param characteristic - The Bluetooth characteristic to write to
- * @param messages - Array of Uint8Array messages to write
- * @param operationKey - Optional key for "latest only" semantics. If provided,
- *                       pending operations with the same key will be cancelled.
- */
 export const writeCharacteristicSeries = async (
   characteristic: BluetoothRemoteGATTCharacteristic,
   messages: Uint8Array[],
-  operationKey?: string,
 ) => {
-  const queue = getGlobalGattQueue();
-
-  return queue.enqueue(async () => {
-    for (const message of messages) {
-      await characteristic.writeValue(new Uint8Array(message));
-    }
-  }, operationKey);
+  for (const message of messages) {
+    await characteristic.writeValue(new Uint8Array(message));
+  }
 };
 
 export const requestDevice = async () =>
