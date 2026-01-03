@@ -1,0 +1,195 @@
+.drawerHeader {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.backButton {
+  margin-right: 8px;
+}
+
+.drawerTitle {
+  flex: 1;
+  font-weight: 600;
+}
+
+.headerSpacer {
+  width: 32px;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 16px;
+}
+
+.progressSection {
+  text-align: center;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.progressText {
+  font-size: 14px;
+  color: #6b7280;
+  margin-bottom: 8px;
+}
+
+.holdViewSection {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  max-height: 40vh;
+  background: #f9fafb;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.holdViewContainer {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.classificationSection {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sectionTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 4px;
+}
+
+.holdTypeList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.holdTypeItem {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 150ms ease;
+  background: #ffffff;
+}
+
+.holdTypeItem:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+.holdTypeItemSelected {
+  background: #ecfeff;
+  border-color: #06b6d4;
+}
+
+.holdTypeItemSelected:hover {
+  background: #ecfeff;
+}
+
+.holdTypeLabel {
+  flex: 1;
+  font-size: 15px;
+  color: #111827;
+}
+
+.holdTypeCheck {
+  color: #06b6d4;
+  font-size: 16px;
+}
+
+.ratingSection {
+  text-align: center;
+}
+
+.ratingLabel {
+  font-size: 14px;
+  color: #6b7280;
+  margin-bottom: 8px;
+}
+
+.navigationSection {
+  display: flex;
+  gap: 12px;
+  padding-top: 8px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.navButton {
+  flex: 1;
+}
+
+.skipButton {
+  min-width: 80px;
+  flex: 0 0 auto;
+}
+
+.loadingContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 300px;
+  gap: 16px;
+}
+
+.loadingText {
+  color: #6b7280;
+}
+
+.completeContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 24px;
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.completeIcon {
+  font-size: 64px;
+  color: #10b981;
+}
+
+.completeTitle {
+  font-size: 24px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.completeSubtitle {
+  font-size: 16px;
+  color: #6b7280;
+  max-width: 300px;
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 16px;
+  text-align: center;
+  padding: 40px 20px;
+  color: #6b7280;
+}

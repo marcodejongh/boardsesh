@@ -21,13 +21,14 @@ const SendClimbToBoardButton = dynamic(
 import { generateLayoutSlug, generateSizeSlug, generateSetSlug, constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { ShareBoardButton } from './share-button';
 import { useQueueContext } from '../graphql-queue';
-import { UserOutlined, LogoutOutlined, LoginOutlined, PlusOutlined, MoreOutlined, SettingOutlined, LineChartOutlined, LeftOutlined, InfoCircleOutlined, TagOutlined } from '@ant-design/icons';
+import { UserOutlined, LogoutOutlined, LoginOutlined, PlusOutlined, MoreOutlined, SettingOutlined, LineChartOutlined, LeftOutlined, InfoCircleOutlined, TagOutlined, AimOutlined } from '@ant-design/icons';
 import AngleSelector from './angle-selector';
 import Logo from '../brand/logo';
 import styles from './header.module.css';
 import Link from 'next/link';
 import AuthModal from '../auth/auth-modal';
 import { useCreateClimbContext } from '../create-climb/create-climb-context';
+import { HoldClassificationWizard } from '../hold-classification';
 
 type PageMode = 'list' | 'view' | 'play' | 'create' | 'other';
 
@@ -76,6 +77,7 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
   const { data: session } = useSession();
   const { currentClimb } = useQueueContext();
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showHoldClassification, setShowHoldClassification] = useState(false);
   const pageMode = usePageMode();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -118,6 +120,12 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
       label: <Link href={playlistsUrl}>My Playlists</Link>,
     }] : []),
     {
+      key: 'classify-holds',
+      icon: <AimOutlined />,
+      label: 'Classify Holds',
+      onClick: () => setShowHoldClassification(true),
+    },
+    {
       key: 'profile',
       icon: <LineChartOutlined />,
       label: <Link href={`/crusher/${session?.user?.id}`}>Profile</Link>,
@@ -150,6 +158,12 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
       label: <Link href={playlistsUrl}>My Playlists</Link>,
     }] : []),
     ...(session?.user ? [
+      {
+        key: 'classify-holds',
+        icon: <AimOutlined />,
+        label: 'Classify Holds',
+        onClick: () => setShowHoldClassification(true),
+      },
       {
         key: 'profile',
         icon: <LineChartOutlined />,
@@ -297,6 +311,12 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
         onClose={() => setShowAuthModal(false)}
         title="Sign in to Boardsesh"
         description="Sign in to access all features including saving favorites, tracking ascents, and more."
+      />
+
+      <HoldClassificationWizard
+        open={showHoldClassification}
+        onClose={() => setShowHoldClassification(false)}
+        boardDetails={boardDetails}
       />
     </Header>
   );
