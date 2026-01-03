@@ -1,0 +1,95 @@
+/* Flex row to replace AntD Row/Col with responsive props */
+.suggestionRow {
+  display: flex;
+  width: 100%;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: nowrap;
+}
+
+/* Thumbnail column: xs=6 (25%), sm=5 (20.83%) */
+.thumbnailCol {
+  flex: 0 0 25%;
+  max-width: 25%;
+}
+
+@media (min-width: 576px) {
+  .thumbnailCol {
+    flex: 0 0 20.83%;
+    max-width: 20.83%;
+  }
+}
+
+/* Title column: xs=15 (62.5%), sm=17 (70.83%) */
+.titleCol {
+  flex: 0 0 62.5%;
+  max-width: 62.5%;
+}
+
+@media (min-width: 576px) {
+  .titleCol {
+    flex: 0 0 70.83%;
+    max-width: 70.83%;
+  }
+}
+
+/* Button column: xs=3 (12.5%), sm=2 (8.33%) */
+.buttonCol {
+  flex: 0 0 12.5%;
+  max-width: 12.5%;
+}
+
+@media (min-width: 576px) {
+  .buttonCol {
+    flex: 0 0 8.33%;
+    max-width: 8.33%;
+  }
+}
+
+/* Skeleton row for loading state */
+.skeletonRow {
+  display: flex;
+  width: 100%;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: nowrap;
+}
+
+/* Skeleton thumbnail column */
+.skeletonThumbnailCol {
+  flex: 0 0 25%;
+  max-width: 25%;
+}
+
+@media (min-width: 576px) {
+  .skeletonThumbnailCol {
+    flex: 0 0 20.83%;
+    max-width: 20.83%;
+  }
+}
+
+/* Skeleton title column */
+.skeletonTitleCol {
+  flex: 0 0 62.5%;
+  max-width: 62.5%;
+}
+
+@media (min-width: 576px) {
+  .skeletonTitleCol {
+    flex: 0 0 70.83%;
+    max-width: 70.83%;
+  }
+}
+
+/* Skeleton button column */
+.skeletonButtonCol {
+  flex: 0 0 12.5%;
+  max-width: 12.5%;
+}
+
+@media (min-width: 576px) {
+  .skeletonButtonCol {
+    flex: 0 0 8.33%;
+    max-width: 8.33%;
+  }
+}
