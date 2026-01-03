@@ -136,7 +136,7 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
   const largeGradeElement = vGrade && (
     <Text
       style={{
-        fontSize: 20,
+        fontSize: 28,
         fontWeight: themeTokens.typography.fontWeight.bold,
         lineHeight: 1,
         color: gradeTextColor,
