@@ -133,6 +133,198 @@
   height: 300px;
 }
 
+/* Statistics Summary Styles */
+.statsSummaryHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px; /* spacing.5 */
+  gap: 16px; /* spacing.4 */
+}
+
+.totalAscentsContainer {
+  display: flex;
+  flex-direction: column;
+}
+
+.totalAscentsLabel {
+  font-size: 14px;
+  color: #6B7280; /* neutral.500 */
+  margin-bottom: 4px;
+}
+
+.totalAscentsValue {
+  margin: 0 !important;
+  color: #111827; /* neutral.900 */
+}
+
+.quickStats {
+  display: flex;
+  gap: 24px; /* spacing.6 */
+}
+
+.quickStat {
+  display: flex;
+  align-items: center;
+  gap: 8px; /* spacing.2 */
+}
+
+.quickStatIcon {
+  font-size: 24px;
+  color: #06B6D4; /* primary */
+}
+
+.quickStatContent {
+  display: flex;
+  flex-direction: column;
+}
+
+.quickStatValue {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.quickStatLabel {
+  font-size: 12px;
+}
+
+/* Percentage Bar */
+.percentageBarContainer {
+  margin-bottom: 24px; /* spacing.6 */
+}
+
+.percentageBar {
+  display: flex;
+  height: 32px;
+  border-radius: 8px; /* borderRadius.md */
+  overflow: hidden;
+  background: #F3F4F6; /* neutral.100 */
+}
+
+.percentageSegment {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2px;
+  transition: width 300ms ease;
+}
+
+.percentageLabel {
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.percentageLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px; /* spacing.3 */
+  margin-top: 12px; /* spacing.3 */
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legendColor {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.legendText {
+  font-size: 12px;
+  color: #374151; /* neutral.700 */
+}
+
+/* Grade Blocks */
+.gradeBlocksContainer {
+  border-top: 1px solid #E5E7EB; /* neutral.200 */
+  padding-top: 16px; /* spacing.4 */
+}
+
+.gradeBlocksTitle {
+  display: block;
+  margin-bottom: 16px; /* spacing.4 */
+  font-size: 14px;
+}
+
+.layoutGradeRow {
+  margin-bottom: 16px; /* spacing.4 */
+}
+
+.layoutGradeRow:last-child {
+  margin-bottom: 0;
+}
+
+.layoutGradeHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px; /* spacing.2 */
+  margin-bottom: 8px; /* spacing.2 */
+}
+
+.layoutIndicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.layoutName {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.layoutCount {
+  font-size: 12px;
+  margin-left: auto;
+}
+
+.gradeBlocks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.gradeBlock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 6px;
+  min-width: 44px;
+  cursor: default;
+  transition: transform 150ms ease;
+}
+
+.gradeBlock:hover {
+  transform: scale(1.05);
+}
+
+.gradeBlockLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  line-height: 1;
+}
+
+.gradeBlockCount {
+  font-size: 14px;
+  font-weight: 700;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  line-height: 1.2;
+}
+
 @media (max-width: 768px) {
   .content {
     padding: 16px; /* spacing.4 */
@@ -169,5 +361,67 @@
   .barChartWrapper,
   .pieChartWrapper {
     height: 250px;
+  }
+
+  /* Statistics Summary Mobile Styles */
+  .statsSummaryHeader {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .totalAscentsContainer {
+    align-items: center;
+    margin-bottom: 16px;
+  }
+
+  .quickStats {
+    justify-content: center;
+    gap: 32px;
+  }
+
+  .percentageBar {
+    height: 24px;
+  }
+
+  .percentageLabel {
+    font-size: 10px;
+  }
+
+  .percentageLegend {
+    justify-content: center;
+  }
+
+  .gradeBlocksContainer {
+    text-align: center;
+  }
+
+  .layoutGradeHeader {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .layoutCount {
+    margin-left: 0;
+    width: 100%;
+    text-align: center;
+    margin-top: 4px;
+  }
+
+  .gradeBlocks {
+    justify-content: center;
+  }
+
+  .gradeBlock {
+    padding: 4px 8px;
+    min-width: 38px;
+  }
+
+  .gradeBlockLabel {
+    font-size: 10px;
+  }
+
+  .gradeBlockCount {
+    font-size: 12px;
   }
 }
