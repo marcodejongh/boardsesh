@@ -91,11 +91,20 @@ export const searchClimbs = async (
   const filters = createClimbFilters(tables, params, searchParams, sizeEdges, userId);
 
   // Define sort columns with explicit SQL expressions where needed
+  // Get the table name for the subquery (handles kilter/tension dynamic table names)
+  const climbStatsTableName = params.board_name === 'kilter' ? 'kilter_climb_stats' : 'tension_climb_stats';
+
   const allowedSortColumns: Record<string, ReturnType<typeof sql>> = {
     ascents: sql`${tables.climbStats.ascensionistCount}`,
     difficulty: sql`ROUND(${tables.climbStats.displayDifficulty}::numeric, 0)`,
     name: sql`${tables.climbs.name}`,
     quality: sql`${tables.climbStats.qualityAverage}`,
+    // Popular: sum of ascents across ALL angles for this climb
+    popular: sql`(
+      SELECT COALESCE(SUM(cs.ascensionist_count), 0)
+      FROM ${sql.identifier(climbStatsTableName)} cs
+      WHERE cs.climb_uuid = ${tables.climbs.uuid}
+    )`,
   };
 
   // Get the selected sort column or fall back to ascensionist_count
