@@ -83,7 +83,7 @@ export type SearchRequest = {
   minAscents: number;
   minGrade: number;
   minRating: number;
-  sortBy: 'ascents' | 'difficulty' | 'name' | 'quality';
+  sortBy: 'ascents' | 'difficulty' | 'name' | 'quality' | 'popular';
   sortOrder: 'asc' | 'desc';
   name: string;
   onlyClassics: boolean;

@@ -258,6 +258,7 @@ const BasicSearchForm: React.FC<BasicSearchFormProps> = ({ boardDetails }) => {
                 className={styles.fullWidth}
               >
                 <Select.Option value="ascents">Ascents</Select.Option>
+                <Select.Option value="popular">Popular</Select.Option>
                 <Select.Option value="difficulty">Difficulty</Select.Option>
                 <Select.Option value="name">Name</Select.Option>
                 <Select.Option value="quality">Quality</Select.Option>
