@@ -1,0 +1,66 @@
+/* Flex row to replace AntD Row/Col with responsive props */
+.itemRow {
+  display: flex;
+  width: 100%;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: nowrap;
+}
+
+/* Thumbnail column: xs=6 (25%), sm=5 (20.83%) */
+.thumbnailCol {
+  flex: 0 0 25%;
+  max-width: 25%;
+}
+
+@media (min-width: 576px) {
+  .thumbnailCol {
+    flex: 0 0 20.83%;
+    max-width: 20.83%;
+  }
+}
+
+/* Title column without user: xs=15 (62.5%), sm=17 (70.83%) */
+.titleCol {
+  flex: 0 0 62.5%;
+  max-width: 62.5%;
+}
+
+@media (min-width: 576px) {
+  .titleCol {
+    flex: 0 0 70.83%;
+    max-width: 70.83%;
+  }
+}
+
+/* Title column with user: xs=13 (54.17%), sm=15 (62.5%) */
+.titleColWithUser {
+  flex: 0 0 54.17%;
+  max-width: 54.17%;
+}
+
+@media (min-width: 576px) {
+  .titleColWithUser {
+    flex: 0 0 62.5%;
+    max-width: 62.5%;
+  }
+}
+
+/* Avatar column: xs=2 (8.33%), sm=2 (8.33%) */
+.avatarCol {
+  flex: 0 0 8.33%;
+  max-width: 8.33%;
+}
+
+/* Menu button column: xs=3 (12.5%), sm=2 (8.33%) */
+.menuCol {
+  flex: 0 0 12.5%;
+  max-width: 12.5%;
+}
+
+@media (min-width: 576px) {
+  .menuCol {
+    flex: 0 0 8.33%;
+    max-width: 8.33%;
+  }
+}

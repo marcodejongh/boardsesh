@@ -1,6 +1,6 @@
 'use client';
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { Divider, Row, Col, Button, Flex, Drawer, Space, Typography, Skeleton } from 'antd';
+import { Divider, Button, Flex, Drawer, Space, Typography, Skeleton } from 'antd';
 import { PlusOutlined, LoginOutlined } from '@ant-design/icons';
 import { useQueueContext } from '../graphql-queue';
 import { Climb, BoardDetails } from '@/app/lib/types';
@@ -15,6 +15,7 @@ import { SUGGESTIONS_THRESHOLD } from '../board-page/constants';
 import { useBoardProvider } from '../board-provider/board-provider-context';
 import { LogAscentDrawer } from '../logbook/log-ascent-drawer';
 import AuthModal from '../auth/auth-modal';
+import styles from './queue-list.module.css';
 
 const { Text, Paragraph } = Typography;
 
@@ -169,22 +170,22 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails, onClimbNavigate }) 
                   borderBottom: `1px solid ${themeTokens.neutral[200]}`,
                 }}
               >
-                <Row style={{ width: '100%' }} gutter={[8, 8]} align="middle" wrap={false}>
-                  <Col xs={6} sm={5}>
+                <div className={styles.suggestionRow}>
+                  <div className={styles.thumbnailCol}>
                     <ClimbThumbnail
                       boardDetails={boardDetails}
                       currentClimb={climb}
                       enableNavigation={true}
                       onNavigate={onClimbNavigate}
                     />
-                  </Col>
-                  <Col xs={15} sm={17}>
+                  </div>
+                  <div className={styles.titleCol}>
                     <ClimbTitle climb={climb} showAngle centered />
-                  </Col>
-                  <Col xs={3} sm={2}>
+                  </div>
+                  <div className={styles.buttonCol}>
                     <Button type="default" icon={<PlusOutlined />} onClick={() => addToQueue(climb)} />
-                  </Col>
-                </Row>
+                  </div>
+                </div>
               </div>
             ))}
           </Flex>
@@ -198,17 +199,17 @@ const QueueList: React.FC<QueueListProps> = ({ boardDetails, onClimbNavigate }) 
               {(isFetchingClimbs || isFetchingNextPage) && (
                 <Flex vertical gap={themeTokens.spacing[2]} style={{ padding: themeTokens.spacing[2] }}>
                   {[1, 2, 3].map((i) => (
-                    <Row key={i} gutter={[8, 8]} align="middle" wrap={false}>
-                      <Col xs={6} sm={5}>
+                    <div key={i} className={styles.skeletonRow}>
+                      <div className={styles.skeletonThumbnailCol}>
                         <Skeleton.Image active style={{ width: '100%', height: 60 }} />
-                      </Col>
-                      <Col xs={15} sm={17}>
+                      </div>
+                      <div className={styles.skeletonTitleCol}>
                         <Skeleton active paragraph={{ rows: 1 }} title={false} />
-                      </Col>
-                      <Col xs={3} sm={2}>
+                      </div>
+                      <div className={styles.skeletonButtonCol}>
                         <Skeleton.Button active size="small" />
-                      </Col>
-                    </Row>
+                      </div>
+                    </div>
                   ))}
                 </Flex>
               )}

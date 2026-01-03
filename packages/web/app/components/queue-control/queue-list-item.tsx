@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Row, Col, Avatar, Tooltip, Dropdown, Button } from 'antd';
+import { Avatar, Tooltip, Dropdown, Button } from 'antd';
 import { CheckOutlined, CloseOutlined, UserOutlined, DeleteOutlined, MoreOutlined, InfoCircleOutlined, AppstoreOutlined } from '@ant-design/icons';
 import { BoardDetails, ClimbUuid, Climb } from '@/app/lib/types';
 import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
@@ -15,6 +15,7 @@ import ClimbTitle from '../climb-card/climb-title';
 import { useBoardProvider } from '../board-provider/board-provider-context';
 import { themeTokens } from '@/app/theme/theme-config';
 import { constructClimbViewUrl, constructClimbViewUrlWithSlugs, parseBoardRouteParams, constructClimbInfoUrl } from '@/app/lib/url-utils';
+import styles from './queue-list-item.module.css';
 
 type QueueListItemProps = {
   item: ClimbQueueItem;
@@ -327,29 +328,29 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
           }}
           onDoubleClick={() => setCurrentClimbQueueItem(item)}
         >
-          <Row style={{ width: '100%' }} gutter={[8, 8]} align="middle" wrap={false}>
-            <Col xs={6} sm={5}>
+          <div className={styles.itemRow}>
+            <div className={styles.thumbnailCol}>
               <ClimbThumbnail
                 boardDetails={boardDetails}
                 currentClimb={item.climb}
               />
-            </Col>
-            <Col xs={item.addedByUser ? 13 : 15} sm={item.addedByUser ? 15 : 17}>
+            </div>
+            <div className={item.addedByUser ? styles.titleColWithUser : styles.titleCol}>
               <ClimbTitle
                 climb={item.climb}
                 showAngle
                 centered
                 nameAddon={<AscentStatus climbUuid={item.climb?.uuid} />}
               />
-            </Col>
+            </div>
             {item.addedByUser && (
-              <Col xs={2} sm={2}>
+              <div className={styles.avatarCol}>
                 <Tooltip title={item.addedByUser.username}>
                   <Avatar size="small" src={item.addedByUser.avatarUrl} icon={<UserOutlined />} />
                 </Tooltip>
-              </Col>
+              </div>
             )}
-            <Col xs={3} sm={2}>
+            <div className={styles.menuCol}>
               <Dropdown
                 menu={{
                   items: [
@@ -385,8 +386,8 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
               >
                 <Button type="text" icon={<MoreOutlined />} />
               </Dropdown>
-            </Col>
-          </Row>
+            </div>
+          </div>
         </div>
         {closestEdge && <DropIndicator edge={closestEdge} gap="1px" />}
       </div>
