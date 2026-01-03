@@ -1,3 +1,4 @@
+import { eq, and } from 'drizzle-orm';
 import type { ClimbSearchInput, ConnectionContext } from '@boardsesh/shared-schema';
 import type { ClimbSearchParams, ParsedBoardRouteParameters } from '../../../db/queries/climbs/index';
 import { getClimbByUuid } from '../../../db/queries/climbs/index';
@@ -6,6 +7,8 @@ import { isValidBoardName } from '../../../db/queries/util/table-select';
 import { validateInput } from '../shared/helpers';
 import { ClimbSearchInputSchema, BoardNameSchema, ExternalUUIDSchema } from '../../../validation/schemas';
 import type { ClimbSearchContext } from '../shared/types';
+import { db } from '../../../db/client';
+import * as dbSchema from '@boardsesh/db/schema';
 
 // Debug logging flag - only log in development
 const DEBUG = process.env.NODE_ENV === 'development';
@@ -61,15 +64,39 @@ export const climbQueries = {
       showOnlyCompleted: input.showOnlyCompleted,
     };
 
-    // Get authenticated user ID for personal progress filters
-    const userId = ctx.isAuthenticated && ctx.userId ? parseInt(ctx.userId, 10) : undefined;
+    // Get Aurora user ID for personal progress filters
+    // Personal filters query the Aurora bids/ascents tables which use the Aurora user ID (integer),
+    // not the NextAuth user ID (UUID string). We need to look up the Aurora user ID from the
+    // aurora_credentials table based on the board name.
+    let auroraUserId: number | undefined;
+    if (ctx.isAuthenticated && ctx.userId) {
+      const hasPersonalFilters = input.hideAttempted || input.hideCompleted ||
+        input.showOnlyAttempted || input.showOnlyCompleted;
+
+      if (hasPersonalFilters) {
+        const credentials = await db
+          .select({ auroraUserId: dbSchema.auroraCredentials.auroraUserId })
+          .from(dbSchema.auroraCredentials)
+          .where(
+            and(
+              eq(dbSchema.auroraCredentials.userId, ctx.userId),
+              eq(dbSchema.auroraCredentials.boardType, input.boardName)
+            )
+          )
+          .limit(1);
+
+        if (credentials.length > 0 && credentials[0].auroraUserId) {
+          auroraUserId = credentials[0].auroraUserId;
+        }
+      }
+    }
 
     // Return context for field resolvers - queries are executed lazily per field
     return {
       params,
       searchParams,
       sizeEdges,
-      userId,
+      userId: auroraUserId,
     };
   },
 
