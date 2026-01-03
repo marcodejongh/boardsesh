@@ -325,6 +325,21 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
     };
   }, [isPersistentSessionActive, state.pendingCurrentClimbUpdates, dispatch]);
 
+  // Trigger resync when corrupted data is detected
+  useEffect(() => {
+    if (!state.needsResync || !isPersistentSessionActive) {
+      return;
+    }
+
+    console.log('[QueueContext] Corrupted data detected, triggering resync');
+
+    // Clear the flag first to prevent multiple resyncs
+    dispatch({ type: 'CLEAR_RESYNC_FLAG' });
+
+    // Trigger the resync
+    persistentSession.triggerResync();
+  }, [state.needsResync, isPersistentSessionActive, persistentSession, dispatch]);
+
   // Use persistent session values when active
   const clientId = isPersistentSessionActive ? persistentSession.clientId : null;
   const isLeader = isPersistentSessionActive ? persistentSession.isLeader : false;

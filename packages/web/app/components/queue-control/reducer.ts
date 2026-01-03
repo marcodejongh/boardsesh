@@ -11,6 +11,7 @@ const initialState = (initialSearchParams: SearchRequestPagination): QueueState 
   pendingCurrentClimbUpdates: [],
   lastReceivedSequence: null,
   lastReceivedStateHash: null,
+  needsResync: false,
 });
 
 export function queueReducer(state: QueueState, action: QueueAction): QueueState {
@@ -44,22 +45,49 @@ export function queueReducer(state: QueueState, action: QueueAction): QueueState
         ...state,
         climbSearchParams: action.payload,
       };
-    case 'INITIAL_QUEUE_DATA':
+    case 'INITIAL_QUEUE_DATA': {
+      // Filter out any undefined/null items that could corrupt queue operations
+      // This handles edge cases from corrupted IndexedDB or WebSocket data
+      const filteredQueue = action.payload.queue.filter((item): item is NonNullable<typeof item> =>
+        item != null && item.climb != null
+      );
+      const hadCorruptedData = filteredQueue.length !== action.payload.queue.length;
+
+      if (hadCorruptedData) {
+        console.warn('[QueueReducer] Filtered corrupted items from INITIAL_QUEUE_DATA, requesting resync');
+      }
+
       return {
         ...state,
-        queue: action.payload.queue,
+        queue: filteredQueue,
         currentClimbQueueItem: action.payload.currentClimbQueueItem ?? state.currentClimbQueueItem,
         initialQueueDataReceivedFromPeers: true,
         // Clear pending updates on full sync since we're getting complete server state
         pendingCurrentClimbUpdates: [],
+        // Request resync if we filtered out corrupted data
+        needsResync: hadCorruptedData,
       };
+    }
 
-    case 'UPDATE_QUEUE':
+    case 'UPDATE_QUEUE': {
+      // Filter out any undefined/null items that could corrupt queue operations
+      const filteredQueue = action.payload.queue.filter((item): item is NonNullable<typeof item> =>
+        item != null && item.climb != null
+      );
+      const hadCorruptedData = filteredQueue.length !== action.payload.queue.length;
+
+      if (hadCorruptedData) {
+        console.warn('[QueueReducer] Filtered corrupted items from UPDATE_QUEUE, requesting resync');
+      }
+
       return {
         ...state,
-        queue: action.payload.queue,
+        queue: filteredQueue,
         currentClimbQueueItem: action.payload.currentClimbQueueItem ?? state.currentClimbQueueItem,
+        // Request resync if we filtered out corrupted data
+        needsResync: state.needsResync || hadCorruptedData,
       };
+    }
 
     case 'ADD_TO_QUEUE':
       return {
@@ -96,9 +124,15 @@ export function queueReducer(state: QueueState, action: QueueAction): QueueState
     case 'DELTA_ADD_QUEUE_ITEM': {
       const { item, position } = action.payload;
 
+      // Skip if item or its climb is undefined
+      if (!item || !item.climb) {
+        return state;
+      }
+
       // Skip if climb already exists in queue (check by climb.uuid, not item.uuid)
       // This makes the operation idempotent and prevents duplicate climbs
-      if (state.queue.some(qItem => qItem.climb?.uuid === item.climb?.uuid)) {
+      // Filter out any corrupted queue items during the check
+      if (state.queue.some(qItem => qItem?.climb?.uuid === item.climb.uuid)) {
         return state;
       }
 
@@ -201,7 +235,8 @@ export function queueReducer(state: QueueState, action: QueueAction): QueueState
       // Add to queue if requested and climb doesn't already exist in queue
       // IMPORTANT: Check by climb.uuid (the actual content), not item.uuid (the wrapper)
       // This makes the operation idempotent and prevents duplicates when user swipes fast
-      if (item && shouldAddToQueue && !state.queue.find(qItem => qItem.climb?.uuid === item.climb?.uuid)) {
+      // Use defensive check to handle corrupted queue items
+      if (item && item.climb && shouldAddToQueue && !state.queue.find(qItem => qItem?.climb?.uuid === item.climb.uuid)) {
         newQueue = [...state.queue, item];
       }
 
@@ -268,14 +303,14 @@ export function queueReducer(state: QueueState, action: QueueAction): QueueState
     case 'DELTA_REPLACE_QUEUE_ITEM': {
       const { uuid, item } = action.payload;
       const itemIndex = state.queue.findIndex(qItem => qItem.uuid === uuid);
-      
+
       if (itemIndex === -1) {
         return state;
       }
-      
+
       const newQueue = [...state.queue];
       newQueue[itemIndex] = item;
-      
+
       return {
         ...state,
         queue: newQueue,
@@ -283,6 +318,12 @@ export function queueReducer(state: QueueState, action: QueueAction): QueueState
         currentClimbQueueItem: state.currentClimbQueueItem?.uuid === uuid ? item : state.currentClimbQueueItem,
       };
     }
+
+    case 'CLEAR_RESYNC_FLAG':
+      return {
+        ...state,
+        needsResync: false,
+      };
 
     default:
       return state;

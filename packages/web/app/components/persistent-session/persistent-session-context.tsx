@@ -170,6 +170,9 @@ export interface PersistentSessionContextType {
   // Event subscription for board-level components
   subscribeToQueueEvents: (callback: (event: SubscriptionQueueEvent) => void) => () => void;
   subscribeToSessionEvents: (callback: (event: SessionEvent) => void) => () => void;
+
+  // Trigger a resync with the server (useful when corrupted data is detected)
+  triggerResync: () => void;
 }
 
 const PersistentSessionContext = createContext<PersistentSessionContextType | undefined>(undefined);
@@ -891,6 +894,14 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
     };
   }, []);
 
+  // Trigger a resync with the server
+  const triggerResync = useCallback(() => {
+    if (triggerResyncRef.current) {
+      console.log('[PersistentSession] Manual resync triggered');
+      triggerResyncRef.current();
+    }
+  }, []);
+
   const value = useMemo<PersistentSessionContextType>(
     () => ({
       activeSession,
@@ -919,6 +930,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
       setQueue: setQueueMutation,
       subscribeToQueueEvents,
       subscribeToSessionEvents,
+      triggerResync,
     }),
     [
       activeSession,
@@ -944,6 +956,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
       setQueueMutation,
       subscribeToQueueEvents,
       subscribeToSessionEvents,
+      triggerResync,
     ],
   );
 
