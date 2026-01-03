@@ -149,13 +149,13 @@
 
 .totalAscentsLabel {
   font-size: 14px;
-  color: #6B7280; /* neutral.500 */
+  color: var(--neutral-500);
   margin-bottom: 4px;
 }
 
 .totalAscentsValue {
   margin: 0 !important;
-  color: #111827; /* neutral.900 */
+  color: var(--neutral-900);
 }
 
 .quickStats {
@@ -171,7 +171,7 @@
 
 .quickStatIcon {
   font-size: 24px;
-  color: #06B6D4; /* primary */
+  color: var(--color-primary);
 }
 
 .quickStatContent {
@@ -199,7 +199,7 @@
   height: 32px;
   border-radius: 8px; /* borderRadius.md */
   overflow: hidden;
-  background: #F3F4F6; /* neutral.100 */
+  background: var(--neutral-100);
 }
 
 .percentageSegment {
@@ -240,12 +240,12 @@
 
 .legendText {
   font-size: 12px;
-  color: #374151; /* neutral.700 */
+  color: var(--neutral-700);
 }
 
 /* Grade Blocks */
 .gradeBlocksContainer {
-  border-top: 1px solid #E5E7EB; /* neutral.200 */
+  border-top: 1px solid var(--neutral-200);
   padding-top: 16px; /* spacing.4 */
 }
 

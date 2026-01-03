@@ -174,7 +174,7 @@ const BetaVideos: React.FC<BetaVideosProps> = ({ betaLinks }) => {
     <>
       <Collapse
         ghost
-        defaultActiveKey={['beta']}
+        defaultActiveKey={[]}
         items={[
           {
             key: 'beta',
