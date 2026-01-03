@@ -28,6 +28,7 @@ import styles from './profile-page.module.css';
 import type { ChartData } from './profile-stats-charts';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
 import { GET_USER_TICKS, type GetUserTicksQueryVariables, type GetUserTicksQueryResponse } from '@/app/lib/graphql/operations';
+import { FONT_GRADE_COLORS, getGradeColorWithOpacity } from '@/app/lib/grade-colors';
 
 dayjs.extend(isoWeek);
 dayjs.extend(isSameOrAfter);
@@ -95,31 +96,10 @@ const difficultyMapping: Record<number, string> = {
   33: '8c+',
 };
 
-const gradeColors: Record<string, string> = {
-  '4a': 'rgba(153,255,153,0.7)',
-  '4b': 'rgba(179,255,128,0.7)',
-  '4c': 'rgba(204,255,102,0.7)',
-  '5a': 'rgba(230,255,77,0.7)',
-  '5b': 'rgba(255,255,51,0.7)',
-  '5c': 'rgba(255,230,25,0.7)',
-  '6a': 'rgba(255,204,51,0.7)',
-  '6a+': 'rgba(255,179,77,0.7)',
-  '6b': 'rgba(255,153,102,0.7)',
-  '6b+': 'rgba(255,128,128,0.7)',
-  '6c': 'rgba(204,102,204,0.7)',
-  '6c+': 'rgba(153,102,255,0.7)',
-  '7a': 'rgba(102,102,255,0.7)',
-  '7a+': 'rgba(77,128,255,0.7)',
-  '7b': 'rgba(51,153,255,0.7)',
-  '7b+': 'rgba(25,179,255,0.7)',
-  '7c': 'rgba(25,204,230,0.7)',
-  '7c+': 'rgba(51,204,204,0.7)',
-  '8a': 'rgba(255,77,77,0.7)',
-  '8a+': 'rgba(204,51,153,0.7)',
-  '8b': 'rgba(153,51,204,0.9)',
-  '8b+': 'rgba(102,51,153,1)',
-  '8c': 'rgba(77,25,128,1)',
-  '8c+': 'rgba(51,0,102,1)',
+// Helper to get grade color with opacity for charts
+const getGradeChartColor = (grade: string): string => {
+  const hexColor = FONT_GRADE_COLORS[grade.toLowerCase()];
+  return hexColor ? getGradeColorWithOpacity(hexColor, 0.8) : 'rgba(200, 200, 200, 0.7)';
 };
 
 const angleColors = [
@@ -505,7 +485,7 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
         return {
           label: difficulty,
           data,
-          backgroundColor: gradeColors[difficulty],
+          backgroundColor: getGradeChartColor(difficulty),
         };
       })
       .filter((dataset) => dataset.data.some((value) => value > 0));
@@ -793,7 +773,7 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
                         >
                           <div
                             className={styles.gradeBlock}
-                            style={{ backgroundColor: gradeColors[grade] || '#ccc' }}
+                            style={{ backgroundColor: getGradeChartColor(grade) }}
                           >
                             <span className={styles.gradeBlockLabel}>{grade}</span>
                             <span className={styles.gradeBlockCount}>{count}</span>
