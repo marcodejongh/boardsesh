@@ -486,7 +486,7 @@ export const playlistQueries = {
         createdAt: dbSchema.playlists.createdAt,
         updatedAt: dbSchema.playlists.updatedAt,
         creatorId: dbSchema.playlistOwnership.userId,
-        creatorName: sql<string>`COALESCE(${dbSchema.users.name}, ${dbSchema.users.email})`,
+        creatorName: sql<string>`COALESCE(${dbSchema.users.name}, 'Anonymous')`,
       })
       .from(dbSchema.playlists)
       .innerJoin(
@@ -574,13 +574,10 @@ export const playlistQueries = {
       eq(dbSchema.playlistOwnership.role, 'owner'),
     ];
 
-    // Add search query filter if provided
+    // Add search query filter if provided (only search by name, not email)
     if (input.searchQuery) {
       conditions.push(
-        or(
-          sql`LOWER(${dbSchema.users.name}) LIKE LOWER(${'%' + input.searchQuery + '%'})`,
-          sql`LOWER(${dbSchema.users.email}) LIKE LOWER(${'%' + input.searchQuery + '%'})`
-        )
+        sql`LOWER(${dbSchema.users.name}) LIKE LOWER(${'%' + input.searchQuery + '%'})`
       );
     }
 
@@ -588,7 +585,7 @@ export const playlistQueries = {
     const results = await db
       .select({
         userId: dbSchema.playlistOwnership.userId,
-        displayName: sql<string>`COALESCE(${dbSchema.users.name}, ${dbSchema.users.email})`,
+        displayName: sql<string>`COALESCE(${dbSchema.users.name}, 'Anonymous')`,
         playlistCount: sql<number>`count(DISTINCT ${dbSchema.playlists.id})::int`,
       })
       .from(dbSchema.playlists)
@@ -605,7 +602,7 @@ export const playlistQueries = {
         eq(dbSchema.users.id, dbSchema.playlistOwnership.userId)
       )
       .where(and(...conditions))
-      .groupBy(dbSchema.playlistOwnership.userId, dbSchema.users.name, dbSchema.users.email)
+      .groupBy(dbSchema.playlistOwnership.userId, dbSchema.users.name)
       .orderBy(desc(sql`count(DISTINCT ${dbSchema.playlists.id})`))
       .limit(20);
 
