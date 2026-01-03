@@ -320,4 +320,100 @@ export const tickQueries = {
       hasMore: offset + items.length < totalCount,
     };
   },
+
+  /**
+   * Get profile statistics with distinct climb counts per grade
+   * Groups by board type and layout, counting unique climbs per difficulty grade
+   */
+  userProfileStats: async (
+    _: unknown,
+    { userId }: { userId: string }
+  ): Promise<{
+    totalDistinctClimbs: number;
+    layoutStats: Array<{
+      layoutKey: string;
+      boardType: string;
+      layoutId: number | null;
+      distinctClimbCount: number;
+      gradeCounts: Array<{ grade: string; count: number }>;
+    }>;
+  }> => {
+    const boardTypes = ['kilter', 'tension'] as const;
+    const layoutStatsMap: Record<string, {
+      boardType: string;
+      layoutId: number | null;
+      climbUuids: Set<string>;
+      gradeClimbs: Record<number, Set<string>>; // difficulty -> set of climbUuids
+    }> = {};
+    const allClimbUuids = new Set<string>();
+
+    for (const boardType of boardTypes) {
+      const climbsTable = getClimbsTable(boardType);
+      if (!climbsTable) continue;
+
+      // Get all successful ticks (not attempts) with layoutId and difficulty
+      const results = await db
+        .select({
+          climbUuid: dbSchema.boardseshTicks.climbUuid,
+          difficulty: dbSchema.boardseshTicks.difficulty,
+          layoutId: climbsTable.layoutId,
+          status: dbSchema.boardseshTicks.status,
+        })
+        .from(dbSchema.boardseshTicks)
+        .leftJoin(climbsTable, eq(dbSchema.boardseshTicks.climbUuid, climbsTable.uuid))
+        .where(
+          and(
+            eq(dbSchema.boardseshTicks.userId, userId),
+            eq(dbSchema.boardseshTicks.boardType, boardType)
+          )
+        );
+
+      for (const row of results) {
+        // Only count successful ascents (not attempts)
+        if (row.status === 'attempt') continue;
+
+        const layoutKey = `${boardType}-${row.layoutId ?? 'unknown'}`;
+
+        if (!layoutStatsMap[layoutKey]) {
+          layoutStatsMap[layoutKey] = {
+            boardType,
+            layoutId: row.layoutId,
+            climbUuids: new Set(),
+            gradeClimbs: {},
+          };
+        }
+
+        // Track distinct climbs per layout
+        layoutStatsMap[layoutKey].climbUuids.add(row.climbUuid);
+        allClimbUuids.add(row.climbUuid);
+
+        // Track distinct climbs per grade per layout
+        if (row.difficulty !== null) {
+          if (!layoutStatsMap[layoutKey].gradeClimbs[row.difficulty]) {
+            layoutStatsMap[layoutKey].gradeClimbs[row.difficulty] = new Set();
+          }
+          layoutStatsMap[layoutKey].gradeClimbs[row.difficulty].add(row.climbUuid);
+        }
+      }
+    }
+
+    // Convert to response format
+    const layoutStats = Object.entries(layoutStatsMap).map(([layoutKey, stats]) => ({
+      layoutKey,
+      boardType: stats.boardType,
+      layoutId: stats.layoutId,
+      distinctClimbCount: stats.climbUuids.size,
+      gradeCounts: Object.entries(stats.gradeClimbs)
+        .map(([difficulty, climbSet]) => ({
+          grade: difficulty,
+          count: climbSet.size,
+        }))
+        .sort((a, b) => parseInt(a.grade) - parseInt(b.grade)),
+    }));
+
+    return {
+      totalDistinctClimbs: allClimbUuids.size,
+      layoutStats,
+    };
+  },
 };

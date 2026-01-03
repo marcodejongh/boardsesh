@@ -15,7 +15,7 @@ import {
   message,
   Tooltip,
 } from 'antd';
-import { UserOutlined, InstagramOutlined, FireOutlined, TrophyOutlined } from '@ant-design/icons';
+import { UserOutlined, InstagramOutlined } from '@ant-design/icons';
 import { useSession } from 'next-auth/react';
 import Logo from '@/app/components/brand/logo';
 import BackButton from '@/app/components/back-button';
@@ -27,7 +27,15 @@ import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 import styles from './profile-page.module.css';
 import type { ChartData } from './profile-stats-charts';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
-import { GET_USER_TICKS, type GetUserTicksQueryVariables, type GetUserTicksQueryResponse } from '@/app/lib/graphql/operations';
+import {
+  GET_USER_TICKS,
+  type GetUserTicksQueryVariables,
+  type GetUserTicksQueryResponse,
+  GET_USER_PROFILE_STATS,
+  type GetUserProfileStatsQueryVariables,
+  type GetUserProfileStatsQueryResponse,
+  type LayoutStats as GqlLayoutStats,
+} from '@/app/lib/graphql/operations';
 import { FONT_GRADE_COLORS, getGradeColorWithOpacity } from '@/app/lib/grade-colors';
 
 dayjs.extend(isoWeek);
@@ -67,6 +75,7 @@ interface LogbookEntry {
   status?: 'flash' | 'send' | 'attempt';
   layoutId?: number | null;
   boardType?: string;
+  climbUuid?: string;
 }
 
 const difficultyMapping: Record<number, string> = {
@@ -179,6 +188,10 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
   const [allBoardsTicks, setAllBoardsTicks] = useState<Record<string, LogbookEntry[]>>({});
   const [loadingAggregated, setLoadingAggregated] = useState(false);
 
+  // State for server-side profile stats (distinct climb counts)
+  const [profileStats, setProfileStats] = useState<GetUserProfileStatsQueryResponse['userProfileStats'] | null>(null);
+  const [loadingProfileStats, setLoadingProfileStats] = useState(false);
+
   const isOwnProfile = session?.user?.id === userId;
 
   // Fetch profile data for the userId in the URL
@@ -267,6 +280,7 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
             status: tick.status,
             layoutId: tick.layoutId,
             boardType,
+            climbUuid: tick.climbUuid,
           }));
         })
       );
@@ -280,6 +294,22 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
     }
   }, [userId]);
 
+  // Fetch profile stats with distinct climb counts from server
+  const fetchProfileStats = useCallback(async () => {
+    setLoadingProfileStats(true);
+    try {
+      const client = createGraphQLHttpClient(null);
+      const variables: GetUserProfileStatsQueryVariables = { userId };
+      const response = await client.request<GetUserProfileStatsQueryResponse>(GET_USER_PROFILE_STATS, variables);
+      setProfileStats(response.userProfileStats);
+    } catch (error) {
+      console.error('Error fetching profile stats:', error);
+      setProfileStats(null);
+    } finally {
+      setLoadingProfileStats(false);
+    }
+  }, [userId]);
+
   // Fetch profile on mount
   useEffect(() => {
     fetchProfile();
@@ -289,6 +319,11 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
   useEffect(() => {
     fetchAllBoardsTicks();
   }, [fetchAllBoardsTicks]);
+
+  // Fetch profile stats on mount
+  useEffect(() => {
+    fetchProfileStats();
+  }, [fetchProfileStats]);
 
   // Fetch ticks when board selection changes
   useEffect(() => {
@@ -341,8 +376,8 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
       }
     };
 
-    // Collect ascents by grade for each layout
-    const layoutGradeCounts: Record<string, Record<string, number>> = {};
+    // Collect distinct climbs by grade for each layout (using Sets to deduplicate)
+    const layoutGradeClimbs: Record<string, Record<string, Set<string>>> = {};
     const allGrades = new Set<string>();
     const allLayouts = new Set<string>();
 
@@ -351,15 +386,18 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
       const filteredTicks = ticks.filter(filterByTimeframe);
 
       filteredTicks.forEach((entry) => {
-        // Only count ascents (not attempts)
-        if (entry.difficulty === null || entry.status === 'attempt') return;
+        // Only count ascents (not attempts) and must have a climbUuid
+        if (entry.difficulty === null || entry.status === 'attempt' || !entry.climbUuid) return;
         const grade = difficultyMapping[entry.difficulty];
         if (grade) {
           const layoutKey = getLayoutKey(boardType, entry.layoutId);
-          if (!layoutGradeCounts[layoutKey]) {
-            layoutGradeCounts[layoutKey] = {};
+          if (!layoutGradeClimbs[layoutKey]) {
+            layoutGradeClimbs[layoutKey] = {};
           }
-          layoutGradeCounts[layoutKey][grade] = (layoutGradeCounts[layoutKey][grade] || 0) + 1;
+          if (!layoutGradeClimbs[layoutKey][grade]) {
+            layoutGradeClimbs[layoutKey][grade] = new Set();
+          }
+          layoutGradeClimbs[layoutKey][grade].add(entry.climbUuid);
           allGrades.add(grade);
           allLayouts.add(layoutKey);
         }
@@ -387,13 +425,13 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
       return a.localeCompare(b);
     });
 
-    // Create datasets for each layout
+    // Create datasets for each layout (using Set sizes for distinct climb counts)
     const datasets = sortedLayouts.map((layoutKey) => {
       const [boardType, layoutIdStr] = layoutKey.split('-');
       const layoutId = layoutIdStr === 'unknown' ? null : parseInt(layoutIdStr, 10);
       return {
         label: getLayoutDisplayName(boardType, layoutId),
-        data: sortedGrades.map((grade) => layoutGradeCounts[layoutKey]?.[grade] || 0),
+        data: sortedGrades.map((grade) => layoutGradeClimbs[layoutKey]?.[grade]?.size || 0),
         backgroundColor: getLayoutColor(boardType, layoutId),
       };
     }).filter((dataset) => dataset.data.some((value) => value > 0));
@@ -497,67 +535,34 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
     return { chartDataBar, chartDataPie, chartDataWeeklyBar };
   }, [filteredLogbook]);
 
-  // Calculate overall statistics summary (for the header)
+  // Calculate overall statistics summary using server-side distinct climb counts
   const statisticsSummary = useMemo(() => {
-    const layoutStats: Record<string, { count: number; flashes: number; sends: number; attempts: number; grades: Record<string, number> }> = {};
-    let totalAscents = 0;
-    let totalFlashes = 0;
-    let totalSends = 0;
+    if (!profileStats) {
+      return { totalAscents: 0, layoutPercentages: [] };
+    }
 
-    BOARD_TYPES.forEach((boardType) => {
-      const ticks = allBoardsTicks[boardType] || [];
+    const totalAscents = profileStats.totalDistinctClimbs;
 
-      ticks.forEach((entry) => {
-        const layoutKey = getLayoutKey(boardType, entry.layoutId);
-
-        if (!layoutStats[layoutKey]) {
-          layoutStats[layoutKey] = { count: 0, flashes: 0, sends: 0, attempts: 0, grades: {} };
-        }
-
-        // Only count successful ascents (not attempts)
-        if (entry.status !== 'attempt') {
-          layoutStats[layoutKey].count += 1;
-          totalAscents += 1;
-
-          // Track flash vs send
-          if (entry.status === 'flash' || entry.tries === 1) {
-            layoutStats[layoutKey].flashes += 1;
-            totalFlashes += 1;
-          } else {
-            layoutStats[layoutKey].sends += 1;
-            totalSends += 1;
+    // Transform server data to display format
+    const layoutsWithExactPercentages = profileStats.layoutStats
+      .map((stats) => {
+        const exactPercentage = totalAscents > 0 ? (stats.distinctClimbCount / totalAscents) * 100 : 0;
+        // Convert grade counts array to Record format
+        const grades: Record<string, number> = {};
+        stats.gradeCounts.forEach(({ grade, count }) => {
+          const gradeName = difficultyMapping[parseInt(grade)];
+          if (gradeName) {
+            grades[gradeName] = count;
           }
-
-          // Track grades for each layout
-          if (entry.difficulty !== null) {
-            const grade = difficultyMapping[entry.difficulty];
-            if (grade) {
-              layoutStats[layoutKey].grades[grade] = (layoutStats[layoutKey].grades[grade] || 0) + 1;
-            }
-          }
-        } else {
-          layoutStats[layoutKey].attempts += 1;
-        }
-      });
-    });
-
-    // Calculate percentages using largest remainder method to ensure they sum to 100%
-    const layoutsWithExactPercentages = Object.entries(layoutStats)
-      .map(([layoutKey, stats]) => {
-        const [boardType, layoutIdStr] = layoutKey.split('-');
-        const layoutId = layoutIdStr === 'unknown' ? null : parseInt(layoutIdStr, 10);
-        const exactPercentage = totalAscents > 0 ? (stats.count / totalAscents) * 100 : 0;
+        });
         return {
-          layoutKey,
-          boardType,
-          layoutId,
-          displayName: getLayoutDisplayName(boardType, layoutId),
-          color: getLayoutColor(boardType, layoutId),
-          count: stats.count,
-          flashes: stats.flashes,
-          sends: stats.sends,
-          attempts: stats.attempts,
-          grades: stats.grades,
+          layoutKey: stats.layoutKey,
+          boardType: stats.boardType,
+          layoutId: stats.layoutId,
+          displayName: getLayoutDisplayName(stats.boardType, stats.layoutId),
+          color: getLayoutColor(stats.boardType, stats.layoutId),
+          count: stats.distinctClimbCount,
+          grades,
           exactPercentage,
           percentage: Math.floor(exactPercentage),
           remainder: exactPercentage - Math.floor(exactPercentage),
@@ -581,11 +586,9 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
 
     return {
       totalAscents,
-      totalFlashes,
-      totalSends,
       layoutPercentages,
     };
-  }, [allBoardsTicks]);
+  }, [profileStats]);
 
   if (loading) {
     return (
@@ -678,31 +681,15 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
         </Card>
 
         {/* Statistics Summary Card */}
-        {!loadingAggregated && statisticsSummary.totalAscents > 0 && (
+        {!loadingProfileStats && statisticsSummary.totalAscents > 0 && (
           <Card className={styles.statsCard}>
-            {/* Total Ascents Header */}
+            {/* Distinct Climbs Header */}
             <div className={styles.statsSummaryHeader}>
               <div className={styles.totalAscentsContainer}>
-                <Text className={styles.totalAscentsLabel}>Total Ascents</Text>
+                <Text className={styles.totalAscentsLabel}>Distinct Climbs</Text>
                 <Title level={2} className={styles.totalAscentsValue}>
                   {statisticsSummary.totalAscents}
                 </Title>
-              </div>
-              <div className={styles.quickStats}>
-                <div className={styles.quickStat}>
-                  <FireOutlined className={styles.quickStatIcon} />
-                  <div className={styles.quickStatContent}>
-                    <Text className={styles.quickStatValue}>{statisticsSummary.totalFlashes}</Text>
-                    <Text type="secondary" className={styles.quickStatLabel}>Flashes</Text>
-                  </div>
-                </div>
-                <div className={styles.quickStat}>
-                  <TrophyOutlined className={styles.quickStatIcon} />
-                  <div className={styles.quickStatContent}>
-                    <Text className={styles.quickStatValue}>{statisticsSummary.totalSends}</Text>
-                    <Text type="secondary" className={styles.quickStatLabel}>Sends</Text>
-                  </div>
-                </div>
               </div>
             </div>
 
@@ -712,7 +699,7 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
                 {statisticsSummary.layoutPercentages.map((layout) => (
                   <Tooltip
                     key={layout.layoutKey}
-                    title={`${layout.displayName}: ${layout.count} ascents (${layout.percentage}%)`}
+                    title={`${layout.displayName}: ${layout.count} distinct climbs (${layout.percentage}%)`}
                   >
                     <div
                       className={styles.percentageSegment}
@@ -757,7 +744,7 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
                     />
                     <Text className={styles.layoutName}>{layout.displayName}</Text>
                     <Text type="secondary" className={styles.layoutCount}>
-                      {layout.count} ascents
+                      {layout.count} climbs
                     </Text>
                   </div>
                   <div className={styles.gradeBlocks}>
@@ -769,7 +756,7 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
                       .map(([grade, count]) => (
                         <Tooltip
                           key={grade}
-                          title={`${grade}: ${count} ascent${count !== 1 ? 's' : ''}`}
+                          title={`${grade}: ${count} climb${count !== 1 ? 's' : ''}`}
                         >
                           <div
                             className={styles.gradeBlock}
