@@ -181,11 +181,11 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
           );
         })}
 
-        {/* History items (displayed below current/upcoming) */}
+        {/* History items (displayed below current/upcoming, newest first) */}
         {historyItems.length > 0 && (
           <>
             <Divider className={styles.historyDivider}>History</Divider>
-            {historyItems.map((climbQueueItem) => {
+            {[...historyItems].reverse().map((climbQueueItem) => {
               // Get the original index in the queue for drag-and-drop
               const originalIndex = queue.findIndex((item) => item.uuid === climbQueueItem.uuid);
 
