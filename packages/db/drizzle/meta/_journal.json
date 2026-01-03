@@ -176,6 +176,13 @@
       "when": 1767319335153,
       "tag": "0024_old_zombie",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1767438140811,
+      "tag": "0025_lovely_omega_sentinel",
+      "breakpoints": true
     }
   ]
 }
