@@ -63,6 +63,7 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({ boardDetails, litUpHoldsMap
   const [colorMode, setColorMode] = useState<ColorMode>('ascents');
   const [showNumbers, setShowNumbers] = useState(false);
   const [showHeatmap, setShowHeatmap] = useState(false);
+  const [excludeFootHolds, setExcludeFootHolds] = useState(false);
 
   // Get angle from pathname - derived directly without needing state
   const angle = useMemo(() => getAngleFromPath(pathname), [pathname]);
@@ -135,6 +136,12 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({ boardDetails, litUpHoldsMap
     return () => clearInterval(animationInterval);
   }, [heatmapLoading]);
 
+  // Helper to check if a hold is exclusively used as a foot hold
+  const isFootOnlyHold = useCallback((data: HeatmapData | undefined): boolean => {
+    if (!data) return false;
+    return data.footUses > 0 && data.handUses === 0 && data.startingUses === 0 && data.finishUses === 0;
+  }, []);
+
   // Updated getValue function to handle user-specific data
   const getValue = useCallback((data: HeatmapData | undefined): number => {
     if (!data) return 0;
@@ -164,6 +171,7 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({ boardDetails, litUpHoldsMap
   const { colorScale, opacityScale } = useMemo(() => {
     const values = heatmapData
       .filter((data) => !litUpHoldsMap?.[data.holdId])
+      .filter((data) => !excludeFootHolds || !isFootOnlyHold(data))
       .map((data) => getValue(data))
       .filter((val) => val && val >= threshold)
       .sort((a, b) => a - b);
@@ -203,7 +211,7 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({ boardDetails, litUpHoldsMap
       colorScale: getColorScale(),
       opacityScale: getOpacityScale(),
     };
-  }, [heatmapData, threshold, litUpHoldsMap, getValue]);
+  }, [heatmapData, threshold, litUpHoldsMap, getValue, excludeFootHolds, isFootOnlyHold]);
 
   const ColorLegend = () => {
     const gradientId = 'heatmap-gradient';
@@ -330,6 +338,7 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({ boardDetails, litUpHoldsMap
                   const value = getValue(data);
 
                   if (value === 0 || value < threshold) return null;
+                  if (excludeFootHolds && isFootOnlyHold(data)) return null;
 
                   return (
                     <circle
@@ -353,6 +362,7 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({ boardDetails, litUpHoldsMap
                 const value = getValue(data);
 
                 if (value < threshold) return null;
+                if (excludeFootHolds && isFootOnlyHold(data)) return null;
 
                 return (
                   <g key={`heat-sharp-${hold.id}`}>
@@ -471,6 +481,19 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({ boardDetails, litUpHoldsMap
               size="small"
               checkedChildren="#"
               unCheckedChildren="#"
+            />
+            <Switch
+              checked={excludeFootHolds}
+              onChange={(checked) => {
+                setExcludeFootHolds(checked);
+                track('Heatmap Foot Holds Toggle', {
+                  excluded: checked,
+                  board: boardDetails.layout_name || '',
+                });
+              }}
+              size="small"
+              checkedChildren="No Feet"
+              unCheckedChildren="Feet"
             />
           </>
         )}
