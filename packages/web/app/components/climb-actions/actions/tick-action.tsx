@@ -3,12 +3,13 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { Button, Badge, Drawer, Typography, Space } from 'antd';
 import { ActionTooltip } from '../action-tooltip';
-import { CheckOutlined, LoginOutlined } from '@ant-design/icons';
+import { CheckOutlined, LoginOutlined, AppstoreOutlined } from '@ant-design/icons';
 import { ClimbActionProps, ClimbActionResult } from '../types';
 import { useBoardProvider } from '../../board-provider/board-provider-context';
 import AuthModal from '../../auth/auth-modal';
 import { LogAscentDrawer } from '../../logbook/log-ascent-drawer';
 import { track } from '@vercel/analytics';
+import { constructClimbInfoUrl } from '@/app/lib/url-utils';
 
 const { Text, Paragraph } = Typography;
 
@@ -59,6 +60,12 @@ export function TickAction({
     setDrawerVisible(false);
   }, []);
 
+  const handleOpenInApp = useCallback(() => {
+    const url = constructClimbInfoUrl(boardDetails, climb.uuid, angle);
+    window.open(url, '_blank', 'noopener');
+    closeDrawer();
+  }, [boardDetails, climb.uuid, angle, closeDrawer]);
+
   const renderSignInPrompt = () => (
     <Space direction="vertical" size="large" style={{ width: '100%', textAlign: 'center', padding: '24px 0' }}>
       <Text strong style={{ fontSize: 16 }}>Sign in to record ticks</Text>
@@ -67,6 +74,12 @@ export function TickAction({
       </Paragraph>
       <Button type="primary" icon={<LoginOutlined />} onClick={() => setShowAuthModal(true)} block>
         Sign In
+      </Button>
+      <Paragraph type="secondary">
+        Or log your tick in the official app:
+      </Paragraph>
+      <Button icon={<AppstoreOutlined />} onClick={handleOpenInApp} block>
+        Open in App
       </Button>
     </Space>
   );
