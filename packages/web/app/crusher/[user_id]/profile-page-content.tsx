@@ -135,8 +135,8 @@ const layoutNames: Record<string, string> = {
 
 // Colors for each layout
 const layoutColors: Record<string, string> = {
-  'kilter-1': 'rgba(6, 182, 212, 0.7)',    // Cyan - Kilter Original
-  'kilter-8': 'rgba(14, 165, 233, 0.7)',   // Sky blue - Kilter Homewall
+  'kilter-1': 'rgba(6, 182, 212, 0.7)',    // Cyan/Blue - Kilter Original (matches Kilter logo text)
+  'kilter-8': 'rgba(57, 255, 20, 0.7)',    // Neon green - Kilter Homewall (matches Kilter logo arrow)
   'tension-9': 'rgba(239, 68, 68, 0.7)',   // Red - Tension Classic
   'tension-10': 'rgba(249, 115, 22, 0.7)', // Orange - Tension 2 Mirror
   'tension-11': 'rgba(234, 179, 8, 0.7)',  // Yellow - Tension 2 Spray
