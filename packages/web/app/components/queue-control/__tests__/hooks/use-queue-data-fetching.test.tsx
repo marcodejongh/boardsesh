@@ -15,7 +15,7 @@ vi.mock('@/app/lib/url-utils', () => ({
 
 vi.mock('../../../board-provider/board-provider-context', () => ({
   useBoardProvider: vi.fn(() => ({
-    getLogbook: vi.fn()
+    getLogbook: vi.fn().mockResolvedValue(true)
   }))
 }));
 
@@ -129,7 +129,7 @@ const createWrapper = () => {
 
 describe('useQueueDataFetching', () => {
   const mockSetHasDoneFirstFetch = vi.fn();
-  const mockGetLogbook = vi.fn();
+  const mockGetLogbook = vi.fn().mockResolvedValue(true);
 
   beforeEach(() => {
     vi.clearAllMocks();

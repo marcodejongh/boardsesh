@@ -266,8 +266,13 @@ export const useQueueDataFetching = ({
 
     const climbUuids = JSON.parse(climbUuidsString);
     if (climbUuids.length > 0) {
-      getLogbook(climbUuids);
-      fetchedUuidsRef.current = climbUuidsString;
+      // Only mark as fetched if the fetch actually succeeded
+      // This ensures we retry when wsAuthToken becomes available
+      getLogbook(climbUuids).then((success) => {
+        if (success) {
+          fetchedUuidsRef.current = climbUuidsString;
+        }
+      });
     }
   }, [climbUuidsString, getLogbook]);
 

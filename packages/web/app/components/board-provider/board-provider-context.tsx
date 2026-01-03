@@ -78,7 +78,7 @@ interface BoardContextType {
   error: string | null;
   isInitialized: boolean;
   logbook: LogbookEntry[];
-  getLogbook: (climbUuids: ClimbUuid[]) => Promise<void>;
+  getLogbook: (climbUuids: ClimbUuid[]) => Promise<boolean>;
   saveTick: (options: SaveTickOptions) => Promise<void>;
   saveClimb: (options: Omit<SaveClimbOptions, 'setter_id'>) => Promise<SaveClimbResponse>;
 }
@@ -167,16 +167,17 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
   }, [boardName, sessionStatus]);
 
   // Internal fetch function (not memoized, called by getLogbook and effect)
-  const fetchLogbook = async (climbUuids: ClimbUuid[]) => {
+  // Returns true if the fetch was successful, false if it was skipped or failed
+  const fetchLogbook = async (climbUuids: ClimbUuid[]): Promise<boolean> => {
     if (sessionStatus !== 'authenticated') {
       setLogbook([]);
-      return;
+      return false;
     }
 
     // CRITICAL: Wait for wsAuthToken to be available
     if (!wsAuthToken) {
       console.log('[fetchLogbook] Waiting for auth token...');
-      return; // Will be called again when wsAuthToken becomes available
+      return false; // Caller should retry when wsAuthToken becomes available
     }
 
     try {
@@ -215,17 +216,20 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
       }));
 
       setLogbook(entries);
+      return true;
     } catch (err) {
       console.error('Failed to fetch logbook:', err);
       setLogbook([]);
+      return false;
     }
   };
 
   // Fetch logbook from local ticks API (works without Aurora credentials)
-  const getLogbook = useCallback(async (climbUuids: ClimbUuid[]) => {
+  // Returns true if the fetch was successful, false if it was skipped or failed
+  const getLogbook = useCallback(async (climbUuids: ClimbUuid[]): Promise<boolean> => {
     // Store the UUIDs in ref to avoid re-render loops
     currentClimbUuidsRef.current = climbUuids;
-    await fetchLogbook(climbUuids);
+    return await fetchLogbook(climbUuids);
   }, [boardName, sessionStatus, wsAuthToken]);
 
   // Refetch logbook only when session status changes from non-authenticated to authenticated
