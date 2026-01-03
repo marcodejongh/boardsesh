@@ -36,8 +36,8 @@ export interface SaveTickOptions {
   isMirror: boolean;
   status: TickStatus;
   attemptCount: number;
-  quality: number; // 1-5
-  difficulty: number;
+  quality?: number; // 1-5, optional for attempts
+  difficulty?: number; // optional for attempts
   isBenchmark: boolean;
   comment: string;
   climbedAt: string;
