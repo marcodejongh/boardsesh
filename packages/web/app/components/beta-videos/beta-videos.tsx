@@ -43,11 +43,11 @@ const BetaVideos: React.FC<BetaVideosProps> = ({ betaLinks }) => {
     setSelectedVideo(null);
   };
 
-  const renderVideoCard = (betaLink: BetaLink, index: number) => {
+  const renderVideoCard = (betaLink: BetaLink) => {
     const embedUrl = getInstagramEmbedUrl(betaLink.link);
 
     return (
-      <Col xs={24} key={index}>
+      <Col xs={24} key={betaLink.link}>
         <Card
           hoverable
           size="small"
@@ -75,7 +75,7 @@ const BetaVideos: React.FC<BetaVideosProps> = ({ betaLinks }) => {
                   pointerEvents: 'none',
                 }}
                 scrolling="no"
-                title={`Beta video ${index + 1} thumbnail`}
+                title={`Beta video by ${betaLink.foreign_username || 'unknown'}`}
               />
             </div>
           ) : (
@@ -182,7 +182,7 @@ const BetaVideos: React.FC<BetaVideosProps> = ({ betaLinks }) => {
             children: (
               <>
                 <Row gutter={[12, 12]}>
-                  {visibleVideos.map((betaLink, index) => renderVideoCard(betaLink, index))}
+                  {visibleVideos.map((betaLink) => renderVideoCard(betaLink))}
                 </Row>
                 {hasMoreVideos && (
                   <Button

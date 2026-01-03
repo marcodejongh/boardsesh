@@ -41,7 +41,6 @@ export const LogbookSection: React.FC<LogbookSectionProps> = ({ climb }) => {
     return {
       totalAttempts,
       sessionCount,
-      entryCount: climbAscents.length,
       successfulAscents,
       failedAttempts,
     };
