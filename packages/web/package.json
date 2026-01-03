@@ -29,6 +29,7 @@
     "@boardsesh/crypto": "*",
     "@boardsesh/db": "*",
     "@boardsesh/shared-schema": "*",
+    "@sentry/nextjs": "^10.32.1",
     "@tanstack/react-query": "^5.90.12",
     "@types/bcryptjs": "^2.4.6",
     "@types/pg": "^8.16.0",
