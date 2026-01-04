@@ -1,25 +1,28 @@
 import { eq, gte, sql, like, notLike, inArray, SQL } from 'drizzle-orm';
 import { ParsedBoardRouteParameters, SearchRequestPagination } from '@/app/lib/types';
-import { TableSet } from '@/lib/db/queries/util/table-select';
+import { UNIFIED_TABLES } from '@/lib/db/queries/util/table-select';
 import { getTableName } from '@/app/lib/data-sync/aurora/getTableName';
 import { SizeEdges } from '@/app/lib/__generated__/product-sizes-data';
 import { SUPPORTED_BOARDS } from '@/app/lib/board-data';
 
+// Type for unified tables used by filters
+type UnifiedTables = typeof UNIFIED_TABLES;
+
 /**
  * Creates a shared filtering object that can be used by both search climbs and heatmap queries
- * @param tables The board-specific tables from getBoardTables
- * @param params The route parameters
+ * Uses unified tables (board_climbs, board_climb_stats, etc.) with board_type filtering
+ * @param params The route parameters (includes board_name for filtering)
  * @param searchParams The search parameters
  * @param sizeEdges Pre-fetched edge values from product_sizes table
  * @param userId Optional user ID to include user-specific ascent and attempt data
  */
 export const createClimbFilters = (
-  tables: TableSet,
   params: ParsedBoardRouteParameters,
   searchParams: SearchRequestPagination,
   sizeEdges: SizeEdges,
   userId?: number,
 ) => {
+  const tables = UNIFIED_TABLES;
   // Defense in depth: validate board_name before using in SQL queries
   if (!SUPPORTED_BOARDS.includes(params.board_name)) {
     throw new Error(`Invalid board name: ${params.board_name}`);
@@ -47,8 +50,9 @@ export const createClimbFilters = (
     .filter(([, value]) => ['STARTING', 'HAND', 'FOOT', 'FINISH'].includes(value as string))
     .map(([key, state]) => ({ holdId: Number(key), state: state as string }));
 
-  // Base conditions for filtering climbs that don't reference the product sizes table
+  // Base conditions for filtering climbs - includes board_type filter for unified tables
   const baseConditions: SQL[] = [
+    eq(tables.climbs.boardType, params.board_name),
     eq(tables.climbs.layoutId, params.layout_id),
     eq(tables.climbs.isListed, true),
     eq(tables.climbs.isDraft, false),
@@ -250,16 +254,24 @@ export const createClimbFilters = (
     // Helper function to get all climb stats conditions
     getClimbStatsConditions: () => climbStatsConditions,
 
-    // For use in the subquery with left join
+    // For use in the subquery with left join - includes board_type for unified tables
     getClimbStatsJoinConditions: () => [
       eq(tables.climbStats.climbUuid, tables.climbs.uuid),
+      eq(tables.climbStats.boardType, params.board_name),
       eq(tables.climbStats.angle, params.angle),
     ],
 
-    // For use in getHoldHeatmapData
-    getHoldHeatmapClimbStatsConditions: (climbHoldsTable: typeof tables.climbHolds) => [
-      eq(tables.climbStats.climbUuid, climbHoldsTable.climbUuid),
+    // For use in getHoldHeatmapData - includes board_type for unified tables
+    getHoldHeatmapClimbStatsConditions: () => [
+      eq(tables.climbStats.climbUuid, tables.climbHolds.climbUuid),
+      eq(tables.climbStats.boardType, params.board_name),
       eq(tables.climbStats.angle, params.angle),
+    ],
+
+    // For use when joining climbHolds - includes board_type for unified tables
+    getClimbHoldsJoinConditions: () => [
+      eq(tables.climbHolds.climbUuid, tables.climbs.uuid),
+      eq(tables.climbHolds.boardType, params.board_name),
     ],
 
     // User-specific logbook data selectors

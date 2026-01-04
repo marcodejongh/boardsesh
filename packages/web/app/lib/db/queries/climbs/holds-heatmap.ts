@@ -1,7 +1,7 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { dbz as db } from '@/app/lib/db/db';
 import { ParsedBoardRouteParameters, SearchRequestPagination } from '@/app/lib/types';
-import { getBoardTables, BoardName as AuroraBoardName } from '@/lib/db/queries/util/table-select';
+import { UNIFIED_TABLES } from '@/lib/db/queries/util/table-select';
 import { createClimbFilters } from './create-climb-filters';
 import { getTableName } from '@/app/lib/data-sync/aurora/getTableName';
 import { getSizeEdges } from '@/app/lib/__generated__/product-sizes-data';
@@ -24,8 +24,7 @@ export const getHoldHeatmapData = async (
   searchParams: SearchRequestPagination,
   userId?: number,
 ): Promise<HoldHeatmapData[]> => {
-  const tables = getBoardTables(params.board_name as AuroraBoardName);
-  const climbHolds = tables.climbHolds;
+  const { climbs, climbStats, climbHolds } = UNIFIED_TABLES;
 
   // Get hardcoded size edges (eliminates database query)
   const sizeEdges = getSizeEdges(params.board_name, params.size_id);
@@ -34,7 +33,7 @@ export const getHoldHeatmapData = async (
   }
 
   // Use the shared filter creator with static edge values
-  const filters = createClimbFilters(tables, params, searchParams, sizeEdges, userId);
+  const filters = createClimbFilters(params, searchParams, sizeEdges, userId);
 
   try {
     // Check if personal progress filters are active - if so, use user-specific counts
@@ -50,7 +49,6 @@ export const getHoldHeatmapData = async (
       // When personal progress filters are active, we need to compute user-specific hold statistics
       // Since the filters already limit climbs to user's attempted/completed ones,
       // we can use the same base query but the results will be user-filtered
-      // Note: product_sizes JOIN eliminated - using pre-fetched sizeEdges constants instead
       const baseQuery = db
         .select({
           holdId: climbHolds.holdId,
@@ -60,14 +58,11 @@ export const getHoldHeatmapData = async (
           handUses: sql<number>`SUM(CASE WHEN ${climbHolds.holdState} = 'HAND' THEN 1 ELSE 0 END)`,
           footUses: sql<number>`SUM(CASE WHEN ${climbHolds.holdState} = 'FOOT' THEN 1 ELSE 0 END)`,
           finishUses: sql<number>`SUM(CASE WHEN ${climbHolds.holdState} = 'FINISH' THEN 1 ELSE 0 END)`,
-          averageDifficulty: sql<number>`AVG(${tables.climbStats.displayDifficulty})`,
+          averageDifficulty: sql<number>`AVG(${climbStats.displayDifficulty})`,
         })
         .from(climbHolds)
-        .innerJoin(tables.climbs, eq(tables.climbs.uuid, climbHolds.climbUuid))
-        .leftJoin(
-          tables.climbStats,
-          and(eq(tables.climbStats.climbUuid, climbHolds.climbUuid), eq(tables.climbStats.angle, params.angle)),
-        )
+        .innerJoin(climbs, and(...filters.getClimbHoldsJoinConditions()))
+        .leftJoin(climbStats, and(...filters.getHoldHeatmapClimbStatsConditions()))
         .where(
           and(...filters.getClimbWhereConditions(), ...filters.getSizeConditions(), ...filters.getClimbStatsConditions()),
         )
@@ -76,24 +71,20 @@ export const getHoldHeatmapData = async (
       holdStats = await baseQuery;
     } else {
       // Use global community stats when no personal progress filters are active
-      // Note: product_sizes JOIN eliminated - using pre-fetched sizeEdges constants instead
       const baseQuery = db
         .select({
           holdId: climbHolds.holdId,
           totalUses: sql<number>`COUNT(DISTINCT ${climbHolds.climbUuid})`,
-          totalAscents: sql<number>`SUM(${tables.climbStats.ascensionistCount})`,
+          totalAscents: sql<number>`SUM(${climbStats.ascensionistCount})`,
           startingUses: sql<number>`SUM(CASE WHEN ${climbHolds.holdState} = 'STARTING' THEN 1 ELSE 0 END)`,
           handUses: sql<number>`SUM(CASE WHEN ${climbHolds.holdState} = 'HAND' THEN 1 ELSE 0 END)`,
           footUses: sql<number>`SUM(CASE WHEN ${climbHolds.holdState} = 'FOOT' THEN 1 ELSE 0 END)`,
           finishUses: sql<number>`SUM(CASE WHEN ${climbHolds.holdState} = 'FINISH' THEN 1 ELSE 0 END)`,
-          averageDifficulty: sql<number>`AVG(${tables.climbStats.displayDifficulty})`,
+          averageDifficulty: sql<number>`AVG(${climbStats.displayDifficulty})`,
         })
         .from(climbHolds)
-        .innerJoin(tables.climbs, eq(tables.climbs.uuid, climbHolds.climbUuid))
-        .leftJoin(
-          tables.climbStats,
-          and(eq(tables.climbStats.climbUuid, climbHolds.climbUuid), eq(tables.climbStats.angle, params.angle)),
-        )
+        .innerJoin(climbs, and(...filters.getClimbHoldsJoinConditions()))
+        .leftJoin(climbStats, and(...filters.getHoldHeatmapClimbStatsConditions()))
         .where(
           and(...filters.getClimbWhereConditions(), ...filters.getSizeConditions(), ...filters.getClimbStatsConditions()),
         )
