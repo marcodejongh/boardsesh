@@ -1,83 +1,83 @@
 import { BoardName } from '../../types';
 import { SaveAscentOptions, SaveAscentResponse, Ascent } from './types';
 import dayjs from 'dayjs';
-import { sql } from '@/app/lib/db/db';
-import { getTableName } from '../../data-sync/aurora/getTableName';
+import { dbz } from '@/app/lib/db/db';
+import { boardseshTicks } from '@/app/lib/db/schema';
+import { randomUUID } from 'crypto';
 
 /**
- * Saves an ascent to the local database only.
+ * Saves an ascent to boardsesh_ticks.
  *
- * Note: This function no longer syncs to Aurora directly because Aurora API
- * requires an apptoken which is not available. Instead, ascents created locally
- * will be synced FROM Aurora via the user-sync cron job (runs every 6 hours).
+ * Note: This function writes directly to boardsesh_ticks using NextAuth userId.
+ * The ascent will be synced TO Aurora via the user-sync cron job.
  *
- * Data flow: Boardsesh (local) ← Aurora (via cron)
+ * @param board - Board type (kilter, tension)
+ * @param token - Aurora auth token (kept for API compatibility)
+ * @param options - Ascent options
+ * @param nextAuthUserId - NextAuth user ID (required)
  */
 export async function saveAscent(
   board: BoardName,
   token: string,
   options: SaveAscentOptions,
+  nextAuthUserId: string,
 ): Promise<SaveAscentResponse> {
-  // Convert the ISO date to the required format "YYYY-MM-DD HH:mm:ss"
+  // Convert the ISO date to the required format
   const formattedDate = dayjs(options.climbed_at).format('YYYY-MM-DD HH:mm:ss');
-  const createdAt = dayjs().format('YYYY-MM-DD HH:mm:ss');
+  const now = new Date().toISOString();
 
-  // Match Kilter Board v3.6.4 payload structure exactly
-  const requestData = {
-    user_id: options.user_id,
-    uuid: options.uuid,
-    climb_uuid: options.climb_uuid,
-    angle: options.angle,
-    difficulty: options.difficulty,
-    is_mirror: options.is_mirror ? 1 : 0,
-    attempt_id: options.attempt_id || options.bid_count,
-    bid_count: options.bid_count,
-    quality: options.quality,
-    is_benchmark: options.is_benchmark ? 1 : 0,
-    comment: options.comment,
-    climbed_at: formattedDate,
-  };
+  // Determine status based on attempt_id (1 = flash, otherwise send)
+  const status = options.attempt_id === 1 ? 'flash' : 'send';
 
-  // Save to local database only
-  const fullTableName = getTableName(board, 'ascents');
-  const finalCreatedAt = createdAt;
+  // Generate a new UUID for the tick (different from the ascent uuid which is Aurora's)
+  const tickUuid = randomUUID();
 
-  await sql`
-    INSERT INTO ${sql.unsafe(fullTableName)} (
-      uuid, climb_uuid, angle, is_mirror, user_id, attempt_id,
-      bid_count, quality, difficulty, is_benchmark, comment,
-      climbed_at, created_at, synced, sync_error
-    )
-    VALUES (
-      ${requestData.uuid}, ${requestData.climb_uuid}, ${requestData.angle},
-      ${requestData.is_mirror}, ${requestData.user_id}, ${requestData.attempt_id},
-      ${requestData.bid_count}, ${requestData.quality}, ${requestData.difficulty},
-      ${requestData.is_benchmark}, ${requestData.comment || ''},
-      ${requestData.climbed_at}, ${finalCreatedAt}, ${false}, ${null}
-    )
-    ON CONFLICT (uuid) DO UPDATE SET
-      climb_uuid = EXCLUDED.climb_uuid,
-      angle = EXCLUDED.angle,
-      is_mirror = EXCLUDED.is_mirror,
-      attempt_id = EXCLUDED.attempt_id,
-      bid_count = EXCLUDED.bid_count,
-      quality = EXCLUDED.quality,
-      difficulty = EXCLUDED.difficulty,
-      is_benchmark = EXCLUDED.is_benchmark,
-      comment = EXCLUDED.comment,
-      climbed_at = EXCLUDED.climbed_at,
-      synced = EXCLUDED.synced,
-      sync_error = EXCLUDED.sync_error
-  `;
+  await dbz
+    .insert(boardseshTicks)
+    .values({
+      uuid: tickUuid,
+      userId: nextAuthUserId,
+      boardType: board,
+      climbUuid: options.climb_uuid,
+      angle: options.angle,
+      isMirror: options.is_mirror,
+      status: status,
+      attemptCount: options.bid_count,
+      quality: options.quality,
+      difficulty: options.difficulty,
+      isBenchmark: options.is_benchmark,
+      comment: options.comment || '',
+      climbedAt: formattedDate,
+      createdAt: now,
+      updatedAt: now,
+      auroraType: 'ascents',
+      auroraId: options.uuid, // Store Aurora's UUID for sync reference
+    })
+    .onConflictDoUpdate({
+      target: boardseshTicks.auroraId,
+      set: {
+        climbUuid: options.climb_uuid,
+        angle: options.angle,
+        isMirror: options.is_mirror,
+        status: status,
+        attemptCount: options.bid_count,
+        quality: options.quality,
+        difficulty: options.difficulty,
+        isBenchmark: options.is_benchmark,
+        comment: options.comment || '',
+        climbedAt: formattedDate,
+        updatedAt: now,
+      },
+    });
 
-  // Create a local ascent object for the response
+  // Create a local ascent object for the response (for API compatibility)
   const localAscent: Ascent = {
     uuid: options.uuid,
-    user_id: options.user_id,
+    user_id: options.user_id, // Keep for API response compatibility
     climb_uuid: options.climb_uuid,
     angle: options.angle,
     is_mirror: options.is_mirror,
-    attempt_id: requestData.attempt_id,
+    attempt_id: options.attempt_id || options.bid_count,
     bid_count: options.bid_count,
     quality: options.quality,
     difficulty: options.difficulty,
@@ -86,11 +86,11 @@ export async function saveAscent(
     wall_uuid: null,
     comment: options.comment,
     climbed_at: formattedDate,
-    created_at: finalCreatedAt,
-    updated_at: finalCreatedAt,
+    created_at: now,
+    updated_at: now,
   };
 
-  // Return response in the expected format - always success from client perspective
+  // Return response in the expected format
   return {
     events: [
       {

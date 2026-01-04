@@ -1,8 +1,8 @@
 import { BoardName } from '../../types';
 import { SaveClimbOptions } from './types';
 import { generateUuid } from './util';
-import { sql } from '@/app/lib/db/db';
-import { getTableName } from '../../data-sync/aurora/getTableName';
+import { dbz } from '@/app/lib/db/db';
+import { UNIFIED_TABLES } from '@/app/lib/db/queries/util/table-select';
 import dayjs from 'dayjs';
 
 /**
@@ -27,35 +27,43 @@ export async function saveClimb(
   const uuid = generateUuid();
   const createdAt = dayjs().format('YYYY-MM-DD HH:mm:ss');
 
-  // Save to local database only
-  const fullTableName = getTableName(board, 'climbs');
-  const finalCreatedAt = createdAt;
+  const { climbs } = UNIFIED_TABLES;
 
-  await sql`
-    INSERT INTO ${sql.unsafe(fullTableName)} (
-      uuid, layout_id, setter_id, name, description, angle,
-      frames_count, frames_pace, frames, is_draft, is_listed,
-      created_at, synced, sync_error
-    )
-    VALUES (
-      ${uuid}, ${options.layout_id}, ${options.setter_id}, ${options.name},
-      ${options.description || ''}, ${options.angle}, ${options.frames_count || 1},
-      ${options.frames_pace || 0}, ${options.frames}, ${options.is_draft},
-      ${false}, ${finalCreatedAt}, ${false}, ${null}
-    )
-    ON CONFLICT (uuid) DO UPDATE SET
-      layout_id = EXCLUDED.layout_id,
-      setter_id = EXCLUDED.setter_id,
-      name = EXCLUDED.name,
-      description = EXCLUDED.description,
-      angle = EXCLUDED.angle,
-      frames_count = EXCLUDED.frames_count,
-      frames_pace = EXCLUDED.frames_pace,
-      frames = EXCLUDED.frames,
-      is_draft = EXCLUDED.is_draft,
-      synced = EXCLUDED.synced,
-      sync_error = EXCLUDED.sync_error
-  `;
+  await dbz
+    .insert(climbs)
+    .values({
+      boardType: board,
+      uuid,
+      layoutId: options.layout_id,
+      setterId: options.setter_id,
+      name: options.name,
+      description: options.description || '',
+      angle: options.angle,
+      framesCount: options.frames_count || 1,
+      framesPace: options.frames_pace || 0,
+      frames: options.frames,
+      isDraft: options.is_draft,
+      isListed: false,
+      createdAt,
+      synced: false,
+      syncError: null,
+    })
+    .onConflictDoUpdate({
+      target: climbs.uuid,
+      set: {
+        layoutId: options.layout_id,
+        setterId: options.setter_id,
+        name: options.name,
+        description: options.description || '',
+        angle: options.angle,
+        framesCount: options.frames_count || 1,
+        framesPace: options.frames_pace || 0,
+        frames: options.frames,
+        isDraft: options.is_draft,
+        synced: false,
+        syncError: null,
+      },
+    });
 
   // Return response - always success from client perspective
   return {

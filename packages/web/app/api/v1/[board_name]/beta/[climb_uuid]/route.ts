@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { dbz } from '@/app/lib/db/db';
-import { kilterBetaLinks, tensionBetaLinks } from '@/app/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { BoardName } from '@/app/lib/types';
 import { extractUuidFromSlug } from '@/app/lib/url-utils';
+import { UNIFIED_TABLES, isValidUnifiedBoardName } from '@/app/lib/db/queries/util/table-select';
 
 export async function GET(
   request: NextRequest,
@@ -13,19 +13,20 @@ export async function GET(
   const board_name = boardNameParam as BoardName;
   const climb_uuid = extractUuidFromSlug(rawClimbUuid);
 
-  try {
-    let betaLinks;
+  if (!isValidUnifiedBoardName(board_name)) {
+    return NextResponse.json({ error: 'Invalid board name' }, { status: 400 });
+  }
 
-    if (board_name === 'kilter') {
-      betaLinks = await dbz.select().from(kilterBetaLinks).where(eq(kilterBetaLinks.climbUuid, climb_uuid));
-    } else if (board_name === 'tension') {
-      betaLinks = await dbz.select().from(tensionBetaLinks).where(eq(tensionBetaLinks.climbUuid, climb_uuid));
-    } else {
-      return NextResponse.json({ error: 'Invalid board name' }, { status: 400 });
-    }
+  try {
+    const { betaLinks } = UNIFIED_TABLES;
+
+    const results = await dbz
+      .select()
+      .from(betaLinks)
+      .where(and(eq(betaLinks.boardType, board_name), eq(betaLinks.climbUuid, climb_uuid)));
 
     // Transform the database results to match the BetaLink interface
-    const transformedLinks = betaLinks.map((link) => ({
+    const transformedLinks = results.map((link) => ({
       climb_uuid: link.climbUuid,
       link: link.link,
       foreign_username: link.foreignUsername,

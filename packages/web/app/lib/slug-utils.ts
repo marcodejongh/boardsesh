@@ -1,6 +1,8 @@
-import { sql } from '@/app/lib/db/db';
+import { dbz } from '@/app/lib/db/db';
 import { BoardName, LayoutId, Size } from '@/app/lib/types';
 import { matchSetNameToSlugParts } from './slug-matching';
+import { UNIFIED_TABLES } from '@/app/lib/db/queries/util/table-select';
+import { eq, and, isNull } from 'drizzle-orm';
 
 // Re-export for backwards compatibility
 export { matchSetNameToSlugParts } from './slug-matching';
@@ -21,26 +23,17 @@ export type SetRow = {
   name: string;
 };
 
-const getTableName = (board_name: string, table_name: string) => {
-  switch (board_name) {
-    case 'tension':
-    case 'kilter':
-      return `${board_name}_${table_name}`;
-    default:
-      return `${table_name}`;
-  }
-};
-
 // Reverse lookup functions for slug to ID conversion
 export const getLayoutBySlug = async (board_name: BoardName, slug: string): Promise<LayoutRow | null> => {
-  const rows = (await sql`
-    SELECT id, name
-    FROM ${sql.unsafe(getTableName(board_name, 'layouts'))} layouts
-    WHERE is_listed = true
-    AND password IS NULL
-  `) as LayoutRow[];
+  const { layouts } = UNIFIED_TABLES;
+
+  const rows = await dbz
+    .select({ id: layouts.id, name: layouts.name })
+    .from(layouts)
+    .where(and(eq(layouts.boardType, board_name), eq(layouts.isListed, true), isNull(layouts.password)));
 
   const layout = rows.find((l) => {
+    if (!l.name) return false;
     const baseSlug = l.name
       .toLowerCase()
       .trim()
@@ -65,7 +58,8 @@ export const getLayoutBySlug = async (board_name: BoardName, slug: string): Prom
     return layoutSlug === slug;
   });
 
-  return layout || null;
+  if (!layout || !layout.name) return null;
+  return { id: layout.id, name: layout.name };
 };
 
 export const getSizeBySlug = async (
@@ -73,12 +67,23 @@ export const getSizeBySlug = async (
   layout_id: LayoutId,
   slug: string,
 ): Promise<SizeRow | null> => {
-  const rows = (await sql`
-    SELECT product_sizes.id, product_sizes.name, product_sizes.description
-    FROM ${sql.unsafe(getTableName(board_name, 'product_sizes'))} product_sizes
-    INNER JOIN ${sql.unsafe(getTableName(board_name, 'layouts'))} layouts ON product_sizes.product_id = layouts.product_id
-    WHERE layouts.id = ${layout_id}
-  `) as SizeRow[];
+  const { productSizes, layouts } = UNIFIED_TABLES;
+
+  const rows = await dbz
+    .select({
+      id: productSizes.id,
+      name: productSizes.name,
+      description: productSizes.description,
+    })
+    .from(productSizes)
+    .innerJoin(
+      layouts,
+      and(
+        eq(productSizes.boardType, layouts.boardType),
+        eq(productSizes.productId, layouts.productId),
+      ),
+    )
+    .where(and(eq(layouts.boardType, board_name), eq(layouts.id, layout_id)));
 
   // Parse slug - may be "10x12" or "10x12-full-ride"
   const dimensionMatch = slug.match(/^(\d+x\d+)(?:-(.+))?$/i);
@@ -88,6 +93,7 @@ export const getSizeBySlug = async (
     const descSuffix = dimensionMatch[2]; // e.g., "full-ride" or undefined
 
     const size = rows.find((s) => {
+      if (!s.name) return false;
       const sizeMatch = s.name.match(/(\d+)\s*x\s*(\d+)/i);
       if (!sizeMatch) return false;
 
@@ -117,22 +123,28 @@ export const getSizeBySlug = async (
       return false;
     });
 
-    if (size) return size;
+    if (size && size.name) {
+      return { id: size.id, name: size.name, description: size.description || '' };
+    }
 
     // If no "Full Ride" found with backward compat, try to match first size with dimensions
     if (!descSuffix) {
       const fallbackSize = rows.find((s) => {
+        if (!s.name) return false;
         const sizeMatch = s.name.match(/(\d+)\s*x\s*(\d+)/i);
         if (!sizeMatch) return false;
         const sizeDimensions = `${sizeMatch[1]}x${sizeMatch[2]}`.toLowerCase();
         return sizeDimensions === dimensions;
       });
-      if (fallbackSize) return fallbackSize;
+      if (fallbackSize && fallbackSize.name) {
+        return { id: fallbackSize.id, name: fallbackSize.name, description: fallbackSize.description || '' };
+      }
     }
   }
 
   // Fallback to general slug matching
   const size = rows.find((s) => {
+    if (!s.name) return false;
     const sizeSlug = s.name
       .toLowerCase()
       .trim()
@@ -143,7 +155,8 @@ export const getSizeBySlug = async (
     return sizeSlug === slug;
   });
 
-  return size || null;
+  if (!size || !size.name) return null;
+  return { id: size.id, name: size.name, description: size.description || '' };
 };
 
 /**
@@ -161,18 +174,31 @@ export const getSetsBySlug = async (
   size_id: Size,
   slug: string,
 ): Promise<SetRow[]> => {
-  const rows = (await sql`
-    SELECT sets.id, sets.name
-      FROM ${sql.unsafe(getTableName(board_name, 'sets'))} sets
-      INNER JOIN ${sql.unsafe(getTableName(board_name, 'product_sizes_layouts_sets'))} psls
-      ON sets.id = psls.set_id
-      WHERE psls.product_size_id = ${size_id}
-      AND psls.layout_id = ${layout_id}
-  `) as SetRow[];
+  const { sets, productSizesLayoutsSets } = UNIFIED_TABLES;
+
+  const rows = await dbz
+    .select({ id: sets.id, name: sets.name })
+    .from(sets)
+    .innerJoin(
+      productSizesLayoutsSets,
+      and(
+        eq(sets.boardType, productSizesLayoutsSets.boardType),
+        eq(sets.id, productSizesLayoutsSets.setId),
+      ),
+    )
+    .where(
+      and(
+        eq(productSizesLayoutsSets.boardType, board_name),
+        eq(productSizesLayoutsSets.productSizeId, size_id),
+        eq(productSizesLayoutsSets.layoutId, layout_id),
+      ),
+    );
 
   // Parse the slug to get individual set names
   const slugParts = slug.split('_');
-  const matchingSets = rows.filter((s) => matchSetNameToSlugParts(s.name, slugParts));
+  const matchingSets = rows
+    .filter((s): s is typeof s & { name: string } => s.name !== null && matchSetNameToSlugParts(s.name, slugParts))
+    .map((s) => ({ id: s.id, name: s.name }));
 
   return matchingSets;
 };

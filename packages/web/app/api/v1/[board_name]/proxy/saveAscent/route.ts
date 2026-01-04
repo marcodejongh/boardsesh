@@ -4,13 +4,15 @@ import { AuroraBoardName } from '@/app/lib/api-wrappers/aurora/types';
 import { BoardOnlyRouteParameters } from '@/app/lib/types';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/app/lib/auth/auth-options';
 
 const saveAscentSchema = z.object({
   token: z.string().min(1),
   options: z
     .object({
       uuid: z.string(),
-      user_id: z.number(),
+      user_id: z.number(), // Legacy Aurora user_id (not used for storage anymore)
       climb_uuid: z.string(),
       angle: z.number(),
       is_mirror: z.boolean(),
@@ -35,13 +37,18 @@ export async function POST(request: Request, props: { params: Promise<BoardOnlyR
 
   const board_name = params.board_name as AuroraBoardName;
 
+  // Get NextAuth session
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
     const validatedData = saveAscentSchema.parse(body);
 
-    // saveAscent now handles Aurora failures gracefully and always saves locally
-    // It will never throw for Aurora API failures - only for validation/db errors
-    const response = await saveAscent(board_name, validatedData.token, validatedData.options);
+    // saveAscent now writes to boardsesh_ticks using NextAuth userId
+    const response = await saveAscent(board_name, validatedData.token, validatedData.options, session.user.id);
     return NextResponse.json(response);
   } catch (error) {
     console.error('SaveAscent error details:', {

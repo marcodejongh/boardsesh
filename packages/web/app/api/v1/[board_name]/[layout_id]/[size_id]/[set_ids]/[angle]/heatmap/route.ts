@@ -1,12 +1,12 @@
 import { getHoldHeatmapData, HoldHeatmapData } from '@/app/lib/db/queries/climbs/holds-heatmap';
-import { getSession } from '@/app/lib/session';
 import { BoardRouteParameters, ErrorResponse, ParsedBoardRouteParameters, SearchRequestPagination } from '@/app/lib/types';
 import { urlParamsToSearchParams } from '@/app/lib/url-utils';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import { sortObjectKeys } from '@/app/lib/cache-utils';
-import { cookies } from 'next/headers';
 import { unstable_cache } from 'next/cache';
 import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/app/lib/auth/auth-options';
 
 /**
  * Cache duration for heatmap queries (in seconds)
@@ -95,32 +95,9 @@ export async function GET(
 
     const searchParams: SearchRequestPagination = urlParamsToSearchParams(query);
 
-    // Extract user authentication - try headers first, then fall back to session
-    let userId: number | undefined;
-    
-    // Check for header-based authentication first (for consistency with search API)
-    const personalProgressFiltersEnabled = 
-      searchParams.hideAttempted || 
-      searchParams.hideCompleted || 
-      searchParams.showOnlyAttempted || 
-      searchParams.showOnlyCompleted;
-    
-    if (personalProgressFiltersEnabled) {
-      const userIdHeader = req.headers.get('x-user-id');
-      const tokenHeader = req.headers.get('x-auth-token');
-      
-      // Only use userId if both user ID and token are provided (basic auth check)
-      if (userIdHeader && tokenHeader && userIdHeader !== 'null') {
-        userId = parseInt(userIdHeader, 10);
-      }
-    }
-    
-    // Fall back to session-based authentication if no header auth
-    if (!userId) {
-      const cookieStore = await cookies();
-      const session = await getSession(cookieStore, parsedParams.board_name);
-      userId = session.userId;
-    }
+    // Get NextAuth session for user-specific data
+    const session = await getServerSession(authOptions);
+    const userId = session?.user?.id;
 
     // Get the heatmap data - use cached version for anonymous requests only
     // User-specific data is not cached to ensure fresh personal progress data

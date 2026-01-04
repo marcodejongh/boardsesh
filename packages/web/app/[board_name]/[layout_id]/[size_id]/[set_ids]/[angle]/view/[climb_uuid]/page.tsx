@@ -19,9 +19,9 @@ import { convertLitUpHoldsStringToMap } from '@/app/components/board-renderer/ut
 import ClimbViewActions from '@/app/components/climb-view/climb-view-actions';
 import { Metadata } from 'next';
 import { dbz } from '@/app/lib/db/db';
-import { kilterBetaLinks, tensionBetaLinks } from '@/app/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { BetaLink } from '@/app/lib/api-wrappers/sync-api-types';
+import { UNIFIED_TABLES } from '@/app/lib/db/queries/util/table-select';
 import styles from './climb-view.module.css';
 
 export async function generateMetadata(props: { params: Promise<BoardRouteParametersWithUuid> }): Promise<Metadata> {
@@ -134,24 +134,17 @@ export default async function DynamicResultsPage(props: { params: Promise<BoardR
     // Fetch beta links server-side
     const fetchBetaLinks = async (): Promise<BetaLink[]> => {
       try {
-        let betaLinks;
+        const { betaLinks } = UNIFIED_TABLES;
 
-        if (parsedParams.board_name === 'kilter') {
-          betaLinks = await dbz
-            .select()
-            .from(kilterBetaLinks)
-            .where(eq(kilterBetaLinks.climbUuid, parsedParams.climb_uuid));
-        } else if (parsedParams.board_name === 'tension') {
-          betaLinks = await dbz
-            .select()
-            .from(tensionBetaLinks)
-            .where(eq(tensionBetaLinks.climbUuid, parsedParams.climb_uuid));
-        } else {
-          return [];
-        }
+        const results = await dbz
+          .select()
+          .from(betaLinks)
+          .where(
+            and(eq(betaLinks.boardType, parsedParams.board_name), eq(betaLinks.climbUuid, parsedParams.climb_uuid)),
+          );
 
         // Transform the database results to match the BetaLink interface
-        return betaLinks.map((link) => ({
+        return results.map((link) => ({
           climb_uuid: link.climbUuid,
           link: link.link,
           foreign_username: link.foreignUsername,

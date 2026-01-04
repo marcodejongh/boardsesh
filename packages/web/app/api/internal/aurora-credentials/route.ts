@@ -9,7 +9,6 @@ import { encrypt, decrypt } from "@boardsesh/crypto";
 import AuroraClimbingClient from "@/app/lib/api-wrappers/aurora-rest-client/aurora-rest-client";
 import { BoardName as AuroraBoardName } from "@/app/lib/api-wrappers/aurora-rest-client/types";
 import { syncUserData } from "@/app/lib/data-sync/aurora/user-sync";
-import { migrateUserAuroraHistory } from "@/app/lib/data-sync/aurora/migrate-user-history";
 
 const saveCredentialsSchema = z.object({
   boardType: z.enum(["kilter", "tension"]),
@@ -211,19 +210,12 @@ export async function POST(request: NextRequest) {
     let finalSyncError: string | null = null;
 
     try {
-      // First sync ongoing data
+      // Sync user data from Aurora to boardsesh_ticks
       await syncUserData(boardType as AuroraBoardName, loginResponse.token, loginResponse.user_id);
-
-      // Then migrate historical data
-      await migrateUserAuroraHistory(
-        session.user.id,           // NextAuth user ID
-        boardType as AuroraBoardName,
-        loginResponse.user_id      // Aurora user ID
-      );
     } catch (syncError) {
-      console.error("Sync/migration error (non-blocking):", syncError);
+      console.error("Sync error (non-blocking):", syncError);
       finalSyncStatus = "error";
-      finalSyncError = syncError instanceof Error ? syncError.message : "Sync/migration failed";
+      finalSyncError = syncError instanceof Error ? syncError.message : "Sync failed";
 
       // Update sync status to reflect error
       await db

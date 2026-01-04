@@ -1,11 +1,11 @@
 import { getPool } from '@/app/lib/db/db';
 import { SyncOptions, AuroraBoardName } from '../../api-wrappers/aurora/types';
 import { sharedSync } from '../../api-wrappers/aurora/sharedSync';
-import { sql } from 'drizzle-orm';
+import { sql, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/neon-serverless';
 import { NeonDatabase } from 'drizzle-orm/neon-serverless';
 import { Attempt, BetaLink, Climb, ClimbStats, SharedSync, SyncPutFields } from '../../api-wrappers/sync-api-types';
-import { getTable } from '../../db/queries/util/table-select';
+import { UNIFIED_TABLES } from '../../db/queries/util/table-select';
 import { convertLitUpHoldsStringToMap } from '@/app/components/board-renderer/util';
 
 // Define shared sync tables in correct dependency order
@@ -34,16 +34,17 @@ const TABLES_TO_PROCESS = new Set(['climbs', 'climb_stats', 'beta_links', 'attem
 const upsertAttempts = (db: NeonDatabase<Record<string, never>>, board: AuroraBoardName, data: Attempt[]) =>
   Promise.all(
     data.map(async (item) => {
-      const attemptsSchema = getTable('attempts', board);
+      const attemptsSchema = UNIFIED_TABLES.attempts;
       return db
         .insert(attemptsSchema)
         .values({
+          boardType: board,
           id: Number(item.id),
           position: Number(item.position),
           name: item.name,
         })
         .onConflictDoUpdate({
-          target: attemptsSchema.id,
+          target: [attemptsSchema.boardType, attemptsSchema.id],
           set: {
             // Only allow position updates if they're reasonable (0-100)
             position: sql`CASE WHEN ${Number(item.position)} >= 0 AND ${Number(item.position)} <= 100 THEN ${Number(item.position)} ELSE ${attemptsSchema.position} END`,
@@ -55,18 +56,17 @@ const upsertAttempts = (db: NeonDatabase<Record<string, never>>, board: AuroraBo
   );
 
 async function upsertClimbStats(db: NeonDatabase<Record<string, never>>, board: AuroraBoardName, data: ClimbStats[]) {
-  // Filter data to only include stats for valid climbs
+  const climbStatsSchema = UNIFIED_TABLES.climbStats;
+  const climbStatHistorySchema = UNIFIED_TABLES.climbStatsHistory;
 
   await Promise.all(
     data.map((item) => {
-      // Changed from data.map to validStats.map
-      const climbStatsSchema = getTable('climbStats', board);
-      const climbStatHistorySchema = getTable('climbStatsHistory', board);
       return Promise.all([
         // Update current stats
         db
           .insert(climbStatsSchema)
           .values({
+            boardType: board,
             climbUuid: item.climb_uuid,
             angle: Number(item.angle),
             displayDifficulty: Number(item.display_difficulty || item.difficulty_average),
@@ -78,7 +78,7 @@ async function upsertClimbStats(db: NeonDatabase<Record<string, never>>, board: 
             faAt: item.fa_at,
           })
           .onConflictDoUpdate({
-            target: [climbStatsSchema.climbUuid, climbStatsSchema.angle],
+            target: [climbStatsSchema.boardType, climbStatsSchema.climbUuid, climbStatsSchema.angle],
             set: {
               displayDifficulty: Number(item.display_difficulty || item.difficulty_average),
               benchmarkDifficulty: Number(item.benchmark_difficulty),
@@ -92,6 +92,7 @@ async function upsertClimbStats(db: NeonDatabase<Record<string, never>>, board: 
 
         // Also insert into history table
         db.insert(climbStatHistorySchema).values({
+          boardType: board,
           climbUuid: item.climb_uuid,
           angle: Number(item.angle),
           displayDifficulty: Number(item.display_difficulty || item.difficulty_average),
@@ -108,12 +109,14 @@ async function upsertClimbStats(db: NeonDatabase<Record<string, never>>, board: 
 }
 
 async function upsertBetaLinks(db: NeonDatabase<Record<string, never>>, board: AuroraBoardName, data: BetaLink[]) {
+  const betaLinksSchema = UNIFIED_TABLES.betaLinks;
+
   await Promise.all(
     data.map((item) => {
-      const betaLinksSchema = getTable('betaLinks', board);
       return db
         .insert(betaLinksSchema)
         .values({
+          boardType: board,
           climbUuid: item.climb_uuid,
           link: item.link,
           foreignUsername: item.foreign_username,
@@ -123,7 +126,7 @@ async function upsertBetaLinks(db: NeonDatabase<Record<string, never>>, board: A
           createdAt: item.created_at,
         })
         .onConflictDoUpdate({
-          target: [betaLinksSchema.climbUuid, betaLinksSchema.link],
+          target: [betaLinksSchema.boardType, betaLinksSchema.climbUuid, betaLinksSchema.link],
           set: {
             foreignUsername: item.foreign_username,
             angle: item.angle,
@@ -137,16 +140,17 @@ async function upsertBetaLinks(db: NeonDatabase<Record<string, never>>, board: A
 }
 
 async function upsertClimbs(db: NeonDatabase<Record<string, never>>, board: AuroraBoardName, data: Climb[]) {
+  const climbsSchema = UNIFIED_TABLES.climbs;
+  const climbHoldsSchema = UNIFIED_TABLES.climbHolds;
+
   await Promise.all(
     data.map(async (item: Climb) => {
-      const climbsSchema = getTable('climbs', board);
-      const climbHoldsSchema = getTable('climbHolds', board);
-
       // Insert or update the climb
       await db
         .insert(climbsSchema)
         .values({
           uuid: item.uuid,
+          boardType: board,
           name: item.name,
           description: item.description,
           hsm: item.hsm,
@@ -194,12 +198,12 @@ async function upsertClimbs(db: NeonDatabase<Record<string, never>>, board: Auro
       const holdsByFrame = convertLitUpHoldsStringToMap(item.frames, board);
 
       const holdsToInsert = Object.entries(holdsByFrame).flatMap(([frameNumber, holds]) =>
-        Object.entries(holds).map(([holdId, { state, color }]) => ({
+        Object.entries(holds).map(([holdId, { state }]) => ({
+          boardType: board,
           climbUuid: item.uuid,
           frameNumber: Number(frameNumber),
           holdId: Number(holdId),
           holdState: state,
-          color,
         })),
       );
 
@@ -241,17 +245,18 @@ async function updateSharedSyncs(
   boardName: AuroraBoardName,
   sharedSyncs: SharedSync[],
 ) {
-  const sharedSyncsSchema = getTable('sharedSyncs', boardName);
+  const sharedSyncsSchema = UNIFIED_TABLES.sharedSyncs;
 
   for (const sync of sharedSyncs) {
     await tx
       .insert(sharedSyncsSchema)
       .values({
+        boardType: boardName,
         tableName: sync.table_name,
         lastSynchronizedAt: sync.last_synchronized_at,
       })
       .onConflictDoUpdate({
-        target: sharedSyncsSchema.tableName,
+        target: [sharedSyncsSchema.boardType, sharedSyncsSchema.tableName],
         set: {
           lastSynchronizedAt: sync.last_synchronized_at,
         },
@@ -260,7 +265,7 @@ async function updateSharedSyncs(
 }
 
 export async function getLastSharedSyncTimes(boardName: AuroraBoardName) {
-  const sharedSyncsSchema = getTable('sharedSyncs', boardName);
+  const sharedSyncsSchema = UNIFIED_TABLES.sharedSyncs;
   const pool = getPool();
   const client = await pool.connect();
 
@@ -271,7 +276,8 @@ export async function getLastSharedSyncTimes(boardName: AuroraBoardName) {
         table_name: sharedSyncsSchema.tableName,
         last_synchronized_at: sharedSyncsSchema.lastSynchronizedAt,
       })
-      .from(sharedSyncsSchema);
+      .from(sharedSyncsSchema)
+      .where(eq(sharedSyncsSchema.boardType, boardName));
 
     return result;
   } finally {
