@@ -105,16 +105,16 @@ export const getHoldHeatmapData = async (
     // Add user-specific data only if not already computed in the main query
     if (userId && !personalProgressFiltersEnabled) {
       // Only fetch separate user data if we're not already using user-specific main stats
+      // Note: ascents and bids use legacy tables (being phased out), climb_holds uses unified table
       const ascentsTableName = getTableName(params.board_name, 'ascents');
       const bidsTableName = getTableName(params.board_name, 'bids');
-      const climbHoldsTableName = getTableName(params.board_name, 'climb_holds');
 
       // Query for user ascents and attempts per hold in parallel
       const [userAscentsQuery, userAttemptsQuery] = await Promise.all([
         db.execute(sql`
           SELECT ch.hold_id, COUNT(*) as user_ascents
           FROM ${sql.identifier(ascentsTableName)} a
-          JOIN ${sql.identifier(climbHoldsTableName)} ch ON a.climb_uuid = ch.climb_uuid
+          JOIN board_climb_holds ch ON a.climb_uuid = ch.climb_uuid AND ch.board_type = ${params.board_name}
           WHERE a.user_id = ${userId}
             AND a.angle = ${params.angle}
           GROUP BY ch.hold_id
@@ -132,7 +132,7 @@ export const getHoldHeatmapData = async (
             WHERE a.user_id = ${userId}
               AND a.angle = ${params.angle}
           ) attempts
-          JOIN ${sql.identifier(climbHoldsTableName)} ch ON attempts.climb_uuid = ch.climb_uuid
+          JOIN board_climb_holds ch ON attempts.climb_uuid = ch.climb_uuid AND ch.board_type = ${params.board_name}
           GROUP BY ch.hold_id
         `),
       ]);

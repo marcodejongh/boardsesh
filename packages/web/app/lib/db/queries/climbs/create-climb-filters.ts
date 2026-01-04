@@ -109,12 +109,12 @@ export const createClimbFilters = (
     ...notHolds.map((holdId) => notLike(tables.climbs.frames, `%${holdId}r%`)),
   ];
 
-  // State-specific hold conditions - use climb_holds table to filter by hold_id AND hold_state
-  const climbHoldsTable = getTableName(params.board_name, 'climb_holds');
+  // State-specific hold conditions - use unified board_climb_holds table to filter by hold_id AND hold_state
   const holdStateConditions: SQL[] = holdStateFilters.map(({ holdId, state }) =>
     sql`EXISTS (
-      SELECT 1 FROM ${sql.identifier(climbHoldsTable)} ch
-      WHERE ch.climb_uuid = ${tables.climbs.uuid}
+      SELECT 1 FROM board_climb_holds ch
+      WHERE ch.board_type = ${params.board_name}
+      AND ch.climb_uuid = ${tables.climbs.uuid}
       AND ch.hold_id = ${holdId}
       AND ch.hold_state = ${state}
     )`
@@ -132,13 +132,12 @@ export const createClimbFilters = (
     // Climbs with edge_bottom below this threshold use "tall only" holds
     // For Kilter Homewall (productId=7), 7x10/10x10 sizes have edgeBottom=24, 8x12/10x12 have edgeBottom=-12
     // So "tall climbs" are those with edgeBottom < 24 (using holds only available on 12-tall sizes)
-    const productSizesTable = getTableName(params.board_name, 'product_sizes');
-
     tallClimbsConditions.push(
       sql`${tables.climbs.edgeBottom} < (
         SELECT MAX(ps.edge_bottom)
-        FROM ${sql.identifier(productSizesTable)} ps
-        WHERE ps.product_id = ${KILTER_HOMEWALL_PRODUCT_ID}
+        FROM board_product_sizes ps
+        WHERE ps.board_type = ${params.board_name}
+        AND ps.product_id = ${KILTER_HOMEWALL_PRODUCT_ID}
         AND ps.id != ${params.size_id}
       )`
     );
