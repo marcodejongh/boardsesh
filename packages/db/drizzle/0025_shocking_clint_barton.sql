@@ -1,3 +1,29 @@
+-- Cleanup foreignkey issues
+  DELETE FROM kilter_beta_links b
+  WHERE NOT EXISTS (SELECT 1 FROM kilter_climbs c WHERE c.uuid = b.climb_uuid);
+
+  DELETE FROM kilter_circuits_climbs cc
+  WHERE NOT EXISTS (SELECT 1 FROM kilter_climbs c WHERE c.uuid = cc.climb_uuid);
+
+  DELETE FROM kilter_climb_holds h
+  WHERE NOT EXISTS (SELECT 1 FROM kilter_climbs c WHERE c.uuid = h.climb_uuid);
+
+  DELETE FROM kilter_climb_stats s
+  WHERE NOT EXISTS (SELECT 1 FROM kilter_climbs c WHERE c.uuid = s.climb_uuid);
+
+  -- Tension tables
+  DELETE FROM tension_beta_links b
+  WHERE NOT EXISTS (SELECT 1 FROM tension_climbs c WHERE c.uuid = b.climb_uuid);
+
+  DELETE FROM tension_circuits_climbs cc
+  WHERE NOT EXISTS (SELECT 1 FROM tension_climbs c WHERE c.uuid = cc.climb_uuid);
+
+  DELETE FROM tension_climb_holds h
+  WHERE NOT EXISTS (SELECT 1 FROM tension_climbs c WHERE c.uuid = h.climb_uuid);
+
+  DELETE FROM tension_climb_stats s
+  WHERE NOT EXISTS (SELECT 1 FROM tension_climbs c WHERE c.uuid = s.climb_uuid);
+
 CREATE TABLE "board_attempts" (
 	"board_type" text NOT NULL,
 	"id" integer NOT NULL,
