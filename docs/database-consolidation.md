@@ -60,7 +60,7 @@ Consolidate into **18 unified tables** with a `board_type` discriminator column.
 | Phase 1-5: Migrations | ✅ Complete | All 22 tables created, data migrated |
 | Task 4: table-select.ts | ✅ Complete | UNIFIED_TABLES, getUnifiedTable(), boardTypeCondition() |
 | Task 5: Sync Functions | ✅ Complete | shared-sync.ts and user-sync.ts updated |
-| Task 6: Query Files | 🔄 Pending | Raw SQL queries in create-climb-filters.ts, holds-heatmap.ts |
+| Task 6: Query Files | ✅ Complete | All query files updated to use unified tables |
 | Task 7: MoonBoard Storage | 📋 Planned | Server-side storage for MoonBoard climbs |
 | Phase 6: Cleanup | 📋 Planned | Drop legacy tables after validation |
 

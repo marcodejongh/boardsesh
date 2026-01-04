@@ -12,19 +12,16 @@ import {
   getSizesForLayoutId,
   getAllLayouts,
   getSetsForLayoutAndSize,
+  getSizeEdges,
 } from '@/app/lib/__generated__/product-sizes-data';
 
-const getTableName = (board_name: string, table_name: string) => {
-  switch (board_name) {
-    case 'tension':
-    case 'kilter':
-      return `${board_name}_${table_name}`;
-    default:
-      return `${table_name}`;
-  }
-};
-
 export const getClimb = async (params: ParsedBoardRouteParametersWithUuid): Promise<Climb> => {
+  // Get hardcoded size edges (eliminates database query)
+  const sizeEdges = getSizeEdges(params.board_name, params.size_id);
+  if (!sizeEdges) {
+    throw new Error(`Invalid size_id ${params.size_id} for board ${params.board_name}`);
+  }
+
   const result = await sql`
         SELECT climbs.uuid, climbs.setter_username, climbs.name, climbs.description,
         climbs.frames, COALESCE(climb_stats.angle, ${params.angle}) as angle, COALESCE(climb_stats.ascensionist_count, 0) as ascensionist_count,
@@ -32,14 +29,16 @@ export const getClimb = async (params: ParsedBoardRouteParametersWithUuid): Prom
         ROUND(climb_stats.quality_average::numeric, 2) as quality_average,
         ROUND(climb_stats.difficulty_average::numeric - climb_stats.display_difficulty::numeric, 2) AS difficulty_error,
         climb_stats.benchmark_difficulty
-        FROM ${sql.unsafe(getTableName(params.board_name, 'climbs'))} climbs
-        LEFT JOIN ${sql.unsafe(getTableName(params.board_name, 'climb_stats'))} climb_stats ON climb_stats.climb_uuid = climbs.uuid AND climb_stats.angle = ${params.angle}
-        LEFT JOIN ${sql.unsafe(
-          getTableName(params.board_name, 'difficulty_grades'),
-        )} dg on dg.difficulty = ROUND(climb_stats.display_difficulty::numeric)
-        INNER JOIN ${sql.unsafe(getTableName(params.board_name, 'product_sizes'))} product_sizes ON product_sizes.id = ${params.size_id}
-        WHERE climbs.layout_id = ${params.layout_id}
-        AND product_sizes.id = ${params.size_id}
+        FROM board_climbs climbs
+        LEFT JOIN board_climb_stats climb_stats
+          ON climb_stats.climb_uuid = climbs.uuid
+          AND climb_stats.angle = ${params.angle}
+          AND climb_stats.board_type = ${params.board_name}
+        LEFT JOIN board_difficulty_grades dg
+          ON dg.difficulty = ROUND(climb_stats.display_difficulty::numeric)
+          AND dg.board_type = ${params.board_name}
+        WHERE climbs.board_type = ${params.board_name}
+        AND climbs.layout_id = ${params.layout_id}
         AND climbs.uuid = ${params.climb_uuid}
         AND climbs.frames_count = 1
         limit 1
@@ -62,7 +61,7 @@ export const getClimbStatsForAllAngles = async (
   params: ParsedBoardRouteParametersWithUuid
 ): Promise<ClimbStatsForAngle[]> => {
   const result = await sql`
-    SELECT 
+    SELECT
       climb_stats.angle,
       COALESCE(climb_stats.ascensionist_count, 0) as ascensionist_count,
       ROUND(climb_stats.quality_average::numeric, 2) as quality_average,
@@ -71,11 +70,12 @@ export const getClimbStatsForAllAngles = async (
       climb_stats.fa_username,
       climb_stats.fa_at,
       dg.boulder_name as difficulty
-    FROM ${sql.unsafe(getTableName(params.board_name, 'climb_stats'))} climb_stats
-    LEFT JOIN ${sql.unsafe(
-      getTableName(params.board_name, 'difficulty_grades'),
-    )} dg on dg.difficulty = ROUND(climb_stats.display_difficulty::numeric)
-    WHERE climb_stats.climb_uuid = ${params.climb_uuid}
+    FROM board_climb_stats climb_stats
+    LEFT JOIN board_difficulty_grades dg
+      ON dg.difficulty = ROUND(climb_stats.display_difficulty::numeric)
+      AND dg.board_type = ${params.board_name}
+    WHERE climb_stats.board_type = ${params.board_name}
+    AND climb_stats.climb_uuid = ${params.climb_uuid}
     ORDER BY climb_stats.angle ASC
   `;
   return result as ClimbStatsForAngle[];
