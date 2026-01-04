@@ -181,3 +181,53 @@ export interface GetUserAscentsFeedQueryResponse {
     hasMore: boolean;
   };
 }
+
+// ============================================
+// Profile Statistics Operations
+// ============================================
+
+export const GET_USER_PROFILE_STATS = gql`
+  query GetUserProfileStats($userId: ID!) {
+    userProfileStats(userId: $userId) {
+      totalDistinctClimbs
+      layoutStats {
+        layoutKey
+        boardType
+        layoutId
+        distinctClimbCount
+        gradeCounts {
+          grade
+          count
+        }
+      }
+    }
+  }
+`;
+
+// Type for grade count
+export interface GradeCount {
+  grade: string;
+  count: number;
+}
+
+// Type for layout stats
+export interface LayoutStats {
+  layoutKey: string;
+  boardType: string;
+  layoutId: number | null;
+  distinctClimbCount: number;
+  gradeCounts: GradeCount[];
+}
+
+// Type for the profile stats query variables
+export interface GetUserProfileStatsQueryVariables {
+  userId: string;
+}
+
+// Type for the profile stats query response
+export interface GetUserProfileStatsQueryResponse {
+  userProfileStats: {
+    totalDistinctClimbs: number;
+    layoutStats: LayoutStats[];
+  };
+}

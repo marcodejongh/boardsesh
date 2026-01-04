@@ -322,6 +322,31 @@ export const typeDefs = /* GraphQL */ `
   }
 
   # ============================================
+  # Profile Statistics Types
+  # ============================================
+
+  # Count of distinct climbs for a specific grade
+  type GradeCount {
+    grade: String!
+    count: Int!
+  }
+
+  # Statistics for a specific board layout
+  type LayoutStats {
+    layoutKey: String!
+    boardType: String!
+    layoutId: Int
+    distinctClimbCount: Int!
+    gradeCounts: [GradeCount!]!
+  }
+
+  # Aggregated profile statistics across all boards
+  type ProfileStats {
+    totalDistinctClimbs: Int!
+    layoutStats: [LayoutStats!]!
+  }
+
+  # ============================================
   # Playlist Types
   # ============================================
 
@@ -516,6 +541,8 @@ export const typeDefs = /* GraphQL */ `
     userTicks(userId: ID!, boardType: String!): [Tick!]!
     # Get public ascent activity feed for a specific user (all boards, with climb details)
     userAscentsFeed(userId: ID!, input: AscentFeedInput): AscentFeedResult!
+    # Get profile statistics with distinct climb counts per grade (public)
+    userProfileStats(userId: ID!): ProfileStats!
 
     # ============================================
     # Playlist Queries (require auth)
