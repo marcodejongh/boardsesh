@@ -82,7 +82,7 @@ export default function SocialLoginButtons({
 
   if (loading) {
     return (
-      <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+      <Space direction="vertical" size="middle" block>
         <Skeleton.Button active block size="large" />
         <Skeleton.Button active block size="large" />
         <Skeleton.Button active block size="large" />
@@ -94,17 +94,23 @@ export default function SocialLoginButtons({
     return null;
   }
 
+  // Apple button needs custom colors per brand guidelines
+  const appleButtonStyles = {
+    backgroundColor: themeTokens.neutral[900],
+    color: themeTokens.semantic.surface,
+    borderColor: themeTokens.neutral[900],
+  };
+
   return (
-    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+    <Space direction="vertical" size="middle" block>
       {providers.google && (
         <Button
           block
           size="large"
+          icon={<GoogleIcon />}
           onClick={() => handleSocialSignIn('google')}
           disabled={disabled}
-          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
         >
-          <GoogleIcon />
           Continue with Google
         </Button>
       )}
@@ -113,19 +119,11 @@ export default function SocialLoginButtons({
         <Button
           block
           size="large"
+          icon={<AppleIcon />}
           onClick={() => handleSocialSignIn('apple')}
           disabled={disabled}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-            backgroundColor: themeTokens.neutral[900],
-            color: themeTokens.semantic.surface,
-            borderColor: themeTokens.neutral[900],
-          }}
+          style={appleButtonStyles}
         >
-          <AppleIcon />
           Continue with Apple
         </Button>
       )}
@@ -134,11 +132,10 @@ export default function SocialLoginButtons({
         <Button
           block
           size="large"
+          icon={<FacebookIcon />}
           onClick={() => handleSocialSignIn('facebook')}
           disabled={disabled}
-          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
         >
-          <FacebookIcon />
           Continue with Facebook
         </Button>
       )}

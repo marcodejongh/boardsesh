@@ -2,8 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/app/lib/db/db";
 import * as schema from "@/app/lib/db/schema";
 import { eq, and } from "drizzle-orm";
+import { checkRateLimit, getClientIp } from "@/app/lib/auth/rate-limiter";
 
 export async function GET(request: NextRequest) {
+  // Rate limiting - 20 attempts per minute per IP
+  // Higher limit than other endpoints since users may click verification link multiple times
+  const clientIp = getClientIp(request);
+  const rateLimitResult = checkRateLimit(`verify-email:${clientIp}`, 20, 60_000);
+
+  if (rateLimitResult.limited) {
+    return NextResponse.redirect(
+      new URL("/auth/verify-request?error=TooManyAttempts", request.url)
+    );
+  }
+
   const searchParams = request.nextUrl.searchParams;
   const token = searchParams.get("token");
   const email = searchParams.get("email");

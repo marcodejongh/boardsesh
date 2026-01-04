@@ -12,8 +12,8 @@ const resendVerificationSchema = z.object({
 });
 
 // Minimum response time to prevent timing attacks
-// Set high enough to cover typical email sending time (1-3 seconds)
-const MIN_RESPONSE_TIME_MS = 2500;
+// Balances security (covering typical email send variance) with UX
+const MIN_RESPONSE_TIME_MS = 1500;
 
 // Helper to introduce consistent delay to prevent timing attacks
 async function consistentDelay(startTime: number): Promise<void> {

@@ -25,6 +25,8 @@ export default function VerifyRequestContent() {
         return 'The verification link is invalid. Please request a new one.';
       case 'TokenExpired':
         return 'The verification link has expired. Please request a new one.';
+      case 'TooManyAttempts':
+        return 'Too many verification attempts. Please wait a minute and try again.';
       default:
         return null;
     }

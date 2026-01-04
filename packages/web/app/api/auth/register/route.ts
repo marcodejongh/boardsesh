@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
       });
 
       return NextResponse.json(
-        { message: "Password added to existing account", userId: existingUser[0].id },
+        { message: "Password added to existing account" },
         { status: 200 }
       );
     }
@@ -135,7 +135,6 @@ export async function POST(request: NextRequest) {
           : "Account created. Please request a new verification email.",
         requiresVerification: true,
         emailSent,
-        userId
       },
       { status: 201 }
     );
