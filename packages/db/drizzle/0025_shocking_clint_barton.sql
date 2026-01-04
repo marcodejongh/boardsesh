@@ -472,12 +472,6 @@ SELECT 'tension', entity_uuid, user_id, name, is_listed FROM tension_tags;--> st
 
 -- Note: playlist column changes are handled by migration 0024_old_zombie.sql
 
--- Clean up orphaned data before adding foreign key constraints
-DELETE FROM board_beta_links WHERE climb_uuid NOT IN (SELECT uuid FROM board_climbs);--> statement-breakpoint
-DELETE FROM board_circuits_climbs WHERE climb_uuid NOT IN (SELECT uuid FROM board_climbs);--> statement-breakpoint
-DELETE FROM board_climb_holds WHERE climb_uuid NOT IN (SELECT uuid FROM board_climbs);--> statement-breakpoint
-DELETE FROM board_climb_stats WHERE climb_uuid NOT IN (SELECT uuid FROM board_climbs);--> statement-breakpoint
-
 ALTER TABLE "board_beta_links" ADD CONSTRAINT "board_beta_links_climb_fk" FOREIGN KEY ("climb_uuid") REFERENCES "public"."board_climbs"("uuid") ON DELETE restrict ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "board_circuits" ADD CONSTRAINT "board_circuits_user_fk" FOREIGN KEY ("board_type","user_id") REFERENCES "public"."board_users"("board_type","id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "board_circuits_climbs" ADD CONSTRAINT "board_circuits_climbs_circuit_fk" FOREIGN KEY ("board_type","circuit_uuid") REFERENCES "public"."board_circuits"("board_type","uuid") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
