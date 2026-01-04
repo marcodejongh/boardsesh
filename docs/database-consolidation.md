@@ -61,8 +61,18 @@ Consolidate into **18 unified tables** with a `board_type` discriminator column.
 | Task 4: table-select.ts | ✅ Complete | UNIFIED_TABLES, getUnifiedTable(), boardTypeCondition() |
 | Task 5: Sync Functions | ✅ Complete | shared-sync.ts and user-sync.ts updated |
 | Task 6: Query Files | ✅ Complete | All query files updated to use unified tables |
+| Phase 6: Ascents/Bids Cleanup | ✅ Complete | Switched to boardsesh_ticks with NextAuth userId, legacy tables dropped |
 | Task 7: MoonBoard Storage | 📋 Planned | Server-side storage for MoonBoard climbs |
-| Phase 6: Cleanup | 📋 Planned | Drop legacy tables after validation |
+| Phase 6b: Legacy Table Cleanup | 📋 Planned | Drop remaining legacy board-specific tables |
+
+### Phase 6 Key Decisions
+
+**Ascents/Bids Migration to boardsesh_ticks:**
+- All ascent and bid data now uses `boardsesh_ticks` table exclusively
+- Uses NextAuth `userId` (string) instead of Aurora `user_id` (integer)
+- Data not associated with NextAuth userId was accepted as droppable
+- Legacy tables (`kilter_ascents`, `kilter_bids`, `tension_ascents`, `tension_bids`) dropped via migration `0030_drop_legacy_ascents_bids.sql`
+- Removed `migrate-user-history.ts` and `/api/internal/migrate-users-cron` route (no longer needed)
 
 ---
 
@@ -732,7 +742,7 @@ export const boardSharedSyncs = pgTable('board_shared_syncs', {
 #### Acceptance Criteria
 - [x] Sync tables created
 - [x] Sync state migrated
-- [ ] Aurora sync continues working (requires application layer changes - Task 5)
+- [x] Aurora sync continues working (Task 5 complete)
 
 **Status**: ✅ Tables created and data migrated in `0025_shocking_clint_barton.sql`
 

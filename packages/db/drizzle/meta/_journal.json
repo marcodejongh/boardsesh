@@ -183,6 +183,13 @@
       "when": 1767498576546,
       "tag": "0025_shocking_clint_barton",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1767580800000,
+      "tag": "0030_drop_legacy_ascents_bids",
+      "breakpoints": true
     }
   ]
 }

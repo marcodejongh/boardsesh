@@ -1,9 +1,9 @@
 import { eq, gte, sql, like, notLike, inArray, SQL } from 'drizzle-orm';
 import { ParsedBoardRouteParameters, SearchRequestPagination } from '@/app/lib/types';
 import { UNIFIED_TABLES } from '@/lib/db/queries/util/table-select';
-import { getTableName } from '@/app/lib/data-sync/aurora/getTableName';
 import { SizeEdges } from '@/app/lib/__generated__/product-sizes-data';
 import { SUPPORTED_BOARDS } from '@/app/lib/board-data';
+import { boardseshTicks } from '@/app/lib/db/schema';
 
 // Type for unified tables used by filters
 type UnifiedTables = typeof UNIFIED_TABLES;
@@ -14,13 +14,13 @@ type UnifiedTables = typeof UNIFIED_TABLES;
  * @param params The route parameters (includes board_name for filtering)
  * @param searchParams The search parameters
  * @param sizeEdges Pre-fetched edge values from product_sizes table
- * @param userId Optional user ID to include user-specific ascent and attempt data
+ * @param userId Optional NextAuth user ID to include user-specific ascent and attempt data
  */
 export const createClimbFilters = (
   params: ParsedBoardRouteParameters,
   searchParams: SearchRequestPagination,
   sizeEdges: SizeEdges,
-  userId?: number,
+  userId?: string,
 ) => {
   const tables = UNIFIED_TABLES;
   // Defense in depth: validate board_name before using in SQL queries
@@ -148,18 +148,18 @@ export const createClimbFilters = (
   }
 
   // Personal progress filter conditions (only apply if userId is provided)
+  // Uses boardsesh_ticks with NextAuth userId
   const personalProgressConditions: SQL[] = [];
   if (userId) {
-    const ascentsTable = getTableName(params.board_name, 'ascents');
-    const bidsTable = getTableName(params.board_name, 'bids');
-
     if (searchParams.hideAttempted) {
       personalProgressConditions.push(
         sql`NOT EXISTS (
-          SELECT 1 FROM ${sql.identifier(bidsTable)}
-          WHERE climb_uuid = ${tables.climbs.uuid}
-          AND user_id = ${userId}
-          AND angle = ${params.angle}
+          SELECT 1 FROM ${boardseshTicks}
+          WHERE ${boardseshTicks.climbUuid} = ${tables.climbs.uuid}
+          AND ${boardseshTicks.userId} = ${userId}
+          AND ${boardseshTicks.boardType} = ${params.board_name}
+          AND ${boardseshTicks.angle} = ${params.angle}
+          AND ${boardseshTicks.status} = 'attempt'
         )`
       );
     }
@@ -167,10 +167,12 @@ export const createClimbFilters = (
     if (searchParams.hideCompleted) {
       personalProgressConditions.push(
         sql`NOT EXISTS (
-          SELECT 1 FROM ${sql.identifier(ascentsTable)}
-          WHERE climb_uuid = ${tables.climbs.uuid}
-          AND user_id = ${userId}
-          AND angle = ${params.angle}
+          SELECT 1 FROM ${boardseshTicks}
+          WHERE ${boardseshTicks.climbUuid} = ${tables.climbs.uuid}
+          AND ${boardseshTicks.userId} = ${userId}
+          AND ${boardseshTicks.boardType} = ${params.board_name}
+          AND ${boardseshTicks.angle} = ${params.angle}
+          AND ${boardseshTicks.status} IN ('flash', 'send')
         )`
       );
     }
@@ -178,10 +180,12 @@ export const createClimbFilters = (
     if (searchParams.showOnlyAttempted) {
       personalProgressConditions.push(
         sql`EXISTS (
-          SELECT 1 FROM ${sql.identifier(bidsTable)}
-          WHERE climb_uuid = ${tables.climbs.uuid}
-          AND user_id = ${userId}
-          AND angle = ${params.angle}
+          SELECT 1 FROM ${boardseshTicks}
+          WHERE ${boardseshTicks.climbUuid} = ${tables.climbs.uuid}
+          AND ${boardseshTicks.userId} = ${userId}
+          AND ${boardseshTicks.boardType} = ${params.board_name}
+          AND ${boardseshTicks.angle} = ${params.angle}
+          AND ${boardseshTicks.status} = 'attempt'
         )`
       );
     }
@@ -189,57 +193,61 @@ export const createClimbFilters = (
     if (searchParams.showOnlyCompleted) {
       personalProgressConditions.push(
         sql`EXISTS (
-          SELECT 1 FROM ${sql.identifier(ascentsTable)}
-          WHERE climb_uuid = ${tables.climbs.uuid}
-          AND user_id = ${userId}
-          AND angle = ${params.angle}
+          SELECT 1 FROM ${boardseshTicks}
+          WHERE ${boardseshTicks.climbUuid} = ${tables.climbs.uuid}
+          AND ${boardseshTicks.userId} = ${userId}
+          AND ${boardseshTicks.boardType} = ${params.board_name}
+          AND ${boardseshTicks.angle} = ${params.angle}
+          AND ${boardseshTicks.status} IN ('flash', 'send')
         )`
       );
     }
   }
 
-  // User-specific logbook data selectors
+  // User-specific logbook data selectors using boardsesh_ticks
   const getUserLogbookSelects = () => {
-    const ascentsTable = getTableName(params.board_name, 'ascents');
-    const bidsTable = getTableName(params.board_name, 'bids');
-
     return {
       userAscents: sql<number>`(
-        SELECT COUNT(*) 
-        FROM ${sql.identifier(ascentsTable)} 
-        WHERE climb_uuid = ${tables.climbs.uuid} 
-        AND user_id = ${userId || ''} 
-        AND angle = ${params.angle}
+        SELECT COUNT(*)
+        FROM ${boardseshTicks}
+        WHERE ${boardseshTicks.climbUuid} = ${tables.climbs.uuid}
+        AND ${boardseshTicks.userId} = ${userId || ''}
+        AND ${boardseshTicks.boardType} = ${params.board_name}
+        AND ${boardseshTicks.angle} = ${params.angle}
+        AND ${boardseshTicks.status} IN ('flash', 'send')
       )`,
       userAttempts: sql<number>`(
-        SELECT COUNT(*) 
-        FROM ${sql.identifier(bidsTable)} 
-        WHERE climb_uuid = ${tables.climbs.uuid} 
-        AND user_id = ${userId || ''} 
-        AND angle = ${params.angle}
+        SELECT COUNT(*)
+        FROM ${boardseshTicks}
+        WHERE ${boardseshTicks.climbUuid} = ${tables.climbs.uuid}
+        AND ${boardseshTicks.userId} = ${userId || ''}
+        AND ${boardseshTicks.boardType} = ${params.board_name}
+        AND ${boardseshTicks.angle} = ${params.angle}
+        AND ${boardseshTicks.status} = 'attempt'
       )`,
     };
   };
 
-  // Hold-specific user data selectors for heatmap
+  // Hold-specific user data selectors for heatmap using boardsesh_ticks
   const getHoldUserLogbookSelects = (climbHoldsTable: typeof tables.climbHolds) => {
-    const ascentsTable = getTableName(params.board_name, 'ascents');
-    const bidsTable = getTableName(params.board_name, 'bids');
-
     return {
       userAscents: sql<number>`(
-        SELECT COUNT(*) 
-        FROM ${sql.identifier(ascentsTable)} a
-        WHERE a.climb_uuid = ${climbHoldsTable.climbUuid}
-        AND a.user_id = ${userId || ''} 
-        AND a.angle = ${params.angle}
+        SELECT COUNT(*)
+        FROM ${boardseshTicks}
+        WHERE ${boardseshTicks.climbUuid} = ${climbHoldsTable.climbUuid}
+        AND ${boardseshTicks.userId} = ${userId || ''}
+        AND ${boardseshTicks.boardType} = ${params.board_name}
+        AND ${boardseshTicks.angle} = ${params.angle}
+        AND ${boardseshTicks.status} IN ('flash', 'send')
       )`,
       userAttempts: sql<number>`(
-        SELECT COUNT(*) 
-        FROM ${sql.identifier(bidsTable)} b
-        WHERE b.climb_uuid = ${climbHoldsTable.climbUuid}
-        AND b.user_id = ${userId || ''} 
-        AND b.angle = ${params.angle}
+        SELECT COUNT(*)
+        FROM ${boardseshTicks}
+        WHERE ${boardseshTicks.climbUuid} = ${climbHoldsTable.climbUuid}
+        AND ${boardseshTicks.userId} = ${userId || ''}
+        AND ${boardseshTicks.boardType} = ${params.board_name}
+        AND ${boardseshTicks.angle} = ${params.angle}
+        AND ${boardseshTicks.status} = 'attempt'
       )`,
     };
   };

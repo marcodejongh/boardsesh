@@ -3,8 +3,8 @@ import { dbz as db } from '@/app/lib/db/db';
 import { ParsedBoardRouteParameters, SearchRequestPagination } from '@/app/lib/types';
 import { UNIFIED_TABLES } from '@/lib/db/queries/util/table-select';
 import { createClimbFilters } from './create-climb-filters';
-import { getTableName } from '@/app/lib/data-sync/aurora/getTableName';
 import { getSizeEdges } from '@/app/lib/__generated__/product-sizes-data';
+import { boardseshTicks } from '@/app/lib/db/schema';
 
 export interface HoldHeatmapData {
   holdId: number;
@@ -22,7 +22,7 @@ export interface HoldHeatmapData {
 export const getHoldHeatmapData = async (
   params: ParsedBoardRouteParameters,
   searchParams: SearchRequestPagination,
-  userId?: number,
+  userId?: string,
 ): Promise<HoldHeatmapData[]> => {
   const { climbs, climbStats, climbHolds } = UNIFIED_TABLES;
 
@@ -96,34 +96,27 @@ export const getHoldHeatmapData = async (
     // Add user-specific data only if not already computed in the main query
     if (userId && !personalProgressFiltersEnabled) {
       // Only fetch separate user data if we're not already using user-specific main stats
-      // Note: ascents and bids use legacy tables (being phased out), climb_holds uses unified table
-      const ascentsTableName = getTableName(params.board_name, 'ascents');
-      const bidsTableName = getTableName(params.board_name, 'bids');
+      // Uses boardsesh_ticks (NextAuth userId)
 
       // Query for user ascents and attempts per hold in parallel
       const [userAscentsQuery, userAttemptsQuery] = await Promise.all([
         db.execute(sql`
           SELECT ch.hold_id, COUNT(*) as user_ascents
-          FROM ${sql.identifier(ascentsTableName)} a
-          JOIN board_climb_holds ch ON a.climb_uuid = ch.climb_uuid AND ch.board_type = ${params.board_name}
-          WHERE a.user_id = ${userId}
-            AND a.angle = ${params.angle}
+          FROM ${boardseshTicks} t
+          JOIN board_climb_holds ch ON t.climb_uuid = ch.climb_uuid AND ch.board_type = ${params.board_name}
+          WHERE t.user_id = ${userId}
+            AND t.board_type = ${params.board_name}
+            AND t.angle = ${params.angle}
+            AND t.status IN ('flash', 'send')
           GROUP BY ch.hold_id
         `),
         db.execute(sql`
-          SELECT ch.hold_id, SUM(attempt_count) as user_attempts
-          FROM (
-            SELECT b.climb_uuid, b.bid_count as attempt_count
-            FROM ${sql.identifier(bidsTableName)} b
-            WHERE b.user_id = ${userId}
-              AND b.angle = ${params.angle}
-            UNION ALL
-            SELECT a.climb_uuid, a.bid_count as attempt_count
-            FROM ${sql.identifier(ascentsTableName)} a
-            WHERE a.user_id = ${userId}
-              AND a.angle = ${params.angle}
-          ) attempts
-          JOIN board_climb_holds ch ON attempts.climb_uuid = ch.climb_uuid AND ch.board_type = ${params.board_name}
+          SELECT ch.hold_id, SUM(t.attempt_count) as user_attempts
+          FROM ${boardseshTicks} t
+          JOIN board_climb_holds ch ON t.climb_uuid = ch.climb_uuid AND ch.board_type = ${params.board_name}
+          WHERE t.user_id = ${userId}
+            AND t.board_type = ${params.board_name}
+            AND t.angle = ${params.angle}
           GROUP BY ch.hold_id
         `),
       ]);
@@ -164,7 +157,7 @@ export const getHoldHeatmapData = async (
   }
 };
 
-function normalizeStats(stats: Record<string, unknown>, userId?: number): HoldHeatmapData {
+function normalizeStats(stats: Record<string, unknown>, userId?: string): HoldHeatmapData {
   // For numeric fields, ensure we're returning a number and handle null/undefined properly
   const result: HoldHeatmapData = {
     holdId: Number(stats.holdId),
