@@ -9,6 +9,9 @@ import { boardseshTicks, auroraCredentials, playlists, playlistClimbs, playlistO
 import { randomUUID } from 'crypto';
 import { convertQuality } from './convert-quality';
 
+// Note: getTable is still used for legacy ascents/bids tables which are being phased out
+// (already consolidated into boardsesh_ticks, will be dropped in Phase 6)
+
 /**
  * Get NextAuth user ID from Aurora user ID
  */
