@@ -197,6 +197,13 @@
       "when": 1767667200000,
       "tag": "0031_drop_climb_stats_fk",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1767753600000,
+      "tag": "0032_verify_existing_users",
+      "breakpoints": true
     }
   ]
 }
