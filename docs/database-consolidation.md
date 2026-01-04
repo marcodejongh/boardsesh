@@ -46,9 +46,9 @@ Consolidate into **18 unified tables** with a `board_type` discriminator column.
 3. Set up environment variable `USE_UNIFIED_TABLES=false`
 
 #### Acceptance Criteria
-- [ ] Unified schema file exists with board_type type
-- [ ] Feature flag infrastructure in place
-- [ ] No changes to runtime behavior
+- [x] Unified schema file exists with board_type type
+- [x] Feature flag infrastructure in place
+- [x] No changes to runtime behavior
 
 ---
 
@@ -152,10 +152,12 @@ INSERT INTO board_difficulty_grades (board_type, difficulty, boulder_name, is_li
 ```
 
 #### Acceptance Criteria
-- [ ] Both tables created with composite primary keys
-- [ ] All kilter and tension data migrated
-- [ ] MoonBoard reference data seeded
-- [ ] Indexes created
+- [x] Both tables created with composite primary keys
+- [x] All kilter and tension data migrated
+- [x] MoonBoard reference data seeded
+- [x] Indexes created
+
+**Status**: ✅ Completed in migration `0025_shocking_clint_barton.sql`
 
 ---
 
@@ -389,11 +391,13 @@ VALUES ('moonboard', 1, 1, 'Standard 40', true);
 ```
 
 #### Acceptance Criteria
-- [ ] All 9 tables created with proper foreign keys
-- [ ] All kilter and tension data migrated
-- [ ] MoonBoard product/layout/set data seeded
-- [ ] MoonBoard holes generated (198 positions)
-- [ ] Foreign key constraints validated
+- [x] All 9 tables created with proper foreign keys
+- [x] All kilter and tension data migrated
+- [ ] MoonBoard product/layout/set data seeded (TODO: add in future migration)
+- [ ] MoonBoard holes generated (198 positions) (TODO: add in future migration)
+- [x] Foreign key constraints validated
+
+**Status**: ✅ Tables created and kilter/tension data migrated in `0025_shocking_clint_barton.sql`
 
 ---
 
@@ -544,10 +548,12 @@ export const boardBetaLinks = pgTable('board_beta_links', {
 - MoonBoard climbs will be migrated from IndexedDB (separate task)
 
 #### Acceptance Criteria
-- [ ] All 5 tables created with proper keys/indexes
-- [ ] All kilter and tension climb data migrated
-- [ ] Foreign keys to layouts validated
-- [ ] Climb statistics preserved accurately
+- [x] All 5 tables created with proper keys/indexes
+- [x] All kilter and tension climb data migrated
+- [x] Foreign keys to layouts validated
+- [x] Climb statistics preserved accurately
+
+**Status**: ✅ Completed in migration `0025_shocking_clint_barton.sql`
 
 ---
 
@@ -665,10 +671,12 @@ export const boardTags = pgTable('board_tags', {
 The `kilter_ascents`, `kilter_bids`, `tension_ascents`, `tension_bids` tables are already consolidated into `boardsesh_ticks`. These legacy tables should be dropped in Phase 6 after validating data integrity.
 
 #### Acceptance Criteria
-- [ ] All 5 tables created
-- [ ] All kilter and tension user data migrated
-- [ ] Circuit-climb relationships preserved
-- [ ] Wall configurations intact
+- [x] All 5 tables created
+- [x] All kilter and tension user data migrated
+- [x] Circuit-climb relationships preserved
+- [x] Wall configurations intact
+
+**Status**: ✅ Completed in migration `0025_shocking_clint_barton.sql`
 
 ---
 
@@ -708,9 +716,11 @@ export const boardSharedSyncs = pgTable('board_shared_syncs', {
 ```
 
 #### Acceptance Criteria
-- [ ] Sync tables created
-- [ ] Sync state migrated
-- [ ] Aurora sync continues working
+- [x] Sync tables created
+- [x] Sync state migrated
+- [ ] Aurora sync continues working (requires application layer changes - Task 5)
+
+**Status**: ✅ Tables created and data migrated in `0025_shocking_clint_barton.sql`
 
 ---
 
