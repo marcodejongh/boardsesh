@@ -52,6 +52,20 @@ Consolidate into **18 unified tables** with a `board_type` discriminator column.
 
 ---
 
+## Implementation Status Summary
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Phase 0: Preparation | ✅ Complete | unified.ts schema created |
+| Phase 1-5: Migrations | ✅ Complete | All 22 tables created, data migrated |
+| Task 4: table-select.ts | ✅ Complete | UNIFIED_TABLES, getUnifiedTable(), boardTypeCondition() |
+| Task 5: Sync Functions | ✅ Complete | shared-sync.ts and user-sync.ts updated |
+| Task 6: Query Files | 🔄 Pending | Raw SQL queries in create-climb-filters.ts, holds-heatmap.ts |
+| Task 7: MoonBoard Storage | 📋 Planned | Server-side storage for MoonBoard climbs |
+| Phase 6: Cleanup | 📋 Planned | Drop legacy tables after validation |
+
+---
+
 ### Phase 1: Reference Tables
 **Duration**: 1-2 days
 **Risk**: Low
