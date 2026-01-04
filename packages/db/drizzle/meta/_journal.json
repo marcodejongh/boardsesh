@@ -190,6 +190,13 @@
       "when": 1767580800000,
       "tag": "0030_drop_legacy_ascents_bids",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1767667200000,
+      "tag": "0031_drop_climb_stats_fk",
+      "breakpoints": true
     }
   ]
 }
