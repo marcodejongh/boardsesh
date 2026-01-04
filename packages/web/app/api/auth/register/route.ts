@@ -88,13 +88,25 @@ export async function POST(request: NextRequest) {
     const userId = crypto.randomUUID();
     const passwordHash = await bcrypt.hash(password, 12);
 
-    // Insert user (emailVerified is null for unverified accounts)
-    await db.insert(schema.users).values({
-      id: userId,
-      email,
-      name: name || email.split("@")[0],
-      emailVerified: null,
-    });
+    try {
+      // Insert user (emailVerified is null for unverified accounts)
+      await db.insert(schema.users).values({
+        id: userId,
+        email,
+        name: name || email.split("@")[0],
+        emailVerified: null,
+      });
+    } catch (insertError) {
+      // Handle race condition: another request created this user between our check and insert
+      // PostgreSQL unique constraint violation code is '23505'
+      if (insertError && typeof insertError === 'object' && 'code' in insertError && insertError.code === '23505') {
+        return NextResponse.json(
+          { error: "An account with this email already exists" },
+          { status: 409 }
+        );
+      }
+      throw insertError;
+    }
 
     // Insert credentials
     await db.insert(schema.userCredentials).values({
