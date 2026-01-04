@@ -4,6 +4,7 @@ import { Pool, neonConfig } from '@neondatabase/serverless';
 import ws from 'ws';
 import { config } from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -64,9 +65,26 @@ async function runMigrations() {
     configureNeonForLocal(databaseUrl);
 
     const pool = new Pool({ connectionString: databaseUrl });
-    const db = drizzle(pool);
 
-    await migrate(db, { migrationsFolder: path.resolve(__dirname, '../drizzle') });
+    // Add query logging for visibility in CI
+    const db = drizzle(pool, {
+      logger: {
+        logQuery: (query: string) => {
+          // Log first 200 chars of each query for progress visibility
+          const preview = query.slice(0, 200).replace(/\s+/g, ' ').trim();
+          const timestamp = new Date().toISOString().split('T')[1].slice(0, 8);
+          console.log(`[${timestamp}] ${preview}${query.length > 200 ? '...' : ''}`);
+        },
+      },
+    });
+
+    // List pending migrations
+    const migrationsFolder = path.resolve(__dirname, '../drizzle');
+    const journalPath = path.join(migrationsFolder, 'meta', '_journal.json');
+    const journal = JSON.parse(fs.readFileSync(journalPath, 'utf-8'));
+    console.log(`📋 Found ${journal.entries.length} migrations in journal`);
+
+    await migrate(db, { migrationsFolder });
 
     console.log('✅ Migrations completed successfully');
     await pool.end();
