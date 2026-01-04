@@ -277,11 +277,7 @@ export const boardClimbStats = pgTable('board_climb_stats', {
   faAt: timestamp('fa_at', { mode: 'string' }),
 }, (table) => ({
   pk: primaryKey({ columns: [table.boardType, table.climbUuid, table.angle] }),
-  climbFk: foreignKey({
-    columns: [table.climbUuid],
-    foreignColumns: [boardClimbs.uuid],
-    name: 'board_climb_stats_climb_fk',
-  }).onUpdate('cascade').onDelete('cascade'),
+  // Note: No FK to board_climbs - stats may arrive before their corresponding climbs during sync
 }));
 
 export const boardClimbHolds = pgTable('board_climb_holds', {
