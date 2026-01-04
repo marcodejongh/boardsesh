@@ -3,7 +3,7 @@ import React, { useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { Flex, Button, Dropdown, MenuProps } from 'antd';
 import { Header } from 'antd/es/layout/layout';
-import { useSession, signOut } from 'next-auth/react';
+import { useUser } from '@stackframe/stack';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import SearchButton from '../search-drawer/search-button';
 import SearchClimbNameInput from '../search-drawer/search-climb-name-input';
@@ -73,7 +73,7 @@ function usePageMode(): PageMode {
 }
 
 export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeaderProps) {
-  const { data: session } = useSession();
+  const user = useUser();
   const { currentClimb } = useQueueContext();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const pageMode = usePageMode();
@@ -99,8 +99,8 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
     return baseUrl;
   };
 
-  const handleSignOut = () => {
-    signOut();
+  const handleSignOut = async () => {
+    await user?.signOut();
   };
 
   const createClimbUrl = angle !== undefined && boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names
@@ -120,7 +120,7 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
     {
       key: 'profile',
       icon: <LineChartOutlined />,
-      label: <Link href={`/crusher/${session?.user?.id}`}>Profile</Link>,
+      label: <Link href={`/crusher/${user?.id}`}>Profile</Link>,
     },
     {
       key: 'settings',
@@ -144,16 +144,16 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
       icon: <PlusOutlined />,
       label: <Link href={createClimbUrl}>Create Climb</Link>,
     }] : []),
-    ...(session?.user && playlistsUrl ? [{
+    ...(user && playlistsUrl ? [{
       key: 'playlists',
       icon: <TagOutlined />,
       label: <Link href={playlistsUrl}>My Playlists</Link>,
     }] : []),
-    ...(session?.user ? [
+    ...(user ? [
       {
         key: 'profile',
         icon: <LineChartOutlined />,
-        label: <Link href={`/crusher/${session.user.id}`}>Profile</Link>,
+        label: <Link href={`/crusher/${user.id}`}>Profile</Link>,
       },
       {
         key: 'settings',
@@ -175,7 +175,7 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
         onClick: handleSignOut,
       },
     ] : []),
-    ...(!session?.user ? [
+    ...(!user ? [
       {
         key: 'about',
         icon: <InfoCircleOutlined />,
@@ -261,10 +261,10 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
 
                 {/* Desktop: User menu or login button */}
                 <div className={styles.desktopOnly}>
-                  {session?.user ? (
+                  {user ? (
                     <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
                       <Button icon={<UserOutlined />} type="text">
-                        {session.user.name || session.user.email}
+                        {user.displayName || user.primaryEmail}
                       </Button>
                     </Dropdown>
                   ) : (

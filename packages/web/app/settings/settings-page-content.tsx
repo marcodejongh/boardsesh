@@ -17,7 +17,7 @@ import {
 } from 'antd';
 import { UserOutlined, UploadOutlined, LoadingOutlined, InstagramOutlined } from '@ant-design/icons';
 import type { UploadFile, UploadProps } from 'antd/es/upload/interface';
-import { useSession } from 'next-auth/react';
+import { useUser } from '@stackframe/stack';
 import { useRouter } from 'next/navigation';
 import Logo from '@/app/components/brand/logo';
 import AuroraCredentialsSection from '@/app/components/settings/aurora-credentials-section';
@@ -64,7 +64,7 @@ interface UserProfile {
 }
 
 export default function SettingsPageContent() {
-  const { data: session, status } = useSession();
+  const user = useUser();
   const router = useRouter();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(true);
@@ -78,17 +78,21 @@ export default function SettingsPageContent() {
 
   // Redirect if not authenticated
   useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/');
-    }
-  }, [status, router]);
+    // Wait a tick for user state to stabilize
+    const timer = setTimeout(() => {
+      if (user === null) {
+        router.push('/');
+      }
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [user, router]);
 
   // Fetch profile on mount
   useEffect(() => {
-    if (status === 'authenticated') {
+    if (user) {
       fetchProfile();
     }
-  }, [status]);
+  }, [user]);
 
   // Clean up preview URL when component unmounts
   useEffect(() => {
@@ -253,7 +257,7 @@ export default function SettingsPageContent() {
 
   const isSaving = saving || uploading;
 
-  if (status === 'loading' || loading) {
+  if (loading) {
     return (
       <Layout style={{ minHeight: '100vh', background: '#f5f5f5' }}>
         <Content style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
@@ -263,7 +267,7 @@ export default function SettingsPageContent() {
     );
   }
 
-  if (status === 'unauthenticated') {
+  if (!user) {
     return null;
   }
 
@@ -342,7 +346,7 @@ export default function SettingsPageContent() {
             <Divider />
 
             <Form.Item label="Email">
-              <Input value={profile?.email || session?.user?.email || ''} disabled prefix={<UserOutlined />} />
+              <Input value={profile?.email || user?.primaryEmail || ''} disabled prefix={<UserOutlined />} />
               <Text type="secondary" style={{ fontSize: 12, marginTop: 4, display: 'block' }}>
                 Email cannot be changed
               </Text>

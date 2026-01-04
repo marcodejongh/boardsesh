@@ -1,9 +1,8 @@
-import { getServerSession } from "next-auth/next";
 import { NextResponse } from "next/server";
 import { getDb } from "@/app/lib/db/db";
 import * as schema from "@/app/lib/db/schema";
 import { eq, and } from "drizzle-orm";
-import { authOptions } from "@/app/lib/auth/auth-options";
+import { stackServerApp } from "@/stack";
 import { decrypt } from "@boardsesh/crypto";
 
 interface RouteParams {
@@ -22,9 +21,9 @@ export async function GET(request: Request, { params }: RouteParams) {
       return NextResponse.json({ error: "Invalid board type" }, { status: 400 });
     }
 
-    const session = await getServerSession(authOptions);
+    const user = await stackServerApp.getUser();
 
-    if (!session?.user?.id) {
+    if (!user) {
       return NextResponse.json({
         authenticated: false,
         token: null,
@@ -40,7 +39,7 @@ export async function GET(request: Request, { params }: RouteParams) {
       .from(schema.auroraCredentials)
       .where(
         and(
-          eq(schema.auroraCredentials.userId, session.user.id),
+          eq(schema.auroraCredentials.userId, user.id),
           eq(schema.auroraCredentials.boardType, board_type)
         )
       )

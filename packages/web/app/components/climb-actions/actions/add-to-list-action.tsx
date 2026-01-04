@@ -4,7 +4,7 @@ import React, { useState, useCallback } from 'react';
 import { Button, message } from 'antd';
 import { ActionTooltip } from '../action-tooltip';
 import { UnorderedListOutlined } from '@ant-design/icons';
-import { useSession } from 'next-auth/react';
+import { useUser } from '@stackframe/stack';
 import { track } from '@vercel/analytics';
 import { ClimbActionProps, ClimbActionResult } from '../types';
 import AuthModal from '../../auth/auth-modal';
@@ -19,8 +19,8 @@ export function AddToListAction({
   className,
   onComplete,
 }: ClimbActionProps): ClimbActionResult {
-  const { status } = useSession();
-  const isAuthenticated = status === 'authenticated';
+  const user = useUser();
+  const isAuthenticated = !!user;
   const [showAuthModal, setShowAuthModal] = useState(false);
 
   const handleClick = useCallback((e?: React.MouseEvent) => {

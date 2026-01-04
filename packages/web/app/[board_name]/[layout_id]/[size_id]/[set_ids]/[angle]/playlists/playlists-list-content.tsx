@@ -13,7 +13,7 @@ import {
   CompassOutlined,
 } from '@ant-design/icons';
 import Link from 'next/link';
-import { useSession } from 'next-auth/react';
+import { useUser } from '@stackframe/stack';
 import { BoardDetails } from '@/app/lib/types';
 import { executeGraphQL } from '@/app/lib/graphql/client';
 import {
@@ -46,14 +46,14 @@ export default function PlaylistsListContent({
   boardDetails,
   angle,
 }: PlaylistsListContentProps) {
-  const { data: session, status: sessionStatus } = useSession();
+  const user = useUser();
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const { token, isLoading: tokenLoading } = useWsAuthToken();
 
-  const isAuthenticated = sessionStatus === 'authenticated';
+  const isAuthenticated = !!user;
 
   const fetchPlaylists = useCallback(async () => {
     if (tokenLoading || !isAuthenticated) {

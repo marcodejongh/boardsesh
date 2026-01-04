@@ -1,10 +1,9 @@
-import { getServerSession } from "next-auth/next";
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/app/lib/db/db";
 import * as schema from "@/app/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { authOptions } from "@/app/lib/auth/auth-options";
+import { stackServerApp } from "@/stack";
 
 const updateProfileSchema = z.object({
   displayName: z.string().max(100, "Display name must be less than 100 characters").optional().nullable(),
@@ -14,9 +13,9 @@ const updateProfileSchema = z.object({
 
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
+    const user = await stackServerApp.getUser();
 
-    if (!session?.user?.id) {
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -26,28 +25,17 @@ export async function GET() {
     const profiles = await db
       .select()
       .from(schema.userProfiles)
-      .where(eq(schema.userProfiles.userId, session.user.id))
+      .where(eq(schema.userProfiles.userId, user.id))
       .limit(1);
 
-    // Get base user data
-    const users = await db
-      .select()
-      .from(schema.users)
-      .where(eq(schema.users.id, session.user.id))
-      .limit(1);
-
-    if (users.length === 0) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    const user = users[0];
+    // Get base user data from Stack Auth
     const profile = profiles.length > 0 ? profiles[0] : null;
 
     return NextResponse.json({
       id: user.id,
-      email: user.email,
-      name: user.name,
-      image: user.image,
+      email: user.primaryEmail,
+      name: user.displayName,
+      image: user.profileImageUrl,
       profile: profile
         ? {
             displayName: profile.displayName,
@@ -64,9 +52,9 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const user = await stackServerApp.getUser();
 
-    if (!session?.user?.id) {
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -88,7 +76,7 @@ export async function PUT(request: NextRequest) {
     const existingProfile = await db
       .select()
       .from(schema.userProfiles)
-      .where(eq(schema.userProfiles.userId, session.user.id))
+      .where(eq(schema.userProfiles.userId, user.id))
       .limit(1);
 
     const now = new Date();
@@ -103,26 +91,15 @@ export async function PUT(request: NextRequest) {
           instagramUrl: instagramUrl ?? null,
           updatedAt: now,
         })
-        .where(eq(schema.userProfiles.userId, session.user.id));
+        .where(eq(schema.userProfiles.userId, user.id));
     } else {
       // Create new profile
       await db.insert(schema.userProfiles).values({
-        userId: session.user.id,
+        userId: user.id,
         displayName: displayName ?? null,
         avatarUrl: avatarUrl ?? null,
         instagramUrl: instagramUrl ?? null,
       });
-    }
-
-    // Also update the user's name if displayName is provided
-    if (displayName !== undefined) {
-      await db
-        .update(schema.users)
-        .set({
-          name: displayName || null,
-          updatedAt: now,
-        })
-        .where(eq(schema.users.id, session.user.id));
     }
 
     return NextResponse.json({ success: true });

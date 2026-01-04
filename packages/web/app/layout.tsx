@@ -4,7 +4,7 @@ import { AntdRegistry } from '@ant-design/nextjs-registry';
 import { App, ConfigProvider } from 'antd';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/next';
-import SessionProviderWrapper from './components/providers/session-provider';
+import StackSessionProvider from './components/providers/stack-session-provider';
 import QueryClientProvider from './components/providers/query-client-provider';
 import { NavigationLoadingProvider } from './components/providers/navigation-loading-provider';
 import PersistentSessionWrapper from './components/providers/persistent-session-wrapper';
@@ -20,7 +20,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body style={{ margin: 0 }}>
         <Analytics />
         <QueryClientProvider>
-          <SessionProviderWrapper>
+          <StackSessionProvider>
             <AntdRegistry>
               <ConfigProvider theme={antdTheme}>
                 <App>
@@ -30,7 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 </App>
               </ConfigProvider>
             </AntdRegistry>
-          </SessionProviderWrapper>
+          </StackSessionProvider>
         </QueryClientProvider>
         <SpeedInsights />
       </body>

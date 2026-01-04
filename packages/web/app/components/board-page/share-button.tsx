@@ -13,7 +13,7 @@ import {
 } from '@ant-design/icons';
 import { Button, Input, Drawer, QRCode, Flex, App, Typography, Badge, Switch, Tabs, Space } from 'antd';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { useSession } from 'next-auth/react';
+import { useUser } from '@stackframe/stack';
 import { useQueueContext } from '../graphql-queue';
 import { themeTokens } from '@/app/theme/theme-config';
 import AuthModal from '../auth/auth-modal';
@@ -44,7 +44,7 @@ export const ShareBoardButton = () => {
     joinSession,
     endSession,
   } = useQueueContext();
-  const { status: authStatus } = useSession();
+  const user = useUser();
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const controllerUrl = searchParams.get('controllerUrl');
@@ -57,7 +57,7 @@ export const ShareBoardButton = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [sessionName, setSessionName] = useState('');
 
-  const isLoggedIn = authStatus === 'authenticated';
+  const isLoggedIn = !!user;
 
   const showDrawer = () => {
     setIsDrawerOpen(true);

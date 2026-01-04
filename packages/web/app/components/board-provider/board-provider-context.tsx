@@ -3,7 +3,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { BoardName, ClimbUuid } from '@/app/lib/types';
 import { SaveClimbOptions } from '@/app/lib/api-wrappers/aurora/types';
 import { message } from 'antd';
-import { useSession } from 'next-auth/react';
+import { useUser } from '@stackframe/stack';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
 import {
@@ -86,8 +86,9 @@ interface BoardContextType {
 const BoardContext = createContext<BoardContextType | undefined>(undefined);
 
 export function BoardProvider({ boardName, children }: { boardName: BoardName; children: React.ReactNode }) {
-  const { status: sessionStatus } = useSession();
-  // Use wsAuthToken for GraphQL backend auth (NextAuth session token)
+  const user = useUser();
+  const isAuthenticated = !!user;
+  // Use wsAuthToken for GraphQL backend auth (Stack Auth session token)
   const { token: wsAuthToken } = useWsAuthToken();
   const [authState, setAuthState] = useState<AuthState>({
     token: null,
@@ -101,18 +102,14 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
   const [logbook, setLogbook] = useState<LogbookEntry[]>([]);
   // Use ref to track climb UUIDs to avoid re-render loops
   const currentClimbUuidsRef = useRef<ClimbUuid[]>([]);
-  const lastSessionStatusRef = useRef<string>(sessionStatus);
+  const lastAuthStateRef = useRef<boolean>(isAuthenticated);
 
-  // Fetch Aurora credentials when session changes (still useful for saveClimb)
+  // Fetch Aurora credentials when auth state changes (still useful for saveClimb)
   useEffect(() => {
     let mounted = true;
 
     const fetchAuroraCredentials = async () => {
-      if (sessionStatus === 'loading') {
-        return;
-      }
-
-      if (sessionStatus !== 'authenticated') {
+      if (!isAuthenticated) {
         setAuthState({
           token: null,
           user_id: null,
@@ -164,12 +161,12 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
     return () => {
       mounted = false;
     };
-  }, [boardName, sessionStatus]);
+  }, [boardName, isAuthenticated]);
 
   // Internal fetch function (not memoized, called by getLogbook and effect)
   // Returns true if the fetch was successful, false if it was skipped or failed
   const fetchLogbook = async (climbUuids: ClimbUuid[]): Promise<boolean> => {
-    if (sessionStatus !== 'authenticated') {
+    if (!isAuthenticated) {
       setLogbook([]);
       return false;
     }
@@ -230,25 +227,24 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
     // Store the UUIDs in ref to avoid re-render loops
     currentClimbUuidsRef.current = climbUuids;
     return await fetchLogbook(climbUuids);
-  }, [boardName, sessionStatus, wsAuthToken]);
+  }, [boardName, isAuthenticated, wsAuthToken]);
 
-  // Refetch logbook only when session status changes from non-authenticated to authenticated
+  // Refetch logbook only when auth state changes from non-authenticated to authenticated
   useEffect(() => {
-    const wasAuthenticated = lastSessionStatusRef.current === 'authenticated';
-    const isNowAuthenticated = sessionStatus === 'authenticated';
-    lastSessionStatusRef.current = sessionStatus;
+    const wasAuthenticated = lastAuthStateRef.current;
+    lastAuthStateRef.current = isAuthenticated;
 
     // Only refetch if we just became authenticated, have token, and have climb UUIDs
-    if (!wasAuthenticated && isNowAuthenticated && wsAuthToken && currentClimbUuidsRef.current.length > 0) {
+    if (!wasAuthenticated && isAuthenticated && wsAuthToken && currentClimbUuidsRef.current.length > 0) {
       fetchLogbook(currentClimbUuidsRef.current);
-    } else if (!isNowAuthenticated) {
+    } else if (!isAuthenticated) {
       setLogbook([]);
     }
-  }, [sessionStatus, boardName, wsAuthToken]);
+  }, [isAuthenticated, boardName, wsAuthToken]);
 
   // Save a tick to local storage (no Aurora credentials required)
   const saveTick = async (options: SaveTickOptions) => {
-    if (sessionStatus !== 'authenticated') {
+    if (!isAuthenticated) {
       throw new Error('Not authenticated');
     }
 
@@ -376,7 +372,7 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
   };
 
   const value = {
-    isAuthenticated: sessionStatus === 'authenticated',
+    isAuthenticated,
     hasAuroraCredentials: !!authState.token && !!authState.user_id,
     token: authState.token,
     user_id: authState.user_id,

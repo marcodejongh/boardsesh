@@ -16,7 +16,7 @@ import {
   Tooltip,
 } from 'antd';
 import { UserOutlined, InstagramOutlined } from '@ant-design/icons';
-import { useSession } from 'next-auth/react';
+import { useUser } from '@stackframe/stack';
 import Logo from '@/app/components/brand/logo';
 import BackButton from '@/app/components/back-button';
 import AscentsFeed from '@/app/components/activity-feed';
@@ -171,7 +171,7 @@ const getLayoutColor = (boardType: string, layoutId: number | null | undefined):
 };
 
 export default function ProfilePageContent({ userId }: { userId: string }) {
-  const { data: session } = useSession();
+  const user = useUser();
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -191,7 +191,7 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
   const [profileStats, setProfileStats] = useState<GetUserProfileStatsQueryResponse['userProfileStats'] | null>(null);
   const [loadingProfileStats, setLoadingProfileStats] = useState(false);
 
-  const isOwnProfile = session?.user?.id === userId;
+  const isOwnProfile = user?.id === userId;
 
   // Fetch profile data for the userId in the URL
   const fetchProfile = useCallback(async () => {

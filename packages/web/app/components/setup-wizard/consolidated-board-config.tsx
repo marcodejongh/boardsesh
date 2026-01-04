@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { GithubOutlined, EditOutlined, TeamOutlined, InfoCircleOutlined, QuestionCircleOutlined, StarOutlined } from '@ant-design/icons';
 import { openDB } from 'idb';
 import { track } from '@vercel/analytics';
-import { useSession } from 'next-auth/react';
+import { useUser } from '@stackframe/stack';
 import { SUPPORTED_BOARDS, ANGLES } from '@/app/lib/board-data';
 import { BoardName, BoardDetails } from '@/app/lib/types';
 import { getDefaultSizeForLayout, getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
@@ -49,7 +49,7 @@ type ConsolidatedBoardConfigProps = {
 
 const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps) => {
   const router = useRouter();
-  const { data: session } = useSession();
+  const user = useUser();
 
   // Selection states
   const [configName, setConfigName] = useState<string>('');
@@ -606,7 +606,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
               <Switch
                 checked={allowOthersToJoin}
                 onChange={(checked) => {
-                  if (checked && !session) {
+                  if (checked && !user) {
                     setShowAuthModal(true);
                   } else {
                     setAllowOthersToJoin(checked);
@@ -621,7 +621,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
                 <InfoCircleOutlined style={{ color: themeTokens.neutral[400] }} />
               </Tooltip>
             </div>
-            {allowOthersToJoin && !session && (
+            {allowOthersToJoin && !user && (
               <Text type="warning" style={{ display: 'block', marginTop: themeTokens.spacing[2] }}>
                 Please sign in to enable discoverable sessions.
               </Text>

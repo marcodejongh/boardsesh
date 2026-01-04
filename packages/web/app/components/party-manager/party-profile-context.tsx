@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { useSession } from 'next-auth/react';
+import { useUser } from '@stackframe/stack';
 import {
   PartyProfile,
   getPartyProfile,
@@ -32,7 +32,7 @@ export const PartyProfileProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [profile, setProfile] = useState<PartyProfile | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfileData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const { data: session, status: sessionStatus } = useSession();
+  const user = useUser();
 
   // Load party profile on mount
   useEffect(() => {
@@ -66,7 +66,7 @@ export const PartyProfileProvider: React.FC<{ children: React.ReactNode }> = ({ 
     let mounted = true;
 
     const fetchUserProfile = async () => {
-      if (sessionStatus !== 'authenticated') {
+      if (!user) {
         setUserProfile(null);
         return;
       }
@@ -89,7 +89,7 @@ export const PartyProfileProvider: React.FC<{ children: React.ReactNode }> = ({ 
     return () => {
       mounted = false;
     };
-  }, [sessionStatus]);
+  }, [user]);
 
   const refreshProfile = useCallback(async () => {
     try {
@@ -98,7 +98,7 @@ export const PartyProfileProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setProfile(loadedProfile);
 
       // Also refresh user profile from API if authenticated
-      if (sessionStatus === 'authenticated') {
+      if (user) {
         const response = await fetch('/api/internal/profile');
         if (response.ok) {
           const data = await response.json();
@@ -108,7 +108,7 @@ export const PartyProfileProvider: React.FC<{ children: React.ReactNode }> = ({ 
     } catch (error) {
       console.error('Failed to refresh party profile:', error);
     }
-  }, [sessionStatus]);
+  }, [user]);
 
   const clearProfileHandler = useCallback(async () => {
     setIsLoading(true);
@@ -127,16 +127,16 @@ export const PartyProfileProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const hasProfile = useMemo(() => !!profile?.id, [profile?.id]);
 
-  // Username and avatar - prefer custom profile over NextAuth session
+  // Username and avatar - prefer custom profile over Stack Auth user
   const username = useMemo(
-    () => userProfile?.displayName || session?.user?.name || undefined,
-    [userProfile?.displayName, session?.user?.name],
+    () => userProfile?.displayName || user?.displayName || undefined,
+    [userProfile?.displayName, user?.displayName],
   );
   const avatarUrl = useMemo(
-    () => userProfile?.avatarUrl || session?.user?.image || undefined,
-    [userProfile?.avatarUrl, session?.user?.image],
+    () => userProfile?.avatarUrl || user?.profileImageUrl || undefined,
+    [userProfile?.avatarUrl, user?.profileImageUrl],
   );
-  const isAuthenticated = useMemo(() => sessionStatus === 'authenticated', [sessionStatus]);
+  const isAuthenticated = useMemo(() => !!user, [user]);
 
   const value = useMemo<PartyProfileContextType>(
     () => ({

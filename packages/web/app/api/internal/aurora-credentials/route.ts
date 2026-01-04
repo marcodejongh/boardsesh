@@ -1,10 +1,9 @@
-import { getServerSession } from "next-auth/next";
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/app/lib/db/db";
 import * as schema from "@/app/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { z } from "zod";
-import { authOptions } from "@/app/lib/auth/auth-options";
+import { stackServerApp } from "@/stack";
 import { encrypt, decrypt } from "@boardsesh/crypto";
 import AuroraClimbingClient from "@/app/lib/api-wrappers/aurora-rest-client/aurora-rest-client";
 import { BoardName as AuroraBoardName } from "@/app/lib/api-wrappers/aurora-rest-client/types";
@@ -35,9 +34,9 @@ export interface AuroraCredentialStatus {
  */
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
+    const user = await stackServerApp.getUser();
 
-    if (!session?.user?.id) {
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -46,7 +45,7 @@ export async function GET() {
     const credentials = await db
       .select()
       .from(schema.auroraCredentials)
-      .where(eq(schema.auroraCredentials.userId, session.user.id));
+      .where(eq(schema.auroraCredentials.userId, user.id));
 
     // Return credentials without sensitive data
     const credentialStatuses: AuroraCredentialStatus[] = credentials.map((cred) => {
@@ -81,9 +80,9 @@ export async function GET() {
  */
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const user = await stackServerApp.getUser();
 
-    if (!session?.user?.id) {
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -129,7 +128,7 @@ export async function POST(request: NextRequest) {
       .from(schema.auroraCredentials)
       .where(
         and(
-          eq(schema.auroraCredentials.userId, session.user.id),
+          eq(schema.auroraCredentials.userId, user.id),
           eq(schema.auroraCredentials.boardType, boardType)
         )
       )
@@ -151,14 +150,14 @@ export async function POST(request: NextRequest) {
         })
         .where(
           and(
-            eq(schema.auroraCredentials.userId, session.user.id),
+            eq(schema.auroraCredentials.userId, user.id),
             eq(schema.auroraCredentials.boardType, boardType)
           )
         );
     } else {
       // Insert new credentials
       await db.insert(schema.auroraCredentials).values({
-        userId: session.user.id,
+        userId: user.id,
         boardType,
         encryptedUsername,
         encryptedPassword,
@@ -176,7 +175,7 @@ export async function POST(request: NextRequest) {
       .from(schema.userBoardMappings)
       .where(
         and(
-          eq(schema.userBoardMappings.userId, session.user.id),
+          eq(schema.userBoardMappings.userId, user.id),
           eq(schema.userBoardMappings.boardType, boardType)
         )
       )
@@ -192,13 +191,13 @@ export async function POST(request: NextRequest) {
         })
         .where(
           and(
-            eq(schema.userBoardMappings.userId, session.user.id),
+            eq(schema.userBoardMappings.userId, user.id),
             eq(schema.userBoardMappings.boardType, boardType)
           )
         );
     } else {
       await db.insert(schema.userBoardMappings).values({
-        userId: session.user.id,
+        userId: user.id,
         boardType,
         boardUserId: loginResponse.user_id,
         boardUsername: username,
@@ -227,7 +226,7 @@ export async function POST(request: NextRequest) {
         })
         .where(
           and(
-            eq(schema.auroraCredentials.userId, session.user.id),
+            eq(schema.auroraCredentials.userId, user.id),
             eq(schema.auroraCredentials.boardType, boardType)
           )
         );
@@ -256,9 +255,9 @@ export async function POST(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const user = await stackServerApp.getUser();
 
-    if (!session?.user?.id) {
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -280,7 +279,7 @@ export async function DELETE(request: NextRequest) {
       .delete(schema.auroraCredentials)
       .where(
         and(
-          eq(schema.auroraCredentials.userId, session.user.id),
+          eq(schema.auroraCredentials.userId, user.id),
           eq(schema.auroraCredentials.boardType, boardType)
         )
       );
@@ -290,7 +289,7 @@ export async function DELETE(request: NextRequest) {
       .delete(schema.userBoardMappings)
       .where(
         and(
-          eq(schema.userBoardMappings.userId, session.user.id),
+          eq(schema.userBoardMappings.userId, user.id),
           eq(schema.userBoardMappings.boardType, boardType)
         )
       );
