@@ -1,10 +1,12 @@
 -- Mark all existing users with credentials as verified
+
+
 -- This ensures users who registered before email verification was required can still log in
--- We use created_at as the verification timestamp for existing users
+-- Uses NOW() as the verification timestamp since created_at column may not exist in all environments
 
 UPDATE users
-SET email_verified = created_at
-WHERE email_verified IS NULL
+SET "emailVerified" = NOW()
+WHERE "emailVerified" IS NULL
   AND id IN (
     SELECT user_id FROM user_credentials
   );
