@@ -80,14 +80,10 @@ export default function SocialLoginButtons({
   // Don't render anything if no providers are configured
   const hasAnyProvider = providers && (providers.google || providers.apple || providers.facebook);
 
+  // Show single skeleton while loading to minimize layout shift
+  // (we don't know how many providers are configured yet)
   if (loading) {
-    return (
-      <Space direction="vertical" size="middle" block>
-        <Skeleton.Button active block size="large" />
-        <Skeleton.Button active block size="large" />
-        <Skeleton.Button active block size="large" />
-      </Space>
-    );
+    return <Skeleton.Button active block size="large" />;
   }
 
   if (!hasAnyProvider) {

@@ -78,19 +78,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Delete any existing tokens for this email
-    await db
-      .delete(schema.verificationTokens)
-      .where(eq(schema.verificationTokens.identifier, email));
-
     // Generate new token
     const token = crypto.randomUUID();
     const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
-    await db.insert(schema.verificationTokens).values({
-      identifier: email,
-      token,
-      expires,
+    // Delete existing tokens and create new one atomically
+    await db.transaction(async (tx) => {
+      await tx
+        .delete(schema.verificationTokens)
+        .where(eq(schema.verificationTokens.identifier, email));
+
+      await tx.insert(schema.verificationTokens).values({
+        identifier: email,
+        token,
+        expires,
+      });
     });
 
     const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';

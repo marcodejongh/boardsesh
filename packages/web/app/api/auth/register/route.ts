@@ -72,10 +72,22 @@ export async function POST(request: NextRequest) {
 
       // User exists but has no credentials (e.g., OAuth user)
       // They can add a password to their existing account
+      // OAuth users are pre-verified by their provider, so no email verification needed
       const passwordHash = await bcrypt.hash(password, 12);
-      await db.insert(schema.userCredentials).values({
-        userId: existingUser[0].id,
-        passwordHash,
+
+      await db.transaction(async (tx) => {
+        await tx.insert(schema.userCredentials).values({
+          userId: existingUser[0].id,
+          passwordHash,
+        });
+
+        // Ensure user is marked as verified (OAuth provider already verified their email)
+        if (!existingUser[0].emailVerified) {
+          await tx
+            .update(schema.users)
+            .set({ emailVerified: new Date() })
+            .where(eq(schema.users.id, existingUser[0].id));
+        }
       });
 
       return NextResponse.json(

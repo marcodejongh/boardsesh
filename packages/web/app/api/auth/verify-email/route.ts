@@ -88,21 +88,22 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Update user emailVerified
-  await db
-    .update(schema.users)
-    .set({ emailVerified: new Date() })
-    .where(eq(schema.users.email, email));
+  // Update user and delete token atomically
+  await db.transaction(async (tx) => {
+    await tx
+      .update(schema.users)
+      .set({ emailVerified: new Date() })
+      .where(eq(schema.users.email, email));
 
-  // Delete the used token
-  await db
-    .delete(schema.verificationTokens)
-    .where(
-      and(
-        eq(schema.verificationTokens.identifier, email),
-        eq(schema.verificationTokens.token, token)
-      )
-    );
+    await tx
+      .delete(schema.verificationTokens)
+      .where(
+        and(
+          eq(schema.verificationTokens.identifier, email),
+          eq(schema.verificationTokens.token, token)
+        )
+      );
+  });
 
   // Redirect to login with success message
   return NextResponse.redirect(
