@@ -87,14 +87,38 @@ export async function POST(request: NextRequest) {
     // Create new user
     const userId = crypto.randomUUID();
     const passwordHash = await bcrypt.hash(password, 12);
+    const verificationToken = crypto.randomUUID();
+    const tokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
+    // Use transaction to ensure user, credentials, profile, and token are created atomically
+    // If any insert fails, all changes are rolled back
     try {
-      // Insert user (emailVerified is null for unverified accounts)
-      await db.insert(schema.users).values({
-        id: userId,
-        email,
-        name: name || email.split("@")[0],
-        emailVerified: null,
+      await db.transaction(async (tx) => {
+        // Insert user (emailVerified is null for unverified accounts)
+        await tx.insert(schema.users).values({
+          id: userId,
+          email,
+          name: name || email.split("@")[0],
+          emailVerified: null,
+        });
+
+        // Insert credentials
+        await tx.insert(schema.userCredentials).values({
+          userId,
+          passwordHash,
+        });
+
+        // Create empty profile (user can customize later)
+        await tx.insert(schema.userProfiles).values({
+          userId,
+        });
+
+        // Insert verification token
+        await tx.insert(schema.verificationTokens).values({
+          identifier: email,
+          token: verificationToken,
+          expires: tokenExpires,
+        });
       });
     } catch (insertError) {
       // Handle race condition: another request created this user between our check and insert
@@ -108,32 +132,11 @@ export async function POST(request: NextRequest) {
       throw insertError;
     }
 
-    // Insert credentials
-    await db.insert(schema.userCredentials).values({
-      userId,
-      passwordHash,
-    });
-
-    // Create empty profile (user can customize later)
-    await db.insert(schema.userProfiles).values({
-      userId,
-    });
-
-    // Generate verification token
-    const token = crypto.randomUUID();
-    const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-
-    await db.insert(schema.verificationTokens).values({
-      identifier: email,
-      token,
-      expires,
-    });
-
-    // Send verification email (don't fail registration if email fails)
+    // Send verification email outside transaction (don't fail registration if email fails)
     const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
     let emailSent = false;
     try {
-      await sendVerificationEmail(email, token, baseUrl);
+      await sendVerificationEmail(email, verificationToken, baseUrl);
       emailSent = true;
     } catch (emailError) {
       console.error("Failed to send verification email:", emailError);
