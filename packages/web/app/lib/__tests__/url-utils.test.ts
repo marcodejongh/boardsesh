@@ -13,6 +13,8 @@ import {
   generateLayoutSlug,
   generateSizeSlug,
   generateSetSlug,
+  generateSlugFromText,
+  generateDescriptionSlug,
   extractUuidFromSlug,
   isUuidOnly,
   isNumericId,
@@ -876,6 +878,135 @@ describe('getBaseBoardPath', () => {
       const path1 = getBaseBoardPath('/kilter/original/12x12/default/45/list');
       const path2 = getBaseBoardPath('/kilter/homewall/10x12/main_aux/45/list');
       expect(path1).not.toBe(path2);
+    });
+  });
+});
+
+describe('Shared slug helper functions', () => {
+  describe('generateSlugFromText', () => {
+    it('should convert text to lowercase', () => {
+      expect(generateSlugFromText('Full Wall')).toBe('full-wall');
+      expect(generateSlugFromText('UPPERCASE')).toBe('uppercase');
+    });
+
+    it('should replace spaces with hyphens', () => {
+      expect(generateSlugFromText('multiple words here')).toBe('multiple-words-here');
+    });
+
+    it('should remove special characters', () => {
+      expect(generateSlugFromText('Hello: World!')).toBe('hello-world');
+      expect(generateSlugFromText('Test (with) [brackets]')).toBe('test-with-brackets');
+    });
+
+    it('should handle colons and commas', () => {
+      expect(generateSlugFromText('Rows: KB1, KB2')).toBe('rows-kb1-kb2');
+    });
+
+    it('should collapse multiple hyphens', () => {
+      expect(generateSlugFromText('test---multiple---hyphens')).toBe('test-multiple-hyphens');
+    });
+
+    it('should trim leading/trailing whitespace and hyphens', () => {
+      expect(generateSlugFromText('  trimmed  ')).toBe('trimmed');
+      expect(generateSlugFromText('-trim-')).toBe('trim');
+    });
+
+    it('should handle empty strings', () => {
+      expect(generateSlugFromText('')).toBe('');
+      expect(generateSlugFromText('   ')).toBe('');
+    });
+  });
+
+  describe('generateDescriptionSlug', () => {
+    it('should remove LED Kit suffix', () => {
+      expect(generateDescriptionSlug('Full Ride LED Kit')).toBe('full-ride');
+      expect(generateDescriptionSlug('Mainline LED Kit')).toBe('mainline');
+    });
+
+    it('should handle various LED Kit formats', () => {
+      expect(generateDescriptionSlug('Full Ride led kit')).toBe('full-ride');
+      expect(generateDescriptionSlug('Full Ride LED KIT')).toBe('full-ride');
+      expect(generateDescriptionSlug('Full RideLEDKit')).toBe('full-ride');
+    });
+
+    it('should return empty string if only LED Kit remains', () => {
+      expect(generateDescriptionSlug('LED Kit')).toBe('');
+      expect(generateDescriptionSlug('  LED Kit  ')).toBe('');
+    });
+
+    it('should process descriptions without LED Kit', () => {
+      expect(generateDescriptionSlug('Rows: KB1, KB2, 1-18 Columns: A-K')).toBe('rows-kb1-kb2-1-18-columns-a-k');
+      expect(generateDescriptionSlug('Square')).toBe('square');
+    });
+  });
+});
+
+describe('Tension board URL slug symmetry', () => {
+  describe('generateSizeSlug should produce slugs that match the expected URL format', () => {
+    it('should generate correct slug for Tension Full Wall size', () => {
+      // Tension size 1: name="Full Wall", description="Rows: KB1, KB2, 1-18 Columns: A-K"
+      const slug = generateSizeSlug('Full Wall', 'Rows: KB1, KB2, 1-18 Columns: A-K');
+      expect(slug).toBe('full-wall-rows-kb1-kb2-1-18-columns-a-k');
+    });
+
+    it('should generate correct slug for Tension Half Kickboard size', () => {
+      // Tension size 2: name="Half Kickboard", description="Rows: KB2, 1-18 Columns: A-K"
+      const slug = generateSizeSlug('Half Kickboard', 'Rows: KB2, 1-18 Columns: A-K');
+      expect(slug).toBe('half-kickboard-rows-kb2-1-18-columns-a-k');
+    });
+
+    it('should generate correct slug for Tension No Kickboard size', () => {
+      // Tension size 3: name="No Kickboard", description="Rows: 1-18 Columns: A-K"
+      const slug = generateSizeSlug('No Kickboard', 'Rows: 1-18 Columns: A-K');
+      expect(slug).toBe('no-kickboard-rows-1-18-columns-a-k');
+    });
+
+    it('should generate correct slug for Tension Short size', () => {
+      // Tension size 4: name="Short", description="Rows: 1-15 Columns: A-K"
+      const slug = generateSizeSlug('Short', 'Rows: 1-15 Columns: A-K');
+      expect(slug).toBe('short-rows-1-15-columns-a-k');
+    });
+
+    it('should generate correct slug for Tension Board 2 size (non-standard dimension format)', () => {
+      // Tension size 6: name="12 high x 12 wide", description=""
+      // Note: This doesn't match the standard "12 x 12" pattern, so it falls back to text slug
+      const slug = generateSizeSlug('12 high x 12 wide', '');
+      expect(slug).toBe('12-high-x-12-wide');
+    });
+
+    it('should generate correct slug for standard dimension format', () => {
+      // Standard dimension format extracts just the numbers
+      expect(generateSizeSlug('12 x 12 Commercial', '')).toBe('12x12');
+      expect(generateSizeSlug('10x12', 'Full Ride LED Kit')).toBe('10x12-full-ride');
+    });
+  });
+
+  describe('slug generation consistency between generation and matching', () => {
+    // These tests verify that generateSizeSlug produces the same slug that
+    // getSizeBySlug will match against, ensuring URL symmetry
+
+    it('should generate consistent slugs for non-dimensional sizes', () => {
+      // Simulate what getSizeBySlug fallback does
+      const generateMatchSlug = (name: string, description: string | undefined) => {
+        let sizeSlug = generateSlugFromText(name);
+        if (description && description.trim()) {
+          const descSlug = generateDescriptionSlug(description);
+          if (descSlug) {
+            sizeSlug = `${sizeSlug}-${descSlug}`;
+          }
+        }
+        return sizeSlug;
+      };
+
+      // Verify they produce the same output
+      expect(generateSizeSlug('Full Wall', 'Rows: KB1, KB2, 1-18 Columns: A-K'))
+        .toBe(generateMatchSlug('Full Wall', 'Rows: KB1, KB2, 1-18 Columns: A-K'));
+
+      expect(generateSizeSlug('Half Kickboard', 'Rows: KB2, 1-18 Columns: A-K'))
+        .toBe(generateMatchSlug('Half Kickboard', 'Rows: KB2, 1-18 Columns: A-K'));
+
+      expect(generateSizeSlug('Custom Size', 'Full Ride LED Kit'))
+        .toBe(generateMatchSlug('Custom Size', 'Full Ride LED Kit'));
     });
   });
 });
