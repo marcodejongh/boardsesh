@@ -31,7 +31,7 @@ export default function AboutContent() {
 
       <Content className={styles.content}>
         <Card>
-          <Space direction="vertical" size="large" className={styles.cardContent}>
+          <Space orientation="vertical" size="large" className={styles.cardContent}>
             {/* Hero Section */}
             <div className={styles.heroSection}>
               <Logo size="lg" linkToHome={false} />
@@ -68,7 +68,7 @@ export default function AboutContent() {
                 type="warning"
                 showIcon
                 icon={<LockOutlined />}
-                message="Single Vendor Risk"
+                title="Single Vendor Risk"
                 description="Thousands of dollars worth of climbing equipment relies on software from two small companies. If that software stops working, your expensive LED system becomes unusable."
               />
 

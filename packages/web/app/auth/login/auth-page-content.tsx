@@ -268,7 +268,7 @@ export default function AuthPageContent() {
         }}
       >
         <Card style={{ width: '100%', maxWidth: 400 }}>
-          <Space direction="vertical" style={{ width: '100%', textAlign: 'center', marginBottom: 24 }}>
+          <Space orientation="vertical" style={{ width: '100%', textAlign: 'center', marginBottom: 24 }}>
             <Logo size="md" />
             <Text type="secondary">Sign in or create an account to continue</Text>
           </Space>

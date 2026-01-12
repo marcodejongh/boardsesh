@@ -115,8 +115,13 @@ export default function AuthModal({
   };
 
   const handleCancel = () => {
-    loginForm.resetFields();
-    registerForm.resetFields();
+    // Only reset the active form to avoid "useForm not connected" warning
+    // The inactive tab's form may not be connected to the DOM
+    if (activeTab === 'login') {
+      loginForm.resetFields();
+    } else {
+      registerForm.resetFields();
+    }
     onClose();
   };
 
@@ -124,6 +129,7 @@ export default function AuthModal({
     {
       key: 'login',
       label: 'Login',
+      forceRender: true,
       children: (
         <Form form={loginForm} layout="vertical" onFinish={handleLogin}>
           <Form.Item
@@ -156,6 +162,7 @@ export default function AuthModal({
     {
       key: 'register',
       label: 'Create Account',
+      forceRender: true,
       children: (
         <Form form={registerForm} layout="vertical" onFinish={handleRegister}>
           <Form.Item
@@ -225,14 +232,14 @@ export default function AuthModal({
       width={400}
       centered
     >
-      <Space direction="vertical" size="large" style={{ width: '100%' }}>
-        <Space direction="vertical" style={{ width: '100%', textAlign: 'center' }}>
+      <Space orientation="vertical" size="large" style={{ width: '100%' }}>
+        <Space orientation="vertical" style={{ width: '100%', textAlign: 'center' }}>
           <HeartFilled style={{ fontSize: 32, color: '#ff4d4f' }} />
           <Text strong style={{ fontSize: 18 }}>{title}</Text>
           <Text type="secondary">{description}</Text>
         </Space>
 
-        <Tabs activeKey={activeTab} onChange={setActiveTab} items={tabItems} centered />
+        <Tabs activeKey={activeTab} onChange={setActiveTab} items={tabItems} centered destroyOnHidden={false} />
 
         <Divider style={{ margin: '8px 0' }}>
           <Text type="secondary">or</Text>

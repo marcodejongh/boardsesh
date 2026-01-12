@@ -163,7 +163,7 @@ export default function MoonBoardCreateClimbForm({
   return (
     <div className={styles.pageContainer}>
       <Alert
-        message={`MoonBoard Beta - ${layoutName} @ ${angle}°`}
+        title={`MoonBoard Beta - ${layoutName} @ ${angle}°`}
         description="MoonBoard support is in beta. Climbs are saved locally for now. Database sync coming soon!"
         type="info"
         showIcon
@@ -174,7 +174,7 @@ export default function MoonBoardCreateClimbForm({
 
       {saveSuccess && (
         <Alert
-          message="Climb saved successfully!"
+          title="Climb saved successfully!"
           description="Your climb has been saved locally. You can create another climb."
           type="success"
           showIcon
@@ -185,7 +185,7 @@ export default function MoonBoardCreateClimbForm({
 
       {ocrError && (
         <Alert
-          message="Import Failed"
+          title="Import Failed"
           description={ocrError}
           type="error"
           showIcon
@@ -197,7 +197,7 @@ export default function MoonBoardCreateClimbForm({
 
       {ocrWarnings.length > 0 && (
         <Alert
-          message="Import Warnings"
+          title="Import Warnings"
           description={ocrWarnings.map((w, i) => <div key={i}>{w}</div>)}
           type="warning"
           showIcon

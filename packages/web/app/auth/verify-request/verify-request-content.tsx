@@ -88,11 +88,11 @@ export default function VerifyRequestContent() {
         }}
       >
         <Card style={{ width: '100%', maxWidth: 400, textAlign: 'center' }}>
-          <Space direction="vertical" size="large" style={{ width: '100%' }}>
+          <Space orientation="vertical" size="large" style={{ width: '100%' }}>
             {errorMessage ? (
               <>
                 <CloseCircleOutlined style={{ fontSize: 48, color: themeTokens.colors.error }} />
-                <Alert type="error" message={errorMessage} showIcon />
+                <Alert type="error" title={errorMessage} showIcon />
               </>
             ) : (
               <>

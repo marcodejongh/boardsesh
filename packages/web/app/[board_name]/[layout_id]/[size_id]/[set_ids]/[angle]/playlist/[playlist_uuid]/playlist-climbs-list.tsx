@@ -219,7 +219,7 @@ export default function PlaylistClimbsList({
         <Alert
           type="info"
           showIcon
-          message={`Not showing ${hiddenCount} ${hiddenCount === 1 ? 'climb' : 'climbs'} from other layouts`}
+          title={`Not showing ${hiddenCount} ${hiddenCount === 1 ? 'climb' : 'climbs'} from other layouts`}
           className={styles.hiddenClimbsNotice}
         />
       )}

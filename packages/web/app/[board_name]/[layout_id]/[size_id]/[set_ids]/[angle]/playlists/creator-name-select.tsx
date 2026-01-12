@@ -81,7 +81,7 @@ const CreatorNameSelect = ({
       value={value}
       onChange={onChange}
       onSearch={setSearchValue}
-      onDropdownVisibleChange={setIsOpen}
+      onOpenChange={setIsOpen}
       loading={isLoading}
       showSearch
       filterOption={false}

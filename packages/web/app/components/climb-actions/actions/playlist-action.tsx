@@ -158,7 +158,7 @@ export function PlaylistAction({
         <Text strong>Add to Playlist</Text>
       </div>
       {playlists.length === 0 && !showCreateForm ? (
-        <Space direction="vertical" style={{ width: '100%', textAlign: 'center', padding: themeTokens.spacing[2] }}>
+        <Space orientation="vertical" style={{ width: '100%', textAlign: 'center', padding: themeTokens.spacing[2] }}>
           <Text type="secondary">No playlists yet</Text>
           <Button
             type="primary"
@@ -195,7 +195,7 @@ export function PlaylistAction({
                       onClick={() => handleTogglePlaylist(playlist.uuid, isInPlaylist)}
                     >
                       <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-                        <Space direction="vertical" size={0}>
+                        <Space orientation="vertical" size={0}>
                           <Text strong style={{ fontSize: 13 }}>{playlist.name}</Text>
                           <Text type="secondary" style={{ fontSize: 11 }}>
                             {playlist.climbCount} {playlist.climbCount === 1 ? 'climb' : 'climbs'}

@@ -263,7 +263,7 @@ export default function CreateClimbForm({ boardDetails, angle, forkFrames, forkN
       {/* Auth alerts */}
       {!isAuthenticated && (
         <Alert
-          message="Sign in required"
+          title="Sign in required"
           description="Sign in to your Boardsesh account to save your climb."
           type="warning"
           showIcon

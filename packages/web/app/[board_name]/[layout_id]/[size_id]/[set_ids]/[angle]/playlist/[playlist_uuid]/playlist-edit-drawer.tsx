@@ -164,7 +164,7 @@ export default function PlaylistEditDrawer({ open, playlist, onClose, onSuccess 
           label="Visibility"
           valuePropName="checked"
         >
-          <Space direction="vertical" size={4}>
+          <Space orientation="vertical" size={4}>
             <Switch
               checked={isPublic}
               onChange={handleVisibilityChange}
