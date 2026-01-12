@@ -1,7 +1,7 @@
 import { neon, neonConfig, Pool } from '@neondatabase/serverless';
 import { drizzle as drizzleHttp } from 'drizzle-orm/neon-http';
 import { drizzle } from 'drizzle-orm/neon-serverless';
-import { eq, and, or, isNotNull } from 'drizzle-orm';
+import { eq, and, or, isNotNull, asc, nullsFirst } from 'drizzle-orm';
 import ws from 'ws';
 
 import { auroraCredentials } from '@boardsesh/db/schema/auth';
@@ -66,6 +66,52 @@ export class SyncRunner {
   }
 
   /**
+   * Sync the next user that needs syncing (oldest lastSyncAt first)
+   * Only syncs 1 user per call to avoid IP blocking from Aurora API
+   */
+  async syncNextUser(): Promise<SyncSummary> {
+    const results: SyncSummary = {
+      total: 1,
+      successful: 0,
+      failed: 0,
+      errors: [],
+    };
+
+    // Get the next credential to sync (oldest lastSyncAt first)
+    const cred = await this.getNextCredentialToSync();
+
+    if (!cred) {
+      this.log(`[SyncRunner] No users with Aurora credentials to sync`);
+      results.total = 0;
+      return results;
+    }
+
+    this.log(`[SyncRunner] Syncing next user: ${cred.userId} for ${cred.boardType}`);
+
+    try {
+      await this.syncSingleCredential(cred);
+      results.successful++;
+      this.log(`[SyncRunner] ✓ Successfully synced user ${cred.userId} for ${cred.boardType}`);
+    } catch (error) {
+      results.failed++;
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      results.errors.push({
+        userId: cred.userId,
+        boardType: cred.boardType,
+        error: errorMsg,
+      });
+      this.handleError(error instanceof Error ? error : new Error(errorMsg), {
+        userId: cred.userId,
+        board: cred.boardType,
+      });
+      this.log(`[SyncRunner] ✗ Failed to sync user ${cred.userId} for ${cred.boardType}: ${errorMsg}`);
+    }
+
+    return results;
+  }
+
+  /**
+   * @deprecated Use syncNextUser() instead to avoid IP blocking
    * Sync all users with active credentials
    */
   async syncAllUsers(): Promise<SyncSummary> {
@@ -143,6 +189,27 @@ export class SyncRunner {
       );
 
     return credentials as CredentialRecord[];
+  }
+
+  private async getNextCredentialToSync(): Promise<CredentialRecord | null> {
+    // Use HTTP for simple lookup query (no transaction needed)
+    // Get the credential with the oldest lastSyncAt (or null = never synced)
+    const db = createHttpDb();
+    const credentials = await db
+      .select()
+      .from(auroraCredentials)
+      .where(
+        and(
+          or(eq(auroraCredentials.syncStatus, 'active'), eq(auroraCredentials.syncStatus, 'error')),
+          isNotNull(auroraCredentials.encryptedUsername),
+          isNotNull(auroraCredentials.encryptedPassword),
+          isNotNull(auroraCredentials.auroraUserId),
+        ),
+      )
+      .orderBy(nullsFirst(asc(auroraCredentials.lastSyncAt))) // Never-synced users first, then oldest
+      .limit(1);
+
+    return credentials.length > 0 ? (credentials[0] as CredentialRecord) : null;
   }
 
   private async syncSingleCredential(cred: CredentialRecord): Promise<void> {
