@@ -237,7 +237,14 @@
       "idx": 33,
       "version": "7",
       "when": 1768185600000,
-      "tag": "0037_drop_legacy_tables",
+      "tag": "0037_final_ascents_migration",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1768272000000,
+      "tag": "0038_drop_legacy_tables",
       "breakpoints": true
     }
   ]
