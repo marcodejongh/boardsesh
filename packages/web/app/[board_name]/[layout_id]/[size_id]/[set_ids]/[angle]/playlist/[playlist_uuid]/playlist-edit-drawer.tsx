@@ -111,8 +111,8 @@ export default function PlaylistEditDrawer({ open, playlist, onClose, onSuccess 
       open={open}
       onClose={handleCancel}
       placement="bottom"
-      height="auto"
       styles={{
+        wrapper: { height: 'auto' },
         body: {
           paddingBottom: themeTokens.spacing[6],
         },

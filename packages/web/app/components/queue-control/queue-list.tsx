@@ -214,7 +214,7 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
           <Flex vertical>
             {suggestedClimbs.map((climb: Climb) => (
               <div
-                key={climb.uuid}
+                key={`suggested-${climb.uuid}`}
                 style={{
                   display: 'flex',
                   alignItems: 'center',

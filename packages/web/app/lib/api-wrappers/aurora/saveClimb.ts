@@ -8,11 +8,8 @@ import dayjs from 'dayjs';
 /**
  * Saves a climb to the local database only.
  *
- * Note: This function no longer syncs to Aurora directly because Aurora API
- * requires an apptoken which is not available. Instead, climbs created locally
- * will be synced FROM Aurora via the user-sync cron job (runs every 6 hours).
- *
- * Data flow: Boardsesh (local) ← Aurora (via cron)
+ * Climbs created locally are stored with the NextAuth user ID for attribution.
+ * Aurora's setter_id is not used since we don't have Aurora credentials.
  */
 export interface SaveClimbResponse {
   uuid: string;
@@ -21,7 +18,6 @@ export interface SaveClimbResponse {
 
 export async function saveClimb(
   board: BoardName,
-  token: string,
   options: SaveClimbOptions
 ): Promise<SaveClimbResponse> {
   const uuid = generateUuid();
@@ -35,7 +31,8 @@ export async function saveClimb(
       boardType: board,
       uuid,
       layoutId: options.layout_id,
-      setterId: options.setter_id,
+      userId: options.user_id, // NextAuth user ID
+      setterId: null, // No Aurora user ID
       name: options.name,
       description: options.description || '',
       angle: options.angle,
@@ -52,7 +49,8 @@ export async function saveClimb(
       target: climbs.uuid,
       set: {
         layoutId: options.layout_id,
-        setterId: options.setter_id,
+        userId: options.user_id,
+        setterId: null,
         name: options.name,
         description: options.description || '',
         angle: options.angle,

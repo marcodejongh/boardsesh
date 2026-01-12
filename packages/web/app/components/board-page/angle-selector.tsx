@@ -147,8 +147,7 @@ export default function AngleSelector({ boardName, currentAngle, currentClimb }:
         placement="right"
         onClose={() => setIsDrawerOpen(false)}
         open={isDrawerOpen}
-        width={'90%'}
-        styles={{ body: { padding: 12 } }}
+        styles={{ wrapper: { width: '90%' }, body: { padding: 12 } }}
       >
         {currentClimb && (
           <Alert

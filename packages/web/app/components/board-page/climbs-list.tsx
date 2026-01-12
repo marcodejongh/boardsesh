@@ -39,7 +39,11 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
   // That data equals null at the start, so when its null we use the initialClimbs array which we
   // fill on the server side in the page component. This way the user never sees a loading state for
   // the climb list.
-  const climbs = !hasDoneFirstFetch ? initialClimbs : climbSearchResults || [];
+  // Deduplicate climbs by uuid to prevent React key warnings during hydration/re-renders
+  const rawClimbs = !hasDoneFirstFetch ? initialClimbs : climbSearchResults || [];
+  const climbs = rawClimbs.filter((climb, index, self) =>
+    index === self.findIndex((c) => c.uuid === climb.uuid)
+  );
 
   // A ref to store each climb's DOM element position for easier scroll tracking
   const climbsRefs = useRef<{ [uuid: string]: HTMLDivElement | null }>({});

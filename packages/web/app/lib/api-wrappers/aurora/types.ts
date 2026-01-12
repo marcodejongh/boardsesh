@@ -100,7 +100,7 @@ export interface SaveAttemptOptions {
 }
 export interface SaveClimbOptions {
   layout_id: number;
-  setter_id: number;
+  user_id: string; // NextAuth user ID (UUID)
   name: string;
   description: string;
   is_draft: boolean;

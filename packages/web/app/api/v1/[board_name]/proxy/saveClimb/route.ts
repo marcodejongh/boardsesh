@@ -5,11 +5,10 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 const saveClimbSchema = z.object({
-  token: z.string().min(1),
   options: z
     .object({
       layout_id: z.number(),
-      setter_id: z.number(),
+      user_id: z.string().min(1), // NextAuth user ID (UUID)
       name: z.string().min(1),
       description: z.string(),
       is_draft: z.boolean(),
@@ -35,9 +34,8 @@ export async function POST(request: Request, props: { params: Promise<{ board_na
     const body = await request.json();
     const validatedData = saveClimbSchema.parse(body);
 
-    // saveClimb now handles Aurora failures gracefully and always saves locally
-    // It will never throw for Aurora API failures - only for validation/db errors
-    const response = await saveClimb(board_name, validatedData.token, validatedData.options);
+    // saveClimb saves to local database only (no Aurora sync)
+    const response = await saveClimb(board_name, validatedData.options);
     return NextResponse.json(response);
   } catch (error) {
     console.error('SaveClimb error details:', {

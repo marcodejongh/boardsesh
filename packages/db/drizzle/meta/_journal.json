@@ -253,6 +253,13 @@
       "when": 1768358400000,
       "tag": "0039_drop_board_climbs_layout_fk",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1768444800000,
+      "tag": "0040_add_climb_user_id",
+      "breakpoints": true
     }
   ]
 }
