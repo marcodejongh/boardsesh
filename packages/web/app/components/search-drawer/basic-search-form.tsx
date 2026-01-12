@@ -45,7 +45,7 @@ const BasicSearchForm: React.FC<BasicSearchFormProps> = ({ boardDetails }) => {
     if (!isAuthenticated) {
       return (
         <Alert
-          message="Sign in to filter by progress"
+          title="Sign in to filter by progress"
           description="Login to filter climbs based on your attempt and completion history."
           type="info"
           showIcon

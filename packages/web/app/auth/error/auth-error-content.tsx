@@ -71,10 +71,10 @@ export default function AuthErrorContent() {
         }}
       >
         <Card style={{ width: '100%', maxWidth: 400, textAlign: 'center' }}>
-          <Space direction="vertical" size="large" style={{ width: '100%' }}>
+          <Space orientation="vertical" size="large" style={{ width: '100%' }}>
             <CloseCircleOutlined style={{ fontSize: 48, color: themeTokens.colors.error }} />
             <Title level={3}>Authentication Error</Title>
-            <Alert type="error" message={getErrorMessage()} showIcon />
+            <Alert type="error" title={getErrorMessage()} showIcon />
             <Button type="primary" href="/auth/login" block size="large">
               Back to Login
             </Button>

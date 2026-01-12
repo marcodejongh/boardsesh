@@ -251,7 +251,7 @@ export default function MoonBoardBulkImport({
           {/* Errors */}
           {state.errors.length > 0 && (
             <Alert
-              message={`${state.errors.length} Warning(s)`}
+              title={`${state.errors.length} Warning(s)`}
               description={
                 <ul className={styles.errorList}>
                   {state.errors.map((err, i) => (
@@ -271,7 +271,7 @@ export default function MoonBoardBulkImport({
           {/* Success Summary */}
           {state.climbs.length > 0 && (
             <Alert
-              message={`${state.climbs.length} climb(s) ready to import`}
+              title={`${state.climbs.length} climb(s) ready to import`}
               description="Review the climbs below. You can edit or remove any before saving."
               type="success"
               showIcon

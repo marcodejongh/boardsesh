@@ -297,7 +297,7 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
           open={tickDrawerVisible}
           styles={{ wrapper: { height: '50%' } }}
         >
-          <Space direction="vertical" size="large" style={{ width: '100%', textAlign: 'center', padding: '24px 0' }}>
+          <Space orientation="vertical" size="large" style={{ width: '100%', textAlign: 'center', padding: '24px 0' }}>
             <Text strong style={{ fontSize: 16 }}>Sign in to record ticks</Text>
             <Paragraph type="secondary">
               Create a Boardsesh account to log your climbs and track your progress.

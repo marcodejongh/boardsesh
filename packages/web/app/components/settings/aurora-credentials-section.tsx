@@ -137,7 +137,7 @@ function BoardCredentialCard({
             type="warning"
             icon={<WarningOutlined />}
             showIcon
-            message={`${totalUnsynced} item${totalUnsynced > 1 ? 's' : ''} pending sync`}
+            title={`${totalUnsynced} item${totalUnsynced > 1 ? 's' : ''} pending sync`}
             description={
               <Text type="secondary">
                 {unsyncedCounts.ascents > 0 && `${unsyncedCounts.ascents} ascent${unsyncedCounts.ascents > 1 ? 's' : ''}`}
@@ -293,7 +293,7 @@ export default function AuroraCredentialsSection() {
           Data created in Boardsesh stays local and does not sync back to Aurora.
         </Text>
 
-        <Space direction="vertical" size="middle" className={styles.cardsContainer}>
+        <Space orientation="vertical" size="middle" className={styles.cardsContainer}>
           <BoardCredentialCard
             boardType="kilter"
             credential={getCredentialForBoard('kilter')}

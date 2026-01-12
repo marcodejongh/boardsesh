@@ -151,7 +151,7 @@ export default function AngleSelector({ boardName, currentAngle, currentClimb }:
       >
         {currentClimb && (
           <Alert
-            message={currentClimb.name}
+            title={currentClimb.name}
             type="info"
             style={{ marginBottom: 12, textAlign: 'center' }}
           />

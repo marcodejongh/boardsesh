@@ -60,7 +60,7 @@ const SetterNameSelect = () => {
       value={uiSearchParams.settername}
       onChange={(value) => updateFilters({ settername: value })}
       onSearch={setSearchValue}
-      onDropdownVisibleChange={setIsOpen}
+      onOpenChange={setIsOpen}
       loading={isLoading}
       showSearch
       filterOption={false} // Server-side filtering

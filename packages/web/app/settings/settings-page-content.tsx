@@ -295,7 +295,7 @@ export default function SettingsPageContent() {
 
           <Form form={form} layout="vertical">
             <Form.Item label="Avatar">
-              <Space direction="vertical" align="center" style={{ width: '100%' }}>
+              <Space orientation="vertical" align="center" style={{ width: '100%' }}>
                 <Avatar size={96} src={previewUrl} icon={<UserOutlined />} />
                 <Space>
                   <Upload {...uploadProps}>

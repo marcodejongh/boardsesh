@@ -88,7 +88,7 @@ const JoinSessionTab = () => {
         {error && (
           <Alert
             type="warning"
-            message={getGeolocationErrorMessage(error)}
+            title={getGeolocationErrorMessage(error)}
             style={{ marginBottom: themeTokens.spacing[4] }}
           />
         )}
@@ -122,7 +122,7 @@ const JoinSessionTab = () => {
       <div style={{ textAlign: 'center', padding: themeTokens.spacing[8] }}>
         <Empty
           description={
-            <Space direction="vertical" size="small">
+            <Space orientation="vertical" size="small">
               <Text>No backend server configured</Text>
               <Paragraph type="secondary" style={{ marginBottom: 0 }}>
                 To join sessions, you need to connect to a Boardsesh backend server.
@@ -140,7 +140,7 @@ const JoinSessionTab = () => {
       <div style={{ textAlign: 'center', padding: themeTokens.spacing[8] }}>
         <Alert
           type="error"
-          message={fetchError}
+          title={fetchError}
           style={{ marginBottom: themeTokens.spacing[4] }}
         />
         <Button icon={<ReloadOutlined />} onClick={refresh}>
@@ -156,7 +156,7 @@ const JoinSessionTab = () => {
       <div style={{ textAlign: 'center', padding: themeTokens.spacing[8] }}>
         <Empty
           description={
-            <Space direction="vertical" size="small">
+            <Space orientation="vertical" size="small">
               <Text>No sessions found nearby</Text>
               <Paragraph type="secondary" style={{ marginBottom: 0 }}>
                 There are no active climbing sessions within 500 meters.
