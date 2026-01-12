@@ -1,7 +1,7 @@
 import { neon, neonConfig, Pool } from '@neondatabase/serverless';
 import { drizzle as drizzleHttp } from 'drizzle-orm/neon-http';
 import { drizzle } from 'drizzle-orm/neon-serverless';
-import { eq, and, or, isNotNull, asc } from 'drizzle-orm';
+import { eq, and, or, isNotNull } from 'drizzle-orm';
 import ws from 'ws';
 
 import { auroraCredentials } from '@boardsesh/db/schema/auth';
@@ -206,7 +206,7 @@ export class SyncRunner {
           isNotNull(auroraCredentials.auroraUserId),
         ),
       )
-      .orderBy(asc(auroraCredentials.lastSyncAt).nullsFirst()) // Never-synced users first, then oldest
+      .orderBy(auroraCredentials.lastSyncAt.asc().nullsFirst()) // Never-synced users first, then oldest
       .limit(1);
 
     return credentials.length > 0 ? (credentials[0] as CredentialRecord) : null;
