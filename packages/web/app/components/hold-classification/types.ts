@@ -1,33 +1,11 @@
 import { BoardDetails } from '@/app/lib/types';
-import { HoldRenderData } from '../board-renderer/types';
-
-/**
- * Hold type classification options
- * Matches the database enum values
- */
-export type HoldType =
-  | 'edge'
-  | 'sloper'
-  | 'pinch'
-  | 'sidepull'
-  | 'undercling'
-  | 'jug'
-  | 'crimp'
-  | 'pocket';
-
-/**
- * Hold type display information
- */
-export interface HoldTypeOption {
-  value: HoldType;
-  label: string;
-  description: string;
-}
 
 /**
  * All available hold types with their display labels
+ * Order matches display order in the UI
+ * Note: Values must match the database hold_type enum in packages/db/src/schema/app/hold-classifications.ts
  */
-export const HOLD_TYPE_OPTIONS: HoldTypeOption[] = [
+export const HOLD_TYPE_OPTIONS = [
   { value: 'jug', label: 'Jug', description: 'Large, positive holds' },
   { value: 'edge', label: 'Edge', description: 'Flat ledges and rails' },
   { value: 'sloper', label: 'Sloper', description: 'Rounded, friction-dependent holds' },
@@ -36,7 +14,18 @@ export const HOLD_TYPE_OPTIONS: HoldTypeOption[] = [
   { value: 'pocket', label: 'Pocket', description: 'Holds for one or more fingers' },
   { value: 'sidepull', label: 'Sidepull', description: 'Holds oriented to the side' },
   { value: 'undercling', label: 'Undercling', description: 'Holds gripped from below' },
-];
+] as const;
+
+/**
+ * Hold type classification options
+ * Derived from HOLD_TYPE_OPTIONS to ensure type safety
+ */
+export type HoldType = (typeof HOLD_TYPE_OPTIONS)[number]['value'];
+
+/**
+ * Hold type display information
+ */
+export type HoldTypeOption = (typeof HOLD_TYPE_OPTIONS)[number];
 
 /**
  * User's classification for a specific hold
@@ -90,13 +79,4 @@ export interface SaveClassificationRequest {
   holdId: number;
   holdType: HoldType | null;
   difficultyRating: number | null;
-}
-
-/**
- * State for a single hold being classified
- */
-export interface HoldClassificationState {
-  hold: HoldRenderData;
-  classification: HoldClassification;
-  isModified: boolean;
 }

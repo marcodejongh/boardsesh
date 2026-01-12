@@ -152,7 +152,7 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
     }
   }, [open, sessionStatus, boardDetails, loadClassifications]);
 
-  const saveClassification = async (holdId: number, classification: HoldClassification) => {
+  const saveClassification = useCallback(async (holdId: number, classification: HoldClassification) => {
     setSaving(true);
     try {
       const response = await fetch('/api/internal/hold-classifications', {
@@ -177,7 +177,7 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
     } finally {
       setSaving(false);
     }
-  };
+  }, [boardDetails]);
 
   const getCurrentClassification = useCallback((): HoldClassification => {
     if (!currentHold) {
@@ -202,7 +202,7 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
 
     setClassifications(new Map(classifications).set(currentHold.id, updated));
     await saveClassification(currentHold.id, updated);
-  }, [currentHold, classifications, getCurrentClassification]);
+  }, [currentHold, classifications, getCurrentClassification, saveClassification]);
 
   const handleRatingChange = useCallback(async (rating: number) => {
     if (!currentHold) return;
@@ -216,7 +216,7 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
 
     setClassifications(new Map(classifications).set(currentHold.id, updated));
     await saveClassification(currentHold.id, updated);
-  }, [currentHold, classifications, getCurrentClassification]);
+  }, [currentHold, classifications, getCurrentClassification, saveClassification]);
 
   const handlePrevious = useCallback(() => {
     if (currentIndex > 0) {
@@ -234,14 +234,6 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
     }
   }, [currentIndex, holds.length, onComplete]);
 
-  const handleSkip = useCallback(() => {
-    handleNext();
-  }, [handleNext]);
-
-  const handleClose = useCallback(() => {
-    onClose();
-  }, [onClose]);
-
   const progress = holds.length > 0 ? ((currentIndex + 1) / holds.length) * 100 : 0;
   const classifiedCount = Array.from(classifications.values()).filter(
     c => c.holdType !== null || c.difficultyRating !== null
@@ -253,7 +245,7 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
       <Drawer
         title="Hold Classification"
         open={open}
-        onClose={handleClose}
+        onClose={onClose}
         placement="bottom"
         height="85vh"
       >
@@ -271,13 +263,13 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
       <Drawer
         title="Hold Classification"
         open={open}
-        onClose={handleClose}
+        onClose={onClose}
         placement="bottom"
         height="85vh"
       >
         <div className={styles.emptyState}>
           <Text>No holds found for this board configuration.</Text>
-          <Button onClick={handleClose}>Close</Button>
+          <Button onClick={onClose}>Close</Button>
         </div>
       </Drawer>
     );
@@ -289,7 +281,7 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
       <Drawer
         title="Hold Classification"
         open={open}
-        onClose={handleClose}
+        onClose={onClose}
         placement="bottom"
         height="85vh"
       >
@@ -302,7 +294,7 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
             You've classified {classifiedCount} of {holds.length} holds.
             You can run through this wizard again anytime to update your ratings.
           </Text>
-          <Button type="primary" size="large" onClick={handleClose}>
+          <Button type="primary" size="large" onClick={onClose}>
             Done
           </Button>
         </div>
@@ -320,7 +312,7 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
         </div>
       }
       open={open}
-      onClose={handleClose}
+      onClose={onClose}
       placement="bottom"
       height="85vh"
       styles={{
@@ -406,7 +398,7 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
           </Button>
           <Button
             className={styles.skipButton}
-            onClick={handleSkip}
+            onClick={handleNext}
             disabled={saving}
           >
             Skip
