@@ -316,6 +316,41 @@ export const typeDefs = /* GraphQL */ `
     hasMore: Boolean!
   }
 
+  # Grouped climb attempts for a single climb on a single day
+  type GroupedAscentFeedItem {
+    # Unique key for this group (climbUuid-date)
+    key: String!
+    climbUuid: String!
+    climbName: String!
+    setterUsername: String
+    boardType: String!
+    layoutId: Int
+    angle: Int!
+    isMirror: Boolean!
+    # Climb display data for thumbnails
+    frames: String
+    difficultyName: String
+    isBenchmark: Boolean!
+    # The date of the attempts (YYYY-MM-DD)
+    date: String!
+    # Counts by status
+    flashCount: Int!
+    sendCount: Int!
+    attemptCount: Int!
+    # Best quality rating from any attempt in this group
+    bestQuality: Int
+    # Latest comment from any attempt in this group
+    latestComment: String
+    # Individual items in this group (for detailed view if needed)
+    items: [AscentFeedItem!]!
+  }
+
+  type GroupedAscentFeedResult {
+    groups: [GroupedAscentFeedItem!]!
+    totalCount: Int!
+    hasMore: Boolean!
+  }
+
   input AscentFeedInput {
     limit: Int
     offset: Int
@@ -541,6 +576,8 @@ export const typeDefs = /* GraphQL */ `
     userTicks(userId: ID!, boardType: String!): [Tick!]!
     # Get public ascent activity feed for a specific user (all boards, with climb details)
     userAscentsFeed(userId: ID!, input: AscentFeedInput): AscentFeedResult!
+    # Get public ascent activity feed grouped by climb and day
+    userGroupedAscentsFeed(userId: ID!, input: AscentFeedInput): GroupedAscentFeedResult!
     # Get profile statistics with distinct climb counts per grade (public)
     userProfileStats(userId: ID!): ProfileStats!
 

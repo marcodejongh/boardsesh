@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Card, Flex, Tag, Typography, Rate, Empty, Spin, Button } from 'antd';
 import {
   CheckCircleOutlined,
@@ -12,10 +12,10 @@ import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
 import {
-  GET_USER_ASCENTS_FEED,
-  type AscentFeedItem,
-  type GetUserAscentsFeedQueryVariables,
-  type GetUserAscentsFeedQueryResponse,
+  GET_USER_GROUPED_ASCENTS_FEED,
+  type GroupedAscentFeedItem,
+  type GetUserGroupedAscentsFeedQueryVariables,
+  type GetUserGroupedAscentsFeedQueryResponse,
 } from '@/app/lib/graphql/operations';
 import AscentThumbnail from './ascent-thumbnail';
 import styles from './ascents-feed.module.css';
@@ -23,28 +23,6 @@ import styles from './ascents-feed.module.css';
 dayjs.extend(relativeTime);
 
 const { Text } = Typography;
-
-// Type for grouped climb attempts
-interface GroupedClimbAttempts {
-  key: string; // climbUuid + day
-  climbUuid: string;
-  climbName: string;
-  setterUsername: string | null;
-  boardType: string;
-  layoutId: number | null;
-  angle: number;
-  isMirror: boolean;
-  frames: string | null;
-  difficultyName: string | null;
-  isBenchmark: boolean;
-  date: string; // The day of the attempts
-  items: AscentFeedItem[];
-  flashCount: number;
-  sendCount: number;
-  attemptCount: number;
-  bestQuality: number | null;
-  latestComment: string | null;
-}
 
 interface AscentsFeedProps {
   userId: string;
@@ -66,72 +44,8 @@ const getLayoutDisplayName = (boardType: string, layoutId: number | null): strin
   return layoutNames[key] || `${boardType.charAt(0).toUpperCase() + boardType.slice(1)}`;
 };
 
-// Function to group items by climb and day
-const groupItemsByClimbAndDay = (items: AscentFeedItem[]): GroupedClimbAttempts[] => {
-  const groupMap = new Map<string, GroupedClimbAttempts>();
-
-  for (const item of items) {
-    const day = dayjs(item.climbedAt).format('YYYY-MM-DD');
-    const key = `${item.climbUuid}-${day}`;
-
-    if (!groupMap.has(key)) {
-      groupMap.set(key, {
-        key,
-        climbUuid: item.climbUuid,
-        climbName: item.climbName,
-        setterUsername: item.setterUsername,
-        boardType: item.boardType,
-        layoutId: item.layoutId,
-        angle: item.angle,
-        isMirror: item.isMirror,
-        frames: item.frames,
-        difficultyName: item.difficultyName,
-        isBenchmark: item.isBenchmark,
-        date: day,
-        items: [],
-        flashCount: 0,
-        sendCount: 0,
-        attemptCount: 0,
-        bestQuality: null,
-        latestComment: null,
-      });
-    }
-
-    const group = groupMap.get(key)!;
-    group.items.push(item);
-
-    // Update counts
-    if (item.status === 'flash') {
-      group.flashCount++;
-    } else if (item.status === 'send') {
-      group.sendCount++;
-    } else {
-      group.attemptCount++;
-    }
-
-    // Track best quality rating
-    if (item.quality !== null) {
-      if (group.bestQuality === null || item.quality > group.bestQuality) {
-        group.bestQuality = item.quality;
-      }
-    }
-
-    // Track latest comment (prefer non-empty)
-    if (item.comment && !group.latestComment) {
-      group.latestComment = item.comment;
-    }
-  }
-
-  // Convert to array and sort by the latest item date
-  return Array.from(groupMap.values()).sort((a, b) => {
-    const aLatest = Math.max(...a.items.map((i) => new Date(i.climbedAt).getTime()));
-    const bLatest = Math.max(...b.items.map((i) => new Date(i.climbedAt).getTime()));
-    return bLatest - aLatest;
-  });
-};
-
 // Generate status summary for grouped attempts
-const getGroupStatusSummary = (group: GroupedClimbAttempts): { text: string; icon: React.ReactNode; color: string } => {
+const getGroupStatusSummary = (group: GroupedAscentFeedItem): { text: string; icon: React.ReactNode; color: string } => {
   const parts: string[] = [];
 
   // Determine primary status (best result first)
@@ -162,7 +76,8 @@ const getGroupStatusSummary = (group: GroupedClimbAttempts): { text: string; ico
   return { text: parts.join(', '), icon, color };
 };
 
-const GroupedFeedItem: React.FC<{ group: GroupedClimbAttempts }> = ({ group }) => {
+const GroupedFeedItem: React.FC<{ group: GroupedAscentFeedItem }> = ({ group }) => {
+  // Get the latest item's climbedAt for time display
   const latestItem = group.items.reduce((latest, item) =>
     new Date(item.climbedAt) > new Date(latest.climbedAt) ? item : latest
   );
@@ -244,7 +159,7 @@ const GroupedFeedItem: React.FC<{ group: GroupedClimbAttempts }> = ({ group }) =
 };
 
 export const AscentsFeed: React.FC<AscentsFeedProps> = ({ userId, pageSize = 10 }) => {
-  const [items, setItems] = useState<AscentFeedItem[]>([]);
+  const [groups, setGroups] = useState<GroupedAscentFeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
@@ -262,22 +177,22 @@ export const AscentsFeed: React.FC<AscentsFeedProps> = ({ userId, pageSize = 10 
         }
 
         const client = createGraphQLHttpClient(null);
-        const variables: GetUserAscentsFeedQueryVariables = {
+        const variables: GetUserGroupedAscentsFeedQueryVariables = {
           userId,
           input: { limit: pageSize, offset },
         };
 
-        const response = await client.request<GetUserAscentsFeedQueryResponse>(
-          GET_USER_ASCENTS_FEED,
+        const response = await client.request<GetUserGroupedAscentsFeedQueryResponse>(
+          GET_USER_GROUPED_ASCENTS_FEED,
           variables
         );
 
-        const { items: newItems, hasMore: more, totalCount: total } = response.userAscentsFeed;
+        const { groups: newGroups, hasMore: more, totalCount: total } = response.userGroupedAscentsFeed;
 
         if (append) {
-          setItems((prev) => [...prev, ...newItems]);
+          setGroups((prev) => [...prev, ...newGroups]);
         } else {
-          setItems(newItems);
+          setGroups(newGroups);
         }
         setHasMore(more);
         setTotalCount(total);
@@ -301,7 +216,7 @@ export const AscentsFeed: React.FC<AscentsFeedProps> = ({ userId, pageSize = 10 
   // Load more when button clicked
   const handleLoadMore = () => {
     if (!loadingMore && hasMore) {
-      fetchFeed(items.length, true);
+      fetchFeed(groups.length, true);
     }
   };
 
@@ -322,10 +237,7 @@ export const AscentsFeed: React.FC<AscentsFeedProps> = ({ userId, pageSize = 10 
     );
   }
 
-  // Group items by climb and day
-  const groupedItems = useMemo(() => groupItemsByClimbAndDay(items), [items]);
-
-  if (items.length === 0) {
+  if (groups.length === 0) {
     return (
       <Empty
         description="No ascents logged yet"
@@ -337,7 +249,7 @@ export const AscentsFeed: React.FC<AscentsFeedProps> = ({ userId, pageSize = 10 
   return (
     <div className={styles.feed}>
       <Flex vertical gap={12}>
-        {groupedItems.map((group) => (
+        {groups.map((group) => (
           <GroupedFeedItem key={group.key} group={group} />
         ))}
       </Flex>
@@ -350,7 +262,7 @@ export const AscentsFeed: React.FC<AscentsFeedProps> = ({ userId, pageSize = 10 
             type="default"
             block
           >
-            Load more ({items.length} of {totalCount})
+            Load more ({groups.length} of {totalCount})
           </Button>
         </div>
       )}

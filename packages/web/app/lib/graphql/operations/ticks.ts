@@ -183,6 +183,97 @@ export interface GetUserAscentsFeedQueryResponse {
 }
 
 // ============================================
+// Grouped Activity Feed Operations
+// ============================================
+
+export const GET_USER_GROUPED_ASCENTS_FEED = gql`
+  query GetUserGroupedAscentsFeed($userId: ID!, $input: AscentFeedInput) {
+    userGroupedAscentsFeed(userId: $userId, input: $input) {
+      groups {
+        key
+        climbUuid
+        climbName
+        setterUsername
+        boardType
+        layoutId
+        angle
+        isMirror
+        frames
+        difficultyName
+        isBenchmark
+        date
+        flashCount
+        sendCount
+        attemptCount
+        bestQuality
+        latestComment
+        items {
+          uuid
+          climbUuid
+          climbName
+          setterUsername
+          boardType
+          layoutId
+          angle
+          isMirror
+          status
+          attemptCount
+          quality
+          difficulty
+          difficultyName
+          isBenchmark
+          comment
+          climbedAt
+          frames
+        }
+      }
+      totalCount
+      hasMore
+    }
+  }
+`;
+
+// Type for grouped ascent feed item
+export interface GroupedAscentFeedItem {
+  key: string;
+  climbUuid: string;
+  climbName: string;
+  setterUsername: string | null;
+  boardType: string;
+  layoutId: number | null;
+  angle: number;
+  isMirror: boolean;
+  frames: string | null;
+  difficultyName: string | null;
+  isBenchmark: boolean;
+  date: string;
+  flashCount: number;
+  sendCount: number;
+  attemptCount: number;
+  bestQuality: number | null;
+  latestComment: string | null;
+  items: AscentFeedItem[];
+}
+
+// Type for the grouped feed query variables
+export interface GetUserGroupedAscentsFeedQueryVariables {
+  userId: string;
+  input?: {
+    limit?: number;
+    offset?: number;
+  };
+}
+
+// Type for the grouped feed query response
+export interface GetUserGroupedAscentsFeedQueryResponse {
+  userGroupedAscentsFeed: {
+    groups: GroupedAscentFeedItem[];
+    totalCount: number;
+    hasMore: boolean;
+  };
+}
+
+// ============================================
 // Profile Statistics Operations
 // ============================================
 
