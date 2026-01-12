@@ -4,41 +4,15 @@ import { getDb } from '@/app/lib/db/db';
 import * as schema from '@/app/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { authOptions } from '@/app/lib/auth/auth-options';
-
-// Valid hold types matching the database enum
-const VALID_HOLD_TYPES = ['jug', 'sloper', 'pinch', 'crimp', 'pocket'] as const;
-type ValidHoldType = typeof VALID_HOLD_TYPES[number];
-
-/**
- * Validates and parses an integer from a string
- * Returns null if invalid
- */
-function parseIntSafe(value: string | null): number | null {
-  if (value === null) return null;
-  const parsed = parseInt(value, 10);
-  return isNaN(parsed) ? null : parsed;
-}
-
-/**
- * Validates hold type against allowed enum values
- */
-function isValidHoldType(value: unknown): value is ValidHoldType {
-  return typeof value === 'string' && VALID_HOLD_TYPES.includes(value as ValidHoldType);
-}
-
-/**
- * Validates a rating is in range 1-5
- */
-function isValidRating(value: unknown): value is number {
-  return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 5;
-}
-
-/**
- * Validates pull direction is in range 0-360
- */
-function isValidPullDirection(value: unknown): value is number {
-  return typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= 360;
-}
+import {
+  VALID_BOARD_TYPES,
+  VALID_HOLD_TYPES,
+  parseIntSafe,
+  isValidBoardType,
+  isValidHoldType,
+  isValidRating,
+  isValidPullDirection,
+} from './validation';
 
 /**
  * GET /api/internal/hold-classifications
@@ -60,6 +34,13 @@ export async function GET(request: NextRequest) {
     if (!boardType || !layoutIdParam || !sizeIdParam) {
       return NextResponse.json(
         { error: 'Missing required parameters: boardType, layoutId, sizeId' },
+        { status: 400 }
+      );
+    }
+
+    if (!isValidBoardType(boardType)) {
+      return NextResponse.json(
+        { error: `boardType must be one of: ${VALID_BOARD_TYPES.join(', ')}` },
         { status: 400 }
       );
     }
@@ -129,9 +110,9 @@ export async function POST(request: NextRequest) {
     const { boardType, layoutId, sizeId, holdId, holdType, handRating, footRating, pullDirection } = body;
 
     // Validate required fields
-    if (!boardType || typeof boardType !== 'string') {
+    if (!isValidBoardType(boardType)) {
       return NextResponse.json(
-        { error: 'boardType must be a non-empty string' },
+        { error: `boardType must be one of: ${VALID_BOARD_TYPES.join(', ')}` },
         { status: 400 }
       );
     }
@@ -204,9 +185,9 @@ export async function POST(request: NextRequest) {
       .limit(1);
 
     const now = new Date().toISOString();
-    const validatedHoldType = holdType || null;
-    const validatedHandRating = handRating || null;
-    const validatedFootRating = footRating || null;
+    const validatedHoldType = holdType ?? null;
+    const validatedHandRating = handRating ?? null;
+    const validatedFootRating = footRating ?? null;
     const validatedPullDirection = pullDirection ?? null;
 
     if (existing.length > 0) {

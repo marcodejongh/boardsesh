@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { Drawer, Button, Progress, Rate, Typography, Spin, message } from 'antd';
 import { ArrowLeftOutlined, ArrowRightOutlined, CheckOutlined, CheckCircleFilled, ExpandOutlined, CompressOutlined } from '@ant-design/icons';
 import { useSession } from 'next-auth/react';
@@ -109,6 +109,8 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
   const [classifications, setClassifications] = useState<Map<number, HoldClassification>>(new Map());
   const [isComplete, setIsComplete] = useState(false);
   const [isHoldViewExpanded, setIsHoldViewExpanded] = useState(false);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const pendingSaveRef = useRef<{ holdId: number; classification: HoldClassification } | null>(null);
 
   // Get holds from board details, sorted by position (top-left to bottom-right)
   const holds = useMemo(() => {
@@ -171,7 +173,8 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
     }
   }, [open, sessionStatus, boardDetails, loadClassifications]);
 
-  const saveClassification = useCallback(async (holdId: number, classification: HoldClassification) => {
+  // Actual save function (non-debounced)
+  const doSaveClassification = useCallback(async (holdId: number, classification: HoldClassification) => {
     setSaving(true);
     try {
       const response = await fetch('/api/internal/hold-classifications', {
@@ -199,6 +202,37 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
       setSaving(false);
     }
   }, [boardDetails]);
+
+  // Debounced save - waits 500ms after last change before saving
+  const saveClassification = useCallback((holdId: number, classification: HoldClassification) => {
+    // Store the pending save
+    pendingSaveRef.current = { holdId, classification };
+
+    // Clear any existing timeout
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    // Set new timeout
+    saveTimeoutRef.current = setTimeout(() => {
+      if (pendingSaveRef.current) {
+        doSaveClassification(pendingSaveRef.current.holdId, pendingSaveRef.current.classification);
+        pendingSaveRef.current = null;
+      }
+    }, 500);
+  }, [doSaveClassification]);
+
+  // Flush pending save immediately (e.g., when navigating)
+  const flushPendingSave = useCallback(() => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
+    if (pendingSaveRef.current) {
+      doSaveClassification(pendingSaveRef.current.holdId, pendingSaveRef.current.classification);
+      pendingSaveRef.current = null;
+    }
+  }, [doSaveClassification]);
 
   const getCurrentClassification = useCallback((): HoldClassification => {
     if (!currentHold) {
@@ -271,19 +305,21 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
 
   const handlePrevious = useCallback(() => {
     if (currentIndex > 0) {
+      flushPendingSave();
       setCurrentIndex(currentIndex - 1);
       setIsComplete(false);
     }
-  }, [currentIndex]);
+  }, [currentIndex, flushPendingSave]);
 
   const handleNext = useCallback(() => {
+    flushPendingSave();
     if (currentIndex < holds.length - 1) {
       setCurrentIndex(currentIndex + 1);
     } else {
       setIsComplete(true);
       onComplete?.();
     }
-  }, [currentIndex, holds.length, onComplete]);
+  }, [currentIndex, holds.length, onComplete, flushPendingSave]);
 
   const progress = holds.length > 0 ? ((currentIndex + 1) / holds.length) * 100 : 0;
   const classifiedCount = Array.from(classifications.values()).filter(
