@@ -26,6 +26,12 @@ async function processBatches<T>(
   }
 }
 
+interface UpsertResult {
+  synced: number;
+  skipped: number;
+  skippedReason?: string;
+}
+
 async function upsertTableData(
   db: NeonDatabase<Record<string, never>>,
   boardName: AuroraBoardName,
@@ -35,8 +41,8 @@ async function upsertTableData(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data: any[],
   log: (message: string) => void = console.log,
-) {
-  if (data.length === 0) return;
+): Promise<UpsertResult> {
+  if (data.length === 0) return { synced: 0, skipped: 0 };
 
   log(`  Upserting ${data.length} rows for ${tableName} in batches of ${BATCH_SIZE}`);
 
@@ -199,6 +205,7 @@ async function upsertTableData(
         });
       } else {
         log(`  Skipping ascents sync: no NextAuth user ID provided`);
+        return { synced: 0, skipped: data.length, skippedReason: 'No NextAuth user ID provided' };
       }
       break;
     }
@@ -247,6 +254,7 @@ async function upsertTableData(
         });
       } else {
         log(`  Skipping bids sync: no NextAuth user ID provided`);
+        return { synced: 0, skipped: data.length, skippedReason: 'No NextAuth user ID provided' };
       }
       break;
     }
@@ -395,8 +403,10 @@ async function upsertTableData(
 
     default:
       log(`  No specific upsert logic for table: ${tableName}`);
-      break;
+      return { synced: 0, skipped: data.length, skippedReason: `No upsert logic for table: ${tableName}` };
   }
+
+  return { synced: data.length, skipped: 0 };
 }
 
 async function updateUserSyncs(
@@ -466,8 +476,14 @@ export async function getLastSharedSyncTimes(pool: Pool, boardName: AuroraBoardN
   }
 }
 
+export interface SyncTableResult {
+  synced: number;
+  skipped?: number;
+  skippedReason?: string;
+}
+
 export interface SyncUserDataResult {
-  [tableName: string]: { synced: number };
+  [tableName: string]: SyncTableResult;
 }
 
 export async function syncUserData(
@@ -530,13 +546,17 @@ export async function syncUserData(
           if (syncResults[tableName] && Array.isArray(syncResults[tableName])) {
             const data = syncResults[tableName];
 
-            await upsertTableData(tx, board, tableName, auroraUserId, nextAuthUserId, data, log);
+            const upsertResult = await upsertTableData(tx, board, tableName, auroraUserId, nextAuthUserId, data, log);
 
             // Accumulate results
             if (!totalResults[tableName]) {
               totalResults[tableName] = { synced: 0 };
             }
-            totalResults[tableName].synced += data.length;
+            totalResults[tableName].synced += upsertResult.synced;
+            if (upsertResult.skipped > 0) {
+              totalResults[tableName].skipped = (totalResults[tableName].skipped || 0) + upsertResult.skipped;
+              totalResults[tableName].skippedReason = upsertResult.skippedReason;
+            }
           } else if (!totalResults[tableName]) {
             totalResults[tableName] = { synced: 0 };
           }
