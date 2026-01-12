@@ -15,6 +15,7 @@ import {
   HOLD_TYPE_OPTIONS,
   StoredHoldClassification,
 } from './types';
+import DirectionPicker from './direction-picker';
 import styles from './hold-classification-wizard.module.css';
 
 const { Text, Title } = Typography;
@@ -128,7 +129,9 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
           classMap.set(c.holdId, {
             holdId: c.holdId,
             holdType: c.holdType,
-            difficultyRating: c.difficultyRating,
+            handRating: c.handRating,
+            footRating: c.footRating,
+            pullDirection: c.pullDirection,
           });
         });
 
@@ -164,7 +167,9 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
           sizeId: boardDetails.size_id,
           holdId,
           holdType: classification.holdType,
-          difficultyRating: classification.difficultyRating,
+          handRating: classification.handRating,
+          footRating: classification.footRating,
+          pullDirection: classification.pullDirection,
         }),
       });
 
@@ -181,12 +186,14 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
 
   const getCurrentClassification = useCallback((): HoldClassification => {
     if (!currentHold) {
-      return { holdId: 0, holdType: null, difficultyRating: null };
+      return { holdId: 0, holdType: null, handRating: null, footRating: null, pullDirection: null };
     }
     return classifications.get(currentHold.id) || {
       holdId: currentHold.id,
       holdType: null,
-      difficultyRating: null,
+      handRating: null,
+      footRating: null,
+      pullDirection: null,
     };
   }, [currentHold, classifications]);
 
@@ -204,14 +211,42 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
     await saveClassification(currentHold.id, updated);
   }, [currentHold, classifications, getCurrentClassification, saveClassification]);
 
-  const handleRatingChange = useCallback(async (rating: number) => {
+  const handleHandRatingChange = useCallback(async (rating: number) => {
     if (!currentHold) return;
 
     const current = getCurrentClassification();
     const updated: HoldClassification = {
       ...current,
       holdId: currentHold.id,
-      difficultyRating: rating,
+      handRating: rating,
+    };
+
+    setClassifications(new Map(classifications).set(currentHold.id, updated));
+    await saveClassification(currentHold.id, updated);
+  }, [currentHold, classifications, getCurrentClassification, saveClassification]);
+
+  const handleFootRatingChange = useCallback(async (rating: number) => {
+    if (!currentHold) return;
+
+    const current = getCurrentClassification();
+    const updated: HoldClassification = {
+      ...current,
+      holdId: currentHold.id,
+      footRating: rating,
+    };
+
+    setClassifications(new Map(classifications).set(currentHold.id, updated));
+    await saveClassification(currentHold.id, updated);
+  }, [currentHold, classifications, getCurrentClassification, saveClassification]);
+
+  const handlePullDirectionChange = useCallback(async (direction: number) => {
+    if (!currentHold) return;
+
+    const current = getCurrentClassification();
+    const updated: HoldClassification = {
+      ...current,
+      holdId: currentHold.id,
+      pullDirection: direction,
     };
 
     setClassifications(new Map(classifications).set(currentHold.id, updated));
@@ -236,8 +271,16 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
 
   const progress = holds.length > 0 ? ((currentIndex + 1) / holds.length) * 100 : 0;
   const classifiedCount = Array.from(classifications.values()).filter(
-    c => c.holdType !== null || c.difficultyRating !== null
+    c => c.holdType !== null || c.handRating !== null || c.footRating !== null || c.pullDirection !== null
   ).length;
+
+  // Filter hold types based on board type (e.g., exclude pocket for Kilter)
+  const filteredHoldTypeOptions = useMemo(() => {
+    const boardName = boardDetails.board_name as string;
+    return HOLD_TYPE_OPTIONS.filter(option => {
+      return !(option.excludeBoards as readonly string[]).includes(boardName);
+    });
+  }, [boardDetails.board_name]);
 
   // Render loading state
   if (loading) {
@@ -247,7 +290,7 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
         open={open}
         onClose={onClose}
         placement="bottom"
-        height="85vh"
+        height="100vh"
       >
         <div className={styles.loadingContainer}>
           <Spin size="large" />
@@ -265,7 +308,7 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
         open={open}
         onClose={onClose}
         placement="bottom"
-        height="85vh"
+        height="100vh"
       >
         <div className={styles.emptyState}>
           <Text>No holds found for this board configuration.</Text>
@@ -283,7 +326,7 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
         open={open}
         onClose={onClose}
         placement="bottom"
-        height="85vh"
+        height="100vh"
       >
         <div className={styles.completeContainer}>
           <CheckCircleFilled className={styles.completeIcon} />
@@ -314,7 +357,7 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
       open={open}
       onClose={onClose}
       placement="bottom"
-      height="85vh"
+      height="100vh"
       styles={{
         header: {
           borderBottom: `1px solid ${themeTokens.neutral[200]}`,
@@ -353,7 +396,7 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
           <div>
             <Text className={styles.sectionTitle}>Hold Type</Text>
             <div className={styles.holdTypeList}>
-              {HOLD_TYPE_OPTIONS.map((option) => (
+              {filteredHoldTypeOptions.map((option) => (
                 <div
                   key={option.value}
                   className={`${styles.holdTypeItem} ${
@@ -372,15 +415,41 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
             </div>
           </div>
 
-          {/* Difficulty rating */}
+          {/* Hand rating */}
           <div className={styles.ratingSection}>
-            <Text className={styles.sectionTitle}>How Hard to Hold? (1-5)</Text>
+            <Text className={styles.sectionTitle}>Hand Rating (1-5)</Text>
             <div className={styles.ratingLabel}>
               1 = Easy to grip, 5 = Very difficult
             </div>
             <Rate
-              value={currentClassification.difficultyRating || 0}
-              onChange={handleRatingChange}
+              value={currentClassification.handRating || 0}
+              onChange={handleHandRatingChange}
+              disabled={saving}
+            />
+          </div>
+
+          {/* Foot rating */}
+          <div className={styles.ratingSection}>
+            <Text className={styles.sectionTitle}>Foot Rating (1-5)</Text>
+            <div className={styles.ratingLabel}>
+              1 = Easy to stand on, 5 = Very difficult
+            </div>
+            <Rate
+              value={currentClassification.footRating || 0}
+              onChange={handleFootRatingChange}
+              disabled={saving}
+            />
+          </div>
+
+          {/* Direction of pull */}
+          <div className={styles.directionSection}>
+            <Text className={styles.sectionTitle}>Direction of Pull</Text>
+            <div className={styles.ratingLabel}>
+              Click or drag to set the best pulling direction
+            </div>
+            <DirectionPicker
+              value={currentClassification.pullDirection}
+              onChange={handlePullDirectionChange}
               disabled={saving}
             />
           </div>

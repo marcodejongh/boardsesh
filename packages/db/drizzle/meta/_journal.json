@@ -218,6 +218,20 @@
       "when": 1767926400000,
       "tag": "0034_lovely_omega_sentinel",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1768012800000,
+      "tag": "0035_add_hand_foot_ratings",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1768099200000,
+      "tag": "0036_add_pull_direction",
+      "breakpoints": true
     }
   ]
 }

@@ -15,12 +15,9 @@ import { users } from '../auth/users';
  * Based on common climbing hold classifications
  */
 export const holdTypeEnum = pgEnum('hold_type', [
-  'edge',
+  'jug',
   'sloper',
   'pinch',
-  'sidepull',
-  'undercling',
-  'jug',
   'crimp',
   'pocket',
 ]);
@@ -44,7 +41,9 @@ export const userHoldClassifications = pgTable(
 
     // Classification data
     holdType: holdTypeEnum('hold_type'), // User's classification of the hold type
-    difficultyRating: integer('difficulty_rating'), // 1-5 star rating for how hard the hold is
+    handRating: integer('hand_rating'), // 1-5 rating for how hard the hold is for hands
+    footRating: integer('foot_rating'), // 1-5 rating for how hard the hold is for feet
+    pullDirection: integer('pull_direction'), // 0-360 degrees direction of pull (0=up, 90=right, 180=down, 270=left)
 
     // Timestamps
     createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
@@ -77,4 +76,4 @@ export const userHoldClassifications = pgTable(
 // Type exports
 export type UserHoldClassification = typeof userHoldClassifications.$inferSelect;
 export type NewUserHoldClassification = typeof userHoldClassifications.$inferInsert;
-export type HoldType = 'edge' | 'sloper' | 'pinch' | 'sidepull' | 'undercling' | 'jug' | 'crimp' | 'pocket';
+export type HoldType = 'jug' | 'sloper' | 'pinch' | 'crimp' | 'pocket';

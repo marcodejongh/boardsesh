@@ -119,6 +119,10 @@
   text-align: center;
 }
 
+.directionSection {
+  text-align: center;
+}
+
 .ratingLabel {
   font-size: 14px;
   color: var(--neutral-500, #6B7280);

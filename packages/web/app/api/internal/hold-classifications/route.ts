@@ -6,7 +6,7 @@ import { eq, and } from 'drizzle-orm';
 import { authOptions } from '@/app/lib/auth/auth-options';
 
 // Valid hold types matching the database enum
-const VALID_HOLD_TYPES = ['edge', 'sloper', 'pinch', 'sidepull', 'undercling', 'jug', 'crimp', 'pocket'] as const;
+const VALID_HOLD_TYPES = ['jug', 'sloper', 'pinch', 'crimp', 'pocket'] as const;
 type ValidHoldType = typeof VALID_HOLD_TYPES[number];
 
 /**
@@ -27,10 +27,17 @@ function isValidHoldType(value: unknown): value is ValidHoldType {
 }
 
 /**
- * Validates difficulty rating is in range 1-5
+ * Validates a rating is in range 1-5
  */
-function isValidDifficultyRating(value: unknown): value is number {
+function isValidRating(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 5;
+}
+
+/**
+ * Validates pull direction is in range 0-360
+ */
+function isValidPullDirection(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= 360;
 }
 
 /**
@@ -90,7 +97,9 @@ export async function GET(request: NextRequest) {
         sizeId: c.sizeId,
         holdId: c.holdId,
         holdType: c.holdType,
-        difficultyRating: c.difficultyRating,
+        handRating: c.handRating,
+        footRating: c.footRating,
+        pullDirection: c.pullDirection,
         createdAt: c.createdAt,
         updatedAt: c.updatedAt,
       })),
@@ -117,7 +126,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { boardType, layoutId, sizeId, holdId, holdType, difficultyRating } = body;
+    const { boardType, layoutId, sizeId, holdId, holdType, handRating, footRating, pullDirection } = body;
 
     // Validate required fields
     if (!boardType || typeof boardType !== 'string') {
@@ -156,9 +165,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (difficultyRating !== null && difficultyRating !== undefined && !isValidDifficultyRating(difficultyRating)) {
+    if (handRating !== null && handRating !== undefined && !isValidRating(handRating)) {
       return NextResponse.json(
-        { error: 'difficultyRating must be an integer between 1 and 5' },
+        { error: 'handRating must be an integer between 1 and 5' },
+        { status: 400 }
+      );
+    }
+
+    if (footRating !== null && footRating !== undefined && !isValidRating(footRating)) {
+      return NextResponse.json(
+        { error: 'footRating must be an integer between 1 and 5' },
+        { status: 400 }
+      );
+    }
+
+    if (pullDirection !== null && pullDirection !== undefined && !isValidPullDirection(pullDirection)) {
+      return NextResponse.json(
+        { error: 'pullDirection must be an integer between 0 and 360' },
         { status: 400 }
       );
     }
@@ -182,7 +205,9 @@ export async function POST(request: NextRequest) {
 
     const now = new Date().toISOString();
     const validatedHoldType = holdType || null;
-    const validatedDifficultyRating = difficultyRating || null;
+    const validatedHandRating = handRating || null;
+    const validatedFootRating = footRating || null;
+    const validatedPullDirection = pullDirection ?? null;
 
     if (existing.length > 0) {
       // Update existing classification
@@ -190,7 +215,9 @@ export async function POST(request: NextRequest) {
         .update(schema.userHoldClassifications)
         .set({
           holdType: validatedHoldType,
-          difficultyRating: validatedDifficultyRating,
+          handRating: validatedHandRating,
+          footRating: validatedFootRating,
+          pullDirection: validatedPullDirection,
           updatedAt: now,
         })
         .where(eq(schema.userHoldClassifications.id, existing[0].id));
@@ -205,7 +232,9 @@ export async function POST(request: NextRequest) {
           sizeId,
           holdId,
           holdType: validatedHoldType,
-          difficultyRating: validatedDifficultyRating,
+          handRating: validatedHandRating,
+          footRating: validatedFootRating,
+          pullDirection: validatedPullDirection,
           createdAt: existing[0].createdAt,
           updatedAt: now,
         },
@@ -221,7 +250,9 @@ export async function POST(request: NextRequest) {
           sizeId,
           holdId,
           holdType: validatedHoldType,
-          difficultyRating: validatedDifficultyRating,
+          handRating: validatedHandRating,
+          footRating: validatedFootRating,
+          pullDirection: validatedPullDirection,
           createdAt: now,
           updatedAt: now,
         })
@@ -237,7 +268,9 @@ export async function POST(request: NextRequest) {
           sizeId,
           holdId,
           holdType: validatedHoldType,
-          difficultyRating: validatedDifficultyRating,
+          handRating: validatedHandRating,
+          footRating: validatedFootRating,
+          pullDirection: validatedPullDirection,
           createdAt: now,
           updatedAt: now,
         },

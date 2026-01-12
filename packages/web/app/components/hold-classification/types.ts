@@ -6,14 +6,11 @@ import { BoardDetails } from '@/app/lib/types';
  * Note: Values must match the database hold_type enum in packages/db/src/schema/app/hold-classifications.ts
  */
 export const HOLD_TYPE_OPTIONS = [
-  { value: 'jug', label: 'Jug', description: 'Large, positive holds' },
-  { value: 'edge', label: 'Edge', description: 'Flat ledges and rails' },
-  { value: 'sloper', label: 'Sloper', description: 'Rounded, friction-dependent holds' },
-  { value: 'pinch', label: 'Pinch', description: 'Holds requiring thumb opposition' },
-  { value: 'crimp', label: 'Crimp', description: 'Small edges requiring finger strength' },
-  { value: 'pocket', label: 'Pocket', description: 'Holds for one or more fingers' },
-  { value: 'sidepull', label: 'Sidepull', description: 'Holds oriented to the side' },
-  { value: 'undercling', label: 'Undercling', description: 'Holds gripped from below' },
+  { value: 'jug', label: 'Jug', description: 'Large, positive holds', excludeBoards: [] as string[] },
+  { value: 'sloper', label: 'Sloper', description: 'Rounded, friction-dependent holds', excludeBoards: [] as string[] },
+  { value: 'pinch', label: 'Pinch', description: 'Holds requiring thumb opposition', excludeBoards: [] as string[] },
+  { value: 'crimp', label: 'Crimp', description: 'Small edges requiring finger strength', excludeBoards: [] as string[] },
+  { value: 'pocket', label: 'Pocket', description: 'Holds for one or more fingers', excludeBoards: ['kilter'] },
 ] as const;
 
 /**
@@ -33,7 +30,9 @@ export type HoldTypeOption = (typeof HOLD_TYPE_OPTIONS)[number];
 export interface HoldClassification {
   holdId: number;
   holdType: HoldType | null;
-  difficultyRating: number | null; // 1-5 rating
+  handRating: number | null; // 1-5 rating for hand use
+  footRating: number | null; // 1-5 rating for foot use
+  pullDirection: number | null; // 0-360 degrees, 0=up, 90=right, 180=down, 270=left
 }
 
 /**
@@ -47,7 +46,9 @@ export interface StoredHoldClassification {
   sizeId: number;
   holdId: number;
   holdType: HoldType | null;
-  difficultyRating: number | null;
+  handRating: number | null;
+  footRating: number | null;
+  pullDirection: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -78,5 +79,7 @@ export interface SaveClassificationRequest {
   sizeId: number;
   holdId: number;
   holdType: HoldType | null;
-  difficultyRating: number | null;
+  handRating: number | null;
+  footRating: number | null;
+  pullDirection: number | null;
 }
