@@ -1,9 +1,10 @@
-import { eq, desc, sql, and } from 'drizzle-orm';
+import { eq, desc, sql, and, getTableName } from 'drizzle-orm';
 import { db } from '../../client';
 import { getBoardTables, type BoardName } from '../util/table-select';
 import { createClimbFilters, type ClimbSearchParams, type ParsedBoardRouteParameters } from './create-climb-filters';
 import { getSizeEdges } from '../util/product-sizes-data';
 import type { Climb, ClimbSearchResult, LitUpHoldsMap, HoldState } from '@boardsesh/shared-schema';
+import { boardClimbStats } from '@boardsesh/db/schema';
 
 // Hold state mapping for converting frames string to lit up holds map
 type HoldColor = string;
@@ -91,6 +92,7 @@ export const searchClimbs = async (
   const filters = createClimbFilters(tables, params, searchParams, sizeEdges, userId);
 
   // Define sort columns with explicit SQL expressions where needed
+  const climbStatsTable = getTableName(boardClimbStats);
   const allowedSortColumns: Record<string, ReturnType<typeof sql>> = {
     ascents: sql`${tables.climbStats.ascensionistCount}`,
     difficulty: sql`ROUND(${tables.climbStats.displayDifficulty}::numeric, 0)`,
@@ -99,7 +101,7 @@ export const searchClimbs = async (
     // Popular: sum of ascents across ALL angles for this climb (using unified table)
     popular: sql`(
       SELECT COALESCE(SUM(cs.ascensionist_count), 0)
-      FROM board_climb_stats cs
+      FROM ${sql.identifier(climbStatsTable)} cs
       WHERE cs.board_type = ${params.board_name} AND cs.climb_uuid = ${tables.climbs.uuid}
     )`,
   };
