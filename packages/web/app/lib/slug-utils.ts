@@ -142,16 +142,35 @@ export const getSizeBySlug = async (
     }
   }
 
-  // Fallback to general slug matching
+  // Fallback to general slug matching (including description like generateSizeSlug does)
   const size = rows.find((s) => {
     if (!s.name) return false;
-    const sizeSlug = s.name
+
+    // Generate slug from name
+    let sizeSlug = s.name
       .toLowerCase()
       .trim()
       .replace(/[^\w\s-]/g, '')
       .replace(/\s+/g, '-')
       .replace(/-+/g, '-')
       .replace(/^-|-$/g, '');
+
+    // Append description suffix if present (mirrors generateSizeSlug logic)
+    if (s.description && s.description.trim()) {
+      const descSlug = s.description
+        .toLowerCase()
+        .replace(/led\s*kit/gi, '') // Remove "LED Kit" suffix
+        .trim()
+        .replace(/[^\w\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
+
+      if (descSlug) {
+        sizeSlug = `${sizeSlug}-${descSlug}`;
+      }
+    }
+
     return sizeSlug === slug;
   });
 
