@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { Card, Flex, Tag, Typography, Rate, Empty, Spin, Button } from 'antd';
 import {
   CheckCircleOutlined,
@@ -22,7 +22,29 @@ import styles from './ascents-feed.module.css';
 
 dayjs.extend(relativeTime);
 
-const { Text, Title } = Typography;
+const { Text } = Typography;
+
+// Type for grouped climb attempts
+interface GroupedClimbAttempts {
+  key: string; // climbUuid + day
+  climbUuid: string;
+  climbName: string;
+  setterUsername: string | null;
+  boardType: string;
+  layoutId: number | null;
+  angle: number;
+  isMirror: boolean;
+  frames: string | null;
+  difficultyName: string | null;
+  isBenchmark: boolean;
+  date: string; // The day of the attempts
+  items: AscentFeedItem[];
+  flashCount: number;
+  sendCount: number;
+  attemptCount: number;
+  bestQuality: number | null;
+  latestComment: string | null;
+}
 
 interface AscentsFeedProps {
   userId: string;
@@ -44,59 +66,124 @@ const getLayoutDisplayName = (boardType: string, layoutId: number | null): strin
   return layoutNames[key] || `${boardType.charAt(0).toUpperCase() + boardType.slice(1)}`;
 };
 
-// Status icon and color mapping
-const getStatusIcon = (status: 'flash' | 'send' | 'attempt') => {
-  switch (status) {
-    case 'flash':
-      return <ThunderboltOutlined />;
-    case 'send':
-      return <CheckCircleOutlined />;
-    case 'attempt':
-      return <CloseCircleOutlined />;
+// Function to group items by climb and day
+const groupItemsByClimbAndDay = (items: AscentFeedItem[]): GroupedClimbAttempts[] => {
+  const groupMap = new Map<string, GroupedClimbAttempts>();
+
+  for (const item of items) {
+    const day = dayjs(item.climbedAt).format('YYYY-MM-DD');
+    const key = `${item.climbUuid}-${day}`;
+
+    if (!groupMap.has(key)) {
+      groupMap.set(key, {
+        key,
+        climbUuid: item.climbUuid,
+        climbName: item.climbName,
+        setterUsername: item.setterUsername,
+        boardType: item.boardType,
+        layoutId: item.layoutId,
+        angle: item.angle,
+        isMirror: item.isMirror,
+        frames: item.frames,
+        difficultyName: item.difficultyName,
+        isBenchmark: item.isBenchmark,
+        date: day,
+        items: [],
+        flashCount: 0,
+        sendCount: 0,
+        attemptCount: 0,
+        bestQuality: null,
+        latestComment: null,
+      });
+    }
+
+    const group = groupMap.get(key)!;
+    group.items.push(item);
+
+    // Update counts
+    if (item.status === 'flash') {
+      group.flashCount++;
+    } else if (item.status === 'send') {
+      group.sendCount++;
+    } else {
+      group.attemptCount++;
+    }
+
+    // Track best quality rating
+    if (item.quality !== null) {
+      if (group.bestQuality === null || item.quality > group.bestQuality) {
+        group.bestQuality = item.quality;
+      }
+    }
+
+    // Track latest comment (prefer non-empty)
+    if (item.comment && !group.latestComment) {
+      group.latestComment = item.comment;
+    }
   }
+
+  // Convert to array and sort by the latest item date
+  return Array.from(groupMap.values()).sort((a, b) => {
+    const aLatest = Math.max(...a.items.map((i) => new Date(i.climbedAt).getTime()));
+    const bLatest = Math.max(...b.items.map((i) => new Date(i.climbedAt).getTime()));
+    return bLatest - aLatest;
+  });
 };
 
-const getStatusColor = (status: 'flash' | 'send' | 'attempt') => {
-  switch (status) {
-    case 'flash':
-      return 'gold';
-    case 'send':
-      return 'green';
-    case 'attempt':
-      return 'default';
+// Generate status summary for grouped attempts
+const getGroupStatusSummary = (group: GroupedClimbAttempts): { text: string; icon: React.ReactNode; color: string } => {
+  const parts: string[] = [];
+
+  // Determine primary status (best result first)
+  if (group.flashCount > 0) {
+    parts.push(group.flashCount === 1 ? 'Flashed' : `${group.flashCount} flashes`);
   }
+  if (group.sendCount > 0) {
+    parts.push(group.sendCount === 1 ? 'Sent' : `${group.sendCount} sends`);
+  }
+  if (group.attemptCount > 0) {
+    parts.push(group.attemptCount === 1 ? '1 attempt' : `${group.attemptCount} attempts`);
+  }
+
+  // Determine color and icon based on best result
+  let icon: React.ReactNode;
+  let color: string;
+  if (group.flashCount > 0) {
+    icon = <ThunderboltOutlined />;
+    color = 'gold';
+  } else if (group.sendCount > 0) {
+    icon = <CheckCircleOutlined />;
+    color = 'green';
+  } else {
+    icon = <CloseCircleOutlined />;
+    color = 'default';
+  }
+
+  return { text: parts.join(', '), icon, color };
 };
 
-const getStatusText = (status: 'flash' | 'send' | 'attempt') => {
-  switch (status) {
-    case 'flash':
-      return 'Flashed';
-    case 'send':
-      return 'Sent';
-    case 'attempt':
-      return 'Attempted';
-  }
-};
-
-const FeedItem: React.FC<{ item: AscentFeedItem }> = ({ item }) => {
-  const timeAgo = dayjs(item.climbedAt).fromNow();
-  const boardDisplay = getLayoutDisplayName(item.boardType, item.layoutId);
-  const statusText = getStatusText(item.status);
-  const isSuccess = item.status === 'flash' || item.status === 'send';
+const GroupedFeedItem: React.FC<{ group: GroupedClimbAttempts }> = ({ group }) => {
+  const latestItem = group.items.reduce((latest, item) =>
+    new Date(item.climbedAt) > new Date(latest.climbedAt) ? item : latest
+  );
+  const timeAgo = dayjs(latestItem.climbedAt).fromNow();
+  const boardDisplay = getLayoutDisplayName(group.boardType, group.layoutId);
+  const statusSummary = getGroupStatusSummary(group);
+  const hasSuccess = group.flashCount > 0 || group.sendCount > 0;
 
   return (
     <Card className={styles.feedItem} size="small">
       <Flex gap={12}>
         {/* Thumbnail */}
-        {item.frames && item.layoutId && (
+        {group.frames && group.layoutId && (
           <AscentThumbnail
-            boardType={item.boardType}
-            layoutId={item.layoutId}
-            angle={item.angle}
-            climbUuid={item.climbUuid}
-            climbName={item.climbName}
-            frames={item.frames}
-            isMirror={item.isMirror}
+            boardType={group.boardType}
+            layoutId={group.layoutId}
+            angle={group.angle}
+            climbUuid={group.climbUuid}
+            climbName={group.climbName}
+            frames={group.frames}
+            isMirror={group.isMirror}
           />
         )}
 
@@ -106,14 +193,14 @@ const FeedItem: React.FC<{ item: AscentFeedItem }> = ({ item }) => {
           <Flex justify="space-between" align="center" wrap="wrap" gap={8}>
             <Flex align="center" gap={8}>
               <Tag
-                icon={getStatusIcon(item.status)}
-                color={getStatusColor(item.status)}
+                icon={statusSummary.icon}
+                color={statusSummary.color}
                 className={styles.statusTag}
               >
-                {statusText}
+                {statusSummary.text}
               </Tag>
               <Text strong className={styles.climbName}>
-                {item.climbName}
+                {group.climbName}
               </Text>
             </Flex>
             <Text type="secondary" className={styles.timeAgo}>
@@ -123,39 +210,32 @@ const FeedItem: React.FC<{ item: AscentFeedItem }> = ({ item }) => {
 
           {/* Climb details */}
           <Flex gap={8} wrap="wrap" align="center">
-            {item.difficultyName && (
-              <Tag color="blue">{item.difficultyName}</Tag>
+            {group.difficultyName && (
+              <Tag color="blue">{group.difficultyName}</Tag>
             )}
-            <Tag icon={<EnvironmentOutlined />}>{item.angle}°</Tag>
+            <Tag icon={<EnvironmentOutlined />}>{group.angle}°</Tag>
             <Text type="secondary" className={styles.boardType}>
               {boardDisplay}
             </Text>
-            {item.isMirror && <Tag color="purple">Mirrored</Tag>}
-            {item.isBenchmark && <Tag color="cyan">Benchmark</Tag>}
+            {group.isMirror && <Tag color="purple">Mirrored</Tag>}
+            {group.isBenchmark && <Tag color="cyan">Benchmark</Tag>}
           </Flex>
 
-          {/* Attempts count for sends */}
-          {item.status === 'send' && item.attemptCount > 1 && (
-            <Text type="secondary" className={styles.attempts}>
-              {item.attemptCount} attempts
-            </Text>
-          )}
-
           {/* Rating for successful sends */}
-          {isSuccess && item.quality && (
-            <Rate disabled value={item.quality} count={5} className={styles.rating} />
+          {hasSuccess && group.bestQuality && (
+            <Rate disabled value={group.bestQuality} count={5} className={styles.rating} />
           )}
 
           {/* Setter info */}
-          {item.setterUsername && (
+          {group.setterUsername && (
             <Text type="secondary" className={styles.setter}>
-              Set by {item.setterUsername}
+              Set by {group.setterUsername}
             </Text>
           )}
 
           {/* Comment */}
-          {item.comment && (
-            <Text className={styles.comment}>{item.comment}</Text>
+          {group.latestComment && (
+            <Text className={styles.comment}>{group.latestComment}</Text>
           )}
         </Flex>
       </Flex>
@@ -242,6 +322,9 @@ export const AscentsFeed: React.FC<AscentsFeedProps> = ({ userId, pageSize = 10 
     );
   }
 
+  // Group items by climb and day
+  const groupedItems = useMemo(() => groupItemsByClimbAndDay(items), [items]);
+
   if (items.length === 0) {
     return (
       <Empty
@@ -254,8 +337,8 @@ export const AscentsFeed: React.FC<AscentsFeedProps> = ({ userId, pageSize = 10 
   return (
     <div className={styles.feed}>
       <Flex vertical gap={12}>
-        {items.map((item) => (
-          <FeedItem key={item.uuid} item={item} />
+        {groupedItems.map((group) => (
+          <GroupedFeedItem key={group.key} group={group} />
         ))}
       </Flex>
 
