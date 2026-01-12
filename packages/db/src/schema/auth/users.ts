@@ -9,7 +9,7 @@ import type { AdapterAccount } from "next-auth/adapters";
 
 // NextAuth.js tables
 export const users = pgTable("users", {
-  id: text("id").notNull().primaryKey(),
+  id: text("id").notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
   name: text("name"),
   email: text("email").notNull(),
   emailVerified: timestamp("emailVerified", { mode: "date" }),
