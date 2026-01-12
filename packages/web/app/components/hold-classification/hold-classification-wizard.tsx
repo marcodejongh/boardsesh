@@ -21,9 +21,10 @@ import styles from './hold-classification-wizard.module.css';
 const { Text, Title } = Typography;
 
 // Zoom factor for the compact hold view (shows ~2 rows of holds)
-const COMPACT_ZOOM_FACTOR = 4;
-// Minimum viewport size around the hold
-const MIN_VIEWPORT_SIZE = 100;
+// Higher value = more zoomed out = can see more holds around the selected one
+const COMPACT_ZOOM_FACTOR = 10;
+// Minimum viewport size around the hold (ensures we see enough context)
+const MIN_VIEWPORT_SIZE = 200;
 
 interface HoldViewProps {
   hold: HoldRenderData;
@@ -480,7 +481,7 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
           <div className={styles.ratingSection}>
             <Text className={styles.sectionTitle}>Hand Rating (1-5)</Text>
             <div className={styles.ratingLabel}>
-              1 = Easy to grip, 5 = Very difficult
+              5 = Easy to grip, 1 = Very difficult
             </div>
             <Rate
               value={currentClassification.handRating || 0}
@@ -493,7 +494,7 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
           <div className={styles.ratingSection}>
             <Text className={styles.sectionTitle}>Foot Rating (1-5)</Text>
             <div className={styles.ratingLabel}>
-              1 = Easy to stand on, 5 = Very difficult
+              5 = Easy to stand on, 1 = Very difficult
             </div>
             <Rate
               value={currentClassification.footRating || 0}
