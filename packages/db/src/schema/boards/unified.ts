@@ -333,11 +333,7 @@ export const boardBetaLinks = pgTable('board_beta_links', {
   createdAt: text('created_at'),
 }, (table) => ({
   pk: primaryKey({ columns: [table.boardType, table.climbUuid, table.link] }),
-  climbFk: foreignKey({
-    columns: [table.climbUuid],
-    foreignColumns: [boardClimbs.uuid],
-    name: 'board_beta_links_climb_fk',
-  }).onUpdate('cascade').onDelete('restrict'),
+  // Note: No FK to board_climbs - beta links may arrive before their corresponding climbs during sync
 }));
 
 // =============================================================================
