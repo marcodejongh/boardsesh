@@ -257,11 +257,7 @@ export const boardClimbs = pgTable('board_climbs', {
     table.edgeBottom,
     table.edgeTop,
   ),
-  layoutFk: foreignKey({
-    columns: [table.boardType, table.layoutId],
-    foreignColumns: [boardLayouts.boardType, boardLayouts.id],
-    name: 'board_climbs_layout_fk',
-  }).onUpdate('cascade').onDelete('cascade'),
+  // Note: No FK to board_layouts - climbs may reference layouts that don't exist during sync
 }));
 
 export const boardClimbStats = pgTable('board_climb_stats', {
