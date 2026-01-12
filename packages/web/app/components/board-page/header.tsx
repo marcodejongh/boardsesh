@@ -21,7 +21,7 @@ const SendClimbToBoardButton = dynamic(
 import { generateLayoutSlug, generateSizeSlug, generateSetSlug, constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { ShareBoardButton } from './share-button';
 import { useQueueContext } from '../graphql-queue';
-import { UserOutlined, LogoutOutlined, LoginOutlined, PlusOutlined, MoreOutlined, SettingOutlined, LineChartOutlined, LeftOutlined, InfoCircleOutlined, TagOutlined, AimOutlined } from '@ant-design/icons';
+import { UserOutlined, LogoutOutlined, LoginOutlined, PlusOutlined, MoreOutlined, SettingOutlined, LineChartOutlined, LeftOutlined, InfoCircleOutlined, TagOutlined, AimOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import AngleSelector from './angle-selector';
 import Logo from '../brand/logo';
 import styles from './header.module.css';
@@ -136,6 +136,11 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
       label: <Link href="/settings">Settings</Link>,
     },
     {
+      key: 'help',
+      icon: <QuestionCircleOutlined />,
+      label: <Link href="/help">Help</Link>,
+    },
+    {
       type: 'divider',
     },
     {
@@ -175,6 +180,11 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
         label: <Link href="/settings">Settings</Link>,
       },
       {
+        key: 'help',
+        icon: <QuestionCircleOutlined />,
+        label: <Link href="/help">Help</Link>,
+      },
+      {
         key: 'about',
         icon: <InfoCircleOutlined />,
         label: <Link href="/about">About</Link>,
@@ -190,6 +200,11 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
       },
     ] : []),
     ...(!session?.user ? [
+      {
+        key: 'help',
+        icon: <QuestionCircleOutlined />,
+        label: <Link href="/help">Help</Link>,
+      },
       {
         key: 'about',
         icon: <InfoCircleOutlined />,
