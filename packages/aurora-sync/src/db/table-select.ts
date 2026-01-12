@@ -1,129 +1,71 @@
 import {
-  kilterClimbs,
-  kilterClimbStats,
-  kilterDifficultyGrades,
-  kilterProductSizes,
-  kilterLayouts,
-  kilterUsers,
-  kilterCircuits,
-  kilterAscents,
-  kilterBids,
-  kilterClimbStatsHistory,
-  tensionClimbs,
-  tensionClimbStats,
-  tensionDifficultyGrades,
-  tensionProductSizes,
-  tensionLayouts,
-  tensionUsers,
-  tensionCircuits,
-  tensionAscents,
-  tensionBids,
-  tensionClimbStatsHistory,
-  kilterAttempts,
-  tensionAttempts,
-  tensionProducts,
-  kilterProducts,
-  kilterSharedSyncs,
-  tensionSharedSyncs,
-  kilterUserSyncs,
-  tensionUserSyncs,
-  kilterClimbHolds,
-  tensionClimbHolds,
-  kilterBetaLinks,
-  tensionBetaLinks,
-  kilterWalls,
-  tensionWalls,
-  kilterTags,
-  tensionTags,
+  boardClimbs,
+  boardClimbStats,
+  boardDifficultyGrades,
+  boardProductSizes,
+  boardLayouts,
+  boardUsers,
+  boardCircuits,
+  boardClimbStatsHistory,
+  boardAttempts,
+  boardProducts,
+  boardSharedSyncs,
+  boardUserSyncs,
+  boardClimbHolds,
+  boardBetaLinks,
+  boardWalls,
+  boardTags,
 } from '@boardsesh/db/schema/boards';
+import { eq } from 'drizzle-orm';
 import { AuroraBoardName } from '../api/types';
 
 // Re-export AuroraBoardName as BoardName for backward compatibility within this module
 export type BoardName = AuroraBoardName;
 
-// Define the base table structure
-export type TableSet = {
-  climbs: typeof kilterClimbs | typeof tensionClimbs;
-  climbStats: typeof kilterClimbStats | typeof tensionClimbStats;
-  difficultyGrades: typeof kilterDifficultyGrades | typeof tensionDifficultyGrades;
-  productSizes: typeof kilterProductSizes | typeof tensionProductSizes;
-  layouts: typeof kilterLayouts | typeof tensionLayouts;
-  users: typeof kilterUsers | typeof tensionUsers;
-  circuits: typeof kilterCircuits | typeof tensionCircuits;
-  ascents: typeof kilterAscents | typeof tensionAscents;
-  bids: typeof kilterBids | typeof tensionBids;
-  climbStatsHistory: typeof kilterClimbStatsHistory | typeof tensionClimbStatsHistory;
-  attempts: typeof kilterAttempts | typeof tensionAttempts;
-  products: typeof kilterProducts | typeof tensionProducts;
-  userSyncs: typeof kilterUserSyncs | typeof tensionUserSyncs;
-  sharedSyncs: typeof kilterSharedSyncs | typeof tensionSharedSyncs;
-  climbHolds: typeof kilterClimbHolds | typeof tensionClimbHolds;
-  betaLinks: typeof kilterBetaLinks | typeof tensionBetaLinks;
-  walls: typeof kilterWalls | typeof tensionWalls;
-  tags: typeof kilterTags | typeof tensionTags;
-};
-
-// Create a complete mapping of all tables
-const BOARD_TABLES: Record<BoardName, TableSet> = {
-  kilter: {
-    climbs: kilterClimbs,
-    climbStats: kilterClimbStats,
-    difficultyGrades: kilterDifficultyGrades,
-    productSizes: kilterProductSizes,
-    layouts: kilterLayouts,
-    users: kilterUsers,
-    circuits: kilterCircuits,
-    ascents: kilterAscents,
-    bids: kilterBids,
-    climbStatsHistory: kilterClimbStatsHistory,
-    attempts: kilterAttempts,
-    products: kilterProducts,
-    userSyncs: kilterUserSyncs,
-    sharedSyncs: kilterSharedSyncs,
-    climbHolds: kilterClimbHolds,
-    betaLinks: kilterBetaLinks,
-    walls: kilterWalls,
-    tags: kilterTags,
-  },
-  tension: {
-    climbs: tensionClimbs,
-    climbStats: tensionClimbStats,
-    difficultyGrades: tensionDifficultyGrades,
-    productSizes: tensionProductSizes,
-    layouts: tensionLayouts,
-    users: tensionUsers,
-    circuits: tensionCircuits,
-    ascents: tensionAscents,
-    bids: tensionBids,
-    climbStatsHistory: tensionClimbStatsHistory,
-    attempts: tensionAttempts,
-    products: tensionProducts,
-    userSyncs: tensionUserSyncs,
-    sharedSyncs: tensionSharedSyncs,
-    climbHolds: tensionClimbHolds,
-    betaLinks: tensionBetaLinks,
-    walls: tensionWalls,
-    tags: tensionTags,
-  },
+// Unified tables - all queries should filter by board_type
+export const UNIFIED_TABLES = {
+  climbs: boardClimbs,
+  climbStats: boardClimbStats,
+  difficultyGrades: boardDifficultyGrades,
+  productSizes: boardProductSizes,
+  layouts: boardLayouts,
+  users: boardUsers,
+  circuits: boardCircuits,
+  climbStatsHistory: boardClimbStatsHistory,
+  attempts: boardAttempts,
+  products: boardProducts,
+  userSyncs: boardUserSyncs,
+  sharedSyncs: boardSharedSyncs,
+  climbHolds: boardClimbHolds,
+  betaLinks: boardBetaLinks,
+  walls: boardWalls,
+  tags: boardTags,
 } as const;
 
+export type UnifiedTableSet = typeof UNIFIED_TABLES;
+
 /**
- * Get a specific table for a given board
- * @param tableName The name of the table to retrieve
- * @param boardName The board (kilter or tension)
- * @returns The requested table
+ * Get a unified table (all queries should filter by board_type)
+ * @param tableName The name of the unified table to retrieve
+ * @returns The unified table
  */
-export function getTable<K extends keyof TableSet>(tableName: K, boardName: BoardName): TableSet[K] {
-  return BOARD_TABLES[boardName][tableName];
+export function getUnifiedTable<K extends keyof UnifiedTableSet>(
+  tableName: K
+): UnifiedTableSet[K] {
+  return UNIFIED_TABLES[tableName];
 }
 
 /**
- * Get all tables for a specific board
- * @param boardName The board (kilter or tension)
- * @returns All tables for the specified board
+ * Helper to create board_type equality condition for WHERE clauses
+ * @param table A unified table with boardType column
+ * @param boardName The board name to filter by
+ * @returns A drizzle eq() condition
  */
-export function getBoardTables(boardName: BoardName): TableSet {
-  return BOARD_TABLES[boardName];
+export function boardTypeCondition(
+  table: { boardType: typeof boardClimbs.boardType },
+  boardName: BoardName
+) {
+  return eq(table.boardType, boardName);
 }
 
 /**
@@ -136,17 +78,23 @@ export function isValidBoardName(boardName: string): boardName is BoardName {
 }
 
 /**
- * Get the table name prefix for a board (e.g., 'kilter_' or 'tension_')
- * @param boardName The board name
- * @returns The table name prefix
+ * Extended board name type that includes moonboard for unified tables
  */
-export function getBoardPrefix(boardName: BoardName): string {
-  return `${boardName}_`;
+export type UnifiedBoardName = BoardName | 'moonboard';
+
+/**
+ * Check if a board name is valid for unified tables (includes moonboard)
+ * @param boardName The name to check
+ * @returns True if the board name is valid for unified tables
+ */
+export function isValidUnifiedBoardName(boardName: string): boardName is UnifiedBoardName {
+  return boardName === 'kilter' || boardName === 'tension' || boardName === 'moonboard';
 }
 
 export default {
-  getTable,
-  getBoardTables,
+  getUnifiedTable,
+  boardTypeCondition,
   isValidBoardName,
-  getBoardPrefix,
+  isValidUnifiedBoardName,
+  UNIFIED_TABLES,
 };

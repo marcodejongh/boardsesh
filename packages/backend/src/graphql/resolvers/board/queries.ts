@@ -1,4 +1,4 @@
-import { eq, asc, sql } from 'drizzle-orm';
+import { eq, asc, and, sql } from 'drizzle-orm';
 import type { Grade, Angle } from '@boardsesh/shared-schema';
 import { db } from '../../../db/client';
 import * as dbSchema from '@boardsesh/db/schema';
@@ -12,19 +12,20 @@ export const boardQueries = {
   grades: async (_: unknown, { boardName }: { boardName: string }): Promise<Grade[]> => {
     validateInput(BoardNameSchema, boardName, 'boardName');
 
-    // Select the appropriate table based on board name
-    const gradesTable = boardName === 'kilter'
-      ? dbSchema.kilterDifficultyGrades
-      : dbSchema.tensionDifficultyGrades;
-
+    // Use unified table with board_type filter
     const grades = await db
       .select({
-        difficultyId: gradesTable.difficulty,
-        name: gradesTable.boulderName,
+        difficultyId: dbSchema.boardDifficultyGrades.difficulty,
+        name: dbSchema.boardDifficultyGrades.boulderName,
       })
-      .from(gradesTable)
-      .where(eq(gradesTable.isListed, true))
-      .orderBy(asc(gradesTable.difficulty));
+      .from(dbSchema.boardDifficultyGrades)
+      .where(
+        and(
+          eq(dbSchema.boardDifficultyGrades.boardType, boardName),
+          eq(dbSchema.boardDifficultyGrades.isListed, true),
+        ),
+      )
+      .orderBy(asc(dbSchema.boardDifficultyGrades.difficulty));
 
     return grades.map(g => ({
       difficultyId: g.difficultyId,
@@ -38,17 +39,14 @@ export const boardQueries = {
   angles: async (_: unknown, { boardName, layoutId }: { boardName: string; layoutId: number }): Promise<Angle[]> => {
     validateInput(BoardNameSchema, boardName, 'boardName');
 
-    // Use raw SQL since products_angles tables may have been restructured
+    // Use raw SQL with unified tables
     // This query joins layouts to products to get available angles for a layout
-    const tableName = boardName === 'kilter' ? 'kilter_products_angles' : 'tension_products_angles';
-    const layoutTableName = boardName === 'kilter' ? 'kilter_layouts' : 'tension_layouts';
-
     const result = await db.execute<{ angle: number }>(sql`
       SELECT DISTINCT pa.angle
-      FROM ${sql.identifier(tableName)} pa
-      JOIN ${sql.identifier(layoutTableName)} l
-        ON l.product_id = pa.product_id
-      WHERE l.id = ${layoutId}
+      FROM board_products_angles pa
+      JOIN board_layouts l
+        ON l.board_type = pa.board_type AND l.product_id = pa.product_id
+      WHERE l.board_type = ${boardName} AND l.id = ${layoutId}
       ORDER BY pa.angle ASC
     `);
 

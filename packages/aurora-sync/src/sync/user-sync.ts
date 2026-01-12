@@ -4,7 +4,7 @@ import { eq, and, inArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/neon-serverless';
 import type { NeonDatabase } from 'drizzle-orm/neon-serverless';
 import type { Pool } from '@neondatabase/serverless';
-import { getTable } from '../db/table-select';
+import { UNIFIED_TABLES } from '../db/table-select';
 import { boardseshTicks, playlists, playlistClimbs, playlistOwnership } from '@boardsesh/db/schema/app';
 import { randomUUID } from 'crypto';
 import { convertQuality } from './convert-quality';
@@ -42,9 +42,10 @@ async function upsertTableData(
 
   switch (tableName) {
     case 'users': {
-      const usersSchema = getTable('users', boardName);
+      const usersSchema = UNIFIED_TABLES.users;
       await processBatches(data, BATCH_SIZE, async (batch) => {
         const values = batch.map((item) => ({
+          boardType: boardName,
           id: Number(item.id),
           username: item.username,
           createdAt: item.created_at,
@@ -53,7 +54,7 @@ async function upsertTableData(
           .insert(usersSchema)
           .values(values)
           .onConflictDoUpdate({
-            target: usersSchema.id,
+            target: [usersSchema.boardType, usersSchema.id],
             set: {
               username: sql`excluded.username`,
             },
@@ -63,9 +64,10 @@ async function upsertTableData(
     }
 
     case 'walls': {
-      const wallsSchema = getTable('walls', boardName);
+      const wallsSchema = UNIFIED_TABLES.walls;
       await processBatches(data, BATCH_SIZE, async (batch) => {
         const values = batch.map((item) => ({
+          boardType: boardName,
           uuid: item.uuid,
           userId: Number(auroraUserId),
           name: item.name,
@@ -82,7 +84,7 @@ async function upsertTableData(
           .insert(wallsSchema)
           .values(values)
           .onConflictDoUpdate({
-            target: wallsSchema.uuid,
+            target: [wallsSchema.boardType, wallsSchema.uuid],
             set: {
               name: sql`excluded.name`,
               isAdjustable: sql`excluded.is_adjustable`,
@@ -98,9 +100,10 @@ async function upsertTableData(
     }
 
     case 'draft_climbs': {
-      const climbsSchema = getTable('climbs', boardName);
+      const climbsSchema = UNIFIED_TABLES.climbs;
       await processBatches(data, BATCH_SIZE, async (batch) => {
         const values = batch.map((item) => ({
+          boardType: boardName,
           uuid: item.uuid,
           layoutId: Number(item.layout_id),
           setterId: Number(auroraUserId),
@@ -124,7 +127,7 @@ async function upsertTableData(
           .insert(climbsSchema)
           .values(values)
           .onConflictDoUpdate({
-            target: climbsSchema.uuid,
+            target: [climbsSchema.boardType, climbsSchema.uuid],
             set: {
               layoutId: sql`excluded.layout_id`,
               setterId: sql`excluded.setter_id`,
@@ -149,46 +152,7 @@ async function upsertTableData(
     }
 
     case 'ascents': {
-      const ascentsSchema = getTable('ascents', boardName);
-
-      // Batch insert to ascents table
-      await processBatches(data, BATCH_SIZE, async (batch) => {
-        const values = batch.map((item) => ({
-          uuid: item.uuid,
-          climbUuid: item.climb_uuid,
-          angle: Number(item.angle),
-          isMirror: Boolean(item.is_mirror),
-          userId: Number(auroraUserId),
-          attemptId: Number(item.attempt_id),
-          bidCount: Number(item.bid_count || 1),
-          quality: Number(item.quality),
-          difficulty: Number(item.difficulty),
-          isBenchmark: Number(item.is_benchmark || 0),
-          comment: item.comment || '',
-          climbedAt: item.climbed_at,
-          createdAt: item.created_at,
-        }));
-        await db
-          .insert(ascentsSchema)
-          .values(values)
-          .onConflictDoUpdate({
-            target: ascentsSchema.uuid,
-            set: {
-              climbUuid: sql`excluded.climb_uuid`,
-              angle: sql`excluded.angle`,
-              isMirror: sql`excluded.is_mirror`,
-              attemptId: sql`excluded.attempt_id`,
-              bidCount: sql`excluded.bid_count`,
-              quality: sql`excluded.quality`,
-              difficulty: sql`excluded.difficulty`,
-              isBenchmark: sql`excluded.is_benchmark`,
-              comment: sql`excluded.comment`,
-              climbedAt: sql`excluded.climbed_at`,
-            },
-          });
-      });
-
-      // Dual write to boardsesh_ticks (only if we have NextAuth user ID)
+      // Ascents are now only written to boardsesh_ticks (legacy ascents tables have been dropped)
       if (nextAuthUserId) {
         const now = new Date().toISOString();
         await processBatches(data, BATCH_SIZE, async (batch) => {
@@ -233,43 +197,14 @@ async function upsertTableData(
               },
             });
         });
+      } else {
+        log(`  Skipping ascents sync: no NextAuth user ID provided`);
       }
       break;
     }
 
     case 'bids': {
-      const bidsSchema = getTable('bids', boardName);
-
-      // Batch insert to bids table
-      await processBatches(data, BATCH_SIZE, async (batch) => {
-        const values = batch.map((item) => ({
-          uuid: item.uuid,
-          userId: Number(auroraUserId),
-          climbUuid: item.climb_uuid,
-          angle: Number(item.angle),
-          isMirror: Boolean(item.is_mirror),
-          bidCount: Number(item.bid_count || 1),
-          comment: item.comment || '',
-          climbedAt: item.climbed_at,
-          createdAt: item.created_at,
-        }));
-        await db
-          .insert(bidsSchema)
-          .values(values)
-          .onConflictDoUpdate({
-            target: bidsSchema.uuid,
-            set: {
-              climbUuid: sql`excluded.climb_uuid`,
-              angle: sql`excluded.angle`,
-              isMirror: sql`excluded.is_mirror`,
-              bidCount: sql`excluded.bid_count`,
-              comment: sql`excluded.comment`,
-              climbedAt: sql`excluded.climbed_at`,
-            },
-          });
-      });
-
-      // Dual write to boardsesh_ticks (only if we have NextAuth user ID)
+      // Bids are now only written to boardsesh_ticks (legacy bids tables have been dropped)
       if (nextAuthUserId) {
         const now = new Date().toISOString();
         await processBatches(data, BATCH_SIZE, async (batch) => {
@@ -310,14 +245,15 @@ async function upsertTableData(
               },
             });
         });
+      } else {
+        log(`  Skipping bids sync: no NextAuth user ID provided`);
       }
       break;
     }
 
     case 'tags': {
       // Tags have a composite key, need special handling
-      // Use raw SQL for efficient upsert
-      const tagsSchema = getTable('tags', boardName);
+      const tagsSchema = UNIFIED_TABLES.tags;
       await processBatches(data, BATCH_SIZE, async (batch) => {
         for (const item of batch) {
           // First try to update existing record
@@ -328,6 +264,7 @@ async function upsertTableData(
             })
             .where(
               and(
+                eq(tagsSchema.boardType, boardName),
                 eq(tagsSchema.entityUuid, item.entity_uuid),
                 eq(tagsSchema.userId, Number(auroraUserId)),
                 eq(tagsSchema.name, item.name),
@@ -338,6 +275,7 @@ async function upsertTableData(
           // If no record was updated, insert a new one
           if (result.length === 0) {
             await db.insert(tagsSchema).values({
+              boardType: boardName,
               entityUuid: item.entity_uuid,
               userId: Number(auroraUserId),
               name: item.name,
@@ -350,11 +288,12 @@ async function upsertTableData(
     }
 
     case 'circuits': {
-      const circuitsSchema = getTable('circuits', boardName);
+      const circuitsSchema = UNIFIED_TABLES.circuits;
 
-      // 1. Write to Aurora circuits table (batched)
+      // 1. Write to unified circuits table (batched)
       await processBatches(data, BATCH_SIZE, async (batch) => {
         const values = batch.map((item) => ({
+          boardType: boardName,
           uuid: item.uuid,
           name: item.name,
           description: item.description,
@@ -368,7 +307,7 @@ async function upsertTableData(
           .insert(circuitsSchema)
           .values(values)
           .onConflictDoUpdate({
-            target: circuitsSchema.uuid,
+            target: [circuitsSchema.boardType, circuitsSchema.uuid],
             set: {
               name: sql`excluded.name`,
               description: sql`excluded.description`,
@@ -465,18 +404,19 @@ async function updateUserSyncs(
   boardName: AuroraBoardName,
   userSyncs: UserSyncData[],
 ) {
-  const userSyncsSchema = getTable('userSyncs', boardName);
+  const userSyncsSchema = UNIFIED_TABLES.userSyncs;
 
   for (const sync of userSyncs) {
     await tx
       .insert(userSyncsSchema)
       .values({
+        boardType: boardName,
         userId: Number(sync.user_id),
         tableName: sync.table_name,
         lastSynchronizedAt: sync.last_synchronized_at,
       })
       .onConflictDoUpdate({
-        target: [userSyncsSchema.userId, userSyncsSchema.tableName],
+        target: [userSyncsSchema.boardType, userSyncsSchema.userId, userSyncsSchema.tableName],
         set: {
           lastSynchronizedAt: sync.last_synchronized_at,
         },
@@ -485,7 +425,7 @@ async function updateUserSyncs(
 }
 
 export async function getLastSyncTimes(pool: Pool, boardName: AuroraBoardName, userId: number, tableNames: string[]) {
-  const userSyncsSchema = getTable('userSyncs', boardName);
+  const userSyncsSchema = UNIFIED_TABLES.userSyncs;
   const client = await pool.connect();
 
   try {
@@ -493,7 +433,13 @@ export async function getLastSyncTimes(pool: Pool, boardName: AuroraBoardName, u
     const result = await db
       .select()
       .from(userSyncsSchema)
-      .where(and(eq(userSyncsSchema.userId, Number(userId)), inArray(userSyncsSchema.tableName, tableNames)));
+      .where(
+        and(
+          eq(userSyncsSchema.boardType, boardName),
+          eq(userSyncsSchema.userId, Number(userId)),
+          inArray(userSyncsSchema.tableName, tableNames),
+        ),
+      );
 
     return result;
   } finally {
@@ -502,12 +448,17 @@ export async function getLastSyncTimes(pool: Pool, boardName: AuroraBoardName, u
 }
 
 export async function getLastSharedSyncTimes(pool: Pool, boardName: AuroraBoardName, tableNames: string[]) {
-  const sharedSyncsSchema = getTable('sharedSyncs', boardName);
+  const sharedSyncsSchema = UNIFIED_TABLES.sharedSyncs;
   const client = await pool.connect();
 
   try {
     const db = drizzle(client);
-    const result = await db.select().from(sharedSyncsSchema).where(inArray(sharedSyncsSchema.tableName, tableNames));
+    const result = await db
+      .select()
+      .from(sharedSyncsSchema)
+      .where(
+        and(eq(sharedSyncsSchema.boardType, boardName), inArray(sharedSyncsSchema.tableName, tableNames)),
+      );
 
     return result;
   } finally {

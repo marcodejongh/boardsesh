@@ -249,7 +249,7 @@ fi
 print_step "Step 5: Setting Up Database"
 
 # Check if database is already set up
-if docker exec db-postgres-1 psql postgresql://postgres:password@localhost:5432/verceldb -c "SELECT 1 FROM kilter_climbs LIMIT 1;" >/dev/null 2>&1; then
+if docker exec db-postgres-1 psql postgresql://postgres:password@localhost:5432/verceldb -c "SELECT 1 FROM board_climbs LIMIT 1;" >/dev/null 2>&1; then
     print_success "Database is already set up with board data"
 else
     echo "Starting PostgreSQL database with Docker..."
