@@ -23,7 +23,6 @@ import {
   AddToListAction,
   PlaylistAction,
 } from './actions';
-import styles from './climb-actions.module.css';
 
 // Extended props for OpenInAppAction
 interface OpenInAppActionProps extends ClimbActionProps {
@@ -31,7 +30,7 @@ interface OpenInAppActionProps extends ClimbActionProps {
 }
 
 // Map action types to their handler functions
-const ACTION_COMPONENTS: Record<
+const ACTION_FUNCTIONS: Record<
   ClimbActionType,
   (props: ClimbActionProps | OpenInAppActionProps) => ClimbActionResult
 > = {
@@ -45,6 +44,36 @@ const ACTION_COMPONENTS: Record<
   share: ShareAction,
   addToList: AddToListAction,
   playlist: PlaylistAction,
+};
+
+/**
+ * Helper function to create a renderer component for an action type.
+ * This ensures hooks are called at the component level (valid), not inside useMemo (invalid).
+ */
+function createActionRenderer(
+  actionFn: (props: ClimbActionProps | OpenInAppActionProps) => ClimbActionResult
+): React.FC<ClimbActionProps | OpenInAppActionProps> {
+  return function ActionRenderer(props) {
+    // Call the action function at component level - hooks inside are now valid
+    const result = actionFn(props);
+    if (!result.available) return null;
+    return <React.Fragment key={result.key}>{result.element}</React.Fragment>;
+  };
+}
+
+// Create stable renderer components for each action type
+// These are created once at module level, so component identity is stable
+const ACTION_RENDERERS: Record<ClimbActionType, React.FC<ClimbActionProps | OpenInAppActionProps>> = {
+  viewDetails: createActionRenderer(ViewDetailsAction),
+  fork: createActionRenderer(ForkAction),
+  favorite: createActionRenderer(FavoriteAction),
+  queue: createActionRenderer(QueueAction),
+  tick: createActionRenderer(TickAction),
+  openInApp: createActionRenderer(OpenInAppAction),
+  mirror: createActionRenderer(MirrorAction),
+  share: createActionRenderer(ShareAction),
+  addToList: createActionRenderer(AddToListAction),
+  playlist: createActionRenderer(PlaylistAction),
 };
 
 export function ClimbActions({
@@ -62,14 +91,12 @@ export function ClimbActions({
   // Determine which actions to show
   const actionsToShow = useMemo(() => {
     let actions = include || DEFAULT_ACTION_ORDER;
-
     // Filter out excluded actions
     actions = actions.filter((action) => !exclude.includes(action));
-
     return actions;
   }, [include, exclude]);
 
-  // Common props for all action components
+  // Common props for all action components (memoized for stability)
   const commonProps = useMemo(
     () => ({
       climb,
@@ -77,73 +104,58 @@ export function ClimbActions({
       angle,
       viewMode,
       size,
-      onComplete: onActionComplete ? () => onActionComplete : undefined,
       auroraAppUrl,
     }),
-    [climb, boardDetails, angle, viewMode, size, onActionComplete, auroraAppUrl]
+    [climb, boardDetails, angle, viewMode, size, auroraAppUrl]
   );
 
-  // Get action results
-  const actionResults = useMemo(() => {
-    return actionsToShow
-      .map((actionType) => {
-        const ActionComponent = ACTION_COMPONENTS[actionType];
-        if (!ActionComponent) return null;
-
-        const result = ActionComponent({
-          ...commonProps,
-          onComplete: onActionComplete ? () => onActionComplete(actionType) : undefined,
-        });
-
-        return result;
-      })
-      .filter((result): result is ClimbActionResult => result !== null && result.available);
-  }, [actionsToShow, commonProps, onActionComplete]);
-
-  // Icon mode - return array of elements for Ant Design Card actions
+  // Icon mode - render each action as a component
   if (viewMode === 'icon') {
-    const elements = actionResults
-      .map((result) => (
-        <React.Fragment key={result.key}>{result.element}</React.Fragment>
-      ))
-      .filter(Boolean);
-
-    return <>{elements}</>;
+    return (
+      <>
+        {actionsToShow.map((actionType) => {
+          const Renderer = ACTION_RENDERERS[actionType];
+          if (!Renderer) return null;
+          return (
+            <Renderer
+              key={actionType}
+              {...commonProps}
+              onComplete={onActionComplete ? () => onActionComplete(actionType) : undefined}
+            />
+          );
+        })}
+      </>
+    );
   }
 
-  // Button mode - return Space with buttons
+  // Button mode - render each action as a component inside Space
   if (viewMode === 'button' || viewMode === 'compact') {
     return (
       <Space wrap className={className}>
-        {actionResults.map((result) => (
-          <React.Fragment key={result.key}>{result.element}</React.Fragment>
-        ))}
+        {actionsToShow.map((actionType) => {
+          const Renderer = ACTION_RENDERERS[actionType];
+          if (!Renderer) return null;
+          return (
+            <Renderer
+              key={actionType}
+              {...commonProps}
+              onComplete={onActionComplete ? () => onActionComplete(actionType) : undefined}
+            />
+          );
+        })}
       </Space>
     );
   }
 
-  // Dropdown mode - return Dropdown component
+  // Dropdown mode - use DropdownActions component for proper hooks handling
   if (viewMode === 'dropdown') {
-    const menuItems: MenuProps['items'] = actionResults.map((result) => result.menuItem);
-
-    // Also render any elements that need to be in the DOM (modals, drawers)
-    const elementsToRender = actionResults
-      .filter((result) => result.element !== null)
-      .map((result) => (
-        <React.Fragment key={result.key}>{result.element}</React.Fragment>
-      ));
-
     return (
-      <>
-        <Dropdown
-          menu={{ items: menuItems }}
-          placement="bottomRight"
-          trigger={['click']}
-        >
-          <Button icon={<MoreOutlined />} className={className} />
-        </Dropdown>
-        {elementsToRender}
-      </>
+      <DropdownActions
+        actionsToShow={actionsToShow}
+        commonProps={commonProps}
+        className={className}
+        onActionComplete={onActionComplete}
+      />
     );
   }
 
@@ -151,101 +163,98 @@ export function ClimbActions({
 }
 
 /**
- * Helper function to get actions as an array for Ant Design Card actions prop
- * Usage: <Card actions={ClimbActions.asCardActions({ climb, boardDetails, angle })} />
+ * Separate component for dropdown mode to properly handle hooks.
+ * Each action is rendered as its own component to ensure hooks are called correctly.
  */
-ClimbActions.asCardActions = function asCardActions(
-  props: Omit<ClimbActionsProps, 'viewMode'>
-): React.ReactNode[] {
-  const { climb, boardDetails, angle, include, exclude = [], size, onActionComplete, auroraAppUrl } = props;
+function DropdownActions({
+  actionsToShow,
+  commonProps,
+  className,
+  onActionComplete,
+}: {
+  actionsToShow: ClimbActionType[];
+  commonProps: Omit<ClimbActionProps, 'onComplete'>;
+  className?: string;
+  onActionComplete?: (actionType: ClimbActionType) => void;
+}) {
+  // Collect menu items from all actions
+  const [menuItems, setMenuItems] = React.useState<MenuProps['items']>([]);
 
-  // Determine which actions to show
-  let actions = include || DEFAULT_ACTION_ORDER;
-  actions = actions.filter((action) => !exclude.includes(action));
+  // Create a stable callback for collecting menu items
+  const menuItemsRef = React.useRef<Map<string, ClimbActionResult['menuItem']>>(new Map());
 
-  const commonProps = {
-    climb,
-    boardDetails,
-    angle,
-    viewMode: 'icon' as const,
-    size,
-    auroraAppUrl,
-  };
+  const handleMenuItem = React.useCallback((actionType: ClimbActionType, item: ClimbActionResult['menuItem']) => {
+    menuItemsRef.current.set(actionType, item);
+    // Update menu items state (collect all items in order)
+    const items = actionsToShow
+      .map((type) => menuItemsRef.current.get(type))
+      .filter((item): item is ClimbActionResult['menuItem'] => item !== undefined);
+    setMenuItems(items);
+  }, [actionsToShow]);
 
-  const results: React.ReactNode[] = [];
-
-  for (const actionType of actions) {
-    const ActionComponent = ACTION_COMPONENTS[actionType];
-    if (!ActionComponent) continue;
-
-    const result = ActionComponent({
-      ...commonProps,
-      onComplete: onActionComplete ? () => onActionComplete(actionType) : undefined,
-    });
-
-    if (result && result.available && result.element) {
-      results.push(
-        <React.Fragment key={result.key}>{result.element}</React.Fragment>
-      );
-    }
-  }
-
-  return results;
-};
+  return (
+    <>
+      <Dropdown
+        menu={{ items: menuItems }}
+        placement="bottomRight"
+        trigger={['click']}
+      >
+        <Button icon={<MoreOutlined />} className={className} />
+      </Dropdown>
+      {/* Render action components to get menu items and render any needed DOM elements */}
+      {actionsToShow.map((actionType) => (
+        <DropdownActionRenderer
+          key={actionType}
+          actionType={actionType}
+          commonProps={commonProps}
+          onActionComplete={onActionComplete}
+          onMenuItem={(item) => handleMenuItem(actionType, item)}
+        />
+      ))}
+    </>
+  );
+}
 
 /**
- * Helper function to get actions with expanded content for Ant Design Card
- * Returns both the action icons and any expanded content that should render inline
- * Usage: const { actions, expandedContent } = ClimbActions.asCardActionsWithContent({ climb, boardDetails, angle });
+ * Individual action renderer for dropdown mode.
+ * This component calls the action function at component level, making hooks valid.
  */
-ClimbActions.asCardActionsWithContent = function asCardActionsWithContent(
-  props: Omit<ClimbActionsProps, 'viewMode'>
-): { actions: React.ReactNode[]; expandedContent: React.ReactNode } {
-  const { climb, boardDetails, angle, include, exclude = [], size, onActionComplete, auroraAppUrl } = props;
+function DropdownActionRenderer({
+  actionType,
+  commonProps,
+  onActionComplete,
+  onMenuItem,
+}: {
+  actionType: ClimbActionType;
+  commonProps: Omit<ClimbActionProps, 'onComplete'>;
+  onActionComplete?: (actionType: ClimbActionType) => void;
+  onMenuItem: (item: ClimbActionResult['menuItem']) => void;
+}) {
+  const actionFn = ACTION_FUNCTIONS[actionType];
+  // Track if we've reported the menu item to prevent infinite loops
+  const hasReportedRef = React.useRef(false);
+  const onMenuItemRef = React.useRef(onMenuItem);
+  onMenuItemRef.current = onMenuItem;
 
-  // Determine which actions to show
-  let actions = include || DEFAULT_ACTION_ORDER;
-  actions = actions.filter((action) => !exclude.includes(action));
+  // Call action function at component level - hooks are valid here
+  // Note: actionFn must be called unconditionally to maintain hooks order
+  const result = actionFn({
+    ...commonProps,
+    viewMode: 'dropdown',
+    onComplete: onActionComplete ? () => onActionComplete(actionType) : undefined,
+  });
 
-  const commonProps = {
-    climb,
-    boardDetails,
-    angle,
-    viewMode: 'icon' as const,
-    size,
-    auroraAppUrl,
-  };
-
-  const actionElements: React.ReactNode[] = [];
-  const expandedElements: React.ReactNode[] = [];
-
-  for (const actionType of actions) {
-    const ActionComponent = ACTION_COMPONENTS[actionType];
-    if (!ActionComponent) continue;
-
-    const result = ActionComponent({
-      ...commonProps,
-      onComplete: onActionComplete ? () => onActionComplete(actionType) : undefined,
-    });
-
-    if (result && result.available) {
-      if (result.element) {
-        actionElements.push(
-          <React.Fragment key={result.key}>{result.element}</React.Fragment>
-        );
-      }
-      if (result.expandedContent) {
-        expandedElements.push(
-          <React.Fragment key={`expanded:${result.key}`}>{result.expandedContent}</React.Fragment>
-        );
-      }
+  // Report menu item to parent only once on mount
+  React.useEffect(() => {
+    if (result.available && !hasReportedRef.current) {
+      hasReportedRef.current = true;
+      onMenuItemRef.current(result.menuItem);
     }
-  }
+  }, [result.available]); // Only depend on availability, not menuItem object
 
-  return {
-    actions: actionElements,
-    expandedContent: expandedElements.length > 0 ? <>{expandedElements}</> : null,
-  };
-};
+  // Render any elements needed in DOM (modals, drawers, etc.)
+  if (!result.available || !result.element) return null;
+  return <>{result.element}</>;
+}
 
 export default ClimbActions;

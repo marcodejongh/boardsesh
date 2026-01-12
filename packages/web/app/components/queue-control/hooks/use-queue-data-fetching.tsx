@@ -145,7 +145,13 @@ export const useQueueDataFetching = ({
   );
 
   const suggestedClimbs = useMemo(
-    () => (climbSearchResults || []).filter((item) => !queue.find((queueItem) => queueItem.climb?.uuid === item.uuid)),
+    () => {
+      const filtered = (climbSearchResults || []).filter((item) => !queue.find((queueItem) => queueItem.climb?.uuid === item.uuid));
+      // Deduplicate by uuid to prevent React key warnings
+      return filtered.filter((climb, index, self) =>
+        index === self.findIndex((c) => c.uuid === climb.uuid)
+      );
+    },
     [climbSearchResults, queue],
   );
 

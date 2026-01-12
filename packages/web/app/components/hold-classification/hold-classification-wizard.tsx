@@ -342,7 +342,7 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
         open={open}
         onClose={onClose}
         placement="bottom"
-        height="100vh"
+        styles={{ wrapper: { height: '100vh' } }}
       >
         <div className={styles.loadingContainer}>
           <Spin size="large" />
@@ -360,7 +360,7 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
         open={open}
         onClose={onClose}
         placement="bottom"
-        height="100vh"
+        styles={{ wrapper: { height: '100vh' } }}
       >
         <div className={styles.emptyState}>
           <Text>No holds found for this board configuration.</Text>
@@ -378,7 +378,7 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
         open={open}
         onClose={onClose}
         placement="bottom"
-        height="100vh"
+        styles={{ wrapper: { height: '100vh' } }}
       >
         <div className={styles.completeContainer}>
           <CheckCircleFilled className={styles.completeIcon} />
@@ -409,8 +409,8 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
       open={open}
       onClose={onClose}
       placement="bottom"
-      height="100vh"
       styles={{
+        wrapper: { height: '100vh' },
         header: {
           borderBottom: `1px solid ${themeTokens.neutral[200]}`,
         },

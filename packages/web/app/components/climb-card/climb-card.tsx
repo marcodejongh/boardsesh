@@ -44,7 +44,9 @@ const areActionsEqual = (
 /**
  * Inner component that handles dynamic action generation.
  * Separated to allow proper hook usage without affecting memoization of static cases.
- * Note: This component generates its own actions and expandedContent - external props are not supported.
+ * Note: This component generates its own actions - external props are not supported.
+ *
+ * Uses ClimbActions component directly to ensure hooks are called within the React component tree.
  */
 function ClimbCardWithActions({
   climb,
@@ -59,14 +61,6 @@ function ClimbCardWithActions({
   onCoverDoubleClick?: () => void;
   selected?: boolean;
 }) {
-  // Actions are generated here - hooks inside action components are called during this render
-  const { actions: cardActions, expandedContent } = ClimbActions.asCardActionsWithContent({
-    climb,
-    boardDetails,
-    angle: climb.angle,
-    exclude: ['tick', 'openInApp', 'mirror', 'share', 'addToList'],
-  });
-
   const cover = <ClimbCardCover climb={climb} boardDetails={boardDetails} onClick={onCoverClick} onDoubleClick={onCoverDoubleClick} />;
   const cardTitle = <ClimbTitle climb={climb} layout="horizontal" showSetterInfo />;
 
@@ -85,11 +79,28 @@ function ClimbCardWithActions({
             backgroundColor: selected ? themeTokens.semantic.selectedLight : undefined,
           },
         }}
-        actions={cardActions}
       >
         <div style={{ position: 'relative' }}>
           {cover}
-          {expandedContent}
+        </div>
+        {/* Actions rendered as a proper component to support hooks */}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-around',
+            alignItems: 'center',
+            borderTop: `1px solid ${themeTokens.neutral[200]}`,
+            marginTop: themeTokens.spacing[2],
+            paddingTop: themeTokens.spacing[2],
+          }}
+        >
+          <ClimbActions
+            climb={climb}
+            boardDetails={boardDetails}
+            angle={climb.angle}
+            viewMode="icon"
+            exclude={['tick', 'openInApp', 'mirror', 'share', 'addToList']}
+          />
         </div>
       </Card>
     </div>

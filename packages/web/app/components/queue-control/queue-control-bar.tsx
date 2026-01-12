@@ -372,11 +372,10 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
       <Drawer
         title="Queue"
         placement="bottom"
-        height="70%" // Adjust as per design preference
         open={isQueueOpen}
         onClose={toggleQueueDrawer}
         afterOpenChange={handleDrawerOpenChange}
-        styles={{ body: { padding: 0 } }}
+        styles={{ wrapper: { height: '70%' }, body: { padding: 0 } }}
         extra={
           queue.length > 0 && (
             <Popconfirm

@@ -337,10 +337,10 @@ const PlaylistGeneratorDrawer: React.FC<PlaylistGeneratorDrawerProps> = ({
       open={open}
       onClose={generating ? undefined : onClose}
       placement="bottom"
-      height="85vh"
       closable={!generating}
       maskClosable={!generating}
       styles={{
+        wrapper: { height: '85vh' },
         header: {
           borderBottom: `1px solid ${themeTokens.neutral[200]}`,
         },
