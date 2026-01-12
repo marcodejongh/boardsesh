@@ -1,0 +1,121 @@
+/*
+ * Color values match themeTokens from theme-config.ts
+ * CSS modules cannot import JS, so hex values are used directly
+ * (same pattern as about.module.css)
+ */
+
+.pageLayout {
+  min-height: 100vh;
+  background: #f9fafb;
+}
+
+.header {
+  background: #ffffff;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.headerTitle {
+  margin: 0;
+  flex: 1;
+}
+
+.content {
+  padding: 24px;
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+@media (max-width: 576px) {
+  .content {
+    padding: 16px;
+  }
+}
+
+.heroSection {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.heroIcon {
+  font-size: 48px;
+  color: #06b6d4;
+  margin-bottom: 16px;
+}
+
+.heroTitle {
+  margin-top: 0;
+  margin-bottom: 8px;
+}
+
+.heroSubtitle {
+  font-size: 16px;
+}
+
+@media (max-width: 576px) {
+  .heroIcon {
+    font-size: 36px;
+  }
+
+  .heroSubtitle {
+    font-size: 14px;
+  }
+}
+
+.sectionIcon {
+  margin-right: 8px;
+  color: #06b6d4;
+}
+
+.mainCollapse {
+  background: transparent;
+}
+
+.nestedCollapse {
+  background: #f9fafb;
+}
+
+.answerContent {
+  padding: 8px 0;
+}
+
+.answerContent ul,
+.answerContent ol {
+  padding-left: 20px;
+  margin-bottom: 16px;
+}
+
+.answerContent li {
+  margin-bottom: 8px;
+  line-height: 1.6;
+}
+
+@media (max-width: 576px) {
+  .answerContent ul,
+  .answerContent ol {
+    padding-left: 16px;
+  }
+
+  .answerContent li {
+    margin-bottom: 6px;
+  }
+}
+
+.featureImage {
+  width: 100%;
+  max-width: 100%;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  border: 1px solid #e5e7eb;
+}
+
+@media (max-width: 576px) {
+  .featureImage {
+    border-radius: 4px;
+    margin-bottom: 12px;
+  }
+}
