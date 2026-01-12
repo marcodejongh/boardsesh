@@ -47,7 +47,7 @@ export async function GET() {
       const ascentResult = await sql`
         SELECT COUNT(*) as count FROM boardsesh_ticks
         WHERE user_id = ${session.user.id}
-          AND board_name = ${boardType}
+          AND board_type = ${boardType}
           AND aurora_id IS NULL
       `;
 

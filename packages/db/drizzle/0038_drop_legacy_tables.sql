@@ -2,6 +2,14 @@
 -- These tables have been superseded by unified board_* tables
 -- All data was migrated in migration 0025_shocking_clint_barton.sql
 
+-- First, drop any materialized views that depend on legacy tables
+DROP MATERIALIZED VIEW IF EXISTS kilter_product_sizes_mv CASCADE;
+DROP MATERIALIZED VIEW IF EXISTS tension_product_sizes_mv CASCADE;
+DROP MATERIALIZED VIEW IF EXISTS kilter_climbs_mv CASCADE;
+DROP MATERIALIZED VIEW IF EXISTS tension_climbs_mv CASCADE;
+DROP MATERIALIZED VIEW IF EXISTS kilter_climb_stats_mv CASCADE;
+DROP MATERIALIZED VIEW IF EXISTS tension_climb_stats_mv CASCADE;
+
 -- Phase 6b: Drop user data tables (12 tables)
 DROP TABLE IF EXISTS kilter_tags;
 DROP TABLE IF EXISTS tension_tags;
