@@ -73,7 +73,7 @@ function convertLitUpHoldsStringToMap(litUpHolds: string, board: BoardName): Rec
 export const searchClimbs = async (
   params: ParsedBoardRouteParameters,
   searchParams: ClimbSearchParams,
-  userId?: number,
+  userId?: string,
 ): Promise<ClimbSearchResult> => {
   const tables = getBoardTables(params.board_name);
 

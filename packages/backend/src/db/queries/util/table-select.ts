@@ -16,7 +16,6 @@ import {
   boardWalls,
   boardTags,
 } from '@boardsesh/db';
-import { eq } from 'drizzle-orm';
 
 export type BoardName = 'kilter' | 'tension';
 
@@ -51,19 +50,6 @@ export function getUnifiedTable<K extends keyof UnifiedTableSet>(
   tableName: K
 ): UnifiedTableSet[K] {
   return UNIFIED_TABLES[tableName];
-}
-
-/**
- * Helper to create board_type equality condition for WHERE clauses
- * @param table A unified table with boardType column
- * @param boardName The board name to filter by
- * @returns A drizzle eq() condition
- */
-export function boardTypeCondition(
-  table: { boardType: typeof boardClimbs.boardType },
-  boardName: BoardName
-) {
-  return eq(table.boardType, boardName);
 }
 
 /**
@@ -110,33 +96,4 @@ export type TableSet = typeof UNIFIED_TABLES;
  */
 export function getBoardTables(_boardName: BoardName): TableSet {
   return UNIFIED_TABLES;
-}
-
-/**
- * Get the table name for raw SQL queries
- * @param boardName The board name
- * @param tableName The base table name (e.g., 'climb_stats')
- * @returns The unified table name (e.g., 'board_climb_stats')
- */
-export function getTableName(_boardName: BoardName, tableName: string): string {
-  // Convert table name to unified format (e.g., 'climbs' -> 'board_climbs')
-  const tableMap: Record<string, string> = {
-    climbs: 'board_climbs',
-    climb_stats: 'board_climb_stats',
-    difficulty_grades: 'board_difficulty_grades',
-    product_sizes: 'board_product_sizes',
-    layouts: 'board_layouts',
-    users: 'board_users',
-    circuits: 'board_circuits',
-    climb_stats_history: 'board_climb_stats_history',
-    attempts: 'board_attempts',
-    products: 'board_products',
-    user_syncs: 'board_user_syncs',
-    shared_syncs: 'board_shared_syncs',
-    climb_holds: 'board_climb_holds',
-    beta_links: 'board_beta_links',
-    walls: 'board_walls',
-    tags: 'board_tags',
-  };
-  return tableMap[tableName] || `board_${tableName}`;
 }

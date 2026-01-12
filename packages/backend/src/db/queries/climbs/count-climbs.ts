@@ -19,7 +19,7 @@ export const countClimbs = async (
   params: ParsedBoardRouteParameters,
   searchParams: ClimbSearchParams,
   sizeEdges: SizeEdges,
-  userId?: number,
+  userId?: string,
 ): Promise<number> => {
   const tables = getBoardTables(params.board_name);
 

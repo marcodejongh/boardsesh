@@ -16,7 +16,6 @@ import {
   boardWalls,
   boardTags,
 } from '@boardsesh/db/schema/boards';
-import { eq } from 'drizzle-orm';
 import { AuroraBoardName } from '../api/types';
 
 // Re-export AuroraBoardName as BoardName for backward compatibility within this module
@@ -56,19 +55,6 @@ export function getUnifiedTable<K extends keyof UnifiedTableSet>(
 }
 
 /**
- * Helper to create board_type equality condition for WHERE clauses
- * @param table A unified table with boardType column
- * @param boardName The board name to filter by
- * @returns A drizzle eq() condition
- */
-export function boardTypeCondition(
-  table: { boardType: typeof boardClimbs.boardType },
-  boardName: BoardName
-) {
-  return eq(table.boardType, boardName);
-}
-
-/**
  * Helper function to check if a board name is valid
  * @param boardName The name to check
  * @returns True if the board name is valid
@@ -93,7 +79,6 @@ export function isValidUnifiedBoardName(boardName: string): boardName is Unified
 
 export default {
   getUnifiedTable,
-  boardTypeCondition,
   isValidBoardName,
   isValidUnifiedBoardName,
   UNIFIED_TABLES,
