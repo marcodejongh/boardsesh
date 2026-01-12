@@ -12,17 +12,17 @@ import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
 import {
-  GET_USER_ASCENTS_FEED,
-  type AscentFeedItem,
-  type GetUserAscentsFeedQueryVariables,
-  type GetUserAscentsFeedQueryResponse,
+  GET_USER_GROUPED_ASCENTS_FEED,
+  type GroupedAscentFeedItem,
+  type GetUserGroupedAscentsFeedQueryVariables,
+  type GetUserGroupedAscentsFeedQueryResponse,
 } from '@/app/lib/graphql/operations';
 import AscentThumbnail from './ascent-thumbnail';
 import styles from './ascents-feed.module.css';
 
 dayjs.extend(relativeTime);
 
-const { Text, Title } = Typography;
+const { Text } = Typography;
 
 interface AscentsFeedProps {
   userId: string;
@@ -44,59 +44,61 @@ const getLayoutDisplayName = (boardType: string, layoutId: number | null): strin
   return layoutNames[key] || `${boardType.charAt(0).toUpperCase() + boardType.slice(1)}`;
 };
 
-// Status icon and color mapping
-const getStatusIcon = (status: 'flash' | 'send' | 'attempt') => {
-  switch (status) {
-    case 'flash':
-      return <ThunderboltOutlined />;
-    case 'send':
-      return <CheckCircleOutlined />;
-    case 'attempt':
-      return <CloseCircleOutlined />;
+// Generate status summary for grouped attempts
+const getGroupStatusSummary = (group: GroupedAscentFeedItem): { text: string; icon: React.ReactNode; color: string } => {
+  const parts: string[] = [];
+
+  // Determine primary status (best result first)
+  if (group.flashCount > 0) {
+    parts.push(group.flashCount === 1 ? 'Flashed' : `${group.flashCount} flashes`);
   }
+  if (group.sendCount > 0) {
+    parts.push(group.sendCount === 1 ? 'Sent' : `${group.sendCount} sends`);
+  }
+  if (group.attemptCount > 0) {
+    parts.push(group.attemptCount === 1 ? '1 attempt' : `${group.attemptCount} attempts`);
+  }
+
+  // Determine color and icon based on best result
+  let icon: React.ReactNode;
+  let color: string;
+  if (group.flashCount > 0) {
+    icon = <ThunderboltOutlined />;
+    color = 'gold';
+  } else if (group.sendCount > 0) {
+    icon = <CheckCircleOutlined />;
+    color = 'green';
+  } else {
+    icon = <CloseCircleOutlined />;
+    color = 'default';
+  }
+
+  return { text: parts.join(', '), icon, color };
 };
 
-const getStatusColor = (status: 'flash' | 'send' | 'attempt') => {
-  switch (status) {
-    case 'flash':
-      return 'gold';
-    case 'send':
-      return 'green';
-    case 'attempt':
-      return 'default';
-  }
-};
-
-const getStatusText = (status: 'flash' | 'send' | 'attempt') => {
-  switch (status) {
-    case 'flash':
-      return 'Flashed';
-    case 'send':
-      return 'Sent';
-    case 'attempt':
-      return 'Attempted';
-  }
-};
-
-const FeedItem: React.FC<{ item: AscentFeedItem }> = ({ item }) => {
-  const timeAgo = dayjs(item.climbedAt).fromNow();
-  const boardDisplay = getLayoutDisplayName(item.boardType, item.layoutId);
-  const statusText = getStatusText(item.status);
-  const isSuccess = item.status === 'flash' || item.status === 'send';
+const GroupedFeedItem: React.FC<{ group: GroupedAscentFeedItem }> = ({ group }) => {
+  // Get the latest item's climbedAt for time display
+  const latestItem = group.items.reduce((latest, item) =>
+    new Date(item.climbedAt) > new Date(latest.climbedAt) ? item : latest
+  );
+  const timeAgo = dayjs(latestItem.climbedAt).fromNow();
+  const boardDisplay = getLayoutDisplayName(group.boardType, group.layoutId);
+  const statusSummary = getGroupStatusSummary(group);
+  const hasSuccess = group.flashCount > 0 || group.sendCount > 0;
 
   return (
     <Card className={styles.feedItem} size="small">
       <Flex gap={12}>
         {/* Thumbnail */}
-        {item.frames && item.layoutId && (
+        {group.frames && group.layoutId && (
           <AscentThumbnail
-            boardType={item.boardType}
-            layoutId={item.layoutId}
-            angle={item.angle}
-            climbUuid={item.climbUuid}
-            climbName={item.climbName}
-            frames={item.frames}
-            isMirror={item.isMirror}
+            boardType={group.boardType}
+            layoutId={group.layoutId}
+            angle={group.angle}
+            climbUuid={group.climbUuid}
+            climbName={group.climbName}
+            frames={group.frames}
+            isMirror={group.isMirror}
           />
         )}
 
@@ -106,14 +108,14 @@ const FeedItem: React.FC<{ item: AscentFeedItem }> = ({ item }) => {
           <Flex justify="space-between" align="center" wrap="wrap" gap={8}>
             <Flex align="center" gap={8}>
               <Tag
-                icon={getStatusIcon(item.status)}
-                color={getStatusColor(item.status)}
+                icon={statusSummary.icon}
+                color={statusSummary.color}
                 className={styles.statusTag}
               >
-                {statusText}
+                {statusSummary.text}
               </Tag>
               <Text strong className={styles.climbName}>
-                {item.climbName}
+                {group.climbName}
               </Text>
             </Flex>
             <Text type="secondary" className={styles.timeAgo}>
@@ -123,39 +125,32 @@ const FeedItem: React.FC<{ item: AscentFeedItem }> = ({ item }) => {
 
           {/* Climb details */}
           <Flex gap={8} wrap="wrap" align="center">
-            {item.difficultyName && (
-              <Tag color="blue">{item.difficultyName}</Tag>
+            {group.difficultyName && (
+              <Tag color="blue">{group.difficultyName}</Tag>
             )}
-            <Tag icon={<EnvironmentOutlined />}>{item.angle}°</Tag>
+            <Tag icon={<EnvironmentOutlined />}>{group.angle}°</Tag>
             <Text type="secondary" className={styles.boardType}>
               {boardDisplay}
             </Text>
-            {item.isMirror && <Tag color="purple">Mirrored</Tag>}
-            {item.isBenchmark && <Tag color="cyan">Benchmark</Tag>}
+            {group.isMirror && <Tag color="purple">Mirrored</Tag>}
+            {group.isBenchmark && <Tag color="cyan">Benchmark</Tag>}
           </Flex>
 
-          {/* Attempts count for sends */}
-          {item.status === 'send' && item.attemptCount > 1 && (
-            <Text type="secondary" className={styles.attempts}>
-              {item.attemptCount} attempts
-            </Text>
-          )}
-
           {/* Rating for successful sends */}
-          {isSuccess && item.quality && (
-            <Rate disabled value={item.quality} count={5} className={styles.rating} />
+          {hasSuccess && group.bestQuality && (
+            <Rate disabled value={group.bestQuality} count={5} className={styles.rating} />
           )}
 
           {/* Setter info */}
-          {item.setterUsername && (
+          {group.setterUsername && (
             <Text type="secondary" className={styles.setter}>
-              Set by {item.setterUsername}
+              Set by {group.setterUsername}
             </Text>
           )}
 
           {/* Comment */}
-          {item.comment && (
-            <Text className={styles.comment}>{item.comment}</Text>
+          {group.latestComment && (
+            <Text className={styles.comment}>{group.latestComment}</Text>
           )}
         </Flex>
       </Flex>
@@ -164,7 +159,7 @@ const FeedItem: React.FC<{ item: AscentFeedItem }> = ({ item }) => {
 };
 
 export const AscentsFeed: React.FC<AscentsFeedProps> = ({ userId, pageSize = 10 }) => {
-  const [items, setItems] = useState<AscentFeedItem[]>([]);
+  const [groups, setGroups] = useState<GroupedAscentFeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
@@ -182,22 +177,22 @@ export const AscentsFeed: React.FC<AscentsFeedProps> = ({ userId, pageSize = 10 
         }
 
         const client = createGraphQLHttpClient(null);
-        const variables: GetUserAscentsFeedQueryVariables = {
+        const variables: GetUserGroupedAscentsFeedQueryVariables = {
           userId,
           input: { limit: pageSize, offset },
         };
 
-        const response = await client.request<GetUserAscentsFeedQueryResponse>(
-          GET_USER_ASCENTS_FEED,
+        const response = await client.request<GetUserGroupedAscentsFeedQueryResponse>(
+          GET_USER_GROUPED_ASCENTS_FEED,
           variables
         );
 
-        const { items: newItems, hasMore: more, totalCount: total } = response.userAscentsFeed;
+        const { groups: newGroups, hasMore: more, totalCount: total } = response.userGroupedAscentsFeed;
 
         if (append) {
-          setItems((prev) => [...prev, ...newItems]);
+          setGroups((prev) => [...prev, ...newGroups]);
         } else {
-          setItems(newItems);
+          setGroups(newGroups);
         }
         setHasMore(more);
         setTotalCount(total);
@@ -221,7 +216,7 @@ export const AscentsFeed: React.FC<AscentsFeedProps> = ({ userId, pageSize = 10 
   // Load more when button clicked
   const handleLoadMore = () => {
     if (!loadingMore && hasMore) {
-      fetchFeed(items.length, true);
+      fetchFeed(groups.length, true);
     }
   };
 
@@ -242,7 +237,7 @@ export const AscentsFeed: React.FC<AscentsFeedProps> = ({ userId, pageSize = 10 
     );
   }
 
-  if (items.length === 0) {
+  if (groups.length === 0) {
     return (
       <Empty
         description="No ascents logged yet"
@@ -254,8 +249,8 @@ export const AscentsFeed: React.FC<AscentsFeedProps> = ({ userId, pageSize = 10 
   return (
     <div className={styles.feed}>
       <Flex vertical gap={12}>
-        {items.map((item) => (
-          <FeedItem key={item.uuid} item={item} />
+        {groups.map((group) => (
+          <GroupedFeedItem key={group.key} group={group} />
         ))}
       </Flex>
 
@@ -267,7 +262,7 @@ export const AscentsFeed: React.FC<AscentsFeedProps> = ({ userId, pageSize = 10 
             type="default"
             block
           >
-            Load more ({items.length} of {totalCount})
+            Load more ({groups.length} of {totalCount})
           </Button>
         </div>
       )}
