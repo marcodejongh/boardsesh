@@ -225,8 +225,10 @@ export const tickQueries = {
     const limit = validatedInput.limit ?? 20;
     const offset = validatedInput.offset ?? 0;
 
-    // Fetch all ticks with climb and grade data (we need all to group properly)
-    // For performance, we fetch a larger batch and then group/paginate
+    // Fetch recent ticks with climb and grade data
+    // We limit to 500 most recent ticks to prevent memory issues for very active users
+    // This provides enough data for typical pagination while keeping memory usage bounded
+    const MAX_FETCH_LIMIT = 500;
     const results = await db
       .select({
         tick: dbSchema.boardseshTicks,
@@ -252,7 +254,8 @@ export const tickQueries = {
         )
       )
       .where(eq(dbSchema.boardseshTicks.userId, userId))
-      .orderBy(desc(dbSchema.boardseshTicks.climbedAt));
+      .orderBy(desc(dbSchema.boardseshTicks.climbedAt))
+      .limit(MAX_FETCH_LIMIT);
 
     // Group items by climbUuid and day
     type AscentItem = {
