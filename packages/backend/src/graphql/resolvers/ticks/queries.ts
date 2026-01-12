@@ -150,84 +150,56 @@ export const tickQueries = {
 
     const totalCount = Number(countResult[0]?.count || 0);
 
-    // Fetch ticks ordered by climbedAt, paginated
-    const ticks = await db
-      .select()
+    // Fetch ticks with climb and grade data using JOINs (eliminates N+1 queries)
+    const results = await db
+      .select({
+        tick: dbSchema.boardseshTicks,
+        climbName: dbSchema.boardClimbs.name,
+        setterUsername: dbSchema.boardClimbs.setterUsername,
+        layoutId: dbSchema.boardClimbs.layoutId,
+        frames: dbSchema.boardClimbs.frames,
+        difficultyName: dbSchema.boardDifficultyGrades.boulderName,
+      })
       .from(dbSchema.boardseshTicks)
+      .leftJoin(
+        dbSchema.boardClimbs,
+        and(
+          eq(dbSchema.boardseshTicks.climbUuid, dbSchema.boardClimbs.uuid),
+          eq(dbSchema.boardseshTicks.boardType, dbSchema.boardClimbs.boardType)
+        )
+      )
+      .leftJoin(
+        dbSchema.boardDifficultyGrades,
+        and(
+          eq(dbSchema.boardseshTicks.difficulty, dbSchema.boardDifficultyGrades.difficulty),
+          eq(dbSchema.boardseshTicks.boardType, dbSchema.boardDifficultyGrades.boardType)
+        )
+      )
       .where(eq(dbSchema.boardseshTicks.userId, userId))
       .orderBy(desc(dbSchema.boardseshTicks.climbedAt))
       .limit(limit)
       .offset(offset);
 
-    // Enrich ticks with climb data from unified tables
-    const items = await Promise.all(
-      ticks.map(async (tick) => {
-        // Get climb details from unified board_climbs table
-        let climbName = 'Unknown Climb';
-        let setterUsername: string | null = null;
-        let layoutId: number | null = null;
-        let frames: string | null = null;
-
-        const climb = await db
-          .select({
-            name: dbSchema.boardClimbs.name,
-            setterUsername: dbSchema.boardClimbs.setterUsername,
-            layoutId: dbSchema.boardClimbs.layoutId,
-            frames: dbSchema.boardClimbs.frames,
-          })
-          .from(dbSchema.boardClimbs)
-          .where(
-            and(
-              eq(dbSchema.boardClimbs.uuid, tick.climbUuid),
-              eq(dbSchema.boardClimbs.boardType, tick.boardType)
-            )
-          )
-          .limit(1);
-
-        if (climb[0]) {
-          climbName = climb[0].name || 'Unnamed Climb';
-          setterUsername = climb[0].setterUsername;
-          layoutId = climb[0].layoutId;
-          frames = climb[0].frames;
-        }
-
-        // Get difficulty name if available from unified board_difficulty_grades table
-        let difficultyName: string | null = null;
-        if (tick.difficulty !== null) {
-          const grade = await db
-            .select({ boulderName: dbSchema.boardDifficultyGrades.boulderName })
-            .from(dbSchema.boardDifficultyGrades)
-            .where(
-              and(
-                eq(dbSchema.boardDifficultyGrades.difficulty, tick.difficulty),
-                eq(dbSchema.boardDifficultyGrades.boardType, tick.boardType)
-              )
-            )
-            .limit(1);
-          difficultyName = grade[0]?.boulderName || null;
-        }
-
-        return {
-          uuid: tick.uuid,
-          climbUuid: tick.climbUuid,
-          climbName,
-          setterUsername,
-          boardType: tick.boardType,
-          layoutId,
-          angle: tick.angle,
-          isMirror: tick.isMirror,
-          status: tick.status,
-          attemptCount: tick.attemptCount,
-          quality: tick.quality,
-          difficulty: tick.difficulty,
-          difficultyName,
-          isBenchmark: tick.isBenchmark,
-          comment: tick.comment || '',
-          climbedAt: tick.climbedAt,
-          frames,
-        };
-      })
-    );
+    // Map results to response format
+    const items = results.map(({ tick, climbName, setterUsername, layoutId, frames, difficultyName }) => ({
+      uuid: tick.uuid,
+      climbUuid: tick.climbUuid,
+      climbName: climbName || 'Unknown Climb',
+      setterUsername,
+      boardType: tick.boardType,
+      layoutId,
+      angle: tick.angle,
+      isMirror: tick.isMirror,
+      status: tick.status,
+      attemptCount: tick.attemptCount,
+      quality: tick.quality,
+      difficulty: tick.difficulty,
+      difficultyName,
+      isBenchmark: tick.isBenchmark,
+      comment: tick.comment || '',
+      climbedAt: tick.climbedAt,
+      frames,
+    }));
 
     return {
       items,

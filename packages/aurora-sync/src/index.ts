@@ -13,5 +13,5 @@ export * from './runner/index';
 export { encrypt, decrypt } from '@boardsesh/crypto';
 
 // DB utilities
-export { getUnifiedTable, boardTypeCondition, isValidBoardName, isValidUnifiedBoardName, UNIFIED_TABLES } from './db/table-select';
+export { getUnifiedTable, isValidBoardName, isValidUnifiedBoardName, UNIFIED_TABLES } from './db/table-select';
 export type { UnifiedTableSet, BoardName, UnifiedBoardName } from './db/table-select';

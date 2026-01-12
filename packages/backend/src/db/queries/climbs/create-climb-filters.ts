@@ -1,6 +1,7 @@
-import { eq, gte, sql, like, notLike, inArray, SQL } from 'drizzle-orm';
-import { TableSet, getTableName, type BoardName } from '../util/table-select';
+import { eq, gte, sql, like, notLike, inArray, SQL, getTableName } from 'drizzle-orm';
+import { TableSet, type BoardName } from '../util/table-select';
 import type { SizeEdges } from '../util/product-sizes-data';
+import { boardseshTicks, boardProductSizes } from '@boardsesh/db/schema';
 
 export interface ClimbSearchParams {
   // Pagination
@@ -48,7 +49,7 @@ export const createClimbFilters = (
   params: ParsedBoardRouteParameters,
   searchParams: ClimbSearchParams,
   sizeEdges: SizeEdges,
-  userId?: number,
+  userId?: string,
 ) => {
   // Process hold filters
   const holdsToFilter = Object.entries(searchParams.holdsFilter || {}).map(([key, state]) => [
@@ -133,88 +134,99 @@ export const createClimbFilters = (
     // Climbs with edge_bottom below this threshold use "tall only" holds
     // For Kilter Homewall (productId=7), 7x10/10x10 sizes have edgeBottom=24, 8x12/10x12 have edgeBottom=-12
     // So "tall climbs" are those with edgeBottom < 24 (using holds only available on 12-tall sizes)
-    const productSizesTable = getTableName(params.board_name, 'product_sizes');
-
+    const productSizesTable = getTableName(boardProductSizes);
     tallClimbsConditions.push(
       sql`${tables.climbs.edgeBottom} < (
         SELECT MAX(ps.edge_bottom)
         FROM ${sql.identifier(productSizesTable)} ps
         WHERE ps.product_id = ${KILTER_HOMEWALL_PRODUCT_ID}
+        AND ps.board_type = 'kilter'
         AND ps.id != ${params.size_id}
       )`
     );
   }
 
   // Personal progress filter conditions (only apply if userId is provided)
+  // Uses boardsesh_ticks table which tracks all user attempts
   const personalProgressConditions: SQL[] = [];
+  const ticksTable = getTableName(boardseshTicks);
   if (userId) {
-    const ascentsTable = getTableName(params.board_name, 'ascents');
-    const bidsTable = getTableName(params.board_name, 'bids');
-
     if (searchParams.hideAttempted) {
+      // Hide climbs where the user has any tick (attempted or completed)
       personalProgressConditions.push(
         sql`NOT EXISTS (
-          SELECT 1 FROM ${sql.identifier(bidsTable)}
+          SELECT 1 FROM ${sql.identifier(ticksTable)}
           WHERE climb_uuid = ${tables.climbs.uuid}
           AND user_id = ${userId}
+          AND board_type = ${params.board_name}
           AND angle = ${params.angle}
         )`
       );
     }
 
     if (searchParams.hideCompleted) {
+      // Hide climbs where the user has completed (flash or send)
       personalProgressConditions.push(
         sql`NOT EXISTS (
-          SELECT 1 FROM ${sql.identifier(ascentsTable)}
+          SELECT 1 FROM ${sql.identifier(ticksTable)}
           WHERE climb_uuid = ${tables.climbs.uuid}
           AND user_id = ${userId}
+          AND board_type = ${params.board_name}
           AND angle = ${params.angle}
+          AND status IN ('flash', 'send')
         )`
       );
     }
 
     if (searchParams.showOnlyAttempted) {
+      // Show only climbs where the user has any tick
       personalProgressConditions.push(
         sql`EXISTS (
-          SELECT 1 FROM ${sql.identifier(bidsTable)}
+          SELECT 1 FROM ${sql.identifier(ticksTable)}
           WHERE climb_uuid = ${tables.climbs.uuid}
           AND user_id = ${userId}
+          AND board_type = ${params.board_name}
           AND angle = ${params.angle}
         )`
       );
     }
 
     if (searchParams.showOnlyCompleted) {
+      // Show only climbs where the user has completed (flash or send)
       personalProgressConditions.push(
         sql`EXISTS (
-          SELECT 1 FROM ${sql.identifier(ascentsTable)}
+          SELECT 1 FROM ${sql.identifier(ticksTable)}
           WHERE climb_uuid = ${tables.climbs.uuid}
           AND user_id = ${userId}
+          AND board_type = ${params.board_name}
           AND angle = ${params.angle}
+          AND status IN ('flash', 'send')
         )`
       );
     }
   }
 
   // User-specific logbook data selectors
+  // Uses boardsesh_ticks table which tracks all user attempts
   const getUserLogbookSelects = () => {
-    const ascentsTable = getTableName(params.board_name, 'ascents');
-    const bidsTable = getTableName(params.board_name, 'bids');
-
     return {
       userAscents: sql<number>`(
         SELECT COUNT(*)
-        FROM ${sql.identifier(ascentsTable)}
+        FROM ${sql.identifier(ticksTable)}
         WHERE climb_uuid = ${tables.climbs.uuid}
         AND user_id = ${userId || ''}
+        AND board_type = ${params.board_name}
         AND angle = ${params.angle}
+        AND status IN ('flash', 'send')
       )`,
       userAttempts: sql<number>`(
         SELECT COUNT(*)
-        FROM ${sql.identifier(bidsTable)}
+        FROM ${sql.identifier(ticksTable)}
         WHERE climb_uuid = ${tables.climbs.uuid}
         AND user_id = ${userId || ''}
+        AND board_type = ${params.board_name}
         AND angle = ${params.angle}
+        AND status = 'attempt'
       )`,
     };
   };

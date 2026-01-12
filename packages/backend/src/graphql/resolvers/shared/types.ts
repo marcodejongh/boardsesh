@@ -10,7 +10,7 @@ export type ClimbSearchContext = {
   params: ParsedBoardRouteParameters;
   searchParams: ClimbSearchParams;
   sizeEdges: SizeEdges;
-  userId: number | undefined;
+  userId: string | undefined;
   // Cached results to avoid duplicate queries when multiple fields are requested
   _cachedClimbs?: Climb[];
   _cachedHasMore?: boolean;
