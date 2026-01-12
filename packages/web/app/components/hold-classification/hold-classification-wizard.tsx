@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Drawer, Button, Progress, Rate, Typography, Spin, message } from 'antd';
-import { ArrowLeftOutlined, ArrowRightOutlined, CheckOutlined, CheckCircleFilled } from '@ant-design/icons';
+import { ArrowLeftOutlined, ArrowRightOutlined, CheckOutlined, CheckCircleFilled, ExpandOutlined, CompressOutlined } from '@ant-design/icons';
 import { useSession } from 'next-auth/react';
 import { BoardDetails } from '@/app/lib/types';
 import { HoldRenderData } from '../board-renderer/types';
@@ -20,33 +20,48 @@ import styles from './hold-classification-wizard.module.css';
 
 const { Text, Title } = Typography;
 
-// Zoom factor for the hold view (how much to zoom in on the hold)
-const ZOOM_FACTOR = 8;
+// Zoom factor for the compact hold view (shows ~2 rows of holds)
+const COMPACT_ZOOM_FACTOR = 4;
 // Minimum viewport size around the hold
 const MIN_VIEWPORT_SIZE = 100;
 
 interface HoldViewProps {
   hold: HoldRenderData;
   boardDetails: BoardDetails;
+  expanded?: boolean;
 }
 
 /**
- * Component that renders a zoomed-in view of a single hold on the board
+ * Component that renders a view of a hold on the board
+ * Compact mode: zoomed in showing ~2 rows around the hold
+ * Expanded mode: full board with hold highlighted
  */
-const HoldView: React.FC<HoldViewProps> = ({ hold, boardDetails }) => {
+const HoldView: React.FC<HoldViewProps> = ({ hold, boardDetails, expanded = false }) => {
   const { boardWidth, boardHeight } = boardDetails;
 
-  // Calculate the viewport to zoom in on the hold
-  // We want to show the hold centered with some context around it
-  const viewSize = Math.max(hold.r * ZOOM_FACTOR, MIN_VIEWPORT_SIZE);
-  const viewX = Math.max(0, Math.min(hold.cx - viewSize / 2, boardWidth - viewSize));
-  const viewY = Math.max(0, Math.min(hold.cy - viewSize / 2, boardHeight - viewSize));
+  // Calculate viewBox based on mode
+  let viewBox: string;
+  if (expanded) {
+    // Show full board
+    viewBox = `0 0 ${boardWidth} ${boardHeight}`;
+  } else {
+    // Compact view: zoom in on the hold showing ~2 rows
+    const viewSize = Math.max(hold.r * COMPACT_ZOOM_FACTOR, MIN_VIEWPORT_SIZE);
+    const viewX = Math.max(0, Math.min(hold.cx - viewSize / 2, boardWidth - viewSize));
+    const viewY = Math.max(0, Math.min(hold.cy - viewSize / 2, boardHeight - viewSize));
+    viewBox = `${viewX} ${viewY} ${viewSize} ${viewSize}`;
+  }
+
+  // Adjust highlight sizes based on mode
+  const strokeWidth = expanded ? hold.r / 2 : hold.r / 4;
+  const outerRadius = expanded ? hold.r * 2 : hold.r * 1.5;
+  const outerStrokeWidth = expanded ? 3 : 2;
 
   return (
     <svg
-      viewBox={`${viewX} ${viewY} ${viewSize} ${viewSize}`}
+      viewBox={viewBox}
       preserveAspectRatio="xMidYMid meet"
-      style={{ width: '100%', height: '100%', maxHeight: '300px' }}
+      style={{ width: '100%', height: '100%' }}
     >
       {/* Board background images */}
       {Object.keys(boardDetails.images_to_holds).map((imageUrl) => (
@@ -64,17 +79,17 @@ const HoldView: React.FC<HoldViewProps> = ({ hold, boardDetails }) => {
         cy={hold.cy}
         r={hold.r}
         stroke={themeTokens.colors.primary}
-        strokeWidth={hold.r / 4}
+        strokeWidth={strokeWidth}
         fill="none"
       />
       <circle
         cx={hold.cx}
         cy={hold.cy}
-        r={hold.r * 1.5}
+        r={outerRadius}
         stroke={themeTokens.colors.primary}
-        strokeWidth={2}
+        strokeWidth={outerStrokeWidth}
         fill="none"
-        strokeDasharray="4 4"
+        strokeDasharray={expanded ? "8 8" : "4 4"}
         opacity={0.5}
       />
     </svg>
@@ -93,6 +108,7 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [classifications, setClassifications] = useState<Map<number, HoldClassification>>(new Map());
   const [isComplete, setIsComplete] = useState(false);
+  const [isHoldViewExpanded, setIsHoldViewExpanded] = useState(false);
 
   // Get holds from board details, sorted by position (top-left to bottom-right)
   const holds = useMemo(() => {
@@ -382,12 +398,21 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
         </div>
 
         {/* Hold view (zoomed in on the board) */}
-        <div className={styles.holdViewSection}>
+        <div className={`${styles.holdViewSection} ${isHoldViewExpanded ? styles.holdViewExpanded : ''}`}>
           <div className={styles.holdViewContainer}>
             {currentHold && (
-              <HoldView hold={currentHold} boardDetails={boardDetails} />
+              <HoldView hold={currentHold} boardDetails={boardDetails} expanded={isHoldViewExpanded} />
             )}
           </div>
+          <Button
+            className={styles.expandButton}
+            type="text"
+            size="small"
+            icon={isHoldViewExpanded ? <CompressOutlined /> : <ExpandOutlined />}
+            onClick={() => setIsHoldViewExpanded(!isHoldViewExpanded)}
+          >
+            {isHoldViewExpanded ? 'Collapse' : 'Show full board'}
+          </Button>
         </div>
 
         {/* Classification controls */}
