@@ -133,7 +133,7 @@ async function upsertTableData(
           .insert(climbsSchema)
           .values(values)
           .onConflictDoUpdate({
-            target: [climbsSchema.boardType, climbsSchema.uuid],
+            target: climbsSchema.uuid,
             set: {
               layoutId: sql`excluded.layout_id`,
               setterId: sql`excluded.setter_id`,
@@ -589,8 +589,8 @@ export async function syncUserData(
           error instanceof Error
             ? error.message.includes('violates foreign key constraint')
               ? `FK constraint violation: ${error.message.split('violates foreign key constraint')[1]?.split('"')[1] || 'unknown'}`
-              : error.message.slice(0, 200)
-            : String(error).slice(0, 200);
+              : error.message.slice(0, 500)
+            : String(error).slice(0, 500);
         log(`Database error: ${errorMessage}`);
         throw new Error(`Database error: ${errorMessage}`);
       } finally {
