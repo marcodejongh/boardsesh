@@ -138,10 +138,11 @@ export const authOptions: NextAuthOptions = {
         .where(eq(schema.users.email, user.email))
         .limit(1);
 
-      if (existingUser.length > 0 && !existingUser[0].emailVerified) {
-        // Redirect to verification page with error
-        return "/auth/verify-request?error=EmailNotVerified";
-      }
+      // Email verification temporarily disabled until Fastmail auth is set up
+      // if (existingUser.length > 0 && !existingUser[0].emailVerified) {
+      //   // Redirect to verification page with error
+      //   return "/auth/verify-request?error=EmailNotVerified";
+      // }
 
       return true;
     },

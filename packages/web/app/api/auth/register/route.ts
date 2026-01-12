@@ -4,7 +4,6 @@ import * as schema from "@/app/lib/db/schema";
 import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { sendVerificationEmail } from "@/app/lib/email/email-service";
 import { checkRateLimit, getClientIp } from "@/app/lib/auth/rate-limiter";
 
 const registerSchema = z.object({
@@ -99,19 +98,17 @@ export async function POST(request: NextRequest) {
     // Create new user
     const userId = crypto.randomUUID();
     const passwordHash = await bcrypt.hash(password, 12);
-    const verificationToken = crypto.randomUUID();
-    const tokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
     // Use transaction to ensure user, credentials, profile, and token are created atomically
     // If any insert fails, all changes are rolled back
     try {
       await db.transaction(async (tx) => {
-        // Insert user (emailVerified is null for unverified accounts)
+        // Insert user (auto-verified - email verification temporarily disabled until Fastmail auth is set up)
         await tx.insert(schema.users).values({
           id: userId,
           email,
           name: name || email.split("@")[0],
-          emailVerified: null,
+          emailVerified: new Date(),
         });
 
         // Insert credentials
@@ -125,12 +122,7 @@ export async function POST(request: NextRequest) {
           userId,
         });
 
-        // Insert verification token
-        await tx.insert(schema.verificationTokens).values({
-          identifier: email,
-          token: verificationToken,
-          expires: tokenExpires,
-        });
+        // Email verification temporarily disabled - skip verification token creation
       });
     } catch (insertError) {
       // Handle race condition: another request created this user between our check and insert
@@ -144,24 +136,12 @@ export async function POST(request: NextRequest) {
       throw insertError;
     }
 
-    // Send verification email outside transaction (don't fail registration if email fails)
-    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
-    let emailSent = false;
-    try {
-      await sendVerificationEmail(email, verificationToken, baseUrl);
-      emailSent = true;
-    } catch (emailError) {
-      console.error("Failed to send verification email:", emailError);
-      // User is created, they can use resend functionality
-    }
+    // Email verification temporarily disabled - skip sending verification email
 
     return NextResponse.json(
       {
-        message: emailSent
-          ? "Account created. Please check your email to verify your account."
-          : "Account created. Please request a new verification email.",
-        requiresVerification: true,
-        emailSent,
+        message: "Account created. You can now log in.",
+        requiresVerification: false,
       },
       { status: 201 }
     );
