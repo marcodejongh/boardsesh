@@ -5,16 +5,6 @@ import * as dbSchema from '@boardsesh/db/schema';
 import { requireAuthenticated, validateInput } from '../shared/helpers';
 import { GetTicksInputSchema, BoardNameSchema, AscentFeedInputSchema } from '../../../validation/schemas';
 
-// Helper to get the climbs table based on board type
-const getClimbsTable = (boardType: string) => {
-  if (boardType === 'kilter') {
-    return dbSchema.kilterClimbs;
-  } else if (boardType === 'tension') {
-    return dbSchema.tensionClimbs;
-  }
-  return null;
-};
-
 export const tickQueries = {
   /**
    * Get ticks for the authenticated user with optional filtering by climb UUIDs
@@ -28,7 +18,6 @@ export const tickQueries = {
     validateInput(GetTicksInputSchema, input, 'input');
 
     const userId = ctx.userId!;
-    const climbsTable = getClimbsTable(input.boardType);
 
     // Build query conditions
     const conditions = [
@@ -40,50 +29,24 @@ export const tickQueries = {
       conditions.push(inArray(dbSchema.boardseshTicks.climbUuid, input.climbUuids));
     }
 
-    // Fetch ticks with layoutId from climbs table
-    if (climbsTable) {
-      const results = await db
-        .select({
-          tick: dbSchema.boardseshTicks,
-          layoutId: climbsTable.layoutId,
-        })
-        .from(dbSchema.boardseshTicks)
-        .leftJoin(climbsTable, eq(dbSchema.boardseshTicks.climbUuid, climbsTable.uuid))
-        .where(and(...conditions))
-        .orderBy(desc(dbSchema.boardseshTicks.climbedAt));
-
-      return results.map(({ tick, layoutId }) => ({
-        uuid: tick.uuid,
-        userId: tick.userId,
-        boardType: tick.boardType,
-        climbUuid: tick.climbUuid,
-        angle: tick.angle,
-        isMirror: tick.isMirror,
-        status: tick.status,
-        attemptCount: tick.attemptCount,
-        quality: tick.quality,
-        difficulty: tick.difficulty,
-        isBenchmark: tick.isBenchmark,
-        comment: tick.comment,
-        climbedAt: tick.climbedAt,
-        createdAt: tick.createdAt,
-        updatedAt: tick.updatedAt,
-        sessionId: tick.sessionId,
-        auroraType: tick.auroraType,
-        auroraId: tick.auroraId,
-        auroraSyncedAt: tick.auroraSyncedAt,
-        layoutId,
-      }));
-    }
-
-    // Fallback without join (shouldn't happen for valid board types)
-    const ticks = await db
-      .select()
+    // Fetch ticks with layoutId from unified board_climbs table
+    const results = await db
+      .select({
+        tick: dbSchema.boardseshTicks,
+        layoutId: dbSchema.boardClimbs.layoutId,
+      })
       .from(dbSchema.boardseshTicks)
+      .leftJoin(
+        dbSchema.boardClimbs,
+        and(
+          eq(dbSchema.boardseshTicks.climbUuid, dbSchema.boardClimbs.uuid),
+          eq(dbSchema.boardClimbs.boardType, input.boardType)
+        )
+      )
       .where(and(...conditions))
       .orderBy(desc(dbSchema.boardseshTicks.climbedAt));
 
-    return ticks.map(tick => ({
+    return results.map(({ tick, layoutId }) => ({
       uuid: tick.uuid,
       userId: tick.userId,
       boardType: tick.boardType,
@@ -103,7 +66,7 @@ export const tickQueries = {
       auroraType: tick.auroraType,
       auroraId: tick.auroraId,
       auroraSyncedAt: tick.auroraSyncedAt,
-      layoutId: null,
+      layoutId,
     }));
   },
 
@@ -116,57 +79,29 @@ export const tickQueries = {
   ): Promise<unknown[]> => {
     validateInput(BoardNameSchema, boardType, 'boardType');
 
-    const climbsTable = getClimbsTable(boardType);
-
     const conditions = [
       eq(dbSchema.boardseshTicks.userId, userId),
       eq(dbSchema.boardseshTicks.boardType, boardType),
     ];
 
-    // Fetch ticks with layoutId from climbs table
-    if (climbsTable) {
-      const results = await db
-        .select({
-          tick: dbSchema.boardseshTicks,
-          layoutId: climbsTable.layoutId,
-        })
-        .from(dbSchema.boardseshTicks)
-        .leftJoin(climbsTable, eq(dbSchema.boardseshTicks.climbUuid, climbsTable.uuid))
-        .where(and(...conditions))
-        .orderBy(desc(dbSchema.boardseshTicks.climbedAt));
-
-      return results.map(({ tick, layoutId }) => ({
-        uuid: tick.uuid,
-        userId: tick.userId,
-        boardType: tick.boardType,
-        climbUuid: tick.climbUuid,
-        angle: tick.angle,
-        isMirror: tick.isMirror,
-        status: tick.status,
-        attemptCount: tick.attemptCount,
-        quality: tick.quality,
-        difficulty: tick.difficulty,
-        isBenchmark: tick.isBenchmark,
-        comment: tick.comment,
-        climbedAt: tick.climbedAt,
-        createdAt: tick.createdAt,
-        updatedAt: tick.updatedAt,
-        sessionId: tick.sessionId,
-        auroraType: tick.auroraType,
-        auroraId: tick.auroraId,
-        auroraSyncedAt: tick.auroraSyncedAt,
-        layoutId,
-      }));
-    }
-
-    // Fallback without join (shouldn't happen for valid board types)
-    const ticks = await db
-      .select()
+    // Fetch ticks with layoutId from unified board_climbs table
+    const results = await db
+      .select({
+        tick: dbSchema.boardseshTicks,
+        layoutId: dbSchema.boardClimbs.layoutId,
+      })
       .from(dbSchema.boardseshTicks)
+      .leftJoin(
+        dbSchema.boardClimbs,
+        and(
+          eq(dbSchema.boardseshTicks.climbUuid, dbSchema.boardClimbs.uuid),
+          eq(dbSchema.boardClimbs.boardType, boardType)
+        )
+      )
       .where(and(...conditions))
       .orderBy(desc(dbSchema.boardseshTicks.climbedAt));
 
-    return ticks.map(tick => ({
+    return results.map(({ tick, layoutId }) => ({
       uuid: tick.uuid,
       userId: tick.userId,
       boardType: tick.boardType,
@@ -186,7 +121,7 @@ export const tickQueries = {
       auroraType: tick.auroraType,
       auroraId: tick.auroraId,
       auroraSyncedAt: tick.auroraSyncedAt,
-      layoutId: null,
+      layoutId,
     }));
   },
 
@@ -224,72 +159,52 @@ export const tickQueries = {
       .limit(limit)
       .offset(offset);
 
-    // Enrich ticks with climb data
+    // Enrich ticks with climb data from unified tables
     const items = await Promise.all(
       ticks.map(async (tick) => {
-        // Get climb details based on board type
+        // Get climb details from unified board_climbs table
         let climbName = 'Unknown Climb';
         let setterUsername: string | null = null;
         let layoutId: number | null = null;
-
         let frames: string | null = null;
 
-        if (tick.boardType === 'kilter') {
-          const climb = await db
-            .select({
-              name: dbSchema.kilterClimbs.name,
-              setterUsername: dbSchema.kilterClimbs.setterUsername,
-              layoutId: dbSchema.kilterClimbs.layoutId,
-              frames: dbSchema.kilterClimbs.frames,
-            })
-            .from(dbSchema.kilterClimbs)
-            .where(eq(dbSchema.kilterClimbs.uuid, tick.climbUuid))
-            .limit(1);
+        const climb = await db
+          .select({
+            name: dbSchema.boardClimbs.name,
+            setterUsername: dbSchema.boardClimbs.setterUsername,
+            layoutId: dbSchema.boardClimbs.layoutId,
+            frames: dbSchema.boardClimbs.frames,
+          })
+          .from(dbSchema.boardClimbs)
+          .where(
+            and(
+              eq(dbSchema.boardClimbs.uuid, tick.climbUuid),
+              eq(dbSchema.boardClimbs.boardType, tick.boardType)
+            )
+          )
+          .limit(1);
 
-          if (climb[0]) {
-            climbName = climb[0].name || 'Unnamed Climb';
-            setterUsername = climb[0].setterUsername;
-            layoutId = climb[0].layoutId;
-            frames = climb[0].frames;
-          }
-        } else if (tick.boardType === 'tension') {
-          const climb = await db
-            .select({
-              name: dbSchema.tensionClimbs.name,
-              setterUsername: dbSchema.tensionClimbs.setterUsername,
-              layoutId: dbSchema.tensionClimbs.layoutId,
-              frames: dbSchema.tensionClimbs.frames,
-            })
-            .from(dbSchema.tensionClimbs)
-            .where(eq(dbSchema.tensionClimbs.uuid, tick.climbUuid))
-            .limit(1);
-
-          if (climb[0]) {
-            climbName = climb[0].name || 'Unnamed Climb';
-            setterUsername = climb[0].setterUsername;
-            layoutId = climb[0].layoutId;
-            frames = climb[0].frames;
-          }
+        if (climb[0]) {
+          climbName = climb[0].name || 'Unnamed Climb';
+          setterUsername = climb[0].setterUsername;
+          layoutId = climb[0].layoutId;
+          frames = climb[0].frames;
         }
 
-        // Get difficulty name if available
+        // Get difficulty name if available from unified board_difficulty_grades table
         let difficultyName: string | null = null;
         if (tick.difficulty !== null) {
-          if (tick.boardType === 'kilter') {
-            const grade = await db
-              .select({ boulderName: dbSchema.kilterDifficultyGrades.boulderName })
-              .from(dbSchema.kilterDifficultyGrades)
-              .where(eq(dbSchema.kilterDifficultyGrades.difficulty, tick.difficulty))
-              .limit(1);
-            difficultyName = grade[0]?.boulderName || null;
-          } else if (tick.boardType === 'tension') {
-            const grade = await db
-              .select({ boulderName: dbSchema.tensionDifficultyGrades.boulderName })
-              .from(dbSchema.tensionDifficultyGrades)
-              .where(eq(dbSchema.tensionDifficultyGrades.difficulty, tick.difficulty))
-              .limit(1);
-            difficultyName = grade[0]?.boulderName || null;
-          }
+          const grade = await db
+            .select({ boulderName: dbSchema.boardDifficultyGrades.boulderName })
+            .from(dbSchema.boardDifficultyGrades)
+            .where(
+              and(
+                eq(dbSchema.boardDifficultyGrades.difficulty, tick.difficulty),
+                eq(dbSchema.boardDifficultyGrades.boardType, tick.boardType)
+              )
+            )
+            .limit(1);
+          difficultyName = grade[0]?.boulderName || null;
         }
 
         return {
@@ -353,20 +268,23 @@ export const tickQueries = {
 
     // Helper function to fetch stats for a single board type
     const fetchBoardStats = async (boardType: 'kilter' | 'tension') => {
-      const climbsTable = getClimbsTable(boardType);
-      if (!climbsTable) return { gradeResults: [], distinctClimbs: [], boardType };
-
       // Run both queries in parallel for this board type
       const [gradeResults, distinctClimbs] = await Promise.all([
         // Get distinct climb counts grouped by layoutId and difficulty using SQL aggregation
         db
           .select({
-            layoutId: climbsTable.layoutId,
+            layoutId: dbSchema.boardClimbs.layoutId,
             difficulty: dbSchema.boardseshTicks.difficulty,
             distinctCount: sql<number>`count(distinct ${dbSchema.boardseshTicks.climbUuid})`.as('distinct_count'),
           })
           .from(dbSchema.boardseshTicks)
-          .leftJoin(climbsTable, eq(dbSchema.boardseshTicks.climbUuid, climbsTable.uuid))
+          .leftJoin(
+            dbSchema.boardClimbs,
+            and(
+              eq(dbSchema.boardseshTicks.climbUuid, dbSchema.boardClimbs.uuid),
+              eq(dbSchema.boardClimbs.boardType, boardType)
+            )
+          )
           .where(
             and(
               eq(dbSchema.boardseshTicks.userId, userId),
@@ -374,7 +292,7 @@ export const tickQueries = {
               sql`${dbSchema.boardseshTicks.status} != 'attempt'`
             )
           )
-          .groupBy(climbsTable.layoutId, dbSchema.boardseshTicks.difficulty),
+          .groupBy(dbSchema.boardClimbs.layoutId, dbSchema.boardseshTicks.difficulty),
 
         // Get all distinct climbUuids for total count
         db

@@ -76,10 +76,10 @@ interface HolePlacement {
   layoutId: number;
 }
 
-function querySizes(table: string): ProductSize[] {
+function querySizes(boardName: string): ProductSize[] {
   // Use REPLACE to remove newlines from description, and use a unique record separator
   const result = execSync(
-    `${psqlCmd} -t -A -F '|' -R '~~~' -c "SELECT id, REPLACE(name, E'\\n', ' '), COALESCE(REPLACE(description, E'\\n', ' '), ''), edge_left, edge_right, edge_bottom, edge_top, product_id FROM ${table} ORDER BY id;"`,
+    `${psqlCmd} -t -A -F '|' -R '~~~' -c "SELECT id, REPLACE(name, E'\\n', ' '), COALESCE(REPLACE(description, E'\\n', ' '), ''), edge_left, edge_right, edge_bottom, edge_top, product_id FROM board_product_sizes WHERE board_type = '${boardName}' ORDER BY id;"`,
     { encoding: 'utf-8' }
   );
 
@@ -104,9 +104,9 @@ function querySizes(table: string): ProductSize[] {
     });
 }
 
-function queryLayouts(table: string): Layout[] {
+function queryLayouts(boardName: string): Layout[] {
   const result = execSync(
-    `${psqlCmd} -t -A -F '|' -R '~~~' -c "SELECT id, REPLACE(name, E'\\n', ' '), product_id FROM ${table} WHERE is_listed = true AND password IS NULL ORDER BY id;"`,
+    `${psqlCmd} -t -A -F '|' -R '~~~' -c "SELECT id, REPLACE(name, E'\\n', ' '), product_id FROM board_layouts WHERE board_type = '${boardName}' AND is_listed = true AND password IS NULL ORDER BY id;"`,
     { encoding: 'utf-8' }
   );
 
@@ -127,11 +127,8 @@ function queryLayouts(table: string): Layout[] {
 }
 
 function querySets(boardName: string): SetMapping[] {
-  const setsTable = `${boardName}_sets`;
-  const pslsTable = `${boardName}_product_sizes_layouts_sets`;
-
   const result = execSync(
-    `${psqlCmd} -t -A -F '|' -R '~~~' -c "SELECT sets.id, REPLACE(sets.name, E'\\n', ' '), psls.layout_id, psls.product_size_id FROM ${setsTable} sets INNER JOIN ${pslsTable} psls ON sets.id = psls.set_id ORDER BY psls.layout_id, psls.product_size_id, sets.id;"`,
+    `${psqlCmd} -t -A -F '|' -R '~~~' -c "SELECT sets.id, REPLACE(sets.name, E'\\n', ' '), psls.layout_id, psls.product_size_id FROM board_sets sets INNER JOIN board_product_sizes_layouts_sets psls ON sets.board_type = psls.board_type AND sets.id = psls.set_id WHERE sets.board_type = '${boardName}' ORDER BY psls.layout_id, psls.product_size_id, sets.id;"`,
     { encoding: 'utf-8' }
   );
 
@@ -153,10 +150,8 @@ function querySets(boardName: string): SetMapping[] {
 }
 
 function queryImageFilenames(boardName: string): ImageFilenameMapping[] {
-  const pslsTable = `${boardName}_product_sizes_layouts_sets`;
-
   const result = execSync(
-    `${psqlCmd} -t -A -F '|' -R '~~~' -c "SELECT layout_id, product_size_id, set_id, image_filename FROM ${pslsTable} WHERE image_filename IS NOT NULL ORDER BY layout_id, product_size_id, set_id;"`,
+    `${psqlCmd} -t -A -F '|' -R '~~~' -c "SELECT layout_id, product_size_id, set_id, image_filename FROM board_product_sizes_layouts_sets WHERE board_type = '${boardName}' AND image_filename IS NOT NULL ORDER BY layout_id, product_size_id, set_id;"`,
     { encoding: 'utf-8' }
   );
 
@@ -178,11 +173,8 @@ function queryImageFilenames(boardName: string): ImageFilenameMapping[] {
 }
 
 function queryLedPlacements(boardName: string): LedPlacement[] {
-  const placementsTable = `${boardName}_placements`;
-  const ledsTable = `${boardName}_leds`;
-
   const result = execSync(
-    `${psqlCmd} -t -A -F '|' -R '~~~' -c "SELECT placements.id, leds.position, placements.layout_id, leds.product_size_id FROM ${placementsTable} placements INNER JOIN ${ledsTable} leds ON placements.hole_id = leds.hole_id ORDER BY placements.layout_id, leds.product_size_id, placements.id;"`,
+    `${psqlCmd} -t -A -F '|' -R '~~~' -c "SELECT placements.id, leds.position, placements.layout_id, leds.product_size_id FROM board_placements placements INNER JOIN board_leds leds ON placements.board_type = leds.board_type AND placements.hole_id = leds.hole_id WHERE placements.board_type = '${boardName}' ORDER BY placements.layout_id, leds.product_size_id, placements.id;"`,
     { encoding: 'utf-8' }
   );
 
@@ -204,11 +196,8 @@ function queryLedPlacements(boardName: string): LedPlacement[] {
 }
 
 function queryHolePlacements(boardName: string): HolePlacement[] {
-  const holesTable = `${boardName}_holes`;
-  const placementsTable = `${boardName}_placements`;
-
   const result = execSync(
-    `${psqlCmd} -t -A -F '|' -R '~~~' -c "SELECT placements.id, mirrored_placements.id, holes.x, holes.y, placements.set_id, placements.layout_id FROM ${holesTable} holes INNER JOIN ${placementsTable} placements ON placements.hole_id = holes.id LEFT JOIN ${placementsTable} mirrored_placements ON mirrored_placements.hole_id = holes.mirrored_hole_id AND mirrored_placements.set_id = placements.set_id AND mirrored_placements.layout_id = placements.layout_id ORDER BY placements.layout_id, placements.set_id, placements.id;"`,
+    `${psqlCmd} -t -A -F '|' -R '~~~' -c "SELECT placements.id, mirrored_placements.id, holes.x, holes.y, placements.set_id, placements.layout_id FROM board_holes holes INNER JOIN board_placements placements ON placements.board_type = holes.board_type AND placements.hole_id = holes.id LEFT JOIN board_placements mirrored_placements ON mirrored_placements.board_type = holes.board_type AND mirrored_placements.hole_id = holes.mirrored_hole_id AND mirrored_placements.set_id = placements.set_id AND mirrored_placements.layout_id = placements.layout_id WHERE holes.board_type = '${boardName}' ORDER BY placements.layout_id, placements.set_id, placements.id;"`,
     { encoding: 'utf-8' }
   );
 
@@ -328,22 +317,22 @@ function generateHolePlacementsTypeScript(boardName: string, placements: HolePla
 }
 
 async function main() {
-  console.log('Querying kilter_product_sizes...');
-  const kilterSizes = querySizes('kilter_product_sizes');
+  console.log('Querying kilter product sizes...');
+  const kilterSizes = querySizes('kilter');
 
-  console.log('Querying tension_product_sizes...');
-  const tensionSizes = querySizes('tension_product_sizes');
+  console.log('Querying tension product sizes...');
+  const tensionSizes = querySizes('tension');
 
-  console.log('Querying kilter_layouts...');
-  const kilterLayouts = queryLayouts('kilter_layouts');
+  console.log('Querying kilter layouts...');
+  const kilterLayouts = queryLayouts('kilter');
 
-  console.log('Querying tension_layouts...');
-  const tensionLayouts = queryLayouts('tension_layouts');
+  console.log('Querying tension layouts...');
+  const tensionLayouts = queryLayouts('tension');
 
-  console.log('Querying kilter_sets...');
+  console.log('Querying kilter sets...');
   const kilterSets = querySets('kilter');
 
-  console.log('Querying tension_sets...');
+  console.log('Querying tension sets...');
   const tensionSets = querySets('tension');
 
   console.log('Querying kilter image filenames...');

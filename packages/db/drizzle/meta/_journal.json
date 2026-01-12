@@ -232,6 +232,20 @@
       "when": 1768099200000,
       "tag": "0036_add_pull_direction",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1768185600000,
+      "tag": "0037_final_ascents_migration",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1768272000000,
+      "tag": "0038_drop_legacy_tables",
+      "breakpoints": true
     }
   ]
 }

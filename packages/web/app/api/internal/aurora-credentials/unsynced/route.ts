@@ -41,33 +41,29 @@ export async function GET() {
       const boardType = cred.board_type as 'kilter' | 'tension';
       const auroraUserId = cred.aurora_user_id;
 
-      if (boardType === 'kilter') {
-        // Count unsynced kilter ascents for this user
-        const ascentResult = await sql`
-          SELECT COUNT(*) as count FROM kilter_ascents
-          WHERE user_id = ${auroraUserId} AND synced = false
-        `;
-        counts.kilter.ascents = Number(ascentResult[0]?.count || 0);
+      // Count unsynced ticks (ascents/bids) for this user from boardsesh_ticks
+      // Note: boardsesh_ticks uses NextAuth userId, not Aurora user_id
+      // Unsynced ticks are those without an auroraId
+      const ascentResult = await sql`
+        SELECT COUNT(*) as count FROM boardsesh_ticks
+        WHERE user_id = ${session.user.id}
+          AND board_type = ${boardType}
+          AND aurora_id IS NULL
+      `;
 
-        // Count unsynced kilter climbs for this user
-        const climbResult = await sql`
-          SELECT COUNT(*) as count FROM kilter_climbs
-          WHERE setter_id = ${auroraUserId} AND synced = false
-        `;
+      // Count unsynced climbs for this user
+      const climbResult = await sql`
+        SELECT COUNT(*) as count FROM board_climbs
+        WHERE board_type = ${boardType}
+          AND setter_id = ${auroraUserId}
+          AND synced = false
+      `;
+
+      if (boardType === 'kilter') {
+        counts.kilter.ascents = Number(ascentResult[0]?.count || 0);
         counts.kilter.climbs = Number(climbResult[0]?.count || 0);
       } else if (boardType === 'tension') {
-        // Count unsynced tension ascents for this user
-        const ascentResult = await sql`
-          SELECT COUNT(*) as count FROM tension_ascents
-          WHERE user_id = ${auroraUserId} AND synced = false
-        `;
         counts.tension.ascents = Number(ascentResult[0]?.count || 0);
-
-        // Count unsynced tension climbs for this user
-        const climbResult = await sql`
-          SELECT COUNT(*) as count FROM tension_climbs
-          WHERE setter_id = ${auroraUserId} AND synced = false
-        `;
         counts.tension.climbs = Number(climbResult[0]?.count || 0);
       }
     }

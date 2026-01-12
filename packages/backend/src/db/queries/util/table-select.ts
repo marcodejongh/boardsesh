@@ -1,127 +1,69 @@
 import {
-  kilterClimbs,
-  kilterClimbStats,
-  kilterDifficultyGrades,
-  kilterProductSizes,
-  kilterLayouts,
-  kilterUsers,
-  kilterCircuits,
-  kilterAscents,
-  kilterBids,
-  kilterClimbStatsHistory,
-  tensionClimbs,
-  tensionClimbStats,
-  tensionDifficultyGrades,
-  tensionProductSizes,
-  tensionLayouts,
-  tensionUsers,
-  tensionCircuits,
-  tensionAscents,
-  tensionBids,
-  tensionClimbStatsHistory,
-  kilterAttempts,
-  tensionAttempts,
-  tensionProducts,
-  kilterProducts,
-  kilterSharedSyncs,
-  tensionSharedSyncs,
-  kilterUserSyncs,
-  tensionUserSyncs,
-  kilterClimbHolds,
-  tensionClimbHolds,
-  kilterBetaLinks,
-  tensionBetaLinks,
-  kilterWalls,
-  tensionWalls,
-  kilterTags,
-  tensionTags,
+  boardClimbs,
+  boardClimbStats,
+  boardDifficultyGrades,
+  boardProductSizes,
+  boardLayouts,
+  boardUsers,
+  boardCircuits,
+  boardClimbStatsHistory,
+  boardAttempts,
+  boardProducts,
+  boardSharedSyncs,
+  boardUserSyncs,
+  boardClimbHolds,
+  boardBetaLinks,
+  boardWalls,
+  boardTags,
 } from '@boardsesh/db';
+import { eq } from 'drizzle-orm';
 
 export type BoardName = 'kilter' | 'tension';
 
-// Define the base table structure
-export type TableSet = {
-  climbs: typeof kilterClimbs | typeof tensionClimbs;
-  climbStats: typeof kilterClimbStats | typeof tensionClimbStats;
-  difficultyGrades: typeof kilterDifficultyGrades | typeof tensionDifficultyGrades;
-  productSizes: typeof kilterProductSizes | typeof tensionProductSizes;
-  layouts: typeof kilterLayouts | typeof tensionLayouts;
-  users: typeof kilterUsers | typeof tensionUsers;
-  circuits: typeof kilterCircuits | typeof tensionCircuits;
-  ascents: typeof kilterAscents | typeof tensionAscents;
-  bids: typeof kilterBids | typeof tensionBids;
-  climbStatsHistory: typeof kilterClimbStatsHistory | typeof tensionClimbStatsHistory;
-  attempts: typeof kilterAttempts | typeof tensionAttempts;
-  products: typeof kilterProducts | typeof tensionProducts;
-  userSyncs: typeof kilterUserSyncs | typeof tensionUserSyncs;
-  sharedSyncs: typeof kilterSharedSyncs | typeof tensionSharedSyncs;
-  climbHolds: typeof kilterClimbHolds | typeof tensionClimbHolds;
-  betaLinks: typeof kilterBetaLinks | typeof tensionBetaLinks;
-  walls: typeof kilterWalls | typeof tensionWalls;
-  tags: typeof kilterTags | typeof tensionTags;
-};
-
-// Create a complete mapping of all tables
-const BOARD_TABLES: Record<BoardName, TableSet> = {
-  kilter: {
-    climbs: kilterClimbs,
-    climbStats: kilterClimbStats,
-    difficultyGrades: kilterDifficultyGrades,
-    productSizes: kilterProductSizes,
-    layouts: kilterLayouts,
-    users: kilterUsers,
-    circuits: kilterCircuits,
-    ascents: kilterAscents,
-    bids: kilterBids,
-    climbStatsHistory: kilterClimbStatsHistory,
-    attempts: kilterAttempts,
-    products: kilterProducts,
-    userSyncs: kilterUserSyncs,
-    sharedSyncs: kilterSharedSyncs,
-    climbHolds: kilterClimbHolds,
-    betaLinks: kilterBetaLinks,
-    walls: kilterWalls,
-    tags: kilterTags,
-  },
-  tension: {
-    climbs: tensionClimbs,
-    climbStats: tensionClimbStats,
-    difficultyGrades: tensionDifficultyGrades,
-    productSizes: tensionProductSizes,
-    layouts: tensionLayouts,
-    users: tensionUsers,
-    circuits: tensionCircuits,
-    ascents: tensionAscents,
-    bids: tensionBids,
-    climbStatsHistory: tensionClimbStatsHistory,
-    attempts: tensionAttempts,
-    products: tensionProducts,
-    userSyncs: tensionUserSyncs,
-    sharedSyncs: tensionSharedSyncs,
-    climbHolds: tensionClimbHolds,
-    betaLinks: tensionBetaLinks,
-    walls: tensionWalls,
-    tags: tensionTags,
-  },
+// Unified tables - all queries should filter by board_type
+export const UNIFIED_TABLES = {
+  climbs: boardClimbs,
+  climbStats: boardClimbStats,
+  difficultyGrades: boardDifficultyGrades,
+  productSizes: boardProductSizes,
+  layouts: boardLayouts,
+  users: boardUsers,
+  circuits: boardCircuits,
+  climbStatsHistory: boardClimbStatsHistory,
+  attempts: boardAttempts,
+  products: boardProducts,
+  userSyncs: boardUserSyncs,
+  sharedSyncs: boardSharedSyncs,
+  climbHolds: boardClimbHolds,
+  betaLinks: boardBetaLinks,
+  walls: boardWalls,
+  tags: boardTags,
 } as const;
 
+export type UnifiedTableSet = typeof UNIFIED_TABLES;
+
 /**
- * Get a specific table for a given board
- * @param tableName The name of the table to retrieve
- * @param boardName The board (kilter or tension)
- * @returns The requested table
+ * Get a unified table (all queries should filter by board_type)
+ * @param tableName The name of the unified table to retrieve
+ * @returns The unified table
  */
-export function getTable<K extends keyof TableSet>(tableName: K, boardName: BoardName): TableSet[K] {
-  return BOARD_TABLES[boardName][tableName];
+export function getUnifiedTable<K extends keyof UnifiedTableSet>(
+  tableName: K
+): UnifiedTableSet[K] {
+  return UNIFIED_TABLES[tableName];
 }
 
 /**
- * Get all tables for a specific board
- * @param boardName The board (kilter or tension)
- * @returns All tables for the specified board
+ * Helper to create board_type equality condition for WHERE clauses
+ * @param table A unified table with boardType column
+ * @param boardName The board name to filter by
+ * @returns A drizzle eq() condition
  */
-export function getBoardTables(boardName: BoardName): TableSet {
-  return BOARD_TABLES[boardName];
+export function boardTypeCondition(
+  table: { boardType: typeof boardClimbs.boardType },
+  boardName: BoardName
+) {
+  return eq(table.boardType, boardName);
 }
 
 /**
@@ -134,16 +76,67 @@ export function isValidBoardName(boardName: string): boardName is BoardName {
 }
 
 /**
- * Get the table name for a given board and table type
- * @param boardName The board name (kilter, tension)
- * @param tableName The base table name
- * @returns The fully qualified table name
- * @throws Error if board name is invalid
+ * Extended board name type that includes moonboard for unified tables
  */
-export function getTableName(boardName: BoardName, tableName: string): string {
-  // Runtime validation to prevent SQL injection
-  if (!isValidBoardName(boardName)) {
-    throw new Error(`Invalid board name: ${boardName}. Must be 'kilter' or 'tension'`);
-  }
-  return `${boardName}_${tableName}`;
+export type UnifiedBoardName = BoardName | 'moonboard';
+
+/**
+ * Check if a board name is valid for unified tables (includes moonboard)
+ * @param boardName The name to check
+ * @returns True if the board name is valid for unified tables
+ */
+export function isValidUnifiedBoardName(boardName: string): boardName is UnifiedBoardName {
+  return boardName === 'kilter' || boardName === 'tension' || boardName === 'moonboard';
+}
+
+// =============================================================================
+// Legacy Compatibility Layer
+// =============================================================================
+
+/**
+ * TableSet type for backward compatibility.
+ * All tables are unified tables that require board_type filtering.
+ */
+export type TableSet = typeof UNIFIED_TABLES;
+
+/**
+ * Get all tables (returns unified tables for backward compatibility).
+ * IMPORTANT: All queries using these tables MUST filter by board_type.
+ *
+ * @param boardName The board name (used for documentation, actual filtering must be done in queries)
+ * @returns The unified table set
+ *
+ * @deprecated Use UNIFIED_TABLES directly and add board_type conditions to queries
+ */
+export function getBoardTables(_boardName: BoardName): TableSet {
+  return UNIFIED_TABLES;
+}
+
+/**
+ * Get the table name for raw SQL queries
+ * @param boardName The board name
+ * @param tableName The base table name (e.g., 'climb_stats')
+ * @returns The unified table name (e.g., 'board_climb_stats')
+ */
+export function getTableName(_boardName: BoardName, tableName: string): string {
+  // Convert table name to unified format (e.g., 'climbs' -> 'board_climbs')
+  const tableMap: Record<string, string> = {
+    climbs: 'board_climbs',
+    climb_stats: 'board_climb_stats',
+    difficulty_grades: 'board_difficulty_grades',
+    product_sizes: 'board_product_sizes',
+    layouts: 'board_layouts',
+    users: 'board_users',
+    circuits: 'board_circuits',
+    climb_stats_history: 'board_climb_stats_history',
+    attempts: 'board_attempts',
+    products: 'board_products',
+    user_syncs: 'board_user_syncs',
+    shared_syncs: 'board_shared_syncs',
+    climb_holds: 'board_climb_holds',
+    beta_links: 'board_beta_links',
+    walls: 'board_walls',
+    tags: 'board_tags',
+  };
+  return tableMap[tableName] || `board_${tableName}`;
 }
