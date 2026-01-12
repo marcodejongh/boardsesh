@@ -115,13 +115,8 @@ export default function AuthModal({
   };
 
   const handleCancel = () => {
-    // Only reset the active form to avoid "useForm not connected" warning
-    // The inactive tab's form may not be connected to the DOM
-    if (activeTab === 'login') {
-      loginForm.resetFields();
-    } else {
-      registerForm.resetFields();
-    }
+    loginForm.resetFields();
+    registerForm.resetFields();
     onClose();
   };
 
