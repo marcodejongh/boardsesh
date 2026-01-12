@@ -15,13 +15,6 @@ import {
   type SaveTickMutationResponse,
 } from '@/app/lib/graphql/operations';
 
-interface AuthState {
-  token: string | null;
-  user_id: number | null;
-  username: string | null;
-  board: BoardName | null;
-}
-
 export interface SaveClimbResponse {
   uuid: string;
 }
@@ -70,31 +63,21 @@ export interface LogbookEntry {
 interface BoardContextType {
   boardName: BoardName;
   isAuthenticated: boolean;
-  hasAuroraCredentials: boolean;
-  token: string | null;
-  user_id: number | null;
-  username: string | null;
   isLoading: boolean;
   error: string | null;
   isInitialized: boolean;
   logbook: LogbookEntry[];
   getLogbook: (climbUuids: ClimbUuid[]) => Promise<boolean>;
   saveTick: (options: SaveTickOptions) => Promise<void>;
-  saveClimb: (options: Omit<SaveClimbOptions, 'setter_id'>) => Promise<SaveClimbResponse>;
+  saveClimb: (options: Omit<SaveClimbOptions, 'setter_id' | 'user_id'>) => Promise<SaveClimbResponse>;
 }
 
 const BoardContext = createContext<BoardContextType | undefined>(undefined);
 
 export function BoardProvider({ boardName, children }: { boardName: BoardName; children: React.ReactNode }) {
-  const { status: sessionStatus } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
   // Use wsAuthToken for GraphQL backend auth (NextAuth session token)
   const { token: wsAuthToken } = useWsAuthToken();
-  const [authState, setAuthState] = useState<AuthState>({
-    token: null,
-    user_id: null,
-    username: null,
-    board: null,
-  });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -103,68 +86,13 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
   const currentClimbUuidsRef = useRef<ClimbUuid[]>([]);
   const lastSessionStatusRef = useRef<string>(sessionStatus);
 
-  // Fetch Aurora credentials when session changes (still useful for saveClimb)
+  // Initialize when session status changes
   useEffect(() => {
-    let mounted = true;
-
-    const fetchAuroraCredentials = async () => {
-      if (sessionStatus === 'loading') {
-        return;
-      }
-
-      if (sessionStatus !== 'authenticated') {
-        setAuthState({
-          token: null,
-          user_id: null,
-          username: null,
-          board: null,
-        });
-        setIsLoading(false);
-        setIsInitialized(true);
-        return;
-      }
-
-      try {
-        setIsLoading(true);
-        const response = await fetch(`/api/internal/aurora-credentials/${boardName}`);
-
-        if (!mounted) return;
-
-        if (response.ok) {
-          const data = await response.json();
-          setAuthState({
-            token: data.token,
-            user_id: data.user_id,
-            username: data.username,
-            board: boardName,
-          });
-        } else {
-          setAuthState({
-            token: null,
-            user_id: null,
-            username: null,
-            board: null,
-          });
-        }
-      } catch (err) {
-        console.error('Failed to fetch Aurora credentials:', err);
-        if (mounted) {
-          setError('Failed to load Aurora credentials');
-        }
-      } finally {
-        if (mounted) {
-          setIsLoading(false);
-          setIsInitialized(true);
-        }
-      }
-    };
-
-    fetchAuroraCredentials();
-
-    return () => {
-      mounted = false;
-    };
-  }, [boardName, sessionStatus]);
+    if (sessionStatus !== 'loading') {
+      setIsLoading(false);
+      setIsInitialized(true);
+    }
+  }, [sessionStatus]);
 
   // Internal fetch function (not memoized, called by getLogbook and effect)
   // Returns true if the fetch was successful, false if it was skipped or failed
@@ -341,10 +269,10 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
     }
   };
 
-  // Save a climb (still requires Aurora credentials)
-  const saveClimb = async (options: Omit<SaveClimbOptions, 'setter_id'>): Promise<SaveClimbResponse> => {
-    if (!authState.token || !authState.user_id) {
-      throw new Error('Aurora credentials required to create climbs');
+  // Save a climb (requires authentication)
+  const saveClimb = async (options: Omit<SaveClimbOptions, 'setter_id' | 'user_id'>): Promise<SaveClimbResponse> => {
+    if (sessionStatus !== 'authenticated' || !session?.user?.id) {
+      throw new Error('Authentication required to create climbs');
     }
 
     try {
@@ -354,10 +282,9 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          token: authState.token,
           options: {
             ...options,
-            setter_id: authState.user_id,
+            user_id: session.user.id,
           },
         }),
       });
@@ -377,10 +304,6 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
 
   const value = {
     isAuthenticated: sessionStatus === 'authenticated',
-    hasAuroraCredentials: !!authState.token && !!authState.user_id,
-    token: authState.token,
-    user_id: authState.user_id,
-    username: authState.username,
     isLoading,
     error,
     isInitialized,

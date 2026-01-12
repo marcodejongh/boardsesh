@@ -11,6 +11,7 @@ import {
   primaryKey,
   index,
 } from 'drizzle-orm/pg-core';
+import { users } from '../auth/users';
 
 // =============================================================================
 // Reference Tables (Phase 1)
@@ -241,6 +242,8 @@ export const boardClimbs = pgTable('board_climbs', {
   createdAt: text('created_at'),
   synced: boolean('synced').default(true).notNull(),
   syncError: text('sync_error'),
+  // Boardsesh user who created this climb locally (null for Aurora-synced climbs)
+  userId: text('user_id').references(() => users.id, { onDelete: 'set null' }),
 }, (table) => ({
   boardTypeIdx: index('board_climbs_board_type_idx').on(table.boardType),
   layoutFilterIdx: index('board_climbs_layout_filter_idx').on(

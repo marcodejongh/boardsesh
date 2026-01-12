@@ -44,7 +44,7 @@ const PlaylistGeneratorDrawer: React.FC<PlaylistGeneratorDrawerProps> = ({
   onSuccess,
 }) => {
   const { token } = useWsAuthToken();
-  const { user_id } = useBoardProvider();
+  const { isAuthenticated } = useBoardProvider();
 
   // Default target grade (middle of range)
   const defaultTargetGrade = 18; // 6b/V4
@@ -117,7 +117,7 @@ const PlaylistGeneratorDrawer: React.FC<PlaylistGeneratorDrawerProps> = ({
     };
 
     // Apply climb bias filters if user is authenticated
-    if (options && user_id) {
+    if (options && isAuthenticated) {
       switch (options.climbBias) {
         case 'unfamiliar':
           input.hideAttempted = true;
@@ -237,7 +237,7 @@ const PlaylistGeneratorDrawer: React.FC<PlaylistGeneratorDrawerProps> = ({
 
     onSuccess?.();
     onClose();
-  }, [options, plannedSlots, playlistUuid, angle, token, user_id, boardDetails, onSuccess, onClose]);
+  }, [options, plannedSlots, playlistUuid, angle, token, isAuthenticated, boardDetails, onSuccess, onClose]);
 
   // Get workout type info
   const workoutTypeInfo = selectedType

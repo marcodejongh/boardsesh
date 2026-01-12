@@ -2,7 +2,6 @@ import { useEffect, useState, useMemo } from 'react';
 import { BoardName, SearchRequestPagination } from '@/app/lib/types';
 import { HeatmapData } from '../board-renderer/types';
 import { searchParamsToUrlParams } from '@/app/lib/url-utils';
-import { useBoardProvider } from '../board-provider/board-provider-context';
 
 interface UseHeatmapDataProps {
   boardName: BoardName;
@@ -26,7 +25,6 @@ export default function useHeatmapData({
   const [heatmapData, setHeatmapData] = useState<HeatmapData[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const { token, user_id } = useBoardProvider();
 
   // Serialize filters to create a stable dependency - prevents re-fetching
   // when object reference changes but contents are the same
@@ -44,18 +42,9 @@ export default function useHeatmapData({
 
     const fetchHeatmapData = async () => {
       try {
-        // Prepare headers
-        const headers: Record<string, string> = {};
-
-        // Add authentication headers if available
-        if (token && user_id) {
-          headers['x-auth-token'] = token;
-          headers['x-user-id'] = user_id.toString();
-        }
-
+        // Server uses NextAuth session for user-specific data
         const response = await fetch(
           `/api/v1/${boardName}/${layoutId}/${sizeId}/${setIds}/${angle}/heatmap?${searchParamsToUrlParams(filters).toString()}`,
-          { headers },
         );
 
         if (cancelled) return;
@@ -87,7 +76,7 @@ export default function useHeatmapData({
       cancelled = true;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps -- filtersKey is a serialized version of filters
-  }, [boardName, layoutId, sizeId, setIds, angle, filtersKey, token, user_id, enabled]);
+  }, [boardName, layoutId, sizeId, setIds, angle, filtersKey, enabled]);
 
   return { data: heatmapData, loading, error };
 }
