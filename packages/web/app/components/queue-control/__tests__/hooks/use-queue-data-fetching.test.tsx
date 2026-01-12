@@ -136,10 +136,6 @@ describe('useQueueDataFetching', () => {
 
     mockUseBoardProvider.mockReturnValue({
       isAuthenticated: true,
-      hasAuroraCredentials: true,
-      token: 'mock-token',
-      user_id: 123,
-      username: 'testuser',
       isLoading: false,
       error: null,
       isInitialized: true,

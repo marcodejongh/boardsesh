@@ -23,11 +23,9 @@ interface BasicSearchFormProps {
 
 const BasicSearchForm: React.FC<BasicSearchFormProps> = ({ boardDetails }) => {
   const { uiSearchParams, updateFilters } = useUISearchParams();
-  const { isAuthenticated, hasAuroraCredentials } = useBoardProvider();
+  const { isAuthenticated } = useBoardProvider();
   const grades = TENSION_KILTER_GRADES;
   const [showAuthModal, setShowAuthModal] = useState(false);
-
-  const canFilterByProgress = isAuthenticated && hasAuroraCredentials;
 
   // Check if we should show the tall climbs filter
   // Only show for Kilter Homewall on the largest size (10x12)
@@ -62,18 +60,6 @@ const BasicSearchForm: React.FC<BasicSearchFormProps> = ({ boardDetails }) => {
               Sign In
             </Button>
           }
-        />
-      );
-    }
-
-    if (!hasAuroraCredentials) {
-      return (
-        <Alert
-          message="Link your board account"
-          description={`Link your ${boardDetails.board_name.charAt(0).toUpperCase() + boardDetails.board_name.slice(1)} account in Settings to filter by progress.`}
-          type="info"
-          showIcon
-          className={styles.progressAlert}
         />
       );
     }

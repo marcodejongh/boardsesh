@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useContext, createContext, useMemo } from 'react';
-import { useBoardProvider } from '../board-provider/board-provider-context';
+import { useSession } from 'next-auth/react';
 import { useQueueContext } from '../graphql-queue';
 
 type ConnectedUser = {
@@ -19,10 +19,10 @@ type PartyContextType = {
 const PartyContext = createContext<PartyContextType | undefined>(undefined);
 
 export const PartyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { username: boardUsername } = useBoardProvider();
+  const { data: session } = useSession();
   const { users, clientId, isBackendMode, hasConnected } = useQueueContext();
 
-  const username = boardUsername || '';
+  const username = session?.user?.name || '';
 
   // Convert SessionUser[] to ConnectedUser[]
   const connectedUsers: ConnectedUser[] = useMemo(() => {
