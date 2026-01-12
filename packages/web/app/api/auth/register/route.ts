@@ -4,7 +4,10 @@ import * as schema from "@/app/lib/db/schema";
 import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+import { sendVerificationEmail } from "@/app/lib/email/email-service";
 import { checkRateLimit, getClientIp } from "@/app/lib/auth/rate-limiter";
+
+const emailVerificationEnabled = process.env.EMAIL_VERIFICATION_ENABLED === "true";
 
 const registerSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -98,17 +101,19 @@ export async function POST(request: NextRequest) {
     // Create new user
     const userId = crypto.randomUUID();
     const passwordHash = await bcrypt.hash(password, 12);
+    const verificationToken = emailVerificationEnabled ? crypto.randomUUID() : null;
+    const tokenExpires = emailVerificationEnabled ? new Date(Date.now() + 24 * 60 * 60 * 1000) : null; // 24 hours
 
     // Use transaction to ensure user, credentials, profile, and token are created atomically
     // If any insert fails, all changes are rolled back
     try {
       await db.transaction(async (tx) => {
-        // Insert user (auto-verified - email verification temporarily disabled until Fastmail auth is set up)
+        // Insert user (emailVerified is null if verification enabled, otherwise auto-verified)
         await tx.insert(schema.users).values({
           id: userId,
           email,
           name: name || email.split("@")[0],
-          emailVerified: new Date(),
+          emailVerified: emailVerificationEnabled ? null : new Date(),
         });
 
         // Insert credentials
@@ -122,7 +127,14 @@ export async function POST(request: NextRequest) {
           userId,
         });
 
-        // Email verification temporarily disabled - skip verification token creation
+        // Insert verification token if email verification is enabled
+        if (emailVerificationEnabled && verificationToken && tokenExpires) {
+          await tx.insert(schema.verificationTokens).values({
+            identifier: email,
+            token: verificationToken,
+            expires: tokenExpires,
+          });
+        }
       });
     } catch (insertError) {
       // Handle race condition: another request created this user between our check and insert
@@ -136,8 +148,31 @@ export async function POST(request: NextRequest) {
       throw insertError;
     }
 
-    // Email verification temporarily disabled - skip sending verification email
+    // Send verification email if enabled
+    if (emailVerificationEnabled && verificationToken) {
+      const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+      let emailSent = false;
+      try {
+        await sendVerificationEmail(email, verificationToken, baseUrl);
+        emailSent = true;
+      } catch (emailError) {
+        console.error("Failed to send verification email:", emailError);
+        // User is created, they can use resend functionality
+      }
 
+      return NextResponse.json(
+        {
+          message: emailSent
+            ? "Account created. Please check your email to verify your account."
+            : "Account created. Please request a new verification email.",
+          requiresVerification: true,
+          emailSent,
+        },
+        { status: 201 }
+      );
+    }
+
+    // Email verification disabled - user can log in immediately
     return NextResponse.json(
       {
         message: "Account created. You can now log in.",
