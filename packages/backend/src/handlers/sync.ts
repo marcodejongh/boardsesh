@@ -6,7 +6,8 @@ const CRON_SECRET = process.env.CRON_SECRET;
 
 /**
  * Handle sync cron endpoint
- * Triggered by external cron service to sync all users
+ * Triggered by external cron service to sync the next user
+ * Only syncs 1 user per call to avoid IP blocking from Aurora API
  */
 export async function handleSyncCron(req: IncomingMessage, res: ServerResponse): Promise<void> {
   // Apply CORS headers
@@ -27,7 +28,7 @@ export async function handleSyncCron(req: IncomingMessage, res: ServerResponse):
     return;
   }
 
-  console.log('[Sync] Starting sync cron job...');
+  console.log('[Sync] Starting sync cron job (1 user)...');
 
   const runner = new SyncRunner({
     onLog: (msg: string) => console.log(`[Sync] ${msg}`),
@@ -37,7 +38,7 @@ export async function handleSyncCron(req: IncomingMessage, res: ServerResponse):
   });
 
   try {
-    const result = await runner.syncAllUsers();
+    const result = await runner.syncNextUser();
 
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(
@@ -53,7 +54,7 @@ export async function handleSyncCron(req: IncomingMessage, res: ServerResponse):
       }),
     );
 
-    console.log(`[Sync] Completed: ${result.successful}/${result.total} users synced successfully`);
+    console.log(`[Sync] Completed: ${result.successful}/${result.total} user synced`);
   } catch (error) {
     console.error('[Sync] Cron job failed:', error);
     res.writeHead(500, { 'Content-Type': 'application/json' });

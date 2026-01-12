@@ -499,7 +499,7 @@ export async function syncUserData(
       user_id: Number(auroraUserId),
     }));
 
-    log(`syncParams: ${JSON.stringify(syncParams, null, 2)}`);
+    log(`Syncing ${tables.length} tables for user ${auroraUserId}`);
 
     // Initialize results tracking
     const totalResults: SyncUserDataResult = {};
@@ -515,7 +515,6 @@ export async function syncUserData(
       log(`Sync attempt ${syncAttempts} for user ${auroraUserId}`);
 
       const syncResults = await userSync(board, auroraUserId, currentSyncParams, token);
-      log(`syncResults: ${JSON.stringify(syncResults, null, 2)}`);
 
       // Process this batch in a transaction
       const client = await pool.connect();
@@ -565,8 +564,15 @@ export async function syncUserData(
         await client.query('COMMIT');
       } catch (error) {
         await client.query('ROLLBACK');
-        log(`Failed to commit sync database transaction: ${error}`);
-        throw error;
+        // Extract meaningful error message from PostgreSQL/Drizzle errors
+        const errorMessage =
+          error instanceof Error
+            ? error.message.includes('violates foreign key constraint')
+              ? `FK constraint violation: ${error.message.split('violates foreign key constraint')[1]?.split('"')[1] || 'unknown'}`
+              : error.message.slice(0, 200)
+            : String(error).slice(0, 200);
+        log(`Database error: ${errorMessage}`);
+        throw new Error(`Database error: ${errorMessage}`);
       } finally {
         client.release();
       }
