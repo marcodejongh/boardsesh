@@ -312,6 +312,35 @@ export const generateClimbSlug = (climbName: string): string => {
     .replace(/^-|-$/g, '');
 };
 
+/**
+ * Generates a slug from a text string by normalizing it.
+ * This is a shared helper used by size slug generation.
+ */
+export const generateSlugFromText = (text: string): string => {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+};
+
+/**
+ * Generates a description slug, removing "LED Kit" suffix.
+ * This is a shared helper used by size slug generation.
+ */
+export const generateDescriptionSlug = (description: string): string => {
+  return description
+    .toLowerCase()
+    .replace(/led\s*kit/gi, '') // Remove "LED Kit" suffix
+    .trim()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+};
+
 export const generateLayoutSlug = (layoutName: string): string => {
   const baseSlug = layoutName
     .toLowerCase()
@@ -344,25 +373,12 @@ export const generateSizeSlug = (sizeName: string, description?: string): string
     baseSlug = `${sizeMatch[1]}x${sizeMatch[2]}`;
   } else {
     // Fallback to general slug generation
-    baseSlug = sizeName
-      .toLowerCase()
-      .trim()
-      .replace(/[^\w\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '');
+    baseSlug = generateSlugFromText(sizeName);
   }
 
   // Append description suffix if provided (for disambiguating sizes with same dimensions)
   if (description && description.trim()) {
-    const descSlug = description
-      .toLowerCase()
-      .replace(/led\s*kit/gi, '') // Remove "LED Kit" suffix
-      .trim()
-      .replace(/[^\w\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '');
+    const descSlug = generateDescriptionSlug(description);
 
     if (descSlug) {
       return `${baseSlug}-${descSlug}`;

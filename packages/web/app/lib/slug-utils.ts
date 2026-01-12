@@ -1,6 +1,7 @@
 import { dbz } from '@/app/lib/db/db';
 import { BoardName, LayoutId, Size } from '@/app/lib/types';
 import { matchSetNameToSlugParts } from './slug-matching';
+import { generateSlugFromText, generateDescriptionSlug } from './url-utils';
 import { UNIFIED_TABLES } from '@/app/lib/db/queries/util/table-select';
 import { eq, and, isNull } from 'drizzle-orm';
 
@@ -102,14 +103,7 @@ export const getSizeBySlug = async (
 
       // If slug has description suffix, match against description
       if (descSuffix && s.description) {
-        const descSlug = s.description
-          .toLowerCase()
-          .replace(/led\s*kit/gi, '') // Remove "LED Kit" suffix
-          .trim()
-          .replace(/[^\w\s-]/g, '')
-          .replace(/\s+/g, '-')
-          .replace(/-+/g, '-')
-          .replace(/^-|-$/g, '');
+        const descSlug = generateDescriptionSlug(s.description);
         return descSlug === descSuffix;
       }
 
@@ -142,16 +136,22 @@ export const getSizeBySlug = async (
     }
   }
 
-  // Fallback to general slug matching
+  // Fallback to general slug matching (including description like generateSizeSlug does)
   const size = rows.find((s) => {
     if (!s.name) return false;
-    const sizeSlug = s.name
-      .toLowerCase()
-      .trim()
-      .replace(/[^\w\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '');
+
+    // Generate slug from name using shared helper
+    let sizeSlug = generateSlugFromText(s.name);
+
+    // Append description suffix if present (mirrors generateSizeSlug logic)
+    if (s.description && s.description.trim()) {
+      const descSlug = generateDescriptionSlug(s.description);
+
+      if (descSlug) {
+        sizeSlug = `${sizeSlug}-${descSlug}`;
+      }
+    }
+
     return sizeSlug === slug;
   });
 
