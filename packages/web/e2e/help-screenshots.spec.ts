@@ -34,9 +34,12 @@ test.describe('Help Page Screenshots', () => {
     // Click Start Climbing button
     await page.getByRole('button', { name: 'Start Climbing' }).click();
 
-    // Wait for the board page to load
+    // Wait for the board page to load - wait for climb list or board to render
     await page.waitForURL(/\/kilter\//);
-    await page.waitForTimeout(2000); // Allow time for content to render
+    await page.waitForSelector('[data-testid="board-renderer"], .ant-list-items', { timeout: 10000 }).catch(() => {
+      // Fallback: wait for any main content to appear
+      return page.waitForSelector('.ant-layout-content', { state: 'visible' });
+    });
   });
 
   test('main interface', async ({ page }) => {
@@ -45,13 +48,15 @@ test.describe('Help Page Screenshots', () => {
 
   test('search filters', async ({ page }) => {
     await page.getByRole('tab', { name: 'Search', exact: true }).click();
-    await page.waitForTimeout(500);
+    // Wait for search form content to be visible
+    await page.waitForSelector('.ant-collapse, .ant-form', { state: 'visible' });
     await page.screenshot({ path: `${SCREENSHOT_DIR}/search-filters.png` });
   });
 
   test('search by hold', async ({ page }) => {
     await page.getByRole('tab', { name: 'Search by Hold' }).click();
-    await page.waitForTimeout(500);
+    // Wait for the hold search tab content
+    await page.waitForSelector('button:has-text("Show Heatmap"), button:has-text("Hide Heatmap")', { state: 'visible' });
     await page.screenshot({ path: `${SCREENSHOT_DIR}/search-by-hold.png` });
   });
 
@@ -59,9 +64,10 @@ test.describe('Help Page Screenshots', () => {
     await page.getByRole('tab', { name: 'Search by Hold' }).click();
     await page.getByRole('button', { name: 'Show Heatmap' }).click();
 
-    // Wait for heatmap to load
+    // Wait for heatmap loading to complete
     await page.waitForSelector('text=Loading heatmap...', { state: 'hidden', timeout: 10000 }).catch(() => {});
-    await page.waitForTimeout(1000);
+    // Wait for heatmap controls or canvas to be visible
+    await page.waitForSelector('button:has-text("Hide Heatmap")', { state: 'visible' });
 
     await page.screenshot({ path: `${SCREENSHOT_DIR}/heatmap.png` });
   });
@@ -70,21 +76,25 @@ test.describe('Help Page Screenshots', () => {
     // Click on the first climb's info button
     await page.getByRole('link', { name: 'info-circle' }).first().click();
     await page.waitForURL(/\/view\//);
-    await page.waitForTimeout(1000);
+    // Wait for climb details to load
+    await page.waitForSelector('.ant-descriptions, .ant-card-body', { state: 'visible' });
 
     await page.screenshot({ path: `${SCREENSHOT_DIR}/climb-detail.png` });
   });
 
   test('party mode modal', async ({ page }) => {
     await page.getByRole('button', { name: 'team' }).click();
-    await page.waitForTimeout(500);
+    // Wait for drawer content to be visible
+    await page.waitForSelector('.ant-drawer-body', { state: 'visible' });
 
     await page.screenshot({ path: `${SCREENSHOT_DIR}/party-mode.png` });
   });
 
   test('login modal', async ({ page }) => {
     await page.getByRole('button', { name: 'Login' }).click();
-    await page.waitForTimeout(500);
+    // Wait for modal with login form to be visible
+    await page.waitForSelector('.ant-modal-content', { state: 'visible' });
+    await page.waitForSelector('input#login_email', { state: 'visible' });
 
     await page.screenshot({ path: `${SCREENSHOT_DIR}/login-modal.png` });
   });
@@ -105,29 +115,34 @@ test.describe('Help Page Screenshots - Authenticated', () => {
     await page.getByRole('option', { name: 'Kilter' }).click();
     await page.getByRole('button', { name: 'Start Climbing' }).click();
     await page.waitForURL(/\/kilter\//);
-    await page.waitForTimeout(2000);
+    await page.waitForSelector('[data-testid="board-renderer"], .ant-list-items', { timeout: 10000 }).catch(() => {
+      return page.waitForSelector('.ant-layout-content', { state: 'visible' });
+    });
 
     // Login via auth modal
     await page.getByRole('button', { name: 'Login' }).click();
-    await page.waitForTimeout(500);
+    await page.waitForSelector('input#login_email', { state: 'visible' });
 
     // Fill login form
     await page.locator('input#login_email').fill(testEmail!);
     await page.locator('input#login_password').fill(testPassword!);
     await page.locator('button[type="submit"]').filter({ hasText: 'Login' }).click();
 
-    // Wait for login to complete
-    await page.waitForTimeout(2000);
+    // Wait for login to complete - modal should close and user button should appear
+    await page.waitForSelector('.ant-modal-content', { state: 'hidden', timeout: 10000 });
+    await page.waitForSelector('button:has(.anticon-user)', { state: 'visible', timeout: 5000 }).catch(() => {
+      // Alternative: wait for any indication of logged-in state
+      return page.waitForSelector('text=Logout', { state: 'attached' });
+    });
   });
 
   test('personal progress filters', async ({ page }) => {
     // Open search tab to show personal progress filters
     await page.getByRole('tab', { name: 'Search', exact: true }).click();
-    await page.waitForTimeout(500);
+    await page.waitForSelector('.ant-collapse, .ant-form', { state: 'visible' });
 
     // Scroll to Personal Progress section
     await page.evaluate(() => {
-      const element = document.querySelector('.ant-collapse-header-text');
       const headers = document.querySelectorAll('.ant-collapse-header-text');
       for (const header of headers) {
         if (header.textContent?.includes('Personal Progress')) {
@@ -136,7 +151,6 @@ test.describe('Help Page Screenshots - Authenticated', () => {
         }
       }
     });
-    await page.waitForTimeout(500);
 
     await page.screenshot({ path: `${SCREENSHOT_DIR}/personal-progress.png` });
   });
@@ -144,11 +158,13 @@ test.describe('Help Page Screenshots - Authenticated', () => {
   test('party mode active session', async ({ page }) => {
     // Open party mode drawer
     await page.getByRole('button', { name: 'team' }).click();
-    await page.waitForTimeout(500);
+    await page.waitForSelector('.ant-drawer-body', { state: 'visible' });
 
     // Start a party session
     await page.getByRole('button', { name: 'Start Party Mode' }).click();
-    await page.waitForTimeout(3000); // Wait for session to connect
+
+    // Wait for session to be active - look for Leave button or session ID indicator
+    await page.waitForSelector('button:has-text("Leave")', { state: 'visible', timeout: 10000 });
 
     await page.screenshot({ path: `${SCREENSHOT_DIR}/party-mode-active.png` });
 
@@ -158,10 +174,14 @@ test.describe('Help Page Screenshots - Authenticated', () => {
 
   test('hold classification wizard', async ({ page }) => {
     // Open user menu and click Classify Holds
-    await page.locator('button').filter({ hasText: /Marco|User/ }).first().click();
-    await page.waitForTimeout(300);
+    await page.locator('button:has(.anticon-user)').first().click();
+    await page.waitForSelector('.ant-dropdown', { state: 'visible' });
     await page.getByText('Classify Holds').click();
-    await page.waitForTimeout(1000); // Wait for wizard to load
+
+    // Wait for wizard drawer to open and content to load
+    await page.waitForSelector('.ant-drawer-body', { state: 'visible' });
+    // Wait for hold content or progress indicator
+    await page.waitForSelector('.ant-rate, .ant-progress', { state: 'visible', timeout: 10000 });
 
     await page.screenshot({ path: `${SCREENSHOT_DIR}/hold-classification.png` });
   });
@@ -169,7 +189,8 @@ test.describe('Help Page Screenshots - Authenticated', () => {
   test('settings aurora sync', async ({ page }) => {
     // Navigate to settings page
     await page.goto('/settings');
-    await page.waitForTimeout(1000);
+    // Wait for settings page content to load
+    await page.waitForSelector('.ant-card', { state: 'visible' });
 
     // Scroll to Board Accounts section
     await page.evaluate(() => {
@@ -179,7 +200,6 @@ test.describe('Help Page Screenshots - Authenticated', () => {
         heading.scrollIntoView({ behavior: 'instant', block: 'start' });
       }
     });
-    await page.waitForTimeout(500);
 
     await page.screenshot({ path: `${SCREENSHOT_DIR}/settings-aurora.png` });
   });

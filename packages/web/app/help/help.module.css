@@ -1,16 +1,12 @@
-/*
- * Color values match themeTokens from theme-config.ts
- * CSS modules cannot import JS, so hex values are used directly
- * (same pattern as about.module.css)
- */
+/* Uses CSS custom properties from index.css (derived from theme-config.ts) */
 
 .pageLayout {
   min-height: 100vh;
-  background: #f9fafb;
+  background: var(--semantic-background);
 }
 
 .header {
-  background: #ffffff;
+  background: var(--semantic-surface);
   padding: 0 16px;
   display: flex;
   align-items: center;
@@ -43,7 +39,7 @@
 
 .heroIcon {
   font-size: 48px;
-  color: #06b6d4;
+  color: var(--color-primary);
   margin-bottom: 16px;
 }
 
@@ -68,7 +64,7 @@
 
 .sectionIcon {
   margin-right: 8px;
-  color: #06b6d4;
+  color: var(--color-primary);
 }
 
 .mainCollapse {
@@ -76,7 +72,7 @@
 }
 
 .nestedCollapse {
-  background: #f9fafb;
+  background: var(--neutral-50);
 }
 
 .answerContent {
@@ -110,7 +106,7 @@
   max-width: 100%;
   border-radius: 8px;
   margin-bottom: 16px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--neutral-200);
 }
 
 @media (max-width: 576px) {
