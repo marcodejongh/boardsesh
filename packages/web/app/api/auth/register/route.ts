@@ -58,43 +58,12 @@ export async function POST(request: NextRequest) {
       .limit(1);
 
     if (existingUser.length > 0) {
-      // Check if user has credentials (email/password auth)
-      const existingCredentials = await db
-        .select()
-        .from(schema.userCredentials)
-        .where(eq(schema.userCredentials.userId, existingUser[0].id))
-        .limit(1);
-
-      if (existingCredentials.length > 0) {
-        return NextResponse.json(
-          { error: "An account with this email already exists" },
-          { status: 409 }
-        );
-      }
-
-      // User exists but has no credentials (e.g., OAuth user)
-      // They can add a password to their existing account
-      // OAuth users are pre-verified by their provider, so no email verification needed
-      const passwordHash = await bcrypt.hash(password, 12);
-
-      await db.transaction(async (tx) => {
-        await tx.insert(schema.userCredentials).values({
-          userId: existingUser[0].id,
-          passwordHash,
-        });
-
-        // Ensure user is marked as verified (OAuth provider already verified their email)
-        if (!existingUser[0].emailVerified) {
-          await tx
-            .update(schema.users)
-            .set({ emailVerified: new Date() })
-            .where(eq(schema.users.id, existingUser[0].id));
-        }
-      });
-
+      // An account with this email already exists
+      // Do not allow registering again - user should use their existing authentication method
+      // This prevents account takeover attacks where someone registers with an OAuth user's email
       return NextResponse.json(
-        { message: "Password added to existing account" },
-        { status: 200 }
+        { error: "An account with this email already exists. Please sign in with your existing account." },
+        { status: 409 }
       );
     }
 

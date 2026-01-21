@@ -110,8 +110,8 @@ export default function AuthPageContent() {
         return;
       }
 
-      // Fallback for accounts that don't require verification (e.g., adding password to OAuth account)
-      message.success('Account updated! Logging you in...');
+      // Email verification disabled - auto-login after successful registration
+      message.success('Account created! Logging you in...');
 
       const loginResult = await signIn('credentials', {
         email: values.email,
