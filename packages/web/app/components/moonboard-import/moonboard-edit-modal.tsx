@@ -6,7 +6,7 @@ import MoonBoardRenderer from '../moonboard-renderer/moonboard-renderer';
 import { useMoonBoardCreateClimb } from '../create-climb/use-moonboard-create-climb';
 import { coordinateToHoldId, holdIdToCoordinate, MOONBOARD_HOLD_STATES } from '@/app/lib/moonboard-config';
 import type { MoonBoardClimb, GridCoordinate } from '@boardsesh/moonboard-ocr/browser';
-import type { MoonBoardLitUpHoldsMap } from '../moonboard-renderer/types';
+import type { LitUpHoldsMap } from '../board-renderer/types';
 import styles from './moonboard-edit-modal.module.css';
 
 const { Text } = Typography;
@@ -23,22 +23,34 @@ interface MoonBoardEditModalProps {
 /**
  * Convert OCR climb holds to the lit up holds map format
  */
-function convertClimbToHoldsMap(climb: MoonBoardClimb): MoonBoardLitUpHoldsMap {
-  const map: MoonBoardLitUpHoldsMap = {};
+function convertClimbToHoldsMap(climb: MoonBoardClimb): LitUpHoldsMap {
+  const map: LitUpHoldsMap = {};
 
   climb.holds.start.forEach((coord) => {
     const holdId = coordinateToHoldId(coord);
-    map[holdId] = { type: 'start', color: MOONBOARD_HOLD_STATES.start.color };
+    map[holdId] = {
+      state: 'STARTING',
+      color: MOONBOARD_HOLD_STATES.start.color,
+      displayColor: MOONBOARD_HOLD_STATES.start.displayColor,
+    };
   });
 
   climb.holds.hand.forEach((coord) => {
     const holdId = coordinateToHoldId(coord);
-    map[holdId] = { type: 'hand', color: MOONBOARD_HOLD_STATES.hand.color };
+    map[holdId] = {
+      state: 'HAND',
+      color: MOONBOARD_HOLD_STATES.hand.color,
+      displayColor: MOONBOARD_HOLD_STATES.hand.displayColor,
+    };
   });
 
   climb.holds.finish.forEach((coord) => {
     const holdId = coordinateToHoldId(coord);
-    map[holdId] = { type: 'finish', color: MOONBOARD_HOLD_STATES.finish.color };
+    map[holdId] = {
+      state: 'FINISH',
+      color: MOONBOARD_HOLD_STATES.finish.color,
+      displayColor: MOONBOARD_HOLD_STATES.finish.displayColor,
+    };
   });
 
   return map;
@@ -47,16 +59,26 @@ function convertClimbToHoldsMap(climb: MoonBoardClimb): MoonBoardLitUpHoldsMap {
 /**
  * Convert lit up holds map back to OCR hold format
  */
-function convertHoldsMapToOcrFormat(holdsMap: MoonBoardLitUpHoldsMap): MoonBoardClimb['holds'] {
+function convertHoldsMapToOcrFormat(holdsMap: LitUpHoldsMap): MoonBoardClimb['holds'] {
   const holds: MoonBoardClimb['holds'] = {
     start: [],
     hand: [],
     finish: [],
   };
 
+  // Map standard HoldState to OCR format keys
+  const stateToKey = {
+    STARTING: 'start',
+    HAND: 'hand',
+    FINISH: 'finish',
+  } as const;
+
   Object.entries(holdsMap).forEach(([id, hold]) => {
     const coord = holdIdToCoordinate(Number(id)) as GridCoordinate;
-    holds[hold.type].push(coord);
+    const key = stateToKey[hold.state as keyof typeof stateToKey];
+    if (key) {
+      holds[key].push(coord);
+    }
   });
 
   return holds;

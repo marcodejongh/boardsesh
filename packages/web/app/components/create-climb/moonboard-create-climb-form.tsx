@@ -122,13 +122,13 @@ export default function MoonBoardCreateClimbForm({
       // Convert holds to coordinate format for storage
       const holds = {
         start: Object.entries(litUpHoldsMap)
-          .filter(([, hold]) => hold.type === 'start')
+          .filter(([, hold]) => hold.state === 'STARTING')
           .map(([id]) => holdIdToCoordinate(Number(id))),
         hand: Object.entries(litUpHoldsMap)
-          .filter(([, hold]) => hold.type === 'hand')
+          .filter(([, hold]) => hold.state === 'HAND')
           .map(([id]) => holdIdToCoordinate(Number(id))),
         finish: Object.entries(litUpHoldsMap)
-          .filter(([, hold]) => hold.type === 'finish')
+          .filter(([, hold]) => hold.state === 'FINISH')
           .map(([id]) => holdIdToCoordinate(Number(id))),
       };
 

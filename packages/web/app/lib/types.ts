@@ -222,6 +222,9 @@ export type BoardDetails = {
   size_name?: string;
   size_description?: string;
   set_names?: string[];
+  // Moonboard-specific fields for grid-based rendering
+  layoutFolder?: string; // e.g., 'moonboard2024'
+  holdSetImages?: string[]; // e.g., ['holdsetd.png', 'holdsete.png']
 };
 
 export type BoardRouteParameters = {

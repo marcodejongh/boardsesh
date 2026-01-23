@@ -1,5 +1,5 @@
 import { coordinateToHoldId, MOONBOARD_HOLD_STATES, type MoonBoardCoordinate } from './moonboard-config';
-import type { MoonBoardLitUpHoldsMap } from '../components/moonboard-renderer/types';
+import type { LitUpHoldsMap } from '../components/board-renderer/types';
 
 /**
  * Convert OCR hold coordinates to the lit up holds map format for the renderer
@@ -9,22 +9,34 @@ export function convertOcrHoldsToMap(holds: {
   start: string[];
   hand: string[];
   finish: string[];
-}): MoonBoardLitUpHoldsMap {
-  const map: MoonBoardLitUpHoldsMap = {};
+}): LitUpHoldsMap {
+  const map: LitUpHoldsMap = {};
 
   holds.start.forEach((coord) => {
     const holdId = coordinateToHoldId(coord as MoonBoardCoordinate);
-    map[holdId] = { type: 'start', color: MOONBOARD_HOLD_STATES.start.color };
+    map[holdId] = {
+      state: 'STARTING',
+      color: MOONBOARD_HOLD_STATES.start.color,
+      displayColor: MOONBOARD_HOLD_STATES.start.displayColor,
+    };
   });
 
   holds.hand.forEach((coord) => {
     const holdId = coordinateToHoldId(coord as MoonBoardCoordinate);
-    map[holdId] = { type: 'hand', color: MOONBOARD_HOLD_STATES.hand.color };
+    map[holdId] = {
+      state: 'HAND',
+      color: MOONBOARD_HOLD_STATES.hand.color,
+      displayColor: MOONBOARD_HOLD_STATES.hand.displayColor,
+    };
   });
 
   holds.finish.forEach((coord) => {
     const holdId = coordinateToHoldId(coord as MoonBoardCoordinate);
-    map[holdId] = { type: 'finish', color: MOONBOARD_HOLD_STATES.finish.color };
+    map[holdId] = {
+      state: 'FINISH',
+      color: MOONBOARD_HOLD_STATES.finish.color,
+      displayColor: MOONBOARD_HOLD_STATES.finish.displayColor,
+    };
   });
 
   return map;

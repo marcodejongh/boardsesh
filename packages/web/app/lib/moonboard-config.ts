@@ -217,6 +217,9 @@ export function getMoonBoardDetails({
     // Empty - MoonBoard uses its own renderer
     images_to_holds: {},
     holdsData: [],
+    // Moonboard-specific fields for grid-based rendering
+    layoutFolder: layoutData.folder,
+    holdSetImages: selectedSets.map((s) => s.imageFile),
   };
 }
 
