@@ -361,19 +361,26 @@ export const playlistQueries = {
       .from(dbSchema.playlistClimbs)
       .innerJoin(
         tables.climbs,
-        eq(tables.climbs.uuid, dbSchema.playlistClimbs.climbUuid)
+        and(
+          eq(tables.climbs.uuid, dbSchema.playlistClimbs.climbUuid),
+          eq(tables.climbs.boardType, boardName)
+        )
       )
       .leftJoin(
         tables.climbStats,
         and(
           eq(tables.climbStats.climbUuid, dbSchema.playlistClimbs.climbUuid),
+          eq(tables.climbStats.boardType, boardName),
           // Use the route angle (from input) to fetch stats for the current board angle
           eq(tables.climbStats.angle, input.angle)
         )
       )
       .leftJoin(
         tables.difficultyGrades,
-        eq(tables.difficultyGrades.difficulty, sql`ROUND(${tables.climbStats.displayDifficulty}::numeric)`)
+        and(
+          eq(tables.difficultyGrades.difficulty, sql`ROUND(${tables.climbStats.displayDifficulty}::numeric)`),
+          eq(tables.difficultyGrades.boardType, boardName)
+        )
       )
       .where(eq(dbSchema.playlistClimbs.playlistId, playlistId))
       .orderBy(asc(dbSchema.playlistClimbs.position), asc(dbSchema.playlistClimbs.addedAt))

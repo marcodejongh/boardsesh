@@ -104,14 +104,18 @@ export const getClimbByUuid = async (params: GetClimbParams): Promise<Climb | nu
       .from(tables.climbs)
       .leftJoin(
         tables.climbStats,
-        sql`${tables.climbStats.climbUuid} = ${tables.climbs.uuid} AND ${tables.climbStats.angle} = ${params.angle}`
+        sql`${tables.climbStats.climbUuid} = ${tables.climbs.uuid}
+        AND ${tables.climbStats.boardType} = ${params.board_name}
+        AND ${tables.climbStats.angle} = ${params.angle}`
       )
       .leftJoin(
         tables.difficultyGrades,
-        sql`${tables.difficultyGrades.difficulty} = ROUND(${tables.climbStats.displayDifficulty}::numeric)`
+        sql`${tables.difficultyGrades.difficulty} = ROUND(${tables.climbStats.displayDifficulty}::numeric)
+        AND ${tables.difficultyGrades.boardType} = ${params.board_name}`
       )
       .where(
-        sql`${tables.climbs.layoutId} = ${params.layout_id}
+        sql`${tables.climbs.boardType} = ${params.board_name}
+        AND ${tables.climbs.layoutId} = ${params.layout_id}
         AND ${tables.climbs.uuid} = ${params.climb_uuid}
         AND ${tables.climbs.framesCount} = 1`
       )
