@@ -244,6 +244,8 @@ export const boardClimbs = pgTable('board_climbs', {
   syncError: text('sync_error'),
   // Boardsesh user who created this climb locally (null for Aurora-synced climbs)
   userId: text('user_id').references(() => users.id, { onDelete: 'set null' }),
+  // Hash of holds for duplicate detection (sorted holdId:state pairs)
+  holdsHash: text('holds_hash'),
 }, (table) => ({
   boardTypeIdx: index('board_climbs_board_type_idx').on(table.boardType),
   layoutFilterIdx: index('board_climbs_layout_filter_idx').on(
@@ -259,6 +261,12 @@ export const boardClimbs = pgTable('board_climbs', {
     table.edgeRight,
     table.edgeBottom,
     table.edgeTop,
+  ),
+  // Index for efficient duplicate detection
+  holdsHashIdx: index('board_climbs_holds_hash_idx').on(
+    table.boardType,
+    table.layoutId,
+    table.holdsHash,
   ),
   // Note: No FK to board_layouts - climbs may reference layouts that don't exist during sync
 }));

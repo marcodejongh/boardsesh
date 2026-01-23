@@ -7,6 +7,7 @@ import { NeonDatabase } from 'drizzle-orm/neon-serverless';
 import { Attempt, BetaLink, Climb, ClimbStats, SharedSync, SyncPutFields } from '../../api-wrappers/sync-api-types';
 import { UNIFIED_TABLES } from '../../db/queries/util/table-select';
 import { convertLitUpHoldsStringToMap } from '@/app/components/board-renderer/util';
+import { generateHoldsHash } from '@/app/lib/climb-utils/holds-hash';
 
 // Define shared sync tables in correct dependency order
 // Order matches what the Android app sends - keep full list to remain indistinguishable
@@ -145,6 +146,9 @@ async function upsertClimbs(db: NeonDatabase<Record<string, never>>, board: Auro
 
   await Promise.all(
     data.map(async (item: Climb) => {
+      // Compute holds hash for duplicate detection
+      const holdsHash = generateHoldsHash(item.frames);
+
       // Insert or update the climb
       await db
         .insert(climbsSchema)
@@ -168,6 +172,7 @@ async function upsertClimbs(db: NeonDatabase<Record<string, never>>, board: Auro
           isListed: item.is_listed,
           createdAt: item.created_at,
           angle: item.angle,
+          holdsHash,
         })
         .onConflictDoUpdate({
           target: [climbsSchema.uuid],
@@ -192,6 +197,8 @@ async function upsertClimbs(db: NeonDatabase<Record<string, never>>, board: Auro
             setterUsername: climbsSchema.setterUsername,
             layoutId: climbsSchema.layoutId,
             angle: climbsSchema.angle,
+            // Update holdsHash if not already set (backfill during sync)
+            holdsHash: sql`COALESCE(${climbsSchema.holdsHash}, ${holdsHash})`,
           },
         });
 

@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Form, Input, Button, Typography, Tag, Alert, Upload, message, Space } from 'antd';
-import { UploadOutlined, LoadingOutlined, ImportOutlined, LoginOutlined, ArrowLeftOutlined, SaveOutlined } from '@ant-design/icons';
+import { UploadOutlined, LoadingOutlined, ImportOutlined, LoginOutlined, ArrowLeftOutlined, SaveOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
@@ -55,6 +55,12 @@ export default function MoonBoardCreateClimbForm({
 
   const [form] = Form.useForm<MoonBoardCreateClimbFormValues>();
   const [isSaving, setIsSaving] = useState(false);
+
+  // Duplicate climb state
+  const [duplicateInfo, setDuplicateInfo] = useState<{
+    uuid: string;
+    name?: string;
+  } | null>(null);
 
   // OCR import state
   const [isOcrProcessing, setIsOcrProcessing] = useState(false);
@@ -117,6 +123,7 @@ export default function MoonBoardCreateClimbForm({
     }
 
     setIsSaving(true);
+    setDuplicateInfo(null);
 
     try {
       // Convert holds to coordinate format for storage
@@ -152,6 +159,17 @@ export default function MoonBoardCreateClimbForm({
         throw new Error(errorData.error || 'Failed to save climb');
       }
 
+      const data = await response.json();
+
+      // Check if this is a duplicate climb
+      if (data.isDuplicate) {
+        setDuplicateInfo({
+          uuid: data.existingClimbUuid,
+          name: data.existingClimbName,
+        });
+        return;
+      }
+
       message.success('Climb saved to database!');
 
       // Navigate back to the list
@@ -163,6 +181,18 @@ export default function MoonBoardCreateClimbForm({
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleViewDuplicate = () => {
+    if (duplicateInfo) {
+      // Navigate to the existing climb
+      const climbUrl = pathname.replace(/\/create$/, `/climb/${duplicateInfo.uuid}`);
+      router.push(climbUrl);
+    }
+  };
+
+  const handleDismissDuplicate = () => {
+    setDuplicateInfo(null);
   };
 
   const handleCancel = () => {
@@ -225,6 +255,32 @@ export default function MoonBoardCreateClimbForm({
           showIcon
           closable
           onClose={() => setOcrWarnings([])}
+          className={styles.alertBanner}
+        />
+      )}
+
+      {duplicateInfo && (
+        <Alert
+          message="Duplicate Climb Detected"
+          description={
+            <Space direction="vertical" size="small">
+              <Text>
+                A climb with the same holds already exists
+                {duplicateInfo.name ? `: "${duplicateInfo.name}"` : ''}
+              </Text>
+              <Space>
+                <Button type="primary" size="small" onClick={handleViewDuplicate}>
+                  View Existing Climb
+                </Button>
+                <Button size="small" onClick={handleDismissDuplicate}>
+                  Dismiss
+                </Button>
+              </Space>
+            </Space>
+          }
+          type="warning"
+          showIcon
+          icon={<ExclamationCircleOutlined />}
           className={styles.alertBanner}
         />
       )}

@@ -260,6 +260,13 @@
       "when": 1768444800000,
       "tag": "0040_add_climb_user_id",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1768531200000,
+      "tag": "0041_add_holds_hash",
+      "breakpoints": true
     }
   ]
 }
