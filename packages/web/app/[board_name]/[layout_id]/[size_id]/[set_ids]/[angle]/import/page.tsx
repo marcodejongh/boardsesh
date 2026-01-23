@@ -67,6 +67,7 @@ export default async function ImportPage(props: ImportPageProps) {
     <MoonBoardBulkImport
       layoutFolder={layoutInfo.folder}
       layoutName={layoutInfo.name}
+      layoutId={parsedParams.layout_id}
       holdSetImages={holdSetImages}
       angle={parsedParams.angle}
     />

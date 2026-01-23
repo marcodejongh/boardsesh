@@ -1,7 +1,8 @@
 import React from 'react';
 
 import { notFound, permanentRedirect } from 'next/navigation';
-import { BoardRouteParametersWithUuid, SearchRequestPagination, BoardDetails } from '@/app/lib/types';
+import { BoardRouteParametersWithUuid, SearchRequestPagination, BoardDetails, BoardName, Climb } from '@/app/lib/types';
+import { SetIdList } from '@/app/lib/board-data';
 import {
   parseBoardRouteParams,
   parsedRouteSearchParamsToSearchParams,
@@ -12,7 +13,93 @@ import ClimbsList from '@/app/components/board-page/climbs-list';
 import { cachedSearchClimbs } from '@/app/lib/graphql/server-cached-client';
 import { SEARCH_CLIMBS, type ClimbSearchResponse } from '@/app/lib/graphql/operations/climb-search';
 import { getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
+import { getMoonBoardDetails, MOONBOARD_HOLD_STATE_CODES } from '@/app/lib/moonboard-config';
 import { MAX_PAGE_SIZE } from '@/app/components/board-page/constants';
+import { dbz } from '@/app/lib/db/db';
+import { UNIFIED_TABLES } from '@/app/lib/db/queries/util/table-select';
+import { eq, and, desc } from 'drizzle-orm';
+import type { LitUpHoldsMap, HoldState } from '@/app/components/board-renderer/types';
+
+// Helper to get board details for any board type
+function getBoardDetailsForBoard(params: { board_name: BoardName; layout_id: number; size_id: number; set_ids: SetIdList }): BoardDetails {
+  if (params.board_name === 'moonboard') {
+    return getMoonBoardDetails({
+      layout_id: params.layout_id,
+      set_ids: params.set_ids,
+    });
+  }
+  return getBoardDetails(params);
+}
+
+// Parse Moonboard frames string to lit up holds map
+function parseMoonboardFrames(frames: string): LitUpHoldsMap {
+  const map: LitUpHoldsMap = {};
+  // Format: p{holdId}r{roleCode} e.g., "p1r42p45r43p198r44"
+  const regex = /p(\d+)r(\d+)/g;
+  let match;
+  while ((match = regex.exec(frames)) !== null) {
+    const holdId = parseInt(match[1], 10);
+    const roleCode = parseInt(match[2], 10);
+    let state: HoldState = 'HAND';
+    let color = '#0000FF';
+    let displayColor = '#4444FF';
+
+    if (roleCode === MOONBOARD_HOLD_STATE_CODES.start) {
+      state = 'STARTING';
+      color = '#FF0000';
+      displayColor = '#FF3333';
+    } else if (roleCode === MOONBOARD_HOLD_STATE_CODES.finish) {
+      state = 'FINISH';
+      color = '#00FF00';
+      displayColor = '#44FF44';
+    }
+
+    map[holdId] = { state, color, displayColor };
+  }
+  return map;
+}
+
+// Query Moonboard climbs directly from the database
+async function getMoonboardClimbs(layoutId: number, angle: number, limit: number): Promise<Climb[]> {
+  const { climbs } = UNIFIED_TABLES;
+
+  const results = await dbz
+    .select({
+      uuid: climbs.uuid,
+      name: climbs.name,
+      description: climbs.description,
+      frames: climbs.frames,
+      angle: climbs.angle,
+      setterUsername: climbs.setterUsername,
+      createdAt: climbs.createdAt,
+    })
+    .from(climbs)
+    .where(
+      and(
+        eq(climbs.boardType, 'moonboard'),
+        eq(climbs.layoutId, layoutId),
+        eq(climbs.angle, angle)
+      )
+    )
+    .orderBy(desc(climbs.createdAt))
+    .limit(limit);
+
+  return results.map((row) => ({
+    uuid: row.uuid,
+    setter_username: row.setterUsername || 'Unknown',
+    name: row.name || 'Unnamed Climb',
+    description: row.description || '',
+    frames: row.frames || '',
+    angle: row.angle || angle,
+    ascensionist_count: 0,
+    difficulty: 'V?',
+    quality_average: '0',
+    stars: 0,
+    difficulty_error: '0',
+    litUpHoldsMap: parseMoonboardFrames(row.frames || ''),
+    benchmark_difficulty: null,
+  }));
+}
 
 export default async function DynamicResultsPage(props: {
   params: Promise<BoardRouteParametersWithUuid>;
@@ -32,7 +119,7 @@ export default async function DynamicResultsPage(props: {
     parsedParams = parseBoardRouteParams(params);
 
     // Redirect old URLs to new slug format
-    const boardDetails = await getBoardDetails(parsedParams);
+    const boardDetails = getBoardDetailsForBoard(parsedParams);
 
     if (boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names) {
       const newUrl = constructClimbListWithSlugs(
@@ -113,10 +200,29 @@ export default async function DynamicResultsPage(props: {
   let boardDetails: BoardDetails;
 
   try {
-    [searchResponse, boardDetails] = await Promise.all([
-      cachedSearchClimbs<ClimbSearchResponse>(SEARCH_CLIMBS, { input: searchInput }, isDefaultSearch),
-      getBoardDetails(parsedParams),
-    ]);
+    boardDetails = getBoardDetailsForBoard(parsedParams);
+
+    // Moonboard queries the database directly (no GraphQL support yet)
+    if (parsedParams.board_name === 'moonboard') {
+      const moonboardClimbs = await getMoonboardClimbs(
+        parsedParams.layout_id,
+        parsedParams.angle,
+        searchParamsObject.pageSize || 50
+      );
+      searchResponse = {
+        searchClimbs: {
+          climbs: moonboardClimbs,
+          totalCount: moonboardClimbs.length,
+          hasMore: false,
+        },
+      };
+    } else {
+      searchResponse = await cachedSearchClimbs<ClimbSearchResponse>(
+        SEARCH_CLIMBS,
+        { input: searchInput },
+        isDefaultSearch,
+      );
+    }
   } catch (error) {
     console.error('Error fetching results or climb:', error);
     notFound();

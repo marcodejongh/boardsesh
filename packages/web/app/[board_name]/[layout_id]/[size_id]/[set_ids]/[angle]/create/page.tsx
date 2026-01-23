@@ -64,7 +64,7 @@ export default async function CreateClimbPage(props: CreateClimbPageProps) {
     return (
       <MoonBoardCreateClimbForm
         layoutFolder={layoutInfo.folder}
-        layoutName={layoutInfo.name}
+        layoutId={parsedParams.layout_id}
         holdSetImages={holdSetImages}
         angle={parsedParams.angle}
       />

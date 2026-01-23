@@ -2,12 +2,24 @@ import React from 'react';
 
 import { PropsWithChildren } from 'react';
 
-import { BoardRouteParameters, ParsedBoardRouteParameters } from '@/app/lib/types';
+import { BoardRouteParameters, ParsedBoardRouteParameters, BoardDetails } from '@/app/lib/types';
 import { parseBoardRouteParams, constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import { getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
+import { getMoonBoardDetails } from '@/app/lib/moonboard-config';
 import { permanentRedirect } from 'next/navigation';
 import ListLayoutClient from './layout-client';
+
+// Helper to get board details for any board type
+function getBoardDetailsForBoard(params: ParsedBoardRouteParameters): BoardDetails {
+  if (params.board_name === 'moonboard') {
+    return getMoonBoardDetails({
+      layout_id: params.layout_id,
+      set_ids: params.set_ids,
+    });
+  }
+  return getBoardDetails(params);
+}
 
 interface LayoutProps {
   params: Promise<BoardRouteParameters>;
@@ -30,7 +42,7 @@ export default async function ListLayout(props: PropsWithChildren<LayoutProps>) 
     parsedParams = parseBoardRouteParams(params);
 
     // Redirect old URLs to new slug format
-    const boardDetails = await getBoardDetails(parsedParams);
+    const boardDetails = getBoardDetailsForBoard(parsedParams);
 
     if (boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names) {
       const newUrl = constructClimbListWithSlugs(
@@ -50,7 +62,7 @@ export default async function ListLayout(props: PropsWithChildren<LayoutProps>) 
   }
 
   // Fetch the climbs and board details server-side
-  const boardDetails = await getBoardDetails(parsedParams);
+  const boardDetails = getBoardDetailsForBoard(parsedParams);
 
   return <ListLayoutClient boardDetails={boardDetails}>{children}</ListLayoutClient>;
 }
