@@ -5,8 +5,15 @@
 
 import * as Sentry from "@sentry/nextjs";
 
+// Only enable Sentry on boardsesh.com to avoid polluting error tracking
+const isProductionDomain =
+  process.env.VERCEL_URL?.includes("boardsesh.com") ?? false;
+
 Sentry.init({
   dsn: "https://f55e6626faf787ae5291ad75b010ea14@o4510644927660032.ingest.us.sentry.io/4510644930150400",
+
+  // Only send errors when running on boardsesh.com
+  enabled: isProductionDomain,
 
   // Enable logs to be sent to Sentry
   enableLogs: true,
