@@ -182,6 +182,8 @@ export function fontGradeToDifficultyId(fontGrade: string): number | null {
 }
 
 // Helper to get grade info by difficulty ID
+// Note: difficultyId may come from database as a float (doublePrecision), so we round it
 export function getGradeByDifficultyId(difficultyId: number): BoulderGrade | undefined {
-  return BOULDER_GRADES.find(g => g.difficulty_id === difficultyId);
+  const roundedId = Math.round(difficultyId);
+  return BOULDER_GRADES.find(g => g.difficulty_id === roundedId);
 }
