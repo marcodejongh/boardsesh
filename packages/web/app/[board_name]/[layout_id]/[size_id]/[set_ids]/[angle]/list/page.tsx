@@ -17,8 +17,9 @@ import { getMoonBoardDetails, MOONBOARD_HOLD_STATE_CODES } from '@/app/lib/moonb
 import { MAX_PAGE_SIZE } from '@/app/components/board-page/constants';
 import { dbz } from '@/app/lib/db/db';
 import { UNIFIED_TABLES } from '@/app/lib/db/queries/util/table-select';
-import { boardClimbStats, boardDifficultyGrades } from '@boardsesh/db/schema';
+import { boardClimbStats } from '@boardsesh/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
+import { getGradeByDifficultyId } from '@/app/lib/board-data';
 import type { LitUpHoldsMap, HoldState } from '@/app/components/board-renderer/types';
 
 // Helper to get board details for any board type
@@ -78,8 +79,6 @@ async function getMoonboardClimbs(layoutId: number, angle: number, limit: number
       benchmarkDifficulty: boardClimbStats.benchmarkDifficulty,
       qualityAverage: boardClimbStats.qualityAverage,
       ascensionistCount: boardClimbStats.ascensionistCount,
-      // Join with difficulty grades for grade name
-      difficultyName: boardDifficultyGrades.boulderName,
     })
     .from(climbs)
     .leftJoin(
@@ -88,13 +87,6 @@ async function getMoonboardClimbs(layoutId: number, angle: number, limit: number
         eq(boardClimbStats.boardType, 'moonboard'),
         eq(boardClimbStats.climbUuid, climbs.uuid),
         eq(boardClimbStats.angle, angle)
-      )
-    )
-    .leftJoin(
-      boardDifficultyGrades,
-      and(
-        eq(boardDifficultyGrades.boardType, 'moonboard'),
-        eq(boardDifficultyGrades.difficulty, boardClimbStats.displayDifficulty)
       )
     )
     .where(
@@ -107,22 +99,29 @@ async function getMoonboardClimbs(layoutId: number, angle: number, limit: number
     .orderBy(desc(climbs.createdAt))
     .limit(limit);
 
-  return results.map((row) => ({
-    uuid: row.uuid,
-    setter_username: row.setterUsername || 'Unknown',
-    name: row.name || 'Unnamed Climb',
-    description: row.description || '',
-    frames: row.frames || '',
-    angle: row.angle || angle,
-    ascensionist_count: row.ascensionistCount || 0,
-    // Format difficulty as "6A" style if we have a grade name, otherwise show as project
-    difficulty: row.difficultyName ? `${row.difficultyName.toUpperCase()}` : '',
-    quality_average: row.qualityAverage ? String(row.qualityAverage) : '0',
-    stars: 0,
-    difficulty_error: '0',
-    litUpHoldsMap: parseMoonboardFrames(row.frames || ''),
-    benchmark_difficulty: row.benchmarkDifficulty ? String(row.benchmarkDifficulty) : null,
-  }));
+  return results.map((row) => {
+    // Look up grade info from the shared BOULDER_GRADES constant
+    const gradeInfo = row.displayDifficulty ? getGradeByDifficultyId(row.displayDifficulty) : undefined;
+
+    return {
+      uuid: row.uuid,
+      setter_username: row.setterUsername || 'Unknown',
+      name: row.name || 'Unnamed Climb',
+      description: row.description || '',
+      frames: row.frames || '',
+      angle: row.angle || angle,
+      ascensionist_count: row.ascensionistCount || 0,
+      // Format difficulty as "6a/V3" style for ClimbTitle to extract V-grade
+      difficulty: gradeInfo ? gradeInfo.difficulty_name : '',
+      // Set quality_average to "3" when we have a grade so ClimbTitle shows it
+      // (hasGrade check requires quality_average && quality_average !== '0')
+      quality_average: gradeInfo ? (row.qualityAverage ? String(row.qualityAverage) : '3') : '0',
+      stars: 0,
+      difficulty_error: '0',
+      litUpHoldsMap: parseMoonboardFrames(row.frames || ''),
+      benchmark_difficulty: row.benchmarkDifficulty ? String(row.benchmarkDifficulty) : null,
+    };
+  });
 }
 
 export default async function DynamicResultsPage(props: {
