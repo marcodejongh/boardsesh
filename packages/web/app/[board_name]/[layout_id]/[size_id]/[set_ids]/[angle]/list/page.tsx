@@ -48,12 +48,12 @@ function parseMoonboardFrames(frames: string): LitUpHoldsMap {
 
     if (roleCode === MOONBOARD_HOLD_STATE_CODES.start) {
       state = 'STARTING';
-      color = '#FF0000';
-      displayColor = '#FF3333';
-    } else if (roleCode === MOONBOARD_HOLD_STATE_CODES.finish) {
-      state = 'FINISH';
       color = '#00FF00';
       displayColor = '#44FF44';
+    } else if (roleCode === MOONBOARD_HOLD_STATE_CODES.finish) {
+      state = 'FINISH';
+      color = '#FF0000';
+      displayColor = '#FF3333';
     }
 
     map[holdId] = { state, color, displayColor };

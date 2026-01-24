@@ -98,9 +98,9 @@ export const MOONBOARD_SIZE = {
 
 // MoonBoard hold states (different color scheme from Aurora)
 export const MOONBOARD_HOLD_STATES = {
-  start: { name: 'STARTING' as const, color: '#FF0000', displayColor: '#FF3333' }, // Red
+  start: { name: 'STARTING' as const, color: '#00FF00', displayColor: '#44FF44' }, // Green
   hand: { name: 'HAND' as const, color: '#0000FF', displayColor: '#4444FF' }, // Blue
-  finish: { name: 'FINISH' as const, color: '#00FF00', displayColor: '#44FF44' }, // Green
+  finish: { name: 'FINISH' as const, color: '#FF0000', displayColor: '#FF3333' }, // Red
 } as const;
 
 // Hold state codes for frames encoding (compatible with Aurora format)

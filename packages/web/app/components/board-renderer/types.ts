@@ -63,8 +63,8 @@ export const HOLD_STATE_MAP: Record<
   },
   // MoonBoard uses simple codes: 1=start, 2=hand, 3=finish (no foot holds)
   moonboard: {
-    1: { name: 'STARTING', displayColor: '#FF3333', color: '#FF0000' }, // Red
+    1: { name: 'STARTING', displayColor: '#44FF44', color: '#00FF00' }, // Green
     2: { name: 'HAND', displayColor: '#4444FF', color: '#0000FF' }, // Blue
-    3: { name: 'FINISH', displayColor: '#44FF44', color: '#00FF00' }, // Green
+    3: { name: 'FINISH', displayColor: '#FF3333', color: '#FF0000' }, // Red
   },
 };
