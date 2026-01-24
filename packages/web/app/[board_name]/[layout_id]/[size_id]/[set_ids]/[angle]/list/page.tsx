@@ -13,7 +13,7 @@ import ClimbsList from '@/app/components/board-page/climbs-list';
 import { cachedSearchClimbs } from '@/app/lib/graphql/server-cached-client';
 import { SEARCH_CLIMBS, type ClimbSearchResponse } from '@/app/lib/graphql/operations/climb-search';
 import { getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
-import { getMoonBoardDetails, MOONBOARD_HOLD_STATE_CODES } from '@/app/lib/moonboard-config';
+import { getMoonBoardDetails, MOONBOARD_HOLD_STATE_CODES, MOONBOARD_HOLD_STATES } from '@/app/lib/moonboard-config';
 import { MAX_PAGE_SIZE } from '@/app/components/board-page/constants';
 import { dbz } from '@/app/lib/db/db';
 import { UNIFIED_TABLES } from '@/app/lib/db/queries/util/table-select';
@@ -42,21 +42,20 @@ function parseMoonboardFrames(frames: string): LitUpHoldsMap {
   while ((match = regex.exec(frames)) !== null) {
     const holdId = parseInt(match[1], 10);
     const roleCode = parseInt(match[2], 10);
-    let state: HoldState = 'HAND';
-    let color = '#0000FF';
-    let displayColor = '#4444FF';
 
-    if (roleCode === MOONBOARD_HOLD_STATE_CODES.start) {
-      state = 'STARTING';
-      color = '#00FF00';
-      displayColor = '#44FF44';
-    } else if (roleCode === MOONBOARD_HOLD_STATE_CODES.finish) {
-      state = 'FINISH';
-      color = '#FF0000';
-      displayColor = '#FF3333';
-    }
+    // Determine which hold state to use based on role code
+    const holdStateKey = roleCode === MOONBOARD_HOLD_STATE_CODES.start
+      ? 'start'
+      : roleCode === MOONBOARD_HOLD_STATE_CODES.finish
+        ? 'finish'
+        : 'hand';
+    const holdState = MOONBOARD_HOLD_STATES[holdStateKey];
 
-    map[holdId] = { state, color, displayColor };
+    map[holdId] = {
+      state: holdState.name,
+      color: holdState.color,
+      displayColor: holdState.displayColor,
+    };
   }
   return map;
 }
