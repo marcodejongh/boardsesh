@@ -1,4 +1,5 @@
 import React from 'react';
+import { notFound } from 'next/navigation';
 import { BoardRouteParametersWithUuid } from '@/app/lib/types';
 import { parseBoardRouteParams, extractUuidFromSlug, constructPlayUrlWithSlugs } from '@/app/lib/url-utils';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
@@ -79,46 +80,51 @@ export async function generateMetadata(props: { params: Promise<BoardRouteParame
 export default async function PlayPage(props: {
   params: Promise<BoardRouteParametersWithUuid>;
 }): Promise<React.JSX.Element> {
-  const params = await props.params;
-
-  // Check if any parameters are in numeric format (old URLs)
-  const hasNumericParams = [params.layout_id, params.size_id, params.set_ids].some((param) =>
-    param.includes(',') ? param.split(',').every((id) => /^\d+$/.test(id.trim())) : /^\d+$/.test(param),
-  );
-
-  let parsedParams;
-
-  if (hasNumericParams) {
-    parsedParams = parseBoardRouteParams({
-      ...params,
-      climb_uuid: extractUuidFromSlug(params.climb_uuid),
-    });
-  } else {
-    parsedParams = await parseBoardRouteParamsWithSlugs(params);
-  }
-
-  const boardDetails = await getBoardDetails(parsedParams);
-
-  // Try to get the initial climb for SSR
-  let initialClimb = null;
   try {
-    const climb = await getClimb(parsedParams);
-    if (climb) {
-      const litUpHoldsMap = convertLitUpHoldsStringToMap(climb.frames, parsedParams.board_name)[0];
-      initialClimb = {
-        ...climb,
-        litUpHoldsMap,
-      };
-    }
-  } catch {
-    // Climb will be loaded from queue context on client
-  }
+    const params = await props.params;
 
-  return (
-    <PlayViewClient
-      boardDetails={boardDetails}
-      initialClimb={initialClimb}
-      angle={parsedParams.angle}
-    />
-  );
+    // Check if any parameters are in numeric format (old URLs)
+    const hasNumericParams = [params.layout_id, params.size_id, params.set_ids].some((param) =>
+      param.includes(',') ? param.split(',').every((id) => /^\d+$/.test(id.trim())) : /^\d+$/.test(param),
+    );
+
+    let parsedParams;
+
+    if (hasNumericParams) {
+      parsedParams = parseBoardRouteParams({
+        ...params,
+        climb_uuid: extractUuidFromSlug(params.climb_uuid),
+      });
+    } else {
+      parsedParams = await parseBoardRouteParamsWithSlugs(params);
+    }
+
+    const boardDetails = await getBoardDetails(parsedParams);
+
+    // Try to get the initial climb for SSR
+    let initialClimb = null;
+    try {
+      const climb = await getClimb(parsedParams);
+      if (climb) {
+        const litUpHoldsMap = convertLitUpHoldsStringToMap(climb.frames, parsedParams.board_name)[0];
+        initialClimb = {
+          ...climb,
+          litUpHoldsMap,
+        };
+      }
+    } catch {
+      // Climb will be loaded from queue context on client
+    }
+
+    return (
+      <PlayViewClient
+        boardDetails={boardDetails}
+        initialClimb={initialClimb}
+        angle={parsedParams.angle}
+      />
+    );
+  } catch (error) {
+    console.error('Error in play page:', error);
+    notFound();
+  }
 }

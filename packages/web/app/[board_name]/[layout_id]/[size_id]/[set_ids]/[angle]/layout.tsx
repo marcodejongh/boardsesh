@@ -4,7 +4,7 @@ import { Affix, Layout } from 'antd';
 import { ParsedBoardRouteParameters, BoardRouteParameters, BoardDetails } from '@/app/lib/types';
 import { parseBoardRouteParams, constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
-import { permanentRedirect } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import { Content } from 'antd/es/layout/layout';
 import QueueControlBar from '@/app/components/queue-control/queue-control-bar';
 import { getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
@@ -103,80 +103,85 @@ interface BoardLayoutProps {
 }
 
 export default async function BoardLayout(props: PropsWithChildren<BoardLayoutProps>) {
-  const params = await props.params;
+  try {
+    const params = await props.params;
 
-  const { children } = props;
+    const { children } = props;
 
-  // Parse the route parameters
-  // Check if any parameters are in numeric format (old URLs)
-  const hasNumericParams = [params.layout_id, params.size_id, params.set_ids].some((param) =>
-    param.includes(',') ? param.split(',').every((id) => /^\d+$/.test(id.trim())) : /^\d+$/.test(param),
-  );
+    // Parse the route parameters
+    // Check if any parameters are in numeric format (old URLs)
+    const hasNumericParams = [params.layout_id, params.size_id, params.set_ids].some((param) =>
+      param.includes(',') ? param.split(',').every((id) => /^\d+$/.test(id.trim())) : /^\d+$/.test(param),
+    );
 
-  let parsedParams: ParsedBoardRouteParameters;
+    let parsedParams: ParsedBoardRouteParameters;
 
-  if (hasNumericParams) {
-    // For old URLs, use the simple parsing function first
-    parsedParams = parseBoardRouteParams(params);
+    if (hasNumericParams) {
+      // For old URLs, use the simple parsing function first
+      parsedParams = parseBoardRouteParams(params);
 
-    // Redirect old URLs to new slug format
+      // Redirect old URLs to new slug format
+      const boardDetails = getBoardDetailsUniversal(parsedParams);
+
+      if (boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names) {
+        const newUrl = constructClimbListWithSlugs(
+          boardDetails.board_name,
+          boardDetails.layout_name,
+          boardDetails.size_name,
+          boardDetails.size_description,
+          boardDetails.set_names,
+          parsedParams.angle,
+        );
+
+        permanentRedirect(newUrl);
+      }
+    } else {
+      // For new URLs, use the slug parsing function
+      parsedParams = await parseBoardRouteParamsWithSlugs(params);
+    }
+
+    const { board_name, angle } = parsedParams;
+
+    // Fetch the board details server-side
     const boardDetails = getBoardDetailsUniversal(parsedParams);
 
-    if (boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names) {
-      const newUrl = constructClimbListWithSlugs(
-        boardDetails.board_name,
-        boardDetails.layout_name,
-        boardDetails.size_name,
-        boardDetails.size_description,
-        boardDetails.set_names,
-        parsedParams.angle,
-      );
+    return (
+      <Layout style={{ height: '100dvh', display: 'flex', flexDirection: 'column', padding: 0 }}>
+        <BoardSessionBridge boardDetails={boardDetails} parsedParams={parsedParams}>
+          <ConnectionSettingsProvider>
+            <GraphQLQueueProvider parsedParams={parsedParams} boardDetails={boardDetails}>
+              <PartyProvider>
+                <BoardSeshHeader boardDetails={boardDetails} angle={angle} />
 
-      permanentRedirect(newUrl);
-    }
-  } else {
-    // For new URLs, use the slug parsing function
-    parsedParams = await parseBoardRouteParamsWithSlugs(params);
+                <Content
+                  id="content-for-scrollable"
+                  style={{
+                    flex: 1,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    overflowY: 'auto',
+                    overflowX: 'hidden',
+                    height: '80vh',
+                    paddingLeft: '10px',
+                    paddingRight: '10px',
+                  }}
+                >
+                  <Suspense fallback={<BoardPageSkeleton aspectRatio={boardDetails.boardWidth / boardDetails.boardHeight} />}>
+                    {children}
+                  </Suspense>
+                </Content>
+
+                <Affix offsetBottom={0}>
+                  <QueueControlBar board={board_name} boardDetails={boardDetails} angle={angle} />
+                </Affix>
+              </PartyProvider>
+            </GraphQLQueueProvider>
+          </ConnectionSettingsProvider>
+        </BoardSessionBridge>
+      </Layout>
+    );
+  } catch (error) {
+    console.error('Error in board layout:', error);
+    notFound();
   }
-
-  const { board_name, angle } = parsedParams;
-
-  // Fetch the board details server-side
-  const boardDetails = getBoardDetailsUniversal(parsedParams);
-
-  return (
-    <Layout style={{ height: '100dvh', display: 'flex', flexDirection: 'column', padding: 0 }}>
-      <BoardSessionBridge boardDetails={boardDetails} parsedParams={parsedParams}>
-        <ConnectionSettingsProvider>
-          <GraphQLQueueProvider parsedParams={parsedParams} boardDetails={boardDetails}>
-            <PartyProvider>
-              <BoardSeshHeader boardDetails={boardDetails} angle={angle} />
-
-              <Content
-                id="content-for-scrollable"
-                style={{
-                  flex: 1,
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  overflowY: 'auto',
-                  overflowX: 'hidden',
-                  height: '80vh',
-                  paddingLeft: '10px',
-                  paddingRight: '10px',
-                }}
-              >
-                <Suspense fallback={<BoardPageSkeleton aspectRatio={boardDetails.boardWidth / boardDetails.boardHeight} />}>
-                  {children}
-                </Suspense>
-              </Content>
-
-              <Affix offsetBottom={0}>
-                <QueueControlBar board={board_name} boardDetails={boardDetails} angle={angle} />
-              </Affix>
-            </PartyProvider>
-          </GraphQLQueueProvider>
-        </ConnectionSettingsProvider>
-      </BoardSessionBridge>
-    </Layout>
-  );
 }
