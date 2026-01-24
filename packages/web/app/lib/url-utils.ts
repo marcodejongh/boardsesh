@@ -303,7 +303,7 @@ export const constructCreateClimbWithSlugs = (
 };
 
 export const generateClimbSlug = (climbName: string): string => {
-  return climbName
+  return normalizeDashes(climbName)
     .toLowerCase()
     .trim()
     .replace(/[^\w\s-]/g, '')
@@ -313,11 +313,24 @@ export const generateClimbSlug = (climbName: string): string => {
 };
 
 /**
+ * Normalizes various dash-like Unicode characters to ASCII hyphen.
+ * This handles en dash (–), em dash (—), non-breaking hyphen (‑), minus sign (−), etc.
+ */
+const normalizeDashes = (text: string): string => {
+  // Replace various Unicode dash/hyphen characters with ASCII hyphen
+  // U+2010 Hyphen, U+2011 Non-breaking hyphen, U+2012 Figure dash
+  // U+2013 En dash, U+2014 Em dash, U+2015 Horizontal bar
+  // U+2212 Minus sign, U+FE58 Small em dash, U+FE63 Small hyphen-minus
+  // U+FF0D Fullwidth hyphen-minus
+  return text.replace(/[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D]/g, '-');
+};
+
+/**
  * Generates a slug from a text string by normalizing it.
  * This is a shared helper used by size slug generation.
  */
 export const generateSlugFromText = (text: string): string => {
-  return text
+  return normalizeDashes(text)
     .toLowerCase()
     .trim()
     .replace(/[^\w\s-]/g, '')
@@ -331,7 +344,7 @@ export const generateSlugFromText = (text: string): string => {
  * This is a shared helper used by size slug generation.
  */
 export const generateDescriptionSlug = (description: string): string => {
-  return description
+  return normalizeDashes(description)
     .toLowerCase()
     .replace(/led\s*kit/gi, '') // Remove "LED Kit" suffix
     .trim()
@@ -342,7 +355,7 @@ export const generateDescriptionSlug = (description: string): string => {
 };
 
 export const generateLayoutSlug = (layoutName: string): string => {
-  const baseSlug = layoutName
+  const baseSlug = normalizeDashes(layoutName)
     .toLowerCase()
     .trim()
     .replace(/^(kilter|tension)\s+board\s+/i, '') // Remove board name prefix
