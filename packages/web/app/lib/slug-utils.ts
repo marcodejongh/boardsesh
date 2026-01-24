@@ -68,23 +68,30 @@ export const getSizeBySlug = async (
   layout_id: LayoutId,
   slug: string,
 ): Promise<SizeRow | null> => {
-  const { productSizes, layouts } = UNIFIED_TABLES;
+  const { productSizes, productSizesLayoutsSets } = UNIFIED_TABLES;
 
+  // Query sizes through productSizesLayoutsSets which directly links sizes to layouts
+  // This is more reliable than going through productId on the layouts table
   const rows = await dbz
-    .select({
+    .selectDistinct({
       id: productSizes.id,
       name: productSizes.name,
       description: productSizes.description,
     })
     .from(productSizes)
     .innerJoin(
-      layouts,
+      productSizesLayoutsSets,
       and(
-        eq(productSizes.boardType, layouts.boardType),
-        eq(productSizes.productId, layouts.productId),
+        eq(productSizes.boardType, productSizesLayoutsSets.boardType),
+        eq(productSizes.id, productSizesLayoutsSets.productSizeId),
       ),
     )
-    .where(and(eq(layouts.boardType, board_name), eq(layouts.id, layout_id)));
+    .where(
+      and(
+        eq(productSizesLayoutsSets.boardType, board_name),
+        eq(productSizesLayoutsSets.layoutId, layout_id),
+      ),
+    );
 
   // Parse slug - may be "10x12" or "10x12-full-ride"
   const dimensionMatch = slug.match(/^(\d+x\d+)(?:-(.+))?$/i);
