@@ -9,7 +9,7 @@ import {
   MoonBoardLayoutKey,
 } from '@/app/lib/moonboard-config';
 import { Metadata } from 'next';
-import { redirect } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 
 export const metadata: Metadata = {
   title: 'Import Climbs | Boardsesh',
@@ -35,40 +35,45 @@ function getMoonBoardHoldSetImages(layoutKey: MoonBoardLayoutKey, setIds: number
 }
 
 export default async function ImportPage(props: ImportPageProps) {
-  const params = await props.params;
+  try {
+    const params = await props.params;
 
-  // Check if any parameters are in numeric format (old URLs)
-  const hasNumericParams = [params.layout_id, params.size_id, params.set_ids].some((param) =>
-    param.includes(',') ? param.split(',').every((id) => /^\d+$/.test(id.trim())) : /^\d+$/.test(param),
-  );
+    // Check if any parameters are in numeric format (old URLs)
+    const hasNumericParams = [params.layout_id, params.size_id, params.set_ids].some((param) =>
+      param.includes(',') ? param.split(',').every((id) => /^\d+$/.test(id.trim())) : /^\d+$/.test(param),
+    );
 
-  let parsedParams;
+    let parsedParams;
 
-  if (hasNumericParams) {
-    parsedParams = parseBoardRouteParams(params);
-  } else {
-    parsedParams = await parseBoardRouteParamsWithSlugs(params);
+    if (hasNumericParams) {
+      parsedParams = parseBoardRouteParams(params);
+    } else {
+      parsedParams = await parseBoardRouteParamsWithSlugs(params);
+    }
+
+    // Only MoonBoard supports bulk import for now
+    if (parsedParams.board_name !== 'moonboard') {
+      // Redirect to the board's climb list page
+      redirect(`/${params.board_name}/${params.layout_id}/${params.size_id}/${params.set_ids}/${params.angle}`);
+    }
+
+    const layoutInfo = getMoonBoardLayoutInfo(parsedParams.layout_id);
+    if (!layoutInfo) {
+      return <div>Invalid MoonBoard layout</div>;
+    }
+
+    const holdSetImages = getMoonBoardHoldSetImages(layoutInfo.layoutKey, parsedParams.set_ids);
+
+    return (
+      <MoonBoardBulkImport
+        layoutFolder={layoutInfo.folder}
+        layoutName={layoutInfo.name}
+        holdSetImages={holdSetImages}
+        angle={parsedParams.angle}
+      />
+    );
+  } catch (error) {
+    console.error('Error in import page:', error);
+    notFound();
   }
-
-  // Only MoonBoard supports bulk import for now
-  if (parsedParams.board_name !== 'moonboard') {
-    // Redirect to the board's climb list page
-    redirect(`/${params.board_name}/${params.layout_id}/${params.size_id}/${params.set_ids}/${params.angle}`);
-  }
-
-  const layoutInfo = getMoonBoardLayoutInfo(parsedParams.layout_id);
-  if (!layoutInfo) {
-    return <div>Invalid MoonBoard layout</div>;
-  }
-
-  const holdSetImages = getMoonBoardHoldSetImages(layoutInfo.layoutKey, parsedParams.set_ids);
-
-  return (
-    <MoonBoardBulkImport
-      layoutFolder={layoutInfo.folder}
-      layoutName={layoutInfo.name}
-      holdSetImages={holdSetImages}
-      angle={parsedParams.angle}
-    />
-  );
 }

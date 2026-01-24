@@ -6,7 +6,7 @@ import { BoardRouteParameters, ParsedBoardRouteParameters } from '@/app/lib/type
 import { parseBoardRouteParams, constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import { getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
-import { permanentRedirect } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import ListLayoutClient from './layout-client';
 
 interface LayoutProps {
@@ -14,43 +14,48 @@ interface LayoutProps {
 }
 
 export default async function ListLayout(props: PropsWithChildren<LayoutProps>) {
-  const params = await props.params;
+  try {
+    const params = await props.params;
 
-  const { children } = props;
+    const { children } = props;
 
-  // Check if any parameters are in numeric format (old URLs)
-  const hasNumericParams = [params.layout_id, params.size_id, params.set_ids].some((param) =>
-    param.includes(',') ? param.split(',').every((id) => /^\d+$/.test(id.trim())) : /^\d+$/.test(param),
-  );
+    // Check if any parameters are in numeric format (old URLs)
+    const hasNumericParams = [params.layout_id, params.size_id, params.set_ids].some((param) =>
+      param.includes(',') ? param.split(',').every((id) => /^\d+$/.test(id.trim())) : /^\d+$/.test(param),
+    );
 
-  let parsedParams: ParsedBoardRouteParameters;
+    let parsedParams: ParsedBoardRouteParameters;
 
-  if (hasNumericParams) {
-    // For old URLs, use the simple parsing function first
-    parsedParams = parseBoardRouteParams(params);
+    if (hasNumericParams) {
+      // For old URLs, use the simple parsing function first
+      parsedParams = parseBoardRouteParams(params);
 
-    // Redirect old URLs to new slug format
+      // Redirect old URLs to new slug format
+      const boardDetails = await getBoardDetails(parsedParams);
+
+      if (boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names) {
+        const newUrl = constructClimbListWithSlugs(
+          boardDetails.board_name,
+          boardDetails.layout_name,
+          boardDetails.size_name,
+          boardDetails.size_description,
+          boardDetails.set_names,
+          parsedParams.angle,
+        );
+
+        permanentRedirect(newUrl);
+      }
+    } else {
+      // For new URLs, use the slug parsing function
+      parsedParams = await parseBoardRouteParamsWithSlugs(params);
+    }
+
+    // Fetch the climbs and board details server-side
     const boardDetails = await getBoardDetails(parsedParams);
 
-    if (boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names) {
-      const newUrl = constructClimbListWithSlugs(
-        boardDetails.board_name,
-        boardDetails.layout_name,
-        boardDetails.size_name,
-        boardDetails.size_description,
-        boardDetails.set_names,
-        parsedParams.angle,
-      );
-
-      permanentRedirect(newUrl);
-    }
-  } else {
-    // For new URLs, use the slug parsing function
-    parsedParams = await parseBoardRouteParamsWithSlugs(params);
+    return <ListLayoutClient boardDetails={boardDetails}>{children}</ListLayoutClient>;
+  } catch (error) {
+    console.error('Error in list layout:', error);
+    notFound();
   }
-
-  // Fetch the climbs and board details server-side
-  const boardDetails = await getBoardDetails(parsedParams);
-
-  return <ListLayoutClient boardDetails={boardDetails}>{children}</ListLayoutClient>;
 }

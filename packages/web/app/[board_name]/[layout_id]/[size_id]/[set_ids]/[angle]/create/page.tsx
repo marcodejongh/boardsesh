@@ -1,4 +1,5 @@
 import React from 'react';
+import { notFound } from 'next/navigation';
 import { BoardRouteParameters } from '@/app/lib/types';
 import { getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
 import { parseBoardRouteParams } from '@/app/lib/url-utils';
@@ -37,49 +38,54 @@ function getMoonBoardHoldSetImages(layoutKey: MoonBoardLayoutKey, setIds: number
 }
 
 export default async function CreateClimbPage(props: CreateClimbPageProps) {
-  const [params, searchParams] = await Promise.all([props.params, props.searchParams]);
+  try {
+    const [params, searchParams] = await Promise.all([props.params, props.searchParams]);
 
-  // Check if any parameters are in numeric format (old URLs)
-  const hasNumericParams = [params.layout_id, params.size_id, params.set_ids].some((param) =>
-    param.includes(',') ? param.split(',').every((id) => /^\d+$/.test(id.trim())) : /^\d+$/.test(param),
-  );
+    // Check if any parameters are in numeric format (old URLs)
+    const hasNumericParams = [params.layout_id, params.size_id, params.set_ids].some((param) =>
+      param.includes(',') ? param.split(',').every((id) => /^\d+$/.test(id.trim())) : /^\d+$/.test(param),
+    );
 
-  let parsedParams;
+    let parsedParams;
 
-  if (hasNumericParams) {
-    parsedParams = parseBoardRouteParams(params);
-  } else {
-    parsedParams = await parseBoardRouteParamsWithSlugs(params);
-  }
-
-  // Handle MoonBoard separately (no database, different renderer)
-  if (parsedParams.board_name === 'moonboard') {
-    const layoutInfo = getMoonBoardLayoutInfo(parsedParams.layout_id);
-    if (!layoutInfo) {
-      return <div>Invalid MoonBoard layout</div>;
+    if (hasNumericParams) {
+      parsedParams = parseBoardRouteParams(params);
+    } else {
+      parsedParams = await parseBoardRouteParamsWithSlugs(params);
     }
 
-    const holdSetImages = getMoonBoardHoldSetImages(layoutInfo.layoutKey, parsedParams.set_ids);
+    // Handle MoonBoard separately (no database, different renderer)
+    if (parsedParams.board_name === 'moonboard') {
+      const layoutInfo = getMoonBoardLayoutInfo(parsedParams.layout_id);
+      if (!layoutInfo) {
+        return <div>Invalid MoonBoard layout</div>;
+      }
+
+      const holdSetImages = getMoonBoardHoldSetImages(layoutInfo.layoutKey, parsedParams.set_ids);
+
+      return (
+        <MoonBoardCreateClimbForm
+          layoutFolder={layoutInfo.folder}
+          layoutName={layoutInfo.name}
+          holdSetImages={holdSetImages}
+          angle={parsedParams.angle}
+        />
+      );
+    }
+
+    // Aurora boards (kilter, tension) - use database
+    const boardDetails = await getBoardDetails(parsedParams);
 
     return (
-      <MoonBoardCreateClimbForm
-        layoutFolder={layoutInfo.folder}
-        layoutName={layoutInfo.name}
-        holdSetImages={holdSetImages}
+      <CreateClimbForm
+        boardDetails={boardDetails}
         angle={parsedParams.angle}
+        forkFrames={searchParams.forkFrames}
+        forkName={searchParams.forkName}
       />
     );
+  } catch (error) {
+    console.error('Error in create page:', error);
+    notFound();
   }
-
-  // Aurora boards (kilter, tension) - use database
-  const boardDetails = await getBoardDetails(parsedParams);
-
-  return (
-    <CreateClimbForm
-      boardDetails={boardDetails}
-      angle={parsedParams.angle}
-      forkFrames={searchParams.forkFrames}
-      forkName={searchParams.forkName}
-    />
-  );
 }
