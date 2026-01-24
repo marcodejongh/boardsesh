@@ -1,13 +1,20 @@
 import { BoardName } from '@/app/lib/types';
 import { MOONBOARD_ENABLED } from '@/app/lib/moonboard-config';
 
+// Re-export hold state types and constants from shared-schema for backward compatibility
+export {
+  HOLD_STATE_MAP,
+  STATE_TO_CODE,
+  type HoldColor,
+  type HoldCode,
+  type HoldStateInfo,
+} from '@boardsesh/shared-schema';
+
 export type LitUpHolds = string;
 
 export type HoldState = 'OFF' | 'STARTING' | 'FINISH' | 'HAND' | 'FOOT' | 'ANY' | 'NOT';
 export type HoldsArray = Array<HoldRenderData>;
 
-export type HoldColor = string;
-export type HoldCode = number;
 export type HoldRenderData = {
   id: number;
   mirroredHoldId: number | null;
@@ -16,7 +23,7 @@ export type HoldRenderData = {
   r: number;
 };
 export type LitupHold = { state: HoldState; color: string; displayColor: string };
-export type LitUpHoldsMap = Record<HoldCode, LitupHold>;
+export type LitUpHoldsMap = Record<number, LitupHold>;
 
 export interface HeatmapData {
   holdId: number;
@@ -35,38 +42,3 @@ export interface HeatmapData {
 export const supported_boards: BoardName[] = MOONBOARD_ENABLED
   ? ['kilter', 'tension', 'moonboard']
   : ['kilter', 'tension'];
-
-// Mapping object for board-specific hold states
-export const HOLD_STATE_MAP: Record<
-  BoardName,
-  Record<HoldCode, { name: HoldState; color: HoldColor; displayColor?: HoldColor }>
-> = {
-  kilter: {
-    42: { name: 'STARTING', color: '#00FF00' },
-    43: { name: 'HAND', color: '#00FFFF' },
-    44: { name: 'FINISH', color: '#FF00FF' },
-    45: { name: 'FOOT', color: '#FFA500' },
-    12: { name: 'STARTING', color: '#00FF00' },
-    13: { name: 'HAND', color: '#00FFFF' },
-    14: { name: 'FINISH', color: '#FF00FF' },
-    15: { name: 'FOOT', color: '#FFA500' },
-  },
-  tension: {
-    1: { name: 'STARTING', displayColor: '#00DD00', color: '#00FF00' },
-    2: { name: 'HAND', displayColor: '#4444FF', color: '#0000FF' },
-    3: { name: 'FINISH', displayColor: '#FF0000', color: '#FF0000' },
-    4: { name: 'FOOT', displayColor: '#FF00FF', color: '#FF00FF' },
-    5: { name: 'STARTING', displayColor: '#00DD00', color: '#00FF00' },
-    6: { name: 'HAND', displayColor: '#4444FF', color: '#0000FF' },
-    7: { name: 'FINISH', displayColor: '#FF0000', color: '#FF0000' },
-    8: { name: 'FOOT', displayColor: '#FF00FF', color: '#FF00FF' },
-  },
-  // MoonBoard hold states (no foot holds)
-  // Values inlined from moonboard-config.ts MOONBOARD_HOLD_STATE_CODES and MOONBOARD_HOLD_STATES
-  // to avoid computed property issues with bundlers
-  moonboard: {
-    42: { name: 'STARTING', color: '#00FF00', displayColor: '#44FF44' }, // start
-    43: { name: 'HAND', color: '#0000FF', displayColor: '#4444FF' }, // hand
-    44: { name: 'FINISH', color: '#FF0000', displayColor: '#FF3333' }, // finish
-  },
-};

@@ -1,34 +1,11 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
-import { LitUpHoldsMap, HoldState, HOLD_STATE_MAP, HoldCode } from '../board-renderer/types';
+import { LitUpHoldsMap, HoldState, HOLD_STATE_MAP, HoldCode, STATE_TO_CODE } from '../board-renderer/types';
 import { BoardName } from '@/app/lib/types';
 
 // Hold state cycle order: Starting -> Hand -> Foot -> Finish -> OFF
 const STATE_CYCLE: HoldState[] = ['STARTING', 'HAND', 'FOOT', 'FINISH', 'OFF'];
-
-// Map from state name to the primary hold code for each board
-const STATE_TO_CODE: Record<BoardName, Partial<Record<HoldState, HoldCode>>> = {
-  kilter: {
-    STARTING: 42,
-    HAND: 43,
-    FINISH: 44,
-    FOOT: 45,
-  },
-  tension: {
-    STARTING: 1,
-    HAND: 2,
-    FINISH: 3,
-    FOOT: 4,
-  },
-  // MoonBoard uses different hook (use-moonboard-create-climb), but include for type safety
-  moonboard: {
-    STARTING: 1,
-    HAND: 2,
-    FINISH: 3,
-    // No FOOT holds on MoonBoard
-  },
-};
 
 interface UseCreateClimbOptions {
   initialHoldsMap?: LitUpHoldsMap;
