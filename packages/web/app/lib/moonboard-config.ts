@@ -1,9 +1,8 @@
 // MoonBoard Configuration
 // This file contains all MoonBoard-specific configuration that differs from Aurora boards
 
-// Feature flag - auto-enabled in development, or via MOONBOARD_ENABLED env var
-export const MOONBOARD_ENABLED =
-  process.env.NODE_ENV === 'development' || process.env.MOONBOARD_ENABLED === 'true';
+// Feature flag - enabled by default
+export const MOONBOARD_ENABLED = true;
 
 // MoonBoard layout types (equivalent to Aurora "layouts")
 export const MOONBOARD_LAYOUTS = {
@@ -80,6 +79,13 @@ export const MOONBOARD_HOLD_STATES = {
   start: { name: 'STARTING' as const, color: '#FF0000', displayColor: '#FF3333' }, // Red
   hand: { name: 'HAND' as const, color: '#0000FF', displayColor: '#4444FF' }, // Blue
   finish: { name: 'FINISH' as const, color: '#00FF00', displayColor: '#44FF44' }, // Green
+} as const;
+
+// Hold state codes for frames encoding (compatible with Aurora format)
+export const MOONBOARD_HOLD_STATE_CODES = {
+  start: 42, // Using 42 for STARTING (matches Kilter pattern)
+  hand: 43, // Using 43 for HAND
+  finish: 44, // Using 44 for FINISH
 } as const;
 
 // Grid coordinate types
@@ -212,4 +218,33 @@ export function getMoonBoardDetails({
     images_to_holds: {},
     holdsData: [],
   };
+}
+
+/**
+ * Encode MoonBoard holds to frames format for database storage.
+ * Format: p{holdId}r{roleCode} (e.g., "p1r42p45r43p198r44")
+ */
+export function encodeMoonBoardHoldsToFrames(holds: {
+  start: string[];
+  hand: string[];
+  finish: string[];
+}): string {
+  const parts: string[] = [];
+
+  holds.start.forEach((coord) => {
+    const holdId = coordinateToHoldId(coord as MoonBoardCoordinate);
+    parts.push(`p${holdId}r${MOONBOARD_HOLD_STATE_CODES.start}`);
+  });
+
+  holds.hand.forEach((coord) => {
+    const holdId = coordinateToHoldId(coord as MoonBoardCoordinate);
+    parts.push(`p${holdId}r${MOONBOARD_HOLD_STATE_CODES.hand}`);
+  });
+
+  holds.finish.forEach((coord) => {
+    const holdId = coordinateToHoldId(coord as MoonBoardCoordinate);
+    parts.push(`p${holdId}r${MOONBOARD_HOLD_STATE_CODES.finish}`);
+  });
+
+  return parts.join('');
 }

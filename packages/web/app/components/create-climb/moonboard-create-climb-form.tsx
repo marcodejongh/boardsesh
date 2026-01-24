@@ -1,15 +1,16 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Form, Input, Button, Typography, Tag, Alert, Upload, message } from 'antd';
-import { ExperimentOutlined, UploadOutlined, LoadingOutlined, ImportOutlined } from '@ant-design/icons';
+import { Form, Input, Button, Typography, Tag, Alert, Upload, message, Space } from 'antd';
+import { UploadOutlined, LoadingOutlined, ImportOutlined, LoginOutlined, ArrowLeftOutlined, SaveOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 import MoonBoardRenderer from '../moonboard-renderer/moonboard-renderer';
 import { useMoonBoardCreateClimb } from './use-moonboard-create-climb';
 import { holdIdToCoordinate } from '@/app/lib/moonboard-config';
 import { parseScreenshot } from '@boardsesh/moonboard-ocr/browser';
-import { saveMoonBoardClimb, convertOcrHoldsToMap } from '@/app/lib/moonboard-climbs-db';
+import { convertOcrHoldsToMap } from '@/app/lib/moonboard-climbs-db';
 import styles from './create-climb-form.module.css';
 
 const { TextArea } = Input;
@@ -22,19 +23,20 @@ interface MoonBoardCreateClimbFormValues {
 
 interface MoonBoardCreateClimbFormProps {
   layoutFolder: string;
-  layoutName: string;
+  layoutId: number;
   holdSetImages: string[];
   angle: number;
 }
 
 export default function MoonBoardCreateClimbForm({
   layoutFolder,
-  layoutName,
+  layoutId,
   holdSetImages,
   angle,
 }: MoonBoardCreateClimbFormProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const { data: session } = useSession();
 
   // Construct the bulk import URL (replace /create with /import)
   const bulkImportUrl = pathname.replace(/\/create$/, '/import');
@@ -53,7 +55,12 @@ export default function MoonBoardCreateClimbForm({
 
   const [form] = Form.useForm<MoonBoardCreateClimbFormValues>();
   const [isSaving, setIsSaving] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
+
+  // Duplicate climb state
+  const [duplicateInfo, setDuplicateInfo] = useState<{
+    uuid: string;
+    name?: string;
+  } | null>(null);
 
   // OCR import state
   const [isOcrProcessing, setIsOcrProcessing] = useState(false);
@@ -110,7 +117,13 @@ export default function MoonBoardCreateClimbForm({
       return;
     }
 
+    if (!session?.user?.id) {
+      message.error('Please log in to save climbs');
+      return;
+    }
+
     setIsSaving(true);
+    setDuplicateInfo(null);
 
     try {
       // Convert holds to coordinate format for storage
@@ -126,34 +139,60 @@ export default function MoonBoardCreateClimbForm({
           .map(([id]) => holdIdToCoordinate(Number(id))),
       };
 
-      const climbData = {
-        name: values.name,
-        description: values.description || '',
-        holds,
-        angle,
-        layoutFolder,
-        createdAt: new Date().toISOString(),
-      };
+      const response = await fetch('/api/v1/moonboard/proxy/saveClimb', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          options: {
+            layout_id: layoutId,
+            user_id: session.user.id,
+            name: values.name,
+            description: values.description || '',
+            holds,
+            angle,
+          },
+        }),
+      });
 
-      await saveMoonBoardClimb(climbData);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to save climb');
+      }
 
-      message.success('Climb saved successfully!');
-      setSaveSuccess(true);
+      const data = await response.json();
 
-      // Reset the form and holds
-      form.resetFields();
-      resetHolds();
+      // Check if this is a duplicate climb
+      if (data.isDuplicate) {
+        setDuplicateInfo({
+          uuid: data.existingClimbUuid,
+          name: data.existingClimbName,
+        });
+        return;
+      }
 
-      // Show success briefly then allow another climb to be created
-      setTimeout(() => {
-        setSaveSuccess(false);
-      }, 3000);
+      message.success('Climb saved to database!');
+
+      // Navigate back to the list
+      const listUrl = pathname.replace(/\/create$/, '/list');
+      router.push(listUrl);
     } catch (error) {
       console.error('Failed to save climb:', error);
-      message.error('Failed to save climb. Please try again.');
+      message.error(error instanceof Error ? error.message : 'Failed to save climb. Please try again.');
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleViewDuplicate = () => {
+    if (duplicateInfo) {
+      // Navigate to the existing climb
+      const climbUrl = pathname.replace(/\/create$/, `/climb/${duplicateInfo.uuid}`);
+      router.push(climbUrl);
+    }
+  };
+
+  const handleDismissDuplicate = () => {
+    setDuplicateInfo(null);
   };
 
   const handleCancel = () => {
@@ -162,144 +201,157 @@ export default function MoonBoardCreateClimbForm({
 
   return (
     <div className={styles.pageContainer}>
-      <Alert
-        title={`MoonBoard Beta - ${layoutName} @ ${angle}°`}
-        description="MoonBoard support is in beta. Climbs are saved locally for now. Database sync coming soon!"
-        type="info"
-        showIcon
-        icon={<ExperimentOutlined />}
-        className={styles.betaBanner}
-        banner
-      />
-
-      {saveSuccess && (
-        <Alert
-          title="Climb saved successfully!"
-          description="Your climb has been saved locally. You can create another climb."
-          type="success"
-          showIcon
-          closable
-          className={styles.betaBanner}
-        />
-      )}
+      {/* Header with Back and Save buttons */}
+      <div className={styles.createHeader}>
+        <Button icon={<ArrowLeftOutlined />} onClick={handleCancel}>
+          Back
+        </Button>
+        <Form form={form} component={false}>
+          <Form.Item name="name" noStyle>
+            <Input
+              placeholder="Climb name"
+              maxLength={100}
+              className={styles.headerNameInput}
+              variant="borderless"
+            />
+          </Form.Item>
+        </Form>
+        {!session?.user ? (
+          <Link href="/api/auth/signin">
+            <Button type="primary" icon={<LoginOutlined />}>
+              Log in to Save
+            </Button>
+          </Link>
+        ) : (
+          <Button
+            type="primary"
+            icon={<SaveOutlined />}
+            loading={isSaving}
+            disabled={!isValid || isSaving}
+            onClick={() => form.submit()}
+          >
+            {isSaving ? 'Saving...' : 'Save'}
+          </Button>
+        )}
+      </div>
 
       {ocrError && (
         <Alert
-          title="Import Failed"
+          message="Import Failed"
           description={ocrError}
           type="error"
           showIcon
           closable
           onClose={() => setOcrError(null)}
-          className={styles.betaBanner}
+          className={styles.alertBanner}
         />
       )}
 
       {ocrWarnings.length > 0 && (
         <Alert
-          title="Import Warnings"
+          message="Import Warnings"
           description={ocrWarnings.map((w, i) => <div key={i}>{w}</div>)}
           type="warning"
           showIcon
           closable
           onClose={() => setOcrWarnings([])}
-          className={styles.betaBanner}
+          className={styles.alertBanner}
+        />
+      )}
+
+      {duplicateInfo && (
+        <Alert
+          message="Duplicate Climb Detected"
+          description={
+            <Space direction="vertical" size="small">
+              <Text>
+                A climb with the same holds already exists
+                {duplicateInfo.name ? `: "${duplicateInfo.name}"` : ''}
+              </Text>
+              <Space>
+                <Button type="primary" size="small" onClick={handleViewDuplicate}>
+                  View Existing Climb
+                </Button>
+                <Button size="small" onClick={handleDismissDuplicate}>
+                  Dismiss
+                </Button>
+              </Space>
+            </Space>
+          }
+          type="warning"
+          showIcon
+          icon={<ExclamationCircleOutlined />}
+          className={styles.alertBanner}
         />
       )}
 
       <div className={styles.contentWrapper}>
         {/* Board Section */}
-        <div className={styles.boardSection}>
+        <div className={styles.boardContainer}>
           <MoonBoardRenderer
             layoutFolder={layoutFolder}
             holdSetImages={holdSetImages}
             litUpHoldsMap={litUpHoldsMap}
             onHoldClick={handleHoldClick}
           />
-
-          {/* Import from Screenshot */}
-          <div className={styles.holdCounts}>
-            <Upload
-              accept="image/png,image/jpeg,image/webp"
-              showUploadList={false}
-              beforeUpload={(file) => {
-                handleOcrImport(file);
-                return false; // Prevent default upload behavior
-              }}
-              disabled={isOcrProcessing}
-            >
-              <Button icon={isOcrProcessing ? <LoadingOutlined /> : <UploadOutlined />} disabled={isOcrProcessing}>
-                {isOcrProcessing ? 'Processing...' : 'Import Screenshot'}
-              </Button>
-            </Upload>
-            <Link href={bulkImportUrl}>
-              <Button icon={<ImportOutlined />}>Bulk Import</Button>
-            </Link>
-          </div>
-
-          {/* Hold counts */}
-          <div className={styles.holdCounts}>
-            <Tag color={startingCount > 0 ? 'red' : 'default'}>Start: {startingCount}/2</Tag>
-            <Tag color={handCount > 0 ? 'blue' : 'default'}>Hand: {handCount}</Tag>
-            <Tag color={finishCount > 0 ? 'green' : 'default'}>Finish: {finishCount}/2</Tag>
-            <Tag color={totalHolds > 0 ? 'purple' : 'default'}>Total: {totalHolds}</Tag>
-            {totalHolds > 0 && (
-              <Button size="small" onClick={resetHolds}>
-                Clear All
-              </Button>
-            )}
-          </div>
-
-          {!isValid && totalHolds > 0 && (
-            <Text type="secondary" className={styles.validationHint}>
-              A valid climb needs at least 1 start hold and 1 finish hold
-            </Text>
-          )}
-        </div>
-
-        {/* Form Section */}
-        <div className={styles.formSection}>
-          <Form
-            form={form}
-            layout="vertical"
-            onFinish={handleSubmit}
-            initialValues={{
-              name: '',
-              description: '',
-            }}
-            className={styles.formContent}
-          >
-            <Form.Item
-              name="name"
-              label="Climb Name"
-              rules={[{ required: true, message: 'Please enter a name for your climb' }]}
-            >
-              <Input placeholder="Enter climb name" maxLength={100} />
-            </Form.Item>
-
-            <Form.Item name="description" label="Description">
-              <TextArea placeholder="Optional description or beta" rows={3} maxLength={500} />
-            </Form.Item>
-
-            <div className={styles.buttonGroup}>
-              <Button
-                type="primary"
-                htmlType="submit"
-                loading={isSaving}
-                disabled={!isValid || isSaving}
-                block
-                size="large"
-              >
-                {isSaving ? 'Saving...' : 'Save Climb (Local)'}
-              </Button>
-
-              <Button block size="large" onClick={handleCancel} disabled={isSaving}>
-                Back
-              </Button>
-            </div>
-          </Form>
         </div>
       </div>
+
+      {/* Bottom bar with hold counts and actions */}
+      <div className={styles.holdCountsBar}>
+        <Space wrap size="small">
+          <Tag color={startingCount > 0 ? 'red' : 'default'}>Start: {startingCount}/2</Tag>
+          <Tag color={handCount > 0 ? 'blue' : 'default'}>Hand: {handCount}</Tag>
+          <Tag color={finishCount > 0 ? 'green' : 'default'}>Finish: {finishCount}/2</Tag>
+          <Tag color={totalHolds > 0 ? 'purple' : 'default'}>Total: {totalHolds}</Tag>
+        </Space>
+        <Space wrap size="small">
+          {totalHolds > 0 && (
+            <Button size="small" onClick={resetHolds}>
+              Clear
+            </Button>
+          )}
+          <Upload
+            accept="image/png,image/jpeg,image/webp"
+            showUploadList={false}
+            beforeUpload={(file) => {
+              handleOcrImport(file);
+              return false;
+            }}
+            disabled={isOcrProcessing}
+          >
+            <Button size="small" icon={isOcrProcessing ? <LoadingOutlined /> : <UploadOutlined />} disabled={isOcrProcessing}>
+              {isOcrProcessing ? 'Processing...' : 'Import'}
+            </Button>
+          </Upload>
+          <Link href={bulkImportUrl}>
+            <Button size="small" icon={<ImportOutlined />}>Bulk</Button>
+          </Link>
+        </Space>
+      </div>
+
+      {!isValid && totalHolds > 0 && (
+        <div className={styles.validationBar}>
+          <Text type="secondary">
+            A valid climb needs at least 1 start hold and 1 finish hold
+          </Text>
+        </div>
+      )}
+
+      {/* Hidden form for submission */}
+      <Form
+        form={form}
+        onFinish={handleSubmit}
+        initialValues={{ name: '', description: '' }}
+        style={{ display: 'none' }}
+      >
+        <Form.Item name="name" rules={[{ required: true }]}>
+          <Input />
+        </Form.Item>
+        <Form.Item name="description">
+          <TextArea />
+        </Form.Item>
+      </Form>
     </div>
   );
 }

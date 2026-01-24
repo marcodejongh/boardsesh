@@ -54,6 +54,9 @@ export const useQueueDataFetching = ({
     ] as const;
   }, [searchParams, parsedParams]);
 
+  // Moonboard doesn't support GraphQL search yet
+  const isMoonboard = parsedParams.board_name === 'moonboard';
+
   const {
     data,
     fetchNextPage,
@@ -64,6 +67,10 @@ export const useQueueDataFetching = ({
   } = useInfiniteQuery({
     queryKey,
     queryFn: async ({ pageParam }): Promise<SearchClimbsResult> => {
+      // Return empty results for Moonboard (GraphQL doesn't support it yet)
+      if (isMoonboard) {
+        return { climbs: [], totalCount: 0, hasMore: false };
+      }
       // Build GraphQL input from search params
       const input = {
         boardName: parsedParams.board_name,
