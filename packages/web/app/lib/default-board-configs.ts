@@ -27,6 +27,16 @@ const DEFAULT_CONFIGS: Record<string, DefaultBoardConfig> = {
   'tension-10': { sizeId: 6, setIds: [12, 13] },
   // Tension Board 2 Spray (layout 11) - 12x12 with Wood + Plastic
   'tension-11': { sizeId: 6, setIds: [12, 13] },
+  // MoonBoard 2010 (layout 1) - Original School Holds
+  'moonboard-1': { sizeId: 1, setIds: [1] },
+  // MoonBoard 2016 (layout 2) - All available sets
+  'moonboard-2': { sizeId: 1, setIds: [2, 3, 4] },
+  // MoonBoard 2024 (layout 3) - All available sets
+  'moonboard-3': { sizeId: 1, setIds: [5, 6, 7, 8, 9, 10] },
+  // MoonBoard Masters 2017 (layout 4) - All available sets
+  'moonboard-4': { sizeId: 1, setIds: [11, 12, 13, 14, 15, 16] },
+  // MoonBoard Masters 2019 (layout 5) - All available sets
+  'moonboard-5': { sizeId: 1, setIds: [17, 18, 19, 20, 21, 22, 23] },
 };
 
 /**
