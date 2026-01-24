@@ -17,6 +17,7 @@ import { getMoonBoardDetails, MOONBOARD_HOLD_STATE_CODES } from '@/app/lib/moonb
 import { MAX_PAGE_SIZE } from '@/app/components/board-page/constants';
 import { dbz } from '@/app/lib/db/db';
 import { UNIFIED_TABLES } from '@/app/lib/db/queries/util/table-select';
+import { boardClimbStats, boardDifficultyGrades } from '@boardsesh/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import type { LitUpHoldsMap, HoldState } from '@/app/components/board-renderer/types';
 
@@ -72,8 +73,30 @@ async function getMoonboardClimbs(layoutId: number, angle: number, limit: number
       angle: climbs.angle,
       setterUsername: climbs.setterUsername,
       createdAt: climbs.createdAt,
+      // Join with climb stats for grade info
+      displayDifficulty: boardClimbStats.displayDifficulty,
+      benchmarkDifficulty: boardClimbStats.benchmarkDifficulty,
+      qualityAverage: boardClimbStats.qualityAverage,
+      ascensionistCount: boardClimbStats.ascensionistCount,
+      // Join with difficulty grades for grade name
+      difficultyName: boardDifficultyGrades.boulderName,
     })
     .from(climbs)
+    .leftJoin(
+      boardClimbStats,
+      and(
+        eq(boardClimbStats.boardType, 'moonboard'),
+        eq(boardClimbStats.climbUuid, climbs.uuid),
+        eq(boardClimbStats.angle, angle)
+      )
+    )
+    .leftJoin(
+      boardDifficultyGrades,
+      and(
+        eq(boardDifficultyGrades.boardType, 'moonboard'),
+        eq(boardDifficultyGrades.difficulty, boardClimbStats.displayDifficulty)
+      )
+    )
     .where(
       and(
         eq(climbs.boardType, 'moonboard'),
@@ -91,13 +114,14 @@ async function getMoonboardClimbs(layoutId: number, angle: number, limit: number
     description: row.description || '',
     frames: row.frames || '',
     angle: row.angle || angle,
-    ascensionist_count: 0,
-    difficulty: 'V?',
-    quality_average: '0',
+    ascensionist_count: row.ascensionistCount || 0,
+    // Format difficulty as "6A" style if we have a grade name, otherwise show as project
+    difficulty: row.difficultyName ? `${row.difficultyName.toUpperCase()}` : '',
+    quality_average: row.qualityAverage ? String(row.qualityAverage) : '0',
     stars: 0,
     difficulty_error: '0',
     litUpHoldsMap: parseMoonboardFrames(row.frames || ''),
-    benchmark_difficulty: null,
+    benchmark_difficulty: row.benchmarkDifficulty ? String(row.benchmarkDifficulty) : null,
   }));
 }
 
