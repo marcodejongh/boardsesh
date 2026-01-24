@@ -174,9 +174,15 @@ export function getGradesForBoard(boardName: BoardName) {
 }
 
 // Helper to convert Font grade string to difficulty ID
+// Handles various formats from OCR:
+// - "6a", "7b+" (lowercase Font grade)
+// - "6A", "7B+" (uppercase Font grade)
+// - "6A/V3", "7B+/V8" (combined Font + V-grade from MoonBoard OCR)
 export function fontGradeToDifficultyId(fontGrade: string): number | null {
+  // Extract just the Font grade portion if combined with V-grade (e.g., "6A/V3" -> "6A")
+  const fontPart = fontGrade.split('/')[0].trim();
   // Normalize to lowercase for comparison
-  const normalized = fontGrade.toLowerCase();
+  const normalized = fontPart.toLowerCase();
   const grade = BOULDER_GRADES.find(g => g.font_grade === normalized);
   return grade?.difficulty_id ?? null;
 }

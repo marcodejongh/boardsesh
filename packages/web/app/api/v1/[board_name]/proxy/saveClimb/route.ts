@@ -40,6 +40,7 @@ const saveMoonBoardClimbSchema = z.object({
       is_draft: z.boolean().optional().default(false),
       user_grade: z.string().optional(), // Font grade like "6A", "7B+"
       is_benchmark: z.boolean().optional().default(false),
+      setter: z.string().optional(), // Setter username from OCR
     })
     .strict(),
 });
@@ -66,6 +67,7 @@ export async function POST(request: Request, props: { params: Promise<{ board_na
         is_draft: validatedData.options.is_draft ?? false,
         frames_count: 1,
         frames_pace: 0,
+        setter_username: validatedData.options.setter,
       });
 
       // If a grade was provided, create climb stats

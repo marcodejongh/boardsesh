@@ -34,6 +34,7 @@ export async function saveClimb(
       layoutId: options.layout_id,
       userId: options.user_id, // NextAuth user ID
       setterId: null, // No Aurora user ID
+      setterUsername: options.setter_username || null,
       name: options.name,
       description: options.description || '',
       angle: options.angle,
@@ -52,6 +53,7 @@ export async function saveClimb(
         layoutId: options.layout_id,
         userId: options.user_id,
         setterId: null,
+        setterUsername: options.setter_username || null,
         name: options.name,
         description: options.description || '',
         angle: options.angle,

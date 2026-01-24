@@ -108,6 +108,7 @@ export interface SaveClimbOptions {
   frames_count?: number;
   frames_pace?: number;
   angle: number;
+  setter_username?: string;
 }
 export const HOST_BASES: Record<AuroraBoardName, string> = {
   // aurora: 'auroraboardapp',

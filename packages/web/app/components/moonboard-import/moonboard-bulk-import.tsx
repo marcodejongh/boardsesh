@@ -174,6 +174,9 @@ export default function MoonBoardBulkImport({
                 description: `Setter: ${climb.setter}\nGrade: ${climb.userGrade}${climb.isBenchmark ? '\n(Benchmark)' : ''}`,
                 holds: climb.holds,
                 angle: climb.angle,
+                setter: climb.setter,
+                user_grade: climb.userGrade,
+                is_benchmark: climb.isBenchmark,
               },
             }),
           });
