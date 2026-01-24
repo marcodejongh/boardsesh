@@ -140,6 +140,11 @@ const layoutNames: Record<string, string> = {
   'tension-9': 'Tension Classic',
   'tension-10': 'Tension 2 Mirror',
   'tension-11': 'Tension 2 Spray',
+  'moonboard-1': 'MoonBoard 2010',
+  'moonboard-2': 'MoonBoard 2016',
+  'moonboard-3': 'MoonBoard 2024',
+  'moonboard-4': 'MoonBoard Masters 2017',
+  'moonboard-5': 'MoonBoard Masters 2019',
 };
 
 // Colors for each layout
@@ -149,6 +154,11 @@ const layoutColors: Record<string, string> = {
   'tension-9': 'rgba(239, 68, 68, 0.7)',   // Red - Tension Classic
   'tension-10': 'rgba(249, 115, 22, 0.7)', // Orange - Tension 2 Mirror
   'tension-11': 'rgba(234, 179, 8, 0.7)',  // Yellow - Tension 2 Spray
+  'moonboard-1': 'rgba(255, 215, 0, 0.7)',  // Gold - MoonBoard 2010
+  'moonboard-2': 'rgba(255, 165, 0, 0.7)',  // Orange - MoonBoard 2016
+  'moonboard-3': 'rgba(255, 140, 0, 0.7)',  // Dark Orange - MoonBoard 2024
+  'moonboard-4': 'rgba(255, 193, 7, 0.7)',  // Amber - MoonBoard Masters 2017
+  'moonboard-5': 'rgba(255, 152, 0, 0.7)',  // Deep Orange - MoonBoard Masters 2019
 };
 
 // Get layout key from board type and layout ID
@@ -412,8 +422,8 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
     // Sort grades by difficulty order
     const sortedGrades = Object.values(difficultyMapping).filter((g) => allGrades.has(g));
 
-    // Define the order for layouts (Kilter first, then Tension)
-    const layoutOrder = ['kilter-1', 'kilter-8', 'tension-9', 'tension-10', 'tension-11'];
+    // Define the order for layouts (Kilter first, then Tension, then MoonBoard)
+    const layoutOrder = ['kilter-1', 'kilter-8', 'tension-9', 'tension-10', 'tension-11', 'moonboard-1', 'moonboard-2', 'moonboard-3', 'moonboard-4', 'moonboard-5'];
     const sortedLayouts = Array.from(allLayouts).sort((a, b) => {
       const indexA = layoutOrder.indexOf(a);
       const indexB = layoutOrder.indexOf(b);
