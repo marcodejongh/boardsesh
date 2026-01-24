@@ -507,7 +507,8 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
 
   // Fetch user's playlists when authenticated and board details change
   useEffect(() => {
-    if (!wsAuthToken || !boardDetails) return;
+    // Skip playlist fetch for Moonboard (GraphQL backend doesn't support it yet)
+    if (!wsAuthToken || !boardDetails || boardDetails.board_name === 'moonboard') return;
 
     const fetchPlaylists = async () => {
       try {
@@ -538,7 +539,8 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
 
   // Fetch playlist memberships for climbs in queue
   useEffect(() => {
-    if (!wsAuthToken || !boardDetails || state.queue.length === 0) return;
+    // Skip for Moonboard (GraphQL backend doesn't support it yet)
+    if (!wsAuthToken || !boardDetails || boardDetails.board_name === 'moonboard' || state.queue.length === 0) return;
 
     const fetchPlaylistMemberships = async () => {
       try {

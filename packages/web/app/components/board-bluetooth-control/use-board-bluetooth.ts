@@ -42,7 +42,7 @@ export const convertToMirroredFramesString = (frames: string, holdsData: HoldRen
 };
 
 interface UseBoardBluetoothOptions {
-  boardDetails: BoardDetails;
+  boardDetails?: BoardDetails;
   onConnectionChange?: (connected: boolean) => void;
 }
 
@@ -77,7 +77,7 @@ export function useBoardBluetooth({ boardDetails, onConnectionChange }: UseBoard
   // Function to send frames string to the board
   const sendFramesToBoard = useCallback(
     async (frames: string, mirrored: boolean = false) => {
-      if (!characteristicRef.current || !frames) return;
+      if (!characteristicRef.current || !frames || !boardDetails) return;
 
       let framesToSend = frames;
       const placementPositions = getLedPlacements(boardDetails.board_name, boardDetails.layout_id, boardDetails.size_id);
@@ -104,6 +104,11 @@ export function useBoardBluetooth({ boardDetails, onConnectionChange }: UseBoard
     async (initialFrames?: string, mirrored?: boolean) => {
       if (!navigator.bluetooth) {
         message.error('Current browser does not support Web Bluetooth.');
+        return false;
+      }
+
+      if (!boardDetails) {
+        console.error('Cannot connect to Bluetooth without board details');
         return false;
       }
 

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { BoardDetails, BoardName } from '@/app/lib/types';
 import BoardRenderer from '@/app/components/board-renderer/board-renderer';
 import { convertLitUpHoldsStringToMap } from '@/app/components/board-renderer/util';
-import { getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
+import { getBoardDetailsForBoard } from '@/app/lib/board-utils';
 import { getDefaultBoardConfig, getDefaultClimbViewPath } from '@/app/lib/default-board-configs';
 import styles from './ascents-feed.module.css';
 
@@ -37,7 +37,7 @@ const AscentThumbnail: React.FC<AscentThumbnailProps> = ({
     if (!config) return null;
 
     try {
-      return getBoardDetails({
+      return getBoardDetailsForBoard({
         board_name: boardName,
         layout_id: layoutId,
         size_id: config.sizeId,

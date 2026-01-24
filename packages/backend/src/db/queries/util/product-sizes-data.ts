@@ -56,6 +56,10 @@ export const PRODUCT_SIZES: Record<BoardName, Record<number, ProductSizeData>> =
     8: { id: 8, name: '12 high x 8 wide', description: '', edgeLeft: -44, edgeRight: 44, edgeBottom: 0, edgeTop: 144, productId: 5 },
     9: { id: 9, name: '10 high x 8 wide', description: '', edgeLeft: -44, edgeRight: 44, edgeBottom: 0, edgeTop: 120, productId: 5 },
   },
+  // MoonBoard has a single fixed size: 11 columns (A-K) x 18 rows
+  moonboard: {
+    1: { id: 1, name: 'Standard', description: '11x18 Grid', edgeLeft: 0, edgeRight: 11, edgeBottom: 0, edgeTop: 18, productId: 1 },
+  },
 };
 
 /**

@@ -10,20 +10,60 @@
   background-color: var(--semantic-background, #F9FAFB);
 }
 
+/* Header for create page with back and save buttons */
+.createHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  background-color: var(--semantic-surface, #FFFFFF);
+  border-bottom: 1px solid var(--border-subtle, #E5E7EB);
+  flex-shrink: 0;
+}
+
+.headerNameInput {
+  flex: 1;
+  font-size: 16px;
+  font-weight: 500;
+  text-align: center;
+  min-width: 0;
+}
+
+.headerNameInput input {
+  text-align: center;
+}
+
+/* Alert banner styling */
+.alertBanner {
+  margin: 8px 12px;
+  flex-shrink: 0;
+}
+
+/* Validation bar at bottom */
+.validationBar {
+  padding: 8px 12px;
+  text-align: center;
+  background-color: var(--semantic-surface, #FFFFFF);
+  border-top: 1px solid var(--border-subtle, #E5E7EB);
+  flex-shrink: 0;
+}
+
 /* Auth alert styling */
 .authAlert {
   margin: 8px 12px;
   flex-shrink: 0;
 }
 
-/* Content wrapper - matches play view */
+/* Content wrapper - scrollable for mobile */
 .contentWrapper {
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: auto;
   position: relative;
   min-height: 0;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Title container - same position as play view */
@@ -115,13 +155,11 @@
 .boardContainer {
   flex: 1;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
-  padding: 0;
-  min-height: 0;
-  max-height: 100%;
+  padding: 12px;
+  min-height: 300px;
   width: 100%;
-  overflow: hidden;
   position: relative;
 }
 
@@ -165,6 +203,11 @@
 
 .settingsLabel {
   font-size: 12px;
+}
+
+/* MoonBoard-specific grade field */
+.settingsGradeField {
+  width: 100%;
 }
 
 /* Hold counts bar at bottom */

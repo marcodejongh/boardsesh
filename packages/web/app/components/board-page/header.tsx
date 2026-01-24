@@ -113,18 +113,21 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
     ? `/${boardDetails.board_name}/${generateLayoutSlug(boardDetails.layout_name)}/${generateSizeSlug(boardDetails.size_name)}/${generateSetSlug(boardDetails.set_names)}/${angle}/playlists`
     : null;
 
+  // Hide playlists and classify holds for moonboard (not yet supported)
+  const isMoonboard = boardDetails.board_name === 'moonboard';
+
   const userMenuItems: MenuProps['items'] = [
-    ...(playlistsUrl ? [{
+    ...(playlistsUrl && !isMoonboard ? [{
       key: 'playlists',
       icon: <TagOutlined />,
       label: <Link href={playlistsUrl}>My Playlists</Link>,
     }] : []),
-    {
+    ...(!isMoonboard ? [{
       key: 'classify-holds',
       icon: <AimOutlined />,
       label: 'Classify Holds',
       onClick: () => setShowHoldClassification(true),
-    },
+    }] : []),
     {
       key: 'profile',
       icon: <LineChartOutlined />,
@@ -157,18 +160,18 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
       icon: <PlusOutlined />,
       label: <Link href={createClimbUrl}>Create Climb</Link>,
     }] : []),
-    ...(session?.user && playlistsUrl ? [{
+    ...(session?.user && playlistsUrl && !isMoonboard ? [{
       key: 'playlists',
       icon: <TagOutlined />,
       label: <Link href={playlistsUrl}>My Playlists</Link>,
     }] : []),
     ...(session?.user ? [
-      {
+      ...(!isMoonboard ? [{
         key: 'classify-holds',
         icon: <AimOutlined />,
         label: 'Classify Holds',
         onClick: () => setShowHoldClassification(true),
-      },
+      }] : []),
       {
         key: 'profile',
         icon: <LineChartOutlined />,

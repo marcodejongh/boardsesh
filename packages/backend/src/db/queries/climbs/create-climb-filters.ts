@@ -62,6 +62,7 @@ export const createClimbFilters = (
 
   // Base conditions for filtering climbs that don't reference the product sizes table
   const baseConditions: SQL[] = [
+    eq(tables.climbs.boardType, params.board_name),
     eq(tables.climbs.layoutId, params.layout_id),
     eq(tables.climbs.isListed, true),
     eq(tables.climbs.isDraft, false),
@@ -244,6 +245,7 @@ export const createClimbFilters = (
     // For use in the subquery with left join
     getClimbStatsJoinConditions: () => [
       eq(tables.climbStats.climbUuid, tables.climbs.uuid),
+      eq(tables.climbStats.boardType, params.board_name),
       eq(tables.climbStats.angle, params.angle),
     ],
 

@@ -1,4 +1,4 @@
-import { eq, desc, sql, and, getTableName } from 'drizzle-orm';
+import { eq, desc, sql, and } from 'drizzle-orm';
 import { db } from '../../client';
 import { getBoardTables, type BoardName } from '../util/table-select';
 import { createClimbFilters, type ClimbSearchParams, type ParsedBoardRouteParameters } from './create-climb-filters';
@@ -36,6 +36,11 @@ const HOLD_STATE_MAP: Record<
     6: { name: 'HAND', displayColor: '#4444FF', color: '#0000FF' },
     7: { name: 'FINISH', displayColor: '#FF0000', color: '#FF0000' },
     8: { name: 'FOOT', displayColor: '#FF00FF', color: '#FF00FF' },
+  },
+  moonboard: {
+    42: { name: 'STARTING', color: '#00FF00', displayColor: '#44FF44' },
+    43: { name: 'HAND', color: '#0000FF', displayColor: '#4444FF' },
+    44: { name: 'FINISH', color: '#FF0000', displayColor: '#FF3333' },
   },
 };
 
@@ -92,7 +97,6 @@ export const searchClimbs = async (
   const filters = createClimbFilters(tables, params, searchParams, sizeEdges, userId);
 
   // Define sort columns with explicit SQL expressions where needed
-  const climbStatsTable = getTableName(boardClimbStats);
   const allowedSortColumns: Record<string, ReturnType<typeof sql>> = {
     ascents: sql`${tables.climbStats.ascensionistCount}`,
     difficulty: sql`ROUND(${tables.climbStats.displayDifficulty}::numeric, 0)`,
@@ -101,7 +105,7 @@ export const searchClimbs = async (
     // Popular: sum of ascents across ALL angles for this climb (using unified table)
     popular: sql`(
       SELECT COALESCE(SUM(cs.ascensionist_count), 0)
-      FROM ${sql.identifier(climbStatsTable)} cs
+      FROM ${boardClimbStats} cs
       WHERE cs.board_type = ${params.board_name} AND cs.climb_uuid = ${tables.climbs.uuid}
     )`,
   };
@@ -148,7 +152,10 @@ export const searchClimbs = async (
       .leftJoin(tables.climbStats, and(...filters.getClimbStatsJoinConditions()))
       .leftJoin(
         tables.difficultyGrades,
-        eq(tables.difficultyGrades.difficulty, sql`ROUND(${tables.climbStats.displayDifficulty}::numeric)`),
+        and(
+          eq(tables.difficultyGrades.difficulty, sql`ROUND(${tables.climbStats.displayDifficulty}::numeric)`),
+          eq(tables.difficultyGrades.boardType, params.board_name),
+        ),
       )
       .where(and(...whereConditions))
       .orderBy(

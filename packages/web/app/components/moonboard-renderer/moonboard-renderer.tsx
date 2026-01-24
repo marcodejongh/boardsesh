@@ -46,12 +46,15 @@ const MoonBoardRenderer: React.FC<MoonBoardRendererProps> = ({
     const hold = litUpHoldsMap[holdId];
     if (!hold) return 'transparent';
 
-    switch (hold.type) {
-      case 'start':
+    // Use displayColor from the hold if available, otherwise map state to Moonboard colors
+    if (hold.displayColor) return hold.displayColor;
+
+    switch (hold.state) {
+      case 'STARTING':
         return MOONBOARD_HOLD_STATES.start.displayColor;
-      case 'hand':
+      case 'HAND':
         return MOONBOARD_HOLD_STATES.hand.displayColor;
-      case 'finish':
+      case 'FINISH':
         return MOONBOARD_HOLD_STATES.finish.displayColor;
       default:
         return 'transparent';

@@ -3,6 +3,7 @@ import { SaveClimbOptions } from './types';
 import { generateUuid } from './util';
 import { dbz } from '@/app/lib/db/db';
 import { UNIFIED_TABLES } from '@/app/lib/db/queries/util/table-select';
+import { boardClimbStats } from '@boardsesh/db/schema';
 import dayjs from 'dayjs';
 
 /**
@@ -33,6 +34,7 @@ export async function saveClimb(
       layoutId: options.layout_id,
       userId: options.user_id, // NextAuth user ID
       setterId: null, // No Aurora user ID
+      setterUsername: options.setter_username || null,
       name: options.name,
       description: options.description || '',
       angle: options.angle,
@@ -51,6 +53,7 @@ export async function saveClimb(
         layoutId: options.layout_id,
         userId: options.user_id,
         setterId: null,
+        setterUsername: options.setter_username || null,
         name: options.name,
         description: options.description || '',
         angle: options.angle,
@@ -68,4 +71,43 @@ export async function saveClimb(
     uuid,
     synced: false,
   };
+}
+
+/**
+ * Saves climb stats to the local database.
+ * Used for storing grade/difficulty information for locally created climbs.
+ */
+export interface SaveClimbStatsOptions {
+  climbUuid: string;
+  angle: number;
+  displayDifficulty: number;
+  benchmarkDifficulty?: number | null;
+}
+
+export async function saveClimbStats(
+  board: BoardName,
+  options: SaveClimbStatsOptions
+): Promise<void> {
+  await dbz
+    .insert(boardClimbStats)
+    .values({
+      boardType: board,
+      climbUuid: options.climbUuid,
+      angle: options.angle,
+      displayDifficulty: options.displayDifficulty,
+      benchmarkDifficulty: options.benchmarkDifficulty ?? null,
+      ascensionistCount: 0,
+      difficultyAverage: options.displayDifficulty,
+      qualityAverage: null,
+      faUsername: null,
+      faAt: null,
+    })
+    .onConflictDoUpdate({
+      target: [boardClimbStats.boardType, boardClimbStats.climbUuid, boardClimbStats.angle],
+      set: {
+        displayDifficulty: options.displayDifficulty,
+        benchmarkDifficulty: options.benchmarkDifficulty ?? null,
+        difficultyAverage: options.displayDifficulty,
+      },
+    });
 }

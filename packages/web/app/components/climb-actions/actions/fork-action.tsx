@@ -20,7 +20,9 @@ export function ForkAction({
   className,
   onComplete,
 }: ClimbActionProps): ClimbActionResult {
-  const canFork = !!(boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names);
+  // Fork is not supported for moonboard yet
+  const isMoonboard = boardDetails.board_name === 'moonboard';
+  const canFork = !isMoonboard && !!(boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names);
 
   const url = canFork
     ? constructCreateClimbUrl(

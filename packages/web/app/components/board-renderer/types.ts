@@ -61,10 +61,12 @@ export const HOLD_STATE_MAP: Record<
     7: { name: 'FINISH', displayColor: '#FF0000', color: '#FF0000' },
     8: { name: 'FOOT', displayColor: '#FF00FF', color: '#FF00FF' },
   },
-  // MoonBoard uses simple codes: 1=start, 2=hand, 3=finish (no foot holds)
+  // MoonBoard hold states (no foot holds)
+  // Values inlined from moonboard-config.ts MOONBOARD_HOLD_STATE_CODES and MOONBOARD_HOLD_STATES
+  // to avoid computed property issues with bundlers
   moonboard: {
-    1: { name: 'STARTING', displayColor: '#FF3333', color: '#FF0000' }, // Red
-    2: { name: 'HAND', displayColor: '#4444FF', color: '#0000FF' }, // Blue
-    3: { name: 'FINISH', displayColor: '#44FF44', color: '#00FF00' }, // Green
+    42: { name: 'STARTING', color: '#00FF00', displayColor: '#44FF44' }, // start
+    43: { name: 'HAND', color: '#0000FF', displayColor: '#4444FF' }, // hand
+    44: { name: 'FINISH', color: '#FF0000', displayColor: '#FF3333' }, // finish
   },
 };

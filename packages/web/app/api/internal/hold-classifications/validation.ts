@@ -1,6 +1,9 @@
-// Valid board types
-export const VALID_BOARD_TYPES = ['kilter', 'tension'] as const;
-export type ValidBoardType = (typeof VALID_BOARD_TYPES)[number];
+import { SUPPORTED_BOARDS } from '@/app/lib/board-data';
+import type { BoardName } from '@/app/lib/types';
+
+// Valid board types - use the centralized SUPPORTED_BOARDS constant
+export const VALID_BOARD_TYPES = SUPPORTED_BOARDS;
+export type ValidBoardType = BoardName;
 
 // Valid hold types matching the database enum
 export const VALID_HOLD_TYPES = ['jug', 'sloper', 'pinch', 'crimp', 'pocket'] as const;
@@ -20,7 +23,7 @@ export function parseIntSafe(value: string | null): number | null {
  * Validates board type against known boards
  */
 export function isValidBoardType(value: unknown): value is ValidBoardType {
-  return typeof value === 'string' && VALID_BOARD_TYPES.includes(value as ValidBoardType);
+  return typeof value === 'string' && (VALID_BOARD_TYPES as readonly string[]).includes(value);
 }
 
 /**

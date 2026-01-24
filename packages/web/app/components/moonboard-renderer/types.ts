@@ -1,6 +1,7 @@
 import { MoonBoardCoordinate } from '@/app/lib/moonboard-config';
+import { LitUpHoldsMap } from '../board-renderer/types';
 
-// MoonBoard hold types (simpler than Aurora)
+// MoonBoard hold types (simpler than Aurora) - used for internal conversions
 export type MoonBoardHoldType = 'start' | 'hand' | 'finish';
 
 // A hold on the MoonBoard
@@ -9,15 +10,6 @@ export interface MoonBoardHold {
   type: MoonBoardHoldType;
   holdId: number; // Computed from coordinate (1-198)
 }
-
-// Lit up hold information for rendering
-export interface MoonBoardLitUpHold {
-  type: MoonBoardHoldType;
-  color: string;
-}
-
-// Map of hold IDs to their lit up state
-export type MoonBoardLitUpHoldsMap = Record<number, MoonBoardLitUpHold>;
 
 // MoonBoard climb data structure
 export interface MoonBoardClimb {
@@ -34,7 +26,7 @@ export interface MoonBoardClimb {
 export interface MoonBoardRendererProps {
   layoutFolder: string; // e.g., 'moonboard2024'
   holdSetImages: string[]; // e.g., ['holdsetd.png', 'holdsete.png']
-  litUpHoldsMap?: MoonBoardLitUpHoldsMap;
+  litUpHoldsMap?: LitUpHoldsMap;
   mirrored?: boolean;
   thumbnail?: boolean;
   onHoldClick?: (holdId: number) => void;

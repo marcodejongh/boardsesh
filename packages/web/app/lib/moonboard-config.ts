@@ -1,9 +1,30 @@
 // MoonBoard Configuration
 // This file contains all MoonBoard-specific configuration that differs from Aurora boards
 
-// Feature flag - auto-enabled in development, or via MOONBOARD_ENABLED env var
-export const MOONBOARD_ENABLED =
-  process.env.NODE_ENV === 'development' || process.env.MOONBOARD_ENABLED === 'true';
+// Feature flag - enabled by default
+export const MOONBOARD_ENABLED = true;
+
+// MoonBoard grades - uses uppercase Font notation for display
+// These grades match the board_difficulty_grades table and BOULDER_GRADES in board-data.ts
+// MoonBoard only supports V3+ (starting from 6a)
+export const MOONBOARD_GRADES = [
+  { value: '6A', label: '6A (V3)', difficultyId: 16 },
+  { value: '6A+', label: '6A+ (V3)', difficultyId: 17 },
+  { value: '6B', label: '6B (V4)', difficultyId: 18 },
+  { value: '6B+', label: '6B+ (V4)', difficultyId: 19 },
+  { value: '6C', label: '6C (V5)', difficultyId: 20 },
+  { value: '6C+', label: '6C+ (V5)', difficultyId: 21 },
+  { value: '7A', label: '7A (V6)', difficultyId: 22 },
+  { value: '7A+', label: '7A+ (V7)', difficultyId: 23 },
+  { value: '7B', label: '7B (V8)', difficultyId: 24 },
+  { value: '7B+', label: '7B+ (V8)', difficultyId: 25 },
+  { value: '7C', label: '7C (V9)', difficultyId: 26 },
+  { value: '7C+', label: '7C+ (V10)', difficultyId: 27 },
+  { value: '8A', label: '8A (V11)', difficultyId: 28 },
+  { value: '8A+', label: '8A+ (V12)', difficultyId: 29 },
+  { value: '8B', label: '8B (V13)', difficultyId: 30 },
+  { value: '8B+', label: '8B+ (V14)', difficultyId: 31 },
+] as const;
 
 // MoonBoard layout types (equivalent to Aurora "layouts")
 export const MOONBOARD_LAYOUTS = {
@@ -76,10 +97,24 @@ export const MOONBOARD_SIZE = {
 };
 
 // MoonBoard hold states (different color scheme from Aurora)
+// Green for start holds, Blue for hand/intermediate holds, Red for finish holds
 export const MOONBOARD_HOLD_STATES = {
-  start: { name: 'STARTING' as const, color: '#FF0000', displayColor: '#FF3333' }, // Red
-  hand: { name: 'HAND' as const, color: '#0000FF', displayColor: '#4444FF' }, // Blue
-  finish: { name: 'FINISH' as const, color: '#00FF00', displayColor: '#44FF44' }, // Green
+  start: { name: 'STARTING' as const, color: '#00FF00', displayColor: '#44FF44' },
+  hand: { name: 'HAND' as const, color: '#0000FF', displayColor: '#4444FF' },
+  finish: { name: 'FINISH' as const, color: '#FF0000', displayColor: '#FF3333' },
+} as const;
+
+// Hold state codes for frames encoding (compatible with Aurora format).
+// These codes are used in the frames string format: p{holdId}r{roleCode}
+// e.g., "p1r42p45r43p198r44" means hold 1 is start, hold 45 is hand, hold 198 is finish.
+//
+// The codes 42, 43, 44 are chosen to be compatible with Aurora boards (Kilter/Tension),
+// which use similar role code patterns in their placement strings. This allows shared
+// parsing logic between MoonBoard and Aurora boards when processing climb data.
+export const MOONBOARD_HOLD_STATE_CODES = {
+  start: 42,
+  hand: 43,
+  finish: 44,
 } as const;
 
 // Grid coordinate types
@@ -211,5 +246,37 @@ export function getMoonBoardDetails({
     // Empty - MoonBoard uses its own renderer
     images_to_holds: {},
     holdsData: [],
+    // Moonboard-specific fields for grid-based rendering
+    layoutFolder: layoutData.folder,
+    holdSetImages: selectedSets.map((s) => s.imageFile),
   };
+}
+
+/**
+ * Encode MoonBoard holds to frames format for database storage.
+ * Format: p{holdId}r{roleCode} (e.g., "p1r42p45r43p198r44")
+ */
+export function encodeMoonBoardHoldsToFrames(holds: {
+  start: string[];
+  hand: string[];
+  finish: string[];
+}): string {
+  const parts: string[] = [];
+
+  holds.start.forEach((coord) => {
+    const holdId = coordinateToHoldId(coord as MoonBoardCoordinate);
+    parts.push(`p${holdId}r${MOONBOARD_HOLD_STATE_CODES.start}`);
+  });
+
+  holds.hand.forEach((coord) => {
+    const holdId = coordinateToHoldId(coord as MoonBoardCoordinate);
+    parts.push(`p${holdId}r${MOONBOARD_HOLD_STATE_CODES.hand}`);
+  });
+
+  holds.finish.forEach((coord) => {
+    const holdId = coordinateToHoldId(coord as MoonBoardCoordinate);
+    parts.push(`p${holdId}r${MOONBOARD_HOLD_STATE_CODES.finish}`);
+  });
+
+  return parts.join('');
 }

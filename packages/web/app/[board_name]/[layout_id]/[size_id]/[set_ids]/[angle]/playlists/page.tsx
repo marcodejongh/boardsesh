@@ -1,11 +1,12 @@
 import React from 'react';
 import { notFound } from 'next/navigation';
-import { BoardRouteParameters } from '@/app/lib/types';
-import { getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
+import { BoardRouteParameters, BoardDetails, ParsedBoardRouteParameters } from '@/app/lib/types';
+import { getBoardDetailsForBoard } from '@/app/lib/board-utils';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import { Metadata } from 'next';
 import PlaylistsListContent from './playlists-list-content';
 import styles from './playlists.module.css';
+
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
@@ -19,7 +20,7 @@ export default async function PlaylistsListPage(props: { params: Promise<BoardRo
 
   try {
     const parsedParams = await parseBoardRouteParamsWithSlugs(params);
-    const boardDetails = await getBoardDetails(parsedParams);
+    const boardDetails = getBoardDetailsForBoard(parsedParams);
 
     return (
       <div className={styles.pageContainer}>

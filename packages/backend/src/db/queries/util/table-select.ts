@@ -16,8 +16,10 @@ import {
   boardWalls,
   boardTags,
 } from '@boardsesh/db';
+import type { BoardName } from '@boardsesh/shared-schema';
+import { SUPPORTED_BOARDS } from '@boardsesh/shared-schema';
 
-export type BoardName = 'kilter' | 'tension';
+export type { BoardName };
 
 // Unified tables - all queries should filter by board_type
 export const UNIFIED_TABLES = {
@@ -58,21 +60,23 @@ export function getUnifiedTable<K extends keyof UnifiedTableSet>(
  * @returns True if the board name is valid
  */
 export function isValidBoardName(boardName: string): boardName is BoardName {
-  return boardName === 'kilter' || boardName === 'tension';
+  return SUPPORTED_BOARDS.includes(boardName as BoardName);
 }
 
 /**
  * Extended board name type that includes moonboard for unified tables
+ * @deprecated BoardName now includes moonboard, use BoardName instead
  */
-export type UnifiedBoardName = BoardName | 'moonboard';
+export type UnifiedBoardName = BoardName;
 
 /**
  * Check if a board name is valid for unified tables (includes moonboard)
  * @param boardName The name to check
  * @returns True if the board name is valid for unified tables
+ * @deprecated Use isValidBoardName instead - it now includes moonboard
  */
 export function isValidUnifiedBoardName(boardName: string): boardName is UnifiedBoardName {
-  return boardName === 'kilter' || boardName === 'tension' || boardName === 'moonboard';
+  return isValidBoardName(boardName);
 }
 
 // =============================================================================

@@ -5,7 +5,7 @@ import { Card, Button, Tag, Space, Popconfirm, Typography } from 'antd';
 import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import MoonBoardRenderer from '../moonboard-renderer/moonboard-renderer';
 import type { MoonBoardClimb } from '@boardsesh/moonboard-ocr/browser';
-import type { MoonBoardLitUpHoldsMap } from '../moonboard-renderer/types';
+import type { LitUpHoldsMap } from '../board-renderer/types';
 import styles from './moonboard-import-card.module.css';
 
 const { Text, Paragraph } = Typography;
@@ -14,7 +14,7 @@ interface MoonBoardImportCardProps {
   climb: MoonBoardClimb;
   layoutFolder: string;
   holdSetImages: string[];
-  litUpHoldsMap: MoonBoardLitUpHoldsMap;
+  litUpHoldsMap: LitUpHoldsMap;
   onEdit: () => void;
   onRemove: () => void;
 }

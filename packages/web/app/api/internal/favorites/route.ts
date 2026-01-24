@@ -7,13 +7,13 @@ import { z } from "zod";
 import { authOptions } from "@/app/lib/auth/auth-options";
 
 const favoriteSchema = z.object({
-  boardName: z.enum(["kilter", "tension"]),
+  boardName: z.enum(["kilter", "tension", "moonboard"]),
   climbUuid: z.string().min(1),
   angle: z.number().int(),
 });
 
 const checkFavoriteSchema = z.object({
-  boardName: z.enum(["kilter", "tension"]),
+  boardName: z.enum(["kilter", "tension", "moonboard"]),
   climbUuids: z.array(z.string().min(1)),
   angle: z.number().int(),
 });

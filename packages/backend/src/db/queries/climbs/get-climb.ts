@@ -31,6 +31,11 @@ const HOLD_STATE_MAP: Record<
     7: { name: 'FINISH', displayColor: '#FF0000', color: '#FF0000' },
     8: { name: 'FOOT', displayColor: '#FF00FF', color: '#FF00FF' },
   },
+  moonboard: {
+    42: { name: 'STARTING', color: '#00FF00', displayColor: '#44FF44' },
+    43: { name: 'HAND', color: '#0000FF', displayColor: '#4444FF' },
+    44: { name: 'FINISH', color: '#FF0000', displayColor: '#FF3333' },
+  },
 };
 
 // Warned hold states to avoid log spam
@@ -104,14 +109,18 @@ export const getClimbByUuid = async (params: GetClimbParams): Promise<Climb | nu
       .from(tables.climbs)
       .leftJoin(
         tables.climbStats,
-        sql`${tables.climbStats.climbUuid} = ${tables.climbs.uuid} AND ${tables.climbStats.angle} = ${params.angle}`
+        sql`${tables.climbStats.climbUuid} = ${tables.climbs.uuid}
+        AND ${tables.climbStats.boardType} = ${params.board_name}
+        AND ${tables.climbStats.angle} = ${params.angle}`
       )
       .leftJoin(
         tables.difficultyGrades,
-        sql`${tables.difficultyGrades.difficulty} = ROUND(${tables.climbStats.displayDifficulty}::numeric)`
+        sql`${tables.difficultyGrades.difficulty} = ROUND(${tables.climbStats.displayDifficulty}::numeric)
+        AND ${tables.difficultyGrades.boardType} = ${params.board_name}`
       )
       .where(
-        sql`${tables.climbs.layoutId} = ${params.layout_id}
+        sql`${tables.climbs.boardType} = ${params.board_name}
+        AND ${tables.climbs.layoutId} = ${params.layout_id}
         AND ${tables.climbs.uuid} = ${params.climb_uuid}
         AND ${tables.climbs.framesCount} = 1`
       )

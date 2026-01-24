@@ -36,6 +36,11 @@ const layoutNames: Record<string, string> = {
   'tension-9': 'Tension Classic',
   'tension-10': 'Tension 2 Mirror',
   'tension-11': 'Tension 2 Spray',
+  'moonboard-1': 'MoonBoard 2010',
+  'moonboard-2': 'MoonBoard 2016',
+  'moonboard-3': 'MoonBoard 2024',
+  'moonboard-4': 'MoonBoard Masters 2017',
+  'moonboard-5': 'MoonBoard Masters 2019',
 };
 
 const getLayoutDisplayName = (boardType: string, layoutId: number | null): string => {

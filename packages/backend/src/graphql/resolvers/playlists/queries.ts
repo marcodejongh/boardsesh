@@ -1,5 +1,6 @@
 import { eq, and, inArray, desc, sql, or, isNull, asc } from 'drizzle-orm';
-import type { ConnectionContext, Climb } from '@boardsesh/shared-schema';
+import type { ConnectionContext, Climb, BoardName } from '@boardsesh/shared-schema';
+import { SUPPORTED_BOARDS } from '@boardsesh/shared-schema';
 import { db } from '../../../db/client';
 import * as dbSchema from '@boardsesh/db/schema';
 import { requireAuthenticated, validateInput } from '../shared/helpers';
@@ -17,7 +18,7 @@ import type { LitUpHoldsMap, HoldState } from '@boardsesh/shared-schema';
 // Hold state mapping for converting frames string to lit up holds map
 type HoldColor = string;
 type HoldCode = number;
-type BoardName = 'kilter' | 'tension';
+// BoardName is imported from @boardsesh/shared-schema
 
 const HOLD_STATE_MAP: Record<
   BoardName,
@@ -42,6 +43,12 @@ const HOLD_STATE_MAP: Record<
     6: { name: 'HAND', displayColor: '#4444FF', color: '#0000FF' },
     7: { name: 'FINISH', displayColor: '#FF0000', color: '#FF0000' },
     8: { name: 'FOOT', displayColor: '#FF00FF', color: '#FF00FF' },
+  },
+  // MoonBoard uses a different hold format - holds are identified by grid position
+  moonboard: {
+    1: { name: 'STARTING', color: '#00FF00' },
+    2: { name: 'HAND', color: '#0000FF' },
+    3: { name: 'FINISH', color: '#FF0000' },
   },
 };
 
@@ -290,7 +297,7 @@ export const playlistQueries = {
 
     // Validate board name
     if (!isValidBoardName(boardName)) {
-      throw new Error(`Invalid board name: ${boardName}. Must be 'kilter' or 'tension'`);
+      throw new Error(`Invalid board name: ${boardName}. Must be one of: ${SUPPORTED_BOARDS.join(', ')}`);
     }
 
     // Get size edges for filtering
@@ -361,19 +368,26 @@ export const playlistQueries = {
       .from(dbSchema.playlistClimbs)
       .innerJoin(
         tables.climbs,
-        eq(tables.climbs.uuid, dbSchema.playlistClimbs.climbUuid)
+        and(
+          eq(tables.climbs.uuid, dbSchema.playlistClimbs.climbUuid),
+          eq(tables.climbs.boardType, boardName)
+        )
       )
       .leftJoin(
         tables.climbStats,
         and(
           eq(tables.climbStats.climbUuid, dbSchema.playlistClimbs.climbUuid),
+          eq(tables.climbStats.boardType, boardName),
           // Use the route angle (from input) to fetch stats for the current board angle
           eq(tables.climbStats.angle, input.angle)
         )
       )
       .leftJoin(
         tables.difficultyGrades,
-        eq(tables.difficultyGrades.difficulty, sql`ROUND(${tables.climbStats.displayDifficulty}::numeric)`)
+        and(
+          eq(tables.difficultyGrades.difficulty, sql`ROUND(${tables.climbStats.displayDifficulty}::numeric)`),
+          eq(tables.difficultyGrades.boardType, boardName)
+        )
       )
       .where(eq(dbSchema.playlistClimbs.playlistId, playlistId))
       .orderBy(asc(dbSchema.playlistClimbs.position), asc(dbSchema.playlistClimbs.addedAt))

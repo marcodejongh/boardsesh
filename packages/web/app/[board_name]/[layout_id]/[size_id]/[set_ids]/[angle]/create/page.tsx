@@ -4,7 +4,6 @@ import { getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
 import { parseBoardRouteParams } from '@/app/lib/url-utils';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import CreateClimbForm from '@/app/components/create-climb/create-climb-form';
-import MoonBoardCreateClimbForm from '@/app/components/create-climb/moonboard-create-climb-form';
 import {
   MOONBOARD_LAYOUTS,
   MOONBOARD_SETS,
@@ -62,11 +61,12 @@ export default async function CreateClimbPage(props: CreateClimbPageProps) {
     const holdSetImages = getMoonBoardHoldSetImages(layoutInfo.layoutKey, parsedParams.set_ids);
 
     return (
-      <MoonBoardCreateClimbForm
-        layoutFolder={layoutInfo.folder}
-        layoutName={layoutInfo.name}
-        holdSetImages={holdSetImages}
+      <CreateClimbForm
+        boardType="moonboard"
         angle={parsedParams.angle}
+        layoutFolder={layoutInfo.folder}
+        layoutId={parsedParams.layout_id}
+        holdSetImages={holdSetImages}
       />
     );
   }
@@ -76,8 +76,9 @@ export default async function CreateClimbPage(props: CreateClimbPageProps) {
 
   return (
     <CreateClimbForm
-      boardDetails={boardDetails}
+      boardType="aurora"
       angle={parsedParams.angle}
+      boardDetails={boardDetails}
       forkFrames={searchParams.forkFrames}
       forkName={searchParams.forkName}
     />

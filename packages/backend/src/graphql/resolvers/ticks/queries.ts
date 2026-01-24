@@ -1,5 +1,6 @@
 import { eq, and, desc, inArray, sql, count } from 'drizzle-orm';
-import type { ConnectionContext } from '@boardsesh/shared-schema';
+import type { ConnectionContext, BoardName } from '@boardsesh/shared-schema';
+import { SUPPORTED_BOARDS } from '@boardsesh/shared-schema';
 import { db } from '../../../db/client';
 import * as dbSchema from '@boardsesh/db/schema';
 import { requireAuthenticated, validateInput } from '../shared/helpers';
@@ -315,13 +316,13 @@ export const tickQueries = {
         boardType: tick.boardType,
         layoutId,
         angle: tick.angle,
-        isMirror: tick.isMirror,
+        isMirror: tick.isMirror ?? false,
         status: tick.status,
         attemptCount: tick.attemptCount,
         quality: tick.quality,
         difficulty: tick.difficulty,
         difficultyName,
-        isBenchmark: tick.isBenchmark,
+        isBenchmark: tick.isBenchmark ?? false,
         comment: tick.comment || '',
         climbedAt: tick.climbedAt,
         frames,
@@ -336,10 +337,10 @@ export const tickQueries = {
           boardType: tick.boardType,
           layoutId,
           angle: tick.angle,
-          isMirror: tick.isMirror,
+          isMirror: tick.isMirror ?? false,
           frames,
           difficultyName,
-          isBenchmark: tick.isBenchmark,
+          isBenchmark: tick.isBenchmark ?? false,
           date,
           items: [],
           flashCount: 0,
@@ -423,7 +424,7 @@ export const tickQueries = {
       return { totalDistinctClimbs: 0, layoutStats: [] };
     }
 
-    const boardTypes = ['kilter', 'tension'] as const;
+    const boardTypes = SUPPORTED_BOARDS;
     const layoutStatsMap: Record<string, {
       boardType: string;
       layoutId: number | null;
@@ -432,7 +433,7 @@ export const tickQueries = {
     const allClimbUuids = new Set<string>();
 
     // Helper function to fetch stats for a single board type
-    const fetchBoardStats = async (boardType: 'kilter' | 'tension') => {
+    const fetchBoardStats = async (boardType: BoardName) => {
       // Run both queries in parallel for this board type
       const [gradeResults, distinctClimbs] = await Promise.all([
         // Get distinct climb counts grouped by layoutId and difficulty using SQL aggregation

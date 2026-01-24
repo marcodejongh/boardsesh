@@ -4,6 +4,7 @@ import { BoardDetails } from '@/app/lib/types';
 import BoardLitupHolds from './board-litup-holds';
 import { LitUpHoldsMap } from './types';
 import styles from './board-renderer.module.css';
+import MoonBoardRenderer from '../moonboard-renderer/moonboard-renderer';
 
 export type BoardProps = {
   boardDetails: BoardDetails;
@@ -19,6 +20,20 @@ export type BoardProps = {
 
 const BoardRenderer = React.memo(
   ({ boardDetails, thumbnail, maxHeight, fillHeight, litUpHoldsMap, mirrored, onHoldClick }: BoardProps) => {
+    // Delegate to MoonBoardRenderer for Moonboard (uses grid-based rendering)
+    if (boardDetails.board_name === 'moonboard' && boardDetails.layoutFolder) {
+      return (
+        <MoonBoardRenderer
+          layoutFolder={boardDetails.layoutFolder}
+          holdSetImages={boardDetails.holdSetImages || []}
+          litUpHoldsMap={litUpHoldsMap}
+          mirrored={mirrored}
+          thumbnail={thumbnail}
+          onHoldClick={onHoldClick}
+        />
+      );
+    }
+
     const { boardWidth, boardHeight, holdsData } = boardDetails;
 
     // When fillHeight is true, SVG fills container and uses preserveAspectRatio to fit

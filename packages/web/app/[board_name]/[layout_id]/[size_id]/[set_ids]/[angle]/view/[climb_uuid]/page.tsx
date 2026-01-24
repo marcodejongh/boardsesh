@@ -1,9 +1,10 @@
 import React from 'react';
 import { notFound, permanentRedirect } from 'next/navigation';
-import { BoardRouteParametersWithUuid } from '@/app/lib/types';
+import { BoardRouteParametersWithUuid, BoardDetails, ParsedBoardRouteParameters } from '@/app/lib/types';
 import { getClimb } from '@/app/lib/data/queries';
-import { getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
+import { getBoardDetailsForBoard } from '@/app/lib/board-utils';
 import ClimbCard from '@/app/components/climb-card/climb-card';
+
 import BetaVideos from '@/app/components/beta-videos/beta-videos';
 import { LogbookSection } from '@/app/components/logbook/logbook-section';
 import {
@@ -29,7 +30,7 @@ export async function generateMetadata(props: { params: Promise<BoardRouteParame
 
   try {
     const parsedParams = await parseBoardRouteParamsWithSlugs(params);
-    const [boardDetails, currentClimb] = await Promise.all([getBoardDetails(parsedParams), getClimb(parsedParams)]);
+    const [boardDetails, currentClimb] = await Promise.all([getBoardDetailsForBoard(parsedParams), getClimb(parsedParams)]);
 
     const climbName = currentClimb.name || `${boardDetails.board_name} Climb`;
     const climbGrade = currentClimb.difficulty || 'Unknown Grade';
@@ -161,7 +162,7 @@ export default async function DynamicResultsPage(props: { params: Promise<BoardR
 
     // Fetch the search results using searchCLimbs
     const [boardDetails, currentClimb, betaLinks] = await Promise.all([
-      getBoardDetails(parsedParams),
+      getBoardDetailsForBoard(parsedParams),
       getClimb(parsedParams),
       fetchBetaLinks(),
     ]);

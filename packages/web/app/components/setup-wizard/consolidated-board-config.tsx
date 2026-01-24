@@ -11,9 +11,10 @@ import { useSession } from 'next-auth/react';
 import { SUPPORTED_BOARDS, ANGLES } from '@/app/lib/board-data';
 import { BoardName, BoardDetails } from '@/app/lib/types';
 import { getDefaultSizeForLayout, getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
+import { getMoonBoardDetails } from '@/app/lib/moonboard-config';
 import BoardConfigPreview from './board-config-preview';
 import BoardRenderer from '../board-renderer/board-renderer';
-import { constructClimbListWithSlugs, constructCreateClimbWithSlugs } from '@/app/lib/url-utils';
+import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { BoardConfigData } from '@/app/lib/server-board-configs';
 import Logo from '../brand/logo';
 import { themeTokens } from '@/app/theme/theme-config';
@@ -97,6 +98,13 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
 
       if (cachedDetails) {
         setPreviewBoardDetails(cachedDetails);
+      } else if (selectedBoard === 'moonboard') {
+        // Moonboard uses its own details function
+        const details = getMoonBoardDetails({
+          layout_id: selectedLayout,
+          set_ids: selectedSets,
+        });
+        setPreviewBoardDetails(details);
       } else {
         const details = getBoardDetails({
           board_name: selectedBoard,
@@ -306,20 +314,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
       .map((s) => s.name);
 
     if (layout && size && selectedSetNames.length > 0) {
-      // For MoonBoard, go to create climb page instead of list
-      // (database/list view not implemented yet)
-      if (selectedBoard === 'moonboard') {
-        return constructCreateClimbWithSlugs(
-          selectedBoard,
-          layout.name,
-          size.name,
-          size.description,
-          selectedSetNames,
-          selectedAngle,
-        );
-      }
-
-      // For Aurora boards (kilter, tension), go to list view
+      // Go to list view for all boards
       return constructClimbListWithSlugs(
         selectedBoard,
         layout.name,
