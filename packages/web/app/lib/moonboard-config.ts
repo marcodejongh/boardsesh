@@ -4,6 +4,28 @@
 // Feature flag - enabled by default
 export const MOONBOARD_ENABLED = true;
 
+// MoonBoard grades - uses uppercase Font notation for display
+// These grades match the board_difficulty_grades table and BOULDER_GRADES in board-data.ts
+// MoonBoard only supports V3+ (starting from 6a)
+export const MOONBOARD_GRADES = [
+  { value: '6A', label: '6A (V3)', difficultyId: 16 },
+  { value: '6A+', label: '6A+ (V3)', difficultyId: 17 },
+  { value: '6B', label: '6B (V4)', difficultyId: 18 },
+  { value: '6B+', label: '6B+ (V4)', difficultyId: 19 },
+  { value: '6C', label: '6C (V5)', difficultyId: 20 },
+  { value: '6C+', label: '6C+ (V5)', difficultyId: 21 },
+  { value: '7A', label: '7A (V6)', difficultyId: 22 },
+  { value: '7A+', label: '7A+ (V7)', difficultyId: 23 },
+  { value: '7B', label: '7B (V8)', difficultyId: 24 },
+  { value: '7B+', label: '7B+ (V8)', difficultyId: 25 },
+  { value: '7C', label: '7C (V9)', difficultyId: 26 },
+  { value: '7C+', label: '7C+ (V10)', difficultyId: 27 },
+  { value: '8A', label: '8A (V11)', difficultyId: 28 },
+  { value: '8A+', label: '8A+ (V12)', difficultyId: 29 },
+  { value: '8B', label: '8B (V13)', difficultyId: 30 },
+  { value: '8B+', label: '8B+ (V14)', difficultyId: 31 },
+] as const;
+
 // MoonBoard layout types (equivalent to Aurora "layouts")
 export const MOONBOARD_LAYOUTS = {
   'moonboard-2010': { id: 1, name: 'MoonBoard 2010', folder: 'moonboard2010' },

@@ -1,8 +1,9 @@
 // app/api/v1/[board_name]/proxy/saveClimb/route.ts
-import { saveClimb } from '@/app/lib/api-wrappers/aurora/saveClimb';
+import { saveClimb, saveClimbStats } from '@/app/lib/api-wrappers/aurora/saveClimb';
 import { AuroraBoardName } from '@/app/lib/api-wrappers/aurora/types';
 import { BoardName } from '@/app/lib/types';
 import { encodeMoonBoardHoldsToFrames } from '@/app/lib/moonboard-config';
+import { fontGradeToDifficultyId } from '@/app/lib/board-data';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -36,6 +37,9 @@ const saveMoonBoardClimbSchema = z.object({
         finish: z.array(z.string()),
       }),
       angle: z.number(),
+      is_draft: z.boolean().optional().default(false),
+      user_grade: z.string().optional(), // Font grade like "6A", "7B+"
+      is_benchmark: z.boolean().optional().default(false),
     })
     .strict(),
 });
@@ -59,10 +63,24 @@ export async function POST(request: Request, props: { params: Promise<{ board_na
         description: validatedData.options.description,
         angle: validatedData.options.angle,
         frames,
-        is_draft: false,
+        is_draft: validatedData.options.is_draft ?? false,
         frames_count: 1,
         frames_pace: 0,
       });
+
+      // If a grade was provided, create climb stats
+      if (validatedData.options.user_grade) {
+        const difficultyId = fontGradeToDifficultyId(validatedData.options.user_grade);
+        if (difficultyId) {
+          await saveClimbStats('moonboard', {
+            climbUuid: response.uuid,
+            angle: validatedData.options.angle,
+            displayDifficulty: difficultyId,
+            benchmarkDifficulty: validatedData.options.is_benchmark ? difficultyId : null,
+          });
+        }
+      }
+
       return NextResponse.json(response);
     }
 

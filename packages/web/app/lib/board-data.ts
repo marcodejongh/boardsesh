@@ -125,29 +125,63 @@ export const ANGLES: Record<BoardName, Angle[]> = {
   moonboard: [...MOONBOARD_ANGLES],
 };
 
-export const TENSION_KILTER_GRADES = [
-  { difficulty_id: 10, difficulty_name: '4a/V0' },
-  { difficulty_id: 11, difficulty_name: '4b/V0' },
-  { difficulty_id: 12, difficulty_name: '4c/V0' },
-  { difficulty_id: 13, difficulty_name: '5a/V1' },
-  { difficulty_id: 14, difficulty_name: '5b/V1' },
-  { difficulty_id: 15, difficulty_name: '5c/V2' },
-  { difficulty_id: 16, difficulty_name: '6a/V3' },
-  { difficulty_id: 17, difficulty_name: '6a+/V3' },
-  { difficulty_id: 18, difficulty_name: '6b/V4' },
-  { difficulty_id: 19, difficulty_name: '6b+/V4' },
-  { difficulty_id: 20, difficulty_name: '6c/V5' },
-  { difficulty_id: 21, difficulty_name: '6c+/V5' },
-  { difficulty_id: 22, difficulty_name: '7a/V6' },
-  { difficulty_id: 23, difficulty_name: '7a+/V7' },
-  { difficulty_id: 24, difficulty_name: '7b/V8' },
-  { difficulty_id: 25, difficulty_name: '7b+/V8' },
-  { difficulty_id: 26, difficulty_name: '7c/V9' },
-  { difficulty_id: 27, difficulty_name: '7c+/V10' },
-  { difficulty_id: 28, difficulty_name: '8a/V11' },
-  { difficulty_id: 29, difficulty_name: '8a+/V12' },
-  { difficulty_id: 30, difficulty_name: '8b/V13' },
-  { difficulty_id: 31, difficulty_name: '8b+/V14' },
-  { difficulty_id: 32, difficulty_name: '8c/V15' },
-  { difficulty_id: 33, difficulty_name: '8c+/V16' },
-];
+// Unified grade system used by all boards
+// difficulty_id matches board_difficulty_grades table
+// font_grade is the Font/Fontainebleau grade (used for MoonBoard display)
+// difficulty_name includes both Font and V-grade (used for Aurora display)
+export const BOULDER_GRADES = [
+  { difficulty_id: 10, font_grade: '4a', v_grade: 'V0', difficulty_name: '4a/V0' },
+  { difficulty_id: 11, font_grade: '4b', v_grade: 'V0', difficulty_name: '4b/V0' },
+  { difficulty_id: 12, font_grade: '4c', v_grade: 'V0', difficulty_name: '4c/V0' },
+  { difficulty_id: 13, font_grade: '5a', v_grade: 'V1', difficulty_name: '5a/V1' },
+  { difficulty_id: 14, font_grade: '5b', v_grade: 'V1', difficulty_name: '5b/V1' },
+  { difficulty_id: 15, font_grade: '5c', v_grade: 'V2', difficulty_name: '5c/V2' },
+  { difficulty_id: 16, font_grade: '6a', v_grade: 'V3', difficulty_name: '6a/V3' },
+  { difficulty_id: 17, font_grade: '6a+', v_grade: 'V3', difficulty_name: '6a+/V3' },
+  { difficulty_id: 18, font_grade: '6b', v_grade: 'V4', difficulty_name: '6b/V4' },
+  { difficulty_id: 19, font_grade: '6b+', v_grade: 'V4', difficulty_name: '6b+/V4' },
+  { difficulty_id: 20, font_grade: '6c', v_grade: 'V5', difficulty_name: '6c/V5' },
+  { difficulty_id: 21, font_grade: '6c+', v_grade: 'V5', difficulty_name: '6c+/V5' },
+  { difficulty_id: 22, font_grade: '7a', v_grade: 'V6', difficulty_name: '7a/V6' },
+  { difficulty_id: 23, font_grade: '7a+', v_grade: 'V7', difficulty_name: '7a+/V7' },
+  { difficulty_id: 24, font_grade: '7b', v_grade: 'V8', difficulty_name: '7b/V8' },
+  { difficulty_id: 25, font_grade: '7b+', v_grade: 'V8', difficulty_name: '7b+/V8' },
+  { difficulty_id: 26, font_grade: '7c', v_grade: 'V9', difficulty_name: '7c/V9' },
+  { difficulty_id: 27, font_grade: '7c+', v_grade: 'V10', difficulty_name: '7c+/V10' },
+  { difficulty_id: 28, font_grade: '8a', v_grade: 'V11', difficulty_name: '8a/V11' },
+  { difficulty_id: 29, font_grade: '8a+', v_grade: 'V12', difficulty_name: '8a+/V12' },
+  { difficulty_id: 30, font_grade: '8b', v_grade: 'V13', difficulty_name: '8b/V13' },
+  { difficulty_id: 31, font_grade: '8b+', v_grade: 'V14', difficulty_name: '8b+/V14' },
+  { difficulty_id: 32, font_grade: '8c', v_grade: 'V15', difficulty_name: '8c/V15' },
+  { difficulty_id: 33, font_grade: '8c+', v_grade: 'V16', difficulty_name: '8c+/V16' },
+] as const;
+
+export type BoulderGrade = typeof BOULDER_GRADES[number];
+
+// Alias for backwards compatibility
+export const TENSION_KILTER_GRADES = BOULDER_GRADES;
+
+// MoonBoard only supports grades V3+ (6A and above)
+// Uses Font grade notation (uppercase) for display
+export const MOONBOARD_MIN_DIFFICULTY_ID = 16; // 6a/V3
+
+// Helper to get grades for a specific board
+export function getGradesForBoard(boardName: BoardName) {
+  if (boardName === 'moonboard') {
+    return BOULDER_GRADES.filter(g => g.difficulty_id >= MOONBOARD_MIN_DIFFICULTY_ID);
+  }
+  return BOULDER_GRADES;
+}
+
+// Helper to convert Font grade string to difficulty ID
+export function fontGradeToDifficultyId(fontGrade: string): number | null {
+  // Normalize to lowercase for comparison
+  const normalized = fontGrade.toLowerCase();
+  const grade = BOULDER_GRADES.find(g => g.font_grade === normalized);
+  return grade?.difficulty_id ?? null;
+}
+
+// Helper to get grade info by difficulty ID
+export function getGradeByDifficultyId(difficultyId: number): BoulderGrade | undefined {
+  return BOULDER_GRADES.find(g => g.difficulty_id === difficultyId);
+}

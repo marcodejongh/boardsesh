@@ -205,6 +205,11 @@
   font-size: 12px;
 }
 
+/* MoonBoard-specific grade field */
+.settingsGradeField {
+  width: 100%;
+}
+
 /* Hold counts bar at bottom */
 .holdCountsBar {
   display: flex;
