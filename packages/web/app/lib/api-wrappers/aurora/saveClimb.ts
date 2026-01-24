@@ -86,8 +86,6 @@ export async function saveClimbStats(
   board: BoardName,
   options: SaveClimbStatsOptions
 ): Promise<void> {
-  console.log('[saveClimbStats] Saving stats:', { board, ...options });
-
   await dbz
     .insert(boardClimbStats)
     .values({

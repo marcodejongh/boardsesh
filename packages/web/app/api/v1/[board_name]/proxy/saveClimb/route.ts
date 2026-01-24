@@ -69,10 +69,8 @@ export async function POST(request: Request, props: { params: Promise<{ board_na
       });
 
       // If a grade was provided, create climb stats
-      console.log('[saveClimb API] user_grade:', validatedData.options.user_grade);
       if (validatedData.options.user_grade) {
         const difficultyId = fontGradeToDifficultyId(validatedData.options.user_grade);
-        console.log('[saveClimb API] difficultyId:', difficultyId);
         if (difficultyId) {
           await saveClimbStats('moonboard', {
             climbUuid: response.uuid,
