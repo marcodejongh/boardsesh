@@ -9,6 +9,7 @@ import { handleSessionJoin } from './handlers/join';
 import { handleAvatarUpload } from './handlers/avatars';
 import { handleStaticAvatar } from './handlers/static';
 import { handleSyncCron } from './handlers/sync';
+import { handleOcrTestDataUpload } from './handlers/ocr-test-data';
 import { createYogaInstance } from './graphql/yoga';
 import { setupWebSocketServer } from './websocket/setup';
 
@@ -65,6 +66,12 @@ export async function startServer(): Promise<{ wss: WebSocketServer; httpServer:
       // Avatar upload endpoint (handle OPTIONS for CORS preflight)
       if (pathname === '/api/avatars' && (req.method === 'POST' || req.method === 'OPTIONS')) {
         await handleAvatarUpload(req, res);
+        return;
+      }
+
+      // OCR test data upload endpoint (handle OPTIONS for CORS preflight)
+      if (pathname === '/api/ocr-test-data' && (req.method === 'POST' || req.method === 'OPTIONS')) {
+        await handleOcrTestDataUpload(req, res);
         return;
       }
 
@@ -125,6 +132,7 @@ export async function startServer(): Promise<{ wss: WebSocketServer; httpServer:
     console.log(`  Join session: http://0.0.0.0:${PORT}/join/:sessionId`);
     console.log(`  Avatar upload: http://0.0.0.0:${PORT}/api/avatars`);
     console.log(`  Avatar files: http://0.0.0.0:${PORT}/static/avatars/`);
+    console.log(`  OCR test data: http://0.0.0.0:${PORT}/api/ocr-test-data`);
     console.log(`  Sync cron: http://0.0.0.0:${PORT}/sync-cron`);
   });
 

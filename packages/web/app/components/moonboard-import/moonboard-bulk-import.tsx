@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useReducer, useCallback, useState } from 'react';
-import { Upload, Button, Alert, Progress, Typography, Row, Col, Space, Result, message } from 'antd';
+import React, { useReducer, useCallback, useState, useRef } from 'react';
+import { Upload, Button, Alert, Progress, Typography, Row, Col, Space, Result, message, Checkbox } from 'antd';
 import { InboxOutlined, SaveOutlined, ClearOutlined, ArrowLeftOutlined, LoginOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -12,6 +12,9 @@ import type { RcFile } from 'antd/es/upload/interface';
 import MoonBoardImportCard from './moonboard-import-card';
 import MoonBoardEditModal from './moonboard-edit-modal';
 import { convertOcrHoldsToMap } from '@/app/lib/moonboard-climbs-db';
+import { useBackendUrl } from '@/app/components/connection-manager/connection-settings-context';
+import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
+import { uploadOcrTestDataBatch } from '@/app/lib/moonboard-ocr-upload';
 import styles from './moonboard-bulk-import.module.css';
 
 const { Dragger } = Upload;
@@ -113,10 +116,24 @@ export default function MoonBoardBulkImport({
   const { data: session } = useSession();
   const [state, dispatch] = useReducer(importReducer, initialState);
   const [isSaving, setIsSaving] = useState(false);
+  const [contributeImages, setContributeImages] = useState(true);
+
+  // Store original files for OCR test data upload
+  const filesMapRef = useRef<Map<string, File>>(new Map());
+
+  // Backend URL and auth token for OCR upload
+  const { backendUrl } = useBackendUrl();
+  const { token: authToken } = useWsAuthToken();
 
   const handleFilesUpload = useCallback(
     async (fileList: RcFile[]) => {
       if (fileList.length === 0) return;
+
+      // Store files for potential OCR test data upload
+      filesMapRef.current = new Map();
+      for (const file of fileList) {
+        filesMapRef.current.set(file.name, file);
+      }
 
       dispatch({ type: 'START_PROCESSING', total: fileList.length });
 
@@ -159,6 +176,7 @@ export default function MoonBoardBulkImport({
     try {
       let savedCount = 0;
       const errors: string[] = [];
+      const savedClimbs: MoonBoardClimb[] = [];
 
       // Save each climb individually to the database
       for (const climb of state.climbs) {
@@ -186,6 +204,7 @@ export default function MoonBoardBulkImport({
             errors.push(`${climb.name}: ${errorData.error || 'Failed to save'}`);
           } else {
             savedCount++;
+            savedClimbs.push(climb);
           }
         } catch {
           errors.push(`${climb.name}: Network error`);
@@ -194,6 +213,16 @@ export default function MoonBoardBulkImport({
 
       if (savedCount > 0) {
         message.success(`Successfully saved ${savedCount} climb(s) to database`);
+
+        // Fire-and-forget: upload OCR test data if opted in
+        if (contributeImages && backendUrl && authToken && savedClimbs.length > 0) {
+          // Don't await - fire and forget
+          uploadOcrTestDataBatch(backendUrl, filesMapRef.current, savedClimbs, layoutId, angle, authToken).catch(
+            (err) => {
+              console.warn('[OCR Upload] Background upload failed:', err);
+            },
+          );
+        }
       }
       if (errors.length > 0) {
         message.warning(`Failed to save ${errors.length} climb(s)`);
@@ -202,6 +231,7 @@ export default function MoonBoardBulkImport({
 
       if (savedCount > 0) {
         dispatch({ type: 'RESET' });
+        filesMapRef.current = new Map();
         router.back();
       }
     } catch (error) {
@@ -210,7 +240,7 @@ export default function MoonBoardBulkImport({
     } finally {
       setIsSaving(false);
     }
-  }, [state.climbs, layoutId, session, router]);
+  }, [state.climbs, layoutId, session, router, contributeImages, backendUrl, authToken, angle]);
 
   const handleRemoveClimb = useCallback((sourceFile: string) => {
     dispatch({ type: 'REMOVE_CLIMB', sourceFile });
@@ -230,6 +260,7 @@ export default function MoonBoardBulkImport({
 
   const handleReset = useCallback(() => {
     dispatch({ type: 'RESET' });
+    filesMapRef.current = new Map();
   }, []);
 
   const handleBack = useCallback(() => {
@@ -344,20 +375,27 @@ export default function MoonBoardBulkImport({
           {/* Action Buttons */}
           {state.climbs.length > 0 && (
             <div className={styles.actions}>
-              <Space>
-                <Button
-                  type="primary"
-                  icon={<SaveOutlined />}
-                  onClick={handleSaveAll}
-                  size="large"
-                  loading={isSaving}
-                  disabled={isSaving || !session?.user}
-                >
-                  Save All ({state.climbs.length})
-                </Button>
-                <Button icon={<ClearOutlined />} onClick={handleReset}>
-                  Clear & Start Over
-                </Button>
+              <Space direction="vertical" size="middle">
+                <Space>
+                  <Button
+                    type="primary"
+                    icon={<SaveOutlined />}
+                    onClick={handleSaveAll}
+                    size="large"
+                    loading={isSaving}
+                    disabled={isSaving || !session?.user}
+                  >
+                    Save All ({state.climbs.length})
+                  </Button>
+                  <Button icon={<ClearOutlined />} onClick={handleReset}>
+                    Clear & Start Over
+                  </Button>
+                </Space>
+                {backendUrl && (
+                  <Checkbox checked={contributeImages} onChange={(e) => setContributeImages(e.target.checked)}>
+                    Contribute images to improve OCR accuracy
+                  </Checkbox>
+                )}
               </Space>
             </div>
           )}
