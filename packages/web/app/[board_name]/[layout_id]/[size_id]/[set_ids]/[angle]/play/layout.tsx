@@ -1,10 +1,11 @@
 import React from 'react';
 import { PropsWithChildren } from 'react';
 
-import { BoardRouteParameters, ParsedBoardRouteParameters } from '@/app/lib/types';
+import { BoardRouteParameters, ParsedBoardRouteParameters, BoardDetails } from '@/app/lib/types';
 import { parseBoardRouteParams } from '@/app/lib/url-utils';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import { getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
+import { getMoonBoardDetails } from '@/app/lib/moonboard-config';
 import PlayLayoutClient from './layout-client';
 
 interface LayoutProps {
@@ -28,7 +29,13 @@ export default async function PlayLayout(props: PropsWithChildren<LayoutProps>) 
     parsedParams = await parseBoardRouteParamsWithSlugs(params);
   }
 
-  const boardDetails = await getBoardDetails(parsedParams);
+  // Use MoonBoard-specific details function for moonboard
+  let boardDetails: BoardDetails;
+  if (parsedParams.board_name === 'moonboard') {
+    boardDetails = getMoonBoardDetails(parsedParams);
+  } else {
+    boardDetails = getBoardDetails(parsedParams);
+  }
 
   return <PlayLayoutClient boardDetails={boardDetails}>{children}</PlayLayoutClient>;
 }

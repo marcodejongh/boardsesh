@@ -1,13 +1,25 @@
 import React from 'react';
 import { notFound } from 'next/navigation';
 import { getServerSession } from 'next-auth/next';
-import { BoardRouteParameters } from '@/app/lib/types';
+import { BoardRouteParameters, BoardDetails, ParsedBoardRouteParameters } from '@/app/lib/types';
 import { getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
+import { getMoonBoardDetails } from '@/app/lib/moonboard-config';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import { Metadata } from 'next';
 import { authOptions } from '@/app/lib/auth/auth-options';
 import PlaylistViewContent from './playlist-view-content';
 import styles from './playlist-view.module.css';
+
+// Helper to get board details for any board type
+function getBoardDetailsForBoard(params: ParsedBoardRouteParameters): BoardDetails {
+  if (params.board_name === 'moonboard') {
+    return getMoonBoardDetails({
+      layout_id: params.layout_id,
+      set_ids: params.set_ids,
+    });
+  }
+  return getBoardDetails(params);
+}
 
 type PlaylistRouteParameters = BoardRouteParameters & {
   playlist_uuid: string;
@@ -25,7 +37,7 @@ export default async function PlaylistViewPage(props: { params: Promise<Playlist
 
   try {
     const parsedParams = await parseBoardRouteParamsWithSlugs(params);
-    const boardDetails = await getBoardDetails(parsedParams);
+    const boardDetails = getBoardDetailsForBoard(parsedParams);
 
     // Get auth session for ownership check
     const session = await getServerSession(authOptions);
