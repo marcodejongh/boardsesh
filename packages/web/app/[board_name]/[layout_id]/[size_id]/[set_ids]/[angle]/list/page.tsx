@@ -103,6 +103,9 @@ async function getMoonboardClimbs(layoutId: number, angle: number, limit: number
     // Look up grade info from the shared BOULDER_GRADES constant
     const gradeInfo = row.displayDifficulty ? getGradeByDifficultyId(row.displayDifficulty) : undefined;
 
+    // Debug logging
+    console.log('[MoonBoard List] Climb:', row.name, 'displayDifficulty:', row.displayDifficulty, 'gradeInfo:', gradeInfo);
+
     return {
       uuid: row.uuid,
       setter_username: row.setterUsername || 'Unknown',
