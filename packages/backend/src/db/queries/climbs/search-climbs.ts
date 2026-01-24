@@ -37,6 +37,11 @@ const HOLD_STATE_MAP: Record<
     7: { name: 'FINISH', displayColor: '#FF0000', color: '#FF0000' },
     8: { name: 'FOOT', displayColor: '#FF00FF', color: '#FF00FF' },
   },
+  moonboard: {
+    42: { name: 'STARTING', color: '#00FF00', displayColor: '#44FF44' },
+    43: { name: 'HAND', color: '#0000FF', displayColor: '#4444FF' },
+    44: { name: 'FINISH', color: '#FF0000', displayColor: '#FF3333' },
+  },
 };
 
 
