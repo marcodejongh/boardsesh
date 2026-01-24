@@ -30,6 +30,9 @@ export function PlaylistAction({
   className,
   onComplete,
 }: ClimbActionProps): ClimbActionResult {
+  // Playlists not supported for moonboard yet
+  const isMoonboard = boardDetails.board_name === 'moonboard';
+
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -358,7 +361,7 @@ export function PlaylistAction({
     expandedContent,
     menuItem,
     key: 'playlist',
-    available: true,
+    available: !isMoonboard,
   };
 }
 

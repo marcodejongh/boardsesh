@@ -36,6 +36,7 @@ import {
   type GetUserProfileStatsQueryResponse,
 } from '@/app/lib/graphql/operations';
 import { FONT_GRADE_COLORS, getGradeColorWithOpacity } from '@/app/lib/grade-colors';
+import { SUPPORTED_BOARDS } from '@/app/lib/board-data';
 
 dayjs.extend(isoWeek);
 dayjs.extend(isSameOrAfter);
@@ -129,8 +130,8 @@ const angleColors = [
 type TimeframeType = 'all' | 'lastYear' | 'lastMonth' | 'lastWeek' | 'custom';
 type AggregatedTimeframeType = 'today' | 'lastWeek' | 'lastMonth' | 'lastYear' | 'all';
 
-// Board types available in Boardsesh
-const BOARD_TYPES = ['kilter', 'tension'] as const;
+// Board types available in Boardsesh - use SUPPORTED_BOARDS from board-data
+const BOARD_TYPES = SUPPORTED_BOARDS;
 
 // Layout name mapping: boardType-layoutId -> display name
 const layoutNames: Record<string, string> = {

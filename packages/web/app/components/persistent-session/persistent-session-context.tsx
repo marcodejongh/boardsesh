@@ -20,6 +20,7 @@ import {
   SessionEvent,
   QueueState,
   EventsReplayResponse,
+  SUPPORTED_BOARDS,
 } from '@boardsesh/shared-schema';
 import { ClimbQueueItem as LocalClimbQueueItem } from '../queue-control/types';
 import { BoardDetails, ParsedBoardRouteParameters } from '@/app/lib/types';
@@ -60,8 +61,8 @@ function transformToSubscriptionEvent(event: QueueEvent): SubscriptionQueueEvent
 // Default backend URL from environment variable
 const DEFAULT_BACKEND_URL = process.env.NEXT_PUBLIC_WS_URL || null;
 
-// Board names to check if we're on a board route
-const BOARD_NAMES = ['kilter', 'tension'];
+// Board names to check if we're on a board route - use centralized constant
+const BOARD_NAMES = SUPPORTED_BOARDS;
 
 // Session type matching the GraphQL response
 export interface Session {

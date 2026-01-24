@@ -233,7 +233,7 @@ describe('GraphQL Resolver Input Validation', () => {
             climbUuid: 'test-uuid',
           },
         },
-        'Board name must be kilter or tension',
+        'Board name must be kilter, tension, or moonboard',
       );
     });
   });
@@ -330,7 +330,7 @@ describe('GraphQL Resolver Input Validation', () => {
             },
           },
         },
-        'Board name must be kilter, tension',
+        'Board name must be kilter, tension, or moonboard',
       );
     });
   });

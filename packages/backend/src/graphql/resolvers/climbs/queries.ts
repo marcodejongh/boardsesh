@@ -1,4 +1,5 @@
-import type { ClimbSearchInput, ConnectionContext } from '@boardsesh/shared-schema';
+import type { ClimbSearchInput, ConnectionContext, BoardName } from '@boardsesh/shared-schema';
+import { SUPPORTED_BOARDS } from '@boardsesh/shared-schema';
 import type { ClimbSearchParams, ParsedBoardRouteParameters } from '../../../db/queries/climbs/index';
 import { getClimbByUuid } from '../../../db/queries/climbs/index';
 import { getSizeEdges } from '../../../db/queries/util/product-sizes-data';
@@ -20,7 +21,7 @@ export const climbQueries = {
 
     // Validate board name
     if (!isValidBoardName(input.boardName)) {
-      throw new Error(`Invalid board name: ${input.boardName}. Must be 'kilter' or 'tension'`);
+      throw new Error(`Invalid board name: ${input.boardName}. Must be one of: ${SUPPORTED_BOARDS.join(', ')}`);
     }
 
     // Get size edges for filtering
@@ -34,7 +35,7 @@ export const climbQueries = {
 
     // Build route parameters
     const params: ParsedBoardRouteParameters = {
-      board_name: input.boardName as 'kilter' | 'tension',
+      board_name: input.boardName as BoardName,
       layout_id: input.layoutId,
       size_id: input.sizeId,
       set_ids: setIds,
@@ -89,7 +90,7 @@ export const climbQueries = {
     validateInput(BoardNameSchema, boardName, 'boardName');
 
     if (!isValidBoardName(boardName)) {
-      throw new Error(`Invalid board name: ${boardName}. Must be 'kilter' or 'tension'`);
+      throw new Error(`Invalid board name: ${boardName}. Must be one of: ${SUPPORTED_BOARDS.join(', ')}`);
     }
 
     // Validate all parameters
@@ -101,7 +102,7 @@ export const climbQueries = {
     if (DEBUG) console.log('[climb] Fetching:', { boardName, layoutId, sizeId, setIds, angle, climbUuid });
 
     const climb = await getClimbByUuid({
-      board_name: boardName as 'kilter' | 'tension',
+      board_name: boardName as BoardName,
       layout_id: layoutId,
       size_id: sizeId,
       angle,

@@ -29,10 +29,10 @@ describe('hold-classifications validation', () => {
     it('should accept valid board types', () => {
       expect(isValidBoardType('kilter')).toBe(true);
       expect(isValidBoardType('tension')).toBe(true);
+      expect(isValidBoardType('moonboard')).toBe(true);
     });
 
     it('should reject invalid board types', () => {
-      expect(isValidBoardType('moonboard')).toBe(false);
       expect(isValidBoardType('invalid')).toBe(false);
       expect(isValidBoardType('')).toBe(false);
       expect(isValidBoardType(null)).toBe(false);
@@ -44,7 +44,8 @@ describe('hold-classifications validation', () => {
     it('should have correct board types in constant', () => {
       expect(VALID_BOARD_TYPES).toContain('kilter');
       expect(VALID_BOARD_TYPES).toContain('tension');
-      expect(VALID_BOARD_TYPES.length).toBe(2);
+      expect(VALID_BOARD_TYPES).toContain('moonboard');
+      expect(VALID_BOARD_TYPES.length).toBe(3);
     });
   });
 
