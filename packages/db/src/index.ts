@@ -4,3 +4,6 @@ export * from './relations/index';
 
 // Re-export client
 export * from './client/index';
+
+// Re-export utilities
+export * from './utils/holds-hash';

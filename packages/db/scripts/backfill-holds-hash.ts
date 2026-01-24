@@ -11,53 +11,9 @@
 
 import { drizzle } from 'drizzle-orm/neon-serverless';
 import { neon } from '@neondatabase/serverless';
-import { eq, isNull, and } from 'drizzle-orm';
+import { eq, isNull } from 'drizzle-orm';
 import { boardClimbs } from '../src/schema/boards/unified';
-
-// Import the holds hash utility
-// Since this is a standalone script, we need to include the logic here
-interface HoldStatePair {
-  holdId: number;
-  roleCode: number;
-}
-
-function parseFramesToHoldStatePairs(frames: string): HoldStatePair[] {
-  const pairs: HoldStatePair[] = [];
-  const frameStrings = frames.split(',').filter(Boolean);
-
-  for (const frameString of frameStrings) {
-    const holdMatches = frameString.matchAll(/p(\d+)r(\d+)/g);
-    for (const match of holdMatches) {
-      pairs.push({
-        holdId: parseInt(match[1], 10),
-        roleCode: parseInt(match[2], 10),
-      });
-    }
-  }
-
-  return pairs;
-}
-
-function generateHoldsHash(frames: string): string {
-  if (!frames || frames.trim() === '') {
-    return '';
-  }
-
-  const pairs = parseFramesToHoldStatePairs(frames);
-
-  if (pairs.length === 0) {
-    return '';
-  }
-
-  pairs.sort((a, b) => {
-    if (a.holdId !== b.holdId) {
-      return a.holdId - b.holdId;
-    }
-    return a.roleCode - b.roleCode;
-  });
-
-  return pairs.map(p => `${p.holdId}:${p.roleCode}`).join('|');
-}
+import { generateHoldsHash } from '../src/utils/holds-hash';
 
 async function backfillHoldsHash() {
   const databaseUrl = process.env.DATABASE_URL;
