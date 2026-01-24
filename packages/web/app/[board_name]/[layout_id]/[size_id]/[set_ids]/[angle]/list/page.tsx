@@ -1,8 +1,7 @@
 import React from 'react';
 
 import { notFound, permanentRedirect } from 'next/navigation';
-import { BoardRouteParametersWithUuid, SearchRequestPagination, BoardDetails, BoardName, Climb } from '@/app/lib/types';
-import { SetIdList } from '@/app/lib/board-data';
+import { BoardRouteParametersWithUuid, SearchRequestPagination, BoardDetails, Climb } from '@/app/lib/types';
 import {
   parseBoardRouteParams,
   parsedRouteSearchParamsToSearchParams,
@@ -20,7 +19,7 @@ import { UNIFIED_TABLES } from '@/app/lib/db/queries/util/table-select';
 import { boardClimbStats } from '@boardsesh/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { getGradeByDifficultyId } from '@/app/lib/board-data';
-import type { LitUpHoldsMap, HoldState } from '@/app/components/board-renderer/types';
+import type { LitUpHoldsMap } from '@/app/components/board-renderer/types';
 
 
 // Parse Moonboard frames string to lit up holds map

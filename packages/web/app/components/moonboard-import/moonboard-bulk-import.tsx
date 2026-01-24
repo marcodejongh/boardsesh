@@ -167,7 +167,8 @@ export default function MoonBoardBulkImport({
   const handleSaveAll = useCallback(async () => {
     if (state.climbs.length === 0) return;
 
-    if (!session?.user?.id) {
+    const userId = session?.user?.id;
+    if (!userId) {
       message.error('Please log in to save climbs');
       return;
     }
@@ -187,7 +188,7 @@ export default function MoonBoardBulkImport({
             body: JSON.stringify({
               options: {
                 layout_id: layoutId,
-                user_id: session.user.id,
+                user_id: userId,
                 name: climb.name,
                 description: `Setter: ${climb.setter}\nGrade: ${climb.userGrade}${climb.isBenchmark ? '\n(Benchmark)' : ''}`,
                 holds: climb.holds,

@@ -244,7 +244,8 @@ export default function CreateClimbForm({
 
   // Save climb - MoonBoard
   const doSaveMoonBoardClimb = useCallback(async () => {
-    if (!layoutId || !session?.user?.id) return;
+    const userId = session?.user?.id;
+    if (!layoutId || !userId) return;
 
     setIsSaving(true);
 
@@ -268,7 +269,7 @@ export default function CreateClimbForm({
         body: JSON.stringify({
           options: {
             layout_id: layoutId,
-            user_id: session.user.id,
+            user_id: userId,
             name: climbName,
             description: description || '',
             holds,
@@ -295,7 +296,7 @@ export default function CreateClimbForm({
     } finally {
       setIsSaving(false);
     }
-  }, [layoutId, session?.user?.id, litUpHoldsMap, climbName, description, userGrade, isBenchmark, isDraft, selectedAngle, pathname, router]);
+  }, [layoutId, session, litUpHoldsMap, climbName, description, userGrade, isBenchmark, isDraft, selectedAngle, pathname, router]);
 
   const handlePublish = useCallback(async () => {
     if (!isValid || !climbName.trim()) {
