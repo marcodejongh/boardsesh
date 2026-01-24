@@ -238,7 +238,7 @@ export default function AuroraCredentialsSection() {
       message.success(`${selectedBoard.charAt(0).toUpperCase() + selectedBoard.slice(1)} account linked successfully`);
       setIsModalOpen(false);
       form.resetFields();
-      fetchCredentials();
+      await fetchCredentials();
     } catch (error) {
       message.error(error instanceof Error ? error.message : 'Failed to link account');
     } finally {
@@ -261,7 +261,7 @@ export default function AuroraCredentialsSection() {
       }
 
       message.success('Account unlinked successfully');
-      fetchCredentials();
+      await fetchCredentials();
     } catch (error) {
       message.error(error instanceof Error ? error.message : 'Failed to unlink account');
     } finally {
