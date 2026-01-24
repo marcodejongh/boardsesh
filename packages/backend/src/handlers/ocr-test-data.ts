@@ -14,6 +14,37 @@ const MIME_TO_EXT: Record<string, string> = {
   'image/webp': 'webp',
 };
 
+// Expected metadata structure from OCR upload
+// This matches the metadata object created in moonboard-ocr-upload.ts
+interface OcrUploadMetadata {
+  layoutId: number;
+  angle: number;
+  climb: {
+    name?: string;
+    grade?: string;
+    holds?: unknown;
+    sourceFile?: string;
+  };
+}
+
+/**
+ * Type guard to check if the parsed metadata has the expected structure.
+ * We only validate the presence of required fields, not deep structure,
+ * since this is for test data collection and flexibility is preferred.
+ */
+function isValidOcrMetadata(value: unknown): value is OcrUploadMetadata {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  const obj = value as Record<string, unknown>;
+  return (
+    typeof obj.layoutId === 'number' &&
+    typeof obj.angle === 'number' &&
+    typeof obj.climb === 'object' &&
+    obj.climb !== null
+  );
+}
+
 /**
  * Extract auth token from Authorization header
  */
@@ -159,12 +190,20 @@ export async function handleOcrTestDataUpload(req: IncomingMessage, res: ServerR
       }
 
       // Parse metadata
-      let metadata: unknown;
+      let parsedMetadata: unknown;
       try {
-        metadata = JSON.parse(metadataJson);
+        parsedMetadata = JSON.parse(metadataJson);
       } catch {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Invalid metadata JSON' }));
+        resolve();
+        return;
+      }
+
+      // Validate metadata structure
+      if (!isValidOcrMetadata(parsedMetadata)) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Invalid metadata structure: expected layoutId, angle, and climb fields' }));
         resolve();
         return;
       }
@@ -182,7 +221,7 @@ export async function handleOcrTestDataUpload(req: IncomingMessage, res: ServerR
         const fullMetadata = {
           version: 1,
           uploadedAt: new Date().toISOString(),
-          ...(metadata as object),
+          ...parsedMetadata,
           imageMetadata: {
             originalFilename: originalFilename || 'unknown',
             mimeType,

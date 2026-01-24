@@ -2,20 +2,9 @@ import React from 'react';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { BoardRouteParametersWithUuid, BoardDetails, ParsedBoardRouteParameters } from '@/app/lib/types';
 import { getClimb } from '@/app/lib/data/queries';
-import { getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
-import { getMoonBoardDetails } from '@/app/lib/moonboard-config';
+import { getBoardDetailsForBoard } from '@/app/lib/board-utils';
 import ClimbCard from '@/app/components/climb-card/climb-card';
 
-// Helper to get board details for any board type
-function getBoardDetailsForBoard(params: ParsedBoardRouteParameters): BoardDetails {
-  if (params.board_name === 'moonboard') {
-    return getMoonBoardDetails({
-      layout_id: params.layout_id,
-      set_ids: params.set_ids,
-    });
-  }
-  return getBoardDetails(params);
-}
 import BetaVideos from '@/app/components/beta-videos/beta-videos';
 import { LogbookSection } from '@/app/components/logbook/logbook-section';
 import {

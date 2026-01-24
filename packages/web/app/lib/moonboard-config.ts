@@ -103,11 +103,17 @@ export const MOONBOARD_HOLD_STATES = {
   finish: { name: 'FINISH' as const, color: '#FF0000', displayColor: '#FF3333' }, // Red
 } as const;
 
-// Hold state codes for frames encoding (compatible with Aurora format)
+// Hold state codes for frames encoding (compatible with Aurora format).
+// These codes are used in the frames string format: p{holdId}r{roleCode}
+// e.g., "p1r42p45r43p198r44" means hold 1 is start, hold 45 is hand, hold 198 is finish.
+//
+// The codes 42, 43, 44 are chosen to be compatible with Aurora boards (Kilter/Tension),
+// which use similar role code patterns in their placement strings. This allows shared
+// parsing logic between MoonBoard and Aurora boards when processing climb data.
 export const MOONBOARD_HOLD_STATE_CODES = {
-  start: 42, // Using 42 for STARTING (matches Kilter pattern)
-  hand: 43, // Using 43 for HAND
-  finish: 44, // Using 44 for FINISH
+  start: 42,
+  hand: 43,
+  finish: 44,
 } as const;
 
 // Grid coordinate types

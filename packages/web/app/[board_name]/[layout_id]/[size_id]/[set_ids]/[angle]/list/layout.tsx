@@ -5,21 +5,10 @@ import { PropsWithChildren } from 'react';
 import { BoardRouteParameters, ParsedBoardRouteParameters, BoardDetails } from '@/app/lib/types';
 import { parseBoardRouteParams, constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
-import { getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
-import { getMoonBoardDetails } from '@/app/lib/moonboard-config';
+import { getBoardDetailsForBoard } from '@/app/lib/board-utils';
 import { permanentRedirect } from 'next/navigation';
 import ListLayoutClient from './layout-client';
 
-// Helper to get board details for any board type
-function getBoardDetailsForBoard(params: ParsedBoardRouteParameters): BoardDetails {
-  if (params.board_name === 'moonboard') {
-    return getMoonBoardDetails({
-      layout_id: params.layout_id,
-      set_ids: params.set_ids,
-    });
-  }
-  return getBoardDetails(params);
-}
 
 interface LayoutProps {
   params: Promise<BoardRouteParameters>;

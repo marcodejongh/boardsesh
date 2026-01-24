@@ -2,23 +2,12 @@ import React from 'react';
 import { BoardRouteParametersWithUuid, BoardDetails, ParsedBoardRouteParameters } from '@/app/lib/types';
 import { parseBoardRouteParams, extractUuidFromSlug, constructPlayUrlWithSlugs } from '@/app/lib/url-utils';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
-import { getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
-import { getMoonBoardDetails } from '@/app/lib/moonboard-config';
+import { getBoardDetailsForBoard } from '@/app/lib/board-utils';
 import { getClimb } from '@/app/lib/data/queries';
 import { convertLitUpHoldsStringToMap } from '@/app/components/board-renderer/util';
 import PlayViewClient from './play-view-client';
 import { Metadata } from 'next';
 
-// Helper to get board details for any board type
-function getBoardDetailsForBoard(params: ParsedBoardRouteParameters): BoardDetails {
-  if (params.board_name === 'moonboard') {
-    return getMoonBoardDetails({
-      layout_id: params.layout_id,
-      set_ids: params.set_ids,
-    });
-  }
-  return getBoardDetails(params);
-}
 
 export async function generateMetadata(props: { params: Promise<BoardRouteParametersWithUuid> }): Promise<Metadata> {
   const params = await props.params;

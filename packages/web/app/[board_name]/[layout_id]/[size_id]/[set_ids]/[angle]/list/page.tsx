@@ -12,8 +12,8 @@ import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import ClimbsList from '@/app/components/board-page/climbs-list';
 import { cachedSearchClimbs } from '@/app/lib/graphql/server-cached-client';
 import { SEARCH_CLIMBS, type ClimbSearchResponse } from '@/app/lib/graphql/operations/climb-search';
-import { getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
-import { getMoonBoardDetails, MOONBOARD_HOLD_STATE_CODES, MOONBOARD_HOLD_STATES } from '@/app/lib/moonboard-config';
+import { getBoardDetailsForBoard } from '@/app/lib/board-utils';
+import { MOONBOARD_HOLD_STATE_CODES, MOONBOARD_HOLD_STATES } from '@/app/lib/moonboard-config';
 import { MAX_PAGE_SIZE } from '@/app/components/board-page/constants';
 import { dbz } from '@/app/lib/db/db';
 import { UNIFIED_TABLES } from '@/app/lib/db/queries/util/table-select';
@@ -22,21 +22,12 @@ import { eq, and, desc } from 'drizzle-orm';
 import { getGradeByDifficultyId } from '@/app/lib/board-data';
 import type { LitUpHoldsMap, HoldState } from '@/app/components/board-renderer/types';
 
-// Helper to get board details for any board type
-function getBoardDetailsForBoard(params: { board_name: BoardName; layout_id: number; size_id: number; set_ids: SetIdList }): BoardDetails {
-  if (params.board_name === 'moonboard') {
-    return getMoonBoardDetails({
-      layout_id: params.layout_id,
-      set_ids: params.set_ids,
-    });
-  }
-  return getBoardDetails(params);
-}
 
 // Parse Moonboard frames string to lit up holds map
 function parseMoonboardFrames(frames: string): LitUpHoldsMap {
   const map: LitUpHoldsMap = {};
   // Format: p{holdId}r{roleCode} e.g., "p1r42p45r43p198r44"
+  // Role codes: 42=start, 43=hand, 44=finish (see MOONBOARD_HOLD_STATE_CODES)
   const regex = /p(\d+)r(\d+)/g;
   let match;
   while ((match = regex.exec(frames)) !== null) {
@@ -44,11 +35,20 @@ function parseMoonboardFrames(frames: string): LitUpHoldsMap {
     const roleCode = parseInt(match[2], 10);
 
     // Determine which hold state to use based on role code
-    const holdStateKey = roleCode === MOONBOARD_HOLD_STATE_CODES.start
-      ? 'start'
-      : roleCode === MOONBOARD_HOLD_STATE_CODES.finish
-        ? 'finish'
-        : 'hand';
+    let holdStateKey: 'start' | 'hand' | 'finish';
+    if (roleCode === MOONBOARD_HOLD_STATE_CODES.start) {
+      holdStateKey = 'start';
+    } else if (roleCode === MOONBOARD_HOLD_STATE_CODES.finish) {
+      holdStateKey = 'finish';
+    } else if (roleCode === MOONBOARD_HOLD_STATE_CODES.hand) {
+      holdStateKey = 'hand';
+    } else {
+      // Unexpected role code - log a warning and default to 'hand'
+      console.warn(
+        `[MoonBoard] Unexpected role code ${roleCode} for hold ${holdId} in frames "${frames.slice(0, 50)}${frames.length > 50 ? '...' : ''}". Defaulting to HAND state.`
+      );
+      holdStateKey = 'hand';
+    }
     const holdState = MOONBOARD_HOLD_STATES[holdStateKey];
 
     map[holdId] = {
@@ -99,7 +99,10 @@ async function getMoonboardClimbs(layoutId: number, angle: number, limit: number
     .limit(limit);
 
   return results.map((row) => {
-    // Look up grade info from the shared BOULDER_GRADES constant
+    // Look up grade info from the shared BOULDER_GRADES constant.
+    // displayDifficulty is stored as double precision in the database but represents
+    // an integer difficulty_id. getGradeByDifficultyId rounds it to handle any
+    // floating point imprecision from database/ORM serialization.
     const gradeInfo = row.displayDifficulty ? getGradeByDifficultyId(row.displayDifficulty) : undefined;
 
     return {
