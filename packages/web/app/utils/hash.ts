@@ -22,11 +22,12 @@ export function fnv1aHash(str: string): string {
  * Used for periodic verification against server state
  */
 export function computeQueueStateHash(
-  queue: Array<{ uuid: string }>,
+  queue: Array<{ uuid: string } | undefined | null>,
   currentItemUuid: string | null
 ): string {
   // Sort queue UUIDs for deterministic ordering
-  const queueUuids = queue.map(item => item.uuid).sort().join(',');
+  // Filter out any undefined/null items that may have been introduced by state corruption
+  const queueUuids = queue.filter((item): item is { uuid: string } => item != null && item.uuid != null).map(item => item.uuid).sort().join(',');
   const currentUuid = currentItemUuid || 'null';
 
   // Create canonical string representation

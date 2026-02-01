@@ -294,13 +294,20 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
 
     switch (event.__typename) {
       case 'FullSync':
-        setQueueState(event.state.queue as LocalClimbQueueItem[]);
+        // Filter out any undefined/null items that may have been introduced by state corruption
+        setQueueState((event.state.queue as LocalClimbQueueItem[]).filter(item => item != null));
         setCurrentClimbQueueItem(event.state.currentClimbQueueItem as LocalClimbQueueItem | null);
         // Reset sequence tracking on full sync
         updateLastReceivedSequence(event.sequence);
         setLastReceivedStateHash(event.state.stateHash);
         break;
       case 'QueueItemAdded':
+        // Skip if item is undefined/null to prevent state corruption
+        if (event.addedItem == null) {
+          console.warn('[PersistentSession] Received QueueItemAdded with null/undefined item, skipping');
+          updateLastReceivedSequence(event.sequence);
+          break;
+        }
         setQueueState((prev) => {
           const newQueue = [...prev];
           if (event.position !== undefined && event.position >= 0) {
@@ -350,8 +357,20 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
 
   // Keep state hash in sync with local state after delta events
   // This ensures hash verification compares against current state, not stale FullSync hash
+  // Also detects corrupted items and triggers resync if found
   useEffect(() => {
     if (!session) return; // Only update hash when connected
+
+    // Check for corrupted (null/undefined) items in the queue
+    const hasCorruptedItems = queue.some(item => item == null);
+    if (hasCorruptedItems) {
+      console.warn('[PersistentSession] Detected null/undefined items in queue, triggering resync');
+      if (triggerResyncRef.current) {
+        triggerResyncRef.current();
+      }
+      return; // Skip hash update - resync will provide correct state
+    }
+
     const newHash = computeQueueStateHash(queue, currentClimbQueueItem?.uuid || null);
     setLastReceivedStateHash(newHash);
   }, [session, queue, currentClimbQueueItem]);
