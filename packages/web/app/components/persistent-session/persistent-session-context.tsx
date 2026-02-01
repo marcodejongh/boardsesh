@@ -64,6 +64,9 @@ const DEFAULT_BACKEND_URL = process.env.NEXT_PUBLIC_WS_URL || null;
 // Board names to check if we're on a board route - use centralized constant
 const BOARD_NAMES = SUPPORTED_BOARDS;
 
+// Cooldown for corruption-triggered resyncs to prevent infinite loops
+const CORRUPTION_RESYNC_COOLDOWN_MS = 30000; // 30 seconds
+
 // Session type matching the GraphQL response
 export interface Session {
   id: string;
@@ -247,7 +250,8 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
   const triggerResyncRef = useRef<(() => void) | null>(null);
   // Cooldown tracking for corruption-triggered resyncs to prevent infinite loops
   const lastCorruptionResyncRef = useRef<number>(0);
-  const CORRUPTION_RESYNC_COOLDOWN_MS = 30000; // 30 second cooldown between corruption resyncs
+  // Track if we're currently filtering corrupted items to prevent useEffect re-trigger loop
+  const isFilteringCorruptedItemsRef = useRef(false);
 
   // Event subscribers
   const queueEventSubscribersRef = useRef<Set<(event: SubscriptionQueueEvent) => void>>(new Set());
@@ -307,7 +311,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
       case 'QueueItemAdded':
         // Skip if item is undefined/null to prevent state corruption
         if (event.addedItem == null) {
-          console.warn('[PersistentSession] Received QueueItemAdded with null/undefined item, skipping');
+          console.error('[PersistentSession] Received QueueItemAdded with null/undefined item, skipping');
           updateLastReceivedSequence(event.sequence);
           break;
         }
@@ -364,6 +368,12 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
   useEffect(() => {
     if (!session) return; // Only update hash when connected
 
+    // Skip if we're currently filtering corrupted items to prevent re-trigger loop
+    if (isFilteringCorruptedItemsRef.current) {
+      isFilteringCorruptedItemsRef.current = false;
+      return;
+    }
+
     // Check for corrupted (null/undefined) items in the queue
     const hasCorruptedItems = queue.some(item => item == null);
     if (hasCorruptedItems) {
@@ -372,16 +382,17 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
 
       if (timeSinceLastResync < CORRUPTION_RESYNC_COOLDOWN_MS) {
         // Still in cooldown - filter corrupted items locally instead of resyncing
-        console.warn(
+        console.error(
           `[PersistentSession] Detected null/undefined items in queue, but resync on cooldown ` +
           `(${Math.round((CORRUPTION_RESYNC_COOLDOWN_MS - timeSinceLastResync) / 1000)}s remaining). ` +
           `Filtering locally.`
         );
+        isFilteringCorruptedItemsRef.current = true;
         setQueueState(prev => prev.filter(item => item != null));
         return;
       }
 
-      console.warn('[PersistentSession] Detected null/undefined items in queue, triggering resync');
+      console.error('[PersistentSession] Detected null/undefined items in queue, triggering resync');
       lastCorruptionResyncRef.current = now;
       if (triggerResyncRef.current) {
         triggerResyncRef.current();
