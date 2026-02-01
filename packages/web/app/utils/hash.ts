@@ -20,13 +20,22 @@ export function fnv1aHash(str: string): string {
 /**
  * Compute a deterministic hash of queue state
  * Used for periodic verification against server state
+ *
+ * Accepts potentially corrupted queue arrays containing null/undefined items
+ * and filters them out before computing the hash. This defensive approach
+ * prevents crashes when state corruption occurs.
  */
 export function computeQueueStateHash(
-  queue: Array<{ uuid: string }>,
+  queue: Array<{ uuid: string } | null | undefined>,
   currentItemUuid: string | null
 ): string {
   // Sort queue UUIDs for deterministic ordering
-  const queueUuids = queue.map(item => item.uuid).sort().join(',');
+  // Defensive filter for null/undefined items that may have been introduced by state corruption
+  const queueUuids = queue
+    .filter((item): item is { uuid: string } => item != null && typeof item === 'object' && item.uuid != null)
+    .map(item => item.uuid)
+    .sort()
+    .join(',');
   const currentUuid = currentItemUuid || 'null';
 
   // Create canonical string representation
