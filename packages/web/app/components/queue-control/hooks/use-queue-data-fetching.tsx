@@ -89,7 +89,7 @@ export const useQueueDataFetching = ({
         name: searchParams.name || undefined,
         setter: searchParams.settername && searchParams.settername.length > 0 ? searchParams.settername : undefined,
         onlyTallClimbs: searchParams.onlyTallClimbs || undefined,
-        // Convert holdsFilter from LitUpHoldsMap to Record<string, 'ANY' | 'NOT'>
+        // Convert holdsFilter from LitUpHoldsMap to Record<string, HoldState> format expected by GraphQL
         holdsFilter: searchParams.holdsFilter && Object.keys(searchParams.holdsFilter).length > 0
           ? Object.fromEntries(
               Object.entries(searchParams.holdsFilter).map(([key, value]) => [

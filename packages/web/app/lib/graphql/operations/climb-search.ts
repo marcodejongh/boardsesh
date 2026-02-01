@@ -1,5 +1,5 @@
 import { gql } from 'graphql-request';
-import type { Climb } from '@/app/lib/types';
+import type { Climb, HoldState } from '@/app/lib/types';
 
 // Fragment for climb fields
 const CLIMB_FIELDS = `
@@ -74,7 +74,7 @@ export interface ClimbSearchInputVariables {
     name?: string;
     setter?: string[];
     onlyTallClimbs?: boolean;
-    holdsFilter?: Record<string, 'ANY' | 'NOT'>;
+    holdsFilter?: Record<string, HoldState>;
     hideAttempted?: boolean;
     hideCompleted?: boolean;
     showOnlyAttempted?: boolean;

@@ -206,6 +206,16 @@ export default async function DynamicResultsPage(props: {
     sortOrder: searchParamsObject.sortOrder || 'desc',
     name: searchParamsObject.name || undefined,
     setter: searchParamsObject.settername && searchParamsObject.settername.length > 0 ? searchParamsObject.settername : undefined,
+    onlyTallClimbs: searchParamsObject.onlyTallClimbs || undefined,
+    // Convert holdsFilter from LitUpHoldsMap to Record<string, HoldState> format expected by GraphQL
+    holdsFilter: searchParamsObject.holdsFilter && Object.keys(searchParamsObject.holdsFilter).length > 0
+      ? Object.fromEntries(
+          Object.entries(searchParamsObject.holdsFilter).map(([key, value]) => [
+            key.replace('hold_', ''),
+            value.state
+          ])
+        )
+      : undefined,
   };
 
   // Check if this is a default search (no custom filters applied)
@@ -218,7 +228,9 @@ export default async function DynamicResultsPage(props: {
     !searchParamsObject.name &&
     (!searchParamsObject.settername || searchParamsObject.settername.length === 0) &&
     (searchParamsObject.sortBy || 'ascents') === 'ascents' &&
-    (searchParamsObject.sortOrder || 'desc') === 'desc';
+    (searchParamsObject.sortOrder || 'desc') === 'desc' &&
+    !searchParamsObject.onlyTallClimbs &&
+    (!searchParamsObject.holdsFilter || Object.keys(searchParamsObject.holdsFilter).length === 0);
 
   let searchResponse: ClimbSearchResponse;
   let boardDetails: BoardDetails;

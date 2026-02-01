@@ -2,6 +2,7 @@ import { eq, gte, sql, like, notLike, inArray, SQL, getTableName } from 'drizzle
 import { TableSet, type BoardName } from '../util/table-select';
 import type { SizeEdges } from '../util/product-sizes-data';
 import { boardseshTicks, boardProductSizes } from '@boardsesh/db/schema';
+import type { HoldState } from '@boardsesh/shared-schema';
 
 export interface ClimbSearchParams {
   // Pagination
@@ -19,8 +20,8 @@ export interface ClimbSearchParams {
   settername?: string[];
   onlyClassics?: boolean;
   onlyTallClimbs?: boolean;
-  // Hold filters
-  holdsFilter?: Record<string, 'ANY' | 'NOT'>;
+  // Hold filters - accepts all HoldState values (currently only 'ANY' and 'NOT' are processed)
+  holdsFilter?: Record<string, HoldState>;
   // Personal progress filters
   hideAttempted?: boolean;
   hideCompleted?: boolean;
