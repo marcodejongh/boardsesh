@@ -328,13 +328,13 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
           onDoubleClick={() => setCurrentClimbQueueItem(item)}
         >
           <Row style={{ width: '100%' }} gutter={[8, 8]} align="middle" wrap={false}>
-            <Col xs={6} sm={5}>
+            <Col span={5}>
               <ClimbThumbnail
                 boardDetails={boardDetails}
                 currentClimb={item.climb}
               />
             </Col>
-            <Col xs={item.addedByUser ? 13 : 15} sm={item.addedByUser ? 15 : 17}>
+            <Col span={item.addedByUser ? 15 : 17}>
               <ClimbTitle
                 climb={item.climb}
                 showAngle
@@ -343,13 +343,13 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
               />
             </Col>
             {item.addedByUser && (
-              <Col xs={2} sm={2}>
+              <Col span={2}>
                 <Tooltip title={item.addedByUser.username}>
                   <Avatar size="small" src={item.addedByUser.avatarUrl} icon={<UserOutlined />} />
                 </Tooltip>
               </Col>
             )}
-            <Col xs={3} sm={2}>
+            <Col span={2}>
               <Dropdown
                 menu={{
                   items: [

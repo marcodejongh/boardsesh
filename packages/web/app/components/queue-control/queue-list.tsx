@@ -223,7 +223,7 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
                 }}
               >
                 <Row style={{ width: '100%' }} gutter={[8, 8]} align="middle" wrap={false}>
-                  <Col xs={6} sm={5}>
+                  <Col span={5}>
                     <ClimbThumbnail
                       boardDetails={boardDetails}
                       currentClimb={climb}
@@ -231,10 +231,10 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
                       onNavigate={onClimbNavigate}
                     />
                   </Col>
-                  <Col xs={15} sm={17}>
+                  <Col span={17}>
                     <ClimbTitle climb={climb} showAngle centered />
                   </Col>
-                  <Col xs={3} sm={2}>
+                  <Col span={2}>
                     <Button type="default" icon={<PlusOutlined />} onClick={() => addToQueue(climb)} />
                   </Col>
                 </Row>
@@ -252,13 +252,13 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
                 <Flex vertical gap={themeTokens.spacing[2]} style={{ padding: themeTokens.spacing[2] }}>
                   {[1, 2, 3].map((i) => (
                     <Row key={i} gutter={[8, 8]} align="middle" wrap={false}>
-                      <Col xs={6} sm={5}>
+                      <Col span={5}>
                         <Skeleton.Image active style={{ width: '100%', height: 60 }} />
                       </Col>
-                      <Col xs={15} sm={17}>
+                      <Col span={17}>
                         <Skeleton active paragraph={{ rows: 1 }} title={false} />
                       </Col>
-                      <Col xs={3} sm={2}>
+                      <Col span={2}>
                         <Skeleton.Button active size="small" />
                       </Col>
                     </Row>
