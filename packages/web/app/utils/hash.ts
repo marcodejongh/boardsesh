@@ -21,12 +21,12 @@ export function fnv1aHash(str: string): string {
  * Compute a deterministic hash of queue state
  * Used for periodic verification against server state
  *
- * Note: Internally filters out null/undefined items as a defensive measure
- * against state corruption. This allows the function to handle corrupted
- * queue arrays gracefully without crashing.
+ * Accepts potentially corrupted queue arrays containing null/undefined items
+ * and filters them out before computing the hash. This defensive approach
+ * prevents crashes when state corruption occurs.
  */
 export function computeQueueStateHash(
-  queue: Array<{ uuid: string }>,
+  queue: Array<{ uuid: string } | null | undefined>,
   currentItemUuid: string | null
 ): string {
   // Sort queue UUIDs for deterministic ordering

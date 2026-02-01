@@ -643,7 +643,60 @@ sequenceDiagram
 - Sequence numbers must increment by 1
 - Hash updated after each delta event
 
-### 6. Subscription Error / Complete
+### 6. Queue Item Corruption Detection
+
+The client detects and recovers from corrupted queue items (null/undefined entries) that may occur due to server bugs, network issues, or state corruption.
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant PS as PersistentSession
+    participant S as Server
+
+    Note over C: useEffect runs on queue change
+
+    C->>C: Check for null/undefined items
+
+    alt No corrupted items
+        C->>C: Compute and update state hash
+    else Corrupted items detected
+        C->>C: Check resync cooldown (30s)
+
+        alt Within cooldown
+            C->>C: Filter items locally
+            C->>C: Log error (Sentry)
+            Note over C: Prevents infinite loops
+        else Cooldown expired
+            C->>C: Log error (Sentry)
+            C->>S: Trigger resync
+            S->>C: FullSync event
+            C->>C: Apply clean state
+        end
+    end
+```
+
+**Corruption sources:**
+- Server sends malformed queue data
+- State corruption during delta sync
+- Race conditions in event handling
+
+**Detection points:**
+1. **FullSync handler**: Filters null items when receiving initial/full state
+2. **QueueItemAdded handler**: Skips events with null items
+3. **State hash effect**: Detects corruption in current queue state
+
+**Resync cooldown:**
+- 30 second cooldown between corruption-triggered resyncs
+- Prevents infinite loop if server keeps returning corrupted data
+- During cooldown: filter corrupted items locally instead of resyncing
+- All corruption events logged at `console.error` level for Sentry visibility
+
+**Implementation:**
+- `computeQueueStateHash()` defensively filters null/undefined items
+- `isFilteringCorruptedItemsRef` prevents useEffect re-trigger loops
+- `lastCorruptionResyncRef` tracks cooldown timing
+
+### 7. Subscription Error / Complete
 
 ```mermaid
 sequenceDiagram
