@@ -1,4 +1,5 @@
 import { createClient, Client, Sink } from 'graphql-ws';
+import { isOriginError } from '@/app/lib/websocket-errors';
 
 export type { Client };
 
@@ -11,25 +12,6 @@ const MAX_RETRY_DELAY_MS = 30_000; // Cap at 30 seconds
 const BACKOFF_MULTIPLIER = 2; // Double the delay each retry
 
 let clientCounter = 0;
-
-/**
- * Known WebSocket connection error messages that indicate origin/CORS issues.
- * These are browser-specific error messages that can occur during WebSocket handshake.
- */
-const ORIGIN_ERROR_PATTERNS = [
-  'invalid origin',
-  'origin not allowed',
-  'cors',
-  'cross-origin',
-];
-
-/**
- * Check if an error message indicates an origin/CORS issue
- */
-function isOriginError(errorMessage: string): boolean {
-  const lowerMessage = errorMessage.toLowerCase();
-  return ORIGIN_ERROR_PATTERNS.some(pattern => lowerMessage.includes(pattern));
-}
 
 /**
  * Create a wrapped WebSocket class that provides better error handling
