@@ -182,7 +182,8 @@ export const ClimbSearchInputSchema = z.object({
   setterId: z.number().int().optional(),
   onlyBenchmarks: z.boolean().optional(),
   onlyTallClimbs: z.boolean().optional(),
-  holdsFilter: z.record(z.enum(['ANY', 'NOT'])).optional(),
+  // Accept all HoldState values for future UI implementations (currently only 'ANY' and 'NOT' are used)
+  holdsFilter: z.record(z.enum(['OFF', 'STARTING', 'FINISH', 'HAND', 'FOOT', 'ANY', 'NOT'])).optional(),
   // Personal progress filters
   hideAttempted: z.boolean().optional(),
   hideCompleted: z.boolean().optional(),

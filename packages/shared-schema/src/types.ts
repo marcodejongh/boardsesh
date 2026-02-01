@@ -144,8 +144,8 @@ export type ClimbSearchInput = {
   setterId?: number;
   onlyBenchmarks?: boolean;
   onlyTallClimbs?: boolean;
-  // Hold filters
-  holdsFilter?: Record<string, 'ANY' | 'NOT'>;
+  // Hold filters - accepts any HoldState for filtering climbs by hold usage
+  holdsFilter?: Record<string, HoldState>;
   // Personal progress filters
   hideAttempted?: boolean;
   hideCompleted?: boolean;
