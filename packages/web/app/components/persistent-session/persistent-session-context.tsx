@@ -245,6 +245,9 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
   const mountedRef = useRef(false);
   // Ref to store reconnect handler for use by hash verification
   const triggerResyncRef = useRef<(() => void) | null>(null);
+  // Cooldown tracking for corruption-triggered resyncs to prevent infinite loops
+  const lastCorruptionResyncRef = useRef<number>(0);
+  const CORRUPTION_RESYNC_COOLDOWN_MS = 30000; // 30 second cooldown between corruption resyncs
 
   // Event subscribers
   const queueEventSubscribersRef = useRef<Set<(event: SubscriptionQueueEvent) => void>>(new Set());
@@ -364,7 +367,22 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
     // Check for corrupted (null/undefined) items in the queue
     const hasCorruptedItems = queue.some(item => item == null);
     if (hasCorruptedItems) {
+      const now = Date.now();
+      const timeSinceLastResync = now - lastCorruptionResyncRef.current;
+
+      if (timeSinceLastResync < CORRUPTION_RESYNC_COOLDOWN_MS) {
+        // Still in cooldown - filter corrupted items locally instead of resyncing
+        console.warn(
+          `[PersistentSession] Detected null/undefined items in queue, but resync on cooldown ` +
+          `(${Math.round((CORRUPTION_RESYNC_COOLDOWN_MS - timeSinceLastResync) / 1000)}s remaining). ` +
+          `Filtering locally.`
+        );
+        setQueueState(prev => prev.filter(item => item != null));
+        return;
+      }
+
       console.warn('[PersistentSession] Detected null/undefined items in queue, triggering resync');
+      lastCorruptionResyncRef.current = now;
       if (triggerResyncRef.current) {
         triggerResyncRef.current();
       }
