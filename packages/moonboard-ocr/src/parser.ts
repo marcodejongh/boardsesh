@@ -8,9 +8,10 @@
 import path from 'path';
 import { SharpImageProcessor } from './image-processor/sharp-processor';
 import { MoonBoardClimb, ParseResult } from './types';
+import { parseWithProcessor, deduplicateClimbs } from './parser-core';
 
 // Re-export browser-safe core functions for backward compatibility
-export { parseWithProcessor, deduplicateClimbs } from './parser-core';
+export { parseWithProcessor, deduplicateClimbs };
 
 /**
  * Parse a single MoonBoard screenshot from file path (Node.js API).
@@ -19,7 +20,6 @@ export { parseWithProcessor, deduplicateClimbs } from './parser-core';
 export async function parseScreenshot(imagePath: string): Promise<ParseResult> {
   const processor = new SharpImageProcessor();
   await processor.load(imagePath);
-  const { parseWithProcessor } = await import('./parser-core');
   return parseWithProcessor(processor);
 }
 
