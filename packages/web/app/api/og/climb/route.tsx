@@ -2,7 +2,7 @@ import React from 'react';
 import { ImageResponse } from '@vercel/og';
 import { NextRequest } from 'next/server';
 import { getClimb } from '@/app/lib/data/queries';
-import { getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
+import { getBoardDetailsForBoard } from '@/app/lib/board-utils';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import { convertLitUpHoldsStringToMap, getImageUrl } from '@/app/components/board-renderer/util';
 import { HoldRenderData } from '@/app/components/board-renderer/types';
@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
       climb_uuid,
     });
 
-    const [boardDetails, currentClimb] = await Promise.all([getBoardDetails(parsedParams), getClimb(parsedParams)]);
+    const [boardDetails, currentClimb] = await Promise.all([getBoardDetailsForBoard(parsedParams), getClimb(parsedParams)]);
 
     // Process climb holds
     const framesData = convertLitUpHoldsStringToMap(currentClimb.frames, parsedParams.board_name);
