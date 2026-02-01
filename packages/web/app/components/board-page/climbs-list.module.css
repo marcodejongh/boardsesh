@@ -1,13 +1,20 @@
 /* Responsive grid column for climbs list
-   Uses CSS media queries instead of antd's responsive Col props
-   to avoid JavaScript-based breakpoint detection issues */
+
+   This CSS replaces antd's responsive Col props (xs/sm/lg/xl) to avoid
+   JavaScript-based breakpoint detection that can cause infinite loops
+   on iOS Safari when the browser UI changes viewport size.
+
+   Since no `span` prop is set on the Col component, antd doesn't apply
+   its flex rules, allowing these CSS flex properties to control the layout.
+   This is intentional - we're using antd Col purely for gutter spacing
+   while CSS handles the responsive column widths. */
 .climbCol {
-  /* Default: full width on small screens */
+  /* Default: full width on small screens (matches previous xs={24}) */
   flex: 0 0 100%;
   max-width: 100%;
 }
 
-/* lg breakpoint (992px+): 2 columns */
+/* lg breakpoint (992px+): 2 columns (matches previous lg={12}) */
 @media (min-width: 992px) {
   .climbCol {
     flex: 0 0 50%;
