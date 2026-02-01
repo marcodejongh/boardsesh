@@ -21,6 +21,25 @@ Sentry.init({
   // Enable sending user PII (Personally Identifiable Information)
   // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#sendDefaultPii
   sendDefaultPii: true,
+
+  // Filter out errors from browser extensions and third-party scripts
+  beforeSend(event, hint) {
+    const error = hint.originalException;
+    const errorMessage =
+      error instanceof Error ? error.message : String(error);
+
+    // Ignore browser extension errors (runtime.sendMessage, etc.)
+    if (
+      errorMessage.includes("runtime.sendMessage") ||
+      errorMessage.includes("Extension context invalidated") ||
+      errorMessage.includes("message channel closed") ||
+      errorMessage.includes("message port closed")
+    ) {
+      return null;
+    }
+
+    return event;
+  },
 });
 
 export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;
