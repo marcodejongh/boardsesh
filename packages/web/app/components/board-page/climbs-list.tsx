@@ -7,6 +7,7 @@ import { useQueueContext } from '../graphql-queue';
 import ClimbCard from '../climb-card/climb-card';
 import { ClimbCardSkeleton } from './board-page-skeleton';
 import { useSearchParams } from 'next/navigation';
+import styles from './climbs-list.module.css';
 
 type ClimbsListProps = ParsedBoardRouteParameters & {
   boardDetails: BoardDetails;
@@ -15,7 +16,7 @@ type ClimbsListProps = ParsedBoardRouteParameters & {
 
 const ClimbsListSkeleton = ({ aspectRatio }: { aspectRatio: number }) => {
   return Array.from({ length: 10 }, (_, i) => (
-    <Col xs={24} lg={12} xl={12} key={i}>
+    <Col key={i} className={styles.climbCol}>
       <ClimbCardSkeleton aspectRatio={aspectRatio} />
     </Col>
   ));
@@ -134,7 +135,7 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
     <div style={{ paddingTop: '5px' }}>
       <Row gutter={[16, 16]}>
         {climbs.map((climb) => (
-          <Col xs={24} lg={12} xl={12} id={climb.uuid} key={climb.uuid}>
+          <Col id={climb.uuid} key={climb.uuid} className={styles.climbCol}>
             <div
               ref={(el) => {
                 climbsRefs.current[climb.uuid] = el;

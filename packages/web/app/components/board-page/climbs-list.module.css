@@ -1,0 +1,16 @@
+/* Responsive grid column for climbs list
+   Uses CSS media queries instead of antd's responsive Col props
+   to avoid JavaScript-based breakpoint detection issues */
+.climbCol {
+  /* Default: full width on small screens */
+  flex: 0 0 100%;
+  max-width: 100%;
+}
+
+/* lg breakpoint (992px+): 2 columns */
+@media (min-width: 992px) {
+  .climbCol {
+    flex: 0 0 50%;
+    max-width: 50%;
+  }
+}
