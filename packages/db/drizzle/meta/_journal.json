@@ -267,6 +267,13 @@
       "when": 1768531200000,
       "tag": "0041_add_esp32_controllers",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1768617600000,
+      "tag": "0042_add_controller_session_auth",
+      "breakpoints": true
     }
   ]
 }

@@ -829,6 +829,117 @@ This would reduce the window of stale data but is not currently implemented.
 
 ---
 
+## Controller Events (ESP32 Integration)
+
+The backend supports ESP32 controllers that bridge between official Kilter/Tension apps and BoardSesh sessions. Controllers receive LED updates and can send detected climbs back to the session.
+
+### Authentication
+
+Controllers authenticate using API keys passed in the WebSocket connection params (not in GraphQL variables):
+
+```javascript
+// graphql-ws protocol connection_init
+{
+  "type": "connection_init",
+  "payload": {
+    "controllerApiKey": "your-64-char-hex-key"
+  }
+}
+```
+
+The backend extracts this from `connectionParams.controllerApiKey` during the `onConnect` hook and stores `controllerId` and `controllerApiKey` in the connection context.
+
+### Authorization Flow
+
+1. **User Registration** (Web UI)
+   - User visits Settings > ESP32 Controllers
+   - Clicks "Add Controller" and configures board type, layout, size, sets
+   - Receives a 64-character hex API key (shown once, must save it)
+
+2. **Session Authorization** (Automatic)
+   - When user calls `joinSession` mutation (authenticated)
+   - Backend auto-authorizes all user's controllers for that session
+   - Sets `authorizedSessionId` column in database
+
+3. **Controller Connection** (ESP32)
+   - ESP32 connects with API key in `connection_init` payload
+   - Backend validates key and populates context with controller info
+
+4. **Subscription Authorization**
+   - Controller subscribes to `controllerEvents(sessionId)`
+   - Backend verifies controller is authorized for that session
+   - Throws error if not: "Controller not authorized for session"
+
+5. **Mutation Authorization**
+   - Controller calls `setClimbFromLedPositions(sessionId, frames)`
+   - Backend verifies session authorization before processing
+
+### Controller Subscription
+
+```graphql
+subscription ControllerEvents($sessionId: ID!) {
+  controllerEvents(sessionId: $sessionId) {
+    ... on LedUpdate {
+      commands { position r g b }
+      climbUuid
+      climbName
+      angle
+    }
+    ... on ControllerPing {
+      timestamp
+    }
+  }
+}
+```
+
+### Events
+
+| Event | Description |
+|-------|-------------|
+| `LedUpdate` | LED commands for current climb (RGB values and positions) |
+| `ControllerPing` | Keep-alive ping (not currently implemented) |
+
+### LED Color Mapping
+
+| Hold State | RGB Value |
+|------------|-----------|
+| STARTING | (0, 255, 0) Green |
+| FINISH | (255, 0, 255) Magenta |
+| HAND | (0, 255, 255) Cyan |
+| FOOT | (255, 165, 0) Orange |
+
+### Controller Mutations
+
+```graphql
+# Send detected climb from Bluetooth
+mutation SetClimbFromLeds($sessionId: ID!, $frames: String) {
+  setClimbFromLedPositions(sessionId: $sessionId, frames: $frames) {
+    matched
+    climbUuid
+    climbName
+  }
+}
+
+# Heartbeat to update lastSeenAt
+mutation Heartbeat($sessionId: ID!) {
+  controllerHeartbeat(sessionId: $sessionId)
+}
+```
+
+### Manual Authorization
+
+If auto-authorization doesn't apply (e.g., controller owner is not in session), use:
+
+```graphql
+mutation AuthorizeController($controllerId: ID!, $sessionId: ID!) {
+  authorizeControllerForSession(controllerId: $controllerId, sessionId: $sessionId)
+}
+```
+
+Requires user authentication and controller ownership.
+
+---
+
 ## Configuration
 
 ### Environment Variables

@@ -1,7 +1,7 @@
 #include "aurora_protocol.h"
 
 AuroraProtocol::AuroraProtocol()
-    : currentAngle(0), multiPacketInProgress(false) {}
+    : currentAngle(0), multiPacketInProgress(false), multiPacketStartTime(0) {}
 
 void AuroraProtocol::clear() {
     rawBuffer.clear();
@@ -9,6 +9,7 @@ void AuroraProtocol::clear() {
     pendingCommands.clear();
     currentAngle = 0;
     multiPacketInProgress = false;
+    multiPacketStartTime = 0;
 }
 
 const std::vector<LedCommand>& AuroraProtocol::getLedCommands() const {
@@ -28,6 +29,26 @@ uint8_t AuroraProtocol::calculateChecksum(const uint8_t* data, size_t length) {
 }
 
 bool AuroraProtocol::addData(const uint8_t* data, size_t length) {
+    // Check for buffer overflow - clear if adding would exceed max
+    if (rawBuffer.size() + length > MAX_RAW_BUFFER_SIZE) {
+        if (DEBUG_BLE) {
+            Serial.printf("[BLE] Buffer overflow prevented: %zu + %zu > %d, clearing\n",
+                          rawBuffer.size(), length, MAX_RAW_BUFFER_SIZE);
+        }
+        clear();
+    }
+
+    // Check for multi-packet timeout
+    if (multiPacketInProgress) {
+        unsigned long now = millis();
+        if (now - multiPacketStartTime > MULTI_PACKET_TIMEOUT_MS) {
+            if (DEBUG_BLE) {
+                Serial.println("[BLE] Multi-packet sequence timed out, clearing");
+            }
+            clear();
+        }
+    }
+
     // Add new data to buffer
     for (size_t i = 0; i < length; i++) {
         rawBuffer.push_back(data[i]);
@@ -260,6 +281,7 @@ bool AuroraProtocol::processMessage(uint8_t command, const uint8_t* data, size_t
         case CMD_V3_PACKET_FIRST:  // 'R' (82)
             pendingCommands = commands;
             multiPacketInProgress = true;
+            multiPacketStartTime = millis();  // Start timeout timer
             if (DEBUG_BLE) {
                 Serial.printf("[BLE] Multi-packet START: %zu LEDs\n", pendingCommands.size());
             }
@@ -269,7 +291,17 @@ bool AuroraProtocol::processMessage(uint8_t command, const uint8_t* data, size_t
         case CMD_V2_PACKET_MIDDLE:  // 'M' (77)
         case CMD_V3_PACKET_MIDDLE:  // 'Q' (81)
             if (multiPacketInProgress) {
-                pendingCommands.insert(pendingCommands.end(), commands.begin(), commands.end());
+                // Check bounds before adding more commands
+                if (pendingCommands.size() + commands.size() > MAX_LED_COMMANDS) {
+                    if (DEBUG_BLE) {
+                        Serial.printf("[BLE] WARNING: Too many LEDs (%zu + %zu > %d), truncating\n",
+                                      pendingCommands.size(), commands.size(), MAX_LED_COMMANDS);
+                    }
+                    size_t canAdd = MAX_LED_COMMANDS - pendingCommands.size();
+                    pendingCommands.insert(pendingCommands.end(), commands.begin(), commands.begin() + canAdd);
+                } else {
+                    pendingCommands.insert(pendingCommands.end(), commands.begin(), commands.end());
+                }
                 if (DEBUG_BLE) {
                     Serial.printf("[BLE] Multi-packet MIDDLE: +%zu LEDs (total: %zu)\n",
                                   commands.size(), pendingCommands.size());
@@ -283,10 +315,21 @@ bool AuroraProtocol::processMessage(uint8_t command, const uint8_t* data, size_t
         case CMD_V2_PACKET_LAST:  // 'O' (79)
         case CMD_V3_PACKET_LAST:  // 'S' (83)
             if (multiPacketInProgress) {
-                pendingCommands.insert(pendingCommands.end(), commands.begin(), commands.end());
+                // Check bounds before adding final commands
+                if (pendingCommands.size() + commands.size() > MAX_LED_COMMANDS) {
+                    if (DEBUG_BLE) {
+                        Serial.printf("[BLE] WARNING: Too many LEDs (%zu + %zu > %d), truncating\n",
+                                      pendingCommands.size(), commands.size(), MAX_LED_COMMANDS);
+                    }
+                    size_t canAdd = MAX_LED_COMMANDS - pendingCommands.size();
+                    pendingCommands.insert(pendingCommands.end(), commands.begin(), commands.begin() + canAdd);
+                } else {
+                    pendingCommands.insert(pendingCommands.end(), commands.begin(), commands.end());
+                }
                 ledCommands = pendingCommands;
                 pendingCommands.clear();
                 multiPacketInProgress = false;
+                multiPacketStartTime = 0;
                 if (DEBUG_BLE) {
                     Serial.printf("[BLE] Multi-packet END: %zu total LEDs\n", ledCommands.size());
                 }

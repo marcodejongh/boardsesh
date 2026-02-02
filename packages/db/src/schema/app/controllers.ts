@@ -18,12 +18,15 @@ export const esp32Controllers = pgTable('esp32_controllers', {
   layoutId: integer('layout_id').notNull(),
   sizeId: integer('size_id').notNull(),
   setIds: varchar('set_ids', { length: 100 }).notNull(),
+  // Session authorization - which session this controller is allowed to interact with
+  authorizedSessionId: text('authorized_session_id'),
   // Timestamps
   createdAt: timestamp('created_at').defaultNow().notNull(),
   lastSeenAt: timestamp('last_seen_at'),
 }, (table) => ({
   userIdx: index('esp32_controllers_user_idx').on(table.userId),
   apiKeyIdx: index('esp32_controllers_api_key_idx').on(table.apiKey),
+  sessionIdx: index('esp32_controllers_session_idx').on(table.authorizedSessionId),
 }));
 
 // Type exports

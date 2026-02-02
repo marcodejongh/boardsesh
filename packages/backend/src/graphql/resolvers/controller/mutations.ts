@@ -10,7 +10,7 @@ import type {
 import { db } from '../../../db/client';
 import { esp32Controllers } from '@boardsesh/db/schema/app';
 import { eq, and } from 'drizzle-orm';
-import { requireAuthenticated, applyRateLimit } from '../shared/helpers';
+import { requireAuthenticated, applyRateLimit, requireControllerAuth, requireControllerAuthorizedForSession } from '../shared/helpers';
 import { randomBytes, randomUUID } from 'crypto';
 import { matchClimbByFrames, getClimbByUuid } from '../../../db/queries/climbs';
 import { roomManager } from '../../../services/room-manager';
@@ -95,7 +95,7 @@ export const controllerMutations = {
   /**
    * ESP32 controller sends frames string (or LED positions) received from official app Bluetooth
    * Backend attempts to match against known climbs and sets as current climb if found
-   * Accepts API key as variable for simpler ESP32 integration
+   * Uses controller API key authentication via connectionParams
    *
    * @param frames - Pre-built frames string from ESP32 (preferred method)
    * @param positions - Legacy LED positions array (for backwards compatibility)
@@ -106,26 +106,27 @@ export const controllerMutations = {
       sessionId,
       frames,
       positions,
-      apiKey,
     }: {
       sessionId: string;
       frames?: string;
       positions?: LedCommand[];
-      apiKey: string;
     },
     ctx: ConnectionContext
   ): Promise<ClimbMatchResult> => {
     applyRateLimit(ctx, 30); // Moderate limit for LED position updates
 
-    // Verify controller exists and API key is valid
+    // Verify controller is authenticated and authorized for this session
+    const { controllerId } = await requireControllerAuthorizedForSession(ctx, sessionId);
+
+    // Get controller details
     const [controller] = await db
       .select()
       .from(esp32Controllers)
-      .where(eq(esp32Controllers.apiKey, apiKey))
+      .where(eq(esp32Controllers.id, controllerId))
       .limit(1);
 
     if (!controller) {
-      throw new Error('Invalid controller API key');
+      throw new Error('Controller not found');
     }
 
     // Update lastSeenAt
@@ -272,7 +273,7 @@ export const controllerMutations = {
 
   /**
    * ESP32 controller heartbeat to update lastSeenAt
-   * Uses API key authentication
+   * Uses API key authentication via connectionParams
    */
   controllerHeartbeat: async (
     _: unknown,
@@ -281,17 +282,58 @@ export const controllerMutations = {
   ): Promise<boolean> => {
     applyRateLimit(ctx, 120); // Allow frequent heartbeats
 
-    // Validate API key authentication
-    if (!ctx.controllerApiKey || !ctx.controllerId) {
-      throw new Error('Controller authentication required');
-    }
+    // Validate API key authentication via context
+    const { controllerId, controllerApiKey } = requireControllerAuth(ctx);
 
     // Update lastSeenAt
     await db
       .update(esp32Controllers)
       .set({ lastSeenAt: new Date() })
-      .where(eq(esp32Controllers.apiKey, ctx.controllerApiKey));
+      .where(eq(esp32Controllers.apiKey, controllerApiKey));
 
+    return true;
+  },
+
+  /**
+   * Authorize a controller for a specific session
+   * This allows the controller to subscribe to events and send LED data for this session
+   * Requires user authentication - only the controller owner can authorize it
+   */
+  authorizeControllerForSession: async (
+    _: unknown,
+    { controllerId, sessionId }: { controllerId: string; sessionId: string },
+    ctx: ConnectionContext
+  ): Promise<boolean> => {
+    requireAuthenticated(ctx);
+    applyRateLimit(ctx);
+
+    if (!ctx.userId) {
+      throw new Error('User ID not available');
+    }
+
+    // Verify the user owns this controller
+    const [controller] = await db
+      .select()
+      .from(esp32Controllers)
+      .where(
+        and(
+          eq(esp32Controllers.id, controllerId),
+          eq(esp32Controllers.userId, ctx.userId)
+        )
+      )
+      .limit(1);
+
+    if (!controller) {
+      throw new Error('Controller not found or not owned by user');
+    }
+
+    // Update the controller's authorized session
+    await db
+      .update(esp32Controllers)
+      .set({ authorizedSessionId: sessionId })
+      .where(eq(esp32Controllers.id, controllerId));
+
+    console.log(`[Controller] Controller ${controllerId} authorized for session ${sessionId}`);
     return true;
   },
 };

@@ -683,21 +683,23 @@ export const typeDefs = /* GraphQL */ `
     # ESP32 sends LED positions from official app Bluetooth
     # frames: Pre-built frames string from ESP32 (preferred)
     # positions: Legacy LED positions array (for backwards compatibility)
+    # Requires controller API key in connectionParams
     setClimbFromLedPositions(
       sessionId: ID!
       frames: String
       positions: [LedCommandInput!]
-      apiKey: String!
     ): ClimbMatchResult!
-    # ESP32 heartbeat to update lastSeenAt - uses API key auth
+    # ESP32 heartbeat to update lastSeenAt - uses API key auth via connectionParams
     controllerHeartbeat(sessionId: ID!): Boolean!
+    # Authorize a controller for a specific session (requires user auth, auto-called on joinSession)
+    authorizeControllerForSession(controllerId: ID!, sessionId: ID!): Boolean!
   }
 
   type Subscription {
     sessionUpdates(sessionId: ID!): SessionEvent!
     queueUpdates(sessionId: ID!): QueueEvent!
-    # ESP32 subscribes to receive LED commands - uses API key auth
-    controllerEvents(sessionId: ID!, apiKey: String!): ControllerEvent!
+    # ESP32 subscribes to receive LED commands - uses API key auth via connectionParams
+    controllerEvents(sessionId: ID!): ControllerEvent!
   }
 
   # Session Events

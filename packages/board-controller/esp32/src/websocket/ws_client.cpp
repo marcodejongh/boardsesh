@@ -5,6 +5,12 @@
 // Global instance
 WsClient wsClient;
 
+// Maximum number of LEDs we can handle
+#define MAX_LED_COUNT 500
+
+// Static buffer for LED commands to avoid dynamic allocation
+static LedCommand staticLedBuffer[MAX_LED_COUNT];
+
 // Static instance pointer for event handler
 static WsClient* wsClientInstance = nullptr;
 
@@ -259,9 +265,10 @@ void WsClient::sendConnectionInit() {
     JsonDocument doc;
     doc["type"] = "connection_init";
 
-    // Include API key in connection payload
+    // Include controller API key in connection payload for authentication
+    // Backend extracts this from connectionParams.controllerApiKey
     JsonObject payload = doc["payload"].to<JsonObject>();
-    payload["apiKey"] = apiKey;
+    payload["controllerApiKey"] = apiKey;
 
     String message;
     serializeJson(doc, message);
@@ -281,16 +288,16 @@ void WsClient::sendSubscribe() {
 
     JsonObject payload = doc["payload"].to<JsonObject>();
 
-    // GraphQL subscription query
-    payload["query"] = "subscription ControllerEvents($sessionId: ID!, $apiKey: String!) { "
-                       "controllerEvents(sessionId: $sessionId, apiKey: $apiKey) { "
+    // GraphQL subscription query - API key is now in connectionParams
+    payload["query"] = "subscription ControllerEvents($sessionId: ID!) { "
+                       "controllerEvents(sessionId: $sessionId) { "
                        "... on LedUpdate { __typename commands { position r g b } climbUuid climbName angle } "
                        "... on ControllerPing { __typename timestamp } "
                        "} }";
 
     JsonObject variables = payload["variables"].to<JsonObject>();
     variables["sessionId"] = sessionId;
-    variables["apiKey"] = apiKey;
+    // Note: apiKey is no longer passed here - it's in connectionParams
 
     String message;
     serializeJson(doc, message);
@@ -347,24 +354,29 @@ void WsClient::handleLedUpdate(JsonObject& data) {
         return;
     }
 
-    // Convert to LedCommand array
-    LedCommand* ledCommands = new LedCommand[count];
+    // Clamp count to static buffer size to prevent overflow
+    if (count > MAX_LED_COUNT) {
+        Serial.printf("[WS] Warning: LED count %d exceeds max %d, clamping\n", count, MAX_LED_COUNT);
+        count = MAX_LED_COUNT;
+    }
 
+    // Use static buffer instead of dynamic allocation
     int i = 0;
     for (JsonObject cmd : commands) {
-        ledCommands[i].position = cmd["position"];
-        ledCommands[i].r = cmd["r"];
-        ledCommands[i].g = cmd["g"];
-        ledCommands[i].b = cmd["b"];
+        if (i >= count) break;
+        staticLedBuffer[i].position = cmd["position"];
+        staticLedBuffer[i].r = cmd["r"];
+        staticLedBuffer[i].g = cmd["g"];
+        staticLedBuffer[i].b = cmd["b"];
         i++;
     }
 
     // Update LEDs
-    ledController.setLeds(ledCommands, count);
+    ledController.setLeds(staticLedBuffer, count);
     ledController.show();
 
     // Store hash of currently displayed LEDs (to detect if BLE sends the same climb)
-    currentDisplayHash = computeLedHash(ledCommands, count);
+    currentDisplayHash = computeLedHash(staticLedBuffer, count);
 
     // Log climb info if available
     const char* climbName = data["climbName"];
@@ -373,8 +385,6 @@ void WsClient::handleLedUpdate(JsonObject& data) {
     } else {
         Serial.printf("[WS] Updated %d LEDs\n", count);
     }
-
-    delete[] ledCommands;
 }
 
 void WsClient::sendLedPositions(const LedCommand* commands, int count, int angle) {
@@ -412,13 +422,14 @@ void WsClient::sendLedPositions(const LedCommand* commands, int count, int angle
 
     JsonObject payload = doc["payload"].to<JsonObject>();
     // Send positions array - backend will convert to frames string
-    payload["query"] = "mutation SetClimbFromLeds($sessionId: ID!, $positions: [LedCommandInput!], $apiKey: String!) { "
-                       "setClimbFromLedPositions(sessionId: $sessionId, positions: $positions, apiKey: $apiKey) { "
+    // Note: apiKey is now in connectionParams, not mutation variables
+    payload["query"] = "mutation SetClimbFromLeds($sessionId: ID!, $positions: [LedCommandInput!]) { "
+                       "setClimbFromLedPositions(sessionId: $sessionId, positions: $positions) { "
                        "matched climbUuid climbName } }";
 
     JsonObject variables = payload["variables"].to<JsonObject>();
     variables["sessionId"] = sessionId;
-    variables["apiKey"] = apiKey;
+    // Note: apiKey is no longer passed here - it's in connectionParams
 
     JsonArray positions = variables["positions"].to<JsonArray>();
     for (int i = 0; i < count; i++) {

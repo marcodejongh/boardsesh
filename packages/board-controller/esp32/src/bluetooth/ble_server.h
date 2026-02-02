@@ -7,6 +7,9 @@
 #include "../config/board_config.h"
 #include "aurora_protocol.h"
 
+// Maximum number of MAC addresses to track for deduplication
+#define MAX_MAC_TRACKING 10
+
 /**
  * BLE Server
  * Implements Nordic UART Service compatible with official Kilter/Tension apps
@@ -44,7 +47,16 @@ private:
     AuroraProtocol protocol;
     bool deviceConnected;
     String connectedDeviceAddress;  // MAC address of currently connected device
-    std::map<String, uint32_t> lastSentHashByMac;  // Track last sent hash per MAC address
+
+    // Track last sent hash per MAC address with timestamps for LRU eviction
+    struct MacHashEntry {
+        uint32_t hash;
+        unsigned long timestamp;
+    };
+    std::map<String, MacHashEntry> lastSentHashByMac;
+
+    // Evict oldest entries if we exceed MAX_MAC_TRACKING
+    void evictOldestMacEntries();
 
     void (*ledDataCallback)(const LedCommand* commands, int count, int angle);
 

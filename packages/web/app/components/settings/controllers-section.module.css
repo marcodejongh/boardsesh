@@ -1,0 +1,50 @@
+.sectionDescription {
+  display: block;
+  margin-bottom: 16px;
+}
+
+.cardsContainer {
+  width: 100%;
+}
+
+.controllerCard {
+  width: 100%;
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.controllerInfo {
+  margin-bottom: 16px;
+}
+
+.infoRow {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.loadingContainer {
+  display: flex;
+  justify-content: center;
+  padding: 24px;
+}
+
+.modalDescription {
+  display: block;
+  margin-bottom: 16px;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 24px;
+  margin-bottom: 16px;
+}
+
+.addButton {
+  margin-top: 16px;
+}

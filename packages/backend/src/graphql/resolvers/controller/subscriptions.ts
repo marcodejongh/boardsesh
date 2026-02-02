@@ -6,6 +6,7 @@ import { pubsub } from '../../../pubsub/index';
 import { roomManager } from '../../../services/room-manager';
 import { createAsyncIterator } from '../shared/async-iterators';
 import { getLedPlacements } from '../../../db/queries/util/led-placements-data';
+import { requireControllerAuthorizedForSession } from '../shared/helpers';
 
 // LED color mapping for hold states (matches web app colors)
 const HOLD_STATE_COLORS: Record<string, { r: number; g: number; b: number }> = {
@@ -51,10 +52,10 @@ function climbToLedCommands(
 export const controllerSubscriptions = {
   /**
    * ESP32 controller subscribes to receive LED commands
-   * Uses API key authentication via subscription payload
+   * Uses API key authentication via connectionParams
    *
    * Flow:
-   * 1. Validate API key
+   * 1. Validate API key from connectionParams and verify session authorization
    * 2. Subscribe to session's current climb changes
    * 3. When climb changes, convert to LED commands and send to controller
    * 4. Send periodic pings to keep connection alive
@@ -62,30 +63,21 @@ export const controllerSubscriptions = {
   controllerEvents: {
     subscribe: async function* (
       _: unknown,
-      { sessionId, apiKey }: { sessionId: string; apiKey: string },
+      { sessionId }: { sessionId: string },
       ctx: ConnectionContext
     ): AsyncGenerator<{ controllerEvents: ControllerEvent }> {
-      // Validate API key or auto-register
-      let [controller] = await db
+      // Validate API key from context and verify session authorization
+      const { controllerId } = await requireControllerAuthorizedForSession(ctx, sessionId);
+
+      // Get controller details
+      const [controller] = await db
         .select()
         .from(esp32Controllers)
-        .where(eq(esp32Controllers.apiKey, apiKey))
+        .where(eq(esp32Controllers.id, controllerId))
         .limit(1);
 
       if (!controller) {
-        // Auto-register the controller for easier setup
-        console.log(`[Controller] Auto-registering new controller with API key`);
-        const [newController] = await db
-          .insert(esp32Controllers)
-          .values({
-            apiKey,
-            boardName: 'kilter', // Default - can be updated later
-            layoutId: 1,
-            sizeId: 1,
-            setIds: '1',
-          })
-          .returning();
-        controller = newController;
+        throw new Error('Controller not registered. Register via web UI first.');
       }
 
       // Update lastSeenAt on connection

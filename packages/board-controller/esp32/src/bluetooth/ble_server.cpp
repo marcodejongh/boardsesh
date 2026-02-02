@@ -111,6 +111,15 @@ void BleServer::onConnect(NimBLEServer* pServer, ble_gap_conn_desc* desc) {
 void BleServer::onDisconnect(NimBLEServer* pServer) {
     deviceConnected = false;
     Serial.printf("[BLE] Device disconnected: %s\n", connectedDeviceAddress.c_str());
+
+    // Remove MAC from tracking on disconnect to free memory
+    if (connectedDeviceAddress.length() > 0) {
+        auto it = lastSentHashByMac.find(connectedDeviceAddress);
+        if (it != lastSentHashByMac.end()) {
+            Serial.printf("[BLE] Evicting disconnected MAC: %s\n", connectedDeviceAddress.c_str());
+            lastSentHashByMac.erase(it);
+        }
+    }
     connectedDeviceAddress = "";
 
     // Restart advertising
@@ -133,15 +142,37 @@ bool BleServer::shouldSendLedData(uint32_t hash) {
         return true;  // Never sent from this device before
     }
 
-    bool shouldSend = (it->second != hash);
+    bool shouldSend = (it->second.hash != hash);
     Serial.printf("[BLE] shouldSendLedData: %s, lastHash=%u, newHash=%u, send=%s\n",
-                  connectedDeviceAddress.c_str(), it->second, hash, shouldSend ? "yes" : "no");
+                  connectedDeviceAddress.c_str(), it->second.hash, hash, shouldSend ? "yes" : "no");
     return shouldSend;
+}
+
+void BleServer::evictOldestMacEntries() {
+    // If we're under the limit, nothing to do
+    while (lastSentHashByMac.size() > MAX_MAC_TRACKING) {
+        // Find the oldest entry
+        auto oldest = lastSentHashByMac.begin();
+        for (auto it = lastSentHashByMac.begin(); it != lastSentHashByMac.end(); ++it) {
+            if (it->second.timestamp < oldest->second.timestamp) {
+                oldest = it;
+            }
+        }
+        Serial.printf("[BLE] Evicting oldest MAC entry: %s (age: %lu ms)\n",
+                      oldest->first.c_str(), millis() - oldest->second.timestamp);
+        lastSentHashByMac.erase(oldest);
+    }
 }
 
 void BleServer::updateLastSentHash(uint32_t hash) {
     if (connectedDeviceAddress.length() > 0) {
-        lastSentHashByMac[connectedDeviceAddress] = hash;
+        MacHashEntry entry;
+        entry.hash = hash;
+        entry.timestamp = millis();
+        lastSentHashByMac[connectedDeviceAddress] = entry;
+
+        // Evict oldest entries if we exceed the limit
+        evictOldestMacEntries();
     }
 }
 

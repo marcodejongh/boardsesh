@@ -10,6 +10,11 @@
 #define FRAME_STX 0x02  // Start of text
 #define FRAME_ETX 0x03  // End of text
 
+// Buffer limits to prevent memory exhaustion
+#define MAX_RAW_BUFFER_SIZE 2048
+#define MAX_LED_COMMANDS 500
+#define MULTI_PACKET_TIMEOUT_MS 5000
+
 // Hold role codes (Kilter board)
 #define ROLE_STARTING 42
 #define ROLE_HAND     43
@@ -116,6 +121,7 @@ private:
 
     int currentAngle;
     bool multiPacketInProgress;
+    unsigned long multiPacketStartTime;  // For timeout detection
 
     // Try to extract and process a complete framed message from the buffer
     // Returns true if a complete LED update is ready
