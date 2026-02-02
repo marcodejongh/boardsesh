@@ -152,7 +152,8 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
   // Split queue into history (past), current, and future items
   // Rendered in Spotify-like order: history (oldest to newest) → current → future
   const historyItems = currentIndex > 0 ? queue.slice(0, currentIndex) : [];
-  const futureItems = currentIndex >= 0 ? queue.slice(currentIndex + 1) : queue.slice(1);
+  // When no current climb (currentIndex === -1), show entire queue as future items
+  const futureItems = currentIndex >= 0 ? queue.slice(currentIndex + 1) : queue;
 
   // Calculate which history item to scroll to:
   // Show only 2 history items above current, so scroll target is at index (length - 2)
@@ -165,8 +166,6 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
         {historyItems.length > 0 && (
           <>
             {historyItems.map((climbQueueItem, index) => {
-              // Get the original index in the queue for drag-and-drop
-              const originalIndex = queue.findIndex((item) => item.uuid === climbQueueItem.uuid);
               // Add scroll target ref at the position that shows only 2 history items
               const isScrollTarget = historyItems.length > 2 && index === scrollToHistoryIndex;
 
@@ -174,7 +173,7 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
                 <div key={climbQueueItem.uuid} ref={isScrollTarget ? scrollTargetRef : undefined}>
                   <QueueListItem
                     item={climbQueueItem}
-                    index={originalIndex}
+                    index={index}
                     isCurrent={false}
                     isHistory={true}
                     viewOnlyMode={viewOnlyMode}
@@ -193,7 +192,7 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
 
         {/* Current climb item */}
         {currentClimbQueueItem && (
-          <div ref={historyItems.length <= 2 ? scrollTargetRef : undefined}>
+          <div key={currentClimbQueueItem.uuid} ref={historyItems.length <= 2 ? scrollTargetRef : undefined}>
             <QueueListItem
               item={currentClimbQueueItem}
               index={currentIndex}
@@ -210,9 +209,9 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
         )}
 
         {/* Future items (after current) */}
-        {futureItems.map((climbQueueItem) => {
-          // Get the original index in the queue for drag-and-drop
-          const originalIndex = queue.findIndex((item) => item.uuid === climbQueueItem.uuid);
+        {futureItems.map((climbQueueItem, index) => {
+          // Calculate original index: future items start after current climb
+          const originalIndex = currentIndex >= 0 ? currentIndex + 1 + index : index;
 
           return (
             <QueueListItem
