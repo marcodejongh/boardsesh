@@ -14,6 +14,18 @@ import {
   shutdownDistributedState,
 } from './distributed-state';
 
+/**
+ * Check if an error is a PostgreSQL foreign key violation (error code 23503).
+ */
+function isForeignKeyViolation(error: unknown): boolean {
+  if (error && typeof error === 'object') {
+    const pgError = error as { code?: string; message?: string };
+    if (pgError.code === '23503') return true;
+    if (pgError.message?.includes('foreign key constraint')) return true;
+  }
+  return false;
+}
+
 // Custom error for version conflicts
 export class VersionConflictError extends Error {
   constructor(sessionId: string, expectedVersion: number) {
@@ -393,6 +405,9 @@ class RoomManager {
       // Keep session alive when last user leaves (for hybrid persistence)
       if (sessionClientIds.size === 0) {
         this.sessions.delete(sessionId);
+
+        // Cancel any pending writes since session is now inactive
+        this.cancelPendingWrites(sessionId);
 
         // Mark session as inactive in Redis but DON'T delete (4h TTL starts)
         if (this.redisStore) {
@@ -1077,8 +1092,18 @@ class RoomManager {
    */
   private async retryPostgresWrite(
     sessionId: string,
-    state: { queue: ClimbQueueItem[]; currentClimbQueueItem: ClimbQueueItem | null; version: number }
+    state: { queue: ClimbQueueItem[]; currentClimbQueueItem: ClimbQueueItem | null; version: number },
+    lastError?: unknown
   ): Promise<void> {
+    // Don't retry FK violations - session doesn't exist, retries will never succeed
+    if (lastError && isForeignKeyViolation(lastError)) {
+      console.warn(
+        `[RoomManager] Not retrying write for session ${sessionId} - session doesn't exist in Postgres`
+      );
+      this.cancelPendingWrites(sessionId);
+      return;
+    }
+
     const attempts = this.writeRetryAttempts.get(sessionId) || 0;
 
     if (attempts >= this.MAX_RETRY_ATTEMPTS) {
@@ -1123,12 +1148,31 @@ class RoomManager {
             `[RoomManager] Retry ${attempts + 1} failed for session ${sessionId}:`,
             error
           );
-          await this.retryPostgresWrite(sessionId, currentState);
+          await this.retryPostgresWrite(sessionId, currentState, error);
         }
       }
     }, delay);
 
     this.retryTimers.set(sessionId, timer);
+  }
+
+  /**
+   * Cancel all pending writes for a session (debounced and retry timers).
+   * Used when a session ends or becomes empty to prevent FK violations.
+   */
+  private cancelPendingWrites(sessionId: string): void {
+    const timer = this.postgresWriteTimers.get(sessionId);
+    if (timer) {
+      clearTimeout(timer);
+      this.postgresWriteTimers.delete(sessionId);
+    }
+    const retryTimer = this.retryTimers.get(sessionId);
+    if (retryTimer) {
+      clearTimeout(retryTimer);
+      this.retryTimers.delete(sessionId);
+    }
+    this.pendingWrites.delete(sessionId);
+    this.writeRetryAttempts.delete(sessionId);
   }
 
   /**
@@ -1173,7 +1217,7 @@ class RoomManager {
             error
           );
           // Retry with exponential backoff instead of giving up
-          await this.retryPostgresWrite(sessionId, state);
+          await this.retryPostgresWrite(sessionId, state, error);
         }
       }
     }, 30000); // 30 seconds
@@ -1188,6 +1232,22 @@ class RoomManager {
     sessionId: string,
     state: { queue: ClimbQueueItem[]; currentClimbQueueItem: ClimbQueueItem | null; version: number; sequence: number }
   ): Promise<void> {
+    // Check if session exists to prevent FK violation
+    const sessionExists = await db
+      .select({ id: sessions.id })
+      .from(sessions)
+      .where(eq(sessions.id, sessionId))
+      .limit(1);
+
+    if (sessionExists.length === 0) {
+      console.warn(
+        `[RoomManager] Skipping queue write for session ${sessionId} - session not in Postgres. ` +
+        `Queue had ${state.queue.length} items.`
+      );
+      this.cancelPendingWrites(sessionId);
+      return;
+    }
+
     await db
       .insert(sessionQueues)
       .values({
@@ -1255,6 +1315,9 @@ class RoomManager {
    * - Keeps Postgres record for history
    */
   async endSession(sessionId: string): Promise<void> {
+    // Cancel any pending writes to prevent FK violations after session ends
+    this.cancelPendingWrites(sessionId);
+
     // Remove from Redis
     if (this.redisStore) {
       await this.redisStore.deleteSession(sessionId);
