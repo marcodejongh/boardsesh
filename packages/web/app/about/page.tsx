@@ -5,7 +5,7 @@ import AboutContent from './about-content';
 export const metadata: Metadata = {
   title: 'About | Boardsesh',
   description:
-    'Boardsesh is like Strava for board climbers - a centralized hub for all your LED climbing board training',
+    'Boardsesh is a centralized hub for all your LED climbing board training - track, train, and climb together',
 };
 
 export default function AboutPage() {

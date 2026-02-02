@@ -1,6 +1,6 @@
 # Boardsesh
 
-**Strava for Board Climbers**
+**Track, Train, and Climb Together**
 
 A centralized hub for all your LED climbing board training.
 
@@ -10,7 +10,7 @@ Try it out at [boardsesh.com](https://www.boardsesh.com/) | [Join us on Discord]
 
 LED climbing boards like Kilter, Tension, Moonboard, Decoy, and Grasshopper have revolutionized indoor training. We believe the climbing community deserves a centralized platform that brings all these boards together—making it easier to track progress, train with friends, and get the most out of your board.
 
-Think of Boardsesh as Strava for board climbers: a unified experience that works across different board types, helping you focus on what matters most—climbing.
+Boardsesh is a unified experience that works across different board types, helping you focus on what matters most—climbing.
 
 ## What Boardsesh Offers
 

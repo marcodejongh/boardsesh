@@ -35,7 +35,7 @@ export default function AboutContent() {
             <div className={styles.heroSection}>
               <Logo size="lg" linkToHome={false} />
               <Title level={2} className={styles.heroTitle}>
-                Strava for Board Climbers
+                Track, Train, and Climb Together
               </Title>
               <Text type="secondary" className={styles.heroSubtitle}>
                 A centralized hub for all your LED climbing board training
@@ -55,8 +55,8 @@ export default function AboutContent() {
                 track progress, train with friends, and get the most out of your board.
               </Paragraph>
               <Paragraph>
-                Think of Boardsesh as Strava for board climbers: a unified experience that works
-                across different board types, helping you focus on what matters most—climbing.
+                Boardsesh is a unified experience that works across different board types, helping
+                you focus on what matters most—climbing.
               </Paragraph>
             </section>
 
