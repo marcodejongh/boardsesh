@@ -21,7 +21,8 @@
  */
 
 import { CanvasImageProcessor } from './image-processor/canvas-processor';
-import { parseWithProcessor, deduplicateClimbs } from './parser';
+// Import from parser-core to avoid pulling in sharp via parser.ts
+import { parseWithProcessor, deduplicateClimbs } from './parser-core';
 import type { ParseResult, MoonBoardClimb, DetectedHold, GridCoordinate, HoldType } from './types';
 
 // Re-export types for consumers
@@ -79,5 +80,5 @@ export { deduplicateClimbs };
 
 // Re-export the CanvasImageProcessor for advanced use cases
 export { CanvasImageProcessor } from './image-processor/canvas-processor';
-export { parseWithProcessor } from './parser';
+export { parseWithProcessor } from './parser-core';
 export type { ImageProcessor, RawPixelData, ImageMetadata, ImageRegion } from './image-processor/types';
