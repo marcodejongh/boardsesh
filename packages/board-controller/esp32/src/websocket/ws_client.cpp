@@ -21,8 +21,13 @@ WsClient::WsClient()
       reconnectTime(0),
       lastSentLedHash(0),
       currentDisplayHash(0),
-      lastLogSendTime(0) {
+      lastLogSendTime(0),
+      ledUpdateCallback(nullptr) {
     wsClientInstance = this;
+}
+
+void WsClient::setLedUpdateCallback(void (*callback)(const LedCommand* commands, int count)) {
+    ledUpdateCallback = callback;
 }
 
 void WsClient::parseUrl(const String& url, String& host, uint16_t& port, String& path, bool& useSSL) {
@@ -398,9 +403,14 @@ void WsClient::handleLedUpdate(JsonObject& data) {
         }
     }
 
-    // Update LEDs
-    ledController.setLeds(staticLedBuffer, count);
-    ledController.show();
+    // Use callback if set (proxy mode), otherwise control LEDs directly
+    if (ledUpdateCallback) {
+        ledUpdateCallback(staticLedBuffer, count);
+    } else {
+        // Default: direct LED control
+        ledController.setLeds(staticLedBuffer, count);
+        ledController.show();
+    }
 
     // Store hash of currently displayed LEDs
     currentDisplayHash = computeLedHash(staticLedBuffer, count);

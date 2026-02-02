@@ -15,8 +15,9 @@ class BleServer : public NimBLEServerCallbacks, public NimBLECharacteristicCallb
 public:
     BleServer();
 
-    // Initialize BLE server
-    bool begin();
+    // Initialize BLE server with optional custom device name
+    // In proxy mode, use "Kilter BoardSesh" instead of "Kilter Board"
+    bool begin(const char* deviceName = nullptr);
 
     // Stop BLE server
     void stop();

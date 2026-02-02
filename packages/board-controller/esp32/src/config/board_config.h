@@ -50,8 +50,25 @@
 #define NORDIC_UART_RX_UUID "6e400002-b5a3-f393-e0a9-e50e24dcca9e"
 #define NORDIC_UART_TX_UUID "6e400003-b5a3-f393-e0a9-e50e24dcca9e"
 
-// BLE device name (appears in scan)
-#define BLE_DEVICE_NAME "Kilter Board"
+// BLE device names (appears in scan)
+#define BLE_DEVICE_NAME_DIRECT "Kilter Board"
+#define BLE_DEVICE_NAME_PROXY "Kilter BoardSesh"
+
+// BLE client settings (for proxy mode)
+#define BLE_SCAN_DURATION_SECONDS 10
+#define BLE_CLIENT_RECONNECT_INTERVAL 5000
+
+// ============================================
+// Operating Mode Configuration
+// ============================================
+
+// Controller modes:
+// - DIRECT: Controller directly controls LEDs via WS2811 (replaces official controller)
+// - PROXY: Controller connects to an official Kilter board via BLE and forwards commands
+enum class ControllerMode : uint8_t {
+    DIRECT = 0,  // Direct LED control (default)
+    PROXY = 1    // BLE proxy to official board
+};
 
 // ============================================
 // Web Server Configuration
@@ -73,6 +90,8 @@
 #define NVS_KEY_LED_COUNT "led_count"
 #define NVS_KEY_BRIGHTNESS "brightness"
 #define NVS_KEY_ANALYTICS "analytics"
+#define NVS_KEY_CONTROLLER_MODE "ctrl_mode"
+#define NVS_KEY_TARGET_BOARD_MAC "target_mac"
 
 // ============================================
 // Debug Configuration

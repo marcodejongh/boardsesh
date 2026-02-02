@@ -10,6 +10,7 @@
 #include "../led/led_controller.h"
 #include "../websocket/ws_client.h"
 #include "../bluetooth/ble_server.h"
+#include "../bluetooth/ble_client.h"
 
 /**
  * Web Server
@@ -35,6 +36,11 @@ private:
     void handleTestLed();
     void handleReset();
     void handleNotFound();
+
+    // Proxy mode route handlers
+    void handleScanBoards();
+    void handleConnectBoard();
+    void handleDisconnectBoard();
 
     // Generate status JSON
     String getStatusJson();

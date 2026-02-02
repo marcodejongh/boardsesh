@@ -49,6 +49,16 @@ public:
     bool isAnalyticsEnabled();
     void setAnalyticsEnabled(bool enabled);
 
+    // Controller mode (DIRECT or PROXY)
+    ControllerMode getControllerMode();
+    void setControllerMode(ControllerMode mode);
+    bool isProxyMode();
+
+    // Target board MAC address (for proxy mode)
+    String getTargetBoardMac();
+    void setTargetBoardMac(const String& mac);
+    bool hasTargetBoard();
+
     // Factory reset - clear all settings
     void factoryReset();
 

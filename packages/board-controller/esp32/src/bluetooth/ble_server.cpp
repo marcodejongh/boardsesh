@@ -15,11 +15,14 @@ BleServer::BleServer()
       lastSentHash(0),
       ledDataCallback(nullptr) {}
 
-bool BleServer::begin() {
+bool BleServer::begin(const char* deviceName) {
     Serial.println("[BLE] Initializing BLE server...");
 
+    // Use provided device name or default to direct mode name
+    const char* name = deviceName ? deviceName : BLE_DEVICE_NAME_DIRECT;
+
     // Initialize NimBLE
-    NimBLEDevice::init(BLE_DEVICE_NAME);
+    NimBLEDevice::init(name);
 
     // Set power level
     NimBLEDevice::setPower(ESP_PWR_LVL_P9);
@@ -51,7 +54,7 @@ bool BleServer::begin() {
     setupAdvertising();
 
     Serial.println("[BLE] BLE server started");
-    Serial.printf("[BLE] Device name: %s\n", BLE_DEVICE_NAME);
+    Serial.printf("[BLE] Device name: %s\n", name);
 
     return true;
 }
