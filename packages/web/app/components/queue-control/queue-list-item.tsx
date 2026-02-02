@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Row, Col, Avatar, Tooltip, Dropdown, Button } from 'antd';
 import { CheckOutlined, CloseOutlined, UserOutlined, DeleteOutlined, MoreOutlined, InfoCircleOutlined, AppstoreOutlined } from '@ant-design/icons';
+import BluetoothIcon from './bluetooth-icon';
 import { BoardDetails, ClimbUuid, Climb } from '@/app/lib/types';
 import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { DropIndicator } from '@atlaskit/pragmatic-drag-and-drop-react-drop-indicator/box';
@@ -334,7 +335,7 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
                 currentClimb={item.climb}
               />
             </Col>
-            <Col xs={item.addedByUser ? 13 : 15} sm={item.addedByUser ? 15 : 17}>
+            <Col xs={13} sm={15}>
               <ClimbTitle
                 climb={item.climb}
                 showAngle
@@ -342,13 +343,21 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
                 nameAddon={<AscentStatus climbUuid={item.climb?.uuid} />}
               />
             </Col>
-            {item.addedByUser && (
-              <Col xs={2} sm={2}>
+            <Col xs={2} sm={2}>
+              {item.addedByUser ? (
                 <Tooltip title={item.addedByUser.username}>
                   <Avatar size="small" src={item.addedByUser.avatarUrl} icon={<UserOutlined />} />
                 </Tooltip>
-              </Col>
-            )}
+              ) : (
+                <Tooltip title="Added via Bluetooth">
+                  <Avatar
+                    size="small"
+                    style={{ backgroundColor: 'transparent' }}
+                    icon={<BluetoothIcon style={{ color: themeTokens.neutral[400] }} />}
+                  />
+                </Tooltip>
+              )}
+            </Col>
             <Col xs={3} sm={2}>
               <Dropdown
                 menu={{

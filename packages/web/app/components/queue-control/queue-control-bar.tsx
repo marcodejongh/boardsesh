@@ -1,7 +1,8 @@
 'use client';
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Button, Row, Col, Card, Drawer, Space, Popconfirm } from 'antd';
-import { SyncOutlined, DeleteOutlined, ExpandOutlined, FastForwardOutlined, FastBackwardOutlined } from '@ant-design/icons';
+import { Button, Row, Col, Card, Drawer, Space, Popconfirm, Avatar, Tooltip } from 'antd';
+import { SyncOutlined, DeleteOutlined, ExpandOutlined, FastForwardOutlined, FastBackwardOutlined, UserOutlined } from '@ant-design/icons';
+import BluetoothIcon from './bluetooth-icon';
 import { track } from '@vercel/analytics';
 import { useSwipeable } from 'react-swipeable';
 import { useQueueContext } from '../graphql-queue';
@@ -63,7 +64,7 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
   const isViewPage = pathname.includes('/view/');
   const isListPage = pathname.includes('/list');
   const isPlayPage = pathname.includes('/play/');
-  const { currentClimb, mirrorClimb, queue, setQueue, getNextClimbQueueItem, getPreviousClimbQueueItem, setCurrentClimbQueueItem, viewOnlyMode } = useQueueContext();
+  const { currentClimb, currentClimbQueueItem, mirrorClimb, queue, setQueue, getNextClimbQueueItem, getPreviousClimbQueueItem, setCurrentClimbQueueItem, viewOnlyMode } = useQueueContext();
 
   const nextClimb = getNextClimbQueueItem();
   const previousClimb = getPreviousClimbQueueItem();
@@ -308,7 +309,7 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
               </Col>
 
               {/* Clickable main body for opening the queue */}
-              <Col xs={11} style={{ textAlign: 'center' }}>
+              <Col xs={10} style={{ textAlign: 'center' }}>
                 <div onClick={toggleQueueDrawer} className={`${styles.queueToggle} ${isListPage ? styles.listPage : ''}`}>
                   <ClimbTitle
                     climb={currentClimb}
@@ -318,6 +319,25 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
                   />
                 </div>
               </Col>
+
+              {/* Added by indicator (user avatar or Bluetooth icon) */}
+              {currentClimbQueueItem && (
+                <Col xs={1} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {currentClimbQueueItem.addedByUser ? (
+                    <Tooltip title={currentClimbQueueItem.addedByUser.username}>
+                      <Avatar size="small" src={currentClimbQueueItem.addedByUser.avatarUrl} icon={<UserOutlined />} />
+                    </Tooltip>
+                  ) : (
+                    <Tooltip title="Added via Bluetooth">
+                      <Avatar
+                        size="small"
+                        style={{ backgroundColor: 'transparent' }}
+                        icon={<BluetoothIcon style={{ color: themeTokens.neutral[400] }} />}
+                      />
+                    </Tooltip>
+                  )}
+                </Col>
+              )}
 
               {/* Button cluster */}
               <Col xs={9} style={{ textAlign: 'right' }}>
