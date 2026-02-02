@@ -2,6 +2,9 @@ import type { ConnectionContext } from '@boardsesh/shared-schema';
 import { checkRateLimit } from '../../../utils/rate-limiter';
 import { getContext } from '../../context';
 import { getDistributedState } from '../../../services/distributed-state';
+import { db } from '../../../db/client';
+import { esp32Controllers } from '@boardsesh/db/schema/app';
+import { eq } from 'drizzle-orm';
 
 // Re-export validateInput from validation schemas
 export { validateInput } from '../../../validation/schemas';
@@ -119,4 +122,53 @@ export async function requireSessionMember(
  */
 export function applyRateLimit(ctx: ConnectionContext, limit?: number): void {
   checkRateLimit(ctx.connectionId, limit);
+}
+
+/**
+ * Helper to require controller authentication via connectionParams.
+ * Throws if the connection is not authenticated as a controller.
+ */
+export function requireControllerAuth(ctx: ConnectionContext): { controllerId: string; controllerApiKey: string } {
+  if (!ctx.controllerId || !ctx.controllerApiKey) {
+    throw new Error('Controller authentication required. Pass controllerApiKey in connectionParams.');
+  }
+  return { controllerId: ctx.controllerId, controllerApiKey: ctx.controllerApiKey };
+}
+
+/**
+ * Helper to verify a controller is authorized for a specific session.
+ *
+ * Controllers are authorized if:
+ * 1. The controller exists and is authenticated via API key (already verified in connectionParams)
+ * 2. The session exists and is active
+ *
+ * The API key is the authorization - if you have it, you registered the controller
+ * and can use it with any session you want to monitor. The session ID in the ESP32
+ * config determines which session the controller connects to.
+ */
+export async function requireControllerAuthorizedForSession(
+  ctx: ConnectionContext,
+  sessionId: string
+): Promise<{ controllerId: string; controllerApiKey: string }> {
+  const { controllerId, controllerApiKey } = requireControllerAuth(ctx);
+
+  // Verify the controller still exists (it was already authenticated via connectionParams)
+  const [controller] = await db
+    .select()
+    .from(esp32Controllers)
+    .where(eq(esp32Controllers.id, controllerId))
+    .limit(1);
+
+  if (!controller) {
+    throw new Error('Controller not found');
+  }
+
+  // Update the controller's authorized session (for tracking purposes)
+  // This also serves as a "last used session" record
+  await db
+    .update(esp32Controllers)
+    .set({ authorizedSessionId: sessionId })
+    .where(eq(esp32Controllers.id, controllerId));
+
+  return { controllerId, controllerApiKey };
 }

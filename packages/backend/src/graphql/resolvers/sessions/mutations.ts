@@ -16,6 +16,28 @@ import {
 } from '../../../validation/schemas';
 import type { ClimbQueueItem } from '@boardsesh/shared-schema';
 import type { CreateSessionInput } from '../shared/types';
+import { db } from '../../../db/client';
+import { esp32Controllers } from '@boardsesh/db/schema/app';
+import { eq } from 'drizzle-orm';
+
+/**
+ * Auto-authorize all controllers owned by a user for a session.
+ * Called when user joins a session to allow their ESP32 devices to connect.
+ */
+async function authorizeUserControllersForSession(userId: string, sessionId: string): Promise<void> {
+  try {
+    // Update all controllers owned by this user to be authorized for this session
+    const result = await db
+      .update(esp32Controllers)
+      .set({ authorizedSessionId: sessionId })
+      .where(eq(esp32Controllers.userId, userId));
+
+    console.log(`[Session] Auto-authorized user ${userId}'s controllers for session ${sessionId}`);
+  } catch (error) {
+    // Log but don't fail the join - controller auth is a bonus feature
+    console.error('[Session] Failed to auto-authorize controllers:', error);
+  }
+}
 
 // Debug logging flag - only log in development
 const DEBUG = process.env.NODE_ENV === 'development';
@@ -70,6 +92,11 @@ export const sessionMutations = {
     if (DEBUG) console.log(`[joinSession] Before updateContext - ctx.sessionId: ${ctx.sessionId}`);
     updateContext(ctx.connectionId, { sessionId, userId: result.clientId });
     if (DEBUG) console.log(`[joinSession] After updateContext - ctx.sessionId: ${ctx.sessionId}`);
+
+    // Auto-authorize user's ESP32 controllers for this session (if authenticated)
+    if (ctx.isAuthenticated && ctx.userId) {
+      authorizeUserControllersForSession(ctx.userId, sessionId);
+    }
 
     // Notify session about new user
     const userJoinedEvent: SessionEvent = {

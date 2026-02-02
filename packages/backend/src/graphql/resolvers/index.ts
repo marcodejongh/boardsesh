@@ -19,6 +19,9 @@ import { sessionEventResolver } from './sessions/type-resolvers';
 import { queueMutations } from './queue/mutations';
 import { queueSubscriptions } from './queue/subscriptions';
 import { queueEventResolver } from './queue/type-resolvers';
+import { controllerQueries } from './controller/queries';
+import { controllerMutations } from './controller/mutations';
+import { controllerSubscriptions, controllerEventResolver } from './controller/subscriptions';
 
 export const resolvers = {
   // Scalar types
@@ -33,6 +36,7 @@ export const resolvers = {
     ...userQueries,
     ...favoriteQueries,
     ...playlistQueries,
+    ...controllerQueries,
   },
 
   Mutation: {
@@ -42,11 +46,13 @@ export const resolvers = {
     ...userMutations,
     ...favoriteMutations,
     ...playlistMutations,
+    ...controllerMutations,
   },
 
   Subscription: {
     ...sessionSubscriptions,
     ...queueSubscriptions,
+    ...controllerSubscriptions,
   },
 
   // Field-level resolvers
@@ -55,4 +61,5 @@ export const resolvers = {
   // Union type resolvers
   QueueEvent: queueEventResolver,
   SessionEvent: sessionEventResolver,
+  ControllerEvent: controllerEventResolver,
 };

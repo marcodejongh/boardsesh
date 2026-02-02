@@ -3,3 +3,4 @@ export * from './favorites';
 export * from './ascents';
 export * from './playlists';
 export * from './hold-classifications';
+export * from './controllers';

@@ -6,7 +6,7 @@ import { schema } from '../graphql/index';
 import { createContext, removeContext, getContext } from '../graphql/context';
 import { roomManager } from '../services/room-manager';
 import { pubsub } from '../pubsub/index';
-import { validateNextAuthToken, extractAuthToken } from '../middleware/auth';
+import { validateNextAuthToken, extractAuthToken, extractControllerApiKey, validateControllerApiKey } from '../middleware/auth';
 import { isOriginAllowed } from '../handlers/cors';
 import type { ConnectionContext } from '@boardsesh/shared-schema';
 
@@ -77,8 +77,24 @@ export function setupWebSocketServer(httpServer: HttpServer): WebSocketServer {
           }
         }
 
+        // Check for controller API key authentication
+        let controllerId: string | undefined;
+        let controllerApiKey: string | undefined;
+        const extractedControllerApiKey = extractControllerApiKey(
+          ctx.connectionParams as Record<string, unknown> | undefined
+        );
+
+        if (extractedControllerApiKey) {
+          const controllerResult = await validateControllerApiKey(extractedControllerApiKey);
+          if (controllerResult) {
+            controllerId = controllerResult.controllerId;
+            controllerApiKey = controllerResult.controllerApiKey;
+            console.log(`[Auth] Authenticated controller: ${controllerId}`);
+          }
+        }
+
         // Create context on initial connection with auth info
-        const context = createContext(undefined, isAuthenticated, authenticatedUserId);
+        const context = createContext(undefined, isAuthenticated, authenticatedUserId, controllerId, controllerApiKey);
         await roomManager.registerClient(context.connectionId);
         console.log(`Client connected: ${context.connectionId} (authenticated: ${isAuthenticated})`);
 

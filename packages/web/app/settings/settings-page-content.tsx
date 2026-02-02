@@ -21,6 +21,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Logo from '@/app/components/brand/logo';
 import AuroraCredentialsSection from '@/app/components/settings/aurora-credentials-section';
+import ControllersSection from '@/app/components/settings/controllers-section';
 import BackButton from '@/app/components/back-button';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { usePartyProfile } from '@/app/components/party-manager/party-profile-context';
@@ -359,6 +360,10 @@ export default function SettingsPageContent() {
         <Divider />
 
         <AuroraCredentialsSection />
+
+        <Divider />
+
+        <ControllersSection />
       </Content>
     </Layout>
   );
