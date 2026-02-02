@@ -30,6 +30,7 @@ unsigned long lastDisplayUpdate = 0;
 unsigned long lastBleScanTime = 0;
 const unsigned long DISPLAY_UPDATE_INTERVAL = 100; // ms
 const unsigned long BLE_SCAN_INTERVAL = 30000; // Retry scan every 30 seconds
+const int MAX_LED_COMMANDS = 500; // Safety limit for LED commands (typical boards have <300 holds)
 
 // Current climb data
 ClimbInfo currentClimb;
@@ -148,7 +149,10 @@ void loop() {
             now - lastBleScanTime > BLE_SCAN_INTERVAL) {
             Logger.logln("Retrying BLE scan...");
             BLEClient.startScan(15);
-            lastBleScanTime = now;
+            // Only update timestamp if scan actually started
+            if (BLEClient.isScanning()) {
+                lastBleScanTime = now;
+            }
         }
     }
 
@@ -294,6 +298,12 @@ void onLedUpdate(const LedCommand* commands, int count, const char* climbUuid, c
             BLEClient.clearLeds();
         }
         return;
+    }
+
+    // Validate count to prevent memory issues from malformed data
+    if (count > MAX_LED_COMMANDS) {
+        Logger.logln("WARNING: Received %d LED commands, limiting to %d", count, MAX_LED_COMMANDS);
+        count = MAX_LED_COMMANDS;
     }
 
     // Store LED commands for forwarding to BLE
@@ -461,7 +471,17 @@ void populateHoldPositionCache() {
     //
     // ==========================================================================
 
-    Logger.logln("WARNING: Using placeholder hold positions (testing only)");
+    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    Logger.logln("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+    Logger.logln("!!!  WARNING: USING PLACEHOLDER HOLD DATA - TEST ONLY  !!!");
+    Logger.logln("!!!  Holds will NOT display correctly on real boards   !!!");
+    Logger.logln("!!!  See hold_positions.h to configure for your board  !!!");
+    Logger.logln("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+    // Also show warning on display
+    Display.showError("PLACEHOLDER DATA\nConfigure hold_positions.h");
+    delay(2000);  // Show warning for 2 seconds
 
     // PLACEHOLDER: Fake grid for testing - replace with real data!
     // These IDs (4117+) are examples from Kilter Homewall 10x12
@@ -479,8 +499,7 @@ void populateHoldPositionCache() {
         }
     }
 
-    Logger.logln("Hold position cache: %d placeholder entries (replace for production!)",
-                 holdPositionCache.size());
+    Logger.logln("Hold position cache: %d PLACEHOLDER entries", holdPositionCache.size());
 }
 
 void updateDisplay() {

@@ -38,6 +38,8 @@ bool ClimbDisplay::begin() {
     _boardSprite = new LGFX_Sprite(&_display);
     if (!_boardSprite->createSprite(BOARD_AREA_WIDTH, BOARD_AREA_HEIGHT)) {
         Serial.println("[Display] Failed to create board sprite");
+        delete _boardSprite;
+        _boardSprite = nullptr;
         return false;
     }
     _boardSprite->setColorDepth(16);
@@ -46,6 +48,14 @@ bool ClimbDisplay::begin() {
     _infoSprite = new LGFX_Sprite(&_display);
     if (!_infoSprite->createSprite(INFO_AREA_WIDTH, BOARD_AREA_HEIGHT)) {
         Serial.println("[Display] Failed to create info sprite");
+        // Clean up board sprite that was already created
+        if (_boardSprite) {
+            _boardSprite->deleteSprite();
+            delete _boardSprite;
+            _boardSprite = nullptr;
+        }
+        delete _infoSprite;
+        _infoSprite = nullptr;
         return false;
     }
     _infoSprite->setColorDepth(16);

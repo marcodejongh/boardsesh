@@ -295,8 +295,11 @@ void GraphQLWSClient::handleMessage(uint8_t* payload, size_t length) {
 
 void GraphQLWSClient::handleLedUpdate(JsonObject& data) {
     JsonArray commands = data["commands"];
-    const char* climbUuid = data["climbUuid"] | "";
-    const char* climbName = data["climbName"] | "";
+    // Use explicit null checks with defaults to ensure we never have null pointers
+    const char* climbUuid = data["climbUuid"].as<const char*>();
+    const char* climbName = data["climbName"].as<const char*>();
+    if (!climbUuid) climbUuid = "";
+    if (!climbName) climbName = "";
     int angle = data["angle"] | 0;
 
     if (commands.isNull() || commands.size() == 0) {
