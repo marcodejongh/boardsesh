@@ -4,9 +4,17 @@
 #include <Arduino.h>
 #include <WebSocketsClient.h>
 #include <ArduinoJson.h>
-#include <led_controller.h>
 #include <log_buffer.h>
 #include <config_manager.h>
+
+// LedCommand structure - shared with led_controller if available
+#ifndef LED_COMMAND_DEFINED
+#define LED_COMMAND_DEFINED
+struct LedCommand {
+    uint16_t position;
+    uint8_t r, g, b;
+};
+#endif
 
 // Forward declaration
 class NordicUartBLE;
@@ -29,6 +37,8 @@ enum class GraphQLConnectionState {
 
 typedef void (*GraphQLMessageCallback)(JsonDocument& doc);
 typedef void (*GraphQLStateCallback)(GraphQLConnectionState state);
+// LED update callback - receives parsed LED commands with climb info
+typedef void (*GraphQLLedUpdateCallback)(const LedCommand* commands, int count, const char* climbUuid, const char* climbName, int angle);
 
 class GraphQLWSClient {
 public:
@@ -56,6 +66,9 @@ public:
     // Callbacks
     void setMessageCallback(GraphQLMessageCallback callback);
     void setStateCallback(GraphQLStateCallback callback);
+    // Set LED update callback - when set, LED updates are forwarded to this callback
+    // instead of directly controlling LEDs. Use for display-only devices or proxy mode.
+    void setLedUpdateCallback(GraphQLLedUpdateCallback callback);
 
     // Handle LED update from backend
     void handleLedUpdate(JsonObject& data);
@@ -73,6 +86,7 @@ private:
     GraphQLConnectionState state;
     GraphQLMessageCallback messageCallback;
     GraphQLStateCallback stateCallback;
+    GraphQLLedUpdateCallback ledUpdateCallback;
 
     String serverHost;
     uint16_t serverPort;

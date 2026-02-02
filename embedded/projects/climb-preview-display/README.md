@@ -15,6 +15,7 @@ Firmware for the Waveshare ESP32-S3 Touch LCD 4.3" to display climb previews fro
 - Real-time climb preview display
 - Shows climb name, angle, difficulty, and setter
 - Colored hold visualization matching the web UI
+- **Proxy mode compatible** - works alongside ESP32 controllers in proxy mode
 - Touch screen support for future interactions
 - WiFiManager for easy WiFi configuration
 - Web-based configuration portal
@@ -114,6 +115,44 @@ For the Kilter Homewall 10x12 Full Ride configuration, the default settings shou
 5. **Display Rendering**: Converts LED commands to colored hold circles on the display
 
 The display uses the same subscription system as the physical LED controller, so both can run simultaneously.
+
+## Proxy Mode Compatibility
+
+The display is fully compatible with the ESP32 controller's **proxy mode**, which allows the controller to forward LED commands to an official Kilter/Tension board via Bluetooth.
+
+### How it works with proxy mode:
+
+1. **ESP32 Controller (Proxy Mode)**: Connects to your official Kilter board via BLE and forwards LED commands
+2. **This Display**: Subscribes to the same `controllerEvents` and renders climb previews
+3. **Both devices** receive `LedUpdate` events simultaneously from the Boardsesh backend
+
+### Typical setup with proxy mode:
+
+```
+                        ┌─────────────────┐
+                        │  Boardsesh.com  │
+                        │    (Backend)    │
+                        └────────┬────────┘
+                                 │
+                    WebSocket (controllerEvents)
+                                 │
+                    ┌────────────┴────────────┐
+                    │                         │
+            ┌───────▼───────┐         ┌───────▼───────┐
+            │ ESP32 Board   │         │ ESP32 Display │
+            │  Controller   │         │   (this)      │
+            │ (Proxy Mode)  │         │               │
+            └───────┬───────┘         └───────────────┘
+                    │
+                 BLE
+                    │
+            ┌───────▼───────┐
+            │ Official      │
+            │ Kilter Board  │
+            └───────────────┘
+```
+
+This allows you to add a preview display to your existing Kilter/Tension board without replacing the official controller.
 
 ## Troubleshooting
 

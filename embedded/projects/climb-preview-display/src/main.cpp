@@ -39,8 +39,7 @@ std::map<uint16_t, std::pair<float, float>> holdPositionCache;
 
 void onWiFiStateChange(WiFiConnectionState state);
 void onGraphQLStateChange(GraphQLConnectionState state);
-void onGraphQLMessage(JsonDocument& doc);
-void processLedUpdate(JsonObject& data);
+void onLedUpdate(const LedCommand* commands, int count, const char* climbUuid, const char* climbName, int angle);
 void updateDisplay();
 uint16_t holdStateToColor(const char* state);
 void populateHoldPositionCache();
@@ -152,7 +151,8 @@ void onWiFiStateChange(WiFiConnectionState state) {
             Display.showStatus("Connecting to Boardsesh...");
 
             GraphQL.setStateCallback(onGraphQLStateChange);
-            GraphQL.setMessageCallback(onGraphQLMessage);
+            // Use LED update callback - receives parsed LED commands directly
+            GraphQL.setLedUpdateCallback(onLedUpdate);
             GraphQL.begin(host.c_str(), port, path.c_str(), apiKey.c_str());
             break;
         }
@@ -229,57 +229,40 @@ void onGraphQLStateChange(GraphQLConnectionState state) {
     }
 }
 
-void onGraphQLMessage(JsonDocument& doc) {
-    // Handle incoming GraphQL subscription data
-    JsonObject payload = doc["payload"]["data"]["controllerEvents"];
+// ============================================
+// LED Update Callback
+// ============================================
 
-    if (!payload) {
+void onLedUpdate(const LedCommand* commands, int count, const char* climbUuid, const char* climbName, int angle) {
+    Logger.logln("LED Update: %s @ %d degrees (%d holds)",
+                 climbName ? climbName : "(none)", angle, count);
+
+    // Handle clear command (no holds)
+    if (commands == nullptr || count == 0) {
+        hasCurrentClimb = false;
+        currentHolds.clear();
+        Display.showNoClimb();
         return;
     }
 
-    const char* typeName = payload["__typename"];
-
-    if (strcmp(typeName, "LedUpdate") == 0) {
-        processLedUpdate(payload);
-    } else if (strcmp(typeName, "ControllerPing") == 0) {
-        Logger.logln("Received ping");
-    }
-}
-
-// ============================================
-// LED Update Processing
-// ============================================
-
-void processLedUpdate(JsonObject& data) {
-    const char* climbUuid = data["climbUuid"] | "";
-    const char* climbName = data["climbName"] | "";
-    int angle = data["angle"] | 0;
-    JsonArray commands = data["commands"];
-
-    Logger.logln("LED Update: %s @ %d degrees (%d holds)",
-                 climbName, angle, commands.size());
-
     // Update current climb info
-    currentClimb.uuid = climbUuid;
-    currentClimb.name = climbName;
+    currentClimb.uuid = climbUuid ? climbUuid : "";
+    currentClimb.name = climbName ? climbName : "";
     currentClimb.angle = angle;
-    currentClimb.mirrored = false;  // TODO: Get from LedUpdate if available
+    currentClimb.mirrored = false;
 
     // Clear previous holds
     currentHolds.clear();
 
     // Process LED commands into display holds
-    for (JsonObject cmd : commands) {
-        int position = cmd["position"];
-        int r = cmd["r"];
-        int g = cmd["g"];
-        int b = cmd["b"];
+    for (int i = 0; i < count; i++) {
+        const LedCommand& cmd = commands[i];
 
         // Convert RGB to RGB565
-        uint16_t color = Display.getDisplay().color565(r, g, b);
+        uint16_t color = Display.getDisplay().color565(cmd.r, cmd.g, cmd.b);
 
         // Look up hold position
-        auto it = holdPositionCache.find(position);
+        auto it = holdPositionCache.find(cmd.position);
         if (it != holdPositionCache.end()) {
             // Convert to display coordinates
             float cx = it->second.first;
@@ -303,17 +286,13 @@ void processLedUpdate(JsonObject& data) {
 
             currentHolds.push_back(hold);
         } else {
-            // Position not in cache - use a default position based on position ID
-            // This is a fallback for when we don't have position data
-            // In production, you'd want to ensure all positions are in the cache
-
-            // Simple grid layout as fallback
+            // Position not in cache - use a default grid position as fallback
             int gridCols = 12;
-            int col = position % gridCols;
-            int row = position / gridCols;
+            int col = cmd.position % gridCols;
+            int row = (cmd.position / gridCols) % 20;
 
             int16_t displayX = 30 + col * 30;
-            int16_t displayY = 30 + row * 30;
+            int16_t displayY = 30 + row * 22;
 
             DisplayHold hold;
             hold.x = displayX;
@@ -326,7 +305,7 @@ void processLedUpdate(JsonObject& data) {
     }
 
     // Check if we have a climb
-    hasCurrentClimb = (commands.size() > 0 && strlen(climbName) > 0);
+    hasCurrentClimb = (count > 0 && climbName && strlen(climbName) > 0);
 
     // Update display
     if (hasCurrentClimb) {
