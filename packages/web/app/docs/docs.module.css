@@ -1,0 +1,108 @@
+/* Docs page styles */
+
+.docsContainer {
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.docsHeader {
+  margin-bottom: 24px;
+}
+
+.contentSection {
+  max-width: 800px;
+}
+
+.fullWidth {
+  width: 100%;
+}
+
+.searchContainer {
+  margin-bottom: 16px;
+}
+
+.searchInput {
+  max-width: 400px;
+}
+
+.operationsDescription {
+  margin-bottom: 16px;
+}
+
+/* Loading spinner styles */
+.loadingContainer {
+  text-align: center;
+  padding: 40px;
+}
+
+.loadingText {
+  margin-top: 16px;
+}
+
+/* Code block styles */
+.codeBlockLight {
+  background: #f3f4f6;
+  padding: 12px;
+  border-radius: 4px;
+  overflow: auto;
+}
+
+.codeBlockDark {
+  background: #111827;
+  color: #d4d4d4;
+  padding: 16px;
+  border-radius: 8px;
+  overflow: auto;
+}
+
+/* Schema block styles */
+.schemaBlock {
+  background: #111827;
+  color: #d4d4d4;
+  padding: 16px;
+  border-radius: 8px;
+  overflow: auto;
+  font-size: 13px;
+  line-height: 1.5;
+  font-family: Monaco, Menlo, "Ubuntu Mono", monospace;
+}
+
+/* Alert spacing */
+.alertWithMargin {
+  margin-top: 24px;
+}
+
+/* Swagger loading container */
+.swaggerLoading {
+  padding: 20px;
+  text-align: center;
+}
+
+.swaggerLoadingText {
+  margin-top: 16px;
+}
+
+.swaggerAlert {
+  margin: 20px;
+}
+
+.swaggerInstructions {
+  margin-bottom: 8px;
+}
+
+.swaggerInstructionsFinal {
+  margin-bottom: 0;
+}
+
+.swaggerCommandBlock {
+  background: #f3f4f6;
+  padding: 12px;
+  border-radius: 4px;
+  margin-top: 8px;
+}
+
+.swaggerNote {
+  margin-top: 8px;
+  margin-bottom: 0;
+}

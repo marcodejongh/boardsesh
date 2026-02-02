@@ -19,7 +19,7 @@ import {
   ThunderboltOutlined,
   BookOutlined,
 } from '@ant-design/icons';
-import { themeTokens } from '@/app/theme/theme-config';
+import styles from './docs.module.css';
 
 const { Title, Text, Paragraph, Link } = Typography;
 
@@ -27,35 +27,18 @@ const { Title, Text, Paragraph, Link } = Typography;
 const SwaggerUI = lazy(() => import('./swagger-ui'));
 const GraphQLSchemaViewer = lazy(() => import('./graphql-schema'));
 
-// Code block styling tokens
-const codeBlockStyles = {
-  light: {
-    background: themeTokens.neutral[100],
-    padding: themeTokens.spacing[3],
-    borderRadius: themeTokens.borderRadius.sm,
-    overflow: 'auto' as const,
-  },
-  dark: {
-    background: themeTokens.neutral[900],
-    color: '#d4d4d4',
-    padding: themeTokens.spacing[4],
-    borderRadius: themeTokens.borderRadius.md,
-    overflow: 'auto' as const,
-  },
-};
-
 function LoadingSpinner() {
   return (
-    <div style={{ textAlign: 'center', padding: themeTokens.spacing[10] }}>
+    <div className={styles.loadingContainer}>
       <Spin size="large" />
-      <div style={{ marginTop: themeTokens.spacing[4] }}>Loading documentation...</div>
+      <div className={styles.loadingText}>Loading documentation...</div>
     </div>
   );
 }
 
 function OverviewTab() {
   return (
-    <div style={{ maxWidth: 800 }}>
+    <div className={styles.contentSection}>
       <Title level={2}>Boardsesh API Overview</Title>
 
       <Paragraph>
@@ -63,7 +46,7 @@ function OverviewTab() {
         training boards (Kilter, Tension):
       </Paragraph>
 
-      <Space direction="vertical" size="large" style={{ width: '100%' }}>
+      <Space direction="vertical" size="large" className={styles.fullWidth}>
         <Card>
           <Title level={4}>
             <ApiOutlined /> REST API
@@ -112,7 +95,7 @@ function OverviewTab() {
             <strong>WebSocket API:</strong> Obtain a JWT token from{' '}
             <code>GET /api/internal/ws-auth</code> and include it in the connection parameters:
           </Paragraph>
-          <pre style={codeBlockStyles.light}>
+          <pre className={styles.codeBlockLight}>
 {`import { createClient } from 'graphql-ws';
 
 const client = createClient({
@@ -136,7 +119,7 @@ const client = createClient({
 
 function WebSocketGuideTab() {
   return (
-    <div style={{ maxWidth: 800 }}>
+    <div className={styles.contentSection}>
       <Title level={2}>WebSocket Connection Guide</Title>
 
       <Paragraph>
@@ -151,7 +134,7 @@ function WebSocketGuideTab() {
 
       <Title level={4}>Connection Setup</Title>
 
-      <pre style={codeBlockStyles.dark}>
+      <pre className={styles.codeBlockDark}>
 {`import { createClient } from 'graphql-ws';
 
 // 1. Get auth token (requires session cookie)
@@ -208,7 +191,7 @@ const unsubscribe = client.subscribe(
         Sessions are the core collaboration unit. Users join sessions to share a climb queue.
       </Paragraph>
 
-      <pre style={codeBlockStyles.dark}>
+      <pre className={styles.codeBlockDark}>
 {`// Join or create a session
 const result = await client.query({
   query: \`
@@ -240,7 +223,7 @@ const result = await client.query({
         When reconnecting, use delta sync to catch up without full state transfer:
       </Paragraph>
 
-      <pre style={codeBlockStyles.dark}>
+      <pre className={styles.codeBlockDark}>
 {`// Store the last known sequence number
 let lastSequence = 0;
 
@@ -271,7 +254,7 @@ lastSequence = eventsReplay.currentSequence;`}
         type="warning"
         message="Connection Handling"
         description="The WebSocket connection may be interrupted by network changes. Implement reconnection logic with the graphql-ws retry options and use delta sync to maintain state consistency."
-        style={{ marginTop: themeTokens.spacing[6] }}
+        className={styles.alertWithMargin}
       />
     </div>
   );
@@ -279,8 +262,8 @@ lastSequence = eventsReplay.currentSequence;`}
 
 export default function DocsClientPage() {
   return (
-    <div style={{ padding: themeTokens.spacing[6], maxWidth: 1400, margin: '0 auto' }}>
-      <div style={{ marginBottom: themeTokens.spacing[6] }}>
+    <div className={styles.docsContainer}>
+      <div className={styles.docsHeader}>
         <Title level={1}>
           <BookOutlined /> API Documentation
         </Title>

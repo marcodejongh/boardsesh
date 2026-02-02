@@ -11,7 +11,7 @@ import { useEffect, useState } from 'react';
 import { Alert, Spin, Typography } from 'antd';
 import SwaggerUI from 'swagger-ui-react';
 import 'swagger-ui-react/swagger-ui.css';
-import { themeTokens } from '@/app/theme/theme-config';
+import styles from './docs.module.css';
 
 const { Text, Paragraph } = Typography;
 
@@ -48,9 +48,9 @@ export default function SwaggerUIComponent() {
 
   if (loadState === 'loading') {
     return (
-      <div style={{ padding: themeTokens.spacing[5], textAlign: 'center' }}>
+      <div className={styles.swaggerLoading}>
         <Spin size="large" />
-        <div style={{ marginTop: themeTokens.spacing[4] }}>
+        <div className={styles.swaggerLoadingText}>
           <Text type="secondary">Loading API documentation...</Text>
         </div>
       </div>
@@ -64,28 +64,21 @@ export default function SwaggerUIComponent() {
         message="OpenAPI Specification Not Generated"
         description={
           <div>
-            <Paragraph style={{ marginBottom: themeTokens.spacing[2] }}>
+            <Paragraph className={styles.swaggerInstructions}>
               The OpenAPI specification file has not been generated yet. This is expected during local development.
             </Paragraph>
-            <Paragraph style={{ marginBottom: 0 }}>
+            <Paragraph className={styles.swaggerInstructionsFinal}>
               Run the following command to generate it:
             </Paragraph>
-            <pre
-              style={{
-                background: themeTokens.neutral[100],
-                padding: themeTokens.spacing[3],
-                borderRadius: themeTokens.borderRadius.sm,
-                marginTop: themeTokens.spacing[2],
-              }}
-            >
+            <pre className={styles.swaggerCommandBlock}>
               npm run generate:openapi
             </pre>
-            <Paragraph type="secondary" style={{ marginTop: themeTokens.spacing[2], marginBottom: 0 }}>
+            <Paragraph type="secondary" className={styles.swaggerNote}>
               In production, this runs automatically during the build process.
             </Paragraph>
           </div>
         }
-        style={{ margin: themeTokens.spacing[5] }}
+        className={styles.swaggerAlert}
       />
     );
   }
@@ -96,7 +89,7 @@ export default function SwaggerUIComponent() {
         type="error"
         message="Failed to Load API Documentation"
         description={`Error: ${errorMessage}`}
-        style={{ margin: themeTokens.spacing[5] }}
+        className={styles.swaggerAlert}
       />
     );
   }
