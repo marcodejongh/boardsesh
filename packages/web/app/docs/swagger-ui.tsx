@@ -101,5 +101,5 @@ export default function SwaggerUIComponent() {
     );
   }
 
-  return <SwaggerUI spec={spec} />;
+  return <SwaggerUI spec={spec ?? undefined} />;
 }
