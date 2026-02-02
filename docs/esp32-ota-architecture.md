@@ -12,8 +12,8 @@ The OTA system enables remote firmware updates for deployed ESP32 controllers th
 │   Dashboard     │────▶│  (GraphQL API)  │◀────│  (CI/CD Build)  │
 └─────────────────┘     └────────┬────────┘     └────────┬────────┘
                                  │                       │
-                        GraphQL-WS              Upload binaries
-                        + REST API                       │
+                           GraphQL-WS              Upload binaries
+                           (all comms)                   │
                                  │                       ▼
                                  ▼              ┌─────────────────┐
                         ┌─────────────────┐     │   S3 Bucket     │
@@ -22,7 +22,7 @@ The OTA system enables remote firmware updates for deployed ESP32 controllers th
                         │                 │
                         │  ┌───────────┐  │
                         │  │  WebUI    │  │  ← Firmware browser
-                        │  │  (HTTP)   │  │    for manual selection
+                        │  │  (HTTP)   │  │    (uses GraphQL via ESP32)
                         │  └───────────┘  │
                         └─────────────────┘
 ```
@@ -266,6 +266,13 @@ extend type Mutation {
 
   # Controller: Set preferred update channel
   setUpdateChannel(channel: FirmwareChannel!): Boolean!
+
+  # CI: Cleanup old alpha builds for a PR (keeps most recent N builds)
+  cleanupAlphaBuilds(prNumber: Int!, keepCount: Int): CleanupAlphaBuildsResponse!
+}
+
+type CleanupAlphaBuildsResponse {
+  deactivatedCount: Int!
 }
 
 input RegisterFirmwareBuildInput {
@@ -765,7 +772,7 @@ The ESP32's built-in web interface includes a firmware browser that allows users
 
 ### WebUI Endpoints
 
-Add these endpoints to the existing ESP32 web server:
+The ESP32 WebUI communicates with the backend via GraphQL over the existing WebSocket connection. Local HTTP endpoints on the ESP32 proxy requests through the WebSocket client.
 
 ```cpp
 // src/web/firmware_routes.cpp
@@ -773,14 +780,28 @@ Add these endpoints to the existing ESP32 web server:
 #include <ESPAsyncWebServer.h>
 #include <ArduinoJson.h>
 #include "../ota/ota_manager.h"
+#include "../websocket/ws_client.h"
+
+// Cached firmware list (refreshed via GraphQL)
+static JsonDocument cachedFirmwareList;
+static unsigned long lastFirmwareFetch = 0;
+static const unsigned long FIRMWARE_CACHE_TTL = 60000; // 1 minute
 
 void setupFirmwareRoutes(AsyncWebServer& server) {
 
-    // GET /api/firmware/available - Fetch available firmware from backend
+    // GET /api/firmware/available - Returns cached firmware list
+    // The actual fetch happens via GraphQL WebSocket
     server.on("/api/firmware/available", HTTP_GET, [](AsyncWebServerRequest* request) {
-        // Forward request to backend API
-        // This is done client-side in JavaScript to avoid blocking
-        request->send(200, "application/json", "{\"redirect\": true}");
+        unsigned long now = millis();
+
+        // Trigger refresh if cache expired
+        if (now - lastFirmwareFetch > FIRMWARE_CACHE_TTL) {
+            wsClient.queryAvailableFirmware(otaManager.getBoardType());
+        }
+
+        String response;
+        serializeJson(cachedFirmwareList, response);
+        request->send(200, "application/json", response);
     });
 
     // GET /api/firmware/status - Current firmware and update status
@@ -830,12 +851,86 @@ void setupFirmwareRoutes(AsyncWebServer& server) {
             if (channel == "stable" || channel == "beta" || channel == "alpha") {
                 configManager.setUpdateChannel(channel);
                 configManager.save();
+                // Notify backend of channel change via GraphQL
+                wsClient.mutateSetUpdateChannel(channel);
                 request->send(200, "application/json", "{\"success\": true}");
             } else {
                 request->send(400, "application/json", "{\"error\": \"Invalid channel\"}");
             }
         }
     );
+}
+
+// Called by WebSocket client when firmware list is received
+void onFirmwareListReceived(JsonDocument& doc) {
+    cachedFirmwareList = doc;
+    lastFirmwareFetch = millis();
+}
+```
+
+### WebSocket Client GraphQL Methods
+
+Add these methods to the WebSocket client for firmware operations:
+
+```cpp
+// Add to ws_client.h
+void queryAvailableFirmware(const String& boardType);
+void mutateSetUpdateChannel(const String& channel);
+
+// Add to ws_client.cpp
+void WSClient::queryAvailableFirmware(const String& boardType) {
+    JsonDocument doc;
+    doc["id"] = generateId();
+    doc["type"] = "subscribe";
+
+    JsonObject payload = doc["payload"].to<JsonObject>();
+    payload["query"] = R"(
+        query AvailableFirmware($boardType: String!) {
+            availableFirmware(boardType: $boardType) {
+                stable {
+                    id version versionCode binaryUrl binarySize
+                    checksumSha256 releaseNotes createdAt
+                    gitRef gitSha
+                }
+                beta {
+                    id version versionCode binaryUrl binarySize
+                    checksumSha256 createdAt gitRef gitSha
+                }
+                alpha {
+                    id version versionCode binaryUrl binarySize
+                    checksumSha256 createdAt gitRef gitSha
+                    prNumber prTitle prAuthor
+                }
+            }
+        }
+    )";
+
+    JsonObject variables = payload["variables"].to<JsonObject>();
+    variables["boardType"] = boardType;
+
+    String message;
+    serializeJson(doc, message);
+    _webSocket.sendTXT(message);
+}
+
+void WSClient::mutateSetUpdateChannel(const String& channel) {
+    JsonDocument doc;
+    doc["id"] = generateId();
+    doc["type"] = "subscribe";
+
+    JsonObject payload = doc["payload"].to<JsonObject>();
+    payload["query"] = R"(
+        mutation SetUpdateChannel($channel: FirmwareChannel!) {
+            setUpdateChannel(channel: $channel)
+        }
+    )";
+
+    JsonObject variables = payload["variables"].to<JsonObject>();
+    variables["channel"] = channel.toUpperCase();  // STABLE, BETA, ALPHA
+
+    String message;
+    serializeJson(doc, message);
+    _webSocket.sendTXT(message);
 }
 ```
 
@@ -904,7 +999,8 @@ The firmware browser UI is served as a single-page application:
     </div>
 
     <script>
-        const BACKEND_URL = ''; // Injected at build time or fetched from config
+        // All communication goes through local ESP32 endpoints
+        // ESP32 proxies to backend via GraphQL WebSocket
         let currentVersion = '';
         let firmwareData = { stable: [], beta: [], alpha: [] };
         let activeChannel = 'stable';
@@ -928,17 +1024,10 @@ The firmware browser UI is served as a single-page application:
         }
 
         async function fetchFirmware() {
-            const status = await (await fetch('/api/firmware/status')).json();
-            const backendUrl = await getBackendUrl();
-
-            const res = await fetch(`${backendUrl}/api/firmware/available?boardType=${status.boardType}`);
+            // Fetch from local ESP32 endpoint (cached from GraphQL)
+            const res = await fetch('/api/firmware/available');
             firmwareData = await res.json();
             renderFirmwareList();
-        }
-
-        async function getBackendUrl() {
-            const config = await (await fetch('/api/config')).json();
-            return config.backendUrl || 'https://api.boardsesh.com';
         }
 
         function renderFirmwareList() {
@@ -1047,135 +1136,133 @@ The firmware browser UI is served as a single-page application:
 </html>
 ```
 
-### Backend API for Firmware Browser
+### Backend GraphQL Resolvers for Firmware
 
-The backend exposes a REST endpoint for the ESP32 to fetch available firmware:
+All firmware operations use GraphQL (no REST endpoints):
 
 ```typescript
-// packages/backend/src/routes/firmware.ts
+// packages/backend/src/graphql/resolvers/firmware/queries.ts
 
-import { Router } from 'express';
-import { db } from '../db';
-import { esp32FirmwareReleases } from '../db/schema';
+import { db } from '../../../db';
+import { esp32FirmwareReleases } from '../../../db/schema';
 import { eq, desc, and } from 'drizzle-orm';
 
-const router = Router();
+export const firmwareQueries = {
+  // Used by ESP32 WebUI to browse available firmware
+  availableFirmware: async (_: unknown, args: { boardType: string; limit?: number }) => {
+    const { boardType, limit = 10 } = args;
 
-// GET /api/firmware/available - List firmware for ESP32 WebUI
-router.get('/available', async (req, res) => {
-  const { boardType } = req.query;
+    const [stable, beta, alpha] = await Promise.all([
+      db.select()
+        .from(esp32FirmwareReleases)
+        .where(and(
+          eq(esp32FirmwareReleases.boardType, boardType),
+          eq(esp32FirmwareReleases.channel, 'stable'),
+          eq(esp32FirmwareReleases.isActive, true)
+        ))
+        .orderBy(desc(esp32FirmwareReleases.versionCode))
+        .limit(limit),
 
-  if (!boardType || typeof boardType !== 'string') {
-    return res.status(400).json({ error: 'boardType is required' });
-  }
+      db.select()
+        .from(esp32FirmwareReleases)
+        .where(and(
+          eq(esp32FirmwareReleases.boardType, boardType),
+          eq(esp32FirmwareReleases.channel, 'beta'),
+          eq(esp32FirmwareReleases.isActive, true)
+        ))
+        .orderBy(desc(esp32FirmwareReleases.createdAt))
+        .limit(limit),
 
-  const [stable, beta, alpha] = await Promise.all([
-    db.select()
+      db.select()
+        .from(esp32FirmwareReleases)
+        .where(and(
+          eq(esp32FirmwareReleases.boardType, boardType),
+          eq(esp32FirmwareReleases.channel, 'alpha'),
+          eq(esp32FirmwareReleases.isActive, true)
+        ))
+        .orderBy(desc(esp32FirmwareReleases.createdAt))
+        .limit(limit * 2),  // More alpha builds since there are many PRs
+    ]);
+
+    return { stable, beta, alpha };
+  },
+};
+```
+
+```typescript
+// packages/backend/src/graphql/resolvers/firmware/mutations.ts
+
+export const firmwareMutations = {
+  // CI: Register a new firmware build (requires CI_API_KEY in connectionParams)
+  registerFirmwareBuild: async (_: unknown, { input }: { input: RegisterFirmwareBuildInput }, ctx: Context) => {
+    requireCIAuth(ctx);
+
+    const {
+      boardType, channel, version, binaryUrl, binarySize,
+      checksumSha256, gitRef, gitSha, prNumber, prTitle,
+      prAuthor, releaseNotes, workflowRunId
+    } = input;
+
+    // Calculate version code
+    let versionCode: number;
+    if (channel === 'STABLE') {
+      const [major, minor, patch] = version.split('.').map(Number);
+      versionCode = major * 10000 + minor * 100 + patch;
+    } else {
+      versionCode = Math.floor(Date.now() / 1000);
+    }
+
+    const [release] = await db.insert(esp32FirmwareReleases)
+      .values({
+        version,
+        versionCode,
+        boardType,
+        channel: channel.toLowerCase(),
+        binaryUrl,
+        binarySize,
+        checksumSha256,
+        gitRef,
+        gitSha,
+        prNumber,
+        prTitle,
+        prAuthor,
+        releaseNotes,
+        workflowRunId,
+        isActive: true,
+        publishedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: [esp32FirmwareReleases.boardType, esp32FirmwareReleases.channel, esp32FirmwareReleases.gitSha],
+        set: { binaryUrl, binarySize, checksumSha256, version }
+      })
+      .returning();
+
+    return release;
+  },
+
+  // CI: Cleanup old alpha builds for a PR
+  cleanupAlphaBuilds: async (_: unknown, { prNumber, keepCount = 5 }: { prNumber: number; keepCount?: number }, ctx: Context) => {
+    requireCIAuth(ctx);
+
+    const builds = await db.select()
       .from(esp32FirmwareReleases)
       .where(and(
-        eq(esp32FirmwareReleases.boardType, boardType),
-        eq(esp32FirmwareReleases.channel, 'stable'),
-        eq(esp32FirmwareReleases.isActive, true)
-      ))
-      .orderBy(desc(esp32FirmwareReleases.versionCode))
-      .limit(10),
-
-    db.select()
-      .from(esp32FirmwareReleases)
-      .where(and(
-        eq(esp32FirmwareReleases.boardType, boardType),
-        eq(esp32FirmwareReleases.channel, 'beta'),
-        eq(esp32FirmwareReleases.isActive, true)
-      ))
-      .orderBy(desc(esp32FirmwareReleases.createdAt))
-      .limit(10),
-
-    db.select()
-      .from(esp32FirmwareReleases)
-      .where(and(
-        eq(esp32FirmwareReleases.boardType, boardType),
         eq(esp32FirmwareReleases.channel, 'alpha'),
-        eq(esp32FirmwareReleases.isActive, true)
+        eq(esp32FirmwareReleases.prNumber, prNumber)
       ))
-      .orderBy(desc(esp32FirmwareReleases.createdAt))
-      .limit(20),  // More alpha builds since there are many PRs
-  ]);
+      .orderBy(desc(esp32FirmwareReleases.createdAt));
 
-  res.json({ stable, beta, alpha });
-});
+    const toDeactivate = builds.slice(keepCount);
 
-// POST /api/firmware/register - CI registers new firmware build
-router.post('/register', authenticateCI, async (req, res) => {
-  const {
-    boardType, channel, version, binaryUrl, binarySize,
-    checksumSha256, gitRef, gitSha, prNumber, prTitle,
-    prAuthor, releaseNotes, workflowRunId
-  } = req.body;
+    for (const build of toDeactivate) {
+      await db.update(esp32FirmwareReleases)
+        .set({ isActive: false })
+        .where(eq(esp32FirmwareReleases.id, build.id));
+    }
 
-  // Calculate version code
-  let versionCode: number;
-  if (channel === 'stable') {
-    const [major, minor, patch] = version.split('.').map(Number);
-    versionCode = major * 10000 + minor * 100 + patch;
-  } else {
-    // Use timestamp for beta/alpha
-    versionCode = Math.floor(Date.now() / 1000);
-  }
-
-  const [release] = await db.insert(esp32FirmwareReleases)
-    .values({
-      version,
-      versionCode,
-      boardType,
-      channel,
-      binaryUrl,
-      binarySize,
-      checksumSha256,
-      gitRef,
-      gitSha,
-      prNumber,
-      prTitle,
-      prAuthor,
-      releaseNotes,
-      workflowRunId,
-      isActive: true,
-      publishedAt: new Date(),
-    })
-    .onConflictDoUpdate({
-      target: [esp32FirmwareReleases.boardType, esp32FirmwareReleases.channel, esp32FirmwareReleases.gitSha],
-      set: { binaryUrl, binarySize, checksumSha256, updatedAt: new Date() }
-    })
-    .returning();
-
-  res.json(release);
-});
-
-// POST /api/firmware/cleanup-alpha - Remove old alpha builds for a PR
-router.post('/cleanup-alpha', authenticateCI, async (req, res) => {
-  const { prNumber, keepCount = 5 } = req.body;
-
-  // Get all alpha builds for this PR, sorted by newest first
-  const builds = await db.select()
-    .from(esp32FirmwareReleases)
-    .where(and(
-      eq(esp32FirmwareReleases.channel, 'alpha'),
-      eq(esp32FirmwareReleases.prNumber, prNumber)
-    ))
-    .orderBy(desc(esp32FirmwareReleases.createdAt));
-
-  // Deactivate all but the newest `keepCount`
-  const toDeactivate = builds.slice(keepCount);
-
-  for (const build of toDeactivate) {
-    await db.update(esp32FirmwareReleases)
-      .set({ isActive: false })
-      .where(eq(esp32FirmwareReleases.id, build.id));
-  }
-
-  res.json({ deactivated: toDeactivate.length });
-});
-
-export default router;
+    return { deactivatedCount: toDeactivate.length };
+  },
+};
 ```
 
 ## Firmware Build & Release Process
@@ -1308,14 +1395,16 @@ jobs:
           path: packages/board-controller/esp32/.pio/build/${{ matrix.board }}/firmware.bin
           retention-days: 7
 
-      - name: Register firmware with backend
+      - name: Register firmware with backend (GraphQL)
         env:
           CI_API_KEY: ${{ secrets.CI_API_KEY }}
         run: |
-          # Build the registration payload
-          PAYLOAD=$(jq -n \
+          # Build the GraphQL mutation variables
+          CHANNEL=$(echo "${{ steps.version.outputs.channel }}" | tr '[:lower:]' '[:upper:]')
+
+          VARIABLES=$(jq -n \
             --arg boardType "${{ matrix.board }}" \
-            --arg channel "${{ steps.version.outputs.channel }}" \
+            --arg channel "$CHANNEL" \
             --arg version "${{ steps.version.outputs.version }}" \
             --arg binaryUrl "${{ steps.upload.outputs.binary_url }}" \
             --argjson binarySize "${{ steps.checksum.outputs.size }}" \
@@ -1324,37 +1413,46 @@ jobs:
             --arg gitSha "${{ github.sha }}" \
             --arg workflowRunId "${{ github.run_id }}" \
             '{
-              boardType: $boardType,
-              channel: $channel,
-              version: $version,
-              binaryUrl: $binaryUrl,
-              binarySize: $binarySize,
-              checksumSha256: $checksumSha256,
-              gitRef: $gitRef,
-              gitSha: $gitSha,
-              workflowRunId: $workflowRunId
+              input: {
+                boardType: $boardType,
+                channel: $channel,
+                version: $version,
+                binaryUrl: $binaryUrl,
+                binarySize: $binarySize,
+                checksumSha256: $checksumSha256,
+                gitRef: $gitRef,
+                gitSha: $gitSha,
+                workflowRunId: $workflowRunId
+              }
             }')
 
           # Add PR info for alpha channel
           if [[ "${{ steps.version.outputs.channel }}" == "alpha" ]]; then
-            PAYLOAD=$(echo "$PAYLOAD" | jq \
+            VARIABLES=$(echo "$VARIABLES" | jq \
               --argjson prNumber "${{ steps.version.outputs.pr_number }}" \
               --arg prTitle "${{ steps.version.outputs.pr_title }}" \
               --arg prAuthor "${{ steps.version.outputs.pr_author }}" \
-              '. + {prNumber: $prNumber, prTitle: $prTitle, prAuthor: $prAuthor}')
+              '.input += {prNumber: $prNumber, prTitle: $prTitle, prAuthor: $prAuthor}')
           fi
 
           # Add release notes for stable channel
           if [[ "${{ steps.version.outputs.channel }}" == "stable" ]]; then
-            PAYLOAD=$(echo "$PAYLOAD" | jq \
+            VARIABLES=$(echo "$VARIABLES" | jq \
               --arg releaseNotes '${{ github.event.release.body }}' \
-              '. + {releaseNotes: $releaseNotes}')
+              '.input += {releaseNotes: $releaseNotes}')
           fi
 
-          curl -f -X POST "${BACKEND_URL}/api/firmware/register" \
+          # GraphQL mutation
+          QUERY='mutation RegisterFirmwareBuild($input: RegisterFirmwareBuildInput!) {
+            registerFirmwareBuild(input: $input) {
+              id version channel
+            }
+          }'
+
+          curl -f -X POST "${BACKEND_URL}/graphql" \
             -H "Authorization: Bearer ${CI_API_KEY}" \
             -H "Content-Type: application/json" \
-            -d "$PAYLOAD"
+            -d "$(jq -n --arg query "$QUERY" --argjson variables "$VARIABLES" '{query: $query, variables: $variables}')"
 
   # Cleanup old alpha builds (keep last 5 per PR)
   cleanup-alpha:
@@ -1362,14 +1460,20 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - name: Cleanup old alpha builds
+      - name: Cleanup old alpha builds (GraphQL)
         env:
           CI_API_KEY: ${{ secrets.CI_API_KEY }}
         run: |
-          curl -X POST "${BACKEND_URL}/api/firmware/cleanup-alpha" \
+          QUERY='mutation CleanupAlphaBuilds($prNumber: Int!, $keepCount: Int) {
+            cleanupAlphaBuilds(prNumber: $prNumber, keepCount: $keepCount) {
+              deactivatedCount
+            }
+          }'
+
+          curl -X POST "${BACKEND_URL}/graphql" \
             -H "Authorization: Bearer ${CI_API_KEY}" \
             -H "Content-Type: application/json" \
-            -d '{"prNumber": ${{ github.event.pull_request.number }}, "keepCount": 5}'
+            -d "$(jq -n --arg query "$QUERY" '{query: $query, variables: {prNumber: ${{ github.event.pull_request.number }}, keepCount: 5}}')"
 ```
 
 ### Stable Release Workflow
