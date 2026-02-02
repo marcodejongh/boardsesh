@@ -1,14 +1,13 @@
 'use client';
 
 import React from 'react';
-import { Layout, Card, Typography, Space, Alert } from 'antd';
+import { Layout, Card, Typography, Space } from 'antd';
 import {
   GithubOutlined,
-  WarningOutlined,
-  LockOutlined,
   TeamOutlined,
-  ThunderboltOutlined,
   HeartOutlined,
+  ApiOutlined,
+  RocketOutlined,
 } from '@ant-design/icons';
 import Logo from '@/app/components/brand/logo';
 import BackButton from '@/app/components/back-button';
@@ -36,83 +35,37 @@ export default function AboutContent() {
             <div className={styles.heroSection}>
               <Logo size="lg" linkToHome={false} />
               <Title level={2} className={styles.heroTitle}>
-                Why We Built Boardsesh
+                Strava for Board Climbers
               </Title>
               <Text type="secondary" className={styles.heroSubtitle}>
-                An open source alternative for LED climbing board control
+                A centralized hub for all your LED climbing board training
               </Text>
             </div>
 
-            {/* The Problem */}
+            {/* Our Vision */}
             <section>
               <Title level={3}>
-                <WarningOutlined className={`${styles.sectionIcon} ${styles.warningIcon}`} />
-                The Problem
+                <RocketOutlined className={`${styles.sectionIcon} ${styles.primaryIcon}`} />
+                Our Vision
               </Title>
               <Paragraph>
-                LED climbing boards like Moonboard, Kilter, Tension, Decoy, and Grasshopper have
-                become incredibly popular in the climbing community. These boards represent a
-                significant investment—a 7x10 Kilter homewall with mainline holds runs around
-                $10,000, plus another $2,000 or so for the LED lighting system.
+                LED climbing boards like Kilter, Tension, Moonboard, Decoy, and Grasshopper have
+                revolutionized indoor training. We believe the climbing community deserves a
+                centralized platform that brings all these boards together—making it easier to
+                track progress, train with friends, and get the most out of your board.
               </Paragraph>
               <Paragraph>
-                Here&apos;s the thing: those climbing holds will work forever. No apps, no
-                licensing, no connectivity required. But to use the LED system that makes these
-                boards truly interactive, we&apos;re all dependent on Moon Climbing or Aurora
-                Climbing. Each company servicing a large part of the market without
-                cross-compatibility.
-              </Paragraph>
-
-              <Alert
-                className={styles.alert}
-                type="warning"
-                showIcon
-                icon={<LockOutlined />}
-                title="Single Vendor Risk"
-                description="Thousands of dollars worth of climbing equipment relies on software from two small companies. If that software stops working, your expensive LED system becomes unusable."
-              />
-
-              <Paragraph className={styles.additionalParagraph}>
-                You&apos;re also at the mercy of the whims of the owners of these companies. Not too
-                long ago Moon Board tried to block creation of new problems on one of their older
-                boards:{' '}
-                <Link
-                  href="https://www.reddit.com/r/climbing/s/VqKGxWSfDT"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  see this Reddit discussion
-                </Link>
-                . This was rolled back, but there are no guarantees this won&apos;t happen again.
-                Either of these companies could also change owners. What if a future owner wants to
-                introduce a subscription model?
+                Think of Boardsesh as Strava for board climbers: a unified experience that works
+                across different board types, helping you focus on what matters most—climbing.
               </Paragraph>
             </section>
 
-            {/* Development Stagnation */}
-            <section>
-              <Title level={3}>
-                <ThunderboltOutlined className={`${styles.sectionIcon} ${styles.errorIcon}`} />
-                Development Has Stalled
-              </Title>
-              <Paragraph>
-                Instead of spending their time building great app experiences, both companies have
-                implemented app attest which blocks external access to the climb data. However, the
-                climb data isn&apos;t theirs—it&apos;s the users&apos;.
-              </Paragraph>
-            </section>
-
-            {/* Our Solution */}
+            {/* Features */}
             <section>
               <Title level={3}>
                 <TeamOutlined className={`${styles.sectionIcon} ${styles.successIcon}`} />
-                Our Solution: Open Source
+                What Boardsesh Offers
               </Title>
-              <Paragraph>
-                Frustrated with the lack of development and anxious about being locked into a single
-                vendor, we built Boardsesh—an open source alternative that anyone can use, modify,
-                and host themselves.
-              </Paragraph>
               <Paragraph>With Boardsesh, you get:</Paragraph>
               <ul className={styles.featureList}>
                 <li>
@@ -123,14 +76,14 @@ export default function AboutContent() {
                   Party Mode
                 </li>
                 <li>
-                  <Text strong>Active development</Text> — New features and bug fixes from the
+                  <Text strong>Multi-board support</Text> — One app for Kilter, Tension, and more
+                </li>
+                <li>
+                  <Text strong>Active development</Text> — New features and improvements from the
                   community
                 </li>
                 <li>
-                  <Text strong>No lock-in</Text> — Self-host if you want complete control
-                </li>
-                <li>
-                  <Text strong>Transparency</Text> — See exactly how your data is used
+                  <Text strong>Self-hosting option</Text> — Run your own instance if you prefer
                 </li>
               </ul>
             </section>
@@ -156,25 +109,39 @@ export default function AboutContent() {
               </Paragraph>
             </section>
 
+            {/* API Documentation */}
+            <section>
+              <Title level={3}>
+                <ApiOutlined className={`${styles.sectionIcon} ${styles.primaryIcon}`} />
+                API Documentation
+              </Title>
+              <Paragraph>
+                Building something cool with climbing data? We provide a public API that developers
+                can use to access climb information and build their own integrations.
+              </Paragraph>
+              <Paragraph>
+                <Link href="/docs">Explore the API Documentation →</Link>
+              </Paragraph>
+            </section>
+
             {/* Collaboration */}
             <section>
               <Title level={3}>
                 <HeartOutlined className={`${styles.sectionIcon} ${styles.primaryIcon}`} />
-                Open to Collaboration
+                Join the Community
               </Title>
               <Paragraph>
-                We would welcome collaboration with the official app vendors and would love to
-                integrate through more official means. Unfortunately, so far Aurora has been hostile
-                to any collaboration attempts.
+                We&apos;re always looking to collaborate with climbers, developers, and anyone
+                passionate about improving the board climbing experience. Whether you want to
+                contribute code, suggest features, or just say hello—we&apos;d love to hear from
+                you.
               </Paragraph>
             </section>
 
             {/* Call to Action */}
             <section className={styles.callToAction}>
               <Paragraph type="secondary">
-                Your expensive climbing board shouldn&apos;t stop working because a single app goes
-                down. Together, we can build something better—software that belongs to the climbing
-                community.
+                Together, we can build the best training companion for board climbers everywhere.
               </Paragraph>
             </section>
           </Space>
