@@ -1,0 +1,12 @@
+{
+    "name": "config-manager",
+    "version": "1.0.0",
+    "description": "NVS configuration storage (test build)",
+    "platforms": ["native", "espressif32"],
+    "dependencies": {
+        "mocks": "*"
+    },
+    "build": {
+        "flags": ["-std=c++17", "-DUNIT_TEST"]
+    }
+}
