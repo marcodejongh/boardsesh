@@ -309,7 +309,7 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
               </Col>
 
               {/* Clickable main body for opening the queue */}
-              <Col xs={10} style={{ textAlign: 'center' }}>
+              <Col xs={9} style={{ textAlign: 'center' }}>
                 <div onClick={toggleQueueDrawer} className={`${styles.queueToggle} ${isListPage ? styles.listPage : ''}`}>
                   <ClimbTitle
                     climb={currentClimb}
@@ -322,7 +322,7 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
 
               {/* Added by indicator (user avatar or Bluetooth icon) */}
               {currentClimbQueueItem && (
-                <Col xs={1} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Col xs={2} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {currentClimbQueueItem.addedByUser ? (
                     <Tooltip title={currentClimbQueueItem.addedByUser.username}>
                       <Avatar size="small" src={currentClimbQueueItem.addedByUser.avatarUrl} icon={<UserOutlined />} />
