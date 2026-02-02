@@ -4,6 +4,7 @@
 #include <Arduino.h>
 #include <NimBLEDevice.h>
 #include <vector>
+#include <mutex>
 #include "../config/board_config.h"
 #include "../led/led_controller.h"
 
@@ -64,6 +65,9 @@ private:
     NimBLERemoteCharacteristic* pRemoteRxChar;  // The board's RX characteristic (we write to it)
     NimBLEScan* pScan;
 
+    // Mutex to protect shared state accessed by both BLE callbacks and main thread
+    std::mutex connectionMutex;
+
     // Note: clientConnected is marked volatile because it's modified by NimBLE callbacks
     // which may run in a different context (BLE task). This ensures visibility across contexts.
     volatile bool clientConnected;
@@ -77,9 +81,12 @@ private:
     bool scanComplete;
     volatile bool scanInProgress;  // Guard against concurrent scans
 
+    // Negotiated MTU size (updated after connection)
+    uint16_t negotiatedMtu;
+
     // Internal methods
     bool connectToServer();
-    void encodeAndSendPacket(const uint8_t* data, size_t length, uint8_t command);
+    void encodeAndSendPacket(NimBLERemoteCharacteristic* pChar, const uint8_t* data, size_t length, uint8_t command);
 };
 
 // Global BLE client instance

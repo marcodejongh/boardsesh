@@ -1,11 +1,18 @@
 #include "ble_client.h"
-#include "aurora_protocol.h"
+#include "aurora_encoding.h"
 
 // Global instance
 BleClient bleClient;
 
-// Maximum LED data bytes per BLE packet (MTU limit minus overhead)
-#define MAX_PACKET_DATA_SIZE 180
+// Maximum scan results to prevent memory exhaustion in dense BLE environments
+#define MAX_SCAN_RESULTS 50
+
+// Default MTU data size (conservative, will be updated after MTU negotiation)
+#define DEFAULT_MTU_DATA_SIZE 20
+// Maximum MTU we'll request from the device
+#define REQUESTED_MTU 185
+// Frame overhead: SOH + length + checksum + STX + command + ETX = 6 bytes
+#define FRAME_OVERHEAD 6
 
 BleClient::BleClient()
     : pClient(nullptr),
@@ -16,7 +23,8 @@ BleClient::BleClient()
       lastReconnectAttempt(0),
       autoReconnect(true),
       scanComplete(false),
-      scanInProgress(false) {}
+      scanInProgress(false),
+      negotiatedMtu(DEFAULT_MTU_DATA_SIZE) {}
 
 bool BleClient::begin() {
     Serial.println("[BLE-Client] Initializing BLE client...");
@@ -82,6 +90,11 @@ std::vector<ScannedBoard> BleClient::scan(int durationSeconds) {
 }
 
 void BleClient::onResult(NimBLEAdvertisedDevice* advertisedDevice) {
+    // Prevent memory exhaustion in dense BLE environments
+    if (scanResults.size() >= MAX_SCAN_RESULTS) {
+        return;
+    }
+
     ScannedBoard board;
     board.address = advertisedDevice->getAddress().toString().c_str();
     board.name = advertisedDevice->haveName() ? advertisedDevice->getName().c_str() : "";
@@ -129,33 +142,53 @@ bool BleClient::connectToServer() {
         return false;
     }
 
-    Serial.println("[BLE-Client] Connected, discovering services...");
+    Serial.println("[BLE-Client] Connected, negotiating MTU...");
 
-    // Get Nordic UART service
-    pRemoteService = pClient->getService(NORDIC_UART_SERVICE_UUID);
-    if (!pRemoteService) {
+    // Negotiate MTU for larger packet sizes
+    uint16_t mtu = pClient->getMTU();
+    if (mtu < REQUESTED_MTU) {
+        // Request larger MTU
+        if (pClient->exchangeMTU(REQUESTED_MTU)) {
+            mtu = pClient->getMTU();
+        }
+    }
+    // MTU includes 3 bytes ATT overhead, usable data is MTU - 3
+    negotiatedMtu = (mtu > 3) ? (mtu - 3) : DEFAULT_MTU_DATA_SIZE;
+    Serial.printf("[BLE-Client] Negotiated MTU: %d, usable data size: %d\n", mtu, negotiatedMtu);
+
+    Serial.println("[BLE-Client] Discovering services...");
+
+    // Use local variables for discovery to avoid holding mutex during BLE operations
+    NimBLERemoteService* service = pClient->getService(NORDIC_UART_SERVICE_UUID);
+    if (!service) {
         Serial.println("[BLE-Client] Failed to find Nordic UART service");
         pClient->disconnect();
         return false;
     }
 
     // Get RX characteristic (we write LED data to this)
-    pRemoteRxChar = pRemoteService->getCharacteristic(NORDIC_UART_RX_UUID);
-    if (!pRemoteRxChar) {
+    NimBLERemoteCharacteristic* rxChar = service->getCharacteristic(NORDIC_UART_RX_UUID);
+    if (!rxChar) {
         Serial.println("[BLE-Client] Failed to find RX characteristic");
         pClient->disconnect();
         return false;
     }
 
     // Verify we can write to it
-    if (!pRemoteRxChar->canWrite() && !pRemoteRxChar->canWriteNoResponse()) {
+    if (!rxChar->canWrite() && !rxChar->canWriteNoResponse()) {
         Serial.println("[BLE-Client] RX characteristic is not writable");
         pClient->disconnect();
         return false;
     }
 
-    connectedAddress = targetAddress;
-    clientConnected = true;
+    // Update shared state under lock
+    {
+        std::lock_guard<std::mutex> lock(connectionMutex);
+        pRemoteService = service;
+        pRemoteRxChar = rxChar;
+        connectedAddress = targetAddress;
+        clientConnected = true;
+    }
     autoReconnect = true;
 
     Serial.printf("[BLE-Client] Successfully connected to %s\n", connectedAddress.c_str());
@@ -170,10 +203,13 @@ void BleClient::disconnect() {
         pClient->disconnect();
     }
 
-    clientConnected = false;
-    connectedAddress = "";
-    pRemoteService = nullptr;
-    pRemoteRxChar = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(connectionMutex);
+        clientConnected = false;
+        connectedAddress = "";
+        pRemoteService = nullptr;
+        pRemoteRxChar = nullptr;
+    }
 
     Serial.println("[BLE-Client] Disconnected");
 }
@@ -193,9 +229,12 @@ void BleClient::onConnect(NimBLEClient* pClient) {
 
 void BleClient::onDisconnect(NimBLEClient* pClient) {
     Serial.println("[BLE-Client] Disconnected callback");
-    clientConnected = false;
-    pRemoteService = nullptr;
-    pRemoteRxChar = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(connectionMutex);
+        clientConnected = false;
+        pRemoteService = nullptr;
+        pRemoteRxChar = nullptr;
+    }
 }
 
 void BleClient::loop() {
@@ -210,16 +249,7 @@ void BleClient::loop() {
     }
 }
 
-// Calculate Aurora protocol checksum
-static uint8_t calculateChecksum(const uint8_t* data, size_t length) {
-    uint8_t sum = 0;
-    for (size_t i = 0; i < length; i++) {
-        sum = (sum + data[i]) & 0xFF;
-    }
-    return sum ^ 0xFF;
-}
-
-void BleClient::encodeAndSendPacket(const uint8_t* ledData, size_t ledDataLength, uint8_t command) {
+void BleClient::encodeAndSendPacket(NimBLERemoteCharacteristic* pChar, const uint8_t* ledData, size_t ledDataLength, uint8_t command) {
     // Frame format: [SOH, length, checksum, STX, command, ...ledData..., ETX]
     // Length = 1 (command) + ledDataLength
     size_t dataLength = 1 + ledDataLength;  // command + LED data
@@ -229,37 +259,43 @@ void BleClient::encodeAndSendPacket(const uint8_t* ledData, size_t ledDataLength
     data[0] = command;
     memcpy(&data[1], ledData, ledDataLength);
 
-    // Calculate checksum over data
-    uint8_t checksum = calculateChecksum(data.data(), dataLength);
+    // Calculate checksum over data using shared function
+    uint8_t checksum = aurora_calculateChecksum(data.data(), dataLength);
 
     // Build complete frame
     std::vector<uint8_t> frame;
-    frame.push_back(FRAME_SOH);
+    frame.push_back(AURORA_FRAME_SOH);
     frame.push_back(static_cast<uint8_t>(dataLength));
     frame.push_back(checksum);
-    frame.push_back(FRAME_STX);
+    frame.push_back(AURORA_FRAME_STX);
     frame.insert(frame.end(), data.begin(), data.end());
-    frame.push_back(FRAME_ETX);
+    frame.push_back(AURORA_FRAME_ETX);
 
-    // Send frame
-    if (pRemoteRxChar) {
-        if (pRemoteRxChar->canWriteNoResponse()) {
-            pRemoteRxChar->writeValue(frame.data(), frame.size(), false);
-        } else {
-            pRemoteRxChar->writeValue(frame.data(), frame.size(), true);
-        }
+    // Send frame using the captured characteristic pointer
+    if (pChar->canWriteNoResponse()) {
+        pChar->writeValue(frame.data(), frame.size(), false);
+    } else {
+        pChar->writeValue(frame.data(), frame.size(), true);
+    }
 
-        if (DEBUG_BLE) {
-            Serial.printf("[BLE-Client] Sent packet: cmd='%c', %zu LED bytes, %zu total bytes\n",
-                          command, ledDataLength, frame.size());
-        }
+    if (DEBUG_BLE) {
+        Serial.printf("[BLE-Client] Sent packet: cmd='%c', %zu LED bytes, %zu total bytes\n",
+                      command, ledDataLength, frame.size());
     }
 }
 
 bool BleClient::sendLedCommands(const LedCommand* commands, int count) {
-    if (!isConnected() || !pRemoteRxChar) {
-        Serial.println("[BLE-Client] Not connected, cannot send LED commands");
-        return false;
+    // Capture characteristic pointer under lock to avoid race with disconnect callback
+    NimBLERemoteCharacteristic* pChar = nullptr;
+    uint16_t mtuDataSize = 0;
+    {
+        std::lock_guard<std::mutex> lock(connectionMutex);
+        if (!clientConnected || !pRemoteRxChar) {
+            Serial.println("[BLE-Client] Not connected, cannot send LED commands");
+            return false;
+        }
+        pChar = pRemoteRxChar;
+        mtuDataSize = negotiatedMtu;
     }
 
     if (count == 0) {
@@ -271,36 +307,35 @@ bool BleClient::sendLedCommands(const LedCommand* commands, int count) {
 
     // Encode LED commands to API v3 format (3 bytes per LED)
     // Format: [pos_low, pos_high, color_byte]
-    // Color: RRRGGGBB (3 bits red, 3 bits green, 2 bits blue)
     std::vector<uint8_t> ledData;
     ledData.reserve(count * 3);
 
     for (int i = 0; i < count; i++) {
-        uint16_t position = static_cast<uint16_t>(commands[i].position);
-
-        // Convert RGB (0-255) to packed color format (RRRGGGBB)
-        // Matches the TypeScript encoding in bluetooth.ts:
-        //   Math.floor(r / 32) << 5 | Math.floor(g / 32) << 2 | Math.floor(b / 64)
-        uint8_t r3 = commands[i].r / 32;  // 0-7
-        uint8_t g3 = commands[i].g / 32;  // 0-7
-        uint8_t b2 = commands[i].b / 64;  // 0-3
-
-        uint8_t colorByte = (r3 << 5) | (g3 << 2) | b2;
-
-        // Position (little-endian)
-        ledData.push_back(position & 0xFF);
-        ledData.push_back((position >> 8) & 0xFF);
-        ledData.push_back(colorByte);
+        uint8_t encoded[3];
+        aurora_encodeLedCommand(
+            static_cast<uint16_t>(commands[i].position),
+            commands[i].r,
+            commands[i].g,
+            commands[i].b,
+            encoded
+        );
+        ledData.push_back(encoded[0]);
+        ledData.push_back(encoded[1]);
+        ledData.push_back(encoded[2]);
     }
 
-    // Calculate how many LEDs fit per packet
-    size_t maxLedsPerPacket = MAX_PACKET_DATA_SIZE / 3;
+    // Calculate how many LEDs fit per packet based on negotiated MTU
+    // Account for frame overhead and command byte
+    size_t maxDataPerPacket = (mtuDataSize > FRAME_OVERHEAD) ? (mtuDataSize - FRAME_OVERHEAD) : 20;
+    size_t maxLedsPerPacket = maxDataPerPacket / 3;
+    if (maxLedsPerPacket == 0) maxLedsPerPacket = 1;  // At least one LED per packet
+
     size_t totalLeds = count;
     size_t packetCount = (totalLeds + maxLedsPerPacket - 1) / maxLedsPerPacket;
 
     if (packetCount == 1) {
-        // Single packet - use CMD_V3_PACKET_ONLY ('T')
-        encodeAndSendPacket(ledData.data(), ledData.size(), CMD_V3_PACKET_ONLY);
+        // Single packet - use AURORA_CMD_V3_PACKET_ONLY ('T')
+        encodeAndSendPacket(pChar, ledData.data(), ledData.size(), AURORA_CMD_V3_PACKET_ONLY);
     } else {
         // Multi-packet sequence
         size_t ledsSent = 0;
@@ -311,14 +346,14 @@ bool BleClient::sendLedCommands(const LedCommand* commands, int count) {
 
             uint8_t command;
             if (pkt == 0) {
-                command = CMD_V3_PACKET_FIRST;  // 'R'
+                command = AURORA_CMD_V3_PACKET_FIRST;  // 'R'
             } else if (pkt == packetCount - 1) {
-                command = CMD_V3_PACKET_LAST;   // 'S'
+                command = AURORA_CMD_V3_PACKET_LAST;   // 'S'
             } else {
-                command = CMD_V3_PACKET_MIDDLE; // 'Q'
+                command = AURORA_CMD_V3_PACKET_MIDDLE; // 'Q'
             }
 
-            encodeAndSendPacket(&ledData[byteOffset], byteCount, command);
+            encodeAndSendPacket(pChar, &ledData[byteOffset], byteCount, command);
             ledsSent += ledsInPacket;
 
             // Small delay between packets
