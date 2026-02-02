@@ -5,20 +5,121 @@
  *
  * Displays the GraphQL schema documentation with syntax highlighting.
  * The schema is loaded from the shared-schema package.
+ *
+ * Uses a tokenizer-based approach for syntax highlighting to avoid XSS
+ * vulnerabilities from dangerouslySetInnerHTML.
  */
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Tabs, Typography, Card, Input, Collapse, Tag, Space } from 'antd';
 import { typeDefs } from '@boardsesh/shared-schema/schema';
+import { themeTokens } from '@/app/theme/theme-config';
 
 const { Text, Paragraph } = Typography;
 const { Search } = Input;
+
+// Syntax highlighting colors (VS Code dark theme inspired)
+const syntaxColors = {
+  keyword: '#569cd6',
+  type: '#4ec9b0',
+  string: '#ce9178',
+  comment: '#6a9955',
+  parameter: '#9cdcfe',
+  default: '#d4d4d4',
+} as const;
 
 type SchemaSection = {
   name: string;
   content: string;
   type: 'type' | 'input' | 'enum' | 'query' | 'mutation' | 'subscription' | 'union' | 'scalar';
 };
+
+type TokenType = 'keyword' | 'type' | 'string' | 'comment' | 'parameter' | 'default';
+
+type Token = {
+  text: string;
+  type: TokenType;
+};
+
+/**
+ * Tokenizes a line of GraphQL code for syntax highlighting.
+ * Returns an array of tokens with their types - no HTML injection.
+ */
+function tokenizeLine(line: string): Token[] {
+  const tokens: Token[] = [];
+  let remaining = line;
+
+  const patterns: Array<{ regex: RegExp; type: TokenType }> = [
+    // Comments (must be first to capture entire comment)
+    { regex: /^(#.*)/, type: 'comment' },
+    // Triple-quoted strings (descriptions)
+    { regex: /^("""[\s\S]*?""")/, type: 'string' },
+    // Double-quoted strings
+    { regex: /^("[^"\\]*(?:\\.[^"\\]*)*")/, type: 'string' },
+    // Keywords
+    {
+      regex: /^(type|input|enum|union|scalar|query|mutation|subscription|fragment|on|implements|interface|extend|schema|directive)\b/i,
+      type: 'keyword',
+    },
+    // Types (capitalized words)
+    { regex: /^([A-Z][a-zA-Z0-9]*)/, type: 'type' },
+    // Booleans and null
+    { regex: /^(true|false|null)\b/, type: 'keyword' },
+    // Parameter names (word followed by colon)
+    { regex: /^(\w+)(?=:)/, type: 'parameter' },
+    // Whitespace and punctuation
+    { regex: /^(\s+|[{}[\]()!:,=@])/, type: 'default' },
+    // Other identifiers
+    { regex: /^(\w+)/, type: 'default' },
+    // Any other character
+    { regex: /^(.)/, type: 'default' },
+  ];
+
+  while (remaining.length > 0) {
+    let matched = false;
+
+    for (const { regex, type } of patterns) {
+      const match = remaining.match(regex);
+      if (match) {
+        tokens.push({ text: match[1], type });
+        remaining = remaining.slice(match[1].length);
+        matched = true;
+        break;
+      }
+    }
+
+    if (!matched) {
+      // Safety fallback - should never happen with the catch-all pattern
+      tokens.push({ text: remaining[0], type: 'default' });
+      remaining = remaining.slice(1);
+    }
+  }
+
+  return tokens;
+}
+
+/**
+ * Renders syntax-highlighted GraphQL code using React elements.
+ * Safe from XSS as it doesn't use dangerouslySetInnerHTML.
+ */
+function highlightGraphQL(code: string): ReactNode[] {
+  const lines = code.split('\n');
+
+  return lines.map((line, lineIndex) => {
+    const tokens = tokenizeLine(line);
+
+    return (
+      <span key={lineIndex}>
+        {tokens.map((token, tokenIndex) => (
+          <span key={tokenIndex} style={{ color: syntaxColors[token.type] }}>
+            {token.text}
+          </span>
+        ))}
+        {lineIndex < lines.length - 1 && '\n'}
+      </span>
+    );
+  });
+}
 
 function parseSchema(schema: string): SchemaSection[] {
   const sections: SchemaSection[] = [];
@@ -89,49 +190,19 @@ function SchemaBlock({ content }: { content: string }) {
   return (
     <pre
       style={{
-        background: '#1e1e1e',
-        color: '#d4d4d4',
-        padding: '16px',
-        borderRadius: '8px',
+        background: themeTokens.neutral[900],
+        color: syntaxColors.default,
+        padding: themeTokens.spacing[4],
+        borderRadius: themeTokens.borderRadius.md,
         overflow: 'auto',
-        fontSize: '13px',
-        lineHeight: '1.5',
+        fontSize: themeTokens.typography.fontSize.sm - 1,
+        lineHeight: themeTokens.typography.lineHeight.normal,
         fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace',
       }}
     >
       <code>{highlightGraphQL(content)}</code>
     </pre>
   );
-}
-
-function highlightGraphQL(code: string): React.ReactNode[] {
-  // Simple syntax highlighting for GraphQL
-  const lines = code.split('\n');
-  return lines.map((line, i) => {
-    let highlighted = line
-      // Comments
-      .replace(/(#.*)$/g, '<span style="color:#6a9955">$1</span>')
-      // Strings (descriptions)
-      .replace(/("(?:[^"\\]|\\.)*")/g, '<span style="color:#ce9178">$1</span>')
-      // Keywords
-      .replace(
-        /\b(type|input|enum|union|scalar|query|mutation|subscription|fragment|on|implements|interface|extend|schema|directive)\b/gi,
-        '<span style="color:#569cd6">$1</span>'
-      )
-      // Types (capitalized words after colon or brackets)
-      .replace(/:\s*(\[?)([A-Z]\w+)(!?)(\]?)(!?)/g, ': $1<span style="color:#4ec9b0">$2</span>$3$4$5')
-      // Arguments
-      .replace(/(\w+):/g, '<span style="color:#9cdcfe">$1</span>:')
-      // Booleans and null
-      .replace(/\b(true|false|null)\b/g, '<span style="color:#569cd6">$1</span>');
-
-    return (
-      <span key={i}>
-        <span dangerouslySetInnerHTML={{ __html: highlighted }} />
-        {i < lines.length - 1 && '\n'}
-      </span>
-    );
-  });
 }
 
 export default function GraphQLSchemaViewer() {
@@ -171,7 +242,7 @@ export default function GraphQLSchemaViewer() {
 
   return (
     <div>
-      <div style={{ marginBottom: 16 }}>
+      <div style={{ marginBottom: themeTokens.spacing[4] }}>
         <Search
           placeholder="Search types, fields, descriptions..."
           allowClear
@@ -188,7 +259,7 @@ export default function GraphQLSchemaViewer() {
             label: `Operations (${groupedSections.operations.length})`,
             children: (
               <div>
-                <Paragraph type="secondary" style={{ marginBottom: 16 }}>
+                <Paragraph type="secondary" style={{ marginBottom: themeTokens.spacing[4] }}>
                   Queries, Mutations, and Subscriptions available via the WebSocket GraphQL API.
                 </Paragraph>
                 {renderSectionList(groupedSections.operations)}

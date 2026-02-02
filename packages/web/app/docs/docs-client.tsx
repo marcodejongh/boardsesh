@@ -19,6 +19,7 @@ import {
   ThunderboltOutlined,
   BookOutlined,
 } from '@ant-design/icons';
+import { themeTokens } from '@/app/theme/theme-config';
 
 const { Title, Text, Paragraph, Link } = Typography;
 
@@ -26,11 +27,28 @@ const { Title, Text, Paragraph, Link } = Typography;
 const SwaggerUI = lazy(() => import('./swagger-ui'));
 const GraphQLSchemaViewer = lazy(() => import('./graphql-schema'));
 
+// Code block styling tokens
+const codeBlockStyles = {
+  light: {
+    background: themeTokens.neutral[100],
+    padding: themeTokens.spacing[3],
+    borderRadius: themeTokens.borderRadius.sm,
+    overflow: 'auto' as const,
+  },
+  dark: {
+    background: themeTokens.neutral[900],
+    color: '#d4d4d4',
+    padding: themeTokens.spacing[4],
+    borderRadius: themeTokens.borderRadius.md,
+    overflow: 'auto' as const,
+  },
+};
+
 function LoadingSpinner() {
   return (
-    <div style={{ textAlign: 'center', padding: '40px' }}>
+    <div style={{ textAlign: 'center', padding: themeTokens.spacing[10] }}>
       <Spin size="large" />
-      <div style={{ marginTop: 16 }}>Loading documentation...</div>
+      <div style={{ marginTop: themeTokens.spacing[4] }}>Loading documentation...</div>
     </div>
   );
 }
@@ -94,14 +112,7 @@ function OverviewTab() {
             <strong>WebSocket API:</strong> Obtain a JWT token from{' '}
             <code>GET /api/internal/ws-auth</code> and include it in the connection parameters:
           </Paragraph>
-          <pre
-            style={{
-              background: '#f5f5f5',
-              padding: 12,
-              borderRadius: 4,
-              overflow: 'auto',
-            }}
-          >
+          <pre style={codeBlockStyles.light}>
 {`import { createClient } from 'graphql-ws';
 
 const client = createClient({
@@ -140,15 +151,7 @@ function WebSocketGuideTab() {
 
       <Title level={4}>Connection Setup</Title>
 
-      <pre
-        style={{
-          background: '#1e1e1e',
-          color: '#d4d4d4',
-          padding: 16,
-          borderRadius: 8,
-          overflow: 'auto',
-        }}
-      >
+      <pre style={codeBlockStyles.dark}>
 {`import { createClient } from 'graphql-ws';
 
 // 1. Get auth token (requires session cookie)
@@ -205,15 +208,7 @@ const unsubscribe = client.subscribe(
         Sessions are the core collaboration unit. Users join sessions to share a climb queue.
       </Paragraph>
 
-      <pre
-        style={{
-          background: '#1e1e1e',
-          color: '#d4d4d4',
-          padding: 16,
-          borderRadius: 8,
-          overflow: 'auto',
-        }}
-      >
+      <pre style={codeBlockStyles.dark}>
 {`// Join or create a session
 const result = await client.query({
   query: \`
@@ -245,15 +240,7 @@ const result = await client.query({
         When reconnecting, use delta sync to catch up without full state transfer:
       </Paragraph>
 
-      <pre
-        style={{
-          background: '#1e1e1e',
-          color: '#d4d4d4',
-          padding: 16,
-          borderRadius: 8,
-          overflow: 'auto',
-        }}
-      >
+      <pre style={codeBlockStyles.dark}>
 {`// Store the last known sequence number
 let lastSequence = 0;
 
@@ -284,7 +271,7 @@ lastSequence = eventsReplay.currentSequence;`}
         type="warning"
         message="Connection Handling"
         description="The WebSocket connection may be interrupted by network changes. Implement reconnection logic with the graphql-ws retry options and use delta sync to maintain state consistency."
-        style={{ marginTop: 24 }}
+        style={{ marginTop: themeTokens.spacing[6] }}
       />
     </div>
   );
@@ -292,8 +279,8 @@ lastSequence = eventsReplay.currentSequence;`}
 
 export default function DocsClientPage() {
   return (
-    <div style={{ padding: '24px', maxWidth: 1400, margin: '0 auto' }}>
-      <div style={{ marginBottom: 24 }}>
+    <div style={{ padding: themeTokens.spacing[6], maxWidth: 1400, margin: '0 auto' }}>
+      <div style={{ marginBottom: themeTokens.spacing[6] }}>
         <Title level={1}>
           <BookOutlined /> API Documentation
         </Title>
