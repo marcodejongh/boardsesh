@@ -3,16 +3,13 @@
 
 #include <Arduino.h>
 #include <NimBLEDevice.h>
-#include <map>
 #include "../config/board_config.h"
 #include "aurora_protocol.h"
-
-// Maximum number of MAC addresses to track for deduplication
-#define MAX_MAC_TRACKING 10
 
 /**
  * BLE Server
  * Implements Nordic UART Service compatible with official Kilter/Tension apps
+ * Supports only one active Bluetooth device at a time
  */
 class BleServer : public NimBLEServerCallbacks, public NimBLECharacteristicCallbacks {
 public:
@@ -47,16 +44,8 @@ private:
     AuroraProtocol protocol;
     bool deviceConnected;
     String connectedDeviceAddress;  // MAC address of currently connected device
-
-    // Track last sent hash per MAC address with timestamps for LRU eviction
-    struct MacHashEntry {
-        uint32_t hash;
-        unsigned long timestamp;
-    };
-    std::map<String, MacHashEntry> lastSentHashByMac;
-
-    // Evict oldest entries if we exceed MAX_MAC_TRACKING
-    void evictOldestMacEntries();
+    uint16_t connectedDeviceHandle; // Connection handle for programmatic disconnect
+    uint32_t lastSentHash;          // Hash of last sent LED data for deduplication
 
     void (*ledDataCallback)(const LedCommand* commands, int count, int angle);
 
@@ -66,11 +55,17 @@ public:
     // Get the current connected device's MAC address
     String getConnectedDeviceAddress() { return connectedDeviceAddress; }
 
-    // Check if we should send this LED data for this MAC (deduplication per device)
+    // Check if we should send this LED data (deduplication)
     bool shouldSendLedData(uint32_t hash);
 
     // Update the last sent hash for the connected device
     void updateLastSentHash(uint32_t hash);
+
+    // Disconnect the current Bluetooth client (called when web changes climb)
+    void disconnectClient();
+
+    // Clear the last sent hash (called after web climb change)
+    void clearLastSentHash();
 };
 
 // Global BLE server instance

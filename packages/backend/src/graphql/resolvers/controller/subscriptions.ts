@@ -13,7 +13,7 @@ const HOLD_STATE_COLORS: Record<string, { r: number; g: number; b: number }> = {
   STARTING: { r: 0, g: 255, b: 0 },     // Green
   FINISH: { r: 255, g: 0, b: 255 },     // Magenta/Pink
   HAND: { r: 0, g: 255, b: 255 },       // Cyan
-  FOOT: { r: 255, g: 165, b: 0 },       // Orange
+  FOOT: { r: 255, g: 170, b: 0 },       // Orange
   OFF: { r: 0, g: 0, b: 0 },            // Off
 };
 
@@ -98,6 +98,16 @@ export const controllerSubscriptions = {
 
           // Only process current climb changes
           if (queueEvent.__typename === 'CurrentClimbChanged' || queueEvent.__typename === 'FullSync') {
+            // Skip LedUpdate if this controller initiated the change
+            // (LEDs are already set from BLE data, this would be redundant)
+            if (queueEvent.__typename === 'CurrentClimbChanged') {
+              console.log(`[Controller] CurrentClimbChanged event - clientId: ${queueEvent.clientId}, controllerId: ${controllerId}`);
+              if (queueEvent.clientId === controllerId) {
+                console.log(`[Controller] Skipping LedUpdate (originated from this controller)`);
+                return;
+              }
+            }
+
             const climb = queueEvent.__typename === 'CurrentClimbChanged'
               ? queueEvent.item?.climb
               : queueEvent.state.currentClimbQueueItem?.climb;

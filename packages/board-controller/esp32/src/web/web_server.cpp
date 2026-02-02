@@ -27,6 +27,9 @@ void BoardWebServer::handleClient() {
 }
 
 void BoardWebServer::handleRoot() {
+    server.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    server.sendHeader("Pragma", "no-cache");
+    server.sendHeader("Expires", "0");
     server.send(200, "text/html", getConfigPageHtml());
 }
 
@@ -313,6 +316,8 @@ String BoardWebServer::getConfigPageHtml() {
     </div>
 
     <script>
+        let initialLoadDone = false;
+
         async function loadStatus() {
             try {
                 const res = await fetch('/api/status');
@@ -349,16 +354,19 @@ String BoardWebServer::getConfigPageHtml() {
                 `;
                 document.getElementById('status').innerHTML = statusHtml;
 
-                // Update form fields
-                if (data.websocket.sessionId) {
-                    document.getElementById('sessionId').value = data.websocket.sessionId;
+                // Only update form fields on initial load to avoid overwriting user input
+                if (!initialLoadDone) {
+                    if (data.websocket.sessionId) {
+                        document.getElementById('sessionId').value = data.websocket.sessionId;
+                    }
+                    if (data.config.backendUrl) {
+                        document.getElementById('backendUrl').value = data.config.backendUrl;
+                    }
+                    document.getElementById('ledCount').value = data.led.count;
+                    document.getElementById('brightness').value = data.led.brightness;
+                    document.getElementById('analyticsEnabled').checked = data.config.analyticsEnabled;
+                    initialLoadDone = true;
                 }
-                if (data.config.backendUrl) {
-                    document.getElementById('backendUrl').value = data.config.backendUrl;
-                }
-                document.getElementById('ledCount').value = data.led.count;
-                document.getElementById('brightness').value = data.led.brightness;
-                document.getElementById('analyticsEnabled').checked = data.config.analyticsEnabled;
             } catch (e) {
                 document.getElementById('status').innerHTML = '<span class="status-error">Failed to load status</span>';
             }
@@ -387,6 +395,7 @@ String BoardWebServer::getConfigPageHtml() {
                 });
                 if (res.ok) {
                     showMessage('Configuration saved!');
+                    initialLoadDone = false;  // Allow form fields to update with saved values
                     loadStatus();
                 } else {
                     showMessage('Failed to save', true);

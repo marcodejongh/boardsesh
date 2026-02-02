@@ -959,7 +959,7 @@ subscription ControllerEvents($sessionId: ID!) {
 | STARTING | (0, 255, 0) Green |
 | FINISH | (255, 0, 255) Magenta |
 | HAND | (0, 255, 255) Cyan |
-| FOOT | (255, 165, 0) Orange |
+| FOOT | (255, 170, 0) Orange |
 
 ### Controller Mutations
 

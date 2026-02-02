@@ -11,6 +11,8 @@ BleServer::BleServer()
       pTxCharacteristic(nullptr),
       pAdvertising(nullptr),
       deviceConnected(false),
+      connectedDeviceHandle(BLE_HS_CONN_HANDLE_NONE),
+      lastSentHash(0),
       ledDataCallback(nullptr) {}
 
 bool BleServer::begin() {
@@ -91,36 +93,32 @@ void BleServer::setLedDataCallback(void (*callback)(const LedCommand* commands, 
 }
 
 void BleServer::onConnect(NimBLEServer* pServer, ble_gap_conn_desc* desc) {
-    deviceConnected = true;
+    // If already connected, disconnect existing device first (single device only)
+    if (deviceConnected && connectedDeviceHandle != BLE_HS_CONN_HANDLE_NONE) {
+        Serial.println("[BLE] New device connecting, disconnecting existing device");
+        pServer->disconnect(connectedDeviceHandle);
+        lastSentHash = 0;
+    }
 
-    // Get the connected device's MAC address
+    deviceConnected = true;
+    connectedDeviceHandle = desc->conn_handle;
     connectedDeviceAddress = NimBLEAddress(desc->peer_ota_addr).toString().c_str();
-    Serial.printf("[BLE] Device connected: %s (total: %d)\n",
-                  connectedDeviceAddress.c_str(), pServer->getConnectedCount());
+
+    Serial.printf("[BLE] Device connected: %s\n", connectedDeviceAddress.c_str());
 
     // Flash green to indicate connection
     ledController.blink(0, 255, 0, 2, 100);
 
-    // Restart advertising to allow more connections
-    if (pServer->getConnectedCount() < CONFIG_BT_NIMBLE_MAX_CONNECTIONS) {
-        pAdvertising->start();
-        Serial.println("[BLE] Advertising restarted for more connections");
-    }
+    // Do NOT restart advertising - single device only
 }
 
 void BleServer::onDisconnect(NimBLEServer* pServer) {
     deviceConnected = false;
     Serial.printf("[BLE] Device disconnected: %s\n", connectedDeviceAddress.c_str());
 
-    // Remove MAC from tracking on disconnect to free memory
-    if (connectedDeviceAddress.length() > 0) {
-        auto it = lastSentHashByMac.find(connectedDeviceAddress);
-        if (it != lastSentHashByMac.end()) {
-            Serial.printf("[BLE] Evicting disconnected MAC: %s\n", connectedDeviceAddress.c_str());
-            lastSentHashByMac.erase(it);
-        }
-    }
     connectedDeviceAddress = "";
+    connectedDeviceHandle = BLE_HS_CONN_HANDLE_NONE;
+    lastSentHash = 0;
 
     // Restart advertising
     pAdvertising->start();
@@ -131,49 +129,34 @@ void BleServer::onDisconnect(NimBLEServer* pServer) {
 }
 
 bool BleServer::shouldSendLedData(uint32_t hash) {
-    if (connectedDeviceAddress.length() == 0) {
-        Serial.println("[BLE] shouldSendLedData: no device address, allowing");
+    if (!deviceConnected || lastSentHash == 0) {
+        Serial.println("[BLE] shouldSendLedData: no device or no previous hash, allowing");
         return true;
     }
 
-    auto it = lastSentHashByMac.find(connectedDeviceAddress);
-    if (it == lastSentHashByMac.end()) {
-        Serial.printf("[BLE] shouldSendLedData: first time from %s, allowing\n", connectedDeviceAddress.c_str());
-        return true;  // Never sent from this device before
-    }
-
-    bool shouldSend = (it->second.hash != hash);
-    Serial.printf("[BLE] shouldSendLedData: %s, lastHash=%u, newHash=%u, send=%s\n",
-                  connectedDeviceAddress.c_str(), it->second.hash, hash, shouldSend ? "yes" : "no");
+    bool shouldSend = (lastSentHash != hash);
+    Serial.printf("[BLE] shouldSendLedData: lastHash=%u, newHash=%u, send=%s\n",
+                  lastSentHash, hash, shouldSend ? "yes" : "no");
     return shouldSend;
 }
 
-void BleServer::evictOldestMacEntries() {
-    // If we're under the limit, nothing to do
-    while (lastSentHashByMac.size() > MAX_MAC_TRACKING) {
-        // Find the oldest entry
-        auto oldest = lastSentHashByMac.begin();
-        for (auto it = lastSentHashByMac.begin(); it != lastSentHashByMac.end(); ++it) {
-            if (it->second.timestamp < oldest->second.timestamp) {
-                oldest = it;
-            }
-        }
-        Serial.printf("[BLE] Evicting oldest MAC entry: %s (age: %lu ms)\n",
-                      oldest->first.c_str(), millis() - oldest->second.timestamp);
-        lastSentHashByMac.erase(oldest);
+void BleServer::updateLastSentHash(uint32_t hash) {
+    if (deviceConnected) {
+        lastSentHash = hash;
     }
 }
 
-void BleServer::updateLastSentHash(uint32_t hash) {
-    if (connectedDeviceAddress.length() > 0) {
-        MacHashEntry entry;
-        entry.hash = hash;
-        entry.timestamp = millis();
-        lastSentHashByMac[connectedDeviceAddress] = entry;
-
-        // Evict oldest entries if we exceed the limit
-        evictOldestMacEntries();
+void BleServer::disconnectClient() {
+    if (deviceConnected && connectedDeviceHandle != BLE_HS_CONN_HANDLE_NONE) {
+        Serial.printf("[BLE] Disconnecting client %s due to web climb change\n",
+                      connectedDeviceAddress.c_str());
+        pServer->disconnect(connectedDeviceHandle);
     }
+}
+
+void BleServer::clearLastSentHash() {
+    lastSentHash = 0;
+    Serial.println("[BLE] Cleared last sent hash");
 }
 
 void BleServer::onWrite(NimBLECharacteristic* pCharacteristic) {

@@ -45,11 +45,11 @@ export const HOLD_STATE_MAP: Record<
     42: { name: 'STARTING', color: '#00FF00' },
     43: { name: 'HAND', color: '#00FFFF' },
     44: { name: 'FINISH', color: '#FF00FF' },
-    45: { name: 'FOOT', color: '#FFA500' },
+    45: { name: 'FOOT', color: '#FFAA00' },
     12: { name: 'STARTING', color: '#00FF00' },
     13: { name: 'HAND', color: '#00FFFF' },
     14: { name: 'FINISH', color: '#FF00FF' },
-    15: { name: 'FOOT', color: '#FFA500' },
+    15: { name: 'FOOT', color: '#FFAA00' },
   },
   tension: {
     1: { name: 'STARTING', displayColor: '#00DD00', color: '#00FF00' },

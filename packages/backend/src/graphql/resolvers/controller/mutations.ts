@@ -257,12 +257,14 @@ export const controllerMutations = {
       position: insertPosition,
     });
 
-    // Publish CurrentClimbChanged event
+    // Publish CurrentClimbChanged event with controllerId as clientId
+    // This allows the controller subscription to skip sending LED updates back to this controller
+    console.log(`[Controller] Publishing CurrentClimbChanged with clientId: ${controllerId}`);
     pubsub.publishQueueEvent(sessionId, {
       __typename: 'CurrentClimbChanged',
       sequence,
       item: queueItem,
-      clientId: null,
+      clientId: controllerId,
       correlationId: null,
     });
 
