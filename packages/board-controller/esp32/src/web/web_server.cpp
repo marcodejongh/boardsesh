@@ -89,6 +89,11 @@ void BoardWebServer::handlePostConfig() {
         ledController.setBrightness(brightness);
     }
 
+    if (doc.containsKey("analyticsEnabled")) {
+        bool enabled = doc["analyticsEnabled"].as<bool>();
+        configManager.setAnalyticsEnabled(enabled);
+    }
+
     // Start or reconnect WebSocket if needed
     if (needsReconnect) {
         if (wsClient.isConnected()) {
@@ -150,6 +155,7 @@ String BoardWebServer::getStatusJson() {
     // Config status
     doc["config"]["hasApiKey"] = configManager.hasApiKey();
     doc["config"]["backendUrl"] = configManager.getBackendUrl();
+    doc["config"]["analyticsEnabled"] = configManager.isAnalyticsEnabled();
 
     String output;
     serializeJson(doc, output);
@@ -205,6 +211,20 @@ String BoardWebServer::getConfigPageHtml() {
             font-size: 16px;
         }
         input:focus { outline: none; border-color: #00d9ff; }
+        .checkbox-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .checkbox-row input[type="checkbox"] {
+            width: auto;
+            margin-right: 10px;
+            margin-bottom: 0;
+        }
+        .checkbox-row label {
+            margin-bottom: 0;
+            color: #eee;
+        }
         button {
             background: #00d9ff;
             color: #1a1a2e;
@@ -272,6 +292,16 @@ String BoardWebServer::getConfigPageHtml() {
     html += String(configManager.getBrightness());
     html += R"html(">
 
+            <div class="checkbox-row">
+                <input type="checkbox" id="analyticsEnabled" name="analyticsEnabled")html";
+    if (configManager.isAnalyticsEnabled()) {
+        html += " checked";
+    }
+    html += R"html(>
+                <label for="analyticsEnabled">Send diagnostic logs to BoardSesh</label>
+            </div>
+            <p class="info">Helps improve the controller by sending anonymous usage data</p>
+
             <button type="submit">Save Configuration</button>
         </form>
     </div>
@@ -328,6 +358,7 @@ String BoardWebServer::getConfigPageHtml() {
                 }
                 document.getElementById('ledCount').value = data.led.count;
                 document.getElementById('brightness').value = data.led.brightness;
+                document.getElementById('analyticsEnabled').checked = data.config.analyticsEnabled;
             } catch (e) {
                 document.getElementById('status').innerHTML = '<span class="status-error">Failed to load status</span>';
             }
@@ -345,6 +376,8 @@ String BoardWebServer::getConfigPageHtml() {
             const formData = new FormData(e.target);
             const data = {};
             formData.forEach((v, k) => { if (v) data[k] = v; });
+            // Handle checkbox explicitly (not included in FormData when unchecked)
+            data.analyticsEnabled = document.getElementById('analyticsEnabled').checked;
 
             try {
                 const res = await fetch('/api/config', {

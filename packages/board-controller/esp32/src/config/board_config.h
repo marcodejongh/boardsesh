@@ -72,6 +72,7 @@
 #define NVS_KEY_LED_PIN "led_pin"
 #define NVS_KEY_LED_COUNT "led_count"
 #define NVS_KEY_BRIGHTNESS "brightness"
+#define NVS_KEY_ANALYTICS "analytics"
 
 // ============================================
 // Debug Configuration
@@ -85,5 +86,30 @@
 #define DEBUG_WEBSOCKET 1
 #define DEBUG_BLE 1
 #define DEBUG_LED 1
+
+// ============================================
+// Device Logging Macro
+// ============================================
+// Logs to both Serial and buffers for sending to backend via WebSocket.
+// The WsClient will periodically send buffered logs to the backend,
+// which forwards them to Axiom for aggregation.
+//
+// Usage:
+//   DEVICE_LOG("INFO", "BLE", "Device connected: %s", mac);
+//   DEVICE_LOG("ERROR", "WS", "Connection failed");
+//
+// Levels: DEBUG, INFO, WARN, ERROR
+// Components: BLE, WS, WiFi, LED, CFG, WEB
+
+// Forward declaration - implemented in ws_client.cpp
+class WsClient;
+extern WsClient wsClient;
+
+#define DEVICE_LOG(level, component, fmt, ...) do { \
+    char _log_msg[128]; \
+    snprintf(_log_msg, sizeof(_log_msg), fmt, ##__VA_ARGS__); \
+    Serial.printf("[%s][%s] %s\n", level, component, _log_msg); \
+    wsClient.bufferLog(level, component, _log_msg); \
+} while(0)
 
 #endif // BOARD_CONFIG_H

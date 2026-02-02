@@ -45,6 +45,10 @@ public:
     int getBrightness();
     void setBrightness(int brightness);
 
+    // Analytics (log collection)
+    bool isAnalyticsEnabled();
+    void setAnalyticsEnabled(bool enabled);
+
     // Factory reset - clear all settings
     void factoryReset();
 

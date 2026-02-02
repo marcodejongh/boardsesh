@@ -7,6 +7,7 @@
 #include "../config/board_config.h"
 #include "../config/config_manager.h"
 #include "../led/led_controller.h"
+#include "../utils/log_buffer.h"
 
 /**
  * WebSocket Client State
@@ -51,6 +52,12 @@ public:
     // Backend converts positions to frames string for matching
     void sendLedPositions(const LedCommand* commands, int count, int angle);
 
+    // Buffer a log entry for sending to backend
+    void bufferLog(const char* level, const char* component, const char* message);
+
+    // Send buffered logs to backend (called periodically)
+    void sendLogs();
+
     // Set session ID
     void setSessionId(const String& sessionId);
 
@@ -68,6 +75,10 @@ private:
     unsigned long reconnectTime;
     uint32_t lastSentLedHash;      // Hash of last sent LED positions (to avoid duplicates)
     uint32_t currentDisplayHash;   // Hash of currently displayed LEDs (from backend LedUpdate)
+    unsigned long lastLogSendTime; // Last time logs were sent to backend
+
+    // Log send interval (10 seconds)
+    static const unsigned long LOG_SEND_INTERVAL = 10000;
 
     // Parse URL into host, port, path
     void parseUrl(const String& url, String& host, uint16_t& port, String& path, bool& useSSL);

@@ -6,6 +6,8 @@ import type {
   ClimbMatchResult,
   ClimbQueueItem,
   BoardName,
+  SendDeviceLogsInput,
+  SendDeviceLogsResponse,
 } from '@boardsesh/shared-schema';
 import { db } from '../../../db/client';
 import { esp32Controllers } from '@boardsesh/db/schema/app';
@@ -16,6 +18,7 @@ import { matchClimbByFrames, getClimbByUuid } from '../../../db/queries/climbs';
 import { roomManager } from '../../../services/room-manager';
 import { pubsub } from '../../../pubsub';
 import { buildFramesString } from '../../../db/queries/util/led-placements-data';
+import { forwardLogs, type DeviceLog } from '../../../services/axiom';
 
 /**
  * Generate a secure random API key
@@ -335,5 +338,47 @@ export const controllerMutations = {
 
     console.log(`[Controller] Controller ${controllerId} authorized for session ${sessionId}`);
     return true;
+  },
+
+  /**
+   * Receive device logs from ESP32 controller and forward to Axiom
+   * Uses API key authentication via connectionParams
+   */
+  sendDeviceLogs: async (
+    _: unknown,
+    { input }: { input: SendDeviceLogsInput },
+    ctx: ConnectionContext
+  ): Promise<SendDeviceLogsResponse> => {
+    applyRateLimit(ctx, 100); // Allow frequent log batches
+
+    const { controllerId } = requireControllerAuth(ctx);
+
+    // Enrich logs with controller ID and convert to Axiom format
+    const enrichedLogs: DeviceLog[] = input.logs.map((log) => {
+      let metadata: Record<string, unknown> = {};
+      if (log.metadata) {
+        try {
+          metadata = JSON.parse(log.metadata);
+        } catch {
+          // Invalid JSON in metadata, ignore
+        }
+      }
+
+      return {
+        _time: new Date(log.ts).toISOString(),
+        controller_id: controllerId,
+        level: log.level,
+        component: log.component,
+        message: log.message,
+        ...metadata,
+      };
+    });
+
+    const success = await forwardLogs(enrichedLogs);
+
+    return {
+      success,
+      accepted: input.logs.length,
+    };
   },
 };

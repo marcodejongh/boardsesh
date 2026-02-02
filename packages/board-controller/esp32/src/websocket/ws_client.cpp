@@ -20,7 +20,8 @@ WsClient::WsClient()
       lastPongTime(0),
       reconnectTime(0),
       lastSentLedHash(0),
-      currentDisplayHash(0) {
+      currentDisplayHash(0),
+      lastLogSendTime(0) {
     wsClientInstance = this;
 }
 
@@ -103,12 +104,18 @@ bool WsClient::begin() {
 void WsClient::loop() {
     webSocket.loop();
 
-    // Handle ping interval
+    // Handle ping interval and log sending
     if (state == WsState::SUBSCRIBED) {
         unsigned long now = millis();
         if (now - lastPingTime > WS_PING_INTERVAL) {
             sendPing();
             lastPingTime = now;
+        }
+
+        // Send buffered logs periodically
+        if (now - lastLogSendTime > LOG_SEND_INTERVAL) {
+            sendLogs();
+            lastLogSendTime = now;
         }
     }
 
@@ -481,4 +488,63 @@ uint32_t WsClient::computeLedHash(const LedCommand* commands, int count) {
         hash ^= ledValue;
     }
     return hash;
+}
+
+void WsClient::bufferLog(const char* level, const char* component, const char* message) {
+    logBuffer.push(level, component, message);
+}
+
+void WsClient::sendLogs() {
+    if (state != WsState::SUBSCRIBED) {
+        return;
+    }
+
+    // Check if analytics is enabled
+    if (!configManager.isAnalyticsEnabled()) {
+        // Clear buffer if analytics is disabled to prevent memory buildup
+        logBuffer.clear();
+        return;
+    }
+
+    if (logBuffer.isEmpty()) {
+        return;
+    }
+
+    // Drain up to 20 log entries at a time
+    static const size_t MAX_LOGS_PER_BATCH = 20;
+    LogEntry entries[MAX_LOGS_PER_BATCH];
+    size_t count = logBuffer.drain(entries, MAX_LOGS_PER_BATCH);
+
+    if (count == 0) {
+        return;
+    }
+
+    // Build GraphQL mutation
+    JsonDocument doc;
+    doc["id"] = generateSubscriptionId();
+    doc["type"] = "subscribe";  // Using subscribe for mutations in graphql-ws
+
+    JsonObject payload = doc["payload"].to<JsonObject>();
+    payload["query"] = "mutation SendDeviceLogs($input: SendDeviceLogsInput!) { "
+                       "sendDeviceLogs(input: $input) { success accepted } }";
+
+    JsonObject variables = payload["variables"].to<JsonObject>();
+    JsonObject input = variables["input"].to<JsonObject>();
+    JsonArray logs = input["logs"].to<JsonArray>();
+
+    for (size_t i = 0; i < count; i++) {
+        JsonObject logEntry = logs.add<JsonObject>();
+        logEntry["ts"] = (double)entries[i].timestamp;
+        logEntry["level"] = entries[i].level;
+        logEntry["component"] = entries[i].component;
+        logEntry["message"] = entries[i].message;
+    }
+
+    String message;
+    serializeJson(doc, message);
+
+    if (DEBUG_WEBSOCKET) {
+        Serial.printf("[WS] Sending %d logs to backend\n", count);
+    }
+    webSocket.sendTXT(message);
 }

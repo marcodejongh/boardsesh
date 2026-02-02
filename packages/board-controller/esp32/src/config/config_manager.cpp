@@ -106,6 +106,16 @@ void ConfigManager::setBrightness(int brightness) {
     Serial.printf("[Config] Brightness set to: %d\n", brightness);
 }
 
+// Analytics (log collection) - defaults to true
+bool ConfigManager::isAnalyticsEnabled() {
+    return preferences.getBool(NVS_KEY_ANALYTICS, true);
+}
+
+void ConfigManager::setAnalyticsEnabled(bool enabled) {
+    preferences.putBool(NVS_KEY_ANALYTICS, enabled);
+    Serial.printf("[Config] Analytics set to: %s\n", enabled ? "enabled" : "disabled");
+}
+
 // Factory reset
 void ConfigManager::factoryReset() {
     Serial.println("[Config] Factory reset - clearing all settings");

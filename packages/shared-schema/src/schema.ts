@@ -693,6 +693,8 @@ export const typeDefs = /* GraphQL */ `
     controllerHeartbeat(sessionId: ID!): Boolean!
     # Authorize a controller for a specific session (requires user auth, auto-called on joinSession)
     authorizeControllerForSession(controllerId: ID!, sessionId: ID!): Boolean!
+    # Send device logs to backend for forwarding to Axiom (requires controller auth)
+    sendDeviceLogs(input: SendDeviceLogsInput!): SendDeviceLogsResponse!
   }
 
   type Subscription {
@@ -836,5 +838,29 @@ export const typeDefs = /* GraphQL */ `
     matched: Boolean!
     climbUuid: String
     climbName: String
+  }
+
+  # ============================================
+  # Device Logging Types (ESP32 → Axiom)
+  # ============================================
+
+  # A single log entry from a device
+  input DeviceLogEntry {
+    ts: Float!
+    level: String!
+    component: String!
+    message: String!
+    metadata: String # JSON string for flexibility
+  }
+
+  # Input for sending device logs
+  input SendDeviceLogsInput {
+    logs: [DeviceLogEntry!]!
+  }
+
+  # Response from sending device logs
+  type SendDeviceLogsResponse {
+    success: Boolean!
+    accepted: Int!
   }
 `;
