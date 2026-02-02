@@ -8,6 +8,9 @@
 #include <graphql_ws_client.h>
 #include <esp_web_server.h>
 
+// BLE client for proxy mode
+#include <aurora_ble_client.h>
+
 // Display library
 #include "climb_display.h"
 
@@ -21,12 +24,17 @@
 
 bool wifiConnected = false;
 bool backendConnected = false;
+bool bleConnected = false;
+bool bleProxyEnabled = false;
 unsigned long lastDisplayUpdate = 0;
+unsigned long lastBleScanTime = 0;
 const unsigned long DISPLAY_UPDATE_INTERVAL = 100; // ms
+const unsigned long BLE_SCAN_INTERVAL = 30000; // Retry scan every 30 seconds
 
 // Current climb data
 ClimbInfo currentClimb;
 std::vector<DisplayHold> currentHolds;
+std::vector<LedCommand> currentLedCommands;  // Store for forwarding to BLE
 bool hasCurrentClimb = false;
 
 // Hold position cache (placement ID -> screen coordinates)
@@ -40,7 +48,10 @@ std::map<uint16_t, std::pair<float, float>> holdPositionCache;
 void onWiFiStateChange(WiFiConnectionState state);
 void onGraphQLStateChange(GraphQLConnectionState state);
 void onLedUpdate(const LedCommand* commands, int count, const char* climbUuid, const char* climbName, int angle);
+void onBleConnect(bool connected, const char* deviceName);
+void onBleScan(const char* deviceName, const char* address);
 void updateDisplay();
+void forwardToBoard();
 uint16_t holdStateToColor(const char* state);
 void populateHoldPositionCache();
 
@@ -88,6 +99,26 @@ void setup() {
     // Populate hold position cache from baked-in data
     populateHoldPositionCache();
 
+    // Initialize BLE client for proxy mode
+    bleProxyEnabled = Config.getBool("ble_proxy_enabled", false);
+    if (bleProxyEnabled) {
+        Logger.logln("Initializing BLE client for proxy mode...");
+        BLEClient.begin();
+        BLEClient.setConnectCallback(onBleConnect);
+        BLEClient.setScanCallback(onBleScan);
+
+        // Check for saved board address
+        String savedBoardAddress = Config.getString("ble_board_address");
+        if (savedBoardAddress.length() > 0) {
+            Logger.logln("Connecting to saved board: %s", savedBoardAddress.c_str());
+            BLEClient.connect(savedBoardAddress.c_str());
+        } else {
+            // Start scanning for boards
+            BLEClient.setAutoConnect(true);
+            BLEClient.startScan(30);
+        }
+    }
+
     Logger.logln("Setup complete!");
 }
 
@@ -106,6 +137,20 @@ void loop() {
 
     // Process web server
     WebConfig.loop();
+
+    // Process BLE client if proxy mode enabled
+    if (bleProxyEnabled) {
+        BLEClient.loop();
+
+        // Retry scanning if not connected and not already scanning
+        unsigned long now = millis();
+        if (!bleConnected && !BLEClient.isScanning() &&
+            now - lastBleScanTime > BLE_SCAN_INTERVAL) {
+            Logger.logln("Retrying BLE scan...");
+            BLEClient.startScan(15);
+            lastBleScanTime = now;
+        }
+    }
 
     // Handle touch input
     int16_t touchX, touchY;
@@ -241,8 +286,21 @@ void onLedUpdate(const LedCommand* commands, int count, const char* climbUuid, c
     if (commands == nullptr || count == 0) {
         hasCurrentClimb = false;
         currentHolds.clear();
+        currentLedCommands.clear();
         Display.showNoClimb();
+
+        // Also clear LEDs on connected board
+        if (bleProxyEnabled && bleConnected) {
+            BLEClient.clearLeds();
+        }
         return;
+    }
+
+    // Store LED commands for forwarding to BLE
+    currentLedCommands.clear();
+    currentLedCommands.reserve(count);
+    for (int i = 0; i < count; i++) {
+        currentLedCommands.push_back(commands[i]);
     }
 
     // Update current climb info
@@ -312,6 +370,55 @@ void onLedUpdate(const LedCommand* commands, int count, const char* climbUuid, c
         Display.showClimb(currentClimb, currentHolds);
     } else {
         Display.showNoClimb();
+    }
+
+    // Forward LED commands to connected board via BLE
+    forwardToBoard();
+}
+
+// ============================================
+// BLE Callbacks
+// ============================================
+
+void onBleConnect(bool connected, const char* deviceName) {
+    bleConnected = connected;
+
+    if (connected) {
+        Logger.logln("BLE: Connected to board: %s", deviceName ? deviceName : "(unknown)");
+        Display.setBleStatus(true, deviceName);
+
+        // Save the board address for future reconnection
+        String address = BLEClient.getConnectedDeviceAddress();
+        if (address.length() > 0) {
+            Config.setString("ble_board_address", address.c_str());
+        }
+
+        // If we have a current climb, forward it to the board
+        if (hasCurrentClimb && currentLedCommands.size() > 0) {
+            Logger.logln("BLE: Sending current climb to newly connected board");
+            forwardToBoard();
+        }
+    } else {
+        Logger.logln("BLE: Disconnected from board");
+        Display.setBleStatus(false, nullptr);
+    }
+}
+
+void onBleScan(const char* deviceName, const char* address) {
+    Logger.logln("BLE: Found board: %s (%s)", deviceName, address);
+    // Could update display with discovered boards for user selection
+}
+
+void forwardToBoard() {
+    if (!bleProxyEnabled || !bleConnected || currentLedCommands.empty()) {
+        return;
+    }
+
+    Logger.logln("BLE: Forwarding %d LED commands to board", currentLedCommands.size());
+    if (BLEClient.sendLedCommands(currentLedCommands.data(), currentLedCommands.size())) {
+        Logger.logln("BLE: LED commands sent successfully");
+    } else {
+        Logger.logln("BLE: Failed to send LED commands");
     }
 }
 

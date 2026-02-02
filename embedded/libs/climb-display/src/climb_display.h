@@ -152,6 +152,7 @@ struct ClimbInfo {
 class ClimbDisplay {
 public:
     ClimbDisplay();
+    ~ClimbDisplay();
 
     // Initialization
     bool begin();
@@ -167,6 +168,9 @@ public:
     void showConnecting();
     void showError(const char* message);
     void showStatus(const char* status);
+
+    // BLE proxy status (shown in info panel)
+    void setBleStatus(bool connected, const char* deviceName = nullptr);
 
     // Board background (optional - can load from SPIFFS or draw placeholder)
     void setBackgroundColor(uint16_t color);
@@ -195,6 +199,10 @@ private:
     uint16_t _bgColor;
     ClimbInfo _currentClimb;
     bool _hasClimb;
+
+    // BLE proxy status
+    bool _bleConnected;
+    String _bleDeviceName;
 
     // Internal drawing methods
     void drawBoardArea(const std::vector<DisplayHold>& holds);

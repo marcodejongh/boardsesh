@@ -7,7 +7,22 @@ ClimbDisplay::ClimbDisplay()
     : _boardSprite(nullptr)
     , _infoSprite(nullptr)
     , _bgColor(TFT_BLACK)
-    , _hasClimb(false) {
+    , _hasClimb(false)
+    , _bleConnected(false)
+    , _bleDeviceName("") {
+}
+
+ClimbDisplay::~ClimbDisplay() {
+    if (_boardSprite) {
+        _boardSprite->deleteSprite();
+        delete _boardSprite;
+        _boardSprite = nullptr;
+    }
+    if (_infoSprite) {
+        _infoSprite->deleteSprite();
+        delete _infoSprite;
+        _infoSprite = nullptr;
+    }
 }
 
 bool ClimbDisplay::begin() {
@@ -273,9 +288,30 @@ void ClimbDisplay::drawInfoPanel(const ClimbInfo& climb) {
     _infoSprite->fillRect(0, BOARD_AREA_HEIGHT - 40, INFO_AREA_WIDTH, 40,
                           _display.color565(30, 30, 50));
     _infoSprite->setFont(&fonts::Font2);
-    _infoSprite->setTextColor(TFT_DARKGREY);
     _infoSprite->setTextDatum(middle_center);
-    _infoSprite->drawString("Connected to Boardsesh", INFO_AREA_WIDTH / 2, BOARD_AREA_HEIGHT - 20);
+
+    // Show BLE status if connected, otherwise show Boardsesh connection
+    if (_bleConnected) {
+        // BLE icon (simple circle with "B")
+        int iconX = 20;
+        int iconY = BOARD_AREA_HEIGHT - 20;
+        _infoSprite->fillCircle(iconX, iconY, 8, _display.color565(0, 120, 255));
+        _infoSprite->setTextColor(TFT_WHITE);
+        _infoSprite->setTextDatum(middle_center);
+        _infoSprite->drawString("B", iconX, iconY);
+
+        // Device name
+        _infoSprite->setTextColor(_display.color565(100, 200, 255));
+        _infoSprite->setTextDatum(middle_left);
+        String bleText = "BLE: " + _bleDeviceName;
+        if (bleText.length() > 30) {
+            bleText = bleText.substring(0, 29) + "...";
+        }
+        _infoSprite->drawString(bleText.c_str(), iconX + 15, iconY);
+    } else {
+        _infoSprite->setTextColor(TFT_DARKGREY);
+        _infoSprite->drawString("Connected to Boardsesh", INFO_AREA_WIDTH / 2, BOARD_AREA_HEIGHT - 20);
+    }
 }
 
 void ClimbDisplay::drawHold(int16_t x, int16_t y, int16_t radius, uint16_t color, bool filled) {
@@ -303,4 +339,17 @@ void ClimbDisplay::drawCenteredText(const char* text, int y, const lgfx::IFont* 
     _display.setTextColor(color);
     _display.setTextDatum(top_center);
     _display.drawString(text, SCREEN_WIDTH / 2, y);
+}
+
+void ClimbDisplay::setBleStatus(bool connected, const char* deviceName) {
+    _bleConnected = connected;
+    _bleDeviceName = deviceName ? deviceName : "";
+
+    // If we have a climb displayed, refresh the info panel to show updated BLE status
+    if (_hasClimb) {
+        drawInfoPanel(_currentClimb);
+        if (_infoSprite) {
+            _infoSprite->pushSprite(INFO_AREA_X, 0);
+        }
+    }
 }

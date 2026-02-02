@@ -1,0 +1,15 @@
+{
+    "name": "aurora-ble-client",
+    "version": "1.0.0",
+    "description": "BLE client for connecting to Aurora Climbing boards (Kilter, Tension)",
+    "keywords": "ble, bluetooth, aurora, kilter, tension, climbing",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/marcodejongh/boardsesh.git"
+    },
+    "dependencies": {
+        "h2zero/NimBLE-Arduino": "^1.4.0"
+    },
+    "frameworks": "arduino",
+    "platforms": "espressif32"
+}

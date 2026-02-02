@@ -15,7 +15,8 @@ Firmware for the Waveshare ESP32-S3 Touch LCD 4.3" to display climb previews fro
 - Real-time climb preview display
 - Shows climb name, angle, difficulty, and setter
 - Colored hold visualization matching the web UI
-- **Proxy mode compatible** - works alongside ESP32 controllers in proxy mode
+- **Built-in proxy mode** - can forward LED commands to official Kilter/Tension boards via Bluetooth
+- **Works standalone or alongside** other ESP32 controllers
 - Touch screen support for future interactions
 - WiFiManager for easy WiFi configuration
 - Web-based configuration portal
@@ -79,6 +80,8 @@ Access the display's IP address in your browser to configure:
 | `backend_port` | Backend WebSocket port | `443` |
 | `backend_path` | GraphQL endpoint path | `/graphql` |
 | `brightness` | Display brightness (0-255) | `200` |
+| `ble_proxy_enabled` | Enable BLE proxy mode | `false` |
+| `ble_board_address` | Saved board BLE address (auto-saved) | (empty) |
 
 ### Board Configuration
 
@@ -116,17 +119,46 @@ For the Kilter Homewall 10x12 Full Ride configuration, the default settings shou
 
 The display uses the same subscription system as the physical LED controller, so both can run simultaneously.
 
-## Proxy Mode Compatibility
+## Proxy Mode
 
-The display is fully compatible with the ESP32 controller's **proxy mode**, which allows the controller to forward LED commands to an official Kilter/Tension board via Bluetooth.
+The display supports two proxy configurations:
 
-### How it works with proxy mode:
+### Option 1: Display as Proxy (Recommended)
 
-1. **ESP32 Controller (Proxy Mode)**: Connects to your official Kilter board via BLE and forwards LED commands
-2. **This Display**: Subscribes to the same `controllerEvents` and renders climb previews
-3. **Both devices** receive `LedUpdate` events simultaneously from the Boardsesh backend
+The display itself can act as the BLE proxy, connecting directly to your official Kilter/Tension board. This eliminates the need for a separate controller.
 
-### Typical setup with proxy mode:
+**Setup:**
+1. Enable proxy mode: Set `ble_proxy_enabled` to `true` in the web configuration
+2. The display will automatically scan for Aurora boards (Kilter, Tension)
+3. Once found, it connects and forwards LED commands from Boardsesh
+
+```
+                        ┌─────────────────┐
+                        │  Boardsesh.com  │
+                        │    (Backend)    │
+                        └────────┬────────┘
+                                 │
+                      WebSocket (controllerEvents)
+                                 │
+                        ┌────────▼────────┐
+                        │ ESP32 Display   │
+                        │ (with proxy)    │
+                        │                 │
+                        │ Shows preview + │
+                        │ forwards LEDs   │
+                        └────────┬────────┘
+                                 │
+                              BLE
+                                 │
+                        ┌────────▼────────┐
+                        │ Official        │
+                        │ Kilter Board    │
+                        └─────────────────┘
+```
+
+### Option 2: Separate Controller (Compatible Mode)
+
+The display can also work alongside a separate ESP32 controller running in proxy mode. Both devices receive the same `LedUpdate` events from Boardsesh.
 
 ```
                         ┌─────────────────┐
@@ -140,7 +172,7 @@ The display is fully compatible with the ESP32 controller's **proxy mode**, whic
                     │                         │
             ┌───────▼───────┐         ┌───────▼───────┐
             │ ESP32 Board   │         │ ESP32 Display │
-            │  Controller   │         │   (this)      │
+            │  Controller   │         │ (display only)│
             │ (Proxy Mode)  │         │               │
             └───────┬───────┘         └───────────────┘
                     │
@@ -152,7 +184,7 @@ The display is fully compatible with the ESP32 controller's **proxy mode**, whic
             └───────────────┘
 ```
 
-This allows you to add a preview display to your existing Kilter/Tension board without replacing the official controller.
+This allows you to add a preview display to an existing setup without changing your controller configuration.
 
 ## Troubleshooting
 
@@ -176,6 +208,12 @@ This allows you to add a preview display to your existing Kilter/Tension board w
 - Check that the API key is valid (not expired)
 - Ensure the session ID matches an active session
 - Verify WiFi connectivity
+
+### BLE proxy not connecting
+- Make sure your Kilter/Tension board is powered on and not connected to another device
+- The official Kilter app on your phone will prevent the display from connecting
+- Clear `ble_board_address` in configuration to force a new scan
+- Check serial output for BLE scan results
 
 ## Development
 
@@ -203,6 +241,7 @@ The project uses shared libraries from `embedded/libs/`:
 - `graphql-ws-client`: GraphQL-over-WebSocket client
 - `esp-web-server`: Configuration web server
 - `log-buffer`: Logging utilities
+- `aurora-ble-client`: BLE client for connecting to Kilter/Tension boards (proxy mode)
 
 ### Building
 
