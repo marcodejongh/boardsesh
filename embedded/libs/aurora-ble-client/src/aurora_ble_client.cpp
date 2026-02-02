@@ -30,6 +30,14 @@ AuroraBLEClient::AuroraBLEClient()
     , scanCallback(nullptr)
     , pScanCallbacks(nullptr) {}
 
+AuroraBLEClient::~AuroraBLEClient() {
+    if (pScanCallbacks) {
+        delete pScanCallbacks;
+        pScanCallbacks = nullptr;
+    }
+    // Note: pClient is managed by NimBLEDevice, not deleted here
+}
+
 void AuroraBLEClient::begin() {
     Logger.logln("BLEClient: Initializing...");
 

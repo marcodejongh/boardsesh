@@ -435,31 +435,42 @@ uint16_t holdStateToColor(const char* state) {
 }
 
 void populateHoldPositionCache() {
-    // This function populates the hold position cache from baked-in data
-    // or could be extended to load from SPIFFS/configuration
+    // ==========================================================================
+    // IMPORTANT: PLACEHOLDER DATA - WILL NOT WORK WITH REAL BOARDS
+    // ==========================================================================
+    //
+    // This function creates FAKE hold positions for testing/development only.
+    // For the display to show holds correctly on a real Kilter/Tension board,
+    // you MUST replace this with actual hold placement data.
+    //
+    // To get real hold data for your board configuration:
+    //
+    // 1. Use the Boardsesh web app to export hold placements:
+    //    - Go to your board configuration page
+    //    - Look for the HOLE_PLACEMENTS data in the API response
+    //    - Export the placement IDs and (x, y) coordinates
+    //
+    // 2. Or query the Aurora API directly for your layout/size/set combination
+    //
+    // 3. Convert the data to this format:
+    //    holdPositionCache[placementId] = std::make_pair(cx, cy);
+    //    where (cx, cy) are coordinates after holdToScreenCoords() transform
+    //
+    // The placement ID is sent in LedUpdate events from the backend.
+    // If the ID isn't in this cache, the hold will fall back to a grid position.
+    //
+    // ==========================================================================
 
-    // For now, this is a placeholder - the actual hold positions depend on
-    // the specific board configuration (layout, size, sets)
+    Logger.logln("WARNING: Using placeholder hold positions (testing only)");
 
-    // Example: Manually add some positions for testing
-    // In production, these would come from the generated data or a backend query
-
-    Logger.logln("Populating hold position cache...");
-
-    // The cache maps placement IDs to (cx, cy) in image coordinates
-    // These would normally come from HOLE_PLACEMENTS data
-
-    // Placeholder: Create a grid of positions for testing
-    // Replace this with actual hold data for your board configuration
-
-    int placementId = 4117;  // Starting from Kilter Homewall 10x12 first hold
+    // PLACEHOLDER: Fake grid for testing - replace with real data!
+    // These IDs (4117+) are examples from Kilter Homewall 10x12
+    int placementId = 4117;
     for (int row = 0; row < 15; row++) {
         for (int col = 0; col < 12; col++) {
-            // Calculate raw coordinates (similar to actual data)
             int16_t x = -48 + col * 8;
             int16_t y = 140 - row * 8;
 
-            // Convert to screen coordinates
             float cx, cy;
             holdToScreenCoords(x, y, cx, cy);
 
@@ -468,7 +479,8 @@ void populateHoldPositionCache() {
         }
     }
 
-    Logger.logln("Hold position cache populated with %d entries", holdPositionCache.size());
+    Logger.logln("Hold position cache: %d placeholder entries (replace for production!)",
+                 holdPositionCache.size());
 }
 
 void updateDisplay() {

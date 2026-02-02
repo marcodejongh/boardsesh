@@ -47,6 +47,7 @@ typedef void (*BLEClientScanCallback)(const char* deviceName, const char* addres
 class AuroraBLEClient : public NimBLEClientCallbacks {
 public:
     AuroraBLEClient();
+    ~AuroraBLEClient();
 
     // Initialization
     void begin();
@@ -106,7 +107,6 @@ private:
     ScanCallbacks* pScanCallbacks;
 
     // Internal methods
-    bool connectToDevice(NimBLEAdvertisedDevice* device);
     bool sendPacket(const uint8_t* data, size_t length);
 
     // Protocol encoding
