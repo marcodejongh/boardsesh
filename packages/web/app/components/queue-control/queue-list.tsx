@@ -166,6 +166,9 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
         {historyItems.length > 0 && (
           <>
             {historyItems.map((climbQueueItem, index) => {
+              // Calculate original queue index for drag-and-drop
+              // historyItems = queue.slice(0, currentIndex), so original index equals map index
+              const originalIndex = index;
               // Add scroll target ref at the position that shows only 2 history items
               const isScrollTarget = historyItems.length > 2 && index === scrollToHistoryIndex;
 
@@ -173,7 +176,7 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
                 <div key={climbQueueItem.uuid} ref={isScrollTarget ? scrollTargetRef : undefined}>
                   <QueueListItem
                     item={climbQueueItem}
-                    index={index}
+                    index={originalIndex}
                     isCurrent={false}
                     isHistory={true}
                     viewOnlyMode={viewOnlyMode}
@@ -212,21 +215,25 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
         {futureItems.map((climbQueueItem, index) => {
           // Calculate original index: future items start after current climb
           const originalIndex = currentIndex >= 0 ? currentIndex + 1 + index : index;
+          // Attach scroll target to first future item if there's no current climb
+          // and history has 2 or fewer items (scrollTargetRef wouldn't be attached elsewhere)
+          const isScrollTarget = index === 0 && !currentClimbQueueItem && historyItems.length <= 2;
 
           return (
-            <QueueListItem
-              key={climbQueueItem.uuid}
-              item={climbQueueItem}
-              index={originalIndex}
-              isCurrent={false}
-              isHistory={false}
-              viewOnlyMode={viewOnlyMode}
-              boardDetails={boardDetails}
-              setCurrentClimbQueueItem={setCurrentClimbQueueItem}
-              removeFromQueue={removeFromQueue}
-              onTickClick={handleTickClick}
-              onClimbNavigate={onClimbNavigate}
-            />
+            <div key={climbQueueItem.uuid} ref={isScrollTarget ? scrollTargetRef : undefined}>
+              <QueueListItem
+                item={climbQueueItem}
+                index={originalIndex}
+                isCurrent={false}
+                isHistory={false}
+                viewOnlyMode={viewOnlyMode}
+                boardDetails={boardDetails}
+                setCurrentClimbQueueItem={setCurrentClimbQueueItem}
+                removeFromQueue={removeFromQueue}
+                onTickClick={handleTickClick}
+                onClimbNavigate={onClimbNavigate}
+              />
+            </div>
           );
         })}
       </Flex>
