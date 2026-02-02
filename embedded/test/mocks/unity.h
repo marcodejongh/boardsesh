@@ -25,11 +25,14 @@ static const char* unity_current_test = nullptr;
 #define RUN_TEST(func) do { \
     unity_current_test = #func; \
     unity_tests_run++; \
+    int _failed_before = unity_tests_failed; \
     printf("Running %s...", #func); \
     setUp(); \
     func(); \
     tearDown(); \
-    printf(" PASSED\n"); \
+    if (unity_tests_failed == _failed_before) { \
+        printf(" PASSED\n"); \
+    } \
 } while(0)
 
 // Basic assertions

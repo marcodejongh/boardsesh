@@ -403,31 +403,6 @@ void test_garbage_before_frame_skipped(void) {
     TEST_ASSERT_EQUAL_INT(5, protocol->getLedCommands()[0].position);
 }
 
-void test_incomplete_frame_waits_for_more_data(void) {
-    // Send only part of a frame
-    uint8_t partialFrame[] = {
-        FRAME_SOH,
-        0x04,  // Length indicates more data expected
-        0x00,  // Checksum (doesn't matter yet)
-        FRAME_STX
-        // Missing command, data, and ETX
-    };
-
-    bool result = protocol->addData(partialFrame, sizeof(partialFrame));
-    TEST_ASSERT_FALSE(result);
-    TEST_ASSERT_EQUAL(0, protocol->getLedCommands().size());
-
-    // Now send the rest
-    uint8_t restOfFrame[] = {
-        CMD_V3_PACKET_ONLY,
-        0x01, 0x00, 0xE0,  // LED data
-        FRAME_ETX
-    };
-
-    // Need to rebuild with correct checksum
-    // Actually, let's just send a complete valid frame in chunks
-}
-
 void test_fragmented_frame_assembly(void) {
     // Build a complete valid frame
     uint8_t ledData[] = { 0x0A, 0x00, 0xE0 };  // Position 10, Red

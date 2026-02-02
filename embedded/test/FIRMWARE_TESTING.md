@@ -139,7 +139,7 @@ BLE protocol decoder for Kilter/Tension board communication.
 | Multi-packet assembly | :white_check_mark: | First/middle/last packets |
 | Error recovery | :white_check_mark: | Garbage data, incomplete frames |
 
-**Test Count:** 28 tests
+**Test Count:** 29 tests
 
 ---
 
@@ -158,7 +158,7 @@ Ring buffer logging utility for storing and retrieving log messages.
 | Serial enable/disable | :white_check_mark: | Toggle serial output |
 | Edge cases | :white_check_mark: | Long messages, special chars |
 
-**Test Count:** 28 tests
+**Test Count:** 31 tests
 
 ---
 
