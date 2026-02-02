@@ -4,7 +4,7 @@
  * Swagger UI Component
  *
  * Client-side wrapper for swagger-ui-react.
- * Loads the OpenAPI spec from /api/docs/openapi and renders interactive documentation.
+ * Loads the OpenAPI spec from /openapi.json (generated at build time).
  */
 
 import { useEffect, useState } from 'react';
@@ -16,9 +16,10 @@ export default function SwaggerUIComponent() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch('/api/docs/openapi')
+    // Load the pre-generated OpenAPI spec from static file
+    fetch('/openapi.json')
       .then((res) => {
-        if (!res.ok) throw new Error('Failed to load API specification');
+        if (!res.ok) throw new Error('Failed to load API specification. Run `npm run generate:openapi` to generate it.');
         return res.json();
       })
       .then(setSpec)
