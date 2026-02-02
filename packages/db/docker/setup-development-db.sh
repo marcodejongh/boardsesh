@@ -109,7 +109,7 @@ if [ "$FRESH_SETUP" = true ]; then
   echo "   ✅ Kilter data loaded successfully"
 
   touch /db/tmp/db-setup-complete.flag
-  echo "🎉 Step 6/7: Initial database setup completed!"
+  echo "🎉 Initial database setup completed!"
   echo "   💾 Database: $PGDBNAME"
   echo "   🔗 Connection: $DB_URL"
   echo "   🏔️  Board data: Kilter + Tension ready for development"
@@ -117,16 +117,7 @@ else
   echo "♻️  Database setup already completed. Skipping initial setup."
 fi
 
-echo "📦 Step 7/8: Installing Node.js dependencies..."
-cd /app
-
-export PYTHON=/usr/bin/python3
-# Install only what we need for drizzle-kit to work
-npm install --legacy-peer-deps
-echo "   ✅ Dependencies installed with correct platform binaries!"
-
-echo "🔄 Step 8/8: Running drizzle migrations..."
-npx drizzle-kit migrate
-echo "   ✅ Drizzle migrations completed!"
-
-echo "✨ Boardsesh development database is ready!" 
+echo ""
+echo "✨ Boardsesh database import complete!"
+echo ""
+echo "Next step: Run 'npm run db:up' to start containers and run migrations." 
