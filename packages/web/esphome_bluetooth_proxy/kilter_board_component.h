@@ -137,7 +137,7 @@ class KilterBoardComponent : public Component, public esp32_ble_tracker::ESPBTDe
             
         case HoldCode::FOOT_45:
         case HoldCode::FOOT_15:
-            return "FFA500";  // Foot hold - Orange
+            return "FFAA00";  // Foot hold - Orange
             
         default:
             ESP_LOGW("KilterBoard", "Unknown hold role: %d", role);

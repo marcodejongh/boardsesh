@@ -13,7 +13,7 @@ const HOLD_STATE_COLORS: Record<string, { r: number; g: number; b: number }> = {
   STARTING: { r: 0, g: 255, b: 0 },     // Green
   FINISH: { r: 255, g: 0, b: 255 },     // Magenta/Pink
   HAND: { r: 0, g: 255, b: 255 },       // Cyan
-  FOOT: { r: 255, g: 165, b: 0 },       // Orange
+  FOOT: { r: 255, g: 170, b: 0 },       // Orange
   OFF: { r: 0, g: 0, b: 0 },            // Off
 };
 
