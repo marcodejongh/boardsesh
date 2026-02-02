@@ -178,6 +178,25 @@ void BoardWebServer::handleScanBoards() {
     server.send(200, "application/json", output);
 }
 
+// Validate BLE MAC address format (XX:XX:XX:XX:XX:XX)
+static bool isValidMacAddress(const String& mac) {
+    if (mac.length() != 17) return false;
+
+    for (int i = 0; i < 17; i++) {
+        if (i % 3 == 2) {
+            // Expect colon at positions 2, 5, 8, 11, 14
+            if (mac[i] != ':') return false;
+        } else {
+            // Expect hex digit
+            char c = mac[i];
+            if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 void BoardWebServer::handleConnectBoard() {
     if (!server.hasArg("plain")) {
         server.send(400, "application/json", "{\"error\":\"No body\"}");
@@ -198,6 +217,13 @@ void BoardWebServer::handleConnectBoard() {
     }
 
     String address = doc["address"].as<String>();
+
+    // Validate MAC address format
+    if (!isValidMacAddress(address)) {
+        server.send(400, "application/json", "{\"error\":\"Invalid MAC address format. Expected XX:XX:XX:XX:XX:XX\"}");
+        return;
+    }
+
     Serial.printf("[Web] Connecting to board: %s\n", address.c_str());
 
     // Save as target board

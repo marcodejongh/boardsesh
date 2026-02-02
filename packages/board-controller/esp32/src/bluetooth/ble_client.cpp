@@ -15,7 +15,8 @@ BleClient::BleClient()
       clientConnected(false),
       lastReconnectAttempt(0),
       autoReconnect(true),
-      scanComplete(false) {}
+      scanComplete(false),
+      scanInProgress(false) {}
 
 bool BleClient::begin() {
     Serial.println("[BLE-Client] Initializing BLE client...");
@@ -43,6 +44,13 @@ void BleClient::stop() {
 }
 
 std::vector<ScannedBoard> BleClient::scan(int durationSeconds) {
+    // Guard against concurrent scans
+    if (scanInProgress) {
+        Serial.println("[BLE-Client] Scan already in progress, returning empty results");
+        return std::vector<ScannedBoard>();
+    }
+
+    scanInProgress = true;
     Serial.printf("[BLE-Client] Starting scan for %d seconds...\n", durationSeconds);
 
     scanResults.clear();
@@ -57,6 +65,7 @@ std::vector<ScannedBoard> BleClient::scan(int durationSeconds) {
     // Start blocking scan
     NimBLEScanResults results = pScan->start(durationSeconds, false);
 
+    scanInProgress = false;
     Serial.printf("[BLE-Client] Scan complete, found %d devices\n", scanResults.size());
 
     // Filter to only return boards with Aurora UUID

@@ -64,15 +64,18 @@ private:
     NimBLERemoteCharacteristic* pRemoteRxChar;  // The board's RX characteristic (we write to it)
     NimBLEScan* pScan;
 
-    bool clientConnected;
+    // Note: clientConnected is marked volatile because it's modified by NimBLE callbacks
+    // which may run in a different context (BLE task). This ensures visibility across contexts.
+    volatile bool clientConnected;
     String targetAddress;        // MAC address we're trying to connect to
     String connectedAddress;     // MAC address we're currently connected to
     unsigned long lastReconnectAttempt;
     bool autoReconnect;
 
-    // Scan results buffer
+    // Scan state
     std::vector<ScannedBoard> scanResults;
     bool scanComplete;
+    volatile bool scanInProgress;  // Guard against concurrent scans
 
     // Internal methods
     bool connectToServer();

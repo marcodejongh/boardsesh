@@ -3,6 +3,17 @@
  *
  * Tests the LED command encoding used in proxy mode to communicate
  * with official Kilter boards.
+ *
+ * NOTE: These tests run on the native platform (development machine) without Arduino.
+ * The encoding functions are intentionally re-implemented here rather than importing
+ * from the production code because:
+ * 1. Production code depends on Arduino.h and NimBLE headers not available natively
+ * 2. The tests verify the encoding ALGORITHM matches the TypeScript implementation
+ * 3. Any divergence between these test implementations and production code indicates
+ *    a bug - both should implement the same algorithm from bluetooth.ts
+ *
+ * If tests pass but production fails, check that ble_client.cpp uses the same
+ * encoding logic as defined here and in packages/web/.../bluetooth.ts
  */
 
 #include <unity.h>
