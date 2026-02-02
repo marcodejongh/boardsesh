@@ -345,21 +345,26 @@ void WsClient::sendHeartbeat() {
 }
 
 void WsClient::handleLedUpdate(JsonObject& data) {
+    // If BLE is connected, this is a web-initiated change
+    // Disconnect BLE client - web user is taking over
+    // Note: Backend handles filtering of echo updates (when controller initiates change)
+    if (bleServer.isConnected()) {
+        Serial.println("[WS] Web user changed climb, disconnecting BLE client");
+        bleServer.disconnectClient();
+        bleServer.clearLastSentHash();
+    }
+
+    // Process the LED update
     JsonArray commands = data["commands"];
 
-    if (commands.isNull()) {
-        // No commands - clear LEDs
+    if (commands.isNull() || commands.size() == 0) {
         ledController.clear();
         ledController.show();
+        Serial.println("[WS] Cleared LEDs (no commands)");
         return;
     }
 
     int count = commands.size();
-    if (count == 0) {
-        ledController.clear();
-        ledController.show();
-        return;
-    }
 
     // Clamp count to static buffer size to prevent overflow
     if (count > MAX_LED_COUNT) {
@@ -382,7 +387,7 @@ void WsClient::handleLedUpdate(JsonObject& data) {
     ledController.setLeds(staticLedBuffer, count);
     ledController.show();
 
-    // Store hash of currently displayed LEDs (to detect if BLE sends the same climb)
+    // Store hash of currently displayed LEDs
     currentDisplayHash = computeLedHash(staticLedBuffer, count);
 
     // Log climb info if available
@@ -467,6 +472,8 @@ void WsClient::sendLedPositions(const LedCommand* commands, int count, int angle
     if (DEBUG_WEBSOCKET) {
         Serial.printf("[WS] Message: %s\n", message.c_str());
     }
+
+    // Backend will filter out the echo LedUpdate based on clientId matching controllerId
     webSocket.sendTXT(message);
 }
 
