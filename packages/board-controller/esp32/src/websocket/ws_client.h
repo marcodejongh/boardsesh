@@ -64,6 +64,10 @@ public:
     // Get current session ID
     String getSessionId();
 
+    // Set callback for when LED commands are received from backend
+    // In proxy mode, this forwards to BLE client instead of local LEDs
+    void setLedUpdateCallback(void (*callback)(const LedCommand* commands, int count));
+
 private:
     WebSocketsClient webSocket;
     WsState state;
@@ -76,6 +80,9 @@ private:
     uint32_t lastSentLedHash;      // Hash of last sent LED positions (to avoid duplicates)
     uint32_t currentDisplayHash;   // Hash of currently displayed LEDs (from backend LedUpdate)
     unsigned long lastLogSendTime; // Last time logs were sent to backend
+
+    // Callback for LED updates (for proxy mode)
+    void (*ledUpdateCallback)(const LedCommand* commands, int count);
 
     // Log send interval (10 seconds)
     static const unsigned long LOG_SEND_INTERVAL = 10000;

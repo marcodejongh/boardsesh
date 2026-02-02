@@ -116,6 +116,35 @@ void ConfigManager::setAnalyticsEnabled(bool enabled) {
     Serial.printf("[Config] Analytics set to: %s\n", enabled ? "enabled" : "disabled");
 }
 
+// Controller mode - defaults to DIRECT
+ControllerMode ConfigManager::getControllerMode() {
+    return static_cast<ControllerMode>(preferences.getUChar(NVS_KEY_CONTROLLER_MODE, 0));
+}
+
+void ConfigManager::setControllerMode(ControllerMode mode) {
+    preferences.putUChar(NVS_KEY_CONTROLLER_MODE, static_cast<uint8_t>(mode));
+    Serial.printf("[Config] Controller mode set to: %s\n",
+                  mode == ControllerMode::PROXY ? "PROXY" : "DIRECT");
+}
+
+bool ConfigManager::isProxyMode() {
+    return getControllerMode() == ControllerMode::PROXY;
+}
+
+// Target board MAC address (for proxy mode)
+String ConfigManager::getTargetBoardMac() {
+    return preferences.getString(NVS_KEY_TARGET_BOARD_MAC, "");
+}
+
+void ConfigManager::setTargetBoardMac(const String& mac) {
+    preferences.putString(NVS_KEY_TARGET_BOARD_MAC, mac);
+    Serial.printf("[Config] Target board MAC set to: %s\n", mac.c_str());
+}
+
+bool ConfigManager::hasTargetBoard() {
+    return getTargetBoardMac().length() > 0;
+}
+
 // Factory reset
 void ConfigManager::factoryReset() {
     Serial.println("[Config] Factory reset - clearing all settings");
@@ -125,6 +154,7 @@ void ConfigManager::factoryReset() {
 // Debug output
 void ConfigManager::printConfig() {
     Serial.println("=== Current Configuration ===");
+    Serial.printf("Controller Mode: %s\n", isProxyMode() ? "PROXY" : "DIRECT");
     Serial.printf("WiFi SSID: %s\n", getWifiSSID().c_str());
     Serial.printf("WiFi Password: %s\n", hasWifiCredentials() ? "****" : "(not set)");
     Serial.printf("API Key: %s\n", hasApiKey() ? "****" : "(not set)");
@@ -133,5 +163,8 @@ void ConfigManager::printConfig() {
     Serial.printf("LED Pin: %d\n", getLedPin());
     Serial.printf("LED Count: %d\n", getLedCount());
     Serial.printf("Brightness: %d\n", getBrightness());
+    if (isProxyMode()) {
+        Serial.printf("Target Board: %s\n", hasTargetBoard() ? getTargetBoardMac().c_str() : "(not set)");
+    }
     Serial.println("=============================");
 }

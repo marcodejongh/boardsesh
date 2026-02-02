@@ -14,6 +14,12 @@ bool BoardWebServer::begin() {
     server.on("/api/config", HTTP_POST, [this]() { handlePostConfig(); });
     server.on("/api/test-led", HTTP_POST, [this]() { handleTestLed(); });
     server.on("/api/reset", HTTP_POST, [this]() { handleReset(); });
+
+    // Proxy mode routes
+    server.on("/api/scan-boards", HTTP_POST, [this]() { handleScanBoards(); });
+    server.on("/api/connect-board", HTTP_POST, [this]() { handleConnectBoard(); });
+    server.on("/api/disconnect-board", HTTP_POST, [this]() { handleDisconnectBoard(); });
+
     server.onNotFound([this]() { handleNotFound(); });
 
     server.begin();
@@ -97,6 +103,22 @@ void BoardWebServer::handlePostConfig() {
         configManager.setAnalyticsEnabled(enabled);
     }
 
+    // Handle controller mode change (requires restart to take effect)
+    if (doc.containsKey("controllerMode")) {
+        String mode = doc["controllerMode"].as<String>();
+        if (mode == "proxy") {
+            configManager.setControllerMode(ControllerMode::PROXY);
+        } else {
+            configManager.setControllerMode(ControllerMode::DIRECT);
+        }
+    }
+
+    // Handle target board MAC for proxy mode
+    if (doc.containsKey("targetBoardMac")) {
+        String mac = doc["targetBoardMac"].as<String>();
+        configManager.setTargetBoardMac(mac);
+    }
+
     // Start or reconnect WebSocket if needed
     if (needsReconnect) {
         if (wsClient.isConnected()) {
@@ -132,8 +154,87 @@ void BoardWebServer::handleNotFound() {
     server.send(404, "text/plain", "Not Found");
 }
 
+void BoardWebServer::handleScanBoards() {
+    Serial.println("[Web] Starting BLE scan for Kilter boards...");
+
+    // Perform BLE scan
+    std::vector<ScannedBoard> boards = bleClient.scan(BLE_SCAN_DURATION_SECONDS);
+
+    // Build response JSON
+    JsonDocument doc;
+    JsonArray boardsArray = doc["boards"].to<JsonArray>();
+
+    for (const auto& board : boards) {
+        JsonObject boardObj = boardsArray.add<JsonObject>();
+        boardObj["address"] = board.address;
+        boardObj["name"] = board.name;
+        boardObj["rssi"] = board.rssi;
+    }
+
+    doc["count"] = boards.size();
+
+    String output;
+    serializeJson(doc, output);
+    server.send(200, "application/json", output);
+}
+
+void BoardWebServer::handleConnectBoard() {
+    if (!server.hasArg("plain")) {
+        server.send(400, "application/json", "{\"error\":\"No body\"}");
+        return;
+    }
+
+    JsonDocument doc;
+    DeserializationError error = deserializeJson(doc, server.arg("plain"));
+
+    if (error) {
+        server.send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
+        return;
+    }
+
+    if (!doc.containsKey("address")) {
+        server.send(400, "application/json", "{\"error\":\"Missing address\"}");
+        return;
+    }
+
+    String address = doc["address"].as<String>();
+    Serial.printf("[Web] Connecting to board: %s\n", address.c_str());
+
+    // Save as target board
+    configManager.setTargetBoardMac(address);
+
+    // Attempt connection
+    bool connected = bleClient.connect(address);
+
+    JsonDocument response;
+    response["success"] = connected;
+    response["address"] = address;
+    if (connected) {
+        response["message"] = "Connected to board";
+    } else {
+        response["message"] = "Failed to connect to board";
+    }
+
+    String output;
+    serializeJson(response, output);
+    server.send(connected ? 200 : 500, "application/json", output);
+}
+
+void BoardWebServer::handleDisconnectBoard() {
+    Serial.println("[Web] Disconnecting from board...");
+
+    bleClient.disconnect();
+
+    server.send(200, "application/json", "{\"success\":true,\"message\":\"Disconnected\"}");
+}
+
 String BoardWebServer::getStatusJson() {
     JsonDocument doc;
+
+    // Controller mode
+    bool isProxy = configManager.isProxyMode();
+    doc["mode"]["current"] = isProxy ? "proxy" : "direct";
+    doc["mode"]["name"] = isProxy ? "Proxy" : "Direct LED Control";
 
     // WiFi status
     doc["wifi"]["connected"] = boardWiFiManager.isConnected();
@@ -146,8 +247,13 @@ String BoardWebServer::getStatusJson() {
     doc["websocket"]["subscribed"] = wsClient.isSubscribed();
     doc["websocket"]["sessionId"] = wsClient.getSessionId();
 
-    // BLE status
-    doc["bluetooth"]["deviceConnected"] = bleServer.isConnected();
+    // BLE server status
+    doc["bluetooth"]["serverConnected"] = bleServer.isConnected();
+
+    // BLE client status (proxy mode)
+    doc["bluetooth"]["clientConnected"] = bleClient.isConnected();
+    doc["bluetooth"]["targetBoard"] = configManager.getTargetBoardMac();
+    doc["bluetooth"]["connectedBoard"] = bleClient.getConnectedAddress();
 
     // LED status
     doc["led"]["pin"] = ledController.getLedPin();
@@ -159,6 +265,8 @@ String BoardWebServer::getStatusJson() {
     doc["config"]["hasApiKey"] = configManager.hasApiKey();
     doc["config"]["backendUrl"] = configManager.getBackendUrl();
     doc["config"]["analyticsEnabled"] = configManager.isAnalyticsEnabled();
+    doc["config"]["controllerMode"] = isProxy ? "proxy" : "direct";
+    doc["config"]["targetBoardMac"] = configManager.getTargetBoardMac();
 
     String output;
     serializeJson(doc, output);
@@ -271,6 +379,42 @@ String BoardWebServer::getConfigPageHtml() {
     </div>
 
     <div class="card">
+        <h2>Controller Mode</h2>
+        <label for="controllerMode">Operating Mode</label>
+        <select id="controllerMode" name="controllerMode">
+            <option value="direct")html";
+    if (!configManager.isProxyMode()) {
+        html += " selected";
+    }
+    html += R"html(>Direct LED Control</option>
+            <option value="proxy")html";
+    if (configManager.isProxyMode()) {
+        html += " selected";
+    }
+    html += R"html(>Proxy to Kilter Board</option>
+        </select>
+        <p class="info">Direct: Control LEDs directly (replaces official board). Proxy: Forward commands to official board via BLE.</p>
+        <p class="info" style="color: #f87171;">Changing mode requires a restart to take effect.</p>
+    </div>
+
+    <div class="card" id="proxyCard" style="display: none;">
+        <h2>Proxy Mode - Target Board</h2>
+        <div id="proxyStatus">
+            <div class="status-row">
+                <span class="status-label">Target Board</span>
+                <span class="status-value" id="targetBoardDisplay">Not configured</span>
+            </div>
+            <div class="status-row">
+                <span class="status-label">Connection</span>
+                <span class="status-value" id="proxyConnectionStatus">Disconnected</span>
+            </div>
+        </div>
+        <button class="secondary" onclick="scanBoards()" id="scanBtn">Scan for Kilter Boards</button>
+        <div id="scanResults" style="margin-top: 15px;"></div>
+        <button class="secondary" onclick="disconnectBoard()" id="disconnectBtn" style="display: none;">Disconnect</button>
+    </div>
+
+    <div class="card">
         <h2>Configuration</h2>
         <form id="configForm">
             <label for="apiKey">API Key</label>
@@ -285,15 +429,17 @@ String BoardWebServer::getConfigPageHtml() {
     html += DEFAULT_BACKEND_URL;
     html += R"html(">
 
-            <label for="ledCount">LED Count</label>
-            <input type="number" id="ledCount" name="ledCount" min="1" max="500" value=")html";
+            <div id="ledConfigSection">
+                <label for="ledCount">LED Count</label>
+                <input type="number" id="ledCount" name="ledCount" min="1" max="500" value=")html";
     html += String(configManager.getLedCount());
     html += R"html(">
 
-            <label for="brightness">Brightness (0-255)</label>
-            <input type="number" id="brightness" name="brightness" min="0" max="255" value=")html";
+                <label for="brightness">Brightness (0-255)</label>
+                <input type="number" id="brightness" name="brightness" min="0" max="255" value=")html";
     html += String(configManager.getBrightness());
     html += R"html(">
+            </div>
 
             <div class="checkbox-row">
                 <input type="checkbox" id="analyticsEnabled" name="analyticsEnabled")html";
@@ -311,18 +457,35 @@ String BoardWebServer::getConfigPageHtml() {
 
     <div class="card">
         <h2>Actions</h2>
-        <button class="secondary" onclick="testLeds()">Test LEDs</button>
+        <button class="secondary" onclick="testLeds()" id="testLedsBtn">Test LEDs</button>
         <button class="danger" onclick="factoryReset()">Factory Reset</button>
     </div>
 
     <script>
         let initialLoadDone = false;
 
+        function updateModeUI(mode) {
+            const isProxy = mode === 'proxy';
+            document.getElementById('proxyCard').style.display = isProxy ? 'block' : 'none';
+            document.getElementById('ledConfigSection').style.display = isProxy ? 'none' : 'block';
+            document.getElementById('testLedsBtn').style.display = isProxy ? 'none' : 'block';
+        }
+
+        document.getElementById('controllerMode').addEventListener('change', (e) => {
+            updateModeUI(e.target.value);
+        });
+
         async function loadStatus() {
             try {
                 const res = await fetch('/api/status');
                 const data = await res.json();
-                const statusHtml = `
+                const isProxy = data.mode.current === 'proxy';
+
+                let statusHtml = `
+                    <div class="status-row">
+                        <span class="status-label">Mode</span>
+                        <span class="status-value">${data.mode.name}</span>
+                    </div>
                     <div class="status-row">
                         <span class="status-label">WiFi</span>
                         <span class="status-value ${data.wifi.connected ? 'status-ok' : 'status-error'}">
@@ -334,17 +497,31 @@ String BoardWebServer::getConfigPageHtml() {
                         <span class="status-value ${data.websocket.subscribed ? 'status-ok' : 'status-error'}">
                             ${data.websocket.subscribed ? 'Subscribed' : data.websocket.connected ? 'Connected' : 'Disconnected'}
                         </span>
-                    </div>
+                    </div>`;
+
+                if (isProxy) {
+                    statusHtml += `
+                    <div class="status-row">
+                        <span class="status-label">Target Board</span>
+                        <span class="status-value ${data.bluetooth.clientConnected ? 'status-ok' : 'status-error'}">
+                            ${data.bluetooth.clientConnected ? 'Connected to ' + data.bluetooth.connectedBoard : 'Disconnected'}
+                        </span>
+                    </div>`;
+                } else {
+                    statusHtml += `
                     <div class="status-row">
                         <span class="status-label">Bluetooth</span>
-                        <span class="status-value ${data.bluetooth.deviceConnected ? 'status-ok' : ''}">
-                            ${data.bluetooth.deviceConnected ? 'Device Connected' : 'Waiting for connection'}
+                        <span class="status-value ${data.bluetooth.serverConnected ? 'status-ok' : ''}">
+                            ${data.bluetooth.serverConnected ? 'Device Connected' : 'Waiting for connection'}
                         </span>
                     </div>
                     <div class="status-row">
                         <span class="status-label">LEDs</span>
                         <span class="status-value">${data.led.count} @ pin ${data.led.pin}</span>
-                    </div>
+                    </div>`;
+                }
+
+                statusHtml += `
                     <div class="status-row">
                         <span class="status-label">API Key</span>
                         <span class="status-value ${data.config.hasApiKey ? 'status-ok' : 'status-error'}">
@@ -354,7 +531,20 @@ String BoardWebServer::getConfigPageHtml() {
                 `;
                 document.getElementById('status').innerHTML = statusHtml;
 
-                // Only update form fields on initial load to avoid overwriting user input
+                // Update proxy mode UI
+                updateModeUI(data.config.controllerMode);
+                if (isProxy) {
+                    document.getElementById('targetBoardDisplay').textContent =
+                        data.bluetooth.targetBoard || 'Not configured';
+                    document.getElementById('proxyConnectionStatus').className =
+                        'status-value ' + (data.bluetooth.clientConnected ? 'status-ok' : 'status-error');
+                    document.getElementById('proxyConnectionStatus').textContent =
+                        data.bluetooth.clientConnected ? 'Connected' : 'Disconnected';
+                    document.getElementById('disconnectBtn').style.display =
+                        data.bluetooth.clientConnected ? 'block' : 'none';
+                }
+
+                // Only update form fields on initial load
                 if (!initialLoadDone) {
                     if (data.websocket.sessionId) {
                         document.getElementById('sessionId').value = data.websocket.sessionId;
@@ -365,6 +555,7 @@ String BoardWebServer::getConfigPageHtml() {
                     document.getElementById('ledCount').value = data.led.count;
                     document.getElementById('brightness').value = data.led.brightness;
                     document.getElementById('analyticsEnabled').checked = data.config.analyticsEnabled;
+                    document.getElementById('controllerMode').value = data.config.controllerMode;
                     initialLoadDone = true;
                 }
             } catch (e) {
@@ -384,8 +575,8 @@ String BoardWebServer::getConfigPageHtml() {
             const formData = new FormData(e.target);
             const data = {};
             formData.forEach((v, k) => { if (v) data[k] = v; });
-            // Handle checkbox explicitly (not included in FormData when unchecked)
             data.analyticsEnabled = document.getElementById('analyticsEnabled').checked;
+            data.controllerMode = document.getElementById('controllerMode').value;
 
             try {
                 const res = await fetch('/api/config', {
@@ -395,7 +586,7 @@ String BoardWebServer::getConfigPageHtml() {
                 });
                 if (res.ok) {
                     showMessage('Configuration saved!');
-                    initialLoadDone = false;  // Allow form fields to update with saved values
+                    initialLoadDone = false;
                     loadStatus();
                 } else {
                     showMessage('Failed to save', true);
@@ -404,6 +595,68 @@ String BoardWebServer::getConfigPageHtml() {
                 showMessage('Error: ' + e.message, true);
             }
         });
+
+        async function scanBoards() {
+            const btn = document.getElementById('scanBtn');
+            const resultsDiv = document.getElementById('scanResults');
+            btn.disabled = true;
+            btn.textContent = 'Scanning...';
+            resultsDiv.innerHTML = '<p style="color: #888;">Scanning for nearby Kilter boards...</p>';
+
+            try {
+                const res = await fetch('/api/scan-boards', { method: 'POST' });
+                const data = await res.json();
+
+                if (data.boards.length === 0) {
+                    resultsDiv.innerHTML = '<p style="color: #888;">No Kilter boards found nearby.</p>';
+                } else {
+                    let html = '<p style="color: #888; margin-bottom: 10px;">Found ' + data.count + ' board(s):</p>';
+                    data.boards.forEach(board => {
+                        html += `<div class="status-row" style="cursor: pointer; padding: 10px; background: #0f3460; margin-bottom: 5px; border-radius: 4px;" onclick="connectToBoard('${board.address}')">
+                            <span>${board.name || 'Unknown'}</span>
+                            <span style="color: #888;">${board.address} (${board.rssi} dBm)</span>
+                        </div>`;
+                    });
+                    resultsDiv.innerHTML = html;
+                }
+            } catch (e) {
+                resultsDiv.innerHTML = '<p class="status-error">Scan failed: ' + e.message + '</p>';
+            }
+
+            btn.disabled = false;
+            btn.textContent = 'Scan for Kilter Boards';
+        }
+
+        async function connectToBoard(address) {
+            showMessage('Connecting to ' + address + '...');
+            try {
+                const res = await fetch('/api/connect-board', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ address })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showMessage('Connected to board!');
+                    document.getElementById('scanResults').innerHTML = '';
+                } else {
+                    showMessage('Failed to connect: ' + data.message, true);
+                }
+                loadStatus();
+            } catch (e) {
+                showMessage('Error: ' + e.message, true);
+            }
+        }
+
+        async function disconnectBoard() {
+            try {
+                await fetch('/api/disconnect-board', { method: 'POST' });
+                showMessage('Disconnected from board');
+                loadStatus();
+            } catch (e) {
+                showMessage('Error: ' + e.message, true);
+            }
+        }
 
         async function testLeds() {
             try {
