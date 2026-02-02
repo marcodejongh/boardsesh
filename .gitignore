@@ -44,8 +44,10 @@ tension.db
 # editor
 .vscode
 
-# board controller
-board-controller/board_controller.db
+# Embedded firmware (PlatformIO)
+embedded/**/.pio
+embedded/**/.vscode
+!embedded/**/.vscode/extensions.json
 
 # backend
 packages/backend/dist

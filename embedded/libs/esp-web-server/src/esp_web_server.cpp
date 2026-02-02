@@ -1,0 +1,426 @@
+#include "esp_web_server.h"
+
+ESPWebServer WebConfig;
+
+ESPWebServer::ESPWebServer() : server(WEB_SERVER_PORT), running(false) {}
+
+void ESPWebServer::begin() {
+    setupRoutes();
+    server.begin();
+    running = true;
+}
+
+void ESPWebServer::loop() {
+    if (running) {
+        server.handleClient();
+    }
+}
+
+void ESPWebServer::stop() {
+    server.stop();
+    running = false;
+}
+
+void ESPWebServer::on(const char* path, HTTPMethod method, WebServerRouteHandler handler) {
+    server.on(path, method, [this, handler]() {
+        setCorsHeaders();
+        handler(server);
+    });
+}
+
+void ESPWebServer::sendJson(int code, JsonDocument& doc) {
+    String response;
+    serializeJson(doc, response);
+    server.send(code, "application/json", response);
+}
+
+void ESPWebServer::sendJson(int code, const char* json) {
+    server.send(code, "application/json", json);
+}
+
+void ESPWebServer::sendError(int code, const char* message) {
+    JsonDocument doc;
+    doc["error"] = message;
+    sendJson(code, doc);
+}
+
+WebServer& ESPWebServer::getServer() {
+    return server;
+}
+
+void ESPWebServer::setupRoutes() {
+    server.on("/", HTTP_GET, [this]() { handleRoot(); });
+    server.on("/api/config", HTTP_GET, [this]() { handleGetConfig(); });
+    server.on("/api/config", HTTP_POST, [this]() { handleSetConfig(); });
+    server.on("/api/wifi/scan", HTTP_GET, [this]() { handleWiFiScan(); });
+    server.on("/api/wifi/connect", HTTP_POST, [this]() { handleWiFiConnect(); });
+    server.on("/api/wifi/status", HTTP_GET, [this]() { handleWiFiStatus(); });
+    server.on("/api/restart", HTTP_POST, [this]() { handleRestart(); });
+    server.onNotFound([this]() { handleNotFound(); });
+}
+
+void ESPWebServer::setCorsHeaders() {
+    server.sendHeader("Access-Control-Allow-Origin", "*");
+    server.sendHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    server.sendHeader("Access-Control-Allow-Headers", "Content-Type");
+}
+
+void ESPWebServer::handleRoot() {
+    setCorsHeaders();
+    server.send(200, "text/html", R"rawliteral(
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boardsesh Controller</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 20px; background: #1a1a2e; color: #eee; }
+        h1 { color: #00d9ff; margin-bottom: 5px; }
+        .subtitle { color: #888; margin-bottom: 20px; }
+        .card { background: #16213e; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+        h2 { margin-top: 0; color: #00d9ff; font-size: 1.1em; border-bottom: 1px solid #0f3460; padding-bottom: 10px; }
+        label { display: block; margin-bottom: 5px; color: #aaa; font-size: 0.9em; }
+        input, select { width: 100%; padding: 12px; border: 1px solid #0f3460; border-radius: 8px; background: #0f3460; color: #fff; margin-bottom: 15px; font-size: 16px; }
+        input:focus, select:focus { outline: none; border-color: #00d9ff; }
+        button { background: #00d9ff; color: #1a1a2e; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1em; width: 100%; }
+        button:hover { background: #00b8d4; }
+        button:disabled { background: #555; cursor: not-allowed; }
+        .btn-secondary { background: #0f3460; color: #fff; }
+        .btn-secondary:hover { background: #1a4a7a; }
+        .btn-danger { background: #e94560; }
+        .btn-danger:hover { background: #c73e54; }
+        .status { padding: 10px; border-radius: 8px; margin-bottom: 15px; }
+        .status.connected { background: rgba(0, 217, 100, 0.2); border: 1px solid #00d964; }
+        .status.disconnected { background: rgba(233, 69, 96, 0.2); border: 1px solid #e94560; }
+        .network-list { max-height: 200px; overflow-y: auto; }
+        .network { padding: 12px; background: #0f3460; border-radius: 8px; margin-bottom: 8px; cursor: pointer; display: flex; justify-content: space-between; }
+        .network:hover { background: #1a4a7a; }
+        .network.selected { border: 2px solid #00d9ff; }
+        .signal { color: #888; }
+        .row { display: flex; gap: 10px; }
+        .row > * { flex: 1; }
+        .slider-container { display: flex; align-items: center; gap: 15px; }
+        .slider-container input[type="range"] { flex: 1; }
+        .slider-value { min-width: 40px; text-align: center; }
+        input[type="range"] { -webkit-appearance: none; height: 8px; border-radius: 4px; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; background: #00d9ff; border-radius: 50%; cursor: pointer; }
+        .loading { opacity: 0.5; pointer-events: none; }
+        .msg { padding: 10px; border-radius: 8px; margin-bottom: 15px; display: none; }
+        .msg.success { display: block; background: rgba(0, 217, 100, 0.2); border: 1px solid #00d964; }
+        .msg.error { display: block; background: rgba(233, 69, 96, 0.2); border: 1px solid #e94560; }
+    </style>
+</head>
+<body>
+    <h1>Boardsesh</h1>
+    <p class="subtitle">Board Controller Configuration</p>
+
+    <div class="card">
+        <h2>WiFi Status</h2>
+        <div id="wifiStatus" class="status disconnected">Checking...</div>
+        <button onclick="scanNetworks()" class="btn-secondary" id="scanBtn">Scan Networks</button>
+    </div>
+
+    <div class="card" id="networkCard" style="display:none;">
+        <h2>Available Networks</h2>
+        <div id="networkList" class="network-list"></div>
+        <div id="passwordSection" style="display:none; margin-top: 15px;">
+            <label>Password</label>
+            <input type="password" id="wifiPassword" placeholder="Enter WiFi password">
+            <button onclick="connectWifi()">Connect</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Device Settings</h2>
+        <label>Device Name</label>
+        <input type="text" id="deviceName" placeholder="Boardsesh Controller">
+        <label>LED Brightness</label>
+        <div class="slider-container">
+            <input type="range" id="brightness" min="0" max="255" value="128">
+            <span class="slider-value" id="brightnessValue">128</span>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Boardsesh Session</h2>
+        <label>Session ID</label>
+        <input type="text" id="sessionId" placeholder="Enter session ID from Boardsesh app">
+        <label>API Key</label>
+        <input type="password" id="apiKey" placeholder="Enter API key">
+    </div>
+
+    <div class="card">
+        <h2>Backend Connection</h2>
+        <label>Host</label>
+        <input type="text" id="backendHost" placeholder="boardsesh.com">
+        <div class="row">
+            <div>
+                <label>Port</label>
+                <input type="number" id="backendPort" placeholder="443">
+            </div>
+            <div>
+                <label>Path</label>
+                <input type="text" id="backendPath" placeholder="/graphql">
+            </div>
+        </div>
+    </div>
+
+    <div id="message" class="msg"></div>
+
+    <button onclick="saveConfig()">Save Configuration</button>
+    <br><br>
+    <button onclick="restart()" class="btn-danger">Restart Device</button>
+
+    <script>
+        let selectedNetwork = null;
+
+        async function loadConfig() {
+            try {
+                const res = await fetch('/api/config');
+                const cfg = await res.json();
+                document.getElementById('deviceName').value = cfg.device_name || '';
+                document.getElementById('brightness').value = cfg.brightness || 128;
+                document.getElementById('brightnessValue').textContent = cfg.brightness || 128;
+                document.getElementById('sessionId').value = cfg.session_id || '';
+                document.getElementById('apiKey').value = cfg.api_key || '';
+                document.getElementById('backendHost').value = cfg.backend_host || '';
+                document.getElementById('backendPort').value = cfg.backend_port || 443;
+                document.getElementById('backendPath').value = cfg.backend_path || '/graphql';
+            } catch (e) { console.error('Failed to load config:', e); }
+        }
+
+        async function loadWifiStatus() {
+            try {
+                const res = await fetch('/api/wifi/status');
+                const status = await res.json();
+                const el = document.getElementById('wifiStatus');
+                if (status.connected) {
+                    el.className = 'status connected';
+                    el.innerHTML = 'Connected to <strong>' + status.ssid + '</strong><br>IP: ' + status.ip + ' | Signal: ' + status.rssi + ' dBm';
+                } else {
+                    el.className = 'status disconnected';
+                    el.textContent = 'Not connected';
+                }
+            } catch (e) { console.error('Failed to load wifi status:', e); }
+        }
+
+        async function scanNetworks() {
+            const btn = document.getElementById('scanBtn');
+            btn.disabled = true;
+            btn.textContent = 'Scanning...';
+            try {
+                const res = await fetch('/api/wifi/scan');
+                const data = await res.json();
+                const list = document.getElementById('networkList');
+                list.innerHTML = '';
+                data.networks.sort((a, b) => b.rssi - a.rssi).forEach(n => {
+                    const div = document.createElement('div');
+                    div.className = 'network';
+                    div.innerHTML = '<span>' + n.ssid + (n.secure ? ' 🔒' : '') + '</span><span class="signal">' + n.rssi + ' dBm</span>';
+                    div.onclick = () => selectNetwork(n.ssid, div);
+                    list.appendChild(div);
+                });
+                document.getElementById('networkCard').style.display = 'block';
+            } catch (e) { showMessage('Failed to scan networks', true); }
+            btn.disabled = false;
+            btn.textContent = 'Scan Networks';
+        }
+
+        function selectNetwork(ssid, el) {
+            document.querySelectorAll('.network').forEach(n => n.classList.remove('selected'));
+            el.classList.add('selected');
+            selectedNetwork = ssid;
+            document.getElementById('passwordSection').style.display = 'block';
+        }
+
+        async function connectWifi() {
+            if (!selectedNetwork) return;
+            const password = document.getElementById('wifiPassword').value;
+            try {
+                await fetch('/api/wifi/connect', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ssid: selectedNetwork, password })
+                });
+                showMessage('Connecting to ' + selectedNetwork + '...');
+                setTimeout(loadWifiStatus, 5000);
+            } catch (e) { showMessage('Failed to connect', true); }
+        }
+
+        async function saveConfig() {
+            const config = {
+                device_name: document.getElementById('deviceName').value,
+                brightness: parseInt(document.getElementById('brightness').value),
+                session_id: document.getElementById('sessionId').value,
+                api_key: document.getElementById('apiKey').value,
+                backend_host: document.getElementById('backendHost').value,
+                backend_port: parseInt(document.getElementById('backendPort').value),
+                backend_path: document.getElementById('backendPath').value
+            };
+            try {
+                await fetch('/api/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                showMessage('Configuration saved!');
+            } catch (e) { showMessage('Failed to save configuration', true); }
+        }
+
+        async function restart() {
+            if (!confirm('Restart the device?')) return;
+            try {
+                await fetch('/api/restart', { method: 'POST' });
+                showMessage('Restarting...');
+            } catch (e) {}
+        }
+
+        function showMessage(msg, isError = false) {
+            const el = document.getElementById('message');
+            el.textContent = msg;
+            el.className = 'msg ' + (isError ? 'error' : 'success');
+            setTimeout(() => { el.className = 'msg'; }, 3000);
+        }
+
+        document.getElementById('brightness').oninput = function() {
+            document.getElementById('brightnessValue').textContent = this.value;
+        };
+
+        loadConfig();
+        loadWifiStatus();
+        setInterval(loadWifiStatus, 10000);
+    </script>
+</body>
+</html>
+)rawliteral");
+}
+
+void ESPWebServer::handleNotFound() {
+    setCorsHeaders();
+    sendError(404, "Not found");
+}
+
+void ESPWebServer::handleGetConfig() {
+    setCorsHeaders();
+    JsonDocument doc;
+
+    doc["wifi_ssid"] = Config.getString(WiFiUtils::KEY_SSID);
+    doc["backend_host"] = Config.getString("backend_host");
+    doc["backend_port"] = Config.getInt("backend_port", 443);
+    doc["backend_path"] = Config.getString("backend_path", "/graphql");
+    doc["device_name"] = Config.getString("device_name", "Boardsesh Controller");
+    doc["brightness"] = Config.getInt("brightness", 128);
+    doc["session_id"] = Config.getString("session_id");
+    doc["api_key"] = Config.getString("api_key");
+
+    sendJson(200, doc);
+}
+
+void ESPWebServer::handleSetConfig() {
+    setCorsHeaders();
+
+    if (!server.hasArg("plain")) {
+        sendError(400, "No body provided");
+        return;
+    }
+
+    JsonDocument doc;
+    DeserializationError error = deserializeJson(doc, server.arg("plain"));
+
+    if (error) {
+        sendError(400, "Invalid JSON");
+        return;
+    }
+
+    if (doc["backend_host"].is<const char*>()) {
+        Config.setString("backend_host", doc["backend_host"]);
+    }
+    if (doc["backend_port"].is<int>()) {
+        Config.setInt("backend_port", doc["backend_port"]);
+    }
+    if (doc["backend_path"].is<const char*>()) {
+        Config.setString("backend_path", doc["backend_path"]);
+    }
+    if (doc["device_name"].is<const char*>()) {
+        Config.setString("device_name", doc["device_name"]);
+    }
+    if (doc["brightness"].is<int>()) {
+        Config.setInt("brightness", doc["brightness"]);
+    }
+    if (doc["session_id"].is<const char*>()) {
+        Config.setString("session_id", doc["session_id"]);
+    }
+    if (doc["api_key"].is<const char*>()) {
+        Config.setString("api_key", doc["api_key"]);
+    }
+
+    sendJson(200, "{\"success\":true}");
+}
+
+void ESPWebServer::handleWiFiScan() {
+    setCorsHeaders();
+
+    int n = WiFi.scanNetworks();
+    JsonDocument doc;
+    JsonArray networks = doc["networks"].to<JsonArray>();
+
+    for (int i = 0; i < n; i++) {
+        JsonObject network = networks.add<JsonObject>();
+        network["ssid"] = WiFi.SSID(i);
+        network["rssi"] = WiFi.RSSI(i);
+        network["secure"] = WiFi.encryptionType(i) != WIFI_AUTH_OPEN;
+    }
+
+    WiFi.scanDelete();
+    sendJson(200, doc);
+}
+
+void ESPWebServer::handleWiFiConnect() {
+    setCorsHeaders();
+
+    if (!server.hasArg("plain")) {
+        sendError(400, "No body provided");
+        return;
+    }
+
+    JsonDocument doc;
+    DeserializationError error = deserializeJson(doc, server.arg("plain"));
+
+    if (error) {
+        sendError(400, "Invalid JSON");
+        return;
+    }
+
+    if (!doc["ssid"].is<const char*>()) {
+        sendError(400, "SSID required");
+        return;
+    }
+
+    const char* ssid = doc["ssid"];
+    const char* password = doc["password"] | "";
+
+    WiFiMgr.connect(ssid, password);
+
+    sendJson(200, "{\"success\":true,\"message\":\"Connecting...\"}");
+}
+
+void ESPWebServer::handleWiFiStatus() {
+    setCorsHeaders();
+    JsonDocument doc;
+
+    doc["connected"] = WiFiMgr.isConnected();
+    doc["ssid"] = WiFiMgr.getSSID();
+    doc["ip"] = WiFiMgr.getIP();
+    doc["rssi"] = WiFiMgr.getRSSI();
+
+    sendJson(200, doc);
+}
+
+void ESPWebServer::handleRestart() {
+    setCorsHeaders();
+    sendJson(200, "{\"success\":true,\"message\":\"Restarting...\"}");
+    delay(500);
+    ESP.restart();
+}

@@ -1,0 +1,12 @@
+{
+  "name": "nordic-uart-ble",
+  "version": "1.0.0",
+  "description": "BLE GATT server implementing Nordic UART Service",
+  "keywords": ["ble", "bluetooth", "uart", "nordic", "nimble"],
+  "frameworks": ["arduino"],
+  "platforms": ["espressif32"],
+  "dependencies": {
+    "aurora-protocol": "*",
+    "h2zero/NimBLE-Arduino": "^1.4.1"
+  }
+}
