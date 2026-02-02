@@ -100,10 +100,12 @@ export const controllerSubscriptions = {
           if (queueEvent.__typename === 'CurrentClimbChanged' || queueEvent.__typename === 'FullSync') {
             // Skip LedUpdate if this controller initiated the change
             // (LEDs are already set from BLE data, this would be redundant)
-            if (queueEvent.__typename === 'CurrentClimbChanged' &&
-                queueEvent.clientId === controllerId) {
-              console.log(`[Controller] Skipping LedUpdate (originated from this controller)`);
-              return;
+            if (queueEvent.__typename === 'CurrentClimbChanged') {
+              console.log(`[Controller] CurrentClimbChanged event - clientId: ${queueEvent.clientId}, controllerId: ${controllerId}`);
+              if (queueEvent.clientId === controllerId) {
+                console.log(`[Controller] Skipping LedUpdate (originated from this controller)`);
+                return;
+              }
             }
 
             const climb = queueEvent.__typename === 'CurrentClimbChanged'

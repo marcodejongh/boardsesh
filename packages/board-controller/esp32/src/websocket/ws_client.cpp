@@ -345,21 +345,19 @@ void WsClient::sendHeartbeat() {
 }
 
 void WsClient::handleLedUpdate(JsonObject& data) {
-    // If BLE is connected, this is a web-initiated change
-    // Disconnect BLE client - web user is taking over
-    // Note: Backend handles filtering of echo updates (when controller initiates change)
-    if (bleServer.isConnected()) {
-        Serial.println("[WS] Web user changed climb, disconnecting BLE client");
-        bleServer.disconnectClient();
-        bleServer.clearLastSentHash();
-    }
-
-    // Process the LED update
+    // Process the LED update first to compute hash
     JsonArray commands = data["commands"];
 
     if (commands.isNull() || commands.size() == 0) {
+        // Clear LEDs command - if BLE connected, this is likely web taking over
+        if (bleServer.isConnected()) {
+            Serial.println("[WS] Web user cleared climb, disconnecting BLE client");
+            bleServer.disconnectClient();
+            bleServer.clearLastSentHash();
+        }
         ledController.clear();
         ledController.show();
+        currentDisplayHash = 0;
         Serial.println("[WS] Cleared LEDs (no commands)");
         return;
     }
@@ -381,6 +379,23 @@ void WsClient::handleLedUpdate(JsonObject& data) {
         staticLedBuffer[i].g = cmd["g"];
         staticLedBuffer[i].b = cmd["b"];
         i++;
+    }
+
+    // Compute hash of incoming LED data
+    uint32_t incomingHash = computeLedHash(staticLedBuffer, count);
+
+    // If BLE is connected, check if this is an echo of our own data or a web-initiated change
+    if (bleServer.isConnected()) {
+        if (incomingHash == currentDisplayHash && currentDisplayHash != 0) {
+            // This is likely an echo from our own BLE send - ignore it
+            Serial.printf("[WS] Ignoring LedUpdate (hash %u matches current display, likely echo)\n", incomingHash);
+            return;
+        } else {
+            // Different LED data - web user is taking over
+            Serial.println("[WS] Web user changed climb, disconnecting BLE client");
+            bleServer.disconnectClient();
+            bleServer.clearLastSentHash();
+        }
     }
 
     // Update LEDs
@@ -426,6 +441,9 @@ void WsClient::sendLedPositions(const LedCommand* commands, int count, int angle
 
     // Update the last sent hash for this device
     bleServer.updateLastSentHash(currentHash);
+    // Update currentDisplayHash since these LEDs are now displayed (set via BLE)
+    // This prevents the stale hash issue when server-side filtering skips LedUpdate echoes
+    currentDisplayHash = currentHash;
     Serial.printf("[WS] Proceeding to send (updated hash for device)\n");
 
     JsonDocument doc;
