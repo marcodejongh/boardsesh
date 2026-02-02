@@ -2,28 +2,55 @@
 // This schema is shared between the backend server and client
 
 export const typeDefs = /* GraphQL */ `
+  """
+  Arbitrary JSON data
+  """
   scalar JSON
 
+  """
+  A climbing problem/route on an interactive training board.
+  Contains all information needed to display and light up the climb on the board.
+  """
   type Climb {
+    "Unique identifier for the climb"
     uuid: ID!
+    "Layout ID the climb belongs to (used to identify cross-layout climbs)"
     layoutId: Int
+    "Username of the person who created this climb"
     setter_username: String!
+    "Name/title of the climb"
     name: String!
+    "Description or notes about the climb"
     description: String!
+    "Encoded hold positions and colors for lighting up the board"
     frames: String!
+    "Board angle in degrees when this climb was set"
     angle: Int!
+    "Number of people who have completed this climb"
     ascensionist_count: Int!
+    "Difficulty grade of the climb (e.g., 'V5', '6B+')"
     difficulty: String!
+    "Average quality rating from users"
     quality_average: String!
+    "Star rating (0-3)"
     stars: Float!
+    "Difficulty uncertainty/spread"
     difficulty_error: String!
+    "Map of hold IDs to their lit-up state codes for board display"
     litUpHoldsMap: JSON!
+    "Whether the climb should be displayed mirrored"
     mirrored: Boolean
+    "Official benchmark difficulty if this is a benchmark climb"
     benchmark_difficulty: String
+    "Number of times the current user has sent this climb"
     userAscents: Int
+    "Number of times the current user has attempted this climb"
     userAttempts: Int
   }
 
+  """
+  Input type for creating or updating a climb.
+  """
   input ClimbInput {
     uuid: ID!
     setter_username: String!
@@ -43,27 +70,48 @@ export const typeDefs = /* GraphQL */ `
     userAttempts: Int
   }
 
+  """
+  User information displayed in queue items.
+  """
   type QueueItemUser {
+    "Unique user identifier"
     id: ID!
+    "Display name shown in the queue"
     username: String!
+    "URL to user's avatar image"
     avatarUrl: String
   }
 
+  """
+  Input type for queue item user information.
+  """
   input QueueItemUserInput {
     id: ID!
     username: String!
     avatarUrl: String
   }
 
+  """
+  An item in the climb queue, representing a climb that someone wants to attempt.
+  """
   type ClimbQueueItem {
+    "Unique identifier for this queue item"
     uuid: ID!
+    "The climb data"
     climb: Climb!
+    "Username of who added this to the queue (legacy)"
     addedBy: String
+    "User who added this climb to the queue"
     addedByUser: QueueItemUser
+    "List of user IDs who have completed (ticked) this climb in the session"
     tickedBy: [String!]
+    "Whether this climb was suggested by the system"
     suggested: Boolean
   }
 
+  """
+  Input type for adding items to the queue.
+  """
   input ClimbQueueItemInput {
     uuid: ID!
     climb: ClimbInput!
@@ -73,56 +121,105 @@ export const typeDefs = /* GraphQL */ `
     suggested: Boolean
   }
 
+  """
+  A user participating in a climbing session.
+  """
   type SessionUser {
+    "Unique user identifier"
     id: ID!
+    "Display name"
     username: String!
+    "Whether this user is the session leader (controls the queue)"
     isLeader: Boolean!
+    "URL to user's avatar image"
     avatarUrl: String
   }
 
+  """
+  The complete state of a session's climb queue.
+  Used for synchronization between clients.
+  """
   type QueueState {
+    "Monotonically increasing sequence number for ordering events"
     sequence: Int!
+    "Hash of the current state for consistency checking"
     stateHash: String!
+    "List of climbs in the queue"
     queue: [ClimbQueueItem!]!
+    "The climb currently being attempted"
     currentClimbQueueItem: ClimbQueueItem
   }
 
-  # Response for delta sync event replay (Phase 2)
+  """
+  Response containing events since a given sequence number.
+  Used for delta synchronization when reconnecting.
+  """
   type EventsReplayResponse {
+    "List of events since the requested sequence"
     events: [QueueEvent!]!
+    "Current sequence number after all events"
     currentSequence: Int!
   }
 
+  """
+  An active climbing session where users can collaborate on a queue.
+  """
   type Session {
+    "Unique session identifier"
     id: ID!
+    "Optional name for the session"
     name: String
+    "Board configuration path (board_name/layout_id/size_id/set_ids/angle)"
     boardPath: String!
+    "Users currently in the session"
     users: [SessionUser!]!
+    "Current queue state"
     queueState: QueueState!
+    "Whether the current client is the session leader"
     isLeader: Boolean!
+    "Unique identifier for this client's connection"
     clientId: ID!
   }
 
-  # Discoverable session for GPS-based discovery
+  """
+  A session that can be discovered by nearby users via GPS.
+  """
   type DiscoverableSession {
+    "Unique session identifier"
     id: ID!
+    "Optional session name"
     name: String
+    "Board configuration path"
     boardPath: String!
+    "GPS latitude of the session location"
     latitude: Float!
+    "GPS longitude of the session location"
     longitude: Float!
+    "When the session was created (ISO 8601)"
     createdAt: String!
+    "User ID of the session creator"
     createdByUserId: ID
+    "Number of users currently in the session"
     participantCount: Int!
+    "Distance from the querying user's location (meters)"
     distance: Float
+    "Whether the session is still active"
     isActive: Boolean!
   }
 
-  # Input for creating a session
+  """
+  Input for creating a new climbing session.
+  """
   input CreateSessionInput {
+    "Board configuration path (e.g., 'kilter/1/1/1,2/40')"
     boardPath: String!
+    "GPS latitude for session discovery"
     latitude: Float!
+    "GPS longitude for session discovery"
     longitude: Float!
+    "Optional session name"
     name: String
+    "Whether this session should appear in nearby searches"
     discoverable: Boolean!
   }
 
@@ -130,12 +227,21 @@ export const typeDefs = /* GraphQL */ `
   # Board Configuration Types
   # ============================================
 
+  """
+  A difficulty grade for a board type.
+  """
   type Grade {
+    "Numeric difficulty identifier"
     difficultyId: Int!
+    "Human-readable grade name (e.g., 'V5', '6B+')"
     name: String!
   }
 
+  """
+  A supported board angle.
+  """
   type Angle {
+    "Angle in degrees"
     angle: Int!
   }
 
@@ -143,39 +249,68 @@ export const typeDefs = /* GraphQL */ `
   # Climb Search Types
   # ============================================
 
+  """
+  Input parameters for searching climbs.
+  Supports filtering, sorting, and pagination.
+  """
   input ClimbSearchInput {
+    "Board type (e.g., 'kilter', 'tension')"
     boardName: String!
+    "Layout ID"
     layoutId: Int!
+    "Size ID"
     sizeId: Int!
+    "Comma-separated set IDs"
     setIds: String!
+    "Board angle in degrees"
     angle: Int!
-    # Pagination
+    "Page number for pagination (1-indexed)"
     page: Int
+    "Number of results per page"
     pageSize: Int
-    # Filters
+    "Grade accuracy filter ('tight', 'moderate', 'loose')"
     gradeAccuracy: String
+    "Minimum difficulty grade ID"
     minGrade: Int
+    "Maximum difficulty grade ID"
     maxGrade: Int
+    "Minimum number of ascents"
     minAscents: Int
+    "Field to sort by ('ascents', 'difficulty', 'name', 'quality', 'popular')"
     sortBy: String
+    "Sort direction ('asc' or 'desc')"
     sortOrder: String
+    "Filter by climb name (partial match)"
     name: String
+    "Filter by setter usernames"
     setter: [String!]
+    "Filter by setter ID"
     setterId: Int
+    "Only show benchmark climbs"
     onlyBenchmarks: Boolean
+    "Only show tall/steep climbs"
     onlyTallClimbs: Boolean
-    # Hold filters (JSON object: { "holdId": "ANY" | "NOT", ... })
+    "Hold filter object: { holdId: 'ANY' | 'NOT', ... }"
     holdsFilter: JSON
-    # Personal progress filters (require auth)
+    "Hide climbs the user has attempted (requires auth)"
     hideAttempted: Boolean
+    "Hide climbs the user has completed (requires auth)"
     hideCompleted: Boolean
+    "Only show climbs the user has attempted (requires auth)"
     showOnlyAttempted: Boolean
+    "Only show climbs the user has completed (requires auth)"
     showOnlyCompleted: Boolean
   }
 
+  """
+  Result of a climb search query.
+  """
   type ClimbSearchResult {
+    "List of climbs matching the search criteria"
     climbs: [Climb!]!
+    "Total number of climbs matching (for pagination)"
     totalCount: Int!
+    "Whether there are more results available"
     hasMore: Boolean!
   }
 
@@ -183,37 +318,71 @@ export const typeDefs = /* GraphQL */ `
   # User Management Types
   # ============================================
 
+  """
+  User profile information.
+  """
   type UserProfile {
+    "Unique user identifier"
     id: ID!
+    "User's email address"
     email: String!
+    "Display name shown to other users"
     displayName: String
+    "URL to user's avatar image"
     avatarUrl: String
   }
 
+  """
+  Input for updating user profile.
+  """
   input UpdateProfileInput {
+    "New display name"
     displayName: String
+    "New avatar URL"
     avatarUrl: String
   }
 
+  """
+  Stored credentials for an Aurora Climbing board account.
+  """
   type AuroraCredential {
+    "Board type ('kilter' or 'tension')"
     boardType: String!
+    "Aurora account username"
     username: String!
+    "Aurora user ID (after successful sync)"
     userId: Int
+    "When credentials were last synced (ISO 8601)"
     syncedAt: String
+    "Aurora API token (only returned when needed)"
     token: String
   }
 
+  """
+  Status of Aurora credentials without sensitive data.
+  """
   type AuroraCredentialStatus {
+    "Board type ('kilter' or 'tension')"
     boardType: String!
+    "Aurora account username"
     username: String!
+    "Aurora user ID (after successful sync)"
     userId: Int
+    "When credentials were last synced (ISO 8601)"
     syncedAt: String
+    "Whether a valid token is stored"
     hasToken: Boolean!
   }
 
+  """
+  Input for saving Aurora board credentials.
+  """
   input SaveAuroraCredentialInput {
+    "Board type ('kilter' or 'tension')"
     boardType: String!
+    "Aurora account username"
     username: String!
+    "Aurora account password"
     password: String!
   }
 
@@ -221,13 +390,23 @@ export const typeDefs = /* GraphQL */ `
   # Favorites Types
   # ============================================
 
+  """
+  Input for toggling a climb as favorite.
+  """
   input ToggleFavoriteInput {
+    "Board type"
     boardName: String!
+    "Climb UUID to favorite/unfavorite"
     climbUuid: String!
+    "Board angle"
     angle: Int!
   }
 
+  """
+  Result of toggling favorite status.
+  """
   type ToggleFavoriteResult {
+    "Whether the climb is now favorited"
     favorited: Boolean!
   }
 
@@ -235,52 +414,101 @@ export const typeDefs = /* GraphQL */ `
   # Ticks Types (Local Ascent Tracking)
   # ============================================
 
+  """
+  Status of a climb attempt.
+  """
   enum TickStatus {
+    "Completed on first attempt"
     flash
+    "Completed after multiple attempts"
     send
+    "Did not complete"
     attempt
   }
 
+  """
+  A recorded climb attempt or completion.
+  """
   type Tick {
+    "Unique identifier for this tick"
     uuid: ID!
+    "User who recorded this tick"
     userId: ID!
+    "Board type"
     boardType: String!
+    "UUID of the climb attempted"
     climbUuid: String!
+    "Board angle when attempted"
     angle: Int!
+    "Whether the climb was mirrored"
     isMirror: Boolean!
+    "Result of the attempt"
     status: TickStatus!
+    "Number of attempts before success (or total attempts if not sent)"
     attemptCount: Int!
+    "User's quality rating (0-3)"
     quality: Int
+    "User's difficulty rating"
     difficulty: Int
+    "Whether this is a benchmark climb"
     isBenchmark: Boolean!
+    "User's comment about the climb"
     comment: String!
+    "When the climb was attempted (ISO 8601)"
     climbedAt: String!
+    "When this record was created (ISO 8601)"
     createdAt: String!
+    "When this record was last updated (ISO 8601)"
     updatedAt: String!
+    "Session ID if climbed during a session"
     sessionId: String
+    "Type of Aurora sync ('bid' or 'ascent')"
     auroraType: String
+    "Aurora platform ID for this tick"
     auroraId: String
+    "When synced to Aurora (ISO 8601)"
     auroraSyncedAt: String
+    "Layout ID when the climb was attempted"
     layoutId: Int
   }
 
+  """
+  Input for recording a climb attempt.
+  """
   input SaveTickInput {
+    "Board type"
     boardType: String!
+    "Climb UUID"
     climbUuid: String!
+    "Board angle"
     angle: Int!
+    "Whether climb was mirrored"
     isMirror: Boolean!
+    "Result of the attempt"
     status: TickStatus!
+    "Number of attempts"
     attemptCount: Int!
+    "Quality rating (0-3)"
     quality: Int
+    "Difficulty rating"
     difficulty: Int
+    "Whether this is a benchmark climb"
     isBenchmark: Boolean!
+    "Comment about the climb"
     comment: String!
+    "When the climb was attempted (ISO 8601)"
     climbedAt: String!
+    "Session ID if in a session"
     sessionId: String
   }
 
+  """
+  Input for fetching user's ticks.
+  """
   input GetTicksInput {
+    "Board type to filter by"
     boardType: String!
+    "Optional list of climb UUIDs to filter by"
     climbUuids: [String!]
   }
 
@@ -288,71 +516,120 @@ export const typeDefs = /* GraphQL */ `
   # Activity Feed Types
   # ============================================
 
-  # A feed item representing a climb ascent with enriched data
+  """
+  A climb ascent with enriched data for activity feeds.
+  """
   type AscentFeedItem {
+    "Tick UUID"
     uuid: ID!
+    "UUID of the climb"
     climbUuid: String!
+    "Name of the climb"
     climbName: String!
+    "Username of the setter"
     setterUsername: String
+    "Board type"
     boardType: String!
+    "Layout ID"
     layoutId: Int
+    "Board angle"
     angle: Int!
+    "Whether climb was mirrored"
     isMirror: Boolean!
+    "Result of the attempt"
     status: TickStatus!
+    "Number of attempts"
     attemptCount: Int!
+    "Quality rating"
     quality: Int
+    "Difficulty rating"
     difficulty: Int
+    "Human-readable difficulty name"
     difficultyName: String
+    "Whether this is a benchmark climb"
     isBenchmark: Boolean!
+    "Comment"
     comment: String!
+    "When climbed (ISO 8601)"
     climbedAt: String!
-    # Climb display data for thumbnails
+    "Encoded hold frames for thumbnail display"
     frames: String
   }
 
+  """
+  Paginated ascent feed result.
+  """
   type AscentFeedResult {
+    "List of ascent feed items"
     items: [AscentFeedItem!]!
+    "Total count for pagination"
     totalCount: Int!
+    "Whether more items are available"
     hasMore: Boolean!
   }
 
-  # Grouped climb attempts for a single climb on a single day
+  """
+  Grouped climb attempts for a single climb on a single day.
+  Useful for displaying activity summaries.
+  """
   type GroupedAscentFeedItem {
-    # Unique key for this group (climbUuid-date)
+    "Unique key for this group (climbUuid-date)"
     key: String!
+    "UUID of the climb"
     climbUuid: String!
+    "Name of the climb"
     climbName: String!
+    "Username of the setter"
     setterUsername: String
+    "Board type"
     boardType: String!
+    "Layout ID"
     layoutId: Int
+    "Board angle"
     angle: Int!
+    "Whether climb was mirrored"
     isMirror: Boolean!
-    # Climb display data for thumbnails
+    "Encoded hold frames for thumbnail"
     frames: String
+    "Human-readable difficulty name"
     difficultyName: String
+    "Whether this is a benchmark climb"
     isBenchmark: Boolean!
-    # The date of the attempts (YYYY-MM-DD)
+    "Date of the attempts (YYYY-MM-DD)"
     date: String!
-    # Counts by status
+    "Number of flash sends"
     flashCount: Int!
+    "Number of regular sends"
     sendCount: Int!
+    "Number of attempts without send"
     attemptCount: Int!
-    # Best quality rating from any attempt in this group
+    "Best quality rating from any attempt"
     bestQuality: Int
-    # Latest comment from any attempt in this group
+    "Most recent comment"
     latestComment: String
-    # Individual items in this group (for detailed view if needed)
+    "Individual items in this group"
     items: [AscentFeedItem!]!
   }
 
+  """
+  Paginated grouped ascent feed result.
+  """
   type GroupedAscentFeedResult {
+    "List of grouped items"
     groups: [GroupedAscentFeedItem!]!
+    "Total count"
     totalCount: Int!
+    "Whether more groups are available"
     hasMore: Boolean!
   }
 
+  """
+  Pagination input for ascent feeds.
+  """
   input AscentFeedInput {
+    "Maximum number of items to return"
     limit: Int
+    "Number of items to skip"
     offset: Int
   }
 
@@ -360,24 +637,39 @@ export const typeDefs = /* GraphQL */ `
   # Profile Statistics Types
   # ============================================
 
-  # Count of distinct climbs for a specific grade
+  """
+  Count of distinct climbs at a specific grade.
+  """
   type GradeCount {
+    "Grade name"
     grade: String!
+    "Number of distinct climbs sent at this grade"
     count: Int!
   }
 
-  # Statistics for a specific board layout
+  """
+  Statistics for a specific board layout.
+  """
   type LayoutStats {
+    "Unique key for this layout configuration"
     layoutKey: String!
+    "Board type"
     boardType: String!
+    "Layout ID"
     layoutId: Int
+    "Total distinct climbs sent"
     distinctClimbCount: Int!
+    "Breakdown by grade"
     gradeCounts: [GradeCount!]!
   }
 
-  # Aggregated profile statistics across all boards
+  """
+  Aggregated profile statistics across all boards.
+  """
   type ProfileStats {
+    "Total distinct climbs sent across all boards"
     totalDistinctClimbs: Int!
+    "Per-layout statistics"
     layoutStats: [LayoutStats!]!
   }
 
@@ -385,160 +677,311 @@ export const typeDefs = /* GraphQL */ `
   # Playlist Types
   # ============================================
 
+  """
+  A user-created collection of climbs.
+  """
   type Playlist {
+    "Database ID"
     id: ID!
+    "Unique identifier"
     uuid: ID!
+    "Board type"
     boardType: String!
-    layoutId: Int # Nullable for Aurora-synced circuits
+    "Layout ID (null for Aurora-synced circuits)"
+    layoutId: Int
+    "Playlist name"
     name: String!
+    "Optional description"
     description: String
+    "Whether publicly visible"
     isPublic: Boolean!
+    "Display color"
     color: String
+    "Display icon"
     icon: String
+    "When created (ISO 8601)"
     createdAt: String!
+    "When last updated (ISO 8601)"
     updatedAt: String!
+    "Number of climbs in playlist"
     climbCount: Int!
+    "Current user's role (owner/editor/viewer)"
     userRole: String
   }
 
+  """
+  A climb within a playlist.
+  """
   type PlaylistClimb {
+    "Database ID"
     id: ID!
+    "Playlist ID"
     playlistId: ID!
+    "UUID of the climb"
     climbUuid: String!
-    angle: Int # Nullable for Aurora-synced circuits
+    "Board angle (null for Aurora circuits)"
+    angle: Int
+    "Position in playlist"
     position: Int!
+    "When added (ISO 8601)"
     addedAt: String!
   }
 
+  """
+  Input for creating a playlist.
+  """
   input CreatePlaylistInput {
+    "Board type"
     boardType: String!
+    "Layout ID"
     layoutId: Int!
+    "Playlist name"
     name: String!
+    "Optional description"
     description: String
+    "Display color"
     color: String
+    "Display icon"
     icon: String
   }
 
+  """
+  Input for updating a playlist.
+  """
   input UpdatePlaylistInput {
+    "Playlist ID to update"
     playlistId: ID!
+    "New name"
     name: String
+    "New description"
     description: String
+    "New visibility setting"
     isPublic: Boolean
+    "New color"
     color: String
+    "New icon"
     icon: String
   }
 
+  """
+  Input for adding a climb to a playlist.
+  """
   input AddClimbToPlaylistInput {
+    "Target playlist ID"
     playlistId: ID!
+    "Climb UUID to add"
     climbUuid: String!
+    "Board angle for this entry"
     angle: Int!
   }
 
+  """
+  Input for removing a climb from a playlist.
+  """
   input RemoveClimbFromPlaylistInput {
+    "Playlist ID"
     playlistId: ID!
+    "Climb UUID to remove"
     climbUuid: String!
   }
 
+  """
+  Input for getting user's playlists.
+  """
   input GetUserPlaylistsInput {
+    "Filter by board type"
     boardType: String!
+    "Filter by layout ID"
     layoutId: Int!
   }
 
+  """
+  Input for getting playlists containing a climb.
+  """
   input GetPlaylistsForClimbInput {
+    "Board type"
     boardType: String!
+    "Layout ID"
     layoutId: Int!
+    "Climb UUID to search for"
     climbUuid: String!
   }
 
+  """
+  Input for getting climbs in a playlist with full data.
+  """
   input GetPlaylistClimbsInput {
+    "Playlist ID"
     playlistId: ID!
+    "Board name for climb lookup"
     boardName: String!
+    "Layout ID"
     layoutId: Int!
+    "Size ID"
     sizeId: Int!
+    "Set IDs"
     setIds: String!
+    "Board angle"
     angle: Int!
+    "Page number"
     page: Int
+    "Page size"
     pageSize: Int
   }
 
+  """
+  Result of fetching playlist climbs.
+  """
   type PlaylistClimbsResult {
+    "List of climbs with full data"
     climbs: [Climb!]!
+    "Total count"
     totalCount: Int!
+    "Whether more are available"
     hasMore: Boolean!
   }
 
-  # Playlist creator info for discover playlists
+  """
+  A user who has created public playlists.
+  """
   type PlaylistCreator {
+    "User ID"
     userId: ID!
+    "Display name"
     displayName: String!
+    "Number of public playlists"
     playlistCount: Int!
   }
 
-  # Discoverable playlist with creator info
+  """
+  A public playlist with creator information.
+  """
   type DiscoverablePlaylist {
+    "Database ID"
     id: ID!
+    "Unique identifier"
     uuid: ID!
+    "Board type"
     boardType: String!
+    "Layout ID"
     layoutId: Int
+    "Playlist name"
     name: String!
+    "Description"
     description: String
+    "Display color"
     color: String
+    "Display icon"
     icon: String
+    "When created"
     createdAt: String!
+    "When last updated"
     updatedAt: String!
+    "Number of climbs"
     climbCount: Int!
+    "Creator's user ID"
     creatorId: ID!
+    "Creator's display name"
     creatorName: String!
   }
 
+  """
+  Input for discovering public playlists.
+  """
   input DiscoverPlaylistsInput {
+    "Board type"
     boardType: String!
+    "Layout ID"
     layoutId: Int!
-    # Optional filters
+    "Filter by name (partial match)"
     name: String
+    "Filter by creator IDs"
     creatorIds: [ID!]
-    # Pagination
+    "Page number"
     page: Int
+    "Page size"
     pageSize: Int
   }
 
+  """
+  Result of playlist discovery.
+  """
   type DiscoverPlaylistsResult {
+    "List of playlists"
     playlists: [DiscoverablePlaylist!]!
+    "Total count"
     totalCount: Int!
+    "Whether more are available"
     hasMore: Boolean!
   }
 
+  """
+  Input for getting playlist creators.
+  """
   input GetPlaylistCreatorsInput {
+    "Board type"
     boardType: String!
+    "Layout ID"
     layoutId: Int!
+    "Search query for autocomplete"
     searchQuery: String
   }
 
+  """
+  Root query type for all read operations.
+  """
   type Query {
+    """
+    Get details of a specific session by ID.
+    Returns null if session doesn't exist.
+    """
     session(sessionId: ID!): Session
-    # Get buffered events since a sequence number for delta sync (Phase 2)
+
+    """
+    Get buffered events since a sequence number for delta sync.
+    Used to catch up after reconnection without full state transfer.
+    """
     eventsReplay(sessionId: ID!, sinceSequence: Int!): EventsReplayResponse!
-    # Find discoverable sessions near a location
+
+    """
+    Find discoverable sessions near a GPS location.
+    Default radius is 1000 meters.
+    """
     nearbySessions(latitude: Float!, longitude: Float!, radiusMeters: Float): [DiscoverableSession!]!
-    # Get current user's recent sessions (requires auth context)
+
+    """
+    Get current user's recently joined sessions.
+    Requires authentication.
+    """
     mySessions: [DiscoverableSession!]!
 
     # ============================================
     # Board Configuration Queries
     # ============================================
 
-    # Get difficulty grades for a board type
+    """
+    Get all difficulty grades for a board type.
+    """
     grades(boardName: String!): [Grade!]!
-    # Get available angles for a board layout
+
+    """
+    Get available angles for a board layout.
+    """
     angles(boardName: String!, layoutId: Int!): [Angle!]!
 
     # ============================================
     # Climb Queries
     # ============================================
 
-    # Search climbs with filtering and pagination
+    """
+    Search climbs with filtering, sorting, and pagination.
+    Supports filtering by difficulty, setter, holds, and more.
+    """
     searchClimbs(input: ClimbSearchInput!): ClimbSearchResult!
-    # Get a single climb by UUID
+
+    """
+    Get a single climb by its UUID.
+    """
     climb(
       boardName: String!
       layoutId: Int!
@@ -552,146 +995,306 @@ export const typeDefs = /* GraphQL */ `
     # User Management Queries (require auth)
     # ============================================
 
-    # Get current user's profile
+    """
+    Get the currently authenticated user's profile.
+    Returns null if not authenticated.
+    """
     profile: UserProfile
-    # Get all Aurora credentials status for current user
+
+    """
+    Get status of all stored Aurora credentials.
+    Requires authentication.
+    """
     auroraCredentials: [AuroraCredentialStatus!]!
-    # Get Aurora credential for a specific board type
+
+    """
+    Get Aurora credential for a specific board type.
+    Includes token if available. Requires authentication.
+    """
     auroraCredential(boardType: String!): AuroraCredential
 
     # ============================================
     # Favorites Queries
     # ============================================
 
-    # Check which climbs from a list are favorited (returns favorited UUIDs)
+    """
+    Check which climbs from a list are favorited by the current user.
+    Returns array of favorited climb UUIDs.
+    """
     favorites(boardName: String!, climbUuids: [String!]!, angle: Int!): [String!]!
 
     # ============================================
     # Ticks Queries (require auth)
     # ============================================
 
-    # Get current user's ticks (local ascent tracking)
+    """
+    Get current user's ticks (recorded climb attempts).
+    Requires authentication.
+    """
     ticks(input: GetTicksInput!): [Tick!]!
-    # Get public ticks for a specific user
+
+    """
+    Get public ticks for any user by their ID.
+    """
     userTicks(userId: ID!, boardType: String!): [Tick!]!
-    # Get public ascent activity feed for a specific user (all boards, with climb details)
+
+    """
+    Get public ascent activity feed for a user.
+    Includes enriched climb data for display.
+    """
     userAscentsFeed(userId: ID!, input: AscentFeedInput): AscentFeedResult!
-    # Get public ascent activity feed grouped by climb and day
+
+    """
+    Get public ascent feed grouped by climb and day.
+    Useful for summary displays.
+    """
     userGroupedAscentsFeed(userId: ID!, input: AscentFeedInput): GroupedAscentFeedResult!
-    # Get profile statistics with distinct climb counts per grade (public)
+
+    """
+    Get profile statistics with distinct climb counts per grade.
+    """
     userProfileStats(userId: ID!): ProfileStats!
 
     # ============================================
     # Playlist Queries (require auth)
     # ============================================
 
-    # Get current user's playlists for a board+layout
+    """
+    Get current user's playlists for a board+layout.
+    Requires authentication.
+    """
     userPlaylists(input: GetUserPlaylistsInput!): [Playlist!]!
-    # Get a specific playlist by ID (checks ownership/access)
+
+    """
+    Get a specific playlist by ID.
+    Checks ownership/access permissions.
+    """
     playlist(playlistId: ID!): Playlist
-    # Get playlists that contain a specific climb
+
+    """
+    Get IDs of playlists that contain a specific climb.
+    """
     playlistsForClimb(input: GetPlaylistsForClimbInput!): [ID!]!
-    # Get climbs in a playlist with full climb data
+
+    """
+    Get climbs in a playlist with full climb data.
+    """
     playlistClimbs(input: GetPlaylistClimbsInput!): PlaylistClimbsResult!
 
     # ============================================
     # Playlist Discovery Queries (no auth required)
     # ============================================
 
-    # Discover public playlists with at least 1 climb
+    """
+    Discover public playlists with at least 1 climb.
+    """
     discoverPlaylists(input: DiscoverPlaylistsInput!): DiscoverPlaylistsResult!
-    # Get playlist creators for autocomplete
+
+    """
+    Get playlist creators for autocomplete suggestions.
+    """
     playlistCreators(input: GetPlaylistCreatorsInput!): [PlaylistCreator!]!
   }
 
+  """
+  Root mutation type for all write operations.
+  """
   type Mutation {
+    """
+    Join an existing session or create it if it doesn't exist.
+    Returns the session with current state.
+    """
     joinSession(sessionId: ID!, boardPath: String!, username: String, avatarUrl: String, initialQueue: [ClimbQueueItemInput!], initialCurrentClimb: ClimbQueueItemInput, sessionName: String): Session!
-    # Create a new session (optionally discoverable with GPS)
+
+    """
+    Create a new session with GPS coordinates for discovery.
+    """
     createSession(input: CreateSessionInput!): Session!
+
+    """
+    Leave the current session.
+    """
     leaveSession: Boolean!
+
+    """
+    End a session (leader only).
+    """
     endSession(sessionId: ID!): Boolean!
+
+    """
+    Update display name and avatar in the current session.
+    """
     updateUsername(username: String!, avatarUrl: String): Boolean!
 
+    """
+    Add a climb to the queue.
+    Optional position parameter for inserting at specific index.
+    """
     addQueueItem(item: ClimbQueueItemInput!, position: Int): ClimbQueueItem!
+
+    """
+    Remove a climb from the queue by its queue item UUID.
+    """
     removeQueueItem(uuid: ID!): Boolean!
+
+    """
+    Move a queue item from one position to another.
+    """
     reorderQueueItem(uuid: ID!, oldIndex: Int!, newIndex: Int!): Boolean!
+
+    """
+    Set the currently displayed climb.
+    Optionally adds it to the queue if not already present.
+    """
     setCurrentClimb(item: ClimbQueueItemInput, shouldAddToQueue: Boolean, correlationId: ID): ClimbQueueItem
+
+    """
+    Toggle mirrored display for the current climb.
+    """
     mirrorCurrentClimb(mirrored: Boolean!): ClimbQueueItem
+
+    """
+    Replace a queue item with a new one (same UUID).
+    """
     replaceQueueItem(uuid: ID!, item: ClimbQueueItemInput!): ClimbQueueItem!
+
+    """
+    Replace the entire queue state.
+    Used for bulk operations or syncing from external sources.
+    """
     setQueue(queue: [ClimbQueueItemInput!]!, currentClimbQueueItem: ClimbQueueItemInput): QueueState!
 
     # ============================================
     # User Management Mutations (require auth)
     # ============================================
 
-    # Update current user's profile
+    """
+    Update current user's profile.
+    Requires authentication.
+    """
     updateProfile(input: UpdateProfileInput!): UserProfile!
 
     # ============================================
     # Aurora Credentials Mutations (require auth)
     # ============================================
 
-    # Save Aurora climbing credentials (validates with Aurora API)
+    """
+    Save Aurora climbing credentials.
+    Validates with Aurora API before saving.
+    """
     saveAuroraCredential(input: SaveAuroraCredentialInput!): AuroraCredentialStatus!
-    # Delete Aurora credentials for a board type
+
+    """
+    Delete stored Aurora credentials for a board type.
+    """
     deleteAuroraCredential(boardType: String!): Boolean!
 
     # ============================================
     # Favorites Mutations (require auth)
     # ============================================
 
-    # Toggle favorite status for a climb (add or remove)
+    """
+    Toggle favorite status for a climb.
+    Returns new favorite state.
+    """
     toggleFavorite(input: ToggleFavoriteInput!): ToggleFavoriteResult!
 
     # ============================================
     # Ticks Mutations (require auth)
     # ============================================
 
-    # Save a new tick (local ascent tracking)
+    """
+    Save a new tick (climb attempt record).
+    """
     saveTick(input: SaveTickInput!): Tick!
 
     # ============================================
     # Playlist Mutations (require auth)
     # ============================================
 
-    # Create a new playlist
+    """
+    Create a new playlist.
+    """
     createPlaylist(input: CreatePlaylistInput!): Playlist!
-    # Update playlist metadata
+
+    """
+    Update playlist metadata.
+    """
     updatePlaylist(input: UpdatePlaylistInput!): Playlist!
-    # Delete a playlist (only owner can delete)
+
+    """
+    Delete a playlist (owner only).
+    """
     deletePlaylist(playlistId: ID!): Boolean!
-    # Add a climb to a playlist
+
+    """
+    Add a climb to a playlist.
+    """
     addClimbToPlaylist(input: AddClimbToPlaylistInput!): PlaylistClimb!
-    # Remove a climb from a playlist
+
+    """
+    Remove a climb from a playlist.
+    """
     removeClimbFromPlaylist(input: RemoveClimbFromPlaylistInput!): Boolean!
   }
 
+  """
+  Root subscription type for real-time updates.
+  """
   type Subscription {
+    """
+    Subscribe to session membership changes (users joining/leaving, leader changes).
+    """
     sessionUpdates(sessionId: ID!): SessionEvent!
+
+    """
+    Subscribe to queue changes (items added/removed/reordered, current climb changes).
+    """
     queueUpdates(sessionId: ID!): QueueEvent!
   }
 
-  # Session Events
+  """
+  Union of possible session events.
+  """
   union SessionEvent = UserJoined | UserLeft | LeaderChanged | SessionEnded
 
+  """
+  Event when a user joins the session.
+  """
   type UserJoined {
+    "The user who joined"
     user: SessionUser!
   }
 
+  """
+  Event when a user leaves the session.
+  """
   type UserLeft {
+    "ID of the user who left"
     userId: ID!
   }
 
+  """
+  Event when session leadership changes.
+  """
   type LeaderChanged {
+    "ID of the new leader"
     leaderId: ID!
   }
 
+  """
+  Event when the session ends.
+  """
   type SessionEnded {
+    "Reason for session ending"
     reason: String!
+    "Optional path to redirect to"
     newPath: String
   }
 
-  # Queue Events
+  """
+  Union of possible queue events.
+  """
   union QueueEvent =
       FullSync
     | QueueItemAdded
@@ -700,38 +1303,74 @@ export const typeDefs = /* GraphQL */ `
     | CurrentClimbChanged
     | ClimbMirrored
 
+  """
+  Full queue state sync event.
+  Sent on initial connection or when delta sync isn't possible.
+  """
   type FullSync {
+    "Current sequence number"
     sequence: Int!
+    "Complete queue state"
     state: QueueState!
   }
 
+  """
+  Event when an item is added to the queue.
+  """
   type QueueItemAdded {
+    "Sequence number of this event"
     sequence: Int!
+    "The added item"
     item: ClimbQueueItem!
+    "Position where item was inserted (null = end)"
     position: Int
   }
 
+  """
+  Event when an item is removed from the queue.
+  """
   type QueueItemRemoved {
+    "Sequence number of this event"
     sequence: Int!
+    "UUID of the removed item"
     uuid: ID!
   }
 
+  """
+  Event when queue order changes.
+  """
   type QueueReordered {
+    "Sequence number of this event"
     sequence: Int!
+    "UUID of the moved item"
     uuid: ID!
+    "Previous position"
     oldIndex: Int!
+    "New position"
     newIndex: Int!
   }
 
+  """
+  Event when the current climb changes.
+  """
   type CurrentClimbChanged {
+    "Sequence number of this event"
     sequence: Int!
+    "New current climb (null to clear)"
     item: ClimbQueueItem
+    "ID of the client that made this change"
     clientId: ID
+    "Correlation ID for request tracking"
     correlationId: ID
   }
 
+  """
+  Event when the current climb's mirror state changes.
+  """
   type ClimbMirrored {
+    "Sequence number of this event"
     sequence: Int!
+    "New mirror state"
     mirrored: Boolean!
   }
 `;
