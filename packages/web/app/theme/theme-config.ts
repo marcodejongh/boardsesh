@@ -43,6 +43,16 @@ export const themeTokens = {
     surfaceOverlay: 'rgba(255, 255, 255, 0.95)', // Semi-transparent overlay
   },
 
+  // Syntax highlighting colors (VS Code dark theme inspired)
+  syntax: {
+    keyword: '#569cd6',
+    type: '#4ec9b0',
+    string: '#ce9178',
+    comment: '#6a9955',
+    parameter: '#9cdcfe',
+    default: '#d4d4d4',
+  },
+
   // Shadows
   shadows: {
     xs: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
@@ -126,3 +136,4 @@ export const themeTokens = {
 export type ThemeTokens = typeof themeTokens;
 export type ColorTokens = typeof themeTokens.colors;
 export type NeutralTokens = typeof themeTokens.neutral;
+export type SyntaxTokens = typeof themeTokens.syntax;
