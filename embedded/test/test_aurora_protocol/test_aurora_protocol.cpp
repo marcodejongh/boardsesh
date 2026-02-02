@@ -343,6 +343,7 @@ void test_invalid_checksum_rejected(void) {
     };
 
     bool result = protocol->addData(frame, sizeof(frame));
+    (void)result;  // Return value not important - we're testing no LEDs produced
 
     // Should not produce valid output with bad checksum
     // The frame will be rejected and buffer searched for next valid frame
@@ -362,6 +363,7 @@ void test_missing_stx_skipped(void) {
 
     // Should skip the invalid frame
     bool result = protocol->addData(frame, sizeof(frame));
+    (void)result;  // Return value not important - we're testing no LEDs produced
     TEST_ASSERT_EQUAL(0, protocol->getLedCommands().size());
 }
 
@@ -380,6 +382,7 @@ void test_missing_etx_skipped(void) {
     frame[2] = CMD_V3_PACKET_ONLY ^ 0xFF;
 
     bool result = protocol->addData(frame, sizeof(frame));
+    (void)result;  // Return value not important - we're testing no LEDs produced
     TEST_ASSERT_EQUAL(0, protocol->getLedCommands().size());
 }
 
