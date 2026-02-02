@@ -12,10 +12,10 @@
 #include <cstdlib>
 #include <cstring>
 
-// Test counters
-static int unity_tests_run = 0;
-static int unity_tests_failed = 0;
-static const char* unity_current_test = nullptr;
+// Test counters - using inline to avoid ODR violations if header included multiple times
+inline int unity_tests_run = 0;
+inline int unity_tests_failed = 0;
+inline const char* unity_current_test = nullptr;
 
 // Unity macros
 #define UNITY_BEGIN() (unity_tests_run = 0, unity_tests_failed = 0, 0)
