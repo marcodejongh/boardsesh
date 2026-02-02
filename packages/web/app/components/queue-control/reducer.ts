@@ -129,10 +129,10 @@ export function queueReducer(state: QueueState, action: QueueAction): QueueState
         return state;
       }
 
-      // Skip if climb already exists in queue (check by climb.uuid, not item.uuid)
-      // This makes the operation idempotent and prevents duplicate climbs
-      // Filter out any corrupted queue items during the check
-      if (state.queue.some(qItem => qItem?.climb?.uuid === item.climb.uuid)) {
+      // Skip if this exact queue item already exists (check by item.uuid for idempotency)
+      // Note: We check item.uuid, NOT climb.uuid - the same climb CAN appear multiple times
+      // in the queue (e.g., user adds it again after completing it)
+      if (state.queue.some(qItem => qItem?.uuid === item.uuid)) {
         return state;
       }
 
@@ -232,11 +232,10 @@ export function queueReducer(state: QueueState, action: QueueAction): QueueState
 
       let newQueue = state.queue;
 
-      // Add to queue if requested and climb doesn't already exist in queue
-      // IMPORTANT: Check by climb.uuid (the actual content), not item.uuid (the wrapper)
-      // This makes the operation idempotent and prevents duplicates when user swipes fast
-      // Use defensive check to handle corrupted queue items
-      if (item && item.climb && shouldAddToQueue && !state.queue.find(qItem => qItem?.climb?.uuid === item.climb.uuid)) {
+      // Add to queue if requested and this queue item doesn't already exist
+      // Check by item.uuid for idempotency - the same climb CAN appear multiple times
+      // (e.g., user adds it again after completing it)
+      if (item && item.climb && shouldAddToQueue && !state.queue.find(qItem => qItem?.uuid === item.uuid)) {
         newQueue = [...state.queue, item];
       }
 

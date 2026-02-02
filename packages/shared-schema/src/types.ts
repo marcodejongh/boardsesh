@@ -327,4 +327,73 @@ export type ConnectionContext = {
   sessionId?: string;
   userId?: string;
   isAuthenticated?: boolean;
+  // Controller-specific context (set when using API key auth)
+  controllerId?: string;
+  controllerApiKey?: string;
+};
+
+// ============================================
+// ESP32 Controller Types
+// ============================================
+
+// LED command for controller - pre-computed RGB values
+export type LedCommand = {
+  position: number;
+  r: number;
+  g: number;
+  b: number;
+  role?: number;
+};
+
+// LED update event sent to controller
+export type LedUpdate = {
+  __typename: 'LedUpdate';
+  commands: LedCommand[];
+  climbUuid?: string;
+  climbName?: string;
+  angle?: number;
+};
+
+// Ping event to keep controller connection alive
+export type ControllerPing = {
+  __typename: 'ControllerPing';
+  timestamp: string;
+};
+
+// Union of events sent to controller
+export type ControllerEvent = LedUpdate | ControllerPing;
+
+// Controller info for management UI
+export type ControllerInfo = {
+  id: string;
+  name?: string;
+  boardName: string;
+  layoutId: number;
+  sizeId: number;
+  setIds: string;
+  isOnline: boolean;
+  lastSeen?: string;
+  createdAt: string;
+};
+
+// Result of controller registration
+export type ControllerRegistration = {
+  apiKey: string;
+  controllerId: string;
+};
+
+// Input for registering a controller
+export type RegisterControllerInput = {
+  boardName: string;
+  layoutId: number;
+  sizeId: number;
+  setIds: string;
+  name?: string;
+};
+
+// Result of climb matching from LED positions
+export type ClimbMatchResult = {
+  matched: boolean;
+  climbUuid: string | null;
+  climbName: string | null;
 };

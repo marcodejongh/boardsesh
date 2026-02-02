@@ -602,6 +602,13 @@ export const typeDefs = /* GraphQL */ `
     discoverPlaylists(input: DiscoverPlaylistsInput!): DiscoverPlaylistsResult!
     # Get playlist creators for autocomplete
     playlistCreators(input: GetPlaylistCreatorsInput!): [PlaylistCreator!]!
+
+    # ============================================
+    # ESP32 Controller Queries (require auth)
+    # ============================================
+
+    # Get current user's registered controllers
+    myControllers: [ControllerInfo!]!
   }
 
   type Mutation {
@@ -664,11 +671,33 @@ export const typeDefs = /* GraphQL */ `
     addClimbToPlaylist(input: AddClimbToPlaylistInput!): PlaylistClimb!
     # Remove a climb from a playlist
     removeClimbFromPlaylist(input: RemoveClimbFromPlaylistInput!): Boolean!
+
+    # ============================================
+    # ESP32 Controller Mutations
+    # ============================================
+
+    # Register a new ESP32 controller (generates API key) - requires auth
+    registerController(input: RegisterControllerInput!): ControllerRegistration!
+    # Delete a registered controller - requires auth
+    deleteController(controllerId: ID!): Boolean!
+    # ESP32 sends LED positions from official app Bluetooth
+    # frames: Pre-built frames string from ESP32 (preferred)
+    # positions: Legacy LED positions array (for backwards compatibility)
+    setClimbFromLedPositions(
+      sessionId: ID!
+      frames: String
+      positions: [LedCommandInput!]
+      apiKey: String!
+    ): ClimbMatchResult!
+    # ESP32 heartbeat to update lastSeenAt - uses API key auth
+    controllerHeartbeat(sessionId: ID!): Boolean!
   }
 
   type Subscription {
     sessionUpdates(sessionId: ID!): SessionEvent!
     queueUpdates(sessionId: ID!): QueueEvent!
+    # ESP32 subscribes to receive LED commands - uses API key auth
+    controllerEvents(sessionId: ID!, apiKey: String!): ControllerEvent!
   }
 
   # Session Events
@@ -733,5 +762,77 @@ export const typeDefs = /* GraphQL */ `
   type ClimbMirrored {
     sequence: Int!
     mirrored: Boolean!
+  }
+
+  # ============================================
+  # ESP32 Controller Types
+  # ============================================
+
+  # LED command for controller - pre-computed RGB values
+  type LedCommand {
+    position: Int!
+    r: Int!
+    g: Int!
+    b: Int!
+  }
+
+  # Input version of LED command
+  input LedCommandInput {
+    position: Int!
+    r: Int!
+    g: Int!
+    b: Int!
+    role: Int
+  }
+
+  # LED update event sent to controller
+  type LedUpdate {
+    commands: [LedCommand!]!
+    climbUuid: String
+    climbName: String
+    angle: Int
+  }
+
+  # Ping event to keep controller connection alive
+  type ControllerPing {
+    timestamp: String!
+  }
+
+  # Union of events sent to controller
+  union ControllerEvent = LedUpdate | ControllerPing
+
+  # Controller info for management UI
+  type ControllerInfo {
+    id: ID!
+    name: String
+    boardName: String!
+    layoutId: Int!
+    sizeId: Int!
+    setIds: String!
+    isOnline: Boolean!
+    lastSeen: String
+    createdAt: String!
+  }
+
+  # Result of controller registration
+  type ControllerRegistration {
+    apiKey: String!
+    controllerId: ID!
+  }
+
+  # Input for registering a controller
+  input RegisterControllerInput {
+    boardName: String!
+    layoutId: Int!
+    sizeId: Int!
+    setIds: String!
+    name: String
+  }
+
+  # Result of climb matching from LED positions
+  type ClimbMatchResult {
+    matched: Boolean!
+    climbUuid: String
+    climbName: String
   }
 `;
