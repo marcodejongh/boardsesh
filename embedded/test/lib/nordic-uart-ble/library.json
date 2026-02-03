@@ -1,0 +1,15 @@
+{
+    "name": "nordic-uart-ble",
+    "version": "1.0.0",
+    "description": "Nordic UART BLE service (test build)",
+    "platforms": ["native", "espressif32"],
+    "dependencies": {
+        "mocks": "*",
+        "aurora-protocol": "*",
+        "led-controller": "*",
+        "log-buffer": "*"
+    },
+    "build": {
+        "flags": ["-std=c++17", "-DUNIT_TEST"]
+    }
+}

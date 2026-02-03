@@ -57,6 +57,10 @@ inline unsigned long micros() { return 0; }
 inline void delay(unsigned long ms) { (void)ms; }
 inline void delayMicroseconds(unsigned int us) { (void)us; }
 
+// Random functions (mock implementations)
+inline long random(long max) { (void)max; return 0; }
+inline long random(long min, long max) { (void)min; (void)max; return min; }
+
 // Pin functions (mock implementations)
 inline void pinMode(uint8_t pin, uint8_t mode) { (void)pin; (void)mode; }
 inline void digitalWrite(uint8_t pin, uint8_t val) { (void)pin; (void)val; }
@@ -104,6 +108,7 @@ public:
     bool operator==(const String& rhs) const { return data_ == rhs.data_; }
     bool operator==(const char* rhs) const { return data_ == (rhs ? rhs : ""); }
     bool operator!=(const String& rhs) const { return data_ != rhs.data_; }
+    bool operator<(const String& rhs) const { return data_ < rhs.data_; }
 
     char charAt(unsigned int index) const {
         if (index < data_.length()) return data_[index];

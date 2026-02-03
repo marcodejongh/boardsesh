@@ -1,0 +1,14 @@
+{
+    "name": "esp-web-server",
+    "version": "1.0.0",
+    "description": "ESP32 HTTP configuration server (test build)",
+    "platforms": ["native", "espressif32"],
+    "dependencies": {
+        "mocks": "*",
+        "config-manager": "*",
+        "wifi-utils": "*"
+    },
+    "build": {
+        "flags": ["-std=c++17", "-DUNIT_TEST"]
+    }
+}

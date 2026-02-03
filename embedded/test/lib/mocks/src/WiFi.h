@@ -9,6 +9,8 @@
 #define WIFI_MOCK_H
 
 #include <cstdint>
+#include <vector>
+#include <string>
 #include "Arduino.h"
 
 // WiFi status codes
@@ -30,6 +32,20 @@ typedef enum {
     WIFI_AP = 2,
     WIFI_AP_STA = 3
 } wifi_mode_t;
+
+// WiFi auth types
+typedef enum {
+    WIFI_AUTH_OPEN = 0,
+    WIFI_AUTH_WEP,
+    WIFI_AUTH_WPA_PSK,
+    WIFI_AUTH_WPA2_PSK,
+    WIFI_AUTH_WPA_WPA2_PSK,
+    WIFI_AUTH_WPA2_ENTERPRISE,
+    WIFI_AUTH_WPA3_PSK,
+    WIFI_AUTH_WPA2_WPA3_PSK,
+    WIFI_AUTH_WAPI_PSK,
+    WIFI_AUTH_MAX
+} wifi_auth_mode_t;
 
 /**
  * Mock IPAddress class
@@ -63,6 +79,12 @@ private:
  */
 class MockWiFi {
 public:
+    struct NetworkInfo {
+        std::string ssid;
+        int32_t rssi;
+        bool secure;
+    };
+
     MockWiFi()
         : status_(WL_DISCONNECTED)
         , mode_(WIFI_OFF)
@@ -110,6 +132,36 @@ public:
 
     int8_t RSSI() const { return rssi_; }
 
+    // Scan methods
+    int16_t scanNetworks() {
+        return networks_.size();
+    }
+
+    void scanDelete() {
+        // Reset scan results (keep for next scan)
+    }
+
+    String SSID(int index) const {
+        if (index >= 0 && (size_t)index < networks_.size()) {
+            return networks_[index].ssid.c_str();
+        }
+        return String();
+    }
+
+    int32_t RSSI(int index) const {
+        if (index >= 0 && (size_t)index < networks_.size()) {
+            return networks_[index].rssi;
+        }
+        return 0;
+    }
+
+    wifi_auth_mode_t encryptionType(int index) const {
+        if (index >= 0 && (size_t)index < networks_.size()) {
+            return networks_[index].secure ? WIFI_AUTH_WPA2_PSK : WIFI_AUTH_OPEN;
+        }
+        return WIFI_AUTH_OPEN;
+    }
+
     // Test control methods - for setting up mock state
     void mockSetStatus(wl_status_t status) { status_ = status; }
     void mockSetSSID(const char* ssid) { ssid_ = ssid ? ssid : ""; }
@@ -117,6 +169,10 @@ public:
     void mockSetLocalIP(IPAddress ip) { localIP_ = ip; }
     void mockSetLocalIP(uint8_t a, uint8_t b, uint8_t c, uint8_t d) {
         localIP_ = IPAddress(a, b, c, d);
+    }
+
+    void mockSetNetworks(const std::vector<NetworkInfo>& networks) {
+        networks_ = networks;
     }
 
     // Reset mock to initial state
@@ -127,6 +183,7 @@ public:
         rssi_ = -70;
         localIP_ = IPAddress(192, 168, 1, 100);
         ssid_ = "";
+        networks_.clear();
     }
 
 private:
@@ -136,6 +193,7 @@ private:
     int8_t rssi_;
     IPAddress localIP_;
     String ssid_;
+    std::vector<NetworkInfo> networks_;
 };
 
 extern MockWiFi WiFi;
