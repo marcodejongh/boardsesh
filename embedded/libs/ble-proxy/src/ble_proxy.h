@@ -17,6 +17,7 @@ enum class BLEProxyState {
 
 typedef void (*ProxyStateCallback)(BLEProxyState state);
 typedef void (*ProxyDataCallback)(const uint8_t* data, size_t len, bool fromApp);
+typedef void (*ProxySendToAppCallback)(const uint8_t* data, size_t len);
 
 /**
  * BLEProxy orchestrates the proxy connection between official app and Aurora board.
@@ -89,6 +90,13 @@ public:
     void setDataCallback(ProxyDataCallback callback);
 
     /**
+     * Set callback for sending data to connected app via BLE server.
+     * This must be set by the main application to provide the BLE send function.
+     * @param callback Function to send data to app via BLE
+     */
+    void setSendToAppCallback(ProxySendToAppCallback callback);
+
+    /**
      * Forward data from app to board.
      * This is called by the nordic-uart-ble server when it receives data.
      * @param data Data bytes
@@ -117,6 +125,7 @@ private:
 
     ProxyStateCallback stateCallback;
     ProxyDataCallback dataCallback;
+    ProxySendToAppCallback sendToAppCallback;
 
     void setState(BLEProxyState newState);
     void startScan();

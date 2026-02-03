@@ -1,11 +1,5 @@
 #include "led_controller.h"
 
-// For ESP32-S3 T-Display, use a different RMT channel to avoid display conflicts
-#if defined(CONFIG_IDF_TARGET_ESP32S3) && defined(ENABLE_DISPLAY)
-// Use RMT channel 1 (channel 0 might conflict with display DMA)
-#define FASTLED_RMT_MAX_CHANNELS 2
-#endif
-
 LedController LEDs;
 
 LedController::LedController() : numLeds(0), brightness(128), initialized(false) {

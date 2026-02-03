@@ -124,6 +124,7 @@ void setup() {
     String targetMac = Config.getString("proxy_mac");
     Proxy.begin(targetMac);
     Proxy.setStateCallback(onProxyStateChange);
+    Proxy.setSendToAppCallback(sendToAppViaBLE);
 #endif
 
 #ifdef ENABLE_DISPLAY

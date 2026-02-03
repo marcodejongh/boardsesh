@@ -2,9 +2,6 @@
 #include <log_buffer.h>
 #include <config_manager.h>
 
-// Forward declaration - we'll need access to the BLE server
-extern void sendToAppViaBLE(const uint8_t* data, size_t len);
-
 BLEProxy Proxy;
 
 // Static instance pointer for callbacks
@@ -35,7 +32,8 @@ BLEProxy::BLEProxy()
     , scanStartTime(0)
     , reconnectDelay(5000)
     , stateCallback(nullptr)
-    , dataCallback(nullptr) {
+    , dataCallback(nullptr)
+    , sendToAppCallback(nullptr) {
     proxyInstance = this;
 }
 
@@ -132,6 +130,10 @@ void BLEProxy::setDataCallback(ProxyDataCallback callback) {
     dataCallback = callback;
 }
 
+void BLEProxy::setSendToAppCallback(ProxySendToAppCallback callback) {
+    sendToAppCallback = callback;
+}
+
 bool BLEProxy::forwardToBoard(const uint8_t* data, size_t len) {
     if (!isConnectedToBoard()) {
         return false;
@@ -150,7 +152,9 @@ void BLEProxy::forwardToApp(const uint8_t* data, size_t len) {
     }
 
     // Forward to connected app via BLE server
-    sendToAppViaBLE(data, len);
+    if (sendToAppCallback) {
+        sendToAppCallback(data, len);
+    }
 }
 
 void BLEProxy::setState(BLEProxyState newState) {

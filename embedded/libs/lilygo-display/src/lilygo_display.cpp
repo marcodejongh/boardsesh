@@ -223,7 +223,7 @@ void LilyGoDisplay::showClimb(const char* name, const char* grade, const char* g
             url = "https://kilterboardapp.com/climbs/";
         }
         url += _climbUuid;
-        generateQRCode(url.c_str());
+        setQRCodeUrl(url.c_str());
     }
 
     // Update display
@@ -367,8 +367,8 @@ void LilyGoDisplay::drawCurrentClimb() {
     _display.setTextDatum(lgfx::top_left);
 }
 
-void LilyGoDisplay::generateQRCode(const char* url) {
-    // Store URL and generate QR code
+void LilyGoDisplay::setQRCodeUrl(const char* url) {
+    // Store URL for QR code generation (actual generation happens in drawQRCode)
     _qrUrl = url;
     _hasQRCode = true;
 }

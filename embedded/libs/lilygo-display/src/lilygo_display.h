@@ -187,7 +187,7 @@ private:
     void drawCurrentClimb();
     void drawQRCode();
     void drawHistory();
-    void generateQRCode(const char* url);
+    void setQRCodeUrl(const char* url);
 
     // Utility
     uint16_t hexToRgb565(const char* hex);

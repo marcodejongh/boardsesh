@@ -163,10 +163,9 @@ void ClimbHistory::load() {
         }
     }
 
-    // If we loaded at least one entry, consider having a current climb
-    if (index > 0) {
-        hasCurrentClimb_ = true;
-    }
+    // Note: We don't set hasCurrentClimb_ = true here because loaded history
+    // represents past climbs, not an active current climb. The current climb
+    // is only set when a new climb is explicitly added via addClimb().
 }
 
 void ClimbHistory::clear() {
