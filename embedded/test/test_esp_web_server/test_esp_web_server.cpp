@@ -38,9 +38,9 @@ void tearDown(void) {
 // Constructor Tests
 // =============================================================================
 
-void test_server_created_on_port_80(void) {
-    // Server should be created but not running
-    TEST_ASSERT_TRUE(true);  // Constructor doesn't crash
+void test_server_created_but_not_running(void) {
+    // Server should be created but not running initially
+    TEST_ASSERT_FALSE(webServer->getServer().isRunning());
 }
 
 // =============================================================================
@@ -48,54 +48,62 @@ void test_server_created_on_port_80(void) {
 // =============================================================================
 
 void test_begin_starts_server(void) {
+    TEST_ASSERT_FALSE(webServer->getServer().isRunning());
     webServer->begin();
-    // Server should be running after begin
-    TEST_ASSERT_TRUE(true);  // No crash
+    TEST_ASSERT_TRUE(webServer->getServer().isRunning());
 }
 
 void test_stop_stops_server(void) {
     webServer->begin();
+    TEST_ASSERT_TRUE(webServer->getServer().isRunning());
     webServer->stop();
-    TEST_ASSERT_TRUE(true);  // No crash
+    TEST_ASSERT_FALSE(webServer->getServer().isRunning());
 }
 
-void test_multiple_begin_calls(void) {
+void test_multiple_begin_calls_stay_running(void) {
     webServer->begin();
+    TEST_ASSERT_TRUE(webServer->getServer().isRunning());
     webServer->begin();
+    TEST_ASSERT_TRUE(webServer->getServer().isRunning());
     webServer->begin();
-    TEST_ASSERT_TRUE(true);  // No crash
+    TEST_ASSERT_TRUE(webServer->getServer().isRunning());
 }
 
-void test_multiple_stop_calls(void) {
+void test_multiple_stop_calls_stay_stopped(void) {
     webServer->begin();
     webServer->stop();
+    TEST_ASSERT_FALSE(webServer->getServer().isRunning());
     webServer->stop();
+    TEST_ASSERT_FALSE(webServer->getServer().isRunning());
     webServer->stop();
-    TEST_ASSERT_TRUE(true);  // No crash
+    TEST_ASSERT_FALSE(webServer->getServer().isRunning());
 }
 
 // =============================================================================
 // Loop Tests
 // =============================================================================
 
-void test_loop_does_not_crash_when_not_started(void) {
+void test_loop_maintains_state_when_not_started(void) {
+    TEST_ASSERT_FALSE(webServer->getServer().isRunning());
     webServer->loop();
     webServer->loop();
-    TEST_ASSERT_TRUE(true);
+    TEST_ASSERT_FALSE(webServer->getServer().isRunning());
 }
 
-void test_loop_does_not_crash_when_started(void) {
+void test_loop_maintains_state_when_started(void) {
     webServer->begin();
+    TEST_ASSERT_TRUE(webServer->getServer().isRunning());
     webServer->loop();
     webServer->loop();
-    TEST_ASSERT_TRUE(true);
+    TEST_ASSERT_TRUE(webServer->getServer().isRunning());
 }
 
-void test_loop_after_stop(void) {
+void test_loop_after_stop_maintains_stopped_state(void) {
     webServer->begin();
     webServer->stop();
+    TEST_ASSERT_FALSE(webServer->getServer().isRunning());
     webServer->loop();
-    TEST_ASSERT_TRUE(true);  // No crash
+    TEST_ASSERT_FALSE(webServer->getServer().isRunning());
 }
 
 // =============================================================================
@@ -105,7 +113,8 @@ void test_loop_after_stop(void) {
 void test_send_json_with_string(void) {
     webServer->begin();
     webServer->sendJson(200, "{\"test\":\"value\"}");
-    TEST_ASSERT_TRUE(true);  // No crash
+    TEST_ASSERT_EQUAL(200, webServer->getServer().getLastResponseCode());
+    TEST_ASSERT_EQUAL_STRING("application/json", webServer->getServer().getLastContentType().c_str());
 }
 
 void test_send_json_with_document(void) {
@@ -114,7 +123,8 @@ void test_send_json_with_document(void) {
     doc["key"] = "value";
     doc["number"] = 42;
     webServer->sendJson(200, doc);
-    TEST_ASSERT_TRUE(true);  // No crash
+    TEST_ASSERT_EQUAL(200, webServer->getServer().getLastResponseCode());
+    TEST_ASSERT_EQUAL_STRING("application/json", webServer->getServer().getLastContentType().c_str());
 }
 
 // =============================================================================
@@ -124,19 +134,19 @@ void test_send_json_with_document(void) {
 void test_send_error(void) {
     webServer->begin();
     webServer->sendError(400, "Bad Request");
-    TEST_ASSERT_TRUE(true);  // No crash
+    TEST_ASSERT_EQUAL(400, webServer->getServer().getLastResponseCode());
 }
 
 void test_send_error_404(void) {
     webServer->begin();
     webServer->sendError(404, "Not Found");
-    TEST_ASSERT_TRUE(true);  // No crash
+    TEST_ASSERT_EQUAL(404, webServer->getServer().getLastResponseCode());
 }
 
 void test_send_error_500(void) {
     webServer->begin();
     webServer->sendError(500, "Internal Server Error");
-    TEST_ASSERT_TRUE(true);  // No crash
+    TEST_ASSERT_EQUAL(500, webServer->getServer().getLastResponseCode());
 }
 
 // =============================================================================
@@ -146,8 +156,8 @@ void test_send_error_500(void) {
 void test_get_server_returns_reference(void) {
     webServer->begin();
     WebServer& server = webServer->getServer();
-    // Should be able to get server reference
-    TEST_ASSERT_TRUE(true);  // No crash
+    // Verify we can use the server reference
+    TEST_ASSERT_TRUE(server.isRunning());
 }
 
 // =============================================================================
@@ -383,18 +393,18 @@ int main(int argc, char **argv) {
     UNITY_BEGIN();
 
     // Constructor tests
-    RUN_TEST(test_server_created_on_port_80);
+    RUN_TEST(test_server_created_but_not_running);
 
     // Begin/Stop tests
     RUN_TEST(test_begin_starts_server);
     RUN_TEST(test_stop_stops_server);
-    RUN_TEST(test_multiple_begin_calls);
-    RUN_TEST(test_multiple_stop_calls);
+    RUN_TEST(test_multiple_begin_calls_stay_running);
+    RUN_TEST(test_multiple_stop_calls_stay_stopped);
 
     // Loop tests
-    RUN_TEST(test_loop_does_not_crash_when_not_started);
-    RUN_TEST(test_loop_does_not_crash_when_started);
-    RUN_TEST(test_loop_after_stop);
+    RUN_TEST(test_loop_maintains_state_when_not_started);
+    RUN_TEST(test_loop_maintains_state_when_started);
+    RUN_TEST(test_loop_after_stop_maintains_stopped_state);
 
     // SendJson tests
     RUN_TEST(test_send_json_with_string);

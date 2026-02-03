@@ -130,20 +130,53 @@ void test_begin_registers_nus_service_uuid(void) {
 // Callback Registration Tests
 // =============================================================================
 
-void test_set_connect_callback(void) {
+void test_set_connect_callback_and_verify_invocation(void) {
     ble->setConnectCallback(testConnectCallback);
-    // Callback stored internally - no crash
-    TEST_ASSERT_TRUE(true);
+    ble->begin("Test Device");
+
+    // Simulate connection - callback should be invoked
+    ble_gap_conn_desc desc;
+    memset(&desc, 0, sizeof(desc));
+    desc.conn_handle = 1;
+
+    NimBLEDevice::getServer()->mockConnect(&desc);
+
+    TEST_ASSERT_EQUAL(1, connectCallbackCount);
+    TEST_ASSERT_TRUE(lastConnectState);
 }
 
-void test_set_data_callback(void) {
+void test_set_data_callback_and_verify_invocation(void) {
     ble->setDataCallback(testDataCallback);
-    TEST_ASSERT_TRUE(true);
+    ble->begin("Test Device");
+
+    // Connect first
+    ble_gap_conn_desc desc;
+    memset(&desc, 0, sizeof(desc));
+    desc.conn_handle = 1;
+    NimBLEDevice::getServer()->mockConnect(&desc);
+
+    // Get the RX characteristic and simulate a write
+    NimBLEService* service = NimBLEDevice::getServer()->getServiceByUUID(NUS_SERVICE_UUID);
+    TEST_ASSERT_NOT_NULL(service);
+
+    NimBLECharacteristic* rxChar = service->getCharacteristic(NUS_RX_CHARACTERISTIC);
+    TEST_ASSERT_NOT_NULL(rxChar);
+
+    // Write raw data (not aurora protocol)
+    uint8_t testData[] = {0x01, 0x02, 0x03};
+    rxChar->mockWrite(testData, sizeof(testData));
+
+    TEST_ASSERT_EQUAL(1, dataCallbackCount);
+    TEST_ASSERT_EQUAL(3, lastDataReceived.size());
+    TEST_ASSERT_EQUAL(0x01, lastDataReceived[0]);
 }
 
-void test_set_led_data_callback(void) {
+void test_set_led_data_callback_registration(void) {
+    // LED data callback requires full Aurora protocol frames
+    // Just verify registration doesn't affect state
+    bool connectedBefore = ble->isConnected();
     ble->setLedDataCallback(testLedDataCallback);
-    TEST_ASSERT_TRUE(true);
+    TEST_ASSERT_EQUAL(connectedBefore, ble->isConnected());
 }
 
 // =============================================================================
@@ -324,9 +357,10 @@ void test_disconnect_client_when_connected(void) {
 
 void test_disconnect_client_when_not_connected(void) {
     ble->begin("Test Device");
-    // Not connected - should not crash
+    TEST_ASSERT_FALSE(ble->isConnected());
+    // Not connected - should safely do nothing and remain not connected
     ble->disconnectClient();
-    TEST_ASSERT_TRUE(true);
+    TEST_ASSERT_FALSE(ble->isConnected());
 }
 
 // =============================================================================
@@ -341,10 +375,21 @@ void test_send_bytes_when_connected(void) {
     desc.conn_handle = 1;
 
     NimBLEDevice::getServer()->mockConnect(&desc);
+    TEST_ASSERT_TRUE(ble->isConnected());
+
+    // Get the TX characteristic to verify data was sent
+    NimBLEService* service = NimBLEDevice::getServer()->getServiceByUUID(NUS_SERVICE_UUID);
+    TEST_ASSERT_NOT_NULL(service);
+    NimBLECharacteristic* txChar = service->getCharacteristic(NUS_TX_CHARACTERISTIC);
+    TEST_ASSERT_NOT_NULL(txChar);
+
+    int notifyCountBefore = txChar->getNotifyCount();
 
     uint8_t data[] = {0x01, 0x02, 0x03};
     ble->send(data, sizeof(data));
-    TEST_ASSERT_TRUE(true);  // No crash
+
+    // Verify notify was called (data sent)
+    TEST_ASSERT_EQUAL(notifyCountBefore + 1, txChar->getNotifyCount());
 }
 
 void test_send_string_when_connected(void) {
@@ -355,31 +400,49 @@ void test_send_string_when_connected(void) {
     desc.conn_handle = 1;
 
     NimBLEDevice::getServer()->mockConnect(&desc);
+    TEST_ASSERT_TRUE(ble->isConnected());
 
+    NimBLEService* service = NimBLEDevice::getServer()->getServiceByUUID(NUS_SERVICE_UUID);
+    NimBLECharacteristic* txChar = service->getCharacteristic(NUS_TX_CHARACTERISTIC);
+
+    int notifyCountBefore = txChar->getNotifyCount();
     ble->send(String("Hello"));
-    TEST_ASSERT_TRUE(true);  // No crash
+
+    TEST_ASSERT_EQUAL(notifyCountBefore + 1, txChar->getNotifyCount());
 }
 
 void test_send_when_not_connected(void) {
     ble->begin("Test Device");
-    // Not connected - should not crash
+    TEST_ASSERT_FALSE(ble->isConnected());
+
+    NimBLEService* service = NimBLEDevice::getServer()->getServiceByUUID(NUS_SERVICE_UUID);
+    NimBLECharacteristic* txChar = service->getCharacteristic(NUS_TX_CHARACTERISTIC);
+    int notifyCountBefore = txChar->getNotifyCount();
+
+    // Send when not connected - should not send
     uint8_t data[] = {0x01, 0x02, 0x03};
     ble->send(data, sizeof(data));
-    TEST_ASSERT_TRUE(true);  // No crash
+
+    // Verify no notification was sent
+    TEST_ASSERT_EQUAL(notifyCountBefore, txChar->getNotifyCount());
 }
 
 // =============================================================================
 // Loop Tests
 // =============================================================================
 
-void test_loop_does_not_crash_when_disconnected(void) {
+void test_loop_maintains_disconnected_state(void) {
     ble->begin("Test Device");
+    TEST_ASSERT_FALSE(ble->isConnected());
+
     ble->loop();
     ble->loop();
-    TEST_ASSERT_TRUE(true);
+
+    // State should be preserved
+    TEST_ASSERT_FALSE(ble->isConnected());
 }
 
-void test_loop_does_not_crash_when_connected(void) {
+void test_loop_maintains_connected_state(void) {
     ble->begin("Test Device");
 
     ble_gap_conn_desc desc;
@@ -387,10 +450,13 @@ void test_loop_does_not_crash_when_connected(void) {
     desc.conn_handle = 1;
 
     NimBLEDevice::getServer()->mockConnect(&desc);
+    TEST_ASSERT_TRUE(ble->isConnected());
 
     ble->loop();
     ble->loop();
-    TEST_ASSERT_TRUE(true);
+
+    // State should be preserved
+    TEST_ASSERT_TRUE(ble->isConnected());
 }
 
 // =============================================================================
@@ -456,9 +522,9 @@ int main(int argc, char **argv) {
     RUN_TEST(test_begin_registers_nus_service_uuid);
 
     // Callback registration tests
-    RUN_TEST(test_set_connect_callback);
-    RUN_TEST(test_set_data_callback);
-    RUN_TEST(test_set_led_data_callback);
+    RUN_TEST(test_set_connect_callback_and_verify_invocation);
+    RUN_TEST(test_set_data_callback_and_verify_invocation);
+    RUN_TEST(test_set_led_data_callback_registration);
 
     // Connection lifecycle tests
     RUN_TEST(test_connection_callback_called_on_connect);
@@ -485,8 +551,8 @@ int main(int argc, char **argv) {
     RUN_TEST(test_send_when_not_connected);
 
     // Loop tests
-    RUN_TEST(test_loop_does_not_crash_when_disconnected);
-    RUN_TEST(test_loop_does_not_crash_when_connected);
+    RUN_TEST(test_loop_maintains_disconnected_state);
+    RUN_TEST(test_loop_maintains_connected_state);
 
     // UUID constants tests
     RUN_TEST(test_service_uuids_defined);

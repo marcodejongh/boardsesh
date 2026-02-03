@@ -91,12 +91,11 @@ void test_set_state_callback(void) {
 // Connection State Tests
 // =============================================================================
 
-void test_is_connected_true_when_connection_ack(void) {
-    // Manually simulate state changes (in real code, these come from WS events)
+void test_connecting_state_not_connected(void) {
+    // Test that CONNECTING state is not considered "connected"
     client->begin("test.host.com", 443, "/graphql", nullptr);
 
-    // isConnected should return true for CONNECTION_ACK or SUBSCRIBED states
-    // We can't easily set state directly, so we verify initial state
+    // isConnected should return false when in CONNECTING state
     TEST_ASSERT_EQUAL(GraphQLConnectionState::CONNECTING, client->getState());
     TEST_ASSERT_FALSE(client->isConnected());
 }
@@ -119,14 +118,24 @@ void test_disconnect_sets_state_to_disconnected(void) {
 }
 
 // =============================================================================
-// LED Hash Computation Tests (via sendLedPositions behavior)
+// Display Hash Tests
 // =============================================================================
 
-void test_led_hash_different_for_different_positions(void) {
-    // Testing that the hash computation produces different values for different inputs
-    // We can test this indirectly through getCurrentDisplayHash after LED updates
+void test_initial_display_hash_zero(void) {
+    // Display hash starts at 0, only updated from backend LED updates via handleLedUpdate
+    TEST_ASSERT_EQUAL_UINT32(0, client->getCurrentDisplayHash());
+}
 
-    // Initial hash should be 0
+void test_display_hash_unchanged_by_send(void) {
+    // sendLedPositions uses a separate lastSentLedHash internally for deduplication
+    // getCurrentDisplayHash returns the display hash (set by handleLedUpdate from backend)
+    client->begin("test.host.com", 443, "/graphql", nullptr);
+    client->subscribe("test-sub", "subscription { test }", nullptr);
+
+    LedCommand commands[2] = {{10, 255, 0, 0}, {20, 0, 255, 0}};
+    client->sendLedPositions(commands, 2, 40);
+
+    // Display hash should remain 0 since it's only updated from backend
     TEST_ASSERT_EQUAL_UINT32(0, client->getCurrentDisplayHash());
 }
 
@@ -134,10 +143,12 @@ void test_led_hash_different_for_different_positions(void) {
 // Message Callback Tests
 // =============================================================================
 
-void test_set_message_callback(void) {
+void test_set_message_callback_stores_callback(void) {
+    // Setting callback should not affect state
+    GraphQLConnectionState stateBefore = client->getState();
     client->setMessageCallback(messageCallback);
-    // Callback is stored internally, will be called when messages arrive
-    TEST_ASSERT_TRUE(true);  // Verify no crash
+    TEST_ASSERT_EQUAL(stateBefore, client->getState());
+    // Note: Callback invocation tested indirectly via message handling
 }
 
 // =============================================================================
@@ -158,19 +169,20 @@ void test_config_keys_are_defined(void) {
 // Loop Behavior Tests
 // =============================================================================
 
-void test_loop_does_not_crash_when_disconnected(void) {
-    // Loop should be safe to call even when disconnected
+void test_loop_maintains_state_when_disconnected(void) {
+    // Loop should maintain DISCONNECTED state
+    TEST_ASSERT_EQUAL(GraphQLConnectionState::DISCONNECTED, client->getState());
     client->loop();
     client->loop();
-    client->loop();
-    TEST_ASSERT_TRUE(true);  // Verify no crash
+    TEST_ASSERT_EQUAL(GraphQLConnectionState::DISCONNECTED, client->getState());
 }
 
-void test_loop_does_not_crash_after_begin(void) {
+void test_loop_maintains_state_when_connecting(void) {
     client->begin("test.host.com", 443, "/graphql", nullptr);
+    TEST_ASSERT_EQUAL(GraphQLConnectionState::CONNECTING, client->getState());
     client->loop();
     client->loop();
-    TEST_ASSERT_TRUE(true);  // Verify no crash
+    TEST_ASSERT_EQUAL(GraphQLConnectionState::CONNECTING, client->getState());
 }
 
 // =============================================================================
@@ -196,46 +208,56 @@ void test_subscribe_with_variables(void) {
 // Unsubscribe Tests
 // =============================================================================
 
-void test_unsubscribe_does_not_crash(void) {
+void test_unsubscribe_maintains_connection_state(void) {
     client->begin("test.host.com", 443, "/graphql", nullptr);
+    client->subscribe("test-sub", "subscription { test }", nullptr);
+    TEST_ASSERT_EQUAL(GraphQLConnectionState::SUBSCRIBED, client->getState());
+
     client->unsubscribe("test-sub");
-    TEST_ASSERT_TRUE(true);  // Verify no crash
+    // After unsubscribe, state should still be valid (not crash)
+    TEST_ASSERT_TRUE(client->getState() == GraphQLConnectionState::CONNECTING ||
+                     client->getState() == GraphQLConnectionState::SUBSCRIBED);
 }
 
 // =============================================================================
 // Send Tests
 // =============================================================================
 
-void test_send_query_does_not_crash(void) {
+void test_send_query_maintains_state(void) {
     client->begin("test.host.com", 443, "/graphql", nullptr);
+    GraphQLConnectionState stateBefore = client->getState();
     client->send("query { test }", nullptr);
-    TEST_ASSERT_TRUE(true);  // Verify no crash
+    // Send should not change connection state
+    TEST_ASSERT_EQUAL(stateBefore, client->getState());
 }
 
-void test_send_query_with_variables(void) {
+void test_send_query_with_variables_maintains_state(void) {
     client->begin("test.host.com", 443, "/graphql", nullptr);
+    GraphQLConnectionState stateBefore = client->getState();
     client->send("query Test($id: ID!) { test(id: $id) }", "{\"id\":\"123\"}");
-    TEST_ASSERT_TRUE(true);  // Verify no crash
+    TEST_ASSERT_EQUAL(stateBefore, client->getState());
 }
 
 // =============================================================================
 // sendLedPositions Tests
 // =============================================================================
 
-void test_send_led_positions_requires_subscribed_state(void) {
-    // When not subscribed, sendLedPositions should not crash but also won't send
+void test_send_led_positions_skipped_when_not_subscribed(void) {
+    // When not subscribed, sendLedPositions should skip (state preserved)
     LedCommand commands[2] = {
         {10, 255, 0, 0},   // Position 10, red
         {20, 0, 255, 0}    // Position 20, green
     };
 
     client->begin("test.host.com", 443, "/graphql", nullptr);
-    // State is CONNECTING, not SUBSCRIBED
+    TEST_ASSERT_EQUAL(GraphQLConnectionState::CONNECTING, client->getState());
+
+    // State is CONNECTING, not SUBSCRIBED - should not crash and state preserved
     client->sendLedPositions(commands, 2, 40);
-    TEST_ASSERT_TRUE(true);  // Should not crash
+    TEST_ASSERT_EQUAL(GraphQLConnectionState::CONNECTING, client->getState());
 }
 
-void test_send_led_positions_when_subscribed(void) {
+void test_send_led_positions_maintains_subscribed_state(void) {
     LedCommand commands[3] = {
         {10, 255, 0, 0},   // Position 10, red
         {20, 0, 255, 0},   // Position 20, green
@@ -244,12 +266,24 @@ void test_send_led_positions_when_subscribed(void) {
 
     client->begin("test.host.com", 443, "/graphql", nullptr);
     client->subscribe("test-sub", "subscription { test }", nullptr);
+    TEST_ASSERT_EQUAL(GraphQLConnectionState::SUBSCRIBED, client->getState());
+
     client->sendLedPositions(commands, 3, 40);
-    TEST_ASSERT_TRUE(true);  // Verify no crash
+    // State should still be SUBSCRIBED after sending
+    TEST_ASSERT_EQUAL(GraphQLConnectionState::SUBSCRIBED, client->getState());
 }
 
-void test_send_led_positions_deduplication(void) {
-    // Same LED data should be deduplicated
+void test_send_led_positions_handles_empty_array(void) {
+    client->begin("test.host.com", 443, "/graphql", nullptr);
+    client->subscribe("test-sub", "subscription { test }", nullptr);
+
+    // Sending empty array should not crash
+    client->sendLedPositions(nullptr, 0, 40);
+    TEST_ASSERT_EQUAL(GraphQLConnectionState::SUBSCRIBED, client->getState());
+}
+
+void test_send_led_positions_repeated_calls_preserve_state(void) {
+    // Multiple calls with same data should preserve state (tests deduplication path)
     LedCommand commands[2] = {
         {10, 255, 0, 0},
         {20, 0, 255, 0}
@@ -258,11 +292,17 @@ void test_send_led_positions_deduplication(void) {
     client->begin("test.host.com", 443, "/graphql", nullptr);
     client->subscribe("test-sub", "subscription { test }", nullptr);
 
-    // First send
+    // Multiple sends - all should maintain SUBSCRIBED state
     client->sendLedPositions(commands, 2, 40);
-    // Second send with same data - should be deduplicated
+    TEST_ASSERT_EQUAL(GraphQLConnectionState::SUBSCRIBED, client->getState());
+
     client->sendLedPositions(commands, 2, 40);
-    TEST_ASSERT_TRUE(true);  // No crash, deduplication should work
+    TEST_ASSERT_EQUAL(GraphQLConnectionState::SUBSCRIBED, client->getState());
+
+    // Change data and send again
+    commands[0].position = 15;
+    client->sendLedPositions(commands, 2, 40);
+    TEST_ASSERT_EQUAL(GraphQLConnectionState::SUBSCRIBED, client->getState());
 }
 
 // =============================================================================
@@ -319,40 +359,42 @@ int main(int argc, char **argv) {
     RUN_TEST(test_set_state_callback);
 
     // Connection state tests
-    RUN_TEST(test_is_connected_true_when_connection_ack);
+    RUN_TEST(test_connecting_state_not_connected);
     RUN_TEST(test_is_subscribed_false_when_not_subscribed);
 
     // Disconnect tests
     RUN_TEST(test_disconnect_sets_state_to_disconnected);
 
-    // LED hash tests
-    RUN_TEST(test_led_hash_different_for_different_positions);
+    // Display hash tests
+    RUN_TEST(test_initial_display_hash_zero);
+    RUN_TEST(test_display_hash_unchanged_by_send);
 
     // Message callback tests
-    RUN_TEST(test_set_message_callback);
+    RUN_TEST(test_set_message_callback_stores_callback);
 
     // Config key tests
     RUN_TEST(test_config_keys_are_defined);
 
     // Loop behavior tests
-    RUN_TEST(test_loop_does_not_crash_when_disconnected);
-    RUN_TEST(test_loop_does_not_crash_after_begin);
+    RUN_TEST(test_loop_maintains_state_when_disconnected);
+    RUN_TEST(test_loop_maintains_state_when_connecting);
 
     // Subscribe tests
     RUN_TEST(test_subscribe_changes_state_to_subscribed);
     RUN_TEST(test_subscribe_with_variables);
 
     // Unsubscribe tests
-    RUN_TEST(test_unsubscribe_does_not_crash);
+    RUN_TEST(test_unsubscribe_maintains_connection_state);
 
     // Send tests
-    RUN_TEST(test_send_query_does_not_crash);
-    RUN_TEST(test_send_query_with_variables);
+    RUN_TEST(test_send_query_maintains_state);
+    RUN_TEST(test_send_query_with_variables_maintains_state);
 
     // sendLedPositions tests
-    RUN_TEST(test_send_led_positions_requires_subscribed_state);
-    RUN_TEST(test_send_led_positions_when_subscribed);
-    RUN_TEST(test_send_led_positions_deduplication);
+    RUN_TEST(test_send_led_positions_skipped_when_not_subscribed);
+    RUN_TEST(test_send_led_positions_maintains_subscribed_state);
+    RUN_TEST(test_send_led_positions_handles_empty_array);
+    RUN_TEST(test_send_led_positions_repeated_calls_preserve_state);
 
     // State transition tests
     RUN_TEST(test_multiple_state_transitions);
