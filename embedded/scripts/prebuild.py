@@ -26,6 +26,9 @@ OUTPUT_PATH = SCRIPT_DIR.parent / "libs" / "graphql-types" / "src" / "graphql_ty
 HASH_FILE = SCRIPT_DIR.parent / "libs" / "graphql-types" / ".schema_hash"
 CODEGEN_SCRIPT = SCRIPT_DIR / "generate-graphql-types.mjs"
 
+# Flag to prevent duplicate runs during a single build
+_codegen_ran = False
+
 
 def get_combined_hash() -> str:
     """Get combined hash of schema and types files by hashing contents directly."""
@@ -89,6 +92,11 @@ def run_codegen():
 
 def before_build(source, target, env):
     """Pre-build hook to check and regenerate types if needed."""
+    global _codegen_ran
+    if _codegen_ran:
+        return
+    _codegen_ran = True
+
     print("\n[GraphQL Codegen] Checking if types need regeneration...")
 
     # Check if schema exists
@@ -121,3 +129,4 @@ env.AddPreAction("buildprog", before_build)
 
 # Also run on first build (library build)
 env.AddPreAction("$BUILD_DIR/src/main.cpp.o", before_build)
+
