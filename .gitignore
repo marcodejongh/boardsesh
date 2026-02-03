@@ -49,6 +49,10 @@ embedded/**/.pio
 embedded/**/.vscode
 !embedded/**/.vscode/extensions.json
 
+# Generated GraphQL types (regenerated from schema during build)
+embedded/libs/graphql-types/src/graphql_types.h
+embedded/libs/graphql-types/.schema_hash
+
 # backend
 packages/backend/dist
 

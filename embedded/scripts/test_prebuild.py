@@ -12,18 +12,18 @@ from pathlib import Path
 
 
 def get_file_hash(filepath: Path) -> str:
-    """Calculate MD5 hash of a file."""
+    """Calculate SHA256 hash of a file."""
     if not filepath.exists():
         return ""
     with open(filepath, "rb") as f:
-        return hashlib.md5(f.read()).hexdigest()
+        return hashlib.sha256(f.read()).hexdigest()
 
 
 def get_combined_hash(schema_path: Path, types_path: Path) -> str:
     """Get combined hash of schema and types files."""
     schema_hash = get_file_hash(schema_path)
     types_hash = get_file_hash(types_path)
-    return hashlib.md5(f"{schema_hash}{types_hash}".encode()).hexdigest()
+    return hashlib.sha256(f"{schema_hash}{types_hash}".encode()).hexdigest()
 
 
 class TestHashFunctions(unittest.TestCase):
@@ -44,7 +44,7 @@ class TestHashFunctions(unittest.TestCase):
             hash1 = get_file_hash(temp_path)
             hash2 = get_file_hash(temp_path)
             self.assertEqual(hash1, hash2)
-            self.assertEqual(len(hash1), 32)  # MD5 hex length
+            self.assertEqual(len(hash1), 64)  # SHA256 hex length
         finally:
             temp_path.unlink()
 
@@ -78,7 +78,7 @@ class TestHashFunctions(unittest.TestCase):
 
         try:
             combined = get_combined_hash(schema_path, types_path)
-            self.assertEqual(len(combined), 32)
+            self.assertEqual(len(combined), 64)  # SHA256 hex length
 
             # Should change when schema changes
             with open(schema_path, 'w') as f:
@@ -98,7 +98,7 @@ class TestHashFunctions(unittest.TestCase):
         try:
             # One file missing
             combined = get_combined_hash(schema_path, Path("/nonexistent.ts"))
-            self.assertEqual(len(combined), 32)
+            self.assertEqual(len(combined), 64)  # SHA256 hex length
         finally:
             schema_path.unlink()
 
@@ -119,7 +119,7 @@ class TestRealSchemaHash(unittest.TestCase):
             self.skipTest("Schema file not found")
 
         hash_value = get_file_hash(self.schema_path)
-        self.assertEqual(len(hash_value), 32)
+        self.assertEqual(len(hash_value), 64)  # SHA256 hex length
         self.assertNotEqual(hash_value, "")
 
     def test_real_combined_hash(self):
@@ -128,7 +128,7 @@ class TestRealSchemaHash(unittest.TestCase):
             self.skipTest("Schema file not found")
 
         combined = get_combined_hash(self.schema_path, self.types_path)
-        self.assertEqual(len(combined), 32)
+        self.assertEqual(len(combined), 64)  # SHA256 hex length
 
         # Hash should be consistent
         combined2 = get_combined_hash(self.schema_path, self.types_path)
