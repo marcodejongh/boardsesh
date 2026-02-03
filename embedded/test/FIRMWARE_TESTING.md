@@ -23,12 +23,16 @@ embedded/
 │   └── board-controller/     # Main firmware project
 └── test/                     # Unit tests
     ├── platformio.ini        # Test configuration
-    ├── mocks/                # Hardware mocks for native testing
+    ├── lib/mocks/            # Hardware mocks for native testing
     │   ├── Arduino.h         # Arduino API mock
     │   ├── FastLED.h         # FastLED mock
-    │   └── Preferences.h     # NVS mock
+    │   ├── Preferences.h     # NVS mock
+    │   └── WiFi.h            # ESP32 WiFi mock
     ├── test_aurora_protocol/ # Aurora protocol tests
-    └── test_log_buffer/      # Log buffer tests
+    ├── test_log_buffer/      # Log buffer tests
+    ├── test_led_controller/  # LED controller tests
+    ├── test_config_manager/  # Config manager tests
+    └── test_wifi_utils/      # WiFi utils tests
 ```
 
 ## Running Tests
@@ -103,11 +107,12 @@ TEST_ASSERT_EQUAL_MEMORY(expected, actual, len)
 
 ## Mocking Hardware Dependencies
 
-The `mocks/` directory contains mock implementations of hardware-dependent APIs:
+The `lib/mocks/` directory contains mock implementations of hardware-dependent APIs:
 
 - **Arduino.h**: Provides `String`, `Serial`, timing functions, pin functions
 - **FastLED.h**: Provides `CRGB` struct and `FastLED` controller
 - **Preferences.h**: Provides in-memory NVS storage simulation
+- **WiFi.h**: Provides mock WiFi class with controllable state for testing
 
 When adding new tests that require hardware mocks, extend these files or create new mock headers.
 
@@ -162,64 +167,65 @@ Ring buffer logging utility for storing and retrieving log messages.
 
 ---
 
-### 3. led-controller :x:
+### 3. led-controller :white_check_mark:
 **Location:** `libs/led-controller/`
+**Test File:** `test/test_led_controller/test_led_controller.cpp`
 
 FastLED abstraction layer for WS2812B LED control.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| LED initialization | :x: | `begin()` function |
-| Individual LED control | :x: | `setLed()` variants |
-| Batch LED updates | :x: | `setLeds()` from commands |
-| Brightness control | :x: | `setBrightness()`/`getBrightness()` |
-| Clear/show operations | :x: | FastLED interactions |
-| Blink feedback | :x: | Visual feedback function |
-| Bounds checking | :x: | Index validation |
+| LED initialization | :white_check_mark: | `begin()` function, caps at MAX_LEDS |
+| Individual LED control | :white_check_mark: | `setLed()` with CRGB and RGB variants |
+| Batch LED updates | :white_check_mark: | `setLeds()` from LedCommand arrays |
+| Brightness control | :white_check_mark: | `setBrightness()`/`getBrightness()` |
+| Clear/show operations | :white_check_mark: | FastLED interactions |
+| Blink feedback | :white_check_mark: | Visual feedback function |
+| Bounds checking | :white_check_mark: | Negative and out-of-range index handling |
 
-**Priority:** High - Core functionality used by multiple modules
+**Test Count:** 29 tests
 
 ---
 
-### 4. config-manager :x:
+### 4. config-manager :white_check_mark:
 **Location:** `libs/config-manager/`
+**Test File:** `test/test_config_manager/test_config_manager.cpp`
 
 NVS (Non-Volatile Storage) configuration persistence.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| String storage | :x: | `getString()`/`setString()` |
-| Integer storage | :x: | `getInt()`/`setInt()` |
-| Boolean storage | :x: | `getBool()`/`setBool()` |
-| Byte array storage | :x: | `getBytes()`/`setBytes()` |
-| Key existence check | :x: | `hasKey()` |
-| Key removal | :x: | `remove()` |
-| Clear all | :x: | `clear()` |
-| Default values | :x: | Fallback handling |
+| String storage | :white_check_mark: | `getString()`/`setString()` with defaults |
+| Integer storage | :white_check_mark: | `getInt()`/`setInt()` including min/max values |
+| Boolean storage | :white_check_mark: | `getBool()`/`setBool()` with toggle tests |
+| Byte array storage | :white_check_mark: | `getBytes()`/`setBytes()` with truncation |
+| Key existence check | :white_check_mark: | `hasKey()` for all types |
+| Key removal | :white_check_mark: | `remove()` and reuse |
+| Clear all | :white_check_mark: | `clear()` removes all keys |
+| Default values | :white_check_mark: | Fallback handling for missing keys |
 
-**Priority:** High - Used by wifi-utils, graphql-ws-client
-
-**Note:** Requires `Preferences.h` mock (already implemented)
+**Test Count:** 37 tests
 
 ---
 
-### 5. wifi-utils :x:
+### 5. wifi-utils :white_check_mark:
 **Location:** `libs/wifi-utils/`
+**Test File:** `test/test_wifi_utils/test_wifi_utils.cpp`
 
 WiFi connection management with auto-reconnect.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Connection state machine | :x: | State transitions |
-| Credential storage | :x: | Via config-manager |
-| Timeout handling | :x: | Connection timeout |
-| Auto-reconnect | :x: | Reconnection logic |
-| State callbacks | :x: | Notification system |
-| IP/SSID/RSSI reporting | :x: | Status information |
+| Connection state machine | :white_check_mark: | State transitions tested |
+| Credential storage | :white_check_mark: | Via config-manager integration |
+| Timeout handling | :white_check_mark: | Connection timeout logic |
+| Auto-reconnect | :white_check_mark: | Reconnection on disconnect |
+| State callbacks | :white_check_mark: | Notification system with null safety |
+| IP/SSID/RSSI reporting | :white_check_mark: | Status information methods |
 
-**Priority:** Medium - Requires WiFi mock (complex)
+**Test Count:** 27 tests
 
-**Note:** May need significant mocking of ESP32 WiFi library
+**Note:** Uses `WiFi.h` mock in `test/lib/mocks/src/`
 
 ---
 
@@ -284,9 +290,9 @@ HTTP server for configuration web interface.
 
 Based on dependencies and complexity:
 
-1. **led-controller** - Core functionality, simple interface, minimal dependencies
-2. **config-manager** - Foundation for other modules, mock already exists
-3. **wifi-utils** - Medium complexity, requires WiFi mock
+1. ~~**led-controller**~~ :white_check_mark: Complete
+2. ~~**config-manager**~~ :white_check_mark: Complete
+3. ~~**wifi-utils**~~ :white_check_mark: Complete
 4. **graphql-ws-client** - Complex, requires WebSockets mock
 5. **nordic-uart-ble** - Complex, requires NimBLE mock
 6. **esp-web-server** - Complex, requires WebServer mock

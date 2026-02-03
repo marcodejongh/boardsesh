@@ -1,0 +1,13 @@
+{
+    "name": "wifi-utils",
+    "version": "1.0.0",
+    "description": "WiFi connection management (test build)",
+    "platforms": ["native", "espressif32"],
+    "dependencies": {
+        "mocks": "*",
+        "config-manager": "*"
+    },
+    "build": {
+        "flags": ["-std=c++17", "-DUNIT_TEST"]
+    }
+}

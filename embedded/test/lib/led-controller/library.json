@@ -1,0 +1,12 @@
+{
+    "name": "led-controller",
+    "version": "1.0.0",
+    "description": "FastLED abstraction layer (test build)",
+    "platforms": ["native", "espressif32"],
+    "dependencies": {
+        "mocks": "*"
+    },
+    "build": {
+        "flags": ["-std=c++17", "-DUNIT_TEST"]
+    }
+}
