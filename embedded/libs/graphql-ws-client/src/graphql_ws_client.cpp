@@ -34,6 +34,7 @@ GraphQLWSClient::GraphQLWSClient()
     , stateCallback(nullptr)
     , ledUpdateCallback(nullptr)
     , serverPort(443)
+    , useSSL(true)
     , lastPingTime(0)
     , lastPongTime(0)
     , reconnectTime(0)
@@ -41,9 +42,29 @@ GraphQLWSClient::GraphQLWSClient()
     , currentDisplayHash(0) {}
 
 void GraphQLWSClient::begin(const char* host, uint16_t port, const char* path, const char* apiKeyParam) {
-    serverHost = host;
+    // Parse protocol prefix from host (ws:// or wss://)
+    String hostStr = host;
+    bool useSSL = true;  // Default to SSL
+
+    if (hostStr.startsWith("wss://")) {
+        useSSL = true;
+        hostStr = hostStr.substring(6);  // Remove "wss://"
+    } else if (hostStr.startsWith("ws://")) {
+        useSSL = false;
+        hostStr = hostStr.substring(5);  // Remove "ws://"
+    } else if (hostStr.startsWith("https://")) {
+        useSSL = true;
+        hostStr = hostStr.substring(8);  // Remove "https://"
+    } else if (hostStr.startsWith("http://")) {
+        useSSL = false;
+        hostStr = hostStr.substring(7);  // Remove "http://"
+    }
+    // If no prefix, default to SSL (production behavior)
+
+    serverHost = hostStr;
     serverPort = port;
     serverPath = path;
+    this->useSSL = useSSL;
     this->apiKey = apiKeyParam ? apiKeyParam : "";
     this->sessionId = Config.getString("session_id");
 
@@ -58,11 +79,38 @@ void GraphQLWSClient::begin(const char* host, uint16_t port, const char* path, c
     // Set subprotocol for graphql-ws
     ws.setExtraHeaders("Sec-WebSocket-Protocol: graphql-transport-ws");
 
-    // Connect with SSL
-    ws.beginSSL(host, port, path);
+    // Connect with or without SSL based on protocol prefix
+    if (useSSL) {
+        Logger.logln("GraphQL: Connecting with SSL to %s:%d%s", serverHost.c_str(), port, path);
+        ws.beginSSL(serverHost.c_str(), port, path);
+    } else {
+        Logger.logln("GraphQL: Connecting without SSL to %s:%d%s", serverHost.c_str(), port, path);
+        ws.begin(serverHost.c_str(), port, path);
+    }
 
     ws.setReconnectInterval(WS_RECONNECT_INTERVAL);
 
+    setState(GraphQLConnectionState::CONNECTING);
+}
+
+void GraphQLWSClient::reconnect() {
+    // Reconnect using stored settings (protocol already parsed)
+    ws.onEvent([this](WStype_t type, uint8_t* payload, size_t length) {
+        this->onWebSocketEvent(type, payload, length);
+    });
+
+    ws.enableHeartbeat(WS_PING_INTERVAL, WS_PONG_TIMEOUT, 2);
+    ws.setExtraHeaders("Sec-WebSocket-Protocol: graphql-transport-ws");
+
+    if (useSSL) {
+        Logger.logln("GraphQL: Reconnecting with SSL to %s:%d%s", serverHost.c_str(), serverPort, serverPath.c_str());
+        ws.beginSSL(serverHost.c_str(), serverPort, serverPath.c_str());
+    } else {
+        Logger.logln("GraphQL: Reconnecting without SSL to %s:%d%s", serverHost.c_str(), serverPort, serverPath.c_str());
+        ws.begin(serverHost.c_str(), serverPort, serverPath.c_str());
+    }
+
+    ws.setReconnectInterval(WS_RECONNECT_INTERVAL);
     setState(GraphQLConnectionState::CONNECTING);
 }
 
@@ -82,7 +130,7 @@ void GraphQLWSClient::loop() {
     if (state == GraphQLConnectionState::DISCONNECTED && reconnectTime > 0) {
         if (millis() > reconnectTime) {
             Logger.logln("GraphQL: Attempting reconnection...");
-            begin(serverHost.c_str(), serverPort, serverPath.c_str(), apiKey.c_str());
+            reconnect();
             reconnectTime = 0;
         }
     }
@@ -298,8 +346,12 @@ void GraphQLWSClient::handleLedUpdate(JsonObject& data) {
     // Use explicit null checks with defaults to ensure we never have null pointers
     const char* climbUuid = data["climbUuid"].as<const char*>();
     const char* climbName = data["climbName"].as<const char*>();
+    const char* grade = data["grade"].as<const char*>();
+    const char* gradeColor = data["gradeColor"].as<const char*>();
     if (!climbUuid) climbUuid = "";
     if (!climbName) climbName = "";
+    if (!grade) grade = "";
+    if (!gradeColor) gradeColor = "";
     int angle = data["angle"] | 0;
 
     if (commands.isNull() || commands.size() == 0) {
@@ -314,7 +366,7 @@ void GraphQLWSClient::handleLedUpdate(JsonObject& data) {
 
         // If callback is set, call it with empty data; otherwise clear LEDs directly
         if (ledUpdateCallback) {
-            ledUpdateCallback(nullptr, 0, climbUuid, climbName, angle);
+            ledUpdateCallback(nullptr, 0, climbUuid, climbName, grade, gradeColor, angle);
         }
 #if HAS_LED_CONTROLLER
         else {
@@ -363,7 +415,7 @@ void GraphQLWSClient::handleLedUpdate(JsonObject& data) {
 
     // If callback is set, use it; otherwise update LEDs directly
     if (ledUpdateCallback) {
-        ledUpdateCallback(ledCommands, count, climbUuid, climbName, angle);
+        ledUpdateCallback(ledCommands, count, climbUuid, climbName, grade, gradeColor, angle);
     }
 #if HAS_LED_CONTROLLER
     else {

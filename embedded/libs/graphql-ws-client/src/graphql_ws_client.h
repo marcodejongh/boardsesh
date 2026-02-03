@@ -38,7 +38,9 @@ enum class GraphQLConnectionState {
 typedef void (*GraphQLMessageCallback)(JsonDocument& doc);
 typedef void (*GraphQLStateCallback)(GraphQLConnectionState state);
 // LED update callback - receives parsed LED commands with climb info
-typedef void (*GraphQLLedUpdateCallback)(const LedCommand* commands, int count, const char* climbUuid, const char* climbName, int angle);
+// grade: difficulty string (e.g., "V5", "6a/V3")
+// gradeColor: hex color string (e.g., "#FF7043")
+typedef void (*GraphQLLedUpdateCallback)(const LedCommand* commands, int count, const char* climbUuid, const char* climbName, const char* grade, const char* gradeColor, int angle);
 
 class GraphQLWSClient {
 public:
@@ -94,6 +96,7 @@ private:
     String apiKey;
     String sessionId;
     String subscriptionId;
+    bool useSSL;
 
     unsigned long lastPingTime;
     unsigned long lastPongTime;
@@ -106,6 +109,7 @@ private:
     void handleMessage(uint8_t* payload, size_t length);
     void setState(GraphQLConnectionState newState);
     void sendPing();
+    void reconnect();
     String generateSubscriptionId();
     uint32_t computeLedHash(const LedCommand* commands, int count);
 };
