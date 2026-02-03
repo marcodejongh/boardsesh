@@ -11,60 +11,18 @@ import unittest
 from pathlib import Path
 
 
-def get_file_hash(filepath: Path) -> str:
-    """Calculate SHA256 hash of a file."""
-    if not filepath.exists():
-        return ""
-    with open(filepath, "rb") as f:
-        return hashlib.sha256(f.read()).hexdigest()
-
-
 def get_combined_hash(schema_path: Path, types_path: Path) -> str:
-    """Get combined hash of schema and types files."""
-    schema_hash = get_file_hash(schema_path)
-    types_hash = get_file_hash(types_path)
-    return hashlib.sha256(f"{schema_hash}{types_hash}".encode()).hexdigest()
+    """Get combined hash of schema and types files by hashing contents directly."""
+    hasher = hashlib.sha256()
+    for filepath in [schema_path, types_path]:
+        if filepath.exists():
+            with open(filepath, "rb") as f:
+                hasher.update(f.read())
+    return hasher.hexdigest()
 
 
 class TestHashFunctions(unittest.TestCase):
     """Test hash calculation functions."""
-
-    def test_get_file_hash_nonexistent(self):
-        """Should return empty string for non-existent file."""
-        result = get_file_hash(Path("/nonexistent/file.txt"))
-        self.assertEqual(result, "")
-
-    def test_get_file_hash_existing(self):
-        """Should return consistent hash for same content."""
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt') as f:
-            f.write("test content")
-            temp_path = Path(f.name)
-
-        try:
-            hash1 = get_file_hash(temp_path)
-            hash2 = get_file_hash(temp_path)
-            self.assertEqual(hash1, hash2)
-            self.assertEqual(len(hash1), 64)  # SHA256 hex length
-        finally:
-            temp_path.unlink()
-
-    def test_get_file_hash_different_content(self):
-        """Should return different hash for different content."""
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt') as f:
-            f.write("content 1")
-            temp_path1 = Path(f.name)
-
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt') as f:
-            f.write("content 2")
-            temp_path2 = Path(f.name)
-
-        try:
-            hash1 = get_file_hash(temp_path1)
-            hash2 = get_file_hash(temp_path2)
-            self.assertNotEqual(hash1, hash2)
-        finally:
-            temp_path1.unlink()
-            temp_path2.unlink()
 
     def test_get_combined_hash(self):
         """Should combine hashes of both files."""
@@ -114,13 +72,13 @@ class TestRealSchemaHash(unittest.TestCase):
         self.types_path = self.project_root / "packages" / "shared-schema" / "src" / "types.ts"
 
     def test_real_schema_hash(self):
-        """Should successfully hash real schema file."""
+        """Should successfully hash real schema file using combined hash."""
         if not self.schema_path.exists():
             self.skipTest("Schema file not found")
 
-        hash_value = get_file_hash(self.schema_path)
+        # Test with just schema (types may or may not exist)
+        hash_value = get_combined_hash(self.schema_path, Path("/nonexistent.ts"))
         self.assertEqual(len(hash_value), 64)  # SHA256 hex length
-        self.assertNotEqual(hash_value, "")
 
     def test_real_combined_hash(self):
         """Should successfully create combined hash of real files."""
