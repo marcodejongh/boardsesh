@@ -3,11 +3,23 @@
 
 #include <Arduino.h>
 #include <FastLED.h>
-#include <graphql_types.h>  // Generated GraphQL types (includes LedCommand)
 
 #define MAX_LEDS 500
 
-// LedCommand is now defined in graphql_types.h (auto-generated from GraphQL schema)
+/**
+ * LED command structure matching GraphQL LedCommand type.
+ * This is defined here for native test compatibility.
+ * The same struct is also generated in graphql_types.h with include guards.
+ */
+#ifndef LEDCOMMAND_DEFINED
+#define LEDCOMMAND_DEFINED
+struct LedCommand {
+    int32_t position;
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
+};
+#endif
 
 class LedController {
   public:

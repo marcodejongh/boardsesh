@@ -154,6 +154,9 @@ function graphqlTypeToCpp(graphqlType, isNullable, isArray) {
   return graphqlType;
 }
 
+// Types that need include guards (defined elsewhere for native test compatibility)
+const GUARDED_TYPES = ['LedCommand'];
+
 /**
  * Generate C++ struct for a GraphQL type
  * @param {object} type
@@ -166,6 +169,15 @@ function generateCppStruct(type) {
   }
 
   const lines = [];
+  const needsGuard = GUARDED_TYPES.includes(type.name);
+  const guardName = `${type.name.toUpperCase()}_DEFINED`;
+
+  if (needsGuard) {
+    lines.push(`// Include guard: ${type.name} may also be defined in led_controller.h for native tests`);
+    lines.push(`#ifndef ${guardName}`);
+    lines.push(`#define ${guardName}`);
+  }
+
   lines.push(`/**`);
   lines.push(` * ${type.kind === 'input' ? 'Input' : 'Output'} type: ${type.name}`);
   lines.push(` * Generated from GraphQL schema`);
@@ -191,6 +203,11 @@ function generateCppStruct(type) {
   }
 
   lines.push(`};`);
+
+  if (needsGuard) {
+    lines.push(`#endif // ${guardName}`);
+  }
+
   return lines.join('\n');
 }
 
@@ -335,6 +352,7 @@ constexpr int32_t ROLE_NOT_SET = ${ROLE_NOT_SET};
 // copy them to your own buffers before the document goes out of scope.
 
 #include <ArduinoJson.h>
+#include <new>  // for std::nothrow
 
 /**
  * Parse a LedCommand from a JsonObject
@@ -356,6 +374,12 @@ inline bool parseLedCommand(JsonObject& obj, LedCommand& cmd) {
  *
  * String pointers (climbUuid, climbName) point into the JsonDocument
  * and become invalid when the document is destroyed.
+ *
+ * NOTE: angle defaults to 0 if not present. Since 0 is a valid angle,
+ * callers cannot distinguish "no angle" from "angle=0". If this matters,
+ * check obj.containsKey("angle") before calling.
+ *
+ * @return false if memory allocation fails, true otherwise
  */
 inline bool parseLedUpdate(JsonObject& obj, LedUpdate& update) {
     JsonArray commands = obj["commands"];
@@ -364,7 +388,11 @@ inline bool parseLedUpdate(JsonObject& obj, LedUpdate& update) {
         update.commandsCount = 0;
     } else {
         update.commandsCount = commands.size();
-        update.commands = new LedCommand[update.commandsCount];
+        update.commands = new (std::nothrow) LedCommand[update.commandsCount];
+        if (update.commands == nullptr) {
+            update.commandsCount = 0;
+            return false;  // Allocation failed
+        }
         size_t i = 0;
         for (JsonObject cmd : commands) {
             parseLedCommand(cmd, update.commands[i++]);

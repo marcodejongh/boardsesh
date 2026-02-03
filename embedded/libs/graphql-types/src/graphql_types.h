@@ -29,6 +29,9 @@ namespace GraphQLTypename {
 // GraphQL Types for Controller
 // ============================================
 
+// Include guard: LedCommand may also be defined in led_controller.h for native tests
+#ifndef LEDCOMMAND_DEFINED
+#define LEDCOMMAND_DEFINED
 /**
  * Output type: LedCommand
  * Generated from GraphQL schema
@@ -39,6 +42,7 @@ struct LedCommand {
     uint8_t g;
     uint8_t b;
 };
+#endif // LEDCOMMAND_DEFINED
 
 /**
  * Input type: LedCommandInput
@@ -172,6 +176,7 @@ constexpr int32_t ROLE_NOT_SET = -1;
 // copy them to your own buffers before the document goes out of scope.
 
 #include <ArduinoJson.h>
+#include <new>  // for std::nothrow
 
 /**
  * Parse a LedCommand from a JsonObject
@@ -193,6 +198,12 @@ inline bool parseLedCommand(JsonObject& obj, LedCommand& cmd) {
  *
  * String pointers (climbUuid, climbName) point into the JsonDocument
  * and become invalid when the document is destroyed.
+ *
+ * NOTE: angle defaults to 0 if not present. Since 0 is a valid angle,
+ * callers cannot distinguish "no angle" from "angle=0". If this matters,
+ * check obj.containsKey("angle") before calling.
+ *
+ * @return false if memory allocation fails, true otherwise
  */
 inline bool parseLedUpdate(JsonObject& obj, LedUpdate& update) {
     JsonArray commands = obj["commands"];
@@ -201,7 +212,11 @@ inline bool parseLedUpdate(JsonObject& obj, LedUpdate& update) {
         update.commandsCount = 0;
     } else {
         update.commandsCount = commands.size();
-        update.commands = new LedCommand[update.commandsCount];
+        update.commands = new (std::nothrow) LedCommand[update.commandsCount];
+        if (update.commands == nullptr) {
+            update.commandsCount = 0;
+            return false;  // Allocation failed
+        }
         size_t i = 0;
         for (JsonObject cmd : commands) {
             parseLedCommand(cmd, update.commands[i++]);
