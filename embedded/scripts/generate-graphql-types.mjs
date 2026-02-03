@@ -379,7 +379,7 @@ inline bool parseLedCommand(JsonObject& obj, LedCommand& cmd) {
  * callers cannot distinguish "no angle" from "angle=0". If this matters,
  * check obj.containsKey("angle") before calling.
  *
- * @return false if memory allocation fails, true otherwise
+ * @return false if memory allocation fails or command parsing fails, true otherwise
  */
 inline bool parseLedUpdate(JsonObject& obj, LedUpdate& update) {
     JsonArray commands = obj["commands"];
@@ -395,7 +395,14 @@ inline bool parseLedUpdate(JsonObject& obj, LedUpdate& update) {
         }
         size_t i = 0;
         for (JsonObject cmd : commands) {
-            parseLedCommand(cmd, update.commands[i++]);
+            if (!parseLedCommand(cmd, update.commands[i])) {
+                // Parsing failed - free memory and return false
+                delete[] update.commands;
+                update.commands = nullptr;
+                update.commandsCount = 0;
+                return false;
+            }
+            i++;
         }
     }
     update.climbUuid = obj["climbUuid"] | nullptr;

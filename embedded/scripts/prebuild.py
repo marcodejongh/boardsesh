@@ -27,19 +27,14 @@ HASH_FILE = SCRIPT_DIR.parent / "libs" / "graphql-types" / ".schema_hash"
 CODEGEN_SCRIPT = SCRIPT_DIR / "generate-graphql-types.mjs"
 
 
-def get_file_hash(filepath: Path) -> str:
-    """Calculate SHA256 hash of a file."""
-    if not filepath.exists():
-        return ""
-    with open(filepath, "rb") as f:
-        return hashlib.sha256(f.read()).hexdigest()
-
-
 def get_combined_hash() -> str:
-    """Get combined hash of schema and types files."""
-    schema_hash = get_file_hash(SCHEMA_PATH)
-    types_hash = get_file_hash(TYPES_PATH)
-    return hashlib.sha256(f"{schema_hash}{types_hash}".encode()).hexdigest()
+    """Get combined hash of schema and types files by hashing contents directly."""
+    hasher = hashlib.sha256()
+    for filepath in [SCHEMA_PATH, TYPES_PATH]:
+        if filepath.exists():
+            with open(filepath, "rb") as f:
+                hasher.update(f.read())
+    return hasher.hexdigest()
 
 
 def get_stored_hash() -> str:
