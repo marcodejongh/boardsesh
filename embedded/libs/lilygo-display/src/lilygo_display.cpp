@@ -479,7 +479,8 @@ void LilyGoDisplay::drawHistory() {
 }
 
 uint16_t LilyGoDisplay::hexToRgb565(const char* hex) {
-    if (!hex || hex[0] != '#' || strlen(hex) < 7) {
+    // Check for null or empty string first, then validate format
+    if (!hex || strlen(hex) < 7 || hex[0] != '#') {
         return COLOR_TEXT;  // Default to white if invalid
     }
 

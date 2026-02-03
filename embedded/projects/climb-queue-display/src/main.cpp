@@ -49,8 +49,8 @@ bool hasCurrentClimb = false;
 
 void onWiFiStateChange(WiFiConnectionState state);
 void onGraphQLStateChange(GraphQLConnectionState state);
-void onLedUpdate(const LedCommand* commands, int count, const char* climbUuid,
-                 const char* climbName, const char* grade, const char* gradeColor, int angle);
+void onGraphQLMessage(JsonDocument& doc);
+void handleLedUpdate(JsonObject& data);
 
 #if !BLE_PROXY_DISABLED
 void onBleConnect(bool connected, const char* deviceName);
@@ -234,7 +234,7 @@ void onWiFiStateChange(WiFiConnectionState state) {
             Display.showConnecting();
 
             GraphQL.setStateCallback(onGraphQLStateChange);
-            GraphQL.setLedUpdateCallback(onLedUpdate);
+            GraphQL.setMessageCallback(onGraphQLMessage);
             GraphQL.begin(host.c_str(), port, path.c_str(), apiKey.c_str());
             break;
         }
@@ -285,7 +285,7 @@ void onGraphQLStateChange(GraphQLConnectionState state) {
             GraphQL.subscribe("controller-events",
                 "subscription ControllerEvents($sessionId: ID!) { "
                 "controllerEvents(sessionId: $sessionId) { "
-                "... on LedUpdate { __typename commands { position r g b } climbUuid climbName grade gradeColor angle } "
+                "... on LedUpdate { __typename commands { position r g b } climbUuid climbName climbGrade boardPath angle } "
                 "... on ControllerPing { __typename timestamp } "
                 "} }",
                 variables.c_str());
@@ -312,18 +312,40 @@ void onGraphQLStateChange(GraphQLConnectionState state) {
 }
 
 // ============================================
-// LED Update Callback
+// GraphQL Message Handler
 // ============================================
 
-void onLedUpdate(const LedCommand* commands, int count, const char* climbUuid,
-                 const char* climbName, const char* grade, const char* gradeColor, int angle) {
+void onGraphQLMessage(JsonDocument& doc) {
+    JsonObject payloadObj = doc["payload"];
+    if (payloadObj["data"].is<JsonObject>()) {
+        JsonObject data = payloadObj["data"];
+        if (data["controllerEvents"].is<JsonObject>()) {
+            JsonObject event = data["controllerEvents"];
+            const char* typename_ = event["__typename"];
+
+            if (typename_ && strcmp(typename_, "LedUpdate") == 0) {
+                handleLedUpdate(event);
+            }
+        }
+    }
+}
+
+void handleLedUpdate(JsonObject& data) {
+    JsonArray commands = data["commands"];
+    const char* climbUuid = data["climbUuid"];
+    const char* climbName = data["climbName"];
+    const char* climbGrade = data["climbGrade"];
+    const char* boardPath = data["boardPath"];
+    int angle = data["angle"] | 0;
+    int count = commands.isNull() ? 0 : commands.size();
+
     Logger.logln("LED Update: %s [%s] @ %d degrees (%d holds)",
                  climbName ? climbName : "(none)",
-                 grade ? grade : "?",
+                 climbGrade ? climbGrade : "?",
                  angle, count);
 
     // Handle clear command
-    if (commands == nullptr || count == 0) {
+    if (commands.isNull() || count == 0) {
         if (hasCurrentClimb && currentClimbName.length() > 0) {
             Display.addToHistory(currentClimbName.c_str(), currentGrade.c_str(), currentGradeColor.c_str());
         }
@@ -361,20 +383,39 @@ void onLedUpdate(const LedCommand* commands, int count, const char* climbUuid,
     // Store LED commands for BLE forwarding
     currentLedCommands.clear();
     currentLedCommands.reserve(count);
-    for (int i = 0; i < count; i++) {
-        currentLedCommands.push_back(commands[i]);
+    int i = 0;
+    for (JsonObject cmd : commands) {
+        if (i >= MAX_LED_COMMANDS) break;
+        LedCommand ledCmd;
+        ledCmd.position = cmd["position"];
+        ledCmd.r = cmd["r"];
+        ledCmd.g = cmd["g"];
+        ledCmd.b = cmd["b"];
+        currentLedCommands.push_back(ledCmd);
+        i++;
     }
 #endif
+
+    // Extract board type from boardPath (e.g., "kilter/1/12/1,2,3/40" -> "kilter")
+    String detectedBoardType = "kilter";
+    if (boardPath) {
+        String bp = boardPath;
+        int slashPos = bp.indexOf('/');
+        if (slashPos > 0) {
+            detectedBoardType = bp.substring(0, slashPos);
+        }
+        boardType = detectedBoardType;
+    }
 
     // Update state
     currentClimbUuid = climbUuid ? climbUuid : "";
     currentClimbName = climbName ? climbName : "";
-    currentGrade = grade ? grade : "";
-    currentGradeColor = gradeColor ? gradeColor : "";
+    currentGrade = climbGrade ? climbGrade : "";
+    currentGradeColor = "";  // gradeColor not available from schema
     hasCurrentClimb = true;
 
-    // Update display
-    Display.showClimb(climbName, grade, gradeColor, angle, climbUuid, boardType.c_str());
+    // Update display (pass empty gradeColor - display will use default)
+    Display.showClimb(climbName, climbGrade, "", angle, climbUuid, boardType.c_str());
 
 #if !BLE_PROXY_DISABLED
     // Forward to BLE board

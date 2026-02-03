@@ -28,7 +28,6 @@
 // State
 bool wifiConnected = false;
 bool backendConnected = false;
-String currentBoardPath = "";  // Stored from LedUpdate events
 
 // Forward declarations
 void onWiFiStateChange(WiFiConnectionState state);
@@ -340,11 +339,8 @@ void onGraphQLMessage(JsonDocument& doc) {
  */
 void handleLedUpdateExtended(JsonObject& data) {
 #ifdef ENABLE_DISPLAY
-    // Store boardPath for QR code generation
+    // Get boardPath for QR code generation and board type detection
     const char* boardPath = data["boardPath"];
-    if (boardPath) {
-        currentBoardPath = boardPath;
-    }
 
     // Update display with climb info
     const char* climbName = data["climbName"];
@@ -378,11 +374,8 @@ void handleLedUpdateExtended(JsonObject& data) {
         Display.showNoClimb();
     }
 #else
-    // Store boardPath even without display (might be useful for logging)
-    const char* boardPath = data["boardPath"];
-    if (boardPath) {
-        currentBoardPath = boardPath;
-    }
+    // Without display enabled, nothing to do with extended data
+    (void)data;  // Suppress unused parameter warning
 #endif
 }
 
