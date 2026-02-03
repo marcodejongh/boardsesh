@@ -22,6 +22,7 @@
     "db:setup": "docker-compose up db_setup",
     "db:migrate": "npm run db:migrate --workspace=@boardsesh/db",
     "db:studio": "npm run db:studio --workspace=@boardsesh/db",
+    "controller:codegen": "node embedded/scripts/generate-graphql-types.mjs",
     "controller:build": "cd embedded/projects/board-controller && pio run",
     "controller:upload": "cd embedded/projects/board-controller && pio run -t upload",
     "controller:monitor": "cd embedded/projects/board-controller && pio device monitor"
