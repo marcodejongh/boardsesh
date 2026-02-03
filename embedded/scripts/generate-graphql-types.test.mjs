@@ -423,6 +423,21 @@ describe('Integration: Parse and Generate', () => {
     assert.ok(content.includes('uint8_t r;'), 'Should use uint8_t for red');
     assert.ok(content.includes('uint8_t g;'), 'Should use uint8_t for green');
     assert.ok(content.includes('uint8_t b;'), 'Should use uint8_t for blue');
+
+    // Verify freeLedUpdate helper is generated
+    assert.ok(content.includes('inline void freeLedUpdate'), 'Should have freeLedUpdate helper');
+    assert.ok(content.includes('delete[] update.commands'), 'freeLedUpdate should delete commands array');
+
+    // Verify ROLE_NOT_SET sentinel constant
+    assert.ok(content.includes('ROLE_NOT_SET'), 'Should have ROLE_NOT_SET constant');
+    assert.ok(content.includes('cmd.role != ROLE_NOT_SET'), 'Should use ROLE_NOT_SET for comparison');
+
+    // Verify pointer lifetime documentation
+    assert.ok(content.includes('String pointer lifetime'), 'Should document pointer lifetime');
+    assert.ok(content.includes('JsonDocument'), 'Should mention JsonDocument lifetime');
+
+    // Verify no timestamp (to avoid noisy diffs)
+    assert.ok(!content.includes('Generated:'), 'Should not have timestamp in header');
   });
 });
 
@@ -464,6 +479,3 @@ describe('Edge Cases', () => {
     assert.strictEqual(climbUuid.isNullable, true);
   });
 });
-
-// Run summary
-console.log('\n✅ All tests defined. Run with: node --test embedded/scripts/generate-graphql-types.test.mjs\n');
