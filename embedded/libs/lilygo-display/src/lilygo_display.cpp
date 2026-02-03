@@ -1,4 +1,5 @@
 #include "lilygo_display.h"
+#include "grade_colors.h"
 #include <qrcode.h>
 
 // Global display instance
@@ -340,20 +341,14 @@ void LilyGoDisplay::drawCurrentClimb() {
         int badgeX = (SCREEN_WIDTH - badgeWidth) / 2;
         int badgeY = GRADE_Y;
 
-        // Get grade color
-        uint16_t gradeColor565 = COLOR_ACCENT;
-        if (_gradeColor.length() > 0) {
-            gradeColor565 = hexToRgb565(_gradeColor.c_str());
-        }
+        // Get grade color - calculate from grade string using same logic as frontend
+        uint16_t gradeColor565 = getGradeColor(_grade.c_str());
 
         // Draw rounded rectangle badge
         _display.fillRoundRect(badgeX, badgeY, badgeWidth, badgeHeight, 8, gradeColor565);
 
         // Draw grade text (determine text color based on background brightness)
-        uint8_t r = ((gradeColor565 >> 11) & 0x1F) << 3;
-        uint8_t g = ((gradeColor565 >> 5) & 0x3F) << 2;
-        uint8_t b = (gradeColor565 & 0x1F) << 3;
-        uint16_t textColor = (r + g + b > 384) ? 0x0000 : 0xFFFF;
+        uint16_t textColor = getGradeTextColor(gradeColor565);
 
         _display.setFont(&fonts::FreeSansBold12pt7b);
         _display.setTextColor(textColor);
@@ -446,10 +441,10 @@ void LilyGoDisplay::drawHistory() {
     for (int i = 0; i < itemsToShow; i++) {
         const ClimbHistoryEntry& entry = _history[_history.size() - 1 - i];
 
-        // Draw bullet with grade color
+        // Draw bullet with grade color (calculated from grade string)
         uint16_t bulletColor = COLOR_TEXT_DIM;
-        if (entry.gradeColor.length() > 0) {
-            bulletColor = hexToRgb565(entry.gradeColor.c_str());
+        if (entry.grade.length() > 0) {
+            bulletColor = getGradeColor(entry.grade.c_str());
         }
         _display.fillCircle(8, y + 6, 3, bulletColor);
 
