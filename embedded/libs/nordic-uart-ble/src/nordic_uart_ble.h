@@ -19,6 +19,7 @@
 typedef void (*BLEConnectCallback)(bool connected);
 typedef void (*BLEDataCallback)(const uint8_t* data, size_t len);
 typedef void (*BLELedDataCallback)(const LedCommand* commands, int count, int angle);
+typedef void (*BLERawForwardCallback)(const uint8_t* data, size_t len);
 
 class NordicUartBLE : public NimBLEServerCallbacks, public NimBLECharacteristicCallbacks {
   public:
@@ -37,6 +38,10 @@ class NordicUartBLE : public NimBLEServerCallbacks, public NimBLECharacteristicC
     void setConnectCallback(BLEConnectCallback callback);
     void setDataCallback(BLEDataCallback callback);
     void setLedDataCallback(BLELedDataCallback callback);
+
+    // Raw data forwarding callback (called before Aurora protocol processing)
+    // Used by BLE proxy to forward data to the actual board
+    void setRawForwardCallback(BLERawForwardCallback callback);
 
     // NimBLE callbacks
     void onConnect(NimBLEServer* server, ble_gap_conn_desc* desc) override;
@@ -74,6 +79,7 @@ class NordicUartBLE : public NimBLEServerCallbacks, public NimBLECharacteristicC
     BLEConnectCallback connectCallback;
     BLEDataCallback dataCallback;
     BLELedDataCallback ledDataCallback;
+    BLERawForwardCallback rawForwardCallback;
 
     void startAdvertising();
 };

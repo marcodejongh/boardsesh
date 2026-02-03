@@ -1,5 +1,11 @@
 #include "led_controller.h"
 
+// For ESP32-S3 T-Display, use a different RMT channel to avoid display conflicts
+#if defined(CONFIG_IDF_TARGET_ESP32S3) && defined(ENABLE_DISPLAY)
+// Use RMT channel 1 (channel 0 might conflict with display DMA)
+#define FASTLED_RMT_MAX_CHANNELS 2
+#endif
+
 LedController LEDs;
 
 LedController::LedController() : numLeds(0), brightness(128), initialized(false) {
@@ -9,9 +15,16 @@ LedController::LedController() : numLeds(0), brightness(128), initialized(false)
 void LedController::begin(uint8_t pin, uint16_t count) {
     numLeds = min(count, (uint16_t)MAX_LEDS);
 
-    // Note: FastLED.addLeds requires template parameters at compile time
-    // This is a simplified version - actual implementation needs board-specific config
+    // FastLED.addLeds requires compile-time pin constant
+    // Use conditional compilation for different board configurations
+#ifdef TDISPLAY_LED_PIN
+    // T-Display-S3: Use GPIO 43 (avoids LCD_RST on GPIO 5)
+    FastLED.addLeds<WS2812B, TDISPLAY_LED_PIN, GRB>(leds, numLeds);
+#else
+    // Default: Use GPIO 5
     FastLED.addLeds<WS2812B, 5, GRB>(leds, numLeds);
+#endif
+
     FastLED.setBrightness(brightness);
 
     clear();

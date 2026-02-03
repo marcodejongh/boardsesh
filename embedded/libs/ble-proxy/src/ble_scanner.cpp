@@ -1,0 +1,131 @@
+#include "ble_scanner.h"
+#include <log_buffer.h>
+
+BLEScanner Scanner;
+BLEScanner* BLEScanner::instance = nullptr;
+
+BLEScanner::BLEScanner()
+    : pScan(nullptr)
+    , resultCallback(nullptr)
+    , completeCallback(nullptr)
+    , scanning(false) {
+    instance = this;
+}
+
+void BLEScanner::startScan(ScanResultCallback onResult,
+                           ScanCompleteCallback onComplete,
+                           int timeoutSec) {
+    if (scanning) {
+        Logger.logln("BLEScanner: Already scanning");
+        return;
+    }
+
+    resultCallback = onResult;
+    completeCallback = onComplete;
+    discoveredBoards.clear();
+
+    // Initialize BLE if not already done
+    if (!NimBLEDevice::getInitialized()) {
+        Logger.logln("BLEScanner: BLE not initialized, skipping scan");
+        return;
+    }
+
+    pScan = NimBLEDevice::getScan();
+    pScan->setAdvertisedDeviceCallbacks(this);
+    pScan->setActiveScan(true);
+    pScan->setInterval(100);
+    pScan->setWindow(99);
+    pScan->setMaxResults(0);  // Don't store in NimBLE, we store ourselves
+
+    Logger.logln("BLEScanner: Starting scan for Aurora boards (%d sec)", timeoutSec);
+    scanning = true;
+
+    // Start scan with callback
+    pScan->start(timeoutSec, scanCompleteCB, false);
+}
+
+void BLEScanner::stopScan() {
+    if (scanning && pScan) {
+        Logger.logln("BLEScanner: Stopping scan");
+        pScan->stop();
+        scanning = false;
+    }
+}
+
+bool BLEScanner::isScanning() const {
+    return scanning;
+}
+
+const std::vector<DiscoveredBoard>& BLEScanner::getDiscoveredBoards() const {
+    return discoveredBoards;
+}
+
+const DiscoveredBoard* BLEScanner::getBestBoard() const {
+    if (discoveredBoards.empty()) {
+        return nullptr;
+    }
+
+    const DiscoveredBoard* best = &discoveredBoards[0];
+    for (const auto& board : discoveredBoards) {
+        if (board.rssi > best->rssi) {
+            best = &board;
+        }
+    }
+    return best;
+}
+
+const DiscoveredBoard* BLEScanner::findByAddress(const String& mac) const {
+    for (const auto& board : discoveredBoards) {
+        if (mac.equalsIgnoreCase(board.address.toString().c_str())) {
+            return &board;
+        }
+    }
+    return nullptr;
+}
+
+void BLEScanner::onResult(NimBLEAdvertisedDevice* advertisedDevice) {
+    // Check if this device advertises Aurora's service UUID
+    if (!advertisedDevice->isAdvertisingService(NimBLEUUID(AURORA_ADVERTISED_SERVICE_UUID))) {
+        return;
+    }
+
+    // Check if we already found this board
+    for (const auto& board : discoveredBoards) {
+        if (board.address == advertisedDevice->getAddress()) {
+            return;  // Already in list
+        }
+    }
+
+    String name = advertisedDevice->getName().c_str();
+    if (name.length() == 0) {
+        name = "Unknown Board";
+    }
+
+    DiscoveredBoard board(
+        advertisedDevice->getAddress(),
+        name,
+        advertisedDevice->getRSSI()
+    );
+
+    discoveredBoards.push_back(board);
+    Logger.logln("BLEScanner: Found Aurora board: %s (%s, %d dBm)",
+                  name.c_str(),
+                  advertisedDevice->getAddress().toString().c_str(),
+                  advertisedDevice->getRSSI());
+
+    if (resultCallback) {
+        resultCallback(board);
+    }
+}
+
+void BLEScanner::scanCompleteCB(NimBLEScanResults results) {
+    if (instance) {
+        instance->scanning = false;
+        Logger.logln("BLEScanner: Scan complete, found %d Aurora boards",
+                      instance->discoveredBoards.size());
+
+        if (instance->completeCallback) {
+            instance->completeCallback(instance->discoveredBoards);
+        }
+    }
+}

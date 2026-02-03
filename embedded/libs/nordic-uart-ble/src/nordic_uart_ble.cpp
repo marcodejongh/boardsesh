@@ -7,7 +7,7 @@ NordicUartBLE BLE;
 NordicUartBLE::NordicUartBLE()
     : pServer(nullptr), pTxCharacteristic(nullptr), pRxCharacteristic(nullptr), deviceConnected(false),
       advertising(false), connectedDeviceHandle(BLE_HS_CONN_HANDLE_NONE), connectCallback(nullptr),
-      dataCallback(nullptr), ledDataCallback(nullptr) {}
+      dataCallback(nullptr), ledDataCallback(nullptr), rawForwardCallback(nullptr) {}
 
 void NordicUartBLE::begin(const char* deviceName) {
     NimBLEDevice::init(deviceName);
@@ -67,6 +67,10 @@ void NordicUartBLE::setDataCallback(BLEDataCallback callback) {
 
 void NordicUartBLE::setLedDataCallback(BLELedDataCallback callback) {
     ledDataCallback = callback;
+}
+
+void NordicUartBLE::setRawForwardCallback(BLERawForwardCallback callback) {
+    rawForwardCallback = callback;
 }
 
 void NordicUartBLE::onConnect(NimBLEServer* server, ble_gap_conn_desc* desc) {
@@ -156,6 +160,11 @@ void NordicUartBLE::onWrite(NimBLECharacteristic* characteristic) {
         return;
 
     Logger.logln("BLE: Received %zu bytes", value.length());
+
+    // Forward raw data to proxy if callback is set (before protocol processing)
+    if (rawForwardCallback) {
+        rawForwardCallback((const uint8_t*)value.data(), value.length());
+    }
 
     // Process the packet through Aurora protocol decoder
     bool complete = protocol.processPacket((const uint8_t*)value.data(), value.length());

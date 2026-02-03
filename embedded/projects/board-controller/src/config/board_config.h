@@ -6,7 +6,13 @@
 #define FIRMWARE_VERSION "1.0.0"
 
 // LED configuration
-#define LED_PIN 5         // GPIO pin for LED data
+// Note: GPIO 5 conflicts with LCD_RST on T-Display-S3
+// Use TDISPLAY_LED_PIN build flag to override for display builds
+#ifdef TDISPLAY_LED_PIN
+#define LED_PIN TDISPLAY_LED_PIN
+#else
+#define LED_PIN 5         // GPIO pin for LED data (default for non-display builds)
+#endif
 #define NUM_LEDS 200      // Total number of LEDs
 #define LED_TYPE WS2812B  // LED strip type
 #define COLOR_ORDER GRB   // Color order

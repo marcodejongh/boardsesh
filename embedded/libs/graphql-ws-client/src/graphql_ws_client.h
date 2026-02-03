@@ -72,6 +72,7 @@ class GraphQLWSClient {
     uint16_t serverPort;
     String serverPath;
     String apiKey;
+    bool useSSL;
     String sessionId;
     String subscriptionId;
 
