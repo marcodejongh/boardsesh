@@ -1520,6 +1520,11 @@ export const typeDefs = /* GraphQL */ `
     climbGrade: String
     gradeColor: String
     boardPath: String
+    """
+    Board angle in degrees. Nullable - null means angle not specified.
+    Note: 0 is a valid angle value, so null should be used to indicate "no angle"
+    rather than defaulting to 0.
+    """
     angle: Int
     navigation: QueueNavigationContext
     "ID of client that triggered this update (null if system-initiated). ESP32 uses this to decide whether to disconnect BLE client."
