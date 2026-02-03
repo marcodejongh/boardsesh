@@ -402,7 +402,7 @@ void ESPWebServer::handleSetConfig() {
         Config.setInt("disp_br", doc["display_brightness"]);
     }
     if (doc["proxy_enabled"].is<bool>()) {
-        Config.setBool("proxy_en", doc["proxy_enabled"]);
+        Config.setBool("proxy_en", doc["proxy_enabled"].as<bool>());
     }
     if (doc["proxy_mac"].is<const char*>()) {
         Config.setString("proxy_mac", doc["proxy_mac"]);

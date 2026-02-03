@@ -182,6 +182,18 @@ class String {
         return String(data_.substr(beginIndex, endIndex - beginIndex).c_str());
     }
 
+    bool startsWith(const String& prefix) const {
+        if (prefix.length() > data_.length()) return false;
+        return data_.compare(0, prefix.length(), prefix.c_str()) == 0;
+    }
+
+    bool startsWith(const char* prefix) const {
+        if (!prefix) return false;
+        size_t prefixLen = strlen(prefix);
+        if (prefixLen > data_.length()) return false;
+        return data_.compare(0, prefixLen, prefix) == 0;
+    }
+
     void toCharArray(char* buf, size_t bufsize) const {
         if (buf && bufsize > 0) {
             size_t len = (bufsize - 1 < data_.length()) ? bufsize - 1 : data_.length();
