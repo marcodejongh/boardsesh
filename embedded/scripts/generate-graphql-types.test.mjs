@@ -450,7 +450,7 @@ describe('Integration: Parse and Generate', () => {
     assert.ok(content.includes('return false;  // Allocation failed'), 'Should return false on allocation failure');
 
     // Verify angle nullable documentation
-    assert.ok(content.includes('angle defaults to 0'), 'Should document angle nullable behavior');
+    assert.ok(content.includes('ANGLE_NOT_SET'), 'Should document angle nullable behavior with sentinel value');
   });
 });
 

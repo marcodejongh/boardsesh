@@ -63,8 +63,9 @@ const FIELD_TYPE_OVERRIDES = {
   'LedCommandInput.b': 'uint8_t',
 };
 
-// Sentinel value for optional role field (use -1 to indicate "not set")
+// Sentinel values for optional fields (use specific values to indicate "not set")
 const ROLE_NOT_SET = -1;
+const ANGLE_NOT_SET = -32768;  // INT16_MIN - unlikely valid angle value
 
 /**
  * Parse GraphQL schema and extract types
@@ -78,6 +79,8 @@ function parseGraphQLSchema(schemaContent) {
   const cleanSchema = schemaContent.replace(/"""[\s\S]*?"""/g, '');
 
   // Parse type definitions
+  // Note: This regex doesn't handle nested braces (e.g., directives with @deprecated(reason: "..."))
+  // If schema evolution requires nested constructs, this parser will need enhancement
   const typeRegex = /(type|input)\s+(\w+)\s*\{([^}]+)\}/g;
   let match;
 
@@ -338,6 +341,9 @@ namespace GraphQLTypename {
 /** Sentinel value indicating role field is not set */
 constexpr int32_t ROLE_NOT_SET = ${ROLE_NOT_SET};
 
+/** Sentinel value indicating angle field is not set (null in GraphQL) */
+constexpr int32_t ANGLE_NOT_SET = ${ANGLE_NOT_SET};
+
 // ============================================
 // JSON Parsing Helpers (ArduinoJson)
 // ============================================
@@ -375,9 +381,8 @@ inline bool parseLedCommand(JsonObject& obj, LedCommand& cmd) {
  * String pointers (climbUuid, climbName) point into the JsonDocument
  * and become invalid when the document is destroyed.
  *
- * NOTE: angle defaults to 0 if not present. Since 0 is a valid angle,
- * callers cannot distinguish "no angle" from "angle=0". If this matters,
- * check obj.containsKey("angle") before calling.
+ * NOTE: angle is set to ANGLE_NOT_SET (-32768) if not present in JSON.
+ * Check update.angle != ANGLE_NOT_SET to determine if angle was provided.
  *
  * @return false if memory allocation fails or command parsing fails, true otherwise
  */
@@ -407,7 +412,7 @@ inline bool parseLedUpdate(JsonObject& obj, LedUpdate& update) {
     }
     update.climbUuid = obj["climbUuid"] | nullptr;
     update.climbName = obj["climbName"] | nullptr;
-    update.angle = obj["angle"] | 0;
+    update.angle = obj.containsKey("angle") ? (int32_t)obj["angle"] : ANGLE_NOT_SET;
     return true;
 }
 
