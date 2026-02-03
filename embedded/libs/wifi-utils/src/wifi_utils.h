@@ -12,7 +12,8 @@ enum class WiFiConnectionState {
     DISCONNECTED,
     CONNECTING,
     CONNECTED,
-    CONNECTION_FAILED
+    CONNECTION_FAILED,
+    AP_MODE
 };
 
 typedef void (*WiFiStateCallback)(WiFiConnectionState state);
@@ -35,6 +36,12 @@ public:
     String getIP();
     int8_t getRSSI();
 
+    // AP mode for first-time setup
+    bool startAP(const char* apName, const char* password = nullptr);
+    void stopAP();
+    bool isAPMode();
+    String getAPIP();
+
     void setStateCallback(WiFiStateCallback callback);
 
     // Config keys
@@ -48,6 +55,7 @@ private:
     unsigned long lastReconnectAttempt;
     String currentSSID;
     String currentPassword;
+    bool apModeActive;
 
     void setState(WiFiConnectionState newState);
     void checkConnection();

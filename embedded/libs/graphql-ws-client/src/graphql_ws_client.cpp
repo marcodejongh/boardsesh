@@ -1,6 +1,26 @@
 #include "graphql_ws_client.h"
+
+// Conditionally include LED and BLE dependencies
+#if __has_include(<aurora_protocol.h>)
 #include <aurora_protocol.h>
+#define HAS_AURORA_PROTOCOL 1
+#else
+#define HAS_AURORA_PROTOCOL 0
+#endif
+
+#if __has_include(<nordic_uart_ble.h>)
 #include <nordic_uart_ble.h>
+#define HAS_NORDIC_BLE 1
+#else
+#define HAS_NORDIC_BLE 0
+#endif
+
+#if __has_include(<led_controller.h>)
+#include <led_controller.h>
+#define HAS_LED_CONTROLLER 1
+#else
+#define HAS_LED_CONTROLLER 0
+#endif
 
 GraphQLWSClient GraphQL;
 
@@ -12,7 +32,9 @@ GraphQLWSClient::GraphQLWSClient()
     : state(GraphQLConnectionState::DISCONNECTED)
     , messageCallback(nullptr)
     , stateCallback(nullptr)
+    , ledUpdateCallback(nullptr)
     , serverPort(443)
+    , useSSL(true)
     , lastPingTime(0)
     , lastPongTime(0)
     , reconnectTime(0)
@@ -20,9 +42,29 @@ GraphQLWSClient::GraphQLWSClient()
     , currentDisplayHash(0) {}
 
 void GraphQLWSClient::begin(const char* host, uint16_t port, const char* path, const char* apiKeyParam) {
-    serverHost = host;
+    // Parse protocol prefix from host (ws:// or wss://)
+    String hostStr = host;
+    bool useSSL = true;  // Default to SSL
+
+    if (hostStr.startsWith("wss://")) {
+        useSSL = true;
+        hostStr = hostStr.substring(6);  // Remove "wss://"
+    } else if (hostStr.startsWith("ws://")) {
+        useSSL = false;
+        hostStr = hostStr.substring(5);  // Remove "ws://"
+    } else if (hostStr.startsWith("https://")) {
+        useSSL = true;
+        hostStr = hostStr.substring(8);  // Remove "https://"
+    } else if (hostStr.startsWith("http://")) {
+        useSSL = false;
+        hostStr = hostStr.substring(7);  // Remove "http://"
+    }
+    // If no prefix, default to SSL (production behavior)
+
+    serverHost = hostStr;
     serverPort = port;
     serverPath = path;
+    this->useSSL = useSSL;
     this->apiKey = apiKeyParam ? apiKeyParam : "";
     this->sessionId = Config.getString("session_id");
 
@@ -37,11 +79,38 @@ void GraphQLWSClient::begin(const char* host, uint16_t port, const char* path, c
     // Set subprotocol for graphql-ws
     ws.setExtraHeaders("Sec-WebSocket-Protocol: graphql-transport-ws");
 
-    // Connect with SSL
-    ws.beginSSL(host, port, path);
+    // Connect with or without SSL based on protocol prefix
+    if (useSSL) {
+        Logger.logln("GraphQL: Connecting with SSL to %s:%d%s", serverHost.c_str(), port, path);
+        ws.beginSSL(serverHost.c_str(), port, path);
+    } else {
+        Logger.logln("GraphQL: Connecting without SSL to %s:%d%s", serverHost.c_str(), port, path);
+        ws.begin(serverHost.c_str(), port, path);
+    }
 
     ws.setReconnectInterval(WS_RECONNECT_INTERVAL);
 
+    setState(GraphQLConnectionState::CONNECTING);
+}
+
+void GraphQLWSClient::reconnect() {
+    // Reconnect using stored settings (protocol already parsed)
+    ws.onEvent([this](WStype_t type, uint8_t* payload, size_t length) {
+        this->onWebSocketEvent(type, payload, length);
+    });
+
+    ws.enableHeartbeat(WS_PING_INTERVAL, WS_PONG_TIMEOUT, 2);
+    ws.setExtraHeaders("Sec-WebSocket-Protocol: graphql-transport-ws");
+
+    if (useSSL) {
+        Logger.logln("GraphQL: Reconnecting with SSL to %s:%d%s", serverHost.c_str(), serverPort, serverPath.c_str());
+        ws.beginSSL(serverHost.c_str(), serverPort, serverPath.c_str());
+    } else {
+        Logger.logln("GraphQL: Reconnecting without SSL to %s:%d%s", serverHost.c_str(), serverPort, serverPath.c_str());
+        ws.begin(serverHost.c_str(), serverPort, serverPath.c_str());
+    }
+
+    ws.setReconnectInterval(WS_RECONNECT_INTERVAL);
     setState(GraphQLConnectionState::CONNECTING);
 }
 
@@ -61,7 +130,7 @@ void GraphQLWSClient::loop() {
     if (state == GraphQLConnectionState::DISCONNECTED && reconnectTime > 0) {
         if (millis() > reconnectTime) {
             Logger.logln("GraphQL: Attempting reconnection...");
-            begin(serverHost.c_str(), serverPort, serverPath.c_str(), apiKey.c_str());
+            reconnect();
             reconnectTime = 0;
         }
     }
@@ -148,6 +217,10 @@ void GraphQLWSClient::setStateCallback(GraphQLStateCallback callback) {
     stateCallback = callback;
 }
 
+void GraphQLWSClient::setLedUpdateCallback(GraphQLLedUpdateCallback callback) {
+    ledUpdateCallback = callback;
+}
+
 void GraphQLWSClient::onWebSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
     switch (type) {
         case WStype_DISCONNECTED:
@@ -155,9 +228,13 @@ void GraphQLWSClient::onWebSocketEvent(WStype_t type, uint8_t* payload, size_t l
             setState(GraphQLConnectionState::DISCONNECTED);
             // Schedule reconnection
             reconnectTime = millis() + WS_RECONNECT_INTERVAL;
-            // Clear LEDs on disconnect
-            LEDs.clear();
-            LEDs.show();
+            // Clear LEDs on disconnect (only if we have LED controller and no custom callback)
+#if HAS_LED_CONTROLLER
+            if (!ledUpdateCallback) {
+                LEDs.clear();
+                LEDs.show();
+            }
+#endif
             break;
 
         case WStype_CONNECTED:
@@ -266,16 +343,37 @@ void GraphQLWSClient::handleMessage(uint8_t* payload, size_t length) {
 
 void GraphQLWSClient::handleLedUpdate(JsonObject& data) {
     JsonArray commands = data["commands"];
+    // Use explicit null checks with defaults to ensure we never have null pointers
+    const char* climbUuid = data["climbUuid"].as<const char*>();
+    const char* climbName = data["climbName"].as<const char*>();
+    const char* grade = data["grade"].as<const char*>();
+    const char* gradeColor = data["gradeColor"].as<const char*>();
+    if (!climbUuid) climbUuid = "";
+    if (!climbName) climbName = "";
+    if (!grade) grade = "";
+    if (!gradeColor) gradeColor = "";
+    int angle = data["angle"] | 0;
 
     if (commands.isNull() || commands.size() == 0) {
-        // Clear LEDs command - if BLE connected, this is likely web taking over
+        // Clear command
+#if HAS_NORDIC_BLE
         if (BLE.isConnected()) {
             Logger.logln("GraphQL: Web user cleared climb, disconnecting BLE client");
             BLE.disconnectClient();
             BLE.clearLastSentHash();
         }
-        LEDs.clear();
-        LEDs.show();
+#endif
+
+        // If callback is set, call it with empty data; otherwise clear LEDs directly
+        if (ledUpdateCallback) {
+            ledUpdateCallback(nullptr, 0, climbUuid, climbName, grade, gradeColor, angle);
+        }
+#if HAS_LED_CONTROLLER
+        else {
+            LEDs.clear();
+            LEDs.show();
+        }
+#endif
         currentDisplayHash = 0;
         Logger.logln("GraphQL: Cleared LEDs (no commands)");
         return;
@@ -298,6 +396,7 @@ void GraphQLWSClient::handleLedUpdate(JsonObject& data) {
     // Compute hash of incoming LED data
     uint32_t incomingHash = computeLedHash(ledCommands, count);
 
+#if HAS_NORDIC_BLE
     // If BLE is connected, check if this is an echo of our own data or a web-initiated change
     if (BLE.isConnected()) {
         if (incomingHash == currentDisplayHash && currentDisplayHash != 0) {
@@ -312,17 +411,24 @@ void GraphQLWSClient::handleLedUpdate(JsonObject& data) {
             BLE.clearLastSentHash();
         }
     }
+#endif
 
-    // Update LEDs
-    LEDs.setLeds(ledCommands, count);
-    LEDs.show();
+    // If callback is set, use it; otherwise update LEDs directly
+    if (ledUpdateCallback) {
+        ledUpdateCallback(ledCommands, count, climbUuid, climbName, grade, gradeColor, angle);
+    }
+#if HAS_LED_CONTROLLER
+    else {
+        LEDs.setLeds(ledCommands, count);
+        LEDs.show();
+    }
+#endif
 
     // Store hash of currently displayed LEDs (to detect if BLE sends the same climb)
     currentDisplayHash = incomingHash;
 
     // Log climb info if available
-    const char* climbName = data["climbName"];
-    if (climbName) {
+    if (climbName && strlen(climbName) > 0) {
         Logger.logln("GraphQL: Displaying climb: %s (%d LEDs)", climbName, count);
     } else {
         Logger.logln("GraphQL: Updated %d LEDs", count);
@@ -379,13 +485,16 @@ void GraphQLWSClient::sendLedPositions(const LedCommand* commands, int count, in
         pos["r"] = commands[i].r;
         pos["g"] = commands[i].g;
         pos["b"] = commands[i].b;
+#if HAS_AURORA_PROTOCOL
         // Add role code for easier matching on backend
         pos["role"] = colorToRole(commands[i].r, commands[i].g, commands[i].b);
+#endif
     }
 
     String message;
     serializeJson(doc, message);
 
+#if HAS_AURORA_PROTOCOL
     // Log role breakdown
     int starts = 0, hands = 0, finishes = 0, foots = 0;
     for (int i = 0; i < count; i++) {
@@ -397,6 +506,9 @@ void GraphQLWSClient::sendLedPositions(const LedCommand* commands, int count, in
     }
     Logger.logln("GraphQL: Sending %d LED positions (roles: %d start, %d hand, %d finish, %d foot)",
                   count, starts, hands, finishes, foots);
+#else
+    Logger.logln("GraphQL: Sending %d LED positions", count);
+#endif
 
     ws.sendTXT(message);
 }
