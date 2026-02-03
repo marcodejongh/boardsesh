@@ -438,6 +438,19 @@ describe('Integration: Parse and Generate', () => {
 
     // Verify no timestamp (to avoid noisy diffs)
     assert.ok(!content.includes('Generated:'), 'Should not have timestamp in header');
+
+    // Verify LedCommand has include guard for native test compatibility
+    assert.ok(content.includes('#ifndef LEDCOMMAND_DEFINED'), 'LedCommand should have include guard');
+    assert.ok(content.includes('#define LEDCOMMAND_DEFINED'), 'LedCommand should define guard');
+    assert.ok(content.includes('#endif // LEDCOMMAND_DEFINED'), 'LedCommand should close guard');
+
+    // Verify memory allocation failure handling
+    assert.ok(content.includes('std::nothrow'), 'Should use std::nothrow for allocation');
+    assert.ok(content.includes('#include <new>'), 'Should include <new> header');
+    assert.ok(content.includes('return false;  // Allocation failed'), 'Should return false on allocation failure');
+
+    // Verify angle nullable documentation
+    assert.ok(content.includes('angle defaults to 0'), 'Should document angle nullable behavior');
   });
 });
 
