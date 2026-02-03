@@ -1,0 +1,1 @@
+../../../../libs/nordic-uart-ble/src/nordic_uart_ble.h

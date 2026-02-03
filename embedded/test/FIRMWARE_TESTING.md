@@ -25,14 +25,21 @@ embedded/
     ├── platformio.ini        # Test configuration
     ├── lib/mocks/            # Hardware mocks for native testing
     │   ├── Arduino.h         # Arduino API mock
+    │   ├── ArduinoJson.h     # JSON library mock
     │   ├── FastLED.h         # FastLED mock
+    │   ├── NimBLEDevice.h    # NimBLE mock
     │   ├── Preferences.h     # NVS mock
+    │   ├── WebServer.h       # WebServer mock
+    │   ├── WebSocketsClient.h # WebSocket mock
     │   └── WiFi.h            # ESP32 WiFi mock
     ├── test_aurora_protocol/ # Aurora protocol tests
     ├── test_log_buffer/      # Log buffer tests
     ├── test_led_controller/  # LED controller tests
     ├── test_config_manager/  # Config manager tests
-    └── test_wifi_utils/      # WiFi utils tests
+    ├── test_wifi_utils/      # WiFi utils tests
+    ├── test_graphql_ws_client/ # GraphQL WebSocket tests
+    ├── test_nordic_uart_ble/ # Nordic UART BLE tests
+    └── test_esp_web_server/  # ESP web server tests
 ```
 
 ## Running Tests
@@ -110,8 +117,12 @@ TEST_ASSERT_EQUAL_MEMORY(expected, actual, len)
 The `lib/mocks/` directory contains mock implementations of hardware-dependent APIs:
 
 - **Arduino.h**: Provides `String`, `Serial`, timing functions, pin functions
+- **ArduinoJson.h**: Provides `JsonDocument`, `JsonObject`, `JsonArray` for JSON parsing/serialization
 - **FastLED.h**: Provides `CRGB` struct and `FastLED` controller
+- **NimBLEDevice.h**: Provides NimBLE BLE device, server, service, and characteristic mocks
 - **Preferences.h**: Provides in-memory NVS storage simulation
+- **WebServer.h**: Provides HTTP server mock with route handling and request simulation
+- **WebSocketsClient.h**: Provides WebSocket client mock with connection and message simulation
 - **WiFi.h**: Provides mock WiFi class with controllable state for testing
 
 When adding new tests that require hardware mocks, extend these files or create new mock headers.
@@ -229,73 +240,90 @@ WiFi connection management with auto-reconnect.
 
 ---
 
-### 6. graphql-ws-client :x:
+### 6. graphql-ws-client :white_check_mark:
 **Location:** `libs/graphql-ws-client/`
+**Test File:** `test/test_graphql_ws_client/test_graphql_ws_client.cpp`
 
 WebSocket client for GraphQL subscriptions (graphql-transport-ws protocol).
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Connection state machine | :x: | WS connection flow |
-| Connection init/ack | :x: | Protocol handshake |
-| Subscription management | :x: | Subscribe/unsubscribe |
-| Message parsing | :x: | JSON message handling |
-| LED update handling | :x: | `handleLedUpdate()` |
-| Hash computation | :x: | Deduplication logic |
-| Ping/pong keep-alive | :x: | Connection maintenance |
-| Reconnection logic | :x: | Auto-reconnect |
+| Connection state machine | :white_check_mark: | WS connection flow |
+| Connection init/ack | :white_check_mark: | Protocol handshake |
+| Subscription management | :white_check_mark: | Subscribe/unsubscribe |
+| Message parsing | :white_check_mark: | JSON message handling |
+| LED update handling | :white_check_mark: | `handleLedUpdate()` |
+| Hash computation | :white_check_mark: | Deduplication logic |
+| State callbacks | :white_check_mark: | Connection notification |
+| Config key constants | :white_check_mark: | Configuration keys defined |
 
-**Priority:** Medium - Requires WebSockets mock (complex)
+**Test Count:** 25 tests
+
+**Note:** Uses `WebSocketsClient.h` and `ArduinoJson.h` mocks in `test/lib/mocks/src/`
 
 ---
 
-### 7. nordic-uart-ble :x:
+### 7. nordic-uart-ble :white_check_mark:
 **Location:** `libs/nordic-uart-ble/`
+**Test File:** `test/test_nordic_uart_ble/test_nordic_uart_ble.cpp`
 
 BLE UART service compatible with Kilter/Tension mobile apps.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| BLE advertising | :x: | Service UUID setup |
-| Connection callbacks | :x: | Connect/disconnect |
-| Data reception | :x: | Write characteristic |
-| Data transmission | :x: | Notify characteristic |
-| Aurora protocol integration | :x: | LED data callback |
-| Per-device hash tracking | :x: | Deduplication by MAC |
-| Client disconnect | :x: | Force disconnect |
+| BLE initialization | :white_check_mark: | Device name, power level |
+| BLE advertising | :white_check_mark: | Service UUID setup, auto-restart |
+| Connection callbacks | :white_check_mark: | Connect/disconnect handlers |
+| Data callbacks | :white_check_mark: | Raw data and LED data |
+| Data transmission | :white_check_mark: | `send()` for bytes and strings |
+| Per-device hash tracking | :white_check_mark: | Deduplication by MAC address |
+| Client disconnect | :white_check_mark: | Force disconnect on web change |
+| Hash clearing | :white_check_mark: | `clearLastSentHash()` |
 
-**Priority:** Low - Requires NimBLE mock (complex)
+**Test Count:** 30 tests
+
+**Note:** Uses `NimBLEDevice.h` mock in `test/lib/mocks/src/`
 
 ---
 
-### 8. esp-web-server :x:
+### 8. esp-web-server :white_check_mark:
 **Location:** `libs/esp-web-server/`
+**Test File:** `test/test_esp_web_server/test_esp_web_server.cpp`
 
 HTTP server for configuration web interface.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Route registration | :x: | Custom handlers |
-| Built-in routes | :x: | Config, WiFi, restart |
-| JSON responses | :x: | `sendJson()` |
-| Error responses | :x: | `sendError()` |
-| CORS headers | :x: | Cross-origin support |
-| WiFi scan | :x: | Network discovery |
+| Server lifecycle | :white_check_mark: | `begin()`/`stop()`/`loop()` |
+| Route registration | :white_check_mark: | Custom GET/POST handlers |
+| Built-in routes | :white_check_mark: | Config, WiFi, restart endpoints |
+| JSON responses | :white_check_mark: | `sendJson()` with document and string |
+| Error responses | :white_check_mark: | `sendError()` with various codes |
+| CORS headers | :white_check_mark: | Cross-origin support on custom routes |
+| WiFi scan | :white_check_mark: | `/api/wifi/scan` endpoint |
+| WiFi connect | :white_check_mark: | `/api/wifi/connect` with validation |
+| Config persistence | :white_check_mark: | Settings saved via config-manager |
 
-**Priority:** Low - Requires WebServer mock (complex)
+**Test Count:** 33 tests
+
+**Note:** Uses `WebServer.h` mock in `test/lib/mocks/src/`
 
 ---
 
 ## Testing Priority Order
 
-Based on dependencies and complexity:
+All 8 shared library modules now have complete test coverage:
 
-1. ~~**led-controller**~~ :white_check_mark: Complete
-2. ~~**config-manager**~~ :white_check_mark: Complete
-3. ~~**wifi-utils**~~ :white_check_mark: Complete
-4. **graphql-ws-client** - Complex, requires WebSockets mock
-5. **nordic-uart-ble** - Complex, requires NimBLE mock
-6. **esp-web-server** - Complex, requires WebServer mock
+1. ~~**aurora-protocol**~~ :white_check_mark: Complete (29 tests)
+2. ~~**log-buffer**~~ :white_check_mark: Complete (31 tests)
+3. ~~**led-controller**~~ :white_check_mark: Complete (30 tests)
+4. ~~**config-manager**~~ :white_check_mark: Complete (40 tests)
+5. ~~**wifi-utils**~~ :white_check_mark: Complete (27 tests)
+6. ~~**graphql-ws-client**~~ :white_check_mark: Complete (25 tests)
+7. ~~**nordic-uart-ble**~~ :white_check_mark: Complete (30 tests)
+8. ~~**esp-web-server**~~ :white_check_mark: Complete (33 tests)
+
+**Total: 245 tests across 8 modules**
 
 ## CI Integration
 

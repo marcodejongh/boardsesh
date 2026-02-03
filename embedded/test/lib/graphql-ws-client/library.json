@@ -1,0 +1,16 @@
+{
+    "name": "graphql-ws-client",
+    "version": "1.0.0",
+    "description": "GraphQL WebSocket client (test build)",
+    "platforms": ["native", "espressif32"],
+    "dependencies": {
+        "mocks": "*",
+        "led-controller": "*",
+        "log-buffer": "*",
+        "config-manager": "*",
+        "aurora-protocol": "*"
+    },
+    "build": {
+        "flags": ["-std=c++17", "-DUNIT_TEST"]
+    }
+}
