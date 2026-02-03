@@ -263,7 +263,7 @@ void test_remove_key(void) {
 
 void test_remove_nonexistent_key(void) {
     config->remove("nonexistent");  // Should not crash
-    TEST_PASS();
+    TEST_ASSERT_TRUE(true);
 }
 
 void test_remove_and_reuse_key(void) {
@@ -323,7 +323,7 @@ void test_end_can_be_called_safely(void) {
 void test_multiple_end_calls(void) {
     config->end();
     config->end();  // Should not crash
-    TEST_PASS();
+    TEST_ASSERT_TRUE(true);
 }
 
 // =============================================================================

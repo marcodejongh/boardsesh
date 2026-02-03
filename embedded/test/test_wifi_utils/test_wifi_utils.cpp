@@ -177,7 +177,7 @@ void test_null_callback_is_safe(void) {
     wifiMgr->begin();
     wifiMgr->setStateCallback(nullptr);
     wifiMgr->connect("Network", "pass");  // Should not crash
-    TEST_PASS();
+    TEST_ASSERT_TRUE(true);
 }
 
 // =============================================================================
@@ -276,7 +276,7 @@ void test_connect_after_disconnect(void) {
 void test_loop_when_not_connecting(void) {
     wifiMgr->begin();
     wifiMgr->loop();  // Should not crash when not in connecting state
-    TEST_PASS();
+    TEST_ASSERT_TRUE(true);
 }
 
 void test_getState_reflects_current_state(void) {
