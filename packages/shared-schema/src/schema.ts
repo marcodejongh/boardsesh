@@ -1433,6 +1433,11 @@ export const typeDefs = /* GraphQL */ `
     commands: [LedCommand!]!
     climbUuid: String
     climbName: String
+    """
+    Board angle in degrees. Nullable - null means angle not specified.
+    Note: 0 is a valid angle value, so null should be used to indicate "no angle"
+    rather than defaulting to 0.
+    """
     angle: Int
   }
 

@@ -1,0 +1,19 @@
+{
+  "name": "graphql-types",
+  "version": "1.0.0",
+  "description": "Auto-generated GraphQL types for ESP32 controller firmware",
+  "keywords": ["graphql", "types", "codegen", "esp32"],
+  "authors": {
+    "name": "BoardSesh"
+  },
+  "frameworks": ["arduino"],
+  "platforms": ["espressif32"],
+  "dependencies": {
+    "bblanchon/ArduinoJson": "^7.0.0"
+  },
+  "build": {
+    "flags": [
+      "-I src"
+    ]
+  }
+}

@@ -7,14 +7,19 @@
 #define MAX_LEDS 500
 
 /**
- * LED command structure matching GraphQL LedCommand type
+ * LED command structure matching GraphQL LedCommand type.
+ * This is defined here for native test compatibility.
+ * The same struct is also generated in graphql_types.h with include guards.
  */
+#ifndef LEDCOMMAND_DEFINED
+#define LEDCOMMAND_DEFINED
 struct LedCommand {
-    int position;
+    int32_t position;
     uint8_t r;
     uint8_t g;
     uint8_t b;
 };
+#endif
 
 class LedController {
   public:
