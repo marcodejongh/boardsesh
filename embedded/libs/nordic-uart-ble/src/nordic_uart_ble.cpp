@@ -6,12 +6,15 @@ NordicUartBLE BLE;
 
 NordicUartBLE::NordicUartBLE()
     : pServer(nullptr), pTxCharacteristic(nullptr), pRxCharacteristic(nullptr), deviceConnected(false),
-      advertising(false), connectedDeviceHandle(BLE_HS_CONN_HANDLE_NONE), connectCallback(nullptr),
-      dataCallback(nullptr), ledDataCallback(nullptr), rawForwardCallback(nullptr) {}
+      advertising(false), advertisingEnabled(false), connectedDeviceHandle(BLE_HS_CONN_HANDLE_NONE),
+      connectCallback(nullptr), dataCallback(nullptr), ledDataCallback(nullptr), rawForwardCallback(nullptr) {}
 
-void NordicUartBLE::begin(const char* deviceName) {
+void NordicUartBLE::begin(const char* deviceName, bool startAdv) {
     NimBLEDevice::init(deviceName);
     NimBLEDevice::setPower(ESP_PWR_LVL_P9);
+
+    // Set whether advertising is allowed (proxy mode delays this)
+    advertisingEnabled = startAdv;
 
     pServer = NimBLEDevice::createServer();
     pServer->setCallbacks(this);
@@ -29,14 +32,33 @@ void NordicUartBLE::begin(const char* deviceName) {
 
     pService->start();
 
-    startAdvertising();
+    // Always configure advertising data (even if not starting yet)
+    NimBLEAdvertising* pAdvertising = NimBLEDevice::getAdvertising();
+    pAdvertising->addServiceUUID(AURORA_ADVERTISED_SERVICE_UUID);
+    pAdvertising->addServiceUUID(NUS_SERVICE_UUID);
+    pAdvertising->setScanResponse(true);
+    pAdvertising->setMinPreferred(0x06);
+    pAdvertising->setMaxPreferred(0x12);
+
+    // Always start the GATT server (required before advertising can work)
+    // This registers the services - must be done even if not advertising yet
+    // Use pServer->start() instead of ble_gatts_start() directly to set NimBLE's
+    // internal m_gattsStarted flag, preventing duplicate start errors (rc=15)
+    pServer->start();
+
+    if (startAdv) {
+        pAdvertising->start();
+        advertising = true;
+        advertisingEnabled = true;
+        Logger.logln("BLE: Advertising started");
+    }
 
     Logger.logln("BLE: Server started as '%s'", deviceName);
 }
 
 void NordicUartBLE::loop() {
-    // Restart advertising if disconnected and not currently advertising
-    if (!deviceConnected && !advertising) {
+    // Restart advertising if disconnected, not currently advertising, and allowed
+    if (advertisingEnabled && !deviceConnected && !advertising) {
         delay(500);  // Small delay before re-advertising
         startAdvertising();
     }
@@ -196,20 +218,10 @@ void NordicUartBLE::onWrite(NimBLECharacteristic* characteristic) {
 void NordicUartBLE::startAdvertising() {
     NimBLEAdvertising* pAdvertising = NimBLEDevice::getAdvertising();
 
-    // Add Aurora's custom advertised UUID for discovery by Kilter/Tension apps
-    pAdvertising->addServiceUUID(AURORA_ADVERTISED_SERVICE_UUID);
-
-    // Add Nordic UART service UUID
-    pAdvertising->addServiceUUID(NUS_SERVICE_UUID);
-
-    // Set scan response data
-    pAdvertising->setScanResponse(true);
-    pAdvertising->setMinPreferred(0x06);  // Connection interval min
-    pAdvertising->setMaxPreferred(0x12);  // Connection interval max
-
-    // Start advertising
+    // Start advertising (UUIDs and settings already configured in begin())
     pAdvertising->start();
     advertising = true;
+    advertisingEnabled = true;  // Enable for future restarts in loop()
 
     Logger.logln("BLE: Advertising started");
 }
