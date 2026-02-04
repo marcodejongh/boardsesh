@@ -9,22 +9,17 @@
  */
 
 #include "ble_scanner.h"
+
 #include <log_buffer.h>
 
 BLEScanner Scanner;
 BLEScanner* BLEScanner::instance = nullptr;
 
-BLEScanner::BLEScanner()
-    : pScan(nullptr)
-    , resultCallback(nullptr)
-    , completeCallback(nullptr)
-    , scanning(false) {
+BLEScanner::BLEScanner() : pScan(nullptr), resultCallback(nullptr), completeCallback(nullptr), scanning(false) {
     instance = this;
 }
 
-void BLEScanner::startScan(ScanResultCallback onResult,
-                           ScanCompleteCallback onComplete,
-                           int timeoutSec) {
+void BLEScanner::startScan(ScanResultCallback onResult, ScanCompleteCallback onComplete, int timeoutSec) {
     if (scanning) {
         Logger.logln("BLEScanner: Already scanning");
         return;
@@ -111,17 +106,11 @@ void BLEScanner::onResult(NimBLEAdvertisedDevice* advertisedDevice) {
         name = "Unknown Board";
     }
 
-    DiscoveredBoard board(
-        advertisedDevice->getAddress(),
-        name,
-        advertisedDevice->getRSSI()
-    );
+    DiscoveredBoard board(advertisedDevice->getAddress(), name, advertisedDevice->getRSSI());
 
     discoveredBoards.push_back(board);
-    Logger.logln("BLEScanner: Found Aurora board: %s (%s, %d dBm)",
-                  name.c_str(),
-                  advertisedDevice->getAddress().toString().c_str(),
-                  advertisedDevice->getRSSI());
+    Logger.logln("BLEScanner: Found Aurora board: %s (%s, %d dBm)", name.c_str(),
+                 advertisedDevice->getAddress().toString().c_str(), advertisedDevice->getRSSI());
 
     if (resultCallback) {
         resultCallback(board);
@@ -131,8 +120,7 @@ void BLEScanner::onResult(NimBLEAdvertisedDevice* advertisedDevice) {
 void BLEScanner::scanCompleteCB(NimBLEScanResults results) {
     if (instance) {
         instance->scanning = false;
-        Logger.logln("BLEScanner: Scan complete, found %d Aurora boards",
-                      instance->discoveredBoards.size());
+        Logger.logln("BLEScanner: Scan complete, found %d Aurora boards", instance->discoveredBoards.size());
 
         if (instance->completeCallback) {
             instance->completeCallback(instance->discoveredBoards);

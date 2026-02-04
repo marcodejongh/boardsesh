@@ -14,6 +14,7 @@
 // Conditional libraries for display and proxy modes
 #ifdef ENABLE_BLE_PROXY
 #include <ble_proxy.h>
+
 #include <climb_history.h>
 #endif
 
@@ -96,7 +97,6 @@ void setup() {
     // Startup animation (brief to confirm LEDs working)
     startupAnimation();
 
-
     // Initialize WiFi
     Logger.logln("Initializing WiFi...");
     WiFiMgr.begin();
@@ -167,7 +167,6 @@ void loop() {
 
     // Process web server
     WebConfig.loop();
-
 }
 
 void onWiFiStateChange(WiFiConnectionState state) {
@@ -303,7 +302,8 @@ void onGraphQLStateChange(GraphQLConnectionState state) {
             GraphQL.subscribe("controller-events",
                               "subscription ControllerEvents($sessionId: ID!) { "
                               "controllerEvents(sessionId: $sessionId) { "
-                              "... on LedUpdate { __typename commands { position r g b } climbUuid climbName climbGrade boardPath angle } "
+                              "... on LedUpdate { __typename commands { position r g b } climbUuid climbName "
+                              "climbGrade boardPath angle } "
                               "... on ControllerPing { __typename timestamp } "
                               "} }",
                               variables.c_str());
@@ -368,14 +368,9 @@ void handleLedUpdateExtended(JsonObject& data) {
     if (climbName && climbUuid) {
         // lilygo-display uses showClimb with gradeColor (hex), but we don't have it
         // Pass empty string for gradeColor - display will use default
-        Display.showClimb(
-            climbName,
-            climbGrade ? climbGrade : "",
-            "",  // gradeColor - not available from backend yet
-            angle,
-            climbUuid,
-            boardType.c_str()
-        );
+        Display.showClimb(climbName, climbGrade ? climbGrade : "",
+                          "",  // gradeColor - not available from backend yet
+                          angle, climbUuid, boardType.c_str());
     } else {
         // No climb - clear display
         Display.showNoClimb();

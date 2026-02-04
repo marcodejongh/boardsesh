@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include <NimBLEDevice.h>
+
 #include <vector>
 
 // Aurora boards advertise this service UUID for discovery
@@ -21,8 +22,7 @@ struct DiscoveredBoard {
     bool valid;
 
     DiscoveredBoard() : rssi(0), valid(false) {}
-    DiscoveredBoard(NimBLEAddress addr, const String& n, int r)
-        : address(addr), name(n), rssi(r), valid(true) {}
+    DiscoveredBoard(NimBLEAddress addr, const String& n, int r) : address(addr), name(n), rssi(r), valid(true) {}
 };
 
 typedef void (*ScanResultCallback)(const DiscoveredBoard& board);
@@ -38,7 +38,7 @@ typedef void (*ScanCompleteCallback)(const std::vector<DiscoveredBoard>& boards)
  * - Callback when scan completes
  */
 class BLEScanner : public NimBLEAdvertisedDeviceCallbacks {
-public:
+  public:
     BLEScanner();
 
     /**
@@ -47,8 +47,7 @@ public:
      * @param onComplete Callback when scan finishes
      * @param timeoutSec Scan duration in seconds (default 30)
      */
-    void startScan(ScanResultCallback onResult = nullptr,
-                   ScanCompleteCallback onComplete = nullptr,
+    void startScan(ScanResultCallback onResult = nullptr, ScanCompleteCallback onComplete = nullptr,
                    int timeoutSec = SCAN_TIMEOUT_SEC);
 
     /**
@@ -82,7 +81,7 @@ public:
     // NimBLE callback
     void onResult(NimBLEAdvertisedDevice* advertisedDevice) override;
 
-private:
+  private:
     NimBLEScan* pScan;
     std::vector<DiscoveredBoard> discoveredBoards;
     ScanResultCallback resultCallback;

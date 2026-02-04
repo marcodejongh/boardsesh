@@ -5,21 +5,15 @@
 #include <NimBLEDevice.h>
 
 // Nordic UART Service UUIDs
-#define NUS_SERVICE_UUID        "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
-#define NUS_RX_CHARACTERISTIC   "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
-#define NUS_TX_CHARACTERISTIC   "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
+#define NUS_SERVICE_UUID "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
+#define NUS_RX_CHARACTERISTIC "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
+#define NUS_TX_CHARACTERISTIC "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
 
 // Connection timing
 #define CLIENT_CONNECT_TIMEOUT_MS 10000
 #define CLIENT_RECONNECT_DELAY_MS 5000
 
-enum class BLEClientState {
-    IDLE,
-    CONNECTING,
-    CONNECTED,
-    RECONNECTING,
-    DISCONNECTED
-};
+enum class BLEClientState { IDLE, CONNECTING, CONNECTED, RECONNECTING, DISCONNECTED };
 
 typedef void (*ClientConnectCallback)(bool connected);
 typedef void (*ClientDataCallback)(const uint8_t* data, size_t len);
@@ -34,7 +28,7 @@ typedef void (*ClientDataCallback)(const uint8_t* data, size_t len);
  * - Auto-reconnects on connection loss
  */
 class BLEClientConnection : public NimBLEClientCallbacks {
-public:
+  public:
     BLEClientConnection();
 
     /**
@@ -91,7 +85,7 @@ public:
     void onConnect(NimBLEClient* pClient) override;
     void onDisconnect(NimBLEClient* pClient) override;
 
-private:
+  private:
     NimBLEClient* pClient;
     NimBLERemoteCharacteristic* pRxChar;  // We write to this
     NimBLERemoteCharacteristic* pTxChar;  // We receive from this
@@ -104,8 +98,7 @@ private:
     ClientDataCallback dataCallback;
 
     bool setupService();
-    static void notifyCallback(NimBLERemoteCharacteristic* pChar,
-                               uint8_t* pData, size_t length, bool isNotify);
+    static void notifyCallback(NimBLERemoteCharacteristic* pChar, uint8_t* pData, size_t length, bool isNotify);
     static BLEClientConnection* instance;
 };
 

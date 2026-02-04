@@ -1,12 +1,13 @@
 #include <Arduino.h>
 
 // Shared libraries
-#include <log_buffer.h>
-#include <config_manager.h>
-#include <wifi_utils.h>
-#include <graphql_ws_client.h>
 #include <esp_web_server.h>
+#include <wifi_utils.h>
+
+#include <config_manager.h>
+#include <graphql_ws_client.h>
 #include <lilygo_display.h>
+#include <log_buffer.h>
 
 // BLE client for proxy mode - disabled for now due to NimBLE API issues
 // TODO: Re-enable once aurora-ble-client is updated for NimBLE 1.4.x
@@ -78,7 +79,8 @@ void setup() {
     Logger.logln("Initializing display...");
     if (!Display.begin()) {
         Logger.logln("ERROR: Display initialization failed!");
-        while (1) delay(1000);
+        while (1)
+            delay(1000);
     }
 
     Display.showConnecting();
@@ -156,8 +158,7 @@ void loop() {
 
         // Retry scanning if not connected
         unsigned long now = millis();
-        if (!bleConnected && !BLEClient.isScanning() &&
-            now - lastBleScanTime > BLE_SCAN_INTERVAL) {
+        if (!bleConnected && !BLEClient.isScanning() && now - lastBleScanTime > BLE_SCAN_INTERVAL) {
             Logger.logln("Retrying BLE scan...");
             BLEClient.startScan(15);
             if (BLEClient.isScanning()) {
@@ -283,12 +284,13 @@ void onGraphQLStateChange(GraphQLConnectionState state) {
 
             String variables = "{\"sessionId\":\"" + sessionId + "\"}";
             GraphQL.subscribe("controller-events",
-                "subscription ControllerEvents($sessionId: ID!) { "
-                "controllerEvents(sessionId: $sessionId) { "
-                "... on LedUpdate { __typename commands { position r g b } climbUuid climbName climbGrade boardPath angle } "
-                "... on ControllerPing { __typename timestamp } "
-                "} }",
-                variables.c_str());
+                              "subscription ControllerEvents($sessionId: ID!) { "
+                              "controllerEvents(sessionId: $sessionId) { "
+                              "... on LedUpdate { __typename commands { position r g b } climbUuid climbName "
+                              "climbGrade boardPath angle } "
+                              "... on ControllerPing { __typename timestamp } "
+                              "} }",
+                              variables.c_str());
 
             hasCurrentClimb = false;
             Display.showNoClimb();
@@ -339,10 +341,8 @@ void handleLedUpdate(JsonObject& data) {
     int angle = data["angle"] | 0;
     int count = commands.isNull() ? 0 : commands.size();
 
-    Logger.logln("LED Update: %s [%s] @ %d degrees (%d holds)",
-                 climbName ? climbName : "(none)",
-                 climbGrade ? climbGrade : "?",
-                 angle, count);
+    Logger.logln("LED Update: %s [%s] @ %d degrees (%d holds)", climbName ? climbName : "(none)",
+                 climbGrade ? climbGrade : "?", angle, count);
 
     // Handle clear command
     if (commands.isNull() || count == 0) {
@@ -374,8 +374,7 @@ void handleLedUpdate(JsonObject& data) {
     }
 
     // Add previous climb to history if different
-    if (hasCurrentClimb && currentClimbUuid.length() > 0 &&
-        climbUuid && String(climbUuid) != currentClimbUuid) {
+    if (hasCurrentClimb && currentClimbUuid.length() > 0 && climbUuid && String(climbUuid) != currentClimbUuid) {
         Display.addToHistory(currentClimbName.c_str(), currentGrade.c_str(), currentGradeColor.c_str());
     }
 
@@ -385,7 +384,8 @@ void handleLedUpdate(JsonObject& data) {
     currentLedCommands.reserve(count);
     int i = 0;
     for (JsonObject cmd : commands) {
-        if (i >= MAX_LED_COMMANDS) break;
+        if (i >= MAX_LED_COMMANDS)
+            break;
         LedCommand ledCmd;
         ledCmd.position = cmd["position"];
         ledCmd.r = cmd["r"];

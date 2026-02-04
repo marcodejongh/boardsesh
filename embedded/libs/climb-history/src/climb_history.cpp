@@ -1,6 +1,8 @@
 #include "climb_history.h"
-#include <config_manager.h>
+
 #include <ArduinoJson.h>
+
+#include <config_manager.h>
 
 ClimbHistory ClimbHistoryMgr;
 
@@ -18,11 +20,11 @@ void ClimbHistory::begin() {
 }
 
 void ClimbHistory::addClimb(const char* name, const char* grade, const char* uuid) {
-    if (!name || !uuid) return;
+    if (!name || !uuid)
+        return;
 
     // Check if this is the same as the current climb (update)
-    if (hasCurrentClimb_ && history[0].valid &&
-        strcmp(history[0].uuid, uuid) == 0) {
+    if (hasCurrentClimb_ && history[0].valid && strcmp(history[0].uuid, uuid) == 0) {
         // Same climb - just update name/grade in case they changed
         strncpy(history[0].name, name, MAX_CLIMB_NAME_LEN - 1);
         history[0].name[MAX_CLIMB_NAME_LEN - 1] = '\0';
@@ -140,7 +142,8 @@ void ClimbHistory::load() {
     int index = 0;
 
     for (JsonObject obj : arr) {
-        if (index >= MAX_CLIMB_HISTORY) break;
+        if (index >= MAX_CLIMB_HISTORY)
+            break;
 
         const char* name = obj["n"];
         const char* grade = obj["g"];

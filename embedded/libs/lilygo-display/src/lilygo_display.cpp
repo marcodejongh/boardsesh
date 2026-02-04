@@ -1,5 +1,7 @@
 #include "lilygo_display.h"
+
 #include "grade_colors.h"
+
 #include <qrcode.h>
 
 // Global display instance
@@ -76,18 +78,10 @@ LGFX_TDisplayS3::LGFX_TDisplayS3() {
 // ============================================
 
 LilyGoDisplay::LilyGoDisplay()
-    : _wifiConnected(false)
-    , _backendConnected(false)
-    , _bleEnabled(false)
-    , _bleConnected(false)
-    , _hasClimb(false)
-    , _angle(0)
-    , _boardType("kilter")
-    , _hasQRCode(false) {
-}
+    : _wifiConnected(false), _backendConnected(false), _bleEnabled(false), _bleConnected(false), _hasClimb(false),
+      _angle(0), _boardType("kilter"), _hasQRCode(false) {}
 
-LilyGoDisplay::~LilyGoDisplay() {
-}
+LilyGoDisplay::~LilyGoDisplay() {}
 
 bool LilyGoDisplay::begin() {
     // Enable display power
@@ -97,7 +91,7 @@ bool LilyGoDisplay::begin() {
 
     // Initialize display
     _display.init();
-    _display.setRotation(0);  // Portrait mode
+    _display.setRotation(0);      // Portrait mode
     _display.setBrightness(255);  // Max brightness
 
     // Test pattern to verify display works
@@ -203,8 +197,8 @@ void LilyGoDisplay::showConfigPortal(const char* apName, const char* ip) {
     _display.setTextDatum(lgfx::top_left);
 }
 
-void LilyGoDisplay::showClimb(const char* name, const char* grade, const char* gradeColor,
-                               int angle, const char* uuid, const char* boardType) {
+void LilyGoDisplay::showClimb(const char* name, const char* grade, const char* gradeColor, int angle, const char* uuid,
+                              const char* boardType) {
     // Store climb data
     _climbName = name ? name : "";
     _grade = grade ? grade : "";
@@ -243,7 +237,8 @@ void LilyGoDisplay::showNoClimb() {
 }
 
 void LilyGoDisplay::addToHistory(const char* name, const char* grade, const char* gradeColor) {
-    if (!name || strlen(name) == 0) return;
+    if (!name || strlen(name) == 0)
+        return;
 
     ClimbHistoryEntry entry;
     entry.name = name;
@@ -396,7 +391,8 @@ void LilyGoDisplay::drawQRCode() {
     // Calculate scale factor for QR code
     int qrSize = qrCode.size;
     int pixelSize = QR_CODE_SIZE / qrSize;
-    if (pixelSize < 1) pixelSize = 1;
+    if (pixelSize < 1)
+        pixelSize = 1;
 
     int actualQrSize = pixelSize * qrSize;
     int qrX = (SCREEN_WIDTH - actualQrSize) / 2;
@@ -409,8 +405,7 @@ void LilyGoDisplay::drawQRCode() {
     for (uint8_t y = 0; y < qrSize; y++) {
         for (uint8_t x = 0; x < qrSize; x++) {
             if (qrcode_getModule(&qrCode, x, y)) {
-                _display.fillRect(qrX + x * pixelSize, qrY + y * pixelSize,
-                                 pixelSize, pixelSize, COLOR_QR_FG);
+                _display.fillRect(qrX + x * pixelSize, qrY + y * pixelSize, pixelSize, pixelSize, COLOR_QR_FG);
             }
         }
     }

@@ -183,14 +183,17 @@ class String {
     }
 
     bool startsWith(const String& prefix) const {
-        if (prefix.length() > data_.length()) return false;
+        if (prefix.length() > data_.length())
+            return false;
         return data_.compare(0, prefix.length(), prefix.c_str()) == 0;
     }
 
     bool startsWith(const char* prefix) const {
-        if (!prefix) return false;
+        if (!prefix)
+            return false;
         size_t prefixLen = strlen(prefix);
-        if (prefixLen > data_.length()) return false;
+        if (prefixLen > data_.length())
+            return false;
         return data_.compare(0, prefixLen, prefix) == 0;
     }
 

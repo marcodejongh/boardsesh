@@ -5,8 +5,8 @@
  * These are pure functions that require no hardware mocks.
  */
 
-#include <unity.h>
 #include <grade_colors.h>
+#include <unity.h>
 
 void setUp(void) {
     // Nothing to set up - pure functions
@@ -58,12 +58,9 @@ void test_vgrade_negative_returns_default_gray(void) {
 
 void test_vgrade_all_values_0_to_17(void) {
     // Verify each V-grade returns a unique color
-    uint16_t expectedColors[] = {
-        COLOR_V0, COLOR_V1, COLOR_V2, COLOR_V3, COLOR_V4,
-        COLOR_V5, COLOR_V6, COLOR_V7, COLOR_V8, COLOR_V9,
-        COLOR_V10, COLOR_V11, COLOR_V12, COLOR_V13, COLOR_V14,
-        COLOR_V15, COLOR_V16, COLOR_V17
-    };
+    uint16_t expectedColors[] = {COLOR_V0,  COLOR_V1,  COLOR_V2,  COLOR_V3,  COLOR_V4,  COLOR_V5,
+                                 COLOR_V6,  COLOR_V7,  COLOR_V8,  COLOR_V9,  COLOR_V10, COLOR_V11,
+                                 COLOR_V12, COLOR_V13, COLOR_V14, COLOR_V15, COLOR_V16, COLOR_V17};
 
     for (int i = 0; i <= 17; i++) {
         uint16_t color = getVGradeColorByNumber(i);
@@ -289,7 +286,7 @@ void test_text_color_on_default_gray_is_black(void) {
 // Main
 // =============================================================================
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
     UNITY_BEGIN();
 
     // getVGradeColorByNumber tests

@@ -8,8 +8,9 @@
  */
 
 #include "ble_proxy.h"
-#include <log_buffer.h>
+
 #include <config_manager.h>
+#include <log_buffer.h>
 
 BLEProxy Proxy;
 
@@ -36,13 +37,8 @@ static void onScanCompleteStatic(const std::vector<DiscoveredBoard>& boards) {
 }
 
 BLEProxy::BLEProxy()
-    : state(BLEProxyState::PROXY_DISABLED)
-    , enabled(false)
-    , scanStartTime(0)
-    , reconnectDelay(5000)
-    , stateCallback(nullptr)
-    , dataCallback(nullptr)
-    , sendToAppCallback(nullptr) {
+    : state(BLEProxyState::PROXY_DISABLED), enabled(false), scanStartTime(0), reconnectDelay(5000),
+      stateCallback(nullptr), dataCallback(nullptr), sendToAppCallback(nullptr) {
     proxyInstance = this;
 }
 
@@ -66,7 +62,8 @@ void BLEProxy::begin(const String& mac) {
 }
 
 void BLEProxy::setEnabled(bool enable) {
-    if (enabled == enable) return;
+    if (enabled == enable)
+        return;
 
     enabled = enable;
     Config.setBool("proxy_en", enable);
@@ -90,7 +87,8 @@ bool BLEProxy::isEnabled() const {
 }
 
 void BLEProxy::loop() {
-    if (!enabled) return;
+    if (!enabled)
+        return;
 
     switch (state) {
         case BLEProxyState::IDLE:
@@ -206,8 +204,7 @@ void BLEProxy::handleScanComplete(const std::vector<DiscoveredBoard>& boards) {
     }
 
     if (target) {
-        Logger.logln("BLEProxy: Connecting to %s (%s)",
-                      target->name.c_str(), target->address.toString().c_str());
+        Logger.logln("BLEProxy: Connecting to %s (%s)", target->name.c_str(), target->address.toString().c_str());
         setState(BLEProxyState::CONNECTING);
         BoardClient.connect(target->address);
     } else {

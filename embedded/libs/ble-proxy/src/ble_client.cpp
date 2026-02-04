@@ -9,20 +9,15 @@
  */
 
 #include "ble_client.h"
+
 #include <log_buffer.h>
 
 BLEClientConnection BoardClient;
 BLEClientConnection* BLEClientConnection::instance = nullptr;
 
 BLEClientConnection::BLEClientConnection()
-    : pClient(nullptr)
-    , pRxChar(nullptr)
-    , pTxChar(nullptr)
-    , state(BLEClientState::IDLE)
-    , targetAddress()
-    , reconnectTime(0)
-    , connectCallback(nullptr)
-    , dataCallback(nullptr) {
+    : pClient(nullptr), pRxChar(nullptr), pTxChar(nullptr), state(BLEClientState::IDLE), targetAddress(),
+      reconnectTime(0), connectCallback(nullptr), dataCallback(nullptr) {
     instance = this;
 }
 
@@ -145,7 +140,8 @@ void BLEClientConnection::onDisconnect(NimBLEClient* client) {
 }
 
 bool BLEClientConnection::setupService() {
-    if (!pClient) return false;
+    if (!pClient)
+        return false;
 
     // Get Nordic UART Service
     NimBLERemoteService* pService = pClient->getService(NUS_SERVICE_UUID);
@@ -181,9 +177,8 @@ bool BLEClientConnection::setupService() {
     return true;
 }
 
-void BLEClientConnection::notifyCallback(NimBLERemoteCharacteristic* pChar,
-                                          uint8_t* pData, size_t length,
-                                          bool isNotify) {
+void BLEClientConnection::notifyCallback(NimBLERemoteCharacteristic* pChar, uint8_t* pData, size_t length,
+                                         bool isNotify) {
     if (instance && instance->dataCallback) {
         instance->dataCallback(pData, length);
     }

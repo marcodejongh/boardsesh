@@ -1,18 +1,19 @@
 #ifndef BLE_PROXY_H
 #define BLE_PROXY_H
 
-#include <Arduino.h>
-#include "ble_scanner.h"
 #include "ble_client.h"
+#include "ble_scanner.h"
+
+#include <Arduino.h>
 
 // Proxy state machine
 enum class BLEProxyState {
-    PROXY_DISABLED,     // Proxy mode not enabled
-    IDLE,               // Waiting to scan
-    SCANNING,           // Scanning for boards
-    CONNECTING,         // Connecting to board
-    CONNECTED,          // Connected and proxying
-    RECONNECTING        // Connection lost, will retry
+    PROXY_DISABLED,  // Proxy mode not enabled
+    IDLE,            // Waiting to scan
+    SCANNING,        // Scanning for boards
+    CONNECTING,      // Connecting to board
+    CONNECTED,       // Connected and proxying
+    RECONNECTING     // Connection lost, will retry
 };
 
 typedef void (*ProxyStateCallback)(BLEProxyState state);
@@ -39,7 +40,7 @@ typedef void (*ProxySendToAppCallback)(const uint8_t* data, size_t len);
  * 4. Data received from board is forwarded to app
  */
 class BLEProxy {
-public:
+  public:
     BLEProxy();
 
     /**
@@ -116,7 +117,7 @@ public:
     void handleBoardConnected(bool connected);
     void handleBoardData(const uint8_t* data, size_t len);
 
-private:
+  private:
     BLEProxyState state;
     bool enabled;
     String targetMac;

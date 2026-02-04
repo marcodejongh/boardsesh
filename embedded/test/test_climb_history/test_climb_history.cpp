@@ -4,15 +4,16 @@
  * Tests the circular buffer climb history with NVS persistence.
  */
 
-#include <unity.h>
-#include <climb_history.h>
 #include <Preferences.h>
+
+#include <climb_history.h>
 #include <cstring>
+#include <unity.h>
 
 // Test instance (use the global ClimbHistoryMgr)
 void setUp(void) {
     Preferences::resetAll();  // Clear all mock storage between tests
-    ClimbHistoryMgr.clear();   // Clear history state
+    ClimbHistoryMgr.clear();  // Clear history state
 }
 
 void tearDown(void) {
@@ -246,7 +247,7 @@ void test_clear_removes_all_history(void) {
 // Main
 // =============================================================================
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
     UNITY_BEGIN();
 
     // Basic add/get tests

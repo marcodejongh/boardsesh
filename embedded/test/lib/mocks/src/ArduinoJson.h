@@ -368,8 +368,7 @@ class JsonDocument {
         return T();
     }
 
-    template<typename T>
-    T as() {
+    template <typename T> T as() {
         if constexpr (std::is_same_v<T, JsonObject>) {
             return JsonObject(&root_);
         } else if constexpr (std::is_same_v<T, JsonArray>) {

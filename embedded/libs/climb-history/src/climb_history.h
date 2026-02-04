@@ -37,7 +37,7 @@ struct ClimbEntry {
  * - Automatically shifts entries when adding new climbs
  */
 class ClimbHistory {
-public:
+  public:
     ClimbHistory();
 
     /**
@@ -105,7 +105,7 @@ public:
      */
     void clear();
 
-private:
+  private:
     ClimbEntry history[MAX_CLIMB_HISTORY];
     bool hasCurrentClimb_;
 
