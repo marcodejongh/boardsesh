@@ -23,31 +23,37 @@ BLEClientConnection::BLEClientConnection()
 
 bool BLEClientConnection::connect(NimBLEAddress address) {
     if (state == BLEClientState::CONNECTED || state == BLEClientState::CONNECTING) {
-        Logger.logln("BLEClient: Already connected or connecting");
+        Logger.logln("BLEClient: Already connecting");
         return false;
     }
 
     targetAddress = address;
     state = BLEClientState::CONNECTING;
 
-    Logger.logln("BLEClient: Connecting to %s", address.toString().c_str());
+    // Log address details
+    uint8_t addrType = address.getType();
+    Logger.logln("BLEClient: Target addr: %s", address.toString().c_str());
+    Logger.logln("BLEClient: Addr type: %d (0=pub, 1=rand)", addrType);
 
     // Create client if needed
     if (!pClient) {
         pClient = NimBLEDevice::createClient();
         pClient->setClientCallbacks(this);
         pClient->setConnectionParams(12, 12, 0, 51);
-        pClient->setConnectTimeout(CLIENT_CONNECT_TIMEOUT_MS / 1000);
+        pClient->setConnectTimeout(5);  // 5 seconds - connections should be fast
     }
 
-    // Attempt connection
-    if (!pClient->connect(address)) {
-        Logger.logln("BLEClient: Connection failed");
+    Logger.logln("BLEClient: Calling connect()...");
+
+    // Attempt connection with explicit address type
+    if (!pClient->connect(address, true)) {
+        Logger.logln("BLEClient: connect() returned false");
         state = BLEClientState::DISCONNECTED;
         reconnectTime = millis() + CLIENT_RECONNECT_DELAY_MS;
         return false;
     }
 
+    Logger.logln("BLEClient: connect() returned true");
     return true;
 }
 

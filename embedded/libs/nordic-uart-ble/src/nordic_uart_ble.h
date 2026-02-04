@@ -25,8 +25,12 @@ class NordicUartBLE : public NimBLEServerCallbacks, public NimBLECharacteristicC
   public:
     NordicUartBLE();
 
-    void begin(const char* deviceName);
+    // Initialize BLE server. If startAdvertising is false, call startAdvertising() later.
+    void begin(const char* deviceName, bool startAdv = true);
     void loop();
+
+    // Start BLE advertising (public so proxy can call after board connection)
+    void startAdvertising();
 
     bool isConnected();
 
@@ -70,6 +74,7 @@ class NordicUartBLE : public NimBLEServerCallbacks, public NimBLECharacteristicC
 
     bool deviceConnected;
     bool advertising;
+    bool advertisingEnabled;  // Whether advertising is allowed (false until proxy connects)
     String connectedDeviceAddress;                 // MAC address of currently connected device
     uint16_t connectedDeviceHandle;                // Connection handle for disconnect
     std::map<String, uint32_t> lastSentHashByMac;  // Track last sent hash per MAC address
@@ -80,8 +85,6 @@ class NordicUartBLE : public NimBLEServerCallbacks, public NimBLECharacteristicC
     BLEDataCallback dataCallback;
     BLELedDataCallback ledDataCallback;
     BLERawForwardCallback rawForwardCallback;
-
-    void startAdvertising();
 };
 
 extern NordicUartBLE BLE;

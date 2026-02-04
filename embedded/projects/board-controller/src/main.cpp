@@ -376,16 +376,24 @@ void onWebSocketLedUpdate(const LedCommand* commands, int count) {
     std::vector<std::vector<uint8_t>> packets;
     AuroraProtocol::encodeLedCommands(commands, count, packets);
 
-    // Send each packet to the board
+    // BLE max write size is 20 bytes (matches TypeScript MAX_BLUETOOTH_MESSAGE_SIZE)
+    const size_t MAX_BLE_CHUNK_SIZE = 20;
+    int totalChunks = 0;
+
+    // Send each protocol packet, split into 20-byte BLE chunks
     for (const auto& packet : packets) {
-        Proxy.forwardToBoard(packet.data(), packet.size());
-        // Small delay between packets to avoid overwhelming the BLE connection
-        if (packets.size() > 1) {
-            delay(20);
+        // Split packet into 20-byte chunks
+        for (size_t offset = 0; offset < packet.size(); offset += MAX_BLE_CHUNK_SIZE) {
+            size_t chunkSize = min(MAX_BLE_CHUNK_SIZE, packet.size() - offset);
+            Proxy.forwardToBoard(packet.data() + offset, chunkSize);
+            totalChunks++;
+
+            // Small delay between chunks to avoid overwhelming the BLE connection
+            delay(10);
         }
     }
 
-    Logger.logln("Proxy: Sent %zu packets to board", packets.size());
+    Logger.logln("Proxy: Sent %d chunks (%zu protocol packets) to board", totalChunks, packets.size());
 }
 #endif
 

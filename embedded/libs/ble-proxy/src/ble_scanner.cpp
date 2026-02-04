@@ -119,8 +119,18 @@ void BLEScanner::onResult(NimBLEAdvertisedDevice* advertisedDevice) {
 
 void BLEScanner::scanCompleteCB(NimBLEScanResults results) {
     if (instance) {
+        // Explicitly stop and clear the scan BEFORE doing anything else
+        // NimBLE requires scan to be fully stopped before creating client connections
+        if (instance->pScan) {
+            instance->pScan->stop();
+            instance->pScan->clearResults();
+        }
         instance->scanning = false;
-        Logger.logln("BLEScanner: Scan complete, found %d Aurora boards", instance->discoveredBoards.size());
+
+        // Wait for BLE stack to settle after scan stops
+        delay(500);
+
+        Logger.logln("BLEScanner: Scan done, %d boards", instance->discoveredBoards.size());
 
         if (instance->completeCallback) {
             instance->completeCallback(instance->discoveredBoards);

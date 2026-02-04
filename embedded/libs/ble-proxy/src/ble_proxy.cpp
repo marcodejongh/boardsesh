@@ -108,17 +108,24 @@ void BLEProxy::loop() {
             if (pendingConnectName.length() > 0) {
                 Logger.logln("BLEProxy: Connecting to %s", pendingConnectName.c_str());
 
-                // Stop the scan from main loop (safe)
+                // Set state FIRST to prevent handleScanComplete from also trying to connect
+                setState(BLEProxyState::CONNECTING);
+
+                // Clear pending name to signal we've started connection
+                String connectName = pendingConnectName;
+                NimBLEAddress connectAddr = pendingConnectAddress;
+                pendingConnectName = "";
+
+                // Stop the scan (this may trigger handleScanComplete, but state is already CONNECTING)
                 Scanner.stopScan();
 
-                Logger.logln("BLEProxy: Addr: %s", pendingConnectAddress.toString().c_str());
-                setState(BLEProxyState::CONNECTING);
+                Logger.logln("BLEProxy: Addr: %s", connectAddr.toString().c_str());
 
                 // Brief delay for scan cleanup
                 delay(100);
 
                 // Now connect
-                BoardClient.connect(pendingConnectAddress);
+                BoardClient.connect(connectAddr);
             }
             break;
 
@@ -217,6 +224,14 @@ void BLEProxy::handleBoardFound(const DiscoveredBoard& board) {
 }
 
 void BLEProxy::handleScanComplete(const std::vector<DiscoveredBoard>& boards) {
+    // If we're already connecting or connected (e.g., from handleBoardFound path),
+    // don't try to connect again
+    if (state == BLEProxyState::CONNECTING || state == BLEProxyState::CONNECTED) {
+        Logger.logln("BLEProxy: Scan complete, already %s",
+                     state == BLEProxyState::CONNECTED ? "connected" : "connecting");
+        return;
+    }
+
     if (boards.empty()) {
         Logger.logln("BLEProxy: No boards found (reboot to scan again)");
         setState(BLEProxyState::SCAN_COMPLETE_NONE);
@@ -239,10 +254,6 @@ void BLEProxy::handleScanComplete(const std::vector<DiscoveredBoard>& boards) {
     }
 
     if (target) {
-        // Store target info for connection
-        pendingConnectAddress = target->address;
-        pendingConnectName = target->name;
-
         Logger.logln("BLEProxy: Will connect to %s (%s)", target->name.c_str(), target->address.toString().c_str());
 
         // Small delay to allow NimBLE to fully release scan resources
@@ -251,7 +262,7 @@ void BLEProxy::handleScanComplete(const std::vector<DiscoveredBoard>& boards) {
         delay(100);
 
         Logger.logln("BLEProxy: Initiating connection...");
-        BoardClient.connect(pendingConnectAddress);
+        BoardClient.connect(target->address);
     } else {
         setState(BLEProxyState::IDLE);
     }

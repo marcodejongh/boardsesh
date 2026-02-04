@@ -8,12 +8,13 @@
 
 // Proxy state machine
 enum class BLEProxyState {
-    PROXY_DISABLED,  // Proxy mode not enabled
-    IDLE,            // Waiting to scan
-    SCANNING,        // Scanning for boards
-    CONNECTING,      // Connecting to board
-    CONNECTED,       // Connected and proxying
-    RECONNECTING     // Connection lost, will retry
+    PROXY_DISABLED,       // Proxy mode not enabled
+    IDLE,                 // Waiting to scan
+    SCANNING,             // Scanning for boards
+    SCAN_COMPLETE_NONE,   // Scan completed but no boards found (won't auto-retry)
+    CONNECTING,           // Connecting to board
+    CONNECTED,            // Connected and proxying
+    RECONNECTING          // Connection lost, will retry
 };
 
 typedef void (*ProxyStateCallback)(BLEProxyState state);
@@ -113,6 +114,7 @@ class BLEProxy {
     void forwardToApp(const uint8_t* data, size_t len);
 
     // Public handlers for static callbacks
+    void handleBoardFound(const DiscoveredBoard& board);
     void handleScanComplete(const std::vector<DiscoveredBoard>& boards);
     void handleBoardConnected(bool connected);
     void handleBoardData(const uint8_t* data, size_t len);
@@ -123,6 +125,10 @@ class BLEProxy {
     String targetMac;
     unsigned long scanStartTime;
     unsigned long reconnectDelay;
+
+    // Pending connection info (stored after scan, before connect)
+    NimBLEAddress pendingConnectAddress;
+    String pendingConnectName;
 
     ProxyStateCallback stateCallback;
     ProxyDataCallback dataCallback;
