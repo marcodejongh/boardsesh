@@ -39,6 +39,7 @@ struct ControllerQueueSyncData {
 typedef void (*GraphQLMessageCallback)(JsonDocument& doc);
 typedef void (*GraphQLStateCallback)(GraphQLConnectionState state);
 typedef void (*GraphQLQueueSyncCallback)(const ControllerQueueSyncData& data);
+typedef void (*GraphQLLedUpdateCallback)(const LedCommand* commands, int count);
 
 class GraphQLWSClient {
   public:
@@ -70,6 +71,7 @@ class GraphQLWSClient {
     void setMessageCallback(GraphQLMessageCallback callback);
     void setStateCallback(GraphQLStateCallback callback);
     void setQueueSyncCallback(GraphQLQueueSyncCallback callback);
+    void setLedUpdateCallback(GraphQLLedUpdateCallback callback);
 
     // Handle LED update from backend
     void handleLedUpdate(JsonObject& data);
@@ -97,6 +99,7 @@ class GraphQLWSClient {
     GraphQLMessageCallback messageCallback;
     GraphQLStateCallback stateCallback;
     GraphQLQueueSyncCallback queueSyncCallback;
+    GraphQLLedUpdateCallback ledUpdateCallback;
 
     String serverHost;
     uint16_t serverPort;

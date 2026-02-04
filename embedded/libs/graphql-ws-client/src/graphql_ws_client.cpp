@@ -12,7 +12,7 @@ const char* GraphQLWSClient::KEY_PATH = "gql_path";
 
 GraphQLWSClient::GraphQLWSClient()
     : state(GraphQLConnectionState::DISCONNECTED), messageCallback(nullptr), stateCallback(nullptr), queueSyncCallback(nullptr),
-      serverPort(443), useSSL(true), lastPingTime(0), lastPongTime(0), reconnectTime(0), lastSentLedHash(0), currentDisplayHash(0) {}
+      ledUpdateCallback(nullptr), serverPort(443), useSSL(true), lastPingTime(0), lastPongTime(0), reconnectTime(0), lastSentLedHash(0), currentDisplayHash(0) {}
 
 void GraphQLWSClient::begin(const char* host, uint16_t port, const char* path, const char* apiKeyParam) {
     // Parse protocol prefix from host (ws:// or wss://)
@@ -192,6 +192,10 @@ void GraphQLWSClient::setStateCallback(GraphQLStateCallback callback) {
 
 void GraphQLWSClient::setQueueSyncCallback(GraphQLQueueSyncCallback callback) {
     queueSyncCallback = callback;
+}
+
+void GraphQLWSClient::setLedUpdateCallback(GraphQLLedUpdateCallback callback) {
+    ledUpdateCallback = callback;
 }
 
 void GraphQLWSClient::onWebSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
@@ -383,6 +387,11 @@ void GraphQLWSClient::handleLedUpdate(JsonObject& data) {
         Logger.logln("GraphQL: Displaying climb: %s (%d LEDs, clientId: %s)", climbName, count, updateClientId ? updateClientId : "null");
     } else {
         Logger.logln("GraphQL: Updated %d LEDs (clientId: %s)", count, updateClientId ? updateClientId : "null");
+    }
+
+    // Call LED update callback (for proxy forwarding)
+    if (ledUpdateCallback) {
+        ledUpdateCallback(ledCommands, count);
     }
 
     delete[] ledCommands;

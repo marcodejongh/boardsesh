@@ -60,6 +60,7 @@ void startupAnimation();
 #ifdef ENABLE_BLE_PROXY
 void onBLERawForward(const uint8_t* data, size_t len);
 void onProxyStateChange(BLEProxyState state);
+void onWebSocketLedUpdate(const LedCommand* commands, int count);
 
 // Function to send data to app via BLE (used by proxy)
 void sendToAppViaBLE(const uint8_t* data, size_t len) {
@@ -128,7 +129,13 @@ void setup() {
 
     // Initialize BLE - always use BLE_DEVICE_NAME for Kilter app compatibility
     Logger.logln("Initializing BLE as '%s'...", BLE_DEVICE_NAME);
-    BLE.begin(BLE_DEVICE_NAME);
+#ifdef ENABLE_BLE_PROXY
+    // When proxy is enabled, don't advertise yet - connect to board first
+    // Advertising will start after successful connection to real board
+    BLE.begin(BLE_DEVICE_NAME, false);
+#else
+    BLE.begin(BLE_DEVICE_NAME, true);
+#endif
     BLE.setConnectCallback(onBLEConnect);
     BLE.setDataCallback(onBLEData);
     BLE.setLedDataCallback(onBLELedData);
@@ -277,6 +284,10 @@ void onWiFiStateChange(WiFiConnectionState state) {
             Logger.logln("Connecting to backend: %s:%d%s", host.c_str(), port, path.c_str());
             GraphQL.setStateCallback(onGraphQLStateChange);
             GraphQL.setMessageCallback(onGraphQLMessage);
+#ifdef ENABLE_BLE_PROXY
+            // Set up LED update callback for proxy forwarding
+            GraphQL.setLedUpdateCallback(onWebSocketLedUpdate);
+#endif
             GraphQL.begin(host.c_str(), port, path.c_str(), apiKey.c_str());
             break;
         }
@@ -347,6 +358,34 @@ void onProxyStateChange(BLEProxyState state) {
             break;
     }
 #endif
+}
+
+/**
+ * Callback for LED updates received via WebSocket
+ * Encodes LED commands into Aurora protocol and forwards to the real board
+ */
+void onWebSocketLedUpdate(const LedCommand* commands, int count) {
+    if (!Proxy.isConnectedToBoard()) {
+        Logger.logln("Proxy: Cannot forward LED update - not connected to board");
+        return;
+    }
+
+    Logger.logln("Proxy: Forwarding %d LEDs to board via BLE", count);
+
+    // Encode LED commands into Aurora protocol packets
+    std::vector<std::vector<uint8_t>> packets;
+    AuroraProtocol::encodeLedCommands(commands, count, packets);
+
+    // Send each packet to the board
+    for (const auto& packet : packets) {
+        Proxy.forwardToBoard(packet.data(), packet.size());
+        // Small delay between packets to avoid overwhelming the BLE connection
+        if (packets.size() > 1) {
+            delay(20);
+        }
+    }
+
+    Logger.logln("Proxy: Sent %zu packets to board", packets.size());
 }
 #endif
 
