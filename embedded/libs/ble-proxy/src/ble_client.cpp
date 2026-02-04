@@ -1,3 +1,13 @@
+/**
+ * BLE Client Connection Implementation
+ *
+ * This module uses a singleton pattern with a global instance pointer for
+ * ESP32/NimBLE callback compatibility. The NimBLE library requires C-style
+ * callback functions for notifications, which cannot directly call member
+ * functions. The static instance pointer allows the static callback wrapper
+ * to forward data to the singleton instance.
+ */
+
 #include "ble_client.h"
 #include <log_buffer.h>
 

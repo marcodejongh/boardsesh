@@ -176,6 +176,8 @@ private:
     static const int MAX_HISTORY_ITEMS = 5;
 
     // QR code data
+    // QR Version 6: size = 6*4+17 = 41 modules per side
+    // Buffer = ((41*41)+7)/8 = 211 bytes
     static const int QR_VERSION = 6;
     static const int QR_BUFFER_SIZE = 211;
     uint8_t _qrCodeData[QR_BUFFER_SIZE];

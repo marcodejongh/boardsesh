@@ -936,6 +936,8 @@ subscription ControllerEvents($sessionId: ID!) {
       commands { position r g b }
       climbUuid
       climbName
+      climbGrade
+      boardPath
       angle
     }
     ... on ControllerPing {
@@ -951,6 +953,17 @@ subscription ControllerEvents($sessionId: ID!) {
 |-------|-------------|
 | `LedUpdate` | LED commands for current climb (RGB values and positions) |
 | `ControllerPing` | Keep-alive ping (not currently implemented) |
+
+### LedUpdate Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `commands` | Array | LED positions with RGB values |
+| `climbUuid` | String | Unique identifier for the climb |
+| `climbName` | String | Display name of the climb |
+| `climbGrade` | String | The climb difficulty/grade (e.g., "V5", "6a/V3") |
+| `boardPath` | String | Board configuration path for context-aware operations (e.g., "kilter/1/12/1,2,3/40") |
+| `angle` | Int | Board angle in degrees |
 
 ### LED Color Mapping
 

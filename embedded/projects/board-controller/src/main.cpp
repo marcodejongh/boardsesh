@@ -36,7 +36,9 @@ void onBLEData(const uint8_t* data, size_t len);
 void onBLELedData(const LedCommand* commands, int count, int angle);
 void onGraphQLStateChange(GraphQLConnectionState state);
 void onGraphQLMessage(JsonDocument& doc);
+#ifdef ENABLE_DISPLAY
 void handleLedUpdateExtended(JsonObject& data);
+#endif
 void startupAnimation();
 
 #ifdef ENABLE_BLE_PROXY
@@ -319,6 +321,7 @@ void onGraphQLStateChange(GraphQLConnectionState state) {
 }
 
 void onGraphQLMessage(JsonDocument& doc) {
+#ifdef ENABLE_DISPLAY
     // Handle extended LedUpdate data (for display)
     JsonObject payloadObj = doc["payload"];
     if (payloadObj["data"].is<JsonObject>()) {
@@ -332,14 +335,17 @@ void onGraphQLMessage(JsonDocument& doc) {
             }
         }
     }
+#else
+    (void)doc;  // Suppress unused parameter warning
+#endif
 }
 
+#ifdef ENABLE_DISPLAY
 /**
  * Handle extended LedUpdate data for display
  * This is called in addition to GraphQL.handleLedUpdate (which handles LED control)
  */
 void handleLedUpdateExtended(JsonObject& data) {
-#ifdef ENABLE_DISPLAY
     // Get boardPath for QR code generation and board type detection
     const char* boardPath = data["boardPath"];
 
@@ -374,11 +380,8 @@ void handleLedUpdateExtended(JsonObject& data) {
         // No climb - clear display
         Display.showNoClimb();
     }
-#else
-    // Without display enabled, nothing to do with extended data
-    (void)data;  // Suppress unused parameter warning
-#endif
 }
+#endif
 
 void startupAnimation() {
     // Simple chase animation to verify LED wiring

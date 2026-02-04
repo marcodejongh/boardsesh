@@ -1,10 +1,19 @@
+/**
+ * BLE Proxy Implementation
+ *
+ * This module uses a singleton pattern with a static instance pointer for
+ * ESP32/NimBLE callback compatibility. The scanner and client libraries
+ * require C-style callback functions which cannot directly invoke member
+ * functions. Static wrapper functions forward calls to the singleton instance.
+ */
+
 #include "ble_proxy.h"
 #include <log_buffer.h>
 #include <config_manager.h>
 
 BLEProxy Proxy;
 
-// Static instance pointer for callbacks
+// Static instance pointer for callbacks (required for C-style callback wrappers)
 static BLEProxy* proxyInstance = nullptr;
 
 // Static callback wrappers

@@ -1,3 +1,13 @@
+/**
+ * BLE Scanner Implementation
+ *
+ * This module uses a singleton pattern with a global instance pointer for
+ * ESP32/NimBLE callback compatibility. The NimBLE scan API requires C-style
+ * callback functions for scan completion events, which cannot directly call
+ * member functions. The static instance pointer allows the static callback
+ * to forward results to the singleton instance.
+ */
+
 #include "ble_scanner.h"
 #include <log_buffer.h>
 
