@@ -4,13 +4,14 @@
  * Tests the HTTP configuration server for ESP32.
  */
 
-#include <unity.h>
-#include <esp_web_server.h>
-#include <WebServer.h>
-#include <config_manager.h>
-#include <wifi_utils.h>
 #include <Preferences.h>
+#include <WebServer.h>
+#include <esp_web_server.h>
+#include <wifi_utils.h>
+
+#include <config_manager.h>
 #include <cstring>
+#include <unity.h>
 
 // Test instance
 static ESPWebServer* webServer;
@@ -231,8 +232,7 @@ void test_api_config_get_route(void) {
 
 void test_api_config_post_route(void) {
     webServer->begin();
-    webServer->getServer().mockRequest("/api/config", HTTP_POST,
-        "{\"device_name\":\"New Name\",\"brightness\":100}");
+    webServer->getServer().mockRequest("/api/config", HTTP_POST, "{\"device_name\":\"New Name\",\"brightness\":100}");
 
     TEST_ASSERT_EQUAL(200, webServer->getServer().getLastResponseCode());
 
@@ -259,10 +259,7 @@ void test_api_config_post_no_body(void) {
 void test_api_wifi_scan_route(void) {
     // Set up mock networks
     std::vector<MockWiFi::NetworkInfo> networks = {
-        {"TestNetwork1", -50, true},
-        {"TestNetwork2", -70, false},
-        {"TestNetwork3", -80, true}
-    };
+        {"TestNetwork1", -50, true}, {"TestNetwork2", -70, false}, {"TestNetwork3", -80, true}};
     WiFi.mockSetNetworks(networks);
 
     webServer->begin();
@@ -276,15 +273,14 @@ void test_api_wifi_scan_route(void) {
 void test_api_wifi_connect_route(void) {
     webServer->begin();
     webServer->getServer().mockRequest("/api/wifi/connect", HTTP_POST,
-        "{\"ssid\":\"TestNetwork\",\"password\":\"secret123\"}");
+                                       "{\"ssid\":\"TestNetwork\",\"password\":\"secret123\"}");
 
     TEST_ASSERT_EQUAL(200, webServer->getServer().getLastResponseCode());
 }
 
 void test_api_wifi_connect_missing_ssid(void) {
     webServer->begin();
-    webServer->getServer().mockRequest("/api/wifi/connect", HTTP_POST,
-        "{\"password\":\"secret123\"}");
+    webServer->getServer().mockRequest("/api/wifi/connect", HTTP_POST, "{\"password\":\"secret123\"}");
 
     TEST_ASSERT_EQUAL(400, webServer->getServer().getLastResponseCode());
 }
@@ -332,9 +328,7 @@ void test_not_found_route(void) {
 // =============================================================================
 
 void test_cors_headers_on_custom_route(void) {
-    webServer->on("/test", HTTP_GET, [](WebServer& server) {
-        server.send(200, "text/plain", "OK");
-    });
+    webServer->on("/test", HTTP_GET, [](WebServer& server) { server.send(200, "text/plain", "OK"); });
     webServer->begin();
 
     webServer->getServer().mockRequest("/test", HTTP_GET);
@@ -353,8 +347,7 @@ void test_config_values_persist(void) {
     webServer->begin();
 
     // Set config via API
-    webServer->getServer().mockRequest("/api/config", HTTP_POST,
-        "{\"session_id\":\"abc123\",\"api_key\":\"key456\"}");
+    webServer->getServer().mockRequest("/api/config", HTTP_POST, "{\"session_id\":\"abc123\",\"api_key\":\"key456\"}");
 
     // Verify values were saved
     TEST_ASSERT_EQUAL_STRING("abc123", Config.getString("session_id").c_str());
@@ -369,8 +362,7 @@ void test_config_partial_update(void) {
     webServer->begin();
 
     // Update only brightness
-    webServer->getServer().mockRequest("/api/config", HTTP_POST,
-        "{\"brightness\":255}");
+    webServer->getServer().mockRequest("/api/config", HTTP_POST, "{\"brightness\":255}");
 
     // device_name should be unchanged
     TEST_ASSERT_EQUAL_STRING("Initial Name", Config.getString("device_name").c_str());
@@ -389,7 +381,7 @@ void test_web_server_port_constant(void) {
 // Main
 // =============================================================================
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
     UNITY_BEGIN();
 
     // Constructor tests

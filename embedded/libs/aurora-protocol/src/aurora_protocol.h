@@ -2,8 +2,9 @@
 #define AURORA_PROTOCOL_H
 
 #include <Arduino.h>
-#include <vector>
+
 #include <led_controller.h>
+#include <vector>
 
 // Framing constants
 #define FRAME_SOH 0x01  // Start of header
@@ -12,10 +13,10 @@
 
 // Hold role codes (Kilter board)
 #define ROLE_STARTING 42
-#define ROLE_HAND     43
-#define ROLE_FINISH   44
-#define ROLE_FOOT     45
-#define ROLE_UNKNOWN  0
+#define ROLE_HAND 43
+#define ROLE_FINISH 44
+#define ROLE_FOOT 45
+#define ROLE_UNKNOWN 0
 
 /**
  * Convert RGB color to hold role code
@@ -34,27 +35,27 @@ inline uint8_t colorToRole(uint8_t r, uint8_t g, uint8_t b) {
     if (!hasRed && hasGreen && !hasBlue) {
         return ROLE_STARTING;  // Green
     } else if (!hasRed && hasGreen && hasBlue) {
-        return ROLE_HAND;      // Cyan
+        return ROLE_HAND;  // Cyan
     } else if (hasRed && !hasGreen && hasBlue) {
-        return ROLE_FINISH;    // Magenta
+        return ROLE_FINISH;  // Magenta
     } else if (hasRed && hasGreen && !hasBlue) {
-        return ROLE_FOOT;      // Orange/Yellow
+        return ROLE_FOOT;  // Orange/Yellow
     }
     return ROLE_UNKNOWN;
 }
 
 // Command bytes (inside the framed message)
 // API v2 commands (2 bytes per LED)
-#define CMD_V2_PACKET_ONLY   'P'  // 80 - Single packet (complete message)
-#define CMD_V2_PACKET_FIRST  'N'  // 78 - First packet of multi-packet sequence
+#define CMD_V2_PACKET_ONLY 'P'    // 80 - Single packet (complete message)
+#define CMD_V2_PACKET_FIRST 'N'   // 78 - First packet of multi-packet sequence
 #define CMD_V2_PACKET_MIDDLE 'M'  // 77 - Middle packet of multi-packet sequence
-#define CMD_V2_PACKET_LAST   'O'  // 79 - Last packet of multi-packet sequence
+#define CMD_V2_PACKET_LAST 'O'    // 79 - Last packet of multi-packet sequence
 
 // API v3 commands (3 bytes per LED)
-#define CMD_V3_PACKET_ONLY   'T'  // 84 - Single packet (complete message)
-#define CMD_V3_PACKET_FIRST  'R'  // 82 - First packet of multi-packet sequence
+#define CMD_V3_PACKET_ONLY 'T'    // 84 - Single packet (complete message)
+#define CMD_V3_PACKET_FIRST 'R'   // 82 - First packet of multi-packet sequence
 #define CMD_V3_PACKET_MIDDLE 'Q'  // 81 - Middle packet of multi-packet sequence
-#define CMD_V3_PACKET_LAST   'S'  // 83 - Last packet of multi-packet sequence
+#define CMD_V3_PACKET_LAST 'S'    // 83 - Last packet of multi-packet sequence
 
 /**
  * Aurora Protocol Decoder
@@ -85,7 +86,7 @@ inline uint8_t colorToRole(uint8_t r, uint8_t g, uint8_t b) {
  * - Byte 2: Color (RRRGGGBB format - 3 bits red, 3 bits green, 2 bits blue)
  */
 class AuroraProtocol {
-public:
+  public:
     AuroraProtocol();
 
     // Add incoming BLE data to buffer
@@ -107,7 +108,7 @@ public:
     // Enable/disable debug output
     void setDebug(bool enabled);
 
-private:
+  private:
     // Raw data buffer for incoming BLE packets
     std::vector<uint8_t> rawBuffer;
 
@@ -141,4 +142,4 @@ private:
 
 extern AuroraProtocol Aurora;
 
-#endif // AURORA_PROTOCOL_H
+#endif  // AURORA_PROTOCOL_H

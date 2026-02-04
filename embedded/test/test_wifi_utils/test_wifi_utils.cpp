@@ -4,11 +4,12 @@
  * Tests the WiFi connection management with auto-reconnect functionality.
  */
 
-#include <unity.h>
-#include <wifi_utils.h>
-#include <config_manager.h>
-#include <WiFi.h>
 #include <Preferences.h>
+#include <WiFi.h>
+#include <wifi_utils.h>
+
+#include <config_manager.h>
+#include <unity.h>
 
 // Test instance
 static WiFiUtils* wifiMgr;
@@ -305,7 +306,7 @@ void test_key_constants(void) {
 // Main
 // =============================================================================
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
     UNITY_BEGIN();
 
     // Initial state tests

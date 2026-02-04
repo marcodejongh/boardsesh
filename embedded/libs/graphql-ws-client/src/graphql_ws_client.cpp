@@ -1,4 +1,5 @@
 #include "graphql_ws_client.h"
+
 #include <aurora_protocol.h>
 #include <nordic_uart_ble.h>
 
@@ -9,15 +10,8 @@ const char* GraphQLWSClient::KEY_PORT = "gql_port";
 const char* GraphQLWSClient::KEY_PATH = "gql_path";
 
 GraphQLWSClient::GraphQLWSClient()
-    : state(GraphQLConnectionState::DISCONNECTED)
-    , messageCallback(nullptr)
-    , stateCallback(nullptr)
-    , serverPort(443)
-    , lastPingTime(0)
-    , lastPongTime(0)
-    , reconnectTime(0)
-    , lastSentLedHash(0)
-    , currentDisplayHash(0) {}
+    : state(GraphQLConnectionState::DISCONNECTED), messageCallback(nullptr), stateCallback(nullptr), serverPort(443),
+      lastPingTime(0), lastPongTime(0), reconnectTime(0), lastSentLedHash(0), currentDisplayHash(0) {}
 
 void GraphQLWSClient::begin(const char* host, uint16_t port, const char* path, const char* apiKeyParam) {
     serverHost = host;
@@ -27,9 +21,8 @@ void GraphQLWSClient::begin(const char* host, uint16_t port, const char* path, c
     this->sessionId = Config.getString("session_id");
 
     // Set up WebSocket event handler
-    ws.onEvent([this](WStype_t type, uint8_t* payload, size_t length) {
-        this->onWebSocketEvent(type, payload, length);
-    });
+    ws.onEvent(
+        [this](WStype_t type, uint8_t* payload, size_t length) { this->onWebSocketEvent(type, payload, length); });
 
     // Enable heartbeat
     ws.enableHeartbeat(WS_PING_INTERVAL, WS_PONG_TIMEOUT, 2);
@@ -73,8 +66,7 @@ void GraphQLWSClient::disconnect() {
 }
 
 bool GraphQLWSClient::isConnected() {
-    return state == GraphQLConnectionState::CONNECTION_ACK ||
-           state == GraphQLConnectionState::SUBSCRIBED;
+    return state == GraphQLConnectionState::CONNECTION_ACK || state == GraphQLConnectionState::SUBSCRIBED;
 }
 
 bool GraphQLWSClient::isSubscribed() {
@@ -219,8 +211,7 @@ void GraphQLWSClient::handleMessage(uint8_t* payload, size_t length) {
     if (strcmp(type, "connection_ack") == 0) {
         Logger.logln("GraphQL: Connection acknowledged");
         setState(GraphQLConnectionState::CONNECTION_ACK);
-    }
-    else if (strcmp(type, "next") == 0) {
+    } else if (strcmp(type, "next") == 0) {
         // Subscription data
         JsonObject payloadObj = doc["payload"];
         if (payloadObj["data"].is<JsonObject>()) {
@@ -231,8 +222,7 @@ void GraphQLWSClient::handleMessage(uint8_t* payload, size_t length) {
 
                 if (typename_ && strcmp(typename_, "LedUpdate") == 0) {
                     handleLedUpdate(event);
-                }
-                else if (typename_ && strcmp(typename_, "ControllerPing") == 0) {
+                } else if (typename_ && strcmp(typename_, "ControllerPing") == 0) {
                     Logger.logln("GraphQL: Received ping from server");
                 }
             }
@@ -240,15 +230,13 @@ void GraphQLWSClient::handleMessage(uint8_t* payload, size_t length) {
         if (messageCallback) {
             messageCallback(doc);
         }
-    }
-    else if (strcmp(type, "error") == 0) {
+    } else if (strcmp(type, "error") == 0) {
         Logger.logln("GraphQL: Subscription error");
         JsonArray errors = doc["payload"];
         for (JsonObject err : errors) {
             Logger.logln("GraphQL: Error: %s", err["message"].as<const char*>());
         }
-    }
-    else if (strcmp(type, "complete") == 0) {
+    } else if (strcmp(type, "complete") == 0) {
         const char* msgId = doc["id"];
         // Only reset state if main subscription completed, not mutations
         if (msgId && subscriptionId == String(msgId)) {
@@ -258,8 +246,7 @@ void GraphQLWSClient::handleMessage(uint8_t* payload, size_t length) {
             Logger.logln("GraphQL: Mutation completed");
             // Don't change state - subscription is still active
         }
-    }
-    else if (strcmp(type, "pong") == 0) {
+    } else if (strcmp(type, "pong") == 0) {
         lastPongTime = millis();
     }
 }
@@ -390,13 +377,17 @@ void GraphQLWSClient::sendLedPositions(const LedCommand* commands, int count, in
     int starts = 0, hands = 0, finishes = 0, foots = 0;
     for (int i = 0; i < count; i++) {
         uint8_t role = colorToRole(commands[i].r, commands[i].g, commands[i].b);
-        if (role == ROLE_STARTING) starts++;
-        else if (role == ROLE_HAND) hands++;
-        else if (role == ROLE_FINISH) finishes++;
-        else if (role == ROLE_FOOT) foots++;
+        if (role == ROLE_STARTING)
+            starts++;
+        else if (role == ROLE_HAND)
+            hands++;
+        else if (role == ROLE_FINISH)
+            finishes++;
+        else if (role == ROLE_FOOT)
+            foots++;
     }
-    Logger.logln("GraphQL: Sending %d LED positions (roles: %d start, %d hand, %d finish, %d foot)",
-                  count, starts, hands, finishes, foots);
+    Logger.logln("GraphQL: Sending %d LED positions (roles: %d start, %d hand, %d finish, %d foot)", count, starts,
+                 hands, finishes, foots);
 
     ws.sendTXT(message);
 }
@@ -429,9 +420,7 @@ uint32_t GraphQLWSClient::computeLedHash(const LedCommand* commands, int count) 
     uint32_t hash = count;
     for (int i = 0; i < count; i++) {
         // Create a unique value for each LED and XOR them together
-        uint32_t ledValue = (commands[i].position << 16) |
-                           (commands[i].r << 8) |
-                           (commands[i].g);
+        uint32_t ledValue = (commands[i].position << 16) | (commands[i].r << 8) | (commands[i].g);
         // Mix in blue separately to avoid collisions
         ledValue ^= (commands[i].b << 24) | (commands[i].position);
         hash ^= ledValue;

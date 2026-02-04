@@ -3,24 +3,25 @@
 
 #include <Arduino.h>
 #include <NimBLEDevice.h>
-#include <map>
+
 #include <aurora_protocol.h>
 #include <led_controller.h>
+#include <map>
 
 // Aurora boards advertise this service UUID for discovery by Kilter/Tension apps
 #define AURORA_ADVERTISED_SERVICE_UUID "4488b571-7806-4df6-bcff-a2897e4953ff"
 
 // Nordic UART Service UUIDs - used for actual communication
-#define NUS_SERVICE_UUID        "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
-#define NUS_RX_CHARACTERISTIC   "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
-#define NUS_TX_CHARACTERISTIC   "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
+#define NUS_SERVICE_UUID "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
+#define NUS_RX_CHARACTERISTIC "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
+#define NUS_TX_CHARACTERISTIC "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
 
 typedef void (*BLEConnectCallback)(bool connected);
 typedef void (*BLEDataCallback)(const uint8_t* data, size_t len);
 typedef void (*BLELedDataCallback)(const LedCommand* commands, int count, int angle);
 
 class NordicUartBLE : public NimBLEServerCallbacks, public NimBLECharacteristicCallbacks {
-public:
+  public:
     NordicUartBLE();
 
     void begin(const char* deviceName);
@@ -57,15 +58,15 @@ public:
     // Clear the last sent hash (after disconnect)
     void clearLastSentHash();
 
-private:
+  private:
     NimBLEServer* pServer;
     NimBLECharacteristic* pTxCharacteristic;
     NimBLECharacteristic* pRxCharacteristic;
 
     bool deviceConnected;
     bool advertising;
-    String connectedDeviceAddress;  // MAC address of currently connected device
-    uint16_t connectedDeviceHandle;  // Connection handle for disconnect
+    String connectedDeviceAddress;                 // MAC address of currently connected device
+    uint16_t connectedDeviceHandle;                // Connection handle for disconnect
     std::map<String, uint32_t> lastSentHashByMac;  // Track last sent hash per MAC address
 
     AuroraProtocol protocol;

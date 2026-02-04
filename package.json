@@ -24,7 +24,9 @@
     "db:studio": "npm run db:studio --workspace=@boardsesh/db",
     "controller:build": "cd embedded/projects/board-controller && pio run",
     "controller:upload": "cd embedded/projects/board-controller && pio run -t upload",
-    "controller:monitor": "cd embedded/projects/board-controller && pio device monitor"
+    "controller:monitor": "cd embedded/projects/board-controller && pio device monitor",
+    "controller:format": "find embedded -name '*.cpp' -o -name '*.h' | xargs clang-format -i",
+    "controller:format:check": "find embedded -name '*.cpp' -o -name '*.h' | xargs clang-format --dry-run --Werror"
   },
   "engines": {
     "node": ">=18"

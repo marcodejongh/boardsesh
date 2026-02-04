@@ -8,30 +8,26 @@
 #ifndef WIFI_MOCK_H
 #define WIFI_MOCK_H
 
-#include <cstdint>
-#include <vector>
-#include <string>
 #include "Arduino.h"
+
+#include <cstdint>
+#include <string>
+#include <vector>
 
 // WiFi status codes
 typedef enum {
-    WL_NO_SHIELD        = 255,
-    WL_IDLE_STATUS      = 0,
-    WL_NO_SSID_AVAIL    = 1,
-    WL_SCAN_COMPLETED   = 2,
-    WL_CONNECTED        = 3,
-    WL_CONNECT_FAILED   = 4,
-    WL_CONNECTION_LOST  = 5,
-    WL_DISCONNECTED     = 6
+    WL_NO_SHIELD = 255,
+    WL_IDLE_STATUS = 0,
+    WL_NO_SSID_AVAIL = 1,
+    WL_SCAN_COMPLETED = 2,
+    WL_CONNECTED = 3,
+    WL_CONNECT_FAILED = 4,
+    WL_CONNECTION_LOST = 5,
+    WL_DISCONNECTED = 6
 } wl_status_t;
 
 // WiFi modes
-typedef enum {
-    WIFI_OFF = 0,
-    WIFI_STA = 1,
-    WIFI_AP = 2,
-    WIFI_AP_STA = 3
-} wifi_mode_t;
+typedef enum { WIFI_OFF = 0, WIFI_STA = 1, WIFI_AP = 2, WIFI_AP_STA = 3 } wifi_mode_t;
 
 // WiFi auth types
 typedef enum {
@@ -51,7 +47,7 @@ typedef enum {
  * Mock IPAddress class
  */
 class IPAddress {
-public:
+  public:
     IPAddress() : addr_(0) {}
     IPAddress(uint32_t addr) : addr_(addr) {}
     IPAddress(uint8_t a, uint8_t b, uint8_t c, uint8_t d) {
@@ -60,17 +56,14 @@ public:
 
     String toString() const {
         char buf[16];
-        snprintf(buf, sizeof(buf), "%u.%u.%u.%u",
-            (uint8_t)(addr_ & 0xFF),
-            (uint8_t)((addr_ >> 8) & 0xFF),
-            (uint8_t)((addr_ >> 16) & 0xFF),
-            (uint8_t)((addr_ >> 24) & 0xFF));
+        snprintf(buf, sizeof(buf), "%u.%u.%u.%u", (uint8_t)(addr_ & 0xFF), (uint8_t)((addr_ >> 8) & 0xFF),
+                 (uint8_t)((addr_ >> 16) & 0xFF), (uint8_t)((addr_ >> 24) & 0xFF));
         return String(buf);
     }
 
     operator uint32_t() const { return addr_; }
 
-private:
+  private:
     uint32_t addr_;
 };
 
@@ -78,7 +71,7 @@ private:
  * Mock WiFi class
  */
 class MockWiFi {
-public:
+  public:
     struct NetworkInfo {
         std::string ssid;
         int32_t rssi;
@@ -86,12 +79,8 @@ public:
     };
 
     MockWiFi()
-        : status_(WL_DISCONNECTED)
-        , mode_(WIFI_OFF)
-        , autoReconnect_(false)
-        , rssi_(-70)
-        , localIP_(192, 168, 1, 100)
-        , ssid_("") {}
+        : status_(WL_DISCONNECTED), mode_(WIFI_OFF), autoReconnect_(false), rssi_(-70), localIP_(192, 168, 1, 100),
+          ssid_("") {}
 
     // Mode control
     bool mode(wifi_mode_t mode) {
@@ -133,9 +122,7 @@ public:
     int8_t RSSI() const { return rssi_; }
 
     // Scan methods
-    int16_t scanNetworks() {
-        return networks_.size();
-    }
+    int16_t scanNetworks() { return networks_.size(); }
 
     void scanDelete() {
         // Reset scan results (keep for next scan)
@@ -167,13 +154,9 @@ public:
     void mockSetSSID(const char* ssid) { ssid_ = ssid ? ssid : ""; }
     void mockSetRSSI(int8_t rssi) { rssi_ = rssi; }
     void mockSetLocalIP(IPAddress ip) { localIP_ = ip; }
-    void mockSetLocalIP(uint8_t a, uint8_t b, uint8_t c, uint8_t d) {
-        localIP_ = IPAddress(a, b, c, d);
-    }
+    void mockSetLocalIP(uint8_t a, uint8_t b, uint8_t c, uint8_t d) { localIP_ = IPAddress(a, b, c, d); }
 
-    void mockSetNetworks(const std::vector<NetworkInfo>& networks) {
-        networks_ = networks;
-    }
+    void mockSetNetworks(const std::vector<NetworkInfo>& networks) { networks_ = networks; }
 
     // Reset mock to initial state
     void mockReset() {
@@ -186,7 +169,7 @@ public:
         networks_.clear();
     }
 
-private:
+  private:
     wl_status_t status_;
     wifi_mode_t mode_;
     bool autoReconnect_;
@@ -198,4 +181,4 @@ private:
 
 extern MockWiFi WiFi;
 
-#endif // WIFI_MOCK_H
+#endif  // WIFI_MOCK_H

@@ -4,12 +4,13 @@
  * Tests the WebSocket GraphQL client for backend communication.
  */
 
-#include <unity.h>
-#include <graphql_ws_client.h>
-#include <WebSocketsClient.h>
 #include <ArduinoJson.h>
 #include <Preferences.h>
+
+#include <WebSocketsClient.h>
 #include <cstring>
+#include <graphql_ws_client.h>
+#include <unity.h>
 
 // Access the global WebSocket mock through GraphQL client
 static GraphQLWSClient* client;
@@ -245,8 +246,8 @@ void test_send_query_with_variables_maintains_state(void) {
 void test_send_led_positions_skipped_when_not_subscribed(void) {
     // When not subscribed, sendLedPositions should skip (state preserved)
     LedCommand commands[2] = {
-        {10, 255, 0, 0},   // Position 10, red
-        {20, 0, 255, 0}    // Position 20, green
+        {10, 255, 0, 0},  // Position 10, red
+        {20, 0, 255, 0}   // Position 20, green
     };
 
     client->begin("test.host.com", 443, "/graphql", nullptr);
@@ -259,9 +260,9 @@ void test_send_led_positions_skipped_when_not_subscribed(void) {
 
 void test_send_led_positions_maintains_subscribed_state(void) {
     LedCommand commands[3] = {
-        {10, 255, 0, 0},   // Position 10, red
-        {20, 0, 255, 0},   // Position 20, green
-        {30, 0, 0, 255}    // Position 30, blue
+        {10, 255, 0, 0},  // Position 10, red
+        {20, 0, 255, 0},  // Position 20, green
+        {30, 0, 0, 255}   // Position 30, blue
     };
 
     client->begin("test.host.com", 443, "/graphql", nullptr);
@@ -284,10 +285,7 @@ void test_send_led_positions_handles_empty_array(void) {
 
 void test_send_led_positions_repeated_calls_preserve_state(void) {
     // Multiple calls with same data should preserve state (tests deduplication path)
-    LedCommand commands[2] = {
-        {10, 255, 0, 0},
-        {20, 0, 255, 0}
-    };
+    LedCommand commands[2] = {{10, 255, 0, 0}, {20, 0, 255, 0}};
 
     client->begin("test.host.com", 443, "/graphql", nullptr);
     client->subscribe("test-sub", "subscription { test }", nullptr);
@@ -343,7 +341,7 @@ void test_graphql_ws_protocol_defined(void) {
 // Main
 // =============================================================================
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
     UNITY_BEGIN();
 
     // Constructor tests

@@ -8,31 +8,23 @@
 #ifndef WEBSERVER_MOCK_H
 #define WEBSERVER_MOCK_H
 
-#include <functional>
-#include <string>
-#include <map>
-#include <vector>
-#include <cstdint>
 #include "Arduino.h"
 
+#include <cstdint>
+#include <functional>
+#include <map>
+#include <string>
+#include <vector>
+
 // HTTP methods
-typedef enum {
-    HTTP_ANY,
-    HTTP_GET,
-    HTTP_HEAD,
-    HTTP_POST,
-    HTTP_PUT,
-    HTTP_PATCH,
-    HTTP_DELETE,
-    HTTP_OPTIONS
-} HTTPMethod;
+typedef enum { HTTP_ANY, HTTP_GET, HTTP_HEAD, HTTP_POST, HTTP_PUT, HTTP_PATCH, HTTP_DELETE, HTTP_OPTIONS } HTTPMethod;
 
 class WebServer;
 typedef std::function<void(void)> THandlerFunction;
 
 // Mock ESP class for restart
 class MockESP {
-public:
+  public:
     void restart() {
         restartCalled_ = true;
         restartCount_++;
@@ -46,7 +38,7 @@ public:
         restartCount_ = 0;
     }
 
-private:
+  private:
     bool restartCalled_ = false;
     int restartCount_ = 0;
 };
@@ -54,16 +46,12 @@ private:
 extern MockESP ESP;
 
 class WebServer {
-public:
+  public:
     WebServer(uint16_t port = 80) : port_(port), running_(false) {}
 
-    void begin() {
-        running_ = true;
-    }
+    void begin() { running_ = true; }
 
-    void stop() {
-        running_ = false;
-    }
+    void stop() { running_ = false; }
 
     void handleClient() {
         // In mock, we call handlers via mockRequest()
@@ -73,13 +61,9 @@ public:
         routes_[std::string(uri)][method] = handler;
     }
 
-    void on(const char* uri, THandlerFunction handler) {
-        on(uri, HTTP_ANY, handler);
-    }
+    void on(const char* uri, THandlerFunction handler) { on(uri, HTTP_ANY, handler); }
 
-    void onNotFound(THandlerFunction handler) {
-        notFoundHandler_ = handler;
-    }
+    void onNotFound(THandlerFunction handler) { notFoundHandler_ = handler; }
 
     void send(int code, const char* contentType, const char* content) {
         lastResponseCode_ = code;
@@ -88,31 +72,22 @@ public:
         responses_.push_back({code, lastContentType_, lastResponseBody_});
     }
 
-    void send(int code, const char* contentType, const String& content) {
-        send(code, contentType, content.c_str());
-    }
+    void send(int code, const char* contentType, const String& content) { send(code, contentType, content.c_str()); }
 
-    void sendHeader(const char* name, const char* value) {
-        lastHeaders_[name ? name : ""] = value ? value : "";
-    }
+    void sendHeader(const char* name, const char* value) { lastHeaders_[name ? name : ""] = value ? value : ""; }
 
-    bool hasArg(const char* name) const {
-        return args_.find(name ? name : "") != args_.end();
-    }
+    bool hasArg(const char* name) const { return args_.find(name ? name : "") != args_.end(); }
 
     String arg(const char* name) const {
         auto it = args_.find(name ? name : "");
-        if (it != args_.end()) return it->second.c_str();
+        if (it != args_.end())
+            return it->second.c_str();
         return String();
     }
 
-    HTTPMethod method() const {
-        return currentMethod_;
-    }
+    HTTPMethod method() const { return currentMethod_; }
 
-    const String& uri() const {
-        return currentUri_;
-    }
+    const String& uri() const { return currentUri_; }
 
     // Test control methods
     void mockRequest(const char* uri, HTTPMethod method, const std::string& body = "") {
@@ -143,13 +118,9 @@ public:
         }
     }
 
-    void mockSetArgs(const std::map<std::string, std::string>& args) {
-        args_ = args;
-    }
+    void mockSetArgs(const std::map<std::string, std::string>& args) { args_ = args; }
 
-    void mockClearArgs() {
-        args_.clear();
-    }
+    void mockClearArgs() { args_.clear(); }
 
     void mockReset() {
         running_ = false;
@@ -180,7 +151,7 @@ public:
     };
     const std::vector<Response>& getResponses() const { return responses_; }
 
-private:
+  private:
     uint16_t port_;
     bool running_;
     std::map<std::string, std::map<HTTPMethod, THandlerFunction>> routes_;
@@ -195,4 +166,4 @@ private:
     HTTPMethod currentMethod_ = HTTP_GET;
 };
 
-#endif // WEBSERVER_MOCK_H
+#endif  // WEBSERVER_MOCK_H

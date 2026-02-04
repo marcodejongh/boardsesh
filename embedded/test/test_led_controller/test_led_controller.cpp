@@ -4,9 +4,9 @@
  * Tests the FastLED abstraction layer for WS2812B LED control.
  */
 
-#include <unity.h>
-#include <led_controller.h>
 #include <cstring>
+#include <led_controller.h>
+#include <unity.h>
 
 // Test instance
 static LedController* controller;
@@ -75,7 +75,7 @@ void test_setLed_index_at_boundary(void) {
 
 void test_setLed_index_beyond_boundary_ignored(void) {
     controller->begin(5, 10);
-    controller->setLed(10, CRGB(255, 0, 0));  // Beyond boundary
+    controller->setLed(10, CRGB(255, 0, 0));   // Beyond boundary
     controller->setLed(100, CRGB(255, 0, 0));  // Way beyond boundary
     TEST_ASSERT_TRUE(true);
 }
@@ -87,9 +87,7 @@ void test_setLed_index_beyond_boundary_ignored(void) {
 void test_setLeds_single_command(void) {
     controller->begin(5, 100);
 
-    LedCommand commands[1] = {
-        {10, 255, 128, 64}
-    };
+    LedCommand commands[1] = {{10, 255, 128, 64}};
 
     controller->setLeds(commands, 1);
     TEST_ASSERT_TRUE(true);
@@ -98,13 +96,7 @@ void test_setLeds_single_command(void) {
 void test_setLeds_multiple_commands(void) {
     controller->begin(5, 100);
 
-    LedCommand commands[5] = {
-        {0, 255, 0, 0},
-        {1, 0, 255, 0},
-        {2, 0, 0, 255},
-        {3, 255, 255, 0},
-        {4, 0, 255, 255}
-    };
+    LedCommand commands[5] = {{0, 255, 0, 0}, {1, 0, 255, 0}, {2, 0, 0, 255}, {3, 255, 255, 0}, {4, 0, 255, 255}};
 
     controller->setLeds(commands, 5);
     TEST_ASSERT_TRUE(true);
@@ -114,9 +106,9 @@ void test_setLeds_with_out_of_bounds_positions(void) {
     controller->begin(5, 10);
 
     LedCommand commands[3] = {
-        {5, 255, 0, 0},     // Valid
-        {-1, 0, 255, 0},    // Invalid (negative)
-        {100, 0, 0, 255}    // Invalid (beyond count)
+        {5, 255, 0, 0},   // Valid
+        {-1, 0, 255, 0},  // Invalid (negative)
+        {100, 0, 0, 255}  // Invalid (beyond count)
     };
 
     controller->setLeds(commands, 3);  // Should not crash
@@ -222,7 +214,7 @@ void test_blink_custom_delay(void) {
 }
 
 void test_blink_zero_leds(void) {
-    controller->begin(5, 0);  // No LEDs
+    controller->begin(5, 0);           // No LEDs
     controller->blink(255, 255, 255);  // Should not crash
     TEST_ASSERT_TRUE(true);
 }
@@ -290,7 +282,7 @@ void test_led_command_struct(void) {
 // Main
 // =============================================================================
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
     UNITY_BEGIN();
 
     // Initialization tests

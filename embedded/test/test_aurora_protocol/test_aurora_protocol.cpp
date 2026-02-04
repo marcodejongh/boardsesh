@@ -6,9 +6,9 @@
  * multi-packet message handling.
  */
 
-#include <unity.h>
 #include <aurora_protocol.h>
 #include <cstring>
+#include <unity.h>
 
 // Test instance - use a fresh instance for each test
 static AuroraProtocol* protocol;
@@ -121,17 +121,17 @@ static std::vector<uint8_t> buildFrame(uint8_t command, const uint8_t* data, siz
     }
     checksum ^= 0xFF;
 
-    frame.push_back(FRAME_SOH);     // Start of header
-    frame.push_back(contentLen);     // Length
-    frame.push_back(checksum);       // Checksum
-    frame.push_back(FRAME_STX);      // Start of text
-    frame.push_back(command);        // Command byte
+    frame.push_back(FRAME_SOH);   // Start of header
+    frame.push_back(contentLen);  // Length
+    frame.push_back(checksum);    // Checksum
+    frame.push_back(FRAME_STX);   // Start of text
+    frame.push_back(command);     // Command byte
 
     for (size_t i = 0; i < dataLen; i++) {
         frame.push_back(data[i]);
     }
 
-    frame.push_back(FRAME_ETX);      // End of text
+    frame.push_back(FRAME_ETX);  // End of text
 
     return frame;
 }
@@ -163,9 +163,9 @@ void test_parse_single_led_v3(void) {
 
     const auto& leds = protocol->getLedCommands();
     TEST_ASSERT_EQUAL_INT(5, leds[0].position);
-    TEST_ASSERT_EQUAL_UINT8(0, leds[0].r);       // R=0
-    TEST_ASSERT_EQUAL_UINT8(252, leds[0].g);    // G=7*36=252
-    TEST_ASSERT_EQUAL_UINT8(0, leds[0].b);       // B=0
+    TEST_ASSERT_EQUAL_UINT8(0, leds[0].r);    // R=0
+    TEST_ASSERT_EQUAL_UINT8(252, leds[0].g);  // G=7*36=252
+    TEST_ASSERT_EQUAL_UINT8(0, leds[0].b);    // B=0
 }
 
 void test_parse_multiple_leds_v3(void) {
@@ -178,7 +178,7 @@ void test_parse_multiple_leds_v3(void) {
         0x14, 0x00, 0x1C,  // Position 20, R=0 G=7 B=0 -> 0b00011100
 
         // LED 2: Position 30, Blue
-        0x1E, 0x00, 0x03   // Position 30, R=0 G=0 B=3 -> 0b00000011
+        0x1E, 0x00, 0x03  // Position 30, R=0 G=0 B=3 -> 0b00000011
     };
 
     auto frame = buildFrame(CMD_V3_PACKET_ONLY, ledData, sizeof(ledData));
@@ -260,21 +260,21 @@ void test_parse_v2_with_high_position_bits(void) {
 
 void test_multi_packet_v3_first_middle_last(void) {
     // First packet
-    uint8_t firstData[] = { 0x01, 0x00, 0xE0 };  // Position 1, Red
+    uint8_t firstData[] = {0x01, 0x00, 0xE0};  // Position 1, Red
     auto firstFrame = buildFrame(CMD_V3_PACKET_FIRST, firstData, sizeof(firstData));
 
     bool result1 = protocol->addData(firstFrame.data(), firstFrame.size());
     TEST_ASSERT_FALSE(result1);  // Not complete yet
 
     // Middle packet
-    uint8_t middleData[] = { 0x02, 0x00, 0x1C };  // Position 2, Green
+    uint8_t middleData[] = {0x02, 0x00, 0x1C};  // Position 2, Green
     auto middleFrame = buildFrame(CMD_V3_PACKET_MIDDLE, middleData, sizeof(middleData));
 
     bool result2 = protocol->addData(middleFrame.data(), middleFrame.size());
     TEST_ASSERT_FALSE(result2);  // Still not complete
 
     // Last packet
-    uint8_t lastData[] = { 0x03, 0x00, 0x03 };  // Position 3, Blue
+    uint8_t lastData[] = {0x03, 0x00, 0x03};  // Position 3, Blue
     auto lastFrame = buildFrame(CMD_V3_PACKET_LAST, lastData, sizeof(lastData));
 
     bool result3 = protocol->addData(lastFrame.data(), lastFrame.size());
@@ -291,14 +291,14 @@ void test_multi_packet_v3_first_middle_last(void) {
 
 void test_multi_packet_v3_first_last_no_middle(void) {
     // First packet
-    uint8_t firstData[] = { 0x01, 0x00, 0xE0 };
+    uint8_t firstData[] = {0x01, 0x00, 0xE0};
     auto firstFrame = buildFrame(CMD_V3_PACKET_FIRST, firstData, sizeof(firstData));
 
     bool result1 = protocol->addData(firstFrame.data(), firstFrame.size());
     TEST_ASSERT_FALSE(result1);
 
     // Last packet (skip middle)
-    uint8_t lastData[] = { 0x02, 0x00, 0x03 };
+    uint8_t lastData[] = {0x02, 0x00, 0x03};
     auto lastFrame = buildFrame(CMD_V3_PACKET_LAST, lastData, sizeof(lastData));
 
     bool result2 = protocol->addData(lastFrame.data(), lastFrame.size());
@@ -310,14 +310,14 @@ void test_multi_packet_v3_first_last_no_middle(void) {
 
 void test_multi_packet_v2(void) {
     // First packet (V2)
-    uint8_t firstData[] = { 0x01, 0xC0 };  // Position 1, Red (RR=3)
+    uint8_t firstData[] = {0x01, 0xC0};  // Position 1, Red (RR=3)
     auto firstFrame = buildFrame(CMD_V2_PACKET_FIRST, firstData, sizeof(firstData));
 
     bool result1 = protocol->addData(firstFrame.data(), firstFrame.size());
     TEST_ASSERT_FALSE(result1);
 
     // Last packet (V2)
-    uint8_t lastData[] = { 0x02, 0x30 };  // Position 2, Green (GG=3)
+    uint8_t lastData[] = {0x02, 0x30};  // Position 2, Green (GG=3)
     auto lastFrame = buildFrame(CMD_V2_PACKET_LAST, lastData, sizeof(lastData));
 
     bool result2 = protocol->addData(lastFrame.data(), lastFrame.size());
@@ -333,13 +333,15 @@ void test_multi_packet_v2(void) {
 void test_invalid_checksum_rejected(void) {
     // Build a frame manually with wrong checksum
     uint8_t frame[] = {
-        FRAME_SOH,  // SOH
-        0x04,       // Length (command + 3 bytes)
-        0x00,       // Wrong checksum!
-        FRAME_STX,  // STX
+        FRAME_SOH,           // SOH
+        0x04,                // Length (command + 3 bytes)
+        0x00,                // Wrong checksum!
+        FRAME_STX,           // STX
         CMD_V3_PACKET_ONLY,  // Command
-        0x01, 0x00, 0xE0,    // LED data
-        FRAME_ETX   // ETX
+        0x01,
+        0x00,
+        0xE0,      // LED data
+        FRAME_ETX  // ETX
     };
 
     bool result = protocol->addData(frame, sizeof(frame));
@@ -352,14 +354,12 @@ void test_invalid_checksum_rejected(void) {
 
 void test_missing_stx_skipped(void) {
     // Frame with wrong byte at STX position
-    uint8_t frame[] = {
-        FRAME_SOH,
-        0x01,       // Length
-        0xFE,       // Checksum for just command 'T'
-        0xFF,       // Wrong! Should be STX (0x02)
-        CMD_V3_PACKET_ONLY,
-        FRAME_ETX
-    };
+    uint8_t frame[] = {FRAME_SOH,
+                       0x01,  // Length
+                       0xFE,  // Checksum for just command 'T'
+                       0xFF,  // Wrong! Should be STX (0x02)
+                       CMD_V3_PACKET_ONLY,
+                       FRAME_ETX};
 
     // Should skip the invalid frame
     bool result = protocol->addData(frame, sizeof(frame));
@@ -371,11 +371,10 @@ void test_missing_etx_skipped(void) {
     // Frame with wrong byte at ETX position
     uint8_t frame[] = {
         FRAME_SOH,
-        0x01,       // Length
-        0xAB,       // Some checksum (will be recalculated)
-        FRAME_STX,
-        CMD_V3_PACKET_ONLY,
-        0xFF        // Wrong! Should be ETX (0x03)
+        0x01,  // Length
+        0xAB,  // Some checksum (will be recalculated)
+        FRAME_STX, CMD_V3_PACKET_ONLY,
+        0xFF  // Wrong! Should be ETX (0x03)
     };
 
     // Recalculate correct checksum for the test
@@ -388,7 +387,7 @@ void test_missing_etx_skipped(void) {
 
 void test_garbage_before_frame_skipped(void) {
     // Some garbage followed by a valid frame
-    uint8_t ledData[] = { 0x05, 0x00, 0xE0 };
+    uint8_t ledData[] = {0x05, 0x00, 0xE0};
     auto validFrame = buildFrame(CMD_V3_PACKET_ONLY, ledData, sizeof(ledData));
 
     std::vector<uint8_t> dataWithGarbage;
@@ -408,7 +407,7 @@ void test_garbage_before_frame_skipped(void) {
 
 void test_fragmented_frame_assembly(void) {
     // Build a complete valid frame
-    uint8_t ledData[] = { 0x0A, 0x00, 0xE0 };  // Position 10, Red
+    uint8_t ledData[] = {0x0A, 0x00, 0xE0};  // Position 10, Red
     auto frame = buildFrame(CMD_V3_PACKET_ONLY, ledData, sizeof(ledData));
 
     // Send in two chunks
@@ -426,7 +425,7 @@ void test_fragmented_frame_assembly(void) {
 
 void test_orphan_middle_packet_ignored(void) {
     // Send a middle packet without a first packet
-    uint8_t middleData[] = { 0x01, 0x00, 0xE0 };
+    uint8_t middleData[] = {0x01, 0x00, 0xE0};
     auto middleFrame = buildFrame(CMD_V3_PACKET_MIDDLE, middleData, sizeof(middleData));
 
     bool result = protocol->addData(middleFrame.data(), middleFrame.size());
@@ -436,7 +435,7 @@ void test_orphan_middle_packet_ignored(void) {
 
 void test_orphan_last_packet_ignored(void) {
     // Send a last packet without a first packet
-    uint8_t lastData[] = { 0x01, 0x00, 0xE0 };
+    uint8_t lastData[] = {0x01, 0x00, 0xE0};
     auto lastFrame = buildFrame(CMD_V3_PACKET_LAST, lastData, sizeof(lastData));
 
     bool result = protocol->addData(lastFrame.data(), lastFrame.size());
@@ -454,7 +453,7 @@ void test_v3_color_decoding_full_range(void) {
     // Full white would be 0xFF = 11111111 = R7 G7 B3
 
     // Test full red: 11100000 = 0xE0
-    uint8_t redData[] = { 0x01, 0x00, 0xE0 };
+    uint8_t redData[] = {0x01, 0x00, 0xE0};
     auto redFrame = buildFrame(CMD_V3_PACKET_ONLY, redData, sizeof(redData));
     protocol->addData(redFrame.data(), redFrame.size());
 
@@ -465,7 +464,7 @@ void test_v3_color_decoding_full_range(void) {
     protocol->clear();
 
     // Test full green: 00011100 = 0x1C
-    uint8_t greenData[] = { 0x02, 0x00, 0x1C };
+    uint8_t greenData[] = {0x02, 0x00, 0x1C};
     auto greenFrame = buildFrame(CMD_V3_PACKET_ONLY, greenData, sizeof(greenData));
     protocol->addData(greenFrame.data(), greenFrame.size());
 
@@ -476,7 +475,7 @@ void test_v3_color_decoding_full_range(void) {
     protocol->clear();
 
     // Test full blue: 00000011 = 0x03
-    uint8_t blueData[] = { 0x03, 0x00, 0x03 };
+    uint8_t blueData[] = {0x03, 0x00, 0x03};
     auto blueFrame = buildFrame(CMD_V3_PACKET_ONLY, blueData, sizeof(blueData));
     protocol->addData(blueFrame.data(), blueFrame.size());
 
@@ -490,7 +489,7 @@ void test_v2_color_decoding_full_range(void) {
     // Max values: R=3 (0xC0), G=3 (0x30), B=3 (0x0C)
 
     // Test full red: 11000000 = 0xC0 (with PP=00)
-    uint8_t redData[] = { 0x01, 0xC0 };
+    uint8_t redData[] = {0x01, 0xC0};
     auto redFrame = buildFrame(CMD_V2_PACKET_ONLY, redData, sizeof(redData));
     protocol->addData(redFrame.data(), redFrame.size());
 
@@ -501,7 +500,7 @@ void test_v2_color_decoding_full_range(void) {
     protocol->clear();
 
     // Test full green: 00110000 = 0x30
-    uint8_t greenData[] = { 0x02, 0x30 };
+    uint8_t greenData[] = {0x02, 0x30};
     auto greenFrame = buildFrame(CMD_V2_PACKET_ONLY, greenData, sizeof(greenData));
     protocol->addData(greenFrame.data(), greenFrame.size());
 
@@ -512,7 +511,7 @@ void test_v2_color_decoding_full_range(void) {
     protocol->clear();
 
     // Test full blue: 00001100 = 0x0C
-    uint8_t blueData[] = { 0x03, 0x0C };
+    uint8_t blueData[] = {0x03, 0x0C};
     auto blueFrame = buildFrame(CMD_V2_PACKET_ONLY, blueData, sizeof(blueData));
     protocol->addData(blueFrame.data(), blueFrame.size());
 
@@ -528,7 +527,7 @@ void test_v2_color_decoding_full_range(void) {
 void test_v3_high_position_value(void) {
     // V3 uses full 16-bit position
     // Position 1000 = 0x03E8 -> low=0xE8, high=0x03
-    uint8_t ledData[] = { 0xE8, 0x03, 0xE0 };  // Position 1000, Red
+    uint8_t ledData[] = {0xE8, 0x03, 0xE0};  // Position 1000, Red
     auto frame = buildFrame(CMD_V3_PACKET_ONLY, ledData, sizeof(ledData));
 
     protocol->addData(frame.data(), frame.size());
@@ -541,7 +540,7 @@ void test_v2_max_position_value(void) {
     // V2 uses 10-bit position (max 1023)
     // Position 1023 = 0x3FF -> low=0xFF, PP=0x03
     // Color with PP=3: 0xC3 = 11000011 -> R=3, G=0, B=0, P=3
-    uint8_t ledData[] = { 0xFF, 0xC3 };
+    uint8_t ledData[] = {0xFF, 0xC3};
     auto frame = buildFrame(CMD_V2_PACKET_ONLY, ledData, sizeof(ledData));
 
     protocol->addData(frame.data(), frame.size());
@@ -554,7 +553,7 @@ void test_v2_max_position_value(void) {
 // Main
 // =============================================================================
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
     UNITY_BEGIN();
 
     // colorToRole tests

@@ -6,10 +6,10 @@
 #define FIRMWARE_VERSION "1.0.0"
 
 // LED configuration
-#define LED_PIN 5           // GPIO pin for LED data
-#define NUM_LEDS 200        // Total number of LEDs
-#define LED_TYPE WS2812B    // LED strip type
-#define COLOR_ORDER GRB     // Color order
+#define LED_PIN 5         // GPIO pin for LED data
+#define NUM_LEDS 200      // Total number of LEDs
+#define LED_TYPE WS2812B  // LED strip type
+#define COLOR_ORDER GRB   // Color order
 
 // Default brightness (0-255)
 #define DEFAULT_BRIGHTNESS 128

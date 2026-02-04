@@ -2,17 +2,18 @@
 #define ESP_WEB_SERVER_H
 
 #include <Arduino.h>
-#include <WebServer.h>
 #include <ArduinoJson.h>
-#include <config_manager.h>
+#include <WebServer.h>
 #include <wifi_utils.h>
+
+#include <config_manager.h>
 
 #define WEB_SERVER_PORT 80
 
 typedef void (*WebServerRouteHandler)(WebServer& server);
 
 class ESPWebServer {
-public:
+  public:
     ESPWebServer();
 
     void begin();
@@ -32,7 +33,7 @@ public:
     // Get underlying server for advanced use
     WebServer& getServer();
 
-private:
+  private:
     WebServer server;
     bool running;
 

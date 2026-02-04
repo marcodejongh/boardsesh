@@ -1,10 +1,10 @@
 #include "aurora_protocol.h"
+
 #include <log_buffer.h>
 
 AuroraProtocol Aurora;
 
-AuroraProtocol::AuroraProtocol()
-    : currentAngle(0), multiPacketInProgress(false), debugEnabled(false) {}
+AuroraProtocol::AuroraProtocol() : currentAngle(0), multiPacketInProgress(false), debugEnabled(false) {}
 
 void AuroraProtocol::clear() {
     rawBuffer.clear();
@@ -85,8 +85,8 @@ bool AuroraProtocol::tryProcessBuffer() {
         size_t frameSize = 4 + dataLength + 1;  // header(4) + data + ETX(1)
 
         if (debugEnabled) {
-            Logger.logln("[Aurora] Frame: SOH found, dataLength=%d, frameSize=%zu, bufferSize=%zu",
-                          dataLength, frameSize, rawBuffer.size());
+            Logger.logln("[Aurora] Frame: SOH found, dataLength=%d, frameSize=%zu, bufferSize=%zu", dataLength,
+                         frameSize, rawBuffer.size());
         }
 
         // Check if we have the complete frame
@@ -110,8 +110,8 @@ bool AuroraProtocol::tryProcessBuffer() {
         // Verify ETX at end
         if (rawBuffer[frameSize - 1] != FRAME_ETX) {
             if (debugEnabled) {
-                Logger.logln("[Aurora] Invalid frame: expected ETX at pos %zu, got 0x%02X",
-                              frameSize - 1, rawBuffer[frameSize - 1]);
+                Logger.logln("[Aurora] Invalid frame: expected ETX at pos %zu, got 0x%02X", frameSize - 1,
+                             rawBuffer[frameSize - 1]);
             }
             // Skip SOH and try again
             rawBuffer.erase(rawBuffer.begin());
@@ -128,8 +128,8 @@ bool AuroraProtocol::tryProcessBuffer() {
 
         if (expectedChecksum != actualChecksum) {
             if (debugEnabled) {
-                Logger.logln("[Aurora] Checksum mismatch: expected 0x%02X, got 0x%02X",
-                              expectedChecksum, actualChecksum);
+                Logger.logln("[Aurora] Checksum mismatch: expected 0x%02X, got 0x%02X", expectedChecksum,
+                             actualChecksum);
             }
             // Skip SOH and try again (checksum mismatch)
             rawBuffer.erase(rawBuffer.begin());
@@ -143,8 +143,8 @@ bool AuroraProtocol::tryProcessBuffer() {
             size_t ledDataLength = dataLength - 1;
 
             if (debugEnabled) {
-                Logger.logln("[Aurora] Valid frame: cmd='%c' (0x%02X), ledDataLen=%zu",
-                              command, command, ledDataLength);
+                Logger.logln("[Aurora] Valid frame: cmd='%c' (0x%02X), ledDataLen=%zu", command, command,
+                             ledDataLength);
             }
 
             // Process the message
@@ -173,7 +173,8 @@ void AuroraProtocol::decodeLedDataV2(const uint8_t* data, size_t length, std::ve
     }
 
     for (int i = 0; i < ledCount; i++) {
-        if ((size_t)(i * 2 + 1) >= length) break;
+        if ((size_t)(i * 2 + 1) >= length)
+            break;
 
         uint8_t posLow = data[i * 2];
         uint8_t colorPos = data[i * 2 + 1];
@@ -195,8 +196,7 @@ void AuroraProtocol::decodeLedDataV2(const uint8_t* data, size_t length, std::ve
         output.push_back(cmd);
 
         if (debugEnabled && i < 3) {
-            Logger.logln("[Aurora]   LED %d: pos=%d, R=%d G=%d B=%d",
-                          i, position, r, g, b);
+            Logger.logln("[Aurora]   LED %d: pos=%d, R=%d G=%d B=%d", i, position, r, g, b);
         }
     }
 }
@@ -214,7 +214,8 @@ void AuroraProtocol::decodeLedDataV3(const uint8_t* data, size_t length, std::ve
     }
 
     for (int i = 0; i < ledCount; i++) {
-        if ((size_t)(i * 3 + 2) >= length) break;
+        if ((size_t)(i * 3 + 2) >= length)
+            break;
 
         // Position is little-endian (low byte first)
         uint16_t position = data[i * 3] | (data[i * 3 + 1] << 8);
@@ -223,7 +224,7 @@ void AuroraProtocol::decodeLedDataV3(const uint8_t* data, size_t length, std::ve
         // Decode color: RRRGGGBB format
         uint8_t r = ((color >> 5) & 0x07) * 36;  // 0-7 -> 0-252
         uint8_t g = ((color >> 2) & 0x07) * 36;  // 0-7 -> 0-252
-        uint8_t b = (color & 0x03) * 85;          // 0-3 -> 0-255
+        uint8_t b = (color & 0x03) * 85;         // 0-3 -> 0-255
 
         LedCommand cmd;
         cmd.position = position;
@@ -233,8 +234,7 @@ void AuroraProtocol::decodeLedDataV3(const uint8_t* data, size_t length, std::ve
         output.push_back(cmd);
 
         if (debugEnabled && i < 3) {
-            Logger.logln("[Aurora]   LED %d: pos=%d, R=%d G=%d B=%d",
-                          i, position, r, g, b);
+            Logger.logln("[Aurora]   LED %d: pos=%d, R=%d G=%d B=%d", i, position, r, g, b);
         }
     }
 }
@@ -243,8 +243,8 @@ bool AuroraProtocol::processMessage(uint8_t command, const uint8_t* data, size_t
     std::vector<LedCommand> commands;
 
     // Determine API version from command and decode accordingly
-    bool isV2 = (command == CMD_V2_PACKET_ONLY || command == CMD_V2_PACKET_FIRST ||
-                 command == CMD_V2_PACKET_MIDDLE || command == CMD_V2_PACKET_LAST);
+    bool isV2 = (command == CMD_V2_PACKET_ONLY || command == CMD_V2_PACKET_FIRST || command == CMD_V2_PACKET_MIDDLE ||
+                 command == CMD_V2_PACKET_LAST);
 
     if (isV2) {
         decodeLedDataV2(data, length, commands);
@@ -278,8 +278,8 @@ bool AuroraProtocol::processMessage(uint8_t command, const uint8_t* data, size_t
             if (multiPacketInProgress) {
                 pendingCommands.insert(pendingCommands.end(), commands.begin(), commands.end());
                 if (debugEnabled) {
-                    Logger.logln("[Aurora] Multi-packet MIDDLE: +%zu LEDs (total: %zu)",
-                                  commands.size(), pendingCommands.size());
+                    Logger.logln("[Aurora] Multi-packet MIDDLE: +%zu LEDs (total: %zu)", commands.size(),
+                                 pendingCommands.size());
                 }
             } else if (debugEnabled) {
                 Logger.logln("[Aurora] WARNING: Middle packet without start");

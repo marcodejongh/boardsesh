@@ -47,13 +47,9 @@ struct CRGB {
         return *this;
     }
 
-    bool operator==(const CRGB& rhs) const {
-        return r == rhs.r && g == rhs.g && b == rhs.b;
-    }
+    bool operator==(const CRGB& rhs) const { return r == rhs.r && g == rhs.g && b == rhs.b; }
 
-    bool operator!=(const CRGB& rhs) const {
-        return !(*this == rhs);
-    }
+    bool operator!=(const CRGB& rhs) const { return !(*this == rhs); }
 
     // Common colors
     static const CRGB Black;
@@ -67,32 +63,26 @@ struct CRGB {
  * Mock FastLED controller class
  */
 class CFastLED {
-public:
+  public:
     CFastLED() : brightness_(255), numLeds_(0), leds_(nullptr) {}
 
     // Template method to add LEDs - stores reference for later
-    template<uint8_t DATA_PIN>
-    static CRGB* addLeds(CRGB* data, int nLeds) {
+    template <uint8_t DATA_PIN> static CRGB* addLeds(CRGB* data, int nLeds) {
         instance().leds_ = data;
         instance().numLeds_ = nLeds;
         return data;
     }
 
     // Overload with LED type template params
-    template<uint8_t CHIPSET, uint8_t DATA_PIN, uint8_t COLOR_ORDER>
-    static CRGB* addLeds(CRGB* data, int nLeds) {
+    template <uint8_t CHIPSET, uint8_t DATA_PIN, uint8_t COLOR_ORDER> static CRGB* addLeds(CRGB* data, int nLeds) {
         instance().leds_ = data;
         instance().numLeds_ = nLeds;
         return data;
     }
 
-    static void setBrightness(uint8_t brightness) {
-        instance().brightness_ = brightness;
-    }
+    static void setBrightness(uint8_t brightness) { instance().brightness_ = brightness; }
 
-    static uint8_t getBrightness() {
-        return instance().brightness_;
-    }
+    static uint8_t getBrightness() { return instance().brightness_; }
 
     static void show() {
         // Mock - does nothing in tests
@@ -113,7 +103,7 @@ public:
     static CRGB* getLeds() { return instance().leds_; }
     static int getNumLeds() { return instance().numLeds_; }
 
-private:
+  private:
     uint8_t brightness_;
     int numLeds_;
     CRGB* leds_;
@@ -122,4 +112,4 @@ private:
 // Global FastLED instance
 extern CFastLED FastLED;
 
-#endif // FASTLED_MOCK_H
+#endif  // FASTLED_MOCK_H

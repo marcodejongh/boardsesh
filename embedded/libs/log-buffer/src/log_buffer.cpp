@@ -1,4 +1,5 @@
 #include "log_buffer.h"
+
 #include <stdarg.h>
 
 LogBuffer Logger;

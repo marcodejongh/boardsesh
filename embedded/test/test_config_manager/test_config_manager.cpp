@@ -4,10 +4,11 @@
  * Tests the NVS (Non-Volatile Storage) configuration persistence layer.
  */
 
-#include <unity.h>
-#include <config_manager.h>
 #include <Preferences.h>
+
+#include <config_manager.h>
 #include <cstring>
+#include <unity.h>
 
 // Test instance
 static ConfigManager* config;
@@ -354,7 +355,7 @@ void test_overwrite_different_type(void) {
 // Main
 // =============================================================================
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
     UNITY_BEGIN();
 
     // String storage tests

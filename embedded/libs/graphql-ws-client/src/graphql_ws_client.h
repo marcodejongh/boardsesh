@@ -2,11 +2,12 @@
 #define GRAPHQL_WS_CLIENT_H
 
 #include <Arduino.h>
-#include <WebSocketsClient.h>
 #include <ArduinoJson.h>
+
+#include <WebSocketsClient.h>
+#include <config_manager.h>
 #include <led_controller.h>
 #include <log_buffer.h>
-#include <config_manager.h>
 
 // Forward declaration
 class NordicUartBLE;
@@ -18,20 +19,13 @@ class NordicUartBLE;
 #define WS_PONG_TIMEOUT 10000
 #define WS_RECONNECT_INTERVAL 5000
 
-enum class GraphQLConnectionState {
-    DISCONNECTED,
-    CONNECTING,
-    CONNECTED,
-    CONNECTION_INIT,
-    CONNECTION_ACK,
-    SUBSCRIBED
-};
+enum class GraphQLConnectionState { DISCONNECTED, CONNECTING, CONNECTED, CONNECTION_INIT, CONNECTION_ACK, SUBSCRIBED };
 
 typedef void (*GraphQLMessageCallback)(JsonDocument& doc);
 typedef void (*GraphQLStateCallback)(GraphQLConnectionState state);
 
 class GraphQLWSClient {
-public:
+  public:
     GraphQLWSClient();
 
     void begin(const char* host, uint16_t port, const char* path = "/graphql", const char* apiKey = nullptr);
@@ -68,7 +62,7 @@ public:
     // Get current display hash (for deduplication)
     uint32_t getCurrentDisplayHash() { return currentDisplayHash; }
 
-private:
+  private:
     WebSocketsClient ws;
     GraphQLConnectionState state;
     GraphQLMessageCallback messageCallback;
@@ -84,8 +78,8 @@ private:
     unsigned long lastPingTime;
     unsigned long lastPongTime;
     unsigned long reconnectTime;
-    uint32_t lastSentLedHash;      // Hash of last sent LED positions (to avoid duplicates)
-    uint32_t currentDisplayHash;   // Hash of currently displayed LEDs (from backend LedUpdate)
+    uint32_t lastSentLedHash;     // Hash of last sent LED positions (to avoid duplicates)
+    uint32_t currentDisplayHash;  // Hash of currently displayed LEDs (from backend LedUpdate)
 
     void onWebSocketEvent(WStype_t type, uint8_t* payload, size_t length);
     void sendConnectionInit();
