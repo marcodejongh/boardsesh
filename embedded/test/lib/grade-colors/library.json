@@ -1,0 +1,12 @@
+{
+    "name": "grade-colors",
+    "version": "1.0.0",
+    "description": "V-grade color scheme for climbing grades (test build)",
+    "platforms": ["native", "espressif32"],
+    "dependencies": {
+        "mocks": "*"
+    },
+    "build": {
+        "flags": ["-std=c++17", "-DUNIT_TEST"]
+    }
+}

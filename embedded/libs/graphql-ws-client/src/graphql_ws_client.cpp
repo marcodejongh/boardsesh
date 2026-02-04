@@ -11,10 +11,29 @@ const char* GraphQLWSClient::KEY_PATH = "gql_path";
 
 GraphQLWSClient::GraphQLWSClient()
     : state(GraphQLConnectionState::DISCONNECTED), messageCallback(nullptr), stateCallback(nullptr), serverPort(443),
-      lastPingTime(0), lastPongTime(0), reconnectTime(0), lastSentLedHash(0), currentDisplayHash(0) {}
+      useSSL(true), lastPingTime(0), lastPongTime(0), reconnectTime(0), lastSentLedHash(0), currentDisplayHash(0) {}
 
 void GraphQLWSClient::begin(const char* host, uint16_t port, const char* path, const char* apiKeyParam) {
-    serverHost = host;
+    // Parse protocol prefix from host (ws:// or wss://)
+    String hostStr = host;
+    useSSL = true;  // Default to SSL
+
+    if (hostStr.startsWith("wss://")) {
+        useSSL = true;
+        hostStr = hostStr.substring(6);  // Remove "wss://"
+    } else if (hostStr.startsWith("ws://")) {
+        useSSL = false;
+        hostStr = hostStr.substring(5);  // Remove "ws://"
+    } else if (hostStr.startsWith("https://")) {
+        useSSL = true;
+        hostStr = hostStr.substring(8);  // Remove "https://"
+    } else if (hostStr.startsWith("http://")) {
+        useSSL = false;
+        hostStr = hostStr.substring(7);  // Remove "http://"
+    }
+    // If no prefix, default to SSL (production behavior)
+
+    serverHost = hostStr;
     serverPort = port;
     serverPath = path;
     this->apiKey = apiKeyParam ? apiKeyParam : "";
@@ -30,8 +49,12 @@ void GraphQLWSClient::begin(const char* host, uint16_t port, const char* path, c
     // Set subprotocol for graphql-ws
     ws.setExtraHeaders("Sec-WebSocket-Protocol: graphql-transport-ws");
 
-    // Connect with SSL
-    ws.beginSSL(host, port, path);
+    // Connect with or without SSL based on protocol prefix
+    if (useSSL) {
+        ws.beginSSL(serverHost.c_str(), port, path);
+    } else {
+        ws.begin(serverHost.c_str(), port, path);
+    }
 
     ws.setReconnectInterval(WS_RECONNECT_INTERVAL);
 

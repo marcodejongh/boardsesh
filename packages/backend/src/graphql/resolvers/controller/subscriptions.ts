@@ -86,8 +86,12 @@ export const controllerSubscriptions = {
         .set({ lastSeenAt: new Date() })
         .where(eq(esp32Controllers.id, controller.id));
 
+      // Get session details to get boardPath
+      const sessionData = await roomManager.getSessionById(sessionId);
+      const boardPath = sessionData?.boardPath || '';
+
       console.log(
-        `[Controller] Controller ${controller.id} subscribed to session ${sessionId}`
+        `[Controller] Controller ${controller.id} subscribed to session ${sessionId} (boardPath: ${boardPath})`
       );
 
       // Create subscription to queue events
@@ -128,6 +132,8 @@ export const controllerSubscriptions = {
                 commands,
                 climbUuid: climb.uuid,
                 climbName: climb.name,
+                climbGrade: climb.difficulty,
+                boardPath,
                 angle: climb.angle,
               };
               push(ledUpdate);
@@ -137,6 +143,7 @@ export const controllerSubscriptions = {
               const ledUpdate: ControllerEvent = {
                 __typename: 'LedUpdate',
                 commands: [],
+                boardPath,
               };
               push(ledUpdate);
             }
@@ -160,6 +167,8 @@ export const controllerSubscriptions = {
             commands,
             climbUuid: climb.uuid,
             climbName: climb.name,
+            climbGrade: climb.difficulty,
+            boardPath,
             angle: climb.angle,
           },
         };

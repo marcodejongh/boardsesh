@@ -1433,6 +1433,8 @@ export const typeDefs = /* GraphQL */ `
     commands: [LedCommand!]!
     climbUuid: String
     climbName: String
+    climbGrade: String
+    boardPath: String
     angle: Int
   }
 

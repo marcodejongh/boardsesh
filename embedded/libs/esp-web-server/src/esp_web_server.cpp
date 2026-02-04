@@ -141,6 +141,30 @@ void ESPWebServer::handleRoot() {
             <input type="range" id="brightness" min="0" max="255" value="128">
             <span class="slider-value" id="brightnessValue">128</span>
         </div>
+        <label>Display Brightness</label>
+        <div class="slider-container">
+            <input type="range" id="displayBrightness" min="0" max="255" value="128">
+            <span class="slider-value" id="displayBrightnessValue">128</span>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>BLE Proxy Mode</h2>
+        <p style="color: #888; font-size: 0.9em; margin-bottom: 15px;">
+            Enable proxy mode to forward data from official Kilter/Tension app to a nearby board.
+            This lets you use the official app while also showing climb info on this device.
+        </p>
+        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+            <input type="checkbox" id="proxyEnabled" style="width: auto; margin: 0;">
+            <span>Enable BLE Proxy</span>
+        </label>
+        <div id="proxyMacSection" style="display: none; margin-top: 15px;">
+            <label>Target Board MAC (optional)</label>
+            <input type="text" id="proxyMac" placeholder="Auto-detect nearest board">
+            <p style="color: #888; font-size: 0.8em; margin-top: -10px;">
+                Leave empty to connect to the nearest Aurora board
+            </p>
+        </div>
     </div>
 
     <div class="card">
@@ -183,11 +207,16 @@ void ESPWebServer::handleRoot() {
                 document.getElementById('deviceName').value = cfg.device_name || '';
                 document.getElementById('brightness').value = cfg.brightness || 128;
                 document.getElementById('brightnessValue').textContent = cfg.brightness || 128;
+                document.getElementById('displayBrightness').value = cfg.display_brightness || 128;
+                document.getElementById('displayBrightnessValue').textContent = cfg.display_brightness || 128;
                 document.getElementById('sessionId').value = cfg.session_id || '';
                 document.getElementById('apiKey').value = cfg.api_key || '';
                 document.getElementById('backendHost').value = cfg.backend_host || '';
                 document.getElementById('backendPort').value = cfg.backend_port || 443;
                 document.getElementById('backendPath').value = cfg.backend_path || '/graphql';
+                document.getElementById('proxyEnabled').checked = cfg.proxy_enabled || false;
+                document.getElementById('proxyMac').value = cfg.proxy_mac || '';
+                document.getElementById('proxyMacSection').style.display = cfg.proxy_enabled ? 'block' : 'none';
             } catch (e) { console.error('Failed to load config:', e); }
         }
 
@@ -253,11 +282,14 @@ void ESPWebServer::handleRoot() {
             const config = {
                 device_name: document.getElementById('deviceName').value,
                 brightness: parseInt(document.getElementById('brightness').value),
+                display_brightness: parseInt(document.getElementById('displayBrightness').value),
                 session_id: document.getElementById('sessionId').value,
                 api_key: document.getElementById('apiKey').value,
                 backend_host: document.getElementById('backendHost').value,
                 backend_port: parseInt(document.getElementById('backendPort').value),
-                backend_path: document.getElementById('backendPath').value
+                backend_path: document.getElementById('backendPath').value,
+                proxy_enabled: document.getElementById('proxyEnabled').checked,
+                proxy_mac: document.getElementById('proxyMac').value
             };
             try {
                 await fetch('/api/config', {
@@ -288,6 +320,14 @@ void ESPWebServer::handleRoot() {
             document.getElementById('brightnessValue').textContent = this.value;
         };
 
+        document.getElementById('displayBrightness').oninput = function() {
+            document.getElementById('displayBrightnessValue').textContent = this.value;
+        };
+
+        document.getElementById('proxyEnabled').onchange = function() {
+            document.getElementById('proxyMacSection').style.display = this.checked ? 'block' : 'none';
+        };
+
         loadConfig();
         loadWifiStatus();
         setInterval(loadWifiStatus, 10000);
@@ -312,8 +352,11 @@ void ESPWebServer::handleGetConfig() {
     doc["backend_path"] = Config.getString("backend_path", "/graphql");
     doc["device_name"] = Config.getString("device_name", "Boardsesh Controller");
     doc["brightness"] = Config.getInt("brightness", 128);
+    doc["display_brightness"] = Config.getInt("disp_br", 128);
     doc["session_id"] = Config.getString("session_id");
     doc["api_key"] = Config.getString("api_key");
+    doc["proxy_enabled"] = Config.getBool("proxy_en", false);
+    doc["proxy_mac"] = Config.getString("proxy_mac");
 
     sendJson(200, doc);
 }
@@ -354,6 +397,15 @@ void ESPWebServer::handleSetConfig() {
     }
     if (doc["api_key"].is<const char*>()) {
         Config.setString("api_key", doc["api_key"]);
+    }
+    if (doc["display_brightness"].is<int>()) {
+        Config.setInt("disp_br", doc["display_brightness"]);
+    }
+    if (doc["proxy_enabled"].is<bool>()) {
+        Config.setBool("proxy_en", doc["proxy_enabled"].as<bool>());
+    }
+    if (doc["proxy_mac"].is<const char*>()) {
+        Config.setString("proxy_mac", doc["proxy_mac"]);
     }
 
     sendJson(200, "{\"success\":true}");
