@@ -151,13 +151,15 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
 
   // Initialize queue state from local queue when remounting (non-party mode)
   // This handles the case where we navigate away and back without party mode
+  // Also loads from IndexedDB on initial mount
   useEffect(() => {
     // Only run when NOT in party mode
     if (isPersistentSessionActive || sessionId) return;
 
-    // Check if we have saved local queue for this board path
-    // Use baseBoardPath for comparison to handle navigation between climbs
+    // If local queue is already loaded (in memory), use it directly
+    // This handles navigation between board routes during the same session
     if (
+      persistentSession.isLocalQueueLoaded &&
       persistentSession.localBoardPath === baseBoardPath &&
       (persistentSession.localQueue.length > 0 || persistentSession.localCurrentClimbQueueItem)
     ) {
@@ -168,10 +170,27 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
           currentClimbQueueItem: persistentSession.localCurrentClimbQueueItem,
         },
       });
+      return;
     }
-  // Only run on mount - not on every queue change
+
+    // If not loaded yet, load from IndexedDB
+    // This handles initial page load after browser refresh
+    if (!persistentSession.isLocalQueueLoaded) {
+      persistentSession.loadStoredQueue(baseBoardPath).then((stored) => {
+        if (stored && (stored.queue.length > 0 || stored.currentClimbQueueItem)) {
+          dispatch({
+            type: 'INITIAL_QUEUE_DATA',
+            payload: {
+              queue: stored.queue,
+              currentClimbQueueItem: stored.currentClimbQueueItem,
+            },
+          });
+        }
+      });
+    }
+  // Only run on mount and when isLocalQueueLoaded changes
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [persistentSession.isLocalQueueLoaded]);
 
   // Clear local queue if navigating to a different board configuration
   useEffect(() => {

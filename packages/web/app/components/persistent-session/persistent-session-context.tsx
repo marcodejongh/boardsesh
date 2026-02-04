@@ -27,6 +27,7 @@ import { BoardDetails, ParsedBoardRouteParameters } from '@/app/lib/types';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { usePartyProfile } from '../party-manager/party-profile-context';
 import { computeQueueStateHash } from '@/app/utils/hash';
+import { getStoredQueue, saveQueueState, cleanupOldQueues, StoredQueueState } from '@/app/lib/queue-storage-db';
 
 const DEBUG = process.env.NODE_ENV === 'development';
 
@@ -66,6 +67,9 @@ const BOARD_NAMES = SUPPORTED_BOARDS;
 
 // Cooldown for corruption-triggered resyncs to prevent infinite loops
 const CORRUPTION_RESYNC_COOLDOWN_MS = 30000; // 30 seconds
+
+// Debounce delay for saving queue to IndexedDB
+const QUEUE_SAVE_DEBOUNCE_MS = 500;
 
 // Session type matching the GraphQL response
 export interface Session {
@@ -146,6 +150,7 @@ export interface PersistentSessionContextType {
   localCurrentClimbQueueItem: LocalClimbQueueItem | null;
   localBoardPath: string | null;
   localBoardDetails: BoardDetails | null;
+  isLocalQueueLoaded: boolean;
   setLocalQueueState: (
     queue: LocalClimbQueueItem[],
     currentItem: LocalClimbQueueItem | null,
@@ -153,6 +158,7 @@ export interface PersistentSessionContextType {
     boardDetails: BoardDetails,
   ) => void;
   clearLocalQueue: () => void;
+  loadStoredQueue: (boardPath: string) => Promise<StoredQueueState | null>;
 
   // Session lifecycle
   activateSession: (info: ActiveSessionInfo) => void;
@@ -229,6 +235,10 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
   const [localCurrentClimbQueueItem, setLocalCurrentClimbQueueItem] = useState<LocalClimbQueueItem | null>(null);
   const [localBoardPath, setLocalBoardPath] = useState<string | null>(null);
   const [localBoardDetails, setLocalBoardDetails] = useState<BoardDetails | null>(null);
+  const [isLocalQueueLoaded, setIsLocalQueueLoaded] = useState(false);
+
+  // Ref for debounced IndexedDB save timer
+  const saveQueueTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Pending initial queue for new sessions
   const [pendingInitialQueue, setPendingInitialQueue] = useState<{
@@ -265,6 +275,22 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
   useEffect(() => {
     activeSessionRef.current = activeSession;
   }, [activeSession]);
+
+  // Clean up old queues from IndexedDB on mount
+  useEffect(() => {
+    cleanupOldQueues(30).catch((error) => {
+      console.error('[PersistentSession] Failed to cleanup old queues:', error);
+    });
+  }, []);
+
+  // Clean up debounced save timer on unmount
+  useEffect(() => {
+    return () => {
+      if (saveQueueTimeoutRef.current) {
+        clearTimeout(saveQueueTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Notify queue event subscribers
   const notifyQueueSubscribers = useCallback((event: SubscriptionQueueEvent) => {
@@ -838,6 +864,60 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
     []
   );
 
+  // Load stored queue from IndexedDB
+  const loadStoredQueue = useCallback(async (boardPath: string): Promise<StoredQueueState | null> => {
+    if (activeSession) {
+      if (DEBUG) console.log('[PersistentSession] Skipping queue load - party session active');
+      return null;
+    }
+
+    try {
+      const stored = await getStoredQueue(boardPath);
+      if (stored) {
+        if (DEBUG) console.log('[PersistentSession] Loaded queue from IndexedDB:', stored.queue.length, 'items');
+        setLocalQueue(stored.queue);
+        setLocalCurrentClimbQueueItem(stored.currentClimbQueueItem);
+        setLocalBoardPath(stored.boardPath);
+        setLocalBoardDetails(stored.boardDetails);
+      }
+      setIsLocalQueueLoaded(true);
+      return stored;
+    } catch (error) {
+      console.error('[PersistentSession] Failed to load queue from IndexedDB:', error);
+      setIsLocalQueueLoaded(true);
+      return null;
+    }
+  }, [activeSession]);
+
+  // Debounced save to IndexedDB
+  const debouncedSaveToIndexedDB = useCallback(
+    (
+      newQueue: LocalClimbQueueItem[],
+      newCurrentItem: LocalClimbQueueItem | null,
+      boardPath: string,
+      boardDetails: BoardDetails,
+    ) => {
+      // Clear any pending save
+      if (saveQueueTimeoutRef.current) {
+        clearTimeout(saveQueueTimeoutRef.current);
+      }
+
+      // Schedule new save
+      saveQueueTimeoutRef.current = setTimeout(() => {
+        saveQueueState({
+          boardPath,
+          queue: newQueue,
+          currentClimbQueueItem: newCurrentItem,
+          boardDetails,
+          updatedAt: Date.now(),
+        }).catch((error) => {
+          console.error('[PersistentSession] Failed to save queue to IndexedDB:', error);
+        });
+      }, QUEUE_SAVE_DEBOUNCE_MS);
+    },
+    [],
+  );
+
   // Local queue management functions
   const setLocalQueueState = useCallback(
     (
@@ -853,8 +933,11 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
       setLocalCurrentClimbQueueItem(newCurrentItem);
       setLocalBoardPath(boardPath);
       setLocalBoardDetails(boardDetails);
+
+      // Persist to IndexedDB (debounced)
+      debouncedSaveToIndexedDB(newQueue, newCurrentItem, boardPath, boardDetails);
     },
-    [activeSession],
+    [activeSession, debouncedSaveToIndexedDB],
   );
 
   const clearLocalQueue = useCallback(() => {
@@ -863,6 +946,12 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
     setLocalCurrentClimbQueueItem(null);
     setLocalBoardPath(null);
     setLocalBoardDetails(null);
+
+    // Cancel any pending save
+    if (saveQueueTimeoutRef.current) {
+      clearTimeout(saveQueueTimeoutRef.current);
+      saveQueueTimeoutRef.current = null;
+    }
   }, []);
 
   // Mutation functions
@@ -967,8 +1056,10 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
       localCurrentClimbQueueItem,
       localBoardPath,
       localBoardDetails,
+      isLocalQueueLoaded,
       setLocalQueueState,
       clearLocalQueue,
+      loadStoredQueue,
       activateSession,
       deactivateSession,
       setInitialQueueForSession,
@@ -993,8 +1084,10 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
       localCurrentClimbQueueItem,
       localBoardPath,
       localBoardDetails,
+      isLocalQueueLoaded,
       setLocalQueueState,
       clearLocalQueue,
+      loadStoredQueue,
       activateSession,
       deactivateSession,
       setInitialQueueForSession,
