@@ -85,6 +85,12 @@ class GraphQLWSClient {
     // Get current display hash (for deduplication)
     uint32_t getCurrentDisplayHash() { return currentDisplayHash; }
 
+    // Set the controller ID for comparison with incoming clientId
+    void setControllerId(const String& id) { controllerId = id; }
+
+    // Get the controller ID
+    const String& getControllerId() { return controllerId; }
+
   private:
     WebSocketsClient ws;
     GraphQLConnectionState state;
@@ -99,6 +105,8 @@ class GraphQLWSClient {
     bool useSSL;
     String sessionId;
     String subscriptionId;
+    String controllerId;  // Controller ID for comparison with incoming clientId (deprecated, use deviceMac)
+    String deviceMac;     // Device MAC address for clientId comparison (auto-detected)
 
     unsigned long lastPingTime;
     unsigned long lastPongTime;

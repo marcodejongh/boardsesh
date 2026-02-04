@@ -1465,6 +1465,8 @@ export const typeDefs = /* GraphQL */ `
     boardPath: String
     angle: Int
     navigation: QueueNavigationContext
+    "ID of client that triggered this update (null if system-initiated). ESP32 uses this to decide whether to disconnect BLE client."
+    clientId: String
   }
 
   # Ping event to keep controller connection alive

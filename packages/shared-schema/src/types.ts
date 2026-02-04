@@ -330,6 +330,7 @@ export type ConnectionContext = {
   // Controller-specific context (set when using API key auth)
   controllerId?: string;
   controllerApiKey?: string;
+  controllerMac?: string; // Controller's MAC address (used as clientId for BLE disconnect logic)
 };
 
 // ============================================
@@ -372,6 +373,9 @@ export type LedUpdate = {
   boardPath?: string;
   angle?: number;
   navigation?: QueueNavigationContext | null;
+  // ID of client that triggered this update (null if system-initiated)
+  // ESP32 uses this to decide whether to disconnect BLE client
+  clientId?: string | null;
 };
 
 // Ping event to keep controller connection alive

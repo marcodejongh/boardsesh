@@ -194,6 +194,19 @@ export const controllerMutations = {
 
     if (!match) {
       console.log(`[Controller] No climb found matching frames for session ${sessionId}`);
+
+      // Publish event so ESP32 display shows "Unknown Climb" with ability to navigate back
+      // Use controllerMac as clientId so ESP32 can compare with its own MAC address
+      const clientIdForEvent = ctx.controllerMac || controllerId;
+      console.log(`[Controller] Publishing CurrentClimbChanged (no match) with clientId: ${clientIdForEvent}`);
+      pubsub.publishQueueEvent(sessionId, {
+        __typename: 'CurrentClimbChanged',
+        sequence: currentState.sequence,
+        item: null, // No queue item for unknown climb
+        clientId: clientIdForEvent, // ESP32 compares this with its MAC
+        correlationId: null,
+      });
+
       return {
         matched: false,
         climbUuid: null,
@@ -258,14 +271,15 @@ export const controllerMutations = {
       position: insertPosition,
     });
 
-    // Publish CurrentClimbChanged event with controllerId as clientId
-    // This allows the controller subscription to skip sending LED updates back to this controller
-    console.log(`[Controller] Publishing CurrentClimbChanged with clientId: ${controllerId}`);
+    // Publish CurrentClimbChanged event with controllerMac as clientId
+    // ESP32 compares this with its own MAC address to decide whether to disconnect BLE client
+    const matchClientId = ctx.controllerMac || controllerId;
+    console.log(`[Controller] Publishing CurrentClimbChanged with clientId: ${matchClientId}`);
     pubsub.publishQueueEvent(sessionId, {
       __typename: 'CurrentClimbChanged',
       sequence,
       item: queueItem,
-      clientId: controllerId,
+      clientId: matchClientId,
       correlationId: null,
     });
 

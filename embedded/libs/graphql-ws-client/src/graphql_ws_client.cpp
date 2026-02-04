@@ -1,5 +1,6 @@
 #include "graphql_ws_client.h"
 
+#include <WiFi.h>
 #include <aurora_protocol.h>
 #include <nordic_uart_ble.h>
 
@@ -236,11 +237,17 @@ void GraphQLWSClient::sendConnectionInit() {
     JsonDocument doc;
     doc["type"] = "connection_init";
 
-    // Include controller API key in connection payload if provided
+    // Include controller API key and MAC address in connection payload
     if (apiKey.length() > 0) {
         JsonObject payload = doc["payload"].to<JsonObject>();
         payload["controllerApiKey"] = apiKey;
+        // Send MAC address for clientId matching (so backend can use it as clientId)
+        payload["controllerMac"] = WiFi.macAddress();
     }
+
+    // Store our own MAC for comparison with incoming clientId
+    deviceMac = WiFi.macAddress();
+    Logger.logln("GraphQL: Device MAC for clientId comparison: %s", deviceMac.c_str());
 
     String msg;
     serializeJson(doc, msg);
@@ -307,14 +314,24 @@ void GraphQLWSClient::handleMessage(uint8_t* payload, size_t length) {
 }
 
 void GraphQLWSClient::handleLedUpdate(JsonObject& data) {
+    // Check if this update was initiated by this controller (self-initiated from BLE)
+    // Compare incoming clientId with our device's MAC address
+    const char* updateClientId = data["clientId"];
+    bool isSelfInitiated = updateClientId && deviceMac.length() > 0 &&
+                           (String(updateClientId) == deviceMac);
+
     JsonArray commands = data["commands"];
 
     if (commands.isNull() || commands.size() == 0) {
-        // Clear LEDs command - if BLE connected, this is likely web taking over
-        if (BLE.isConnected()) {
+        // Clear LEDs command
+        if (BLE.isConnected() && !isSelfInitiated) {
+            // Web user cleared - disconnect phone (BLE client), keep proxy
             Logger.logln("GraphQL: Web user cleared climb, disconnecting BLE client");
             BLE.disconnectClient();
             BLE.clearLastSentHash();
+        } else if (isSelfInitiated) {
+            // Self-initiated (unknown climb from BLE) - keep phone connected
+            Logger.logln("GraphQL: Self-initiated clear/unknown climb, maintaining BLE client connection");
         }
         LEDs.clear();
         LEDs.show();
@@ -337,25 +354,23 @@ void GraphQLWSClient::handleLedUpdate(JsonObject& data) {
         i++;
     }
 
-    // Compute hash of incoming LED data
+    // Compute hash of incoming LED data for deduplication
     uint32_t incomingHash = computeLedHash(ledCommands, count);
 
-    // If BLE is connected, check if this is an echo of our own data or a web-initiated change
+    // Check if we should disconnect the BLE client (phone using official app)
     if (BLE.isConnected()) {
-        if (incomingHash == currentDisplayHash && currentDisplayHash != 0) {
-            // This is likely an echo from our own BLE send - ignore it
-            Logger.logln("GraphQL: Ignoring LedUpdate (hash %u matches current display, likely echo)", incomingHash);
-            delete[] ledCommands;
-            return;
+        if (isSelfInitiated) {
+            // Self-initiated from this controller's BLE - keep phone connected
+            Logger.logln("GraphQL: Self-initiated update, maintaining BLE client connection");
         } else {
-            // Different LED data - web user is taking over
+            // Web user changed climb - disconnect phone (BLE client), keep proxy
             Logger.logln("GraphQL: Web user changed climb, disconnecting BLE client");
             BLE.disconnectClient();
             BLE.clearLastSentHash();
         }
     }
 
-    // Update LEDs
+    // Always render LEDs (it's imperceptible to users)
     LEDs.setLeds(ledCommands, count);
     LEDs.show();
 
@@ -365,9 +380,9 @@ void GraphQLWSClient::handleLedUpdate(JsonObject& data) {
     // Log climb info if available
     const char* climbName = data["climbName"];
     if (climbName) {
-        Logger.logln("GraphQL: Displaying climb: %s (%d LEDs)", climbName, count);
+        Logger.logln("GraphQL: Displaying climb: %s (%d LEDs, clientId: %s)", climbName, count, updateClientId ? updateClientId : "null");
     } else {
-        Logger.logln("GraphQL: Updated %d LEDs", count);
+        Logger.logln("GraphQL: Updated %d LEDs (clientId: %s)", count, updateClientId ? updateClientId : "null");
     }
 
     delete[] ledCommands;
@@ -390,10 +405,15 @@ void GraphQLWSClient::handleQueueSync(JsonObject& data) {
         return;
     }
 
-    // Build the sync data structure
-    ControllerQueueSyncData syncData;
-    syncData.count = min(count, ControllerQueueSyncData::MAX_ITEMS);
-    syncData.currentIndex = currentIndex;
+    // Allocate on heap to avoid stack overflow (~19KB struct)
+    ControllerQueueSyncData* syncData = new ControllerQueueSyncData();
+    if (!syncData) {
+        Logger.logln("GraphQL: Failed to allocate QueueSync data");
+        return;
+    }
+
+    syncData->count = min(count, ControllerQueueSyncData::MAX_ITEMS);
+    syncData->currentIndex = currentIndex;
 
     int i = 0;
     for (JsonObject item : queueArray) {
@@ -406,26 +426,29 @@ void GraphQLWSClient::handleQueueSync(JsonObject& data) {
         const char* gradeColor = item["gradeColor"] | "";
 
         // Copy with truncation
-        strncpy(syncData.items[i].uuid, uuid, sizeof(syncData.items[i].uuid) - 1);
-        syncData.items[i].uuid[sizeof(syncData.items[i].uuid) - 1] = '\0';
+        strncpy(syncData->items[i].uuid, uuid, sizeof(syncData->items[i].uuid) - 1);
+        syncData->items[i].uuid[sizeof(syncData->items[i].uuid) - 1] = '\0';
 
-        strncpy(syncData.items[i].climbUuid, climbUuid, sizeof(syncData.items[i].climbUuid) - 1);
-        syncData.items[i].climbUuid[sizeof(syncData.items[i].climbUuid) - 1] = '\0';
+        strncpy(syncData->items[i].climbUuid, climbUuid, sizeof(syncData->items[i].climbUuid) - 1);
+        syncData->items[i].climbUuid[sizeof(syncData->items[i].climbUuid) - 1] = '\0';
 
-        strncpy(syncData.items[i].name, name, sizeof(syncData.items[i].name) - 1);
-        syncData.items[i].name[sizeof(syncData.items[i].name) - 1] = '\0';
+        strncpy(syncData->items[i].name, name, sizeof(syncData->items[i].name) - 1);
+        syncData->items[i].name[sizeof(syncData->items[i].name) - 1] = '\0';
 
-        strncpy(syncData.items[i].grade, grade, sizeof(syncData.items[i].grade) - 1);
-        syncData.items[i].grade[sizeof(syncData.items[i].grade) - 1] = '\0';
+        strncpy(syncData->items[i].grade, grade, sizeof(syncData->items[i].grade) - 1);
+        syncData->items[i].grade[sizeof(syncData->items[i].grade) - 1] = '\0';
 
-        strncpy(syncData.items[i].gradeColor, gradeColor, sizeof(syncData.items[i].gradeColor) - 1);
-        syncData.items[i].gradeColor[sizeof(syncData.items[i].gradeColor) - 1] = '\0';
+        strncpy(syncData->items[i].gradeColor, gradeColor, sizeof(syncData->items[i].gradeColor) - 1);
+        syncData->items[i].gradeColor[sizeof(syncData->items[i].gradeColor) - 1] = '\0';
 
         i++;
     }
 
     // Call the callback
-    queueSyncCallback(syncData);
+    queueSyncCallback(*syncData);
+
+    // Free heap memory
+    delete syncData;
 }
 
 void GraphQLWSClient::sendLedPositions(const LedCommand* commands, int count, int angle) {

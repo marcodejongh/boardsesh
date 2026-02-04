@@ -127,7 +127,8 @@ export const controllerSubscriptions = {
       // Helper to build LedUpdate with navigation context
       const buildLedUpdateWithNavigation = async (
         climb: { uuid: string; name: string; difficulty: string; angle: number; litUpHoldsMap: Record<number, { state: string }> } | null | undefined,
-        currentItemUuid?: string
+        currentItemUuid?: string,
+        clientId?: string | null
       ): Promise<LedUpdate> => {
         // Get LED placements for this controller's configuration
         const ledPlacements = getLedPlacements(
@@ -137,17 +138,21 @@ export const controllerSubscriptions = {
         );
 
         if (!climb) {
-          // No current climb - clear LEDs
+          // No current climb - could be clearing or unknown climb from BLE
+          // Get queue state for navigation context so ESP32 can navigate back
+          const queueState = await roomManager.getQueueState(sessionId);
+          const navigation = buildNavigationContext(queueState.queue, -1);
+
           return {
             __typename: 'LedUpdate',
             commands: [],
             boardPath,
-            navigation: {
-              previousClimbs: [],
-              nextClimb: null,
-              currentIndex: -1,
-              totalCount: 0,
-            },
+            clientId,
+            // If clientId matches controller, this is an unknown BLE climb - show "Unknown Climb"
+            climbName: clientId ? 'Unknown Climb' : undefined,
+            climbGrade: clientId ? '?' : undefined,
+            gradeColor: clientId ? '#888888' : undefined,
+            navigation,
           };
         }
 
@@ -172,6 +177,7 @@ export const controllerSubscriptions = {
           boardPath,
           angle: climb.angle,
           navigation,
+          clientId,
         };
       };
 
@@ -202,15 +208,15 @@ export const controllerSubscriptions = {
           }
 
           // Handle current climb changes and full sync
+          // Always send LedUpdate with clientId - ESP32 uses clientId to decide whether to disconnect BLE client
           if (queueEvent.__typename === 'CurrentClimbChanged' || queueEvent.__typename === 'FullSync') {
-            // Skip LedUpdate if this controller initiated the change
-            // (LEDs are already set from BLE data, this would be redundant)
+            // Extract clientId from the event (null for FullSync or system-initiated changes)
+            const eventClientId = queueEvent.__typename === 'CurrentClimbChanged'
+              ? queueEvent.clientId
+              : null;
+
             if (queueEvent.__typename === 'CurrentClimbChanged') {
-              console.log(`[Controller] CurrentClimbChanged event - clientId: ${queueEvent.clientId}, controllerId: ${controllerId}`);
-              if (queueEvent.clientId === controllerId) {
-                console.log(`[Controller] Skipping LedUpdate (originated from this controller)`);
-                return;
-              }
+              console.log(`[Controller] CurrentClimbChanged event - clientId: ${eventClientId}, controllerId: ${controllerId}`);
             }
 
             const currentItem = queueEvent.__typename === 'CurrentClimbChanged'
@@ -223,13 +229,14 @@ export const controllerSubscriptions = {
               try {
                 if (climb) {
                   console.log(`[Controller] Sending LED update for climb: ${climb.name} (uuid: ${currentItem?.uuid})`);
-                  const ledUpdate = await buildLedUpdateWithNavigation(climb, currentItem?.uuid);
-                  console.log(`[Controller] LED update navigation: index ${ledUpdate.navigation?.currentIndex}/${ledUpdate.navigation?.totalCount}, climb: ${ledUpdate.climbName}`);
+                  const ledUpdate = await buildLedUpdateWithNavigation(climb, currentItem?.uuid, eventClientId);
+                  console.log(`[Controller] LED update navigation: index ${ledUpdate.navigation?.currentIndex}/${ledUpdate.navigation?.totalCount}, climb: ${ledUpdate.climbName}, clientId: ${ledUpdate.clientId}`);
                   console.log(`[Controller] Pushing LED update to subscription`);
                   push(ledUpdate);
                 } else {
-                  console.log(`[Controller] Clearing LEDs (no current climb)`);
-                  const ledUpdate = await buildLedUpdateWithNavigation(null);
+                  // No climb - could be clearing or unknown climb
+                  console.log(`[Controller] Sending update with no climb (clientId: ${eventClientId})`);
+                  const ledUpdate = await buildLedUpdateWithNavigation(null, undefined, eventClientId);
                   push(ledUpdate);
                 }
               } catch (error) {

@@ -16,7 +16,8 @@ export function createContext(
   isAuthenticated?: boolean,
   userId?: string,
   controllerId?: string,
-  controllerApiKey?: string
+  controllerApiKey?: string,
+  controllerMac?: string
 ): ConnectionContext {
   const id = connectionId || uuidv4();
   const context: ConnectionContext = {
@@ -26,9 +27,10 @@ export function createContext(
     isAuthenticated: isAuthenticated || false,
     controllerId,
     controllerApiKey,
+    controllerMac,
   };
   connections.set(id, context);
-  console.log(`[Context] createContext: ${id} (authenticated: ${isAuthenticated}, userId: ${userId}, controllerId: ${controllerId}). Total connections: ${connections.size}`);
+  console.log(`[Context] createContext: ${id} (authenticated: ${isAuthenticated}, userId: ${userId}, controllerId: ${controllerId}, mac: ${controllerMac}). Total connections: ${connections.size}`);
   return context;
 }
 
