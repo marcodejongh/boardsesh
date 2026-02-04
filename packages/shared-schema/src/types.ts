@@ -345,13 +345,33 @@ export type LedCommand = {
   role?: number;
 };
 
+// Minimal climb info for ESP32 navigation display
+export type QueueNavigationItem = {
+  name: string;
+  grade: string;
+  gradeColor: string;
+};
+
+// Navigation context sent with LED updates
+export type QueueNavigationContext = {
+  previousClimbs: QueueNavigationItem[];
+  nextClimb: QueueNavigationItem | null;
+  currentIndex: number;
+  totalCount: number;
+};
+
 // LED update event sent to controller
 export type LedUpdate = {
   __typename: 'LedUpdate';
   commands: LedCommand[];
+  queueItemUuid?: string;
   climbUuid?: string;
   climbName?: string;
+  climbGrade?: string;
+  gradeColor?: string;
+  boardPath?: string;
   angle?: number;
+  navigation?: QueueNavigationContext | null;
 };
 
 // Ping event to keep controller connection alive
@@ -360,8 +380,24 @@ export type ControllerPing = {
   timestamp: string;
 };
 
+// Minimal queue item for controller display
+export type ControllerQueueItem = {
+  uuid: string; // Queue item UUID (for navigation)
+  climbUuid: string; // Climb UUID (for display/matching)
+  name: string;
+  grade: string;
+  gradeColor: string;
+};
+
+// Queue sync event sent to controller
+export type ControllerQueueSync = {
+  __typename: 'ControllerQueueSync';
+  queue: ControllerQueueItem[];
+  currentIndex: number;
+};
+
 // Union of events sent to controller
-export type ControllerEvent = LedUpdate | ControllerPing;
+export type ControllerEvent = LedUpdate | ControllerPing | ControllerQueueSync;
 
 // Controller info for management UI
 export type ControllerInfo = {

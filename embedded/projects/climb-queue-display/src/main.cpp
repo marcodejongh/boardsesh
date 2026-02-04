@@ -42,6 +42,7 @@ String currentClimbUuid = "";
 String currentClimbName = "";
 String currentGrade = "";
 String currentGradeColor = "";
+String currentQueueItemUuid = "";  // Queue item UUID for navigation
 bool hasCurrentClimb = false;
 
 // ============================================
@@ -51,7 +52,11 @@ bool hasCurrentClimb = false;
 void onWiFiStateChange(WiFiConnectionState state);
 void onGraphQLStateChange(GraphQLConnectionState state);
 void onGraphQLMessage(JsonDocument& doc);
+void onQueueSync(const ControllerQueueSyncData& data);
 void handleLedUpdate(JsonObject& data);
+void navigatePrevious();
+void navigateNext();
+void sendNavigationMutation(const char* queueItemUuid);
 
 #if !BLE_PROXY_DISABLED
 void onBleConnect(bool connected, const char* deviceName);
@@ -93,15 +98,10 @@ void setup() {
     WiFiMgr.begin();
     WiFiMgr.setStateCallback(onWiFiStateChange);
 
-    // Try to connect to saved WiFi or start AP mode for setup
+    // Try to connect to saved WiFi
     if (!WiFiMgr.connectSaved()) {
-        Logger.logln("No saved WiFi credentials - starting AP mode");
-        String apName = "Boardsesh-Queue-" + String((uint32_t)(ESP.getEfuseMac() & 0xFFFF), HEX);
-        if (WiFiMgr.startAP(apName.c_str())) {
-            Display.showConfigPortal(apName.c_str(), WiFiMgr.getAPIP().c_str());
-        } else {
-            Display.showError("AP Mode Failed");
-        }
+        Logger.logln("No saved WiFi credentials - configure via web server");
+        Display.showError("Configure WiFi");
     }
 
     // Initialize web config server
@@ -168,32 +168,69 @@ void loop() {
     }
 #endif
 
-    // Handle button presses
+    // Handle button presses with debouncing
     static bool lastButton1 = HIGH;
+    static bool lastButton2 = HIGH;
     static unsigned long button1PressTime = 0;
+    static unsigned long button2PressTime = 0;
+    static bool button1LongPressTriggered = false;
+    static const unsigned long DEBOUNCE_MS = 50;
+    static const unsigned long LONG_PRESS_MS = 3000;
+    static const unsigned long SHORT_PRESS_MAX_MS = 500;
+
     bool button1 = digitalRead(BUTTON_1_PIN);
+    bool button2 = digitalRead(BUTTON_2_PIN);
+    unsigned long now = millis();
 
-    // Button 1 - long press (3 sec) to reset config
+    // Button 1: Short press = previous, Long press (3s) = reset config
     if (button1 == LOW && lastButton1 == HIGH) {
-        button1PressTime = millis();
-        Logger.logln("Button 1 pressed - hold 3s to reset config");
-    }
-    if (button1 == LOW && button1PressTime > 0 && millis() - button1PressTime > 3000) {
-        Logger.logln("Resetting configuration...");
-        Display.showError("Resetting...");
+        // Button just pressed
+        button1PressTime = now;
+        button1LongPressTriggered = false;
+    } else if (button1 == LOW && button1PressTime > 0) {
+        // Button held down - check for long press
+        if (!button1LongPressTriggered && now - button1PressTime > LONG_PRESS_MS) {
+            Logger.logln("Button 1 long press - resetting configuration...");
+            Display.showError("Resetting...");
+            button1LongPressTriggered = true;
 
-        Config.setString("wifi_ssid", "");
-        Config.setString("wifi_pass", "");
-        Config.setString("api_key", "");
-        Config.setString("session_id", "");
+            Config.setString("wifi_ssid", "");
+            Config.setString("wifi_pass", "");
+            Config.setString("api_key", "");
+            Config.setString("session_id", "");
 
-        delay(1000);
-        ESP.restart();
-    }
-    if (button1 == HIGH) {
+            delay(1000);
+            ESP.restart();
+        }
+    } else if (button1 == HIGH && lastButton1 == LOW) {
+        // Button just released - check for short press (navigate previous)
+        if (!button1LongPressTriggered && button1PressTime > 0) {
+            unsigned long pressDuration = now - button1PressTime;
+            if (pressDuration > DEBOUNCE_MS && pressDuration < SHORT_PRESS_MAX_MS) {
+                Logger.logln("Button 1 short press - navigate previous");
+                navigatePrevious();
+            }
+        }
         button1PressTime = 0;
     }
     lastButton1 = button1;
+
+    // Button 2: Short press = next
+    if (button2 == LOW && lastButton2 == HIGH) {
+        // Button just pressed
+        button2PressTime = now;
+    } else if (button2 == HIGH && lastButton2 == LOW) {
+        // Button just released - check for short press (navigate next)
+        if (button2PressTime > 0) {
+            unsigned long pressDuration = now - button2PressTime;
+            if (pressDuration > DEBOUNCE_MS && pressDuration < SHORT_PRESS_MAX_MS) {
+                Logger.logln("Button 2 short press - navigate next");
+                navigateNext();
+            }
+        }
+        button2PressTime = 0;
+    }
+    lastButton2 = button2;
 }
 
 // ============================================
@@ -206,11 +243,6 @@ void onWiFiStateChange(WiFiConnectionState state) {
             Logger.logln("WiFi connected: %s", WiFiMgr.getIP().c_str());
             wifiConnected = true;
             Display.setWiFiStatus(true);
-
-            // Stop AP mode if it was active
-            if (WiFiMgr.isAPMode()) {
-                WiFiMgr.stopAP();
-            }
 
             // Get backend config
             String host = Config.getString("backend_host", DEFAULT_BACKEND_HOST);
@@ -236,6 +268,7 @@ void onWiFiStateChange(WiFiConnectionState state) {
 
             GraphQL.setStateCallback(onGraphQLStateChange);
             GraphQL.setMessageCallback(onGraphQLMessage);
+            GraphQL.setQueueSyncCallback(onQueueSync);
             GraphQL.begin(host.c_str(), port, path.c_str(), apiKey.c_str());
             break;
         }
@@ -256,10 +289,6 @@ void onWiFiStateChange(WiFiConnectionState state) {
         case WiFiConnectionState::CONNECTION_FAILED:
             Logger.logln("WiFi connection failed");
             Display.showError("WiFi failed");
-            break;
-
-        case WiFiConnectionState::AP_MODE:
-            Logger.logln("WiFi AP mode active: %s", WiFiMgr.getAPIP().c_str());
             break;
     }
 }
@@ -286,8 +315,11 @@ void onGraphQLStateChange(GraphQLConnectionState state) {
             GraphQL.subscribe("controller-events",
                               "subscription ControllerEvents($sessionId: ID!) { "
                               "controllerEvents(sessionId: $sessionId) { "
-                              "... on LedUpdate { __typename commands { position r g b } climbUuid climbName "
-                              "climbGrade boardPath angle } "
+                              "... on LedUpdate { __typename commands { position r g b } queueItemUuid climbUuid climbName "
+                              "climbGrade gradeColor boardPath angle "
+                              "navigation { previousClimbs { name grade gradeColor } "
+                              "nextClimb { name grade gradeColor } currentIndex totalCount } } "
+                              "... on ControllerQueueSync { __typename queue { uuid climbUuid name grade gradeColor } currentIndex } "
                               "... on ControllerPing { __typename timestamp } "
                               "} }",
                               variables.c_str());
@@ -332,8 +364,49 @@ void onGraphQLMessage(JsonDocument& doc) {
     }
 }
 
+// ============================================
+// Queue Sync Callback
+// ============================================
+
+void onQueueSync(const ControllerQueueSyncData& data) {
+    Logger.logln("Queue sync: %d items, currentIndex: %d", data.count, data.currentIndex);
+
+    // Convert to LocalQueueItem array
+    LocalQueueItem items[ControllerQueueSyncData::MAX_ITEMS];
+    for (int i = 0; i < data.count && i < MAX_QUEUE_SIZE; i++) {
+        strncpy(items[i].uuid, data.items[i].uuid, sizeof(items[i].uuid) - 1);
+        items[i].uuid[sizeof(items[i].uuid) - 1] = '\0';
+
+        strncpy(items[i].climbUuid, data.items[i].climbUuid, sizeof(items[i].climbUuid) - 1);
+        items[i].climbUuid[sizeof(items[i].climbUuid) - 1] = '\0';
+
+        strncpy(items[i].name, data.items[i].name, sizeof(items[i].name) - 1);
+        items[i].name[sizeof(items[i].name) - 1] = '\0';
+
+        strncpy(items[i].grade, data.items[i].grade, sizeof(items[i].grade) - 1);
+        items[i].grade[sizeof(items[i].grade) - 1] = '\0';
+
+        // Convert hex color to RGB565 if provided
+        if (data.items[i].gradeColor[0] == '#') {
+            items[i].gradeColorRgb = Display.getDisplay().color565(
+                strtol(String(data.items[i].gradeColor).substring(1, 3).c_str(), NULL, 16),
+                strtol(String(data.items[i].gradeColor).substring(3, 5).c_str(), NULL, 16),
+                strtol(String(data.items[i].gradeColor).substring(5, 7).c_str(), NULL, 16));
+        } else {
+            items[i].gradeColorRgb = 0xFFFF;  // White default
+        }
+    }
+
+    // Update display queue state
+    Display.setQueueFromSync(items, data.count, data.currentIndex);
+
+    Logger.logln("Queue sync complete: stored %d items, index %d", Display.getQueueCount(),
+                 Display.getCurrentQueueIndex());
+}
+
 void handleLedUpdate(JsonObject& data) {
     JsonArray commands = data["commands"];
+    const char* queueItemUuid = data["queueItemUuid"];
     const char* climbUuid = data["climbUuid"];
     const char* climbName = data["climbName"];
     const char* climbGrade = data["climbGrade"];
@@ -341,8 +414,23 @@ void handleLedUpdate(JsonObject& data) {
     int angle = data["angle"] | 0;
     int count = commands.isNull() ? 0 : commands.size();
 
-    Logger.logln("LED Update: %s [%s] @ %d degrees (%d holds)", climbName ? climbName : "(none)",
-                 climbGrade ? climbGrade : "?", angle, count);
+    Logger.logln("LED Update: %s [%s] @ %d degrees (%d holds), queueItemUuid: %s", climbName ? climbName : "(none)",
+                 climbGrade ? climbGrade : "?", angle, count, queueItemUuid ? queueItemUuid : "(none)");
+
+    // Check if this confirms a pending navigation
+    if (Display.hasPendingNavigation() && queueItemUuid) {
+        const char* pendingUuid = Display.getPendingQueueItemUuid();
+        if (pendingUuid && strcmp(queueItemUuid, pendingUuid) == 0) {
+            Logger.logln("LED Update confirms pending navigation to %s", queueItemUuid);
+            Display.clearPendingNavigation();
+            // Display is already showing this climb from optimistic update - just update LEDs
+        } else {
+            Logger.logln("LED Update conflicts with pending navigation (expected %s, got %s)", pendingUuid,
+                         queueItemUuid);
+            Display.clearPendingNavigation();
+            // Fall through to update display with actual climb
+        }
+    }
 
     // Handle clear command
     if (commands.isNull() || count == 0) {
@@ -351,6 +439,7 @@ void handleLedUpdate(JsonObject& data) {
         }
 
         hasCurrentClimb = false;
+        currentQueueItemUuid = "";
         currentClimbUuid = "";
         currentClimbName = "";
         currentGrade = "";
@@ -408,14 +497,61 @@ void handleLedUpdate(JsonObject& data) {
     }
 
     // Update state
+    currentQueueItemUuid = queueItemUuid ? queueItemUuid : "";
     currentClimbUuid = climbUuid ? climbUuid : "";
     currentClimbName = climbName ? climbName : "";
     currentGrade = climbGrade ? climbGrade : "";
-    currentGradeColor = "";  // gradeColor not available from schema
+
+    // Parse gradeColor if present
+    const char* gradeColor = data["gradeColor"];
+    currentGradeColor = gradeColor ? gradeColor : "";
     hasCurrentClimb = true;
 
-    // Update display (pass empty gradeColor - display will use default)
-    Display.showClimb(climbName, climbGrade, "", angle, climbUuid, boardType.c_str());
+    // Sync local queue index with backend if we have queueItemUuid
+    if (queueItemUuid && Display.getQueueCount() > 0) {
+        // Find this item in our local queue and update index
+        for (int i = 0; i < Display.getQueueCount(); i++) {
+            const LocalQueueItem* item = Display.getQueueItem(i);
+            if (item && strcmp(item->uuid, queueItemUuid) == 0) {
+                Display.setCurrentQueueIndex(i);
+                Logger.logln("LED Update: Synced local queue index to %d", i);
+                break;
+            }
+        }
+    }
+
+    // Parse navigation context if present
+    if (data["navigation"].is<JsonObject>()) {
+        JsonObject nav = data["navigation"];
+        int currentIndex = nav["currentIndex"] | -1;
+        int totalCount = nav["totalCount"] | 0;
+
+        // Parse previous climb (first in previousClimbs array = immediate previous)
+        QueueNavigationItem prevClimb;
+        if (nav["previousClimbs"].is<JsonArray>()) {
+            JsonArray prevArray = nav["previousClimbs"];
+            if (prevArray.size() > 0) {
+                JsonObject prev = prevArray[0];
+                prevClimb = QueueNavigationItem(prev["name"] | "", prev["grade"] | "", prev["gradeColor"] | "");
+            }
+        }
+
+        // Parse next climb
+        QueueNavigationItem nextClimb;
+        if (nav["nextClimb"].is<JsonObject>()) {
+            JsonObject next = nav["nextClimb"];
+            nextClimb = QueueNavigationItem(next["name"] | "", next["grade"] | "", next["gradeColor"] | "");
+        }
+
+        Display.setNavigationContext(prevClimb, nextClimb, currentIndex, totalCount);
+        Logger.logln("Navigation: index %d/%d, prev: %s, next: %s", currentIndex + 1, totalCount,
+                     prevClimb.isValid ? "yes" : "no", nextClimb.isValid ? "yes" : "no");
+    } else {
+        Display.clearNavigationContext();
+    }
+
+    // Update display with gradeColor
+    Display.showClimb(climbName, climbGrade, currentGradeColor.c_str(), angle, climbUuid, boardType.c_str());
 
 #if !BLE_PROXY_DISABLED
     // Forward to BLE board
@@ -466,3 +602,92 @@ void forwardToBoard() {
     }
 }
 #endif
+
+// ============================================
+// Queue Navigation Functions (with optimistic updates)
+// ============================================
+
+void sendNavigationMutation(const char* queueItemUuid) {
+    String sessionId = Config.getString("session_id");
+    if (sessionId.length() == 0) {
+        Logger.logln("Navigation: No session ID configured");
+        return;
+    }
+
+    // Use queueItemUuid for direct navigation (most reliable)
+    String vars = "{\"sessionId\":\"" + sessionId + "\",\"direction\":\"next\"";  // direction is fallback
+    vars += ",\"queueItemUuid\":\"" + String(queueItemUuid) + "\"";
+    vars += "}";
+
+    GraphQL.sendMutation("nav-direct",
+                         "mutation NavDirect($sessionId: ID!, $direction: String!, $queueItemUuid: String) { "
+                         "navigateQueue(sessionId: $sessionId, direction: $direction, queueItemUuid: $queueItemUuid) { "
+                         "uuid climb { name difficulty } } }",
+                         vars.c_str());
+
+    Logger.logln("Navigation: Sent navigate request to queueItemUuid: %s", queueItemUuid);
+}
+
+void navigatePrevious() {
+    if (!backendConnected) {
+        Logger.logln("Navigation: Cannot navigate - not connected to backend");
+        return;
+    }
+
+    // Check if we have local queue state
+    if (Display.getQueueCount() == 0) {
+        Logger.logln("Navigation: No queue state - cannot navigate");
+        return;
+    }
+
+    if (!Display.canNavigatePrevious()) {
+        Logger.logln("Navigation: Already at start of queue");
+        return;
+    }
+
+    // Optimistic update - immediately show previous climb
+    if (Display.navigateToPrevious()) {
+        const LocalQueueItem* newCurrent = Display.getCurrentQueueItem();
+        if (newCurrent) {
+            Logger.logln("Navigation: Optimistic update to previous - %s (uuid: %s)", newCurrent->name, newCurrent->uuid);
+
+            // Update display immediately (optimistic)
+            Display.showClimb(newCurrent->name, newCurrent->grade, "", 0, newCurrent->climbUuid, boardType.c_str());
+
+            // Send mutation with queueItemUuid for backend sync
+            sendNavigationMutation(newCurrent->uuid);
+        }
+    }
+}
+
+void navigateNext() {
+    if (!backendConnected) {
+        Logger.logln("Navigation: Cannot navigate - not connected to backend");
+        return;
+    }
+
+    // Check if we have local queue state
+    if (Display.getQueueCount() == 0) {
+        Logger.logln("Navigation: No queue state - cannot navigate");
+        return;
+    }
+
+    if (!Display.canNavigateNext()) {
+        Logger.logln("Navigation: Already at end of queue");
+        return;
+    }
+
+    // Optimistic update - immediately show next climb
+    if (Display.navigateToNext()) {
+        const LocalQueueItem* newCurrent = Display.getCurrentQueueItem();
+        if (newCurrent) {
+            Logger.logln("Navigation: Optimistic update to next - %s (uuid: %s)", newCurrent->name, newCurrent->uuid);
+
+            // Update display immediately (optimistic)
+            Display.showClimb(newCurrent->name, newCurrent->grade, "", 0, newCurrent->climbUuid, boardType.c_str());
+
+            // Send mutation with queueItemUuid for backend sync
+            sendNavigationMutation(newCurrent->uuid);
+        }
+    }
+}

@@ -1261,6 +1261,12 @@ export const typeDefs = /* GraphQL */ `
       frames: String
       positions: [LedCommandInput!]
     ): ClimbMatchResult!
+    # Navigate to previous or next climb in the queue
+    # queueItemUuid: Directly navigate to this queue item (preferred)
+    # direction: "next" or "previous" (fallback if queueItemUuid not provided)
+    # currentClimbUuid: DEPRECATED - UUID of climb currently displayed (unreliable with duplicates)
+    # Requires controller API key in connectionParams
+    navigateQueue(sessionId: ID!, direction: String!, currentClimbUuid: String, queueItemUuid: String): ClimbQueueItem
     # ESP32 heartbeat to update lastSeenAt - uses API key auth via connectionParams
     controllerHeartbeat(sessionId: ID!): Boolean!
     # Authorize a controller for a specific session (requires user auth, auto-called on joinSession)
@@ -1428,14 +1434,37 @@ export const typeDefs = /* GraphQL */ `
     role: Int
   }
 
+  # Minimal climb info for ESP32 navigation display
+  type QueueNavigationItem {
+    name: String!
+    grade: String!
+    gradeColor: String!
+  }
+
+  # Navigation context sent with LED updates
+  type QueueNavigationContext {
+    "Previous climbs in queue (up to 3, most recent first)"
+    previousClimbs: [QueueNavigationItem!]!
+    "Next climb in queue (null if at end)"
+    nextClimb: QueueNavigationItem
+    "Current position in queue (0-indexed)"
+    currentIndex: Int!
+    "Total number of items in queue"
+    totalCount: Int!
+  }
+
   # LED update event sent to controller
   type LedUpdate {
     commands: [LedCommand!]!
+    "Queue item UUID (for reconciling optimistic UI)"
+    queueItemUuid: String
     climbUuid: String
     climbName: String
     climbGrade: String
+    gradeColor: String
     boardPath: String
     angle: Int
+    navigation: QueueNavigationContext
   }
 
   # Ping event to keep controller connection alive
@@ -1443,8 +1472,30 @@ export const typeDefs = /* GraphQL */ `
     timestamp: String!
   }
 
+  # Minimal queue item for controller display (subset of ClimbQueueItem)
+  type ControllerQueueItem {
+    "Queue item UUID (unique per queue position, used for navigation)"
+    uuid: ID!
+    "Climb UUID (for display matching)"
+    climbUuid: ID!
+    "Climb name (truncated for display)"
+    name: String!
+    "Grade string"
+    grade: String!
+    "Grade color as hex string"
+    gradeColor: String!
+  }
+
+  # Queue sync event sent to controller
+  type ControllerQueueSync {
+    "Complete queue state for controller"
+    queue: [ControllerQueueItem!]!
+    "Index of current climb in queue (-1 if none)"
+    currentIndex: Int!
+  }
+
   # Union of events sent to controller
-  union ControllerEvent = LedUpdate | ControllerPing
+  union ControllerEvent = LedUpdate | ControllerPing | ControllerQueueSync
 
   # Controller info for management UI
   type ControllerInfo {
