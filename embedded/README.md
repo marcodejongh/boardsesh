@@ -91,10 +91,49 @@ Main firmware for controlling Kilter/Tension climbing board LEDs. Features:
 3. Create `src/main.cpp`
 4. Build: `pio run`
 
+## Code Formatting
+
+This project uses [clang-format](https://clang.llvm.org/docs/ClangFormat.html) for consistent C++ code formatting. The configuration is in `.clang-format`.
+
+### Prerequisites
+
+Install clang-format:
+
+```bash
+# macOS
+brew install clang-format
+
+# Ubuntu/Debian
+sudo apt install clang-format
+
+# Windows (via LLVM)
+choco install llvm
+```
+
+### Format Code
+
+```bash
+# Format all C++ files in-place
+npm run controller:format
+
+# Check formatting without modifying (useful for CI)
+npm run controller:format:check
+```
+
+### Editor Integration
+
+Most editors support clang-format:
+
+- **VS Code**: Install the "C/C++" or "Clang-Format" extension
+- **PlatformIO IDE**: Uses clang-format automatically when configured
+- **CLion**: Built-in support (Settings > Editor > Code Style > C/C++ > Set from... > ClangFormat)
+
 ## Convenience Scripts (from repo root)
 
 ```bash
-npm run controller:build      # Build board-controller
-npm run controller:upload     # Flash board-controller
-npm run controller:monitor    # Serial monitor
+npm run controller:build         # Build board-controller
+npm run controller:upload        # Flash board-controller
+npm run controller:monitor       # Serial monitor
+npm run controller:format        # Format all C++ code
+npm run controller:format:check  # Check C++ formatting
 ```

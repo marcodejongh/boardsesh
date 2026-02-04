@@ -8,13 +8,13 @@
 #ifndef ARDUINO_MOCK_H
 #define ARDUINO_MOCK_H
 
-#include <cstdint>
-#include <cstddef>
-#include <cstring>
-#include <cstdio>
-#include <cstdarg>
-#include <string>
 #include <algorithm>
+#include <cstdarg>
+#include <cstddef>
+#include <cstdint>
+#include <cstdio>
+#include <cstring>
+#include <string>
 
 // Arduino type definitions
 typedef uint8_t byte;
@@ -26,13 +26,11 @@ typedef bool boolean;
 #ifndef ARDUINO_MIN_MAX_DEFINED
 #define ARDUINO_MIN_MAX_DEFINED
 
-template<typename T, typename U>
-inline auto min(T a, U b) -> decltype(a < b ? a : b) {
+template <typename T, typename U> inline auto min(T a, U b) -> decltype(a < b ? a : b) {
     return (a < b) ? a : b;
 }
 
-template<typename T, typename U>
-inline auto max(T a, U b) -> decltype(a > b ? a : b) {
+template <typename T, typename U> inline auto max(T a, U b) -> decltype(a > b ? a : b) {
     return (a > b) ? a : b;
 }
 
@@ -52,33 +50,63 @@ inline auto max(T a, U b) -> decltype(a > b ? a : b) {
 #define HIGH 1
 
 // Time functions (mock implementations)
-inline unsigned long millis() { return 0; }
-inline unsigned long micros() { return 0; }
-inline void delay(unsigned long ms) { (void)ms; }
-inline void delayMicroseconds(unsigned int us) { (void)us; }
+inline unsigned long millis() {
+    return 0;
+}
+inline unsigned long micros() {
+    return 0;
+}
+inline void delay(unsigned long ms) {
+    (void)ms;
+}
+inline void delayMicroseconds(unsigned int us) {
+    (void)us;
+}
 
 // Random functions (mock implementations)
-inline long random(long max) { (void)max; return 0; }
-inline long random(long min, long max) { (void)min; (void)max; return min; }
+inline long random(long max) {
+    (void)max;
+    return 0;
+}
+inline long random(long min, long max) {
+    (void)min;
+    (void)max;
+    return min;
+}
 
 // Pin functions (mock implementations)
-inline void pinMode(uint8_t pin, uint8_t mode) { (void)pin; (void)mode; }
-inline void digitalWrite(uint8_t pin, uint8_t val) { (void)pin; (void)val; }
-inline int digitalRead(uint8_t pin) { (void)pin; return 0; }
-inline int analogRead(uint8_t pin) { (void)pin; return 0; }
-inline void analogWrite(uint8_t pin, int val) { (void)pin; (void)val; }
+inline void pinMode(uint8_t pin, uint8_t mode) {
+    (void)pin;
+    (void)mode;
+}
+inline void digitalWrite(uint8_t pin, uint8_t val) {
+    (void)pin;
+    (void)val;
+}
+inline int digitalRead(uint8_t pin) {
+    (void)pin;
+    return 0;
+}
+inline int analogRead(uint8_t pin) {
+    (void)pin;
+    return 0;
+}
+inline void analogWrite(uint8_t pin, int val) {
+    (void)pin;
+    (void)val;
+}
 
 // memset declaration (in case not available from cstring)
-using std::memset;
 using std::memcpy;
 using std::memmove;
+using std::memset;
 using std::strlen;
 
 /**
  * Mock String class compatible with Arduino String
  */
 class String {
-public:
+  public:
     String() : data_("") {}
     String(const char* str) : data_(str ? str : "") {}
     String(const String& other) : data_(other.data_) {}
@@ -96,14 +124,30 @@ public:
     size_t length() const { return data_.length(); }
     bool isEmpty() const { return data_.empty(); }
 
-    String& operator=(const String& rhs) { data_ = rhs.data_; return *this; }
-    String& operator=(const char* str) { data_ = str ? str : ""; return *this; }
+    String& operator=(const String& rhs) {
+        data_ = rhs.data_;
+        return *this;
+    }
+    String& operator=(const char* str) {
+        data_ = str ? str : "";
+        return *this;
+    }
 
     String operator+(const String& rhs) const { return String((data_ + rhs.data_).c_str()); }
     String operator+(const char* rhs) const { return String((data_ + (rhs ? rhs : "")).c_str()); }
-    String& operator+=(const String& rhs) { data_ += rhs.data_; return *this; }
-    String& operator+=(const char* rhs) { if (rhs) data_ += rhs; return *this; }
-    String& operator+=(char c) { data_ += c; return *this; }
+    String& operator+=(const String& rhs) {
+        data_ += rhs.data_;
+        return *this;
+    }
+    String& operator+=(const char* rhs) {
+        if (rhs)
+            data_ += rhs;
+        return *this;
+    }
+    String& operator+=(char c) {
+        data_ += c;
+        return *this;
+    }
 
     bool operator==(const String& rhs) const { return data_ == rhs.data_; }
     bool operator==(const char* rhs) const { return data_ == (rhs ? rhs : ""); }
@@ -111,7 +155,8 @@ public:
     bool operator<(const String& rhs) const { return data_ < rhs.data_; }
 
     char charAt(unsigned int index) const {
-        if (index < data_.length()) return data_[index];
+        if (index < data_.length())
+            return data_[index];
         return 0;
     }
 
@@ -126,12 +171,14 @@ public:
     }
 
     String substring(unsigned int beginIndex) const {
-        if (beginIndex >= data_.length()) return String();
+        if (beginIndex >= data_.length())
+            return String();
         return String(data_.substr(beginIndex).c_str());
     }
 
     String substring(unsigned int beginIndex, unsigned int endIndex) const {
-        if (beginIndex >= data_.length()) return String();
+        if (beginIndex >= data_.length())
+            return String();
         return String(data_.substr(beginIndex, endIndex - beginIndex).c_str());
     }
 
@@ -143,7 +190,7 @@ public:
         }
     }
 
-private:
+  private:
     std::string data_;
 };
 
@@ -151,12 +198,13 @@ private:
  * Mock Serial class for print output
  */
 class MockSerial {
-public:
+  public:
     void begin(unsigned long baud) { (void)baud; }
     void end() {}
 
     size_t print(const char* str) {
-        if (str) printf("%s", str);
+        if (str)
+            printf("%s", str);
         return str ? strlen(str) : 0;
     }
     size_t print(const String& str) { return print(str.c_str()); }
@@ -192,4 +240,4 @@ public:
 
 extern MockSerial Serial;
 
-#endif // ARDUINO_MOCK_H
+#endif  // ARDUINO_MOCK_H

@@ -8,11 +8,12 @@
 #ifndef WEBSOCKETSCLIENT_MOCK_H
 #define WEBSOCKETSCLIENT_MOCK_H
 
+#include "Arduino.h"
+
+#include <cstdint>
 #include <functional>
 #include <string>
 #include <vector>
-#include <cstdint>
-#include "Arduino.h"
 
 // WebSocket event types
 typedef enum {
@@ -32,18 +33,12 @@ typedef enum {
 typedef std::function<void(WStype_t type, uint8_t* payload, size_t length)> WebSocketClientEvent;
 
 class WebSocketsClient {
-public:
+  public:
     WebSocketsClient()
-        : connected_(false)
-        , eventHandler_(nullptr)
-        , heartbeatInterval_(0)
-        , heartbeatTimeout_(0)
-        , heartbeatRetries_(0)
-        , reconnectInterval_(0) {}
+        : connected_(false), eventHandler_(nullptr), heartbeatInterval_(0), heartbeatTimeout_(0), heartbeatRetries_(0),
+          reconnectInterval_(0) {}
 
-    void onEvent(WebSocketClientEvent handler) {
-        eventHandler_ = handler;
-    }
+    void onEvent(WebSocketClientEvent handler) { eventHandler_ = handler; }
 
     void begin(const char* host, uint16_t port, const char* path = "/", const char* protocol = "") {
         (void)protocol;
@@ -75,9 +70,7 @@ public:
 
     bool isConnected() { return connected_; }
 
-    void setExtraHeaders(const char* headers) {
-        extraHeaders_ = headers ? headers : "";
-    }
+    void setExtraHeaders(const char* headers) { extraHeaders_ = headers ? headers : ""; }
 
     void enableHeartbeat(unsigned long interval, unsigned long timeout, unsigned int retries) {
         heartbeatInterval_ = interval;
@@ -85,23 +78,21 @@ public:
         heartbeatRetries_ = retries;
     }
 
-    void setReconnectInterval(unsigned long interval) {
-        reconnectInterval_ = interval;
-    }
+    void setReconnectInterval(unsigned long interval) { reconnectInterval_ = interval; }
 
-    bool sendTXT(const String& payload) {
-        return sendTXT(payload.c_str());
-    }
+    bool sendTXT(const String& payload) { return sendTXT(payload.c_str()); }
 
     bool sendTXT(const char* payload) {
-        if (!connected_) return false;
+        if (!connected_)
+            return false;
         lastSentMessage_ = payload ? payload : "";
         sentMessages_.push_back(lastSentMessage_);
         return true;
     }
 
     bool sendBIN(const uint8_t* payload, size_t length) {
-        if (!connected_) return false;
+        if (!connected_)
+            return false;
         (void)payload;
         (void)length;
         return true;
@@ -169,9 +160,12 @@ public:
     unsigned long getHeartbeatInterval() const { return heartbeatInterval_; }
     unsigned long getReconnectInterval() const { return reconnectInterval_; }
     size_t getSentMessageCount() const { return sentMessages_.size(); }
-    void clearSentMessages() { sentMessages_.clear(); lastSentMessage_ = ""; }
+    void clearSentMessages() {
+        sentMessages_.clear();
+        lastSentMessage_ = "";
+    }
 
-private:
+  private:
     bool connected_;
     bool ssl_ = false;
     WebSocketClientEvent eventHandler_;
@@ -187,4 +181,4 @@ private:
     unsigned long reconnectInterval_;
 };
 
-#endif // WEBSOCKETSCLIENT_MOCK_H
+#endif  // WEBSOCKETSCLIENT_MOCK_H

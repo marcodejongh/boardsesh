@@ -1,18 +1,13 @@
 #include "nordic_uart_ble.h"
+
 #include <log_buffer.h>
 
 NordicUartBLE BLE;
 
 NordicUartBLE::NordicUartBLE()
-    : pServer(nullptr)
-    , pTxCharacteristic(nullptr)
-    , pRxCharacteristic(nullptr)
-    , deviceConnected(false)
-    , advertising(false)
-    , connectedDeviceHandle(BLE_HS_CONN_HANDLE_NONE)
-    , connectCallback(nullptr)
-    , dataCallback(nullptr)
-    , ledDataCallback(nullptr) {}
+    : pServer(nullptr), pTxCharacteristic(nullptr), pRxCharacteristic(nullptr), deviceConnected(false),
+      advertising(false), connectedDeviceHandle(BLE_HS_CONN_HANDLE_NONE), connectCallback(nullptr),
+      dataCallback(nullptr), ledDataCallback(nullptr) {}
 
 void NordicUartBLE::begin(const char* deviceName) {
     NimBLEDevice::init(deviceName);
@@ -25,16 +20,11 @@ void NordicUartBLE::begin(const char* deviceName) {
     NimBLEService* pService = pServer->createService(NUS_SERVICE_UUID);
 
     // Create TX characteristic (notify)
-    pTxCharacteristic = pService->createCharacteristic(
-        NUS_TX_CHARACTERISTIC,
-        NIMBLE_PROPERTY::NOTIFY
-    );
+    pTxCharacteristic = pService->createCharacteristic(NUS_TX_CHARACTERISTIC, NIMBLE_PROPERTY::NOTIFY);
 
     // Create RX characteristic (write)
-    pRxCharacteristic = pService->createCharacteristic(
-        NUS_RX_CHARACTERISTIC,
-        NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::WRITE_NR
-    );
+    pRxCharacteristic =
+        pService->createCharacteristic(NUS_RX_CHARACTERISTIC, NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::WRITE_NR);
     pRxCharacteristic->setCallbacks(this);
 
     pService->start();
@@ -47,7 +37,7 @@ void NordicUartBLE::begin(const char* deviceName) {
 void NordicUartBLE::loop() {
     // Restart advertising if disconnected and not currently advertising
     if (!deviceConnected && !advertising) {
-        delay(500); // Small delay before re-advertising
+        delay(500);  // Small delay before re-advertising
         startAdvertising();
     }
 }
@@ -86,8 +76,7 @@ void NordicUartBLE::onConnect(NimBLEServer* server, ble_gap_conn_desc* desc) {
     // Get the connected device's MAC address and connection handle
     connectedDeviceAddress = NimBLEAddress(desc->peer_ota_addr).toString().c_str();
     connectedDeviceHandle = desc->conn_handle;
-    Logger.logln("BLE: Device connected: %s (total: %d)",
-                  connectedDeviceAddress.c_str(), pServer->getConnectedCount());
+    Logger.logln("BLE: Device connected: %s (total: %d)", connectedDeviceAddress.c_str(), pServer->getConnectedCount());
 
     // Flash green to indicate connection
     LEDs.blink(0, 255, 0, 2, 100);
@@ -133,8 +122,8 @@ bool NordicUartBLE::shouldSendLedData(uint32_t hash) {
     }
 
     bool shouldSend = (it->second != hash);
-    Logger.logln("BLE: shouldSendLedData: %s, lastHash=%u, newHash=%u, send=%s",
-                  connectedDeviceAddress.c_str(), it->second, hash, shouldSend ? "yes" : "no");
+    Logger.logln("BLE: shouldSendLedData: %s, lastHash=%u, newHash=%u, send=%s", connectedDeviceAddress.c_str(),
+                 it->second, hash, shouldSend ? "yes" : "no");
     return shouldSend;
 }
 
@@ -146,8 +135,7 @@ void NordicUartBLE::updateLastSentHash(uint32_t hash) {
 
 void NordicUartBLE::disconnectClient() {
     if (deviceConnected && connectedDeviceHandle != BLE_HS_CONN_HANDLE_NONE) {
-        Logger.logln("BLE: Disconnecting client %s due to web climb change",
-                      connectedDeviceAddress.c_str());
+        Logger.logln("BLE: Disconnecting client %s due to web climb change", connectedDeviceAddress.c_str());
         pServer->disconnect(connectedDeviceHandle);
     }
 }
@@ -160,18 +148,17 @@ void NordicUartBLE::clearLastSentHash() {
 }
 
 void NordicUartBLE::onWrite(NimBLECharacteristic* characteristic) {
-    if (characteristic != pRxCharacteristic) return;
+    if (characteristic != pRxCharacteristic)
+        return;
 
     std::string value = characteristic->getValue();
-    if (value.length() == 0) return;
+    if (value.length() == 0)
+        return;
 
     Logger.logln("BLE: Received %zu bytes", value.length());
 
     // Process the packet through Aurora protocol decoder
-    bool complete = protocol.processPacket(
-        (const uint8_t*)value.data(),
-        value.length()
-    );
+    bool complete = protocol.processPacket((const uint8_t*)value.data(), value.length());
 
     if (complete) {
         // Get decoded LED commands

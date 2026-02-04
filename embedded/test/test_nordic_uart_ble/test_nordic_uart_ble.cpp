@@ -4,11 +4,12 @@
  * Tests the BLE UART service for Kilter/Tension board communication.
  */
 
-#include <unity.h>
-#include <nordic_uart_ble.h>
 #include <NimBLEDevice.h>
 #include <Preferences.h>
+
 #include <cstring>
+#include <nordic_uart_ble.h>
+#include <unity.h>
 
 // Test instance
 static NordicUartBLE* ble;
@@ -505,7 +506,7 @@ void test_different_mac_addresses_tracked_separately(void) {
 // Main
 // =============================================================================
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
     UNITY_BEGIN();
 
     // Constructor tests

@@ -7,7 +7,7 @@
 #define CONFIG_NAMESPACE "boardsesh"
 
 class ConfigManager {
-public:
+  public:
     ConfigManager();
 
     void begin();
@@ -38,7 +38,7 @@ public:
     // Remove single key
     void remove(const char* key);
 
-private:
+  private:
     Preferences prefs;
     bool opened;
 };

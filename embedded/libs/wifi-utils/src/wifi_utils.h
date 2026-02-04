@@ -3,22 +3,18 @@
 
 #include <Arduino.h>
 #include <WiFi.h>
+
 #include <config_manager.h>
 
 #define WIFI_CONNECT_TIMEOUT_MS 30000
 #define WIFI_RECONNECT_INTERVAL_MS 5000
 
-enum class WiFiConnectionState {
-    DISCONNECTED,
-    CONNECTING,
-    CONNECTED,
-    CONNECTION_FAILED
-};
+enum class WiFiConnectionState { DISCONNECTED, CONNECTING, CONNECTED, CONNECTION_FAILED };
 
 typedef void (*WiFiStateCallback)(WiFiConnectionState state);
 
 class WiFiUtils {
-public:
+  public:
     WiFiUtils();
 
     void begin();
@@ -41,7 +37,7 @@ public:
     static const char* KEY_SSID;
     static const char* KEY_PASSWORD;
 
-private:
+  private:
     WiFiConnectionState state;
     WiFiStateCallback stateCallback;
     unsigned long connectStartTime;

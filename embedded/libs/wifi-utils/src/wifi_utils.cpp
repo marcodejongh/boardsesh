@@ -6,10 +6,7 @@ const char* WiFiUtils::KEY_SSID = "wifi_ssid";
 const char* WiFiUtils::KEY_PASSWORD = "wifi_pass";
 
 WiFiUtils::WiFiUtils()
-    : state(WiFiConnectionState::DISCONNECTED)
-    , stateCallback(nullptr)
-    , connectStartTime(0)
-    , lastReconnectAttempt(0) {}
+    : state(WiFiConnectionState::DISCONNECTED), stateCallback(nullptr), connectStartTime(0), lastReconnectAttempt(0) {}
 
 void WiFiUtils::begin() {
     WiFi.mode(WIFI_STA);
@@ -108,8 +105,7 @@ void WiFiUtils::checkConnection() {
         case WiFiConnectionState::CONNECTION_FAILED:
             if (connected) {
                 setState(WiFiConnectionState::CONNECTED);
-            } else if (currentSSID.length() > 0 &&
-                       millis() - lastReconnectAttempt > WIFI_RECONNECT_INTERVAL_MS) {
+            } else if (currentSSID.length() > 0 && millis() - lastReconnectAttempt > WIFI_RECONNECT_INTERVAL_MS) {
                 connect(currentSSID.c_str(), currentPassword.c_str(), false);
             }
             break;

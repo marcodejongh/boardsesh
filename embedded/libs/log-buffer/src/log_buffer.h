@@ -6,7 +6,7 @@
 #define LOG_BUFFER_SIZE 2048
 
 class LogBuffer {
-public:
+  public:
     LogBuffer();
 
     void log(const char* format, ...);
@@ -18,7 +18,7 @@ public:
 
     void enableSerial(bool enable);
 
-private:
+  private:
     char buffer[LOG_BUFFER_SIZE];
     size_t writePos;
     bool serialEnabled;

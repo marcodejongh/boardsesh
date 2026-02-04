@@ -8,11 +8,12 @@
 #ifndef NIMBLEDEVICE_MOCK_H
 #define NIMBLEDEVICE_MOCK_H
 
+#include "Arduino.h"
+
 #include <cstdint>
+#include <functional>
 #include <string>
 #include <vector>
-#include <functional>
-#include "Arduino.h"
 
 // Power levels
 #define ESP_PWR_LVL_P9 9
@@ -22,12 +23,12 @@
 
 // Characteristic properties - using namespace to match real NimBLE API
 namespace NIMBLE_PROPERTY {
-    constexpr uint32_t READ        = 0x02;
-    constexpr uint32_t WRITE_NR    = 0x04;
-    constexpr uint32_t WRITE       = 0x08;
-    constexpr uint32_t NOTIFY      = 0x10;
-    constexpr uint32_t INDICATE    = 0x20;
-}
+constexpr uint32_t READ = 0x02;
+constexpr uint32_t WRITE_NR = 0x04;
+constexpr uint32_t WRITE = 0x08;
+constexpr uint32_t NOTIFY = 0x10;
+constexpr uint32_t INDICATE = 0x20;
+}  // namespace NIMBLE_PROPERTY
 
 // Max connections config
 #define CONFIG_BT_NIMBLE_MAX_CONNECTIONS 3
@@ -54,33 +55,34 @@ class NimBLEAdvertising;
 
 // NimBLEAddress class
 class NimBLEAddress {
-public:
+  public:
     NimBLEAddress() : addr_{0} {}
     NimBLEAddress(const uint8_t* addr) {
-        if (addr) memcpy(addr_, addr, 6);
+        if (addr)
+            memcpy(addr_, addr, 6);
     }
 
     std::string toString() const {
         char buf[18];
-        snprintf(buf, sizeof(buf), "%02X:%02X:%02X:%02X:%02X:%02X",
-            addr_[5], addr_[4], addr_[3], addr_[2], addr_[1], addr_[0]);
+        snprintf(buf, sizeof(buf), "%02X:%02X:%02X:%02X:%02X:%02X", addr_[5], addr_[4], addr_[3], addr_[2], addr_[1],
+                 addr_[0]);
         return std::string(buf);
     }
 
-private:
+  private:
     uint8_t addr_[6];
 };
 
 // Callbacks interfaces
 class NimBLEServerCallbacks {
-public:
+  public:
     virtual ~NimBLEServerCallbacks() {}
     virtual void onConnect(NimBLEServer* pServer, ble_gap_conn_desc* desc) {}
     virtual void onDisconnect(NimBLEServer* pServer, ble_gap_conn_desc* desc) {}
 };
 
 class NimBLECharacteristicCallbacks {
-public:
+  public:
     virtual ~NimBLECharacteristicCallbacks() {}
     virtual void onWrite(NimBLECharacteristic* pCharacteristic) {}
     virtual void onRead(NimBLECharacteristic* pCharacteristic) {}
@@ -88,31 +90,19 @@ public:
 
 // NimBLECharacteristic
 class NimBLECharacteristic {
-public:
+  public:
     NimBLECharacteristic(const char* uuid, uint32_t properties)
-        : uuid_(uuid ? uuid : "")
-        , properties_(properties)
-        , callbacks_(nullptr) {}
+        : uuid_(uuid ? uuid : ""), properties_(properties), callbacks_(nullptr) {}
 
-    void setCallbacks(NimBLECharacteristicCallbacks* callbacks) {
-        callbacks_ = callbacks;
-    }
+    void setCallbacks(NimBLECharacteristicCallbacks* callbacks) { callbacks_ = callbacks; }
 
-    void setValue(const uint8_t* data, size_t len) {
-        value_.assign(data, data + len);
-    }
+    void setValue(const uint8_t* data, size_t len) { value_.assign(data, data + len); }
 
-    void setValue(const std::string& value) {
-        value_.assign(value.begin(), value.end());
-    }
+    void setValue(const std::string& value) { value_.assign(value.begin(), value.end()); }
 
-    std::string getValue() const {
-        return std::string(value_.begin(), value_.end());
-    }
+    std::string getValue() const { return std::string(value_.begin(), value_.end()); }
 
-    void notify() {
-        notifyCount_++;
-    }
+    void notify() { notifyCount_++; }
 
     // Test helpers
     const std::string& getUUID() const { return uuid_; }
@@ -121,14 +111,16 @@ public:
     int getNotifyCount() const { return notifyCount_; }
     void mockWrite(const std::string& data) {
         value_.assign(data.begin(), data.end());
-        if (callbacks_) callbacks_->onWrite(this);
+        if (callbacks_)
+            callbacks_->onWrite(this);
     }
     void mockWrite(const uint8_t* data, size_t len) {
         value_.assign(data, data + len);
-        if (callbacks_) callbacks_->onWrite(this);
+        if (callbacks_)
+            callbacks_->onWrite(this);
     }
 
-private:
+  private:
     std::string uuid_;
     uint32_t properties_;
     NimBLECharacteristicCallbacks* callbacks_;
@@ -138,7 +130,7 @@ private:
 
 // NimBLEService
 class NimBLEService {
-public:
+  public:
     NimBLEService(const char* uuid) : uuid_(uuid ? uuid : "") {}
 
     NimBLECharacteristic* createCharacteristic(const char* uuid, uint32_t properties) {
@@ -146,13 +138,12 @@ public:
         return characteristics_.back();
     }
 
-    void start() {
-        started_ = true;
-    }
+    void start() { started_ = true; }
 
     NimBLECharacteristic* getCharacteristic(const char* uuid) {
         for (auto* c : characteristics_) {
-            if (c->getUUID() == uuid) return c;
+            if (c->getUUID() == uuid)
+                return c;
         }
         return nullptr;
     }
@@ -161,10 +152,11 @@ public:
     bool isStarted() const { return started_; }
 
     ~NimBLEService() {
-        for (auto* c : characteristics_) delete c;
+        for (auto* c : characteristics_)
+            delete c;
     }
 
-private:
+  private:
     std::string uuid_;
     std::vector<NimBLECharacteristic*> characteristics_;
     bool started_ = false;
@@ -172,31 +164,21 @@ private:
 
 // NimBLEAdvertising
 class NimBLEAdvertising {
-public:
-    void addServiceUUID(const char* uuid) {
-        serviceUUIDs_.push_back(uuid ? uuid : "");
-    }
+  public:
+    void addServiceUUID(const char* uuid) { serviceUUIDs_.push_back(uuid ? uuid : ""); }
 
-    void setScanResponse(bool enable) {
-        scanResponse_ = enable;
-    }
+    void setScanResponse(bool enable) { scanResponse_ = enable; }
 
-    void setMinPreferred(uint8_t minInterval) {
-        minInterval_ = minInterval;
-    }
+    void setMinPreferred(uint8_t minInterval) { minInterval_ = minInterval; }
 
-    void setMaxPreferred(uint8_t maxInterval) {
-        maxInterval_ = maxInterval;
-    }
+    void setMaxPreferred(uint8_t maxInterval) { maxInterval_ = maxInterval; }
 
     void start() {
         advertising_ = true;
         startCount_++;
     }
 
-    void stop() {
-        advertising_ = false;
-    }
+    void stop() { advertising_ = false; }
 
     // Test helpers
     bool isAdvertising() const { return advertising_; }
@@ -208,7 +190,7 @@ public:
         serviceUUIDs_.clear();
     }
 
-private:
+  private:
     bool advertising_ = false;
     bool scanResponse_ = false;
     uint8_t minInterval_ = 0;
@@ -219,12 +201,10 @@ private:
 
 // NimBLEServer
 class NimBLEServer {
-public:
+  public:
     NimBLEServer() : callbacks_(nullptr), connectedCount_(0) {}
 
-    void setCallbacks(NimBLEServerCallbacks* callbacks) {
-        callbacks_ = callbacks;
-    }
+    void setCallbacks(NimBLEServerCallbacks* callbacks) { callbacks_ = callbacks; }
 
     NimBLEService* createService(const char* uuid) {
         services_.push_back(new NimBLEService(uuid));
@@ -233,18 +213,18 @@ public:
 
     NimBLEService* getServiceByUUID(const char* uuid) {
         for (auto* s : services_) {
-            if (s->getUUID() == uuid) return s;
+            if (s->getUUID() == uuid)
+                return s;
         }
         return nullptr;
     }
 
-    int getConnectedCount() const {
-        return connectedCount_;
-    }
+    int getConnectedCount() const { return connectedCount_; }
 
     void disconnect(uint16_t connHandle) {
         disconnectedHandle_ = connHandle;
-        if (connectedCount_ > 0) connectedCount_--;
+        if (connectedCount_ > 0)
+            connectedCount_--;
     }
 
     // Test helpers
@@ -253,19 +233,23 @@ public:
 
     void mockConnect(ble_gap_conn_desc* desc) {
         connectedCount_++;
-        if (callbacks_) callbacks_->onConnect(this, desc);
+        if (callbacks_)
+            callbacks_->onConnect(this, desc);
     }
 
     void mockDisconnect(ble_gap_conn_desc* desc) {
-        if (connectedCount_ > 0) connectedCount_--;
-        if (callbacks_) callbacks_->onDisconnect(this, desc);
+        if (connectedCount_ > 0)
+            connectedCount_--;
+        if (callbacks_)
+            callbacks_->onDisconnect(this, desc);
     }
 
     ~NimBLEServer() {
-        for (auto* s : services_) delete s;
+        for (auto* s : services_)
+            delete s;
     }
 
-private:
+  private:
     NimBLEServerCallbacks* callbacks_;
     std::vector<NimBLEService*> services_;
     int connectedCount_;
@@ -274,7 +258,7 @@ private:
 
 // NimBLEDevice static class
 class NimBLEDevice {
-public:
+  public:
     static void init(const char* deviceName) {
         deviceName_ = deviceName ? deviceName : "";
         initialized_ = true;
@@ -286,22 +270,17 @@ public:
         server_ = nullptr;
     }
 
-    static void setPower(int power) {
-        power_ = power;
-    }
+    static void setPower(int power) { power_ = power; }
 
     static NimBLEServer* createServer() {
-        if (!server_) server_ = new NimBLEServer();
+        if (!server_)
+            server_ = new NimBLEServer();
         return server_;
     }
 
-    static NimBLEServer* getServer() {
-        return server_;
-    }
+    static NimBLEServer* getServer() { return server_; }
 
-    static NimBLEAdvertising* getAdvertising() {
-        return &advertising_;
-    }
+    static NimBLEAdvertising* getAdvertising() { return &advertising_; }
 
     // Test helpers
     static const std::string& getDeviceName() { return deviceName_; }
@@ -317,7 +296,7 @@ public:
         advertising_.mockReset();
     }
 
-private:
+  private:
     static bool initialized_;
     static std::string deviceName_;
     static int power_;
@@ -332,4 +311,4 @@ inline int NimBLEDevice::power_ = 0;
 inline NimBLEServer* NimBLEDevice::server_ = nullptr;
 inline NimBLEAdvertising NimBLEDevice::advertising_;
 
-#endif // NIMBLEDEVICE_MOCK_H
+#endif  // NIMBLEDEVICE_MOCK_H

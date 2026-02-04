@@ -5,9 +5,9 @@
  * for later retrieval (e.g., via web interface).
  */
 
-#include <unity.h>
-#include <log_buffer.h>
 #include <cstring>
+#include <log_buffer.h>
+#include <unity.h>
 
 // Test instance - use a fresh instance for each test
 static LogBuffer* logger;
@@ -346,7 +346,7 @@ void test_clear_after_wrap(void) {
 // Main
 // =============================================================================
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
     UNITY_BEGIN();
 
     // Basic functionality tests

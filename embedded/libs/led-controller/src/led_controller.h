@@ -17,7 +17,7 @@ struct LedCommand {
 };
 
 class LedController {
-public:
+  public:
     LedController();
 
     void begin(uint8_t pin, uint16_t numLeds);
@@ -37,7 +37,7 @@ public:
     // Run quick blink (for feedback)
     void blink(uint8_t r, uint8_t g, uint8_t b, int count = 3, int delayMs = 100);
 
-private:
+  private:
     CRGB leds[MAX_LEDS];
     uint16_t numLeds;
     uint8_t brightness;

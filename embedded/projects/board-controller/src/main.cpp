@@ -1,14 +1,15 @@
 #include <Arduino.h>
 
 // Shared libraries
-#include <log_buffer.h>
-#include <led_controller.h>
-#include <config_manager.h>
-#include <wifi_utils.h>
-#include <aurora_protocol.h>
-#include <graphql_ws_client.h>
-#include <nordic_uart_ble.h>
 #include <esp_web_server.h>
+#include <wifi_utils.h>
+
+#include <aurora_protocol.h>
+#include <config_manager.h>
+#include <graphql_ws_client.h>
+#include <led_controller.h>
+#include <log_buffer.h>
+#include <nordic_uart_ble.h>
 
 // Project-specific config
 #include "config/board_config.h"
@@ -177,12 +178,12 @@ void onGraphQLStateChange(GraphQLConnectionState state) {
 
             // Subscribe to controller events
             GraphQL.subscribe("controller-events",
-                "subscription ControllerEvents($sessionId: ID!) { "
-                "controllerEvents(sessionId: $sessionId) { "
-                "... on LedUpdate { __typename commands { position r g b } climbUuid climbName angle } "
-                "... on ControllerPing { __typename timestamp } "
-                "} }",
-                variables.c_str());
+                              "subscription ControllerEvents($sessionId: ID!) { "
+                              "controllerEvents(sessionId: $sessionId) { "
+                              "... on LedUpdate { __typename commands { position r g b } climbUuid climbName angle } "
+                              "... on ControllerPing { __typename timestamp } "
+                              "} }",
+                              variables.c_str());
             break;
         }
 
@@ -210,7 +211,7 @@ void startupAnimation() {
     // Simple chase animation to verify LED wiring
     for (int i = 0; i < NUM_LEDS; i++) {
         LEDs.clear();
-        LEDs.setLed(i, 0, 255, 0); // Green
+        LEDs.setLed(i, 0, 255, 0);  // Green
         LEDs.show();
         delay(10);
     }
@@ -218,7 +219,7 @@ void startupAnimation() {
     // Flash all LEDs briefly
     LEDs.clear();
     for (int i = 0; i < NUM_LEDS; i++) {
-        LEDs.setLed(i, 0, 0, 255); // Blue
+        LEDs.setLed(i, 0, 0, 255);  // Blue
     }
     LEDs.show();
     delay(200);
