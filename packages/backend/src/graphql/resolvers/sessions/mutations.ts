@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
-import type { ConnectionContext, SessionEvent } from '@boardsesh/shared-schema';
+import type { ConnectionContext, SessionEvent, QueueEvent, ClimbQueueItem } from '@boardsesh/shared-schema';
+import { SUPPORTED_BOARDS } from '@boardsesh/shared-schema';
 import { roomManager } from '../../../services/room-manager';
 import { pubsub } from '../../../pubsub/index';
 import { updateContext } from '../../context';
@@ -14,11 +15,12 @@ import {
   ClimbQueueItemSchema,
   QueueArraySchema,
 } from '../../../validation/schemas';
-import type { ClimbQueueItem } from '@boardsesh/shared-schema';
 import type { CreateSessionInput } from '../shared/types';
 import { db } from '../../../db/client';
 import { esp32Controllers } from '@boardsesh/db/schema/app';
 import { eq } from 'drizzle-orm';
+import { getClimbByUuid } from '../../../db/queries/climbs/get-climb';
+import type { BoardName } from '../../../db/queries/util/table-select';
 
 /**
  * Auto-authorize all controllers owned by a user for a session.
@@ -41,6 +43,74 @@ async function authorizeUserControllersForSession(userId: string, sessionId: str
 
 // Debug logging flag - only log in development
 const DEBUG = process.env.NODE_ENV === 'development';
+
+/**
+ * Parse a boardPath into its components.
+ * boardPath format: board_name/layout_id/size_id/set_ids/angle
+ */
+function parseBoardPath(boardPath: string): {
+  boardName: BoardName;
+  layoutId: number;
+  sizeId: number;
+  setIds: string;
+  angle: number;
+} | null {
+  const parts = boardPath.split('/').filter(Boolean);
+  if (parts.length < 5) return null;
+
+  const boardName = parts[0] as BoardName;
+  if (!SUPPORTED_BOARDS.includes(boardName as typeof SUPPORTED_BOARDS[number])) {
+    return null;
+  }
+
+  return {
+    boardName,
+    layoutId: parseInt(parts[1], 10),
+    sizeId: parseInt(parts[2], 10),
+    setIds: parts[3],
+    angle: parseInt(parts[4], 10),
+  };
+}
+
+/**
+ * Update a queue item's climb data with stats at a new angle.
+ * Returns the updated queue item, or the original if fetch fails.
+ */
+async function updateQueueItemForAngle(
+  item: ClimbQueueItem,
+  boardParams: { boardName: BoardName; layoutId: number; sizeId: number },
+  newAngle: number
+): Promise<ClimbQueueItem> {
+  try {
+    const updatedClimb = await getClimbByUuid({
+      board_name: boardParams.boardName,
+      layout_id: boardParams.layoutId,
+      size_id: boardParams.sizeId,
+      angle: newAngle,
+      climb_uuid: item.climb.uuid,
+    });
+
+    if (updatedClimb) {
+      return {
+        ...item,
+        climb: {
+          ...item.climb,
+          angle: updatedClimb.angle,
+          difficulty: updatedClimb.difficulty,
+          quality_average: updatedClimb.quality_average,
+          ascensionist_count: updatedClimb.ascensionist_count,
+          stars: updatedClimb.stars,
+          difficulty_error: updatedClimb.difficulty_error,
+          benchmark_difficulty: updatedClimb.benchmark_difficulty,
+        },
+      };
+    }
+  } catch (error) {
+    console.error(`[Session] Failed to update climb ${item.climb.uuid} for angle ${newAngle}:`, error);
+  }
+  // Return original item if fetch fails
+  return item;
+}
 
 export const sessionMutations = {
   /**
@@ -265,6 +335,7 @@ export const sessionMutations = {
   /**
    * Update the board angle for the current session
    * Broadcasts angle change to all session members so they can update their UI
+   * Also updates climb stats in the queue for the new angle
    */
   updateSessionAngle: async (_: unknown, { angle }: { angle: number }, ctx: ConnectionContext) => {
     if (!ctx.sessionId) {
@@ -279,13 +350,72 @@ export const sessionMutations = {
     // Update the session angle in the database and Redis
     const result = await roomManager.updateSessionAngle(ctx.sessionId, angle);
 
-    // Broadcast the angle change to all session members
-    const angleChangedEvent: SessionEvent = {
-      __typename: 'AngleChanged',
-      angle: result.angle,
-      boardPath: result.boardPath,
-    };
-    pubsub.publishSessionEvent(ctx.sessionId, angleChangedEvent);
+    // Parse the new boardPath to get board parameters
+    const boardParams = parseBoardPath(result.boardPath);
+
+    // Get current queue state
+    const queueState = await roomManager.getQueueState(ctx.sessionId);
+
+    // Update queue items with new angle's climb stats if we have board params
+    let updatedQueue = queueState.queue;
+    let updatedCurrentClimb = queueState.currentClimbQueueItem;
+
+    if (boardParams && (queueState.queue.length > 0 || queueState.currentClimbQueueItem)) {
+      if (DEBUG) console.log(`[updateSessionAngle] Updating ${queueState.queue.length} queue items for angle ${angle}`);
+
+      // Update all queue items in parallel
+      updatedQueue = await Promise.all(
+        queueState.queue.map((item) =>
+          updateQueueItemForAngle(item, boardParams, angle)
+        )
+      );
+
+      // Update current climb if present
+      if (queueState.currentClimbQueueItem) {
+        updatedCurrentClimb = await updateQueueItemForAngle(
+          queueState.currentClimbQueueItem,
+          boardParams,
+          angle
+        );
+      }
+
+      // Save the updated queue state
+      const newQueueState = await roomManager.updateQueueState(
+        ctx.sessionId,
+        updatedQueue,
+        updatedCurrentClimb,
+        queueState.version
+      );
+
+      // Broadcast the angle change to all session members
+      const angleChangedEvent: SessionEvent = {
+        __typename: 'AngleChanged',
+        angle: result.angle,
+        boardPath: result.boardPath,
+      };
+      pubsub.publishSessionEvent(ctx.sessionId, angleChangedEvent);
+
+      // Send a FullSync event with the updated queue so clients update their queue display
+      const fullSyncEvent: QueueEvent = {
+        __typename: 'FullSync',
+        sequence: newQueueState.sequence,
+        state: {
+          sequence: newQueueState.sequence,
+          stateHash: newQueueState.stateHash,
+          queue: updatedQueue,
+          currentClimbQueueItem: updatedCurrentClimb,
+        },
+      };
+      pubsub.publishQueueEvent(ctx.sessionId, fullSyncEvent);
+    } else {
+      // No queue items to update, just broadcast the angle change
+      const angleChangedEvent: SessionEvent = {
+        __typename: 'AngleChanged',
+        angle: result.angle,
+        boardPath: result.boardPath,
+      };
+      pubsub.publishSessionEvent(ctx.sessionId, angleChangedEvent);
+    }
 
     return true;
   },
