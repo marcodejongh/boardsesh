@@ -50,6 +50,10 @@ bool BLEClientConnection::connect(NimBLEAddress address) {
         Logger.logln("BLEClient: connect() returned false");
         state = BLEClientState::DISCONNECTED;
         reconnectTime = millis() + CLIENT_RECONNECT_DELAY_MS;
+        // Notify callback of connection failure so proxy can update state
+        if (connectCallback) {
+            connectCallback(false);
+        }
         return false;
     }
 

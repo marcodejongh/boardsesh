@@ -89,6 +89,23 @@ const DiscoveredBoard* BLEScanner::findByAddress(const String& mac) const {
 }
 
 void BLEScanner::onResult(NimBLEAdvertisedDevice* advertisedDevice) {
+    // Get device name early for debugging and later use
+    String name = advertisedDevice->getName().c_str();
+
+    // Log device name if it looks like an Aurora board (for debugging)
+    if (name.length() > 0 && (name.indexOf("Kilter") >= 0 || name.indexOf("Tension") >= 0 ||
+        name.indexOf("Decoy") >= 0 || name.indexOf("Touchstone") >= 0 || name.indexOf("Grasshopper") >= 0)) {
+        Logger.logln("BLEScanner: Potential Aurora device: %s (%s)",
+                     name.c_str(), advertisedDevice->getAddress().toString().c_str());
+        // Log service count for debugging
+        if (advertisedDevice->haveServiceUUID()) {
+            Logger.logln("BLEScanner:   Has service UUID: %s",
+                         advertisedDevice->getServiceUUID().toString().c_str());
+        } else {
+            Logger.logln("BLEScanner:   No service UUID advertised");
+        }
+    }
+
     // Check if this device advertises Aurora's service UUID
     if (!advertisedDevice->isAdvertisingService(NimBLEUUID(AURORA_ADVERTISED_SERVICE_UUID))) {
         return;
@@ -100,8 +117,6 @@ void BLEScanner::onResult(NimBLEAdvertisedDevice* advertisedDevice) {
             return;  // Already in list
         }
     }
-
-    String name = advertisedDevice->getName().c_str();
     if (name.length() == 0) {
         name = "Unknown Board";
     }
