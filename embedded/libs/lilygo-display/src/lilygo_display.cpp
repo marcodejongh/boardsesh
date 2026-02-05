@@ -198,6 +198,10 @@ void LilyGoDisplay::showConfigPortal(const char* apName, const char* ip) {
     _display.setTextDatum(lgfx::top_left);
 }
 
+void LilyGoDisplay::setSessionId(const char* sessionId) {
+    _sessionId = sessionId ? sessionId : "";
+}
+
 void LilyGoDisplay::showClimb(const char* name, const char* grade, const char* gradeColor, int angle, const char* uuid,
                               const char* boardType) {
     // Store climb data
@@ -209,15 +213,10 @@ void LilyGoDisplay::showClimb(const char* name, const char* grade, const char* g
     _boardType = boardType ? boardType : "kilter";
     _hasClimb = true;
 
-    // Generate QR code for the climb
-    if (_climbUuid.length() > 0) {
-        String url;
-        if (_boardType == "tension") {
-            url = "https://tensionboardapp2.com/climbs/";
-        } else {
-            url = "https://kilterboardapp.com/climbs/";
-        }
-        url += _climbUuid;
+    // Generate QR code for the session (boardsesh.com/join/{sessionId})
+    if (_sessionId.length() > 0) {
+        String url = "https://www.boardsesh.com/join/";
+        url += _sessionId;
         setQRCodeUrl(url.c_str());
     }
 
@@ -277,7 +276,6 @@ void LilyGoDisplay::clearNavigationContext() {
 
 void LilyGoDisplay::refresh() {
     drawStatusBar();
-    drawPrevClimbIndicator();
     drawCurrentClimb();
     drawQRCode();
     drawNextClimbIndicator();
@@ -401,7 +399,7 @@ void LilyGoDisplay::drawCurrentClimb() {
     }
     _display.drawString(displayName.c_str(), SCREEN_WIDTH / 2, CLIMB_NAME_Y);
 
-    // Draw grade badge
+    // Draw grade badge or "Project" for ungraded climbs
     if (_grade.length() > 0) {
         // Calculate badge dimensions
         int badgeWidth = 80;
@@ -430,6 +428,12 @@ void LilyGoDisplay::drawCurrentClimb() {
         }
 
         _display.drawString(displayGrade.c_str(), badgeX + badgeWidth / 2, badgeY + badgeHeight / 2);
+    } else {
+        // No grade - show "Project" in italic
+        _display.setFont(&fonts::FreeSansOblique12pt7b);
+        _display.setTextColor(COLOR_TEXT_DIM);
+        _display.setTextDatum(lgfx::middle_center);
+        _display.drawString("Project", SCREEN_WIDTH / 2, GRADE_Y + 18);
     }
 
     _display.setTextDatum(lgfx::top_left);
@@ -447,15 +451,9 @@ void LilyGoDisplay::drawQRCode() {
     // Clear QR code area
     _display.fillRect(0, yStart, SCREEN_WIDTH, QR_SECTION_HEIGHT, COLOR_BACKGROUND);
 
-    if (!_hasClimb || !_hasQRCode || _climbUuid.length() == 0) {
+    if (!_hasClimb || !_hasQRCode || _sessionId.length() == 0) {
         return;
     }
-
-    // Draw "Open in App" label
-    _display.setFont(&fonts::Font0);
-    _display.setTextColor(COLOR_TEXT_DIM);
-    _display.setTextDatum(lgfx::top_center);
-    _display.drawString("Open in App", SCREEN_WIDTH / 2, yStart + 2);
 
     // Generate QR code from stored URL
     QRCode qrCode;
@@ -469,7 +467,8 @@ void LilyGoDisplay::drawQRCode() {
 
     int actualQrSize = pixelSize * qrSize;
     int qrX = (SCREEN_WIDTH - actualQrSize) / 2;
-    int qrY = yStart + 15;
+    // Center QR code vertically in the section
+    int qrY = yStart + (QR_SECTION_HEIGHT - actualQrSize) / 2;
 
     // Draw white background for QR code
     _display.fillRect(qrX - 4, qrY - 4, actualQrSize + 8, actualQrSize + 8, COLOR_QR_BG);
@@ -482,8 +481,6 @@ void LilyGoDisplay::drawQRCode() {
             }
         }
     }
-
-    _display.setTextDatum(lgfx::top_left);
 }
 
 void LilyGoDisplay::drawNextClimbIndicator() {

@@ -484,6 +484,11 @@ void onGraphQLStateChange(GraphQLConnectionState state) {
                 break;
             }
 
+#ifdef ENABLE_DISPLAY
+            // Pass session ID to display for QR code generation
+            Display.setSessionId(sessionId.c_str());
+#endif
+
             // Build variables JSON (apiKey is in connectionParams, not here)
             String variables = "{\"sessionId\":\"" + sessionId + "\"}";
 
