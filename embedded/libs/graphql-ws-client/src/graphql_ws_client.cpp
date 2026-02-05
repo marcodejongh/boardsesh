@@ -417,8 +417,13 @@ void GraphQLWSClient::handleQueueSync(JsonObject& data) {
     // Allocate on heap to avoid stack overflow (~19KB struct)
     ControllerQueueSyncData* syncData = new (std::nothrow) ControllerQueueSyncData();
     if (!syncData) {
+#ifdef ESP_PLATFORM
         Logger.logln("GraphQL: CRITICAL: Failed to allocate QueueSync data (%u bytes, free heap: %u)",
                      (unsigned)sizeof(ControllerQueueSyncData), (unsigned)ESP.getFreeHeap());
+#else
+        Logger.logln("GraphQL: CRITICAL: Failed to allocate QueueSync data (%u bytes)",
+                     (unsigned)sizeof(ControllerQueueSyncData));
+#endif
         return;
     }
 
