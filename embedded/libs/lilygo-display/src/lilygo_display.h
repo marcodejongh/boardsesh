@@ -43,35 +43,48 @@
 #define LILYGO_SCREEN_HEIGHT 320
 
 // ============================================
-// UI Layout (170x320 Portrait)
+// UI Layout (170x320 Portrait) - Condensed for Navigation
 // ============================================
 
 // Status bar at top
 #define STATUS_BAR_HEIGHT 20
 #define STATUS_BAR_Y 0
 
-// Current climb section
-#define CURRENT_CLIMB_Y 20
-#define CURRENT_CLIMB_HEIGHT 120
+// Previous climb indicator (top navigation)
+#define PREV_INDICATOR_Y 20
+#define PREV_INDICATOR_HEIGHT 22
+
+// Current climb section (condensed)
+#define CURRENT_CLIMB_Y 42
+#define CURRENT_CLIMB_HEIGHT 78
 
 // Climb name area
-#define CLIMB_NAME_Y 25
-#define CLIMB_NAME_HEIGHT 40
+#define CLIMB_NAME_Y 47
+#define CLIMB_NAME_HEIGHT 30
 
-// Grade badge area
-#define GRADE_Y 70
-#define GRADE_HEIGHT 60
+// Grade badge area (closer to title)
+#define GRADE_Y 77
+#define GRADE_HEIGHT 40
 
-// QR code section
-#define QR_SECTION_Y 140
-#define QR_SECTION_HEIGHT 115
-#define QR_CODE_SIZE 100
+// QR code section (moved up)
+#define QR_SECTION_Y 120
+#define QR_SECTION_HEIGHT 95
+#define QR_CODE_SIZE 80
 
-// History section
-#define HISTORY_Y 255
-#define HISTORY_HEIGHT 65
+// Next climb indicator
+#define NEXT_INDICATOR_Y 215
+#define NEXT_INDICATOR_HEIGHT 22
+
+// History section (previous climbs in queue)
+#define HISTORY_Y 237
+#define HISTORY_HEIGHT 72
 #define HISTORY_ITEM_HEIGHT 18
 #define HISTORY_MAX_ITEMS 3
+#define HISTORY_LABEL_HEIGHT 12
+
+// Button hint bar at bottom
+#define BUTTON_HINT_Y 309
+#define BUTTON_HINT_HEIGHT 11
 
 // ============================================
 // Colors (RGB565)
@@ -104,6 +117,38 @@ class LGFX_TDisplayS3 : public lgfx::LGFX_Device {
 };
 
 // ============================================
+// Queue Item for Local Queue Storage
+// ============================================
+
+// Maximum number of queue items to store locally
+#define MAX_QUEUE_SIZE 150
+
+// Optimized queue item structure (~88 bytes per item)
+struct LocalQueueItem {
+    char uuid[37];           // Queue item UUID (for navigation)
+    char climbUuid[37];      // Climb UUID (for display/matching)
+    char name[32];           // Climb name (truncated for display)
+    char grade[12];          // Grade string
+    uint16_t gradeColorRgb;  // RGB565 color (saves parsing)
+
+    LocalQueueItem() : gradeColorRgb(0xFFFF) {
+        uuid[0] = '\0';
+        climbUuid[0] = '\0';
+        name[0] = '\0';
+        grade[0] = '\0';
+    }
+
+    bool isValid() const { return uuid[0] != '\0'; }
+    void clear() {
+        uuid[0] = '\0';
+        climbUuid[0] = '\0';
+        name[0] = '\0';
+        grade[0] = '\0';
+        gradeColorRgb = 0xFFFF;
+    }
+};
+
+// ============================================
 // Climb History Entry
 // ============================================
 
@@ -111,6 +156,27 @@ struct ClimbHistoryEntry {
     String name;
     String grade;
     String gradeColor;  // Hex color from backend
+};
+
+// ============================================
+// Queue Navigation Item (for prev/next display)
+// ============================================
+
+struct QueueNavigationItem {
+    String name;
+    String grade;
+    String gradeColor;
+    bool isValid;
+
+    QueueNavigationItem() : isValid(false) {}
+    QueueNavigationItem(const String& n, const String& g, const String& c)
+        : name(n), grade(g), gradeColor(c), isValid(true) {}
+    void clear() {
+        name = "";
+        grade = "";
+        gradeColor = "";
+        isValid = false;
+    }
 };
 
 // ============================================
@@ -144,6 +210,34 @@ class LilyGoDisplay {
     void addToHistory(const char* name, const char* grade, const char* gradeColor);
     void clearHistory();
 
+    // Queue navigation (for prev/next indicators)
+    void setNavigationContext(const QueueNavigationItem& prevClimb, const QueueNavigationItem& nextClimb,
+                              int currentIndex, int totalCount);
+    void clearNavigationContext();
+
+    // Local queue management
+    void setQueueFromSync(LocalQueueItem* items, int count, int currentIndex);
+    void clearQueue();
+    int getQueueCount() const { return _queueCount; }
+    int getCurrentQueueIndex() const { return _currentQueueIndex; }
+    const LocalQueueItem* getQueueItem(int index) const;
+    const LocalQueueItem* getCurrentQueueItem() const;
+    const LocalQueueItem* getPreviousQueueItem() const;
+    const LocalQueueItem* getNextQueueItem() const;
+    bool canNavigatePrevious() const { return _queueCount > 0 && _currentQueueIndex > 0; }
+    bool canNavigateNext() const { return _queueCount > 0 && _currentQueueIndex < _queueCount - 1; }
+
+    // Optimistic navigation (returns true if navigation was possible)
+    bool navigateToPrevious();
+    bool navigateToNext();
+    void setCurrentQueueIndex(int index);
+
+    // Pending navigation state (for reconciliation with backend)
+    bool hasPendingNavigation() const { return _pendingNavigation; }
+    void clearPendingNavigation() { _pendingNavigation = false; }
+    const char* getPendingQueueItemUuid() const;
+    void setPendingNavigation(bool pending) { _pendingNavigation = pending; }
+
     // Refresh all sections
     void refresh();
 
@@ -176,6 +270,19 @@ class LilyGoDisplay {
     std::vector<ClimbHistoryEntry> _history;
     static const int MAX_HISTORY_ITEMS = 5;
 
+    // Local queue storage
+    LocalQueueItem _queueItems[MAX_QUEUE_SIZE];
+    int _queueCount;
+    int _currentQueueIndex;
+    bool _pendingNavigation;
+
+    // Navigation state (from backend)
+    QueueNavigationItem _prevClimb;
+    QueueNavigationItem _nextClimb;
+    int _queueIndex;
+    int _queueTotal;
+    bool _hasNavigation;
+
     // QR code data
     // QR Version 6: size = 6*4+17 = 41 modules per side
     // Buffer = ((41*41)+7)/8 = 211 bytes
@@ -187,9 +294,12 @@ class LilyGoDisplay {
 
     // Internal drawing methods
     void drawStatusBar();
+    void drawPrevClimbIndicator();
     void drawCurrentClimb();
     void drawQRCode();
+    void drawNextClimbIndicator();
     void drawHistory();
+    void drawButtonHints();
     void setQRCodeUrl(const char* url);
 
     // Utility

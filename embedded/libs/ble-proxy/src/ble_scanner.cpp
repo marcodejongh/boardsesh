@@ -119,8 +119,19 @@ void BLEScanner::onResult(NimBLEAdvertisedDevice* advertisedDevice) {
 
 void BLEScanner::scanCompleteCB(NimBLEScanResults results) {
     if (instance) {
+        // Explicitly stop and clear the scan BEFORE doing anything else
+        // NimBLE requires scan to be fully stopped before creating client connections
+        if (instance->pScan) {
+            instance->pScan->stop();
+            instance->pScan->clearResults();
+        }
         instance->scanning = false;
-        Logger.logln("BLEScanner: Scan complete, found %d Aurora boards", instance->discoveredBoards.size());
+
+        // Note: The BLE proxy handles settling time via its WAIT_BEFORE_CONNECT
+        // state, using a non-blocking timer. This avoids blocking the callback
+        // and keeps the main loop responsive.
+
+        Logger.logln("BLEScanner: Scan done, %d boards", instance->discoveredBoards.size());
 
         if (instance->completeCallback) {
             instance->completeCallback(instance->discoveredBoards);

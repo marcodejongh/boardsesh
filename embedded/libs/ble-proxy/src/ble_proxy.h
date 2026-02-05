@@ -5,15 +5,19 @@
 #include "ble_scanner.h"
 
 #include <Arduino.h>
+#include <atomic>
 
 // Proxy state machine
 enum class BLEProxyState {
-    PROXY_DISABLED,  // Proxy mode not enabled
-    IDLE,            // Waiting to scan
-    SCANNING,        // Scanning for boards
-    CONNECTING,      // Connecting to board
-    CONNECTED,       // Connected and proxying
-    RECONNECTING     // Connection lost, will retry
+    PROXY_DISABLED,         // Proxy mode not enabled
+    IDLE,                   // Waiting to scan
+    SCANNING,               // Scanning for boards
+    SCAN_COMPLETE_NONE,     // Scan completed but no boards found (won't auto-retry)
+    WAIT_BEFORE_CONNECT,    // Non-blocking wait after scan before connecting
+    CONNECTING,             // Connecting to board
+    WAIT_BEFORE_ADVERTISE,  // Non-blocking wait after connect before advertising
+    CONNECTED,              // Connected and proxying
+    RECONNECTING            // Connection lost, will retry
 };
 
 typedef void (*ProxyStateCallback)(BLEProxyState state);
@@ -113,6 +117,7 @@ class BLEProxy {
     void forwardToApp(const uint8_t* data, size_t len);
 
     // Public handlers for static callbacks
+    void handleBoardFound(const DiscoveredBoard& board);
     void handleScanComplete(const std::vector<DiscoveredBoard>& boards);
     void handleBoardConnected(bool connected);
     void handleBoardData(const uint8_t* data, size_t len);
@@ -124,9 +129,22 @@ class BLEProxy {
     unsigned long scanStartTime;
     unsigned long reconnectDelay;
 
+    // Non-blocking timer for wait states
+    unsigned long waitStartTime;
+    unsigned long waitDuration;
+
+    // Pending connection info (stored after scan, before connect)
+    NimBLEAddress pendingConnectAddress;
+    String pendingConnectName;
+
     ProxyStateCallback stateCallback;
     ProxyDataCallback dataCallback;
     ProxySendToAppCallback sendToAppCallback;
+
+    // Atomic flag to prevent race between handleBoardFound/handleScanComplete
+    // callbacks and loop(). Both callbacks can fire asynchronously from NimBLE
+    // and may attempt to initiate a connection simultaneously.
+    std::atomic<bool> connectionInitiated{false};
 
     void setState(BLEProxyState newState);
     void startScan();

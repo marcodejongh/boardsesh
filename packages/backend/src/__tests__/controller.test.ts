@@ -41,6 +41,12 @@ function createControllerContext(
 
 describe('Controller Mutations', () => {
   beforeEach(async () => {
+    // Create test user if not exists (needed for FK constraint)
+    await db.execute(sql`
+      INSERT INTO users (id, email, name, created_at, updated_at)
+      VALUES (${TEST_USER_ID}, 'test@controller.test', 'Test User', now(), now())
+      ON CONFLICT (id) DO NOTHING
+    `);
     // Clean up test controllers
     await db.execute(sql`DELETE FROM esp32_controllers WHERE user_id = ${TEST_USER_ID}`);
   });
@@ -141,6 +147,18 @@ describe('Controller Mutations', () => {
     });
 
     it('should not delete a controller owned by another user', async () => {
+      // Create test users for this test
+      await db.execute(sql`
+        INSERT INTO users (id, email, name, created_at, updated_at)
+        VALUES ('user-1', 'user1@test.com', 'User 1', now(), now())
+        ON CONFLICT (id) DO NOTHING
+      `);
+      await db.execute(sql`
+        INSERT INTO users (id, email, name, created_at, updated_at)
+        VALUES ('user-2', 'user2@test.com', 'User 2', now(), now())
+        ON CONFLICT (id) DO NOTHING
+      `);
+
       const ctx1 = createMockContext({ userId: 'user-1' });
       const ctx2 = createMockContext({ userId: 'user-2' });
 
@@ -215,6 +233,18 @@ describe('Controller Mutations', () => {
     });
 
     it('should reject authorization from non-owner', async () => {
+      // Create test users for this test
+      await db.execute(sql`
+        INSERT INTO users (id, email, name, created_at, updated_at)
+        VALUES ('user-1', 'user1@test.com', 'User 1', now(), now())
+        ON CONFLICT (id) DO NOTHING
+      `);
+      await db.execute(sql`
+        INSERT INTO users (id, email, name, created_at, updated_at)
+        VALUES ('user-2', 'user2@test.com', 'User 2', now(), now())
+        ON CONFLICT (id) DO NOTHING
+      `);
+
       const ctx1 = createMockContext({ userId: 'user-1' });
       const ctx2 = createMockContext({ userId: 'user-2' });
 
@@ -303,6 +333,12 @@ describe('Controller Mutations', () => {
 
 describe('Controller Queries', () => {
   beforeEach(async () => {
+    // Create test user if not exists (needed for FK constraint)
+    await db.execute(sql`
+      INSERT INTO users (id, email, name, created_at, updated_at)
+      VALUES (${TEST_USER_ID}, 'test@controller.test', 'Test User', now(), now())
+      ON CONFLICT (id) DO NOTHING
+    `);
     // Clean up test controllers
     await db.execute(sql`DELETE FROM esp32_controllers WHERE user_id = ${TEST_USER_ID}`);
   });

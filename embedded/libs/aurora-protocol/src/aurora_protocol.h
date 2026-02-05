@@ -108,6 +108,17 @@ class AuroraProtocol {
     // Enable/disable debug output
     void setDebug(bool enabled);
 
+    /**
+     * Encode LED commands into Aurora protocol format for sending to a board.
+     * Creates one or more BLE packets in the proper framed format.
+     *
+     * @param commands Array of LED commands to encode
+     * @param count Number of commands
+     * @param packets Output vector that will be filled with encoded packets
+     *                Each packet is a complete framed message ready for BLE transmission
+     */
+    static void encodeLedCommands(const LedCommand* commands, int count, std::vector<std::vector<uint8_t>>& packets);
+
   private:
     // Raw data buffer for incoming BLE packets
     std::vector<uint8_t> rawBuffer;

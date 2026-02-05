@@ -9,6 +9,7 @@ import type {
   SendDeviceLogsInput,
   SendDeviceLogsResponse,
 } from '@boardsesh/shared-schema';
+import { findClimbIndex } from './navigation-helpers';
 import { db } from '../../../db/client';
 import { esp32Controllers } from '@boardsesh/db/schema/app';
 import { eq, and } from 'drizzle-orm';
@@ -193,6 +194,19 @@ export const controllerMutations = {
 
     if (!match) {
       console.log(`[Controller] No climb found matching frames for session ${sessionId}`);
+
+      // Publish event so ESP32 display shows "Unknown Climb" with ability to navigate back
+      // Use controllerMac as clientId so ESP32 can compare with its own MAC address
+      const clientIdForEvent = ctx.controllerMac || controllerId;
+      console.log(`[Controller] Publishing CurrentClimbChanged (no match) with clientId: ${clientIdForEvent}`);
+      pubsub.publishQueueEvent(sessionId, {
+        __typename: 'CurrentClimbChanged',
+        sequence: currentState.sequence,
+        item: null, // No queue item for unknown climb
+        clientId: clientIdForEvent, // ESP32 compares this with its MAC
+        correlationId: null,
+      });
+
       return {
         matched: false,
         climbUuid: null,
@@ -257,14 +271,15 @@ export const controllerMutations = {
       position: insertPosition,
     });
 
-    // Publish CurrentClimbChanged event with controllerId as clientId
-    // This allows the controller subscription to skip sending LED updates back to this controller
-    console.log(`[Controller] Publishing CurrentClimbChanged with clientId: ${controllerId}`);
+    // Publish CurrentClimbChanged event with controllerMac as clientId
+    // ESP32 compares this with its own MAC address to decide whether to disconnect BLE client
+    const matchClientId = ctx.controllerMac || controllerId;
+    console.log(`[Controller] Publishing CurrentClimbChanged with clientId: ${matchClientId}`);
     pubsub.publishQueueEvent(sessionId, {
       __typename: 'CurrentClimbChanged',
       sequence,
       item: queueItem,
-      clientId: controllerId,
+      clientId: matchClientId,
       correlationId: null,
     });
 
@@ -340,6 +355,127 @@ export const controllerMutations = {
 
     console.log(`[Controller] Controller ${controllerId} authorized for session ${sessionId}`);
     return true;
+  },
+
+  /**
+   * Navigate to the previous or next climb in the queue
+   * Used by ESP32 controller to browse the queue via hardware buttons
+   *
+   * @param sessionId - Session ID to navigate within
+   * @param direction - "next" or "previous" (fallback if queueItemUuid not provided)
+   * @param currentClimbUuid - DEPRECATED: UUID of climb currently displayed (unreliable with duplicates)
+   * @param queueItemUuid - Directly navigate to this queue item (preferred, unique per position)
+   * @returns The new current climb, or null if navigation failed
+   */
+  navigateQueue: async (
+    _: unknown,
+    { sessionId, direction, currentClimbUuid, queueItemUuid }: { sessionId: string; direction: string; currentClimbUuid?: string; queueItemUuid?: string },
+    ctx: ConnectionContext
+  ): Promise<ClimbQueueItem | null> => {
+    applyRateLimit(ctx, 30);
+
+    // Verify controller is authenticated and authorized for this session
+    const { controllerId } = await requireControllerAuthorizedForSession(ctx, sessionId);
+
+    // Get current queue state
+    const currentState = await roomManager.getQueueState(sessionId);
+    const { queue, currentClimbQueueItem } = currentState;
+
+    if (queue.length === 0) {
+      console.log(`[Controller] Navigate: queue is empty`);
+      return null;
+    }
+
+    let newCurrentClimb: ClimbQueueItem;
+    let targetIndex: number;
+
+    // If queueItemUuid is provided, navigate directly to that item (preferred method)
+    if (queueItemUuid) {
+      targetIndex = queue.findIndex((item) => item.uuid === queueItemUuid);
+      if (targetIndex === -1) {
+        console.log(`[Controller] Navigate: queueItemUuid ${queueItemUuid} not found in queue`);
+        // Fall back to direction-based navigation
+      } else {
+        newCurrentClimb = queue[targetIndex];
+        console.log(`[Controller] Navigate: direct to queueItemUuid ${queueItemUuid}, index ${targetIndex}, climb: ${newCurrentClimb.climb.name}`);
+
+        // Update queue state
+        const { sequence } = await roomManager.updateQueueState(sessionId, queue, newCurrentClimb);
+
+        // Publish CurrentClimbChanged event
+        pubsub.publishQueueEvent(sessionId, {
+          __typename: 'CurrentClimbChanged',
+          sequence,
+          item: newCurrentClimb,
+          clientId: null,
+          correlationId: null,
+        });
+
+        return newCurrentClimb;
+      }
+    }
+
+    // Validate direction for fallback navigation
+    if (direction !== 'next' && direction !== 'previous') {
+      throw new Error('Invalid direction. Must be "next" or "previous".');
+    }
+
+    // Find current position in queue using queue item UUID or climb UUID
+    const referenceUuid = currentClimbUuid || currentClimbQueueItem?.uuid;
+    const currentIndex = findClimbIndex(queue, referenceUuid);
+
+    console.log(`[Controller] Navigate ${direction}: using referenceUuid=${referenceUuid} (from ESP32: ${!!currentClimbUuid}), found at index ${currentIndex}`);
+
+    // Calculate target index based on direction
+    if (direction === 'next') {
+      // Move forward in queue
+      if (currentIndex === -1) {
+        // No current climb, start at beginning
+        targetIndex = 0;
+      } else if (currentIndex >= queue.length - 1) {
+        // Already at end, stay there
+        console.log(`[Controller] Navigate next: already at end of queue`);
+        return queue[currentIndex]; // Return the climb at current index
+      } else {
+        targetIndex = currentIndex + 1;
+      }
+    } else {
+      // Move backward in queue (previous)
+      if (currentIndex === -1) {
+        // No current climb, start at end
+        targetIndex = queue.length - 1;
+      } else if (currentIndex <= 0) {
+        // Already at beginning, stay there
+        console.log(`[Controller] Navigate previous: already at start of queue`);
+        return queue[currentIndex]; // Return the climb at current index
+      } else {
+        targetIndex = currentIndex - 1;
+      }
+    }
+
+    // Get the new current climb
+    newCurrentClimb = queue[targetIndex];
+
+    console.log(
+      `[Controller] Navigate ${direction}: index ${currentIndex} -> ${targetIndex}, climb: ${newCurrentClimb.climb.name} (queueItem uuid: ${newCurrentClimb.uuid})`
+    );
+    console.log(`[Controller] Queue has ${queue.length} items, updating current to index ${targetIndex}`);
+
+    // Update queue state (keep the same queue, just change current climb)
+    const { sequence } = await roomManager.updateQueueState(sessionId, queue, newCurrentClimb);
+
+    // Publish CurrentClimbChanged event WITHOUT clientId
+    // Unlike setClimbFromLedPositions (where we skip because ESP32 already has LEDs from BLE),
+    // navigation NEEDS to send LedUpdate back to the ESP32 since it's moving to a different climb
+    pubsub.publishQueueEvent(sessionId, {
+      __typename: 'CurrentClimbChanged',
+      sequence,
+      item: newCurrentClimb,
+      clientId: null, // Don't skip - ESP32 needs the new climb data
+      correlationId: null,
+    });
+
+    return newCurrentClimb;
   },
 
   /**

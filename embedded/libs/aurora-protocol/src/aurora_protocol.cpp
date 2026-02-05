@@ -239,6 +239,81 @@ void AuroraProtocol::decodeLedDataV3(const uint8_t* data, size_t length, std::ve
     }
 }
 
+void AuroraProtocol::encodeLedCommands(const LedCommand* commands, int count,
+                                        std::vector<std::vector<uint8_t>>& packets) {
+    packets.clear();
+
+    if (count == 0) {
+        return;
+    }
+
+    // Use V3 format (3 bytes per LED) - most compatible with current boards
+    // Max BLE packet size is ~240 bytes, with framing overhead we can fit ~75 LEDs per packet
+    // To be safe, use 60 LEDs per packet
+    const int LEDS_PER_PACKET = 60;
+
+    int totalPackets = (count + LEDS_PER_PACKET - 1) / LEDS_PER_PACKET;
+    int ledIndex = 0;
+
+    for (int packetNum = 0; packetNum < totalPackets; packetNum++) {
+        int ledsInThisPacket = min(LEDS_PER_PACKET, count - ledIndex);
+
+        // Determine command byte based on packet position
+        uint8_t command;
+        if (totalPackets == 1) {
+            command = CMD_V3_PACKET_ONLY;  // 'T' - single packet
+        } else if (packetNum == 0) {
+            command = CMD_V3_PACKET_FIRST;  // 'R' - first packet
+        } else if (packetNum == totalPackets - 1) {
+            command = CMD_V3_PACKET_LAST;  // 'S' - last packet
+        } else {
+            command = CMD_V3_PACKET_MIDDLE;  // 'Q' - middle packet
+        }
+
+        // Build the data portion (command + LED data)
+        std::vector<uint8_t> data;
+        data.push_back(command);
+
+        for (int i = 0; i < ledsInThisPacket; i++) {
+            const LedCommand& cmd = commands[ledIndex + i];
+
+            // Position (little-endian)
+            data.push_back(cmd.position & 0xFF);
+            data.push_back((cmd.position >> 8) & 0xFF);
+
+            // Color: RRRGGGBB format (3 bits red, 3 bits green, 2 bits blue)
+            // Convert 8-bit colors to packed format
+            uint8_t r3 = (cmd.r * 7) / 255;  // Scale 0-255 to 0-7
+            uint8_t g3 = (cmd.g * 7) / 255;  // Scale 0-255 to 0-7
+            uint8_t b2 = (cmd.b * 3) / 255;  // Scale 0-255 to 0-3
+            uint8_t color = (r3 << 5) | (g3 << 2) | b2;
+            data.push_back(color);
+        }
+
+        // Build the complete framed packet
+        // Format: [SOH, length, checksum, STX, ...data..., ETX]
+        uint8_t dataLength = data.size();
+
+        // Calculate checksum (XOR of all data bytes with 0xFF)
+        uint8_t checksum = 0;
+        for (uint8_t byte : data) {
+            checksum = (checksum + byte) & 0xFF;
+        }
+        checksum ^= 0xFF;
+
+        std::vector<uint8_t> packet;
+        packet.push_back(FRAME_SOH);      // 0x01
+        packet.push_back(dataLength);     // Length of data
+        packet.push_back(checksum);       // Checksum
+        packet.push_back(FRAME_STX);      // 0x02
+        packet.insert(packet.end(), data.begin(), data.end());
+        packet.push_back(FRAME_ETX);      // 0x03
+
+        packets.push_back(packet);
+        ledIndex += ledsInThisPacket;
+    }
+}
+
 bool AuroraProtocol::processMessage(uint8_t command, const uint8_t* data, size_t length) {
     std::vector<LedCommand> commands;
 

@@ -20,6 +20,12 @@
 // Default brightness (0-255)
 #define DEFAULT_BRIGHTNESS 128
 
+// Button configuration (T-Display-S3 built-in buttons)
+#ifdef ENABLE_DISPLAY
+#define BUTTON_1_PIN 0   // GPIO0 - Boot button
+#define BUTTON_2_PIN 14  // GPIO14 - User button
+#endif
+
 // BLE configuration
 #define BLE_DEVICE_NAME "Kilter Boardsesh"
 

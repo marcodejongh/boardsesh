@@ -80,7 +80,7 @@ class MockWiFi {
 
     MockWiFi()
         : status_(WL_DISCONNECTED), mode_(WIFI_OFF), autoReconnect_(false), rssi_(-70), localIP_(192, 168, 1, 100),
-          ssid_("") {}
+          ssid_(""), macAddress_("AA:BB:CC:DD:EE:FF") {}
 
     // Mode control
     bool mode(wifi_mode_t mode) {
@@ -121,6 +121,8 @@ class MockWiFi {
 
     int8_t RSSI() const { return rssi_; }
 
+    String macAddress() const { return macAddress_; }
+
     // Scan methods
     int16_t scanNetworks() { return networks_.size(); }
 
@@ -155,6 +157,7 @@ class MockWiFi {
     void mockSetRSSI(int8_t rssi) { rssi_ = rssi; }
     void mockSetLocalIP(IPAddress ip) { localIP_ = ip; }
     void mockSetLocalIP(uint8_t a, uint8_t b, uint8_t c, uint8_t d) { localIP_ = IPAddress(a, b, c, d); }
+    void mockSetMacAddress(const char* mac) { macAddress_ = mac ? mac : ""; }
 
     void mockSetNetworks(const std::vector<NetworkInfo>& networks) { networks_ = networks; }
 
@@ -166,6 +169,7 @@ class MockWiFi {
         rssi_ = -70;
         localIP_ = IPAddress(192, 168, 1, 100);
         ssid_ = "";
+        macAddress_ = "AA:BB:CC:DD:EE:FF";
         networks_.clear();
     }
 
@@ -176,6 +180,7 @@ class MockWiFi {
     int8_t rssi_;
     IPAddress localIP_;
     String ssid_;
+    String macAddress_;
     std::vector<NetworkInfo> networks_;
 };
 

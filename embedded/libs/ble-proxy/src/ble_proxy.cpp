@@ -11,6 +11,7 @@
 
 #include <config_manager.h>
 #include <log_buffer.h>
+#include <nordic_uart_ble.h>
 
 BLEProxy Proxy;
 
@@ -36,8 +37,15 @@ static void onScanCompleteStatic(const std::vector<DiscoveredBoard>& boards) {
     }
 }
 
+static void onBoardFoundStatic(const DiscoveredBoard& board) {
+    if (proxyInstance) {
+        proxyInstance->handleBoardFound(board);
+    }
+}
+
 BLEProxy::BLEProxy()
     : state(BLEProxyState::PROXY_DISABLED), enabled(false), scanStartTime(0), reconnectDelay(5000),
+      waitStartTime(0), waitDuration(0),
       stateCallback(nullptr), dataCallback(nullptr), sendToAppCallback(nullptr) {
     proxyInstance = this;
 }
@@ -78,6 +86,8 @@ void BLEProxy::setEnabled(bool enable) {
         Logger.logln("BLEProxy: Disabling proxy mode");
         BoardClient.disconnect();
         Scanner.stopScan();
+        // Reset connection flag when disabling
+        connectionInitiated = false;
         setState(BLEProxyState::PROXY_DISABLED);
     }
 }
@@ -97,11 +107,51 @@ void BLEProxy::loop() {
             break;
 
         case BLEProxyState::SCANNING:
-            // Handled by scanner callbacks
+            // Check if we found a board to connect to
+            if (pendingConnectName.length() > 0) {
+                Logger.logln("BLEProxy: Found board, preparing to connect to %s", pendingConnectName.c_str());
+
+                // Stop the scan (this may trigger handleScanComplete, but we check pendingConnectName)
+                Scanner.stopScan();
+
+                Logger.logln("BLEProxy: Addr: %s", pendingConnectAddress.toString().c_str());
+
+                // Non-blocking wait: Allow NimBLE to fully release scan resources before
+                // initiating client connection. Without this, connection may fail
+                // due to scan cleanup not completing.
+                waitStartTime = millis();
+                waitDuration = 100;
+                setState(BLEProxyState::WAIT_BEFORE_CONNECT);
+            }
+            break;
+
+        case BLEProxyState::WAIT_BEFORE_CONNECT:
+            // Non-blocking wait before connecting
+            if (millis() - waitStartTime >= waitDuration) {
+                Logger.logln("BLEProxy: Connecting to %s", pendingConnectName.c_str());
+
+                // Store connection info and clear pending
+                NimBLEAddress connectAddr = pendingConnectAddress;
+                pendingConnectName = "";
+
+                setState(BLEProxyState::CONNECTING);
+                BoardClient.connect(connectAddr);
+            }
             break;
 
         case BLEProxyState::CONNECTING:
             // Handled by client callbacks
+            break;
+
+        case BLEProxyState::WAIT_BEFORE_ADVERTISE:
+            // Non-blocking wait before starting advertising
+            if (millis() - waitStartTime >= waitDuration) {
+                Logger.logln("BLEProxy: Starting BLE advertising");
+                // Use BLE.startAdvertising() which properly manages advertising state
+                // and avoids duplicate GATT server start issues
+                BLE.startAdvertising();
+                setState(BLEProxyState::CONNECTED);
+            }
             break;
 
         case BLEProxyState::CONNECTED:
@@ -178,13 +228,39 @@ void BLEProxy::startScan() {
     setState(BLEProxyState::SCANNING);
     scanStartTime = millis();
 
-    Scanner.startScan(nullptr, onScanCompleteStatic, 30);
+    // Use result callback to connect immediately when board found
+    Scanner.startScan(onBoardFoundStatic, onScanCompleteStatic, 30);
+}
+
+void BLEProxy::handleBoardFound(const DiscoveredBoard& board) {
+    // If we're still scanning and haven't found a board yet, mark it for connection
+    // Don't stop scan or connect from callback - do it in loop() to avoid re-entry
+    // Atomically check and set connectionInitiated to prevent race with handleScanComplete
+    if (state == BLEProxyState::SCANNING &&
+        pendingConnectName.length() == 0 &&
+        !connectionInitiated.exchange(true)) {
+        Logger.logln("BLEProxy: Found %s", board.name.c_str());
+
+        // Store target info - loop() will handle connection
+        pendingConnectAddress = board.address;
+        pendingConnectName = board.name;
+    }
 }
 
 void BLEProxy::handleScanComplete(const std::vector<DiscoveredBoard>& boards) {
+    // If we're already connecting or connected (e.g., from handleBoardFound path),
+    // don't try to connect again
+    if (state == BLEProxyState::CONNECTING || state == BLEProxyState::CONNECTED) {
+        Logger.logln("BLEProxy: Scan complete, already %s",
+                     state == BLEProxyState::CONNECTED ? "connected" : "connecting");
+        return;
+    }
+
     if (boards.empty()) {
-        Logger.logln("BLEProxy: No boards found, will retry");
-        setState(BLEProxyState::IDLE);
+        Logger.logln("BLEProxy: No boards found (reboot to scan again)");
+        // Reset connection flag so future scans can initiate connections
+        connectionInitiated = false;
+        setState(BLEProxyState::SCAN_COMPLETE_NONE);
         return;
     }
 
@@ -204,20 +280,49 @@ void BLEProxy::handleScanComplete(const std::vector<DiscoveredBoard>& boards) {
     }
 
     if (target) {
-        Logger.logln("BLEProxy: Connecting to %s (%s)", target->name.c_str(), target->address.toString().c_str());
-        setState(BLEProxyState::CONNECTING);
-        BoardClient.connect(target->address);
+        // Atomically check and set to prevent race with handleBoardFound
+        if (connectionInitiated.exchange(true)) {
+            Logger.logln("BLEProxy: Connection already initiated by handleBoardFound, skipping");
+            return;
+        }
+
+        Logger.logln("BLEProxy: Will connect to %s (%s)", target->name.c_str(), target->address.toString().c_str());
+
+        // Store connection info for the wait state
+        pendingConnectAddress = target->address;
+        pendingConnectName = target->name;
+
+        // Non-blocking wait: Allow NimBLE to fully release scan resources before
+        // initiating client connection. Without this, connection may fail
+        // due to scan cleanup not completing.
+        waitStartTime = millis();
+        waitDuration = 100;
+        setState(BLEProxyState::WAIT_BEFORE_CONNECT);
     } else {
+        // Reset connection flag so next scan can initiate a new connection
+        connectionInitiated = false;
         setState(BLEProxyState::IDLE);
     }
 }
 
 void BLEProxy::handleBoardConnected(bool connected) {
     if (connected) {
-        Logger.logln("BLEProxy: Connected to board");
-        setState(BLEProxyState::CONNECTED);
+        Logger.logln("BLEProxy: Connected to board!");
+
+        // Now that we're connected to the real board, start advertising
+        // so phone apps can connect to us. Use non-blocking wait to allow
+        // BLE client connection to stabilize before starting server
+        // advertising. This prevents GATT server issues when client and
+        // server start simultaneously.
+        waitStartTime = millis();
+        waitDuration = 200;
+        setState(BLEProxyState::WAIT_BEFORE_ADVERTISE);
     } else {
         Logger.logln("BLEProxy: Board disconnected");
+
+        // Reset connection flag so next scan can initiate a new connection
+        connectionInitiated = false;
+
         setState(BLEProxyState::RECONNECTING);
     }
 }

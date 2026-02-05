@@ -1,4 +1,4 @@
-import type { ConnectionContext, ControllerEvent, LedCommand, BoardName } from '@boardsesh/shared-schema';
+import type { ConnectionContext, ControllerEvent, LedUpdate, LedCommand, BoardName, QueueNavigationContext, ControllerQueueItem, ControllerQueueSync, ClimbQueueItem } from '@boardsesh/shared-schema';
 import { db } from '../../../db/client';
 import { esp32Controllers } from '@boardsesh/db/schema/app';
 import { eq } from 'drizzle-orm';
@@ -7,6 +7,8 @@ import { roomManager } from '../../../services/room-manager';
 import { createAsyncIterator } from '../shared/async-iterators';
 import { getLedPlacements } from '../../../db/queries/util/led-placements-data';
 import { requireControllerAuthorizedForSession } from '../shared/helpers';
+import { getGradeColor } from './grade-colors';
+import { buildNavigationContext, findClimbIndex } from './navigation-helpers';
 
 // LED color mapping for hold states (matches web app colors)
 const HOLD_STATE_COLORS: Record<string, { r: number; g: number; b: number }> = {
@@ -16,6 +18,34 @@ const HOLD_STATE_COLORS: Record<string, { r: number; g: number; b: number }> = {
   FOOT: { r: 255, g: 170, b: 0 },       // Orange
   OFF: { r: 0, g: 0, b: 0 },            // Off
 };
+
+/**
+ * Build a minimal ControllerQueueItem from a full ClimbQueueItem
+ */
+function buildControllerQueueItem(item: ClimbQueueItem): ControllerQueueItem {
+  return {
+    uuid: item.uuid,
+    climbUuid: item.climb.uuid,
+    name: item.climb.name,
+    grade: item.climb.difficulty,
+    gradeColor: getGradeColor(item.climb.difficulty),
+  };
+}
+
+/**
+ * Build a ControllerQueueSync event from current queue state
+ */
+function buildControllerQueueSync(queue: ClimbQueueItem[], currentItemUuid: string | undefined): ControllerQueueSync {
+  const currentIndex = currentItemUuid
+    ? queue.findIndex((item) => item.uuid === currentItemUuid)
+    : -1;
+
+  return {
+    __typename: 'ControllerQueueSync',
+    queue: queue.map(buildControllerQueueItem),
+    currentIndex,
+  };
+}
 
 /**
  * Convert a climb's litUpHoldsMap to LED commands using LED placements data
@@ -67,13 +97,14 @@ export const controllerSubscriptions = {
       ctx: ConnectionContext
     ): AsyncGenerator<{ controllerEvents: ControllerEvent }> {
       // Validate API key from context and verify session authorization
-      const { controllerId } = await requireControllerAuthorizedForSession(ctx, sessionId);
+      // This throws if the controller is not authorized
+      await requireControllerAuthorizedForSession(ctx, sessionId);
 
-      // Get controller details
+      // Get controller details using the controllerId from context (validated above)
       const [controller] = await db
         .select()
         .from(esp32Controllers)
-        .where(eq(esp32Controllers.id, controllerId))
+        .where(eq(esp32Controllers.id, ctx.controllerId!))
         .limit(1);
 
       if (!controller) {
@@ -94,85 +125,136 @@ export const controllerSubscriptions = {
         `[Controller] Controller ${controller.id} subscribed to session ${sessionId} (boardPath: ${boardPath})`
       );
 
-      // Create subscription to queue events
-      const asyncIterator = await createAsyncIterator<ControllerEvent>((push) => {
-        // Subscribe to queue updates for this session
-        return pubsub.subscribeQueue(sessionId, (queueEvent) => {
-          console.log(`[Controller] Received queue event: ${queueEvent.__typename}`);
-
-          // Only process current climb changes
-          if (queueEvent.__typename === 'CurrentClimbChanged' || queueEvent.__typename === 'FullSync') {
-            // Skip LedUpdate if this controller initiated the change
-            // (LEDs are already set from BLE data, this would be redundant)
-            if (queueEvent.__typename === 'CurrentClimbChanged') {
-              console.log(`[Controller] CurrentClimbChanged event - clientId: ${queueEvent.clientId}, controllerId: ${controllerId}`);
-              if (queueEvent.clientId === controllerId) {
-                console.log(`[Controller] Skipping LedUpdate (originated from this controller)`);
-                return;
-              }
-            }
-
-            const climb = queueEvent.__typename === 'CurrentClimbChanged'
-              ? queueEvent.item?.climb
-              : queueEvent.state.currentClimbQueueItem?.climb;
-
-            if (climb) {
-              console.log(`[Controller] Sending LED update for climb: ${climb.name}`);
-
-              // Get LED placements for this controller's configuration
-              const ledPlacements = getLedPlacements(
-                controller.boardName as BoardName,
-                controller.layoutId,
-                controller.sizeId
-              );
-              const commands = climbToLedCommands(climb, ledPlacements);
-
-              const ledUpdate: ControllerEvent = {
-                __typename: 'LedUpdate',
-                commands,
-                climbUuid: climb.uuid,
-                climbName: climb.name,
-                climbGrade: climb.difficulty,
-                boardPath,
-                angle: climb.angle,
-              };
-              push(ledUpdate);
-            } else {
-              console.log(`[Controller] Clearing LEDs (no current climb)`);
-              // No current climb - clear LEDs
-              const ledUpdate: ControllerEvent = {
-                __typename: 'LedUpdate',
-                commands: [],
-                boardPath,
-              };
-              push(ledUpdate);
-            }
-          }
-        });
-      });
-
-      // Send initial state
-      const queueState = await roomManager.getQueueState(sessionId);
-      if (queueState.currentClimbQueueItem?.climb) {
-        const climb = queueState.currentClimbQueueItem.climb;
+      // Helper to build LedUpdate with navigation context
+      const buildLedUpdateWithNavigation = async (
+        climb: { uuid: string; name: string; difficulty: string; angle: number; litUpHoldsMap: Record<number, { state: string }> } | null | undefined,
+        currentItemUuid?: string,
+        clientId?: string | null
+      ): Promise<LedUpdate> => {
+        // Get LED placements for this controller's configuration
         const ledPlacements = getLedPlacements(
           controller.boardName as BoardName,
           controller.layoutId,
           controller.sizeId
         );
-        const commands = climbToLedCommands(climb, ledPlacements);
-        yield {
-          controllerEvents: {
+
+        if (!climb) {
+          // No current climb - could be clearing or unknown climb from BLE
+          // Get queue state for navigation context so ESP32 can navigate back
+          const queueState = await roomManager.getQueueState(sessionId);
+          const navigation = buildNavigationContext(queueState.queue, -1);
+
+          return {
             __typename: 'LedUpdate',
-            commands,
-            climbUuid: climb.uuid,
-            climbName: climb.name,
-            climbGrade: climb.difficulty,
+            commands: [],
             boardPath,
-            angle: climb.angle,
-          },
+            clientId,
+            // If clientId matches controller, this is an unknown BLE climb - show "Unknown Climb"
+            climbName: clientId ? 'Unknown Climb' : undefined,
+            climbGrade: clientId ? '?' : undefined,
+            gradeColor: clientId ? '#888888' : undefined,
+            navigation,
+          };
+        }
+
+        const commands = climbToLedCommands(climb, ledPlacements);
+
+        // Get queue state for navigation context
+        const queueState = await roomManager.getQueueState(sessionId);
+        const currentIndex = findClimbIndex(queueState.queue, currentItemUuid);
+        const navigation = buildNavigationContext(queueState.queue, currentIndex);
+
+        return {
+          __typename: 'LedUpdate',
+          commands,
+          queueItemUuid: currentItemUuid,
+          climbUuid: climb.uuid,
+          climbName: climb.name,
+          climbGrade: climb.difficulty,
+          gradeColor: getGradeColor(climb.difficulty),
+          boardPath,
+          angle: climb.angle,
+          navigation,
+          clientId,
         };
-      }
+      };
+
+      // Create subscription to queue events
+      const asyncIterator = await createAsyncIterator<ControllerEvent>((push) => {
+        // Event queue to ensure events are processed and sent in order
+        // This prevents race conditions where QueueSync and LedUpdate arrive out of order
+        let eventQueue: Promise<void> = Promise.resolve();
+
+        // Subscribe to queue updates for this session
+        return pubsub.subscribeQueue(sessionId, (queueEvent) => {
+
+          // Handle queue modification events - send ControllerQueueSync
+          if (queueEvent.__typename === 'QueueItemAdded' ||
+              queueEvent.__typename === 'QueueItemRemoved' ||
+              queueEvent.__typename === 'QueueReordered') {
+            // Queue the async work to ensure ordering
+            eventQueue = eventQueue.then(async () => {
+              try {
+                const queueState = await roomManager.getQueueState(sessionId);
+                const queueSync = buildControllerQueueSync(
+                  queueState.queue,
+                  queueState.currentClimbQueueItem?.uuid
+                );
+                push(queueSync);
+              } catch (error) {
+                console.error(`[Controller] Error building queue sync:`, error);
+              }
+            });
+            return;
+          }
+
+          // Handle current climb changes and full sync
+          // Always send LedUpdate with clientId - ESP32 uses clientId to decide whether to disconnect BLE client
+          if (queueEvent.__typename === 'CurrentClimbChanged' || queueEvent.__typename === 'FullSync') {
+            // Extract clientId from the event (null for FullSync or system-initiated changes)
+            const eventClientId = queueEvent.__typename === 'CurrentClimbChanged'
+              ? queueEvent.clientId
+              : null;
+
+            const currentItem = queueEvent.__typename === 'CurrentClimbChanged'
+              ? queueEvent.item
+              : queueEvent.state.currentClimbQueueItem;
+            const climb = currentItem?.climb;
+
+            // Queue the async work to ensure ordering
+            eventQueue = eventQueue.then(async () => {
+              try {
+                if (climb) {
+                  const ledUpdate = await buildLedUpdateWithNavigation(climb, currentItem?.uuid, eventClientId);
+                  push(ledUpdate);
+                } else {
+                  // No climb - could be clearing or unknown climb
+                  const ledUpdate = await buildLedUpdateWithNavigation(null, undefined, eventClientId);
+                  push(ledUpdate);
+                }
+              } catch (error) {
+                console.error(`[Controller] Error building LED update:`, error);
+              }
+            });
+          }
+        });
+      });
+
+      // Send initial queue sync first (so ESP32 has queue state before LED update)
+      const initialQueueState = await roomManager.getQueueState(sessionId);
+      const initialQueueSync = buildControllerQueueSync(
+        initialQueueState.queue,
+        initialQueueState.currentClimbQueueItem?.uuid
+      );
+      yield { controllerEvents: initialQueueSync };
+
+      // Send initial LED state
+      const initialClimb = initialQueueState.currentClimbQueueItem?.climb;
+      const initialLedUpdate = await buildLedUpdateWithNavigation(
+        initialClimb,
+        initialQueueState.currentClimbQueueItem?.uuid
+      );
+      yield { controllerEvents: initialLedUpdate };
 
       // Yield events from subscription
       for await (const event of asyncIterator) {
@@ -198,6 +280,9 @@ export const controllerEventResolver = {
     }
     if ('timestamp' in obj) {
       return 'ControllerPing';
+    }
+    if ('queue' in obj && 'currentIndex' in obj) {
+      return 'ControllerQueueSync';
     }
     return null;
   },

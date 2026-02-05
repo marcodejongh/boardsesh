@@ -80,9 +80,9 @@ export function setupWebSocketServer(httpServer: HttpServer): WebSocketServer {
         // Check for controller API key authentication
         let controllerId: string | undefined;
         let controllerApiKey: string | undefined;
-        const extractedControllerApiKey = extractControllerApiKey(
-          ctx.connectionParams as Record<string, unknown> | undefined
-        );
+        let controllerMac: string | undefined;
+        const connectionParams = ctx.connectionParams as Record<string, unknown> | undefined;
+        const extractedControllerApiKey = extractControllerApiKey(connectionParams);
 
         if (extractedControllerApiKey) {
           const controllerResult = await validateControllerApiKey(extractedControllerApiKey);
@@ -93,8 +93,14 @@ export function setupWebSocketServer(httpServer: HttpServer): WebSocketServer {
           }
         }
 
+        // Extract controller MAC address from connection params (used as clientId for BLE disconnect logic)
+        if (connectionParams?.controllerMac && typeof connectionParams.controllerMac === 'string') {
+          controllerMac = connectionParams.controllerMac;
+          console.log(`[Auth] Controller MAC: ${controllerMac}`);
+        }
+
         // Create context on initial connection with auth info
-        const context = createContext(undefined, isAuthenticated, authenticatedUserId, controllerId, controllerApiKey);
+        const context = createContext(undefined, isAuthenticated, authenticatedUserId, controllerId, controllerApiKey, controllerMac);
         await roomManager.registerClient(context.connectionId);
         console.log(`Client connected: ${context.connectionId} (authenticated: ${isAuthenticated})`);
 
