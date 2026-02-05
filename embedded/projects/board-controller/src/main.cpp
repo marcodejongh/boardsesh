@@ -39,6 +39,36 @@ String currentClimbName = "";
 String currentGrade = "";
 String boardType = "kilter";
 bool hasCurrentClimb = false;
+
+// Static buffer for queue sync to avoid heap fragmentation
+// LocalQueueItem is ~88 bytes each, so 150 items = ~13KB
+static LocalQueueItem g_queueSyncBuffer[MAX_QUEUE_SIZE];
+
+/**
+ * Convert hex color string to RGB565 without String allocations
+ * @param hex Color string in format "#RRGGBB"
+ * @return RGB565 color value, or 0xFFFF (white) if invalid
+ */
+static uint16_t hexToRgb565Fast(const char* hex) {
+    if (!hex || hex[0] != '#' || strlen(hex) < 7) {
+        return 0xFFFF;  // White default
+    }
+
+    // Parse hex digits directly without String objects
+    char buf[3] = {0, 0, 0};
+
+    buf[0] = hex[1]; buf[1] = hex[2];
+    uint8_t r = strtol(buf, NULL, 16);
+
+    buf[0] = hex[3]; buf[1] = hex[4];
+    uint8_t g = strtol(buf, NULL, 16);
+
+    buf[0] = hex[5]; buf[1] = hex[6];
+    uint8_t b = strtol(buf, NULL, 16);
+
+    // Convert to RGB565: 5 bits red, 6 bits green, 5 bits blue
+    return ((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3);
+}
 #endif
 
 // Forward declarations
@@ -489,47 +519,33 @@ void onGraphQLMessage(JsonDocument& doc) {
 #ifdef ENABLE_DISPLAY
 /**
  * Handle queue sync event from backend
+ * Uses static buffer to avoid heap fragmentation from repeated allocations
  */
 void onQueueSync(const ControllerQueueSyncData& data) {
     Logger.logln("Queue sync: %d items, currentIndex: %d", data.count, data.currentIndex);
 
-    // Allocate on heap to avoid stack overflow (LocalQueueItem is ~88 bytes each)
+    // Use static buffer to avoid heap fragmentation
     int itemCount = min(data.count, MAX_QUEUE_SIZE);
-    LocalQueueItem* items = new LocalQueueItem[itemCount];
-    if (!items) {
-        Logger.logln("Queue sync: Failed to allocate memory for %d items", itemCount);
-        return;
-    }
 
     for (int i = 0; i < itemCount; i++) {
-        strncpy(items[i].uuid, data.items[i].uuid, sizeof(items[i].uuid) - 1);
-        items[i].uuid[sizeof(items[i].uuid) - 1] = '\0';
+        strncpy(g_queueSyncBuffer[i].uuid, data.items[i].uuid, sizeof(g_queueSyncBuffer[i].uuid) - 1);
+        g_queueSyncBuffer[i].uuid[sizeof(g_queueSyncBuffer[i].uuid) - 1] = '\0';
 
-        strncpy(items[i].climbUuid, data.items[i].climbUuid, sizeof(items[i].climbUuid) - 1);
-        items[i].climbUuid[sizeof(items[i].climbUuid) - 1] = '\0';
+        strncpy(g_queueSyncBuffer[i].climbUuid, data.items[i].climbUuid, sizeof(g_queueSyncBuffer[i].climbUuid) - 1);
+        g_queueSyncBuffer[i].climbUuid[sizeof(g_queueSyncBuffer[i].climbUuid) - 1] = '\0';
 
-        strncpy(items[i].name, data.items[i].name, sizeof(items[i].name) - 1);
-        items[i].name[sizeof(items[i].name) - 1] = '\0';
+        strncpy(g_queueSyncBuffer[i].name, data.items[i].name, sizeof(g_queueSyncBuffer[i].name) - 1);
+        g_queueSyncBuffer[i].name[sizeof(g_queueSyncBuffer[i].name) - 1] = '\0';
 
-        strncpy(items[i].grade, data.items[i].grade, sizeof(items[i].grade) - 1);
-        items[i].grade[sizeof(items[i].grade) - 1] = '\0';
+        strncpy(g_queueSyncBuffer[i].grade, data.items[i].grade, sizeof(g_queueSyncBuffer[i].grade) - 1);
+        g_queueSyncBuffer[i].grade[sizeof(g_queueSyncBuffer[i].grade) - 1] = '\0';
 
-        // Convert hex color to RGB565 if provided
-        if (data.items[i].gradeColor[0] == '#') {
-            items[i].gradeColorRgb = Display.getDisplay().color565(
-                strtol(String(data.items[i].gradeColor).substring(1, 3).c_str(), NULL, 16),
-                strtol(String(data.items[i].gradeColor).substring(3, 5).c_str(), NULL, 16),
-                strtol(String(data.items[i].gradeColor).substring(5, 7).c_str(), NULL, 16));
-        } else {
-            items[i].gradeColorRgb = 0xFFFF;  // White default
-        }
+        // Convert hex color to RGB565 using fast helper (no String allocations)
+        g_queueSyncBuffer[i].gradeColorRgb = hexToRgb565Fast(data.items[i].gradeColor);
     }
 
-    // Update display queue state
-    Display.setQueueFromSync(items, itemCount, data.currentIndex);
-
-    // Free heap memory
-    delete[] items;
+    // Update display queue state (no delete needed - using static buffer)
+    Display.setQueueFromSync(g_queueSyncBuffer, itemCount, data.currentIndex);
 
     Logger.logln("Queue sync complete: stored %d items, index %d", Display.getQueueCount(),
                  Display.getCurrentQueueIndex());

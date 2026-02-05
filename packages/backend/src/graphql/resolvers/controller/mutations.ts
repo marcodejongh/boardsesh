@@ -387,17 +387,17 @@ export const controllerMutations = {
     }
 
     let newCurrentClimb: ClimbQueueItem;
-    let newIndex: number;
+    let targetIndex: number;
 
     // If queueItemUuid is provided, navigate directly to that item (preferred method)
     if (queueItemUuid) {
-      newIndex = queue.findIndex((item) => item.uuid === queueItemUuid);
-      if (newIndex === -1) {
+      targetIndex = queue.findIndex((item) => item.uuid === queueItemUuid);
+      if (targetIndex === -1) {
         console.log(`[Controller] Navigate: queueItemUuid ${queueItemUuid} not found in queue`);
         // Fall back to direction-based navigation
       } else {
-        newCurrentClimb = queue[newIndex];
-        console.log(`[Controller] Navigate: direct to queueItemUuid ${queueItemUuid}, index ${newIndex}, climb: ${newCurrentClimb.climb.name}`);
+        newCurrentClimb = queue[targetIndex];
+        console.log(`[Controller] Navigate: direct to queueItemUuid ${queueItemUuid}, index ${targetIndex}, climb: ${newCurrentClimb.climb.name}`);
 
         // Update queue state
         const { sequence } = await roomManager.updateQueueState(sessionId, queue, newCurrentClimb);
@@ -426,40 +426,40 @@ export const controllerMutations = {
 
     console.log(`[Controller] Navigate ${direction}: using referenceUuid=${referenceUuid} (from ESP32: ${!!currentClimbUuid}), found at index ${currentIndex}`);
 
-    // Calculate new index
+    // Calculate target index based on direction
     if (direction === 'next') {
       // Move forward in queue
       if (currentIndex === -1) {
         // No current climb, start at beginning
-        newIndex = 0;
+        targetIndex = 0;
       } else if (currentIndex >= queue.length - 1) {
         // Already at end, stay there
         console.log(`[Controller] Navigate next: already at end of queue`);
         return queue[currentIndex]; // Return the climb at current index
       } else {
-        newIndex = currentIndex + 1;
+        targetIndex = currentIndex + 1;
       }
     } else {
       // Move backward in queue (previous)
       if (currentIndex === -1) {
         // No current climb, start at end
-        newIndex = queue.length - 1;
+        targetIndex = queue.length - 1;
       } else if (currentIndex <= 0) {
         // Already at beginning, stay there
         console.log(`[Controller] Navigate previous: already at start of queue`);
         return queue[currentIndex]; // Return the climb at current index
       } else {
-        newIndex = currentIndex - 1;
+        targetIndex = currentIndex - 1;
       }
     }
 
     // Get the new current climb
-    newCurrentClimb = queue[newIndex];
+    newCurrentClimb = queue[targetIndex];
 
     console.log(
-      `[Controller] Navigate ${direction}: index ${currentIndex} -> ${newIndex}, climb: ${newCurrentClimb.climb.name} (queueItem uuid: ${newCurrentClimb.uuid})`
+      `[Controller] Navigate ${direction}: index ${currentIndex} -> ${targetIndex}, climb: ${newCurrentClimb.climb.name} (queueItem uuid: ${newCurrentClimb.uuid})`
     );
-    console.log(`[Controller] Queue has ${queue.length} items, updating current to index ${newIndex}`);
+    console.log(`[Controller] Queue has ${queue.length} items, updating current to index ${targetIndex}`);
 
     // Update queue state (keep the same queue, just change current climb)
     const { sequence } = await roomManager.updateQueueState(sessionId, queue, newCurrentClimb);

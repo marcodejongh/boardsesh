@@ -529,6 +529,177 @@ describe('navigateQueue mutation', () => {
     });
   });
 
+  describe('Concurrent navigation', () => {
+    it('should handle rapid successive navigation requests', async () => {
+      const items = Array.from({ length: 5 }, (_, i) =>
+        createMockQueueItem({ climb: createMockClimb({ name: `Climb ${i + 1}` }) })
+      );
+      const queue = items;
+
+      // Start at first item
+      getQueueStateSpy.mockResolvedValue({
+        queue,
+        currentClimbQueueItem: items[0],
+        version: 1,
+        sequence: 1,
+        stateHash: 'test-hash',
+      });
+
+      let sequenceCounter = 1;
+      updateQueueStateSpy.mockImplementation(async () => {
+        sequenceCounter++;
+        return { version: sequenceCounter, sequence: sequenceCounter, stateHash: `hash-${sequenceCounter}` };
+      });
+
+      const controllerCtx = createControllerContext(
+        registeredController.controllerId,
+        registeredController.apiKey
+      );
+
+      // Fire 3 navigation requests concurrently
+      const results = await Promise.all([
+        controllerMutations.navigateQueue(
+          undefined,
+          { sessionId: TEST_SESSION_ID, direction: 'next' },
+          controllerCtx
+        ),
+        controllerMutations.navigateQueue(
+          undefined,
+          { sessionId: TEST_SESSION_ID, direction: 'next' },
+          controllerCtx
+        ),
+        controllerMutations.navigateQueue(
+          undefined,
+          { sessionId: TEST_SESSION_ID, direction: 'next' },
+          controllerCtx
+        ),
+      ]);
+
+      // All requests should complete successfully
+      expect(results.every((r) => r !== null)).toBe(true);
+
+      // updateQueueState should have been called 3 times
+      expect(updateQueueStateSpy).toHaveBeenCalledTimes(3);
+    });
+
+    it('should serialize concurrent requests to the same target', async () => {
+      const item1 = createMockQueueItem({ climb: createMockClimb({ name: 'Climb 1' }) });
+      const item2 = createMockQueueItem({ climb: createMockClimb({ name: 'Climb 2' }) });
+      const queue = [item1, item2];
+
+      getQueueStateSpy.mockResolvedValue({
+        queue,
+        currentClimbQueueItem: item1,
+        version: 1,
+        sequence: 1,
+        stateHash: 'test-hash',
+      });
+      updateQueueStateSpy.mockResolvedValue({ version: 2, sequence: 2, stateHash: 'new-hash' });
+
+      const controllerCtx = createControllerContext(
+        registeredController.controllerId,
+        registeredController.apiKey
+      );
+
+      // Navigate to same target item concurrently
+      const results = await Promise.all([
+        controllerMutations.navigateQueue(
+          undefined,
+          { sessionId: TEST_SESSION_ID, direction: 'next', queueItemUuid: item2.uuid },
+          controllerCtx
+        ),
+        controllerMutations.navigateQueue(
+          undefined,
+          { sessionId: TEST_SESSION_ID, direction: 'next', queueItemUuid: item2.uuid },
+          controllerCtx
+        ),
+      ]);
+
+      // Both should successfully navigate to the same item
+      expect(results[0]?.uuid).toBe(item2.uuid);
+      expect(results[1]?.uuid).toBe(item2.uuid);
+    });
+  });
+
+  describe('Error handling', () => {
+    it('should propagate error when updateQueueState fails', async () => {
+      const item1 = createMockQueueItem({ climb: createMockClimb({ name: 'Climb 1' }) });
+      const item2 = createMockQueueItem({ climb: createMockClimb({ name: 'Climb 2' }) });
+      const queue = [item1, item2];
+
+      getQueueStateSpy.mockResolvedValue({
+        queue,
+        currentClimbQueueItem: item1,
+        version: 1,
+        sequence: 1,
+        stateHash: 'test-hash',
+      });
+      updateQueueStateSpy.mockRejectedValue(new Error('Update failed'));
+
+      const controllerCtx = createControllerContext(
+        registeredController.controllerId,
+        registeredController.apiKey
+      );
+
+      await expect(
+        controllerMutations.navigateQueue(
+          undefined,
+          { sessionId: TEST_SESSION_ID, direction: 'next' },
+          controllerCtx
+        )
+      ).rejects.toThrow('Update failed');
+    });
+
+    it('should not publish event when updateQueueState fails', async () => {
+      const item1 = createMockQueueItem({ climb: createMockClimb({ name: 'Climb 1' }) });
+      const item2 = createMockQueueItem({ climb: createMockClimb({ name: 'Climb 2' }) });
+      const queue = [item1, item2];
+
+      getQueueStateSpy.mockResolvedValue({
+        queue,
+        currentClimbQueueItem: item1,
+        version: 1,
+        sequence: 1,
+        stateHash: 'test-hash',
+      });
+      updateQueueStateSpy.mockRejectedValue(new Error('Update failed'));
+
+      const controllerCtx = createControllerContext(
+        registeredController.controllerId,
+        registeredController.apiKey
+      );
+
+      try {
+        await controllerMutations.navigateQueue(
+          undefined,
+          { sessionId: TEST_SESSION_ID, direction: 'next' },
+          controllerCtx
+        );
+      } catch {
+        // Expected to throw
+      }
+
+      expect(publishSpy).not.toHaveBeenCalled();
+    });
+
+    it('should handle getQueueState failure gracefully', async () => {
+      getQueueStateSpy.mockRejectedValue(new Error('Failed to get queue state'));
+
+      const controllerCtx = createControllerContext(
+        registeredController.controllerId,
+        registeredController.apiKey
+      );
+
+      await expect(
+        controllerMutations.navigateQueue(
+          undefined,
+          { sessionId: TEST_SESSION_ID, direction: 'next' },
+          controllerCtx
+        )
+      ).rejects.toThrow('Failed to get queue state');
+    });
+  });
+
   describe('Authorization', () => {
     it('should require controller authentication', async () => {
       // User context without controller auth

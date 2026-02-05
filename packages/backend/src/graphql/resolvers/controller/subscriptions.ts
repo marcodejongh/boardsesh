@@ -184,6 +184,10 @@ export const controllerSubscriptions = {
 
       // Create subscription to queue events
       const asyncIterator = await createAsyncIterator<ControllerEvent>((push) => {
+        // Event queue to ensure events are processed and sent in order
+        // This prevents race conditions where QueueSync and LedUpdate arrive out of order
+        let eventQueue: Promise<void> = Promise.resolve();
+
         // Subscribe to queue updates for this session
         return pubsub.subscribeQueue(sessionId, (queueEvent) => {
           console.log(`[Controller] Received queue event: ${queueEvent.__typename}`);
@@ -192,7 +196,8 @@ export const controllerSubscriptions = {
           if (queueEvent.__typename === 'QueueItemAdded' ||
               queueEvent.__typename === 'QueueItemRemoved' ||
               queueEvent.__typename === 'QueueReordered') {
-            (async () => {
+            // Queue the async work to ensure ordering
+            eventQueue = eventQueue.then(async () => {
               try {
                 const queueState = await roomManager.getQueueState(sessionId);
                 const queueSync = buildControllerQueueSync(
@@ -204,7 +209,7 @@ export const controllerSubscriptions = {
               } catch (error) {
                 console.error(`[Controller] Error building queue sync:`, error);
               }
-            })();
+            });
             return;
           }
 
@@ -225,8 +230,8 @@ export const controllerSubscriptions = {
               : queueEvent.state.currentClimbQueueItem;
             const climb = currentItem?.climb;
 
-            // Handle async work with proper error handling
-            (async () => {
+            // Queue the async work to ensure ordering
+            eventQueue = eventQueue.then(async () => {
               try {
                 if (climb) {
                   console.log(`[Controller] Sending LED update for climb: ${climb.name} (uuid: ${currentItem?.uuid})`);
@@ -243,7 +248,7 @@ export const controllerSubscriptions = {
               } catch (error) {
                 console.error(`[Controller] Error building LED update:`, error);
               }
-            })();
+            });
           }
         });
       });
