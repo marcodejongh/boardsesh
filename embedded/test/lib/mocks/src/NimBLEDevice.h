@@ -52,14 +52,35 @@ class NimBLEServer;
 class NimBLEService;
 class NimBLECharacteristic;
 class NimBLEAdvertising;
+class NimBLEClient;
+class NimBLERemoteService;
+class NimBLERemoteCharacteristic;
+
+// NimBLEUUID class
+class NimBLEUUID {
+  public:
+    NimBLEUUID() : uuid_("") {}
+    NimBLEUUID(const char* uuid) : uuid_(uuid ? uuid : "") {}
+    NimBLEUUID(const std::string& uuid) : uuid_(uuid) {}
+
+    std::string toString() const { return uuid_; }
+
+    bool operator==(const NimBLEUUID& other) const { return uuid_ == other.uuid_; }
+    bool operator!=(const NimBLEUUID& other) const { return uuid_ != other.uuid_; }
+
+  private:
+    std::string uuid_;
+};
 
 // NimBLEAddress class
 class NimBLEAddress {
   public:
-    NimBLEAddress() : addr_{0} {}
-    NimBLEAddress(const uint8_t* addr) {
+    NimBLEAddress() : addr_{0}, type_(0) {}
+    NimBLEAddress(const uint8_t* addr) : type_(0) {
         if (addr)
             memcpy(addr_, addr, 6);
+        else
+            memset(addr_, 0, 6);
     }
 
     std::string toString() const {
@@ -69,8 +90,13 @@ class NimBLEAddress {
         return std::string(buf);
     }
 
+    uint8_t getType() const { return type_; }
+
+    bool operator==(const NimBLEAddress& other) const { return memcmp(addr_, other.addr_, 6) == 0; }
+
   private:
     uint8_t addr_[6];
+    uint8_t type_;
 };
 
 // Callbacks interfaces
@@ -259,6 +285,178 @@ class NimBLEServer {
     uint16_t disconnectedHandle_ = BLE_HS_CONN_HANDLE_NONE;
 };
 
+// =============================================================================
+// Client-side classes (for BLE client connections)
+// =============================================================================
+
+// Notify callback type
+typedef void (*notify_callback)(NimBLERemoteCharacteristic* pBLERemoteCharacteristic, uint8_t* pData, size_t length,
+                                bool isNotify);
+
+// NimBLERemoteCharacteristic - represents a characteristic on a remote server
+class NimBLERemoteCharacteristic {
+  public:
+    NimBLERemoteCharacteristic(const char* uuid) : uuid_(uuid ? uuid : ""), canNotify_(true) {}
+
+    bool canNotify() const { return canNotify_; }
+
+    bool subscribe(bool notifications, notify_callback callback) {
+        subscribed_ = true;
+        notifyCallback_ = callback;
+        return mockSubscribeSuccess_;
+    }
+
+    bool writeValue(const uint8_t* data, size_t len, bool response = false) {
+        (void)response;
+        if (!mockWriteSuccess_)
+            return false;
+        value_.assign(data, data + len);
+        writeCount_++;
+        return true;
+    }
+
+    std::string getValue() const { return std::string(value_.begin(), value_.end()); }
+
+    const std::string& getUUID() const { return uuid_; }
+
+    // Test helpers
+    void mockSetCanNotify(bool canNotify) { canNotify_ = canNotify; }
+    void mockSetSubscribeSuccess(bool success) { mockSubscribeSuccess_ = success; }
+    void mockSetWriteSuccess(bool success) { mockWriteSuccess_ = success; }
+    void mockReceiveNotify(uint8_t* data, size_t len) {
+        if (notifyCallback_)
+            notifyCallback_(this, data, len, true);
+    }
+    int getWriteCount() const { return writeCount_; }
+    bool isSubscribed() const { return subscribed_; }
+
+  private:
+    std::string uuid_;
+    std::vector<uint8_t> value_;
+    bool canNotify_;
+    bool subscribed_ = false;
+    notify_callback notifyCallback_ = nullptr;
+    bool mockSubscribeSuccess_ = true;
+    bool mockWriteSuccess_ = true;
+    int writeCount_ = 0;
+};
+
+// NimBLERemoteService - represents a service on a remote server
+class NimBLERemoteService {
+  public:
+    NimBLERemoteService(const char* uuid) : uuid_(uuid ? uuid : "") {}
+
+    NimBLERemoteCharacteristic* getCharacteristic(const char* uuid) {
+        for (auto* c : characteristics_) {
+            if (c->getUUID() == uuid)
+                return c;
+        }
+        return nullptr;
+    }
+
+    // Test helper to add characteristics
+    void mockAddCharacteristic(NimBLERemoteCharacteristic* c) { characteristics_.push_back(c); }
+
+    const std::string& getUUID() const { return uuid_; }
+
+    ~NimBLERemoteService() {
+        for (auto* c : characteristics_)
+            delete c;
+    }
+
+  private:
+    std::string uuid_;
+    std::vector<NimBLERemoteCharacteristic*> characteristics_;
+};
+
+// NimBLEClientCallbacks - callback interface for client events
+class NimBLEClientCallbacks {
+  public:
+    virtual ~NimBLEClientCallbacks() {}
+    virtual void onConnect(NimBLEClient* pClient) {}
+    virtual void onDisconnect(NimBLEClient* pClient) {}
+};
+
+// NimBLEClient - represents a connection to a remote BLE server
+class NimBLEClient {
+  public:
+    NimBLEClient() : callbacks_(nullptr), connected_(false) {}
+
+    void setClientCallbacks(NimBLEClientCallbacks* callbacks) { callbacks_ = callbacks; }
+
+    void setConnectionParams(uint16_t minInterval, uint16_t maxInterval, uint16_t latency, uint16_t timeout) {
+        minInterval_ = minInterval;
+        maxInterval_ = maxInterval;
+        latency_ = latency;
+        timeout_ = timeout;
+    }
+
+    void setConnectTimeout(uint8_t timeout) { connectTimeout_ = timeout; }
+
+    bool connect(const NimBLEAddress& address, bool deleteAttributes = true) {
+        (void)deleteAttributes;
+        connectAttempts_++;
+        if (!mockConnectSuccess_)
+            return false;
+        connected_ = true;
+        if (callbacks_)
+            callbacks_->onConnect(this);
+        return true;
+    }
+
+    void disconnect() {
+        if (connected_) {
+            connected_ = false;
+            if (callbacks_)
+                callbacks_->onDisconnect(this);
+        }
+    }
+
+    bool isConnected() const { return connected_; }
+
+    NimBLERemoteService* getService(const char* uuid) {
+        for (auto* s : services_) {
+            if (s->getUUID() == uuid)
+                return s;
+        }
+        return nullptr;
+    }
+
+    NimBLERemoteService* getService(const NimBLEUUID& uuid) { return getService(uuid.toString().c_str()); }
+
+    // Test helpers
+    void mockSetConnectSuccess(bool success) { mockConnectSuccess_ = success; }
+    void mockAddService(NimBLERemoteService* s) { services_.push_back(s); }
+    void mockTriggerDisconnect() {
+        connected_ = false;
+        if (callbacks_)
+            callbacks_->onDisconnect(this);
+    }
+    int getConnectAttempts() const { return connectAttempts_; }
+    NimBLEClientCallbacks* getCallbacks() const { return callbacks_; }
+
+    ~NimBLEClient() {
+        for (auto* s : services_)
+            delete s;
+    }
+
+  private:
+    NimBLEClientCallbacks* callbacks_;
+    bool connected_;
+    bool mockConnectSuccess_ = true;
+    int connectAttempts_ = 0;
+    uint16_t minInterval_ = 0;
+    uint16_t maxInterval_ = 0;
+    uint16_t latency_ = 0;
+    uint16_t timeout_ = 0;
+    uint8_t connectTimeout_ = 0;
+    std::vector<NimBLERemoteService*> services_;
+};
+
+// =============================================================================
+// NimBLEDevice static class
+// =============================================================================
+
 // NimBLEDevice static class
 class NimBLEDevice {
   public:
@@ -285,17 +483,35 @@ class NimBLEDevice {
 
     static NimBLEAdvertising* getAdvertising() { return &advertising_; }
 
+    static NimBLEClient* createClient() {
+        NimBLEClient* client = new NimBLEClient();
+        // Apply global mock settings to new clients
+        client->mockSetConnectSuccess(mockNextConnectSuccess_);
+        clients_.push_back(client);
+        return client;
+    }
+
+    static bool getInitialized() { return initialized_; }
+
+    // Set whether the next created client's connect() will succeed
+    static void mockSetNextConnectSuccess(bool success) { mockNextConnectSuccess_ = success; }
+
     // Test helpers
     static const std::string& getDeviceName() { return deviceName_; }
     static bool isInitialized() { return initialized_; }
     static int getPower() { return power_; }
+    static std::vector<NimBLEClient*>& getClients() { return clients_; }
 
     static void mockReset() {
         initialized_ = false;
         deviceName_ = "";
         power_ = 0;
+        mockNextConnectSuccess_ = true;
         delete server_;
         server_ = nullptr;
+        for (auto* c : clients_)
+            delete c;
+        clients_.clear();
         advertising_.mockReset();
     }
 
@@ -303,15 +519,19 @@ class NimBLEDevice {
     static bool initialized_;
     static std::string deviceName_;
     static int power_;
+    static bool mockNextConnectSuccess_;
     static NimBLEServer* server_;
     static NimBLEAdvertising advertising_;
+    static std::vector<NimBLEClient*> clients_;
 };
 
 // Static member definitions
 inline bool NimBLEDevice::initialized_ = false;
 inline std::string NimBLEDevice::deviceName_ = "";
 inline int NimBLEDevice::power_ = 0;
+inline bool NimBLEDevice::mockNextConnectSuccess_ = true;
 inline NimBLEServer* NimBLEDevice::server_ = nullptr;
 inline NimBLEAdvertising NimBLEDevice::advertising_;
+inline std::vector<NimBLEClient*> NimBLEDevice::clients_;
 
 #endif  // NIMBLEDEVICE_MOCK_H
