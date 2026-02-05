@@ -127,7 +127,10 @@ void BLEScanner::scanCompleteCB(NimBLEScanResults results) {
         }
         instance->scanning = false;
 
-        // Wait for BLE stack to settle after scan stops
+        // 500ms delay: Wait for BLE stack to settle after scan stops.
+        // NimBLE requires scan to be fully stopped before creating
+        // client connections. This delay ensures scan resources are
+        // completely released.
         delay(500);
 
         Logger.logln("BLEScanner: Scan done, %d boards", instance->discoveredBoards.size());

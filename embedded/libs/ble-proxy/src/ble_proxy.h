@@ -5,6 +5,7 @@
 #include "ble_scanner.h"
 
 #include <Arduino.h>
+#include <atomic>
 
 // Proxy state machine
 enum class BLEProxyState {
@@ -133,6 +134,11 @@ class BLEProxy {
     ProxyStateCallback stateCallback;
     ProxyDataCallback dataCallback;
     ProxySendToAppCallback sendToAppCallback;
+
+    // Atomic flag to prevent race between handleBoardFound/handleScanComplete
+    // callbacks and loop(). Both callbacks can fire asynchronously from NimBLE
+    // and may attempt to initiate a connection simultaneously.
+    std::atomic<bool> connectionInitiated{false};
 
     void setState(BLEProxyState newState);
     void startScan();

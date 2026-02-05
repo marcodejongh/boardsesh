@@ -121,7 +121,9 @@ void BLEProxy::loop() {
 
                 Logger.logln("BLEProxy: Addr: %s", connectAddr.toString().c_str());
 
-                // Brief delay for scan cleanup
+                // 100ms delay: Allow NimBLE to fully release scan resources before
+                // initiating client connection. Without this, connection may fail
+                // due to scan cleanup not completing.
                 delay(100);
 
                 // Now connect
@@ -214,7 +216,10 @@ void BLEProxy::startScan() {
 void BLEProxy::handleBoardFound(const DiscoveredBoard& board) {
     // If we're still scanning and haven't found a board yet, mark it for connection
     // Don't stop scan or connect from callback - do it in loop() to avoid re-entry
-    if (state == BLEProxyState::SCANNING && pendingConnectName.length() == 0) {
+    // Atomically check and set connectionInitiated to prevent race with handleScanComplete
+    if (state == BLEProxyState::SCANNING &&
+        pendingConnectName.length() == 0 &&
+        !connectionInitiated.exchange(true)) {
         Logger.logln("BLEProxy: Found %s", board.name.c_str());
 
         // Store target info - loop() will handle connection
@@ -254,11 +259,19 @@ void BLEProxy::handleScanComplete(const std::vector<DiscoveredBoard>& boards) {
     }
 
     if (target) {
+        // Atomically check and set to prevent race with handleBoardFound
+        if (connectionInitiated.exchange(true)) {
+            Logger.logln("BLEProxy: Connection already initiated by handleBoardFound, skipping");
+            return;
+        }
+
         Logger.logln("BLEProxy: Will connect to %s (%s)", target->name.c_str(), target->address.toString().c_str());
 
-        // Small delay to allow NimBLE to fully release scan resources
-        // before initiating client connection
         setState(BLEProxyState::CONNECTING);
+
+        // 100ms delay: Allow NimBLE to fully release scan resources before
+        // initiating client connection. Without this, connection may fail
+        // due to scan cleanup not completing.
         delay(100);
 
         Logger.logln("BLEProxy: Initiating connection...");
@@ -275,7 +288,11 @@ void BLEProxy::handleBoardConnected(bool connected) {
 
         // Now that we're connected to the real board, start advertising
         // so phone apps can connect to us
-        delay(200);  // Brief delay after client connection stabilizes
+
+        // 200ms delay: Allow BLE client connection to stabilize before
+        // starting server advertising. This prevents GATT server issues
+        // when client and server start simultaneously.
+        delay(200);
         Logger.logln("BLEProxy: Starting BLE advertising");
 
         // Use BLE.startAdvertising() which properly manages advertising state
@@ -283,6 +300,10 @@ void BLEProxy::handleBoardConnected(bool connected) {
         BLE.startAdvertising();
     } else {
         Logger.logln("BLEProxy: Board disconnected");
+
+        // Reset connection flag so next scan can initiate a new connection
+        connectionInitiated = false;
+
         setState(BLEProxyState::RECONNECTING);
     }
 }

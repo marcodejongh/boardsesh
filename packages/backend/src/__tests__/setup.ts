@@ -75,6 +75,29 @@ const createTablesSQL = `
   CREATE INDEX IF NOT EXISTS "board_sessions_status_idx" ON "board_sessions" ("status");
   CREATE INDEX IF NOT EXISTS "board_sessions_last_activity_idx" ON "board_sessions" ("last_activity");
   CREATE INDEX IF NOT EXISTS "board_sessions_discovery_idx" ON "board_sessions" ("discoverable", "status", "last_activity");
+
+  -- Drop and recreate esp32_controllers table for controller tests
+  DROP TABLE IF EXISTS "esp32_controllers" CASCADE;
+
+  -- Create esp32_controllers table
+  CREATE TABLE IF NOT EXISTS "esp32_controllers" (
+    "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    "user_id" text REFERENCES "users"("id") ON DELETE CASCADE,
+    "api_key" varchar(64) UNIQUE NOT NULL,
+    "name" varchar(100),
+    "board_name" varchar(20) NOT NULL,
+    "layout_id" integer NOT NULL,
+    "size_id" integer NOT NULL,
+    "set_ids" varchar(100) NOT NULL,
+    "authorized_session_id" text,
+    "created_at" timestamp DEFAULT now() NOT NULL,
+    "last_seen_at" timestamp
+  );
+
+  -- Create indexes for esp32_controllers
+  CREATE INDEX IF NOT EXISTS "esp32_controllers_user_idx" ON "esp32_controllers" ("user_id");
+  CREATE INDEX IF NOT EXISTS "esp32_controllers_api_key_idx" ON "esp32_controllers" ("api_key");
+  CREATE INDEX IF NOT EXISTS "esp32_controllers_session_idx" ON "esp32_controllers" ("authorized_session_id");
 `;
 
 beforeAll(async () => {
