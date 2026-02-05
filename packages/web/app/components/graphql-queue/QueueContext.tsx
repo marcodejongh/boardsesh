@@ -116,8 +116,11 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
 
   // Check if persistent session is active for this board
   // Uses baseBoardPath to ensure navigation between climbs doesn't break the session check
+  // Compare base paths since activeSession.boardPath may include angle/view segments
   const isPersistentSessionActive = persistentSession.activeSession?.sessionId === sessionId &&
-    persistentSession.activeSession?.boardPath === baseBoardPath;
+    (persistentSession.activeSession?.boardPath
+      ? getBaseBoardPath(persistentSession.activeSession.boardPath)
+      : '') === baseBoardPath;
 
   // Build current user info for queue items
   const currentUserInfo: QueueItemUser | undefined = useMemo(() => {
