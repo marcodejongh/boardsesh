@@ -29,6 +29,7 @@
 // State
 bool wifiConnected = false;
 bool backendConnected = false;
+bool bleInitialized = false;
 
 #ifdef ENABLE_DISPLAY
 // Navigation mutation debounce - wait for rapid presses to stop before sending mutation
@@ -86,6 +87,7 @@ void onBLEData(const uint8_t* data, size_t len);
 void onBLELedData(const LedCommand* commands, int count, int angle);
 void onGraphQLStateChange(GraphQLConnectionState state);
 void onGraphQLMessage(JsonDocument& doc);
+void initializeBLE();
 #ifdef ENABLE_DISPLAY
 void handleLedUpdateExtended(JsonObject& data);
 void onQueueSync(const ControllerQueueSyncData& data);
@@ -105,6 +107,47 @@ void sendToAppViaBLE(const uint8_t* data, size_t len) {
     BLE.send(data, len);
 }
 #endif
+
+/**
+ * Initialize BLE - called after WiFi is configured
+ * This is deferred until WiFi is set up so we don't waste resources
+ * scanning for boards when we can't connect to the backend anyway
+ */
+void initializeBLE() {
+    if (bleInitialized) {
+        return;  // Already initialized
+    }
+
+    Logger.logln("Initializing BLE as '%s'...", BLE_DEVICE_NAME);
+#ifdef ENABLE_BLE_PROXY
+    // When proxy is enabled, don't advertise yet - connect to board first
+    // Advertising will start after successful connection to real board
+    BLE.begin(BLE_DEVICE_NAME, false);
+#else
+    BLE.begin(BLE_DEVICE_NAME, true);
+#endif
+    BLE.setConnectCallback(onBLEConnect);
+    BLE.setDataCallback(onBLEData);
+    BLE.setLedDataCallback(onBLELedData);
+
+#ifdef ENABLE_BLE_PROXY
+    // Set up raw data forwarding for proxy mode
+    BLE.setRawForwardCallback(onBLERawForward);
+
+    // Initialize proxy
+    String targetMac = Config.getString("proxy_mac");
+    Proxy.begin(targetMac);
+    Proxy.setStateCallback(onProxyStateChange);
+    Proxy.setSendToAppCallback(sendToAppViaBLE);
+#endif
+
+#ifdef ENABLE_DISPLAY
+    Display.setBleStatus(true, false);  // BLE enabled, not connected
+#endif
+
+    bleInitialized = true;
+    Logger.logln("BLE initialization complete");
+}
 
 void setup() {
     Serial.begin(115200);
@@ -162,36 +205,27 @@ void setup() {
 
     // Try to connect to saved WiFi
     if (!WiFiMgr.connectSaved()) {
-        Logger.logln("No saved WiFi credentials");
+        Logger.logln("No saved WiFi credentials - starting AP mode");
+#ifdef ENABLE_DISPLAY
+        // Start AP mode for WiFi configuration
+        if (WiFiMgr.startAP()) {
+            Logger.logln("AP mode started: %s", DEFAULT_AP_NAME);
+            Display.showSetupScreen(DEFAULT_AP_NAME);
+        } else {
+            Logger.logln("Failed to start AP mode");
+            Display.showError("AP Failed");
+        }
+#else
+        // Without display, just start AP mode silently
+        WiFiMgr.startAP();
+#endif
+        // Don't initialize BLE yet - wait for WiFi to be configured
+    } else {
+        // We have saved WiFi credentials, initialize BLE now
+        initializeBLE();
     }
 
-    // Initialize BLE - always use BLE_DEVICE_NAME for Kilter app compatibility
-    Logger.logln("Initializing BLE as '%s'...", BLE_DEVICE_NAME);
-#ifdef ENABLE_BLE_PROXY
-    // When proxy is enabled, don't advertise yet - connect to board first
-    // Advertising will start after successful connection to real board
-    BLE.begin(BLE_DEVICE_NAME, false);
-#else
-    BLE.begin(BLE_DEVICE_NAME, true);
-#endif
-    BLE.setConnectCallback(onBLEConnect);
-    BLE.setDataCallback(onBLEData);
-    BLE.setLedDataCallback(onBLELedData);
-
-#ifdef ENABLE_BLE_PROXY
-    // Set up raw data forwarding for proxy mode
-    BLE.setRawForwardCallback(onBLERawForward);
-
-    // Initialize proxy
-    String targetMac = Config.getString("proxy_mac");
-    Proxy.begin(targetMac);
-    Proxy.setStateCallback(onProxyStateChange);
-    Proxy.setSendToAppCallback(sendToAppViaBLE);
-#endif
-
 #ifdef ENABLE_DISPLAY
-    Display.setBleStatus(true, false);  // BLE enabled, not connected
-
     // Initialize button pins for navigation
     pinMode(BUTTON_1_PIN, INPUT_PULLUP);
     pinMode(BUTTON_2_PIN, INPUT_PULLUP);
@@ -202,13 +236,20 @@ void setup() {
     WebConfig.begin();
 
     Logger.logln("Setup complete!");
-    Logger.logln("IP: %s", WiFiMgr.getIP().c_str());
+    if (WiFiMgr.isAPMode()) {
+        Logger.logln("AP IP: %s", WiFiMgr.getAPIP().c_str());
+    } else {
+        Logger.logln("IP: %s", WiFiMgr.getIP().c_str());
+    }
 
     // Green blink to indicate ready
     LEDs.blink(0, 255, 0, 3, 100);
 
+    // Don't refresh display if in AP mode - keep showing setup screen
 #ifdef ENABLE_DISPLAY
-    Display.refresh();
+    if (!WiFiMgr.isAPMode()) {
+        Display.refresh();
+    }
 #endif
 }
 
@@ -216,13 +257,15 @@ void loop() {
     // Process WiFi
     WiFiMgr.loop();
 
-    // Process BLE
-    BLE.loop();
+    // Process BLE (only if initialized - deferred until WiFi configured)
+    if (bleInitialized) {
+        BLE.loop();
 
 #ifdef ENABLE_BLE_PROXY
-    // Process BLE proxy
-    Proxy.loop();
+        // Process BLE proxy
+        Proxy.loop();
 #endif
+    }
 
     // Process WebSocket if WiFi connected
     if (wifiConnected) {
@@ -323,7 +366,12 @@ void onWiFiStateChange(WiFiConnectionState state) {
 
 #ifdef ENABLE_DISPLAY
             Display.setWiFiStatus(true);
+            // Show normal UI now that we're connected
+            Display.showNoClimb();
 #endif
+
+            // Initialize BLE now that WiFi is connected (if not already done)
+            initializeBLE();
 
             // Get backend config
             String host = Config.getString("backend_host", DEFAULT_BACKEND_HOST);
@@ -368,6 +416,20 @@ void onWiFiStateChange(WiFiConnectionState state) {
 
         case WiFiConnectionState::CONNECTION_FAILED:
             Logger.logln("WiFi connection failed");
+#ifdef ENABLE_DISPLAY
+            Display.setWiFiStatus(false);
+            // If connection failed and we don't have saved credentials, start AP mode
+            if (!WiFiMgr.hasSavedCredentials()) {
+                Logger.logln("No saved credentials - starting AP mode for configuration");
+                if (WiFiMgr.startAP()) {
+                    Display.showSetupScreen(DEFAULT_AP_NAME);
+                }
+            }
+#endif
+            break;
+
+        case WiFiConnectionState::AP_MODE:
+            Logger.logln("WiFi in AP mode: %s", WiFiMgr.getAPIP().c_str());
 #ifdef ENABLE_DISPLAY
             Display.setWiFiStatus(false);
 #endif

@@ -8,8 +8,10 @@
 
 #define WIFI_CONNECT_TIMEOUT_MS 30000
 #define WIFI_RECONNECT_INTERVAL_MS 5000
+#define DEFAULT_AP_NAME "Boardsesh-Setup"
+#define DEFAULT_AP_IP "192.168.4.1"
 
-enum class WiFiConnectionState { DISCONNECTED, CONNECTING, CONNECTED, CONNECTION_FAILED };
+enum class WiFiConnectionState { DISCONNECTED, CONNECTING, CONNECTED, CONNECTION_FAILED, AP_MODE };
 
 typedef void (*WiFiStateCallback)(WiFiConnectionState state);
 
@@ -23,6 +25,13 @@ class WiFiUtils {
     bool connect(const char* ssid, const char* password, bool save = true);
     bool connectSaved();
     void disconnect();
+
+    // Access Point mode
+    bool startAP(const char* apName = DEFAULT_AP_NAME);
+    void stopAP();
+    bool isAPMode();
+    String getAPIP();
+    bool hasSavedCredentials();
 
     bool isConnected();
     WiFiConnectionState getState();

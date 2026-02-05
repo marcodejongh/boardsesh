@@ -198,6 +198,69 @@ void LilyGoDisplay::showConfigPortal(const char* apName, const char* ip) {
     _display.setTextDatum(lgfx::top_left);
 }
 
+void LilyGoDisplay::showSetupScreen(const char* apName) {
+    _display.fillScreen(COLOR_BACKGROUND);
+
+    // Header
+    _display.setFont(&fonts::FreeSansBold9pt7b);
+    _display.setTextColor(COLOR_ACCENT);
+    _display.setTextDatum(lgfx::top_center);
+    _display.drawString("WiFi Setup", SCREEN_WIDTH / 2, 8);
+
+    // Step 1: Connect to WiFi AP
+    _display.setFont(&fonts::Font2);
+    _display.setTextColor(COLOR_TEXT);
+    _display.drawString("1. Connect to WiFi:", SCREEN_WIDTH / 2, 38);
+
+    _display.setFont(&fonts::FreeSansBold9pt7b);
+    _display.setTextColor(COLOR_STATUS_OK);
+    _display.drawString(apName, SCREEN_WIDTH / 2, 58);
+
+    // QR Code section - generate QR for http://192.168.4.1
+    const char* configUrl = "http://192.168.4.1";
+    QRCode qrCode;
+    qrcode_initText(&qrCode, _qrCodeData, QR_VERSION, ECC_LOW, configUrl);
+
+    // Calculate QR code size and position
+    int qrSize = qrCode.size;
+    int pixelSize = 100 / qrSize;  // Target ~100px QR code
+    if (pixelSize < 1) pixelSize = 1;
+
+    int actualQrSize = pixelSize * qrSize;
+    int qrX = (SCREEN_WIDTH - actualQrSize) / 2;
+    int qrY = 90;
+
+    // Draw white background for QR code
+    _display.fillRect(qrX - 4, qrY - 4, actualQrSize + 8, actualQrSize + 8, COLOR_QR_BG);
+
+    // Draw QR code modules
+    for (uint8_t y = 0; y < qrSize; y++) {
+        for (uint8_t x = 0; x < qrSize; x++) {
+            if (qrcode_getModule(&qrCode, x, y)) {
+                _display.fillRect(qrX + x * pixelSize, qrY + y * pixelSize, pixelSize, pixelSize, COLOR_QR_FG);
+            }
+        }
+    }
+
+    // Step 2: Instructions below QR code
+    int instructionY = qrY + actualQrSize + 16;
+
+    _display.setFont(&fonts::Font2);
+    _display.setTextColor(COLOR_TEXT);
+    _display.drawString("2. Scan QR code or", SCREEN_WIDTH / 2, instructionY);
+    _display.drawString("open in browser:", SCREEN_WIDTH / 2, instructionY + 18);
+
+    _display.setFont(&fonts::FreeSansBold9pt7b);
+    _display.setTextColor(COLOR_ACCENT);
+    _display.drawString("192.168.4.1", SCREEN_WIDTH / 2, instructionY + 40);
+
+    _display.setFont(&fonts::Font0);
+    _display.setTextColor(COLOR_TEXT_DIM);
+    _display.drawString("to configure settings", SCREEN_WIDTH / 2, instructionY + 65);
+
+    _display.setTextDatum(lgfx::top_left);
+}
+
 void LilyGoDisplay::setSessionId(const char* sessionId) {
     _sessionId = sessionId ? sessionId : "";
 }
