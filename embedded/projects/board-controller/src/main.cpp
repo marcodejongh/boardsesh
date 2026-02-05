@@ -153,6 +153,10 @@ void setup() {
 
 #ifdef ENABLE_DISPLAY
     Display.setBleStatus(true, false);  // BLE enabled, not connected
+
+    // Initialize button pins for navigation
+    pinMode(BUTTON_1_PIN, INPUT_PULLUP);
+    pinMode(BUTTON_2_PIN, INPUT_PULLUP);
 #endif
 
     // Initialize web config server

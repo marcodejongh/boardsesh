@@ -97,13 +97,14 @@ export const controllerSubscriptions = {
       ctx: ConnectionContext
     ): AsyncGenerator<{ controllerEvents: ControllerEvent }> {
       // Validate API key from context and verify session authorization
-      const { controllerId } = await requireControllerAuthorizedForSession(ctx, sessionId);
+      // This throws if the controller is not authorized
+      await requireControllerAuthorizedForSession(ctx, sessionId);
 
-      // Get controller details
+      // Get controller details using the controllerId from context (validated above)
       const [controller] = await db
         .select()
         .from(esp32Controllers)
-        .where(eq(esp32Controllers.id, controllerId))
+        .where(eq(esp32Controllers.id, ctx.controllerId!))
         .limit(1);
 
       if (!controller) {
@@ -216,7 +217,7 @@ export const controllerSubscriptions = {
               : null;
 
             if (queueEvent.__typename === 'CurrentClimbChanged') {
-              console.log(`[Controller] CurrentClimbChanged event - clientId: ${eventClientId}, controllerId: ${controllerId}`);
+              console.log(`[Controller] CurrentClimbChanged event - clientId: ${eventClientId}, controllerId: ${controller.id}`);
             }
 
             const currentItem = queueEvent.__typename === 'CurrentClimbChanged'
