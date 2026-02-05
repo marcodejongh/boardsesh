@@ -453,23 +453,22 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
     // Handle AngleChanged navigation separately (after state update)
     if (event.__typename === 'AngleChanged') {
       // Update the URL to reflect the new angle
-      // Replace the current angle in the pathname with the new one
+      // URL structure: /board_name/layout_id/size_id/set_ids/angle/...
+      // After split('/'), angle is at index 5 (index 0 is empty string from leading slash)
       const pathSegments = pathname.split('/');
-      // Find and replace the angle segment (last numeric segment before any query params)
-      for (let i = pathSegments.length - 1; i >= 0; i--) {
-        const segment = pathSegments[i];
-        // Check if this is a numeric segment (angle)
-        if (/^\d+$/.test(segment)) {
-          pathSegments[i] = event.angle.toString();
-          break;
+      const ANGLE_INDEX = 5; // Position of angle in board route: ['', board, layout, size, sets, angle, ...]
+
+      if (pathSegments.length > ANGLE_INDEX && /^\d+$/.test(pathSegments[ANGLE_INDEX])) {
+        pathSegments[ANGLE_INDEX] = event.angle.toString();
+        const newPath = pathSegments.join('/');
+        if (newPath !== pathname) {
+          // Preserve search params (like session ID)
+          const searchParams = new URLSearchParams(window.location.search);
+          const newUrl = searchParams.toString() ? `${newPath}?${searchParams.toString()}` : newPath;
+          router.replace(newUrl);
         }
-      }
-      const newPath = pathSegments.join('/');
-      if (newPath !== pathname) {
-        // Preserve search params (like session ID)
-        const searchParams = new URLSearchParams(window.location.search);
-        const newUrl = searchParams.toString() ? `${newPath}?${searchParams.toString()}` : newPath;
-        router.replace(newUrl);
+      } else if (DEBUG) {
+        console.warn('[PersistentSession] Could not find angle segment in pathname:', pathname);
       }
     }
 

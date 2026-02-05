@@ -344,7 +344,7 @@ export const sessionMutations = {
 
     // Validate angle is a reasonable number
     if (!Number.isInteger(angle) || angle < 0 || angle > 90) {
-      throw new Error('Invalid angle: must be an integer between 0 and 90');
+      throw new Error('Invalid angle: must be an integer between 0 and 90 degrees');
     }
 
     // Update the session angle in the database and Redis
@@ -359,6 +359,11 @@ export const sessionMutations = {
     // Update queue items with new angle's climb stats if we have board params
     let updatedQueue = queueState.queue;
     let updatedCurrentClimb = queueState.currentClimbQueueItem;
+
+    // Warn if we can't parse boardPath but have queue items that need updating
+    if (!boardParams && (queueState.queue.length > 0 || queueState.currentClimbQueueItem)) {
+      console.warn(`[updateSessionAngle] Could not parse boardPath "${result.boardPath}" - queue items will have stale stats`);
+    }
 
     if (boardParams && (queueState.queue.length > 0 || queueState.currentClimbQueueItem)) {
       if (DEBUG) console.log(`[updateSessionAngle] Updating ${queueState.queue.length} queue items for angle ${angle}`);
