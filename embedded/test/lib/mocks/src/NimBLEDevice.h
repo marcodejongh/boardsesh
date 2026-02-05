@@ -202,9 +202,11 @@ class NimBLEAdvertising {
 // NimBLEServer
 class NimBLEServer {
   public:
-    NimBLEServer() : callbacks_(nullptr), connectedCount_(0) {}
+    NimBLEServer() : callbacks_(nullptr), connectedCount_(0), started_(false) {}
 
     void setCallbacks(NimBLEServerCallbacks* callbacks) { callbacks_ = callbacks; }
+
+    void start() { started_ = true; }
 
     NimBLEService* createService(const char* uuid) {
         services_.push_back(new NimBLEService(uuid));
@@ -253,6 +255,7 @@ class NimBLEServer {
     NimBLEServerCallbacks* callbacks_;
     std::vector<NimBLEService*> services_;
     int connectedCount_;
+    bool started_;
     uint16_t disconnectedHandle_ = BLE_HS_CONN_HANDLE_NONE;
 };
 

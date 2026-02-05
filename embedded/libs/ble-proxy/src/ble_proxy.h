@@ -9,13 +9,15 @@
 
 // Proxy state machine
 enum class BLEProxyState {
-    PROXY_DISABLED,       // Proxy mode not enabled
-    IDLE,                 // Waiting to scan
-    SCANNING,             // Scanning for boards
-    SCAN_COMPLETE_NONE,   // Scan completed but no boards found (won't auto-retry)
-    CONNECTING,           // Connecting to board
-    CONNECTED,            // Connected and proxying
-    RECONNECTING          // Connection lost, will retry
+    PROXY_DISABLED,         // Proxy mode not enabled
+    IDLE,                   // Waiting to scan
+    SCANNING,               // Scanning for boards
+    SCAN_COMPLETE_NONE,     // Scan completed but no boards found (won't auto-retry)
+    WAIT_BEFORE_CONNECT,    // Non-blocking wait after scan before connecting
+    CONNECTING,             // Connecting to board
+    WAIT_BEFORE_ADVERTISE,  // Non-blocking wait after connect before advertising
+    CONNECTED,              // Connected and proxying
+    RECONNECTING            // Connection lost, will retry
 };
 
 typedef void (*ProxyStateCallback)(BLEProxyState state);
@@ -126,6 +128,10 @@ class BLEProxy {
     String targetMac;
     unsigned long scanStartTime;
     unsigned long reconnectDelay;
+
+    // Non-blocking timer for wait states
+    unsigned long waitStartTime;
+    unsigned long waitDuration;
 
     // Pending connection info (stored after scan, before connect)
     NimBLEAddress pendingConnectAddress;

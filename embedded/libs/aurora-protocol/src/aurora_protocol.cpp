@@ -251,7 +251,6 @@ void AuroraProtocol::encodeLedCommands(const LedCommand* commands, int count,
     // Max BLE packet size is ~240 bytes, with framing overhead we can fit ~75 LEDs per packet
     // To be safe, use 60 LEDs per packet
     const int LEDS_PER_PACKET = 60;
-    const int BYTES_PER_LED = 3;
 
     int totalPackets = (count + LEDS_PER_PACKET - 1) / LEDS_PER_PACKET;
     int ledIndex = 0;

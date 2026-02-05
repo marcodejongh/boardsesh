@@ -45,6 +45,7 @@ static void onBoardFoundStatic(const DiscoveredBoard& board) {
 
 BLEProxy::BLEProxy()
     : state(BLEProxyState::PROXY_DISABLED), enabled(false), scanStartTime(0), reconnectDelay(5000),
+      waitStartTime(0), waitDuration(0),
       stateCallback(nullptr), dataCallback(nullptr), sendToAppCallback(nullptr) {
     proxyInstance = this;
 }
@@ -106,33 +107,49 @@ void BLEProxy::loop() {
         case BLEProxyState::SCANNING:
             // Check if we found a board to connect to
             if (pendingConnectName.length() > 0) {
+                Logger.logln("BLEProxy: Found board, preparing to connect to %s", pendingConnectName.c_str());
+
+                // Stop the scan (this may trigger handleScanComplete, but we check pendingConnectName)
+                Scanner.stopScan();
+
+                Logger.logln("BLEProxy: Addr: %s", pendingConnectAddress.toString().c_str());
+
+                // Non-blocking wait: Allow NimBLE to fully release scan resources before
+                // initiating client connection. Without this, connection may fail
+                // due to scan cleanup not completing.
+                waitStartTime = millis();
+                waitDuration = 100;
+                setState(BLEProxyState::WAIT_BEFORE_CONNECT);
+            }
+            break;
+
+        case BLEProxyState::WAIT_BEFORE_CONNECT:
+            // Non-blocking wait before connecting
+            if (millis() - waitStartTime >= waitDuration) {
                 Logger.logln("BLEProxy: Connecting to %s", pendingConnectName.c_str());
 
-                // Set state FIRST to prevent handleScanComplete from also trying to connect
-                setState(BLEProxyState::CONNECTING);
-
-                // Clear pending name to signal we've started connection
-                String connectName = pendingConnectName;
+                // Store connection info and clear pending
                 NimBLEAddress connectAddr = pendingConnectAddress;
                 pendingConnectName = "";
 
-                // Stop the scan (this may trigger handleScanComplete, but state is already CONNECTING)
-                Scanner.stopScan();
-
-                Logger.logln("BLEProxy: Addr: %s", connectAddr.toString().c_str());
-
-                // 100ms delay: Allow NimBLE to fully release scan resources before
-                // initiating client connection. Without this, connection may fail
-                // due to scan cleanup not completing.
-                delay(100);
-
-                // Now connect
+                setState(BLEProxyState::CONNECTING);
                 BoardClient.connect(connectAddr);
             }
             break;
 
         case BLEProxyState::CONNECTING:
             // Handled by client callbacks
+            break;
+
+        case BLEProxyState::WAIT_BEFORE_ADVERTISE:
+            // Non-blocking wait before starting advertising
+            if (millis() - waitStartTime >= waitDuration) {
+                Logger.logln("BLEProxy: Starting BLE advertising");
+                // Use BLE.startAdvertising() which properly manages advertising state
+                // and avoids duplicate GATT server start issues
+                BLE.startAdvertising();
+                setState(BLEProxyState::CONNECTED);
+            }
             break;
 
         case BLEProxyState::CONNECTED:
@@ -267,15 +284,16 @@ void BLEProxy::handleScanComplete(const std::vector<DiscoveredBoard>& boards) {
 
         Logger.logln("BLEProxy: Will connect to %s (%s)", target->name.c_str(), target->address.toString().c_str());
 
-        setState(BLEProxyState::CONNECTING);
+        // Store connection info for the wait state
+        pendingConnectAddress = target->address;
+        pendingConnectName = target->name;
 
-        // 100ms delay: Allow NimBLE to fully release scan resources before
+        // Non-blocking wait: Allow NimBLE to fully release scan resources before
         // initiating client connection. Without this, connection may fail
         // due to scan cleanup not completing.
-        delay(100);
-
-        Logger.logln("BLEProxy: Initiating connection...");
-        BoardClient.connect(target->address);
+        waitStartTime = millis();
+        waitDuration = 100;
+        setState(BLEProxyState::WAIT_BEFORE_CONNECT);
     } else {
         setState(BLEProxyState::IDLE);
     }
@@ -284,20 +302,15 @@ void BLEProxy::handleScanComplete(const std::vector<DiscoveredBoard>& boards) {
 void BLEProxy::handleBoardConnected(bool connected) {
     if (connected) {
         Logger.logln("BLEProxy: Connected to board!");
-        setState(BLEProxyState::CONNECTED);
 
         // Now that we're connected to the real board, start advertising
-        // so phone apps can connect to us
-
-        // 200ms delay: Allow BLE client connection to stabilize before
-        // starting server advertising. This prevents GATT server issues
-        // when client and server start simultaneously.
-        delay(200);
-        Logger.logln("BLEProxy: Starting BLE advertising");
-
-        // Use BLE.startAdvertising() which properly manages advertising state
-        // and avoids duplicate GATT server start issues
-        BLE.startAdvertising();
+        // so phone apps can connect to us. Use non-blocking wait to allow
+        // BLE client connection to stabilize before starting server
+        // advertising. This prevents GATT server issues when client and
+        // server start simultaneously.
+        waitStartTime = millis();
+        waitDuration = 200;
+        setState(BLEProxyState::WAIT_BEFORE_ADVERTISE);
     } else {
         Logger.logln("BLEProxy: Board disconnected");
 

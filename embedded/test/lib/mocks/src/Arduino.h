@@ -15,6 +15,7 @@
 #include <cstdio>
 #include <cstring>
 #include <string>
+#include <type_traits>
 
 // Arduino type definitions
 typedef uint8_t byte;
@@ -22,15 +23,17 @@ typedef bool boolean;
 
 // Arduino min/max - defined as templates to avoid conflicts with std::min/max
 // Note: Arduino defines these as macros, but that causes issues with STL
-// Use inline functions for compatibility
+// Use inline functions for compatibility. Return by value to avoid dangling references.
 #ifndef ARDUINO_MIN_MAX_DEFINED
 #define ARDUINO_MIN_MAX_DEFINED
 
-template <typename T, typename U> inline auto min(T a, U b) -> decltype(a < b ? a : b) {
+template <typename T, typename U>
+inline typename std::common_type<T, U>::type min(T a, U b) {
     return (a < b) ? a : b;
 }
 
-template <typename T, typename U> inline auto max(T a, U b) -> decltype(a > b ? a : b) {
+template <typename T, typename U>
+inline typename std::common_type<T, U>::type max(T a, U b) {
     return (a > b) ? a : b;
 }
 
