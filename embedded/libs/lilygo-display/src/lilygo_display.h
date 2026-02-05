@@ -50,34 +50,34 @@
 #define STATUS_BAR_HEIGHT 20
 #define STATUS_BAR_Y 0
 
-// Previous climb indicator (top navigation)
+// Previous climb indicator (kept for backward compatibility, not displayed)
 #define PREV_INDICATOR_Y 20
 #define PREV_INDICATOR_HEIGHT 22
 
-// Current climb section (condensed)
-#define CURRENT_CLIMB_Y 42
-#define CURRENT_CLIMB_HEIGHT 78
+// Current climb section (moved up - prev indicator removed, redundant with history)
+#define CURRENT_CLIMB_Y 20
+#define CURRENT_CLIMB_HEIGHT 75
 
 // Climb name area
-#define CLIMB_NAME_Y 47
+#define CLIMB_NAME_Y 25
 #define CLIMB_NAME_HEIGHT 30
 
-// Grade badge area (closer to title)
-#define GRADE_Y 77
-#define GRADE_HEIGHT 40
+// Grade badge area (starts at 55, height 36, ends at 91)
+#define GRADE_Y 55
+#define GRADE_HEIGHT 36
 
-// QR code section (moved up)
-#define QR_SECTION_Y 120
-#define QR_SECTION_HEIGHT 95
-#define QR_CODE_SIZE 80
+// QR code section (enlarged for 120px QR code)
+#define QR_SECTION_Y 95
+#define QR_SECTION_HEIGHT 133
+#define QR_CODE_SIZE 120
 
 // Next climb indicator
-#define NEXT_INDICATOR_Y 215
+#define NEXT_INDICATOR_Y 228
 #define NEXT_INDICATOR_HEIGHT 22
 
 // History section (previous climbs in queue)
-#define HISTORY_Y 237
-#define HISTORY_HEIGHT 72
+#define HISTORY_Y 250
+#define HISTORY_HEIGHT 59
 #define HISTORY_ITEM_HEIGHT 18
 #define HISTORY_MAX_ITEMS 3
 #define HISTORY_LABEL_HEIGHT 12
@@ -206,6 +206,9 @@ class LilyGoDisplay {
                    const char* boardType);
     void showNoClimb();
 
+    // Session ID for QR code
+    void setSessionId(const char* sessionId);
+
     // History management
     void addToHistory(const char* name, const char* grade, const char* gradeColor);
     void clearHistory();
@@ -265,6 +268,9 @@ class LilyGoDisplay {
     int _angle;
     String _climbUuid;
     String _boardType;
+
+    // Session ID for QR code URL
+    String _sessionId;
 
     // History
     std::vector<ClimbHistoryEntry> _history;
