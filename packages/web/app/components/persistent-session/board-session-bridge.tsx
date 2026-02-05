@@ -47,12 +47,16 @@ const BoardSessionBridge: React.FC<BoardSessionBridgeProps> = ({
     if (sessionIdFromUrl && boardDetailsRef.current) {
       // Activate session when URL has session param and either:
       // - Session ID changed
-      // - Board configuration path changed (e.g., navigating to different angle)
-      // Note: We use baseBoardPath to ignore changes to /play/[uuid] segments
-      if (activeSession?.sessionId !== sessionIdFromUrl || activeSession?.boardPath !== baseBoardPath) {
+      // - Board configuration path changed (e.g., navigating to different board/layout/size/sets)
+      // Note: We compare baseBoardPaths to ignore changes to angle, /play/[uuid], /list segments
+      // This ensures session continuity when navigating between climbs or changing angles
+      const activeSessionBasePath = activeSession?.boardPath ? getBaseBoardPath(activeSession.boardPath) : '';
+      if (activeSession?.sessionId !== sessionIdFromUrl || activeSessionBasePath !== baseBoardPath) {
+        // Store the full pathname (including angle and view segment like /list)
+        // This allows the /join redirect to send users to the exact page with angle
         activateSession({
           sessionId: sessionIdFromUrl,
-          boardPath: baseBoardPath,
+          boardPath: pathname,
           boardDetails: boardDetailsRef.current,
           parsedParams: parsedParamsRef.current,
         });
@@ -63,6 +67,7 @@ const BoardSessionBridge: React.FC<BoardSessionBridgeProps> = ({
   }, [
     sessionIdFromUrl,
     baseBoardPath,
+    pathname,
     // boardDetails and parsedParams removed - accessed via refs to prevent unnecessary reconnections
     // Their object references change on every render but the actual values don't affect session activation
     activeSession?.sessionId,
