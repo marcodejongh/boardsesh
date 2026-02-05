@@ -31,6 +31,14 @@ bool wifiConnected = false;
 bool backendConnected = false;
 
 #ifdef ENABLE_DISPLAY
+// Navigation mutation debounce - wait for rapid presses to stop before sending mutation
+const unsigned long G_MUTATION_DEBOUNCE_MS = 100;  // Wait 100ms after last press before sending mutation
+unsigned long g_pendingMutationTime = 0;           // When to send the debounced mutation (0 = none pending)
+bool g_mutationPending = false;                    // Flag indicating a mutation is waiting to be sent
+char g_pendingMutationUuid[64] = "";               // UUID of the queue item to navigate to
+#endif
+
+#ifdef ENABLE_DISPLAY
 // Queue/climb state for display
 String currentQueueItemUuid = "";
 String currentGradeColor = "";
@@ -234,6 +242,22 @@ void loop() {
     static const unsigned long DEBOUNCE_MS = 50;
     static const unsigned long LONG_PRESS_MS = 3000;
     static const unsigned long SHORT_PRESS_MAX_MS = 500;
+
+    // Process debounced navigation mutation (uses global g_* variables)
+    if (g_mutationPending && millis() >= g_pendingMutationTime) {
+        // If a mutation is already in flight, extend the debounce timer
+        if (GraphQL.isMutationInFlight()) {
+            g_pendingMutationTime = millis() + G_MUTATION_DEBOUNCE_MS;
+            // Don't clear g_mutationPending - wait for current mutation to complete
+        } else {
+            g_mutationPending = false;
+            if (g_pendingMutationUuid[0] != '\0' && backendConnected) {
+                Logger.logln("Navigation: Sending debounced mutation (uuid: %s)", g_pendingMutationUuid);
+                sendNavigationMutation(g_pendingMutationUuid);
+            }
+            g_pendingMutationUuid[0] = '\0';  // Clear after sending
+        }
+    }
 
     bool button1 = digitalRead(BUTTON_1_PIN);
     bool button2 = digitalRead(BUTTON_2_PIN);
@@ -669,7 +693,10 @@ void handleLedUpdateExtended(JsonObject& data) {
     hasCurrentClimb = true;
 
     // Sync local queue index with backend if we have queueItemUuid
-    if (queueItemUuid && Display.getQueueCount() > 0) {
+    // BUT: Skip sync if there's a pending navigation mutation - the user is
+    // rapidly pressing buttons and we don't want incoming LED updates to undo
+    // their optimistic navigation
+    if (queueItemUuid && Display.getQueueCount() > 0 && !g_mutationPending) {
         for (int i = 0; i < Display.getQueueCount(); i++) {
             const LocalQueueItem* item = Display.getQueueItem(i);
             if (item && strcmp(item->uuid, queueItemUuid) == 0) {
@@ -678,6 +705,8 @@ void handleLedUpdateExtended(JsonObject& data) {
                 break;
             }
         }
+    } else if (g_mutationPending && queueItemUuid) {
+        Logger.logln("LED Update: Skipping index sync - mutation pending");
     }
 
     // Parse navigation context if present
@@ -711,6 +740,9 @@ void handleLedUpdateExtended(JsonObject& data) {
     }
 
     // Update display with gradeColor
+    // Note: We always update the display even during rapid navigation.
+    // The index sync skip above prevents the queue position from jumping back,
+    // but we still show whatever climb data arrives. This prevents blank screens.
     Display.showClimb(climbName, climbGrade ? climbGrade : "", currentGradeColor.c_str(), angle,
                       climbUuid ? climbUuid : "", boardType.c_str());
 }
@@ -741,6 +773,8 @@ void sendNavigationMutation(const char* queueItemUuid) {
 
 /**
  * Navigate to previous climb in queue
+ * Uses debounced mutation - UI updates immediately, but mutation is delayed
+ * to coalesce rapid button presses into a single backend call
  */
 void navigatePrevious() {
     if (!backendConnected) {
@@ -768,14 +802,20 @@ void navigatePrevious() {
             // Update display immediately (optimistic)
             Display.showClimb(newCurrent->name, newCurrent->grade, "", 0, newCurrent->climbUuid, boardType.c_str());
 
-            // Send mutation with queueItemUuid for backend sync
-            sendNavigationMutation(newCurrent->uuid);
+            // Schedule debounced mutation (will be sent after MUTATION_DEBOUNCE_MS of inactivity)
+            // Store the UUID so it persists even if Display state changes from incoming updates
+            strncpy(g_pendingMutationUuid, newCurrent->uuid, sizeof(g_pendingMutationUuid) - 1);
+            g_pendingMutationUuid[sizeof(g_pendingMutationUuid) - 1] = '\0';
+            g_pendingMutationTime = millis() + G_MUTATION_DEBOUNCE_MS;
+            g_mutationPending = true;
         }
     }
 }
 
 /**
  * Navigate to next climb in queue
+ * Uses debounced mutation - UI updates immediately, but mutation is delayed
+ * to coalesce rapid button presses into a single backend call
  */
 void navigateNext() {
     if (!backendConnected) {
@@ -802,8 +842,12 @@ void navigateNext() {
             // Update display immediately (optimistic)
             Display.showClimb(newCurrent->name, newCurrent->grade, "", 0, newCurrent->climbUuid, boardType.c_str());
 
-            // Send mutation with queueItemUuid for backend sync
-            sendNavigationMutation(newCurrent->uuid);
+            // Schedule debounced mutation (will be sent after MUTATION_DEBOUNCE_MS of inactivity)
+            // Store the UUID so it persists even if Display state changes from incoming updates
+            strncpy(g_pendingMutationUuid, newCurrent->uuid, sizeof(g_pendingMutationUuid) - 1);
+            g_pendingMutationUuid[sizeof(g_pendingMutationUuid) - 1] = '\0';
+            g_pendingMutationTime = millis() + G_MUTATION_DEBOUNCE_MS;
+            g_mutationPending = true;
         }
     }
 }
