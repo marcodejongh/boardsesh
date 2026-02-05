@@ -1,7 +1,8 @@
 'use client';
 
-import { Result, Button, Typography } from 'antd';
+import { Result, Button, Typography, Flex } from 'antd';
 import Link from 'next/link';
+import { SESSION_ID_MAX_LENGTH } from '@/app/lib/validation/session';
 
 const { Paragraph, Text } = Typography;
 
@@ -10,16 +11,29 @@ interface InvalidSessionErrorProps {
   errorMessage: string;
 }
 
+/**
+ * Sanitizes a session ID for safe display.
+ * Removes any characters that don't match the allowed pattern and truncates if needed.
+ * This provides defense-in-depth even though React already escapes HTML entities.
+ */
+function sanitizeSessionIdForDisplay(sessionId: string): string {
+  // Remove any characters that aren't alphanumeric or hyphens
+  const sanitized = sessionId.replace(/[^a-zA-Z0-9-]/g, '');
+  // Truncate to max length with ellipsis if needed
+  if (sanitized.length > SESSION_ID_MAX_LENGTH) {
+    return sanitized.slice(0, SESSION_ID_MAX_LENGTH) + '…';
+  }
+  return sanitized || '(empty)';
+}
+
 export default function InvalidSessionError({ sessionId, errorMessage }: InvalidSessionErrorProps) {
+  const sanitizedSessionId = sanitizeSessionIdForDisplay(sessionId);
+
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 24,
-      }}
+    <Flex
+      align="center"
+      justify="center"
+      style={{ minHeight: '100vh', padding: 24 }}
     >
       <Result
         status="error"
@@ -31,10 +45,10 @@ export default function InvalidSessionError({ sessionId, errorMessage }: Invalid
           </Link>,
         ]}
       >
-        <div style={{ textAlign: 'left' }}>
+        <Flex vertical align="start">
           <Paragraph>
             <Text strong>Session ID provided: </Text>
-            <Text code>{sessionId}</Text>
+            <Text code>{sanitizedSessionId}</Text>
           </Paragraph>
           <Paragraph>
             <Text strong>Valid session IDs:</Text>
@@ -50,8 +64,8 @@ export default function InvalidSessionError({ sessionId, errorMessage }: Invalid
               <Text code>MarcoSession1</Text>
             </Text>
           </Paragraph>
-        </div>
+        </Flex>
       </Result>
-    </div>
+    </Flex>
   );
 }
