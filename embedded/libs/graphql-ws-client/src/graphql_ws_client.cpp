@@ -12,7 +12,8 @@ const char* GraphQLWSClient::KEY_PATH = "gql_path";
 
 GraphQLWSClient::GraphQLWSClient()
     : state(GraphQLConnectionState::DISCONNECTED), messageCallback(nullptr), stateCallback(nullptr), queueSyncCallback(nullptr),
-      ledUpdateCallback(nullptr), serverPort(443), useSSL(true), lastPingTime(0), lastPongTime(0), reconnectTime(0), lastSentLedHash(0), currentDisplayHash(0) {}
+      ledUpdateCallback(nullptr), serverPort(443), useSSL(true), lastPingTime(0), lastPongTime(0), reconnectTime(0), lastSentLedHash(0), currentDisplayHash(0),
+      mutationInFlight(false), mutationSentTime(0) {}
 
 void GraphQLWSClient::begin(const char* host, uint16_t port, const char* path, const char* apiKeyParam) {
     // Parse protocol prefix from host (ws:// or wss://)
@@ -162,6 +163,18 @@ void GraphQLWSClient::sendMutation(const char* mutationId, const char* mutation,
         return;
     }
 
+    // Check if a mutation is already in flight (prevent overlapping mutations)
+    if (mutationInFlight) {
+        unsigned long elapsed = millis() - mutationSentTime;
+        if (elapsed < 5000) {  // 5 second timeout for mutations
+            Logger.logln("GraphQL: Skipping mutation - previous still in flight (%lu ms)", elapsed);
+            return;
+        }
+        // Timeout - clear the flag and allow new mutation
+        Logger.logln("GraphQL: Previous mutation timed out, allowing new one");
+        mutationInFlight = false;
+    }
+
     JsonDocument doc;
     doc["id"] = mutationId;
     doc["type"] = "subscribe";  // graphql-ws uses subscribe for mutations too
@@ -179,6 +192,8 @@ void GraphQLWSClient::sendMutation(const char* mutationId, const char* mutation,
     serializeJson(doc, msg);
     ws.sendTXT(msg);
 
+    mutationInFlight = true;
+    mutationSentTime = millis();
     Logger.logln("GraphQL: Sent mutation %s", mutationId);
 }
 
@@ -205,6 +220,8 @@ void GraphQLWSClient::onWebSocketEvent(WStype_t type, uint8_t* payload, size_t l
             setState(GraphQLConnectionState::DISCONNECTED);
             // Schedule reconnection
             reconnectTime = millis() + WS_RECONNECT_INTERVAL;
+            // Clear mutation in-flight flag on disconnect
+            mutationInFlight = false;
             // Clear LEDs on disconnect
             LEDs.clear();
             LEDs.show();
@@ -297,11 +314,13 @@ void GraphQLWSClient::handleMessage(uint8_t* payload, size_t length) {
             messageCallback(doc);
         }
     } else if (strcmp(type, "error") == 0) {
-        Logger.logln("GraphQL: Subscription error");
+        Logger.logln("GraphQL: Subscription/mutation error");
         JsonArray errors = doc["payload"];
         for (JsonObject err : errors) {
             Logger.logln("GraphQL: Error: %s", err["message"].as<const char*>());
         }
+        // Clear mutation in-flight flag on error (allows next mutation to proceed)
+        mutationInFlight = false;
     } else if (strcmp(type, "complete") == 0) {
         const char* msgId = doc["id"];
         // Only reset state if main subscription completed, not mutations
@@ -310,6 +329,8 @@ void GraphQLWSClient::handleMessage(uint8_t* payload, size_t length) {
             setState(GraphQLConnectionState::CONNECTION_ACK);
         } else {
             Logger.logln("GraphQL: Mutation completed");
+            // Clear mutation in-flight flag
+            mutationInFlight = false;
             // Don't change state - subscription is still active
         }
     } else if (strcmp(type, "pong") == 0) {

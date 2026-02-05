@@ -87,6 +87,9 @@ class GraphQLWSClient {
     // Get current display hash (for deduplication)
     uint32_t getCurrentDisplayHash() { return currentDisplayHash; }
 
+    // Check if a mutation is currently in flight
+    bool isMutationInFlight() { return mutationInFlight; }
+
     // Set the controller ID for comparison with incoming clientId
     void setControllerId(const String& id) { controllerId = id; }
 
@@ -116,6 +119,8 @@ class GraphQLWSClient {
     unsigned long reconnectTime;
     uint32_t lastSentLedHash;     // Hash of last sent LED positions (to avoid duplicates)
     uint32_t currentDisplayHash;  // Hash of currently displayed LEDs (from backend LedUpdate)
+    bool mutationInFlight;        // True if a mutation is pending completion
+    unsigned long mutationSentTime;  // When the current mutation was sent (for timeout)
 
     void onWebSocketEvent(WStype_t type, uint8_t* payload, size_t length);
     void sendConnectionInit();

@@ -1034,6 +1034,13 @@ The `navigateQueue` mutation allows ESP32 controllers to browse the queue via ha
 4. Backend updates current climb and broadcasts `CurrentClimbChanged`
 5. ESP32 receives `LedUpdate` with new climb data
 
+**Debounce Behavior:**
+- Navigation mutations are debounced with a 100ms delay to prevent WebSocket disconnection from rapid button presses
+- UI updates immediately (optimistic), but only ONE mutation is sent after 100ms of button inactivity
+- Example: Pressing "next" 10 times quickly results in 10 immediate display updates but only 1 mutation (to the final position)
+- During rapid navigation, incoming `LedUpdate` events skip queue index sync to preserve optimistic state
+- Only one mutation can be in-flight at a time; new mutations wait for the previous to complete
+
 ### Manual Authorization
 
 If auto-authorization doesn't apply (e.g., controller owner is not in session), use:
