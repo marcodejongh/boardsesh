@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useCallback, useMemo, useRef, useEffect } from 'react';
-import { usePathname } from 'next/navigation'; // Used by useIsOnBoardRoute
+import { usePathname, useRouter } from 'next/navigation';
 import { createGraphQLClient, execute, subscribe, Client } from '../graphql-queue/graphql-client';
 import {
   JOIN_SESSION,
@@ -11,6 +11,7 @@ import {
   SET_CURRENT_CLIMB,
   MIRROR_CURRENT_CLIMB,
   SET_QUEUE,
+  UPDATE_SESSION_ANGLE,
   SESSION_UPDATES,
   QUEUE_UPDATES,
   EVENTS_REPLAY,
@@ -72,6 +73,7 @@ export interface Session {
   id: string;
   name: string | null;
   boardPath: string;
+  angle: number;
   users: SessionUser[];
   queueState: QueueState;
   isLeader: boolean;
@@ -136,6 +138,7 @@ export interface PersistentSessionContextType {
   clientId: string | null;
   isLeader: boolean;
   users: SessionUser[];
+  sessionAngle: number | null;
 
   // Queue state synced from backend
   currentClimbQueueItem: LocalClimbQueueItem | null;
@@ -170,6 +173,7 @@ export interface PersistentSessionContextType {
   setCurrentClimb: (item: LocalClimbQueueItem | null, shouldAddToQueue?: boolean, correlationId?: string) => Promise<void>;
   mirrorCurrentClimb: (mirrored: boolean) => Promise<void>;
   setQueue: (queue: LocalClimbQueueItem[], currentClimbQueueItem?: LocalClimbQueueItem | null) => Promise<void>;
+  updateSessionAngle: (angle: number) => Promise<void>;
 
   // Event subscription for board-level components
   subscribeToQueueEvents: (callback: (event: SubscriptionQueueEvent) => void) => () => void;
@@ -184,6 +188,8 @@ const PersistentSessionContext = createContext<PersistentSessionContextType | un
 export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { token: wsAuthToken, isLoading: isAuthLoading } = useWsAuthToken();
   const { username, avatarUrl } = usePartyProfile();
+  const router = useRouter();
+  const pathname = usePathname();
 
   // Use refs for values that shouldn't trigger reconnection
   // These values are used during connection but changes shouldn't cause reconnect
@@ -432,14 +438,44 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
         case 'SessionEnded':
           if (DEBUG) console.log('[PersistentSession] Session ended:', event.reason);
           return prev;
+        case 'AngleChanged':
+          if (DEBUG) console.log('[PersistentSession] Angle changed:', event.angle, event.boardPath);
+          return {
+            ...prev,
+            angle: event.angle,
+            boardPath: event.boardPath,
+          };
         default:
           return prev;
       }
     });
 
+    // Handle AngleChanged navigation separately (after state update)
+    if (event.__typename === 'AngleChanged') {
+      // Update the URL to reflect the new angle
+      // Replace the current angle in the pathname with the new one
+      const pathSegments = pathname.split('/');
+      // Find and replace the angle segment (last numeric segment before any query params)
+      for (let i = pathSegments.length - 1; i >= 0; i--) {
+        const segment = pathSegments[i];
+        // Check if this is a numeric segment (angle)
+        if (/^\d+$/.test(segment)) {
+          pathSegments[i] = event.angle.toString();
+          break;
+        }
+      }
+      const newPath = pathSegments.join('/');
+      if (newPath !== pathname) {
+        // Preserve search params (like session ID)
+        const searchParams = new URLSearchParams(window.location.search);
+        const newUrl = searchParams.toString() ? `${newPath}?${searchParams.toString()}` : newPath;
+        router.replace(newUrl);
+      }
+    }
+
     // Notify external subscribers
     notifySessionSubscribers(event);
-  }, [notifySessionSubscribers]);
+  }, [notifySessionSubscribers, pathname, router]);
 
   // Connect to session when activeSession changes
   useEffect(() => {
@@ -928,6 +964,17 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
     [client, session],
   );
 
+  const updateSessionAngleMutation = useCallback(
+    async (angle: number) => {
+      if (!client || !session) throw new Error('Not connected to session');
+      await execute(client, {
+        query: UPDATE_SESSION_ANGLE,
+        variables: { angle },
+      });
+    },
+    [client, session],
+  );
+
   // Event subscription functions
   const subscribeToQueueEvents = useCallback((callback: (event: SubscriptionQueueEvent) => void) => {
     queueEventSubscribersRef.current.add(callback);
@@ -961,6 +1008,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
       clientId: session?.clientId ?? null,
       isLeader: session?.isLeader ?? false,
       users: session?.users ?? [],
+      sessionAngle: session?.angle ?? null,
       currentClimbQueueItem,
       queue,
       localQueue,
@@ -977,6 +1025,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
       setCurrentClimb: setCurrentClimbMutation,
       mirrorCurrentClimb: mirrorCurrentClimbMutation,
       setQueue: setQueueMutation,
+      updateSessionAngle: updateSessionAngleMutation,
       subscribeToQueueEvents,
       subscribeToSessionEvents,
       triggerResync,
@@ -1003,6 +1052,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
       setCurrentClimbMutation,
       mirrorCurrentClimbMutation,
       setQueueMutation,
+      updateSessionAngleMutation,
       subscribeToQueueEvents,
       subscribeToSessionEvents,
       triggerResync,

@@ -47,6 +47,7 @@ export const JOIN_SESSION = `
       id
       name
       boardPath
+      angle
       clientId
       isLeader
       users {
@@ -138,6 +139,7 @@ export const CREATE_SESSION = `
       id
       name
       boardPath
+      angle
       clientId
       isLeader
       users {
@@ -157,6 +159,12 @@ export const CREATE_SESSION = `
         }
       }
     }
+  }
+`;
+
+export const UPDATE_SESSION_ANGLE = `
+  mutation UpdateSessionAngle($angle: Int!) {
+    updateSessionAngle(angle: $angle)
   }
 `;
 
@@ -182,6 +190,10 @@ export const SESSION_UPDATES = `
       ... on SessionEnded {
         reason
         newPath
+      }
+      ... on AngleChanged {
+        angle
+        boardPath
       }
     }
   }

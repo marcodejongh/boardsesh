@@ -15,7 +15,7 @@ import { playlistMutations } from './playlists/mutations';
 import { sessionQueries } from './sessions/queries';
 import { sessionMutations } from './sessions/mutations';
 import { sessionSubscriptions } from './sessions/subscriptions';
-import { sessionEventResolver } from './sessions/type-resolvers';
+import { sessionEventResolver, sessionTypeResolver } from './sessions/type-resolvers';
 import { queueMutations } from './queue/mutations';
 import { queueSubscriptions } from './queue/subscriptions';
 import { queueEventResolver } from './queue/type-resolvers';
@@ -57,6 +57,7 @@ export const resolvers = {
 
   // Field-level resolvers
   ClimbSearchResult: climbFieldResolvers,
+  Session: sessionTypeResolver,
 
   // Union type resolvers
   QueueEvent: queueEventResolver,

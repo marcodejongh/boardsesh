@@ -261,4 +261,32 @@ export const sessionMutations = {
 
     return true;
   },
+
+  /**
+   * Update the board angle for the current session
+   * Broadcasts angle change to all session members so they can update their UI
+   */
+  updateSessionAngle: async (_: unknown, { angle }: { angle: number }, ctx: ConnectionContext) => {
+    if (!ctx.sessionId) {
+      throw new Error('Not in a session');
+    }
+
+    // Validate angle is a reasonable number
+    if (!Number.isInteger(angle) || angle < 0 || angle > 90) {
+      throw new Error('Invalid angle: must be an integer between 0 and 90');
+    }
+
+    // Update the session angle in the database and Redis
+    const result = await roomManager.updateSessionAngle(ctx.sessionId, angle);
+
+    // Broadcast the angle change to all session members
+    const angleChangedEvent: SessionEvent = {
+      __typename: 'AngleChanged',
+      angle: result.angle,
+      boardPath: result.boardPath,
+    };
+    pubsub.publishSessionEvent(ctx.sessionId, angleChangedEvent);
+
+    return true;
+  },
 };

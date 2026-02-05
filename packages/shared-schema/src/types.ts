@@ -320,7 +320,8 @@ export type SessionEvent =
   | { __typename: 'UserJoined'; user: SessionUser }
   | { __typename: 'UserLeft'; userId: string }
   | { __typename: 'LeaderChanged'; leaderId: string }
-  | { __typename: 'SessionEnded'; reason: string; newPath?: string };
+  | { __typename: 'SessionEnded'; reason: string; newPath?: string }
+  | { __typename: 'AngleChanged'; angle: number; boardPath: string };
 
 export type ConnectionContext = {
   connectionId: string;
