@@ -161,10 +161,7 @@ export const controllerSubscriptions = {
 
         // Get queue state for navigation context
         const queueState = await roomManager.getQueueState(sessionId);
-        console.log(`[Controller] buildLedUpdate: queueState has ${queueState.queue.length} items, currentClimb: ${queueState.currentClimbQueueItem?.climb?.name} (uuid: ${queueState.currentClimbQueueItem?.uuid})`);
-        console.log(`[Controller] buildLedUpdate: looking for currentItemUuid: ${currentItemUuid}`);
         const currentIndex = findClimbIndex(queueState.queue, currentItemUuid);
-        console.log(`[Controller] buildLedUpdate: found at index ${currentIndex}`);
         const navigation = buildNavigationContext(queueState.queue, currentIndex);
 
         return {
@@ -190,7 +187,6 @@ export const controllerSubscriptions = {
 
         // Subscribe to queue updates for this session
         return pubsub.subscribeQueue(sessionId, (queueEvent) => {
-          console.log(`[Controller] Received queue event: ${queueEvent.__typename}`);
 
           // Handle queue modification events - send ControllerQueueSync
           if (queueEvent.__typename === 'QueueItemAdded' ||
@@ -204,7 +200,6 @@ export const controllerSubscriptions = {
                   queueState.queue,
                   queueState.currentClimbQueueItem?.uuid
                 );
-                console.log(`[Controller] Sending QueueSync: ${queueSync.queue.length} items, currentIndex: ${queueSync.currentIndex}`);
                 push(queueSync);
               } catch (error) {
                 console.error(`[Controller] Error building queue sync:`, error);
@@ -221,10 +216,6 @@ export const controllerSubscriptions = {
               ? queueEvent.clientId
               : null;
 
-            if (queueEvent.__typename === 'CurrentClimbChanged') {
-              console.log(`[Controller] CurrentClimbChanged event - clientId: ${eventClientId}, controllerId: ${controller.id}`);
-            }
-
             const currentItem = queueEvent.__typename === 'CurrentClimbChanged'
               ? queueEvent.item
               : queueEvent.state.currentClimbQueueItem;
@@ -234,14 +225,10 @@ export const controllerSubscriptions = {
             eventQueue = eventQueue.then(async () => {
               try {
                 if (climb) {
-                  console.log(`[Controller] Sending LED update for climb: ${climb.name} (uuid: ${currentItem?.uuid})`);
                   const ledUpdate = await buildLedUpdateWithNavigation(climb, currentItem?.uuid, eventClientId);
-                  console.log(`[Controller] LED update navigation: index ${ledUpdate.navigation?.currentIndex}/${ledUpdate.navigation?.totalCount}, climb: ${ledUpdate.climbName}, clientId: ${ledUpdate.clientId}`);
-                  console.log(`[Controller] Pushing LED update to subscription`);
                   push(ledUpdate);
                 } else {
                   // No climb - could be clearing or unknown climb
-                  console.log(`[Controller] Sending update with no climb (clientId: ${eventClientId})`);
                   const ledUpdate = await buildLedUpdateWithNavigation(null, undefined, eventClientId);
                   push(ledUpdate);
                 }
@@ -259,7 +246,6 @@ export const controllerSubscriptions = {
         initialQueueState.queue,
         initialQueueState.currentClimbQueueItem?.uuid
       );
-      console.log(`[Controller] Sending initial QueueSync: ${initialQueueSync.queue.length} items, currentIndex: ${initialQueueSync.currentIndex}`);
       yield { controllerEvents: initialQueueSync };
 
       // Send initial LED state
@@ -271,9 +257,7 @@ export const controllerSubscriptions = {
       yield { controllerEvents: initialLedUpdate };
 
       // Yield events from subscription
-      console.log(`[Controller] Starting to yield events for controller ${controller.id}`);
       for await (const event of asyncIterator) {
-        console.log(`[Controller] Yielding event to client: ${event.__typename}`);
         // Update lastSeenAt periodically (on each event)
         await db
           .update(esp32Controllers)
@@ -282,7 +266,6 @@ export const controllerSubscriptions = {
 
         yield { controllerEvents: event };
       }
-      console.log(`[Controller] Subscription loop ended for controller ${controller.id}`);
     },
   },
 };

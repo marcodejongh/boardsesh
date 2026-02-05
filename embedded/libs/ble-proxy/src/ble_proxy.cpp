@@ -86,6 +86,8 @@ void BLEProxy::setEnabled(bool enable) {
         Logger.logln("BLEProxy: Disabling proxy mode");
         BoardClient.disconnect();
         Scanner.stopScan();
+        // Reset connection flag when disabling
+        connectionInitiated = false;
         setState(BLEProxyState::PROXY_DISABLED);
     }
 }
@@ -256,6 +258,8 @@ void BLEProxy::handleScanComplete(const std::vector<DiscoveredBoard>& boards) {
 
     if (boards.empty()) {
         Logger.logln("BLEProxy: No boards found (reboot to scan again)");
+        // Reset connection flag so future scans can initiate connections
+        connectionInitiated = false;
         setState(BLEProxyState::SCAN_COMPLETE_NONE);
         return;
     }
@@ -295,6 +299,8 @@ void BLEProxy::handleScanComplete(const std::vector<DiscoveredBoard>& boards) {
         waitDuration = 100;
         setState(BLEProxyState::WAIT_BEFORE_CONNECT);
     } else {
+        // Reset connection flag so next scan can initiate a new connection
+        connectionInitiated = false;
         setState(BLEProxyState::IDLE);
     }
 }

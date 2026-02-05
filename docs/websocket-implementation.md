@@ -952,6 +952,7 @@ subscription ControllerEvents($sessionId: ID!) {
 | Event | Description |
 |-------|-------------|
 | `LedUpdate` | LED commands for current climb (RGB values and positions) |
+| `ControllerQueueSync` | Full queue state sync (sent on connection and queue changes) |
 | `ControllerPing` | Keep-alive ping (not currently implemented) |
 
 ### LedUpdate Fields
@@ -959,11 +960,22 @@ subscription ControllerEvents($sessionId: ID!) {
 | Field | Type | Description |
 |-------|------|-------------|
 | `commands` | Array | LED positions with RGB values |
+| `queueItemUuid` | String | UUID of the queue item (for navigation) |
 | `climbUuid` | String | Unique identifier for the climb |
 | `climbName` | String | Display name of the climb |
 | `climbGrade` | String | The climb difficulty/grade (e.g., "V5", "6a/V3") |
+| `gradeColor` | String | Hex color for the grade (e.g., "#00FF00") |
 | `boardPath` | String | Board configuration path for context-aware operations (e.g., "kilter/1/12/1,2,3/40") |
 | `angle` | Int | Board angle in degrees |
+| `clientId` | String | Identifier of client that initiated the change (used by ESP32 to decide whether to disconnect BLE client - if clientId matches ESP32's MAC, it was self-initiated via BLE) |
+| `navigation` | Object | Navigation context with previousClimbs, nextClimb, currentIndex, totalCount |
+
+### ControllerQueueSync Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `queue` | Array | Array of queue items with uuid, climbUuid, name, grade, gradeColor |
+| `currentIndex` | Int | Index of the current climb in the queue (-1 if none) |
 
 ### LED Color Mapping
 
@@ -986,11 +998,41 @@ mutation SetClimbFromLeds($sessionId: ID!, $frames: String) {
   }
 }
 
+# Navigate queue via hardware buttons (previous/next)
+# queueItemUuid is preferred for direct navigation (most reliable)
+# direction is used as fallback when queueItemUuid not found
+mutation NavigateQueue($sessionId: ID!, $direction: String!, $queueItemUuid: String) {
+  navigateQueue(sessionId: $sessionId, direction: $direction, queueItemUuid: $queueItemUuid) {
+    uuid
+    climb {
+      name
+      difficulty
+    }
+  }
+}
+
 # Heartbeat to update lastSeenAt
 mutation Heartbeat($sessionId: ID!) {
   controllerHeartbeat(sessionId: $sessionId)
 }
 ```
+
+### Queue Navigation
+
+The `navigateQueue` mutation allows ESP32 controllers to browse the queue via hardware buttons:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `sessionId` | ID! | Session to navigate within |
+| `direction` | String! | "next" or "previous" (fallback if queueItemUuid not found) |
+| `queueItemUuid` | String | Direct navigation to specific queue item (preferred) |
+
+**Navigation Flow:**
+1. ESP32 maintains local queue state from `ControllerQueueSync` events
+2. On button press, ESP32 calculates the target item locally (optimistic update)
+3. ESP32 sends `navigateQueue` with the target `queueItemUuid`
+4. Backend updates current climb and broadcasts `CurrentClimbChanged`
+5. ESP32 receives `LedUpdate` with new climb data
 
 ### Manual Authorization
 
