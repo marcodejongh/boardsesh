@@ -7,3 +7,15 @@
   font-size: 28px;
   color: #06B6D4;
 }
+
+.skipLink {
+  margin-top: 12px;
+  text-align: right;
+}
+
+.skipLink a {
+  font-size: 13px;
+  color: #999;
+  cursor: pointer;
+  text-decoration: underline;
+}

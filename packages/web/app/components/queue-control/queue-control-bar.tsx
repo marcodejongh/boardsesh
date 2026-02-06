@@ -19,6 +19,7 @@ import ClimbThumbnail from '../climb-card/climb-thumbnail';
 import ClimbTitle from '../climb-card/climb-title';
 import { AscentStatus } from './queue-list-item';
 import { themeTokens } from '@/app/theme/theme-config';
+import { TOUR_DRAWER_EVENT } from '../onboarding/onboarding-tour';
 import styles from './queue-control-bar.module.css';
 
 // Swipe threshold in pixels to trigger navigation
@@ -49,6 +50,16 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
         clearTimeout(scrollTimeoutRef.current);
       }
     };
+  }, []);
+
+  // Listen for tour events to open/close the queue drawer
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { open } = (e as CustomEvent<{ open: boolean }>).detail;
+      setIsQueueOpen(open);
+    };
+    window.addEventListener(TOUR_DRAWER_EVENT, handler);
+    return () => window.removeEventListener(TOUR_DRAWER_EVENT, handler);
   }, []);
 
   // Scroll to current climb when drawer finishes opening
