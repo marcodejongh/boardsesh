@@ -270,6 +270,11 @@ html {
   box-shadow: 0 0 0 2px #fff;
 }
 
+/* Onboarding tour - constrain width for mobile-friendly display */
+.onboarding-tour .ant-tour-inner {
+  max-width: min(340px, calc(100vw - 32px));
+}
+
 /* Override Atlaskit drag-and-drop indicator color to match theme
    Note: !important is required here as third-party library sets inline styles */
 [data-drop-indicator-edge] {
