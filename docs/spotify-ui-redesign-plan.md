@@ -59,7 +59,7 @@ This plan transforms Boardsesh's UI into a Spotify-like experience with a persis
 ├────────────────────────────────────┤
 │ [Thumb] "Current Climb"  [Q] [✓]  │  ← Now Playing bar (tap=expand)
 ├────────────────────────────────────┤
-│   🧗 Climbs    🔍 Search   ✚ New  │  ← Bottom tab bar
+│   🏠 Home      🔍 Search   ✚ New  │  ← Bottom tab bar
 └────────────────────────────────────┘
 ```
 
@@ -83,7 +83,7 @@ This plan transforms Boardsesh's UI into a Spotify-like experience with a persis
 ├────────────────────────────────────┤
 │ [Thumb] "Current Climb"  [Q] [✓]  │
 ├────────────────────────────────────┤
-│   🧗 Climbs    🔍 Search   ✚ New  │
+│   🏠 Home      🔍 Search   ✚ New  │
 └────────────────────────────────────┘
 ```
 
@@ -137,21 +137,40 @@ This plan transforms Boardsesh's UI into a Spotify-like experience with a persis
 ## Phase 1: Bottom Tab Bar
 
 ### What changes
-Add a persistent bottom tab bar below the QueueControlBar with three tabs: **Climbs**, **Search**, and **Create**.
+Add a persistent bottom tab bar below the QueueControlBar with three tabs: **Home**, **Search**, and **Create**.
+
+### Home Screen
+
+A new landing/home screen accessible via the first tab. This is a placeholder for a future discovery/dashboard experience.
+
+**New file: `packages/web/app/[board_name]/[layout_id]/[size_id]/[set_ids]/[angle]/home/page.tsx`**
+- Server component, minimal placeholder content
+- For now: a centered message like "Home - Coming Soon" or a redirect to `/list`
+- This will eventually become a discovery/dashboard screen (recent climbs, suggested climbs, activity feed, etc.)
+
+**New file: `packages/web/app/[board_name]/[layout_id]/[size_id]/[set_ids]/[angle]/home/home-placeholder.tsx`**
+- Client component with placeholder UI
+
+**Feature flag**: `NEXT_PUBLIC_ENABLE_HOME_SCREEN`
+- When `'true'`: Home tab navigates to the `/home` route
+- When falsy (default): Home tab navigates to `/list` instead (acts as the Climbs tab)
+- This matches the existing feature flag pattern (e.g., `NEXT_PUBLIC_ENABLE_ONBOARDING_TOUR` in `onboarding-tour.tsx`)
+- Add to `.env.local`: `NEXT_PUBLIC_ENABLE_HOME_SCREEN=false`
 
 ### Files to modify
 
 1. **New file: `packages/web/app/components/bottom-tab-bar/bottom-tab-bar.tsx`**
    - Client component (`'use client'`)
-   - Three tabs: Climbs (default active), Search, Create
-   - Icons: Use AntD icons - `UnorderedListOutlined` / `AppstoreOutlined` for Climbs, `SearchOutlined` for Search, `PlusOutlined` for Create
+   - Three tabs: Home (default active), Search, Create
+   - Icons: Use AntD icons - `HomeOutlined` for Home, `SearchOutlined` for Search, `PlusOutlined` for Create
    - Active state: Primary color (`themeTokens.colors.primary`) for active tab icon + label
    - Inactive state: `themeTokens.neutral[400]` color
    - Fixed at the bottom, full width
    - Height: ~50px with safe-area-inset-bottom padding for iOS
    - Desktop: Hidden (search/queue available in sidebar, create in header)
-   - **Props needed**: Requires board route parameters to construct navigation URLs (the tab bar needs to know the current board/layout/size/set/angle to build the `/list` URL)
+   - **Props needed**: Requires board route parameters to construct navigation URLs (the tab bar needs to know the current board/layout/size/set/angle to build the `/home` or `/list` URL)
    - **Search drawer integration**: Needs a callback prop or ref to open the search drawer, since the drawer state lives elsewhere
+   - **Feature flag check**: Read `process.env.NEXT_PUBLIC_ENABLE_HOME_SCREEN` to determine Home tab destination
 
 2. **New file: `packages/web/app/components/bottom-tab-bar/bottom-tab-bar.module.css`**
    - Media query to hide on desktop (>= 768px)
@@ -182,10 +201,10 @@ Add a persistent bottom tab bar below the QueueControlBar with three tabs: **Cli
    - Simple AntD Drawer with bottom placement, auto height
 
 ### Behavior
-- **Climbs tab**: Navigates to the climb list view (if not already there). This is the default/home state.
+- **Home tab**: When feature flag is enabled, navigates to the `/home` route. When disabled, navigates to the `/list` route (the climb list). This is the default/first tab.
 - **Search tab**: Opens the advanced search filters drawer (the same one `SearchButton` triggers in the header). On desktop, activates the sidebar search tab instead.
 - **Create tab**: Opens the CreateDrawer with options.
-- Active tab state reflects current context (Climbs when on list, etc.)
+- Active tab state reflects current context (Home when on /home or /list, etc.)
 - On desktop (>= 768px): Tab bar is hidden. Search and create remain in header/sidebar.
 - **On play/view/create pages**: Consider whether the tab bar should remain visible. On play pages the user may want to quickly return to the list. On create pages it could cause confusion. Recommend: show on play/view, hide on create.
 
@@ -194,6 +213,11 @@ Add a persistent bottom tab bar below the QueueControlBar with three tabs: **Cli
 - **Keep** the `SearchClimbNameInput` text input in the mobile header for quick name-based search
 - Keep the desktop sidebar search
 - Remove "Create Climb" from the mobile meatball menu (`mobileMenuItems` in header.tsx, key `create-climb`)
+
+### Home screen route
+- Add the `/home` route alongside the existing `/list` route under the `[angle]` segment
+- The home page reuses the same layout as list (header + content + queue bar + tab bar)
+- The home page is purely a placeholder - feature-flagged off by default, so the Home tab acts as a `/list` navigation until enabled
 
 ### Considerations
 - **Onboarding tour**: The existing `OnboardingTour` component in `layout-client.tsx` may reference the old header elements. Verify tour steps still point to valid targets after moving buttons.
@@ -598,8 +622,9 @@ Ensure the desktop experience remains cohesive while the mobile experience is tr
 The phases are designed to be implemented sequentially, each building on the previous:
 
 ```
-Phase 1: Bottom Tab Bar
+Phase 1: Bottom Tab Bar + Home Screen
   └─ Foundation for new navigation structure
+  └─ Home screen placeholder (feature-flagged)
   └─ Create drawer for "New" tab
 
 Phase 2: Compact Climb List Mode
@@ -679,7 +704,7 @@ layout.tsx (server component)
 │       └── Mini Transport [Prev | Current | Next]
 │
 └── BottomTabBar [NEW] (mobile only)
-    ├── Climbs Tab → Navigate to /list
+    ├── Home Tab → Navigate to /home (feature-flagged) or /list (default)
     ├── Search Tab → Open advanced SearchDrawer
     └── Create Tab → Open CreateDrawer [NEW]
         ├── Create Climb → /create route
@@ -769,7 +794,9 @@ layout.tsx (server component)
 
 ### Phase 1
 - [ ] Bottom tab bar renders on mobile, hidden on desktop
-- [ ] Climbs tab navigates to list
+- [ ] Home tab navigates to /list when feature flag is off (default)
+- [ ] Home tab navigates to /home when `NEXT_PUBLIC_ENABLE_HOME_SCREEN=true`
+- [ ] Home placeholder page renders without errors
 - [ ] Search tab opens advanced search drawer (same as old header SearchButton)
 - [ ] Create tab opens create drawer
 - [ ] Create drawer links work (create climb, create playlist)
@@ -778,6 +805,7 @@ layout.tsx (server component)
 - [ ] Tab bar does not overlap QueueControlBar
 - [ ] Content area scrolling is not blocked by tab bar
 - [ ] Tab bar shows on play/view pages, hides on create page
+- [ ] Active tab state highlights correctly on /home, /list, and other pages
 
 ### Phase 2
 - [ ] Compact list items render correctly with proper layout
