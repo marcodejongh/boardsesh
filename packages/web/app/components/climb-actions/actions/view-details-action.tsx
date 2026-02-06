@@ -64,7 +64,7 @@ export function ViewDetailsAction({
   // Icon mode - for Card actions
   const iconElement = (
     <ActionTooltip title={label}>
-      <Link href={url} onClick={handleClick} className={className}>
+      <Link href={url} onClick={handleClick} className={className} style={{ color: 'inherit' }}>
         {icon}
       </Link>
     </ActionTooltip>
@@ -88,7 +88,7 @@ export function ViewDetailsAction({
   const menuItem = {
     key: 'viewDetails',
     label: (
-      <Link href={url} onClick={handleClick}>
+      <Link href={url} onClick={handleClick} style={{ color: 'inherit' }}>
         {label}
       </Link>
     ),

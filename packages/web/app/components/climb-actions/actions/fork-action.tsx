@@ -54,7 +54,7 @@ export function ForkAction({
   // Icon mode - for Card actions
   const iconElement = url ? (
     <ActionTooltip title="Fork this climb">
-      <Link href={url} onClick={handleClick} className={className}>
+      <Link href={url} onClick={handleClick} className={className} style={{ color: 'inherit' }}>
         {icon}
       </Link>
     </ActionTooltip>
@@ -79,7 +79,7 @@ export function ForkAction({
     ? {
         key: 'fork',
         label: (
-          <Link href={url} onClick={handleClick}>
+          <Link href={url} onClick={handleClick} style={{ color: 'inherit' }}>
             {label}
           </Link>
         ),
