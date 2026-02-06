@@ -151,6 +151,24 @@ class MockWiFi {
         return WIFI_AUTH_OPEN;
     }
 
+    // SoftAP methods
+    bool softAP(const char* ssid, const char* passphrase = nullptr, int channel = 1, int ssid_hidden = 0, int max_connection = 4) {
+        (void)passphrase;
+        (void)channel;
+        (void)ssid_hidden;
+        (void)max_connection;
+        apSSID_ = ssid ? ssid : "";
+        return true;
+    }
+
+    bool softAPdisconnect(bool wifioff = false) {
+        (void)wifioff;
+        apSSID_ = "";
+        return true;
+    }
+
+    IPAddress softAPIP() const { return apIP_; }
+
     // Test control methods - for setting up mock state
     void mockSetStatus(wl_status_t status) { status_ = status; }
     void mockSetSSID(const char* ssid) { ssid_ = ssid ? ssid : ""; }
@@ -171,6 +189,8 @@ class MockWiFi {
         ssid_ = "";
         macAddress_ = "AA:BB:CC:DD:EE:FF";
         networks_.clear();
+        apSSID_ = "";
+        apIP_ = IPAddress(192, 168, 4, 1);
     }
 
   private:
@@ -182,6 +202,8 @@ class MockWiFi {
     String ssid_;
     String macAddress_;
     std::vector<NetworkInfo> networks_;
+    String apSSID_;
+    IPAddress apIP_ = IPAddress(192, 168, 4, 1);
 };
 
 extern MockWiFi WiFi;

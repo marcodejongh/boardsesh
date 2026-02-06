@@ -216,8 +216,10 @@ void setup() {
             Display.showError("AP Failed");
         }
 #else
-        // Without display, just start AP mode silently
-        WiFiMgr.startAP();
+        // Without display, start AP mode and log result
+        if (!WiFiMgr.startAP()) {
+            Logger.logln("ERROR: Failed to start AP mode");
+        }
 #endif
         // Don't initialize BLE yet - wait for WiFi to be configured
     } else {
@@ -418,14 +420,21 @@ void onWiFiStateChange(WiFiConnectionState state) {
             Logger.logln("WiFi connection failed");
 #ifdef ENABLE_DISPLAY
             Display.setWiFiStatus(false);
+#endif
             // If connection failed and we don't have saved credentials, start AP mode
             if (!WiFiMgr.hasSavedCredentials()) {
                 Logger.logln("No saved credentials - starting AP mode for configuration");
                 if (WiFiMgr.startAP()) {
+#ifdef ENABLE_DISPLAY
                     Display.showSetupScreen(DEFAULT_AP_NAME);
+#endif
+                } else {
+                    Logger.logln("ERROR: Failed to start AP mode");
+#ifdef ENABLE_DISPLAY
+                    Display.showError("AP Failed");
+#endif
                 }
             }
-#endif
             break;
 
         case WiFiConnectionState::AP_MODE:
