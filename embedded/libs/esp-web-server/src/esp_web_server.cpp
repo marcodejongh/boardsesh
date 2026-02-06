@@ -228,6 +228,9 @@ void ESPWebServer::handleRoot() {
                 if (status.connected) {
                     el.className = 'status connected';
                     el.innerHTML = 'Connected to <strong>' + status.ssid + '</strong><br>IP: ' + status.ip + ' | Signal: ' + status.rssi + ' dBm';
+                } else if (status.ap_mode) {
+                    el.className = 'status disconnected';
+                    el.innerHTML = 'Access Point Mode<br>IP: ' + status.ip + '<br><small>Connect to a WiFi network below</small>';
                 } else {
                     el.className = 'status disconnected';
                     el.textContent = 'Not connected';
@@ -453,6 +456,11 @@ void ESPWebServer::handleWiFiConnect() {
     const char* ssid = doc["ssid"];
     const char* password = doc["password"] | "";
 
+    // Stop AP mode if running before connecting to a new network
+    if (WiFiMgr.isAPMode()) {
+        WiFiMgr.stopAP();
+    }
+
     WiFiMgr.connect(ssid, password);
 
     sendJson(200, "{\"success\":true,\"message\":\"Connecting...\"}");
@@ -463,9 +471,10 @@ void ESPWebServer::handleWiFiStatus() {
     JsonDocument doc;
 
     doc["connected"] = WiFiMgr.isConnected();
-    doc["ssid"] = WiFiMgr.getSSID();
-    doc["ip"] = WiFiMgr.getIP();
-    doc["rssi"] = WiFiMgr.getRSSI();
+    doc["ap_mode"] = WiFiMgr.isAPMode();
+    doc["ssid"] = WiFiMgr.isAPMode() ? "" : WiFiMgr.getSSID();
+    doc["ip"] = WiFiMgr.isAPMode() ? WiFiMgr.getAPIP() : WiFiMgr.getIP();
+    doc["rssi"] = WiFiMgr.isAPMode() ? 0 : WiFiMgr.getRSSI();
 
     sendJson(200, doc);
 }

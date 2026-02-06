@@ -1,5 +1,6 @@
 @media (max-width: 768px) {
   .tour :global(.ant-tour-inner) {
+    max-width: calc(100vw - 32px);
     max-height: 60vh;
     overflow-y: auto;
   }

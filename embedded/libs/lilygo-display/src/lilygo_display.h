@@ -200,6 +200,7 @@ class LilyGoDisplay {
     void showConnecting();
     void showError(const char* message, const char* ipAddress = nullptr);
     void showConfigPortal(const char* apName, const char* ip);
+    void showSetupScreen(const char* apName);
 
     // Climb display
     void showClimb(const char* name, const char* grade, const char* gradeColor, int angle, const char* uuid,

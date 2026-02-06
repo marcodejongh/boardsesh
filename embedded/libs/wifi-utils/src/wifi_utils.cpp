@@ -49,6 +49,41 @@ void WiFiUtils::disconnect() {
     setState(WiFiConnectionState::DISCONNECTED);
 }
 
+bool WiFiUtils::startAP(const char* apName) {
+    // Stop any existing connection first
+    WiFi.disconnect();
+
+    // Configure AP mode
+    WiFi.mode(WIFI_AP);
+
+    // Start the access point
+    bool success = WiFi.softAP(apName);
+    if (success) {
+        setState(WiFiConnectionState::AP_MODE);
+    }
+    return success;
+}
+
+void WiFiUtils::stopAP() {
+    WiFi.softAPdisconnect(true);
+    WiFi.mode(WIFI_STA);
+    WiFi.setAutoReconnect(true);
+    setState(WiFiConnectionState::DISCONNECTED);
+}
+
+bool WiFiUtils::isAPMode() {
+    return state == WiFiConnectionState::AP_MODE;
+}
+
+String WiFiUtils::getAPIP() {
+    return WiFi.softAPIP().toString();
+}
+
+bool WiFiUtils::hasSavedCredentials() {
+    String ssid = Config.getString(KEY_SSID);
+    return ssid.length() > 0;
+}
+
 bool WiFiUtils::isConnected() {
     return WiFi.status() == WL_CONNECTED;
 }
@@ -83,6 +118,11 @@ void WiFiUtils::setState(WiFiConnectionState newState) {
 }
 
 void WiFiUtils::checkConnection() {
+    // Don't check STA connection in AP mode
+    if (state == WiFiConnectionState::AP_MODE) {
+        return;
+    }
+
     bool connected = WiFi.status() == WL_CONNECTED;
 
     switch (state) {
@@ -108,6 +148,10 @@ void WiFiUtils::checkConnection() {
             } else if (currentSSID.length() > 0 && millis() - lastReconnectAttempt > WIFI_RECONNECT_INTERVAL_MS) {
                 connect(currentSSID.c_str(), currentPassword.c_str(), false);
             }
+            break;
+
+        case WiFiConnectionState::AP_MODE:
+            // Handled at the top of the function
             break;
     }
 }
