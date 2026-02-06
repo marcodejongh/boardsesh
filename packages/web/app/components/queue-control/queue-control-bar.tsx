@@ -10,9 +10,8 @@ import NextClimbButton from './next-climb-button';
 import { usePathname, useParams, useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { constructPlayUrlWithSlugs, constructClimbViewUrlWithSlugs, parseBoardRouteParams } from '@/app/lib/url-utils';
-import { BoardRouteParameters, BoardRouteParametersWithUuid } from '@/app/lib/types';
+import { BoardRouteParameters, BoardDetails, Angle } from '@/app/lib/types';
 import PreviousClimbButton from './previous-climb-button';
-import { BoardName, BoardDetails, Angle } from '@/app/lib/types';
 import QueueList, { QueueListHandle } from './queue-list';
 import { TickButton } from '../logbook/tick-button';
 import ClimbThumbnail from '../climb-card/climb-thumbnail';
@@ -27,13 +26,12 @@ const SWIPE_THRESHOLD = 100;
 // Maximum swipe distance (matches queue-list-item)
 const MAX_SWIPE = 120;
 
-export interface QueueControlBar {
+export interface QueueControlBarProps {
   boardDetails: BoardDetails;
-  board: BoardName;
   angle: Angle;
 }
 
-const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: QueueControlBar) => {
+const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }) => {
   const [isQueueOpen, setIsQueueOpen] = useState(false);
   const [swipeOffset, setSwipeOffset] = useState(0);
   const pathname = usePathname();
@@ -231,7 +229,7 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
   const rightActionOpacity = Math.min(1, Math.abs(swipeOffset) / SWIPE_THRESHOLD);
 
   return (
-    <div id="onboarding-queue-bar" className="queue-bar-shadow" data-testid="queue-control-bar" style={{ flexShrink: 0, width: '100%', backgroundColor: '#fff' }}>
+    <div id="onboarding-queue-bar" className="queue-bar-shadow" data-testid="queue-control-bar" style={{ flexShrink: 0, width: '100%', backgroundColor: themeTokens.semantic.surface }}>
       {/* Main Control Bar */}
       <Card
         variant="borderless"
@@ -300,10 +298,10 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
             {...swipeHandlers}
             className={styles.swipeContainer}
             style={{
-              padding: '4px 12px 0px 12px',
+              padding: `${themeTokens.spacing[1]}px ${themeTokens.spacing[3]}px 0 ${themeTokens.spacing[3]}px`,
               transform: `translateX(${swipeOffset}px)`,
               transition: swipeOffset === 0 ? `transform ${themeTokens.transitions.fast}` : 'none',
-              backgroundColor: '#fff',
+              backgroundColor: themeTokens.semantic.surface,
             }}
           >
             <Row justify="space-between" align="middle" style={{ width: '100%' }}>
