@@ -63,12 +63,21 @@ function parseBoardPath(boardPath: string): {
     return null;
   }
 
+  const layoutId = parseInt(parts[1], 10);
+  const sizeId = parseInt(parts[2], 10);
+  const angle = parseInt(parts[4], 10);
+
+  // Validate that numeric fields are valid numbers
+  if (isNaN(layoutId) || isNaN(sizeId) || isNaN(angle)) {
+    return null;
+  }
+
   return {
     boardName,
-    layoutId: parseInt(parts[1], 10),
-    sizeId: parseInt(parts[2], 10),
+    layoutId,
+    sizeId,
     setIds: parts[3],
-    angle: parseInt(parts[4], 10),
+    angle,
   };
 }
 

@@ -459,8 +459,9 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
       const currentPathSegments = pathname.split('/');
 
       // The pathname structure is: ['', board_name, layout_id, size_id, set_ids, angle, ...rest]
-      // We need to replace segments 1-5 with the new boardPath segments
-      if (newBoardPathSegments.length === 5 && currentPathSegments.length > 5) {
+      // After split('/'), we need at least 6 segments (empty + 5 board path segments)
+      // We replace segments 1-5 with the new boardPath segments
+      if (newBoardPathSegments.length === 5 && currentPathSegments.length >= 6) {
         // Keep the leading empty string and any trailing segments (like /list, /climb/uuid)
         const trailingSegments = currentPathSegments.slice(6); // Everything after the angle
         const newPath = ['', ...newBoardPathSegments, ...trailingSegments].join('/');
@@ -475,6 +476,8 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
         console.warn('[PersistentSession] Could not update URL for angle change:', {
           pathname,
           newBoardPath: event.boardPath,
+          pathSegmentCount: currentPathSegments.length,
+          boardPathSegmentCount: newBoardPathSegments.length,
         });
       }
     }

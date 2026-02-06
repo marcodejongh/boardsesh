@@ -623,13 +623,14 @@ class RoomManager {
 
     // Parse and update the boardPath
     // Format: board_name/layout_id/size_id/set_ids/angle
-    const pathParts = session.boardPath.split('/');
+    // Filter empty strings to handle leading slashes consistently
+    const pathParts = session.boardPath.split('/').filter(Boolean);
     if (pathParts.length < 5) {
       throw new Error(`Invalid boardPath format: ${session.boardPath}`);
     }
 
-    // Replace the angle (last segment)
-    pathParts[pathParts.length - 1] = newAngle.toString();
+    // Replace the angle at index 4 (5th segment)
+    pathParts[4] = newAngle.toString();
     const newBoardPath = pathParts.join('/');
 
     // Update Postgres
