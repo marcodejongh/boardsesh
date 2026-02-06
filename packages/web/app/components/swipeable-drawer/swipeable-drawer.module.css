@@ -1,0 +1,93 @@
+/* Drag handle zone - shared base */
+.dragHandleZone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+  -webkit-touch-callout: none;
+}
+
+.dragHandleZone:active {
+  cursor: grabbing;
+}
+
+/* Horizontal drag handle (top/bottom placements) */
+.dragHandleZoneHorizontal {
+  composes: dragHandleZone;
+  width: 100%;
+  padding: 12px 0;
+}
+
+/* Vertical drag handle (left/right placements) */
+.dragHandleZoneVertical {
+  composes: dragHandleZone;
+  height: 100%;
+  padding: 0 12px;
+  position: absolute;
+  top: 0;
+  z-index: 1;
+}
+
+.dragHandleZoneLeft {
+  composes: dragHandleZoneVertical;
+  left: 0;
+}
+
+.dragHandleZoneRight {
+  composes: dragHandleZoneVertical;
+  right: 0;
+}
+
+/* Drag handle bars */
+.dragHandleBarHorizontal {
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background-color: var(--ant-color-text-quaternary, #d9d9d9);
+}
+
+.dragHandleBarVertical {
+  width: 4px;
+  height: 36px;
+  border-radius: 2px;
+  background-color: var(--ant-color-text-quaternary, #d9d9d9);
+}
+
+/* Title wrapper: handle injected above/below the user's title in the header */
+.titleWithHandle {
+  /* Negate the AntD header padding so the handle spans full drawer width */
+  margin: -16px -24px 0;
+}
+
+.titleContent {
+  /* Re-apply the header padding around the actual title text */
+  padding: 0 24px;
+}
+
+/* Body wrapper for swipeRegion='body' - just a handler target, sizing from parent */
+.bodySwipeWrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* Mobile: hide Ant Drawer close button, show drag handle */
+@media (max-width: 767px) {
+  .mobileHideClose :global(.ant-drawer-close) {
+    display: none !important;
+  }
+}
+
+/* Desktop: hide drag handle, show close button */
+@media (min-width: 768px) {
+  .dragHandleZoneHorizontal,
+  .dragHandleZoneVertical,
+  .dragHandleZoneLeft,
+  .dragHandleZoneRight {
+    display: none;
+  }
+}

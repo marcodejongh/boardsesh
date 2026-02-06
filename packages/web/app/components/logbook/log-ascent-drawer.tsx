@@ -1,4 +1,4 @@
-import Drawer from 'antd/es/drawer';
+import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import React from 'react';
 import { LogAscentForm } from './logascent-form';
 import { BoardDetails, Climb } from '@/app/lib/types';
@@ -17,7 +17,7 @@ export const LogAscentDrawer: React.FC<LogAscentDrawerProps> = ({
   boardDetails,
 }) => {
   return (
-    <Drawer
+    <SwipeableDrawer
       title="Log Ascent"
       placement="bottom"
       onClose={onClose}
@@ -31,6 +31,6 @@ export const LogAscentDrawer: React.FC<LogAscentDrawerProps> = ({
           onClose={onClose}
         />
       )}
-    </Drawer>
+    </SwipeableDrawer>
   );
 };

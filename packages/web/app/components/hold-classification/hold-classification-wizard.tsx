@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import { Drawer, Button, Progress, Rate, Typography, Spin, message } from 'antd';
+import { Button, Progress, Rate, Typography, Spin, message } from 'antd';
+import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import { ArrowLeftOutlined, ArrowRightOutlined, CheckOutlined, CheckCircleFilled, ExpandOutlined, CompressOutlined } from '@ant-design/icons';
 import { useSession } from 'next-auth/react';
 import { BoardDetails } from '@/app/lib/types';
@@ -338,7 +339,7 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
   // Render loading state
   if (loading) {
     return (
-      <Drawer
+      <SwipeableDrawer
         title="Hold Classification"
         open={open}
         onClose={onClose}
@@ -352,14 +353,14 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
           <Spin size="large" />
           <Text className={styles.loadingText}>Loading holds...</Text>
         </div>
-      </Drawer>
+      </SwipeableDrawer>
     );
   }
 
   // Render empty state
   if (holds.length === 0) {
     return (
-      <Drawer
+      <SwipeableDrawer
         title="Hold Classification"
         open={open}
         onClose={onClose}
@@ -373,14 +374,14 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
           <Text>No holds found for this board configuration.</Text>
           <Button onClick={onClose}>Close</Button>
         </div>
-      </Drawer>
+      </SwipeableDrawer>
     );
   }
 
   // Render completion state
   if (isComplete) {
     return (
-      <Drawer
+      <SwipeableDrawer
         title="Hold Classification"
         open={open}
         onClose={onClose}
@@ -403,14 +404,14 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
             Done
           </Button>
         </div>
-      </Drawer>
+      </SwipeableDrawer>
     );
   }
 
   const currentClassification = getCurrentClassification();
 
   return (
-    <Drawer
+    <SwipeableDrawer
       title="Classify Hold"
       open={open}
       onClose={onClose}
@@ -551,7 +552,7 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
           </Button>
         </div>
       </div>
-    </Drawer>
+    </SwipeableDrawer>
   );
 };
 

@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { Drawer, Button, Typography } from 'antd';
+import { Button, Typography } from 'antd';
+import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import { MoreOutlined, HeartOutlined, HeartFilled, PlusOutlined } from '@ant-design/icons';
 import { useSwipeable } from 'react-swipeable';
 import { Climb, BoardDetails } from '@/app/lib/types';
@@ -264,7 +265,7 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
       </div>
 
       {/* Actions Drawer */}
-      <Drawer
+      <SwipeableDrawer
         title={
           <div style={{ display: 'flex', alignItems: 'center', gap: themeTokens.spacing[3] }}>
             <div style={{ width: 48, flexShrink: 0 }}>
@@ -304,7 +305,7 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
           exclude={excludeActions}
           onActionComplete={() => setIsActionsOpen(false)}
         />
-      </Drawer>
+      </SwipeableDrawer>
     </>
   );
 }, (prev, next) => {

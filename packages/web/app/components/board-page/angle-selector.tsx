@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Button, Drawer, Spin, Typography, Flex, Row, Col, Card, Alert } from 'antd';
+import { Button, Spin, Typography, Flex, Row, Col, Card, Alert } from 'antd';
+import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import { useRouter, usePathname } from 'next/navigation';
 import { track } from '@vercel/analytics';
 import useSWR from 'swr';
@@ -142,7 +143,7 @@ export default function AngleSelector({ boardName, currentAngle, currentClimb }:
         {currentAngle}°
       </Button>
 
-      <Drawer
+      <SwipeableDrawer
         title="Select Angle"
         placement="right"
         onClose={() => setIsDrawerOpen(false)}
@@ -165,7 +166,7 @@ export default function AngleSelector({ boardName, currentAngle, currentClimb }:
         <Row gutter={[8, 8]}>
           {ANGLES[boardName].map(renderAngleCard)}
         </Row>
-      </Drawer>
+      </SwipeableDrawer>
     </>
   );
 }

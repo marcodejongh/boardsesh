@@ -11,7 +11,8 @@ import {
   PlayCircleOutlined,
   CloseCircleOutlined,
 } from '@ant-design/icons';
-import { Button, Input, Drawer, QRCode, Flex, App, Typography, Badge, Switch, Tabs, Space } from 'antd';
+import { Button, Input, QRCode, Flex, App, Typography, Badge, Switch, Tabs, Space } from 'antd';
+import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useQueueContext } from '../graphql-queue';
@@ -151,7 +152,7 @@ export const ShareBoardButton = () => {
           icon={isConnecting ? <LoadingOutlined /> : <TeamOutlined />}
         />
       </Badge>
-      <Drawer
+      <SwipeableDrawer
         title={isControllerMode ? 'Controller Mode' : 'Party Mode'}
         placement="top"
         onClose={handleClose}
@@ -424,7 +425,7 @@ export const ShareBoardButton = () => {
             </>
           )}
         </Flex>
-      </Drawer>
+      </SwipeableDrawer>
 
       <AuthModal
         open={showAuthModal}

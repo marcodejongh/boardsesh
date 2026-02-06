@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Button, Drawer, Badge, Typography, Spin } from 'antd';
+import { Button, Badge, Typography, Spin } from 'antd';
+import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import { SearchOutlined } from '@ant-design/icons';
 import SearchForm from './search-form';
 import { useQueueContext } from '@/app/components/graphql-queue';
@@ -56,7 +57,7 @@ const SearchButton = ({ boardDetails }: { boardDetails: BoardDetails }) => {
         <Button id="onboarding-search-button" type="default" icon={<SearchOutlined />} onClick={() => setIsOpen(true)} />
       </Badge>
 
-      <Drawer
+      <SwipeableDrawer
         title={drawerTitle}
         placement="right"
         size="large"
@@ -70,7 +71,7 @@ const SearchButton = ({ boardDetails }: { boardDetails: BoardDetails }) => {
         }}
       >
         <SearchForm boardDetails={boardDetails} />
-      </Drawer>
+      </SwipeableDrawer>
     </>
   );
 };

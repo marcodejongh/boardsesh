@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { Angle, Climb, BoardDetails } from '@/app/lib/types';
 import { useBoardProvider } from '../board-provider/board-provider-context';
-import { Button, Badge, Drawer, Typography, Space } from 'antd';
+import { Button, Badge, Typography, Space } from 'antd';
+import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import { CheckOutlined, LoginOutlined, AppstoreOutlined } from '@ant-design/icons';
 import { track } from '@vercel/analytics';
 import { LogAscentDrawer } from './log-ascent-drawer';
@@ -63,7 +64,7 @@ export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boa
           boardDetails={boardDetails}
         />
       ) : (
-        <Drawer
+        <SwipeableDrawer
           title="Sign In Required"
           placement="bottom"
           onClose={closeDrawer}
@@ -85,7 +86,7 @@ export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boa
               Open in App
             </Button>
           </Space>
-        </Drawer>
+        </SwipeableDrawer>
       )}
 
       <AuthModal

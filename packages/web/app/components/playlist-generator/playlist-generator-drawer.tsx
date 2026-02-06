@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { Drawer, Button, Space, Typography, message, Spin, Alert } from 'antd';
+import { Button, Space, Typography, message, Spin, Alert } from 'antd';
+import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import { ArrowLeftOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { BoardDetails, Climb } from '@/app/lib/types';
 import { TENSION_KILTER_GRADES } from '@/app/lib/board-data';
@@ -319,7 +320,7 @@ const PlaylistGeneratorDrawer: React.FC<PlaylistGeneratorDrawerProps> = ({
   };
 
   return (
-    <Drawer
+    <SwipeableDrawer
       title={
         <div className={styles.drawerHeader}>
           {drawerState === 'configure' && (
@@ -363,7 +364,7 @@ const PlaylistGeneratorDrawer: React.FC<PlaylistGeneratorDrawerProps> = ({
       }
     >
       {renderContent()}
-    </Drawer>
+    </SwipeableDrawer>
   );
 };
 

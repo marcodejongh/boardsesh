@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Drawer, Button } from 'antd';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Button } from 'antd';
 import {
   SyncOutlined,
   HeartOutlined,
@@ -11,7 +11,6 @@ import {
   DownOutlined,
   MoreOutlined,
 } from '@ant-design/icons';
-import { useSwipeable } from 'react-swipeable';
 import dynamic from 'next/dynamic';
 import { useQueueContext } from '../graphql-queue';
 import { useFavorite, ClimbActions } from '../climb-actions';
@@ -22,6 +21,7 @@ import BoardRenderer from '../board-renderer/board-renderer';
 import { useCardSwipeNavigation, EXIT_DURATION, SNAP_BACK_DURATION } from '@/app/hooks/use-card-swipe-navigation';
 import { useWakeLock } from '../board-bluetooth-control/use-wake-lock';
 import { themeTokens } from '@/app/theme/theme-config';
+import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import type { ActiveDrawer } from '../queue-control/queue-control-bar';
 import type { BoardDetails, Angle } from '@/app/lib/types';
 import styles from './play-view-drawer.module.css';
@@ -30,10 +30,6 @@ const SendClimbToBoardButton = dynamic(
   () => import('../board-bluetooth-control/send-climb-to-board-button').then((mod) => mod.default || mod),
   { ssr: false },
 );
-
-// Threshold for downward swipe to dismiss the drawer
-const DISMISS_THRESHOLD = 120;
-const DISMISS_ANIMATION_MS = 300;
 
 interface PlayViewDrawerProps {
   activeDrawer: ActiveDrawer;
@@ -49,10 +45,7 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
   angle,
 }) => {
   const isOpen = activeDrawer === 'play';
-  const [dragOffset, setDragOffset] = useState(0);
   const [isActionsOpen, setIsActionsOpen] = useState(false);
-  const isDraggingRef = useRef(false);
-  const isDismissingRef = useRef(false);
 
   const {
     currentClimb,
@@ -76,7 +69,6 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
   useEffect(() => {
     if (!isOpen) return;
 
-    // Push a hash state so back button closes the drawer
     window.history.pushState(null, '', '#playing');
 
     const handlePopState = () => {
@@ -86,7 +78,6 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
     window.addEventListener('popstate', handlePopState);
     return () => {
       window.removeEventListener('popstate', handlePopState);
-      // Clean up hash if still present
       if (window.location.hash === '#playing') {
         window.history.replaceState(null, '', window.location.pathname + window.location.search);
       }
@@ -95,44 +86,10 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
 
   const handleClose = useCallback(() => {
     setActiveDrawer('none');
-    // Remove hash if present
     if (window.location.hash === '#playing') {
       window.history.back();
     }
   }, [setActiveDrawer]);
-
-  // Swipe-down-to-close (covers entire drawer content)
-  const dragHandlers = useSwipeable({
-    onSwiping: (eventData) => {
-      const { deltaY, dir } = eventData;
-      if (dir === 'Down' && deltaY > 0) {
-        isDraggingRef.current = true;
-        setDragOffset(deltaY);
-      }
-    },
-    onSwipedDown: (eventData) => {
-      isDraggingRef.current = false;
-      if (eventData.deltaY >= DISMISS_THRESHOLD) {
-        // Animate the drawer fully off-screen, then close
-        isDismissingRef.current = true;
-        setDragOffset(window.innerHeight);
-        setTimeout(() => {
-          handleClose();
-        }, DISMISS_ANIMATION_MS);
-      } else {
-        setDragOffset(0);
-      }
-    },
-    onTouchEndOrOnMouseUp: () => {
-      if (!isDismissingRef.current) {
-        setDragOffset(0);
-      }
-      isDraggingRef.current = false;
-    },
-    trackMouse: false,
-    trackTouch: true,
-    preventScrollOnSwipe: true,
-  });
 
   // Card-swipe navigation
   const nextItem = getNextClimbQueueItem();
@@ -170,35 +127,22 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
   const isMirrored = !!currentClimb?.mirrored;
 
   return (
-    <Drawer
+    <SwipeableDrawer
       placement="bottom"
       height="100%"
       open={isOpen}
       onClose={handleClose}
       closable={false}
-      afterOpenChange={(open) => {
-        if (!open) {
-          setDragOffset(0);
-          isDismissingRef.current = false;
-        }
-      }}
+      swipeRegion="body"
+      swipeEnabled={!isActionsOpen}
+      showDragHandle={true}
       styles={{
-        body: { padding: 0, overflow: 'hidden', overscrollBehaviorY: 'contain', touchAction: 'none' },
-        wrapper: { height: '100%', boxShadow: dragOffset > 0 ? 'none' : undefined },
-        mask: dragOffset > 0
-          ? {
-              opacity: Math.max(0, 1 - dragOffset / window.innerHeight),
-              transition: isDraggingRef.current ? 'none' : `opacity ${DISMISS_ANIMATION_MS}ms ease-out`,
-            }
-          : {},
-      }}
-      style={{
-        transform: dragOffset > 0 ? `translateY(${dragOffset}px)` : undefined,
-        transition: isDraggingRef.current ? 'none' : `transform ${DISMISS_ANIMATION_MS}ms ease-out`,
+        body: { padding: 0, overflow: 'hidden', touchAction: 'none', overscrollBehaviorY: 'contain' },
+        wrapper: { height: '100%' },
       }}
     >
-      <div {...dragHandlers} className={styles.drawerContent}>
-        {/* Top bar: close button, drag handle, ellipsis menu */}
+      <div className={styles.drawerContent}>
+        {/* Top bar: close button, ellipsis menu */}
         <div className={styles.topBar}>
           <Button
             type="text"
@@ -206,7 +150,6 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
             onClick={handleClose}
             aria-label="Close play view"
           />
-          <div className={styles.dragHandleBar} />
           <Button
             type="text"
             icon={<MoreOutlined />}
@@ -300,9 +243,9 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
         </div>
       </div>
 
-      {/* Climb actions drawer (same as ellipsis menu in climb list) */}
+      {/* Climb actions drawer */}
       {currentClimb && (
-        <Drawer
+        <SwipeableDrawer
           title={currentClimb.name}
           placement="bottom"
           open={isActionsOpen}
@@ -319,9 +262,9 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
             viewMode="list"
             onActionComplete={() => setIsActionsOpen(false)}
           />
-        </Drawer>
+        </SwipeableDrawer>
       )}
-    </Drawer>
+    </SwipeableDrawer>
   );
 };
 

@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { Drawer, Form, Input, Switch, ColorPicker, message, Space, Typography, Button } from 'antd';
+import { Form, Input, Switch, ColorPicker, message, Space, Typography, Button } from 'antd';
+import SwipeableDrawer from '@/app/components/swipeable-drawer/swipeable-drawer';
 import { GlobalOutlined, LockOutlined } from '@ant-design/icons';
 import type { Color } from 'antd/es/color-picker';
 import { executeGraphQL } from '@/app/lib/graphql/client';
@@ -106,7 +107,7 @@ export default function PlaylistEditDrawer({ open, playlist, onClose, onSuccess 
   }, [form]);
 
   return (
-    <Drawer
+    <SwipeableDrawer
       title="Edit Playlist"
       open={open}
       onClose={handleCancel}
@@ -179,6 +180,6 @@ export default function PlaylistEditDrawer({ open, playlist, onClose, onSuccess 
           </Space>
         </Form.Item>
       </Form>
-    </Drawer>
+    </SwipeableDrawer>
   );
 }

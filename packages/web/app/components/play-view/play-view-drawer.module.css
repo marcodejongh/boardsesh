@@ -3,8 +3,6 @@
   flex-direction: column;
   height: 100%;
   overflow: hidden;
-  overscroll-behavior-y: contain;
-  touch-action: none;
 }
 
 .topBar {
@@ -15,13 +13,6 @@
   padding: 4px 4px 0;
   flex-shrink: 0;
   width: 100%;
-}
-
-.dragHandleBar {
-  width: 36px;
-  height: 4px;
-  border-radius: 2px;
-  background-color: var(--ant-color-text-quaternary, #d9d9d9);
 }
 
 .boardSection {

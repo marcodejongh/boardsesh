@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Button, Row, Col, Card, Drawer, Space, Popconfirm, Badge } from 'antd';
+import { Button, Row, Col, Card, Space, Popconfirm, Badge } from 'antd';
+import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import { SyncOutlined, DeleteOutlined, ExpandOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import { track } from '@vercel/analytics';
 import { useQueueContext } from '../graphql-queue';
@@ -142,12 +143,13 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
   const canSwipeNext = !viewOnlyMode && !!nextClimb;
   const canSwipePrevious = !viewOnlyMode && !!previousClimb;
 
-  const { swipeHandlers, swipeOffset, isAnimating } = useCardSwipeNavigation({
+  const { swipeHandlers, swipeOffset, isAnimating, animationDirection, enterDirection, clearEnterAnimation } = useCardSwipeNavigation({
     onSwipeNext: handleSwipeNext,
     onSwipePrevious: handleSwipePrevious,
     canSwipeNext,
     canSwipePrevious,
     threshold: 80,
+    delayNavigation: true,
   });
 
   const getPlayUrl = () => {
@@ -226,12 +228,40 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
     });
   }, [isListPage, activeDrawer, boardDetails]);
 
-  // Determine transition style for the swipeable content
-  const getTransitionStyle = () => {
+  // Transition style shared by current and peek text
+  const getTextTransitionStyle = () => {
     if (isAnimating) return `transform ${EXIT_DURATION}ms ease-out`;
     if (swipeOffset === 0) return `transform ${SNAP_BACK_DURATION}ms ease`;
     return 'none';
   };
+
+  // Peek: determine which climb to preview during swipe
+  const showPeek = swipeOffset !== 0 || isAnimating;
+  const peekIsNext = animationDirection === 'left' || (animationDirection === null && swipeOffset < 0);
+  const peekClimbData = peekIsNext ? nextClimb?.climb : previousClimb?.climb;
+
+  // Peek transform: positioned one container-width away, moves with swipeOffset
+  const getPeekTransform = () => {
+    return peekIsNext
+      ? `translateX(calc(100% + ${swipeOffset}px))`
+      : `translateX(calc(-100% + ${swipeOffset}px))`;
+  };
+
+  // Clear enterDirection (for thumbnail crossfade) after it plays
+  const enterFallbackRef = useRef<NodeJS.Timeout | null>(null);
+  useEffect(() => {
+    if (enterDirection) {
+      enterFallbackRef.current = setTimeout(() => {
+        clearEnterAnimation();
+      }, 170);
+    }
+    return () => {
+      if (enterFallbackRef.current) {
+        clearTimeout(enterFallbackRef.current);
+        enterFallbackRef.current = null;
+      }
+    };
+  }, [enterDirection, clearEnterAnimation]);
 
   return (
     <div id="onboarding-queue-bar" className={`queue-bar-shadow ${styles.queueBar}`} data-testid="queue-control-bar" style={{ backgroundColor: themeTokens.semantic.surface }}>
@@ -248,16 +278,13 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
           borderTop: `1px solid ${themeTokens.neutral[200]}`,
         }}
       >
-        {/* Swipe container - card swipe animation */}
+        {/* Swipe container - captures swipe gestures, does NOT translate */}
         <div className={styles.swipeWrapper}>
-          {/* Swipeable content */}
           <div
             {...swipeHandlers}
             className={styles.swipeContainer}
             style={{
               padding: `6px ${themeTokens.spacing[3]}px 6px ${themeTokens.spacing[3]}px`,
-              transform: `translateX(${swipeOffset}px)`,
-              transition: getTransitionStyle(),
               backgroundColor: themeTokens.semantic.surface,
             }}
           >
@@ -265,8 +292,8 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
               {/* Left section: Thumbnail and climb info */}
               <Col flex="auto" className={styles.climbInfoCol}>
                 <div className={styles.climbInfoInner} style={{ gap: themeTokens.spacing[2] }}>
-                  {/* Board preview */}
-                  <div className={styles.boardPreviewContainer}>
+                  {/* Board preview — STATIC, with crossfade on enter */}
+                  <div className={`${styles.boardPreviewContainer} ${enterDirection ? styles.thumbnailEnter : ''}`}>
                     <ClimbThumbnail
                       boardDetails={boardDetails}
                       currentClimb={currentClimb}
@@ -275,22 +302,46 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
                     />
                   </div>
 
-                  {/* Clickable climb info */}
-                  <div
-                    id="onboarding-queue-toggle"
-                    onClick={handleClimbInfoClick}
-                    className={`${styles.queueToggle} ${isListPage ? styles.listPage : ''}`}
-                  >
-                    <ClimbTitle
-                      climb={currentClimb}
-                      showAngle
-                      nameAddon={currentClimb?.name && <AscentStatus climbUuid={currentClimb.uuid} />}
-                    />
+                  {/* Text swipe clip — overflow hidden to contain sliding text */}
+                  <div className={styles.textSwipeClip}>
+                    {/* Current climb text — slides with finger */}
+                    <div
+                      id="onboarding-queue-toggle"
+                      onClick={handleClimbInfoClick}
+                      className={`${styles.queueToggle} ${isListPage ? styles.listPage : ''}`}
+                      style={{
+                        transform: `translateX(${swipeOffset}px)`,
+                        transition: getTextTransitionStyle(),
+                      }}
+                    >
+                      <ClimbTitle
+                        climb={currentClimb}
+                        showAngle
+                        nameAddon={currentClimb?.name && <AscentStatus climbUuid={currentClimb.uuid} />}
+                      />
+                    </div>
+
+                    {/* Peek text — shows next/previous climb sliding in from the edge */}
+                    {showPeek && peekClimbData && (
+                      <div
+                        className={`${styles.queueToggle} ${styles.peekText}`}
+                        style={{
+                          transform: getPeekTransform(),
+                          transition: getTextTransitionStyle(),
+                        }}
+                      >
+                        <ClimbTitle
+                          climb={peekClimbData}
+                          showAngle
+                          nameAddon={peekClimbData?.name && <AscentStatus climbUuid={peekClimbData.uuid} />}
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
               </Col>
 
-              {/* Button cluster */}
+              {/* Button cluster — STATIC */}
               <Col flex="none" style={{ marginLeft: themeTokens.spacing[2] }}>
                 <Space>
                   {/* Mirror button - desktop only */}
@@ -358,7 +409,7 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
       </Card>
 
       {/* Drawer for showing the queue */}
-      <Drawer
+      <SwipeableDrawer
         title="Queue"
         placement="bottom"
         open={activeDrawer === 'queue'}
@@ -382,7 +433,7 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
         }
       >
         <QueueList ref={queueListRef} boardDetails={boardDetails} onClimbNavigate={() => setActiveDrawer('none')} />
-      </Drawer>
+      </SwipeableDrawer>
 
       {/* Play view drawer - mobile only */}
       <PlayViewDrawer

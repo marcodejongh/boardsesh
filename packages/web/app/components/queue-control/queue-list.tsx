@@ -1,6 +1,7 @@
 'use client';
 import React, { useEffect, useState, useCallback, useRef, useImperativeHandle, forwardRef } from 'react';
-import { Divider, Row, Col, Button, Flex, Drawer, Space, Typography, Skeleton } from 'antd';
+import { Divider, Row, Col, Button, Flex, Space, Typography, Skeleton } from 'antd';
+import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import { PlusOutlined, LoginOutlined } from '@ant-design/icons';
 import { useQueueContext } from '../graphql-queue';
 import { Climb, BoardDetails } from '@/app/lib/types';
@@ -319,7 +320,7 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
           boardDetails={boardDetails}
         />
       ) : (
-        <Drawer
+        <SwipeableDrawer
           title="Sign In Required"
           placement="bottom"
           onClose={closeTickDrawer}
@@ -335,7 +336,7 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
               Sign In
             </Button>
           </Space>
-        </Drawer>
+        </SwipeableDrawer>
       )}
 
       <AuthModal
