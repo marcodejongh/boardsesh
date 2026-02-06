@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Tour, TourStepProps } from 'antd';
 import {
-  SwapOutlined,
   BulbOutlined,
   TeamOutlined,
   UnorderedListOutlined,
@@ -134,11 +133,6 @@ const OnboardingTour: React.FC = () => {
       target: getTarget('#onboarding-climb-card'),
       placement: 'bottom',
       scrollIntoViewOptions: { behavior: 'smooth', block: 'start' },
-      cover: (
-        <div className={styles.stepIcon}>
-          <SwapOutlined />
-        </div>
-      ),
     },
     {
       title: 'Board Controls',
@@ -247,6 +241,7 @@ const OnboardingTour: React.FC = () => {
       onClose={handleClose}
       onFinish={handleClose}
       steps={tourSteps}
+      rootClassName={styles.tour}
       scrollIntoViewOptions={{ behavior: 'smooth', block: 'center' }}
       zIndex={1100}
     />
