@@ -13,7 +13,7 @@ This plan transforms Boardsesh's UI into a Spotify-like experience with a persis
 | Main Layout | `packages/web/app/[board_name]/[layout_id]/[size_id]/[set_ids]/[angle]/layout.tsx` | Server component. Header + Content + Affixed QueueControlBar. Wraps children in `BoardSessionBridge > ConnectionSettingsProvider > GraphQLQueueProvider > PartyProvider`. |
 | List Layout | `.../[angle]/list/layout-client.tsx` | Client component. Main content + desktop sidebar with 3 tabs (Queue/Search/Search by Hold). Sidebar uses AntD `Sider` at 400px width. |
 | Header | `packages/web/app/components/board-page/header.tsx` | Client component. Logo, angle selector, create (desktop), party, LED, user menu. Mobile has a meatball menu dropdown. Uses `usePageMode()` to adapt layout per page type. |
-| QueueControlBar | `packages/web/app/components/queue-control/queue-control-bar.tsx` | Now-playing bar with swipe left/right (prev/next), queue drawer (bottom, 70%), play button link, mirror, prev/next buttons (desktop-only via `.navButtons` CSS), tick. Also shows "added by" avatar indicator. |
+| QueueControlBar | `packages/web/app/components/queue-control/queue-control-bar.tsx` | Now-playing bar (~45px compact, 36px thumbnail) with swipe left/right (prev/next), queue drawer (bottom, 70%), play button link, mirror, prev/next buttons (desktop-only via `.navButtons` CSS), tick. **Persistent globally**: rendered at root level via `GlobalQueueControlBar` when off board routes, or by board `layout.tsx` when on board routes. Replaces `FloatingSessionThumbnail`. |
 | ClimbCard | `packages/web/app/components/climb-card/climb-card.tsx` | Card view with cover image, horizontal ClimbTitle header, action footer. Has two render paths: `ClimbCardWithActions` (generates actions dynamically) and `ClimbCardStatic` (memoized with external actions). |
 | ClimbTitle | `packages/web/app/components/climb-card/climb-title.tsx` | Name, grade (colorized), quality stars, setter info. Supports `layout="horizontal"` and stacked modes. |
 | QueueListItem | `packages/web/app/components/queue-control/queue-list-item.tsx` | Compact row with thumbnail, swipe right=tick, swipe left=delete. Includes drag-and-drop via `@atlaskit/pragmatic-drag-and-drop`. Uses direction detection (horizontal vs vertical) to avoid scroll conflicts. Has ellipsis dropdown menu with View/Tick/Open in App/Remove actions. |
@@ -57,11 +57,13 @@ This plan transforms Boardsesh's UI into a Spotify-like experience with a persis
 │ ...                                │
 │                                    │
 ├────────────────────────────────────┤
-│ [Thumb] "Current Climb"  [Q] [✓]  │  ← Now Playing bar (tap=expand)
+│ [T] "Current Climb" V4  [Q] [✓]  │  ← Now Playing bar (~45px, compact)
 ├────────────────────────────────────┤
 │   🏠 Home      🔍 Search   ✚ New  │  ← Bottom tab bar
 └────────────────────────────────────┘
 ```
+
+> **Note**: The now-playing bar is persistent and appears on **every screen** when there is an active queue (local or party mode). The thumbnail `[T]` is 36px wide (compact). When navigating away from the board route, the bar remains visible and tapping it returns to the board.
 
 ### Mobile Layout - List View (Expanded/Card Mode)
 ```
@@ -81,7 +83,7 @@ This plan transforms Boardsesh's UI into a Spotify-like experience with a persis
 │ └──────────────────────────────┘   │
 │                                    │
 ├────────────────────────────────────┤
-│ [Thumb] "Current Climb"  [Q] [✓]  │
+│ [T] "Current Climb" V4  [Q] [✓]  │  ← Compact now-playing bar (~45px)
 ├────────────────────────────────────┤
 │   🏠 Home      🔍 Search   ✚ New  │
 └────────────────────────────────────┘
@@ -117,7 +119,7 @@ This plan transforms Boardsesh's UI into a Spotify-like experience with a persis
 ### Desktop Layout
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ [👤] [Logo]  [Angle ▾]  [Create] [Party] [LED]                 │
+│ [👤] [Logo]  [Angle ▾]  [Create] [Party] [LED]             │
 ├──────────────────────────────────┬──────────────────────────┤
 │                                  │                          │
 │  Climb list (2-col grid)         │  Sidebar (400px)         │
@@ -128,9 +130,11 @@ This plan transforms Boardsesh's UI into a Spotify-like experience with a persis
 │  ...                             │                          │
 │                                  │                          │
 ├──────────────────────────────────┴──────────────────────────┤
-│ [Thumb] "Current Climb" V4   [🔄Mirror] [Q] [Party] [✓]   │
+│ [T] "Current Climb" V4  [🔄Mirror] [Q] [Party] [✓]  ~45px │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+> **Note**: The queue control bar is persistent globally. On desktop, it appears at the bottom of every page when a queue is active. The compact 36px thumbnail keeps it unobtrusive.
 
 ---
 
@@ -314,7 +318,35 @@ Add a "compact" display mode for the climb list that renders climbs as slim rows
 - Add a queue list button and keep the tick button
 - Move party mode button to the bar
 
-### 3A: QueueControlBar Redesign
+### 3A: QueueControlBar Redesign — Persistent Global Bar
+
+The QueueControlBar becomes a **persistent, globally visible** component that appears on **every screen** when there is an active queue — regardless of whether it's a local queue or a party mode session. This replaces the current `FloatingSessionThumbnail` (the small floating card in the bottom-right corner).
+
+**Key architectural change**: Currently, QueueControlBar only renders within the board layout (`[angle]/layout.tsx`). After this redesign, it renders at the **root layout level** and is visible across all pages (home, settings, other boards, etc.) whenever a queue is active. When the user is on the board route that owns the queue, the bar uses the existing QueueContext. When on other pages, it sources data from `PersistentSessionContext` (which already tracks `localBoardDetails`, `localQueue`, `localCurrentClimbQueueItem` for local mode, and `activeSession.boardDetails` for party mode).
+
+**Replaces**: `FloatingSessionThumbnail` (`packages/web/app/components/persistent-session/floating-session-thumbnail.tsx`) — this component is removed entirely. The full QueueControlBar provides a richer, more consistent experience than a small thumbnail card.
+
+#### Compact vertical sizing
+
+The bar is **20% shorter vertically** than the current implementation. This is achieved by:
+- Reducing the board thumbnail from **48px** width to **36px** width (maintains aspect ratio, so height also shrinks proportionally)
+- Reducing vertical padding from `4px 12px 0px 12px` to `2px 12px 0px 12px`
+- This brings the total bar height from ~56px to ~45px, making it less intrusive as a persistent global element
+
+Updated `boardPreviewContainerStyle`:
+```tsx
+const boardPreviewContainerStyle = {
+  width: 36, // Reduced from 48 for compact bar
+  height: 'auto',
+  flexShrink: 0,
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+  overflow: 'hidden',
+};
+```
+
+#### Button cluster changes
 
 **Modify: `packages/web/app/components/queue-control/queue-control-bar.tsx`**
 
@@ -336,14 +368,15 @@ Changes:
 
 New mobile layout:
 ```
-┌──────────────────────────────────────────────────────────┐
-│ [Thumbnail] "Climb Name" V4  ★★★  │  [👥Party] [≡Q] [✓] │
-│              @ 40°                 │                      │
-└──────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────┐
+│ [Thumb] "Climb Name" V4 ★★★  │  [👥Party] [≡Q] [✓]  │
+│  36px    @ 40°                │                        │
+└────────────────────────────────────────────────────────┘
 ```
+(Bar height: ~45px, down from ~56px)
 
 Tap behavior:
-- Tapping the **left section** (thumbnail + climb info) opens the full-screen play drawer (mobile only)
+- Tapping the **left section** (thumbnail + climb info) navigates back to the board route (when on non-board pages) or opens the full-screen play drawer (when on board pages, mobile only)
 - Tapping **Queue button** opens the existing queue drawer
 - Tapping **Party button** opens the party mode drawer (see Phase 5)
 - Tapping **Tick button** logs ascent (existing behavior)
@@ -358,9 +391,61 @@ Swipe behavior (Spotify-style card swipe):
 - The swipe action backgrounds (cyan with arrow icons) should be removed entirely
 
 The click handler on the climb info section needs conditional behavior:
-- **Mobile**: Open the full-screen play drawer (new behavior)
-- **Desktop on list page**: Currently does nothing (the `toggleQueueDrawer` already returns early on desktop list page). Change to keep existing no-op on desktop list, open play drawer on desktop non-list pages.
+- **On non-board pages**: Always navigate back to the board route (same behavior as current `FloatingSessionThumbnail` tap)
+- **On board pages, mobile**: Open the full-screen play drawer (new behavior)
+- **On board pages, desktop list page**: Currently does nothing (the `toggleQueueDrawer` already returns early on desktop list page). Change to keep existing no-op on desktop list, open play drawer on desktop non-list pages.
 - **Note**: The current `toggleQueueDrawer` uses `window.matchMedia('(min-width: 768px)')` for the desktop check. Continue using this pattern for conditional behavior.
+
+#### Global rendering implementation
+
+**New file: `packages/web/app/components/queue-control/global-queue-control-bar.tsx`**
+
+A wrapper component that handles rendering the QueueControlBar globally:
+
+```
+┌──────────────────────────────────────────────────────────┐
+│ Visibility logic:                                        │
+│                                                          │
+│ 1. If on a board route that owns the queue:              │
+│    → Bar is rendered by board layout.tsx (existing)       │
+│    → Global wrapper hides itself to avoid duplication     │
+│                                                          │
+│ 2. If on ANY other page with an active queue:            │
+│    → Global wrapper renders the compact QueueControlBar  │
+│    → Data sourced from PersistentSessionContext           │
+│    → Tap navigates back to the board route               │
+│                                                          │
+│ 3. If no active queue (local or party):                  │
+│    → Global wrapper renders nothing                      │
+│                                                          │
+│ "Active queue" = localQueue.length > 0                   │
+│   OR localCurrentClimbQueueItem exists                   │
+│   OR activeSession exists (party mode)                   │
+└──────────────────────────────────────────────────────────┘
+```
+
+**Data sourcing** (when on non-board pages):
+- `boardDetails` → from `PersistentSessionContext`: `localBoardDetails` (local mode) or `activeSession.boardDetails` (party mode)
+- `currentClimb` → from `PersistentSessionContext`: `localCurrentClimbQueueItem` (local) or `currentClimbQueueItem` (party)
+- `queue` → from `PersistentSessionContext`: `localQueue` (local) or `queue` (party)
+- `angle` → from `PersistentSessionContext`: extracted from `localBoardPath` or `activeSession.parsedParams.angle`
+- **Note**: The `PersistentSessionContext` already stores all of this data — no new state management needed
+
+**Modify: Root layout (`packages/web/app/layout.tsx`)** or the relevant parent layout:
+- Add `<GlobalQueueControlBar />` as a fixed-bottom element
+- Position: `position: fixed; bottom: 0; width: 100%; z-index: 999`
+- When on a board route, this component renders nothing (the board layout renders its own `QueueControlBar` via `<Affix>`)
+- When on non-board pages, it renders the compact QueueControlBar
+- Other page content needs `padding-bottom` to account for the bar when it's visible
+
+**Modify: `packages/web/app/components/persistent-session/floating-session-thumbnail.tsx`**
+- **Delete this file entirely** — the `GlobalQueueControlBar` replaces it
+- Remove the `FloatingSessionThumbnail` import from wherever it's rendered (likely in root layout or persistent session provider)
+
+**Modify: `packages/web/app/[board_name]/[layout_id]/[size_id]/[set_ids]/[angle]/layout.tsx`**
+- The existing `<Affix offsetBottom={0}><QueueControlBar /></Affix>` continues to work as-is for board pages
+- The QueueControlBar on board pages uses the full QueueContext (with all queue operations)
+- Apply the same compact sizing (36px thumbnail, reduced padding) to the board-route instance too
 
 ### 3B: Full-Screen Play Drawer
 
@@ -753,7 +838,15 @@ Phase 7: Desktop Adaptation
 ## Component Dependency Graph
 
 ```
-layout.tsx (server component)
+Root layout (app/layout.tsx)
+├── PersistentSessionProvider (already exists at root)
+│   └── GlobalQueueControlBar [NEW] (persistent, visible on ALL pages when queue active)
+│       ├── Shows compact QueueControlBar (~45px) on non-board pages
+│       ├── Data from PersistentSessionContext (localQueue / activeSession)
+│       ├── Tap → navigates back to board route
+│       └── Hidden on board routes (board layout renders its own instance)
+│
+Board layout.tsx (server component)
 ├── BoardSessionBridge
 │   └── ConnectionSettingsProvider
 │       └── GraphQLQueueProvider (provides QueueContext used everywhere)
@@ -791,8 +884,8 @@ layout.tsx (server component)
 │   └── ListLayoutClient (desktop sidebar)
 │       └── Tabs: Queue | Search | Search by Hold
 │
-├── QueueControlBar (redesigned)
-│   ├── ClimbThumbnail + ClimbTitle (mobile: tap → PlayViewDrawer)
+├── QueueControlBar (redesigned, compact ~45px with 36px thumbnail)
+│   ├── ClimbThumbnail (36px) + ClimbTitle (mobile: tap → PlayViewDrawer)
 │   ├── [Desktop only]: MirrorButton, PlayLink, PrevButton, NextButton
 │   ├── ShareBoardButton / PartyModeButton (moved from header)
 │   ├── QueueButton [NEW] (badge with count, opens queue drawer)
@@ -866,7 +959,8 @@ layout.tsx (server component)
 ## State Management Impact
 
 - **One new context likely needed**: `BluetoothContext` to share Bluetooth connection state across `SendClimbToBoardButton` (desktop header), play drawer LED button, and party drawer LED tab. A plain hook would create independent connection instances. Alternatively, keep the hook-only approach but mount it in exactly one place and pass state down via props.
-- **Existing contexts consumed**: `QueueContext` (via `useQueueContext()`), `BoardProvider` (via `useBoardProvider()`), `FavoritesProvider` (via `useFavorite()`)
+- **Existing contexts consumed**: `QueueContext` (via `useQueueContext()`), `BoardProvider` (via `useBoardProvider()`), `FavoritesProvider` (via `useFavorite()`), `PersistentSessionContext` (via `usePersistentSession()` — used by `GlobalQueueControlBar` for off-route rendering)
+- **Global bar visibility**: Derived from `PersistentSessionContext` state: `hasActiveQueue = (localQueue.length > 0 || !!localCurrentClimbQueueItem || !!activeSession)`. Combined with `useIsOnBoardRoute()` to determine whether the global instance or board-route instance should render.
 - **View mode preference**: localStorage (`climbListViewMode: 'compact' | 'grid'`). Default to `'compact'` on all devices when no stored preference.
 - **Play drawer open state**: Local state in QueueControlBar. Use a single `activeDrawer: 'none' | 'play' | 'queue'` state to prevent drawer stacking conflicts.
 - **Bottom tab active state**: Derived from current URL pathname via `usePathname()`
@@ -886,6 +980,8 @@ layout.tsx (server component)
 | Party mode button discovery | Moving from header to bar might confuse users | Badge with user count draws attention. Consider a one-time tooltip on the new party button location using the existing onboarding tour system. |
 | Double drawer stacking | Play drawer open + queue drawer open simultaneously | Use single `activeDrawer` state in QueueControlBar: `'none' | 'play' | 'queue'`. Opening one automatically closes the other. |
 | Bluetooth singleton conflict | Multiple components mounting `useBluetoothConnection` create independent connections | Use a BluetoothContext provider or ensure hook is mounted in exactly one place with state shared via props/context. |
+| Global bar data availability | `GlobalQueueControlBar` needs board details and queue data from `PersistentSessionContext` which may have stale or missing data | `PersistentSessionContext` already persists `localBoardDetails`, `localQueue`, `localCurrentClimbQueueItem`. For party mode, `activeSession.boardDetails` is always set on activation. If data is missing, the global bar simply doesn't render (same as current `FloatingSessionThumbnail` logic). |
+| Global bar z-index conflicts | Persistent bar at root level may overlap modals, drawers, or other fixed-position elements on non-board pages | Use `z-index: 999` (below AntD modals at 1000+). Add `padding-bottom` to page content when bar is visible. Test with auth modals, setup wizard, and board selection pages. |
 | AntD Drawer drag-to-dismiss | AntD Drawer doesn't natively support drag-to-close gesture | Implement custom drag handle with `react-swipeable` at the top of the drawer. On downward swipe past threshold, call `onClose`. May feel less smooth than native sheet - test early. |
 | LED data bundle size | LED placement data (~50KB) loaded via `getLedPlacements()` | Currently dynamically imported in header. After redesign, also needed in play drawer. Use dynamic import in both locations, or move to BluetoothContext that lazy-loads data on first connection attempt. |
 | Onboarding tour breakage | Tour steps reference element IDs that move or disappear on mobile | Audit all tour step selectors (`onboarding-queue-bar`, `onboarding-party-light-buttons`, `onboarding-climb-card`, `onboarding-queue-toggle`) and update targets for the new layout. |
@@ -926,8 +1022,16 @@ layout.tsx (server component)
 - [ ] Selected climb highlighting works in compact mode
 
 ### Phase 3
-- [ ] Tapping now-playing bar opens full-screen drawer (mobile only)
-- [ ] Tapping now-playing bar navigates to /play/ route (desktop)
+- [ ] QueueControlBar is ~45px tall (20% shorter than before) with 36px thumbnail
+- [ ] Bar appears on **all pages** when there is an active local queue
+- [ ] Bar appears on **all pages** when there is an active party session
+- [ ] Bar does NOT appear when there is no queue and no active session
+- [ ] On non-board pages, tapping the bar navigates back to the board route
+- [ ] On board pages, tapping the bar opens full-screen drawer (mobile only)
+- [ ] On board pages, tapping the bar navigates to /play/ route (desktop)
+- [ ] Global bar hides when navigating to a board route (board layout renders its own)
+- [ ] No duplicate bars visible on board routes
+- [ ] `FloatingSessionThumbnail` is fully removed — no floating card appears anywhere
 - [ ] Play drawer shows board renderer correctly (lazy-mounted)
 - [ ] Card-swipe navigation works in play drawer (content translates, next card slides in)
 - [ ] Card-swipe navigation works in QueueControlBar (current climb slides out, next slides in)
@@ -939,6 +1043,7 @@ layout.tsx (server component)
 - [ ] Desktop QueueControlBar still has mirror, play link, prev/next buttons
 - [ ] /play/ URLs still work for direct links on all devices
 - [ ] Wake lock activates when play drawer is open
+- [ ] Page content has proper bottom padding when global bar is visible
 
 ### Phase 4
 - [ ] Meatball menu is completely removed (mobile and desktop)
@@ -1074,10 +1179,13 @@ export const AddedByAvatar: React.FC<{ addedByUser?: QueueUser }> = ({ addedByUs
 After moving components around, the following become dead code and should be deleted:
 
 **After Phase 3**:
+- `floating-session-thumbnail.tsx`: **Delete entirely** — replaced by `GlobalQueueControlBar`
+- Remove `FloatingSessionThumbnail` import and rendering from wherever it's mounted (root layout / persistent session area)
 - `play-view-client.tsx`: `showSwipeHint` state and the 3-second timer effect
 - `play-view-client.tsx`: Static arrow indicator overlays (`swipeIndicator` CSS classes)
 - `play-view.module.css`: `.swipeIndicator`, `.swipeIndicatorLeft`, `.swipeIndicatorRight`, `.swipeIndicatorVisible` classes
 - `queue-control-bar.tsx`: `FastBackwardOutlined` / `FastForwardOutlined` imports and swipe action backgrounds (`.swipeAction` colored divs)
+- `queue-control-bar.tsx`: `boardPreviewContainerStyle` width updated from 48 to 36
 - `queue-control-bar.module.css`: `.swipeAction` class (if no longer used)
 
 **After Phase 4**:
@@ -1164,8 +1272,21 @@ The main `layout.tsx` is a **server component** that wraps everything in provide
 - `BottomTabBar` needs `QueueContext` access (for active state) → must be inside `GraphQLQueueProvider`
 - `PlayViewDrawer` needs `QueueContext` + `BoardProvider` → must be inside both providers
 - `CreateDrawer` needs route params → can use `useParams()` or receive props from layout
+- `GlobalQueueControlBar` needs `PersistentSessionContext` access → must be inside `PersistentSessionProvider` (which is already at root level)
 
-The current provider stack is: `BoardSessionBridge > ConnectionSettingsProvider > GraphQLQueueProvider > PartyProvider`. All new components go inside this stack.
+The current provider stack is: `BoardSessionBridge > ConnectionSettingsProvider > GraphQLQueueProvider > PartyProvider`. All new components go inside this stack. The `GlobalQueueControlBar` is an exception — it lives **outside** the board layout, directly inside the root `PersistentSessionProvider`, so it can appear on any page.
+
+### Persistent Queue Control Bar Architecture
+
+The QueueControlBar has **two rendering modes**:
+
+1. **Board-route mode** (existing, enhanced): Rendered by `[angle]/layout.tsx` inside the full provider stack. Has access to `QueueContext` with all mutation capabilities (add, remove, reorder, navigate). This is the fully interactive version.
+
+2. **Global/off-route mode** (new): Rendered by `GlobalQueueControlBar` at the root layout level. Uses `PersistentSessionContext` for read-only queue data. Provides navigation back to the board route and basic controls (tick, queue drawer). When the user taps the bar, they're navigated back to the board route where the full QueueControlBar takes over.
+
+**Why two instances instead of one?** The board-route QueueControlBar needs `QueueContext` which only exists within `GraphQLQueueProvider`. Moving `GraphQLQueueProvider` to the root would require it to always be connected, even when no board is selected. Keeping two instances — one board-scoped with full capabilities, one global with read-only persistent data — is simpler and avoids unnecessary WebSocket connections.
+
+**Visibility coordination**: The `GlobalQueueControlBar` uses `useIsOnBoardRoute()` (already exists in `persistent-session-context.tsx`) to detect when it should hide. The board layout's own QueueControlBar renders as normal. There's no overlap.
 
 ### Existing Swipe Pattern Variants
 
