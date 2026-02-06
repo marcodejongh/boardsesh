@@ -16,6 +16,7 @@ import { PartyProvider } from '@/app/components/party-manager/party-context';
 import { BoardSessionBridge } from '@/app/components/persistent-session';
 import { Metadata } from 'next';
 import BoardPageSkeleton from '@/app/components/board-page/board-page-skeleton';
+import BottomTabBar from '@/app/components/bottom-tab-bar/bottom-tab-bar';
 
 // Helper to get board details for any board type
 function getBoardDetailsUniversal(parsedParams: ParsedBoardRouteParameters): BoardDetails {
@@ -172,6 +173,7 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
 
               <Affix offsetBottom={0}>
                 <QueueControlBar board={board_name} boardDetails={boardDetails} angle={angle} />
+                <BottomTabBar boardDetails={boardDetails} />
               </Affix>
             </PartyProvider>
           </GraphQLQueueProvider>
