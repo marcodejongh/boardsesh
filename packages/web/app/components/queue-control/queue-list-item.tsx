@@ -309,7 +309,7 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
           style={{
             display: 'flex',
             alignItems: 'center',
-            padding: '12px 8px',
+            padding: `${themeTokens.spacing[3]}px ${themeTokens.spacing[2]}px`,
             backgroundColor: isCurrent
               ? themeTokens.semantic.selected
               : isHistory
@@ -318,9 +318,6 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
             opacity: isSwipeComplete ? 0 : isHistory ? 0.6 : 1,
             cursor: 'grab',
             position: 'relative',
-            WebkitUserSelect: 'none',
-            MozUserSelect: 'none',
-            msUserSelect: 'none',
             userSelect: 'none',
             borderLeft: isCurrent ? `3px solid ${themeTokens.colors.primary}` : undefined,
             transform: `translateX(${swipeOffset}px)`,
