@@ -1,10 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useCallback } from 'react';
 import { Button } from 'antd';
+import { useRouter } from 'next/navigation';
 import { ActionTooltip } from '../action-tooltip';
 import { InfoCircleOutlined } from '@ant-design/icons';
-import Link from 'next/link';
 import { track } from '@vercel/analytics';
 import { ClimbActionProps, ClimbActionResult } from '../types';
 import {
@@ -24,6 +24,8 @@ export function ViewDetailsAction({
   className,
   onComplete,
 }: ClimbActionProps): ClimbActionResult {
+  const router = useRouter();
+
   const url = boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names
     ? constructClimbViewUrlWithSlugs(
         boardDetails.board_name,
@@ -47,13 +49,18 @@ export function ViewDetailsAction({
         climb.name,
       );
 
-  const handleClick = () => {
+  const handleClick = useCallback((e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    e?.preventDefault();
+
     track('Climb Info Viewed', {
       boardLayout: boardDetails.layout_name || '',
       climbUuid: climb.uuid,
     });
+
+    router.push(url);
     onComplete?.();
-  };
+  }, [boardDetails.layout_name, climb.uuid, router, url, onComplete]);
 
   const label = 'View Details';
   const shouldShowLabel = showLabel ?? (viewMode === 'button' || viewMode === 'dropdown');
@@ -64,56 +71,50 @@ export function ViewDetailsAction({
   // Icon mode - for Card actions
   const iconElement = (
     <ActionTooltip title={label}>
-      <Link href={url} onClick={handleClick} className={className} style={{ color: 'inherit' }}>
+      <span onClick={handleClick} style={{ cursor: 'pointer' }} className={className}>
         {icon}
-      </Link>
+      </span>
     </ActionTooltip>
   );
 
   // Button mode
   const buttonElement = (
-    <Link href={url} onClick={handleClick}>
-      <Button
-        icon={icon}
-        size={size === 'large' ? 'large' : size === 'small' ? 'small' : 'middle'}
-        disabled={disabled}
-        className={className}
-      >
-        {shouldShowLabel && label}
-      </Button>
-    </Link>
+    <Button
+      icon={icon}
+      onClick={handleClick}
+      size={size === 'large' ? 'large' : size === 'small' ? 'small' : 'middle'}
+      disabled={disabled}
+      className={className}
+    >
+      {shouldShowLabel && label}
+    </Button>
   );
 
   // Menu item for dropdown
   const menuItem = {
     key: 'viewDetails',
-    label: (
-      <Link href={url} onClick={handleClick} style={{ color: 'inherit' }}>
-        {label}
-      </Link>
-    ),
+    label,
     icon,
+    onClick: () => handleClick(),
   };
 
   // List mode - full-width row for drawer menus
   const listElement = (
-    <Link href={url} onClick={handleClick} style={{ textDecoration: 'none' }}>
-      <Button
-        type="text"
-        icon={icon}
-        block
-        disabled={disabled}
-        style={{
-          height: 48,
-          justifyContent: 'flex-start',
-          paddingLeft: themeTokens.spacing[4],
-          fontSize: themeTokens.typography.fontSize.base,
-          color: 'inherit',
-        }}
-      >
-        {label}
-      </Button>
-    </Link>
+    <Button
+      type="text"
+      icon={icon}
+      block
+      onClick={handleClick}
+      disabled={disabled}
+      style={{
+        height: 48,
+        justifyContent: 'flex-start',
+        paddingLeft: themeTokens.spacing[4],
+        fontSize: themeTokens.typography.fontSize.base,
+      }}
+    >
+      {label}
+    </Button>
   );
 
   let element: React.ReactNode;

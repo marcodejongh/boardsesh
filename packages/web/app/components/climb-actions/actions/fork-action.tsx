@@ -1,10 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useCallback } from 'react';
 import { Button } from 'antd';
+import { useRouter } from 'next/navigation';
 import { ActionTooltip } from '../action-tooltip';
 import { ForkOutlined } from '@ant-design/icons';
-import Link from 'next/link';
 import { track } from '@vercel/analytics';
 import { ClimbActionProps, ClimbActionResult } from '../types';
 import { constructCreateClimbUrl } from '@/app/lib/url-utils';
@@ -21,6 +21,8 @@ export function ForkAction({
   className,
   onComplete,
 }: ClimbActionProps): ClimbActionResult {
+  const router = useRouter();
+
   // Fork is not supported for moonboard yet
   const isMoonboard = boardDetails.board_name === 'moonboard';
   const canFork = !isMoonboard && !!(boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names);
@@ -37,13 +39,20 @@ export function ForkAction({
       )
     : null;
 
-  const handleClick = () => {
+  const handleClick = useCallback((e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    e?.preventDefault();
+
+    if (!url) return;
+
     track('Climb Forked', {
       boardLayout: boardDetails.layout_name || '',
       originalClimb: climb.uuid,
     });
+
+    router.push(url);
     onComplete?.();
-  };
+  }, [url, boardDetails.layout_name, climb.uuid, router, onComplete]);
 
   const label = 'Fork';
   const shouldShowLabel = showLabel ?? (viewMode === 'button' || viewMode === 'dropdown');
@@ -52,38 +61,34 @@ export function ForkAction({
   const icon = <ForkOutlined style={{ fontSize: iconSize }} />;
 
   // Icon mode - for Card actions
-  const iconElement = url ? (
+  const iconElement = (
     <ActionTooltip title="Fork this climb">
-      <Link href={url} onClick={handleClick} className={className} style={{ color: 'inherit' }}>
+      <span onClick={handleClick} style={{ cursor: 'pointer' }} className={className}>
         {icon}
-      </Link>
+      </span>
     </ActionTooltip>
-  ) : null;
+  );
 
   // Button mode
-  const buttonElement = url ? (
-    <Link href={url} onClick={handleClick}>
-      <Button
-        icon={icon}
-        size={size === 'large' ? 'large' : size === 'small' ? 'small' : 'middle'}
-        disabled={disabled}
-        className={className}
-      >
-        {shouldShowLabel && label}
-      </Button>
-    </Link>
-  ) : null;
+  const buttonElement = (
+    <Button
+      icon={icon}
+      onClick={handleClick}
+      size={size === 'large' ? 'large' : size === 'small' ? 'small' : 'middle'}
+      disabled={disabled}
+      className={className}
+    >
+      {shouldShowLabel && label}
+    </Button>
+  );
 
   // Menu item for dropdown
   const menuItem = url
     ? {
         key: 'fork',
-        label: (
-          <Link href={url} onClick={handleClick} style={{ color: 'inherit' }}>
-            {label}
-          </Link>
-        ),
+        label,
         icon,
+        onClick: () => handleClick(),
       }
     : {
         key: 'fork',
@@ -93,25 +98,23 @@ export function ForkAction({
       };
 
   // List mode - full-width row for drawer menus
-  const listElement = url ? (
-    <Link href={url} onClick={handleClick} style={{ textDecoration: 'none' }}>
-      <Button
-        type="text"
-        icon={icon}
-        block
-        disabled={disabled}
-        style={{
-          height: 48,
-          justifyContent: 'flex-start',
-          paddingLeft: themeTokens.spacing[4],
-          fontSize: themeTokens.typography.fontSize.base,
-          color: 'inherit',
-        }}
-      >
-        {label}
-      </Button>
-    </Link>
-  ) : null;
+  const listElement = (
+    <Button
+      type="text"
+      icon={icon}
+      block
+      onClick={handleClick}
+      disabled={disabled}
+      style={{
+        height: 48,
+        justifyContent: 'flex-start',
+        paddingLeft: themeTokens.spacing[4],
+        fontSize: themeTokens.typography.fontSize.base,
+      }}
+    >
+      {label}
+    </Button>
+  );
 
   let element: React.ReactNode;
   switch (viewMode) {
