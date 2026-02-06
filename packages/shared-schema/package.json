@@ -29,7 +29,8 @@
   },
   "scripts": {
     "build": "tsc",
-    "dev": "tsc --watch"
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "graphql": "^16.12.0"

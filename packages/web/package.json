@@ -10,6 +10,7 @@
     "start": "next start",
     "lint": "oxlint .",
     "lint-fix": "oxlint --fix .",
+    "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "test": "vitest",
     "test:ui": "vitest --ui",

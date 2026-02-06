@@ -62,6 +62,11 @@ npm run backend:dev
 - `npm run build:web` - Build web package only
 - `npm run build:backend` - Build backend package only
 - `npm run lint` - Run oxlint on web package
+- `npm run typecheck` - Type check all packages (use this instead of build for validation)
+- `npm run typecheck:web` - Type check web package only
+- `npm run typecheck:backend` - Type check backend package only
+- `npm run typecheck:db` - Type check db package only
+- `npm run typecheck:shared` - Type check shared-schema package only
 - `npm run backend:dev` - Start backend in development mode
 - `npm run backend:start` - Start backend in production mode
 - `npm run db:up` - Start development databases (PostgreSQL, Neon proxy, Redis)
@@ -160,6 +165,7 @@ We are using next.js app router, it's important we try to use server side compon
 
 ### Important rules
 
+- **Use `npm run typecheck` instead of `npm run build` for TypeScript validation** - Running build interferes with the local dev server and `npx` commands can mess with lock files. Use the typecheck scripts for validating TypeScript.
 - Always try to use server side rendering wherever possibe. But do note that for some parts such as the QueueList and related components, thats impossible, so dont try to force SSR there.
 - Always use the AntD components and their properties.
 - Try to avoid use of the style property
