@@ -22,9 +22,17 @@ const TOUR_START_DELAY = 800;
 // Delay in ms for drawer open/close animation
 const DRAWER_ANIMATION_DELAY = 450;
 
+// Custom event name for controlling the queue drawer from the tour
+export const TOUR_DRAWER_EVENT = 'onboarding-tour:set-queue-drawer';
+
 // Helper to create a target function with the correct type for AntD Tour
 const getTarget = (selector: string): (() => HTMLElement) | null => {
   return (() => document.querySelector<HTMLElement>(selector)!) as (() => HTMLElement) | null;
+};
+
+// Dispatch a custom event to open/close the queue drawer
+const setTourDrawer = (open: boolean) => {
+  window.dispatchEvent(new CustomEvent(TOUR_DRAWER_EVENT, { detail: { open } }));
 };
 
 const OnboardingTour: React.FC = () => {
@@ -64,8 +72,7 @@ const OnboardingTour: React.FC = () => {
   const handleClose = useCallback(async () => {
     // Close the drawer if it was opened by the tour
     if (drawerOpenedByTour.current) {
-      const toggle = document.getElementById('onboarding-queue-toggle');
-      if (toggle) toggle.click();
+      setTourDrawer(false);
       drawerOpenedByTour.current = false;
     }
 
@@ -84,11 +91,8 @@ const OnboardingTour: React.FC = () => {
 
     // Opening the queue drawer before step 5 (index 4)
     if (step === QUEUE_DRAWER_OPEN_STEP && !drawerOpenedByTour.current) {
-      const toggle = document.getElementById('onboarding-queue-toggle');
-      if (toggle) {
-        toggle.click();
-        drawerOpenedByTour.current = true;
-      }
+      setTourDrawer(true);
+      drawerOpenedByTour.current = true;
       // Delay step transition to let drawer animate in
       setTimeout(() => setCurrent(step), DRAWER_ANIMATION_DELAY);
       return;
@@ -96,22 +100,16 @@ const OnboardingTour: React.FC = () => {
 
     // Close the queue drawer when moving to the step after drawer section
     if (step === QUEUE_DRAWER_CLOSE_STEP && drawerOpenedByTour.current) {
-      const toggle = document.getElementById('onboarding-queue-toggle');
-      if (toggle) {
-        toggle.click();
-        drawerOpenedByTour.current = false;
-      }
+      setTourDrawer(false);
+      drawerOpenedByTour.current = false;
       setTimeout(() => setCurrent(step), DRAWER_ANIMATION_DELAY);
       return;
     }
 
     // Going backwards out of the drawer section - close drawer
     if (step === QUEUE_DRAWER_OPEN_STEP - 1 && drawerOpenedByTour.current) {
-      const toggle = document.getElementById('onboarding-queue-toggle');
-      if (toggle) {
-        toggle.click();
-        drawerOpenedByTour.current = false;
-      }
+      setTourDrawer(false);
+      drawerOpenedByTour.current = false;
       setTimeout(() => setCurrent(step), DRAWER_ANIMATION_DELAY);
       return;
     }
@@ -119,11 +117,23 @@ const OnboardingTour: React.FC = () => {
     setCurrent(step);
   }, []);
 
+  // Helper to wrap step description with a skip tour link
+  const withSkip = (description: React.ReactNode): React.ReactNode => (
+    <>
+      {description}
+      <div className={styles.skipLink}>
+        <a onClick={handleClose}>Skip tour</a>
+      </div>
+    </>
+  );
+
   const tourSteps: TourStepProps[] = [
     {
       title: 'Select a Climb',
-      description: 'Double-tap any climb card to make it the active climb and add it to your queue.',
+      description: withSkip('Double-tap any climb card to make it the active climb and add it to your queue.'),
       target: getTarget('#onboarding-climb-card'),
+      placement: 'bottom',
+      scrollIntoViewOptions: { behavior: 'smooth', block: 'start' },
       cover: (
         <div className={styles.stepIcon}>
           <SwapOutlined />
@@ -132,9 +142,11 @@ const OnboardingTour: React.FC = () => {
     },
     {
       title: 'Board Controls',
-      description:
+      description: withSkip(
         'Use the light button to illuminate holds on your board via Bluetooth, or start a party session to climb with friends.',
+      ),
       target: getTarget('#onboarding-party-light-buttons'),
+      placement: 'bottom',
       cover: (
         <div className={styles.stepIcon}>
           <BulbOutlined />
@@ -144,7 +156,7 @@ const OnboardingTour: React.FC = () => {
     },
     {
       title: 'Navigate Your Queue',
-      description: 'Swipe left or right on this bar to go to the next or previous climb in your queue.',
+      description: withSkip('Swipe left or right on this bar to go to the next or previous climb in your queue.'),
       target: getTarget('#onboarding-queue-bar'),
       cover: (
         <div className={styles.stepIcon}>
@@ -154,7 +166,7 @@ const OnboardingTour: React.FC = () => {
     },
     {
       title: 'View Your Queue',
-      description: 'Tap here to open the queue drawer and see all your climbs, history, and suggestions.',
+      description: withSkip('Tap here to open the queue drawer and see all your climbs, history, and suggestions.'),
       target: getTarget('#onboarding-queue-toggle'),
       cover: (
         <div className={styles.stepIcon}>
@@ -164,9 +176,11 @@ const OnboardingTour: React.FC = () => {
     },
     {
       title: 'Queue Item Actions',
-      description:
+      description: withSkip(
         'Swipe queue items left to remove them from the queue, or swipe right to log an ascent.',
+      ),
       target: getTarget('[data-testid="queue-item"]'),
+      mask: false,
       cover: (
         <div className={styles.stepIcon}>
           <ColumnWidthOutlined />
@@ -175,9 +189,11 @@ const OnboardingTour: React.FC = () => {
     },
     {
       title: 'Reorder Your Queue',
-      description:
+      description: withSkip(
         'Press and hold a queue item, then drag it up or down to reorder your queue.',
+      ),
       target: getTarget('[data-testid="queue-item"]'),
+      mask: false,
       cover: (
         <div className={styles.stepIcon}>
           <DragOutlined />
@@ -186,8 +202,9 @@ const OnboardingTour: React.FC = () => {
     },
     {
       title: 'Close the Queue',
-      description: 'Tap outside the drawer to close it and return to the climb list.',
+      description: withSkip('Tap outside the drawer to close it and return to the climb list.'),
       target: null,
+      mask: false,
       cover: (
         <div className={styles.stepIcon}>
           <CloseCircleOutlined />
@@ -196,8 +213,9 @@ const OnboardingTour: React.FC = () => {
     },
     {
       title: 'Search by Hold',
-      description:
+      description: withSkip(
         'Open the search panel and use the "Search by Hold" tab to find climbs that use specific holds on the board.',
+      ),
       target: getTarget('#onboarding-search-button'),
       cover: (
         <div className={styles.stepIcon}>
@@ -207,8 +225,9 @@ const OnboardingTour: React.FC = () => {
     },
     {
       title: 'Heatmap',
-      description:
+      description: withSkip(
         'The heatmap shows how frequently each hold is used across matching climbs. It uses your current search filters (grades, ascents, etc.), so adjust those first to see relevant hold usage.',
+      ),
       target: getTarget('#onboarding-search-button'),
       cover: (
         <div className={styles.stepIcon}>
