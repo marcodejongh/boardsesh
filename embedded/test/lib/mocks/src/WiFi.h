@@ -80,7 +80,7 @@ class MockWiFi {
 
     MockWiFi()
         : status_(WL_DISCONNECTED), mode_(WIFI_OFF), autoReconnect_(false), rssi_(-70), localIP_(192, 168, 1, 100),
-          ssid_(""), macAddress_("AA:BB:CC:DD:EE:FF") {}
+          ssid_(""), macAddress_("AA:BB:CC:DD:EE:FF"), apActive_(false), apSSID_(""), apIP_(192, 168, 4, 1) {}
 
     // Mode control
     bool mode(wifi_mode_t mode) {
@@ -122,6 +122,26 @@ class MockWiFi {
     int8_t RSSI() const { return rssi_; }
 
     String macAddress() const { return macAddress_; }
+
+    // Access Point methods
+    bool softAP(const char* ssid, const char* passphrase = nullptr) {
+        (void)passphrase;
+        apSSID_ = ssid ? ssid : "";
+        apActive_ = true;
+        return true;
+    }
+
+    bool softAPdisconnect(bool wifioff = false) {
+        (void)wifioff;
+        apActive_ = false;
+        apSSID_ = "";
+        return true;
+    }
+
+    IPAddress softAPIP() const { return apIP_; }
+
+    bool isAPActive() const { return apActive_; }
+    String getAPSSID() const { return apSSID_; }
 
     // Scan methods
     int16_t scanNetworks() { return networks_.size(); }
@@ -171,6 +191,9 @@ class MockWiFi {
         ssid_ = "";
         macAddress_ = "AA:BB:CC:DD:EE:FF";
         networks_.clear();
+        apActive_ = false;
+        apSSID_ = "";
+        apIP_ = IPAddress(192, 168, 4, 1);
     }
 
   private:
@@ -182,6 +205,9 @@ class MockWiFi {
     String ssid_;
     String macAddress_;
     std::vector<NetworkInfo> networks_;
+    bool apActive_ = false;
+    String apSSID_;
+    IPAddress apIP_ = IPAddress(192, 168, 4, 1);
 };
 
 extern MockWiFi WiFi;
