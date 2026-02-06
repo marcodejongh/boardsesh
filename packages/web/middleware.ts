@@ -42,5 +42,9 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/api/v1/:path*', '/:path*'],
+  matcher: [
+    '/api/v1/:path*',
+    // Match all page routes but skip static files and Next.js internals
+    '/((?!_next/static|_next/image|favicon.ico|monitoring|.*\\..*).*)',
+  ],
 };

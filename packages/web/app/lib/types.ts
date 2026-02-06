@@ -171,28 +171,6 @@ export type BetaLink = {
   link: string;
 };
 
-export type SearchCountRequest = {
-  gradeAccuracy: number;
-  layout: string;
-  maxGrade: number;
-  minAscents: number;
-  minGrade: number;
-  minRating: number;
-  size: number;
-};
-
-export type SearchCountResponse = number;
-
-export type GetSearchResultsResponse = SearchResult[];
-
-// Holds Type
-export type Hold = {
-  id: number;
-  mirrored_id: number;
-  x: number;
-  y: number;
-};
-
 // Define a tuple type for each hold
 export type HoldTuple = [number, number | null, number, number];
 

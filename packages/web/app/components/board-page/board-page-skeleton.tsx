@@ -1,8 +1,6 @@
 'use client';
 
 import React from 'react';
-import Row from 'antd/es/row';
-import Col from 'antd/es/col';
 import Flex from 'antd/es/flex';
 import Card from 'antd/es/card';
 import Skeleton from 'antd/es/skeleton';
@@ -72,22 +70,50 @@ const ClimbCardSkeleton = ({ aspectRatio }: { aspectRatio?: number }) => (
 );
 
 /**
- * Skeleton loading UI for the board page, matching the ClimbsList grid layout.
- * Accepts an optional aspectRatio to match the actual board dimensions.
+ * Skeleton that mimics the ClimbListItem layout (~60px rows with thumbnail, text, and grade).
+ */
+const ClimbListItemSkeleton = () => (
+  <div
+    style={{
+      display: 'flex',
+      alignItems: 'center',
+      padding: `${themeTokens.spacing[2]}px ${themeTokens.spacing[3]}px`,
+      gap: themeTokens.spacing[3],
+      backgroundColor: themeTokens.semantic.surface,
+      borderBottom: `1px solid ${themeTokens.neutral[200]}`,
+      borderLeft: '3px solid transparent',
+    }}
+  >
+    {/* Thumbnail placeholder */}
+    <Skeleton.Avatar active shape="square" size={48} style={{ flexShrink: 0 }} />
+
+    {/* Center: Name and setter lines */}
+    <Flex vertical gap={4} style={{ flex: 1, minWidth: 0 }}>
+      <Skeleton.Input active size="small" style={{ width: '55%', minWidth: 80, height: 16 }} />
+      <Skeleton.Input active size="small" style={{ width: '35%', minWidth: 60, height: 12 }} />
+    </Flex>
+
+    {/* Right: Grade placeholder */}
+    <Skeleton.Input active size="small" style={{ width: 32, minWidth: 32, height: 24, flexShrink: 0 }} />
+
+    {/* Ellipsis dot placeholder */}
+    <Skeleton.Avatar active shape="circle" size={16} style={{ flexShrink: 0 }} />
+  </div>
+);
+
+/**
+ * Skeleton loading UI for the board page.
+ * Defaults to list mode skeletons since SSR default is 'list'.
  * Includes a sidebar placeholder on desktop (min-width: 768px) to prevent layout shift.
  */
-const BoardPageSkeleton = ({ aspectRatio }: BoardPageSkeletonProps) => {
+const BoardPageSkeleton = (_props: BoardPageSkeletonProps) => {
   return (
     <>
-      {/* Main content - always visible */}
+      {/* Main content - always visible, defaults to list mode (SSR default) */}
       <div className={styles.skeletonMain}>
-        <Row gutter={[8, 8]}>
-          {Array.from({ length: 10 }, (_, i) => (
-            <Col xs={24} lg={12} xl={12} key={i}>
-              <ClimbCardSkeleton aspectRatio={aspectRatio} />
-            </Col>
-          ))}
-        </Row>
+        {Array.from({ length: 10 }, (_, i) => (
+          <ClimbListItemSkeleton key={i} />
+        ))}
       </div>
 
       {/* Sidebar placeholder - only visible on desktop via CSS to reserve space */}
@@ -97,4 +123,4 @@ const BoardPageSkeleton = ({ aspectRatio }: BoardPageSkeletonProps) => {
 };
 
 export default BoardPageSkeleton;
-export { ClimbCardSkeleton };
+export { ClimbCardSkeleton, ClimbListItemSkeleton };

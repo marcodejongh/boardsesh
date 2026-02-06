@@ -1,0 +1,38 @@
+.tabBar {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  width: 100%;
+  border-top: 1px solid var(--neutral-200, #e5e7eb);
+  background-color: var(--semantic-surface, #fff);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.tabItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: 6px 0 4px;
+  cursor: pointer;
+  transition: color 150ms ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+  background: none;
+  border: none;
+}
+
+.tabLabel {
+  font-size: 10px;
+  margin-top: 2px;
+  line-height: 1;
+}
+
+/* Hide on desktop - search/queue available in sidebar, create in header */
+@media (min-width: 768px) {
+  .tabBar {
+    display: none;
+  }
+}

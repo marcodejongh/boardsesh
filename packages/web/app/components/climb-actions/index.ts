@@ -17,7 +17,6 @@ export {
   OpenInAppAction,
   MirrorAction,
   ShareAction,
-  AddToListAction,
 } from './actions';
 
 // Backward compatibility - keep existing exports

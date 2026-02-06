@@ -50,7 +50,7 @@ const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl, angle }: ClimbVie
             boardDetails={boardDetails}
             angle={angle}
             viewMode="dropdown"
-            include={['tick', 'share', 'addToList', 'openInApp']}
+            include={['tick', 'share', 'openInApp']}
             auroraAppUrl={auroraAppUrl}
           />
         </div>
@@ -66,7 +66,7 @@ const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl, angle }: ClimbVie
             boardDetails={boardDetails}
             angle={angle}
             viewMode="button"
-            include={['favorite', 'tick', 'queue', 'share', 'addToList', 'openInApp']}
+            include={['favorite', 'tick', 'queue', 'share', 'openInApp']}
             auroraAppUrl={auroraAppUrl}
           />
         </div>

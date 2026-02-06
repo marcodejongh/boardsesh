@@ -21,7 +21,7 @@ This plan transforms Boardsesh's UI into a Spotify-like experience with a persis
 | ShareBoardButton | `packages/web/app/components/board-page/share-button.tsx` | Party mode drawer (top placement, 70vh height). Has Start/Join session tabs. Shows users list, QR code, share URL when connected. |
 | SendClimbToBoardButton | `packages/web/app/components/board-bluetooth-control/send-climb-to-board-button.tsx` | Bluetooth LED connection. Dynamically imported (`next/dynamic`, SSR disabled). Auto-sends climb on `currentClimbQueueItem` change when connected. Uses `useWakeLock` to prevent sleep while connected. Shows iOS Bluefy browser recommendation modal. |
 | SearchButton/Drawer | `packages/web/app/components/search-drawer/` | Desktop sidebar filter column (hidden on mobile via CSS module). Mobile search is `SearchClimbNameInput` in header + `SearchButton` icon for advanced filters. After redesign, search moves entirely to the Search tab/page (bottom tab bar) and desktop sidebar. |
-| ClimbActions | `packages/web/app/components/climb-actions/` | Modular action system with 10 action types: viewDetails, fork, favorite, queue, tick, openInApp, mirror, share, addToList, playlist. Supports `icon`, `button`, `compact`, and `dropdown` view modes. |
+| ClimbActions | `packages/web/app/components/climb-actions/` | Modular action system with 9 action types: viewDetails, fork, favorite, queue, tick, openInApp, mirror, share, playlist. Supports `icon`, `button`, `compact`, and `dropdown` view modes. |
 | BoardRenderer | `packages/web/app/components/board-renderer/board-renderer.tsx` | SVG board visualization with `fillHeight` option |
 | ClimbsList | `packages/web/app/components/board-page/climbs-list.tsx` | Client component. Paginated climb list with IntersectionObserver infinite scroll. Uses `Row`/`Col` grid layout (xs=24, lg=12). Deduplicates by UUID. Hash-based scroll position restoration. |
 
@@ -59,7 +59,7 @@ This plan transforms Boardsesh's UI into a Spotify-like experience with a persis
 ├────────────────────────────────────┤
 │ [T] "Current Climb" V4  [Q] [✓]  │  ← Now Playing bar (~45px, compact)
 ├────────────────────────────────────┤
-│   🏠 Home      🔍 Search   ✚ New  │  ← Bottom tab bar
+│  🏠 Climb  📚 Your Library ✚ Create │  ← Bottom tab bar
 └────────────────────────────────────┘
 ```
 
@@ -85,7 +85,7 @@ This plan transforms Boardsesh's UI into a Spotify-like experience with a persis
 ├────────────────────────────────────┤
 │ [T] "Current Climb" V4  [Q] [✓]  │  ← Compact now-playing bar (~45px)
 ├────────────────────────────────────┤
-│   🏠 Home      🔍 Search   ✚ New  │
+│  🏠 Climb  📚 Your Library ✚ Create │
 └────────────────────────────────────┘
 ```
 
@@ -141,7 +141,9 @@ This plan transforms Boardsesh's UI into a Spotify-like experience with a persis
 ## Phase 1: Bottom Tab Bar
 
 ### What changes
-Add a persistent bottom tab bar below the QueueControlBar with three tabs: **Home**, **Search**, and **Create**.
+Add a persistent bottom tab bar below the QueueControlBar with three tabs: **Climb**, **Your Library**, and **Create**.
+
+**Note:** Search functionality remains in the header on mobile list pages (search input + advanced search button). The bottom tab bar provides navigation, not search.
 
 ### Home Screen
 
@@ -157,7 +159,7 @@ A new landing/home screen accessible via the first tab. This is a placeholder fo
 
 **Feature flag**: `NEXT_PUBLIC_ENABLE_HOME_SCREEN`
 - When `'true'`: Home tab navigates to the `/home` route
-- When falsy (default): Home tab navigates to `/list` instead (acts as the Climbs tab)
+- When falsy (default): Home tab navigates to `/list` instead (acts as the Climb tab)
 - This matches the existing feature flag pattern (e.g., `NEXT_PUBLIC_ENABLE_ONBOARDING_TOUR` in `onboarding-tour.tsx`)
 - Add to `.env.local`: `NEXT_PUBLIC_ENABLE_HOME_SCREEN=false`
 
@@ -165,16 +167,14 @@ A new landing/home screen accessible via the first tab. This is a placeholder fo
 
 1. **New file: `packages/web/app/components/bottom-tab-bar/bottom-tab-bar.tsx`**
    - Client component (`'use client'`)
-   - Three tabs: Home (default active), Search, Create
-   - Icons: Use AntD icons - `HomeOutlined` for Home, `SearchOutlined` for Search, `PlusOutlined` for Create
+   - Three tabs: Climb (navigates to list), Your Library (navigates to playlists), Create (opens create drawer)
+   - Icons: Use AntD icons - `UnorderedListOutlined` for Climb, `TagOutlined` for Your Library, `PlusOutlined` for Create
    - Active state: Primary color (`themeTokens.colors.primary`) for active tab icon + label
    - Inactive state: `themeTokens.neutral[400]` color
    - Fixed at the bottom, full width
    - Height: ~50px with safe-area-inset-bottom padding for iOS
    - Desktop: Hidden (search/queue available in sidebar, create in header)
-   - **Props needed**: Requires board route parameters to construct navigation URLs (the tab bar needs to know the current board/layout/size/set/angle to build the `/home` or `/list` URL)
-   - **Search drawer integration**: Needs a callback prop or ref to open the search drawer, since the drawer state lives elsewhere
-   - **Feature flag check**: Read `process.env.NEXT_PUBLIC_ENABLE_HOME_SCREEN` to determine Home tab destination
+   - **Props needed**: Requires board route parameters to construct navigation URLs
 
 2. **New file: `packages/web/app/components/bottom-tab-bar/bottom-tab-bar.module.css`**
    - Media query to hide on desktop (>= 768px)
@@ -188,11 +188,10 @@ A new landing/home screen accessible via the first tab. This is a placeholder fo
    - **Note**: The current layout uses `<Affix offsetBottom={0}>` around QueueControlBar. The BottomTabBar should be placed outside/below the Affix, or both should be wrapped in a new bottom-anchored container. Consider replacing `<Affix>` with a simple flex layout since both elements are permanently fixed at the bottom.
    - **Note**: The Content area currently has `height: '80vh'` which will need adjustment to account for the tab bar. Consider using `flex: 1` with proper `calc()` or letting flexbox handle it naturally.
 
-4. **Modify: Mobile search integration**
-   - The `SearchClimbNameInput` (text input) and `SearchButton` (advanced filters icon) both move out of the header entirely.
-   - The Search tab in the bottom tab bar navigates to a dedicated search page/view that combines both the name input and the advanced filters in one place.
-   - `search-drawer.tsx` is actually a desktop-only sidebar `FilterColumn` wrapper - the mobile search button (`search-button.tsx`) triggers a separate Drawer. The bottom tab Search action should either navigate to a search-focused view or open the same drawer that `SearchButton` opens.
-   - **Recommended approach**: The Search tab opens the search drawer (bottom placement, full-height or near-full) containing `SearchClimbNameInput` at the top + `BasicSearchForm` filters below + `SearchResultsFooter` at the bottom. This gives search its own full-screen experience on mobile while keeping the header clean.
+4. **Mobile search stays in header**
+   - The `SearchClimbNameInput` (text input) and `SearchButton` (advanced filters icon) **remain in the header** on mobile list pages.
+   - This keeps search easily accessible while browsing climbs.
+   - The bottom tab bar is for navigation only (Climb, Your Library, Create).
 
 5. **New file: `packages/web/app/components/create-drawer/create-drawer.tsx`**
    - Bottom drawer with creation options
@@ -205,18 +204,17 @@ A new landing/home screen accessible via the first tab. This is a placeholder fo
    - Simple AntD Drawer with bottom placement, auto height
 
 ### Behavior
-- **Home tab**: When feature flag is enabled, navigates to the `/home` route. When disabled, navigates to the `/list` route (the climb list). This is the default/first tab.
-- **Search tab**: Opens the advanced search filters drawer (the same one `SearchButton` triggers in the header). On desktop, activates the sidebar search tab instead.
-- **Create tab**: Opens the CreateDrawer with options.
-- Active tab state reflects current context (Home when on /home or /list, etc.)
+- **Climb tab**: Navigates to the `/list` route (the climb list). This is the default/first tab.
+- **Your Library tab**: Navigates to the `/playlists` route. Shows as active when on playlists page.
+- **Create tab**: Opens the CreateDrawer with options (Climb, Playlist). The Playlist option opens a Create Playlist form directly.
+- Active tab state reflects current context (Climb when on /list, Your Library when on /playlists, etc.)
 - On desktop (>= 768px): Tab bar is hidden. Search and create remain in header/sidebar.
-- **On play/view/create pages**: Consider whether the tab bar should remain visible. On play pages the user may want to quickly return to the list. On create pages it could cause confusion. Recommend: show on play/view, hide on create.
+- **On play/view/create pages**: Tab bar remains visible. On play pages the user may want to quickly return to the list or access playlists.
 
 ### Integration with header
-- Remove the mobile `SearchButton` (advanced filters icon) from the header (it moves to bottom tab bar)
-- Remove the `SearchClimbNameInput` text input from the header (search now lives in the Search tab's full-screen experience)
+- **Keep** the mobile `SearchClimbNameInput` and `SearchButton` in the header on list pages - search stays accessible while browsing
 - Keep the desktop sidebar search
-- Remove "Create Climb" from the mobile meatball menu (`mobileMenuItems` in header.tsx, key `create-climb`)
+- Remove "Create Climb" from the mobile meatball menu (`mobileMenuItems` in header.tsx, key `create-climb`) - moved to bottom tab bar's New drawer
 
 ### Home screen route
 - Add the `/home` route alongside the existing `/list` route under the `[angle]` segment
@@ -801,7 +799,7 @@ The phases are designed to be implemented sequentially, each building on the pre
 Phase 1: Bottom Tab Bar + Home Screen
   └─ Foundation for new navigation structure
   └─ Home screen placeholder (feature-flagged)
-  └─ Create drawer for "New" tab
+  └─ Create drawer for "Create" tab
 
 Phase 2: Compact Climb List Mode
   └─ ClimbListItem component
@@ -900,11 +898,11 @@ Board layout.tsx (server component)
 │       └── Mini Transport [Prev | Current | Next]
 │
 └── BottomTabBar [NEW] (mobile only)
-    ├── Home Tab → Navigate to /home (feature-flagged) or /list (default)
-    ├── Search Tab → Open advanced SearchDrawer
+    ├── Climb Tab → Navigate to /list
+    ├── Your Library Tab → Navigate to /playlists
     └── Create Tab → Open CreateDrawer [NEW]
-        ├── Create Climb → /create route
-        └── Create Playlist → /playlists route (hidden for MoonBoard)
+        ├── Climb → /create route
+        └── Playlist → Opens Create Playlist drawer (hidden for MoonBoard)
 ```
 
 ---
@@ -993,18 +991,18 @@ Board layout.tsx (server component)
 
 ### Phase 1
 - [ ] Bottom tab bar renders on mobile, hidden on desktop
-- [ ] Home tab navigates to /list when feature flag is off (default)
-- [ ] Home tab navigates to /home when `NEXT_PUBLIC_ENABLE_HOME_SCREEN=true`
-- [ ] Home placeholder page renders without errors
-- [ ] Search tab opens advanced search drawer (same as old header SearchButton)
+- [ ] Climb tab navigates to /list
+- [ ] Your Library tab navigates to /playlists
+- [ ] Your Library tab shows as active when on playlists page
 - [ ] Create tab opens create drawer
-- [ ] Create drawer links work (create climb, create playlist)
+- [ ] Create drawer options work (Climb navigates to /create, Playlist opens create playlist form)
 - [ ] Create drawer hides playlist option for MoonBoard
 - [ ] iOS safe area padding works (`env(safe-area-inset-bottom)`)
 - [ ] Tab bar does not overlap QueueControlBar
 - [ ] Content area scrolling is not blocked by tab bar
-- [ ] Tab bar shows on play/view pages, hides on create page
-- [ ] Active tab state highlights correctly on /home, /list, and other pages
+- [ ] Tab bar shows on play/view pages
+- [ ] Active tab state highlights correctly on /list, /playlists, and other pages
+- [ ] Search input and advanced search button remain in header on list pages (mobile)
 
 ### Phase 2
 - [ ] Compact list items render correctly with proper layout
@@ -1189,9 +1187,6 @@ After moving components around, the following become dead code and should be del
 - `queue-control-bar.module.css`: `.swipeAction` class (if no longer used)
 
 **After Phase 4**:
-- `header.tsx`: `SearchButton` import and rendering
-- `header.tsx`: `SearchClimbNameInput` import and rendering
-- `header.tsx`: `UISearchParamsProvider` wrapper (was there for search components)
 - `header.tsx`: Entire `mobileMenuItems` array and the meatball `Dropdown` component
 - `header.tsx`: Entire `userMenuItems` array and the desktop user `Dropdown` component
 - `header.tsx`: `signOut` import and `handleSignOut` handler (moves to user drawer)
@@ -1199,6 +1194,7 @@ After moving components around, the following become dead code and should be del
 - `header.tsx`: `showHoldClassification` state and `HoldClassificationWizard` render (moves to user drawer)
 - `header.module.css`: `.mobileMenuButton` class (no longer needed)
 - Verify the `onboarding-party-light-buttons` span doesn't become an empty wrapper on mobile
+- **Note**: `SearchButton`, `SearchClimbNameInput`, and `UISearchParamsProvider` remain in header (search stays in header)
 
 **After Phase 5**:
 - `send-climb-to-board-button.tsx`: Connection logic that moves to `use-bluetooth-connection.ts` (the component becomes a thin wrapper)

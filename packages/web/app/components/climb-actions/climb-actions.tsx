@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { Space, Dropdown, Button } from 'antd';
+import { Space, Dropdown, Button, Flex } from 'antd';
 import { MoreOutlined } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 import {
@@ -15,12 +15,12 @@ import {
   ViewDetailsAction,
   ForkAction,
   FavoriteAction,
+  SetActiveAction,
   QueueAction,
   TickAction,
   OpenInAppAction,
   MirrorAction,
   ShareAction,
-  AddToListAction,
   PlaylistAction,
 } from './actions';
 
@@ -37,12 +37,12 @@ const ACTION_FUNCTIONS: Record<
   viewDetails: ViewDetailsAction,
   fork: ForkAction,
   favorite: FavoriteAction,
+  setActive: SetActiveAction,
   queue: QueueAction,
   tick: TickAction,
   openInApp: OpenInAppAction,
   mirror: MirrorAction,
   share: ShareAction,
-  addToList: AddToListAction,
   playlist: PlaylistAction,
 };
 
@@ -67,12 +67,12 @@ const ACTION_RENDERERS: Record<ClimbActionType, React.FC<ClimbActionProps | Open
   viewDetails: createActionRenderer(ViewDetailsAction),
   fork: createActionRenderer(ForkAction),
   favorite: createActionRenderer(FavoriteAction),
+  setActive: createActionRenderer(SetActiveAction),
   queue: createActionRenderer(QueueAction),
   tick: createActionRenderer(TickAction),
   openInApp: createActionRenderer(OpenInAppAction),
   mirror: createActionRenderer(MirrorAction),
   share: createActionRenderer(ShareAction),
-  addToList: createActionRenderer(AddToListAction),
   playlist: createActionRenderer(PlaylistAction),
 };
 
@@ -144,6 +144,25 @@ export function ClimbActions({
           );
         })}
       </Space>
+    );
+  }
+
+  // List mode - render each action as a full-width row (for drawer menus)
+  if (viewMode === 'list') {
+    return (
+      <Flex vertical className={className}>
+        {actionsToShow.map((actionType) => {
+          const Renderer = ACTION_RENDERERS[actionType];
+          if (!Renderer) return null;
+          return (
+            <Renderer
+              key={actionType}
+              {...commonProps}
+              onComplete={onActionComplete ? () => onActionComplete(actionType) : undefined}
+            />
+          );
+        })}
+      </Flex>
     );
   }
 

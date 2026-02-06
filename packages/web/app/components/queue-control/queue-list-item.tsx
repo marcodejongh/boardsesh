@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Row, Col, Avatar, Tooltip, Dropdown, Button } from 'antd';
 import { CheckOutlined, CloseOutlined, UserOutlined, DeleteOutlined, MoreOutlined, InfoCircleOutlined, AppstoreOutlined } from '@ant-design/icons';
@@ -16,6 +16,7 @@ import ClimbTitle from '../climb-card/climb-title';
 import { useBoardProvider } from '../board-provider/board-provider-context';
 import { themeTokens } from '@/app/theme/theme-config';
 import { constructClimbViewUrl, constructClimbViewUrlWithSlugs, parseBoardRouteParams, constructClimbInfoUrl } from '@/app/lib/url-utils';
+import styles from './queue-list-item.module.css';
 
 type QueueListItemProps = {
   item: ClimbQueueItem;
@@ -33,7 +34,10 @@ type QueueListItemProps = {
 export const AscentStatus = ({ climbUuid }: { climbUuid: ClimbUuid }) => {
   const { logbook, boardName } = useBoardProvider();
 
-  const ascentsForClimb = logbook.filter((ascent) => ascent.climb_uuid === climbUuid);
+  const ascentsForClimb = useMemo(
+    () => logbook.filter((ascent) => ascent.climb_uuid === climbUuid),
+    [logbook, climbUuid],
+  );
 
   const hasSuccessfulAscent = ascentsForClimb.some(({ is_ascent, is_mirror }) => is_ascent && !is_mirror);
   const hasSuccessfulMirroredAscent = ascentsForClimb.some(({ is_ascent, is_mirror }) => is_ascent && is_mirror);
@@ -44,27 +48,21 @@ export const AscentStatus = ({ climbUuid }: { climbUuid: ClimbUuid }) => {
 
   if (supportsMirroring) {
     return (
-      <div style={{ position: 'relative', width: '16px', height: '16px', display: 'flex', alignItems: 'center' }}>
+      <div className={styles.ascentStatusContainer}>
         {/* Regular ascent icon */}
         {hasSuccessfulAscent ? (
-          <div style={{ position: 'absolute', left: 0 }}>
+          <div className={styles.ascentIconRegular}>
             <CheckOutlined style={{ color: themeTokens.colors.success }} />
           </div>
         ) : null}
         {/* Mirrored ascent icon */}
         {hasSuccessfulMirroredAscent ? (
-          <div
-            style={{
-              position: 'absolute',
-              transform: 'scaleX(-1)',
-              left: '2px',
-            }}
-          >
+          <div className={styles.ascentIconMirrored}>
             <CheckOutlined style={{ color: themeTokens.colors.success }} />
           </div>
         ) : null}
         {!hasSuccessfulMirroredAscent && !hasSuccessfulAscent ? (
-          <CloseOutlined style={{ color: themeTokens.colors.error, position: 'absolute', left: 0 }} />
+          <CloseOutlined className={styles.ascentIconRegular} style={{ color: themeTokens.colors.error }} />
         ) : null}
       </div>
     );
@@ -257,78 +255,56 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
   return (
     <div ref={itemRef} data-testid="queue-item">
       <div
-        style={{
-          position: 'relative',
-          overflow: 'hidden',
-          borderBottom: `1px solid ${themeTokens.neutral[200]}`,
-        }}
+        className={styles.itemWrapper}
+        style={{ borderBottom: `1px solid ${themeTokens.neutral[200]}` }}
       >
         {/* Left action background (tick - revealed on swipe right) */}
         <div
+          className={styles.leftAction}
           style={{
-            position: 'absolute',
-            left: 0,
-            top: 0,
-            bottom: 0,
             width: MAX_SWIPE,
             backgroundColor: themeTokens.colors.success,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'flex-start',
             paddingLeft: themeTokens.spacing[4],
             opacity: rightActionOpacity,
             visibility: showRightAction ? 'visible' : 'hidden',
           }}
         >
-          <CheckOutlined style={{ color: 'white', fontSize: 20 }} />
+          <CheckOutlined className={styles.actionIcon} />
         </div>
 
         {/* Right action background (delete - revealed on swipe left) */}
         <div
+          className={styles.rightAction}
           style={{
-            position: 'absolute',
-            right: 0,
-            top: 0,
-            bottom: 0,
             width: MAX_SWIPE,
             backgroundColor: themeTokens.colors.error,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'flex-end',
             paddingRight: themeTokens.spacing[4],
             opacity: leftActionOpacity,
             visibility: showLeftAction ? 'visible' : 'hidden',
           }}
         >
-          <DeleteOutlined style={{ color: 'white', fontSize: 20 }} />
+          <DeleteOutlined className={styles.actionIcon} />
         </div>
 
         {/* Swipeable content */}
         <div
           {...swipeHandlers}
+          className={styles.swipeableContent}
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            padding: '12px 8px',
+            padding: `${themeTokens.spacing[3]}px ${themeTokens.spacing[2]}px`,
             backgroundColor: isCurrent
               ? themeTokens.semantic.selected
               : isHistory
                 ? themeTokens.neutral[100]
                 : themeTokens.semantic.surface,
             opacity: isSwipeComplete ? 0 : isHistory ? 0.6 : 1,
-            cursor: 'grab',
-            position: 'relative',
-            WebkitUserSelect: 'none',
-            MozUserSelect: 'none',
-            msUserSelect: 'none',
-            userSelect: 'none',
             borderLeft: isCurrent ? `3px solid ${themeTokens.colors.primary}` : undefined,
             transform: `translateX(${swipeOffset}px)`,
             transition: swipeOffset === 0 || isSwipeComplete ? `transform ${themeTokens.transitions.fast}, opacity ${themeTokens.transitions.fast}` : 'none',
           }}
           onDoubleClick={() => setCurrentClimbQueueItem(item)}
         >
-          <Row style={{ width: '100%' }} gutter={[8, 8]} align="middle" wrap={false}>
+          <Row className={styles.contentRow} gutter={[8, 8]} align="middle" wrap={false}>
             <Col xs={6} sm={5}>
               <ClimbThumbnail
                 boardDetails={boardDetails}
@@ -403,4 +379,4 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
   );
 };
 
-export default QueueListItem;
+export default React.memo(QueueListItem);

@@ -7,6 +7,7 @@ import { SwapOutlined } from '@ant-design/icons';
 import { track } from '@vercel/analytics';
 import { ClimbActionProps, ClimbActionResult } from '../types';
 import { useQueueContext } from '../../graphql-queue';
+import { themeTokens } from '@/app/theme/theme-config';
 
 export function MirrorAction({
   climb,
@@ -81,6 +82,25 @@ export function MirrorAction({
     disabled: !canMirror,
   };
 
+  // List mode - full-width row for drawer menus
+  const listElement = canMirror ? (
+    <Button
+      type="text"
+      icon={icon}
+      block
+      onClick={handleClick}
+      disabled={disabled}
+      style={{
+        height: 48,
+        justifyContent: 'flex-start',
+        paddingLeft: themeTokens.spacing[4],
+        fontSize: themeTokens.typography.fontSize.base,
+      }}
+    >
+      {label}
+    </Button>
+  ) : null;
+
   let element: React.ReactNode;
   switch (viewMode) {
     case 'icon':
@@ -89,6 +109,9 @@ export function MirrorAction({
     case 'button':
     case 'compact':
       element = buttonElement;
+      break;
+    case 'list':
+      element = listElement;
       break;
     case 'dropdown':
       element = null; // Use menuItem instead

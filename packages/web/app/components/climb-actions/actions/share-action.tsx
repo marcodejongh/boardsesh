@@ -10,6 +10,7 @@ import {
   constructClimbViewUrl,
   constructClimbViewUrlWithSlugs,
 } from '@/app/lib/url-utils';
+import { themeTokens } from '@/app/theme/theme-config';
 
 export function ShareAction({
   climb,
@@ -127,6 +128,25 @@ export function ShareAction({
     onClick: () => handleClick(),
   };
 
+  // List mode - full-width row for drawer menus
+  const listElement = (
+    <Button
+      type="text"
+      icon={icon}
+      block
+      onClick={handleClick}
+      disabled={disabled}
+      style={{
+        height: 48,
+        justifyContent: 'flex-start',
+        paddingLeft: themeTokens.spacing[4],
+        fontSize: themeTokens.typography.fontSize.base,
+      }}
+    >
+      {label}
+    </Button>
+  );
+
   let element: React.ReactNode;
   switch (viewMode) {
     case 'icon':
@@ -135,6 +155,9 @@ export function ShareAction({
     case 'button':
     case 'compact':
       element = buttonElement;
+      break;
+    case 'list':
+      element = listElement;
       break;
     case 'dropdown':
       element = null; // Use menuItem instead

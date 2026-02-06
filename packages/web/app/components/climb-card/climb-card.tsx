@@ -65,12 +65,11 @@ function ClimbCardWithActions({
   const cardTitle = <ClimbTitle climb={climb} layout="horizontal" showSetterInfo />;
 
   // Build exclude list - MoonBoard doesn't have a view details page yet
-  const excludeActions: ('tick' | 'openInApp' | 'mirror' | 'share' | 'addToList' | 'viewDetails')[] = [
+  const excludeActions: ('tick' | 'openInApp' | 'mirror' | 'share' | 'viewDetails')[] = [
     'tick',
     'openInApp',
     'mirror',
     'share',
-    'addToList',
   ];
   if (boardDetails.board_name === 'moonboard') {
     excludeActions.push('viewDetails');

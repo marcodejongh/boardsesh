@@ -1,19 +1,31 @@
 'use client';
-import React, { useEffect, useRef, useCallback } from 'react';
-import { Row, Col } from 'antd';
+import React, { useEffect, useRef, useCallback, useState } from 'react';
+import { Row, Col, Button, Flex } from 'antd';
+import { AppstoreOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import { track } from '@vercel/analytics';
 import { Climb, ParsedBoardRouteParameters, BoardDetails } from '@/app/lib/types';
 import { useQueueContext } from '../graphql-queue';
 import ClimbCard from '../climb-card/climb-card';
-import { ClimbCardSkeleton } from './board-page-skeleton';
+import ClimbListItem from '../climb-card/climb-list-item';
+import { ClimbCardSkeleton, ClimbListItemSkeleton } from './board-page-skeleton';
 import { useSearchParams } from 'next/navigation';
+import { themeTokens } from '@/app/theme/theme-config';
+
+type ViewMode = 'grid' | 'list';
+
+const VIEW_MODE_STORAGE_KEY = 'climbListViewMode';
 
 type ClimbsListProps = ParsedBoardRouteParameters & {
   boardDetails: BoardDetails;
   initialClimbs: Climb[];
 };
 
-const ClimbsListSkeleton = ({ aspectRatio }: { aspectRatio: number }) => {
+const ClimbsListSkeleton = ({ aspectRatio, viewMode }: { aspectRatio: number; viewMode: ViewMode }) => {
+  if (viewMode === 'list') {
+    return Array.from({ length: 10 }, (_, i) => (
+      <ClimbListItemSkeleton key={i} />
+    ));
+  }
   return Array.from({ length: 10 }, (_, i) => (
     <Col xs={24} lg={12} xl={12} key={i}>
       <ClimbCardSkeleton aspectRatio={aspectRatio} />
@@ -34,6 +46,29 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
 
   const searchParams = useSearchParams();
   const page = searchParams.get('page');
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
+
+  // Read stored view mode preference after mount to avoid hydration mismatch
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(VIEW_MODE_STORAGE_KEY);
+      if (stored === 'grid' || stored === 'list') {
+        setViewMode(stored);
+      }
+    } catch {
+      // localStorage not available
+    }
+  }, []);
+
+  const handleViewModeChange = useCallback((mode: ViewMode) => {
+    setViewMode(mode);
+    try {
+      localStorage.setItem(VIEW_MODE_STORAGE_KEY, mode);
+    } catch {
+      // localStorage not available
+    }
+    track('View Mode Changed', { mode });
+  }, []);
 
   // Queue Context provider uses React Query infinite to fetch results, which can only happen clientside.
   // That data equals null at the start, so when its null we use the initialClimbs array which we
@@ -45,33 +80,8 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
     index === self.findIndex((c) => c.uuid === climb.uuid)
   );
 
-  // A ref to store each climb's DOM element position for easier scroll tracking
-  const climbsRefs = useRef<{ [uuid: string]: HTMLDivElement | null }>({});
-
   // Ref for the intersection observer sentinel element
   const loadMoreRef = useRef<HTMLDivElement>(null);
-
-  const updateHash = (climbId: string) => {
-    history.replaceState(null, '', `#${climbId}`);
-  };
-
-  // Function to restore scroll based on the hash in the URL
-  const restoreScrollFromHash = () => {
-    const hash = window.location.hash;
-    if (hash) {
-      const climbId = hash.substring(1);
-      const climbElement = document.getElementById(climbId);
-
-      if (climbElement) {
-        climbElement.scrollIntoView({ behavior: 'instant', block: 'start' });
-      }
-    }
-  };
-
-  // When the component mounts, restore the scroll position based on the hash
-  useEffect(() => {
-    restoreScrollFromHash();
-  }, []);
 
   useEffect(() => {
     if (page === '0' && hasDoneFirstFetch && isFetchingClimbs) {
@@ -79,7 +89,6 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
       if (scrollContainer) {
         scrollContainer.scrollTo({ top: 0, behavior: 'instant' });
       }
-      climbsRefs.current = {};
     }
   }, [page, hasDoneFirstFetch, isFetchingClimbs]);
 
@@ -101,7 +110,6 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
   // Memoized handler for climb card double-click
   const handleClimbDoubleClick = useCallback(
     (climb: Climb) => {
-      updateHash(climb.uuid);
       setCurrentClimb(climb);
       track('Climb List Card Clicked', {
         climbUuid: climb.uuid,
@@ -131,40 +139,87 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
   }, [handleObserver]);
 
   return (
-    <div style={{ paddingTop: '5px' }}>
-      <Row gutter={[16, 16]}>
-        {climbs.map((climb, index) => (
-          <Col xs={24} lg={12} xl={12} id={climb.uuid} key={climb.uuid}>
+    <div style={{ paddingTop: themeTokens.spacing[1] }}>
+      {/* View mode toggle */}
+      <Flex
+        justify="flex-end"
+        style={{
+          padding: `${themeTokens.spacing[1]}px ${themeTokens.spacing[1]}px ${themeTokens.spacing[2]}px`,
+        }}
+      >
+        <Button.Group size="small">
+          <Button
+            icon={<UnorderedListOutlined />}
+            type={viewMode === 'list' ? 'primary' : 'default'}
+            onClick={() => handleViewModeChange('list')}
+            aria-label="List view"
+          />
+          <Button
+            icon={<AppstoreOutlined />}
+            type={viewMode === 'grid' ? 'primary' : 'default'}
+            onClick={() => handleViewModeChange('grid')}
+            aria-label="Grid view"
+          />
+        </Button.Group>
+      </Flex>
+
+      {viewMode === 'grid' ? (
+        /* Grid (card) mode */
+        <Row gutter={[themeTokens.spacing[4], themeTokens.spacing[4]]}>
+          {climbs.map((climb, index) => (
+            <Col xs={24} lg={12} xl={12} key={climb.uuid}>
+              <div
+                {...(index === 0 ? { id: 'onboarding-climb-card' } : {})}
+              >
+                <ClimbCard
+                  climb={climb}
+                  boardDetails={boardDetails}
+                  selected={currentClimb?.uuid === climb.uuid}
+                  onCoverDoubleClick={() => handleClimbDoubleClick(climb)}
+                />
+              </div>
+            </Col>
+          ))}
+          {isFetchingClimbs && (!climbs || climbs.length === 0) ? (
+            <ClimbsListSkeleton aspectRatio={boardDetails.boardWidth / boardDetails.boardHeight} viewMode="grid" />
+          ) : null}
+        </Row>
+      ) : (
+        /* List (compact) mode */
+        <div>
+          {climbs.map((climb, index) => (
             <div
-              ref={(el) => {
-                climbsRefs.current[climb.uuid] = el;
-              }}
+              key={climb.uuid}
               {...(index === 0 ? { id: 'onboarding-climb-card' } : {})}
             >
-              <ClimbCard
+              <ClimbListItem
                 climb={climb}
                 boardDetails={boardDetails}
                 selected={currentClimb?.uuid === climb.uuid}
-                onCoverDoubleClick={() => handleClimbDoubleClick(climb)}
+                onSelect={() => handleClimbDoubleClick(climb)}
               />
             </div>
-          </Col>
-        ))}
-        {isFetchingClimbs && (!climbs || climbs.length === 0) ? (
-          <ClimbsListSkeleton aspectRatio={boardDetails.boardWidth / boardDetails.boardHeight} />
-        ) : null}
-      </Row>
+          ))}
+          {isFetchingClimbs && (!climbs || climbs.length === 0) ? (
+            <ClimbsListSkeleton aspectRatio={boardDetails.boardWidth / boardDetails.boardHeight} viewMode="list" />
+          ) : null}
+        </div>
+      )}
 
       {/* Sentinel element for Intersection Observer - needs min-height to be observable */}
-      <div ref={loadMoreRef} style={{ minHeight: '20px', marginTop: '16px' }}>
+      <div ref={loadMoreRef} style={{ minHeight: themeTokens.spacing[5], marginTop: viewMode === 'grid' ? themeTokens.spacing[4] : 0 }}>
         {isFetchingClimbs && climbs.length > 0 && (
-          <Row gutter={[16, 16]}>
-            <ClimbsListSkeleton aspectRatio={boardDetails.boardWidth / boardDetails.boardHeight} />
-          </Row>
+          viewMode === 'grid' ? (
+            <Row gutter={[themeTokens.spacing[4], themeTokens.spacing[4]]}>
+              <ClimbsListSkeleton aspectRatio={boardDetails.boardWidth / boardDetails.boardHeight} viewMode="grid" />
+            </Row>
+          ) : (
+            <ClimbsListSkeleton aspectRatio={boardDetails.boardWidth / boardDetails.boardHeight} viewMode="list" />
+          )
         )}
         {!hasMoreResults && climbs.length > 0 && (
-          <div style={{ textAlign: 'center', padding: '20px', color: '#888' }}>
-            No more climbs 🤐
+          <div style={{ textAlign: 'center', padding: themeTokens.spacing[5], color: themeTokens.neutral[400] }}>
+            No more climbs
           </div>
         )}
       </div>

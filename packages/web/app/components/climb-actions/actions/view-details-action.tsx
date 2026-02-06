@@ -11,6 +11,9 @@ import {
   constructClimbViewUrl,
   constructClimbViewUrlWithSlugs,
 } from '@/app/lib/url-utils';
+import { themeTokens } from '@/app/theme/theme-config';
+
+const linkResetStyle: React.CSSProperties = { color: 'inherit', textDecoration: 'none' };
 
 export function ViewDetailsAction({
   climb,
@@ -63,7 +66,7 @@ export function ViewDetailsAction({
   // Icon mode - for Card actions
   const iconElement = (
     <ActionTooltip title={label}>
-      <Link href={url} onClick={handleClick} className={className}>
+      <Link href={url} onClick={handleClick} className={className} style={linkResetStyle}>
         {icon}
       </Link>
     </ActionTooltip>
@@ -71,7 +74,7 @@ export function ViewDetailsAction({
 
   // Button mode
   const buttonElement = (
-    <Link href={url} onClick={handleClick}>
+    <Link href={url} onClick={handleClick} style={linkResetStyle}>
       <Button
         icon={icon}
         size={size === 'large' ? 'large' : size === 'small' ? 'small' : 'middle'}
@@ -87,12 +90,32 @@ export function ViewDetailsAction({
   const menuItem = {
     key: 'viewDetails',
     label: (
-      <Link href={url} onClick={handleClick}>
+      <Link href={url} onClick={handleClick} style={linkResetStyle}>
         {label}
       </Link>
     ),
     icon,
   };
+
+  // List mode - full-width row for drawer menus
+  const listElement = (
+    <Link href={url} onClick={handleClick} style={linkResetStyle}>
+      <Button
+        type="text"
+        icon={icon}
+        block
+        disabled={disabled}
+        style={{
+          height: 48,
+          justifyContent: 'flex-start',
+          paddingLeft: themeTokens.spacing[4],
+          fontSize: themeTokens.typography.fontSize.base,
+        }}
+      >
+        {label}
+      </Button>
+    </Link>
+  );
 
   let element: React.ReactNode;
   switch (viewMode) {
@@ -102,6 +125,9 @@ export function ViewDetailsAction({
     case 'button':
     case 'compact':
       element = buttonElement;
+      break;
+    case 'list':
+      element = listElement;
       break;
     case 'dropdown':
       element = null; // Use menuItem instead

@@ -10,6 +10,7 @@ import AuthModal from '../../auth/auth-modal';
 import { LogAscentDrawer } from '../../logbook/log-ascent-drawer';
 import { track } from '@vercel/analytics';
 import { constructClimbInfoUrl } from '@/app/lib/url-utils';
+import { themeTokens } from '@/app/theme/theme-config';
 
 const { Text, Paragraph } = Typography;
 
@@ -160,6 +161,30 @@ export function TickAction({
     onClick: () => handleClick(),
   };
 
+  // List mode - full-width row for drawer menus
+  const listElement = (
+    <>
+      <Badge count={badgeCount} size="small" color={badgeColor} overflowCount={99} showZero={false}>
+        <Button
+          type="text"
+          icon={icon}
+          block
+          onClick={handleClick}
+          disabled={disabled}
+          style={{
+            height: 48,
+            justifyContent: 'flex-start',
+            paddingLeft: themeTokens.spacing[4],
+            fontSize: themeTokens.typography.fontSize.base,
+          }}
+        >
+          {badgeCount > 0 ? `${label} (${badgeCount})` : label}
+        </Button>
+      </Badge>
+      {drawers}
+    </>
+  );
+
   let element: React.ReactNode;
   switch (viewMode) {
     case 'icon':
@@ -168,6 +193,9 @@ export function TickAction({
     case 'button':
     case 'compact':
       element = buttonElement;
+      break;
+    case 'list':
+      element = listElement;
       break;
     case 'dropdown':
       element = drawers; // Need to render drawers even in dropdown mode

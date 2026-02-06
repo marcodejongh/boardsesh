@@ -1,10 +1,10 @@
 export { ViewDetailsAction } from './view-details-action';
 export { ForkAction } from './fork-action';
 export { FavoriteAction } from './favorite-action';
+export { SetActiveAction } from './set-active-action';
 export { QueueAction } from './queue-action';
 export { TickAction } from './tick-action';
 export { OpenInAppAction } from './open-in-app-action';
 export { MirrorAction } from './mirror-action';
 export { ShareAction } from './share-action';
-export { AddToListAction } from './add-to-list-action';
 export { PlaylistAction } from './playlist-action';

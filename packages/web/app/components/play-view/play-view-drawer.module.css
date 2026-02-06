@@ -1,0 +1,55 @@
+.drawerContent {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior-y: contain;
+  touch-action: none;
+}
+
+.topBar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 4px 0;
+  flex-shrink: 0;
+  width: 100%;
+}
+
+.dragHandleBar {
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background-color: var(--ant-color-text-quaternary, #d9d9d9);
+}
+
+.boardSection {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+}
+
+.climbInfoSection {
+  padding: 8px 16px;
+  flex-shrink: 0;
+}
+
+.actionBar {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 8px 16px 12px;
+  flex-shrink: 0;
+}
+
+.swipeCardContainer {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+}

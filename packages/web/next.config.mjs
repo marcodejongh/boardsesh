@@ -16,6 +16,9 @@ const nextConfig = {
   ],
   // Empty turbopack config to silence warning about webpack config
   turbopack: {},
+  experimental: {
+    optimizePackageImports: ['antd', '@ant-design/icons'],
+  },
 };
 
 export default withSentryConfig(nextConfig, {

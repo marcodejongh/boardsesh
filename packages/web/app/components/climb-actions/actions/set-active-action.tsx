@@ -3,52 +3,59 @@
 import React, { useCallback } from 'react';
 import { Button } from 'antd';
 import { ActionTooltip } from '../action-tooltip';
-import { AppstoreOutlined } from '@ant-design/icons';
+import { PlayCircleOutlined } from '@ant-design/icons';
 import { track } from '@vercel/analytics';
 import { ClimbActionProps, ClimbActionResult } from '../types';
-import { constructClimbInfoUrl } from '@/app/lib/url-utils';
+import { useQueueContext } from '../../graphql-queue';
 import { themeTokens } from '@/app/theme/theme-config';
 
-interface OpenInAppActionProps extends ClimbActionProps {
-  auroraAppUrl?: string;
-}
-
-export function OpenInAppAction({
+export function SetActiveAction({
   climb,
   boardDetails,
-  angle,
   viewMode,
   size = 'default',
   showLabel,
   disabled,
   className,
   onComplete,
-  auroraAppUrl,
-}: OpenInAppActionProps): ClimbActionResult {
-  const url = auroraAppUrl || constructClimbInfoUrl(boardDetails, climb.uuid, angle);
+}: ClimbActionProps): ClimbActionResult {
+  const { setCurrentClimb, currentClimb } = useQueueContext();
+
+  const isCurrentClimb = currentClimb?.uuid === climb.uuid;
 
   const handleClick = useCallback((e?: React.MouseEvent) => {
     e?.stopPropagation();
+    e?.preventDefault();
 
-    track('Open in Aurora App', {
-      boardName: boardDetails.board_name,
+    if (isCurrentClimb) return;
+
+    setCurrentClimb(climb);
+
+    track('Set Active Climb', {
+      boardLayout: boardDetails.layout_name || '',
       climbUuid: climb.uuid,
     });
 
-    window.open(url, '_blank', 'noopener');
     onComplete?.();
-  }, [boardDetails.board_name, climb.uuid, url, onComplete]);
+  }, [isCurrentClimb, setCurrentClimb, climb, boardDetails.layout_name, onComplete]);
 
-  const label = 'Open in App';
+  const label = isCurrentClimb ? 'Active' : 'Set Active';
   const shouldShowLabel = showLabel ?? (viewMode === 'button' || viewMode === 'dropdown');
   const iconSize = size === 'small' ? 14 : size === 'large' ? 20 : 16;
 
-  const icon = <AppstoreOutlined style={{ fontSize: iconSize }} />;
+  const iconStyle = isCurrentClimb
+    ? { color: themeTokens.colors.primary, fontSize: iconSize }
+    : { fontSize: iconSize };
+  const icon = <PlayCircleOutlined style={iconStyle} />;
 
   // Icon mode - for Card actions
   const iconElement = (
-    <ActionTooltip title={label}>
-      <span onClick={handleClick} style={{ cursor: 'pointer' }} className={className}>
+    <ActionTooltip title={isCurrentClimb ? 'Currently active' : 'Set as active climb'}>
+      <span
+        onClick={handleClick}
+        style={{ cursor: isCurrentClimb ? 'default' : 'pointer' }}
+        className={className}
+      >
         {icon}
       </span>
     </ActionTooltip>
@@ -59,21 +66,13 @@ export function OpenInAppAction({
     <Button
       icon={icon}
       onClick={handleClick}
+      disabled={disabled || isCurrentClimb}
       size={size === 'large' ? 'large' : size === 'small' ? 'small' : 'middle'}
-      disabled={disabled}
       className={className}
     >
       {shouldShowLabel && label}
     </Button>
   );
-
-  // Menu item for dropdown
-  const menuItem = {
-    key: 'openInApp',
-    label,
-    icon,
-    onClick: () => handleClick(),
-  };
 
   // List mode - full-width row for drawer menus
   const listElement = (
@@ -82,7 +81,7 @@ export function OpenInAppAction({
       icon={icon}
       block
       onClick={handleClick}
-      disabled={disabled}
+      disabled={disabled || isCurrentClimb}
       style={{
         height: 48,
         justifyContent: 'flex-start',
@@ -93,6 +92,15 @@ export function OpenInAppAction({
       {label}
     </Button>
   );
+
+  // Menu item for dropdown
+  const menuItem = {
+    key: 'setActive',
+    label,
+    icon,
+    onClick: () => handleClick(),
+    disabled: isCurrentClimb,
+  };
 
   let element: React.ReactNode;
   switch (viewMode) {
@@ -116,9 +124,9 @@ export function OpenInAppAction({
   return {
     element,
     menuItem,
-    key: 'openInApp',
+    key: 'setActive',
     available: true,
   };
 }
 
-export default OpenInAppAction;
+export default SetActiveAction;

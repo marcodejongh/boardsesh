@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Angle, Climb, BoardDetails } from '@/app/lib/types';
 import { useBoardProvider } from '../board-provider/board-provider-context';
 import { Button, Badge, Drawer, Typography, Space } from 'antd';
@@ -37,7 +37,10 @@ export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boa
     closeDrawer();
   };
 
-  const filteredLogbook = logbook.filter((asc) => asc.climb_uuid === currentClimb?.uuid && Number(asc.angle) === angle);
+  const filteredLogbook = useMemo(
+    () => logbook.filter((asc) => asc.climb_uuid === currentClimb?.uuid && Number(asc.angle) === angle),
+    [logbook, currentClimb?.uuid, angle],
+  );
   const hasSuccessfulAscent = filteredLogbook.some((asc) => asc.is_ascent);
   const badgeCount = filteredLogbook.length;
 

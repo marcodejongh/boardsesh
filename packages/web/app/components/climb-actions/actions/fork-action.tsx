@@ -8,6 +8,9 @@ import Link from 'next/link';
 import { track } from '@vercel/analytics';
 import { ClimbActionProps, ClimbActionResult } from '../types';
 import { constructCreateClimbUrl } from '@/app/lib/url-utils';
+import { themeTokens } from '@/app/theme/theme-config';
+
+const linkResetStyle: React.CSSProperties = { color: 'inherit', textDecoration: 'none' };
 
 export function ForkAction({
   climb,
@@ -53,7 +56,7 @@ export function ForkAction({
   // Icon mode - for Card actions
   const iconElement = url ? (
     <ActionTooltip title="Fork this climb">
-      <Link href={url} onClick={handleClick} className={className}>
+      <Link href={url} onClick={handleClick} className={className} style={linkResetStyle}>
         {icon}
       </Link>
     </ActionTooltip>
@@ -61,7 +64,7 @@ export function ForkAction({
 
   // Button mode
   const buttonElement = url ? (
-    <Link href={url} onClick={handleClick}>
+    <Link href={url} onClick={handleClick} style={linkResetStyle}>
       <Button
         icon={icon}
         size={size === 'large' ? 'large' : size === 'small' ? 'small' : 'middle'}
@@ -78,7 +81,7 @@ export function ForkAction({
     ? {
         key: 'fork',
         label: (
-          <Link href={url} onClick={handleClick}>
+          <Link href={url} onClick={handleClick} style={linkResetStyle}>
             {label}
           </Link>
         ),
@@ -91,6 +94,26 @@ export function ForkAction({
         disabled: true,
       };
 
+  // List mode - full-width row for drawer menus
+  const listElement = url ? (
+    <Link href={url} onClick={handleClick} style={linkResetStyle}>
+      <Button
+        type="text"
+        icon={icon}
+        block
+        disabled={disabled}
+        style={{
+          height: 48,
+          justifyContent: 'flex-start',
+          paddingLeft: themeTokens.spacing[4],
+          fontSize: themeTokens.typography.fontSize.base,
+        }}
+      >
+        {label}
+      </Button>
+    </Link>
+  ) : null;
+
   let element: React.ReactNode;
   switch (viewMode) {
     case 'icon':
@@ -99,6 +122,9 @@ export function ForkAction({
     case 'button':
     case 'compact':
       element = buttonElement;
+      break;
+    case 'list':
+      element = listElement;
       break;
     case 'dropdown':
       element = null; // Use menuItem instead

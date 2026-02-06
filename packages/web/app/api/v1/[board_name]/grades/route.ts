@@ -9,7 +9,9 @@ export async function GET() {
       WHERE is_listed = true
       ORDER BY difficulty ASC
     `;
-    return NextResponse.json(grades);
+    return NextResponse.json(grades, {
+      headers: { 'Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=604800' },
+    });
   } catch {
     return NextResponse.json({ error: 'Failed to fetch grades' }, { status: 500 });
   }

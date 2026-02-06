@@ -1,5 +1,46 @@
+.queueBar {
+  flex-shrink: 0;
+  width: 100%;
+}
+
+.card {
+  width: 100%;
+  border-radius: 0;
+  margin: 0;
+}
+
+.swipeWrapper {
+  position: relative;
+  overflow: hidden;
+}
+
+.row {
+  width: 100%;
+}
+
+.climbInfoCol {
+  min-width: 0;
+}
+
+.climbInfoInner {
+  display: flex;
+  align-items: center;
+}
+
+.boardPreviewContainer {
+  width: 36px;
+  height: auto;
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
 .queueToggle {
   cursor: pointer;
+  min-width: 0;
+  flex: 1;
 }
 
 @media (min-width: 768px) {
@@ -19,18 +60,18 @@
   }
 }
 
-/* Swipe container for mobile navigation */
-.swipeContainer {
-  touch-action: pan-y;
-}
-
-/* Action backgrounds revealed on swipe (hidden on desktop) */
-.swipeAction {
-  z-index: 0;
+/* Desktop-only elements (mirror, play link) */
+.desktopOnly {
+  display: none;
 }
 
 @media (min-width: 768px) {
-  .swipeAction {
-    display: none !important;
+  .desktopOnly {
+    display: inline-flex;
   }
+}
+
+/* Swipe container for mobile navigation */
+.swipeContainer {
+  touch-action: pan-y;
 }
