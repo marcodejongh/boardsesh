@@ -5,7 +5,6 @@ import { Flex, Button, Dropdown, MenuProps } from 'antd';
 import { Header } from 'antd/es/layout/layout';
 import { useSession, signOut } from 'next-auth/react';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
-import SearchButton from '../search-drawer/search-button';
 import SearchClimbNameInput from '../search-drawer/search-climb-name-input';
 import { UISearchParamsProvider } from '../queue-control/ui-searchparams-provider';
 import { BoardDetails } from '@/app/lib/types';
@@ -155,11 +154,6 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
   ];
 
   const mobileMenuItems: MenuProps['items'] = [
-    ...(createClimbUrl ? [{
-      key: 'create-climb',
-      icon: <PlusOutlined />,
-      label: <Link href={createClimbUrl}>Create Climb</Link>,
-    }] : []),
     ...(session?.user && playlistsUrl && !isMoonboard ? [{
       key: 'playlists',
       icon: <TagOutlined />,
@@ -256,16 +250,12 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
 
           {/* Center Section - Content varies by page mode */}
           <Flex justify="center" gap={2} style={{ flex: 1 }} align="center">
-            {/* List page: Show search (mobile only) */}
+            {/* List page: Show search name input (mobile only) */}
+            {/* Full search filters moved to bottom tab bar on mobile */}
             {pageMode === 'list' && (
-              <>
-                <div className={styles.mobileOnly} style={{ flex: 1 }}>
-                  <SearchClimbNameInput />
-                </div>
-                <div className={styles.mobileOnly}>
-                  <SearchButton boardDetails={boardDetails} />
-                </div>
-              </>
+              <div className={styles.mobileOnly} style={{ flex: 1 }}>
+                <SearchClimbNameInput />
+              </div>
             )}
 
             {/* View page: Empty center on mobile (back button is in the page content) */}

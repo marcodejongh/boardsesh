@@ -134,7 +134,7 @@ This plan transforms Boardsesh's UI into a Spotify-like experience with a persis
 
 ---
 
-## Phase 1: Bottom Tab Bar
+## Phase 1: Bottom Tab Bar ✅ DONE
 
 ### What changes
 Add a persistent bottom tab bar below the QueueControlBar with three tabs: **Home**, **Search**, and **Create**.
@@ -896,15 +896,15 @@ layout.tsx (server component)
 ## Testing Checklist
 
 ### Phase 1
-- [ ] Bottom tab bar renders on mobile, hidden on desktop
+- [x] Bottom tab bar renders on mobile, hidden on desktop
 - [ ] Home tab navigates to /list when feature flag is off (default)
 - [ ] Home tab navigates to /home when `NEXT_PUBLIC_ENABLE_HOME_SCREEN=true`
 - [ ] Home placeholder page renders without errors
-- [ ] Search tab opens advanced search drawer (same as old header SearchButton)
-- [ ] Create tab opens create drawer
-- [ ] Create drawer links work (create climb, create playlist)
-- [ ] Create drawer hides playlist option for MoonBoard
-- [ ] iOS safe area padding works (`env(safe-area-inset-bottom)`)
+- [x] Search tab opens advanced search drawer (same as old header SearchButton)
+- [x] Create tab opens create drawer
+- [x] Create drawer links work (create climb, create playlist)
+- [x] Create drawer hides playlist option for MoonBoard
+- [x] iOS safe area padding works (`env(safe-area-inset-bottom)`)
 - [ ] Tab bar does not overlap QueueControlBar
 - [ ] Content area scrolling is not blocked by tab bar
 - [ ] Tab bar shows on play/view pages, hides on create page

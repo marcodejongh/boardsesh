@@ -1,0 +1,36 @@
+.tabBar {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  width: 100%;
+  background: #fff;
+  border-top: 1px solid #E5E7EB;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  touch-action: manipulation;
+}
+
+.tabItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: 6px 0 4px;
+  cursor: pointer;
+  border: none;
+  background: none;
+  gap: 2px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tabLabel {
+  font-size: 11px;
+  line-height: 1;
+}
+
+@media (min-width: 768px) {
+  .tabBar {
+    display: none;
+  }
+}
