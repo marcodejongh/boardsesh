@@ -1,0 +1,61 @@
+.itemWrapper {
+  position: relative;
+  overflow: hidden;
+}
+
+.actionBackground {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+}
+
+.leftAction {
+  composes: actionBackground;
+  left: 0;
+  justify-content: flex-start;
+}
+
+.rightAction {
+  composes: actionBackground;
+  right: 0;
+  justify-content: flex-end;
+}
+
+.actionIcon {
+  color: white;
+  font-size: 20px;
+}
+
+.swipeableContent {
+  display: flex;
+  align-items: center;
+  position: relative;
+  user-select: none;
+  cursor: grab;
+}
+
+.contentRow {
+  width: 100%;
+}
+
+/* Ascent status styles */
+.ascentStatusContainer {
+  position: relative;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+}
+
+.ascentIconRegular {
+  position: absolute;
+  left: 0;
+}
+
+.ascentIconMirrored {
+  position: absolute;
+  transform: scaleX(-1);
+  left: 2px;
+}
