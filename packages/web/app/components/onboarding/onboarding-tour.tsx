@@ -130,7 +130,7 @@ const OnboardingTour: React.FC = () => {
     {
       title: 'Select a Climb',
       description: withSkip('Double-tap any climb card to make it the active climb and add it to your queue.'),
-      target: getTarget('#onboarding-climb-card .ant-card-head'),
+      target: getTarget('#onboarding-climb-card'),
       placement: 'bottom',
     },
     {
