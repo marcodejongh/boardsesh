@@ -13,6 +13,7 @@ import SearchResultsFooter from '@/app/components/search-drawer/search-results-f
 import QueueList from '@/app/components/queue-control/queue-list';
 import { UISearchParamsProvider } from '@/app/components/queue-control/ui-searchparams-provider';
 import { useQueueContext } from '@/app/components/graphql-queue';
+import OnboardingTour from '@/app/components/onboarding/onboarding-tour';
 import styles from './layout-client.module.css';
 
 const { Content, Sider } = Layout;
@@ -117,6 +118,7 @@ const ListLayoutClient: React.FC<PropsWithChildren<ListLayoutClientProps>> = ({ 
           <TabsWrapper boardDetails={boardDetails} />
         </UISearchParamsProvider>
       </Sider>
+      <OnboardingTour />
     </Layout>
   );
 };

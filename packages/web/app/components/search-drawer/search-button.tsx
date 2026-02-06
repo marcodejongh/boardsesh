@@ -53,7 +53,7 @@ const SearchButton = ({ boardDetails }: { boardDetails: BoardDetails }) => {
         color="cyan"
         style={{ zIndex: 100 }}
       >
-        <Button type="default" icon={<SearchOutlined />} onClick={() => setIsOpen(true)} />
+        <Button id="onboarding-search-button" type="default" icon={<SearchOutlined />} onClick={() => setIsOpen(true)} />
       </Badge>
 
       <Drawer
