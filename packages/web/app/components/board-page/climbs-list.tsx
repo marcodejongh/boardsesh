@@ -80,33 +80,8 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
     index === self.findIndex((c) => c.uuid === climb.uuid)
   );
 
-  // A ref to store each climb's DOM element position for easier scroll tracking
-  const climbsRefs = useRef<{ [uuid: string]: HTMLDivElement | null }>({});
-
   // Ref for the intersection observer sentinel element
   const loadMoreRef = useRef<HTMLDivElement>(null);
-
-  const updateHash = (climbId: string) => {
-    history.replaceState(null, '', `#${climbId}`);
-  };
-
-  // Function to restore scroll based on the hash in the URL
-  const restoreScrollFromHash = () => {
-    const hash = window.location.hash;
-    if (hash) {
-      const climbId = hash.substring(1);
-      const climbElement = document.getElementById(climbId);
-
-      if (climbElement) {
-        climbElement.scrollIntoView({ behavior: 'instant', block: 'start' });
-      }
-    }
-  };
-
-  // When the component mounts, restore the scroll position based on the hash
-  useEffect(() => {
-    restoreScrollFromHash();
-  }, []);
 
   useEffect(() => {
     if (page === '0' && hasDoneFirstFetch && isFetchingClimbs) {
@@ -114,7 +89,6 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
       if (scrollContainer) {
         scrollContainer.scrollTo({ top: 0, behavior: 'instant' });
       }
-      climbsRefs.current = {};
     }
   }, [page, hasDoneFirstFetch, isFetchingClimbs]);
 
@@ -136,7 +110,6 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
   // Memoized handler for climb card double-click
   const handleClimbDoubleClick = useCallback(
     (climb: Climb) => {
-      updateHash(climb.uuid);
       setCurrentClimb(climb);
       track('Climb List Card Clicked', {
         climbUuid: climb.uuid,
@@ -194,11 +167,8 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
         /* Grid (card) mode */
         <Row gutter={[themeTokens.spacing[4], themeTokens.spacing[4]]}>
           {climbs.map((climb, index) => (
-            <Col xs={24} lg={12} xl={12} id={climb.uuid} key={climb.uuid}>
+            <Col xs={24} lg={12} xl={12} key={climb.uuid}>
               <div
-                ref={(el) => {
-                  climbsRefs.current[climb.uuid] = el;
-                }}
                 {...(index === 0 ? { id: 'onboarding-climb-card' } : {})}
               >
                 <ClimbCard
@@ -220,10 +190,7 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
           {climbs.map((climb, index) => (
             <div
               key={climb.uuid}
-              id={index === 0 ? 'onboarding-climb-card' : climb.uuid}
-              ref={(el) => {
-                climbsRefs.current[climb.uuid] = el;
-              }}
+              {...(index === 0 ? { id: 'onboarding-climb-card' } : {})}
             >
               <ClimbListItem
                 climb={climb}
