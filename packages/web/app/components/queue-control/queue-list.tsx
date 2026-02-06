@@ -247,7 +247,7 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  padding: `${themeTokens.spacing[3]}px ${themeTokens.spacing[2]}px`,
+                  padding: '12px 8px',
                   borderBottom: `1px solid ${themeTokens.neutral[200]}`,
                 }}
               >
@@ -326,8 +326,8 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
           open={tickDrawerVisible}
           styles={{ wrapper: { height: '50%' } }}
         >
-          <Space direction="vertical" size="large" style={{ width: '100%', textAlign: 'center', padding: `${themeTokens.spacing[6]}px 0` }}>
-            <Text strong style={{ fontSize: themeTokens.typography.fontSize.base }}>Sign in to record ticks</Text>
+          <Space orientation="vertical" size="large" style={{ width: '100%', textAlign: 'center', padding: '24px 0' }}>
+            <Text strong style={{ fontSize: 16 }}>Sign in to record ticks</Text>
             <Paragraph type="secondary">
               Create a Boardsesh account to log your climbs and track your progress.
             </Paragraph>
