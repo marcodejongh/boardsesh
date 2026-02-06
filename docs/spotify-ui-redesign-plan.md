@@ -265,7 +265,7 @@ Add a "compact" display mode for the climb list that renders climbs as slim rows
    - When in list mode: Render `ClimbListItem` instead of `ClimbCard`
    - When in list mode: Single column layout (no grid), full width items
    - When in grid mode: Keep existing 2-column card grid (`Col xs={24} lg={12}`)
-   - Default to compact/list mode on mobile, grid mode on desktop
+   - Default to compact/list mode on all devices (user can toggle to grid if preferred)
    - **Important**: The current `climbs-list.tsx` passes `boardDetails` and `onCoverDoubleClick` to `ClimbCard`. The `ClimbListItem` needs the same props plus the swipe action handlers. Thread `boardDetails` through for thumbnail rendering and action construction.
    - **Hash-based scroll restoration**: The existing `restoreScrollFromHash()` and `updateHash()` must work with both modes. Since items use `id={climb.uuid}`, this should work unchanged as long as `ClimbListItem` also renders with the same `id` attribute.
    - **Infinite scroll**: The `IntersectionObserver` on `loadMoreRef` works independently of item type, so no changes needed there.
@@ -573,7 +573,7 @@ Ensure the desktop experience remains cohesive while the mobile experience is tr
 2. **Sidebar stays** - Queue/Search/Search by Hold tabs in the sidebar (existing `ListLayoutClient` with 3 tabs, not 2)
 3. **Header keeps** - Party, LED, Create, User menu buttons in header (wrapped in `.desktopOnly` class from `header.module.css`)
 4. **Play view** - Desktop users still use the full `/play/` page route with the sidebar layout (`play/layout-client.tsx`)
-5. **Climb list** - Default to grid (card) mode on desktop, compact (list) mode on mobile. Detect initial preference via `window.matchMedia('(min-width: 768px)')` on first load, but respect any stored localStorage preference.
+5. **Climb list** - Default to compact (list) mode on all devices. Grid (card) mode available via toggle. Respect any stored localStorage preference.
 6. **QueueControlBar** - Shows additional prev/next buttons on desktop (existing `.navButtons` CSS class already handles this), keeps mirror button visible, keeps play link
 
 ### Files to modify
@@ -588,7 +588,7 @@ Ensure the desktop experience remains cohesive while the mobile experience is tr
 - Desktop QueueControlBar shows: Mirror, Play link, Prev, Next, Party, Queue, Tick
 - Bottom tab bar is invisible on desktop
 - Play drawer never opens on desktop (tapping bar navigates to `/play/` route instead)
-- Climb list defaults to grid mode on desktop
+- Climb list defaults to compact mode on desktop (grid available via toggle)
 - All keyboard navigation still works (tab, enter, etc.)
 
 ---
@@ -739,7 +739,7 @@ layout.tsx (server component)
 
 - **One new context likely needed**: `BluetoothContext` to share Bluetooth connection state across `SendClimbToBoardButton` (desktop header), play drawer LED button, and party drawer LED tab. A plain hook would create independent connection instances. Alternatively, keep the hook-only approach but mount it in exactly one place and pass state down via props.
 - **Existing contexts consumed**: `QueueContext` (via `useQueueContext()`), `BoardProvider` (via `useBoardProvider()`), `FavoritesProvider` (via `useFavorite()`)
-- **View mode preference**: localStorage (`climbListViewMode: 'compact' | 'grid'`). Initialize from `window.matchMedia` on first load if no stored preference.
+- **View mode preference**: localStorage (`climbListViewMode: 'compact' | 'grid'`). Default to `'compact'` on all devices when no stored preference.
 - **Play drawer open state**: Local state in QueueControlBar. Use a single `activeDrawer: 'none' | 'play' | 'queue'` state to prevent drawer stacking conflicts.
 - **Bottom tab active state**: Derived from current URL pathname via `usePathname()`
 - **Bluetooth connection state**: Extracted to shared hook or context (see above)
@@ -789,7 +789,7 @@ layout.tsx (server component)
 - [ ] Ellipsis menu opens bottom drawer with all actions
 - [ ] All actions in drawer work (favorite, queue, tick, share, playlist, open-in-app, mirror, fork, view)
 - [ ] View mode toggle persists across page loads (localStorage)
-- [ ] View mode defaults to compact on mobile, grid on desktop
+- [ ] View mode defaults to compact on all devices
 - [ ] Infinite scroll works in both modes
 - [ ] Scroll position restoration (hash-based) works in both modes
 - [ ] Selected climb highlighting works in compact mode
@@ -839,8 +839,172 @@ layout.tsx (server component)
 - [ ] Desktop play page works as before (full route with sidebar)
 - [ ] Responsive breakpoints are clean (no flickering between mobile/desktop)
 - [ ] Bottom tab bar is invisible on desktop
-- [ ] Climb list defaults to grid on desktop
+- [ ] Climb list defaults to compact on desktop (grid via toggle)
 - [ ] Desktop QueueControlBar shows all buttons (mirror, play, prev, next, party, queue, tick)
+
+---
+
+## Cleanup & Consolidation
+
+The UI redesign touches many of the same files where duplicated patterns exist. This is the ideal time to consolidate them rather than adding more duplication. These cleanups should be done **during** the relevant phase, not as a separate pass.
+
+### 1. URL Construction Consolidation (do in Phase 1)
+
+**Problem**: The slug-vs-numeric URL fallback pattern is copy-pasted 20+ times across 9+ files:
+```tsx
+// This pattern repeats everywhere:
+const url = boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names
+  ? constructPlayUrlWithSlugs(board_name, layout_name, size_name, ...)
+  : `/${board_name}/${layout_id}/${size_id}/${set_ids.join(',')}/${angle}/play/${uuid}`;
+```
+
+**Files with duplication**:
+- `queue-control-bar.tsx` (2 instances: `buildClimbUrl()`, `getPlayUrl()`)
+- `next-climb-button.tsx` (1 instance)
+- `previous-climb-button.tsx` (1 instance)
+- `play-view-client.tsx` (2 instances: `getBackToListUrl()`, `navigateToClimb()`)
+- `climb-view-actions.tsx` (1 instance: `getBackToListUrl()`)
+- `playlist-view-actions.tsx` (1 instance: `getBackToListUrl()`)
+- `playlists-list-content.tsx` (2 instances)
+- `discover-playlists-content.tsx` (1 instance)
+- `header.tsx` (2 instances: `getBackToListUrl()`, `createClimbUrl`)
+
+**Consolidation**: Add safe wrapper functions to `url-utils.ts`:
+```tsx
+// url-utils.ts - new functions
+export const buildClimbPlayUrl = (boardDetails: BoardDetails, angle: Angle, climbUuid: string, climbName?: string) => { ... }
+export const buildClimbViewUrl = (boardDetails: BoardDetails, angle: Angle, climbUuid: string, climbName?: string) => { ... }
+export const buildClimbListUrl = (boardDetails: BoardDetails, angle: Angle) => { ... }
+export const buildCreateUrl = (boardDetails: BoardDetails, angle: Angle) => { ... }
+export const buildPlaylistsUrl = (boardDetails: BoardDetails, angle: Angle) => { ... }
+```
+
+Each function internally handles the slug-vs-numeric check. All 20+ call sites become one-liners.
+
+**Also extract**: A shared hook `useClimbNavigation(boardDetails, angle)` that returns `{ navigateToClimb, navigateToList, buildClimbUrl }` for components that need router integration + search param preservation.
+
+### 2. Swipe Logic Consolidation (do in Phases 2-3)
+
+**Problem**: Three swipe implementations with overlapping but inconsistent code:
+
+| File | Purpose | Threshold | MAX_SWIPE | Direction Detection | preventScrollOnSwipe |
+|------|---------|-----------|-----------|--------------------|--------------------|
+| `queue-control-bar.tsx` | Prev/next climb | 100 | 120 | None | `true` |
+| `queue-list-item.tsx` | Tick/delete reveal | 100 | 120 | State-based (`isHorizontalSwipe`) | `false` + manual |
+| `play-view-client.tsx` | Prev/next climb | 80 | Unclamped | Inline check | `false` |
+
+**Consolidation**: Create two shared hooks in `packages/web/app/hooks/`:
+
+1. **`use-card-swipe-navigation.ts`** - Spotify-style card swipe (Phase 3)
+   - Used by: PlayViewDrawer, PlayViewClient, QueueControlBar
+   - Handles: translateX animation, next/prev card transition, threshold detection
+   - Parameters: `{ threshold?, onSwipeLeft, onSwipeRight }`
+
+2. **`use-swipe-to-reveal.ts`** - Action reveal behind list items (Phase 2)
+   - Used by: ClimbListItem (new), QueueListItem (refactored)
+   - Handles: direction detection, clamped offset, action opacity, snap-back
+   - Parameters: `{ threshold?, maxSwipe?, onSwipeLeft, onSwipeRight, leftAction, rightAction }`
+   - Includes the `isHorizontalSwipe` direction detection from `queue-list-item.tsx`
+
+**Naming inconsistency to fix**: `queue-list-item.tsx` has opacity variable names swapped (`leftActionOpacity` controls right-swipe opacity). Fix during extraction.
+
+### 3. "Added By" Avatar Component (do in Phase 6)
+
+**Problem**: Identical avatar rendering code (~15 lines) in `queue-control-bar.tsx` and `queue-list-item.tsx`:
+```tsx
+{item.addedByUser ? (
+  <Tooltip title={item.addedByUser.username}>
+    <Avatar size="small" src={item.addedByUser.avatarUrl} icon={<UserOutlined />} />
+  </Tooltip>
+) : (
+  <Tooltip title="Added via Bluetooth">
+    <Avatar size="small" style={{ backgroundColor: 'transparent' }}
+      icon={<BluetoothIcon style={{ color: themeTokens.neutral[400] }} />} />
+  </Tooltip>
+)}
+```
+
+**Consolidation**: Extract to `packages/web/app/components/queue-control/added-by-avatar.tsx`:
+```tsx
+export const AddedByAvatar: React.FC<{ addedByUser?: QueueUser }> = ({ addedByUser }) => { ... }
+```
+
+### 4. Dead Code Removal (do during each phase)
+
+After moving components around, the following become dead code and should be deleted:
+
+**After Phase 3**:
+- `play-view-client.tsx`: `showSwipeHint` state and the 3-second timer effect
+- `play-view-client.tsx`: Static arrow indicator overlays (`swipeIndicator` CSS classes)
+- `play-view.module.css`: `.swipeIndicator`, `.swipeIndicatorLeft`, `.swipeIndicatorRight`, `.swipeIndicatorVisible` classes
+- `queue-control-bar.tsx`: `FastBackwardOutlined` / `FastForwardOutlined` imports and swipe action backgrounds (`.swipeAction` colored divs)
+- `queue-control-bar.module.css`: `.swipeAction` class (if no longer used)
+
+**After Phase 4**:
+- `header.tsx`: Mobile-only `SearchButton` import and rendering
+- `header.tsx`: `create-climb` entry from `mobileMenuItems` array
+- Verify the `onboarding-party-light-buttons` span doesn't become an empty wrapper on mobile
+
+**After Phase 5**:
+- `send-climb-to-board-button.tsx`: Connection logic that moves to `use-bluetooth-connection.ts` (the component becomes a thin wrapper)
+
+### 5. Inline Style Cleanup (ongoing)
+
+**Problem**: `CLAUDE.md` says "Try to avoid use of the style property", but several key files have 20-40+ inline style objects.
+
+**Worst offenders being modified in the redesign**:
+- `queue-control-bar.tsx` - heavy inline styles for the bar layout, swipe backgrounds, drawer
+- `share-button.tsx` - inline styles for party mode drawer sections
+- `queue-list-item.tsx` - inline styles for swipe backgrounds, item layout
+
+**Approach**: As each file is modified during a phase, migrate inline styles to its CSS module. Don't do a separate refactor pass - do it incrementally as code is touched. Priority targets:
+- Swipe action backgrounds → CSS module classes
+- Flex layout containers → CSS module classes
+- Theme token references → CSS custom properties (already partially done in `index.css`)
+
+### 6. Board Feature Checks Consolidation (do in Phase 2)
+
+**Problem**: `boardDetails.board_name === 'moonboard'` checks scattered across files. The redesign adds more MoonBoard-conditional behavior (CreateDrawer, ClimbListItem mirror action, PlayViewDrawer mirror button).
+
+**Consolidation**: Create a utility or use existing `boardDetails` properties:
+```tsx
+// Already exists but underused:
+boardDetails.supportsMirroring  // Use this instead of name checks for mirror
+
+// Add to BoardDetails type if missing:
+boardDetails.supportsPlaylists
+boardDetails.supportsHoldClassification
+boardDetails.supportsClimbCreation
+```
+
+This avoids the new components needing to know about specific board names.
+
+### 7. Queue Clear Confirmation Pattern (do in Phase 6)
+
+**Problem**: Queue clear with confirmation dialog duplicated in:
+- `queue-control-bar.tsx` (queue drawer header)
+- `list/layout-client.tsx` (desktop sidebar queue tab)
+- `play/layout-client.tsx` (desktop play sidebar)
+
+**Consolidation**: Extract to `packages/web/app/components/queue-control/clear-queue-button.tsx`:
+```tsx
+export const ClearQueueButton: React.FC<{ boardDetails: BoardDetails }> = ({ boardDetails }) => { ... }
+```
+
+Includes the Popconfirm, analytics tracking, and `setQueue([])` call.
+
+### Summary
+
+| Consolidation | Phase | Files Affected | LOC Saved (est.) |
+|---|---|---|---|
+| URL construction wrappers | 1 | 9+ files | ~200 lines |
+| Swipe hooks extraction | 2-3 | 3 files → 2 hooks | ~150 lines |
+| AddedByAvatar component | 6 | 2 files | ~25 lines |
+| Dead code removal | 3-5 | 4+ files | ~80 lines |
+| Inline style migration | Ongoing | 3+ files | Net zero (moves to CSS) |
+| Board feature checks | 2 | 5+ files | ~20 lines + maintainability |
+| ClearQueueButton | 6 | 3 files | ~40 lines |
+| **Total** | | | **~515 lines** |
 
 ---
 
