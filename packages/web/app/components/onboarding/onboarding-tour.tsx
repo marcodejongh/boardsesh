@@ -11,6 +11,7 @@ import {
   CloseCircleOutlined,
   SearchOutlined,
   HeatMapOutlined,
+  DragOutlined,
 } from '@ant-design/icons';
 import { useSession } from 'next-auth/react';
 import { shouldShowOnboarding, saveOnboardingStatus } from '@/app/lib/onboarding-db';
@@ -77,8 +78,9 @@ const OnboardingTour: React.FC = () => {
   }, [session?.user?.id]);
 
   const handleStepChange = useCallback((step: number) => {
+    // Steps 4-6 are inside the queue drawer (swipe actions, drag & drop, close drawer)
     const QUEUE_DRAWER_OPEN_STEP = 4;
-    const QUEUE_DRAWER_CLOSE_STEP = 6;
+    const QUEUE_DRAWER_CLOSE_STEP = 7;
 
     // Opening the queue drawer before step 5 (index 4)
     if (step === QUEUE_DRAWER_OPEN_STEP && !drawerOpenedByTour.current) {
@@ -92,7 +94,7 @@ const OnboardingTour: React.FC = () => {
       return;
     }
 
-    // Close the queue drawer when moving past step 6 (index 5)
+    // Close the queue drawer when moving to the step after drawer section
     if (step === QUEUE_DRAWER_CLOSE_STEP && drawerOpenedByTour.current) {
       const toggle = document.getElementById('onboarding-queue-toggle');
       if (toggle) {
@@ -103,7 +105,7 @@ const OnboardingTour: React.FC = () => {
       return;
     }
 
-    // Going backwards from step 5 to step 4 - close drawer
+    // Going backwards out of the drawer section - close drawer
     if (step === QUEUE_DRAWER_OPEN_STEP - 1 && drawerOpenedByTour.current) {
       const toggle = document.getElementById('onboarding-queue-toggle');
       if (toggle) {
@@ -168,6 +170,17 @@ const OnboardingTour: React.FC = () => {
       cover: (
         <div className={styles.stepIcon}>
           <ColumnWidthOutlined />
+        </div>
+      ),
+    },
+    {
+      title: 'Reorder Your Queue',
+      description:
+        'Press and hold a queue item, then drag it up or down to reorder your queue.',
+      target: getTarget('[data-testid="queue-item"]'),
+      cover: (
+        <div className={styles.stepIcon}>
+          <DragOutlined />
         </div>
       ),
     },
