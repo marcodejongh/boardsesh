@@ -8,6 +8,7 @@ import { useSession } from 'next-auth/react';
 import { track } from '@vercel/analytics';
 import { ClimbActionProps, ClimbActionResult } from '../types';
 import AuthModal from '../../auth/auth-modal';
+import { themeTokens } from '@/app/theme/theme-config';
 
 export function AddToListAction({
   climb,
@@ -94,6 +95,28 @@ export function AddToListAction({
     onClick: () => handleClick(),
   };
 
+  // List mode - full-width row for drawer menus
+  const listElement = (
+    <>
+      <Button
+        type="text"
+        icon={icon}
+        block
+        onClick={handleClick}
+        disabled={disabled}
+        style={{
+          height: 48,
+          justifyContent: 'flex-start',
+          paddingLeft: themeTokens.spacing[4],
+          fontSize: themeTokens.typography.fontSize.base,
+        }}
+      >
+        {label}
+      </Button>
+      {authModalElement}
+    </>
+  );
+
   let element: React.ReactNode;
   switch (viewMode) {
     case 'icon':
@@ -102,6 +125,9 @@ export function AddToListAction({
     case 'button':
     case 'compact':
       element = buttonElement;
+      break;
+    case 'list':
+      element = listElement;
       break;
     case 'dropdown':
       element = authModalElement; // Need to render auth modal even in dropdown mode

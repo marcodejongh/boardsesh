@@ -215,11 +215,10 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
           {climbs.map((climb, index) => (
             <div
               key={climb.uuid}
-              id={climb.uuid}
+              id={index === 0 ? 'onboarding-climb-card' : climb.uuid}
               ref={(el) => {
                 climbsRefs.current[climb.uuid] = el;
               }}
-              {...(index === 0 ? { id: 'onboarding-climb-card' } : {})}
             >
               <ClimbListItem
                 climb={climb}

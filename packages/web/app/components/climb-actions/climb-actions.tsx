@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { Space, Dropdown, Button } from 'antd';
+import { Space, Dropdown, Button, Flex } from 'antd';
 import { MoreOutlined } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 import {
@@ -144,6 +144,25 @@ export function ClimbActions({
           );
         })}
       </Space>
+    );
+  }
+
+  // List mode - render each action as a full-width row (for drawer menus)
+  if (viewMode === 'list') {
+    return (
+      <Flex vertical className={className}>
+        {actionsToShow.map((actionType) => {
+          const Renderer = ACTION_RENDERERS[actionType];
+          if (!Renderer) return null;
+          return (
+            <Renderer
+              key={actionType}
+              {...commonProps}
+              onComplete={onActionComplete ? () => onActionComplete(actionType) : undefined}
+            />
+          );
+        })}
+      </Flex>
     );
   }
 

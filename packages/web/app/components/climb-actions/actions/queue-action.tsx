@@ -7,6 +7,7 @@ import { PlusCircleOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import { track } from '@vercel/analytics';
 import { ClimbActionProps, ClimbActionResult } from '../types';
 import { useQueueContext } from '../../graphql-queue';
+import { themeTokens } from '@/app/theme/theme-config';
 
 export function QueueAction({
   climb,
@@ -88,6 +89,25 @@ export function QueueAction({
     disabled: recentlyAdded,
   };
 
+  // List mode - full-width row for drawer menus
+  const listElement = (
+    <Button
+      type="text"
+      icon={icon}
+      block
+      onClick={handleClick}
+      disabled={disabled || recentlyAdded}
+      style={{
+        height: 48,
+        justifyContent: 'flex-start',
+        paddingLeft: themeTokens.spacing[4],
+        fontSize: themeTokens.typography.fontSize.base,
+      }}
+    >
+      {label}
+    </Button>
+  );
+
   let element: React.ReactNode;
   switch (viewMode) {
     case 'icon':
@@ -96,6 +116,9 @@ export function QueueAction({
     case 'button':
     case 'compact':
       element = buttonElement;
+      break;
+    case 'list':
+      element = listElement;
       break;
     case 'dropdown':
       element = null; // Use menuItem instead

@@ -11,6 +11,7 @@ import {
   constructClimbViewUrl,
   constructClimbViewUrlWithSlugs,
 } from '@/app/lib/url-utils';
+import { themeTokens } from '@/app/theme/theme-config';
 
 export function ViewDetailsAction({
   climb,
@@ -94,6 +95,27 @@ export function ViewDetailsAction({
     icon,
   };
 
+  // List mode - full-width row for drawer menus
+  const listElement = (
+    <Link href={url} onClick={handleClick} style={{ textDecoration: 'none' }}>
+      <Button
+        type="text"
+        icon={icon}
+        block
+        disabled={disabled}
+        style={{
+          height: 48,
+          justifyContent: 'flex-start',
+          paddingLeft: themeTokens.spacing[4],
+          fontSize: themeTokens.typography.fontSize.base,
+          color: 'inherit',
+        }}
+      >
+        {label}
+      </Button>
+    </Link>
+  );
+
   let element: React.ReactNode;
   switch (viewMode) {
     case 'icon':
@@ -102,6 +124,9 @@ export function ViewDetailsAction({
     case 'button':
     case 'compact':
       element = buttonElement;
+      break;
+    case 'list':
+      element = listElement;
       break;
     case 'dropdown':
       element = null; // Use menuItem instead

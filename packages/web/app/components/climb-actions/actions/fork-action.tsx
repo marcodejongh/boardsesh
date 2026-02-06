@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { track } from '@vercel/analytics';
 import { ClimbActionProps, ClimbActionResult } from '../types';
 import { constructCreateClimbUrl } from '@/app/lib/url-utils';
+import { themeTokens } from '@/app/theme/theme-config';
 
 export function ForkAction({
   climb,
@@ -91,6 +92,27 @@ export function ForkAction({
         disabled: true,
       };
 
+  // List mode - full-width row for drawer menus
+  const listElement = url ? (
+    <Link href={url} onClick={handleClick} style={{ textDecoration: 'none' }}>
+      <Button
+        type="text"
+        icon={icon}
+        block
+        disabled={disabled}
+        style={{
+          height: 48,
+          justifyContent: 'flex-start',
+          paddingLeft: themeTokens.spacing[4],
+          fontSize: themeTokens.typography.fontSize.base,
+          color: 'inherit',
+        }}
+      >
+        {label}
+      </Button>
+    </Link>
+  ) : null;
+
   let element: React.ReactNode;
   switch (viewMode) {
     case 'icon':
@@ -99,6 +121,9 @@ export function ForkAction({
     case 'button':
     case 'compact':
       element = buttonElement;
+      break;
+    case 'list':
+      element = listElement;
       break;
     case 'dropdown':
       element = null; // Use menuItem instead

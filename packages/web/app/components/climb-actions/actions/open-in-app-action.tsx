@@ -7,6 +7,7 @@ import { AppstoreOutlined } from '@ant-design/icons';
 import { track } from '@vercel/analytics';
 import { ClimbActionProps, ClimbActionResult } from '../types';
 import { constructClimbInfoUrl } from '@/app/lib/url-utils';
+import { themeTokens } from '@/app/theme/theme-config';
 
 interface OpenInAppActionProps extends ClimbActionProps {
   auroraAppUrl?: string;
@@ -74,6 +75,25 @@ export function OpenInAppAction({
     onClick: () => handleClick(),
   };
 
+  // List mode - full-width row for drawer menus
+  const listElement = (
+    <Button
+      type="text"
+      icon={icon}
+      block
+      onClick={handleClick}
+      disabled={disabled}
+      style={{
+        height: 48,
+        justifyContent: 'flex-start',
+        paddingLeft: themeTokens.spacing[4],
+        fontSize: themeTokens.typography.fontSize.base,
+      }}
+    >
+      {label}
+    </Button>
+  );
+
   let element: React.ReactNode;
   switch (viewMode) {
     case 'icon':
@@ -82,6 +102,9 @@ export function OpenInAppAction({
     case 'button':
     case 'compact':
       element = buttonElement;
+      break;
+    case 'list':
+      element = listElement;
       break;
     case 'dropdown':
       element = null; // Use menuItem instead

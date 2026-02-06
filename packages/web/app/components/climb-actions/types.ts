@@ -23,7 +23,7 @@ export type ClimbActionType =
  * - dropdown: Menu items for Dropdown component
  * - compact: Small buttons with labels on hover
  */
-export type ClimbActionsViewMode = 'icon' | 'button' | 'dropdown' | 'compact';
+export type ClimbActionsViewMode = 'icon' | 'button' | 'dropdown' | 'compact' | 'list';
 
 /**
  * Size options for action buttons/icons

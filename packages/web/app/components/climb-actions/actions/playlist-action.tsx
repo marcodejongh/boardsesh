@@ -340,6 +340,28 @@ export function PlaylistAction({
   // Inline expandable content for card mode
   const expandedContent = popoverOpen ? inlineContent : null;
 
+  // List mode - full-width row for drawer menus
+  const listElement = (
+    <>
+      <Button
+        type="text"
+        icon={icon}
+        block
+        onClick={handleClick}
+        disabled={disabled}
+        style={{
+          height: 48,
+          justifyContent: 'flex-start',
+          paddingLeft: themeTokens.spacing[4],
+          fontSize: themeTokens.typography.fontSize.base,
+        }}
+      >
+        {inPlaylistCount > 0 ? `${label} (${inPlaylistCount})` : label}
+      </Button>
+      {authModalElement}
+    </>
+  );
+
   let element: React.ReactNode;
   switch (viewMode) {
     case 'icon':
@@ -348,6 +370,9 @@ export function PlaylistAction({
     case 'button':
     case 'compact':
       element = buttonElement;
+      break;
+    case 'list':
+      element = listElement;
       break;
     case 'dropdown':
       element = authModalElement; // Need to render modals even in dropdown mode

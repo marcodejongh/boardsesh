@@ -300,7 +300,7 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
           climb={climb}
           boardDetails={boardDetails}
           angle={climb.angle}
-          viewMode="button"
+          viewMode="list"
           exclude={excludeActions}
           onActionComplete={() => setIsActionsOpen(false)}
         />
