@@ -1,3 +1,10 @@
+@media (max-width: 768px) {
+  .tour :global(.ant-tour-inner) {
+    max-height: 60vh;
+    overflow-y: auto;
+  }
+}
+
 .stepIcon {
   display: flex;
   justify-content: center;
