@@ -140,9 +140,6 @@ class MockWiFi {
 
     IPAddress softAPIP() const { return apIP_; }
 
-    bool isAPActive() const { return apActive_; }
-    String getAPSSID() const { return apSSID_; }
-
     // Scan methods
     int16_t scanNetworks() { return networks_.size(); }
 

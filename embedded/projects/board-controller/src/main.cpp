@@ -418,14 +418,16 @@ void onWiFiStateChange(WiFiConnectionState state) {
             Logger.logln("WiFi connection failed");
 #ifdef ENABLE_DISPLAY
             Display.setWiFiStatus(false);
+#endif
             // If connection failed and we don't have saved credentials, start AP mode
             if (!WiFiMgr.hasSavedCredentials()) {
                 Logger.logln("No saved credentials - starting AP mode for configuration");
                 if (WiFiMgr.startAP()) {
+#ifdef ENABLE_DISPLAY
                     Display.showSetupScreen(DEFAULT_AP_NAME);
+#endif
                 }
             }
-#endif
             break;
 
         case WiFiConnectionState::AP_MODE:
