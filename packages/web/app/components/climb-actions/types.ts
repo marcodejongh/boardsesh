@@ -14,7 +14,6 @@ export type ClimbActionType =
   | 'openInApp'
   | 'mirror'
   | 'share'
-  | 'addToList'
   | 'playlist';
 
 /**
@@ -106,8 +105,6 @@ export interface UseClimbActionsReturn {
   handleOpenInApp: () => void;
   handleMirror: () => void;
   handleShare: () => Promise<void>;
-  handleAddToList: () => void;
-
   // State
   isFavorited: boolean;
   isFavoriteLoading: boolean;
@@ -137,7 +134,6 @@ export const DEFAULT_ACTION_ORDER: ClimbActionType[] = [
   'queue',
   'tick',
   'share',
-  'addToList',
   'playlist',
   'openInApp',
   'mirror',
@@ -146,7 +142,7 @@ export const DEFAULT_ACTION_ORDER: ClimbActionType[] = [
 /**
  * Actions that require authentication
  */
-export const AUTH_REQUIRED_ACTIONS: ClimbActionType[] = ['favorite', 'addToList', 'playlist'];
+export const AUTH_REQUIRED_ACTIONS: ClimbActionType[] = ['favorite', 'playlist'];
 
 /**
  * Actions that require Aurora credentials

@@ -238,19 +238,6 @@ export function useClimbActions({
     }
   }, [climb, viewDetailsUrl, boardDetails.board_name, onActionComplete]);
 
-  const handleAddToList = useCallback(() => {
-    if (!climb) return;
-
-    if (!isAuthenticated) {
-      setShowAuthModal(true);
-      return;
-    }
-
-    // TODO: Implement list functionality
-    message.info('Add to list coming soon!');
-    onActionComplete?.('addToList');
-  }, [climb, isAuthenticated, onActionComplete]);
-
   return {
     // Action handlers
     handleViewDetails,
@@ -261,7 +248,6 @@ export function useClimbActions({
     handleOpenInApp,
     handleMirror,
     handleShare,
-    handleAddToList,
 
     // State
     isFavorited,

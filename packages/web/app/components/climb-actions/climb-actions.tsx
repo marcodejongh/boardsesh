@@ -21,7 +21,6 @@ import {
   OpenInAppAction,
   MirrorAction,
   ShareAction,
-  AddToListAction,
   PlaylistAction,
 } from './actions';
 
@@ -44,7 +43,6 @@ const ACTION_FUNCTIONS: Record<
   openInApp: OpenInAppAction,
   mirror: MirrorAction,
   share: ShareAction,
-  addToList: AddToListAction,
   playlist: PlaylistAction,
 };
 
@@ -75,7 +73,6 @@ const ACTION_RENDERERS: Record<ClimbActionType, React.FC<ClimbActionProps | Open
   openInApp: createActionRenderer(OpenInAppAction),
   mirror: createActionRenderer(MirrorAction),
   share: createActionRenderer(ShareAction),
-  addToList: createActionRenderer(AddToListAction),
   playlist: createActionRenderer(PlaylistAction),
 };
 

@@ -112,7 +112,7 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
   const rightActionOpacity = Math.min(1, Math.abs(swipeOffset) / SWIPE_THRESHOLD);
 
   // Build exclude list for moonboard
-  const excludeActions: ('tick' | 'openInApp' | 'mirror' | 'share' | 'addToList' | 'viewDetails')[] = [];
+  const excludeActions: ('tick' | 'openInApp' | 'mirror' | 'share' | 'viewDetails')[] = [];
   if (boardDetails.board_name === 'moonboard') {
     excludeActions.push('viewDetails');
   }
