@@ -102,8 +102,8 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
   // Drag handle swipe-down-to-close
   const dragHandlers = useSwipeable({
     onSwiping: (eventData) => {
-      const { deltaY } = eventData;
-      if (deltaY > 0) {
+      const { deltaY, dir } = eventData;
+      if (dir === 'Down' && deltaY > 0) {
         isDraggingRef.current = true;
         setDragOffset(deltaY);
       }
@@ -167,7 +167,7 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
       onClose={handleClose}
       closable={false}
       styles={{
-        body: { padding: 0, overflow: 'hidden' },
+        body: { padding: 0, overflow: 'hidden', overscrollBehaviorY: 'contain', touchAction: 'none' },
         wrapper: { height: '100%' },
       }}
       style={{
@@ -175,24 +175,22 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
         transition: dragOffset === 0 ? 'transform 200ms ease' : 'none',
       }}
     >
-      <div className={styles.drawerContent}>
+      <div {...dragHandlers} className={styles.drawerContent}>
         {/* Top bar: close button, drag handle, ellipsis menu */}
-        <div {...dragHandlers}>
-          <div className={styles.topBar}>
-            <Button
-              type="text"
-              icon={<DownOutlined />}
-              onClick={handleClose}
-              aria-label="Close play view"
-            />
-            <div className={styles.dragHandleBar} />
-            <Button
-              type="text"
-              icon={<MoreOutlined />}
-              onClick={() => setIsActionsOpen(true)}
-              aria-label="Climb actions"
-            />
-          </div>
+        <div className={styles.topBar}>
+          <Button
+            type="text"
+            icon={<DownOutlined />}
+            onClick={handleClose}
+            aria-label="Close play view"
+          />
+          <div className={styles.dragHandleBar} />
+          <Button
+            type="text"
+            icon={<MoreOutlined />}
+            onClick={() => setIsActionsOpen(true)}
+            aria-label="Climb actions"
+          />
         </div>
 
         {/* Board renderer with card-swipe */}
