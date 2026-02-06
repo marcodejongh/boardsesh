@@ -12,7 +12,7 @@ This plan transforms Boardsesh's UI into a Spotify-like experience with a persis
 |---|---|---|
 | Main Layout | `packages/web/app/[board_name]/[layout_id]/[size_id]/[set_ids]/[angle]/layout.tsx` | Server component. Header + Content + Affixed QueueControlBar. Wraps children in `BoardSessionBridge > ConnectionSettingsProvider > GraphQLQueueProvider > PartyProvider`. |
 | List Layout | `.../[angle]/list/layout-client.tsx` | Client component. Main content + desktop sidebar with 3 tabs (Queue/Search/Search by Hold). Sidebar uses AntD `Sider` at 400px width. |
-| Header | `packages/web/app/components/board-page/header.tsx` | Client component. Logo, search input, angle selector, create (desktop), party, LED, user menu. Mobile has a meatball menu dropdown. Uses `usePageMode()` to adapt layout per page type. |
+| Header | `packages/web/app/components/board-page/header.tsx` | Client component. Logo, angle selector, create (desktop), party, LED, user menu. Mobile has a meatball menu dropdown. Uses `usePageMode()` to adapt layout per page type. |
 | QueueControlBar | `packages/web/app/components/queue-control/queue-control-bar.tsx` | Now-playing bar with swipe left/right (prev/next), queue drawer (bottom, 70%), play button link, mirror, prev/next buttons (desktop-only via `.navButtons` CSS), tick. Also shows "added by" avatar indicator. |
 | ClimbCard | `packages/web/app/components/climb-card/climb-card.tsx` | Card view with cover image, horizontal ClimbTitle header, action footer. Has two render paths: `ClimbCardWithActions` (generates actions dynamically) and `ClimbCardStatic` (memoized with external actions). |
 | ClimbTitle | `packages/web/app/components/climb-card/climb-title.tsx` | Name, grade (colorized), quality stars, setter info. Supports `layout="horizontal"` and stacked modes. |
@@ -20,7 +20,7 @@ This plan transforms Boardsesh's UI into a Spotify-like experience with a persis
 | PlayView | `.../play/[climb_uuid]/play-view-client.tsx` | Full board renderer with swipe navigation. Uses `SWIPE_THRESHOLD=80` (different from queue items' 100). Shows swipe hint that auto-hides after 3 seconds. |
 | ShareBoardButton | `packages/web/app/components/board-page/share-button.tsx` | Party mode drawer (top placement, 70vh height). Has Start/Join session tabs. Shows users list, QR code, share URL when connected. |
 | SendClimbToBoardButton | `packages/web/app/components/board-bluetooth-control/send-climb-to-board-button.tsx` | Bluetooth LED connection. Dynamically imported (`next/dynamic`, SSR disabled). Auto-sends climb on `currentClimbQueueItem` change when connected. Uses `useWakeLock` to prevent sleep while connected. Shows iOS Bluefy browser recommendation modal. |
-| SearchButton/Drawer | `packages/web/app/components/search-drawer/` | Desktop sidebar filter column (hidden on mobile via CSS module). Mobile search is `SearchClimbNameInput` in header + `SearchButton` icon for advanced filters. |
+| SearchButton/Drawer | `packages/web/app/components/search-drawer/` | Desktop sidebar filter column (hidden on mobile via CSS module). Mobile search is `SearchClimbNameInput` in header + `SearchButton` icon for advanced filters. After redesign, search moves entirely to the Search tab/page (bottom tab bar) and desktop sidebar. |
 | ClimbActions | `packages/web/app/components/climb-actions/` | Modular action system with 10 action types: viewDetails, fork, favorite, queue, tick, openInApp, mirror, share, addToList, playlist. Supports `icon`, `button`, `compact`, and `dropdown` view modes. |
 | BoardRenderer | `packages/web/app/components/board-renderer/board-renderer.tsx` | SVG board visualization with `fillHeight` option |
 | ClimbsList | `packages/web/app/components/board-page/climbs-list.tsx` | Client component. Paginated climb list with IntersectionObserver infinite scroll. Uses `Row`/`Col` grid layout (xs=24, lg=12). Deduplicates by UUID. Hash-based scroll position restoration. |
@@ -43,7 +43,7 @@ This plan transforms Boardsesh's UI into a Spotify-like experience with a persis
 ### Mobile Layout - List View (Compact Mode)
 ```
 ┌────────────────────────────────────┐
-│ [👤] [Logo] [Search Input] [Angle]│  ← Simplified header
+│ [👤]  [Logo]        [Angle ▾]     │  ← Simplified header
 ├────────────────────────────────────┤
 │                                    │
 │ ┌──────────────────────────────┐   │
@@ -66,7 +66,7 @@ This plan transforms Boardsesh's UI into a Spotify-like experience with a persis
 ### Mobile Layout - List View (Expanded/Card Mode)
 ```
 ┌────────────────────────────────────┐
-│ [👤] [Logo] [Search Input] [Angle]│
+│ [👤]  [Logo]        [Angle ▾]     │
 ├────────────────────────────────────┤
 │                                    │
 │ ┌──────────────────────────────┐   │
@@ -117,7 +117,7 @@ This plan transforms Boardsesh's UI into a Spotify-like experience with a persis
 ### Desktop Layout
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ [👤] [Logo]  [Search Input]  [Angle ▾]  [Create] [Party] [LED] │
+│ [👤] [Logo]  [Angle ▾]  [Create] [Party] [LED]                 │
 ├──────────────────────────────────┬──────────────────────────┤
 │                                  │                          │
 │  Climb list (2-col grid)         │  Sidebar (400px)         │
@@ -185,10 +185,10 @@ A new landing/home screen accessible via the first tab. This is a placeholder fo
    - **Note**: The Content area currently has `height: '80vh'` which will need adjustment to account for the tab bar. Consider using `flex: 1` with proper `calc()` or letting flexbox handle it naturally.
 
 4. **Modify: Mobile search integration**
-   - The current mobile search has two parts: `SearchClimbNameInput` (text input in header) and `SearchButton` (opens advanced filter drawer).
-   - The Search tab should open the advanced filter drawer (from `SearchButton`), not replace the text input.
-   - `search-drawer.tsx` is actually a desktop-only sidebar `FilterColumn` wrapper - the mobile search button (`search-button.tsx`) triggers a separate Drawer. The bottom tab Search action should trigger the same drawer that `SearchButton` opens.
-   - **Keep the header search text input** (`SearchClimbNameInput`) on mobile - it provides quick name search. The tab bar Search opens the advanced filters drawer.
+   - The `SearchClimbNameInput` (text input) and `SearchButton` (advanced filters icon) both move out of the header entirely.
+   - The Search tab in the bottom tab bar navigates to a dedicated search page/view that combines both the name input and the advanced filters in one place.
+   - `search-drawer.tsx` is actually a desktop-only sidebar `FilterColumn` wrapper - the mobile search button (`search-button.tsx`) triggers a separate Drawer. The bottom tab Search action should either navigate to a search-focused view or open the same drawer that `SearchButton` opens.
+   - **Recommended approach**: The Search tab opens the search drawer (bottom placement, full-height or near-full) containing `SearchClimbNameInput` at the top + `BasicSearchForm` filters below + `SearchResultsFooter` at the bottom. This gives search its own full-screen experience on mobile while keeping the header clean.
 
 5. **New file: `packages/web/app/components/create-drawer/create-drawer.tsx`**
    - Bottom drawer with creation options
@@ -209,8 +209,8 @@ A new landing/home screen accessible via the first tab. This is a placeholder fo
 - **On play/view/create pages**: Consider whether the tab bar should remain visible. On play pages the user may want to quickly return to the list. On create pages it could cause confusion. Recommend: show on play/view, hide on create.
 
 ### Integration with header
-- Remove the mobile `SearchButton` (advanced filters icon) from the header center section (it moves to bottom tab bar)
-- **Keep** the `SearchClimbNameInput` text input in the mobile header for quick name-based search
+- Remove the mobile `SearchButton` (advanced filters icon) from the header (it moves to bottom tab bar)
+- Remove the `SearchClimbNameInput` text input from the header (search now lives in the Search tab's full-screen experience)
 - Keep the desktop sidebar search
 - Remove "Create Climb" from the mobile meatball menu (`mobileMenuItems` in header.tsx, key `create-climb`)
 
@@ -535,8 +535,8 @@ Drawer:
 
 All pages:
 ```
-Mobile:   [Avatar]  [Logo]  [Search Input]  [Angle ▾]
-Desktop:  [Avatar]  [Logo]  [Search Input]  [Angle ▾]  [+ Create]  [👥 Party]  [💡 LED]
+Mobile:   [Avatar]  [Logo]  [Angle ▾]
+Desktop:  [Avatar]  [Logo]  [Angle ▾]  [+ Create]  [👥 Party]  [💡 LED]
 ```
 
 Create page (unchanged):
@@ -548,7 +548,7 @@ Desktop:  [Logo]  [Cancel]  [Beta]  [Publish]
 Play/view pages:
 ```
 Mobile:   [Avatar]  [← Back]  [Logo]  [Angle ▾]
-Desktop:  [Avatar]  [Logo]  [Search Input]  [Angle ▾]  [+ Create]  [👥 Party]  [💡 LED]
+Desktop:  [Avatar]  [Logo]  [Angle ▾]  [+ Create]  [👥 Party]  [💡 LED]
 ```
 
 Key changes:
@@ -558,7 +558,7 @@ Key changes:
 - **Board switching** lives in the user drawer (via "Change Board" item), not the header bar
 - Desktop still shows Party, LED, Create buttons inline (unchanged from earlier phases)
 - **Mobile `SearchButton`** (advanced filters icon) already moved to bottom tab bar (Phase 1)
-- **Mobile `SearchClimbNameInput`** stays in header for quick name search
+- **Mobile `SearchClimbNameInput`** removed from header — search now lives entirely in the Search tab's full-screen experience (Phase 1)
 
 ### Files to modify
 
@@ -568,6 +568,8 @@ Removals:
 - **Remove**: `ShareBoardButton` (party mode) from `onboarding-party-light-buttons` span (mobile only) — moved to QueueControlBar in Phase 3
 - **Remove**: `SendClimbToBoardButton` (LED) from `onboarding-party-light-buttons` span (mobile only) — moved to play view drawer in Phase 3
 - **Remove**: Mobile `SearchButton` — moved to bottom tab bar in Phase 1
+- **Remove**: `SearchClimbNameInput` — search now lives in the Search tab experience (Phase 1)
+- **Remove**: `UISearchParamsProvider` wrapper in header (was there for search components, no longer needed)
 - **Remove**: `mobileMenuItems` array and the mobile meatball `Dropdown` entirely
 - **Remove**: `userMenuItems` array and the desktop user `Dropdown` entirely
 - **Remove**: All `signOut`, `setShowAuthModal`, `setShowHoldClassification` handlers from header (they move to user drawer)
@@ -697,7 +699,7 @@ Ensure the desktop experience remains cohesive while the mobile experience is tr
 
 ### Verification checklist
 - The 3-tab sidebar (Queue/Search/Search by Hold) works unchanged
-- Desktop header shows: Avatar, Logo, Search Input, Angle, Create, Party, LED
+- Desktop header shows: Avatar, Logo, Angle, Create, Party, LED
 - Desktop QueueControlBar shows: Mirror, Play link, Prev, Next, Party, Queue, Tick
 - Bottom tab bar is invisible on desktop
 - Play drawer never opens on desktop (tapping bar navigates to `/play/` route instead)
@@ -771,7 +773,6 @@ layout.tsx (server component)
 │   │       ├── About → /about
 │   │       └── Logout / Sign In
 │   ├── Logo
-│   ├── SearchClimbNameInput (mobile, kept for quick name search)
 │   ├── AngleSelector
 │   ├── CreateModeButtons (only on /create page)
 │   └── [Desktop only]: CreateButton, ShareBoardButton, SendClimbToBoardButton
@@ -951,7 +952,7 @@ layout.tsx (server component)
 - [ ] "Classify Holds" opens HoldClassificationWizard from the drawer
 - [ ] Logout works from the drawer
 - [ ] Desktop header still has Create, Party, LED buttons inline
-- [ ] Mobile header is simplified (Avatar, Logo, SearchInput, Angle)
+- [ ] Mobile header is simplified (Avatar, Logo, Angle)
 - [ ] All removed items are accessible via user drawer or other new locations
 - [ ] Onboarding tour steps still target valid elements
 - [ ] SendClimbToBoardButton dynamic import only loads on desktop
@@ -1080,7 +1081,9 @@ After moving components around, the following become dead code and should be del
 - `queue-control-bar.module.css`: `.swipeAction` class (if no longer used)
 
 **After Phase 4**:
-- `header.tsx`: Mobile-only `SearchButton` import and rendering
+- `header.tsx`: `SearchButton` import and rendering
+- `header.tsx`: `SearchClimbNameInput` import and rendering
+- `header.tsx`: `UISearchParamsProvider` wrapper (was there for search components)
 - `header.tsx`: Entire `mobileMenuItems` array and the meatball `Dropdown` component
 - `header.tsx`: Entire `userMenuItems` array and the desktop user `Dropdown` component
 - `header.tsx`: `signOut` import and `handleSignOut` handler (moves to user drawer)
