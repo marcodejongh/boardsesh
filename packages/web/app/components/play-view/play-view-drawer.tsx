@@ -33,6 +33,7 @@ const SendClimbToBoardButton = dynamic(
 
 // Threshold for downward swipe to dismiss the drawer
 const DISMISS_THRESHOLD = 120;
+const DISMISS_ANIMATION_MS = 300;
 
 interface PlayViewDrawerProps {
   activeDrawer: ActiveDrawer;
@@ -51,6 +52,7 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
   const [dragOffset, setDragOffset] = useState(0);
   const [isActionsOpen, setIsActionsOpen] = useState(false);
   const isDraggingRef = useRef(false);
+  const isDismissingRef = useRef(false);
 
   const {
     currentClimb,
@@ -99,7 +101,7 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
     }
   }, [setActiveDrawer]);
 
-  // Drag handle swipe-down-to-close
+  // Swipe-down-to-close (covers entire drawer content)
   const dragHandlers = useSwipeable({
     onSwiping: (eventData) => {
       const { deltaY, dir } = eventData;
@@ -109,14 +111,22 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
       }
     },
     onSwipedDown: (eventData) => {
-      if (eventData.deltaY >= DISMISS_THRESHOLD) {
-        handleClose();
-      }
-      setDragOffset(0);
       isDraggingRef.current = false;
+      if (eventData.deltaY >= DISMISS_THRESHOLD) {
+        // Animate the drawer fully off-screen, then close
+        isDismissingRef.current = true;
+        setDragOffset(window.innerHeight);
+        setTimeout(() => {
+          handleClose();
+        }, DISMISS_ANIMATION_MS);
+      } else {
+        setDragOffset(0);
+      }
     },
     onTouchEndOrOnMouseUp: () => {
-      setDragOffset(0);
+      if (!isDismissingRef.current) {
+        setDragOffset(0);
+      }
       isDraggingRef.current = false;
     },
     trackMouse: false,
@@ -166,13 +176,25 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
       open={isOpen}
       onClose={handleClose}
       closable={false}
+      afterOpenChange={(open) => {
+        if (!open) {
+          setDragOffset(0);
+          isDismissingRef.current = false;
+        }
+      }}
       styles={{
         body: { padding: 0, overflow: 'hidden', overscrollBehaviorY: 'contain', touchAction: 'none' },
-        wrapper: { height: '100%' },
+        wrapper: { height: '100%', boxShadow: dragOffset > 0 ? 'none' : undefined },
+        mask: dragOffset > 0
+          ? {
+              opacity: Math.max(0, 1 - dragOffset / window.innerHeight),
+              transition: isDraggingRef.current ? 'none' : `opacity ${DISMISS_ANIMATION_MS}ms ease-out`,
+            }
+          : {},
       }}
       style={{
         transform: dragOffset > 0 ? `translateY(${dragOffset}px)` : undefined,
-        transition: dragOffset === 0 ? 'transform 200ms ease' : 'none',
+        transition: isDraggingRef.current ? 'none' : `transform ${DISMISS_ANIMATION_MS}ms ease-out`,
       }}
     >
       <div {...dragHandlers} className={styles.drawerContent}>
