@@ -288,8 +288,10 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
                   </div>
                 )}
 
-                <ShareBoardButton />
-                <SendClimbToBoardButton boardDetails={boardDetails} />
+                <span id="onboarding-party-light-buttons" style={{ display: 'inline-flex', gap: 4 }}>
+                  <ShareBoardButton />
+                  <SendClimbToBoardButton boardDetails={boardDetails} />
+                </span>
 
                 {/* Desktop: User menu or login button */}
                 <div className={styles.desktopOnly}>

@@ -220,7 +220,7 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
   const rightActionOpacity = Math.min(1, Math.abs(swipeOffset) / SWIPE_THRESHOLD);
 
   return (
-    <div className="queue-bar-shadow" data-testid="queue-control-bar" style={{ flexShrink: 0, width: '100%', backgroundColor: '#fff' }}>
+    <div id="onboarding-queue-bar" className="queue-bar-shadow" data-testid="queue-control-bar" style={{ flexShrink: 0, width: '100%', backgroundColor: '#fff' }}>
       {/* Main Control Bar */}
       <Card
         variant="borderless"
@@ -311,6 +311,7 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
 
                   {/* Clickable climb info for opening the queue */}
                   <div
+                    id="onboarding-queue-toggle"
                     onClick={toggleQueueDrawer}
                     className={`${styles.queueToggle} ${isListPage ? styles.listPage : ''}`}
                     style={{ minWidth: 0, flex: 1 }}
