@@ -1,9 +1,10 @@
 import { v4 as uuidv4 } from 'uuid';
-import type { ConnectionContext, SessionEvent } from '@boardsesh/shared-schema';
-import { roomManager } from '../../../services/room-manager';
+import type { ConnectionContext, SessionEvent, QueueEvent, ClimbQueueItem } from '@boardsesh/shared-schema';
+import { SUPPORTED_BOARDS } from '@boardsesh/shared-schema';
+import { roomManager, VersionConflictError } from '../../../services/room-manager';
 import { pubsub } from '../../../pubsub/index';
 import { updateContext } from '../../context';
-import { requireAuthenticated, applyRateLimit, validateInput } from '../shared/helpers';
+import { requireAuthenticated, requireSession, applyRateLimit, validateInput, MAX_RETRIES } from '../shared/helpers';
 import {
   SessionIdSchema,
   BoardPathSchema,
@@ -14,11 +15,12 @@ import {
   ClimbQueueItemSchema,
   QueueArraySchema,
 } from '../../../validation/schemas';
-import type { ClimbQueueItem } from '@boardsesh/shared-schema';
 import type { CreateSessionInput } from '../shared/types';
 import { db } from '../../../db/client';
 import { esp32Controllers } from '@boardsesh/db/schema/app';
 import { eq } from 'drizzle-orm';
+import { getClimbByUuid } from '../../../db/queries/climbs/get-climb';
+import type { BoardName } from '../../../db/queries/util/table-select';
 
 /**
  * Auto-authorize all controllers owned by a user for a session.
@@ -41,6 +43,83 @@ async function authorizeUserControllersForSession(userId: string, sessionId: str
 
 // Debug logging flag - only log in development
 const DEBUG = process.env.NODE_ENV === 'development';
+
+/**
+ * Parse a boardPath into its components.
+ * boardPath format: board_name/layout_id/size_id/set_ids/angle
+ */
+function parseBoardPath(boardPath: string): {
+  boardName: BoardName;
+  layoutId: number;
+  sizeId: number;
+  setIds: string;
+  angle: number;
+} | null {
+  const parts = boardPath.split('/').filter(Boolean);
+  if (parts.length < 5) return null;
+
+  const boardName = parts[0] as BoardName;
+  if (!SUPPORTED_BOARDS.includes(boardName as typeof SUPPORTED_BOARDS[number])) {
+    return null;
+  }
+
+  const layoutId = parseInt(parts[1], 10);
+  const sizeId = parseInt(parts[2], 10);
+  const angle = parseInt(parts[4], 10);
+
+  // Validate that numeric fields are valid numbers
+  if (isNaN(layoutId) || isNaN(sizeId) || isNaN(angle)) {
+    return null;
+  }
+
+  return {
+    boardName,
+    layoutId,
+    sizeId,
+    setIds: parts[3],
+    angle,
+  };
+}
+
+/**
+ * Update a queue item's climb data with stats at a new angle.
+ * Returns the updated queue item, or the original if fetch fails.
+ */
+async function updateQueueItemForAngle(
+  item: ClimbQueueItem,
+  boardParams: { boardName: BoardName; layoutId: number; sizeId: number },
+  newAngle: number
+): Promise<ClimbQueueItem> {
+  try {
+    const updatedClimb = await getClimbByUuid({
+      board_name: boardParams.boardName,
+      layout_id: boardParams.layoutId,
+      size_id: boardParams.sizeId,
+      angle: newAngle,
+      climb_uuid: item.climb.uuid,
+    });
+
+    if (updatedClimb) {
+      return {
+        ...item,
+        climb: {
+          ...item.climb,
+          angle: updatedClimb.angle,
+          difficulty: updatedClimb.difficulty,
+          quality_average: updatedClimb.quality_average,
+          ascensionist_count: updatedClimb.ascensionist_count,
+          stars: updatedClimb.stars,
+          difficulty_error: updatedClimb.difficulty_error,
+          benchmark_difficulty: updatedClimb.benchmark_difficulty,
+        },
+      };
+    }
+  } catch (error) {
+    console.error(`[Session] Failed to update climb ${item.climb.uuid} for angle ${newAngle}:`, error);
+  }
+  // Return original item if fetch fails
+  return item;
+}
 
 export const sessionMutations = {
   /**
@@ -256,6 +335,121 @@ export const sessionMutations = {
             avatarUrl: client.avatarUrl,
           },
         });
+      }
+    }
+
+    return true;
+  },
+
+  /**
+   * Update the board angle for the current session
+   * Broadcasts angle change to all session members so they can update their UI
+   * Also updates climb stats in the queue for the new angle
+   */
+  updateSessionAngle: async (_: unknown, { angle }: { angle: number }, ctx: ConnectionContext) => {
+    const sessionId = requireSession(ctx);
+    applyRateLimit(ctx, 10); // Limit angle changes to prevent abuse
+
+    // Validate angle is a reasonable number
+    if (!Number.isInteger(angle) || angle < 0 || angle > 90) {
+      throw new Error('Invalid angle: must be an integer between 0 and 90 degrees');
+    }
+
+    // Update the session angle in the database and Redis
+    const result = await roomManager.updateSessionAngle(sessionId, angle);
+
+    // Parse the new boardPath to get board parameters
+    const boardParams = parseBoardPath(result.boardPath);
+
+    // Broadcast the angle change to all session members first
+    // This ensures URL updates happen even if queue update has issues
+    const angleChangedEvent: SessionEvent = {
+      __typename: 'AngleChanged',
+      angle: result.angle,
+      boardPath: result.boardPath,
+    };
+    pubsub.publishSessionEvent(sessionId, angleChangedEvent);
+
+    // Get current queue state
+    let queueState = await roomManager.getQueueState(sessionId);
+
+    // Warn if we can't parse boardPath but have queue items that need updating
+    if (!boardParams && (queueState.queue.length > 0 || queueState.currentClimbQueueItem)) {
+      console.warn(`[updateSessionAngle] Could not parse boardPath "${result.boardPath}" - queue items will have stale stats`);
+      return true;
+    }
+
+    // If no board params or no queue items, we're done
+    if (!boardParams || (queueState.queue.length === 0 && !queueState.currentClimbQueueItem)) {
+      return true;
+    }
+
+    // Track which items we've already updated (by UUID)
+    const updatedItemsMap = new Map<string, ClimbQueueItem>();
+
+    // Retry loop for optimistic locking - handles race conditions when queue is modified
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+      if (DEBUG) console.log(`[updateSessionAngle] Attempt ${attempt + 1}/${MAX_RETRIES} - updating ${queueState.queue.length} queue items for angle ${angle}`);
+
+      // Find items that need updating (not already in our cache)
+      const itemsToUpdate = queueState.queue.filter(item => !updatedItemsMap.has(item.uuid));
+
+      // Update new items in parallel
+      if (itemsToUpdate.length > 0) {
+        const newlyUpdated = await Promise.all(
+          itemsToUpdate.map(item => updateQueueItemForAngle(item, boardParams, angle))
+        );
+        // Add to our cache
+        for (const item of newlyUpdated) {
+          updatedItemsMap.set(item.uuid, item);
+        }
+      }
+
+      // Build the final queue using cached updated items, preserving order from current state
+      const updatedQueue = queueState.queue.map(item => updatedItemsMap.get(item.uuid) || item);
+
+      // Update current climb if present and not already updated
+      let updatedCurrentClimb = queueState.currentClimbQueueItem;
+      if (updatedCurrentClimb) {
+        if (updatedItemsMap.has(updatedCurrentClimb.uuid)) {
+          updatedCurrentClimb = updatedItemsMap.get(updatedCurrentClimb.uuid)!;
+        } else {
+          updatedCurrentClimb = await updateQueueItemForAngle(updatedCurrentClimb, boardParams, angle);
+          updatedItemsMap.set(updatedCurrentClimb.uuid, updatedCurrentClimb);
+        }
+      }
+
+      try {
+        // Save the updated queue state with version check
+        const newQueueState = await roomManager.updateQueueState(
+          sessionId,
+          updatedQueue,
+          updatedCurrentClimb,
+          queueState.version
+        );
+
+        // Send a FullSync event with the updated queue so clients update their queue display
+        const fullSyncEvent: QueueEvent = {
+          __typename: 'FullSync',
+          sequence: newQueueState.sequence,
+          state: {
+            sequence: newQueueState.sequence,
+            stateHash: newQueueState.stateHash,
+            queue: updatedQueue,
+            currentClimbQueueItem: updatedCurrentClimb,
+          },
+        };
+        pubsub.publishQueueEvent(sessionId, fullSyncEvent);
+
+        return true; // Success
+      } catch (error) {
+        if (error instanceof VersionConflictError && attempt < MAX_RETRIES - 1) {
+          if (DEBUG) console.log(`[updateSessionAngle] Version conflict, retrying (attempt ${attempt + 1}/${MAX_RETRIES})`);
+          // Re-fetch queue state for next attempt - our cached updates will be reused
+          queueState = await roomManager.getQueueState(sessionId);
+          continue;
+        }
+        throw error; // Re-throw if not a version conflict or max retries exceeded
       }
     }
 

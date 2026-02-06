@@ -245,6 +245,24 @@ export class RedisSessionStore {
   }
 
   /**
+   * Update the board path for a session (used when angle changes).
+   */
+  async updateBoardPath(sessionId: string, boardPath: string): Promise<void> {
+    const key = `boardsesh:session:${sessionId}`;
+    const multi = this.redis.multi();
+
+    multi.hmset(key, {
+      boardPath: boardPath,
+      lastActivity: Date.now().toString(),
+    });
+
+    multi.expire(key, this.TTL);
+    multi.zadd('boardsesh:session:recent', Date.now(), sessionId);
+
+    await multi.exec();
+  }
+
+  /**
    * Delete session from Redis (when explicitly ended).
    */
   async deleteSession(sessionId: string): Promise<void> {

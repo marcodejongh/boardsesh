@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Button, Drawer, Spin, Typography, Flex, Row, Col, Card, Alert } from 'antd';
+import { Button, Drawer, Spin, Typography, Flex, Row, Col, Card, Alert, message } from 'antd';
 import { useRouter, usePathname } from 'next/navigation';
 import { track } from '@vercel/analytics';
 import useSWR from 'swr';
@@ -9,6 +9,7 @@ import { ANGLES } from '@/app/lib/board-data';
 import { BoardName, Climb } from '@/app/lib/types';
 import { ClimbStatsForAngle } from '@/app/lib/data/queries';
 import { themeTokens } from '@/app/theme/theme-config';
+import { usePersistentSession } from '../persistent-session/persistent-session-context';
 
 const { Text } = Typography;
 
@@ -23,6 +24,7 @@ export default function AngleSelector({ boardName, currentAngle, currentClimb }:
   const router = useRouter();
   const pathname = usePathname();
   const currentAngleRef = useRef<HTMLDivElement>(null);
+  const { activeSession, updateSessionAngle } = usePersistentSession();
 
   // Build the API URL for fetching climb stats
   const climbStatsUrl = currentClimb
@@ -59,19 +61,32 @@ export default function AngleSelector({ boardName, currentAngle, currentClimb }:
     }
   }, [isDrawerOpen]);
 
-  const handleAngleChange = (newAngle: number) => {
+  const handleAngleChange = async (newAngle: number) => {
     track('Angle Changed', {
       angle: newAngle,
+      inSession: !!activeSession,
     });
 
-    // Replace the current angle in the URL with the new one
-    const pathSegments = pathname.split('/');
-    const angleIndex = pathSegments.findIndex((segment) => segment === currentAngle.toString());
+    if (activeSession) {
+      // In a session - use the mutation to update angle for all users
+      // The URL will be updated by the AngleChanged event handler in PersistentSessionContext
+      try {
+        await updateSessionAngle(newAngle);
+      } catch (error) {
+        console.error('[AngleSelector] Failed to update session angle:', error);
+        message.error('Failed to change angle. Please try again.');
+        return; // Don't close drawer on error so user can retry
+      }
+    } else {
+      // Not in a session - just update the URL locally
+      const pathSegments = pathname.split('/');
+      const angleIndex = pathSegments.findIndex((segment) => segment === currentAngle.toString());
 
-    if (angleIndex !== -1) {
-      pathSegments[angleIndex] = newAngle.toString();
-      const newPath = pathSegments.join('/');
-      router.push(newPath);
+      if (angleIndex !== -1) {
+        pathSegments[angleIndex] = newAngle.toString();
+        const newPath = pathSegments.join('/');
+        router.push(newPath);
+      }
     }
 
     setIsDrawerOpen(false);

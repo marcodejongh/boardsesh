@@ -171,6 +171,8 @@ export const typeDefs = /* GraphQL */ `
     name: String
     "Board configuration path (board_name/layout_id/size_id/set_ids/angle)"
     boardPath: String!
+    "Current board angle in degrees (extracted from boardPath)"
+    angle: Int!
     "Users currently in the session"
     users: [SessionUser!]!
     "Current queue state"
@@ -1134,6 +1136,12 @@ export const typeDefs = /* GraphQL */ `
     updateUsername(username: String!, avatarUrl: String): Boolean!
 
     """
+    Update the board angle for the current session.
+    Broadcasts angle change to all session members.
+    """
+    updateSessionAngle(angle: Int!): Boolean!
+
+    """
     Add a climb to the queue.
     Optional position parameter for inserting at specific index.
     """
@@ -1295,7 +1303,7 @@ export const typeDefs = /* GraphQL */ `
   """
   Union of possible session events.
   """
-  union SessionEvent = UserJoined | UserLeft | LeaderChanged | SessionEnded
+  union SessionEvent = UserJoined | UserLeft | LeaderChanged | SessionEnded | AngleChanged
 
   """
   Event when a user joins the session.
@@ -1329,6 +1337,16 @@ export const typeDefs = /* GraphQL */ `
     reason: String!
     "Optional path to redirect to"
     newPath: String
+  }
+
+  """
+  Event when the session angle changes.
+  """
+  type AngleChanged {
+    "New angle in degrees"
+    angle: Int!
+    "New board path with updated angle"
+    boardPath: String!
   }
 
   """

@@ -610,6 +610,43 @@ class RoomManager {
     }
   }
 
+  /**
+   * Update the session angle. Updates the boardPath in both Postgres and Redis.
+   * Returns the new boardPath with the updated angle.
+   */
+  async updateSessionAngle(sessionId: string, newAngle: number): Promise<{ boardPath: string; angle: number }> {
+    // Get the current session to get its boardPath
+    const session = await this.getSessionById(sessionId);
+    if (!session) {
+      throw new Error(`Session ${sessionId} not found`);
+    }
+
+    // Parse and update the boardPath
+    // Format: board_name/layout_id/size_id/set_ids/angle
+    // Filter empty strings to handle leading slashes consistently
+    const pathParts = session.boardPath.split('/').filter(Boolean);
+    if (pathParts.length < 5) {
+      throw new Error(`Invalid boardPath format: ${session.boardPath}`);
+    }
+
+    // Replace the angle at index 4 (5th segment)
+    pathParts[4] = newAngle.toString();
+    const newBoardPath = pathParts.join('/');
+
+    // Update Postgres
+    await db
+      .update(sessions)
+      .set({ boardPath: newBoardPath, lastActivity: new Date() })
+      .where(eq(sessions.id, sessionId));
+
+    // Update Redis
+    if (this.redisStore) {
+      await this.redisStore.updateBoardPath(sessionId, newBoardPath);
+    }
+
+    return { boardPath: newBoardPath, angle: newAngle };
+  }
+
   async updateQueueState(
     sessionId: string,
     queue: ClimbQueueItem[],
