@@ -237,7 +237,12 @@ export default async function DynamicResultsPage(props: {
 
   try {
     boardDetails = getBoardDetailsForBoard(parsedParams);
+  } catch (error) {
+    console.error('Error resolving board details:', error);
+    return notFound();
+  }
 
+  try {
     // Moonboard queries the database directly (no GraphQL support yet)
     if (parsedParams.board_name === 'moonboard') {
       const moonboardClimbs = await getMoonboardClimbs(
@@ -260,8 +265,21 @@ export default async function DynamicResultsPage(props: {
       );
     }
   } catch (error) {
-    console.error('Error fetching results or climb:', error);
-    notFound();
+    // Log the error for server-side visibility. We intentionally degrade to empty results
+    // rather than returning a 404, since the client-side React Query in QueueContext will
+    // independently retry the search and surface errors through its own error handling.
+    console.error(
+      'Error fetching climb search results (degrading to empty results for SSR):',
+      { boardName: parsedParams.board_name, searchInput },
+      error,
+    );
+    searchResponse = {
+      searchClimbs: {
+        climbs: [],
+        totalCount: 0,
+        hasMore: false,
+      },
+    };
   }
 
   return <ClimbsList {...parsedParams} boardDetails={boardDetails} initialClimbs={searchResponse.searchClimbs.climbs} />;
