@@ -1,15 +1,13 @@
 'use client';
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Button, Row, Col, Card, Drawer, Space, Popconfirm, Avatar, Tooltip } from 'antd';
-import { SyncOutlined, DeleteOutlined, ExpandOutlined, FastForwardOutlined, FastBackwardOutlined, UserOutlined } from '@ant-design/icons';
-import BluetoothIcon from './bluetooth-icon';
+import { Button, Row, Col, Card, Drawer, Space, Popconfirm, Badge } from 'antd';
+import { SyncOutlined, DeleteOutlined, ExpandOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import { track } from '@vercel/analytics';
-import { useSwipeable } from 'react-swipeable';
 import { useQueueContext } from '../graphql-queue';
 import NextClimbButton from './next-climb-button';
 import { usePathname, useParams, useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { constructPlayUrlWithSlugs, constructClimbViewUrlWithSlugs, parseBoardRouteParams } from '@/app/lib/url-utils';
+import { constructPlayUrlWithSlugs, constructClimbViewUrlWithSlugs } from '@/app/lib/url-utils';
 import { BoardRouteParameters, BoardDetails, Angle } from '@/app/lib/types';
 import PreviousClimbButton from './previous-climb-button';
 import QueueList, { QueueListHandle } from './queue-list';
@@ -19,12 +17,12 @@ import ClimbTitle from '../climb-card/climb-title';
 import { AscentStatus } from './queue-list-item';
 import { themeTokens } from '@/app/theme/theme-config';
 import { TOUR_DRAWER_EVENT } from '../onboarding/onboarding-tour';
+import { ShareBoardButton } from '../board-page/share-button';
+import { useCardSwipeNavigation, EXIT_DURATION, SNAP_BACK_DURATION } from '@/app/hooks/use-card-swipe-navigation';
+import PlayViewDrawer from '../play-view/play-view-drawer';
 import styles from './queue-control-bar.module.css';
 
-// Swipe threshold in pixels to trigger navigation
-const SWIPE_THRESHOLD = 100;
-// Maximum swipe distance (matches queue-list-item)
-const MAX_SWIPE = 120;
+export type ActiveDrawer = 'none' | 'play' | 'queue';
 
 export interface QueueControlBarProps {
   boardDetails: BoardDetails;
@@ -32,14 +30,18 @@ export interface QueueControlBarProps {
 }
 
 const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }) => {
-  const [isQueueOpen, setIsQueueOpen] = useState(false);
-  const [swipeOffset, setSwipeOffset] = useState(0);
+  const [activeDrawer, setActiveDrawer] = useState<ActiveDrawer>('none');
   const pathname = usePathname();
   const params = useParams<BoardRouteParameters>();
   const searchParams = useSearchParams();
   const router = useRouter();
   const queueListRef = useRef<QueueListHandle>(null);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Reset activeDrawer on navigation
+  useEffect(() => {
+    setActiveDrawer('none');
+  }, [pathname]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -54,7 +56,7 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
   useEffect(() => {
     const handler = (e: Event) => {
       const { open } = (e as CustomEvent<{ open: boolean }>).detail;
-      setIsQueueOpen(open);
+      setActiveDrawer(open ? 'queue' : 'none');
     };
     window.addEventListener(TOUR_DRAWER_EVENT, handler);
     return () => window.removeEventListener(TOUR_DRAWER_EVENT, handler);
@@ -63,7 +65,6 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
   // Scroll to current climb when drawer finishes opening
   const handleDrawerOpenChange = useCallback((open: boolean) => {
     if (open) {
-      // Small delay to ensure the drawer content is rendered
       scrollTimeoutRef.current = setTimeout(() => {
         queueListRef.current?.scrollToCurrentClimb();
       }, 100);
@@ -138,31 +139,15 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
     }
   }, [previousClimb, viewOnlyMode, setCurrentClimbQueueItem, shouldNavigate, router, buildClimbUrl, boardDetails]);
 
-  const swipeHandlers = useSwipeable({
-    onSwiping: (eventData) => {
-      const { deltaX } = eventData;
-      // Clamp the offset within bounds (matches queue-list-item)
-      const clampedOffset = Math.max(-MAX_SWIPE, Math.min(MAX_SWIPE, deltaX));
-      setSwipeOffset(clampedOffset);
-    },
-    onSwipedLeft: (eventData) => {
-      setSwipeOffset(0);
-      if (Math.abs(eventData.deltaX) >= SWIPE_THRESHOLD) {
-        handleSwipeNext();
-      }
-    },
-    onSwipedRight: (eventData) => {
-      setSwipeOffset(0);
-      if (Math.abs(eventData.deltaX) >= SWIPE_THRESHOLD) {
-        handleSwipePrevious();
-      }
-    },
-    onTouchEndOrOnMouseUp: () => {
-      setSwipeOffset(0);
-    },
-    trackMouse: false,
-    trackTouch: true,
-    preventScrollOnSwipe: true,
+  const canSwipeNext = !viewOnlyMode && !!nextClimb;
+  const canSwipePrevious = !viewOnlyMode && !!previousClimb;
+
+  const { swipeHandlers, swipeOffset, isAnimating } = useCardSwipeNavigation({
+    onSwipeNext: handleSwipeNext,
+    onSwipePrevious: handleSwipePrevious,
+    canSwipeNext,
+    canSwipePrevious,
+    threshold: 80,
   });
 
   const getPlayUrl = () => {
@@ -183,11 +168,9 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
         currentClimb.name,
       );
     } else {
-      // Fallback to numeric format
       baseUrl = `/${params.board_name}/${params.layout_id}/${params.size_id}/${params.set_ids}/${params.angle}/play/${currentClimb.uuid}`;
     }
 
-    // Preserve the current search/filter params when entering play mode
     const queryString = searchParams.toString();
     if (queryString) {
       return `${baseUrl}?${queryString}`;
@@ -205,31 +188,53 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
     });
   };
 
-  const toggleQueueDrawer = () => {
+  const handleClimbInfoClick = useCallback(() => {
+    // On desktop list page, no-op (queue is in sidebar)
+    if (isListPage && typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches) {
+      return;
+    }
+
+    // On mobile, open play drawer
+    if (typeof window !== 'undefined' && !window.matchMedia('(min-width: 768px)').matches) {
+      setActiveDrawer('play');
+      track('Play Drawer Opened', {
+        boardLayout: boardDetails.layout_name || '',
+        source: 'bar_tap',
+      });
+      return;
+    }
+
+    // On desktop, open queue drawer
+    setActiveDrawer((prev) => prev === 'queue' ? 'none' : 'queue');
+    track('Queue Drawer Toggled', {
+      action: activeDrawer === 'queue' ? 'closed' : 'opened',
+      boardLayout: boardDetails.layout_name || '',
+    });
+  }, [isListPage, boardDetails, activeDrawer]);
+
+  const toggleQueueDrawer = useCallback(() => {
     // Don't open drawer on desktop when on list page (queue is in sidebar)
     if (isListPage && typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches) {
       return;
     }
 
-    const newState = !isQueueOpen;
-    setIsQueueOpen(newState);
+    const newState = activeDrawer === 'queue' ? 'none' : 'queue';
+    setActiveDrawer(newState);
     track('Queue Drawer Toggled', {
-      action: newState ? 'opened' : 'closed',
+      action: newState === 'queue' ? 'opened' : 'closed',
       boardLayout: boardDetails.layout_name || '',
     });
+  }, [isListPage, activeDrawer, boardDetails]);
+
+  // Determine transition style for the swipeable content
+  const getTransitionStyle = () => {
+    if (isAnimating) return `transform ${EXIT_DURATION}ms ease-out`;
+    if (swipeOffset === 0) return `transform ${SNAP_BACK_DURATION}ms ease`;
+    return 'none';
   };
 
-  const canSwipeNext = !viewOnlyMode && !!nextClimb;
-  const canSwipePrevious = !viewOnlyMode && !!previousClimb;
-
-  // Calculate action visibility based on swipe offset (matches queue-list-item pattern)
-  const showLeftAction = swipeOffset > 0; // Swiping right reveals "previous" action on left
-  const showRightAction = swipeOffset < 0; // Swiping left reveals "next" action on right
-  const leftActionOpacity = Math.min(1, swipeOffset / SWIPE_THRESHOLD);
-  const rightActionOpacity = Math.min(1, Math.abs(swipeOffset) / SWIPE_THRESHOLD);
-
   return (
-    <div id="onboarding-queue-bar" className="queue-bar-shadow" data-testid="queue-control-bar" style={{ flexShrink: 0, width: '100%', backgroundColor: themeTokens.semantic.surface }}>
+    <div id="onboarding-queue-bar" className={`queue-bar-shadow ${styles.queueBar}`} data-testid="queue-control-bar" style={{ backgroundColor: themeTokens.semantic.surface }}>
       {/* Main Control Bar */}
       <Card
         variant="borderless"
@@ -238,92 +243,43 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
             padding: 0,
           },
         }}
+        className={styles.card}
         style={{
-          width: '100%',
-          borderRadius: 0,
-          margin: 0,
           borderTop: `1px solid ${themeTokens.neutral[200]}`,
         }}
       >
-        {/* Swipe container with action backgrounds */}
-        <div style={{ position: 'relative', overflow: 'hidden' }}>
-          {/* Left action background (previous - revealed on swipe right) */}
-          {canSwipePrevious && (
-            <div
-              className={styles.swipeAction}
-              style={{
-                position: 'absolute',
-                left: 0,
-                top: 0,
-                bottom: 0,
-                width: MAX_SWIPE,
-                backgroundColor: themeTokens.colors.primary,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'flex-start',
-                paddingLeft: themeTokens.spacing[4],
-                opacity: leftActionOpacity,
-                visibility: showLeftAction ? 'visible' : 'hidden',
-              }}
-            >
-              <FastBackwardOutlined style={{ color: 'white', fontSize: 24 }} />
-            </div>
-          )}
-
-          {/* Right action background (next - revealed on swipe left) */}
-          {canSwipeNext && (
-            <div
-              className={styles.swipeAction}
-              style={{
-                position: 'absolute',
-                right: 0,
-                top: 0,
-                bottom: 0,
-                width: MAX_SWIPE,
-                backgroundColor: themeTokens.colors.primary,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'flex-end',
-                paddingRight: themeTokens.spacing[4],
-                opacity: rightActionOpacity,
-                visibility: showRightAction ? 'visible' : 'hidden',
-              }}
-            >
-              <FastForwardOutlined style={{ color: 'white', fontSize: 24 }} />
-            </div>
-          )}
-
+        {/* Swipe container - card swipe animation */}
+        <div className={styles.swipeWrapper}>
           {/* Swipeable content */}
           <div
             {...swipeHandlers}
             className={styles.swipeContainer}
             style={{
-              padding: `${themeTokens.spacing[1]}px ${themeTokens.spacing[3]}px 0 ${themeTokens.spacing[3]}px`,
+              padding: `6px ${themeTokens.spacing[3]}px 6px ${themeTokens.spacing[3]}px`,
               transform: `translateX(${swipeOffset}px)`,
-              transition: swipeOffset === 0 ? `transform ${themeTokens.transitions.fast}` : 'none',
+              transition: getTransitionStyle(),
               backgroundColor: themeTokens.semantic.surface,
             }}
           >
-            <Row justify="space-between" align="middle" style={{ width: '100%' }}>
-              {/* Left section: Thumbnail, climb info, and avatar grouped together */}
-              <Col flex="auto" style={{ minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: themeTokens.spacing[2] }}>
+            <Row justify="space-between" align="middle" className={styles.row}>
+              {/* Left section: Thumbnail and climb info */}
+              <Col flex="auto" className={styles.climbInfoCol}>
+                <div className={styles.climbInfoInner} style={{ gap: themeTokens.spacing[2] }}>
                   {/* Board preview */}
-                  <div style={boardPreviewContainerStyle}>
+                  <div className={styles.boardPreviewContainer}>
                     <ClimbThumbnail
                       boardDetails={boardDetails}
                       currentClimb={currentClimb}
                       enableNavigation={true}
-                      onNavigate={() => setIsQueueOpen(false)}
+                      onNavigate={() => setActiveDrawer('none')}
                     />
                   </div>
 
-                  {/* Clickable climb info for opening the queue */}
+                  {/* Clickable climb info */}
                   <div
                     id="onboarding-queue-toggle"
-                    onClick={toggleQueueDrawer}
+                    onClick={handleClimbInfoClick}
                     className={`${styles.queueToggle} ${isListPage ? styles.listPage : ''}`}
-                    style={{ minWidth: 0, flex: 1 }}
                   >
                     <ClimbTitle
                       climb={currentClimb}
@@ -331,69 +287,68 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
                       nameAddon={currentClimb?.name && <AscentStatus climbUuid={currentClimb.uuid} />}
                     />
                   </div>
-
-                  {/* Added by indicator (user avatar or Bluetooth icon) */}
-                  {currentClimbQueueItem && (
-                    <div style={{ flexShrink: 0 }}>
-                      {currentClimbQueueItem.addedByUser ? (
-                        <Tooltip title={currentClimbQueueItem.addedByUser.username}>
-                          <Avatar size="small" src={currentClimbQueueItem.addedByUser.avatarUrl} icon={<UserOutlined />} />
-                        </Tooltip>
-                      ) : (
-                        <Tooltip title="Added via Bluetooth">
-                          <Avatar
-                            size="small"
-                            style={{ backgroundColor: 'transparent' }}
-                            icon={<BluetoothIcon style={{ color: themeTokens.neutral[400] }} />}
-                          />
-                        </Tooltip>
-                      )}
-                    </div>
-                  )}
                 </div>
               </Col>
 
               {/* Button cluster */}
               <Col flex="none" style={{ marginLeft: themeTokens.spacing[2] }}>
                 <Space>
+                  {/* Mirror button - desktop only */}
                   {boardDetails.supportsMirroring ? (
-                    <Button
-                      id="button-mirror"
-                      onClick={() => {
-                        mirrorClimb();
-                        track('Mirror Climb Toggled', {
-                          boardLayout: boardDetails.layout_name || '',
-                          mirrored: !currentClimb?.mirrored,
-                        });
-                      }}
-                      type={currentClimb?.mirrored ? 'primary' : 'default'}
-                      style={
-                        currentClimb?.mirrored
-                          ? { backgroundColor: themeTokens.colors.purple, borderColor: themeTokens.colors.purple }
-                          : undefined
-                      }
-                      icon={<SyncOutlined />}
-                    />
+                    <span className={styles.desktopOnly}>
+                      <Button
+                        id="button-mirror"
+                        onClick={() => {
+                          mirrorClimb();
+                          track('Mirror Climb Toggled', {
+                            boardLayout: boardDetails.layout_name || '',
+                            mirrored: !currentClimb?.mirrored,
+                          });
+                        }}
+                        type={currentClimb?.mirrored ? 'primary' : 'default'}
+                        style={
+                          currentClimb?.mirrored
+                            ? { backgroundColor: themeTokens.colors.purple, borderColor: themeTokens.colors.purple }
+                            : undefined
+                        }
+                        icon={<SyncOutlined />}
+                      />
+                    </span>
                   ) : null}
+                  {/* Play link - desktop only */}
                   {!isPlayPage && playUrl && (
-                    <Link
-                      href={playUrl}
-                      onClick={() => {
-                        track('Play Mode Entered', {
-                          boardLayout: boardDetails.layout_name || '',
-                        });
-                      }}
-                    >
-                      <Button icon={<ExpandOutlined />} aria-label="Enter play mode" />
-                    </Link>
+                    <span className={styles.desktopOnly}>
+                      <Link
+                        href={playUrl}
+                        onClick={() => {
+                          track('Play Mode Entered', {
+                            boardLayout: boardDetails.layout_name || '',
+                          });
+                        }}
+                      >
+                        <Button icon={<ExpandOutlined />} aria-label="Enter play mode" />
+                      </Link>
+                    </span>
                   )}
-                  {/* Navigation buttons - hidden on mobile, shown on desktop */}
+                  {/* Navigation buttons - desktop only */}
                   <span className={styles.navButtons}>
                     <Space>
                       <PreviousClimbButton navigate={isViewPage || isPlayPage} boardDetails={boardDetails} />
                       <NextClimbButton navigate={isViewPage || isPlayPage} boardDetails={boardDetails} />
                     </Space>
                   </span>
+                  {/* Party button */}
+                  <ShareBoardButton />
+                  {/* Queue button with badge */}
+                  <Badge count={queue.length} overflowCount={99} showZero={false} color="cyan">
+                    <Button
+                      icon={<UnorderedListOutlined />}
+                      onClick={toggleQueueDrawer}
+                      type={activeDrawer === 'queue' ? 'primary' : 'default'}
+                      aria-label="Toggle queue"
+                    />
+                  </Badge>
+                  {/* Tick button */}
                   <TickButton currentClimb={currentClimb} angle={angle} boardDetails={boardDetails} />
                 </Space>
               </Col>
@@ -406,8 +361,8 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
       <Drawer
         title="Queue"
         placement="bottom"
-        open={isQueueOpen}
-        onClose={toggleQueueDrawer}
+        open={activeDrawer === 'queue'}
+        onClose={() => setActiveDrawer('none')}
         afterOpenChange={handleDrawerOpenChange}
         styles={{ wrapper: { height: '70%' }, body: { padding: 0 } }}
         extra={
@@ -426,20 +381,18 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
           )
         }
       >
-        <QueueList ref={queueListRef} boardDetails={boardDetails} onClimbNavigate={() => setIsQueueOpen(false)} />
+        <QueueList ref={queueListRef} boardDetails={boardDetails} onClimbNavigate={() => setActiveDrawer('none')} />
       </Drawer>
+
+      {/* Play view drawer - mobile only */}
+      <PlayViewDrawer
+        activeDrawer={activeDrawer}
+        setActiveDrawer={setActiveDrawer}
+        boardDetails={boardDetails}
+        angle={angle}
+      />
     </div>
   );
-};
-
-const boardPreviewContainerStyle = {
-  width: 48, // Fixed width for thumbnail in flex layout
-  height: 'auto', // Auto height to maintain aspect ratio
-  flexShrink: 0, // Don't shrink the thumbnail
-  display: 'flex',
-  justifyContent: 'center',
-  alignItems: 'center',
-  overflow: 'hidden',
 };
 
 export default QueueControlBar;

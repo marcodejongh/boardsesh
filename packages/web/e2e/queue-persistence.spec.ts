@@ -66,7 +66,7 @@ test.describe('Queue Persistence - Local Mode', () => {
     expect(queueCountAfter).toBe(queueCountBefore);
   });
 
-  test('floating thumbnail should appear when navigating away with queue items', async ({ page }) => {
+  test('global bar should appear when navigating away with queue items', async ({ page }) => {
     // Add a climb to the queue
     await addClimbToQueue(page);
 
@@ -81,12 +81,12 @@ test.describe('Queue Persistence - Local Mode', () => {
     await page.goto('/settings');
     await page.waitForLoadState('networkidle');
 
-    // Check for floating thumbnail
-    const thumbnail = page.locator('[data-testid="floating-session-thumbnail"]');
-    await expect(thumbnail).toBeVisible({ timeout: 5000 });
+    // Check for global queue control bar
+    const globalBar = page.locator('[data-testid="global-queue-control-bar"]');
+    await expect(globalBar).toBeVisible({ timeout: 5000 });
   });
 
-  test('clicking floating thumbnail should navigate back to board', async ({ page }) => {
+  test('clicking global bar should navigate back to board', async ({ page }) => {
     // Add a climb to the queue
     await addClimbToQueue(page);
 
@@ -101,78 +101,13 @@ test.describe('Queue Persistence - Local Mode', () => {
     await page.goto('/settings');
     await page.waitForLoadState('networkidle');
 
-    // Click the floating thumbnail
-    const thumbnail = page.locator('[data-testid="floating-session-thumbnail"]');
-    if (await thumbnail.isVisible()) {
-      await thumbnail.click();
+    // Click the global bar
+    const globalBar = page.locator('[data-testid="global-queue-control-bar"]');
+    if (await globalBar.isVisible()) {
+      await globalBar.click();
 
       // Verify we're back on a board page
       await expect(page).toHaveURL(/\/(kilter|tension)\//);
-    }
-  });
-
-  test('clearing queue via thumbnail should show confirmation', async ({ page }) => {
-    // Add a climb to the queue
-    await addClimbToQueue(page);
-
-    // Verify queue has items
-    const queueCount = await page.locator('[data-testid="queue-item"]').count();
-    if (queueCount === 0) {
-      test.skip();
-      return;
-    }
-
-    // Navigate to settings
-    await page.goto('/settings');
-    await page.waitForLoadState('networkidle');
-
-    // Find and click the close button on the thumbnail
-    const closeButton = page.locator('[data-testid="floating-session-thumbnail"] button').first();
-    if (await closeButton.isVisible()) {
-      await closeButton.click();
-
-      // Verify confirmation modal appears
-      const modal = page.locator('.ant-modal');
-      await expect(modal).toBeVisible({ timeout: 5000 });
-
-      // Verify modal has clear/cancel buttons
-      await expect(page.getByRole('button', { name: /clear/i })).toBeVisible();
-      await expect(page.getByRole('button', { name: /cancel/i })).toBeVisible();
-    }
-  });
-
-  test('confirming queue clear should hide thumbnail', async ({ page }) => {
-    // Add a climb to the queue
-    await addClimbToQueue(page);
-
-    // Verify queue has items
-    const queueCount = await page.locator('[data-testid="queue-item"]').count();
-    if (queueCount === 0) {
-      test.skip();
-      return;
-    }
-
-    // Navigate to settings
-    await page.goto('/settings');
-    await page.waitForLoadState('networkidle');
-
-    // Find and click the close button on the thumbnail
-    const closeButton = page.locator('[data-testid="floating-session-thumbnail"] button').first();
-    if (await closeButton.isVisible()) {
-      await closeButton.click();
-
-      // Click the clear button in the confirmation modal
-      const clearButton = page.getByRole('button', { name: /clear/i });
-      if (await clearButton.isVisible()) {
-        await clearButton.click();
-
-        // Wait for modal to close
-        await page.waitForTimeout(500);
-
-        // Verify thumbnail is now hidden
-        const thumbnail = page.locator('[data-testid="floating-session-thumbnail"]');
-        await expect(thumbnail).not.toBeVisible();
-      }
     }
   });
 });
