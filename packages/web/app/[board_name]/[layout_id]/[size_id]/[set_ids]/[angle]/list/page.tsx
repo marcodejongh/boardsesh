@@ -265,8 +265,14 @@ export default async function DynamicResultsPage(props: {
       );
     }
   } catch (error) {
-    console.error('Error fetching climb search results:', error);
-    // Return empty results instead of 404 - no search results is not a missing page
+    // Log the error for server-side visibility. We intentionally degrade to empty results
+    // rather than returning a 404, since the client-side React Query in QueueContext will
+    // independently retry the search and surface errors through its own error handling.
+    console.error(
+      'Error fetching climb search results (degrading to empty results for SSR):',
+      { boardName: parsedParams.board_name, searchInput },
+      error,
+    );
     searchResponse = {
       searchClimbs: {
         climbs: [],
