@@ -5,7 +5,8 @@ import { getClimb } from '@/app/lib/data/queries';
 import { getBoardDetailsForBoard } from '@/app/lib/board-utils';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import { convertLitUpHoldsStringToMap, getImageUrl } from '@/app/components/board-renderer/util';
-import { HoldRenderData } from '@/app/components/board-renderer/types';
+import { HoldRenderData, LitupHold } from '@/app/components/board-renderer/types';
+import { getGridPosition, MOONBOARD_GRID } from '@/app/lib/moonboard-config';
 
 export const runtime = 'edge';
 
@@ -49,13 +50,25 @@ export async function GET(request: NextRequest) {
     const boardWidth = boardDetails.boardWidth || 1000;
     const boardHeight = boardDetails.boardHeight || 1000;
     const holdsData = boardDetails.holdsData || [];
+    const isMoonboard = parsedParams.board_name === 'moonboard';
+    const baseUrl = process.env.VERCEL_URL ? 'https://www.boardsesh.com' : 'http://localhost:3000';
 
     // Get all board image URLs (matches BoardRenderer logic)
-    const imageUrls = Object.keys(boardDetails.images_to_holds).map((imageUrl) => {
-      const relativeUrl = getImageUrl(imageUrl, boardDetails.board_name);
-      // getImageUrl already returns the path with leading slash, so we don't need to add it again
-      return `${process.env.VERCEL_URL ? 'https://www.boardsesh.com' : 'http://localhost:3000'}${relativeUrl}`;
-    });
+    let imageUrls: string[];
+    if (isMoonboard && boardDetails.layoutFolder && boardDetails.holdSetImages) {
+      // MoonBoard uses layout folder images instead of images_to_holds
+      imageUrls = [
+        `${baseUrl}/images/moonboard/moonboard-bg.png`,
+        ...boardDetails.holdSetImages.map(
+          (imageFile) => `${baseUrl}/images/moonboard/${boardDetails.layoutFolder}/${imageFile}`,
+        ),
+      ];
+    } else {
+      imageUrls = Object.keys(boardDetails.images_to_holds).map((imageUrl) => {
+        const relativeUrl = getImageUrl(imageUrl, boardDetails.board_name);
+        return `${baseUrl}${relativeUrl}`;
+      });
+    }
 
     return new ImageResponse(
       (
@@ -113,7 +126,7 @@ export async function GET(request: NextRequest) {
                 />
               ))}
 
-              {/* SVG overlay for holds matching BoardLitupHolds exactly */}
+              {/* SVG overlay for holds */}
               <svg
                 viewBox={`0 0 ${boardWidth} ${boardHeight}`}
                 preserveAspectRatio="none"
@@ -125,40 +138,69 @@ export async function GET(request: NextRequest) {
                   height: '100%',
                 }}
               >
-                {/* Render holds matching BoardLitupHolds logic exactly */}
-                {holdsData.map((hold: HoldRenderData) => {
-                  // Check if this specific hold is lit up by its ID (not by frame index)
-                  const holdData = litUpHoldsMap[hold.id];
-                  const isLitUp = holdData?.state && holdData.state !== 'OFF';
+                {isMoonboard
+                  ? /* MoonBoard: grid-based hold rendering */
+                    (() => {
+                      const cellWidth = boardWidth / MOONBOARD_GRID.numColumns;
+                      const cellHeight = boardHeight / MOONBOARD_GRID.numRows;
+                      const holdRadius = Math.min(cellWidth, cellHeight) * 0.35;
 
-                  if (!isLitUp) return null;
+                      return Object.entries(litUpHoldsMap).map(([holdIdStr, rawHoldData]) => {
+                        const holdData = rawHoldData as LitupHold;
+                        const holdId = Number(holdIdStr);
+                        if (!holdData?.state || holdData.state === 'OFF') return null;
 
-                  const color = holdData.color;
+                        const pos = getGridPosition(holdId);
+                        const cx = pos.x * boardWidth;
+                        const cy = pos.y * boardHeight;
 
-                  // Handle mirroring like BoardLitupHolds
-                  let renderHold = hold;
-                  if (currentClimb?.mirrored && hold.mirroredHoldId) {
-                    const mirroredHold = holdsData.find(({ id }) => id === hold.mirroredHoldId);
-                    if (mirroredHold) {
-                      renderHold = mirroredHold;
-                    }
-                  }
+                        return (
+                          <circle
+                            key={holdId}
+                            cx={cx}
+                            cy={cy}
+                            r={holdRadius}
+                            stroke={holdData.displayColor || holdData.color}
+                            strokeWidth={6}
+                            fillOpacity={1}
+                            fill={holdData.displayColor || holdData.color}
+                          />
+                        );
+                      });
+                    })()
+                  : /* Aurora boards: coordinate-based hold rendering */
+                    holdsData.map((hold: HoldRenderData) => {
+                      const holdData = litUpHoldsMap[hold.id];
+                      const isLitUp = holdData?.state && holdData.state !== 'OFF';
 
-                  return (
-                    <circle
-                      key={renderHold.id}
-                      id={`hold-${renderHold.id}`}
-                      data-mirror-id={renderHold.mirroredHoldId || undefined}
-                      cx={renderHold.cx}
-                      cy={renderHold.cy}
-                      r={renderHold.r}
-                      stroke={color}
-                      strokeWidth={6}
-                      fillOpacity={0}
-                      fill="transparent"
-                    />
-                  );
-                })}
+                      if (!isLitUp) return null;
+
+                      const color = holdData.color;
+
+                      // Handle mirroring like BoardLitupHolds
+                      let renderHold = hold;
+                      if (currentClimb?.mirrored && hold.mirroredHoldId) {
+                        const mirroredHold = holdsData.find(({ id }) => id === hold.mirroredHoldId);
+                        if (mirroredHold) {
+                          renderHold = mirroredHold;
+                        }
+                      }
+
+                      return (
+                        <circle
+                          key={renderHold.id}
+                          id={`hold-${renderHold.id}`}
+                          data-mirror-id={renderHold.mirroredHoldId || undefined}
+                          cx={renderHold.cx}
+                          cy={renderHold.cy}
+                          r={renderHold.r}
+                          stroke={color}
+                          strokeWidth={6}
+                          fillOpacity={0}
+                          fill="transparent"
+                        />
+                      );
+                    })}
               </svg>
             </div>
           </div>
