@@ -7,7 +7,7 @@ import { Climb, ParsedBoardRouteParameters, BoardDetails } from '@/app/lib/types
 import { useQueueContext } from '../graphql-queue';
 import ClimbCard from '../climb-card/climb-card';
 import ClimbListItem from '../climb-card/climb-list-item';
-import { ClimbCardSkeleton } from './board-page-skeleton';
+import { ClimbCardSkeleton, ClimbListItemSkeleton } from './board-page-skeleton';
 import { useSearchParams } from 'next/navigation';
 import { themeTokens } from '@/app/theme/theme-config';
 
@@ -16,15 +16,14 @@ type ViewMode = 'grid' | 'list';
 const VIEW_MODE_STORAGE_KEY = 'climbListViewMode';
 
 function getInitialViewMode(): ViewMode {
-  if (typeof window === 'undefined') return 'grid';
+  if (typeof window === 'undefined') return 'list';
   try {
     const stored = localStorage.getItem(VIEW_MODE_STORAGE_KEY);
     if (stored === 'grid' || stored === 'list') return stored;
   } catch {
     // localStorage not available
   }
-  // Default: list on mobile, grid on desktop
-  return window.matchMedia('(min-width: 768px)').matches ? 'grid' : 'list';
+  return 'list';
 }
 
 type ClimbsListProps = ParsedBoardRouteParameters & {
@@ -32,7 +31,12 @@ type ClimbsListProps = ParsedBoardRouteParameters & {
   initialClimbs: Climb[];
 };
 
-const ClimbsListSkeleton = ({ aspectRatio }: { aspectRatio: number }) => {
+const ClimbsListSkeleton = ({ aspectRatio, viewMode }: { aspectRatio: number; viewMode: ViewMode }) => {
+  if (viewMode === 'list') {
+    return Array.from({ length: 10 }, (_, i) => (
+      <ClimbListItemSkeleton key={i} />
+    ));
+  }
   return Array.from({ length: 10 }, (_, i) => (
     <Col xs={24} lg={12} xl={12} key={i}>
       <ClimbCardSkeleton aspectRatio={aspectRatio} />
@@ -206,7 +210,7 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
             </Col>
           ))}
           {isFetchingClimbs && (!climbs || climbs.length === 0) ? (
-            <ClimbsListSkeleton aspectRatio={boardDetails.boardWidth / boardDetails.boardHeight} />
+            <ClimbsListSkeleton aspectRatio={boardDetails.boardWidth / boardDetails.boardHeight} viewMode="grid" />
           ) : null}
         </Row>
       ) : (
@@ -229,19 +233,21 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
             </div>
           ))}
           {isFetchingClimbs && (!climbs || climbs.length === 0) ? (
-            <Row gutter={[themeTokens.spacing[4], themeTokens.spacing[4]]}>
-              <ClimbsListSkeleton aspectRatio={boardDetails.boardWidth / boardDetails.boardHeight} />
-            </Row>
+            <ClimbsListSkeleton aspectRatio={boardDetails.boardWidth / boardDetails.boardHeight} viewMode="list" />
           ) : null}
         </div>
       )}
 
       {/* Sentinel element for Intersection Observer - needs min-height to be observable */}
-      <div ref={loadMoreRef} style={{ minHeight: themeTokens.spacing[5], marginTop: themeTokens.spacing[4] }}>
+      <div ref={loadMoreRef} style={{ minHeight: themeTokens.spacing[5], marginTop: viewMode === 'grid' ? themeTokens.spacing[4] : 0 }}>
         {isFetchingClimbs && climbs.length > 0 && (
-          <Row gutter={[themeTokens.spacing[4], themeTokens.spacing[4]]}>
-            <ClimbsListSkeleton aspectRatio={boardDetails.boardWidth / boardDetails.boardHeight} />
-          </Row>
+          viewMode === 'grid' ? (
+            <Row gutter={[themeTokens.spacing[4], themeTokens.spacing[4]]}>
+              <ClimbsListSkeleton aspectRatio={boardDetails.boardWidth / boardDetails.boardHeight} viewMode="grid" />
+            </Row>
+          ) : (
+            <ClimbsListSkeleton aspectRatio={boardDetails.boardWidth / boardDetails.boardHeight} viewMode="list" />
+          )
         )}
         {!hasMoreResults && climbs.length > 0 && (
           <div style={{ textAlign: 'center', padding: themeTokens.spacing[5], color: themeTokens.neutral[400] }}>
