@@ -37,8 +37,8 @@ function BottomTabBar({ boardDetails, angle }: BottomTabBarProps) {
 
   const { createPlaylist, isAuthenticated } = usePlaylistsContext();
 
-  const isListPage = pathname.includes('/list');
-  const isPlaylistsPage = pathname.includes('/playlists');
+  const isListPage = pathname.endsWith('/list');
+  const isPlaylistsPage = pathname.endsWith('/playlists');
 
   // Hide playlists for moonboard (not yet supported)
   const isMoonboard = boardDetails.board_name === 'moonboard';
@@ -76,13 +76,13 @@ function BottomTabBar({ boardDetails, angle }: BottomTabBarProps) {
     return null;
   })();
 
-  const getPlaylistUrl = (playlistUuid: string) => {
+  const getPlaylistUrl = useCallback((playlistUuid: string) => {
     const { board_name, layout_name, size_name, size_description, set_names } = boardDetails;
     if (layout_name && size_name && set_names) {
       return `/${board_name}/${generateLayoutSlug(layout_name)}/${generateSizeSlug(size_name, size_description)}/${generateSetSlug(set_names)}/${angle}/playlist/${playlistUuid}`;
     }
     return null;
-  };
+  }, [boardDetails, angle]);
 
   const handleLibraryTab = () => {
     setIsCreateOpen(false);
@@ -166,12 +166,12 @@ function BottomTabBar({ boardDetails, angle }: BottomTabBarProps) {
       <div className={styles.tabBar}>
         {/* Climbs tab */}
         {listUrl ? (
-          <Link href={listUrl} className={styles.tabItem} onClick={handleClimbsTab} style={{ color: getTabColor('climbs'), textDecoration: 'none' }}>
+          <Link href={listUrl} className={styles.tabItem} onClick={handleClimbsTab} style={{ color: getTabColor('climbs'), textDecoration: 'none' }} aria-label="Climbs" role="tab" aria-selected={activeTab === 'climbs'}>
             <UnorderedListOutlined style={{ fontSize: 20 }} />
             <span className={styles.tabLabel}>Climb</span>
           </Link>
         ) : (
-          <button className={styles.tabItem} onClick={handleClimbsTab} style={{ color: getTabColor('climbs') }}>
+          <button className={styles.tabItem} onClick={handleClimbsTab} style={{ color: getTabColor('climbs') }} aria-label="Climbs" role="tab" aria-selected={activeTab === 'climbs'}>
             <UnorderedListOutlined style={{ fontSize: 20 }} />
             <span className={styles.tabLabel}>Climb</span>
           </button>

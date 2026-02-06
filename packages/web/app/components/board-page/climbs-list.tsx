@@ -15,17 +15,6 @@ type ViewMode = 'grid' | 'list';
 
 const VIEW_MODE_STORAGE_KEY = 'climbListViewMode';
 
-function getInitialViewMode(): ViewMode {
-  if (typeof window === 'undefined') return 'list';
-  try {
-    const stored = localStorage.getItem(VIEW_MODE_STORAGE_KEY);
-    if (stored === 'grid' || stored === 'list') return stored;
-  } catch {
-    // localStorage not available
-  }
-  return 'list';
-}
-
 type ClimbsListProps = ParsedBoardRouteParameters & {
   boardDetails: BoardDetails;
   initialClimbs: Climb[];
@@ -57,7 +46,19 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
 
   const searchParams = useSearchParams();
   const page = searchParams.get('page');
-  const [viewMode, setViewMode] = useState<ViewMode>(getInitialViewMode);
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
+
+  // Read stored view mode preference after mount to avoid hydration mismatch
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(VIEW_MODE_STORAGE_KEY);
+      if (stored === 'grid' || stored === 'list') {
+        setViewMode(stored);
+      }
+    } catch {
+      // localStorage not available
+    }
+  }, []);
 
   const handleViewModeChange = useCallback((mode: ViewMode) => {
     setViewMode(mode);
