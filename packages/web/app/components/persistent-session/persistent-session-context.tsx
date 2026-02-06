@@ -453,14 +453,18 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
     // Handle AngleChanged navigation separately (after state update)
     if (event.__typename === 'AngleChanged') {
       // Update the URL to reflect the new angle
-      // URL structure: /board_name/layout_id/size_id/set_ids/angle/...
-      // After split('/'), angle is at index 5 (index 0 is empty string from leading slash)
-      const pathSegments = pathname.split('/');
-      const ANGLE_INDEX = 5; // Position of angle in board route: ['', board, layout, size, sets, angle, ...]
+      // Use the boardPath from the event which has the correct structure
+      // boardPath format: board_name/layout_id/size_id/set_ids/angle (5 segments)
+      const newBoardPathSegments = event.boardPath.split('/').filter(Boolean);
+      const currentPathSegments = pathname.split('/');
 
-      if (pathSegments.length > ANGLE_INDEX && /^\d+$/.test(pathSegments[ANGLE_INDEX])) {
-        pathSegments[ANGLE_INDEX] = event.angle.toString();
-        const newPath = pathSegments.join('/');
+      // The pathname structure is: ['', board_name, layout_id, size_id, set_ids, angle, ...rest]
+      // We need to replace segments 1-5 with the new boardPath segments
+      if (newBoardPathSegments.length === 5 && currentPathSegments.length > 5) {
+        // Keep the leading empty string and any trailing segments (like /list, /climb/uuid)
+        const trailingSegments = currentPathSegments.slice(6); // Everything after the angle
+        const newPath = ['', ...newBoardPathSegments, ...trailingSegments].join('/');
+
         if (newPath !== pathname) {
           // Preserve search params (like session ID)
           const searchParams = new URLSearchParams(window.location.search);
@@ -468,7 +472,10 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
           router.replace(newUrl);
         }
       } else if (DEBUG) {
-        console.warn('[PersistentSession] Could not find angle segment in pathname:', pathname);
+        console.warn('[PersistentSession] Could not update URL for angle change:', {
+          pathname,
+          newBoardPath: event.boardPath,
+        });
       }
     }
 

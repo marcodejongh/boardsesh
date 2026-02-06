@@ -4,7 +4,7 @@ import { SUPPORTED_BOARDS } from '@boardsesh/shared-schema';
 import { roomManager, VersionConflictError } from '../../../services/room-manager';
 import { pubsub } from '../../../pubsub/index';
 import { updateContext } from '../../context';
-import { requireAuthenticated, applyRateLimit, validateInput, MAX_RETRIES } from '../shared/helpers';
+import { requireAuthenticated, requireSession, applyRateLimit, validateInput, MAX_RETRIES } from '../shared/helpers';
 import {
   SessionIdSchema,
   BoardPathSchema,
@@ -338,18 +338,13 @@ export const sessionMutations = {
    * Also updates climb stats in the queue for the new angle
    */
   updateSessionAngle: async (_: unknown, { angle }: { angle: number }, ctx: ConnectionContext) => {
-    if (!ctx.sessionId) {
-      throw new Error('Not in a session');
-    }
-
+    const sessionId = requireSession(ctx);
     applyRateLimit(ctx, 10); // Limit angle changes to prevent abuse
 
     // Validate angle is a reasonable number
     if (!Number.isInteger(angle) || angle < 0 || angle > 90) {
       throw new Error('Invalid angle: must be an integer between 0 and 90 degrees');
     }
-
-    const sessionId = ctx.sessionId;
 
     // Update the session angle in the database and Redis
     const result = await roomManager.updateSessionAngle(sessionId, angle);
