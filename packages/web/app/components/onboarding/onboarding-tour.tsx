@@ -34,6 +34,8 @@ const setTourDrawer = (open: boolean) => {
   window.dispatchEvent(new CustomEvent(TOUR_DRAWER_EVENT, { detail: { open } }));
 };
 
+const isOnboardingTourEnabled = process.env.NEXT_PUBLIC_ENABLE_ONBOARDING_TOUR === 'true';
+
 const OnboardingTour: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [current, setCurrent] = useState(0);
@@ -42,6 +44,8 @@ const OnboardingTour: React.FC = () => {
   const isMobileRef = useRef(false);
 
   useEffect(() => {
+    if (!isOnboardingTourEnabled) return;
+
     // Only show on mobile
     const checkMobile = () => {
       isMobileRef.current = window.matchMedia('(max-width: 768px)').matches;
@@ -230,7 +234,7 @@ const OnboardingTour: React.FC = () => {
     },
   ];
 
-  if (!open) return null;
+  if (!isOnboardingTourEnabled || !open) return null;
 
   return (
     <Tour
