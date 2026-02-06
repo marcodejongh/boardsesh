@@ -133,12 +133,13 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
   return (
     <div style={{ paddingTop: '5px' }}>
       <Row gutter={[16, 16]}>
-        {climbs.map((climb) => (
+        {climbs.map((climb, index) => (
           <Col xs={24} lg={12} xl={12} id={climb.uuid} key={climb.uuid}>
             <div
               ref={(el) => {
                 climbsRefs.current[climb.uuid] = el;
               }}
+              {...(index === 0 ? { id: 'onboarding-climb-card' } : {})}
             >
               <ClimbCard
                 climb={climb}

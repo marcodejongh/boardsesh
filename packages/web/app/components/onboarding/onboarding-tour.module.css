@@ -1,0 +1,28 @@
+@media (max-width: 768px) {
+  .tour :global(.ant-tour-inner) {
+    max-height: 60vh;
+    overflow-y: auto;
+  }
+}
+
+.stepIcon {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 0 8px;
+  font-size: 28px;
+  color: #06B6D4;
+}
+
+.skipLink {
+  margin-top: 12px;
+  text-align: right;
+}
+
+.skipLink a {
+  font-size: 13px;
+  color: #999;
+  cursor: pointer;
+  text-decoration: underline;
+}

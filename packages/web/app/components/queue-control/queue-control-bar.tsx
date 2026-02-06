@@ -19,6 +19,7 @@ import ClimbThumbnail from '../climb-card/climb-thumbnail';
 import ClimbTitle from '../climb-card/climb-title';
 import { AscentStatus } from './queue-list-item';
 import { themeTokens } from '@/app/theme/theme-config';
+import { TOUR_DRAWER_EVENT } from '../onboarding/onboarding-tour';
 import styles from './queue-control-bar.module.css';
 
 // Swipe threshold in pixels to trigger navigation
@@ -49,6 +50,16 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
         clearTimeout(scrollTimeoutRef.current);
       }
     };
+  }, []);
+
+  // Listen for tour events to open/close the queue drawer
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { open } = (e as CustomEvent<{ open: boolean }>).detail;
+      setIsQueueOpen(open);
+    };
+    window.addEventListener(TOUR_DRAWER_EVENT, handler);
+    return () => window.removeEventListener(TOUR_DRAWER_EVENT, handler);
   }, []);
 
   // Scroll to current climb when drawer finishes opening
@@ -220,7 +231,7 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
   const rightActionOpacity = Math.min(1, Math.abs(swipeOffset) / SWIPE_THRESHOLD);
 
   return (
-    <div className="queue-bar-shadow" data-testid="queue-control-bar" style={{ flexShrink: 0, width: '100%', backgroundColor: '#fff' }}>
+    <div id="onboarding-queue-bar" className="queue-bar-shadow" data-testid="queue-control-bar" style={{ flexShrink: 0, width: '100%', backgroundColor: '#fff' }}>
       {/* Main Control Bar */}
       <Card
         variant="borderless"
@@ -296,51 +307,56 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
             }}
           >
             <Row justify="space-between" align="middle" style={{ width: '100%' }}>
-              <Col xs={4}>
-                {/* Board preview */}
-                <div style={boardPreviewContainerStyle}>
-                  <ClimbThumbnail
-                    boardDetails={boardDetails}
-                    currentClimb={currentClimb}
-                    enableNavigation={true}
-                    onNavigate={() => setIsQueueOpen(false)}
-                  />
-                </div>
-              </Col>
+              {/* Left section: Thumbnail, climb info, and avatar grouped together */}
+              <Col flex="auto" style={{ minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: themeTokens.spacing[2] }}>
+                  {/* Board preview */}
+                  <div style={boardPreviewContainerStyle}>
+                    <ClimbThumbnail
+                      boardDetails={boardDetails}
+                      currentClimb={currentClimb}
+                      enableNavigation={true}
+                      onNavigate={() => setIsQueueOpen(false)}
+                    />
+                  </div>
 
-              {/* Clickable main body for opening the queue */}
-              <Col xs={9} style={{ textAlign: 'center' }}>
-                <div onClick={toggleQueueDrawer} className={`${styles.queueToggle} ${isListPage ? styles.listPage : ''}`}>
-                  <ClimbTitle
-                    climb={currentClimb}
-                    showAngle
-                    centered
-                    nameAddon={currentClimb?.name && <AscentStatus climbUuid={currentClimb.uuid} />}
-                  />
-                </div>
-              </Col>
+                  {/* Clickable climb info for opening the queue */}
+                  <div
+                    id="onboarding-queue-toggle"
+                    onClick={toggleQueueDrawer}
+                    className={`${styles.queueToggle} ${isListPage ? styles.listPage : ''}`}
+                    style={{ minWidth: 0, flex: 1 }}
+                  >
+                    <ClimbTitle
+                      climb={currentClimb}
+                      showAngle
+                      nameAddon={currentClimb?.name && <AscentStatus climbUuid={currentClimb.uuid} />}
+                    />
+                  </div>
 
-              {/* Added by indicator (user avatar or Bluetooth icon) */}
-              {currentClimbQueueItem && (
-                <Col xs={2} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {currentClimbQueueItem.addedByUser ? (
-                    <Tooltip title={currentClimbQueueItem.addedByUser.username}>
-                      <Avatar size="small" src={currentClimbQueueItem.addedByUser.avatarUrl} icon={<UserOutlined />} />
-                    </Tooltip>
-                  ) : (
-                    <Tooltip title="Added via Bluetooth">
-                      <Avatar
-                        size="small"
-                        style={{ backgroundColor: 'transparent' }}
-                        icon={<BluetoothIcon style={{ color: themeTokens.neutral[400] }} />}
-                      />
-                    </Tooltip>
+                  {/* Added by indicator (user avatar or Bluetooth icon) */}
+                  {currentClimbQueueItem && (
+                    <div style={{ flexShrink: 0 }}>
+                      {currentClimbQueueItem.addedByUser ? (
+                        <Tooltip title={currentClimbQueueItem.addedByUser.username}>
+                          <Avatar size="small" src={currentClimbQueueItem.addedByUser.avatarUrl} icon={<UserOutlined />} />
+                        </Tooltip>
+                      ) : (
+                        <Tooltip title="Added via Bluetooth">
+                          <Avatar
+                            size="small"
+                            style={{ backgroundColor: 'transparent' }}
+                            icon={<BluetoothIcon style={{ color: themeTokens.neutral[400] }} />}
+                          />
+                        </Tooltip>
+                      )}
+                    </div>
                   )}
-                </Col>
-              )}
+                </div>
+              </Col>
 
               {/* Button cluster */}
-              <Col xs={9} style={{ textAlign: 'right' }}>
+              <Col flex="none" style={{ marginLeft: themeTokens.spacing[2] }}>
                 <Space>
                   {boardDetails.supportsMirroring ? (
                     <Button
@@ -419,8 +435,9 @@ const QueueControlBar: React.FC<QueueControlBar> = ({ boardDetails, angle }: Que
 };
 
 const boardPreviewContainerStyle = {
-  width: '100%', // Using 100% width for flexibility
+  width: 48, // Fixed width for thumbnail in flex layout
   height: 'auto', // Auto height to maintain aspect ratio
+  flexShrink: 0, // Don't shrink the thumbnail
   display: 'flex',
   justifyContent: 'center',
   alignItems: 'center',
