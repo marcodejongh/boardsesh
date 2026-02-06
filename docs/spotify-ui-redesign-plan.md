@@ -43,7 +43,7 @@ This plan transforms Boardsesh's UI into a Spotify-like experience with a persis
 ### Mobile Layout - List View (Compact Mode)
 ```
 ┌────────────────────────────────────┐
-│ [Logo]  [Search Input]  [≡ Menu]   │  ← Simplified header
+│ [👤] [Logo] [Search Input] [Angle]│  ← Simplified header
 ├────────────────────────────────────┤
 │                                    │
 │ ┌──────────────────────────────┐   │
@@ -66,7 +66,7 @@ This plan transforms Boardsesh's UI into a Spotify-like experience with a persis
 ### Mobile Layout - List View (Expanded/Card Mode)
 ```
 ┌────────────────────────────────────┐
-│ [Logo]  [Search Input]  [≡ Menu]   │
+│ [👤] [Logo] [Search Input] [Angle]│
 ├────────────────────────────────────┤
 │                                    │
 │ ┌──────────────────────────────┐   │
@@ -117,7 +117,7 @@ This plan transforms Boardsesh's UI into a Spotify-like experience with a persis
 ### Desktop Layout
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ [Logo]  [Search Input]  [Angle ▾]  [Create]  [≡ User Menu] │
+│ [👤] [Logo]  [Search Input]  [Angle ▾]  [Create] [Party] [LED] │
 ├──────────────────────────────────┬──────────────────────────┤
 │                                  │                          │
 │  Climb list (2-col grid)         │  Sidebar (400px)         │
@@ -465,47 +465,136 @@ Key implementation details:
 
 ---
 
-## Phase 4: Header Simplification
+## Phase 4: Header Redesign — Board Selector, User Drawer, Simplified Layout
 
 ### What changes
-Reduce header clutter by moving elements to the bottom tab bar and queue control bar.
+- **Remove** the top-right meatball/ellipsis menu entirely
+- **Add** a board selector next to the angle selector for switching boards
+- **Add** a user avatar button in the top-right that opens a left-side user drawer
+- Reduce header clutter by moving Party/LED/Search to bottom tab bar and queue control bar (from earlier phases)
+
+### 4A: User Avatar & Left Drawer
+
+**Remove**: The mobile meatball menu (`MoreOutlined` button + `mobileMenuItems` Dropdown) — entirely deleted
+**Remove**: The desktop user dropdown (`UserOutlined` button + `userMenuItems` Dropdown) — replaced by the same drawer
+
+**New file: `packages/web/app/components/user-drawer/user-drawer.tsx`**
+
+A left-side drawer triggered by tapping the user avatar in the top-right corner of the header.
+
+Trigger button:
+- Logged in: User's avatar image (`session.user.image`) or initials fallback in a small circular AntD `Avatar`
+- Not logged in: Generic `UserOutlined` icon in a circular avatar (neutral background)
+- Position: Top-right of header (replaces the meatball menu on mobile, replaces the user dropdown on desktop)
+- Works on both mobile and desktop (same component, same behavior)
+
+Drawer:
+- **Placement**: `"left"` (slides in from the left edge)
+- **Width**: ~300px on desktop, ~85vw on mobile
+- **Content**:
+
+```
+┌──────────────────────────────┐
+│  ← (close)                   │
+│                               │
+│  ┌─────┐                      │
+│  │     │  Username             │
+│  │ AVA │  user@email.com       │
+│  │     │                      │
+│  └─────┘                      │
+│                               │
+│  [View Profile]               │  → /crusher/[user_id]
+│                               │
+├───────────────────────────────┤
+│                               │
+│  🔀 Change Board              │  → board switcher (see below)
+│  ⚙ Settings                   │  → /settings
+│  🎯 Classify Holds            │  opens HoldClassificationWizard
+│  🕐 Recents                   │  → recent boards/sessions
+│  📋 My Playlists              │  → /playlists (hidden for MoonBoard)
+│                               │
+├───────────────────────────────┤
+│                               │
+│  ❓ Help                       │  → /help
+│  ℹ️ About                      │  → /about
+│                               │
+├───────────────────────────────┤
+│                               │
+│  🚪 Logout                    │  calls signOut()
+│                               │
+└───────────────────────────────┘
+```
+
+- **Not logged in** variant: Show avatar placeholder + "Sign in" button at the top. Below: Change Board, Recents, Help, About.
+- **Change Board**: Navigates to the root setup wizard (`/`) or shows an inline list of `SUPPORTED_BOARDS` (kilter, tension, moonboard if enabled). Tapping a board navigates to `/[board_name]` to pick layout/size/sets. If the user has recently visited other board configurations (from `session-history-panel.tsx` data), those can appear as quick-switch options under Recents as well.
+- **Recents section**: Shows recently visited board configurations from stored session data. Each entry shows board name + layout + size, tapping navigates directly to that configuration. This provides a quick way to switch between boards without going through the full setup wizard.
+
+### 4B: Header Layout After Redesign
+
+**Modify: `packages/web/app/components/board-page/header.tsx`**
+
+All pages:
+```
+Mobile:   [Avatar]  [Logo]  [Search Input]  [Angle ▾]
+Desktop:  [Avatar]  [Logo]  [Search Input]  [Angle ▾]  [+ Create]  [👥 Party]  [💡 LED]
+```
+
+Create page (unchanged):
+```
+Mobile:   [Logo]  [Cancel]  [Beta]  [Publish]
+Desktop:  [Logo]  [Cancel]  [Beta]  [Publish]
+```
+
+Play/view pages:
+```
+Mobile:   [Avatar]  [← Back]  [Logo]  [Angle ▾]
+Desktop:  [Avatar]  [Logo]  [Search Input]  [Angle ▾]  [+ Create]  [👥 Party]  [💡 LED]
+```
+
+Key changes:
+- **Avatar** is now the leftmost element (before Logo) — tapping opens the left user drawer
+- **Meatball menu** (`MoreOutlined`) is completely removed — all items move to the user drawer
+- **Desktop user dropdown** is completely removed — replaced by the same avatar → drawer
+- **Board switching** lives in the user drawer (via "Change Board" item), not the header bar
+- Desktop still shows Party, LED, Create buttons inline (unchanged from earlier phases)
+- **Mobile `SearchButton`** (advanced filters icon) already moved to bottom tab bar (Phase 1)
+- **Mobile `SearchClimbNameInput`** stays in header for quick name search
 
 ### Files to modify
 
 **Modify: `packages/web/app/components/board-page/header.tsx`**
 
-Removals (mobile only):
-- **Remove**: `ShareBoardButton` (party mode) from the `onboarding-party-light-buttons` span - moves to QueueControlBar
-- **Remove**: `SendClimbToBoardButton` (LED) from the `onboarding-party-light-buttons` span - moves to play view drawer action bar
-- **Remove**: Mobile `SearchButton` - moves to bottom tab bar (but **keep** `SearchClimbNameInput` text input)
-- **Remove**: "Create Climb" from `mobileMenuItems` array (key: `create-climb`) - moves to bottom tab bar
+Removals:
+- **Remove**: `ShareBoardButton` (party mode) from `onboarding-party-light-buttons` span (mobile only) — moved to QueueControlBar in Phase 3
+- **Remove**: `SendClimbToBoardButton` (LED) from `onboarding-party-light-buttons` span (mobile only) — moved to play view drawer in Phase 3
+- **Remove**: Mobile `SearchButton` — moved to bottom tab bar in Phase 1
+- **Remove**: `mobileMenuItems` array and the mobile meatball `Dropdown` entirely
+- **Remove**: `userMenuItems` array and the desktop user `Dropdown` entirely
+- **Remove**: All `signOut`, `setShowAuthModal`, `setShowHoldClassification` handlers from header (they move to user drawer)
 
-Desktop retains all buttons unchanged (wrapped in existing `.desktopOnly` CSS class).
+Additions:
+- **Add**: `<UserDrawerButton />` component (avatar that opens the drawer) — leftmost position
 
-The header becomes:
-```
-Mobile (list page):  [Logo]  [Search Input]  [Angle ▾]  [≡ Menu]
-Mobile (play/view):  [← Back]  [Logo]  [Angle ▾]  [≡ Menu]
-Mobile (create):     [Logo]  [Cancel]  [Beta]  [Publish]   (unchanged)
-Desktop:             [Logo]  [Search Input]  [Angle ▾]  [+ Create]  [👥 Party]  [💡 LED]  [User ▾]
-```
+**New file: `packages/web/app/components/user-drawer/user-drawer.tsx`**
+- Left-side drawer with user info, navigation links, and actions
 
-**Modify: `mobileMenuItems` array in header.tsx**
-- Remove "Create Climb" entry (key: `create-climb`) - now in bottom tab bar's Create drawer
-- Keep: My Playlists, Classify Holds, Profile, Settings, Help, About, Logout
-- **Note**: The "My Playlists" item is conditionally shown (`session?.user && playlistsUrl && !isMoonboard`). Since playlists are also accessible via the Create drawer, consider keeping it in the menu for discoverability.
+**New file: `packages/web/app/components/user-drawer/user-drawer.module.css`**
+- Styles for drawer sections, avatar area, menu items
 
 **Modify: `packages/web/app/components/board-page/header.module.css`**
-- The existing `.mobileOnly`, `.desktopOnly`, and `.mobileMenuButton` classes handle responsive visibility. No new CSS classes needed, but verify the `onboarding-party-light-buttons` span is properly hidden on mobile after removing its children.
-- If the span becomes empty on mobile, wrap it in a `.desktopOnly` div to avoid empty space.
+- Remove `.mobileMenuButton` class (no longer needed)
+- May need new positioning for avatar button
 
 ### Header height
 - Keep at `8dvh` / min 48px
-- The reduced content means it could potentially be slimmer, but keep it consistent for now
+- The added board selector may make the header slightly more crowded — if needed, make the board selector icon-only on mobile with a tooltip
 
 ### Considerations
-- **Onboarding tour references**: The tour component uses element IDs like `onboarding-party-light-buttons` to highlight the party/LED buttons. After moving these off the header on mobile, the tour steps may point to elements that don't exist. Update the tour to reference the new locations (QueueControlBar party button, play drawer LED button) or skip those steps on mobile.
-- **Dynamic import of SendClimbToBoardButton**: Currently this component is dynamically imported in header.tsx with `ssr: false`. After Phase 4, this import only needs to happen on desktop. The play drawer (Phase 3) handles its own LED button import. Ensure the dynamic import is wrapped in the desktop-only conditional to avoid loading ~50KB of LED placement data on mobile where it's no longer used in the header.
+- **Onboarding tour references**: Tour steps referencing `onboarding-party-light-buttons` need updating (Party/LED moved in earlier phases). The user avatar is a new stable target for a "profile" tour step.
+- **Dynamic import of SendClimbToBoardButton**: After this phase, only loaded on desktop in the header. Play drawer (Phase 3) handles its own LED button.
+- **HoldClassificationWizard**: Currently rendered in `header.tsx` and triggered by meatball menu. After redesign, the wizard should be rendered within or triggered from the user drawer. The drawer can manage its own `showHoldClassification` state.
+- **AuthModal**: Currently rendered in `header.tsx`. After redesign, the user drawer handles sign-in. Move `AuthModal` rendering to the user drawer component.
+- **Session data for Recents**: The `session-history-panel.tsx` already reads stored sessions from localStorage. Reuse this data source for the Recents section in the user drawer.
 
 ---
 
@@ -595,7 +684,7 @@ Ensure the desktop experience remains cohesive while the mobile experience is tr
 
 1. **No bottom tab bar** - Hidden via CSS media query (>= 768px)
 2. **Sidebar stays** - Queue/Search/Search by Hold tabs in the sidebar (existing `ListLayoutClient` with 3 tabs, not 2)
-3. **Header keeps** - Party, LED, Create, User menu buttons in header (wrapped in `.desktopOnly` class from `header.module.css`)
+3. **Header keeps** - Party, LED, Create buttons in header (wrapped in `.desktopOnly` class from `header.module.css`). User avatar + left drawer works the same on desktop (no separate user dropdown).
 4. **Play view** - Desktop users still use the full `/play/` page route with the sidebar layout (`play/layout-client.tsx`)
 5. **Climb list** - Default to compact (list) mode on all devices. Grid (card) mode available via toggle. Respect any stored localStorage preference.
 6. **QueueControlBar** - Shows additional prev/next buttons on desktop (existing `.navButtons` CSS class already handles this), keeps mirror button visible, keeps play link
@@ -603,12 +692,12 @@ Ensure the desktop experience remains cohesive while the mobile experience is tr
 ### Files to modify
 - **`packages/web/app/components/bottom-tab-bar/bottom-tab-bar.module.css`**: `display: none` for >= 768px
 - **`packages/web/app/components/queue-control/queue-control-bar.tsx`**: Conditional rendering of play link and mirror button on desktop (since desktop doesn't use the drawer). Use the existing `.navButtons` CSS pattern or add a new `.desktopOnly` class.
-- **`packages/web/app/components/board-page/header.tsx`**: Desktop keeps party + LED buttons via `.desktopOnly` class (already the case after Phase 4 changes)
+- **`packages/web/app/components/board-page/header.tsx`**: Desktop keeps party + LED + create buttons via `.desktopOnly` class. Avatar + user drawer works the same on both breakpoints.
 - **`packages/web/app/components/queue-control/queue-control-bar.module.css`**: May need new CSS classes for desktop-only buttons (mirror, play link)
 
 ### Verification checklist
 - The 3-tab sidebar (Queue/Search/Search by Hold) works unchanged
-- Desktop header shows: Logo, Search Input, Angle, Create, Party, LED, User dropdown
+- Desktop header shows: Avatar, Logo, Search Input, Angle, Create, Party, LED
 - Desktop QueueControlBar shows: Mirror, Play link, Prev, Next, Party, Queue, Tick
 - Bottom tab bar is invisible on desktop
 - Play drawer never opens on desktop (tapping bar navigates to `/play/` route instead)
@@ -638,9 +727,11 @@ Phase 3: Now Playing Bar + Play Drawer
   └─ 3B: Full-screen play drawer
   └─ 3C: Shared navigation hook
 
-Phase 4: Header Simplification
-  └─ Remove relocated elements
-  └─ Verify desktop still complete
+Phase 4: Header Redesign — User Drawer + Board Selector
+  └─ User avatar button + left drawer
+  └─ Change Board in drawer
+  └─ Recents from session history
+  └─ Remove meatball menu + desktop user dropdown
 
 Phase 5: Party Mode & LED Drawer
   └─ Bottom drawer conversion
@@ -666,13 +757,24 @@ layout.tsx (server component)
 │       └── GraphQLQueueProvider (provides QueueContext used everywhere)
 │           └── PartyProvider
 │
-├── BoardSeshHeader (simplified)
+├── BoardSeshHeader (redesigned)
+│   ├── UserDrawerButton [NEW] (avatar → opens left drawer)
+│   │   └── UserDrawer [NEW] (left-side)
+│   │       ├── Avatar + Username + Email
+│   │       ├── View Profile → /crusher/[user_id]
+│   │       ├── Change Board → / (setup wizard) or quick-switch
+│   │       ├── Settings → /settings
+│   │       ├── Classify Holds → HoldClassificationWizard
+│   │       ├── Recents (from session-history data)
+│   │       ├── My Playlists → /playlists (hidden for MoonBoard)
+│   │       ├── Help → /help
+│   │       ├── About → /about
+│   │       └── Logout / Sign In
 │   ├── Logo
 │   ├── SearchClimbNameInput (mobile, kept for quick name search)
 │   ├── AngleSelector
-│   ├── UserMenu (mobile meatball + desktop dropdown)
 │   ├── CreateModeButtons (only on /create page)
-│   └── [Desktop only]: CreateButton, ShareBoardButton, SendClimbToBoardButton, UserDropdown
+│   └── [Desktop only]: CreateButton, ShareBoardButton, SendClimbToBoardButton
 │
 ├── Content
 │   ├── ClimbsList
@@ -838,10 +940,19 @@ layout.tsx (server component)
 - [ ] Wake lock activates when play drawer is open
 
 ### Phase 4
-- [ ] Header is simplified on mobile (only Logo, SearchInput, Angle, Menu)
-- [ ] All removed mobile items are accessible elsewhere (party→bar, LED→play drawer, search→tab bar, create→tab bar)
-- [ ] Desktop header still has all buttons (Create, Party, LED, User)
-- [ ] No broken references to moved components
+- [ ] Meatball menu is completely removed (mobile and desktop)
+- [ ] Desktop user dropdown is completely removed
+- [ ] User avatar button appears top-left on all pages
+- [ ] Tapping avatar opens left-side user drawer
+- [ ] User drawer shows correct content when logged in (avatar, username, email, all menu items)
+- [ ] User drawer shows sign-in prompt when logged out
+- [ ] "Change Board" navigates to setup wizard or shows board list
+- [ ] "Recents" shows recently visited board configurations
+- [ ] "Classify Holds" opens HoldClassificationWizard from the drawer
+- [ ] Logout works from the drawer
+- [ ] Desktop header still has Create, Party, LED buttons inline
+- [ ] Mobile header is simplified (Avatar, Logo, SearchInput, Angle)
+- [ ] All removed items are accessible via user drawer or other new locations
 - [ ] Onboarding tour steps still target valid elements
 - [ ] SendClimbToBoardButton dynamic import only loads on desktop
 
@@ -970,7 +1081,12 @@ After moving components around, the following become dead code and should be del
 
 **After Phase 4**:
 - `header.tsx`: Mobile-only `SearchButton` import and rendering
-- `header.tsx`: `create-climb` entry from `mobileMenuItems` array
+- `header.tsx`: Entire `mobileMenuItems` array and the meatball `Dropdown` component
+- `header.tsx`: Entire `userMenuItems` array and the desktop user `Dropdown` component
+- `header.tsx`: `signOut` import and `handleSignOut` handler (moves to user drawer)
+- `header.tsx`: `showAuthModal` state and `AuthModal` render (moves to user drawer)
+- `header.tsx`: `showHoldClassification` state and `HoldClassificationWizard` render (moves to user drawer)
+- `header.module.css`: `.mobileMenuButton` class (no longer needed)
 - Verify the `onboarding-party-light-buttons` span doesn't become an empty wrapper on mobile
 
 **After Phase 5**:
@@ -1064,8 +1180,9 @@ After redesign:
 
 ### URL Strategy
 
-The redesign adds a drawer-based play view but does **not** replace URL-based navigation:
+The redesign adds a drawer-based play view and a new home route:
 
+- `/home` - Home/dashboard placeholder (feature-flagged via `NEXT_PUBLIC_ENABLE_HOME_SCREEN`)
 - `/list` - Climb list (unchanged)
 - `/play/[uuid]` - Full play page (kept for desktop + direct links)
 - `/view/[uuid]` - Climb details page (unchanged)
@@ -1073,7 +1190,7 @@ The redesign adds a drawer-based play view but does **not** replace URL-based na
 - `/playlists` - Playlists (unchanged)
 - `#playing` hash - Transient state indicating play drawer is open (mobile only)
 
-No new routes are added. The play drawer is purely a client-side UI overlay.
+One new route (`/home`) is added. The play drawer is purely a client-side UI overlay.
 
 ### MoonBoard Considerations
 
