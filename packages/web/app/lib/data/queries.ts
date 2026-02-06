@@ -16,10 +16,13 @@ import {
 } from '@/app/lib/__generated__/product-sizes-data';
 
 export const getClimb = async (params: ParsedBoardRouteParametersWithUuid): Promise<Climb> => {
-  // Get hardcoded size edges (eliminates database query)
-  const sizeEdges = getSizeEdges(params.board_name, params.size_id);
-  if (!sizeEdges) {
-    throw new Error(`Invalid size_id ${params.size_id} for board ${params.board_name}`);
+  // MoonBoard uses grid-based rendering with a fixed size, so it has no entries in PRODUCT_SIZES.
+  // Skip the size edges validation for MoonBoard.
+  if (params.board_name !== 'moonboard') {
+    const sizeEdges = getSizeEdges(params.board_name, params.size_id);
+    if (!sizeEdges) {
+      throw new Error(`Invalid size_id ${params.size_id} for board ${params.board_name}`);
+    }
   }
 
   const result = await sql`
