@@ -1,10 +1,10 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { ConnectionContext, SessionEvent, QueueEvent, ClimbQueueItem } from '@boardsesh/shared-schema';
 import { SUPPORTED_BOARDS } from '@boardsesh/shared-schema';
-import { roomManager } from '../../../services/room-manager';
+import { roomManager, VersionConflictError } from '../../../services/room-manager';
 import { pubsub } from '../../../pubsub/index';
 import { updateContext } from '../../context';
-import { requireAuthenticated, applyRateLimit, validateInput } from '../shared/helpers';
+import { requireAuthenticated, applyRateLimit, validateInput, MAX_RETRIES } from '../shared/helpers';
 import {
   SessionIdSchema,
   BoardPathSchema,
@@ -342,84 +342,111 @@ export const sessionMutations = {
       throw new Error('Not in a session');
     }
 
+    applyRateLimit(ctx, 10); // Limit angle changes to prevent abuse
+
     // Validate angle is a reasonable number
     if (!Number.isInteger(angle) || angle < 0 || angle > 90) {
       throw new Error('Invalid angle: must be an integer between 0 and 90 degrees');
     }
 
+    const sessionId = ctx.sessionId;
+
     // Update the session angle in the database and Redis
-    const result = await roomManager.updateSessionAngle(ctx.sessionId, angle);
+    const result = await roomManager.updateSessionAngle(sessionId, angle);
 
     // Parse the new boardPath to get board parameters
     const boardParams = parseBoardPath(result.boardPath);
 
-    // Get current queue state
-    const queueState = await roomManager.getQueueState(ctx.sessionId);
+    // Broadcast the angle change to all session members first
+    // This ensures URL updates happen even if queue update has issues
+    const angleChangedEvent: SessionEvent = {
+      __typename: 'AngleChanged',
+      angle: result.angle,
+      boardPath: result.boardPath,
+    };
+    pubsub.publishSessionEvent(sessionId, angleChangedEvent);
 
-    // Update queue items with new angle's climb stats if we have board params
-    let updatedQueue = queueState.queue;
-    let updatedCurrentClimb = queueState.currentClimbQueueItem;
+    // Get current queue state
+    let queueState = await roomManager.getQueueState(sessionId);
 
     // Warn if we can't parse boardPath but have queue items that need updating
     if (!boardParams && (queueState.queue.length > 0 || queueState.currentClimbQueueItem)) {
       console.warn(`[updateSessionAngle] Could not parse boardPath "${result.boardPath}" - queue items will have stale stats`);
+      return true;
     }
 
-    if (boardParams && (queueState.queue.length > 0 || queueState.currentClimbQueueItem)) {
-      if (DEBUG) console.log(`[updateSessionAngle] Updating ${queueState.queue.length} queue items for angle ${angle}`);
+    // If no board params or no queue items, we're done
+    if (!boardParams || (queueState.queue.length === 0 && !queueState.currentClimbQueueItem)) {
+      return true;
+    }
 
-      // Update all queue items in parallel
-      updatedQueue = await Promise.all(
-        queueState.queue.map((item) =>
-          updateQueueItemForAngle(item, boardParams, angle)
-        )
-      );
+    // Track which items we've already updated (by UUID)
+    const updatedItemsMap = new Map<string, ClimbQueueItem>();
 
-      // Update current climb if present
-      if (queueState.currentClimbQueueItem) {
-        updatedCurrentClimb = await updateQueueItemForAngle(
-          queueState.currentClimbQueueItem,
-          boardParams,
-          angle
+    // Retry loop for optimistic locking - handles race conditions when queue is modified
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+      if (DEBUG) console.log(`[updateSessionAngle] Attempt ${attempt + 1}/${MAX_RETRIES} - updating ${queueState.queue.length} queue items for angle ${angle}`);
+
+      // Find items that need updating (not already in our cache)
+      const itemsToUpdate = queueState.queue.filter(item => !updatedItemsMap.has(item.uuid));
+
+      // Update new items in parallel
+      if (itemsToUpdate.length > 0) {
+        const newlyUpdated = await Promise.all(
+          itemsToUpdate.map(item => updateQueueItemForAngle(item, boardParams, angle))
         );
+        // Add to our cache
+        for (const item of newlyUpdated) {
+          updatedItemsMap.set(item.uuid, item);
+        }
       }
 
-      // Save the updated queue state
-      const newQueueState = await roomManager.updateQueueState(
-        ctx.sessionId,
-        updatedQueue,
-        updatedCurrentClimb,
-        queueState.version
-      );
+      // Build the final queue using cached updated items, preserving order from current state
+      const updatedQueue = queueState.queue.map(item => updatedItemsMap.get(item.uuid) || item);
 
-      // Broadcast the angle change to all session members
-      const angleChangedEvent: SessionEvent = {
-        __typename: 'AngleChanged',
-        angle: result.angle,
-        boardPath: result.boardPath,
-      };
-      pubsub.publishSessionEvent(ctx.sessionId, angleChangedEvent);
+      // Update current climb if present and not already updated
+      let updatedCurrentClimb = queueState.currentClimbQueueItem;
+      if (updatedCurrentClimb) {
+        if (updatedItemsMap.has(updatedCurrentClimb.uuid)) {
+          updatedCurrentClimb = updatedItemsMap.get(updatedCurrentClimb.uuid)!;
+        } else {
+          updatedCurrentClimb = await updateQueueItemForAngle(updatedCurrentClimb, boardParams, angle);
+          updatedItemsMap.set(updatedCurrentClimb.uuid, updatedCurrentClimb);
+        }
+      }
 
-      // Send a FullSync event with the updated queue so clients update their queue display
-      const fullSyncEvent: QueueEvent = {
-        __typename: 'FullSync',
-        sequence: newQueueState.sequence,
-        state: {
+      try {
+        // Save the updated queue state with version check
+        const newQueueState = await roomManager.updateQueueState(
+          sessionId,
+          updatedQueue,
+          updatedCurrentClimb,
+          queueState.version
+        );
+
+        // Send a FullSync event with the updated queue so clients update their queue display
+        const fullSyncEvent: QueueEvent = {
+          __typename: 'FullSync',
           sequence: newQueueState.sequence,
-          stateHash: newQueueState.stateHash,
-          queue: updatedQueue,
-          currentClimbQueueItem: updatedCurrentClimb,
-        },
-      };
-      pubsub.publishQueueEvent(ctx.sessionId, fullSyncEvent);
-    } else {
-      // No queue items to update, just broadcast the angle change
-      const angleChangedEvent: SessionEvent = {
-        __typename: 'AngleChanged',
-        angle: result.angle,
-        boardPath: result.boardPath,
-      };
-      pubsub.publishSessionEvent(ctx.sessionId, angleChangedEvent);
+          state: {
+            sequence: newQueueState.sequence,
+            stateHash: newQueueState.stateHash,
+            queue: updatedQueue,
+            currentClimbQueueItem: updatedCurrentClimb,
+          },
+        };
+        pubsub.publishQueueEvent(sessionId, fullSyncEvent);
+
+        return true; // Success
+      } catch (error) {
+        if (error instanceof VersionConflictError && attempt < MAX_RETRIES - 1) {
+          if (DEBUG) console.log(`[updateSessionAngle] Version conflict, retrying (attempt ${attempt + 1}/${MAX_RETRIES})`);
+          // Re-fetch queue state for next attempt - our cached updates will be reused
+          queueState = await roomManager.getQueueState(sessionId);
+          continue;
+        }
+        throw error; // Re-throw if not a version conflict or max retries exceeded
+      }
     }
 
     return true;

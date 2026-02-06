@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Button, Drawer, Spin, Typography, Flex, Row, Col, Card, Alert } from 'antd';
+import { Button, Drawer, Spin, Typography, Flex, Row, Col, Card, Alert, message } from 'antd';
 import { useRouter, usePathname } from 'next/navigation';
 import { track } from '@vercel/analytics';
 import useSWR from 'swr';
@@ -74,6 +74,8 @@ export default function AngleSelector({ boardName, currentAngle, currentClimb }:
         await updateSessionAngle(newAngle);
       } catch (error) {
         console.error('[AngleSelector] Failed to update session angle:', error);
+        message.error('Failed to change angle. Please try again.');
+        return; // Don't close drawer on error so user can retry
       }
     } else {
       // Not in a session - just update the URL locally
