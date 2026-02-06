@@ -24,6 +24,18 @@ export function initCors(boardseshUrl: string): void {
   if (process.env.NODE_ENV !== 'production') {
     allowedOrigins.push('http://localhost:3000', 'http://127.0.0.1:3000');
     allowedOrigins.push('http://localhost:3001', 'http://127.0.0.1:3001'); // For multi-instance testing
+
+    // Allow additional origins for LAN/mobile testing via DEV_ALLOWED_ORIGINS env var
+    // Example: DEV_ALLOWED_ORIGINS=http://192.168.0.201:3000,http://192.168.1.100:3000
+    const devAllowedOrigins = process.env.DEV_ALLOWED_ORIGINS;
+    if (devAllowedOrigins) {
+      devAllowedOrigins.split(',').forEach(origin => {
+        const trimmed = origin.trim();
+        if (trimmed) {
+          allowedOrigins.push(trimmed);
+        }
+      });
+    }
   }
 }
 
