@@ -10,11 +10,13 @@ import { ClimbActions } from '../climb-actions';
 type ClimbViewActionsProps = {
   climb: Climb;
   boardDetails: BoardDetails;
-  auroraAppUrl: string;
+  auroraAppUrl?: string;
   angle: number;
 };
 
 const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl, angle }: ClimbViewActionsProps) => {
+  const isMoonBoard = boardDetails.board_name === 'moonboard';
+
   const getBackToListUrl = () => {
     const { board_name, layout_name, size_name, size_description, set_names } = boardDetails;
 
@@ -26,6 +28,15 @@ const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl, angle }: ClimbVie
     // Fallback to numeric format
     return `/${board_name}/${boardDetails.layout_id}/${boardDetails.size_id}/${boardDetails.set_ids.join(',')}/${angle}/list`;
   };
+
+  // MoonBoard doesn't have an Aurora app, so exclude 'openInApp'
+  const mobileDropdownActions: ('tick' | 'share' | 'addToList' | 'openInApp')[] = isMoonBoard
+    ? ['tick', 'share', 'addToList']
+    : ['tick', 'share', 'addToList', 'openInApp'];
+
+  const desktopActions: ('favorite' | 'tick' | 'queue' | 'share' | 'addToList' | 'openInApp')[] = isMoonBoard
+    ? ['favorite', 'tick', 'queue', 'share', 'addToList']
+    : ['favorite', 'tick', 'queue', 'share', 'addToList', 'openInApp'];
 
   return (
     <div className={styles.container}>
@@ -50,7 +61,7 @@ const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl, angle }: ClimbVie
             boardDetails={boardDetails}
             angle={angle}
             viewMode="dropdown"
-            include={['tick', 'share', 'addToList', 'openInApp']}
+            include={mobileDropdownActions}
             auroraAppUrl={auroraAppUrl}
           />
         </div>
@@ -66,7 +77,7 @@ const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl, angle }: ClimbVie
             boardDetails={boardDetails}
             angle={angle}
             viewMode="button"
-            include={['favorite', 'tick', 'queue', 'share', 'addToList', 'openInApp']}
+            include={desktopActions}
             auroraAppUrl={auroraAppUrl}
           />
         </div>

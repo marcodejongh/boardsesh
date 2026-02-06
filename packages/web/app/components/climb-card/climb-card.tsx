@@ -64,17 +64,14 @@ function ClimbCardWithActions({
   const cover = <ClimbCardCover climb={climb} boardDetails={boardDetails} onClick={onCoverClick} onDoubleClick={onCoverDoubleClick} />;
   const cardTitle = <ClimbTitle climb={climb} layout="horizontal" showSetterInfo />;
 
-  // Build exclude list - MoonBoard doesn't have a view details page yet
-  const excludeActions: ('tick' | 'openInApp' | 'mirror' | 'share' | 'addToList' | 'viewDetails')[] = [
+  // Build exclude list
+  const excludeActions: ('tick' | 'openInApp' | 'mirror' | 'share' | 'addToList')[] = [
     'tick',
     'openInApp',
     'mirror',
     'share',
     'addToList',
   ];
-  if (boardDetails.board_name === 'moonboard') {
-    excludeActions.push('viewDetails');
-  }
 
   return (
     <div data-testid="climb-card">

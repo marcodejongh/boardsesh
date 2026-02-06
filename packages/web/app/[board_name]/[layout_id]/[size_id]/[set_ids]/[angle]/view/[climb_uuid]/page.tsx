@@ -16,6 +16,12 @@ import {
   parseBoardRouteParams,
 } from '@/app/lib/url-utils';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
+import {
+  getLayoutById,
+  MOONBOARD_SETS,
+  MOONBOARD_SIZE,
+  MoonBoardLayoutKey,
+} from '@/app/lib/moonboard-config';
 import { convertLitUpHoldsStringToMap } from '@/app/components/board-renderer/util';
 import ClimbViewActions from '@/app/components/climb-view/climb-view-actions';
 import { Metadata } from 'next';
@@ -105,31 +111,55 @@ export default async function DynamicResultsPage(props: { params: Promise<BoardR
       // Need to redirect to new slug-based URL
       const currentClimb = await getClimb(parsedParams);
 
-      // Get the names for slug generation
-      const layouts = await import('@/app/lib/data/queries').then((m) => m.getLayouts(parsedParams.board_name));
-      const sizes = await import('@/app/lib/data/queries').then((m) =>
-        m.getSizes(parsedParams.board_name, parsedParams.layout_id),
-      );
-      const sets = await import('@/app/lib/data/queries').then((m) =>
-        m.getSets(parsedParams.board_name, parsedParams.layout_id, parsedParams.size_id),
-      );
+      if (parsedParams.board_name === 'moonboard') {
+        // MoonBoard uses static config instead of generated product-sizes data
+        const layoutEntry = getLayoutById(parsedParams.layout_id);
+        if (layoutEntry) {
+          const [layoutKey, layoutData] = layoutEntry;
+          const sets = MOONBOARD_SETS[layoutKey as MoonBoardLayoutKey] || [];
+          const selectedSets = sets.filter((s) => parsedParams.set_ids.includes(s.id));
 
-      const layout = layouts.find((l) => l.id === parsedParams.layout_id);
-      const size = sizes.find((s) => s.id === parsedParams.size_id);
-      const selectedSets = sets.filter((s) => parsedParams.set_ids.includes(s.id));
-
-      if (layout && size && selectedSets.length > 0) {
-        const newUrl = constructClimbViewUrlWithSlugs(
-          parsedParams.board_name,
-          layout.name,
-          size.name,
-          size.description,
-          selectedSets.map((s) => s.name),
-          parsedParams.angle,
-          parsedParams.climb_uuid,
-          currentClimb.name,
+          if (selectedSets.length > 0) {
+            const newUrl = constructClimbViewUrlWithSlugs(
+              parsedParams.board_name,
+              layoutData.name,
+              MOONBOARD_SIZE.name,
+              MOONBOARD_SIZE.description,
+              selectedSets.map((s) => s.name),
+              parsedParams.angle,
+              parsedParams.climb_uuid,
+              currentClimb.name,
+            );
+            permanentRedirect(newUrl);
+          }
+        }
+      } else {
+        // Aurora boards: get names from generated data for slug generation
+        const layouts = await import('@/app/lib/data/queries').then((m) => m.getLayouts(parsedParams.board_name));
+        const sizes = await import('@/app/lib/data/queries').then((m) =>
+          m.getSizes(parsedParams.board_name, parsedParams.layout_id),
         );
-        permanentRedirect(newUrl);
+        const sets = await import('@/app/lib/data/queries').then((m) =>
+          m.getSets(parsedParams.board_name, parsedParams.layout_id, parsedParams.size_id),
+        );
+
+        const layout = layouts.find((l) => l.id === parsedParams.layout_id);
+        const size = sizes.find((s) => s.id === parsedParams.size_id);
+        const selectedSets = sets.filter((s) => parsedParams.set_ids.includes(s.id));
+
+        if (layout && size && selectedSets.length > 0) {
+          const newUrl = constructClimbViewUrlWithSlugs(
+            parsedParams.board_name,
+            layout.name,
+            size.name,
+            size.description,
+            selectedSets.map((s) => s.name),
+            parsedParams.angle,
+            parsedParams.climb_uuid,
+            currentClimb.name,
+          );
+          permanentRedirect(newUrl);
+        }
       }
     }
     // Fetch beta links server-side
@@ -179,11 +209,14 @@ export default async function DynamicResultsPage(props: { params: Promise<BoardR
       litUpHoldsMap,
     };
 
-    const auroraAppUrl = constructClimbInfoUrl(
-      boardDetails,
-      currentClimb.uuid,
-      currentClimb.angle || parsedParams.angle,
-    );
+    // MoonBoard doesn't have an Aurora-style app URL
+    const auroraAppUrl = parsedParams.board_name !== 'moonboard'
+      ? constructClimbInfoUrl(
+          boardDetails,
+          currentClimb.uuid,
+          currentClimb.angle || parsedParams.angle,
+        )
+      : undefined;
 
     return (
       <div className={styles.pageContainer}>
