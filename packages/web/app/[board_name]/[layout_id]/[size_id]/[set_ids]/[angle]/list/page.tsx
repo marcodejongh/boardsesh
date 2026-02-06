@@ -237,7 +237,12 @@ export default async function DynamicResultsPage(props: {
 
   try {
     boardDetails = getBoardDetailsForBoard(parsedParams);
+  } catch (error) {
+    console.error('Error resolving board details:', error);
+    return notFound();
+  }
 
+  try {
     // Moonboard queries the database directly (no GraphQL support yet)
     if (parsedParams.board_name === 'moonboard') {
       const moonboardClimbs = await getMoonboardClimbs(
@@ -260,8 +265,15 @@ export default async function DynamicResultsPage(props: {
       );
     }
   } catch (error) {
-    console.error('Error fetching results or climb:', error);
-    notFound();
+    console.error('Error fetching climb search results:', error);
+    // Return empty results instead of 404 - no search results is not a missing page
+    searchResponse = {
+      searchClimbs: {
+        climbs: [],
+        totalCount: 0,
+        hasMore: false,
+      },
+    };
   }
 
   return <ClimbsList {...parsedParams} boardDetails={boardDetails} initialClimbs={searchResponse.searchClimbs.climbs} />;
