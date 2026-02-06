@@ -8,6 +8,7 @@ export type ClimbActionType =
   | 'viewDetails'
   | 'fork'
   | 'favorite'
+  | 'setActive'
   | 'queue'
   | 'tick'
   | 'openInApp'
@@ -132,6 +133,7 @@ export const DEFAULT_ACTION_ORDER: ClimbActionType[] = [
   'viewDetails',
   'fork',
   'favorite',
+  'setActive',
   'queue',
   'tick',
   'share',
