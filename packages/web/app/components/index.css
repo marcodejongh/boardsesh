@@ -40,7 +40,7 @@ html {
   min-height: 100dvh;
   min-height: -webkit-fill-available;
   scrollbar-width: thin;
-  scrollbar-color: #D1D5DB #F3F4F6;
+  scrollbar-color: var(--neutral-300) var(--neutral-100);
 }
 
 body {

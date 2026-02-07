@@ -32,7 +32,7 @@ const getShareUrl = (pathname: string, sessionId: string | null) => {
   }
 };
 
-export const ShareBoardButton = ({ buttonType = 'default' as 'default' | 'text' }) => {
+export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'default' | 'text' }) => {
   const { message } = App.useApp();
   const {
     users,

@@ -102,16 +102,16 @@ const SwipeableDrawer: React.FC<SwipeableDrawerProps> = ({
 
   const isVerticalPlacement = placement === 'top' || placement === 'bottom';
 
-  const horizontalDragHandle = effectiveEnabled && showDragHandle ? (
+  const horizontalDragHandle = useMemo(() => effectiveEnabled && showDragHandle ? (
     <div
       {...handleRegionProps}
       className={styles.dragHandleZoneHorizontal}
     >
       <div className={styles.dragHandleBarHorizontal} />
     </div>
-  ) : null;
+  ) : null, [effectiveEnabled, showDragHandle, handleRegionProps]);
 
-  const verticalDragHandle = effectiveEnabled && showDragHandle ? (
+  const verticalDragHandle = useMemo(() => effectiveEnabled && showDragHandle ? (
     <div
       {...handleRegionProps}
       className={
@@ -122,7 +122,7 @@ const SwipeableDrawer: React.FC<SwipeableDrawerProps> = ({
     >
       <div className={styles.dragHandleBarVertical} />
     </div>
-  ) : null;
+  ) : null, [effectiveEnabled, showDragHandle, handleRegionProps, placement]);
 
   // For vertical placement (top/bottom) with a title:
   // Inject the drag handle into the title so it appears above the header content.

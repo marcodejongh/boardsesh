@@ -218,7 +218,7 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
     <Header
       className={`${styles.header} header-shadow`}
       style={{
-        background: '#fff',
+        background: 'var(--semantic-surface)',
         height: '8dvh',
         minHeight: 48,
         lineHeight: 'normal',

@@ -38,17 +38,21 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
   const router = useRouter();
   const queueListRef = useRef<QueueListHandle>(null);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const enterFallbackRef = useRef<NodeJS.Timeout | null>(null);
 
   // Reset activeDrawer on navigation
   useEffect(() => {
     setActiveDrawer('none');
   }, [pathname]);
 
-  // Cleanup timeout on unmount
+  // Cleanup timeouts on unmount
   useEffect(() => {
     return () => {
       if (scrollTimeoutRef.current) {
         clearTimeout(scrollTimeoutRef.current);
+      }
+      if (enterFallbackRef.current) {
+        clearTimeout(enterFallbackRef.current);
       }
     };
   }, []);
@@ -239,7 +243,6 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
   };
 
   // Clear enterDirection (for thumbnail crossfade) after it plays
-  const enterFallbackRef = useRef<NodeJS.Timeout | null>(null);
   useEffect(() => {
     if (enterDirection) {
       enterFallbackRef.current = setTimeout(() => {
