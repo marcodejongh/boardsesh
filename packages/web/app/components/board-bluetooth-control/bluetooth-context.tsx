@@ -26,7 +26,8 @@ export function BluetoothProvider({
   children: React.ReactNode;
 }) {
   const { currentClimbQueueItem } = useQueueContext();
-  const bluetooth = useBoardBluetooth({ boardDetails });
+  const { isConnected, loading, connect, disconnect, sendFramesToBoard } =
+    useBoardBluetooth({ boardDetails });
 
   const isBluetoothSupported =
     typeof navigator !== 'undefined' && !!navigator.bluetooth;
@@ -42,9 +43,9 @@ export function BluetoothProvider({
 
   // Auto-send climb when currentClimbQueueItem changes (only if connected)
   useEffect(() => {
-    if (bluetooth.isConnected && currentClimbQueueItem) {
+    if (isConnected && currentClimbQueueItem) {
       const sendClimb = async () => {
-        const success = await bluetooth.sendFramesToBoard(
+        const success = await sendFramesToBoard(
           currentClimbQueueItem.climb.frames,
           !!currentClimbQueueItem.climb.mirrored,
         );
@@ -62,24 +63,24 @@ export function BluetoothProvider({
       };
       sendClimb();
     }
-  }, [currentClimbQueueItem, bluetooth.isConnected, bluetooth.sendFramesToBoard, boardDetails.layout_name]);
+  }, [currentClimbQueueItem, isConnected, sendFramesToBoard, boardDetails.layout_name]);
 
   const value = useMemo(
     () => ({
-      isConnected: bluetooth.isConnected,
-      loading: bluetooth.loading,
-      connect: bluetooth.connect,
-      disconnect: bluetooth.disconnect,
-      sendFramesToBoard: bluetooth.sendFramesToBoard,
+      isConnected,
+      loading,
+      connect,
+      disconnect,
+      sendFramesToBoard,
       isBluetoothSupported,
       isIOS,
     }),
     [
-      bluetooth.isConnected,
-      bluetooth.loading,
-      bluetooth.connect,
-      bluetooth.disconnect,
-      bluetooth.sendFramesToBoard,
+      isConnected,
+      loading,
+      connect,
+      disconnect,
+      sendFramesToBoard,
       isBluetoothSupported,
       isIOS,
     ],

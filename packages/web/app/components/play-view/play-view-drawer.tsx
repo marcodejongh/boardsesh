@@ -277,7 +277,7 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
           <ShareBoardButton buttonType="text" />
 
           {/* LED */}
-          <SendClimbToBoardButton boardDetails={boardDetails} buttonType="text" />
+          <SendClimbToBoardButton buttonType="text" />
 
           {/* Tick */}
           <TickButton currentClimb={currentClimb} angle={angle} boardDetails={boardDetails} buttonType="text" />

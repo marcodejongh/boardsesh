@@ -174,7 +174,7 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
 
                 <span id="onboarding-party-light-buttons" style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
                   <ShareBoardButton />
-                  <SendClimbToBoardButton boardDetails={boardDetails} />
+                  <SendClimbToBoardButton />
                 </span>
               </>
             )}

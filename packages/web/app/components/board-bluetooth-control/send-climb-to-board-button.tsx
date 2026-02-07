@@ -10,7 +10,6 @@ import './send-climb-to-board-button.css';
 const { Text, Paragraph } = Typography;
 
 type SendClimbToBoardButtonProps = {
-  boardDetails?: { layout_name?: string };
   buttonType?: 'default' | 'text';
 };
 
