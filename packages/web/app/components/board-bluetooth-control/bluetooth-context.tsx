@@ -47,18 +47,26 @@ export function BluetoothProvider({
   useEffect(() => {
     if (isConnected && currentClimbQueueItem) {
       const sendClimb = async () => {
-        const result = await sendFramesToBoard(
-          currentClimbQueueItem.climb.frames,
-          !!currentClimbQueueItem.climb.mirrored,
-        );
-        // undefined means send was not attempted (missing characteristic/frames/boardDetails)
-        // Only track analytics for explicit success (true) or failure (false)
-        if (result === true) {
-          track('Climb Sent to Board Success', {
-            climbUuid: currentClimbQueueItem.climb?.uuid,
-            boardLayout: `${boardDetails.layout_name}`,
-          });
-        } else if (result === false) {
+        try {
+          const result = await sendFramesToBoard(
+            currentClimbQueueItem.climb.frames,
+            !!currentClimbQueueItem.climb.mirrored,
+          );
+          // undefined means send was not attempted (missing characteristic/frames/boardDetails)
+          // Only track analytics for explicit success (true) or failure (false)
+          if (result === true) {
+            track('Climb Sent to Board Success', {
+              climbUuid: currentClimbQueueItem.climb?.uuid,
+              boardLayout: `${boardDetails.layout_name}`,
+            });
+          } else if (result === false) {
+            track('Climb Sent to Board Failure', {
+              climbUuid: currentClimbQueueItem.climb?.uuid,
+              boardLayout: `${boardDetails.layout_name}`,
+            });
+          }
+        } catch (error) {
+          console.error('Error sending climb to board:', error);
           track('Climb Sent to Board Failure', {
             climbUuid: currentClimbQueueItem.climb?.uuid,
             boardLayout: `${boardDetails.layout_name}`,

@@ -36,7 +36,7 @@ vi.mock('../../graphql-queue', () => ({
   }),
 }));
 
-import { BluetoothProvider, useBluetoothContext, BluetoothContext } from '../bluetooth-context';
+import { BluetoothProvider, useBluetoothContext } from '../bluetooth-context';
 import type { BoardDetails } from '@/app/lib/types';
 
 function createTestBoardDetails(overrides?: Partial<BoardDetails>): BoardDetails {
@@ -64,7 +64,7 @@ function createTestBoardDetails(overrides?: Partial<BoardDetails>): BoardDetails
 function createWrapper(boardDetails?: BoardDetails) {
   const details = boardDetails ?? createTestBoardDetails();
   return function Wrapper({ children }: { children: React.ReactNode }) {
-    return React.createElement(BluetoothProvider, { boardDetails: details }, children);
+    return React.createElement(BluetoothProvider, { boardDetails: details, children });
   };
 }
 
@@ -235,6 +235,34 @@ describe('BluetoothProvider', () => {
       });
 
       expect(mockTrack).not.toHaveBeenCalled();
+    });
+
+    it('catches exception and tracks failure when sendFramesToBoard throws', async () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      mockSendFramesToBoard.mockRejectedValue(new Error('Bluetooth write failed'));
+      mockCurrentClimbQueueItem = {
+        climb: { uuid: 'climb-1', frames: 'p1r12', mirrored: false },
+      };
+      mockBluetoothState.isConnected = true;
+
+      renderHook(() => useBluetoothContext(), {
+        wrapper: createWrapper(),
+      });
+
+      await act(async () => {
+        await vi.waitFor(() => {
+          expect(mockTrack).toHaveBeenCalledWith('Climb Sent to Board Failure', {
+            climbUuid: 'climb-1',
+            boardLayout: 'Original',
+          });
+        });
+      });
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Error sending climb to board:',
+        expect.any(Error),
+      );
+      consoleSpy.mockRestore();
     });
   });
 

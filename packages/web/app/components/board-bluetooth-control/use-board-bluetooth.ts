@@ -84,6 +84,10 @@ export function useBoardBluetooth({ boardDetails, onConnectionChange }: UseBoard
       const placementPositions = getLedPlacements(boardDetails.board_name, boardDetails.layout_id, boardDetails.size_id);
 
       if (mirrored) {
+        if (!boardDetails.holdsData || Object.keys(boardDetails.holdsData).length === 0) {
+          console.error('Cannot mirror frames: holdsData is missing or empty');
+          return false;
+        }
         framesToSend = convertToMirroredFramesString(frames, boardDetails.holdsData);
       }
 
