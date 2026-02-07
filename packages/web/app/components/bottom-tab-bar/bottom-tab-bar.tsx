@@ -13,6 +13,7 @@ import { generateLayoutSlug, generateSizeSlug, generateSetSlug, constructClimbLi
 import { themeTokens } from '@/app/theme/theme-config';
 import { usePlaylistsContext } from '../climb-actions/playlists-batch-context';
 import AuthModal from '../auth/auth-modal';
+import { getTabNavigationState, saveTabNavigationState } from '@/app/lib/tab-navigation-db';
 import styles from './bottom-tab-bar.module.css';
 
 type Tab = 'climbs' | 'library' | 'create';
@@ -39,11 +40,6 @@ const getTabForPath = (path: string): Tab | null => {
 // Get the board route base path (e.g., /kilter/original/12x12/led/40)
 const getBasePath = (path: string): string => {
   return path.split('/').slice(0, 6).join('/');
-};
-
-// SessionStorage key namespaced by board context
-const getStorageKey = (path: string): string => {
-  return `bottomTabState_${getBasePath(path)}`;
 };
 
 function BottomTabBar({ boardDetails, angle }: BottomTabBarProps) {
@@ -101,30 +97,24 @@ function BottomTabBar({ boardDetails, angle }: BottomTabBarProps) {
     return null;
   }, [boardDetails, angle]);
 
-  // Initialize from sessionStorage on mount
+  // Initialize from IndexedDB on mount
   useEffect(() => {
-    try {
-      const key = getStorageKey(pathname);
-      const stored = sessionStorage.getItem(key);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        const basePath = getBasePath(pathname);
-        if (parsed.lastUrls) {
-          for (const [tab, url] of Object.entries(parsed.lastUrls)) {
-            if (typeof url === 'string' && url.startsWith(basePath)) {
-              lastUrlsRef.current[tab] = url;
-            }
+    const basePath = getBasePath(pathname);
+    getTabNavigationState(basePath).then((stored) => {
+      if (!stored) return;
+      if (stored.lastUrls) {
+        for (const [tab, url] of Object.entries(stored.lastUrls)) {
+          if (url.startsWith(basePath)) {
+            lastUrlsRef.current[tab] = url;
           }
         }
-        // Restore active tab for ambiguous pages (view/play)
-        if (parsed.activeTab && !getTabForPath(pathname)) {
-          currentTabRef.current = parsed.activeTab;
-          setResolvedTab(parsed.activeTab);
-        }
       }
-    } catch {
-      // Ignore sessionStorage errors
-    }
+      // Restore active tab for ambiguous pages (view/play)
+      if (stored.activeTab && !getTabForPath(pathname)) {
+        currentTabRef.current = stored.activeTab as Tab;
+        setResolvedTab(stored.activeTab as Tab);
+      }
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -143,16 +133,12 @@ function BottomTabBar({ boardDetails, angle }: BottomTabBarProps) {
       lastUrlsRef.current[activeTab] = fullPath;
     }
 
-    // Persist to sessionStorage
-    try {
-      const key = getStorageKey(pathname);
-      sessionStorage.setItem(key, JSON.stringify({
-        activeTab: currentTabRef.current,
-        lastUrls: lastUrlsRef.current,
-      }));
-    } catch {
-      // Ignore sessionStorage errors
-    }
+    // Persist to IndexedDB
+    const basePath = getBasePath(pathname);
+    saveTabNavigationState(basePath, {
+      activeTab: currentTabRef.current,
+      lastUrls: { ...lastUrlsRef.current },
+    });
   }, [pathname]);
 
   // Active tab for rendering: drawer state takes priority
