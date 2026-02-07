@@ -22,7 +22,6 @@ import { ShareBoardButton } from './share-button';
 import { useQueueContext } from '../graphql-queue';
 import { PlusOutlined, LeftOutlined } from '@ant-design/icons';
 import AngleSelector from './angle-selector';
-import Logo from '../brand/logo';
 import styles from './header.module.css';
 import Link from 'next/link';
 import { useCreateClimbContext } from '../create-climb/create-climb-context';
@@ -119,7 +118,7 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
     >
       <UISearchParamsProvider>
         <Flex justify="space-between" align="center" style={{ width: '100%' }} gap={8}>
-          {/* Left section: Avatar + Logo + Back button */}
+          {/* Left section: Avatar + Back button */}
           <Flex align="center" gap={4}>
             {pageMode !== 'create' && (
               <UserDrawer boardDetails={boardDetails} angle={angle} />
@@ -136,7 +135,6 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
                 />
               </div>
             )}
-            <Logo size="sm" showText={false} />
           </Flex>
 
           {/* Center Section - Content varies by page mode */}
