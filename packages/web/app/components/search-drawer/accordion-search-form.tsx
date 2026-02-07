@@ -356,7 +356,9 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
               </div>
               <div className={`${styles.expandableContent} ${isActive ? styles.expandableContentOpen : ''}`}>
                 <div className={styles.expandableInner}>
-                  {section.content}
+                  <div className={styles.expandableInnerPadding}>
+                    {section.content}
+                  </div>
                 </div>
               </div>
             </div>

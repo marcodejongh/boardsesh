@@ -86,6 +86,9 @@
 .expandableInner {
   overflow: hidden;
   min-height: 0;
+}
+
+.expandableInnerPadding {
   padding: 16px 24px 24px;
 }
 
@@ -178,7 +181,7 @@
     font-size: 20px;
   }
 
-  .expandableInner {
+  .expandableInnerPadding {
     padding: 12px 20px 20px;
   }
 
