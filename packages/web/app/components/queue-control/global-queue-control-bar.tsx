@@ -1,18 +1,17 @@
 'use client';
 
-import React, { useCallback } from 'react';
-import { Button, Card, Row, Col, Space, Badge, Typography } from 'antd';
-import { UnorderedListOutlined, TeamOutlined } from '@ant-design/icons';
+import React from 'react';
+import { Button, Space, Badge } from 'antd';
+import { UnorderedListOutlined, TeamOutlined, FastForwardOutlined, FastBackwardOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import { track } from '@vercel/analytics';
 import { usePersistentSession, useIsOnBoardRoute } from '../persistent-session';
 import { BoardProvider } from '../board-provider/board-provider-context';
-import ClimbTitle from '../climb-card/climb-title';
-import ClimbThumbnail from '../climb-card/climb-thumbnail';
 import { TickButton } from '../logbook/tick-button';
-import { useCardSwipeNavigation, EXIT_DURATION, SNAP_BACK_DURATION } from '@/app/hooks/use-card-swipe-navigation';
-import { themeTokens } from '@/app/theme/theme-config';
+import { useCardSwipeNavigation } from '@/app/hooks/use-card-swipe-navigation';
 import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
+import QueueBarContent from './queue-bar-content';
+import styles from './queue-control-bar.module.css';
 import type { ClimbQueueItem } from './types';
 import type { BoardDetails, Angle, Climb } from '@/app/lib/types';
 
@@ -23,7 +22,6 @@ const GlobalQueueControlBar: React.FC = () => {
     activeSession,
     currentClimbQueueItem: partyCurrentClimbQueueItem,
     users,
-    hasConnected,
     localQueue,
     localCurrentClimbQueueItem,
     localBoardPath,
@@ -82,13 +80,13 @@ const GlobalQueueControlBar: React.FC = () => {
   const nextItem = getAdjacentItem('next');
   const prevItem = getAdjacentItem('previous');
 
-  const handleSwipeNext = () => {
+  const handleNavigateNext = () => {
     if (!nextItem || !boardDetails || !localBoardPath) return;
     setLocalQueueState(localQueue, nextItem, localBoardPath, boardDetails);
     track('Global Bar Navigation', { direction: 'next', method: 'swipe' });
   };
 
-  const handleSwipePrevious = () => {
+  const handleNavigatePrevious = () => {
     if (!prevItem || !boardDetails || !localBoardPath) return;
     setLocalQueueState(localQueue, prevItem, localBoardPath, boardDetails);
     track('Global Bar Navigation', { direction: 'previous', method: 'swipe' });
@@ -101,14 +99,16 @@ const GlobalQueueControlBar: React.FC = () => {
     <GlobalQueueControlBarInner
       boardDetails={boardDetails}
       currentClimb={currentClimb}
+      nextClimb={nextItem?.climb ?? null}
+      prevClimb={prevItem?.climb ?? null}
       angle={angle}
       queue={queue}
       isPartyMode={isPartyMode}
       userCount={users?.length ?? 0}
       canSwipeNext={canSwipeNext}
       canSwipePrevious={canSwipePrevious}
-      onSwipeNext={handleSwipeNext}
-      onSwipePrevious={handleSwipePrevious}
+      onSwipeNext={handleNavigateNext}
+      onSwipePrevious={handleNavigatePrevious}
       onNavigateBack={handleNavigateBack}
       onQueueClick={handleNavigateBack}
     />
@@ -123,10 +123,12 @@ const GlobalQueueControlBar: React.FC = () => {
   return inner;
 };
 
-// Inner component that uses the hook (hooks can't be called conditionally)
+// Inner component that uses hooks (hooks can't be called conditionally)
 const GlobalQueueControlBarInner: React.FC<{
   boardDetails: BoardDetails | null;
   currentClimb: Climb | null;
+  nextClimb: Climb | null;
+  prevClimb: Climb | null;
   angle: Angle;
   queue: ClimbQueueItem[];
   isPartyMode: boolean;
@@ -140,6 +142,8 @@ const GlobalQueueControlBarInner: React.FC<{
 }> = ({
   boardDetails,
   currentClimb,
+  nextClimb,
+  prevClimb,
   angle,
   queue,
   isPartyMode,
@@ -151,19 +155,14 @@ const GlobalQueueControlBarInner: React.FC<{
   onNavigateBack,
   onQueueClick,
 }) => {
-  const { swipeHandlers, swipeOffset, isAnimating } = useCardSwipeNavigation({
+  const { swipeHandlers, swipeOffset, isAnimating, animationDirection, enterDirection, clearEnterAnimation } = useCardSwipeNavigation({
     onSwipeNext,
     onSwipePrevious,
     canSwipeNext,
     canSwipePrevious,
     threshold: 80,
+    delayNavigation: true,
   });
-
-  const getTransitionStyle = () => {
-    if (isAnimating) return `transform ${EXIT_DURATION}ms ease-out`;
-    if (swipeOffset === 0) return `transform ${SNAP_BACK_DURATION}ms ease`;
-    return 'none';
-  };
 
   return (
     <div
@@ -174,92 +173,75 @@ const GlobalQueueControlBarInner: React.FC<{
         left: 0,
         width: '100%',
         zIndex: 999,
-        backgroundColor: themeTokens.semantic.surface,
-        boxShadow: themeTokens.shadows.lg,
       }}
     >
-      <Card
-        variant="borderless"
-        styles={{ body: { padding: 0 } }}
-        style={{
-          width: '100%',
-          borderRadius: 0,
-          margin: 0,
-          borderTop: `1px solid ${themeTokens.neutral[200]}`,
-        }}
-      >
-        <div style={{ position: 'relative', overflow: 'hidden' }}>
-          <div
-            {...swipeHandlers}
-            style={{
-              padding: `2px ${themeTokens.spacing[3]}px 0 ${themeTokens.spacing[3]}px`,
-              transform: `translateX(${swipeOffset}px)`,
-              transition: getTransitionStyle(),
-              backgroundColor: themeTokens.semantic.surface,
-              touchAction: 'pan-y',
-            }}
-          >
-            <Row justify="space-between" align="middle" style={{ width: '100%' }}>
-              <Col flex="auto" style={{ minWidth: 0 }}>
-                <div
-                  style={{ display: 'flex', alignItems: 'center', gap: themeTokens.spacing[2], cursor: 'pointer' }}
-                  onClick={onNavigateBack}
-                >
-                  {/* Thumbnail */}
-                  {boardDetails && (
-                    <div style={{ width: 36, height: 'auto', flexShrink: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' }}>
-                      <ClimbThumbnail
-                        boardDetails={boardDetails}
-                        currentClimb={currentClimb}
-                      />
-                    </div>
-                  )}
-
-                  {/* Climb info */}
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <ClimbTitle
-                      climb={currentClimb}
-                      showAngle
-                    />
-                  </div>
-                </div>
-              </Col>
-
-              <Col flex="none" style={{ marginLeft: themeTokens.spacing[2] }}>
+      <div className={`queue-bar-shadow ${styles.queueBar}`}>
+        <QueueBarContent
+          boardDetails={boardDetails}
+          currentClimb={currentClimb}
+          nextClimb={nextClimb}
+          prevClimb={prevClimb}
+          swipeHandlers={swipeHandlers}
+          swipeOffset={swipeOffset}
+          isAnimating={isAnimating}
+          animationDirection={animationDirection}
+          enterDirection={enterDirection}
+          clearEnterAnimation={clearEnterAnimation}
+          onClimbInfoClick={onNavigateBack}
+          actionButtons={
+            <Space>
+              {/* Navigation buttons - desktop only */}
+              <span className={styles.navButtons}>
                 <Space>
-                  {/* Party indicator or queue count */}
-                  {isPartyMode ? (
-                    <Badge count={userCount} size="small" color="cyan">
-                      <Button
-                        icon={<TeamOutlined />}
-                        type="primary"
-                        onClick={onNavigateBack}
-                      />
-                    </Badge>
-                  ) : (
-                    <Badge count={queue.length} overflowCount={99} showZero={false} color="cyan">
-                      <Button
-                        icon={<UnorderedListOutlined />}
-                        onClick={onQueueClick}
-                        aria-label="Open queue"
-                      />
-                    </Badge>
-                  )}
-
-                  {/* Tick button */}
-                  {boardDetails && (
-                    <TickButton
-                      currentClimb={currentClimb}
-                      angle={angle}
-                      boardDetails={boardDetails}
-                    />
-                  )}
+                  <Button
+                    type="text"
+                    icon={<FastBackwardOutlined />}
+                    aria-label="Previous climb"
+                    disabled={!canSwipePrevious}
+                    onClick={onSwipePrevious}
+                  />
+                  <Button
+                    type="text"
+                    icon={<FastForwardOutlined />}
+                    aria-label="Next climb"
+                    disabled={!canSwipeNext}
+                    onClick={onSwipeNext}
+                  />
                 </Space>
-              </Col>
-            </Row>
-          </div>
-        </div>
-      </Card>
+              </span>
+
+              {/* Party indicator or queue count */}
+              {isPartyMode ? (
+                <Badge count={userCount} size="small" color="cyan">
+                  <Button
+                    icon={<TeamOutlined />}
+                    type="primary"
+                    onClick={onNavigateBack}
+                  />
+                </Badge>
+              ) : (
+                <Badge count={queue.length} overflowCount={99} showZero={false} color="cyan">
+                  <Button
+                    icon={<UnorderedListOutlined />}
+                    onClick={onQueueClick}
+                    aria-label="Open queue"
+                  />
+                </Badge>
+              )}
+
+              {/* Tick button */}
+              {boardDetails && (
+                <TickButton
+                  currentClimb={currentClimb}
+                  angle={angle}
+                  boardDetails={boardDetails}
+                  buttonType="text"
+                />
+              )}
+            </Space>
+          }
+        />
+      </div>
     </div>
   );
 };
