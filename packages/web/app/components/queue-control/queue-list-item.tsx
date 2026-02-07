@@ -58,13 +58,13 @@ export const AscentStatus = ({ climbUuid, fontSize }: { climbUuid: ClimbUuid; fo
         {/* Regular ascent icon */}
         {hasSuccessfulAscent ? (
           <div className={styles.ascentIconRegular}>
-            <CheckOutlined style={{ color: themeTokens.colors.success, fontSize }} />
+            <CheckOutlined style={{ color: themeTokens.neutral[400], fontSize }} />
           </div>
         ) : null}
         {/* Mirrored ascent icon */}
         {hasSuccessfulMirroredAscent ? (
           <div className={styles.ascentIconMirrored}>
-            <CheckOutlined style={{ color: themeTokens.colors.success, fontSize }} />
+            <CheckOutlined style={{ color: themeTokens.neutral[400], fontSize }} />
           </div>
         ) : null}
         {!hasSuccessfulMirroredAscent && !hasSuccessfulAscent ? (
@@ -76,7 +76,7 @@ export const AscentStatus = ({ climbUuid, fontSize }: { climbUuid: ClimbUuid; fo
 
   // Single icon for non-mirroring boards
   return hasSuccessfulAscent ? (
-    <CheckOutlined style={{ color: themeTokens.colors.success, fontSize }} />
+    <CheckOutlined style={{ color: themeTokens.neutral[400], fontSize }} />
   ) : (
     <CloseOutlined style={{ color: themeTokens.colors.error, fontSize }} />
   );
