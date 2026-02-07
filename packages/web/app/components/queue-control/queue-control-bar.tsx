@@ -19,7 +19,7 @@ import { AscentStatus } from './queue-list-item';
 import { themeTokens } from '@/app/theme/theme-config';
 import { TOUR_DRAWER_EVENT } from '../onboarding/onboarding-tour';
 import { ShareBoardButton } from '../board-page/share-button';
-import { useCardSwipeNavigation, EXIT_DURATION, SNAP_BACK_DURATION } from '@/app/hooks/use-card-swipe-navigation';
+import { useCardSwipeNavigation, EXIT_DURATION, SNAP_BACK_DURATION, ENTER_ANIMATION_DURATION } from '@/app/hooks/use-card-swipe-navigation';
 import PlayViewDrawer from '../play-view/play-view-drawer';
 import { getGradeTintColor } from '@/app/lib/grade-colors';
 import styles from './queue-control-bar.module.css';
@@ -251,7 +251,7 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
     if (enterDirection) {
       enterFallbackRef.current = setTimeout(() => {
         clearEnterAnimation();
-      }, 170);
+      }, ENTER_ANIMATION_DURATION);
     }
     return () => {
       if (enterFallbackRef.current) {
