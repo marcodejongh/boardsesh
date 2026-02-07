@@ -28,6 +28,7 @@
 
   /* Status colors */
   --color-success: #10B981;
+  --color-error: #EF4444;
 
   /* Borders */
   --border-subtle: rgba(0, 0, 0, 0.06);
