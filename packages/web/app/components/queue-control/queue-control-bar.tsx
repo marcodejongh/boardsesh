@@ -1,8 +1,8 @@
 'use client';
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Button, Row, Col, Card, Space, Popconfirm, Badge } from 'antd';
+import { Button, Row, Col, Card, Space, Popconfirm } from 'antd';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
-import { SyncOutlined, DeleteOutlined, ExpandOutlined, UnorderedListOutlined } from '@ant-design/icons';
+import { SyncOutlined, DeleteOutlined, ExpandOutlined } from '@ant-design/icons';
 import { track } from '@vercel/analytics';
 import { useQueueContext } from '../graphql-queue';
 import NextClimbButton from './next-climb-button';
@@ -214,20 +214,6 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
     });
   }, [isListPage, boardDetails, activeDrawer]);
 
-  const toggleQueueDrawer = useCallback(() => {
-    // Don't open drawer on desktop when on list page (queue is in sidebar)
-    if (isListPage && typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches) {
-      return;
-    }
-
-    const newState = activeDrawer === 'queue' ? 'none' : 'queue';
-    setActiveDrawer(newState);
-    track('Queue Drawer Toggled', {
-      action: newState === 'queue' ? 'opened' : 'closed',
-      boardLayout: boardDetails.layout_name || '',
-    });
-  }, [isListPage, activeDrawer, boardDetails]);
-
   // Transition style shared by current and peek text
   const getTextTransitionStyle = () => {
     // After navigation completes, snap instantly (no transition) to avoid
@@ -395,15 +381,6 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
                   </span>
                   {/* Party button */}
                   <ShareBoardButton />
-                  {/* Queue button with badge */}
-                  <Badge count={queue.length} overflowCount={99} showZero={false} color="cyan">
-                    <Button
-                      icon={<UnorderedListOutlined />}
-                      onClick={toggleQueueDrawer}
-                      type={activeDrawer === 'queue' ? 'primary' : 'default'}
-                      aria-label="Toggle queue"
-                    />
-                  </Badge>
                   {/* Tick button */}
                   <TickButton currentClimb={currentClimb} angle={angle} boardDetails={boardDetails} />
                 </Space>

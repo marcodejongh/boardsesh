@@ -44,3 +44,11 @@
   position: relative;
   overflow: hidden;
 }
+
+
+.queueScrollContainer {
+  height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}

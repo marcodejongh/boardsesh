@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
-import { Button } from 'antd';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Button, Badge, Popconfirm } from 'antd';
 import {
   SyncOutlined,
   HeartOutlined,
@@ -10,12 +10,15 @@ import {
   StepForwardOutlined,
   DownOutlined,
   MoreOutlined,
+  UnorderedListOutlined,
+  DeleteOutlined,
 } from '@ant-design/icons';
 import dynamic from 'next/dynamic';
 import { useQueueContext } from '../graphql-queue';
 import { useFavorite, ClimbActions } from '../climb-actions';
 import { ShareBoardButton } from '../board-page/share-button';
 import { TickButton } from '../logbook/tick-button';
+import QueueList, { QueueListHandle } from '../queue-control/queue-list';
 import ClimbTitle from '../climb-card/climb-title';
 import BoardRenderer from '../board-renderer/board-renderer';
 import { useCardSwipeNavigation, EXIT_DURATION, SNAP_BACK_DURATION } from '@/app/hooks/use-card-swipe-navigation';
@@ -46,12 +49,16 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
 }) => {
   const isOpen = activeDrawer === 'play';
   const [isActionsOpen, setIsActionsOpen] = useState(false);
+  const [isQueueOpen, setIsQueueOpen] = useState(false);
+  const queueListRef = useRef<QueueListHandle>(null);
+  const queueScrollRef = useRef<HTMLDivElement>(null);
 
   const {
     currentClimb,
     currentClimbQueueItem,
     mirrorClimb,
     queue,
+    setQueue,
     getNextClimbQueueItem,
     getPreviousClimbQueueItem,
     setCurrentClimbQueueItem,
@@ -134,7 +141,7 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
       onClose={handleClose}
       closable={false}
       swipeRegion="body"
-      swipeEnabled={!isActionsOpen}
+      swipeEnabled={!isActionsOpen && !isQueueOpen}
       showDragHandle={true}
       styles={{
         body: { padding: 0, overflow: 'hidden', touchAction: 'none', overscrollBehaviorY: 'contain' },
@@ -153,7 +160,10 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
           <Button
             type="text"
             icon={<MoreOutlined />}
-            onClick={() => setIsActionsOpen(true)}
+            onClick={() => {
+              setIsQueueOpen(false);
+              setIsActionsOpen(true);
+            }}
             aria-label="Climb actions"
           />
         </div>
@@ -223,13 +233,26 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
           />
 
           {/* Party */}
-          <ShareBoardButton />
+          <ShareBoardButton buttonType="text" />
 
           {/* LED */}
-          <SendClimbToBoardButton boardDetails={boardDetails} />
+          <SendClimbToBoardButton boardDetails={boardDetails} buttonType="text" />
 
           {/* Tick */}
-          <TickButton currentClimb={currentClimb} angle={angle} boardDetails={boardDetails} />
+          <TickButton currentClimb={currentClimb} angle={angle} boardDetails={boardDetails} buttonType="text" />
+
+          {/* Queue */}
+          <Badge count={queue.length} overflowCount={99} showZero={false} color="cyan">
+            <Button
+              type="text"
+              icon={<UnorderedListOutlined />}
+              onClick={() => {
+                setIsActionsOpen(false);
+                setIsQueueOpen(true);
+              }}
+              aria-label="Open queue"
+            />
+          </Badge>
 
           <Button
             type="text"
@@ -265,6 +288,56 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
           />
         </SwipeableDrawer>
       )}
+
+      {/* Queue list drawer */}
+      <SwipeableDrawer
+        title="Queue"
+        placement="bottom"
+        height="100%"
+        open={isQueueOpen}
+        onClose={() => setIsQueueOpen(false)}
+        swipeRegion="scrollBody"
+        scrollBodyRef={queueScrollRef}
+        afterOpenChange={(open) => {
+          if (open) {
+            setTimeout(() => {
+              queueListRef.current?.scrollToCurrentClimb();
+            }, 100);
+          }
+        }}
+        styles={{
+          wrapper: { height: '100%' },
+          body: { padding: 0 },
+        }}
+        extra={
+          queue.length > 0 && (
+            <Popconfirm
+              title="Clear queue"
+              description="Are you sure you want to clear all items from the queue?"
+              onConfirm={() => {
+                setQueue([]);
+              }}
+              okText="Clear"
+              cancelText="Cancel"
+            >
+              <Button type="text" icon={<DeleteOutlined />} style={{ color: themeTokens.neutral[400] }}>
+                Clear
+              </Button>
+            </Popconfirm>
+          )
+        }
+      >
+        <div ref={queueScrollRef} className={styles.queueScrollContainer}>
+          <QueueList
+            ref={queueListRef}
+            boardDetails={boardDetails}
+            onClimbNavigate={() => {
+              setIsQueueOpen(false);
+              setActiveDrawer('none');
+            }}
+          />
+        </div>
+      </SwipeableDrawer>
     </SwipeableDrawer>
   );
 };

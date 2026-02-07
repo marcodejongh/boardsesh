@@ -32,7 +32,7 @@ const getShareUrl = (pathname: string, sessionId: string | null) => {
   }
 };
 
-export const ShareBoardButton = () => {
+export const ShareBoardButton = ({ buttonType = 'default' as 'default' | 'text' }) => {
   const { message } = App.useApp();
   const {
     users,
@@ -147,7 +147,7 @@ export const ShareBoardButton = () => {
     <>
       <Badge count={connectionCount} overflowCount={100} showZero={false} color="cyan">
         <Button
-          type={isSessionActive ? 'primary' : 'default'}
+          type={isSessionActive ? 'primary' : buttonType}
           onClick={showDrawer}
           icon={isConnecting ? <LoadingOutlined /> : <TeamOutlined />}
         />

@@ -20,7 +20,7 @@ import { HoldRenderData } from '../board-renderer/types';
 import { useWakeLock } from './use-wake-lock';
 import { getLedPlacements } from '@/app/lib/__generated__/led-placements-data';
 
-type SendClimbToBoardButtonProps = { boardDetails: BoardDetails };
+type SendClimbToBoardButtonProps = { boardDetails: BoardDetails; buttonType?: 'default' | 'text' };
 
 export const convertToMirroredFramesString = (frames: string, holdsData: HoldRenderData[]): string => {
   // Create a map for quick lookup of mirroredHoldId
@@ -49,7 +49,7 @@ export const convertToMirroredFramesString = (frames: string, holdsData: HoldRen
 };
 
 // React component
-const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({ boardDetails }) => {
+const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({ boardDetails, buttonType = 'default' }) => {
   const { currentClimbQueueItem } = useQueueContext();
   const [loading, setLoading] = useState(false);
   const [isConnected, setIsConnected] = useState(false); // Track Bluetooth connection state
@@ -198,7 +198,7 @@ const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({ boardDe
     <>
       <Button
         id="button-illuminate"
-        type="default"
+        type={buttonType}
         danger={!isBluetoothSupported}
         icon={isConnected ? <BulbFilled className={'connect-button-glow'} /> : <BulbOutlined />}
         onClick={handleClick}

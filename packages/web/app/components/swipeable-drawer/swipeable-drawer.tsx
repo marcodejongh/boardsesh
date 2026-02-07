@@ -7,11 +7,12 @@ import { useSwipeToDismiss } from './use-swipe-to-dismiss';
 import styles from './swipeable-drawer.module.css';
 
 export interface SwipeableDrawerProps extends DrawerProps {
-  swipeRegion?: 'handle' | 'body';
+  swipeRegion?: 'handle' | 'body' | 'scrollBody';
   swipeEnabled?: boolean;
   dismissThreshold?: number;
   dismissAnimationMs?: number;
   showDragHandle?: boolean;
+  scrollBodyRef?: React.RefObject<HTMLElement | null>;
 }
 
 function mergeStyles(
@@ -45,6 +46,7 @@ const SwipeableDrawer: React.FC<SwipeableDrawerProps> = ({
   dismissThreshold,
   dismissAnimationMs,
   showDragHandle = true,
+  scrollBodyRef,
   placement = 'bottom',
   closable,
   onClose,
@@ -73,6 +75,7 @@ const SwipeableDrawer: React.FC<SwipeableDrawerProps> = ({
     dismissAnimationMs,
     enabled: effectiveEnabled,
     swipeRegion,
+    scrollBodyRef,
   });
 
   const handleAfterOpenChange = (open: boolean) => {
@@ -157,12 +160,14 @@ const SwipeableDrawer: React.FC<SwipeableDrawerProps> = ({
       );
     }
 
+    // For scrollBody mode: render like handle mode (drag handle + children, no touch-action wrapper)
+    // Native touch events on scrollBodyRef handle the dismiss gesture
     // For handle mode: only render handle in body if NOT already in header
     if (handleInHeader) {
       return children;
     }
 
-    // Handle mode without title, or horizontal placement: handle in body
+    // Handle/scrollBody mode without title, or horizontal placement: handle in body
     return (
       <>
         {(placement === 'bottom' || placement === 'left') && (isVerticalPlacement ? horizontalDragHandle : verticalDragHandle)}

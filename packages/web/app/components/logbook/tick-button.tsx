@@ -15,9 +15,10 @@ interface TickButtonProps {
   angle: Angle;
   currentClimb: Climb | null;
   boardDetails: BoardDetails;
+  buttonType?: 'default' | 'text';
 }
 
-export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boardDetails }) => {
+export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boardDetails, buttonType = 'default' }) => {
   const { logbook, isAuthenticated } = useBoardProvider();
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -53,7 +54,7 @@ export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boa
         showZero={false}
         color={hasSuccessfulAscent ? 'cyan' : 'red'}
       >
-        <Button id="button-tick" type="default" icon={<CheckOutlined />} onClick={showDrawer} />
+        <Button id="button-tick" type={buttonType} icon={<CheckOutlined />} onClick={showDrawer} />
       </Badge>
 
       {isAuthenticated ? (
