@@ -166,23 +166,21 @@ export function TickAction({
   // List mode - full-width row for drawer menus
   const listElement = (
     <>
-      <Badge count={badgeCount} size="small" color={badgeColor} overflowCount={99} showZero={false}>
-        <Button
-          type="text"
-          icon={icon}
-          block
-          onClick={handleClick}
-          disabled={disabled}
-          style={{
-            height: 48,
-            justifyContent: 'flex-start',
-            paddingLeft: themeTokens.spacing[4],
-            fontSize: themeTokens.typography.fontSize.base,
-          }}
-        >
-          {badgeCount > 0 ? `${label} (${badgeCount})` : label}
-        </Button>
-      </Badge>
+      <Button
+        type="text"
+        icon={icon}
+        block
+        onClick={handleClick}
+        disabled={disabled}
+        style={{
+          height: 48,
+          justifyContent: 'flex-start',
+          paddingLeft: themeTokens.spacing[4],
+          fontSize: themeTokens.typography.fontSize.base,
+        }}
+      >
+        {badgeCount > 0 ? `${label} (${badgeCount})` : label}
+      </Button>
       {drawers}
     </>
   );
