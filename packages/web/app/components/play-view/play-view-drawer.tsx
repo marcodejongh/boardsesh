@@ -316,6 +316,7 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
             placement="bottom"
             open={isActionsOpen}
             onClose={() => setIsActionsOpen(false)}
+            getContainer={false}
             swipeRegion="body"
             styles={{
               wrapper: { height: 'auto' },
@@ -338,6 +339,7 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
           placement="bottom"
           height="60%"
           open={isQueueOpen}
+          getContainer={false}
           onClose={() => {
             setIsQueueOpen(false);
             handleExitEditMode();
