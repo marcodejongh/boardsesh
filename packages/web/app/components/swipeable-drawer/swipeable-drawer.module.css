@@ -73,6 +73,8 @@
   display: flex;
   flex-direction: column;
   height: 100%;
+  touch-action: none;
+  -webkit-touch-callout: none;
 }
 
 /* Mobile: hide Ant Drawer close button, show drag handle */

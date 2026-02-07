@@ -226,6 +226,7 @@ function BottomTabBar({ boardDetails, angle }: BottomTabBarProps) {
         placement="bottom"
         open={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
+        swipeRegion="body"
         styles={{
           wrapper: { height: 'auto' },
           body: { padding: `${themeTokens.spacing[2]}px 0` },

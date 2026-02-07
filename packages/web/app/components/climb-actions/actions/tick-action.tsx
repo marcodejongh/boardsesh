@@ -108,6 +108,7 @@ export function TickAction({
           placement="bottom"
           onClose={closeDrawer}
           open={drawerVisible}
+          swipeRegion="body"
           styles={{ wrapper: { height: '50%' } }}
         >
           {renderSignInPrompt()}

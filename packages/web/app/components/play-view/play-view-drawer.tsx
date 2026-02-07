@@ -250,6 +250,7 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
           placement="bottom"
           open={isActionsOpen}
           onClose={() => setIsActionsOpen(false)}
+          swipeRegion="body"
           styles={{
             wrapper: { height: 'auto' },
             body: { padding: `${themeTokens.spacing[2]}px 0` },

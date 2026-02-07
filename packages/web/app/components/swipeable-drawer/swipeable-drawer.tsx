@@ -121,10 +121,10 @@ const SwipeableDrawer: React.FC<SwipeableDrawerProps> = ({
     </div>
   ) : null;
 
-  // For handle mode with vertical placement (top/bottom) and a title:
+  // For vertical placement (top/bottom) with a title:
   // Inject the drag handle into the title so it appears above the header content.
-  // For body mode or horizontal placement or no title: handle goes in the body.
-  const handleInHeader = swipeRegion === 'handle' && isVerticalPlacement && userTitle !== undefined && userTitle !== null;
+  // This applies to both handle and body modes — the AntD header always renders above the body.
+  const handleInHeader = isVerticalPlacement && userTitle !== undefined && userTitle !== null;
 
   const drawerTitle = useMemo(() => {
     if (!handleInHeader) return userTitle;
@@ -150,9 +150,9 @@ const SwipeableDrawer: React.FC<SwipeableDrawerProps> = ({
     if (swipeRegion === 'body' && effectiveEnabled) {
       return (
         <div {...(bodyRegionProps || {})} className={styles.bodySwipeWrapper}>
-          {placement === 'bottom' && horizontalDragHandle}
+          {!handleInHeader && placement === 'bottom' && horizontalDragHandle}
           {children}
-          {placement === 'top' && horizontalDragHandle}
+          {!handleInHeader && placement === 'top' && horizontalDragHandle}
         </div>
       );
     }

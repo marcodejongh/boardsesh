@@ -69,6 +69,7 @@ export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boa
           placement="bottom"
           onClose={closeDrawer}
           open={drawerVisible}
+          swipeRegion="body"
           styles={{ wrapper: { height: '50%' } }}
         >
           <Space orientation="vertical" size="large" style={{ width: '100%', textAlign: 'center', padding: '24px 0' }}>
