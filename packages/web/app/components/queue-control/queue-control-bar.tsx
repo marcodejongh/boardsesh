@@ -1,6 +1,6 @@
 'use client';
-import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Button, Space, Popconfirm } from 'antd';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { Button, Row, Col, Card, Space, Popconfirm } from 'antd';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import { SyncOutlined, DeleteOutlined, ExpandOutlined } from '@ant-design/icons';
 import { track } from '@vercel/analytics';
@@ -13,12 +13,15 @@ import { BoardRouteParameters, BoardDetails, Angle } from '@/app/lib/types';
 import PreviousClimbButton from './previous-climb-button';
 import QueueList, { QueueListHandle } from './queue-list';
 import { TickButton } from '../logbook/tick-button';
+import ClimbThumbnail from '../climb-card/climb-thumbnail';
+import ClimbTitle from '../climb-card/climb-title';
+import { AscentStatus } from './queue-list-item';
 import { themeTokens } from '@/app/theme/theme-config';
 import { TOUR_DRAWER_EVENT } from '../onboarding/onboarding-tour';
 import { ShareBoardButton } from '../board-page/share-button';
-import { useCardSwipeNavigation } from '@/app/hooks/use-card-swipe-navigation';
+import { useCardSwipeNavigation, EXIT_DURATION, SNAP_BACK_DURATION, ENTER_ANIMATION_DURATION } from '@/app/hooks/use-card-swipe-navigation';
 import PlayViewDrawer from '../play-view/play-view-drawer';
-import QueueBarContent from './queue-bar-content';
+import { getGradeTintColor } from '@/app/lib/grade-colors';
 import styles from './queue-control-bar.module.css';
 
 export type ActiveDrawer = 'none' | 'play' | 'queue';
@@ -36,6 +39,7 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
   const router = useRouter();
   const queueListRef = useRef<QueueListHandle>(null);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const enterFallbackRef = useRef<NodeJS.Timeout | null>(null);
 
   // Reset activeDrawer on navigation
   useEffect(() => {
@@ -47,6 +51,9 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
     return () => {
       if (scrollTimeoutRef.current) {
         clearTimeout(scrollTimeoutRef.current);
+      }
+      if (enterFallbackRef.current) {
+        clearTimeout(enterFallbackRef.current);
       }
     };
   }, []);
@@ -74,6 +81,8 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
   const isListPage = pathname.includes('/list');
   const isPlayPage = pathname.includes('/play/');
   const { currentClimb, currentClimbQueueItem, mirrorClimb, queue, setQueue, getNextClimbQueueItem, getPreviousClimbQueueItem, setCurrentClimbQueueItem, viewOnlyMode } = useQueueContext();
+
+  const gradeTintColor = useMemo(() => getGradeTintColor(currentClimb?.difficulty), [currentClimb?.difficulty]);
 
   const nextClimb = getNextClimbQueueItem();
   const previousClimb = getPreviousClimbQueueItem();
@@ -213,77 +222,177 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
     });
   }, [isListPage, boardDetails, activeDrawer, currentClimb]);
 
+  // Transition style shared by current and peek text
+  const getTextTransitionStyle = () => {
+    // After navigation completes, snap instantly (no transition) to avoid
+    // the new text sliding in from the old exit position
+    if (enterDirection) return 'none';
+    if (isAnimating) return `transform ${EXIT_DURATION}ms ease-out`;
+    if (swipeOffset === 0) return `transform ${SNAP_BACK_DURATION}ms ease`;
+    return 'none';
+  };
+
+  // Peek: determine which climb to preview during swipe
+  const showPeek = swipeOffset !== 0 || isAnimating;
+  const peekIsNext = animationDirection === 'left' || (animationDirection === null && swipeOffset < 0);
+  const peekClimbData = peekIsNext ? nextClimb?.climb : previousClimb?.climb;
+
+  // Peek transform: positioned one container-width away, moves with swipeOffset.
+  // Clamped so the peek stops at position 0 and never overshoots past it
+  // (the exit offset is window.innerWidth which is wider than the clip container).
+  const getPeekTransform = () => {
+    return peekIsNext
+      ? `translateX(max(0px, calc(100% + ${swipeOffset}px)))`
+      : `translateX(min(0px, calc(-100% + ${swipeOffset}px)))`;
+  };
+
+  // Clear enterDirection (for thumbnail crossfade) after it plays
+  useEffect(() => {
+    if (enterDirection) {
+      enterFallbackRef.current = setTimeout(() => {
+        clearEnterAnimation();
+      }, ENTER_ANIMATION_DURATION);
+    }
+    return () => {
+      if (enterFallbackRef.current) {
+        clearTimeout(enterFallbackRef.current);
+        enterFallbackRef.current = null;
+      }
+    };
+  }, [enterDirection, clearEnterAnimation]);
+
   return (
     <div id="onboarding-queue-bar" className={`queue-bar-shadow ${styles.queueBar}`} data-testid="queue-control-bar">
-      <QueueBarContent
-        boardDetails={boardDetails}
-        currentClimb={currentClimb}
-        nextClimb={nextClimb?.climb ?? null}
-        prevClimb={previousClimb?.climb ?? null}
-        swipeHandlers={swipeHandlers}
-        swipeOffset={swipeOffset}
-        isAnimating={isAnimating}
-        animationDirection={animationDirection}
-        enterDirection={enterDirection}
-        clearEnterAnimation={clearEnterAnimation}
-        onClimbInfoClick={handleClimbInfoClick}
-        climbInfoClassName={isListPage ? styles.listPage : undefined}
-        climbInfoId="onboarding-queue-toggle"
-        enableThumbnailNavigation={true}
-        onThumbnailNavigate={() => setActiveDrawer('none')}
-        actionButtons={
-          <Space>
-            {/* Mirror button - desktop only */}
-            {boardDetails.supportsMirroring ? (
-              <span className={styles.desktopOnly}>
-                <Button
-                  id="button-mirror"
-                  onClick={() => {
-                    mirrorClimb();
-                    track('Mirror Climb Toggled', {
-                      boardLayout: boardDetails.layout_name || '',
-                      mirrored: !currentClimb?.mirrored,
-                    });
-                  }}
-                  type={currentClimb?.mirrored ? 'primary' : 'text'}
-                  style={
-                    currentClimb?.mirrored
-                      ? { backgroundColor: themeTokens.colors.purple, borderColor: themeTokens.colors.purple }
-                      : undefined
-                  }
-                  icon={<SyncOutlined />}
-                />
-              </span>
-            ) : null}
-            {/* Play link - desktop only */}
-            {!isPlayPage && playUrl && (
-              <span className={styles.desktopOnly}>
-                <Link
-                  href={playUrl}
-                  onClick={() => {
-                    track('Play Mode Entered', {
-                      boardLayout: boardDetails.layout_name || '',
-                    });
-                  }}
-                >
-                  <Button type="text" icon={<ExpandOutlined />} aria-label="Enter play mode" />
-                </Link>
-              </span>
-            )}
-            {/* Navigation buttons - desktop only */}
-            <span className={styles.navButtons}>
-              <Space>
-                <PreviousClimbButton navigate={isViewPage || isPlayPage} boardDetails={boardDetails} />
-                <NextClimbButton navigate={isViewPage || isPlayPage} boardDetails={boardDetails} />
-              </Space>
-            </span>
-            {/* Party button */}
-            <ShareBoardButton buttonType="text" />
-            {/* Tick button */}
-            <TickButton currentClimb={currentClimb} angle={angle} boardDetails={boardDetails} buttonType="text" />
-          </Space>
-        }
-      />
+      {/* Main Control Bar */}
+      <Card
+        variant="borderless"
+        styles={{
+          body: {
+            padding: 0,
+          },
+        }}
+        className={styles.card}
+      >
+        {/* Swipe container - captures swipe gestures, does NOT translate */}
+        <div className={styles.swipeWrapper}>
+          <div
+            {...swipeHandlers}
+            className={styles.swipeContainer}
+            style={{
+              padding: `6px ${themeTokens.spacing[3]}px 6px ${themeTokens.spacing[3]}px`,
+              backgroundColor: gradeTintColor ?? themeTokens.semantic.surface,
+            }}
+          >
+            <Row justify="space-between" align="middle" className={styles.row}>
+              {/* Left section: Thumbnail and climb info */}
+              <Col flex="auto" className={styles.climbInfoCol}>
+                <div className={styles.climbInfoInner} style={{ gap: themeTokens.spacing[2] }}>
+                  {/* Board preview — STATIC, with crossfade on enter */}
+                  <div className={`${styles.boardPreviewContainer} ${enterDirection ? styles.thumbnailEnter : ''}`}>
+                    <ClimbThumbnail
+                      boardDetails={boardDetails}
+                      currentClimb={currentClimb}
+                      enableNavigation={true}
+                      onNavigate={() => setActiveDrawer('none')}
+                    />
+                  </div>
+
+                  {/* Text swipe clip — overflow hidden to contain sliding text */}
+                  <div className={styles.textSwipeClip}>
+                    {/* Current climb text — slides with finger */}
+                    <div
+                      id="onboarding-queue-toggle"
+                      onClick={handleClimbInfoClick}
+                      className={`${styles.queueToggle} ${isListPage ? styles.listPage : ''}`}
+                      style={{
+                        transform: `translateX(${swipeOffset}px)`,
+                        transition: getTextTransitionStyle(),
+                      }}
+                    >
+                      <ClimbTitle
+                        climb={currentClimb}
+                        showAngle
+                        nameAddon={currentClimb?.name && <AscentStatus climbUuid={currentClimb.uuid} />}
+                      />
+                    </div>
+
+                    {/* Peek text — shows next/previous climb sliding in from the edge */}
+                    {showPeek && peekClimbData && (
+                      <div
+                        className={`${styles.queueToggle} ${styles.peekText}`}
+                        style={{
+                          transform: getPeekTransform(),
+                          transition: getTextTransitionStyle(),
+                        }}
+                      >
+                        <ClimbTitle
+                          climb={peekClimbData}
+                          showAngle
+                          nameAddon={peekClimbData?.name && <AscentStatus climbUuid={peekClimbData.uuid} />}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </Col>
+
+              {/* Button cluster — STATIC */}
+              <Col flex="none" style={{ marginLeft: themeTokens.spacing[2] }}>
+                <Space>
+                  {/* Mirror button - desktop only */}
+                  {boardDetails.supportsMirroring ? (
+                    <span className={styles.desktopOnly}>
+                      <Button
+                        id="button-mirror"
+                        onClick={() => {
+                          mirrorClimb();
+                          track('Mirror Climb Toggled', {
+                            boardLayout: boardDetails.layout_name || '',
+                            mirrored: !currentClimb?.mirrored,
+                          });
+                        }}
+                        type={currentClimb?.mirrored ? 'primary' : 'text'}
+                        style={
+                          currentClimb?.mirrored
+                            ? { backgroundColor: themeTokens.colors.purple, borderColor: themeTokens.colors.purple }
+                            : undefined
+                        }
+                        icon={<SyncOutlined />}
+                      />
+                    </span>
+                  ) : null}
+                  {/* Play link - desktop only */}
+                  {!isPlayPage && playUrl && (
+                    <span className={styles.desktopOnly}>
+                      <Link
+                        href={playUrl}
+                        onClick={() => {
+                          track('Play Mode Entered', {
+                            boardLayout: boardDetails.layout_name || '',
+                          });
+                        }}
+                      >
+                        <Button type="text" icon={<ExpandOutlined />} aria-label="Enter play mode" />
+                      </Link>
+                    </span>
+                  )}
+                  {/* Navigation buttons - desktop only */}
+                  <span className={styles.navButtons}>
+                    <Space>
+                      <PreviousClimbButton navigate={isViewPage || isPlayPage} boardDetails={boardDetails} />
+                      <NextClimbButton navigate={isViewPage || isPlayPage} boardDetails={boardDetails} />
+                    </Space>
+                  </span>
+                  {/* Party button */}
+                  <ShareBoardButton buttonType="text" />
+                  {/* Tick button */}
+                  <TickButton currentClimb={currentClimb} angle={angle} boardDetails={boardDetails} buttonType="text" />
+                </Space>
+              </Col>
+            </Row>
+          </div>
+        </div>
+      </Card>
 
       {/* Drawer for showing the queue */}
       <SwipeableDrawer
