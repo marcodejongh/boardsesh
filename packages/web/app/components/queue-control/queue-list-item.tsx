@@ -17,6 +17,7 @@ import ClimbTitle from '../climb-card/climb-title';
 import { useBoardProvider } from '../board-provider/board-provider-context';
 import { themeTokens } from '@/app/theme/theme-config';
 import { constructClimbViewUrl, constructClimbViewUrlWithSlugs, parseBoardRouteParams, constructClimbInfoUrl } from '@/app/lib/url-utils';
+import { useDoubleTap } from '@/app/lib/hooks/use-double-tap';
 import styles from './queue-list-item.module.css';
 
 type QueueListItemProps = {
@@ -160,6 +161,14 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
     window.open(url, '_blank', 'noopener');
   }, [item.climb, boardDetails]);
 
+  const doubleTapCallback = useCallback(() => {
+    if (!isEditMode) {
+      setCurrentClimbQueueItem(item);
+    }
+  }, [isEditMode, setCurrentClimbQueueItem, item]);
+
+  const { ref: doubleTapRef, onDoubleClick: handleDoubleTap } = useDoubleTap(isEditMode ? undefined : doubleTapCallback);
+
   const swipeHandlers = useSwipeable({
     onSwiping: (eventData) => {
       const { deltaX, deltaY, event } = eventData;
@@ -297,6 +306,10 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
         {/* Swipeable content */}
         <div
           {...(isEditMode ? {} : swipeHandlers)}
+          ref={isEditMode ? undefined : (node: HTMLDivElement | null) => {
+            doubleTapRef(node);
+            swipeHandlers.ref(node);
+          }}
           className={styles.swipeableContent}
           style={{
             padding: `${themeTokens.spacing[3]}px ${themeTokens.spacing[2]}px`,
@@ -311,7 +324,7 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
             transition: swipeOffset === 0 || isSwipeComplete ? `transform ${themeTokens.transitions.fast}, opacity ${themeTokens.transitions.fast}` : 'none',
             cursor: isEditMode ? 'pointer' : undefined,
           }}
-          onDoubleClick={isEditMode ? undefined : () => setCurrentClimbQueueItem(item)}
+          onDoubleClick={isEditMode ? undefined : handleDoubleTap}
           onClick={isEditMode ? () => onToggleSelect?.(item.uuid) : undefined}
         >
           <Row className={styles.contentRow} gutter={[8, 8]} align="middle" wrap={false}>
