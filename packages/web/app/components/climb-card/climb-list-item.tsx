@@ -3,7 +3,7 @@
 import React, { useState, useCallback } from 'react';
 import { Button, Typography } from 'antd';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
-import { MoreOutlined, HeartOutlined, HeartFilled, PlusOutlined } from '@ant-design/icons';
+import { EllipsisOutlined, HeartOutlined, HeartFilled, PlusOutlined } from '@ant-design/icons';
 import { useSwipeable } from 'react-swipeable';
 import { Climb, BoardDetails } from '@/app/lib/types';
 import ClimbThumbnail from './climb-thumbnail';
@@ -195,20 +195,18 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
 
           {/* Center: Name, quality, setter */}
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: themeTokens.spacing[1] }}>
-              <Text
-                style={{
-                  fontSize: themeTokens.typography.fontSize.sm,
-                  fontWeight: themeTokens.typography.fontWeight.semibold,
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                }}
-              >
-                {climb.name}
-              </Text>
-              <AscentStatus climbUuid={climb.uuid} />
-            </div>
+            <Text
+              style={{
+                fontSize: themeTokens.typography.fontSize.sm,
+                fontWeight: themeTokens.typography.fontWeight.semibold,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                display: 'block',
+              }}
+            >
+              {climb.name}
+            </Text>
             <Text
               type="secondary"
               style={{
@@ -224,38 +222,39 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
             </Text>
           </div>
 
-          {/* Right: V-grade colorized */}
-          {vGrade && (
-            <Text
-              style={{
-                fontSize: themeTokens.typography.fontSize['2xl'],
-                fontWeight: themeTokens.typography.fontWeight.bold,
-                lineHeight: 1,
-                color: gradeColor ?? themeTokens.neutral[500],
-                flexShrink: 0,
-              }}
-            >
-              {vGrade}
-            </Text>
-          )}
-          {!vGrade && climb.difficulty && (
-            <Text
-              type="secondary"
-              style={{
-                fontSize: themeTokens.typography.fontSize.sm,
-                fontWeight: themeTokens.typography.fontWeight.semibold,
-                flexShrink: 0,
-              }}
-            >
-              {climb.difficulty}
-            </Text>
-          )}
+          {/* Right: Ascent status + V-grade colorized */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: themeTokens.spacing[1], flexShrink: 0 }}>
+            <AscentStatus climbUuid={climb.uuid} fontSize={20} />
+            {vGrade && (
+              <Text
+                style={{
+                  fontSize: themeTokens.typography.fontSize['2xl'],
+                  fontWeight: themeTokens.typography.fontWeight.bold,
+                  lineHeight: 1,
+                  color: gradeColor ?? themeTokens.neutral[500],
+                }}
+              >
+                {vGrade}
+              </Text>
+            )}
+            {!vGrade && climb.difficulty && (
+              <Text
+                type="secondary"
+                style={{
+                  fontSize: themeTokens.typography.fontSize.sm,
+                  fontWeight: themeTokens.typography.fontWeight.semibold,
+                }}
+              >
+                {climb.difficulty}
+              </Text>
+            )}
+          </div>
 
           {/* Ellipsis menu button */}
           <Button
             type="text"
             size="small"
-            icon={<MoreOutlined />}
+            icon={<EllipsisOutlined />}
             onClick={(e) => {
               e.stopPropagation();
               setIsActionsOpen(true);
