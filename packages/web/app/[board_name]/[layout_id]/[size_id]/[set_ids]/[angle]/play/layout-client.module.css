@@ -23,7 +23,7 @@
   top: 8vh; /* Below the header */
   height: calc(92vh - 64px); /* Full height minus header and queue bar */
   overflow-y: auto;
-  background: #fff;
+  background: var(--semantic-surface);
   box-shadow: -2px 0 8px rgba(0, 0, 0, 0.08);
   display: none;
   padding: 0 8px 20px 8px;
@@ -40,7 +40,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 12px 8px 8px 8px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--neutral-200);
 }
 
 .sidebarTitle {

@@ -77,7 +77,7 @@ export function FavoriteAction({
   const iconSize = size === 'small' ? 14 : size === 'large' ? 20 : 16;
 
   const HeartIcon = isFavorited ? HeartFilled : HeartOutlined;
-  const iconStyle = isFavorited ? { color: '#ff4d4f', fontSize: iconSize } : { fontSize: iconSize };
+  const iconStyle = isFavorited ? { color: themeTokens.colors.error, fontSize: iconSize } : { fontSize: iconSize };
   const icon = <HeartIcon style={iconStyle} />;
 
   const authModalElement = (

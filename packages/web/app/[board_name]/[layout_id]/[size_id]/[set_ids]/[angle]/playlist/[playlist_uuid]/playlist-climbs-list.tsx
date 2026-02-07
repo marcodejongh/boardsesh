@@ -13,6 +13,7 @@ import {
 } from '@/app/lib/graphql/operations/playlists';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { useQueueContext } from '@/app/components/graphql-queue';
+import { themeTokens } from '@/app/theme/theme-config';
 import ClimbCard from '@/app/components/climb-card/climb-card';
 import { ClimbCardSkeleton } from '@/app/components/board-page/board-page-skeleton';
 import styles from './playlist-view.module.css';
@@ -254,7 +255,7 @@ export default function PlaylistClimbsList({
           </Row>
         )}
         {!hasNextPage && visibleClimbs.length > 0 && (
-          <div style={{ textAlign: 'center', padding: '20px', color: '#888' }}>
+          <div style={{ textAlign: 'center', padding: '20px', color: themeTokens.neutral[400] }}>
             {allClimbs.length >= totalCount ? `All ${visibleCount} climbs loaded` : 'No more climbs'}
           </div>
         )}

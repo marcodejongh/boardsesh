@@ -23,7 +23,7 @@
 
 .skipLink a {
   font-size: 13px;
-  color: #999;
+  color: var(--neutral-400);
   cursor: pointer;
   text-decoration: underline;
 }

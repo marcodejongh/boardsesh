@@ -23,14 +23,11 @@
   gap: 4px;
   padding: 2px 10px;
   border-radius: 9999px;
-  /* themeTokens.neutral[300] */
-  border: 1px solid #D1D5DB;
-  /* themeTokens.semantic.surface */
-  background: #FFFFFF;
+  border: 1px solid var(--neutral-300);
+  background: var(--semantic-surface);
   font-size: 12px;
   line-height: 1.4;
-  /* themeTokens.neutral[600] */
-  color: #4B5563;
+  color: var(--neutral-600);
   cursor: pointer;
   white-space: nowrap;
   transition: background-color 150ms ease, border-color 150ms ease;
@@ -38,36 +35,32 @@
 }
 
 .pill:hover {
-  /* themeTokens.neutral[100] */
-  background: #F3F4F6;
-  /* themeTokens.neutral[400] */
-  border-color: #9CA3AF;
+  background: var(--neutral-100);
+  border-color: var(--neutral-400);
 }
 
 .pill:active {
-  /* themeTokens.neutral[200] */
-  background: #E5E7EB;
+  background: var(--neutral-200);
 }
 
 .pillActive {
-  border-color: #06B6D4;
-  background: #ECFEFF;
-  color: #0E7490;
+  border-color: var(--color-primary);
+  background: var(--semantic-selected);
+  color: var(--color-primary-hover);
 }
 
 .pillActive:hover {
-  background: #CFFAFE;
-  border-color: #06B6D4;
+  background: var(--semantic-selected);
+  border-color: var(--color-primary);
 }
 
 .pillActive .pillIcon {
-  color: #06B6D4;
+  color: var(--color-primary);
 }
 
 .pillIcon {
   font-size: 10px;
-  /* themeTokens.neutral[400] */
-  color: #9CA3AF;
+  color: var(--neutral-400);
 }
 
 .pillLabel {

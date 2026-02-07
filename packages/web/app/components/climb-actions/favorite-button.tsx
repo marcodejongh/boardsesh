@@ -7,6 +7,7 @@ import { track } from '@vercel/analytics';
 import { useFavorite } from './use-favorite';
 import { BoardName } from '@/app/lib/types';
 import AuthModal from '../auth/auth-modal';
+import { themeTokens } from '@/app/theme/theme-config';
 
 type FavoriteButtonProps = {
   boardName: BoardName;
@@ -86,7 +87,7 @@ export default function FavoriteButton({
 
   const iconStyle: React.CSSProperties = {
     fontSize: size === 'small' ? 14 : 16,
-    color: isFavorited ? '#ff4d4f' : 'inherit',
+    color: isFavorited ? themeTokens.colors.error : 'inherit',
     cursor: isLoading ? 'wait' : 'pointer',
     transition: 'color 0.2s, transform 0.2s',
   };

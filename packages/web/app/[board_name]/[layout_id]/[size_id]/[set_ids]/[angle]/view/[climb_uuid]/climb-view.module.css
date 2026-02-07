@@ -3,14 +3,14 @@
 .pageContainer {
   padding: 16px;
   min-height: 100vh;
-  background-color: #F9FAFB;
+  background-color: var(--neutral-50);
   max-width: 1400px;
   margin: 0 auto;
 }
 
 /* Actions section - white card container */
 .actionsSection {
-  background-color: #FFFFFF;
+  background-color: var(--semantic-surface);
   border-radius: 12px;
   padding: 16px;
   margin-bottom: 16px;
@@ -39,7 +39,7 @@
 
 /* Beta videos section with white background */
 .betaSection {
-  background-color: #FFFFFF;
+  background-color: var(--semantic-surface);
   border-radius: 12px;
   padding: 20px;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
@@ -47,7 +47,7 @@
 
 /* Logbook section with white background */
 .logbookSection {
-  background-color: #FFFFFF;
+  background-color: var(--semantic-surface);
   border-radius: 12px;
   padding: 20px;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);

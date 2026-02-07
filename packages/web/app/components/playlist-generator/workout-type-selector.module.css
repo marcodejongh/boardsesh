@@ -5,7 +5,7 @@
 .listItem {
   cursor: pointer;
   padding: 16px;
-  border-bottom: 1px solid #E5E7EB;
+  border-bottom: 1px solid var(--neutral-200);
   transition: background-color 150ms ease;
   display: flex;
   justify-content: space-between;
@@ -13,11 +13,11 @@
 }
 
 .listItem:hover {
-  background-color: #F9FAFB;
+  background-color: var(--neutral-50);
 }
 
 .listItem:active {
-  background-color: #F3F4F6;
+  background-color: var(--neutral-100);
 }
 
 .listItem:last-child {
@@ -57,7 +57,7 @@
 }
 
 .arrow {
-  color: #9CA3AF;
+  color: var(--neutral-400);
   font-size: 12px;
   flex-shrink: 0;
 }

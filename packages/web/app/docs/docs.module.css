@@ -42,7 +42,7 @@
 
 /* Code block styles */
 .codeBlockLight {
-  background: #f3f4f6;
+  background: var(--neutral-100);
   padding: 12px;
   border-radius: 4px;
   overflow: auto;
@@ -96,7 +96,7 @@
 }
 
 .swaggerCommandBlock {
-  background: #f3f4f6;
+  background: var(--neutral-100);
   padding: 12px;
   border-radius: 4px;
   margin-top: 8px;

@@ -2,6 +2,7 @@ import React, { Suspense } from 'react';
 import { Metadata } from 'next';
 import AuthPageContent from './auth-page-content';
 import { Spin, Layout } from 'antd';
+import { themeTokens } from '@/app/theme/theme-config';
 
 export const metadata: Metadata = {
   title: 'Login | Boardsesh',
@@ -10,7 +11,7 @@ export const metadata: Metadata = {
 
 function AuthPageFallback() {
   return (
-    <Layout style={{ minHeight: '100vh', background: '#f5f5f5', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+    <Layout style={{ minHeight: '100vh', background: themeTokens.semantic.background, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
       <Spin size="large" />
     </Layout>
   );

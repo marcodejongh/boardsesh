@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Button, Form, Select, Typography } from 'antd';
 import { useRouter } from 'next/navigation';
 import { SetRow } from '@/app/lib/data/queries';
+import { themeTokens } from '@/app/theme/theme-config';
 
 const { Option } = Select;
 const { Title } = Typography;
@@ -16,7 +17,7 @@ const SetsSelection = ({ sets = [] }: { sets: SetRow[] }) => {
   };
 
   return (
-    <div style={{ padding: '24px', background: '#f7f7f7', borderRadius: '8px' }}>
+    <div style={{ padding: '24px', background: themeTokens.semantic.background, borderRadius: '8px' }}>
       <Title level={4}>Select Hold Sets</Title>
       <Form layout="vertical">
         <Form.Item label="Sets" required tooltip="Select hold types">

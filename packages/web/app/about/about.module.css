@@ -2,11 +2,11 @@
 
 .pageLayout {
   min-height: 100vh;
-  background: #f9fafb;
+  background: var(--neutral-50);
 }
 
 .header {
-  background: #ffffff;
+  background: var(--semantic-surface);
   padding: 0 16px;
   display: flex;
   align-items: center;

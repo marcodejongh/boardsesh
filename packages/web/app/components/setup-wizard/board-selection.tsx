@@ -4,6 +4,7 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { Select, Button, Typography, Form } from 'antd';
 import { SUPPORTED_BOARDS } from '@/app/lib/board-data';
+import { themeTokens } from '@/app/theme/theme-config';
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -21,7 +22,7 @@ const BoardSelection = () => {
   };
 
   return (
-    <div style={{ padding: '24px', background: '#f7f7f7', borderRadius: '8px' }}>
+    <div style={{ padding: '24px', background: themeTokens.semantic.background, borderRadius: '8px' }}>
       <Title level={4}>Select a board</Title>
       <Form layout="vertical">
         <Form.Item label="Board">

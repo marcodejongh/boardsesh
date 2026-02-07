@@ -4,6 +4,7 @@ import React from 'react';
 import { Input } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 import { useUISearchParams } from '../queue-control/ui-searchparams-provider';
+import { themeTokens } from '@/app/theme/theme-config';
 
 const SearchClimbNameInput = () => {
   const { uiSearchParams, updateFilters } = useUISearchParams();
@@ -11,7 +12,7 @@ const SearchClimbNameInput = () => {
   return (
     <Input
       placeholder="Search by climb name..."
-      prefix={<SearchOutlined style={{ color: '#9CA3AF' }} />}
+      prefix={<SearchOutlined style={{ color: themeTokens.neutral[400] }} />}
       allowClear
       onChange={(e) => {
         updateFilters({

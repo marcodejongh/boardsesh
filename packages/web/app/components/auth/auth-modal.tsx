@@ -5,6 +5,7 @@ import { Modal, Form, Input, Button, Tabs, Typography, Divider, message, Space }
 import { UserOutlined, LockOutlined, MailOutlined, HeartFilled } from '@ant-design/icons';
 import { signIn } from 'next-auth/react';
 import SocialLoginButtons from '@/app/components/auth/social-login-buttons';
+import { themeTokens } from '@/app/theme/theme-config';
 
 const { Text } = Typography;
 
@@ -229,7 +230,7 @@ export default function AuthModal({
     >
       <Space orientation="vertical" size="large" style={{ width: '100%' }}>
         <Space orientation="vertical" style={{ width: '100%', textAlign: 'center' }}>
-          <HeartFilled style={{ fontSize: 32, color: '#ff4d4f' }} />
+          <HeartFilled style={{ fontSize: 32, color: themeTokens.colors.error }} />
           <Text strong style={{ fontSize: 18 }}>{title}</Text>
           <Text type="secondary">{description}</Text>
         </Space>

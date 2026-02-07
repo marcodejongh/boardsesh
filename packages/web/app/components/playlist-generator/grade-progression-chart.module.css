@@ -16,7 +16,7 @@
   right: 0;
   transform: translateY(-50%);
   font-size: 11px;
-  color: #6B7280;
+  color: var(--neutral-500);
   white-space: nowrap;
   line-height: 1;
 }
@@ -36,12 +36,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #F9FAFB;
+  background-color: var(--neutral-50);
   border-radius: 8px;
-  border: 1px dashed #D1D5DB;
+  border: 1px dashed var(--neutral-300);
 }
 
 .emptyText {
-  color: #9CA3AF;
+  color: var(--neutral-400);
   font-size: 14px;
 }

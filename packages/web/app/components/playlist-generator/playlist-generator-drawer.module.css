@@ -25,14 +25,14 @@
 }
 
 .chartSection {
-  background: #FFFFFF;
+  background: var(--semantic-surface);
   border-radius: 12px;
   padding: 16px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid var(--neutral-200);
 }
 
 .summarySection {
-  background: #F9FAFB;
+  background: var(--neutral-50);
   border-radius: 12px;
   padding: 12px 16px;
 }
@@ -50,14 +50,14 @@
   align-items: center;
   padding: 8px 0 0;
   margin-top: 8px;
-  border-top: 1px solid #E5E7EB;
+  border-top: 1px solid var(--neutral-200);
 }
 
 .optionsSection {
-  background: #FFFFFF;
+  background: var(--semantic-surface);
   border-radius: 12px;
   padding: 4px 16px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid var(--neutral-200);
 }
 
 .generatingContainer {
@@ -71,7 +71,7 @@
 
 .generatingText {
   font-size: 16px;
-  color: #6B7280;
+  color: var(--neutral-500);
 }
 
 /* Mobile optimizations */

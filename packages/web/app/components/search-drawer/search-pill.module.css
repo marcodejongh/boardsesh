@@ -5,12 +5,12 @@
   width: 100%;
   padding: 6px 14px;
   border-radius: 9999px;
-  background: #F9FAFB;
-  border: 1px solid #E5E7EB;
+  background: var(--neutral-50);
+  border: 1px solid var(--neutral-200);
   cursor: pointer;
   transition: box-shadow 200ms ease;
   font-size: 14px;
-  color: #6B7280;
+  color: var(--neutral-500);
   line-height: 1.4;
   position: relative;
 }
@@ -20,13 +20,13 @@
 }
 
 .pill:active {
-  background: #F3F4F6;
+  background: var(--neutral-100);
 }
 
 .icon {
   flex-shrink: 0;
   font-size: 14px;
-  color: #9CA3AF;
+  color: var(--neutral-400);
 }
 
 .text {

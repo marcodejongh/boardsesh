@@ -136,13 +136,11 @@
 
 /* Heatmap button next to title */
 .heatmapButton {
-  /* neutral-400 */
-  color: #9CA3AF;
+  color: var(--neutral-400);
 }
 
 .heatmapButton:hover {
-  /* neutral-500 */
-  color: #6B7280;
+  color: var(--neutral-500);
 }
 
 /* Opacity slider for heatmap */

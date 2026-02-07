@@ -14,7 +14,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 14px 0;
-  border-bottom: 1px solid #E5E7EB;
+  border-bottom: 1px solid var(--neutral-200);
 }
 
 .formRow:last-child {
@@ -23,7 +23,7 @@
 
 .label {
   font-size: 15px;
-  color: #111827;
+  color: var(--neutral-900);
   font-weight: 500;
 }
 
@@ -40,13 +40,13 @@
 }
 
 .select :global(.ant-select-selection-item) {
-  color: #6B7280;
+  color: var(--neutral-500);
   text-align: right;
   padding-right: 24px !important;
 }
 
 .select :global(.ant-select-arrow) {
-  color: #9CA3AF;
+  color: var(--neutral-400);
 }
 
 .stepperContainer {
@@ -57,14 +57,14 @@
 
 .stepperValue {
   font-size: 15px;
-  color: #6B7280;
+  color: var(--neutral-500);
   min-width: 24px;
   text-align: right;
 }
 
 .stepperButtons {
   display: flex;
-  background: #F3F4F6;
+  background: var(--neutral-100);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -81,11 +81,11 @@
 }
 
 .stepperButton:first-child {
-  border-right: 1px solid #E5E7EB !important;
+  border-right: 1px solid var(--neutral-200) !important;
 }
 
 .stepperButton:hover:not(:disabled) {
-  background: #E5E7EB !important;
+  background: var(--neutral-200) !important;
 }
 
 .stepperButton:disabled {

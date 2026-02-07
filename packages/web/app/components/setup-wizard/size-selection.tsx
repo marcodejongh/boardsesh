@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Button, Form, Select, Typography } from 'antd';
 import { useRouter } from 'next/navigation';
 import { SizeRow } from '@/app/lib/data/queries';
+import { themeTokens } from '@/app/theme/theme-config';
 
 const { Option } = Select;
 const { Title } = Typography;
@@ -18,7 +19,7 @@ const SizeSelection = ({ sizes = [] }: { sizes: SizeRow[] }) => {
   };
 
   return (
-    <div style={{ padding: '24px', background: '#f7f7f7', borderRadius: '8px' }}>
+    <div style={{ padding: '24px', background: themeTokens.semantic.background, borderRadius: '8px' }}>
       <Title level={4}>Select a size</Title>
       <Form layout="vertical">
         <Form.Item label="Size" required tooltip="Choose your current board size">
