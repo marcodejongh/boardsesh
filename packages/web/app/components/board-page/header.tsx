@@ -112,7 +112,7 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
       <UISearchParamsProvider>
         <Flex justify="space-between" align="center" style={{ width: '100%' }} gap={8}>
           {/* Left section: Avatar + Back button */}
-          <Flex align="center" gap={4}>
+          <Flex align="center" gap={4} style={{ flexShrink: 0 }}>
             {pageMode !== 'create' && (
               <UserDrawer boardDetails={boardDetails} angle={angle} />
             )}
