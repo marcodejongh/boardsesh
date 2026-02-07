@@ -153,7 +153,7 @@ export default function AngleSelector({ boardName, boardDetails, currentAngle, c
         styles={{ wrapper: { width: '90%' }, body: { padding: 12 } }}
       >
         {currentClimb && (
-          <div style={{ marginBottom: 12 }}>
+          <div style={{ marginBottom: 12, padding: '0 8px' }}>
             <DrawerClimbHeader climb={currentClimb} boardDetails={boardDetails} />
           </div>
         )}

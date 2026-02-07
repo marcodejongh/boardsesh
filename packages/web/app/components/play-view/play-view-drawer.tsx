@@ -27,6 +27,7 @@ import BoardRenderer from '../board-renderer/board-renderer';
 import { useCardSwipeNavigation, EXIT_DURATION, SNAP_BACK_DURATION } from '@/app/hooks/use-card-swipe-navigation';
 import { useWakeLock } from '../board-bluetooth-control/use-wake-lock';
 import { themeTokens } from '@/app/theme/theme-config';
+import DrawerContext from '@rc-component/drawer/es/context';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import type { ActiveDrawer } from '../queue-control/queue-control-bar';
 import type { BoardDetails, Angle } from '@/app/lib/types';
@@ -43,6 +44,9 @@ interface PlayViewDrawerProps {
   boardDetails: BoardDetails;
   angle: Angle;
 }
+
+// Stable no-op context to prevent child drawers from pushing the parent.
+const noPushContext = { pushDistance: 0, push: () => {}, pull: () => {} };
 
 const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
   activeDrawer,
@@ -231,6 +235,8 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
             layout="horizontal"
             showSetterInfo
             showAngle
+            centered
+            titleScale={1.4}
           />
         </div>
 
@@ -301,107 +307,110 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
         </div>
       </div>
 
-      {/* Climb actions drawer */}
-      {currentClimb && (
-        <SwipeableDrawer
-          title={currentClimb.name}
-          placement="bottom"
-          open={isActionsOpen}
-          onClose={() => setIsActionsOpen(false)}
-          swipeRegion="body"
-          styles={{
-            wrapper: { height: 'auto' },
-            body: { padding: `${themeTokens.spacing[2]}px 0` },
-          }}
-        >
-          <ClimbActions
-            climb={currentClimb}
-            boardDetails={boardDetails}
-            angle={typeof angle === 'string' ? parseInt(angle, 10) : angle}
-            viewMode="list"
-            onActionComplete={() => setIsActionsOpen(false)}
-          />
-        </SwipeableDrawer>
-      )}
-
-      {/* Queue list drawer */}
-      <SwipeableDrawer
-        title="Queue"
-        placement="bottom"
-        height="60%"
-        open={isQueueOpen}
-        onClose={() => {
-          setIsQueueOpen(false);
-          handleExitEditMode();
-          setShowHistory(false);
-        }}
-        swipeRegion="scrollBody"
-        scrollBodyRef={queueScrollRef}
-        afterOpenChange={(open) => {
-          if (open) {
-            setTimeout(() => {
-              queueListRef.current?.scrollToCurrentClimb();
-            }, 100);
-          }
-        }}
-        styles={{
-          wrapper: { height: '60%' },
-          body: { padding: 0 },
-        }}
-        extra={
-          queue.length > 0 && !viewOnlyMode && (
-            isEditMode ? (
-              <Space>
-                <Button
-                  type="text"
-                  icon={<DeleteOutlined />}
-                  style={{ color: themeTokens.neutral[400] }}
-                  onClick={() => {
-                    setQueue([]);
-                    handleExitEditMode();
-                  }}
-                >
-                  Clear
-                </Button>
-                <Button type="text" icon={<CloseOutlined />} onClick={handleExitEditMode} />
-              </Space>
-            ) : (
-              <Space>
-                <Button
-                  type={showHistory ? 'default' : 'text'}
-                  icon={<HistoryOutlined />}
-                  onClick={() => setShowHistory((prev) => !prev)}
-                />
-                <Button type="text" icon={<EditOutlined />} onClick={() => setIsEditMode(true)} />
-              </Space>
-            )
-          )
-        }
-      >
-        <div className={styles.queueBodyLayout}>
-          <div ref={queueScrollRef} className={styles.queueScrollContainer}>
-            <QueueList
-              ref={queueListRef}
+      {/* Isolate child drawers from parent push context */}
+      <DrawerContext.Provider value={noPushContext}>
+        {/* Climb actions drawer */}
+        {currentClimb && (
+          <SwipeableDrawer
+            title={currentClimb.name}
+            placement="bottom"
+            open={isActionsOpen}
+            onClose={() => setIsActionsOpen(false)}
+            swipeRegion="body"
+            styles={{
+              wrapper: { height: 'auto' },
+              body: { padding: `${themeTokens.spacing[2]}px 0` },
+            }}
+          >
+            <ClimbActions
+              climb={currentClimb}
               boardDetails={boardDetails}
-              onClimbNavigate={() => {
-                setIsQueueOpen(false);
-                setActiveDrawer('none');
-              }}
-              isEditMode={isEditMode}
-              showHistory={showHistory}
-              selectedItems={selectedItems}
-              onToggleSelect={handleToggleSelect}
+              angle={typeof angle === 'string' ? parseInt(angle, 10) : angle}
+              viewMode="list"
+              onActionComplete={() => setIsActionsOpen(false)}
             />
-          </div>
-          {isEditMode && selectedItems.size > 0 && (
-            <div className={styles.bulkRemoveBar}>
-              <Button type="primary" danger block onClick={handleBulkRemove}>
-                Remove {selectedItems.size} {selectedItems.size === 1 ? 'item' : 'items'}
-              </Button>
+          </SwipeableDrawer>
+        )}
+
+        {/* Queue list drawer */}
+        <SwipeableDrawer
+          title="Queue"
+          placement="bottom"
+          height="60%"
+          open={isQueueOpen}
+          onClose={() => {
+            setIsQueueOpen(false);
+            handleExitEditMode();
+            setShowHistory(false);
+          }}
+          swipeRegion="scrollBody"
+          scrollBodyRef={queueScrollRef}
+          afterOpenChange={(open) => {
+            if (open) {
+              setTimeout(() => {
+                queueListRef.current?.scrollToCurrentClimb();
+              }, 100);
+            }
+          }}
+          styles={{
+            wrapper: { height: '60%' },
+            body: { padding: 0 },
+          }}
+          extra={
+            queue.length > 0 && !viewOnlyMode && (
+              isEditMode ? (
+                <Space>
+                  <Button
+                    type="text"
+                    icon={<DeleteOutlined />}
+                    style={{ color: themeTokens.neutral[400] }}
+                    onClick={() => {
+                      setQueue([]);
+                      handleExitEditMode();
+                    }}
+                  >
+                    Clear
+                  </Button>
+                  <Button type="text" icon={<CloseOutlined />} onClick={handleExitEditMode} />
+                </Space>
+              ) : (
+                <Space>
+                  <Button
+                    type={showHistory ? 'default' : 'text'}
+                    icon={<HistoryOutlined />}
+                    onClick={() => setShowHistory((prev) => !prev)}
+                  />
+                  <Button type="text" icon={<EditOutlined />} onClick={() => setIsEditMode(true)} />
+                </Space>
+              )
+            )
+          }
+        >
+          <div className={styles.queueBodyLayout}>
+            <div ref={queueScrollRef} className={styles.queueScrollContainer}>
+              <QueueList
+                ref={queueListRef}
+                boardDetails={boardDetails}
+                onClimbNavigate={() => {
+                  setIsQueueOpen(false);
+                  setActiveDrawer('none');
+                }}
+                isEditMode={isEditMode}
+                showHistory={showHistory}
+                selectedItems={selectedItems}
+                onToggleSelect={handleToggleSelect}
+              />
             </div>
-          )}
-        </div>
-      </SwipeableDrawer>
+            {isEditMode && selectedItems.size > 0 && (
+              <div className={styles.bulkRemoveBar}>
+                <Button type="primary" danger block onClick={handleBulkRemove}>
+                  Remove {selectedItems.size} {selectedItems.size === 1 ? 'item' : 'items'}
+                </Button>
+              </div>
+            )}
+          </div>
+        </SwipeableDrawer>
+      </DrawerContext.Provider>
     </SwipeableDrawer>
   );
 };
