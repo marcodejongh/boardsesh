@@ -10,7 +10,7 @@
 .sectionCard {
   background: var(--ant-color-bg-container, #FFFFFF);
   border-radius: 16px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--ant-box-shadow-tertiary, 0 1px 2px 0 rgba(0, 0, 0, 0.03), 0 1px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px 0 rgba(0, 0, 0, 0.02));
   overflow: hidden;
   transition: box-shadow 200ms ease;
 }
@@ -20,11 +20,11 @@
 }
 
 .sectionCard:not(.sectionCardActive):hover {
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--ant-box-shadow-secondary, 0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 3px 6px -4px rgba(0, 0, 0, 0.12), 0 9px 28px 8px rgba(0, 0, 0, 0.05));
 }
 
 .sectionCardActive {
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1), 0 1px 4px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--ant-box-shadow, 0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 3px 6px -4px rgba(0, 0, 0, 0.12), 0 9px 28px 8px rgba(0, 0, 0, 0.05));
 }
 
 /* Collapsed row */

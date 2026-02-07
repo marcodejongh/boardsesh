@@ -342,7 +342,17 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
             <div
               key={section.key}
               className={`${styles.sectionCard} ${isActive ? styles.sectionCardActive : ''}`}
-              {...(!isActive ? { onClick: () => setActiveKey(section.key) } : {})}
+              {...(!isActive ? {
+                onClick: () => setActiveKey(section.key),
+                onKeyDown: (e: React.KeyboardEvent) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setActiveKey(section.key);
+                  }
+                },
+                role: 'button',
+                tabIndex: 0,
+              } : {})}
             >
               {isActive ? (
                 <div className={styles.expandedContent}>

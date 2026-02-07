@@ -36,13 +36,13 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({ boardDetails, open, onC
 
   const drawerFooter = (
     <div className={styles.footer}>
-      <button
-        type="button"
+      <Button
+        type="link"
         className={styles.clearAllButton}
         onClick={clearClimbSearchParams}
       >
         Clear all
-      </button>
+      </Button>
       <Button
         type="primary"
         icon={isFetchingClimbs ? <Spin size="small" /> : <SearchOutlined />}
