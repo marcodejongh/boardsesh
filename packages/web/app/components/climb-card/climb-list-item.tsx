@@ -7,13 +7,13 @@ import { MoreOutlined, HeartOutlined, HeartFilled, PlusOutlined } from '@ant-des
 import { useSwipeable } from 'react-swipeable';
 import { Climb, BoardDetails } from '@/app/lib/types';
 import ClimbThumbnail from './climb-thumbnail';
+import DrawerClimbHeader from './drawer-climb-header';
 import { AscentStatus } from '../queue-control/queue-list-item';
 import { ClimbActions } from '../climb-actions';
 import { useQueueContext } from '../graphql-queue';
 import { useFavorite } from '../climb-actions';
 import { themeTokens } from '@/app/theme/theme-config';
 import { getGradeColor } from '@/app/lib/grade-colors';
-import climbListItemStyles from './climb-list-item.module.css';
 
 const { Text } = Typography;
 
@@ -267,30 +267,7 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
 
       {/* Actions Drawer */}
       <SwipeableDrawer
-        title={
-          <div className={climbListItemStyles.drawerHeader}>
-            <div style={{ flexShrink: 0, maxWidth: 100 }}>
-              <ClimbThumbnail boardDetails={boardDetails} currentClimb={climb} maxHeight="150px" />
-            </div>
-            <div style={{ minWidth: 0, flex: 1 }}>
-              <Text
-                strong
-                style={{
-                  display: 'block',
-                  fontSize: themeTokens.typography.fontSize.sm * 2,
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                }}
-              >
-                {climb.name}
-              </Text>
-              <Text type="secondary" style={{ fontSize: themeTokens.typography.fontSize.xs * 2 }}>
-                {climb.difficulty} {hasQuality ? `${climb.quality_average}\u2605` : ''}
-              </Text>
-            </div>
-          </div>
-        }
+        title={<DrawerClimbHeader climb={climb} boardDetails={boardDetails} />}
         placement="bottom"
         open={isActionsOpen}
         onClose={() => setIsActionsOpen(false)}

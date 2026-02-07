@@ -1,25 +1,27 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Button, Spin, Typography, Flex, Row, Col, Card, Alert } from 'antd';
+import { Button, Spin, Typography, Flex, Row, Col, Card } from 'antd';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import { useRouter, usePathname } from 'next/navigation';
 import { track } from '@vercel/analytics';
 import useSWR from 'swr';
 import { ANGLES } from '@/app/lib/board-data';
-import { BoardName, Climb } from '@/app/lib/types';
+import { BoardName, BoardDetails, Climb } from '@/app/lib/types';
 import { ClimbStatsForAngle } from '@/app/lib/data/queries';
 import { themeTokens } from '@/app/theme/theme-config';
+import DrawerClimbHeader from '../climb-card/drawer-climb-header';
 
 const { Text } = Typography;
 
 type AngleSelectorProps = {
   boardName: BoardName;
+  boardDetails: BoardDetails;
   currentAngle: number;
   currentClimb: Climb | null;
 };
 
-export default function AngleSelector({ boardName, currentAngle, currentClimb }: AngleSelectorProps) {
+export default function AngleSelector({ boardName, boardDetails, currentAngle, currentClimb }: AngleSelectorProps) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
@@ -151,11 +153,9 @@ export default function AngleSelector({ boardName, currentAngle, currentClimb }:
         styles={{ wrapper: { width: '90%' }, body: { padding: 12 } }}
       >
         {currentClimb && (
-          <Alert
-            title={currentClimb.name}
-            type="info"
-            style={{ marginBottom: 12, textAlign: 'center' }}
-          />
+          <div style={{ marginBottom: 12 }}>
+            <DrawerClimbHeader climb={currentClimb} boardDetails={boardDetails} />
+          </div>
         )}
         {currentClimb && isLoading && (
           <Flex align="center" justify="center" gap={8} style={{ marginBottom: 12 }}>

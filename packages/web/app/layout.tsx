@@ -10,20 +10,25 @@ import { NavigationLoadingProvider } from './components/providers/navigation-loa
 import PersistentSessionWrapper from './components/providers/persistent-session-wrapper';
 import { antdTheme } from './theme/antd-theme';
 import './components/index.css';
+import type { Viewport } from 'next';
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  themeColor: '#ffffff',
+};
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      </head>
       <body style={{ margin: 0 }}>
         <Analytics />
         <QueryClientProvider>
           <SessionProviderWrapper>
             <AntdRegistry>
               <ConfigProvider theme={antdTheme}>
-                <App>
+                <App style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column' }}>
                   <PersistentSessionWrapper>
                     <NavigationLoadingProvider>{children}</NavigationLoadingProvider>
                   </PersistentSessionWrapper>

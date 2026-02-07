@@ -273,7 +273,7 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
               <CreateModeButtons />
             ) : (
               <>
-                {angle !== undefined && <AngleSelector boardName={boardDetails.board_name} currentAngle={angle} currentClimb={currentClimb} />}
+                {angle !== undefined && <AngleSelector boardName={boardDetails.board_name} boardDetails={boardDetails} currentAngle={angle} currentClimb={currentClimb} />}
 
                 {/* Desktop: show Create Climb button */}
                 {createClimbUrl && (

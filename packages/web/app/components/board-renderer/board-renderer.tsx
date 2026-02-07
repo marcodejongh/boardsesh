@@ -43,7 +43,7 @@ const BoardRenderer = React.memo(
       : `${styles.svg} ${styles.svgAutoHeight}`;
 
     // Only compute maxHeight when not using fillHeight
-    const svgStyle = fillHeight ? undefined : { maxHeight: thumbnail ? '10vh' : (maxHeight ?? '55vh') };
+    const svgStyle = fillHeight ? undefined : { maxHeight: maxHeight ?? (thumbnail ? '10vh' : '55vh') };
 
     return (
       <svg

@@ -75,6 +75,11 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
     climbUuid: currentClimb?.uuid ?? '',
   });
 
+  const currentQueueIndex = currentClimbQueueItem
+    ? queue.findIndex(item => item.uuid === currentClimbQueueItem.uuid)
+    : -1;
+  const remainingQueueCount = currentQueueIndex >= 0 ? queue.length - currentQueueIndex : queue.length;
+
   // Wake lock when drawer is open
   useWakeLock(isOpen);
 
@@ -169,6 +174,7 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
       open={isOpen}
       onClose={handleClose}
       closable={false}
+      push={false}
       swipeRegion="body"
       swipeEnabled={!isActionsOpen && !isQueueOpen}
       showDragHandle={true}
@@ -271,7 +277,7 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
           <TickButton currentClimb={currentClimb} angle={angle} boardDetails={boardDetails} buttonType="text" />
 
           {/* Queue */}
-          <Badge count={queue.length} overflowCount={99} showZero={false} color="cyan">
+          <Badge count={remainingQueueCount} overflowCount={99} showZero={false} color="cyan">
             <Button
               type="text"
               icon={<UnorderedListOutlined />}
