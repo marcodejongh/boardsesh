@@ -11,7 +11,10 @@ export interface TabNavigationState {
 
 let dbPromise: Promise<IDBPDatabase> | null = null;
 
-const initDB = async (): Promise<IDBPDatabase> => {
+const initDB = async (): Promise<IDBPDatabase | null> => {
+  if (typeof window === 'undefined' || !window.indexedDB) {
+    return null;
+  }
   if (!dbPromise) {
     dbPromise = openDB(DB_NAME, DB_VERSION, {
       upgrade(db) {
@@ -30,6 +33,7 @@ const initDB = async (): Promise<IDBPDatabase> => {
 export const getTabNavigationState = async (basePath: string): Promise<TabNavigationState | null> => {
   try {
     const db = await initDB();
+    if (!db) return null;
     return await db.get(STORE_NAME, basePath);
   } catch (error) {
     console.error('Failed to get tab navigation state:', error);
@@ -43,6 +47,7 @@ export const getTabNavigationState = async (basePath: string): Promise<TabNaviga
 export const saveTabNavigationState = async (basePath: string, state: TabNavigationState): Promise<void> => {
   try {
     const db = await initDB();
+    if (!db) return;
     await db.put(STORE_NAME, state, basePath);
   } catch (error) {
     console.error('Failed to save tab navigation state:', error);
