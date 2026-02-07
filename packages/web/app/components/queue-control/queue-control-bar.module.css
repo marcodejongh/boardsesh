@@ -73,5 +73,36 @@
 
 /* Swipe container for mobile navigation */
 .swipeContainer {
-  touch-action: pan-y;
+  touch-action: manipulation;
+}
+
+/* Clip container for text swipe — hides overflow during slide */
+.textSwipeClip {
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;
+  position: relative;
+}
+
+/* Peek text — absolutely positioned to slide in from the edge during swipe */
+.peekText {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  cursor: default;
+  pointer-events: none;
+}
+
+@keyframes thumbnailFadeIn {
+  from { opacity: 0; transform: scale(0.85); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.thumbnailEnter {
+  animation: thumbnailFadeIn 120ms ease-out;
 }
