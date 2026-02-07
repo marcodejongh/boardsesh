@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { InputNumber, Row, Col, Select, Switch, Alert, Typography, Tooltip, Divider, Button } from 'antd';
+import { InputNumber, Row, Col, Select, Switch, Alert, Typography, Tooltip, Button } from 'antd';
 import { LoginOutlined, SortAscendingOutlined } from '@ant-design/icons';
 import { TENSION_KILTER_GRADES } from '@/app/lib/board-data';
 import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
@@ -9,7 +9,6 @@ import { useBoardProvider } from '@/app/components/board-provider/board-provider
 import SearchClimbNameInput from './search-climb-name-input';
 import SetterNameSelect from './setter-name-select';
 import ClimbHoldSearchForm from './climb-hold-search-form';
-import RecentSearchesList from './recent-searches-list';
 import { BoardDetails } from '@/app/lib/types';
 import AuthModal from '@/app/components/auth/auth-modal';
 import {
@@ -28,7 +27,6 @@ const KILTER_HOMEWALL_LAYOUT_ID = 8;
 interface AccordionSearchFormProps {
   boardDetails: BoardDetails;
   defaultActiveKey?: string[];
-  showRecentSearches?: boolean;
 }
 
 interface SectionConfig {
@@ -43,7 +41,6 @@ interface SectionConfig {
 const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
   boardDetails,
   defaultActiveKey = ['climb'],
-  showRecentSearches = true,
 }) => {
   const { uiSearchParams, updateFilters } = useUISearchParams();
   const { isAuthenticated } = useBoardProvider();
@@ -176,12 +173,6 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
             </div>
           )}
 
-          {showRecentSearches && (
-            <>
-              <Divider className={styles.recentDivider}>Recent</Divider>
-              <RecentSearchesList />
-            </>
-          )}
         </div>
       ),
     },

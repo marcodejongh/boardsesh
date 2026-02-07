@@ -1,0 +1,56 @@
+.container {
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+  white-space: nowrap;
+}
+
+.container::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}
+
+.pillList {
+  display: inline-flex;
+  gap: 6px;
+  padding: 2px 0;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: 9999px;
+  border: 1px solid var(--ant-color-border, #D1D5DB);
+  background: var(--ant-color-bg-container, #FFFFFF);
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ant-color-text-secondary, #4B5563);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 150ms ease, border-color 150ms ease;
+  flex-shrink: 0;
+}
+
+.pill:hover {
+  background: var(--ant-color-bg-text-hover, #F3F4F6);
+  border-color: var(--ant-color-text-secondary, #9CA3AF);
+}
+
+.pill:active {
+  background: var(--ant-color-bg-text-active, #E5E7EB);
+}
+
+.pillIcon {
+  font-size: 10px;
+  color: var(--ant-color-text-quaternary, #9CA3AF);
+}
+
+.pillLabel {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
