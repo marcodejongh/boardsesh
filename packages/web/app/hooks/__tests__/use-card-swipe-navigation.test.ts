@@ -295,6 +295,71 @@ describe('useCardSwipeNavigation', () => {
     });
   });
 
+  describe('prop changes during animation', () => {
+    it('ignores canSwipeNext changing to false during exit animation', () => {
+      const options = createDefaultOptions();
+      const { result, rerender } = renderHook(
+        (props) => useCardSwipeNavigation(props),
+        { initialProps: options },
+      );
+
+      // Commit horizontal direction
+      act(() => {
+        capturedSwipeableConfig.onSwiping({ deltaX: -15, deltaY: 0 });
+      });
+
+      // Trigger left swipe past threshold (starts exit animation)
+      act(() => {
+        capturedSwipeableConfig.onSwipedLeft({ deltaX: -100 });
+      });
+
+      expect(options.onSwipeNext).toHaveBeenCalledTimes(1);
+      expect(result.current.isAnimating).toBe(true);
+
+      // Change canSwipeNext to false during animation
+      rerender({ ...options, canSwipeNext: false });
+
+      // Animation should still be in progress (callback was already called)
+      expect(result.current.isAnimating).toBe(true);
+
+      // Let the animation complete
+      act(() => {
+        vi.advanceTimersByTime(EXIT_DURATION);
+      });
+
+      expect(result.current.isAnimating).toBe(false);
+    });
+
+    it('respects canSwipeNext changing to false before swipe completes', () => {
+      const options = createDefaultOptions();
+      const { result, rerender } = renderHook(
+        (props) => useCardSwipeNavigation(props),
+        { initialProps: options },
+      );
+
+      // Commit horizontal direction
+      act(() => {
+        capturedSwipeableConfig.onSwiping({ deltaX: -15, deltaY: 0 });
+      });
+
+      // Start swiping left (below threshold)
+      act(() => {
+        capturedSwipeableConfig.onSwiping({ deltaX: -40, deltaY: 0 });
+      });
+      expect(result.current.swipeOffset).toBe(-40);
+
+      // Change canSwipeNext to false before swipe completes
+      rerender({ ...options, canSwipeNext: false });
+
+      // Next swiping event should constrain offset to 0
+      act(() => {
+        capturedSwipeableConfig.onSwiping({ deltaX: -50, deltaY: 0 });
+      });
+
+      expect(result.current.swipeOffset).toBe(0);
+    });
+  });
+
   describe('reset and clear', () => {
     it('resetSwipe resets all state to initial', () => {
       const options = createDefaultOptions();

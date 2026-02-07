@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Button, Badge, Typography, Spin } from 'antd';
+import { Button, Typography, Spin } from 'antd';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import { SearchOutlined } from '@ant-design/icons';
 import SearchForm from './search-form';
@@ -47,15 +47,7 @@ const SearchButton = ({ boardDetails }: { boardDetails: BoardDetails }) => {
 
   return (
     <>
-      <Badge
-        count={hasActiveFilters ? totalSearchResultCount : 0}
-        overflowCount={9999}
-        showZero={hasActiveFilters}
-        color="cyan"
-        style={{ zIndex: 100 }}
-      >
-        <Button id="onboarding-search-button" type="default" icon={<SearchOutlined />} onClick={() => setIsOpen(true)} />
-      </Badge>
+      <Button id="onboarding-search-button" type="default" icon={<SearchOutlined />} onClick={() => setIsOpen(true)} />
 
       <SwipeableDrawer
         title={drawerTitle}

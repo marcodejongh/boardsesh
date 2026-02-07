@@ -3,8 +3,8 @@
   justify-content: space-around;
   align-items: center;
   width: 100%;
-  border-top: 1px solid var(--neutral-200, #e5e7eb);
-  background-color: var(--semantic-surface, #fff);
+  border-top: 1px solid var(--neutral-200);
+  background-color: var(--semantic-surface);
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 

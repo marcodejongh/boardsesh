@@ -13,6 +13,7 @@ import { useQueueContext } from '../graphql-queue';
 import { useFavorite } from '../climb-actions';
 import { themeTokens } from '@/app/theme/theme-config';
 import { getGradeColor } from '@/app/lib/grade-colors';
+import climbListItemStyles from './climb-list-item.module.css';
 
 const { Text } = Typography;
 
@@ -267,15 +268,16 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
       {/* Actions Drawer */}
       <SwipeableDrawer
         title={
-          <div style={{ display: 'flex', alignItems: 'center', gap: themeTokens.spacing[1], margin: '0 -16px' }}>
-            <div style={{ width: 86, flexShrink: 0 }}>
-              <ClimbThumbnail boardDetails={boardDetails} currentClimb={climb} />
+          <div className={climbListItemStyles.drawerHeader}>
+            <div style={{ flexShrink: 0, maxWidth: 100 }}>
+              <ClimbThumbnail boardDetails={boardDetails} currentClimb={climb} maxHeight="150px" />
             </div>
             <div style={{ minWidth: 0, flex: 1 }}>
               <Text
                 strong
                 style={{
                   display: 'block',
+                  fontSize: themeTokens.typography.fontSize.sm * 2,
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
@@ -283,36 +285,10 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
               >
                 {climb.name}
               </Text>
-              <Text type="secondary" style={{ fontSize: themeTokens.typography.fontSize.xs }}>
+              <Text type="secondary" style={{ fontSize: themeTokens.typography.fontSize.xs * 2 }}>
                 {climb.difficulty} {hasQuality ? `${climb.quality_average}\u2605` : ''}
               </Text>
             </div>
-            {vGrade ? (
-              <Text
-                style={{
-                  fontSize: themeTokens.typography.fontSize['2xl'],
-                  fontWeight: themeTokens.typography.fontWeight.bold,
-                  lineHeight: 1,
-                  color: gradeColor ?? themeTokens.neutral[500],
-                  marginLeft: 'auto',
-                  flexShrink: 0,
-                }}
-              >
-                {vGrade}
-              </Text>
-            ) : climb.difficulty ? (
-              <Text
-                type="secondary"
-                style={{
-                  fontSize: themeTokens.typography.fontSize.sm,
-                  fontWeight: themeTokens.typography.fontWeight.semibold,
-                  marginLeft: 'auto',
-                  flexShrink: 0,
-                }}
-              >
-                {climb.difficulty}
-              </Text>
-            ) : null}
           </div>
         }
         placement="bottom"

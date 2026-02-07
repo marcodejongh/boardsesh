@@ -155,16 +155,6 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
   ];
 
   const mobileMenuItems: MenuProps['items'] = [
-    ...(createClimbUrl ? [{
-      key: 'create-climb',
-      icon: <PlusOutlined />,
-      label: <Link href={createClimbUrl}>Create Climb</Link>,
-    }] : []),
-    ...(session?.user && playlistsUrl && !isMoonboard ? [{
-      key: 'playlists',
-      icon: <TagOutlined />,
-      label: <Link href={playlistsUrl}>My Playlists</Link>,
-    }] : []),
     ...(session?.user ? [
       ...(!isMoonboard ? [{
         key: 'classify-holds',

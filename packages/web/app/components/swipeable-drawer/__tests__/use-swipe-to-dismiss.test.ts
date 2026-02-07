@@ -220,6 +220,68 @@ describe('use-swipe-to-dismiss', () => {
       expect(result.current.dragOffset).toBe(offsetAfterDismiss);
     });
 
+    it('dismisses on right swipe for placement="right"', () => {
+      const onClose = vi.fn();
+      renderHook(() =>
+        useSwipeToDismiss({ placement: 'right', onClose, dismissThreshold: 120 }),
+      );
+
+      // Simulate swiping right past threshold
+      act(() => {
+        capturedSwipeableConfig.onSwiping({ deltaX: 130, deltaY: 0, dir: 'Right' });
+      });
+      act(() => {
+        capturedSwipeableConfig.onSwiped({ deltaX: 130, deltaY: 0, dir: 'Right' });
+      });
+
+      expect(onClose).not.toHaveBeenCalled();
+      act(() => {
+        vi.advanceTimersByTime(300);
+      });
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('dismisses on left swipe for placement="left"', () => {
+      const onClose = vi.fn();
+      renderHook(() =>
+        useSwipeToDismiss({ placement: 'left', onClose, dismissThreshold: 120 }),
+      );
+
+      // For left placement, dismiss direction is 'Left' and getDelta returns -deltaX
+      // So swiping left (negative deltaX) produces positive delta
+      act(() => {
+        capturedSwipeableConfig.onSwiping({ deltaX: -130, deltaY: 0, dir: 'Left' });
+      });
+      act(() => {
+        capturedSwipeableConfig.onSwiped({ deltaX: -130, deltaY: 0, dir: 'Left' });
+      });
+
+      expect(onClose).not.toHaveBeenCalled();
+      act(() => {
+        vi.advanceTimersByTime(300);
+      });
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('snaps back on horizontal swipe below threshold for placement="right"', () => {
+      const onClose = vi.fn();
+      const { result } = renderHook(() =>
+        useSwipeToDismiss({ placement: 'right', onClose, dismissThreshold: 120 }),
+      );
+
+      // Swipe right below threshold
+      act(() => {
+        capturedSwipeableConfig.onSwiping({ deltaX: 50, deltaY: 0, dir: 'Right' });
+      });
+      expect(result.current.dragOffset).toBe(50);
+
+      act(() => {
+        capturedSwipeableConfig.onSwiped({ deltaX: 50, deltaY: 0, dir: 'Right' });
+      });
+      expect(result.current.dragOffset).toBe(0);
+      expect(onClose).not.toHaveBeenCalled();
+    });
+
     it('respects custom threshold', () => {
       const onClose = vi.fn();
       renderHook(() =>

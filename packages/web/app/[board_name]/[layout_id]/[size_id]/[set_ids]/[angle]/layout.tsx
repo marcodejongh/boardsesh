@@ -146,7 +146,7 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
   const boardDetails = getBoardDetailsUniversal(parsedParams);
 
   return (
-    <Layout style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', padding: 0, background: '#fff' }}>
+    <Layout style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', padding: 0, background: 'var(--semantic-surface)' }}>
       <BoardSessionBridge boardDetails={boardDetails} parsedParams={parsedParams}>
         <ConnectionSettingsProvider>
           <GraphQLQueueProvider parsedParams={parsedParams} boardDetails={boardDetails}>

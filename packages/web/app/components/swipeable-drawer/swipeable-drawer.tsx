@@ -70,7 +70,7 @@ const SwipeableDrawer: React.FC<SwipeableDrawerProps> = ({
     afterOpenChange: hookAfterOpenChange,
   } = useSwipeToDismiss({
     placement,
-    onClose: onClose as (() => void) | undefined,
+    onClose: onClose ? () => onClose(undefined as unknown as React.MouseEvent) : undefined,
     dismissThreshold,
     dismissAnimationMs,
     enabled: effectiveEnabled,
