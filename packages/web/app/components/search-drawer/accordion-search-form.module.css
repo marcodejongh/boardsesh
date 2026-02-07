@@ -27,12 +27,17 @@
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1), 0 1px 4px rgba(0, 0, 0, 0.06);
 }
 
-/* Collapsed row */
+/* Header row - always visible */
 .collapsedRow {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 18px 24px;
+  transition: padding 250ms ease;
+}
+
+.collapsedRowActive {
+  padding: 24px 24px 4px 24px;
 }
 
 .collapsedLabel {
@@ -40,6 +45,14 @@
   color: var(--ant-color-text-tertiary, #9CA3AF);
   font-weight: 400;
   flex-shrink: 0;
+  transition: font-size 250ms ease, color 250ms ease;
+}
+
+.sectionCardActive .collapsedLabel {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ant-color-text, #111827);
+  line-height: 1.2;
 }
 
 .collapsedSummary {
@@ -51,19 +64,29 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  transition: opacity 200ms ease;
 }
 
-/* Expanded content */
-.expandedContent {
-  padding: 24px;
+.collapsedSummaryHidden {
+  opacity: 0;
+  pointer-events: none;
 }
 
-.sectionTitle {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--ant-color-text, #111827);
-  margin: 0 0 20px 0;
-  line-height: 1.2;
+/* Expandable content area */
+.expandableContent {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 250ms ease;
+}
+
+.expandableContentOpen {
+  grid-template-rows: 1fr;
+}
+
+.expandableInner {
+  overflow: hidden;
+  min-height: 0;
+  padding: 16px 24px 24px;
 }
 
 /* Panel content sections (reused from before) */
@@ -147,13 +170,16 @@
     padding: 16px 20px;
   }
 
-  .expandedContent {
-    padding: 20px;
+  .collapsedRowActive {
+    padding: 20px 20px 4px 20px;
   }
 
-  .sectionTitle {
+  .sectionCardActive .collapsedLabel {
     font-size: 20px;
-    margin-bottom: 16px;
+  }
+
+  .expandableInner {
+    padding: 12px 20px 20px;
   }
 
   .switchRow {
