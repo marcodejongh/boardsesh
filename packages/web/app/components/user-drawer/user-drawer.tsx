@@ -17,6 +17,7 @@ import {
   PlayCircleOutlined,
   TeamOutlined,
 } from '@ant-design/icons';
+
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -25,7 +26,6 @@ import AuthModal from '../auth/auth-modal';
 import { HoldClassificationWizard } from '../hold-classification';
 import { BoardDetails } from '@/app/lib/types';
 import { generateLayoutSlug, generateSizeSlug, generateSetSlug } from '@/app/lib/url-utils';
-import { themeTokens } from '@/app/theme/theme-config';
 import {
   type StoredSession,
   getRecentSessions,
@@ -33,8 +33,6 @@ import {
   extractBoardName,
 } from '@/app/lib/session-history-db';
 import styles from './user-drawer.module.css';
-
-const { Text } = Typography;
 
 interface UserDrawerProps {
   boardDetails: BoardDetails;
@@ -89,6 +87,7 @@ export default function UserDrawer({ boardDetails, angle }: UserDrawerProps) {
   const userAvatar = session?.user?.image;
   const userName = session?.user?.name;
   const userEmail = session?.user?.email;
+  const avatarClass = session?.user ? styles.avatarLoggedIn : styles.avatarLoggedOut;
 
   return (
     <>
@@ -102,10 +101,7 @@ export default function UserDrawer({ boardDetails, angle }: UserDrawerProps) {
           size={28}
           src={userAvatar}
           icon={!userAvatar ? <UserOutlined /> : undefined}
-          style={{
-            backgroundColor: session?.user ? themeTokens.colors.primary : themeTokens.neutral[300],
-            cursor: 'pointer',
-          }}
+          className={avatarClass}
         />
       </Button>
 
@@ -115,9 +111,6 @@ export default function UserDrawer({ boardDetails, angle }: UserDrawerProps) {
         onClose={handleClose}
         closable
         width={300}
-        styles={{
-          body: { padding: `${themeTokens.spacing[3]}px ${themeTokens.spacing[2]}px` },
-        }}
         title={null}
       >
         <div className={styles.drawerBody}>
@@ -127,29 +120,20 @@ export default function UserDrawer({ boardDetails, angle }: UserDrawerProps) {
               size={64}
               src={userAvatar}
               icon={!userAvatar ? <UserOutlined /> : undefined}
-              style={{
-                backgroundColor: session?.user ? themeTokens.colors.primary : themeTokens.neutral[300],
-              }}
+              className={avatarClass}
             />
             {session?.user ? (
               <>
                 {userName && (
-                  <Text strong style={{ fontSize: themeTokens.typography.fontSize.lg }}>
+                  <Typography.Text strong className={styles.userName}>
                     {userName}
-                  </Text>
+                  </Typography.Text>
                 )}
                 {userEmail && (
-                  <Text type="secondary" style={{ fontSize: themeTokens.typography.fontSize.sm }}>
+                  <Typography.Text type="secondary" className={styles.userEmail}>
                     {userEmail}
-                  </Text>
+                  </Typography.Text>
                 )}
-                <Link
-                  href={`/crusher/${session.user.id}`}
-                  onClick={handleClose}
-                  style={{ textDecoration: 'none' }}
-                >
-                  <Button type="link" size="small">View Profile</Button>
-                </Link>
               </>
             ) : (
               <Button
@@ -178,6 +162,17 @@ export default function UserDrawer({ boardDetails, angle }: UserDrawerProps) {
               <span className={styles.menuItemLabel}>Change Board</span>
             </Link>
 
+            {session?.user && (
+              <Link
+                href={`/crusher/${session.user.id}`}
+                className={styles.menuItem}
+                onClick={handleClose}
+              >
+                <span className={styles.menuItemIcon}><LineChartOutlined /></span>
+                <span className={styles.menuItemLabel}>Profile</span>
+              </Link>
+            )}
+
             <Link
               href="/settings"
               className={styles.menuItem}
@@ -189,6 +184,7 @@ export default function UserDrawer({ boardDetails, angle }: UserDrawerProps) {
 
             {!isMoonboard && (
               <button
+                type="button"
                 className={styles.menuItem}
                 onClick={() => {
                   handleClose();
@@ -216,26 +212,17 @@ export default function UserDrawer({ boardDetails, angle }: UserDrawerProps) {
           {recentSessions.length > 0 && (
             <>
               <div className={styles.divider} />
-              <Text
-                type="secondary"
-                style={{
-                  fontSize: themeTokens.typography.fontSize.xs,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                  fontWeight: themeTokens.typography.fontWeight.semibold,
-                  padding: `${themeTokens.spacing[1]}px ${themeTokens.spacing[4]}px`,
-                  display: 'block',
-                }}
-              >
+              <Typography.Text type="secondary" className={styles.sectionLabel}>
                 Recent Sessions
-              </Text>
+              </Typography.Text>
               {recentSessions.slice(0, 5).map((storedSession) => (
                 <button
+                  type="button"
                   key={storedSession.id}
                   className={styles.recentItem}
                   onClick={() => handleResumeSession(storedSession)}
                 >
-                  <HistoryOutlined style={{ color: themeTokens.neutral[400], fontSize: 16 }} />
+                  <HistoryOutlined className={styles.recentItemIcon} />
                   <div className={styles.recentItemInfo}>
                     <div className={styles.recentItemName}>
                       {storedSession.name || `${extractBoardName(storedSession.boardPath)} Session`}
@@ -248,7 +235,7 @@ export default function UserDrawer({ boardDetails, angle }: UserDrawerProps) {
                       {' '}{formatRelativeTime(storedSession.lastActivity || storedSession.createdAt)}
                     </div>
                   </div>
-                  <PlayCircleOutlined style={{ color: themeTokens.colors.primary, fontSize: 16 }} />
+                  <PlayCircleOutlined className={styles.recentItemAction} />
                 </button>
               ))}
             </>
@@ -275,23 +262,12 @@ export default function UserDrawer({ boardDetails, angle }: UserDrawerProps) {
             <span className={styles.menuItemLabel}>About</span>
           </Link>
 
-          {/* Profile link in menu (when logged in) */}
-          {session?.user && (
-            <Link
-              href={`/crusher/${session.user.id}`}
-              className={styles.menuItem}
-              onClick={handleClose}
-            >
-              <span className={styles.menuItemIcon}><LineChartOutlined /></span>
-              <span className={styles.menuItemLabel}>Profile</span>
-            </Link>
-          )}
-
           {/* Logout */}
           {session?.user && (
             <>
               <div className={styles.divider} />
               <button
+                type="button"
                 className={`${styles.menuItem} ${styles.dangerItem}`}
                 onClick={handleSignOut}
               >
