@@ -42,7 +42,7 @@
 }
 
 .labelIcon {
-  color: #8C4A52;
+  color: var(--color-primary);
   font-size: 14px;
 }
 
@@ -121,8 +121,8 @@
 }
 
 .resultBadge {
-  background-color: #F7F2F3;
-  color: #7A3F47;
+  background-color: var(--semantic-selected);
+  color: var(--color-primary-hover);
   padding: 2px 10px;
   border-radius: 12px;
   font-size: 13px;

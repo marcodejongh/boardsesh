@@ -220,7 +220,7 @@ const GlobalQueueControlBarInner: React.FC<{
                 <Space>
                   {/* Party indicator or queue count */}
                   {isPartyMode ? (
-                    <Badge count={userCount} size="small" color="#8C4A52">
+                    <Badge count={userCount} size="small" color={themeTokens.colors.primary}>
                       <Button
                         icon={<TeamOutlined />}
                         type="primary"
@@ -228,7 +228,7 @@ const GlobalQueueControlBarInner: React.FC<{
                       />
                     </Badge>
                   ) : (
-                    <Badge count={queue.length} overflowCount={99} showZero={false} color="#8C4A52">
+                    <Badge count={queue.length} overflowCount={99} showZero={false} color={themeTokens.colors.primary}>
                       <Button
                         icon={<UnorderedListOutlined />}
                         onClick={onQueueClick}

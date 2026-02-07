@@ -8,12 +8,12 @@ export const themeTokens = {
     primaryHover: '#7A3F47', // Darker rose
     primaryActive: '#6B353D', // Deep dark rose
     secondary: '#6B7280', // Neutral grey for info/secondary
-    success: '#10B981', // Emerald-500
-    successBg: '#ECFDF5',
-    warning: '#F59E0B',
-    warningBg: '#FFFBEB',
-    error: '#EF4444',
-    errorBg: '#FEF2F2',
+    success: '#6B9080', // Muted sage green
+    successBg: '#EFF5F2',
+    warning: '#C4943C', // Muted amber
+    warningBg: '#FAF5EC',
+    error: '#B8524C', // Muted brick red
+    errorBg: '#F9EFEE',
     purple: '#7C3AED', // For mirror button
     purpleHover: '#6D28D9',
   },

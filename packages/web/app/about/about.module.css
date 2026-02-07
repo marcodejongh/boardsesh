@@ -1,8 +1,4 @@
-/*
- * Color values match themeTokens from theme-config.ts
- * CSS modules cannot import JS, so hex values are used directly
- * (same pattern as index.css)
- */
+/* Color values use CSS custom properties defined in index.css (derived from theme-config.ts) */
 
 .pageLayout {
   min-height: 100vh;
@@ -61,19 +57,19 @@
 }
 
 .warningIcon {
-  color: #f59e0b;
+  color: var(--color-warning);
 }
 
 .errorIcon {
-  color: #ef4444;
+  color: var(--color-error);
 }
 
 .successIcon {
-  color: #10b981;
+  color: var(--color-success);
 }
 
 .primaryIcon {
-  color: #8c4a52;
+  color: var(--color-primary);
 }
 
 .featureList {

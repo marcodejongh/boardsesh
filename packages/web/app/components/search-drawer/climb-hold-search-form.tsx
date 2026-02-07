@@ -5,6 +5,7 @@ import { Select, Typography, Space, Tag } from 'antd';
 import { CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import BoardHeatmap from '../board-renderer/board-heatmap';
 import { track } from '@vercel/analytics';
+import { themeTokens } from '@/app/theme/theme-config';
 import styles from './search-form.module.css';
 
 const { Text } = Typography;
@@ -27,8 +28,8 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
       } else {
         updatedHoldsFilter[holdId] = {
           state: selectedState,
-          color: selectedState === 'ANY' ? '#8C4A52' : '#EF4444',
-          displayColor: selectedState === 'ANY' ? '#8C4A52' : '#EF4444',
+          color: selectedState === 'ANY' ? themeTokens.colors.primary : themeTokens.colors.error,
+          displayColor: selectedState === 'ANY' ? themeTokens.colors.primary : themeTokens.colors.error,
         };
       }
     }
@@ -39,8 +40,8 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
   };
 
   const stateItems = [
-    { value: 'ANY', label: 'Include', icon: <CheckCircleOutlined style={{ color: '#8C4A52' }} /> },
-    { value: 'NOT', label: 'Exclude', icon: <CloseCircleOutlined style={{ color: '#EF4444' }} /> },
+    { value: 'ANY', label: 'Include', icon: <CheckCircleOutlined style={{ color: themeTokens.colors.primary }} /> },
+    { value: 'NOT', label: 'Exclude', icon: <CloseCircleOutlined style={{ color: themeTokens.colors.error }} /> },
   ];
 
   const selectedHoldsCount = Object.keys(uiSearchParams.holdsFilter || {}).length;
@@ -74,7 +75,7 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
             }))}
           />
           {anyHoldsCount > 0 && <Tag color="default" style={{ margin: 0 }}>{anyHoldsCount} in</Tag>}
-          {notHoldsCount > 0 && <Tag color="red" style={{ margin: 0 }}>{notHoldsCount} out</Tag>}
+          {notHoldsCount > 0 && <Tag color={themeTokens.colors.error} style={{ margin: 0 }}>{notHoldsCount} out</Tag>}
         </Space>
       </div>
 

@@ -27,8 +27,9 @@
   --semantic-selected-border: #8C4A52;
 
   /* Status colors */
-  --color-success: #10B981;
-  --color-error: #EF4444;
+  --color-success: #6B9080;
+  --color-error: #B8524C;
+  --color-warning: #C4943C;
 
   /* Borders */
   --border-subtle: rgba(0, 0, 0, 0.06);
@@ -101,8 +102,8 @@ button,
 
 /* Selected state styling utility class - use higher specificity instead of !important */
 .selected-item.selected-item {
-  background-color: #F7F2F3;
-  border-color: #8C4A52;
+  background-color: var(--semantic-selected);
+  border-color: var(--color-primary);
 }
 
 /* Custom scrollbar for webkit browsers */
@@ -112,24 +113,24 @@ button,
 }
 
 ::-webkit-scrollbar-track {
-  background: #F3F4F6;
+  background: var(--neutral-100);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #D1D5DB;
+  background: var(--neutral-300);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #9CA3AF;
+  background: var(--neutral-400);
 }
 
 /* Firefox scrollbar properties are set in the html rule above */
 
 /* Focus styles for accessibility */
 :focus-visible {
-  outline: 2px solid #8C4A52;
+  outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
 
@@ -140,7 +141,7 @@ button,
 
 /* Header shadow utility */
 .header-shadow {
-  border-bottom: 1px solid #E5E7EB;
+  border-bottom: 1px solid var(--neutral-200);
   position: relative;
   z-index: 10;
 }
@@ -230,7 +231,7 @@ button,
 /* Loading skeleton animation improvement */
 .ant-skeleton-content .ant-skeleton-title,
 .ant-skeleton-content .ant-skeleton-paragraph > li {
-  background: linear-gradient(90deg, #F3F4F6 25%, #E5E7EB 37%, #F3F4F6 63%);
+  background: linear-gradient(90deg, var(--neutral-100) 25%, var(--neutral-200) 37%, var(--neutral-100) 63%);
   background-size: 400% 100%;
   animation: skeleton-loading 1.4s ease infinite;
 }
@@ -273,12 +274,12 @@ button,
 /* Override Atlaskit drag-and-drop indicator color to match theme
    Note: !important is required here as third-party library sets inline styles */
 [data-drop-indicator-edge] {
-  --indicator-color: #8C4A52 !important;
-  background-color: #8C4A52 !important;
+  --indicator-color: var(--color-primary) !important;
+  background-color: var(--color-primary) !important;
 }
 
 /* Alternative selector for drop indicator line */
 .pragmatic-drop-indicator,
 [class*="drop-indicator"] {
-  background-color: #8C4A52 !important;
+  background-color: var(--color-primary) !important;
 }
