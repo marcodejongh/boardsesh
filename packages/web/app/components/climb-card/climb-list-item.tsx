@@ -12,6 +12,7 @@ import { AscentStatus } from '../queue-control/queue-list-item';
 import { ClimbActions } from '../climb-actions';
 import { useQueueContext } from '../graphql-queue';
 import { useFavorite } from '../climb-actions';
+import { useDoubleTap } from '@/app/lib/hooks/use-double-tap';
 import { themeTokens } from '@/app/theme/theme-config';
 import { getGradeColor, getGradeTintColor } from '@/app/lib/grade-colors';
 
@@ -35,6 +36,7 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
   const [isActionsOpen, setIsActionsOpen] = useState(false);
   const { addToQueue } = useQueueContext();
   const { isFavorited, toggleFavorite } = useFavorite({ climbUuid: climb.uuid });
+  const { ref: doubleTapRef, onDoubleClick: handleDoubleClick } = useDoubleTap(onSelect);
 
   const handleSwipeLeft = useCallback(() => {
     // Swipe left = add to queue
@@ -169,7 +171,11 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
         {/* Swipeable content */}
         <div
           {...swipeHandlers}
-          onClick={onSelect}
+          ref={(node: HTMLDivElement | null) => {
+            doubleTapRef(node);
+            swipeHandlers.ref(node);
+          }}
+          onDoubleClick={handleDoubleClick}
           style={{
             display: 'flex',
             alignItems: 'center',
