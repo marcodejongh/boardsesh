@@ -90,7 +90,7 @@ export function TickAction({
   const iconSize = size === 'small' ? 14 : size === 'large' ? 20 : 16;
 
   const icon = <CheckOutlined style={{ fontSize: iconSize }} />;
-  const badgeColor = '#9CA3AF';
+  const badgeColor = themeTokens.neutral[400];
 
   const drawers = (
     <>
