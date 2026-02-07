@@ -683,7 +683,7 @@ Additions:
 
 ---
 
-## Phase 5: Party Mode & LED as Drawer
+## Phase 5: Party Mode & LED as Drawer [DONE]
 
 ### What changes
 Convert party mode into a bottom drawer (instead of top drawer) and integrate LED connection into it.
@@ -1061,14 +1061,14 @@ Board layout.tsx (server component)
 - [x] SendClimbToBoardButton dynamic import only loads on desktop
 
 ### Phase 5
-- [ ] Party drawer opens from bottom (not top)
-- [ ] Party drawer has 3 tabs: Start, Join, Connect to Board
-- [ ] LED connection tab shows Bluefy recommendation on iOS
-- [ ] Bluetooth hook works from party drawer LED tab
-- [ ] Start/join/leave session flows work unchanged
-- [ ] LED auto-sends on climb change (existing behavior preserved)
-- [ ] Wake lock activates when Bluetooth connected
-- [ ] No duplicate Bluetooth connections from multiple hook instances
+- [x] Party drawer opens from bottom (not top)
+- [x] Party drawer has 3 tabs: Start, Join, Connect to Board
+- [x] LED connection tab shows Bluefy recommendation on iOS
+- [x] Bluetooth hook works from party drawer LED tab
+- [x] Start/join/leave session flows work unchanged
+- [x] LED auto-sends on climb change (existing behavior preserved)
+- [x] Wake lock activates when Bluetooth connected
+- [x] No duplicate Bluetooth connections from multiple hook instances
 
 ### Phase 6
 - [ ] Queue list items visually match compact climb list items (height, typography)

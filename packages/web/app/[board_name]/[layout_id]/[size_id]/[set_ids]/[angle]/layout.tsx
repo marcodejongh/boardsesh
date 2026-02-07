@@ -17,6 +17,7 @@ import { BoardSessionBridge } from '@/app/components/persistent-session';
 import { Metadata } from 'next';
 import BoardPageSkeleton from '@/app/components/board-page/board-page-skeleton';
 import BottomTabBar from '@/app/components/bottom-tab-bar/bottom-tab-bar';
+import { BluetoothProvider } from '@/app/components/board-bluetooth-control/bluetooth-context';
 
 // Helper to get board details for any board type
 function getBoardDetailsUniversal(parsedParams: ParsedBoardRouteParameters): BoardDetails {
@@ -151,30 +152,32 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
         <ConnectionSettingsProvider>
           <GraphQLQueueProvider parsedParams={parsedParams} boardDetails={boardDetails}>
             <PartyProvider>
-              <BoardSeshHeader boardDetails={boardDetails} angle={angle} />
+              <BluetoothProvider boardDetails={boardDetails}>
+                <BoardSeshHeader boardDetails={boardDetails} angle={angle} />
 
-              <Content
-                id="content-for-scrollable"
-                style={{
-                  flex: 1,
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  overflowX: 'hidden',
-                  paddingLeft: '10px',
-                  paddingRight: '10px',
-                  paddingTop: 'calc(max(8dvh, 48px) + env(safe-area-inset-top, 0px))',
-                  paddingBottom: 'calc(120px + env(safe-area-inset-bottom, 0px))',
-                }}
-              >
-                <Suspense fallback={<BoardPageSkeleton aspectRatio={boardDetails.boardWidth / boardDetails.boardHeight} />}>
-                  {children}
-                </Suspense>
-              </Content>
+                <Content
+                  id="content-for-scrollable"
+                  style={{
+                    flex: 1,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    overflowX: 'hidden',
+                    paddingLeft: '10px',
+                    paddingRight: '10px',
+                    paddingTop: 'calc(max(8dvh, 48px) + env(safe-area-inset-top, 0px))',
+                    paddingBottom: 'calc(120px + env(safe-area-inset-bottom, 0px))',
+                  }}
+                >
+                  <Suspense fallback={<BoardPageSkeleton aspectRatio={boardDetails.boardWidth / boardDetails.boardHeight} />}>
+                    {children}
+                  </Suspense>
+                </Content>
 
-              <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 10 }}>
-                <QueueControlBar boardDetails={boardDetails} angle={angle} />
-                <BottomTabBar boardDetails={boardDetails} angle={angle} />
-              </div>
+                <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 10 }}>
+                  <QueueControlBar boardDetails={boardDetails} angle={angle} />
+                  <BottomTabBar boardDetails={boardDetails} angle={angle} />
+                </div>
+              </BluetoothProvider>
             </PartyProvider>
           </GraphQLQueueProvider>
         </ConnectionSettingsProvider>
