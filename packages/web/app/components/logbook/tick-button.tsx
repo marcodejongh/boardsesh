@@ -52,7 +52,7 @@ export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boa
         count={badgeCount > 0 ? badgeCount : 0}
         overflowCount={100}
         showZero={false}
-        color={hasSuccessfulAscent ? 'cyan' : 'red'}
+        color={hasSuccessfulAscent ? 'green' : 'red'}
       >
         <Button id="button-tick" type={buttonType} icon={<CheckOutlined />} onClick={showDrawer} />
       </Badge>

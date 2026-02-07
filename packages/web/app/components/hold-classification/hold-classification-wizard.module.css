@@ -97,12 +97,12 @@
 }
 
 .holdTypeItemSelected {
-  background: var(--semantic-selected, #ECFEFF);
-  border-color: var(--color-primary, #06B6D4);
+  background: var(--semantic-selected, #F7F2F3);
+  border-color: var(--color-primary, #8C4A52);
 }
 
 .holdTypeItemSelected:hover {
-  background: var(--semantic-selected, #ECFEFF);
+  background: var(--semantic-selected, #F7F2F3);
 }
 
 .holdTypeLabel {
@@ -112,7 +112,7 @@
 }
 
 .holdTypeCheck {
-  color: var(--color-primary, #06B6D4);
+  color: var(--color-primary, #8C4A52);
   font-size: 16px;
 }
 

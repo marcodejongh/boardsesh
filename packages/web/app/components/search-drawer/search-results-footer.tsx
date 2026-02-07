@@ -36,7 +36,7 @@ const SearchResultsFooter = () => {
           <Spin size="small" />
         ) : (
           <Space size={8}>
-            <FilterOutlined style={{ color: '#06B6D4' }} />
+            <FilterOutlined style={{ color: '#8C4A52' }} />
             <Text type="secondary">
               <span className={styles.resultBadge}>{(totalSearchResultCount ?? 0).toLocaleString()}</span> results
             </Text>

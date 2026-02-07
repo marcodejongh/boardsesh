@@ -8,7 +8,7 @@ const emailSchema = z.string().email();
 // Email color palette derived from design tokens
 // These are inline styles for HTML emails, so we extract the actual hex values
 const emailColors = {
-  primary: themeTokens.colors.primary, // Cyan primary
+  primary: themeTokens.colors.primary, // Muted rose primary
   textPrimary: themeTokens.neutral[800], // Dark text
   textSecondary: themeTokens.neutral[500], // Medium text
   textMuted: themeTokens.neutral[400], // Light text
