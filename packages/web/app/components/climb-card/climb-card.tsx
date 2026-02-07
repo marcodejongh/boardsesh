@@ -8,6 +8,7 @@ import ClimbTitle from './climb-title';
 import { Climb, BoardDetails } from '@/app/lib/types';
 import { ClimbActions } from '../climb-actions';
 import { themeTokens } from '@/app/theme/theme-config';
+import { getGradeTintColor } from '@/app/lib/grade-colors';
 
 type ClimbCardProps = {
   climb?: Climb;
@@ -80,14 +81,11 @@ function ClimbCardWithActions({
       <Card
         title={cardTitle}
         size="small"
-        style={{
-          borderColor: selected ? themeTokens.colors.primary : undefined,
-        }}
         styles={{
           header: { paddingTop: themeTokens.spacing[2], paddingBottom: themeTokens.spacing[1] + 2 },
           body: {
             padding: themeTokens.spacing[1] + 2,
-            backgroundColor: selected ? themeTokens.semantic.selectedLight : undefined,
+            backgroundColor: selected ? (getGradeTintColor(climb.difficulty, 'light') ?? themeTokens.semantic.selectedLight) : undefined,
           },
         }}
       >
@@ -143,14 +141,11 @@ const ClimbCardStatic = React.memo(
         <Card
           title={cardTitle}
           size="small"
-          style={{
-            borderColor: selected ? themeTokens.colors.primary : undefined,
-          }}
           styles={{
             header: { paddingTop: themeTokens.spacing[2], paddingBottom: themeTokens.spacing[1] + 2 },
             body: {
               padding: themeTokens.spacing[1] + 2,
-              backgroundColor: selected ? themeTokens.semantic.selectedLight : undefined,
+              backgroundColor: selected ? (getGradeTintColor(climb?.difficulty, 'light') ?? themeTokens.semantic.selectedLight) : undefined,
             },
           }}
           actions={actions || []}
