@@ -155,18 +155,48 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
   const canSwipeNext = !viewOnlyMode && !!nextItem;
   const canSwipePrevious = !viewOnlyMode && !!prevItem;
 
-  const { swipeHandlers, swipeOffset, isAnimating } = useCardSwipeNavigation({
+  const enterFallbackRef = useRef<NodeJS.Timeout | null>(null);
+
+  const { swipeHandlers, swipeOffset, isAnimating, animationDirection, enterDirection, clearEnterAnimation } = useCardSwipeNavigation({
     onSwipeNext: handleSwipeNext,
     onSwipePrevious: handleSwipePrevious,
     canSwipeNext,
     canSwipePrevious,
     threshold: 80,
+    delayNavigation: true,
   });
 
+  // Clear enterDirection after transition completes
+  useEffect(() => {
+    if (enterDirection) {
+      enterFallbackRef.current = setTimeout(() => {
+        clearEnterAnimation();
+      }, 170);
+    }
+    return () => {
+      if (enterFallbackRef.current) {
+        clearTimeout(enterFallbackRef.current);
+        enterFallbackRef.current = null;
+      }
+    };
+  }, [enterDirection, clearEnterAnimation]);
+
   const getSwipeTransition = () => {
+    if (enterDirection) return 'none';
     if (isAnimating) return `transform ${EXIT_DURATION}ms ease-out`;
     if (swipeOffset === 0) return `transform ${SNAP_BACK_DURATION}ms ease`;
     return 'none';
+  };
+
+  // Peek: determine which climb to preview during swipe
+  const showPeek = swipeOffset !== 0 || isAnimating;
+  const peekIsNext = animationDirection === 'left' || (animationDirection === null && swipeOffset < 0);
+  const peekItem = peekIsNext ? nextItem : prevItem;
+
+  const getPeekTransform = () => {
+    return peekIsNext
+      ? `translateX(max(0px, calc(100% + ${swipeOffset}px)))`
+      : `translateX(min(0px, calc(-100% + ${swipeOffset}px)))`;
   };
 
   const isMirrored = !!currentClimb?.mirrored;
@@ -208,9 +238,8 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
         </div>
 
         {/* Board renderer with card-swipe */}
-        <div className={styles.boardSection}>
+        <div className={styles.boardSection} {...swipeHandlers}>
           <div
-            {...swipeHandlers}
             className={styles.swipeCardContainer}
             style={{
               transform: `translateX(${swipeOffset}px)`,
@@ -226,6 +255,22 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
               />
             )}
           </div>
+          {showPeek && peekItem?.climb && (
+            <div
+              className={styles.peekBoardContainer}
+              style={{
+                transform: getPeekTransform(),
+                transition: getSwipeTransition(),
+              }}
+            >
+              <BoardRenderer
+                boardDetails={boardDetails}
+                litUpHoldsMap={peekItem.climb.litUpHoldsMap}
+                mirrored={!!peekItem.climb.mirrored}
+                fillHeight
+              />
+            </div>
+          )}
         </div>
 
         {/* Climb info below board */}

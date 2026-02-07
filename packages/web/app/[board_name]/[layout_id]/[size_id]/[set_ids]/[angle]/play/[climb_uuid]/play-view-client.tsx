@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { Button, Empty } from 'antd';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { track } from '@vercel/analytics';
@@ -111,19 +111,48 @@ const PlayViewClient: React.FC<PlayViewClientProps> = ({ boardDetails, initialCl
 
   const nextItem = getNextClimbQueueItem();
   const prevItem = getPreviousClimbQueueItem();
+  const enterFallbackRef = useRef<NodeJS.Timeout | null>(null);
 
-  const { swipeHandlers, swipeOffset, isAnimating } = useCardSwipeNavigation({
+  const { swipeHandlers, swipeOffset, isAnimating, animationDirection, enterDirection, clearEnterAnimation } = useCardSwipeNavigation({
     onSwipeNext: handleNext,
     onSwipePrevious: handlePrevious,
     canSwipeNext: !!nextItem,
     canSwipePrevious: !!prevItem,
     threshold: 80,
+    delayNavigation: true,
   });
 
+  // Clear enterDirection after transition completes
+  useEffect(() => {
+    if (enterDirection) {
+      enterFallbackRef.current = setTimeout(() => {
+        clearEnterAnimation();
+      }, 170);
+    }
+    return () => {
+      if (enterFallbackRef.current) {
+        clearTimeout(enterFallbackRef.current);
+        enterFallbackRef.current = null;
+      }
+    };
+  }, [enterDirection, clearEnterAnimation]);
+
   const getSwipeTransition = () => {
+    if (enterDirection) return 'none';
     if (isAnimating) return `transform ${EXIT_DURATION}ms ease-out`;
     if (swipeOffset === 0) return `transform ${SNAP_BACK_DURATION}ms ease`;
     return 'none';
+  };
+
+  // Peek: determine which climb to preview during swipe
+  const showPeek = swipeOffset !== 0 || isAnimating;
+  const peekIsNext = animationDirection === 'left' || (animationDirection === null && swipeOffset < 0);
+  const peekItem = peekIsNext ? nextItem : prevItem;
+
+  const getPeekTransform = () => {
+    return peekIsNext
+      ? `translateX(max(0px, calc(100% + ${swipeOffset}px)))`
+      : `translateX(min(0px, calc(-100% + ${swipeOffset}px)))`;
   };
 
   if (!displayClimb) {
@@ -173,6 +202,22 @@ const PlayViewClient: React.FC<PlayViewClientProps> = ({ boardDetails, initialCl
               fillHeight
             />
           </div>
+          {showPeek && peekItem?.climb && (
+            <div
+              className={styles.peekBoardContainer}
+              style={{
+                transform: getPeekTransform(),
+                transition: getSwipeTransition(),
+              }}
+            >
+              <BoardRenderer
+                boardDetails={boardDetails}
+                litUpHoldsMap={peekItem.climb.litUpHoldsMap}
+                mirrored={!!peekItem.climb.mirrored}
+                fillHeight
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>
