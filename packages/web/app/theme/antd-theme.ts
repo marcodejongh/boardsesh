@@ -8,7 +8,7 @@ export const antdTheme: ThemeConfig = {
     colorSuccess: themeTokens.colors.success,
     colorWarning: themeTokens.colors.warning,
     colorError: themeTokens.colors.error,
-    colorInfo: themeTokens.colors.secondary,
+    colorInfo: themeTokens.neutral[500],
 
     // Typography
     fontFamily: themeTokens.typography.fontFamily,

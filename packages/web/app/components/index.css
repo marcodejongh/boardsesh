@@ -3,8 +3,8 @@
 /* Design tokens as CSS custom properties - derived from theme-config.ts */
 :root {
   /* Primary colors */
-  --color-primary: #06B6D4;
-  --color-primary-hover: #0891B2;
+  --color-primary: #8C4A52;
+  --color-primary-hover: #7A3F47;
 
   /* Neutral palette */
   --neutral-50: #F9FAFB;
@@ -22,9 +22,9 @@
   --semantic-background: #F9FAFB;
   --semantic-surface: #FFFFFF;
   --semantic-surface-overlay: rgba(255, 255, 255, 0.95);
-  --semantic-selected: #ECFEFF;
-  --semantic-selected-light: rgba(6, 182, 212, 0.08);
-  --semantic-selected-border: #06B6D4;
+  --semantic-selected: #F7F2F3;
+  --semantic-selected-light: rgba(140, 74, 82, 0.06);
+  --semantic-selected-border: #8C4A52;
 
   /* Status colors */
   --color-success: #10B981;
@@ -101,8 +101,8 @@ button,
 
 /* Selected state styling utility class - use higher specificity instead of !important */
 .selected-item.selected-item {
-  background-color: #ECFEFF;
-  border-color: #06B6D4;
+  background-color: #F7F2F3;
+  border-color: #8C4A52;
 }
 
 /* Custom scrollbar for webkit browsers */
@@ -129,7 +129,7 @@ button,
 
 /* Focus styles for accessibility */
 :focus-visible {
-  outline: 2px solid #06B6D4;
+  outline: 2px solid #8C4A52;
   outline-offset: 2px;
 }
 
@@ -273,12 +273,12 @@ button,
 /* Override Atlaskit drag-and-drop indicator color to match theme
    Note: !important is required here as third-party library sets inline styles */
 [data-drop-indicator-edge] {
-  --indicator-color: #06B6D4 !important;
-  background-color: #06B6D4 !important;
+  --indicator-color: #8C4A52 !important;
+  background-color: #8C4A52 !important;
 }
 
 /* Alternative selector for drop indicator line */
 .pragmatic-drop-indicator,
 [class*="drop-indicator"] {
-  background-color: #06B6D4 !important;
+  background-color: #8C4A52 !important;
 }

@@ -261,7 +261,7 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
           <SendClimbToBoardButton buttonType="text" />
 
           {/* Queue */}
-          <Badge count={remainingQueueCount} overflowCount={99} showZero={false} color="cyan">
+          <Badge count={remainingQueueCount} overflowCount={99} showZero={false} color="#8C4A52">
             <Button
               type="text"
               icon={<UnorderedListOutlined />}

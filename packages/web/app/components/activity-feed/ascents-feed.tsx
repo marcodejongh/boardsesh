@@ -138,7 +138,7 @@ const GroupedFeedItem: React.FC<{ group: GroupedAscentFeedItem }> = ({ group }) 
               {boardDisplay}
             </Text>
             {group.isMirror && <Tag color="purple">Mirrored</Tag>}
-            {group.isBenchmark && <Tag color="cyan">Benchmark</Tag>}
+            {group.isBenchmark && <Tag color="default">Benchmark</Tag>}
           </Flex>
 
           {/* Rating for successful sends */}

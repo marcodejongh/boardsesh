@@ -24,7 +24,7 @@ interface ListLayoutClientProps {
 const QueueTabLabel: React.FC = () => {
   const { queue } = useQueueContext();
   return (
-    <Badge count={queue.length} overflowCount={99} showZero={false} size="small" color="cyan" offset={[8, -2]}>
+    <Badge count={queue.length} overflowCount={99} showZero={false} size="small" color="#8C4A52" offset={[8, -2]}>
       Queue
     </Badge>
   );

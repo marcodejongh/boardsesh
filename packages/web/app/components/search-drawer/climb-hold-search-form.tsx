@@ -27,8 +27,8 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
       } else {
         updatedHoldsFilter[holdId] = {
           state: selectedState,
-          color: selectedState === 'ANY' ? '#06B6D4' : '#EF4444',
-          displayColor: selectedState === 'ANY' ? '#06B6D4' : '#EF4444',
+          color: selectedState === 'ANY' ? '#8C4A52' : '#EF4444',
+          displayColor: selectedState === 'ANY' ? '#8C4A52' : '#EF4444',
         };
       }
     }
@@ -39,7 +39,7 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
   };
 
   const stateItems = [
-    { value: 'ANY', label: 'Include', icon: <CheckCircleOutlined style={{ color: '#06B6D4' }} /> },
+    { value: 'ANY', label: 'Include', icon: <CheckCircleOutlined style={{ color: '#8C4A52' }} /> },
     { value: 'NOT', label: 'Exclude', icon: <CloseCircleOutlined style={{ color: '#EF4444' }} /> },
   ];
 
@@ -73,7 +73,7 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
               ),
             }))}
           />
-          {anyHoldsCount > 0 && <Tag color="cyan" style={{ margin: 0 }}>{anyHoldsCount} in</Tag>}
+          {anyHoldsCount > 0 && <Tag color="default" style={{ margin: 0 }}>{anyHoldsCount} in</Tag>}
           {notHoldsCount > 0 && <Tag color="red" style={{ margin: 0 }}>{notHoldsCount} out</Tag>}
         </Space>
       </div>

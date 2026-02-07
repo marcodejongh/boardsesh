@@ -2,12 +2,12 @@
 // This file defines the design system used throughout the application
 
 export const themeTokens = {
-  // Brand colors - Cyan palette to match climbing board aesthetics
+  // Brand colors - Neutral grey with subtle warm red accent
   colors: {
-    primary: '#06B6D4', // Cyan-500 - lighter primary
-    primaryHover: '#0891B2', // Cyan-600
-    primaryActive: '#0E7490', // Cyan-700
-    secondary: '#22D3EE', // Cyan-400
+    primary: '#8C4A52', // Muted dusty rose - warm grey-red
+    primaryHover: '#7A3F47', // Darker rose
+    primaryActive: '#6B353D', // Deep dark rose
+    secondary: '#6B7280', // Neutral grey for info/secondary
     success: '#10B981', // Emerald-500
     successBg: '#ECFDF5',
     warning: '#F59E0B',
@@ -34,9 +34,9 @@ export const themeTokens = {
 
   // Semantic colors
   semantic: {
-    selected: '#ECFEFF', // Cyan-50 - lighter cyan
-    selectedLight: 'rgba(6, 182, 212, 0.08)', // Very light cyan for subtle highlights
-    selectedBorder: '#06B6D4', // Cyan-500 - matches primary
+    selected: '#F7F2F3', // Very light warm grey with subtle rose tint
+    selectedLight: 'rgba(140, 74, 82, 0.06)', // Very subtle rose highlight
+    selectedBorder: '#8C4A52', // Matches primary
     background: '#F9FAFB',
     surface: '#FFFFFF',
     surfaceElevated: '#FFFFFF',
