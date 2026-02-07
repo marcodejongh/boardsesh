@@ -6,6 +6,7 @@ import { UnorderedListOutlined, TeamOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import { track } from '@vercel/analytics';
 import { usePersistentSession, useIsOnBoardRoute } from '../persistent-session';
+import { BoardProvider } from '../board-provider/board-provider-context';
 import ClimbTitle from '../climb-card/climb-title';
 import ClimbThumbnail from '../climb-card/climb-thumbnail';
 import { TickButton } from '../logbook/tick-button';
@@ -96,7 +97,7 @@ const GlobalQueueControlBar: React.FC = () => {
   const canSwipeNext = !!nextItem;
   const canSwipePrevious = !!prevItem;
 
-  return (
+  const inner = (
     <GlobalQueueControlBarInner
       boardDetails={boardDetails}
       currentClimb={currentClimb}
@@ -112,6 +113,14 @@ const GlobalQueueControlBar: React.FC = () => {
       onQueueClick={handleNavigateBack}
     />
   );
+
+  // Wrap with BoardProvider so TickButton and other board-dependent
+  // components work correctly even on non-board routes like /settings
+  if (boardDetails) {
+    return <BoardProvider boardName={boardDetails.board_name}>{inner}</BoardProvider>;
+  }
+
+  return inner;
 };
 
 // Inner component that uses the hook (hooks can't be called conditionally)
