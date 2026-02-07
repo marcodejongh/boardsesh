@@ -23,8 +23,7 @@ import { ShareBoardButton } from '../board-page/share-button';
 import { TickButton } from '../logbook/tick-button';
 import QueueList, { QueueListHandle } from '../queue-control/queue-list';
 import ClimbTitle from '../climb-card/climb-title';
-import BoardRenderer from '../board-renderer/board-renderer';
-import { useCardSwipeNavigation, EXIT_DURATION, SNAP_BACK_DURATION } from '@/app/hooks/use-card-swipe-navigation';
+import SwipeBoardCarousel from '../board-renderer/swipe-board-carousel';
 import { useWakeLock } from '../board-bluetooth-control/use-wake-lock';
 import { themeTokens } from '@/app/theme/theme-config';
 import DrawerContext from '@rc-component/drawer/es/context';
@@ -155,20 +154,6 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
   const canSwipeNext = !viewOnlyMode && !!nextItem;
   const canSwipePrevious = !viewOnlyMode && !!prevItem;
 
-  const { swipeHandlers, swipeOffset, isAnimating } = useCardSwipeNavigation({
-    onSwipeNext: handleSwipeNext,
-    onSwipePrevious: handleSwipePrevious,
-    canSwipeNext,
-    canSwipePrevious,
-    threshold: 80,
-  });
-
-  const getSwipeTransition = () => {
-    if (isAnimating) return `transform ${EXIT_DURATION}ms ease-out`;
-    if (swipeOffset === 0) return `transform ${SNAP_BACK_DURATION}ms ease`;
-    return 'none';
-  };
-
   const isMirrored = !!currentClimb?.mirrored;
 
   return (
@@ -208,25 +193,20 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
         </div>
 
         {/* Board renderer with card-swipe */}
-        <div className={styles.boardSection}>
-          <div
-            {...swipeHandlers}
-            className={styles.swipeCardContainer}
-            style={{
-              transform: `translateX(${swipeOffset}px)`,
-              transition: getSwipeTransition(),
-            }}
-          >
-            {isOpen && currentClimb && (
-              <BoardRenderer
-                boardDetails={boardDetails}
-                litUpHoldsMap={currentClimb.litUpHoldsMap}
-                mirrored={isMirrored}
-                fillHeight
-              />
-            )}
-          </div>
-        </div>
+        {isOpen && currentClimb && (
+          <SwipeBoardCarousel
+            boardDetails={boardDetails}
+            currentClimb={currentClimb}
+            nextClimb={nextItem?.climb}
+            previousClimb={prevItem?.climb}
+            onSwipeNext={handleSwipeNext}
+            onSwipePrevious={handleSwipePrevious}
+            canSwipeNext={canSwipeNext}
+            canSwipePrevious={canSwipePrevious}
+            className={styles.boardSection}
+            boardContainerClassName={styles.swipeCardContainer}
+          />
+        )}
 
         {/* Climb info below board */}
         <div className={styles.climbInfoSection}>

@@ -6,12 +6,11 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { track } from '@vercel/analytics';
 import { Climb, BoardDetails, Angle } from '@/app/lib/types';
 import { useQueueContext } from '@/app/components/graphql-queue';
-import BoardRenderer from '@/app/components/board-renderer/board-renderer';
+import SwipeBoardCarousel from '@/app/components/board-renderer/swipe-board-carousel';
 import ClimbTitle from '@/app/components/climb-card/climb-title';
 import { AscentStatus } from '@/app/components/queue-control/queue-list-item';
 import { constructClimbListWithSlugs, constructPlayUrlWithSlugs } from '@/app/lib/url-utils';
 import { themeTokens } from '@/app/theme/theme-config';
-import { useCardSwipeNavigation, EXIT_DURATION, SNAP_BACK_DURATION } from '@/app/hooks/use-card-swipe-navigation';
 import styles from './play-view.module.css';
 
 type PlayViewClientProps = {
@@ -112,20 +111,6 @@ const PlayViewClient: React.FC<PlayViewClientProps> = ({ boardDetails, initialCl
   const nextItem = getNextClimbQueueItem();
   const prevItem = getPreviousClimbQueueItem();
 
-  const { swipeHandlers, swipeOffset, isAnimating } = useCardSwipeNavigation({
-    onSwipeNext: handleNext,
-    onSwipePrevious: handlePrevious,
-    canSwipeNext: !!nextItem,
-    canSwipePrevious: !!prevItem,
-    threshold: 80,
-  });
-
-  const getSwipeTransition = () => {
-    if (isAnimating) return `transform ${EXIT_DURATION}ms ease-out`;
-    if (swipeOffset === 0) return `transform ${SNAP_BACK_DURATION}ms ease`;
-    return 'none';
-  };
-
   if (!displayClimb) {
     return (
       <div className={styles.pageContainer} style={{ backgroundColor: themeTokens.semantic.background }}>
@@ -158,22 +143,18 @@ const PlayViewClient: React.FC<PlayViewClientProps> = ({ boardDetails, initialCl
             rightAddon={displayClimb && <AscentStatus climbUuid={displayClimb.uuid} fontSize={themeTokens.typography.fontSize['2xl']} />}
           />
         </div>
-        <div {...swipeHandlers} className={styles.swipeContainer}>
-          <div
-            className={styles.boardContainer}
-            style={{
-              transform: `translateX(${swipeOffset}px)`,
-              transition: getSwipeTransition(),
-            }}
-          >
-            <BoardRenderer
-              boardDetails={boardDetails}
-              litUpHoldsMap={displayClimb.litUpHoldsMap}
-              mirrored={isMirrored}
-              fillHeight
-            />
-          </div>
-        </div>
+        <SwipeBoardCarousel
+          boardDetails={boardDetails}
+          currentClimb={{ litUpHoldsMap: displayClimb.litUpHoldsMap, mirrored: isMirrored }}
+          nextClimb={nextItem?.climb}
+          previousClimb={prevItem?.climb}
+          onSwipeNext={handleNext}
+          onSwipePrevious={handlePrevious}
+          canSwipeNext={!!nextItem}
+          canSwipePrevious={!!prevItem}
+          className={styles.swipeContainer}
+          boardContainerClassName={styles.boardContainer}
+        />
       </div>
     </div>
   );
