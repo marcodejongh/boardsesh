@@ -29,8 +29,10 @@ export function BluetoothProvider({
   const { isConnected, loading, connect, disconnect, sendFramesToBoard } =
     useBoardBluetooth({ boardDetails });
 
-  const isBluetoothSupported =
-    typeof navigator !== 'undefined' && !!navigator.bluetooth;
+  const isBluetoothSupported = useMemo(
+    () => typeof navigator !== 'undefined' && !!navigator.bluetooth,
+    [],
+  );
 
   const isIOS = useMemo(
     () =>
@@ -45,16 +47,18 @@ export function BluetoothProvider({
   useEffect(() => {
     if (isConnected && currentClimbQueueItem) {
       const sendClimb = async () => {
-        const success = await sendFramesToBoard(
+        const result = await sendFramesToBoard(
           currentClimbQueueItem.climb.frames,
           !!currentClimbQueueItem.climb.mirrored,
         );
-        if (success) {
+        // undefined means send was not attempted (missing characteristic/frames/boardDetails)
+        // Only track analytics for explicit success (true) or failure (false)
+        if (result === true) {
           track('Climb Sent to Board Success', {
             climbUuid: currentClimbQueueItem.climb?.uuid,
             boardLayout: `${boardDetails.layout_name}`,
           });
-        } else {
+        } else if (result === false) {
           track('Climb Sent to Board Failure', {
             climbUuid: currentClimbQueueItem.climb?.uuid,
             boardLayout: `${boardDetails.layout_name}`,

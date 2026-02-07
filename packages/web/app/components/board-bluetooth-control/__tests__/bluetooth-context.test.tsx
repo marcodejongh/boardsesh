@@ -216,6 +216,66 @@ describe('BluetoothProvider', () => {
         });
       });
     });
+
+    it('does not track analytics when send returns undefined (not attempted)', async () => {
+      mockSendFramesToBoard.mockResolvedValue(undefined);
+      mockCurrentClimbQueueItem = {
+        climb: { uuid: 'climb-1', frames: 'p1r12', mirrored: false },
+      };
+      mockBluetoothState.isConnected = true;
+
+      renderHook(() => useBluetoothContext(), {
+        wrapper: createWrapper(),
+      });
+
+      await act(async () => {
+        await vi.waitFor(() => {
+          expect(mockSendFramesToBoard).toHaveBeenCalled();
+        });
+      });
+
+      expect(mockTrack).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('disconnect', () => {
+    it('exposes disconnect from the hook', () => {
+      const { result } = renderHook(() => useBluetoothContext(), {
+        wrapper: createWrapper(),
+      });
+
+      result.current.disconnect();
+
+      expect(mockDisconnect).toHaveBeenCalledOnce();
+    });
+  });
+
+  describe('connect', () => {
+    it('exposes connect from the hook', async () => {
+      const { result } = renderHook(() => useBluetoothContext(), {
+        wrapper: createWrapper(),
+      });
+
+      await act(async () => {
+        const success = await result.current.connect('p1r12', false);
+        expect(success).toBe(true);
+      });
+
+      expect(mockConnect).toHaveBeenCalledWith('p1r12', false);
+    });
+
+    it('returns false when connect fails', async () => {
+      mockConnect.mockResolvedValue(false);
+
+      const { result } = renderHook(() => useBluetoothContext(), {
+        wrapper: createWrapper(),
+      });
+
+      await act(async () => {
+        const success = await result.current.connect();
+        expect(success).toBe(false);
+      });
+    });
   });
 
   describe('context value stability', () => {
