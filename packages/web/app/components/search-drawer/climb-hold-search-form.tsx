@@ -74,7 +74,7 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
               ),
             }))}
           />
-          {anyHoldsCount > 0 && <Tag color="default" style={{ margin: 0 }}>{anyHoldsCount} in</Tag>}
+          {anyHoldsCount > 0 && <Tag color={themeTokens.colors.primary} style={{ margin: 0 }}>{anyHoldsCount} in</Tag>}
           {notHoldsCount > 0 && <Tag color={themeTokens.colors.error} style={{ margin: 0 }}>{notHoldsCount} out</Tag>}
         </Space>
       </div>

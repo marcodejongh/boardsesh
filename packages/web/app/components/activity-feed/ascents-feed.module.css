@@ -38,7 +38,7 @@
   height: 64px;
   border-radius: 4px;
   overflow: hidden;
-  background: var(--neutral-100, #F3F4F6);
+  background: var(--neutral-100);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -86,7 +86,7 @@
 
 .comment {
   font-size: 13px;
-  background: var(--neutral-50, #F9FAFB);
+  background: var(--neutral-50);
   padding: 8px 12px; /* spacing.2 spacing.3 */
   border-radius: 4px; /* borderRadius.sm */
   margin-top: 4px;

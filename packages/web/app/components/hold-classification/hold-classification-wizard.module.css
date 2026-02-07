@@ -8,12 +8,12 @@
 .progressSection {
   text-align: center;
   padding-bottom: 8px;
-  border-bottom: 1px solid var(--neutral-200, #E5E7EB);
+  border-bottom: 1px solid var(--neutral-200);
 }
 
 .progressText {
   font-size: 14px;
-  color: var(--neutral-500, #6B7280);
+  color: var(--neutral-500);
   margin-bottom: 8px;
 }
 
@@ -24,7 +24,7 @@
   height: 180px;
   min-height: 180px;
   flex-shrink: 0;
-  background: var(--neutral-50, #F9FAFB);
+  background: var(--neutral-50);
   border-radius: 12px;
   overflow: hidden;
   position: relative;
@@ -52,7 +52,7 @@
   bottom: 4px;
   right: 4px;
   font-size: 12px;
-  color: var(--neutral-500, #6B7280);
+  color: var(--neutral-500);
   background: rgba(255, 255, 255, 0.9);
   border-radius: 4px;
   padding: 2px 8px;
@@ -68,7 +68,7 @@
 .sectionTitle {
   font-size: 14px;
   font-weight: 600;
-  color: var(--neutral-700, #374151);
+  color: var(--neutral-700);
   margin-bottom: 4px;
 }
 
@@ -84,35 +84,35 @@
   display: flex;
   align-items: center;
   padding: 10px 12px;
-  border: 1px solid var(--neutral-200, #E5E7EB);
+  border: 1px solid var(--neutral-200);
   border-radius: 8px;
   cursor: pointer;
   transition: all 150ms ease;
-  background: var(--semantic-surface, #FFFFFF);
+  background: var(--semantic-surface);
 }
 
 .holdTypeItem:hover {
-  background: var(--neutral-100, #F3F4F6);
-  border-color: var(--neutral-300, #D1D5DB);
+  background: var(--neutral-100);
+  border-color: var(--neutral-300);
 }
 
 .holdTypeItemSelected {
-  background: var(--semantic-selected, #F7F2F3);
-  border-color: var(--color-primary, #8C4A52);
+  background: var(--semantic-selected);
+  border-color: var(--color-primary);
 }
 
 .holdTypeItemSelected:hover {
-  background: var(--semantic-selected, #F7F2F3);
+  background: var(--semantic-selected);
 }
 
 .holdTypeLabel {
   flex: 1;
   font-size: 15px;
-  color: var(--neutral-900, #111827);
+  color: var(--neutral-900);
 }
 
 .holdTypeCheck {
-  color: var(--color-primary, #8C4A52);
+  color: var(--color-primary);
   font-size: 16px;
 }
 
@@ -126,7 +126,7 @@
 
 .ratingLabel {
   font-size: 14px;
-  color: var(--neutral-500, #6B7280);
+  color: var(--neutral-500);
   margin-bottom: 8px;
 }
 
@@ -134,7 +134,7 @@
   display: flex;
   gap: 12px;
   padding-top: 8px;
-  border-top: 1px solid var(--neutral-200, #E5E7EB);
+  border-top: 1px solid var(--neutral-200);
 }
 
 .navButton {
@@ -156,7 +156,7 @@
 }
 
 .loadingText {
-  color: var(--neutral-500, #6B7280);
+  color: var(--neutral-500);
 }
 
 .completeContainer {
@@ -172,18 +172,18 @@
 
 .completeIcon {
   font-size: 64px;
-  color: var(--color-success, #6B9080);
+  color: var(--color-success);
 }
 
 .completeTitle {
   font-size: 24px;
   font-weight: 600;
-  color: var(--neutral-900, #111827);
+  color: var(--neutral-900);
 }
 
 .completeSubtitle {
   font-size: 16px;
-  color: var(--neutral-500, #6B7280);
+  color: var(--neutral-500);
   max-width: 300px;
 }
 
@@ -196,5 +196,5 @@
   gap: 16px;
   text-align: center;
   padding: 40px 20px;
-  color: var(--neutral-500, #6B7280);
+  color: var(--neutral-500);
 }
