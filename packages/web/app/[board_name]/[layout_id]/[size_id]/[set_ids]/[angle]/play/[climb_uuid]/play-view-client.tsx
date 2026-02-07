@@ -149,7 +149,7 @@ const PlayViewClient: React.FC<PlayViewClientProps> = ({ boardDetails, initialCl
             padding: `${themeTokens.spacing[1]}px ${themeTokens.spacing[3]}px`,
           }}
         >
-          <ClimbTitle climb={displayClimb} layout="horizontal" showSetterInfo titleFontSize={themeTokens.typography.fontSize.lg} />
+          <ClimbTitle climb={displayClimb} layout="horizontal" showSetterInfo titleFontSize={themeTokens.typography.fontSize['2xl']} />
         </div>
         <div {...swipeHandlers} className={styles.swipeContainer}>
           <div
