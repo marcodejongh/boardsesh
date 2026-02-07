@@ -83,8 +83,10 @@ const ClimbListItemSkeleton = () => (
       borderBottom: `1px solid ${themeTokens.neutral[200]}`,
     }}
   >
-    {/* Thumbnail placeholder */}
-    <Skeleton.Avatar active shape="square" size={48} style={{ flexShrink: 0 }} />
+    {/* Thumbnail placeholder - matches ClimbListItem width of themeTokens.spacing[16] (64px) */}
+    <div style={{ width: themeTokens.spacing[16], flexShrink: 0 }}>
+      <Skeleton.Avatar active shape="square" size={48} />
+    </div>
 
     {/* Center: Name and setter lines */}
     <Flex vertical gap={4} style={{ flex: 1, minWidth: 0 }}>
@@ -92,11 +94,13 @@ const ClimbListItemSkeleton = () => (
       <Skeleton.Input active size="small" style={{ width: '35%', minWidth: 60, height: 12 }} />
     </Flex>
 
-    {/* Right: Grade placeholder */}
-    <Skeleton.Input active size="small" style={{ width: 32, minWidth: 32, height: 24, flexShrink: 0 }} />
+    {/* Right: Ascent + Grade placeholder - matches ClimbListItem flex container */}
+    <div style={{ display: 'flex', alignItems: 'center', gap: themeTokens.spacing[1], flexShrink: 0 }}>
+      <Skeleton.Avatar active shape="square" size={24} />
+    </div>
 
     {/* Ellipsis dot placeholder */}
-    <Skeleton.Avatar active shape="circle" size={16} style={{ flexShrink: 0 }} />
+    <Skeleton.Button active size="small" style={{ width: 24, minWidth: 24, height: 24 }} />
   </div>
 );
 
