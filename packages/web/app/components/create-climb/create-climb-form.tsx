@@ -17,7 +17,7 @@ import { BoardDetails } from '@/app/lib/types';
 import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { convertLitUpHoldsStringToMap } from '../board-renderer/util';
 import { holdIdToCoordinate, MOONBOARD_GRADES, MOONBOARD_ANGLES } from '@/app/lib/moonboard-config';
-import { getFontGradeColor } from '@/app/lib/grade-colors';
+import { getSoftFontGradeColor } from '@/app/lib/grade-colors';
 import { themeTokens } from '@/app/theme/theme-config';
 import { parseScreenshot } from '@boardsesh/moonboard-ocr/browser';
 import { convertOcrHoldsToMap } from '@/app/lib/moonboard-climbs-db';
@@ -449,7 +449,7 @@ export default function CreateClimbForm({
               fontSize: 28,
               fontWeight: themeTokens.typography.fontWeight.bold,
               lineHeight: 1,
-              color: getFontGradeColor(userGrade) ?? 'var(--ant-color-text-secondary)',
+              color: getSoftFontGradeColor(userGrade) ?? 'var(--ant-color-text-secondary)',
               flexShrink: 0,
             }}
           >

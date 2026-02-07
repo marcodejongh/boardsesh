@@ -14,7 +14,7 @@ import { useQueueContext } from '../graphql-queue';
 import { useFavorite } from '../climb-actions';
 import { useDoubleTap } from '@/app/lib/hooks/use-double-tap';
 import { themeTokens } from '@/app/theme/theme-config';
-import { getGradeColor, getGradeTintColor } from '@/app/lib/grade-colors';
+import { getSoftGradeColor, getGradeTintColor } from '@/app/lib/grade-colors';
 
 const { Text } = Typography;
 
@@ -106,7 +106,7 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
   // Extract V grade for colorized display
   const vGradeMatch = climb.difficulty?.match(/V\d+/i);
   const vGrade = vGradeMatch ? vGradeMatch[0].toUpperCase() : null;
-  const gradeColor = getGradeColor(climb.difficulty);
+  const gradeColor = getSoftGradeColor(climb.difficulty);
   const hasQuality = climb.quality_average && climb.quality_average !== '0';
 
   // Swipe action visibility
