@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback, useMemo } from 'react';
+import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { useSwipeable } from 'react-swipeable';
 import type { DrawerProps } from 'antd';
 
@@ -14,7 +14,8 @@ interface UseSwipeToDismissOptions {
   dismissThreshold?: number;
   dismissAnimationMs?: number;
   enabled?: boolean;
-  swipeRegion?: 'handle' | 'body';
+  swipeRegion?: 'handle' | 'body' | 'scrollBody';
+  scrollBodyRef?: React.RefObject<HTMLElement | null>;
 }
 
 interface UseSwipeToDismissReturn {
@@ -27,14 +28,14 @@ interface UseSwipeToDismissReturn {
   afterOpenChange: (open: boolean) => void;
 }
 
-const DIRECTION_MAP: Record<Placement, 'Down' | 'Up' | 'Right' | 'Left'> = {
+export const DIRECTION_MAP: Record<Placement, 'Down' | 'Up' | 'Right' | 'Left'> = {
   bottom: 'Down',
   top: 'Up',
   right: 'Right',
   left: 'Left',
 };
 
-function getDelta(placement: Placement, deltaX: number, deltaY: number): number {
+export function getDelta(placement: Placement, deltaX: number, deltaY: number): number {
   switch (placement) {
     case 'bottom':
       return deltaY;
@@ -47,7 +48,7 @@ function getDelta(placement: Placement, deltaX: number, deltaY: number): number 
   }
 }
 
-function getTransform(placement: Placement, offset: number): string | undefined {
+export function getTransform(placement: Placement, offset: number): string | undefined {
   if (offset <= 0) return undefined;
   switch (placement) {
     case 'bottom':
@@ -61,7 +62,7 @@ function getTransform(placement: Placement, offset: number): string | undefined 
   }
 }
 
-function getFullDismissOffset(placement: Placement): number {
+export function getFullDismissOffset(placement: Placement): number {
   if (typeof window === 'undefined') return 1000;
   return placement === 'top' || placement === 'bottom' ? window.innerHeight : window.innerWidth;
 }
@@ -73,10 +74,12 @@ export function useSwipeToDismiss({
   dismissAnimationMs = 300,
   enabled = true,
   swipeRegion = 'handle',
+  scrollBodyRef,
 }: UseSwipeToDismissOptions): UseSwipeToDismissReturn {
   const [dragOffset, setDragOffset] = useState(0);
   const isDraggingRef = useRef(false);
   const isDismissingRef = useRef(false);
+  const dragOffsetRef = useRef(0);
 
   const dismissDirection = DIRECTION_MAP[placement];
 
@@ -121,6 +124,76 @@ export function useSwipeToDismiss({
     }
     isDraggingRef.current = false;
   }, []);
+
+  // Keep dragOffsetRef in sync with state for use in native event listeners
+  useEffect(() => {
+    dragOffsetRef.current = dragOffset;
+  }, [dragOffset]);
+
+  // Native touch event listeners for scrollBody mode
+  useEffect(() => {
+    if (swipeRegion !== 'scrollBody' || !enabled || !scrollBodyRef?.current) return;
+
+    const el = scrollBodyRef.current;
+    let startY = 0;
+    let startX = 0;
+    let isDismissMode = false;
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (isDismissingRef.current) return;
+      startY = e.touches[0].clientY;
+      startX = e.touches[0].clientX;
+      isDismissMode = false;
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (isDismissingRef.current) return;
+
+      const currentY = e.touches[0].clientY;
+      const currentX = e.touches[0].clientX;
+      const deltaY = currentY - startY;
+      const deltaX = currentX - startX;
+
+      // Only engage dismiss when at scroll top, pulling down, and vertical > horizontal
+      if (el.scrollTop <= 0 && deltaY > 0 && Math.abs(deltaY) > Math.abs(deltaX)) {
+        e.preventDefault();
+        isDismissMode = true;
+        isDraggingRef.current = true;
+        setDragOffset(deltaY);
+      } else if (isDismissMode) {
+        // Was in dismiss mode but user changed direction, snap back
+        isDismissMode = false;
+        isDraggingRef.current = false;
+        setDragOffset(0);
+      }
+    };
+
+    const onTouchEnd = () => {
+      if (isDismissingRef.current) return;
+
+      if (isDismissMode && dragOffsetRef.current >= dismissThreshold) {
+        isDismissingRef.current = true;
+        setDragOffset(getFullDismissOffset(placement));
+        setTimeout(() => {
+          onClose?.();
+        }, dismissAnimationMs);
+      } else {
+        setDragOffset(0);
+      }
+      isDraggingRef.current = false;
+      isDismissMode = false;
+    };
+
+    el.addEventListener('touchstart', onTouchStart, { passive: true });
+    el.addEventListener('touchmove', onTouchMove, { passive: false });
+    el.addEventListener('touchend', onTouchEnd, { passive: true });
+
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart);
+      el.removeEventListener('touchmove', onTouchMove);
+      el.removeEventListener('touchend', onTouchEnd);
+    };
+  }, [swipeRegion, enabled, scrollBodyRef, placement, dismissThreshold, dismissAnimationMs, onClose]);
 
   const handleRegionProps = useSwipeable({
     onSwiping: (eventData) => handleSwiping(eventData.deltaX, eventData.deltaY, eventData.dir),
@@ -172,7 +245,9 @@ export function useSwipeToDismiss({
     const bodyStyle: React.CSSProperties =
       swipeRegion === 'body'
         ? { touchAction: 'none' as const, overscrollBehaviorY: 'contain' as const }
-        : {};
+        : swipeRegion === 'scrollBody'
+          ? { overscrollBehaviorY: 'contain' as const }
+          : {};
 
     return {
       mask: maskStyle,
@@ -186,7 +261,7 @@ export function useSwipeToDismiss({
       dragOffset,
       isDragging: isDraggingRef.current,
       handleRegionProps,
-      bodyRegionProps: swipeRegion === 'body' ? bodyRegionProps : null,
+      bodyRegionProps: swipeRegion === 'body' ? bodyRegionProps : null,  // null for 'handle' and 'scrollBody'
       getDrawerStyle,
       getDrawerStyles,
       afterOpenChange,
