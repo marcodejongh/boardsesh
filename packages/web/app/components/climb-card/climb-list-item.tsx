@@ -267,8 +267,8 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
       {/* Actions Drawer */}
       <SwipeableDrawer
         title={
-          <div style={{ display: 'flex', alignItems: 'center', gap: themeTokens.spacing[3] }}>
-            <div style={{ width: 48, flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: themeTokens.spacing[1], margin: '0 -16px' }}>
+            <div style={{ width: 86, flexShrink: 0 }}>
               <ClimbThumbnail boardDetails={boardDetails} currentClimb={climb} />
             </div>
             <div style={{ minWidth: 0, flex: 1 }}>
@@ -287,6 +287,32 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
                 {climb.difficulty} {hasQuality ? `${climb.quality_average}\u2605` : ''}
               </Text>
             </div>
+            {vGrade ? (
+              <Text
+                style={{
+                  fontSize: themeTokens.typography.fontSize['2xl'],
+                  fontWeight: themeTokens.typography.fontWeight.bold,
+                  lineHeight: 1,
+                  color: gradeColor ?? themeTokens.neutral[500],
+                  marginLeft: 'auto',
+                  flexShrink: 0,
+                }}
+              >
+                {vGrade}
+              </Text>
+            ) : climb.difficulty ? (
+              <Text
+                type="secondary"
+                style={{
+                  fontSize: themeTokens.typography.fontSize.sm,
+                  fontWeight: themeTokens.typography.fontWeight.semibold,
+                  marginLeft: 'auto',
+                  flexShrink: 0,
+                }}
+              >
+                {climb.difficulty}
+              </Text>
+            ) : null}
           </div>
         }
         placement="bottom"
@@ -294,7 +320,7 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
         onClose={() => setIsActionsOpen(false)}
         swipeRegion="body"
         styles={{
-          wrapper: { height: 'auto' },
+          wrapper: { height: 'auto', width: '100%' },
           body: { padding: `${themeTokens.spacing[2]}px 0` },
         }}
       >
