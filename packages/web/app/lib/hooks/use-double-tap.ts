@@ -11,6 +11,9 @@ const DOUBLE_TAP_THRESHOLD = 300;
 export function useDoubleTap(callback: (() => void) | undefined) {
   const lastTapTimeRef = useRef(0);
   const elementRef = useRef<HTMLElement | null>(null);
+  // Tracks whether the touch handler already fired the callback,
+  // so the synthesized dblclick event doesn't fire it a second time.
+  const handledByTouchRef = useRef(false);
 
   const handleTouchEnd = useCallback(
     (e: TouchEvent) => {
@@ -22,6 +25,7 @@ export function useDoubleTap(callback: (() => void) | undefined) {
       if (timeSinceLastTap > 0 && timeSinceLastTap < DOUBLE_TAP_THRESHOLD) {
         e.preventDefault();
         lastTapTimeRef.current = 0;
+        handledByTouchRef.current = true;
         callback();
       } else {
         lastTapTimeRef.current = now;
@@ -48,6 +52,11 @@ export function useDoubleTap(callback: (() => void) | undefined) {
   );
 
   const onDoubleClick = useCallback(() => {
+    // Skip if the touch handler already fired the callback for this interaction
+    if (handledByTouchRef.current) {
+      handledByTouchRef.current = false;
+      return;
+    }
     callback?.();
   }, [callback]);
 
