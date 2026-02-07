@@ -46,9 +46,24 @@
 }
 
 
-.queueScrollContainer {
+.queueBodyLayout {
+  display: flex;
+  flex-direction: column;
   height: 100%;
+  overflow: hidden;
+}
+
+.queueScrollContainer {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
+}
+
+.bulkRemoveBar {
+  flex-shrink: 0;
+  padding: 12px 16px;
+  background: var(--ant-color-bg-container);
+  border-top: 1px solid var(--ant-color-border);
 }

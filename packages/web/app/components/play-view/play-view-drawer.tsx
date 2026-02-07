@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Button, Badge, Popconfirm } from 'antd';
+import { Button, Badge, Space } from 'antd';
 import {
   SyncOutlined,
   HeartOutlined,
@@ -12,6 +12,9 @@ import {
   MoreOutlined,
   UnorderedListOutlined,
   DeleteOutlined,
+  EditOutlined,
+  CloseOutlined,
+  HistoryOutlined,
 } from '@ant-design/icons';
 import dynamic from 'next/dynamic';
 import { useQueueContext } from '../graphql-queue';
@@ -50,6 +53,9 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
   const isOpen = activeDrawer === 'play';
   const [isActionsOpen, setIsActionsOpen] = useState(false);
   const [isQueueOpen, setIsQueueOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const queueListRef = useRef<QueueListHandle>(null);
   const queueScrollRef = useRef<HTMLDivElement>(null);
 
@@ -71,6 +77,29 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
 
   // Wake lock when drawer is open
   useWakeLock(isOpen);
+
+  const handleToggleSelect = useCallback((uuid: string) => {
+    setSelectedItems((prev) => {
+      const next = new Set(prev);
+      if (next.has(uuid)) {
+        next.delete(uuid);
+      } else {
+        next.add(uuid);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleBulkRemove = useCallback(() => {
+    setQueue(queue.filter((item) => !selectedItems.has(item.uuid)));
+    setSelectedItems(new Set());
+    setIsEditMode(false);
+  }, [queue, selectedItems, setQueue]);
+
+  const handleExitEditMode = useCallback(() => {
+    setIsEditMode(false);
+    setSelectedItems(new Set());
+  }, []);
 
   // Hash-based back button support
   useEffect(() => {
@@ -293,9 +322,13 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
       <SwipeableDrawer
         title="Queue"
         placement="bottom"
-        height="100%"
+        height="60%"
         open={isQueueOpen}
-        onClose={() => setIsQueueOpen(false)}
+        onClose={() => {
+          setIsQueueOpen(false);
+          handleExitEditMode();
+          setShowHistory(false);
+        }}
         swipeRegion="scrollBody"
         scrollBodyRef={queueScrollRef}
         afterOpenChange={(open) => {
@@ -306,36 +339,61 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
           }
         }}
         styles={{
-          wrapper: { height: '100%' },
+          wrapper: { height: '60%' },
           body: { padding: 0 },
         }}
         extra={
-          queue.length > 0 && (
-            <Popconfirm
-              title="Clear queue"
-              description="Are you sure you want to clear all items from the queue?"
-              onConfirm={() => {
-                setQueue([]);
-              }}
-              okText="Clear"
-              cancelText="Cancel"
-            >
-              <Button type="text" icon={<DeleteOutlined />} style={{ color: themeTokens.neutral[400] }}>
-                Clear
-              </Button>
-            </Popconfirm>
+          queue.length > 0 && !viewOnlyMode && (
+            isEditMode ? (
+              <Space>
+                <Button
+                  type="text"
+                  icon={<DeleteOutlined />}
+                  style={{ color: themeTokens.neutral[400] }}
+                  onClick={() => {
+                    setQueue([]);
+                    handleExitEditMode();
+                  }}
+                >
+                  Clear
+                </Button>
+                <Button type="text" icon={<CloseOutlined />} onClick={handleExitEditMode} />
+              </Space>
+            ) : (
+              <Space>
+                <Button
+                  type={showHistory ? 'default' : 'text'}
+                  icon={<HistoryOutlined />}
+                  onClick={() => setShowHistory((prev) => !prev)}
+                />
+                <Button type="text" icon={<EditOutlined />} onClick={() => setIsEditMode(true)} />
+              </Space>
+            )
           )
         }
       >
-        <div ref={queueScrollRef} className={styles.queueScrollContainer}>
-          <QueueList
-            ref={queueListRef}
-            boardDetails={boardDetails}
-            onClimbNavigate={() => {
-              setIsQueueOpen(false);
-              setActiveDrawer('none');
-            }}
-          />
+        <div className={styles.queueBodyLayout}>
+          <div ref={queueScrollRef} className={styles.queueScrollContainer}>
+            <QueueList
+              ref={queueListRef}
+              boardDetails={boardDetails}
+              onClimbNavigate={() => {
+                setIsQueueOpen(false);
+                setActiveDrawer('none');
+              }}
+              isEditMode={isEditMode}
+              showHistory={showHistory}
+              selectedItems={selectedItems}
+              onToggleSelect={handleToggleSelect}
+            />
+          </div>
+          {isEditMode && selectedItems.size > 0 && (
+            <div className={styles.bulkRemoveBar}>
+              <Button type="primary" danger block onClick={handleBulkRemove}>
+                Remove {selectedItems.size} {selectedItems.size === 1 ? 'item' : 'items'}
+              </Button>
+            </div>
+          )}
         </div>
       </SwipeableDrawer>
     </SwipeableDrawer>

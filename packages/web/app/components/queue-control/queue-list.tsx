@@ -27,9 +27,13 @@ export type QueueListHandle = {
 type QueueListProps = {
   boardDetails: BoardDetails;
   onClimbNavigate?: () => void;
+  isEditMode?: boolean;
+  showHistory?: boolean;
+  selectedItems?: Set<string>;
+  onToggleSelect?: (uuid: string) => void;
 };
 
-const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, onClimbNavigate }, ref) => {
+const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, onClimbNavigate, isEditMode = false, showHistory = false, selectedItems, onToggleSelect }, ref) => {
   const {
     viewOnlyMode,
     currentClimbQueueItem,
@@ -76,6 +80,8 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
 
   // Monitor for drag-and-drop events
   useEffect(() => {
+    if (isEditMode) return;
+
     const cleanup = monitorForElements({
       onDrop({ location, source }) {
         const target = location.current.dropTargets[0];
@@ -105,7 +111,7 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
     });
 
     return cleanup; // Cleanup listener on component unmount
-  }, [queue, setQueue]);
+  }, [queue, setQueue, isEditMode]);
 
   // Ref for the intersection observer sentinel element
   const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -163,8 +169,8 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
   return (
     <>
       <Flex vertical>
-        {/* History items (oldest to newest at top) */}
-        {historyItems.length > 0 && (
+        {/* History items (oldest to newest at top) - only shown when showHistory is true */}
+        {showHistory && historyItems.length > 0 && (
           <>
             {historyItems.map((climbQueueItem, index) => {
               // Calculate original queue index for drag-and-drop
@@ -186,6 +192,9 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
                     removeFromQueue={removeFromQueue}
                     onTickClick={handleTickClick}
                     onClimbNavigate={onClimbNavigate}
+                    isEditMode={isEditMode}
+                    isSelected={selectedItems?.has(climbQueueItem.uuid) ?? false}
+                    onToggleSelect={onToggleSelect}
                   />
                 </div>
               );
@@ -196,7 +205,7 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
 
         {/* Current climb item */}
         {currentClimbQueueItem && (
-          <div key={currentClimbQueueItem.uuid} ref={historyItems.length <= 2 ? scrollTargetRef : undefined}>
+          <div key={currentClimbQueueItem.uuid} ref={!showHistory || historyItems.length <= 2 ? scrollTargetRef : undefined}>
             <QueueListItem
               item={currentClimbQueueItem}
               index={currentIndex}
@@ -208,6 +217,9 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
               removeFromQueue={removeFromQueue}
               onTickClick={handleTickClick}
               onClimbNavigate={onClimbNavigate}
+              isEditMode={isEditMode}
+              isSelected={selectedItems?.has(currentClimbQueueItem.uuid) ?? false}
+              onToggleSelect={onToggleSelect}
             />
           </div>
         )}
@@ -218,7 +230,7 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
           const originalIndex = currentIndex >= 0 ? currentIndex + 1 + index : index;
           // Attach scroll target to first future item if there's no current climb
           // and history has 2 or fewer items (scrollTargetRef wouldn't be attached elsewhere)
-          const isScrollTarget = index === 0 && !currentClimbQueueItem && historyItems.length <= 2;
+          const isScrollTarget = index === 0 && !currentClimbQueueItem && (!showHistory || historyItems.length <= 2);
 
           return (
             <div key={climbQueueItem.uuid} ref={isScrollTarget ? scrollTargetRef : undefined}>
@@ -233,6 +245,9 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
                 removeFromQueue={removeFromQueue}
                 onTickClick={handleTickClick}
                 onClimbNavigate={onClimbNavigate}
+                isEditMode={isEditMode}
+                isSelected={selectedItems?.has(climbQueueItem.uuid) ?? false}
+                onToggleSelect={onToggleSelect}
               />
             </div>
           );
