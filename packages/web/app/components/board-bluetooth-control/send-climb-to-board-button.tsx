@@ -1,198 +1,41 @@
 'use client';
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { BulbOutlined, BulbFilled, AppleOutlined } from '@ant-design/icons';
 import { Button, Modal, Typography } from 'antd';
-import { track } from '@vercel/analytics';
+import { useBluetoothContext } from './bluetooth-context';
+import { useQueueContext } from '../graphql-queue';
+import './send-climb-to-board-button.css';
 
 const { Text, Paragraph } = Typography;
-import { useQueueContext } from '../graphql-queue';
-import { BoardDetails } from '@/app/lib/types';
-import './send-climb-to-board-button.css'; // Import your custom styles
-import {
-  getBluetoothPacket,
-  getCharacteristic,
-  requestDevice,
-  splitMessages,
-  writeCharacteristicSeries,
-} from './bluetooth';
-import { HoldRenderData } from '../board-renderer/types';
-import { useWakeLock } from './use-wake-lock';
-import { getLedPlacements } from '@/app/lib/__generated__/led-placements-data';
 
-type SendClimbToBoardButtonProps = { boardDetails: BoardDetails; buttonType?: 'default' | 'text' };
-
-export const convertToMirroredFramesString = (frames: string, holdsData: HoldRenderData[]): string => {
-  // Create a map for quick lookup of mirroredHoldId
-  const holdIdToMirroredIdMap = new Map<number, number>();
-  holdsData.forEach((hold) => {
-    if (hold.mirroredHoldId) {
-      holdIdToMirroredIdMap.set(hold.id, hold.mirroredHoldId);
-    }
-  });
-
-  return frames
-    .split('p') // Split into hold data entries
-    .filter((hold) => hold) // Remove empty entries
-    .map((holdData) => {
-      const [holdId, stateCode] = holdData.split('r').map((str) => Number(str)); // Split hold data into holdId and stateCode
-      const mirroredHoldId = holdIdToMirroredIdMap.get(holdId);
-
-      if (mirroredHoldId === undefined) {
-        throw new Error(`Mirrored hold ID is not defined for hold ID ${holdId}.`);
-      }
-
-      // Construct the mirrored hold data
-      return `p${mirroredHoldId}r${stateCode}`;
-    })
-    .join(''); // Reassemble into a single string
+type SendClimbToBoardButtonProps = {
+  buttonType?: 'default' | 'text';
 };
 
-// React component
-const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({ boardDetails, buttonType = 'default' }) => {
+const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({
+  buttonType = 'default',
+}) => {
   const { currentClimbQueueItem } = useQueueContext();
-  const [loading, setLoading] = useState(false);
-  const [isConnected, setIsConnected] = useState(false); // Track Bluetooth connection state
+  const { isConnected, loading, connect, isBluetoothSupported, isIOS } =
+    useBluetoothContext();
   const [showBluetoothWarning, setShowBluetoothWarning] = useState(false);
 
-  // Prevent device from sleeping while connected to the board
-  useWakeLock(isConnected);
-
-  // Detect if the device is iOS
-  const isIOS =
-    typeof navigator !== 'undefined' &&
-    /iPhone|iPad|iPod/i.test(navigator.userAgent || (navigator as { vendor?: string }).vendor || '');
-
-  // Check if Web Bluetooth is supported
-  const isBluetoothSupported = typeof navigator !== 'undefined' && !!navigator.bluetooth;
-
-  // Store Bluetooth device and characteristic across renders
-  const bluetoothDeviceRef = useRef<BluetoothDevice | null>(null);
-  const characteristicRef = useRef<BluetoothRemoteGATTCharacteristic | null>(null);
-
-  // Handler for device disconnection
-  const handleDisconnection = useCallback(() => {
-    setIsConnected(false);
-    characteristicRef.current = null;
-    // Don't clear the device ref so we can potentially reconnect to the same device
-  }, []);
-
-  // Clean up disconnect listener from a device
-  const cleanupDeviceListeners = useCallback(
-    (device: BluetoothDevice | null) => {
-      if (device) {
-        device.removeEventListener('gattserverdisconnected', handleDisconnection);
-      }
-    },
-    [handleDisconnection],
-  );
-
-  // Function to send climb data to the board
-  const sendClimbToBoard = useCallback(async () => {
-    if (!currentClimbQueueItem || !characteristicRef.current) return;
-
-    let { frames } = currentClimbQueueItem.climb;
-
-    const placementPositions = getLedPlacements(boardDetails.board_name, boardDetails.layout_id, boardDetails.size_id);
-    if (currentClimbQueueItem.climb?.mirrored) {
-      frames = convertToMirroredFramesString(frames, boardDetails.holdsData);
-    }
-    const bluetoothPacket = getBluetoothPacket(frames, placementPositions, boardDetails.board_name);
-
-    try {
-      if (characteristicRef.current) {
-        await writeCharacteristicSeries(characteristicRef.current, splitMessages(bluetoothPacket));
-        track('Climb Sent to Board Success', {
-          climbUuid: currentClimbQueueItem.climb?.uuid,
-          boardLayout: `${boardDetails.layout_name}`,
-        });
-      }
-    } catch (error) {
-      console.error('Error sending climb to board:', error);
-      track('Climb Sent to Board Failure', {
-        climbUuid: currentClimbQueueItem.climb?.uuid,
-        boardLayout: `${boardDetails.layout_name}`,
-      });
-    }
-  }, [currentClimbQueueItem, boardDetails]);
-
-  // Handle button click to initiate Bluetooth connection
-  const handleClick = useCallback(async () => {
-    if (!navigator.bluetooth) {
+  const handleClick = async () => {
+    if (!isBluetoothSupported) {
       setShowBluetoothWarning(true);
       return;
     }
 
-    setLoading(true);
-
-    try {
-      // Clean up any existing device listeners before requesting a new device
-      cleanupDeviceListeners(bluetoothDeviceRef.current);
-
-      // Always request a new device to allow connecting to a different board
-      // or reconnecting to the same board
-      const device = await requestDevice();
-      const characteristic = await getCharacteristic(device);
-
-      if (characteristic) {
-        // Set up disconnection listener
-        device.addEventListener('gattserverdisconnected', handleDisconnection);
-
-        bluetoothDeviceRef.current = device;
-        characteristicRef.current = characteristic;
-
-        track('Bluetooth Connection Success', {
-          boardLayout: `${boardDetails.layout_name}`,
-        });
-
-        // Send the current climb immediately after connection is established
-        // Button is disabled when no climb is selected, so currentClimbQueueItem should always exist here
-        if (currentClimbQueueItem) {
-          try {
-            let { frames } = currentClimbQueueItem.climb;
-            const placementPositions = getLedPlacements(boardDetails.board_name, boardDetails.layout_id, boardDetails.size_id);
-            if (currentClimbQueueItem.climb?.mirrored) {
-              frames = convertToMirroredFramesString(frames, boardDetails.holdsData);
-            }
-            const bluetoothPacket = getBluetoothPacket(frames, placementPositions, boardDetails.board_name);
-            await writeCharacteristicSeries(characteristic, splitMessages(bluetoothPacket));
-            track('Climb Sent to Board Success', {
-              climbUuid: currentClimbQueueItem.climb?.uuid,
-              boardLayout: `${boardDetails.layout_name}`,
-            });
-          } catch (sendError) {
-            console.error('Error sending climb after connection:', sendError);
-          }
-        }
-
-        // Set connected state after successful send attempt
-        setIsConnected(true);
-      }
-    } catch (error) {
-      console.error('Error connecting to Bluetooth:', error);
-      setIsConnected(false);
-      characteristicRef.current = null;
-      track('Bluetooth Connection Failed', {
-        boardLayout: `${boardDetails.layout_name}`,
-      });
-    } finally {
-      setLoading(false);
+    if (currentClimbQueueItem) {
+      await connect(
+        currentClimbQueueItem.climb.frames,
+        !!currentClimbQueueItem.climb.mirrored,
+      );
+    } else {
+      await connect();
     }
-  }, [cleanupDeviceListeners, handleDisconnection, boardDetails, currentClimbQueueItem]);
-
-  // Clean up on unmount
-  useEffect(() => {
-    return () => {
-      cleanupDeviceListeners(bluetoothDeviceRef.current);
-    };
-  }, [cleanupDeviceListeners]);
-
-  // Automatically send climb when currentClimbQueueItem changes (only if connected)
-  useEffect(() => {
-    if (isConnected) {
-      sendClimbToBoard();
-    }
-  }, [currentClimbQueueItem, isConnected, sendClimbToBoard]);
+  };
 
   return (
     <>
@@ -200,7 +43,13 @@ const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({ boardDe
         id="button-illuminate"
         type={buttonType}
         danger={!isBluetoothSupported}
-        icon={isConnected ? <BulbFilled className={'connect-button-glow'} /> : <BulbOutlined />}
+        icon={
+          isConnected ? (
+            <BulbFilled className="connect-button-glow" />
+          ) : (
+            <BulbOutlined />
+          )
+        }
         onClick={handleClick}
         loading={loading}
         disabled={isBluetoothSupported && !currentClimbQueueItem}
@@ -209,17 +58,22 @@ const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({ boardDe
         title="Web Bluetooth Not Supported"
         open={showBluetoothWarning}
         onCancel={() => setShowBluetoothWarning(false)}
-        footer={<Button onClick={() => setShowBluetoothWarning(false)}>Close</Button>}
+        footer={
+          <Button onClick={() => setShowBluetoothWarning(false)}>Close</Button>
+        }
       >
         <Paragraph>
           <Text>
-            Your browser does not support Web Bluetooth, which means you won&#39;t be able to illuminate routes on the
-            board.
+            Your browser does not support Web Bluetooth, which means you
+            won&#39;t be able to illuminate routes on the board.
           </Text>
         </Paragraph>
         {isIOS ? (
           <>
-            <Paragraph>To control your board from an iOS device, install the Bluefy browser:</Paragraph>
+            <Paragraph>
+              To control your board from an iOS device, install the Bluefy
+              browser:
+            </Paragraph>
             <Button
               type="primary"
               icon={<AppleOutlined />}
@@ -230,7 +84,10 @@ const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({ boardDe
             </Button>
           </>
         ) : (
-          <Paragraph>For the best experience, please use Chrome or another Chromium-based browser.</Paragraph>
+          <Paragraph>
+            For the best experience, please use Chrome or another
+            Chromium-based browser.
+          </Paragraph>
         )}
       </Modal>
     </>

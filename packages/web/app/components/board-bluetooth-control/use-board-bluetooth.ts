@@ -13,7 +13,6 @@ import {
 } from './bluetooth';
 import { HoldRenderData } from '../board-renderer/types';
 import { useWakeLock } from './use-wake-lock';
-import { getLedPlacements } from '@/app/lib/__generated__/led-placements-data';
 
 export const convertToMirroredFramesString = (frames: string, holdsData: HoldRenderData[]): string => {
   // Create a map for quick lookup of mirroredHoldId
@@ -80,9 +79,15 @@ export function useBoardBluetooth({ boardDetails, onConnectionChange }: UseBoard
       if (!characteristicRef.current || !frames || !boardDetails) return;
 
       let framesToSend = frames;
+      // Lazy-load LED placements data (~50KB) only when actually sending to board
+      const { getLedPlacements } = await import('@/app/lib/__generated__/led-placements-data');
       const placementPositions = getLedPlacements(boardDetails.board_name, boardDetails.layout_id, boardDetails.size_id);
 
       if (mirrored) {
+        if (!boardDetails.holdsData || Object.keys(boardDetails.holdsData).length === 0) {
+          console.error('Cannot mirror frames: holdsData is missing or empty');
+          return false;
+        }
         framesToSend = convertToMirroredFramesString(frames, boardDetails.holdsData);
       }
 

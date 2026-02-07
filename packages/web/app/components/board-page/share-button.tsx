@@ -10,16 +10,21 @@ import {
   LoginOutlined,
   PlayCircleOutlined,
   CloseCircleOutlined,
+  BulbOutlined,
+  BulbFilled,
+  AppleOutlined,
+  ApiOutlined,
 } from '@ant-design/icons';
 import { Button, Input, QRCode, Flex, App, Typography, Badge, Switch, Tabs, Space } from 'antd';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useQueueContext } from '../graphql-queue';
+import { useBluetoothContext } from '../board-bluetooth-control/bluetooth-context';
 import { themeTokens } from '@/app/theme/theme-config';
 import AuthModal from '../auth/auth-modal';
 
-const { Text } = Typography;
+const { Text, Paragraph } = Typography;
 
 const getShareUrl = (pathname: string, sessionId: string | null) => {
   try {
@@ -31,6 +36,128 @@ const getShareUrl = (pathname: string, sessionId: string | null) => {
     return '';
   }
 };
+
+function LedConnectionTab() {
+  const {
+    isConnected,
+    loading,
+    connect,
+    disconnect,
+    isBluetoothSupported,
+    isIOS,
+  } = useBluetoothContext();
+  const { currentClimbQueueItem } = useQueueContext();
+
+  const handleConnect = async () => {
+    if (currentClimbQueueItem) {
+      await connect(
+        currentClimbQueueItem.climb.frames,
+        !!currentClimbQueueItem.climb.mirrored,
+      );
+    } else {
+      await connect();
+    }
+  };
+
+  return (
+    <Flex vertical gap="middle">
+      <Text>
+        Connect to your board via Bluetooth to illuminate routes with LEDs.
+        Routes will automatically update as you navigate between climbs.
+      </Text>
+
+      {!isBluetoothSupported && (
+        <Flex
+          vertical
+          gap="small"
+          style={{
+            padding: '12px',
+            background: themeTokens.colors.warningBg,
+            border: `1px solid ${themeTokens.colors.warning}`,
+            borderRadius: themeTokens.borderRadius.md,
+          }}
+        >
+          <Paragraph style={{ margin: 0 }}>
+            <Text>
+              Your browser does not support Web Bluetooth, which means you
+              won&#39;t be able to illuminate routes on the board.
+            </Text>
+          </Paragraph>
+          {isIOS ? (
+            <>
+              <Paragraph style={{ margin: 0 }}>
+                To control your board from an iOS device, install the Bluefy
+                browser:
+              </Paragraph>
+              <Button
+                type="primary"
+                icon={<AppleOutlined />}
+                href="https://apps.apple.com/us/app/bluefy-web-ble-browser/id1492822055"
+                target="_blank"
+              >
+                Download Bluefy from the App Store
+              </Button>
+            </>
+          ) : (
+            <Paragraph style={{ margin: 0 }}>
+              For the best experience, please use Chrome or another
+              Chromium-based browser.
+            </Paragraph>
+          )}
+        </Flex>
+      )}
+
+      {isBluetoothSupported && !isConnected && (
+        <Button
+          type="primary"
+          size="large"
+          icon={<BulbOutlined />}
+          onClick={handleConnect}
+          loading={loading}
+          block
+        >
+          Connect to Board
+        </Button>
+      )}
+
+      {isConnected && (
+        <Flex vertical gap="small">
+          <Flex
+            align="center"
+            gap="small"
+            style={{
+              padding: '12px',
+              background: themeTokens.colors.successBg,
+              border: `1px solid ${themeTokens.colors.success}`,
+              borderRadius: themeTokens.borderRadius.md,
+            }}
+          >
+            <BulbFilled
+              style={{ color: themeTokens.colors.success, fontSize: '18px' }}
+            />
+            <div style={{ flex: 1 }}>
+              <Text strong style={{ color: themeTokens.colors.success }}>
+                Board Connected
+              </Text>
+              <br />
+              <Text type="secondary" style={{ fontSize: '12px' }}>
+                Routes illuminate automatically when navigating
+              </Text>
+            </div>
+            <Button
+              type="text"
+              danger
+              icon={<ApiOutlined />}
+              onClick={disconnect}
+            >
+              Disconnect
+            </Button>
+          </Flex>
+        </Flex>
+      )}
+    </Flex>
+  );
+}
 
 export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'default' | 'text' }) => {
   const { message } = App.useApp();
@@ -95,7 +222,7 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
     try {
       await startSession({ discoverable, name: sessionName.trim() || undefined });
       message.success('Party mode started!');
-      setSessionName(''); // Clear the input after starting
+      setSessionName('');
     } catch (error) {
       console.error('Failed to start session:', error);
       message.error('Failed to start party mode');
@@ -111,7 +238,6 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
     }
 
     try {
-      // Extract session ID from URL if full URL was pasted
       let sessionIdToJoin = joinSessionId.trim();
       try {
         const url = new URL(sessionIdToJoin);
@@ -137,11 +263,227 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
     message.info('Left party mode');
   };
 
-  // Calculate connection count for badge
   const connectionCount = users?.length ?? 0;
-
-  // Get users list
   const currentUserId = clientId;
+
+  // Session info content (shared between active and inactive states)
+  const sessionInfoContent = (
+    <>
+      <Flex
+        align="center"
+        gap="small"
+        style={{
+          padding: '12px',
+          background: themeTokens.colors.successBg,
+          border: `1px solid ${themeTokens.colors.success}`,
+          borderRadius: themeTokens.borderRadius.md,
+        }}
+      >
+        <CheckCircleOutlined style={{ color: themeTokens.colors.success, fontSize: '18px' }} />
+        <div style={{ flex: 1 }}>
+          <Text strong style={{ color: themeTokens.colors.success }}>
+            Party Mode Active
+          </Text>
+          <br />
+          <Text type="secondary" style={{ fontSize: '12px' }}>
+            Session: {sessionId?.substring(0, 8)}...
+          </Text>
+        </div>
+        <Button
+          type="text"
+          danger
+          icon={<CloseCircleOutlined />}
+          onClick={handleEndSession}
+        >
+          Leave
+        </Button>
+      </Flex>
+
+      {users && users.length > 0 && (
+        <Flex vertical gap="small">
+          <Text strong>Connected Users ({users.length}):</Text>
+          <Flex
+            vertical
+            gap="small"
+            style={{
+              maxHeight: '150px',
+              overflowY: 'auto',
+              padding: '4px',
+            }}
+          >
+            {users.map((user) => (
+              <Flex
+                key={user.id}
+                justify="space-between"
+                align="center"
+                style={{
+                  background:
+                    user.id === currentUserId ? themeTokens.semantic.selected : themeTokens.neutral[100],
+                  padding: '8px 12px',
+                  borderRadius: themeTokens.borderRadius.md,
+                  width: '100%',
+                }}
+              >
+                <Flex gap="small" align="center">
+                  <Text style={{ fontSize: '14px' }}>
+                    {user.username}
+                    {user.id === currentUserId && ' (you)'}
+                  </Text>
+                </Flex>
+                {user.isLeader && (
+                  <CrownFilled style={{ color: themeTokens.colors.warning, fontSize: '16px' }} />
+                )}
+              </Flex>
+            ))}
+          </Flex>
+        </Flex>
+      )}
+
+      {!isLoggedIn && (
+        <Flex
+          align="center"
+          justify="space-between"
+          style={{
+            padding: '12px',
+            background: themeTokens.neutral[100],
+            borderRadius: themeTokens.borderRadius.md,
+          }}
+        >
+          <Text type="secondary" style={{ fontSize: '13px' }}>
+            Sign in to customize your username
+          </Text>
+          <Button type="link" size="small" icon={<LoginOutlined />} onClick={() => setShowAuthModal(true)}>
+            Sign in
+          </Button>
+        </Flex>
+      )}
+
+      <Flex vertical gap="small">
+        <Text strong>Invite others to join:</Text>
+        <Flex style={{ width: '100%' }} align="center">
+          <Input
+            value={shareUrl}
+            readOnly
+            addonAfter={<Button icon={<CopyOutlined />} onClick={copyToClipboard} />}
+          />
+        </Flex>
+        <Flex justify="center">
+          <QRCode value={shareUrl} size={160} bordered={false} />
+        </Flex>
+      </Flex>
+    </>
+  );
+
+  // Tab items for when no session is active
+  const noSessionTabs = [
+    {
+      key: 'start',
+      label: 'Start Session',
+      children: (
+        <Flex vertical gap="middle">
+          <Text>
+            Start a party mode session to climb with others. Share your queue and take turns!
+          </Text>
+
+          {!isLoggedIn && (
+            <Flex
+              align="center"
+              gap="small"
+              style={{
+                padding: '12px',
+                background: themeTokens.colors.warningBg,
+                border: `1px solid ${themeTokens.colors.warning}`,
+                borderRadius: themeTokens.borderRadius.md,
+              }}
+            >
+              <Text>Sign in to start a party session</Text>
+              <Button type="primary" size="small" icon={<LoginOutlined />} onClick={() => setShowAuthModal(true)}>
+                Sign in
+              </Button>
+            </Flex>
+          )}
+
+          {isLoggedIn && (
+            <>
+              <Flex vertical gap="small">
+                <Text strong>Session Name (optional)</Text>
+                <Input
+                  placeholder="e.g., Tuesday Night Climbs"
+                  value={sessionName}
+                  onChange={(e) => setSessionName(e.target.value)}
+                  maxLength={50}
+                />
+              </Flex>
+
+              <Flex align="center" justify="space-between">
+                <Space orientation="vertical" size={0}>
+                  <Text strong>Allow others to discover this session</Text>
+                  <Text type="secondary" style={{ fontSize: '12px' }}>
+                    Others nearby can find and join your session
+                  </Text>
+                </Space>
+                <Switch checked={discoverable} onChange={setDiscoverable} />
+              </Flex>
+
+              <Button
+                type="primary"
+                size="large"
+                icon={<PlayCircleOutlined />}
+                onClick={handleStartSession}
+                loading={isStartingSession}
+                block
+              >
+                Start Party Mode
+              </Button>
+            </>
+          )}
+        </Flex>
+      ),
+    },
+    {
+      key: 'join',
+      label: 'Join Session',
+      children: (
+        <Flex vertical gap="middle">
+          <Text>Enter a session link or ID to join an existing party.</Text>
+
+          <Input
+            placeholder="Paste session link or ID..."
+            value={joinSessionId}
+            onChange={(e) => setJoinSessionId(e.target.value)}
+            onPressEnter={handleJoinSession}
+          />
+
+          <Button type="primary" size="large" onClick={handleJoinSession} block>
+            Join Session
+          </Button>
+        </Flex>
+      ),
+    },
+    {
+      key: 'led',
+      label: 'Connect to Board',
+      children: <LedConnectionTab />,
+    },
+  ];
+
+  // Tab items for when session is active
+  const activeSessionTabs = [
+    {
+      key: 'session',
+      label: 'Session',
+      children: (
+        <Flex gap="middle" vertical>
+          {sessionInfoContent}
+        </Flex>
+      ),
+    },
+    {
+      key: 'led',
+      label: 'Connect to Board',
+      children: <LedConnectionTab />,
+    },
+  ];
 
   return (
     <>
@@ -154,10 +496,9 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
       </Badge>
       <SwipeableDrawer
         title={isControllerMode ? 'Controller Mode' : 'Party Mode'}
-        placement="top"
+        placement="bottom"
         onClose={handleClose}
         open={isDrawerOpen}
-        size="large"
         styles={{
           wrapper: { height: '70vh' },
         }}
@@ -192,97 +533,9 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
           {/* Party Mode Content */}
           {!isControllerMode && (
             <>
-              {/* No active session - show start/join options */}
+              {/* No active session and not connecting - show start/join/LED tabs */}
               {!isSessionActive && !isConnecting && (
-                <Tabs
-                  defaultActiveKey="start"
-                  items={[
-                    {
-                      key: 'start',
-                      label: 'Start Session',
-                      children: (
-                        <Flex vertical gap="middle">
-                          <Text>
-                            Start a party mode session to climb with others. Share your queue and take turns!
-                          </Text>
-
-                          {!isLoggedIn && (
-                            <Flex
-                              align="center"
-                              gap="small"
-                              style={{
-                                padding: '12px',
-                                background: themeTokens.colors.warningBg,
-                                border: `1px solid ${themeTokens.colors.warning}`,
-                                borderRadius: themeTokens.borderRadius.md,
-                              }}
-                            >
-                              <Text>Sign in to start a party session</Text>
-                              <Button type="primary" size="small" icon={<LoginOutlined />} onClick={() => setShowAuthModal(true)}>
-                                Sign in
-                              </Button>
-                            </Flex>
-                          )}
-
-                          {isLoggedIn && (
-                            <>
-                              <Flex vertical gap="small">
-                                <Text strong>Session Name (optional)</Text>
-                                <Input
-                                  placeholder="e.g., Tuesday Night Climbs"
-                                  value={sessionName}
-                                  onChange={(e) => setSessionName(e.target.value)}
-                                  maxLength={50}
-                                />
-                              </Flex>
-
-                              <Flex align="center" justify="space-between">
-                                <Space orientation="vertical" size={0}>
-                                  <Text strong>Allow others to discover this session</Text>
-                                  <Text type="secondary" style={{ fontSize: '12px' }}>
-                                    Others nearby can find and join your session
-                                  </Text>
-                                </Space>
-                                <Switch checked={discoverable} onChange={setDiscoverable} />
-                              </Flex>
-
-                              <Button
-                                type="primary"
-                                size="large"
-                                icon={<PlayCircleOutlined />}
-                                onClick={handleStartSession}
-                                loading={isStartingSession}
-                                block
-                              >
-                                Start Party Mode
-                              </Button>
-                            </>
-                          )}
-                        </Flex>
-                      ),
-                    },
-                    {
-                      key: 'join',
-                      label: 'Join Session',
-                      children: (
-                        <Flex vertical gap="middle">
-                          <Text>Enter a session link or ID to join an existing party.</Text>
-
-                          <Input
-                            placeholder="Paste session link or ID..."
-                            value={joinSessionId}
-                            onChange={(e) => setJoinSessionId(e.target.value)}
-                            onPressEnter={handleJoinSession}
-                          />
-
-                          <Button type="primary" size="large" onClick={handleJoinSession} block>
-                            Join Session
-                          </Button>
-                        </Flex>
-                      ),
-                    },
-                  ]}
-                />
+                <Tabs defaultActiveKey="start" items={noSessionTabs} />
               )}
 
               {/* Connecting */}
@@ -309,118 +562,9 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
                 </Flex>
               )}
 
-              {/* Connected - show session info */}
+              {/* Connected - show session info + LED tabs */}
               {isConnected && (
-                <>
-                  <Flex
-                    align="center"
-                    gap="small"
-                    style={{
-                      padding: '12px',
-                      background: themeTokens.colors.successBg,
-                      border: `1px solid ${themeTokens.colors.success}`,
-                      borderRadius: themeTokens.borderRadius.md,
-                    }}
-                  >
-                    <CheckCircleOutlined style={{ color: themeTokens.colors.success, fontSize: '18px' }} />
-                    <div style={{ flex: 1 }}>
-                      <Text strong style={{ color: themeTokens.colors.success }}>
-                        Party Mode Active
-                      </Text>
-                      <br />
-                      <Text type="secondary" style={{ fontSize: '12px' }}>
-                        Session: {sessionId?.substring(0, 8)}...
-                      </Text>
-                    </div>
-                    <Button
-                      type="text"
-                      danger
-                      icon={<CloseCircleOutlined />}
-                      onClick={handleEndSession}
-                    >
-                      Leave
-                    </Button>
-                  </Flex>
-
-                  {/* Users list */}
-                  {users && users.length > 0 && (
-                    <Flex vertical gap="small">
-                      <Text strong>Connected Users ({users.length}):</Text>
-                      <Flex
-                        vertical
-                        gap="small"
-                        style={{
-                          maxHeight: '150px',
-                          overflowY: 'auto',
-                          padding: '4px',
-                        }}
-                      >
-                        {users.map((user) => (
-                          <Flex
-                            key={user.id}
-                            justify="space-between"
-                            align="center"
-                            style={{
-                              background:
-                                user.id === currentUserId ? themeTokens.semantic.selected : themeTokens.neutral[100],
-                              padding: '8px 12px',
-                              borderRadius: themeTokens.borderRadius.md,
-                              width: '100%',
-                            }}
-                          >
-                            <Flex gap="small" align="center">
-                              <Text style={{ fontSize: '14px' }}>
-                                {user.username}
-                                {user.id === currentUserId && ' (you)'}
-                              </Text>
-                            </Flex>
-                            {user.isLeader && (
-                              <CrownFilled style={{ color: themeTokens.colors.warning, fontSize: '16px' }} />
-                            )}
-                          </Flex>
-                        ))}
-                      </Flex>
-                    </Flex>
-                  )}
-
-                  {/* Sign-in prompt for non-authenticated users */}
-                  {!isLoggedIn && (
-                    <Flex
-                      align="center"
-                      justify="space-between"
-                      style={{
-                        padding: '12px',
-                        background: themeTokens.neutral[100],
-                        borderRadius: themeTokens.borderRadius.md,
-                      }}
-                    >
-                      <Text type="secondary" style={{ fontSize: '13px' }}>
-                        Sign in to customize your username
-                      </Text>
-                      <Button type="link" size="small" icon={<LoginOutlined />} onClick={() => setShowAuthModal(true)}>
-                        Sign in
-                      </Button>
-                    </Flex>
-                  )}
-
-                  {/* Share section */}
-                  <Flex vertical gap="small">
-                    <Text strong>Invite others to join:</Text>
-
-                    {/* Share URL */}
-                    <Flex style={{ width: '100%' }} align="center">
-                      <Input
-                        value={shareUrl}
-                        readOnly
-                        addonAfter={<Button icon={<CopyOutlined />} onClick={copyToClipboard} />}
-                      />
-                    </Flex>
-
-                    <Flex justify="center">
-                      <QRCode value={shareUrl} size={160} bordered={false} />
-                    </Flex>
-                  </Flex>
-                </>
+                <Tabs defaultActiveKey="session" items={activeSessionTabs} />
               )}
             </>
           )}
