@@ -162,6 +162,7 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
                   overflowX: 'hidden',
                   paddingLeft: '10px',
                   paddingRight: '10px',
+                  paddingTop: 'calc(max(8dvh, 48px) + env(safe-area-inset-top, 0px))',
                   paddingBottom: 'calc(120px + env(safe-area-inset-bottom, 0px))',
                 }}
               >

@@ -12,6 +12,7 @@
 
 .header {
   touch-action: manipulation;
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
 .header button,

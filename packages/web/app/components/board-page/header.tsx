@@ -234,6 +234,11 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
         lineHeight: 'normal',
         display: 'flex',
         padding: '0 12px',
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 10,
       }}
     >
       <UISearchParamsProvider>
