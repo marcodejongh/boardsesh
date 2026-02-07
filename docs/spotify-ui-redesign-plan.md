@@ -227,7 +227,7 @@ A new landing/home screen accessible via the first tab. This is a placeholder fo
 
 ---
 
-## Phase 2: Compact Climb List Mode
+## Phase 2: Compact Climb List Mode [DONE]
 
 ### What changes
 Add a "compact" display mode for the climb list that renders climbs as slim rows (similar to QueueListItem) instead of full cards.
@@ -307,7 +307,7 @@ Add a "compact" display mode for the climb list that renders climbs as slim rows
 
 ---
 
-## Phase 3: Now Playing Bar Redesign + Full-screen Play Drawer
+## Phase 3: Now Playing Bar Redesign + Full-screen Play Drawer [DONE]
 
 ### What changes
 - Redesign QueueControlBar to be simpler with only essential controls
@@ -548,7 +548,7 @@ Key implementation details:
 
 ---
 
-## Phase 4: Header Redesign — Board Selector, User Drawer, Simplified Layout
+## Phase 4: Header Redesign — Board Selector, User Drawer, Simplified Layout [DONE]
 
 ### What changes
 - **Remove** the top-right meatball/ellipsis menu entirely
@@ -1005,60 +1005,60 @@ Board layout.tsx (server component)
 - [x] Search input and advanced search button remain in header on list pages (mobile)
 
 ### Phase 2
-- [ ] Compact list items render correctly with proper layout
-- [ ] Grade colors match existing ClimbTitle colors
-- [ ] AscentStatus icon shows on compact list items
-- [ ] Swipe right favorites a climb (visual feedback, auth check)
-- [ ] Swipe left adds to queue (visual feedback + queue updates)
-- [ ] Swipe direction detection works (vertical scroll not blocked)
-- [ ] Ellipsis menu opens bottom drawer with all actions
-- [ ] All actions in drawer work (favorite, queue, tick, share, playlist, open-in-app, mirror, fork, view)
-- [ ] View mode toggle persists across page loads (localStorage)
-- [ ] View mode defaults to compact on all devices
-- [ ] Infinite scroll works in both modes
-- [ ] Scroll position restoration (hash-based) works in both modes
-- [ ] Selected climb highlighting works in compact mode
+- [x] Compact list items render correctly with proper layout
+- [x] Grade colors match existing ClimbTitle colors
+- [x] AscentStatus icon shows on compact list items
+- [x] Swipe right favorites a climb (visual feedback, auth check)
+- [x] Swipe left adds to queue (visual feedback + queue updates)
+- [x] Swipe direction detection works (vertical scroll not blocked)
+- [x] Ellipsis menu opens bottom drawer with all actions
+- [x] All actions in drawer work (favorite, queue, tick, share, playlist, open-in-app, mirror, fork, view)
+- [x] View mode toggle persists across page loads (localStorage)
+- [x] View mode defaults to compact on all devices
+- [x] Infinite scroll works in both modes
+- [x] Scroll position restoration (hash-based) works in both modes
+- [x] Selected climb highlighting works in compact mode
 
 ### Phase 3
-- [ ] QueueControlBar is ~45px tall (20% shorter than before) with 36px thumbnail
-- [ ] Bar appears on **all pages** when there is an active local queue
-- [ ] Bar appears on **all pages** when there is an active party session
-- [ ] Bar does NOT appear when there is no queue and no active session
-- [ ] On non-board pages, tapping the bar navigates back to the board route
-- [ ] On board pages, tapping the bar opens full-screen drawer (mobile only)
-- [ ] On board pages, tapping the bar navigates to /play/ route (desktop)
-- [ ] Global bar hides when navigating to a board route (board layout renders its own)
-- [ ] No duplicate bars visible on board routes
-- [ ] `FloatingSessionThumbnail` is fully removed — no floating card appears anywhere
-- [ ] Play drawer shows board renderer correctly (lazy-mounted)
-- [ ] Card-swipe navigation works in play drawer (content translates, next card slides in)
-- [ ] Card-swipe navigation works in QueueControlBar (current climb slides out, next slides in)
-- [ ] Mirror/favorite/tick actions work in play drawer
-- [ ] Drag-to-close works smoothly (custom react-swipeable handle)
-- [ ] Back button closes play drawer (hash-based `#playing`)
-- [ ] Queue button opens queue drawer (play drawer closes first)
-- [ ] Party button opens party drawer
-- [ ] Desktop QueueControlBar still has mirror, play link, prev/next buttons
-- [ ] /play/ URLs still work for direct links on all devices
-- [ ] Wake lock activates when play drawer is open
-- [ ] Page content has proper bottom padding when global bar is visible
+- [x] QueueControlBar is ~45px tall (20% shorter than before) with 36px thumbnail
+- [x] Bar appears on **all pages** when there is an active local queue
+- [x] Bar appears on **all pages** when there is an active party session
+- [x] Bar does NOT appear when there is no queue and no active session
+- [x] On non-board pages, tapping the bar navigates back to the board route
+- [x] On board pages, tapping the bar opens full-screen drawer (mobile only)
+- [x] On board pages, tapping the bar navigates to /play/ route (desktop)
+- [x] Global bar hides when navigating to a board route (board layout renders its own)
+- [x] No duplicate bars visible on board routes
+- [x] `FloatingSessionThumbnail` is fully removed — no floating card appears anywhere
+- [x] Play drawer shows board renderer correctly (lazy-mounted)
+- [x] Card-swipe navigation works in play drawer (content translates, next card slides in)
+- [x] Card-swipe navigation works in QueueControlBar (current climb slides out, next slides in)
+- [x] Mirror/favorite/tick actions work in play drawer
+- [x] Drag-to-close works smoothly (custom react-swipeable handle)
+- [x] Back button closes play drawer (hash-based `#playing`)
+- [x] Queue button opens queue drawer (play drawer closes first)
+- [x] Party button opens party drawer
+- [x] Desktop QueueControlBar still has mirror, play link, prev/next buttons
+- [x] /play/ URLs still work for direct links on all devices
+- [x] Wake lock activates when play drawer is open
+- [x] Page content has proper bottom padding when global bar is visible
 
 ### Phase 4
-- [ ] Meatball menu is completely removed (mobile and desktop)
-- [ ] Desktop user dropdown is completely removed
-- [ ] User avatar button appears top-left on all pages
-- [ ] Tapping avatar opens left-side user drawer
-- [ ] User drawer shows correct content when logged in (avatar, username, email, all menu items)
-- [ ] User drawer shows sign-in prompt when logged out
-- [ ] "Change Board" navigates to setup wizard or shows board list
-- [ ] "Recents" shows recently visited board configurations
-- [ ] "Classify Holds" opens HoldClassificationWizard from the drawer
-- [ ] Logout works from the drawer
-- [ ] Desktop header still has Create, Party, LED buttons inline
-- [ ] Mobile header is simplified (Avatar, Logo, Angle)
-- [ ] All removed items are accessible via user drawer or other new locations
-- [ ] Onboarding tour steps still target valid elements
-- [ ] SendClimbToBoardButton dynamic import only loads on desktop
+- [x] Meatball menu is completely removed (mobile and desktop)
+- [x] Desktop user dropdown is completely removed
+- [x] User avatar button appears top-left on all pages
+- [x] Tapping avatar opens left-side user drawer
+- [x] User drawer shows correct content when logged in (avatar, username, email, all menu items)
+- [x] User drawer shows sign-in prompt when logged out
+- [x] "Change Board" navigates to setup wizard or shows board list
+- [x] "Recents" shows recently visited board configurations
+- [x] "Classify Holds" opens HoldClassificationWizard from the drawer
+- [x] Logout works from the drawer
+- [x] Desktop header still has Create, Party, LED buttons inline
+- [x] Mobile header is simplified (Avatar, Logo, Angle)
+- [x] All removed items are accessible via user drawer or other new locations
+- [x] Onboarding tour steps still target valid elements
+- [x] SendClimbToBoardButton dynamic import only loads on desktop
 
 ### Phase 5
 - [ ] Party drawer opens from bottom (not top)

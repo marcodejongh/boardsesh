@@ -1,9 +1,8 @@
 'use client';
-import React, { useState, useMemo } from 'react';
+import React from 'react';
 import dynamic from 'next/dynamic';
-import { Flex, Button, Dropdown, MenuProps } from 'antd';
+import { Flex, Button } from 'antd';
 import { Header } from 'antd/es/layout/layout';
-import { useSession, signOut } from 'next-auth/react';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import SearchButton from '../search-drawer/search-button';
 import SearchClimbNameInput from '../search-drawer/search-climb-name-input';
@@ -18,17 +17,16 @@ const SendClimbToBoardButton = dynamic(
   () => import('../board-bluetooth-control/send-climb-to-board-button'),
   { ssr: false }
 );
-import { generateLayoutSlug, generateSizeSlug, generateSetSlug, constructClimbListWithSlugs } from '@/app/lib/url-utils';
+import { constructClimbListWithSlugs, generateLayoutSlug, generateSizeSlug, generateSetSlug } from '@/app/lib/url-utils';
 import { ShareBoardButton } from './share-button';
 import { useQueueContext } from '../graphql-queue';
-import { UserOutlined, LogoutOutlined, LoginOutlined, PlusOutlined, MoreOutlined, SettingOutlined, LineChartOutlined, LeftOutlined, InfoCircleOutlined, TagOutlined, AimOutlined, QuestionCircleOutlined } from '@ant-design/icons';
+import { PlusOutlined, LeftOutlined } from '@ant-design/icons';
 import AngleSelector from './angle-selector';
 import Logo from '../brand/logo';
 import styles from './header.module.css';
 import Link from 'next/link';
-import AuthModal from '../auth/auth-modal';
 import { useCreateClimbContext } from '../create-climb/create-climb-context';
-import { HoldClassificationWizard } from '../hold-classification';
+import UserDrawer from '../user-drawer/user-drawer';
 
 type PageMode = 'list' | 'view' | 'play' | 'create' | 'other';
 
@@ -64,7 +62,7 @@ type BoardSeshHeaderProps = {
 function usePageMode(): PageMode {
   const pathname = usePathname();
 
-  return useMemo(() => {
+  return React.useMemo(() => {
     if (pathname.includes('/play/')) return 'play';
     if (pathname.includes('/view/')) return 'view';
     if (pathname.includes('/list')) return 'list';
@@ -74,10 +72,7 @@ function usePageMode(): PageMode {
 }
 
 export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeaderProps) {
-  const { data: session } = useSession();
   const { currentClimb } = useQueueContext();
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [showHoldClassification, setShowHoldClassification] = useState(false);
   const pageMode = usePageMode();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -101,119 +96,10 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
     return baseUrl;
   };
 
-  const handleSignOut = () => {
-    signOut();
-  };
-
   const createClimbUrl = angle !== undefined && boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names
     ? `/${boardDetails.board_name}/${generateLayoutSlug(boardDetails.layout_name)}/${generateSizeSlug(boardDetails.size_name, boardDetails.size_description)}/${generateSetSlug(boardDetails.set_names)}/${angle}/create`
     : null;
 
-  const playlistsUrl = angle !== undefined && boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names
-    ? `/${boardDetails.board_name}/${generateLayoutSlug(boardDetails.layout_name)}/${generateSizeSlug(boardDetails.size_name, boardDetails.size_description)}/${generateSetSlug(boardDetails.set_names)}/${angle}/playlists`
-    : null;
-
-  // Hide playlists and classify holds for moonboard (not yet supported)
-  const isMoonboard = boardDetails.board_name === 'moonboard';
-
-  const userMenuItems: MenuProps['items'] = [
-    ...(playlistsUrl && !isMoonboard ? [{
-      key: 'playlists',
-      icon: <TagOutlined />,
-      label: <Link href={playlistsUrl}>My Playlists</Link>,
-    }] : []),
-    ...(!isMoonboard ? [{
-      key: 'classify-holds',
-      icon: <AimOutlined />,
-      label: 'Classify Holds',
-      onClick: () => setShowHoldClassification(true),
-    }] : []),
-    {
-      key: 'profile',
-      icon: <LineChartOutlined />,
-      label: <Link href={`/crusher/${session?.user?.id}`}>Profile</Link>,
-    },
-    {
-      key: 'settings',
-      icon: <SettingOutlined />,
-      label: <Link href="/settings">Settings</Link>,
-    },
-    {
-      key: 'help',
-      icon: <QuestionCircleOutlined />,
-      label: <Link href="/help">Help</Link>,
-    },
-    {
-      type: 'divider',
-    },
-    {
-      key: 'logout',
-      icon: <LogoutOutlined />,
-      label: 'Logout',
-      onClick: handleSignOut,
-    },
-  ];
-
-  const mobileMenuItems: MenuProps['items'] = [
-    ...(session?.user ? [
-      ...(!isMoonboard ? [{
-        key: 'classify-holds',
-        icon: <AimOutlined />,
-        label: 'Classify Holds',
-        onClick: () => setShowHoldClassification(true),
-      }] : []),
-      {
-        key: 'profile',
-        icon: <LineChartOutlined />,
-        label: <Link href={`/crusher/${session.user.id}`}>Profile</Link>,
-      },
-      {
-        key: 'settings',
-        icon: <SettingOutlined />,
-        label: <Link href="/settings">Settings</Link>,
-      },
-      {
-        key: 'help',
-        icon: <QuestionCircleOutlined />,
-        label: <Link href="/help">Help</Link>,
-      },
-      {
-        key: 'about',
-        icon: <InfoCircleOutlined />,
-        label: <Link href="/about">About</Link>,
-      },
-      {
-        type: 'divider' as const,
-      },
-      {
-        key: 'logout',
-        icon: <LogoutOutlined />,
-        label: 'Logout',
-        onClick: handleSignOut,
-      },
-    ] : []),
-    ...(!session?.user ? [
-      {
-        key: 'help',
-        icon: <QuestionCircleOutlined />,
-        label: <Link href="/help">Help</Link>,
-      },
-      {
-        key: 'about',
-        icon: <InfoCircleOutlined />,
-        label: <Link href="/about">About</Link>,
-      },
-      {
-        type: 'divider' as const,
-      },
-      {
-        key: 'login',
-        icon: <LoginOutlined />,
-        label: 'Login',
-        onClick: () => setShowAuthModal(true),
-      },
-    ] : []),
-  ];
   return (
     <Header
       className={`${styles.header} header-shadow`}
@@ -233,8 +119,12 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
     >
       <UISearchParamsProvider>
         <Flex justify="space-between" align="center" style={{ width: '100%' }} gap={8}>
-          {/* Logo and back button - Fixed to left */}
+          {/* Left section: Avatar + Logo + Back button */}
           <Flex align="center" gap={4}>
+            {pageMode !== 'create' && (
+              <UserDrawer boardDetails={boardDetails} angle={angle} />
+            )}
+
             {/* Play page: Show back button next to logo (mobile only) */}
             {pageMode === 'play' && (
               <div className={styles.mobileOnly}>
@@ -262,8 +152,6 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
                 </div>
               </>
             )}
-
-            {/* View page: Empty center on mobile (back button is in the page content) */}
           </Flex>
 
           {/* Right Section */}
@@ -288,52 +176,11 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
                   <ShareBoardButton />
                   <SendClimbToBoardButton boardDetails={boardDetails} />
                 </span>
-
-                {/* Desktop: User menu or login button */}
-                <div className={styles.desktopOnly}>
-                  {session?.user ? (
-                    <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-                      <Button icon={<UserOutlined />} type="text">
-                        {session.user.name || session.user.email}
-                      </Button>
-                    </Dropdown>
-                  ) : (
-                    <Button
-                      icon={<LoginOutlined />}
-                      type="text"
-                      onClick={() => setShowAuthModal(true)}
-                    >
-                      Login
-                    </Button>
-                  )}
-                </div>
-
-                {/* Mobile: meatball menu for Create Climb and Login */}
-                {mobileMenuItems.length > 0 && (
-                  <div className={styles.mobileMenuButton}>
-                    <Dropdown menu={{ items: mobileMenuItems }} placement="bottomRight" trigger={['click']}>
-                      <Button icon={<MoreOutlined />} type="default" />
-                    </Dropdown>
-                  </div>
-                )}
               </>
             )}
           </Flex>
         </Flex>
       </UISearchParamsProvider>
-
-      <AuthModal
-        open={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        title="Sign in to Boardsesh"
-        description="Sign in to access all features including saving favorites, tracking ascents, and more."
-      />
-
-      <HoldClassificationWizard
-        open={showHoldClassification}
-        onClose={() => setShowHoldClassification(false)}
-        boardDetails={boardDetails}
-      />
     </Header>
   );
 }
