@@ -7,6 +7,7 @@ import { useQueueContext } from '@/app/components/graphql-queue';
 import ClearButton from './clear-button';
 import { useUISearchParams } from '../queue-control/ui-searchparams-provider';
 import { DEFAULT_SEARCH_PARAMS } from '@/app/lib/url-utils';
+import { themeTokens } from '@/app/theme/theme-config';
 import styles from './search-form.module.css';
 
 const { Text } = Typography;
@@ -36,7 +37,7 @@ const SearchResultsFooter = () => {
           <Spin size="small" />
         ) : (
           <Space size={8}>
-            <FilterOutlined style={{ color: '#8C4A52' }} />
+            <FilterOutlined style={{ color: themeTokens.colors.primary }} />
             <Text type="secondary">
               <span className={styles.resultBadge}>{(totalSearchResultCount ?? 0).toLocaleString()}</span> results
             </Text>

@@ -91,7 +91,7 @@ export function TickAction({
   const iconSize = size === 'small' ? 14 : size === 'large' ? 20 : 16;
 
   const icon = <CheckOutlined style={{ fontSize: iconSize }} />;
-  const badgeColor = hasSuccessfulAscent ? 'green' : 'red';
+  const badgeColor = hasSuccessfulAscent ? themeTokens.colors.success : themeTokens.colors.error;
 
   const drawers = (
     <>

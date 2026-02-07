@@ -37,7 +37,7 @@ const QueueSidebar: React.FC<{ boardDetails: BoardDetails }> = ({ boardDetails }
             overflowCount={99}
             showZero={false}
             size="small"
-            color="#8C4A52"
+            color={themeTokens.colors.primary}
             offset={[8, 0]}
           >
             Queue

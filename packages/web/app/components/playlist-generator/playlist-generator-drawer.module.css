@@ -6,7 +6,7 @@
 
 .backButton {
   margin-left: -8px;
-  color: #8C4A52;
+  color: var(--color-primary);
 }
 
 .drawerTitle {

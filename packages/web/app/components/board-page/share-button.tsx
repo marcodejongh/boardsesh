@@ -487,7 +487,7 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
 
   return (
     <>
-      <Badge count={connectionCount} overflowCount={100} showZero={false} color="#8C4A52">
+      <Badge count={connectionCount} overflowCount={100} showZero={false} color={themeTokens.colors.primary}>
         <Button
           type={isSessionActive ? 'primary' : buttonType}
           onClick={showDrawer}

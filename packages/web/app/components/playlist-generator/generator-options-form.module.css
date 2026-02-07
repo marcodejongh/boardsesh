@@ -107,9 +107,9 @@
 }
 
 .resetButton {
-  color: #8C4A52;
+  color: var(--color-primary);
 }
 
 .resetButton:hover {
-  color: #7A3F47;
+  color: var(--color-primary-hover);
 }
