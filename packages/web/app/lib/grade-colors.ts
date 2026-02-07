@@ -148,3 +148,34 @@ export function getGradeTextColor(gradeColor: string | undefined): string {
   if (!gradeColor) return 'inherit';
   return isLightColor(gradeColor) ? '#000000' : '#FFFFFF';
 }
+
+/**
+ * Get a subtle HSL tint color derived from a climb's grade color.
+ * Returns the grade's hue with low saturation and high lightness for a muted background tint.
+ * @param difficulty - Difficulty string like "6a/V3" or "V5"
+ * @returns HSL color string like "hsl(30, 15%, 93%)" or undefined if no grade color found
+ */
+export function getGradeTintColor(difficulty: string | null | undefined): string | undefined {
+  const color = getGradeColor(difficulty);
+  if (!color) return undefined;
+
+  const hex = color.replace('#', '');
+  const r = parseInt(hex.substring(0, 2), 16) / 255;
+  const g = parseInt(hex.substring(2, 4), 16) / 255;
+  const b = parseInt(hex.substring(4, 6), 16) / 255;
+
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const delta = max - min;
+
+  let hue = 0;
+  if (delta !== 0) {
+    if (max === r) hue = ((g - b) / delta) % 6;
+    else if (max === g) hue = (b - r) / delta + 2;
+    else hue = (r - g) / delta + 4;
+    hue *= 60;
+    if (hue < 0) hue += 360;
+  }
+
+  return `hsl(${Math.round(hue)}, 30%, 88%)`;
+}

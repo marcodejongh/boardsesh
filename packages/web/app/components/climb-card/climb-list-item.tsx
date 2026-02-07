@@ -13,7 +13,7 @@ import { ClimbActions } from '../climb-actions';
 import { useQueueContext } from '../graphql-queue';
 import { useFavorite } from '../climb-actions';
 import { themeTokens } from '@/app/theme/theme-config';
-import { getGradeColor } from '@/app/lib/grade-colors';
+import { getGradeColor, getGradeTintColor } from '@/app/lib/grade-colors';
 
 const { Text } = Typography;
 
@@ -175,9 +175,9 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
             alignItems: 'center',
             padding: `${themeTokens.spacing[2]}px ${themeTokens.spacing[3]}px`,
             gap: themeTokens.spacing[3],
-            backgroundColor: selected ? themeTokens.semantic.selected : themeTokens.semantic.surface,
+            backgroundColor: selected ? (getGradeTintColor(climb.difficulty) ?? themeTokens.semantic.selected) : themeTokens.semantic.surface,
             borderBottom: `1px solid ${themeTokens.neutral[200]}`,
-            borderLeft: selected ? `3px solid ${themeTokens.colors.primary}` : '3px solid transparent',
+            borderLeft: selected ? `3px solid ${gradeColor ?? themeTokens.colors.primary}` : '3px solid transparent',
             transform: `translateX(${swipeOffset}px)`,
             transition: swipeOffset === 0 ? `transform ${themeTokens.transitions.fast}` : 'none',
             cursor: 'pointer',

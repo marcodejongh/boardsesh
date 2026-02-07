@@ -177,6 +177,12 @@ button,
   pointer-events: none;
 }
 
+@media (max-width: 767px) {
+  .queue-bar-shadow::before {
+    display: none;
+  }
+}
+
 /* Drawer transitions - Ant Design already handles this, but we customize the easing */
 .ant-drawer .ant-drawer-content-wrapper {
   transition: transform 0.3s cubic-bezier(0.23, 1, 0.32, 1);

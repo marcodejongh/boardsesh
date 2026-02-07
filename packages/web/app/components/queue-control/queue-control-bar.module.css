@@ -1,12 +1,29 @@
 .queueBar {
   flex-shrink: 0;
   width: 100%;
+  background-color: var(--semantic-surface);
 }
 
 .card {
   width: 100%;
   border-radius: 0;
   margin: 0;
+  border-top: 1px solid var(--neutral-200);
+}
+
+/* Mobile floating bar */
+@media (max-width: 767px) {
+  .queueBar {
+    padding: 0 8px 10px;
+    background-color: transparent;
+  }
+
+  .card {
+    border-radius: 4px;
+    border-top: none;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  }
 }
 
 .swipeWrapper {
@@ -74,6 +91,7 @@
 /* Swipe container for mobile navigation */
 .swipeContainer {
   touch-action: manipulation;
+  transition: background-color 300ms ease;
 }
 
 /* Clip container for text swipe — hides overflow during slide */

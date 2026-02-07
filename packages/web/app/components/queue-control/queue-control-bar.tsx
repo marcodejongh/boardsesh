@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { Button, Row, Col, Card, Space, Popconfirm } from 'antd';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import { SyncOutlined, DeleteOutlined, ExpandOutlined } from '@ant-design/icons';
@@ -21,6 +21,7 @@ import { TOUR_DRAWER_EVENT } from '../onboarding/onboarding-tour';
 import { ShareBoardButton } from '../board-page/share-button';
 import { useCardSwipeNavigation, EXIT_DURATION, SNAP_BACK_DURATION } from '@/app/hooks/use-card-swipe-navigation';
 import PlayViewDrawer from '../play-view/play-view-drawer';
+import { getGradeTintColor } from '@/app/lib/grade-colors';
 import styles from './queue-control-bar.module.css';
 
 export type ActiveDrawer = 'none' | 'play' | 'queue';
@@ -80,6 +81,8 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
   const isListPage = pathname.includes('/list');
   const isPlayPage = pathname.includes('/play/');
   const { currentClimb, currentClimbQueueItem, mirrorClimb, queue, setQueue, getNextClimbQueueItem, getPreviousClimbQueueItem, setCurrentClimbQueueItem, viewOnlyMode } = useQueueContext();
+
+  const gradeTintColor = useMemo(() => getGradeTintColor(currentClimb?.difficulty), [currentClimb?.difficulty]);
 
   const nextClimb = getNextClimbQueueItem();
   const previousClimb = getPreviousClimbQueueItem();
@@ -258,7 +261,7 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
   }, [enterDirection, clearEnterAnimation]);
 
   return (
-    <div id="onboarding-queue-bar" className={`queue-bar-shadow ${styles.queueBar}`} data-testid="queue-control-bar" style={{ backgroundColor: themeTokens.semantic.surface }}>
+    <div id="onboarding-queue-bar" className={`queue-bar-shadow ${styles.queueBar}`} data-testid="queue-control-bar">
       {/* Main Control Bar */}
       <Card
         variant="borderless"
@@ -268,9 +271,6 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
           },
         }}
         className={styles.card}
-        style={{
-          borderTop: `1px solid ${themeTokens.neutral[200]}`,
-        }}
       >
         {/* Swipe container - captures swipe gestures, does NOT translate */}
         <div className={styles.swipeWrapper}>
@@ -279,7 +279,7 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
             className={styles.swipeContainer}
             style={{
               padding: `6px ${themeTokens.spacing[3]}px 6px ${themeTokens.spacing[3]}px`,
-              backgroundColor: themeTokens.semantic.surface,
+              backgroundColor: gradeTintColor ?? themeTokens.semantic.surface,
             }}
           >
             <Row justify="space-between" align="middle" className={styles.row}>
@@ -350,7 +350,7 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
                             mirrored: !currentClimb?.mirrored,
                           });
                         }}
-                        type={currentClimb?.mirrored ? 'primary' : 'default'}
+                        type={currentClimb?.mirrored ? 'primary' : 'text'}
                         style={
                           currentClimb?.mirrored
                             ? { backgroundColor: themeTokens.colors.purple, borderColor: themeTokens.colors.purple }
@@ -371,7 +371,7 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
                           });
                         }}
                       >
-                        <Button icon={<ExpandOutlined />} aria-label="Enter play mode" />
+                        <Button type="text" icon={<ExpandOutlined />} aria-label="Enter play mode" />
                       </Link>
                     </span>
                   )}
@@ -383,9 +383,9 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
                     </Space>
                   </span>
                   {/* Party button */}
-                  <ShareBoardButton />
+                  <ShareBoardButton buttonType="text" />
                   {/* Tick button */}
-                  <TickButton currentClimb={currentClimb} angle={angle} boardDetails={boardDetails} />
+                  <TickButton currentClimb={currentClimb} angle={angle} boardDetails={boardDetails} buttonType="text" />
                 </Space>
               </Col>
             </Row>

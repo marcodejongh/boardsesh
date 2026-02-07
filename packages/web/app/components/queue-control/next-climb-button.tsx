@@ -14,7 +14,7 @@ type NextClimbButtonProps = {
 };
 
 const NextButton = (props: ButtonProps) => (
-  <Button {...props} type="default" icon={<FastForwardOutlined />} aria-label="Next climb" />
+  <Button {...props} type="text" icon={<FastForwardOutlined />} aria-label="Next climb" />
 );
 
 export default function NextClimbButton({ navigate = false, boardDetails }: NextClimbButtonProps) {
