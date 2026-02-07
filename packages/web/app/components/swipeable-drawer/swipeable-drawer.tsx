@@ -116,11 +116,10 @@ const SwipeableDrawer: React.FC<SwipeableDrawerProps> = ({
       {...handleRegionProps}
       className={
         placement === 'left'
-          ? styles.dragHandleZoneLeft
-          : styles.dragHandleZoneRight
+          ? styles.dragHandleZoneRight
+          : styles.dragHandleZoneLeft
       }
     >
-      <div className={styles.dragHandleBarVertical} />
     </div>
   ) : null, [effectiveEnabled, showDragHandle, handleRegionProps, placement]);
 
