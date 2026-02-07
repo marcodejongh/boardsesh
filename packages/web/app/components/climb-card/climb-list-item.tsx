@@ -175,7 +175,7 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
             alignItems: 'center',
             padding: `${themeTokens.spacing[2]}px ${themeTokens.spacing[3]}px`,
             gap: themeTokens.spacing[3],
-            backgroundColor: selected ? (getGradeTintColor(climb.difficulty) ?? themeTokens.semantic.selected) : themeTokens.semantic.surface,
+            backgroundColor: selected ? (getGradeTintColor(climb.difficulty, 'light') ?? themeTokens.semantic.selected) : themeTokens.semantic.surface,
             borderBottom: `1px solid ${themeTokens.neutral[200]}`,
             borderLeft: selected ? `3px solid ${gradeColor ?? themeTokens.colors.primary}` : '3px solid transparent',
             transform: `translateX(${swipeOffset}px)`,

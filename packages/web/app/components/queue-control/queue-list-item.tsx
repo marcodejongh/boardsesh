@@ -315,7 +315,7 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
           style={{
             padding: `${themeTokens.spacing[3]}px ${themeTokens.spacing[2]}px`,
             backgroundColor: isCurrent
-              ? (getGradeTintColor(item.climb?.difficulty) ?? themeTokens.semantic.selected)
+              ? (getGradeTintColor(item.climb?.difficulty, 'light') ?? themeTokens.semantic.selected)
               : isHistory
                 ? themeTokens.neutral[100]
                 : themeTokens.semantic.surface,
