@@ -16,7 +16,7 @@ import ClimbThumbnail from '../climb-card/climb-thumbnail';
 import ClimbTitle from '../climb-card/climb-title';
 import { useBoardProvider } from '../board-provider/board-provider-context';
 import { themeTokens } from '@/app/theme/theme-config';
-import { getGradeTintColor, getGradeColor } from '@/app/lib/grade-colors';
+import { getGradeTintColor } from '@/app/lib/grade-colors';
 import { constructClimbViewUrl, constructClimbViewUrlWithSlugs, parseBoardRouteParams, constructClimbInfoUrl } from '@/app/lib/url-utils';
 import { useDoubleTap } from '@/app/lib/hooks/use-double-tap';
 import styles from './queue-list-item.module.css';
@@ -320,7 +320,6 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
                 ? themeTokens.neutral[100]
                 : themeTokens.semantic.surface,
             opacity: isSwipeComplete ? 0 : isHistory ? 0.6 : 1,
-            borderLeft: isCurrent ? `3px solid ${getGradeColor(item.climb?.difficulty) ?? themeTokens.colors.primary}` : undefined,
             transform: `translateX(${swipeOffset}px)`,
             transition: swipeOffset === 0 || isSwipeComplete ? `transform ${themeTokens.transitions.fast}, opacity ${themeTokens.transitions.fast}` : 'none',
             cursor: isEditMode ? 'pointer' : undefined,
