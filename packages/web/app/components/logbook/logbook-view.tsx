@@ -3,6 +3,7 @@ import { Card, Rate, Tag, Typography, Space, Flex, Empty } from 'antd';
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Climb } from '@/app/lib/types';
 import { useBoardProvider } from '../board-provider/board-provider-context';
+import { themeTokens } from '@/app/theme/theme-config';
 import dayjs from 'dayjs';
 
 const { Text } = Typography;
@@ -41,9 +42,9 @@ export const LogbookView: React.FC<LogbookViewProps> = ({ currentClimb }) => {
                 <>
                   <Tag color="blue">{ascent.angle}°</Tag>
                   {ascent.is_ascent ? (
-                    <CheckOutlined style={{ color: '#52c41a' }} />
+                    <CheckOutlined style={{ color: themeTokens.neutral[400] }} />
                   ) : (
-                    <CloseOutlined style={{ color: '#ff4d4f' }} />
+                    <CloseOutlined style={{ color: themeTokens.neutral[400] }} />
                   )}
                 </>
               )}

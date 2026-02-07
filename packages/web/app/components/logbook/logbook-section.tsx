@@ -66,7 +66,7 @@ export const LogbookSection: React.FC<LogbookSectionProps> = ({ climb }) => {
         {summary.totalAttempts} attempt{summary.totalAttempts !== 1 ? 's' : ''} in {summary.sessionCount} session{summary.sessionCount !== 1 ? 's' : ''}
       </Text>
       {summary.successfulAscents > 0 && (
-        <Tag icon={<CheckCircleOutlined />} color="success">
+        <Tag icon={<CheckCircleOutlined />} color="default">
           {summary.successfulAscents} send{summary.successfulAscents !== 1 ? 's' : ''}
         </Tag>
       )}

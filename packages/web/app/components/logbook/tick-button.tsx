@@ -8,6 +8,7 @@ import { track } from '@vercel/analytics';
 import { LogAscentDrawer } from './log-ascent-drawer';
 import AuthModal from '../auth/auth-modal';
 import { constructClimbInfoUrl } from '@/app/lib/url-utils';
+import { themeTokens } from '@/app/theme/theme-config';
 
 const { Text, Paragraph } = Typography;
 
@@ -43,7 +44,6 @@ export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boa
     () => logbook.filter((asc) => asc.climb_uuid === currentClimb?.uuid && Number(asc.angle) === angle),
     [logbook, currentClimb?.uuid, angle],
   );
-  const hasSuccessfulAscent = filteredLogbook.some((asc) => asc.is_ascent);
   const badgeCount = filteredLogbook.length;
 
   return (
@@ -52,7 +52,7 @@ export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boa
         count={badgeCount > 0 ? badgeCount : 0}
         overflowCount={100}
         showZero={false}
-        color={hasSuccessfulAscent ? 'cyan' : 'red'}
+        color={themeTokens.neutral[400]}
       >
         <Button id="button-tick" type={buttonType} icon={<CheckOutlined />} onClick={showDrawer} />
       </Badge>

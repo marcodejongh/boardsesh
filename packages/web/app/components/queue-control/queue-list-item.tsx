@@ -68,7 +68,7 @@ export const AscentStatus = ({ climbUuid, fontSize }: { climbUuid: ClimbUuid; fo
           </div>
         ) : null}
         {!hasSuccessfulMirroredAscent && !hasSuccessfulAscent ? (
-          <CloseOutlined className={styles.ascentIconRegular} style={{ color: themeTokens.colors.error, fontSize }} />
+          <CloseOutlined className={styles.ascentIconRegular} style={{ color: themeTokens.neutral[400], fontSize }} />
         ) : null}
       </div>
     );
@@ -78,7 +78,7 @@ export const AscentStatus = ({ climbUuid, fontSize }: { climbUuid: ClimbUuid; fo
   return hasSuccessfulAscent ? (
     <CheckOutlined style={{ color: themeTokens.neutral[400], fontSize }} />
   ) : (
-    <CloseOutlined style={{ color: themeTokens.colors.error, fontSize }} />
+    <CloseOutlined style={{ color: themeTokens.neutral[400], fontSize }} />
   );
 };
 
