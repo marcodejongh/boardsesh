@@ -230,6 +230,9 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
 
   // Transition style shared by current and peek text
   const getTextTransitionStyle = () => {
+    // After navigation completes, snap instantly (no transition) to avoid
+    // the new text sliding in from the old exit position
+    if (enterDirection) return 'none';
     if (isAnimating) return `transform ${EXIT_DURATION}ms ease-out`;
     if (swipeOffset === 0) return `transform ${SNAP_BACK_DURATION}ms ease`;
     return 'none';
@@ -240,11 +243,13 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
   const peekIsNext = animationDirection === 'left' || (animationDirection === null && swipeOffset < 0);
   const peekClimbData = peekIsNext ? nextClimb?.climb : previousClimb?.climb;
 
-  // Peek transform: positioned one container-width away, moves with swipeOffset
+  // Peek transform: positioned one container-width away, moves with swipeOffset.
+  // Clamped so the peek stops at position 0 and never overshoots past it
+  // (the exit offset is window.innerWidth which is wider than the clip container).
   const getPeekTransform = () => {
     return peekIsNext
-      ? `translateX(calc(100% + ${swipeOffset}px))`
-      : `translateX(calc(-100% + ${swipeOffset}px))`;
+      ? `translateX(max(0px, calc(100% + ${swipeOffset}px)))`
+      : `translateX(min(0px, calc(-100% + ${swipeOffset}px)))`;
   };
 
   // Clear enterDirection (for thumbnail crossfade) after it plays
