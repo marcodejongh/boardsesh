@@ -26,90 +26,15 @@ import { HoldClassificationWizard } from '../hold-classification';
 import { BoardDetails } from '@/app/lib/types';
 import { generateLayoutSlug, generateSizeSlug, generateSetSlug } from '@/app/lib/url-utils';
 import { themeTokens } from '@/app/theme/theme-config';
+import {
+  type StoredSession,
+  getRecentSessions,
+  formatRelativeTime,
+  extractBoardName,
+} from '@/app/lib/session-history-db';
 import styles from './user-drawer.module.css';
 
 const { Text } = Typography;
-
-// Session history types and helpers (reused from session-history-panel)
-type StoredSession = {
-  id: string;
-  name: string | null;
-  boardPath: string;
-  createdAt: string;
-  lastActivity: string;
-  participantCount?: number;
-};
-
-const DB_NAME = 'boardsesh-sessions';
-const DB_VERSION = 1;
-const STORE_NAME = 'session-history';
-
-async function initSessionDB() {
-  if (typeof window === 'undefined' || !window.indexedDB) {
-    return null;
-  }
-
-  return new Promise<IDBDatabase>((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve(request.result);
-    request.onupgradeneeded = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
-        store.createIndex('lastActivity', 'lastActivity', { unique: false });
-      }
-    };
-  });
-}
-
-async function getRecentSessions(): Promise<StoredSession[]> {
-  const db = await initSessionDB();
-  if (!db) return [];
-
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(STORE_NAME, 'readonly');
-    const store = transaction.objectStore(STORE_NAME);
-    const request = store.getAll();
-
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => {
-      const sessions = request.result as StoredSession[];
-      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-      const recentSessions = sessions
-        .filter((s) => new Date(s.lastActivity || s.createdAt) > sevenDaysAgo)
-        .sort(
-          (a, b) =>
-            new Date(b.lastActivity || b.createdAt).getTime() -
-            new Date(a.lastActivity || a.createdAt).getTime(),
-        );
-      resolve(recentSessions);
-    };
-  });
-}
-
-function formatRelativeTime(dateString: string): string {
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / (1000 * 60));
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffMins < 1) return 'Just now';
-  if (diffMins < 60) return `${diffMins} min${diffMins === 1 ? '' : 's'} ago`;
-  if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
-  if (diffDays < 7) return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
-  return date.toLocaleDateString();
-}
-
-function extractBoardName(boardPath: string): string {
-  const parts = boardPath.split('/').filter(Boolean);
-  if (parts.length > 0) {
-    return parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
-  }
-  return 'Unknown Board';
-}
 
 interface UserDrawerProps {
   boardDetails: BoardDetails;
@@ -131,7 +56,11 @@ export default function UserDrawer({ boardDetails, angle }: UserDrawerProps) {
     if (isOpen) {
       getRecentSessions()
         .then(setRecentSessions)
-        .catch(console.error);
+        .catch(() => {
+          // IndexedDB may be unavailable (e.g. private browsing).
+          // Silently fall back to an empty list — the section simply won't render.
+          setRecentSessions([]);
+        });
     }
   }, [isOpen]);
 
@@ -167,7 +96,7 @@ export default function UserDrawer({ boardDetails, angle }: UserDrawerProps) {
         type="text"
         onClick={() => setIsOpen(true)}
         aria-label="User menu"
-        style={{ padding: 0, width: 32, height: 32 }}
+        className={styles.avatarButton}
       >
         <Avatar
           size={28}

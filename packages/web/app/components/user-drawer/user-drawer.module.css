@@ -93,10 +93,16 @@
   color: var(--neutral-500);
 }
 
+.avatarButton {
+  padding: 0;
+  width: 32px;
+  height: 32px;
+}
+
 .dangerItem {
-  color: #EF4444;
+  color: var(--color-error);
 }
 
 .dangerItem .menuItemIcon {
-  color: #EF4444;
+  color: var(--color-error);
 }
