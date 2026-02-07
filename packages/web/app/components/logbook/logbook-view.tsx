@@ -41,9 +41,9 @@ export const LogbookView: React.FC<LogbookViewProps> = ({ currentClimb }) => {
                 <>
                   <Tag color="blue">{ascent.angle}°</Tag>
                   {ascent.is_ascent ? (
-                    <CheckOutlined style={{ color: '#52c41a' }} />
+                    <CheckOutlined style={{ color: '#9CA3AF' }} />
                   ) : (
-                    <CloseOutlined style={{ color: '#ff4d4f' }} />
+                    <CloseOutlined style={{ color: '#9CA3AF' }} />
                   )}
                 </>
               )}

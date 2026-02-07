@@ -42,7 +42,6 @@ export function TickAction({
     );
   }, [logbook, climb, angle]);
 
-  const hasSuccessfulAscent = filteredLogbook.some((asc) => asc.is_ascent);
   const badgeCount = filteredLogbook.length;
 
   const handleClick = useCallback((e?: React.MouseEvent) => {
@@ -91,7 +90,7 @@ export function TickAction({
   const iconSize = size === 'small' ? 14 : size === 'large' ? 20 : 16;
 
   const icon = <CheckOutlined style={{ fontSize: iconSize }} />;
-  const badgeColor = hasSuccessfulAscent ? 'cyan' : 'red';
+  const badgeColor = '#9CA3AF';
 
   const drawers = (
     <>

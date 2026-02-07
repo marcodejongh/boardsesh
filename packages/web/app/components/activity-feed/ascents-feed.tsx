@@ -69,10 +69,10 @@ const getGroupStatusSummary = (group: GroupedAscentFeedItem): { text: string; ic
   let color: string;
   if (group.flashCount > 0) {
     icon = <ThunderboltOutlined />;
-    color = 'gold';
+    color = 'default';
   } else if (group.sendCount > 0) {
     icon = <CheckCircleOutlined />;
-    color = 'green';
+    color = 'default';
   } else {
     icon = <CloseCircleOutlined />;
     color = 'default';
