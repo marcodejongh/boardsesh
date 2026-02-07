@@ -1,5 +1,6 @@
 import React from 'react';
 import { Climb, BoardDetails } from '@/app/lib/types';
+import { themeTokens } from '@/app/theme/theme-config';
 import ClimbThumbnail from './climb-thumbnail';
 import ClimbTitle from './climb-title';
 import styles from './climb-list-item.module.css';
@@ -15,7 +16,7 @@ export default function DrawerClimbHeader({ climb, boardDetails }: DrawerClimbHe
       <div style={{ flexShrink: 0, maxWidth: 56 }}>
         <ClimbThumbnail boardDetails={boardDetails} currentClimb={climb} maxHeight="80px" />
       </div>
-      <ClimbTitle climb={climb} layout="horizontal" titleScale={1.4} showSetterInfo />
+      <ClimbTitle climb={climb} layout="horizontal" titleFontSize={themeTokens.typography.fontSize.xl} showSetterInfo />
     </div>
   );
 }

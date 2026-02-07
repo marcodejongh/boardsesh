@@ -236,7 +236,7 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
             showSetterInfo
             showAngle
             centered
-            titleScale={1.4}
+            titleFontSize={themeTokens.typography.fontSize.xl}
           />
         </div>
 

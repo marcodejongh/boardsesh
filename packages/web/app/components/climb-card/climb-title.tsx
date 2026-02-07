@@ -34,8 +34,8 @@ type ClimbTitleProps = {
   layout?: 'stacked' | 'horizontal';
   /** Center the content (useful for QueueControlBar) */
   centered?: boolean;
-  /** Scale factor for the climb name font size (default 1) */
-  titleScale?: number;
+  /** Font size for the climb name. Use a design token, e.g. themeTokens.typography.fontSize.lg */
+  titleFontSize?: number;
 };
 
 /**
@@ -51,7 +51,7 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
   className,
   layout = 'stacked',
   centered = false,
-  titleScale = 1,
+  titleFontSize,
 }) => {
   if (!climb) {
     return (
@@ -99,7 +99,7 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
     return <span style={{ fontStyle: 'italic' }}>{projectText}</span>;
   };
 
-  const nameFontSize = themeTokens.typography.fontSize.sm * titleScale;
+  const nameFontSize = titleFontSize ?? themeTokens.typography.fontSize.sm;
 
   const nameElement = (
     <Text
