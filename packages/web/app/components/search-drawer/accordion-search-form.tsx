@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { InputNumber, Row, Col, Select, Switch, Alert, Typography, Tooltip, Button } from 'antd';
 import { LoginOutlined, SortAscendingOutlined } from '@ant-design/icons';
 import { TENSION_KILTER_GRADES } from '@/app/lib/board-data';
+import { getGradeTintColor } from '@/app/lib/grade-colors';
 import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
 import { useBoardProvider } from '@/app/components/board-provider/board-provider-context';
 import SearchClimbNameInput from './search-climb-name-input';
@@ -61,6 +62,16 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
     }
   };
 
+  const getGradeSelectBackground = (difficultyId: number | undefined): string | undefined => {
+    if (!difficultyId || difficultyId === 0) return undefined;
+    const grade = grades.find(g => g.difficulty_id === difficultyId);
+    if (!grade) return undefined;
+    return getGradeTintColor(grade.difficulty_name, 'light');
+  };
+
+  const minGradeBg = getGradeSelectBackground(uiSearchParams.minGrade);
+  const maxGradeBg = getGradeSelectBackground(uiSearchParams.maxGrade);
+
   const sections: SectionConfig[] = [
     {
       key: 'climb',
@@ -82,7 +93,8 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
                 <Select
                   value={uiSearchParams.minGrade || 0}
                   onChange={(value) => handleGradeChange('min', value)}
-                  className={styles.fullWidth}
+                  className={`${styles.fullWidth} ${minGradeBg ? styles.gradeSelectColored : ''}`}
+                  style={minGradeBg ? { '--grade-bg': minGradeBg } as React.CSSProperties : undefined}
                   placeholder="Min"
                 >
                   <Select.Option value={0}>Any</Select.Option>
@@ -97,7 +109,8 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
                 <Select
                   value={uiSearchParams.maxGrade || 0}
                   onChange={(value) => handleGradeChange('max', value)}
-                  className={styles.fullWidth}
+                  className={`${styles.fullWidth} ${maxGradeBg ? styles.gradeSelectColored : ''}`}
+                  style={maxGradeBg ? { '--grade-bg': maxGradeBg } as React.CSSProperties : undefined}
                   placeholder="Max"
                 >
                   <Select.Option value={0}>Any</Select.Option>

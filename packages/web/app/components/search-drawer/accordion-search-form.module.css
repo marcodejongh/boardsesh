@@ -131,6 +131,12 @@
   gap: 8px;
 }
 
+/* Grade select with color background */
+.gradeSelectColored :global(.ant-select-selector) {
+  background-color: var(--grade-bg) !important;
+  border-color: transparent !important;
+}
+
 /* Mobile adjustments */
 @media (max-width: 767px) {
   .steppedContainer {
