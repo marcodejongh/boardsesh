@@ -43,8 +43,8 @@
 }
 
 .inQueueButton:hover {
-  color: var(--color-primary-hover) !important;
-  border-color: var(--color-primary-hover) !important;
+  color: var(--color-success-hover) !important;
+  border-color: var(--color-success-hover) !important;
 }
 
 @media (min-width: 768px) {

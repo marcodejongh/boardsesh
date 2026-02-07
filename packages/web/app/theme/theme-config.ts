@@ -9,6 +9,7 @@ export const themeTokens = {
     primaryActive: '#6B353D', // Deep dark rose
     secondary: '#6B7280', // Neutral grey for info/secondary
     success: '#6B9080', // Muted sage green
+    successHover: '#5A7A6C', // Darker sage green
     successBg: '#EFF5F2',
     warning: '#C4943C', // Muted amber
     warningBg: '#FAF5EC',

@@ -28,8 +28,12 @@
 
   /* Status colors */
   --color-success: #6B9080;
+  --color-success-hover: #5A7A6C;
+  --color-success-bg: #EFF5F2;
   --color-error: #B8524C;
+  --color-error-bg: #F9EFEE;
   --color-warning: #C4943C;
+  --color-warning-bg: #FAF5EC;
 
   /* Borders */
   --border-subtle: rgba(0, 0, 0, 0.06);
