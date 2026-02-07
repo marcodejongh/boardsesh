@@ -10,7 +10,6 @@ import { themeTokens } from '@/app/theme/theme-config';
 import AccordionSearchForm from '@/app/components/search-drawer/accordion-search-form';
 import SearchResultsFooter from '@/app/components/search-drawer/search-results-footer';
 import QueueList from '@/app/components/queue-control/queue-list';
-import { UISearchParamsProvider } from '@/app/components/queue-control/ui-searchparams-provider';
 import { useQueueContext } from '@/app/components/graphql-queue';
 import OnboardingTour from '@/app/components/onboarding/onboarding-tour';
 import styles from './layout-client.module.css';
@@ -98,15 +97,13 @@ const TabsWrapper: React.FC<{ boardDetails: BoardDetails }> = ({ boardDetails })
 
 const ListLayoutClient: React.FC<PropsWithChildren<ListLayoutClientProps>> = ({ boardDetails, children }) => {
   return (
-    <UISearchParamsProvider>
-      <Layout className={styles.listLayout}>
-        <Content className={styles.mainContent}>{children}</Content>
-        <Sider width={400} className={styles.sider} theme="light" style={{ padding: '0 8px 20px 8px' }}>
-          <TabsWrapper boardDetails={boardDetails} />
-        </Sider>
-        <OnboardingTour />
-      </Layout>
-    </UISearchParamsProvider>
+    <Layout className={styles.listLayout}>
+      <Content className={styles.mainContent}>{children}</Content>
+      <Sider width={400} className={styles.sider} theme="light" style={{ padding: '0 8px 20px 8px' }}>
+        <TabsWrapper boardDetails={boardDetails} />
+      </Sider>
+      <OnboardingTour />
+    </Layout>
   );
 };
 

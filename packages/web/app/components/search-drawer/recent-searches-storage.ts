@@ -11,7 +11,7 @@ export const RECENT_SEARCHES_CHANGED_EVENT = 'boardsesh:recent-searches-changed'
 const STORAGE_KEY = 'boardsesh_recent_searches';
 const MAX_ITEMS = 10;
 
-function getFilterKey(filters: Partial<SearchRequestPagination>): string {
+export function getFilterKey(filters: Partial<SearchRequestPagination>): string {
   // Exclude page/pageSize from comparison since they're not meaningful for deduplication
   const { page: _page, pageSize: _pageSize, ...rest } = filters as SearchRequestPagination;
   return JSON.stringify(rest, Object.keys(rest).sort());

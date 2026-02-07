@@ -49,6 +49,21 @@
   background: #E5E7EB;
 }
 
+.pillActive {
+  border-color: #06B6D4;
+  background: #ECFEFF;
+  color: #0E7490;
+}
+
+.pillActive:hover {
+  background: #CFFAFE;
+  border-color: #06B6D4;
+}
+
+.pillActive .pillIcon {
+  color: #06B6D4;
+}
+
 .pillIcon {
   font-size: 10px;
   /* themeTokens.neutral[400] */
