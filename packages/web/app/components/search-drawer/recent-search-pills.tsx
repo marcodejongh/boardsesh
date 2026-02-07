@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { HistoryOutlined } from '@ant-design/icons';
-import { getRecentSearches, RecentSearch } from './recent-searches-storage';
+import { getRecentSearches, RecentSearch, RECENT_SEARCHES_CHANGED_EVENT } from './recent-searches-storage';
 import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
 import { SearchRequestPagination } from '@/app/lib/types';
 import styles from './recent-search-pills.module.css';
@@ -18,28 +18,13 @@ const RecentSearchPills: React.FC = () => {
   useEffect(() => {
     refreshSearches();
 
-    // Listen for storage changes (when new searches are added from the drawer)
-    const handleStorage = (e: StorageEvent) => {
-      if (e.key === 'boardsesh_recent_searches') {
-        refreshSearches();
-      }
-    };
-    window.addEventListener('storage', handleStorage);
-
-    // Also poll on focus to catch same-tab localStorage changes
-    const handleFocus = () => refreshSearches();
-    window.addEventListener('focus', handleFocus);
+    const handleChange = () => refreshSearches();
+    window.addEventListener(RECENT_SEARCHES_CHANGED_EVENT, handleChange);
 
     return () => {
-      window.removeEventListener('storage', handleStorage);
-      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener(RECENT_SEARCHES_CHANGED_EVENT, handleChange);
     };
   }, [refreshSearches]);
-
-  // Also refresh when the component re-renders (e.g. after drawer closes)
-  useEffect(() => {
-    refreshSearches();
-  });
 
   if (searches.length === 0) return null;
 

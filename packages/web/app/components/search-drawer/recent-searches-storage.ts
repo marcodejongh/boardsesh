@@ -7,6 +7,7 @@ export type RecentSearch = {
   timestamp: number;
 };
 
+export const RECENT_SEARCHES_CHANGED_EVENT = 'boardsesh:recent-searches-changed';
 const STORAGE_KEY = 'boardsesh_recent_searches';
 const MAX_ITEMS = 10;
 
@@ -46,27 +47,9 @@ export function addRecentSearch(label: string, filters: Partial<SearchRequestPag
     // Add to front, cap at MAX_ITEMS
     const updated = [newEntry, ...deduplicated].slice(0, MAX_ITEMS);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    window.dispatchEvent(new CustomEvent(RECENT_SEARCHES_CHANGED_EVENT));
   } catch {
     // Silently fail if localStorage is unavailable
   }
 }
 
-export function removeRecentSearch(id: string): void {
-  if (typeof window === 'undefined') return;
-  try {
-    const existing = getRecentSearches();
-    const updated = existing.filter((s) => s.id !== id);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-  } catch {
-    // Silently fail
-  }
-}
-
-export function clearRecentSearches(): void {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.removeItem(STORAGE_KEY);
-  } catch {
-    // Silently fail
-  }
-}
