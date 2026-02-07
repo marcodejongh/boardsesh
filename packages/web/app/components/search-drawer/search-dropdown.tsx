@@ -60,7 +60,7 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({ boardDetails, open, onC
       placement="top"
       open={open}
       onClose={handleClose}
-      height="85vh"
+      height="100%"
       showDragHandle
       closable={false}
       footer={drawerFooter}
