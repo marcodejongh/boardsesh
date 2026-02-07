@@ -149,6 +149,73 @@ export function getGradeTextColor(gradeColor: string | undefined): string {
   return isLightColor(gradeColor) ? '#000000' : '#FFFFFF';
 }
 
+/**
+ * Convert a hex color to HSL components.
+ * @returns Object with h (0-360), s (0-1), l (0-1)
+ */
+function hexToHSL(hex: string): { h: number; s: number; l: number } {
+  const clean = hex.replace('#', '');
+  const r = parseInt(clean.substring(0, 2), 16) / 255;
+  const g = parseInt(clean.substring(2, 4), 16) / 255;
+  const b = parseInt(clean.substring(4, 6), 16) / 255;
+
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+
+  if (max === min) return { h: 0, s: 0, l };
+
+  const d = max - min;
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+
+  let h: number;
+  if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+  else if (max === g) h = ((b - r) / d + 2) / 6;
+  else h = ((r - g) / d + 4) / 6;
+
+  return { h: h * 360, s, l };
+}
+
+/**
+ * Create a softened version of a hex color for use as text color.
+ * Preserves the hue but uses moderate saturation and lightness so the color
+ * is distinguishable without being visually overwhelming on bold/large text.
+ */
+function softenColor(hex: string): string {
+  const { h } = hexToHSL(hex);
+  return `hsl(${Math.round(h)}, 40%, 45%)`;
+}
+
+/**
+ * Get a softened color for a V-grade string (e.g., "V3", "V10").
+ * Returns a muted version of the grade color suitable for large/bold text in list views.
+ */
+export function getSoftVGradeColor(vGrade: string | null | undefined): string | undefined {
+  const color = getVGradeColor(vGrade);
+  if (!color) return undefined;
+  return softenColor(color);
+}
+
+/**
+ * Get a softened color for a Font grade string (e.g., "6a", "7b+").
+ * Returns a muted version of the grade color suitable for large/bold text in list views.
+ */
+export function getSoftFontGradeColor(fontGrade: string | null | undefined): string | undefined {
+  const color = getFontGradeColor(fontGrade);
+  if (!color) return undefined;
+  return softenColor(color);
+}
+
+/**
+ * Get a softened color for a difficulty string (e.g., "6a/V3", "V5").
+ * Returns a muted version of the grade color suitable for large/bold text in list views.
+ */
+export function getSoftGradeColor(difficulty: string | null | undefined): string | undefined {
+  const color = getGradeColor(difficulty);
+  if (!color) return undefined;
+  return softenColor(color);
+}
+
 function hexToHue(hex: string): number {
   const clean = hex.replace('#', '');
   const r = parseInt(clean.substring(0, 2), 16) / 255;
