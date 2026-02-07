@@ -21,7 +21,6 @@ import { useQueueContext } from '../graphql-queue';
 import { useFavorite, ClimbActions } from '../climb-actions';
 import { ShareBoardButton } from '../board-page/share-button';
 import { TickButton } from '../logbook/tick-button';
-import { AscentStatus } from '../queue-control/queue-list-item';
 import QueueList, { QueueListHandle } from '../queue-control/queue-list';
 import ClimbTitle from '../climb-card/climb-title';
 import BoardRenderer from '../board-renderer/board-renderer';
@@ -238,7 +237,7 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
             showAngle
             centered
             titleFontSize={themeTokens.typography.fontSize.xl}
-            rightAddon={currentClimb && <AscentStatus climbUuid={currentClimb.uuid} fontSize={themeTokens.typography.fontSize.xl} />}
+            rightAddon={currentClimb && <TickButton currentClimb={currentClimb} angle={angle} boardDetails={boardDetails} buttonType="text" />}
           />
         </div>
 
@@ -280,9 +279,6 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
 
           {/* LED */}
           <SendClimbToBoardButton buttonType="text" />
-
-          {/* Tick */}
-          <TickButton currentClimb={currentClimb} angle={angle} boardDetails={boardDetails} buttonType="text" />
 
           {/* Queue */}
           <Badge count={remainingQueueCount} overflowCount={99} showZero={false} color="cyan">
