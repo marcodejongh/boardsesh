@@ -348,17 +348,17 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
               className={`${styles.sectionCard} ${isActive ? styles.sectionCardActive : ''}`}
               {...(!isActive ? { onClick: () => setActiveKey(section.key) } : {})}
             >
-              {isActive ? (
-                <div className={styles.expandedContent}>
-                  <h2 className={styles.sectionTitle}>{section.title}</h2>
+              <div className={`${styles.collapsedRow} ${isActive ? styles.collapsedRowActive : ''}`}>
+                <span className={styles.collapsedLabel}>{isActive ? section.title : section.label}</span>
+                <span className={`${styles.collapsedSummary} ${isActive ? styles.collapsedSummaryHidden : ''}`}>
+                  {summaryText}
+                </span>
+              </div>
+              <div className={`${styles.expandableContent} ${isActive ? styles.expandableContentOpen : ''}`}>
+                <div className={styles.expandableInner}>
                   {section.content}
                 </div>
-              ) : (
-                <div className={styles.collapsedRow}>
-                  <span className={styles.collapsedLabel}>{section.label}</span>
-                  <span className={styles.collapsedSummary}>{summaryText}</span>
-                </div>
-              )}
+              </div>
             </div>
           );
         })}
