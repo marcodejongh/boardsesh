@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Angle, Climb, BoardDetails } from '@/app/lib/types';
-import { useBoardProvider } from '../board-provider/board-provider-context';
+import { useBoardProviderOptional } from '../board-provider/board-provider-context';
 import { Button, Badge, Typography, Space } from 'antd';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import { CheckOutlined, LoginOutlined, AppstoreOutlined } from '@ant-design/icons';
@@ -19,7 +19,9 @@ interface TickButtonProps {
 }
 
 export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boardDetails, buttonType = 'default' }) => {
-  const { logbook, isAuthenticated } = useBoardProvider();
+  const boardContext = useBoardProviderOptional();
+  const logbook = boardContext?.logbook ?? [];
+  const isAuthenticated = boardContext?.isAuthenticated ?? false;
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
 

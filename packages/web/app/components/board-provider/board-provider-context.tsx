@@ -325,5 +325,9 @@ export function useBoardProvider() {
   return context;
 }
 
+export function useBoardProviderOptional(): BoardContextType | undefined {
+  return useContext(BoardContext);
+}
+
 export type { BoardContextType };
 export { BoardContext };
