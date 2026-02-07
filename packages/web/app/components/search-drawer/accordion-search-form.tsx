@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Collapse, InputNumber, Row, Col, Select, Switch, Alert, Typography, Tooltip, Divider, Button, Tag } from 'antd';
+import { InputNumber, Row, Col, Select, Switch, Alert, Typography, Tooltip, Divider, Button } from 'antd';
 import { LoginOutlined, SortAscendingOutlined } from '@ant-design/icons';
 import { TENSION_KILTER_GRADES } from '@/app/lib/board-data';
 import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
@@ -31,16 +31,14 @@ interface AccordionSearchFormProps {
   showRecentSearches?: boolean;
 }
 
-const SummaryTags: React.FC<{ parts: string[] }> = ({ parts }) => {
-  if (parts.length === 0) return null;
-  return (
-    <div className={styles.summaryTags} onClick={(e) => e.stopPropagation()}>
-      {parts.map((part, i) => (
-        <Tag key={i} className={styles.summaryTag}>{part}</Tag>
-      ))}
-    </div>
-  );
-};
+interface SectionConfig {
+  key: string;
+  label: string;
+  title: string;
+  defaultSummary: string;
+  getSummary: () => string[];
+  content: React.ReactNode;
+}
 
 const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
   boardDetails,
@@ -52,7 +50,7 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
   const grades = TENSION_KILTER_GRADES;
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showSort, setShowSort] = useState(false);
-  const [activeKey, setActiveKey] = useState<string[]>(defaultActiveKey);
+  const [activeKey, setActiveKey] = useState<string>(defaultActiveKey[0] || 'climb');
 
   const isKilterHomewall = boardDetails.board_name === 'kilter' && boardDetails.layout_id === KILTER_HOMEWALL_LAYOUT_ID;
   const isLargestSize = boardDetails.size_name?.toLowerCase().includes('12');
@@ -66,14 +64,14 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
     }
   };
 
-  const isExpanded = (key: string) => activeKey.includes(key);
-
-  const items = [
+  const sections: SectionConfig[] = [
     {
       key: 'climb',
-      label: 'Climb Search',
-      extra: !isExpanded('climb') ? <SummaryTags parts={getClimbPanelSummary(uiSearchParams)} /> : null,
-      children: (
+      label: 'Climb',
+      title: 'Climb',
+      defaultSummary: 'All climbs',
+      getSummary: () => getClimbPanelSummary(uiSearchParams),
+      content: (
         <div className={styles.panelContent}>
           <div className={styles.inputGroup}>
             <Text strong>Climb Name</Text>
@@ -190,8 +188,10 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
     {
       key: 'quality',
       label: 'Quality',
-      extra: !isExpanded('quality') ? <SummaryTags parts={getQualityPanelSummary(uiSearchParams)} /> : null,
-      children: (
+      title: 'Quality',
+      defaultSummary: 'Any',
+      getSummary: () => getQualityPanelSummary(uiSearchParams),
+      content: (
         <div className={styles.panelContent}>
           <Row gutter={[12, 12]}>
             <Col span={12}>
@@ -252,8 +252,10 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
     {
       key: 'progress',
       label: 'Progress',
-      extra: !isExpanded('progress') ? <SummaryTags parts={getProgressPanelSummary(uiSearchParams)} /> : null,
-      children: (
+      title: 'Progress',
+      defaultSummary: 'All climbs',
+      getSummary: () => getProgressPanelSummary(uiSearchParams),
+      content: (
         <div className={styles.panelContent}>
           {!isAuthenticated ? (
             <Alert
@@ -314,9 +316,11 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
     },
     {
       key: 'holds',
-      label: 'Search by Hold',
-      extra: !isExpanded('holds') ? <SummaryTags parts={getHoldsPanelSummary(uiSearchParams)} /> : null,
-      children: (
+      label: 'Holds',
+      title: 'Search by Hold',
+      defaultSummary: 'Any',
+      getSummary: () => getHoldsPanelSummary(uiSearchParams),
+      content: (
         <div className={styles.holdSearchContainer}>
           <ClimbHoldSearchForm boardDetails={boardDetails} />
         </div>
@@ -326,13 +330,35 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
 
   return (
     <>
-      <Collapse
-        activeKey={activeKey}
-        onChange={(keys) => setActiveKey(keys as string[])}
-        ghost
-        className={styles.accordion}
-        items={items}
-      />
+      <div className={styles.steppedContainer}>
+        {sections.map((section) => {
+          const isActive = activeKey === section.key;
+          const summaryParts = section.getSummary();
+          const summaryText = summaryParts.length > 0
+            ? summaryParts.join(' \u00B7 ')
+            : section.defaultSummary;
+
+          return (
+            <div
+              key={section.key}
+              className={`${styles.sectionCard} ${isActive ? styles.sectionCardActive : ''}`}
+              {...(!isActive ? { onClick: () => setActiveKey(section.key) } : {})}
+            >
+              {isActive ? (
+                <div className={styles.expandedContent}>
+                  <h2 className={styles.sectionTitle}>{section.title}</h2>
+                  {section.content}
+                </div>
+              ) : (
+                <div className={styles.collapsedRow}>
+                  <span className={styles.collapsedLabel}>{section.label}</span>
+                  <span className={styles.collapsedSummary}>{summaryText}</span>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
       <AuthModal
         open={showAuthModal}
         onClose={() => setShowAuthModal(false)}
