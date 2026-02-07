@@ -26,6 +26,8 @@ type ClimbTitleProps = {
   showSetterInfo?: boolean;
   /** Custom element to render after the name (e.g., AscentStatus) */
   nameAddon?: React.ReactNode;
+  /** Custom element to render on the far right (e.g., AscentStatus in play view) */
+  rightAddon?: React.ReactNode;
   /** Use ellipsis for text overflow */
   ellipsis?: boolean;
   /** Additional className for the container */
@@ -47,6 +49,7 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
   showAngle = false,
   showSetterInfo = false,
   nameAddon,
+  rightAddon,
   ellipsis = true,
   className,
   layout = 'stacked',
@@ -140,7 +143,7 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
   const largeGradeElement = vGrade && (
     <Text
       style={{
-        fontSize: 28,
+        fontSize: nameFontSize,
         fontWeight: themeTokens.typography.fontWeight.bold,
         lineHeight: 1,
         color: gradeColor ?? 'var(--ant-color-text-secondary)',
@@ -177,7 +180,9 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
 
     return (
       <Flex gap={12} align="center" className={className} style={centered ? { position: 'relative' } : undefined}>
-        {/* Left side: Name and quality/setter stacked */}
+        {/* Colorized V grade on the left */}
+        {largeGradeElement}
+        {/* Center: Name and quality/setter stacked */}
         <Flex vertical gap={0} style={{ flex: 1, minWidth: 0 }} align={centered ? 'center' : 'flex-start'}>
           {/* Row 1: Name with addon */}
           <div style={{ display: 'flex', alignItems: 'center', gap: themeTokens.spacing[2] }}>
@@ -196,14 +201,8 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
             {secondLineContent.length > 0 ? secondLineContent.join(' · ') : <span style={{ fontStyle: 'italic' }}>project</span>}
           </Text>
         </Flex>
-        {/* Large V grade: absolutely positioned when centered to avoid pushing text off-center */}
-        {centered ? (
-          <div style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)' }}>
-            {largeGradeElement}
-          </div>
-        ) : (
-          largeGradeElement
-        )}
+        {/* Right addon (e.g., ascent status) */}
+        {rightAddon}
       </Flex>
     );
   }
