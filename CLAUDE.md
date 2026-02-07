@@ -186,6 +186,15 @@ We are using next.js app router, it's important we try to use server side compon
 - Use Zod for request/response validation
 - Implement both internal and proxy endpoints as needed
 
+### Client-Side Storage: IndexedDB Only
+
+**Never use `localStorage` or `sessionStorage`**. All client-side persistence must use IndexedDB via the `idb` package.
+
+- **Simple key-value preferences** (e.g., view mode, party mode): Use the shared utility at `packages/web/app/lib/user-preferences-db.ts` which provides `getPreference<T>(key)`, `setPreference(key, value)`, and `removePreference(key)`.
+- **Domain-specific data** (e.g., recent searches, session history, onboarding status): Create a dedicated `*-db.ts` file in `packages/web/app/lib/` following the established pattern (lazy `dbPromise` init, SSR guard, try-catch error handling). See `tab-navigation-db.ts` or `onboarding-db.ts` for examples.
+- All IndexedDB access must be guarded with `typeof window === 'undefined'` checks for SSR compatibility.
+- The only acceptable `localStorage` references are in one-time migration code that reads old data and deletes it (see `party-profile-db.ts`).
+
 ### State Management
 
 - URL parameters as source of truth for board configuration

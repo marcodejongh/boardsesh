@@ -1,8 +1,9 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import { getPreference, setPreference, removePreference } from '@/app/lib/user-preferences-db';
 
-const PARTY_MODE_STORAGE_KEY = 'boardsesh:partyMode';
+const PARTY_MODE_PREFERENCE_KEY = 'boardsesh:partyMode';
 
 // Backend URL from environment variable (for production deployment)
 const BACKEND_URL = process.env.NEXT_PUBLIC_WS_URL || null;
@@ -27,20 +28,20 @@ export const ConnectionSettingsProvider: React.FC<{ children: React.ReactNode }>
   const [storedPartyMode, setStoredPartyMode] = useState<PartyMode>('direct');
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Load party mode from localStorage on mount
+  // Load party mode from IndexedDB on mount
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const storedMode = localStorage.getItem(PARTY_MODE_STORAGE_KEY) as PartyMode | null;
+    if (typeof window === 'undefined') return;
 
+    getPreference<PartyMode>(PARTY_MODE_PREFERENCE_KEY).then((storedMode) => {
       if (storedMode === 'direct' || storedMode === 'backend') {
         setStoredPartyMode(storedMode);
       }
 
       // Clean up old localStorage keys if they exist
-      localStorage.removeItem('boardsesh:backendUrl');
+      removePreference('boardsesh:backendUrl');
 
       setIsLoaded(true);
-    }
+    });
   }, []);
 
   // Effective party mode - env var forces backend mode
@@ -53,7 +54,7 @@ export const ConnectionSettingsProvider: React.FC<{ children: React.ReactNode }>
 
   const setPartyMode = useCallback((mode: PartyMode) => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem(PARTY_MODE_STORAGE_KEY, mode);
+      setPreference(PARTY_MODE_PREFERENCE_KEY, mode);
       setStoredPartyMode(mode);
     }
   }, []);

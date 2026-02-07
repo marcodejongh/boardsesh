@@ -11,10 +11,11 @@ import { ClimbCardSkeleton, ClimbListItemSkeleton } from './board-page-skeleton'
 import { useSearchParams } from 'next/navigation';
 import { themeTokens } from '@/app/theme/theme-config';
 import RecentSearchPills from '../search-drawer/recent-search-pills';
+import { getPreference, setPreference } from '@/app/lib/user-preferences-db';
 
 type ViewMode = 'grid' | 'list';
 
-const VIEW_MODE_STORAGE_KEY = 'climbListViewMode';
+const VIEW_MODE_PREFERENCE_KEY = 'climbListViewMode';
 
 type ClimbsListProps = ParsedBoardRouteParameters & {
   boardDetails: BoardDetails;
@@ -51,23 +52,16 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
 
   // Read stored view mode preference after mount to avoid hydration mismatch
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(VIEW_MODE_STORAGE_KEY);
+    getPreference<ViewMode>(VIEW_MODE_PREFERENCE_KEY).then((stored) => {
       if (stored === 'grid' || stored === 'list') {
         setViewMode(stored);
       }
-    } catch {
-      // localStorage not available
-    }
+    });
   }, []);
 
   const handleViewModeChange = useCallback((mode: ViewMode) => {
     setViewMode(mode);
-    try {
-      localStorage.setItem(VIEW_MODE_STORAGE_KEY, mode);
-    } catch {
-      // localStorage not available
-    }
+    setPreference(VIEW_MODE_PREFERENCE_KEY, mode);
     track('View Mode Changed', { mode });
   }, []);
 

@@ -1,0 +1,64 @@
+import { openDB, IDBPDatabase } from 'idb';
+
+const DB_NAME = 'boardsesh-user-preferences';
+const DB_VERSION = 1;
+const STORE_NAME = 'preferences';
+
+let dbPromise: Promise<IDBPDatabase> | null = null;
+
+const initDB = async (): Promise<IDBPDatabase | null> => {
+  if (typeof window === 'undefined' || !window.indexedDB) {
+    return null;
+  }
+  if (!dbPromise) {
+    dbPromise = openDB(DB_NAME, DB_VERSION, {
+      upgrade(db) {
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          db.createObjectStore(STORE_NAME);
+        }
+      },
+    });
+  }
+  return dbPromise;
+};
+
+/**
+ * Get a preference value from IndexedDB.
+ */
+export const getPreference = async <T>(key: string): Promise<T | null> => {
+  try {
+    const db = await initDB();
+    if (!db) return null;
+    const value = await db.get(STORE_NAME, key);
+    return value ?? null;
+  } catch (error) {
+    console.error('Failed to get preference:', error);
+    return null;
+  }
+};
+
+/**
+ * Save a preference value to IndexedDB.
+ */
+export const setPreference = async <T>(key: string, value: T): Promise<void> => {
+  try {
+    const db = await initDB();
+    if (!db) return;
+    await db.put(STORE_NAME, value, key);
+  } catch (error) {
+    console.error('Failed to save preference:', error);
+  }
+};
+
+/**
+ * Remove a preference from IndexedDB.
+ */
+export const removePreference = async (key: string): Promise<void> => {
+  try {
+    const db = await initDB();
+    if (!db) return;
+    await db.delete(STORE_NAME, key);
+  } catch (error) {
+    console.error('Failed to remove preference:', error);
+  }
+};

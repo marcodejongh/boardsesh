@@ -1,3 +1,4 @@
+import { openDB, IDBPDatabase } from 'idb';
 import { SearchRequestPagination } from '@/app/lib/types';
 
 export type RecentSearch = {
@@ -8,8 +9,29 @@ export type RecentSearch = {
 };
 
 export const RECENT_SEARCHES_CHANGED_EVENT = 'boardsesh:recent-searches-changed';
-const STORAGE_KEY = 'boardsesh_recent_searches';
+const DB_NAME = 'boardsesh-recent-searches';
+const DB_VERSION = 1;
+const STORE_NAME = 'searches';
+const STORE_KEY = 'recent';
 const MAX_ITEMS = 10;
+
+let dbPromise: Promise<IDBPDatabase> | null = null;
+
+const initDB = async (): Promise<IDBPDatabase | null> => {
+  if (typeof window === 'undefined' || !window.indexedDB) {
+    return null;
+  }
+  if (!dbPromise) {
+    dbPromise = openDB(DB_NAME, DB_VERSION, {
+      upgrade(db) {
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          db.createObjectStore(STORE_NAME);
+        }
+      },
+    });
+  }
+  return dbPromise;
+};
 
 export function getFilterKey(filters: Partial<SearchRequestPagination>): string {
   // Exclude page/pageSize from comparison since they're not meaningful for deduplication
@@ -17,21 +39,22 @@ export function getFilterKey(filters: Partial<SearchRequestPagination>): string 
   return JSON.stringify(rest, Object.keys(rest).sort());
 }
 
-export function getRecentSearches(): RecentSearch[] {
+export async function getRecentSearches(): Promise<RecentSearch[]> {
   if (typeof window === 'undefined') return [];
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    return JSON.parse(raw) as RecentSearch[];
+    const db = await initDB();
+    if (!db) return [];
+    const data = await db.get(STORE_NAME, STORE_KEY);
+    return (data as RecentSearch[]) ?? [];
   } catch {
     return [];
   }
 }
 
-export function addRecentSearch(label: string, filters: Partial<SearchRequestPagination>): void {
+export async function addRecentSearch(label: string, filters: Partial<SearchRequestPagination>): Promise<void> {
   if (typeof window === 'undefined') return;
   try {
-    const existing = getRecentSearches();
+    const existing = await getRecentSearches();
     const filterKey = getFilterKey(filters);
 
     // Remove duplicate if exists
@@ -46,10 +69,11 @@ export function addRecentSearch(label: string, filters: Partial<SearchRequestPag
 
     // Add to front, cap at MAX_ITEMS
     const updated = [newEntry, ...deduplicated].slice(0, MAX_ITEMS);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    const db = await initDB();
+    if (!db) return;
+    await db.put(STORE_NAME, updated, STORE_KEY);
     window.dispatchEvent(new CustomEvent(RECENT_SEARCHES_CHANGED_EVENT));
   } catch {
-    // Silently fail if localStorage is unavailable
+    // Silently fail if IndexedDB is unavailable
   }
 }
-
