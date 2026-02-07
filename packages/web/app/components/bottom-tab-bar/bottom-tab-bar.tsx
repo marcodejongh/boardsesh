@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Button, Flex, Form, Input, ColorPicker, message } from 'antd';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import { UnorderedListOutlined, PlusOutlined, TagOutlined, EditOutlined } from '@ant-design/icons';
@@ -27,6 +27,25 @@ const isValidHexColor = (color: string): boolean => {
   return /^#([0-9A-Fa-f]{3}){1,2}$/.test(color);
 };
 
+// Determine which tab a path clearly belongs to.
+// Returns null for ambiguous pages (view/play) that could be reached from either tab.
+const getTabForPath = (path: string): Tab | null => {
+  if (path.includes('/playlists') || path.includes('/playlist/')) return 'library';
+  if (path.includes('/list') || path.includes('/import')) return 'climbs';
+  if (path.includes('/create')) return 'create';
+  return null;
+};
+
+// Get the board route base path (e.g., /kilter/original/12x12/led/40)
+const getBasePath = (path: string): string => {
+  return path.split('/').slice(0, 6).join('/');
+};
+
+// SessionStorage key namespaced by board context
+const getStorageKey = (path: string): string => {
+  return `bottomTabState_${getBasePath(path)}`;
+};
+
 function BottomTabBar({ boardDetails, angle }: BottomTabBarProps) {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isCreatePlaylistOpen, setIsCreatePlaylistOpen] = useState(false);
@@ -38,21 +57,18 @@ function BottomTabBar({ boardDetails, angle }: BottomTabBarProps) {
 
   const { createPlaylist, isAuthenticated } = usePlaylistsContext();
 
-  const isListPage = pathname.endsWith('/list');
-  const isPlaylistsPage = pathname.endsWith('/playlists');
-
   // Hide playlists for moonboard (not yet supported)
   const isMoonboard = boardDetails.board_name === 'moonboard';
 
-  const getActiveTab = (): Tab => {
-    if (isCreateOpen || isCreatePlaylistOpen) return 'create';
-    if (isPlaylistsPage) return 'library';
-    if (isListPage) return 'climbs';
-    return 'climbs';
-  };
+  // --- Tab navigation state ---
+  // Ref tracks the "true" active tab (survives across ambiguous pages like /view/ and /play/)
+  const currentTabRef = useRef<Tab>(getTabForPath(pathname) ?? 'climbs');
+  // State for rendering (triggers re-renders when active tab changes)
+  const [resolvedTab, setResolvedTab] = useState<Tab>(getTabForPath(pathname) ?? 'climbs');
+  // Store last visited URL per tab
+  const lastUrlsRef = useRef<Record<string, string>>({});
 
-  const activeTab = getActiveTab();
-
+  // Build default tab root URLs
   const listUrl = (() => {
     const { board_name, layout_name, size_name, size_description, set_names } = boardDetails;
     if (layout_name && size_name && set_names) {
@@ -85,21 +101,92 @@ function BottomTabBar({ boardDetails, angle }: BottomTabBarProps) {
     return null;
   }, [boardDetails, angle]);
 
+  // Initialize from sessionStorage on mount
+  useEffect(() => {
+    try {
+      const key = getStorageKey(pathname);
+      const stored = sessionStorage.getItem(key);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        const basePath = getBasePath(pathname);
+        if (parsed.lastUrls) {
+          for (const [tab, url] of Object.entries(parsed.lastUrls)) {
+            if (typeof url === 'string' && url.startsWith(basePath)) {
+              lastUrlsRef.current[tab] = url;
+            }
+          }
+        }
+        // Restore active tab for ambiguous pages (view/play)
+        if (parsed.activeTab && !getTabForPath(pathname)) {
+          currentTabRef.current = parsed.activeTab;
+          setResolvedTab(parsed.activeTab);
+        }
+      }
+    } catch {
+      // Ignore sessionStorage errors
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Track pathname changes: update active tab and store last URL
+  useEffect(() => {
+    const tab = getTabForPath(pathname);
+    if (tab) {
+      currentTabRef.current = tab;
+      setResolvedTab(tab);
+    }
+
+    // Store the current URL as the last URL for the active tab
+    const activeTab = currentTabRef.current;
+    if (activeTab !== 'create') {
+      const fullPath = pathname + (typeof window !== 'undefined' ? window.location.search : '');
+      lastUrlsRef.current[activeTab] = fullPath;
+    }
+
+    // Persist to sessionStorage
+    try {
+      const key = getStorageKey(pathname);
+      sessionStorage.setItem(key, JSON.stringify({
+        activeTab: currentTabRef.current,
+        lastUrls: lastUrlsRef.current,
+      }));
+    } catch {
+      // Ignore sessionStorage errors
+    }
+  }, [pathname]);
+
+  // Active tab for rendering: drawer state takes priority
+  const activeTab = (isCreateOpen || isCreatePlaylistOpen) ? 'create' : resolvedTab;
+
+  const handleClimbsTab = () => {
+    setIsCreateOpen(false);
+    setIsCreatePlaylistOpen(false);
+    const url = lastUrlsRef.current.climbs || listUrl;
+    if (url) {
+      const currentUrl = pathname + window.location.search;
+      if (url !== currentUrl) {
+        router.push(url);
+      }
+    }
+    track('Bottom Tab Bar', { tab: 'climbs' });
+  };
+
   const handleLibraryTab = () => {
     setIsCreateOpen(false);
     setIsCreatePlaylistOpen(false);
+    const url = lastUrlsRef.current.library || playlistsUrl;
+    if (url) {
+      const currentUrl = pathname + window.location.search;
+      if (url !== currentUrl) {
+        router.push(url);
+      }
+    }
     track('Bottom Tab Bar', { tab: 'library' });
   };
 
   const handleCreateTab = () => {
     setIsCreateOpen(true);
     track('Bottom Tab Bar', { tab: 'create' });
-  };
-
-  const handleClimbsTab = () => {
-    setIsCreateOpen(false);
-    setIsCreatePlaylistOpen(false);
-    track('Bottom Tab Bar', { tab: 'climbs' });
   };
 
   const handleOpenCreatePlaylist = () => {
@@ -166,45 +253,32 @@ function BottomTabBar({ boardDetails, angle }: BottomTabBarProps) {
     <>
       <div className={styles.tabBar}>
         {/* Climbs tab */}
-        {listUrl ? (
-          <Link href={listUrl} className={styles.tabItem} onClick={handleClimbsTab} style={{ color: getTabColor('climbs'), textDecoration: 'none' }} aria-label="Climbs" role="tab" aria-selected={activeTab === 'climbs'}>
-            <UnorderedListOutlined style={{ fontSize: 20 }} />
-            <span className={styles.tabLabel}>Climb</span>
-          </Link>
-        ) : (
-          <button className={styles.tabItem} onClick={handleClimbsTab} style={{ color: getTabColor('climbs') }} aria-label="Climbs" role="tab" aria-selected={activeTab === 'climbs'}>
-            <UnorderedListOutlined style={{ fontSize: 20 }} />
-            <span className={styles.tabLabel}>Climb</span>
-          </button>
-        )}
+        <button
+          className={styles.tabItem}
+          onClick={handleClimbsTab}
+          style={{ color: getTabColor('climbs') }}
+          aria-label="Climbs"
+          role="tab"
+          aria-selected={activeTab === 'climbs'}
+          disabled={!listUrl}
+        >
+          <UnorderedListOutlined style={{ fontSize: 20 }} />
+          <span className={styles.tabLabel}>Climb</span>
+        </button>
 
         {/* Your Library tab */}
-        {playlistsUrl ? (
-          <Link
-            href={playlistsUrl}
-            className={styles.tabItem}
-            onClick={handleLibraryTab}
-            style={{ color: getTabColor('library'), textDecoration: 'none' }}
-            aria-label="Your library"
-            role="tab"
-            aria-selected={activeTab === 'library'}
-          >
-            <TagOutlined style={{ fontSize: 20 }} />
-            <span className={styles.tabLabel}>Your Library</span>
-          </Link>
-        ) : (
-          <button
-            className={styles.tabItem}
-            style={{ color: getTabColor('library') }}
-            aria-label="Your library"
-            role="tab"
-            aria-selected={activeTab === 'library'}
-            disabled
-          >
-            <TagOutlined style={{ fontSize: 20 }} />
-            <span className={styles.tabLabel}>Your Library</span>
-          </button>
-        )}
+        <button
+          className={styles.tabItem}
+          onClick={handleLibraryTab}
+          style={{ color: getTabColor('library') }}
+          aria-label="Your library"
+          role="tab"
+          aria-selected={activeTab === 'library'}
+          disabled={!playlistsUrl}
+        >
+          <TagOutlined style={{ fontSize: 20 }} />
+          <span className={styles.tabLabel}>Your Library</span>
+        </button>
 
         {/* Create tab */}
         <button
