@@ -14,6 +14,7 @@ const DB_VERSION = 1;
 const STORE_NAME = 'searches';
 const STORE_KEY = 'recent';
 const MAX_ITEMS = 10;
+const LEGACY_STORAGE_KEY = 'boardsesh_recent_searches';
 
 let dbPromise: Promise<IDBPDatabase> | null = null;
 
@@ -45,7 +46,18 @@ export async function getRecentSearches(): Promise<RecentSearch[]> {
     const db = await initDB();
     if (!db) return [];
     const data = await db.get(STORE_NAME, STORE_KEY);
-    return (data as RecentSearch[]) ?? [];
+    if (data) return data as RecentSearch[];
+
+    // Attempt one-time migration from localStorage
+    const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
+    if (legacy) {
+      const parsed = JSON.parse(legacy) as RecentSearch[];
+      await db.put(STORE_NAME, parsed, STORE_KEY);
+      localStorage.removeItem(LEGACY_STORAGE_KEY);
+      return parsed;
+    }
+
+    return [];
   } catch {
     return [];
   }

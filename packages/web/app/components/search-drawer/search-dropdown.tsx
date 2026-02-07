@@ -26,7 +26,7 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({ boardDetails, open, onC
   const handleClose = useCallback(() => {
     if (filtersActive) {
       const label = getSearchPillSummary(uiSearchParams);
-      addRecentSearch(label, uiSearchParams);
+      addRecentSearch(label, uiSearchParams).catch(() => {});
     }
     onClose();
   }, [filtersActive, uiSearchParams, onClose]);

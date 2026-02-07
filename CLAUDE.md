@@ -193,7 +193,8 @@ We are using next.js app router, it's important we try to use server side compon
 - **Simple key-value preferences** (e.g., view mode, party mode): Use the shared utility at `packages/web/app/lib/user-preferences-db.ts` which provides `getPreference<T>(key)`, `setPreference(key, value)`, and `removePreference(key)`.
 - **Domain-specific data** (e.g., recent searches, session history, onboarding status): Create a dedicated `*-db.ts` file in `packages/web/app/lib/` following the established pattern (lazy `dbPromise` init, SSR guard, try-catch error handling). See `tab-navigation-db.ts` or `onboarding-db.ts` for examples.
 - All IndexedDB access must be guarded with `typeof window === 'undefined'` checks for SSR compatibility.
-- The only acceptable `localStorage` references are in one-time migration code that reads old data and deletes it (see `party-profile-db.ts`).
+- When migrating a value from `localStorage` to IndexedDB, include one-time migration logic that reads the old key, writes to IndexedDB, and deletes the localStorage key. See `user-preferences-db.ts` (`getPreference` fallback), `recent-searches-storage.ts`, and `party-profile-db.ts` for examples.
+- The only acceptable `localStorage` references are in one-time migration code that reads old data and deletes it.
 
 ### State Management
 

@@ -61,7 +61,7 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
 
   const handleViewModeChange = useCallback((mode: ViewMode) => {
     setViewMode(mode);
-    setPreference(VIEW_MODE_PREFERENCE_KEY, mode);
+    setPreference(VIEW_MODE_PREFERENCE_KEY, mode).catch(() => {});
     track('View Mode Changed', { mode });
   }, []);
 

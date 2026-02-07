@@ -37,8 +37,8 @@ export const ConnectionSettingsProvider: React.FC<{ children: React.ReactNode }>
         setStoredPartyMode(storedMode);
       }
 
-      // Clean up old localStorage keys if they exist
-      removePreference('boardsesh:backendUrl');
+      // Clean up old preference keys if they exist
+      removePreference('boardsesh:backendUrl').catch(() => {});
 
       setIsLoaded(true);
     });
@@ -54,7 +54,7 @@ export const ConnectionSettingsProvider: React.FC<{ children: React.ReactNode }>
 
   const setPartyMode = useCallback((mode: PartyMode) => {
     if (typeof window !== 'undefined') {
-      setPreference(PARTY_MODE_PREFERENCE_KEY, mode);
+      setPreference(PARTY_MODE_PREFERENCE_KEY, mode).catch(() => {});
       setStoredPartyMode(mode);
     }
   }, []);

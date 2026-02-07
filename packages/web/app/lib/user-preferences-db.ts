@@ -4,6 +4,12 @@ const DB_NAME = 'boardsesh-user-preferences';
 const DB_VERSION = 1;
 const STORE_NAME = 'preferences';
 
+// Map of IDB preference keys to their legacy localStorage keys for one-time migration
+const LEGACY_LOCALSTORAGE_KEYS: Record<string, string> = {
+  climbListViewMode: 'climbListViewMode',
+  'boardsesh:partyMode': 'boardsesh:partyMode',
+};
+
 let dbPromise: Promise<IDBPDatabase> | null = null;
 
 const initDB = async (): Promise<IDBPDatabase | null> => {
@@ -30,7 +36,20 @@ export const getPreference = async <T>(key: string): Promise<T | null> => {
     const db = await initDB();
     if (!db) return null;
     const value = await db.get(STORE_NAME, key);
-    return value ?? null;
+    if (value !== undefined) return value as T;
+
+    // Attempt one-time migration from localStorage
+    const legacyKey = LEGACY_LOCALSTORAGE_KEYS[key];
+    if (legacyKey) {
+      const legacyValue = localStorage.getItem(legacyKey);
+      if (legacyValue !== null) {
+        await db.put(STORE_NAME, legacyValue, key);
+        localStorage.removeItem(legacyKey);
+        return legacyValue as T;
+      }
+    }
+
+    return null;
   } catch (error) {
     console.error('Failed to get preference:', error);
     return null;
