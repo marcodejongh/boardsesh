@@ -63,6 +63,7 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({ boardDetails, open, onC
       height="100%"
       showDragHandle
       closable={false}
+      swipeEnabled
       footer={drawerFooter}
       rootClassName={styles.drawerRoot}
       styles={{
