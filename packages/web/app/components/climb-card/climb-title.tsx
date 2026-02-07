@@ -36,6 +36,8 @@ type ClimbTitleProps = {
   centered?: boolean;
   /** Scale factor for the climb name font size (default 1) */
   titleScale?: number;
+  /** Explicit font size for the climb name (overrides titleScale when set). Use a design token, e.g. themeTokens.typography.fontSize.lg */
+  titleFontSize?: number;
 };
 
 /**
@@ -52,6 +54,7 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
   layout = 'stacked',
   centered = false,
   titleScale = 1,
+  titleFontSize,
 }) => {
   if (!climb) {
     return (
@@ -99,7 +102,7 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
     return <span style={{ fontStyle: 'italic' }}>{projectText}</span>;
   };
 
-  const nameFontSize = themeTokens.typography.fontSize.sm * titleScale;
+  const nameFontSize = titleFontSize ?? themeTokens.typography.fontSize.sm * titleScale;
 
   const nameElement = (
     <Text
