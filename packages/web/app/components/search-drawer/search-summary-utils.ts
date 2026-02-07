@@ -54,11 +54,12 @@ export function getQualityPanelSummary(params: SearchRequestPagination): string[
   if (params.onlyClassics) {
     parts.push('Classics');
   }
+
   if (params.gradeAccuracy && params.gradeAccuracy !== DEFAULT_SEARCH_PARAMS.gradeAccuracy) {
     parts.push('Grade accuracy');
   }
   if (params.onlyTallClimbs) {
-    parts.push('Tall only');
+    parts.push('Tall');
   }
 
   return parts;

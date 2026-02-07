@@ -10,6 +10,7 @@ import ClimbListItem from '../climb-card/climb-list-item';
 import { ClimbCardSkeleton, ClimbListItemSkeleton } from './board-page-skeleton';
 import { useSearchParams } from 'next/navigation';
 import { themeTokens } from '@/app/theme/theme-config';
+import RecentSearchPills from '../search-drawer/recent-search-pills';
 
 type ViewMode = 'grid' | 'list';
 
@@ -135,14 +136,17 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
 
   return (
     <div style={{ paddingTop: themeTokens.spacing[1] }}>
-      {/* View mode toggle */}
+      {/* View mode toggle + recent searches */}
       <Flex
-        justify="flex-end"
+        align="center"
+        gap={themeTokens.spacing[2]}
         style={{
           padding: `${themeTokens.spacing[1]}px ${themeTokens.spacing[1]}px ${themeTokens.spacing[2]}px`,
+          minWidth: 0,
         }}
       >
-        <Button.Group size="small">
+        <RecentSearchPills />
+        <Button.Group size="small" style={{ flexShrink: 0 }}>
           <Button
             icon={<UnorderedListOutlined />}
             type={viewMode === 'list' ? 'primary' : 'default'}

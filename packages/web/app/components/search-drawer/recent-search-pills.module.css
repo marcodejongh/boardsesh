@@ -1,0 +1,63 @@
+.container {
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+  white-space: nowrap;
+}
+
+.container::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}
+
+.pillList {
+  display: inline-flex;
+  gap: 6px;
+  padding: 2px 0;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: 9999px;
+  /* themeTokens.neutral[300] */
+  border: 1px solid #D1D5DB;
+  /* themeTokens.semantic.surface */
+  background: #FFFFFF;
+  font-size: 12px;
+  line-height: 1.4;
+  /* themeTokens.neutral[600] */
+  color: #4B5563;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 150ms ease, border-color 150ms ease;
+  flex-shrink: 0;
+}
+
+.pill:hover {
+  /* themeTokens.neutral[100] */
+  background: #F3F4F6;
+  /* themeTokens.neutral[400] */
+  border-color: #9CA3AF;
+}
+
+.pill:active {
+  /* themeTokens.neutral[200] */
+  background: #E5E7EB;
+}
+
+.pillIcon {
+  font-size: 10px;
+  /* themeTokens.neutral[400] */
+  color: #9CA3AF;
+}
+
+.pillLabel {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

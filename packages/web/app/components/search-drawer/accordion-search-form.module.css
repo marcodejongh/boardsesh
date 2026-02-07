@@ -124,12 +124,6 @@
   margin: 0;
 }
 
-/* Recent searches divider */
-.recentDivider {
-  margin: 12px 0 4px !important;
-  font-size: 12px;
-}
-
 /* Hold search container */
 .holdSearchContainer {
   display: flex;
