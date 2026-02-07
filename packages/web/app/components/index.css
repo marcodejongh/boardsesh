@@ -34,33 +34,46 @@
 }
 
 /* Base styles */
+html {
+  touch-action: manipulation;
+  background-color: #fff;
+  min-height: 100dvh;
+  min-height: -webkit-fill-available;
+  scrollbar-width: thin;
+  scrollbar-color: #D1D5DB #F3F4F6;
+}
+
 body {
   margin: 0;
   padding: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  background-color: #F9FAFB;
+  background-color: #fff;
   color: #1F2937;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
-}
-
-/* Prevent horizontal overflow */
-html, body {
+  min-height: 100dvh;
   max-width: 100vw;
-  overflow-x: hidden;
 }
 
-/* Prevent horizontal scroll on layout components */
-.ant-layout,
-.ant-layout-content {
+/* Prevent horizontal scroll on layout */
+.ant-layout {
   max-width: 100%;
   overflow-x: hidden;
 }
 
-/* Prevent double-tap zoom globally while preserving pinch-to-zoom */
-html {
-  touch-action: manipulation;
+#root,
+.ant-layout {
+  min-height: 100dvh;
+}
+
+.ant-layout {
+  display: flex;
+  flex-direction: column;
+}
+
+.ant-layout-content {
+  flex: 1;
 }
 
 /* Smooth transitions for interactive elements */
@@ -127,11 +140,7 @@ button,
   background: #9CA3AF;
 }
 
-/* Firefox scrollbar - scoped to html to avoid performance overhead of * selector */
-html {
-  scrollbar-width: thin;
-  scrollbar-color: #D1D5DB #F3F4F6;
-}
+/* Firefox scrollbar properties are set in the html rule above */
 
 /* Focus styles for accessibility */
 :focus-visible {

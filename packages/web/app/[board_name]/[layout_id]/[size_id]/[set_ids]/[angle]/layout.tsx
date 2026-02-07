@@ -1,6 +1,6 @@
 import React, { Suspense } from 'react';
 import { PropsWithChildren } from 'react';
-import { Affix, Layout } from 'antd';
+import { Layout } from 'antd';
 import { ParsedBoardRouteParameters, BoardRouteParameters, BoardDetails } from '@/app/lib/types';
 import { parseBoardRouteParams, constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
@@ -146,7 +146,7 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
   const boardDetails = getBoardDetailsUniversal(parsedParams);
 
   return (
-    <Layout style={{ height: '100dvh', display: 'flex', flexDirection: 'column', padding: 0 }}>
+    <Layout style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', padding: 0, background: '#fff' }}>
       <BoardSessionBridge boardDetails={boardDetails} parsedParams={parsedParams}>
         <ConnectionSettingsProvider>
           <GraphQLQueueProvider parsedParams={parsedParams} boardDetails={boardDetails}>
@@ -159,11 +159,10 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
                   flex: 1,
                   justifyContent: 'center',
                   alignItems: 'center',
-                  overflowY: 'auto',
                   overflowX: 'hidden',
-                  height: '80vh',
                   paddingLeft: '10px',
                   paddingRight: '10px',
+                  paddingBottom: 'calc(120px + env(safe-area-inset-bottom, 0px))',
                 }}
               >
                 <Suspense fallback={<BoardPageSkeleton aspectRatio={boardDetails.boardWidth / boardDetails.boardHeight} />}>
@@ -171,10 +170,10 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
                 </Suspense>
               </Content>
 
-              <Affix offsetBottom={0}>
+              <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 10 }}>
                 <QueueControlBar boardDetails={boardDetails} angle={angle} />
                 <BottomTabBar boardDetails={boardDetails} angle={angle} />
-              </Affix>
+              </div>
             </PartyProvider>
           </GraphQLQueueProvider>
         </ConnectionSettingsProvider>
