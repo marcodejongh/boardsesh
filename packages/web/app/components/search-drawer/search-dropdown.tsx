@@ -57,7 +57,7 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({ boardDetails, open, onC
 
   return (
     <SwipeableDrawer
-      placement="bottom"
+      placement="top"
       open={open}
       onClose={handleClose}
       height="85vh"
@@ -69,6 +69,7 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({ boardDetails, open, onC
         body: { padding: '0 16px 16px', backgroundColor: 'var(--ant-color-bg-layout, #F3F4F6)' },
         footer: { padding: 0, border: 'none' },
         header: { display: 'none' },
+        mask: { backgroundColor: 'rgba(128, 128, 128, 0.7)' },
       }}
     >
       <AccordionSearchForm boardDetails={boardDetails} />
