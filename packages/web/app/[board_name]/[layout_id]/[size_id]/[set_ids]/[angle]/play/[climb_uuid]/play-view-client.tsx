@@ -8,6 +8,7 @@ import { Climb, BoardDetails, Angle } from '@/app/lib/types';
 import { useQueueContext } from '@/app/components/graphql-queue';
 import BoardRenderer from '@/app/components/board-renderer/board-renderer';
 import ClimbTitle from '@/app/components/climb-card/climb-title';
+import { AscentStatus } from '@/app/components/queue-control/queue-list-item';
 import { constructClimbListWithSlugs, constructPlayUrlWithSlugs } from '@/app/lib/url-utils';
 import { themeTokens } from '@/app/theme/theme-config';
 import { useCardSwipeNavigation, EXIT_DURATION, SNAP_BACK_DURATION } from '@/app/hooks/use-card-swipe-navigation';
@@ -149,7 +150,13 @@ const PlayViewClient: React.FC<PlayViewClientProps> = ({ boardDetails, initialCl
             padding: `${themeTokens.spacing[1]}px ${themeTokens.spacing[3]}px`,
           }}
         >
-          <ClimbTitle climb={displayClimb} layout="horizontal" showSetterInfo titleFontSize={themeTokens.typography.fontSize['2xl']} />
+          <ClimbTitle
+            climb={displayClimb}
+            layout="horizontal"
+            showSetterInfo
+            titleFontSize={themeTokens.typography.fontSize['2xl']}
+            rightAddon={displayClimb && <AscentStatus climbUuid={displayClimb.uuid} fontSize={themeTokens.typography.fontSize['2xl']} />}
+          />
         </div>
         <div {...swipeHandlers} className={styles.swipeContainer}>
           <div
