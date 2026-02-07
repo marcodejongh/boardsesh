@@ -37,7 +37,7 @@ type QueueListItemProps = {
   onToggleSelect?: (uuid: string) => void;
 };
 
-export const AscentStatus = ({ climbUuid }: { climbUuid: ClimbUuid }) => {
+export const AscentStatus = ({ climbUuid, fontSize }: { climbUuid: ClimbUuid; fontSize?: number }) => {
   const { logbook, boardName } = useBoardProvider();
 
   const ascentsForClimb = useMemo(
@@ -58,17 +58,17 @@ export const AscentStatus = ({ climbUuid }: { climbUuid: ClimbUuid }) => {
         {/* Regular ascent icon */}
         {hasSuccessfulAscent ? (
           <div className={styles.ascentIconRegular}>
-            <CheckOutlined style={{ color: themeTokens.colors.success }} />
+            <CheckOutlined style={{ color: themeTokens.colors.success, fontSize }} />
           </div>
         ) : null}
         {/* Mirrored ascent icon */}
         {hasSuccessfulMirroredAscent ? (
           <div className={styles.ascentIconMirrored}>
-            <CheckOutlined style={{ color: themeTokens.colors.success }} />
+            <CheckOutlined style={{ color: themeTokens.colors.success, fontSize }} />
           </div>
         ) : null}
         {!hasSuccessfulMirroredAscent && !hasSuccessfulAscent ? (
-          <CloseOutlined className={styles.ascentIconRegular} style={{ color: themeTokens.colors.error }} />
+          <CloseOutlined className={styles.ascentIconRegular} style={{ color: themeTokens.colors.error, fontSize }} />
         ) : null}
       </div>
     );
@@ -76,9 +76,9 @@ export const AscentStatus = ({ climbUuid }: { climbUuid: ClimbUuid }) => {
 
   // Single icon for non-mirroring boards
   return hasSuccessfulAscent ? (
-    <CheckOutlined style={{ color: themeTokens.colors.success }} />
+    <CheckOutlined style={{ color: themeTokens.colors.success, fontSize }} />
   ) : (
-    <CloseOutlined style={{ color: themeTokens.colors.error }} />
+    <CloseOutlined style={{ color: themeTokens.colors.error, fontSize }} />
   );
 };
 
