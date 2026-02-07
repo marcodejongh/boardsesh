@@ -5,7 +5,6 @@ import { Header } from 'antd/es/layout/layout';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import SearchPill from '../search-drawer/search-pill';
 import SearchDropdown from '../search-drawer/search-dropdown';
-import { UISearchParamsProvider } from '../queue-control/ui-searchparams-provider';
 import { BoardDetails } from '@/app/lib/types';
 import { ExperimentOutlined } from '@ant-design/icons';
 import { themeTokens } from '@/app/theme/theme-config';
@@ -109,66 +108,64 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
         zIndex: 10,
       }}
     >
-      <UISearchParamsProvider>
-        <Flex justify="space-between" align="center" style={{ width: '100%' }} gap={8}>
-          {/* Left section: Avatar + Back button */}
-          <Flex align="center" gap={4} style={{ flexShrink: 0 }}>
-            {pageMode !== 'create' && (
-              <UserDrawer boardDetails={boardDetails} angle={angle} />
-            )}
+      <Flex justify="space-between" align="center" style={{ width: '100%' }} gap={8}>
+        {/* Left section: Avatar + Back button */}
+        <Flex align="center" gap={4} style={{ flexShrink: 0 }}>
+          {pageMode !== 'create' && (
+            <UserDrawer boardDetails={boardDetails} angle={angle} />
+          )}
 
-            {/* Play page: Show back button next to logo (mobile only) */}
-            {pageMode === 'play' && (
-              <div className={styles.mobileOnly}>
-                <Button
-                  icon={<LeftOutlined />}
-                  type="text"
-                  aria-label="Back to climb list"
-                  onClick={() => router.push(getBackToListUrl())}
-                />
-              </div>
-            )}
-          </Flex>
-
-          {/* Center Section - Content varies by page mode */}
-          <Flex justify="center" gap={2} style={{ flex: 1 }} align="center">
-            {/* List page: Show search pill (mobile only) */}
-            {pageMode === 'list' && (
-              <div className={styles.mobileOnly} style={{ flex: 1 }}>
-                <SearchPill onClick={() => setSearchDropdownOpen(true)} />
-              </div>
-            )}
-          </Flex>
-
-          {/* Right Section */}
-          <Flex gap={4} align="center">
-            {/* Create mode: Show cancel and publish buttons */}
-            {pageMode === 'create' ? (
-              <CreateModeButtons />
-            ) : (
-              <>
-                {angle !== undefined && <AngleSelector boardName={boardDetails.board_name} boardDetails={boardDetails} currentAngle={angle} currentClimb={currentClimb} />}
-
-                {/* Desktop: show Create Climb button */}
-                {createClimbUrl && (
-                  <div className={styles.desktopOnly}>
-                    <Link href={createClimbUrl}>
-                      <Button icon={<PlusOutlined />} type="text" title="Create new climb" />
-                    </Link>
-                  </div>
-                )}
-              </>
-            )}
-          </Flex>
+          {/* Play page: Show back button next to logo (mobile only) */}
+          {pageMode === 'play' && (
+            <div className={styles.mobileOnly}>
+              <Button
+                icon={<LeftOutlined />}
+                type="text"
+                aria-label="Back to climb list"
+                onClick={() => router.push(getBackToListUrl())}
+              />
+            </div>
+          )}
         </Flex>
 
-        {/* Search dropdown drawer (mobile) */}
-        <SearchDropdown
-          boardDetails={boardDetails}
-          open={searchDropdownOpen}
-          onClose={() => setSearchDropdownOpen(false)}
-        />
-      </UISearchParamsProvider>
+        {/* Center Section - Content varies by page mode */}
+        <Flex justify="center" gap={2} style={{ flex: 1 }} align="center">
+          {/* List page: Show search pill (mobile only) */}
+          {pageMode === 'list' && (
+            <div className={styles.mobileOnly} style={{ flex: 1 }}>
+              <SearchPill onClick={() => setSearchDropdownOpen(true)} />
+            </div>
+          )}
+        </Flex>
+
+        {/* Right Section */}
+        <Flex gap={4} align="center">
+          {/* Create mode: Show cancel and publish buttons */}
+          {pageMode === 'create' ? (
+            <CreateModeButtons />
+          ) : (
+            <>
+              {angle !== undefined && <AngleSelector boardName={boardDetails.board_name} boardDetails={boardDetails} currentAngle={angle} currentClimb={currentClimb} />}
+
+              {/* Desktop: show Create Climb button */}
+              {createClimbUrl && (
+                <div className={styles.desktopOnly}>
+                  <Link href={createClimbUrl}>
+                    <Button icon={<PlusOutlined />} type="text" title="Create new climb" />
+                  </Link>
+                </div>
+              )}
+            </>
+          )}
+        </Flex>
+      </Flex>
+
+      {/* Search dropdown drawer (mobile) */}
+      <SearchDropdown
+        boardDetails={boardDetails}
+        open={searchDropdownOpen}
+        onClose={() => setSearchDropdownOpen(false)}
+      />
     </Header>
   );
 }
