@@ -81,7 +81,6 @@ const ClimbListItemSkeleton = () => (
       gap: themeTokens.spacing[3],
       backgroundColor: themeTokens.semantic.surface,
       borderBottom: `1px solid ${themeTokens.neutral[200]}`,
-      borderLeft: '3px solid transparent',
     }}
   >
     {/* Thumbnail placeholder */}
