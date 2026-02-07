@@ -3,8 +3,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Tour, TourStepProps } from 'antd';
 import {
-  BulbOutlined,
-  TeamOutlined,
   UnorderedListOutlined,
   ColumnWidthOutlined,
   CloseCircleOutlined,
@@ -88,9 +86,9 @@ const OnboardingTour: React.FC = () => {
   }, [session?.user?.id]);
 
   const handleStepChange = useCallback((step: number) => {
-    // Steps 4-6 are inside the queue drawer (swipe actions, drag & drop, close drawer)
-    const QUEUE_DRAWER_OPEN_STEP = 4;
-    const QUEUE_DRAWER_CLOSE_STEP = 7;
+    // Steps 3-5 are inside the queue drawer (swipe actions, drag & drop, close drawer)
+    const QUEUE_DRAWER_OPEN_STEP = 3;
+    const QUEUE_DRAWER_CLOSE_STEP = 6;
 
     // Opening the queue drawer before step 5 (index 4)
     if (step === QUEUE_DRAWER_OPEN_STEP && !drawerOpenedByTour.current) {
@@ -136,20 +134,6 @@ const OnboardingTour: React.FC = () => {
       description: withSkip('Double-tap any climb card to make it the active climb and add it to your queue.'),
       target: getTarget('#onboarding-climb-card'),
       placement: 'bottom',
-    },
-    {
-      title: 'Board Controls',
-      description: withSkip(
-        'Use the light button to illuminate holds on your board via Bluetooth, or start a party session to climb with friends.',
-      ),
-      target: getTarget('#onboarding-party-light-buttons'),
-      placement: 'bottom',
-      cover: (
-        <div className={styles.stepIcon}>
-          <BulbOutlined />
-          <TeamOutlined />
-        </div>
-      ),
     },
     {
       title: 'Navigate Your Queue',

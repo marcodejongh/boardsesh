@@ -1,0 +1,127 @@
+/* Accordion Search Form */
+.accordion :global(.ant-collapse-header) {
+  font-weight: 600;
+  font-size: 14px;
+  padding: 12px 12px !important;
+}
+
+.accordion :global(.ant-collapse-content-box) {
+  padding: 8px 12px 16px !important;
+}
+
+.accordion :global(.ant-collapse-item) {
+  border-bottom: 1px solid #E5E7EB !important;
+}
+
+.accordion :global(.ant-collapse-item:last-child) {
+  border-bottom: none !important;
+}
+
+/* Summary tags shown when panel is collapsed */
+.summaryTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+
+.summaryTag {
+  border-radius: 9999px;
+  background-color: #ECFEFF;
+  color: #0891B2;
+  border: none;
+  font-size: 12px;
+  padding: 0 8px;
+  line-height: 22px;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Panel content sections */
+.panelContent {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.compactInputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fullWidth {
+  width: 100%;
+}
+
+/* Switch groups */
+.switchGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background-color: #F9FAFB;
+  border-radius: 8px;
+  padding: 4px 0;
+}
+
+.switchRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  transition: background-color 150ms ease;
+}
+
+.switchRow:hover {
+  background-color: #F3F4F6;
+}
+
+/* Sort toggle */
+.sortToggle {
+  font-size: 13px;
+  color: #6B7280;
+  padding: 0;
+  height: auto;
+}
+
+.sortControls {
+  overflow: hidden;
+  transition: max-height 200ms ease;
+}
+
+/* Progress alert */
+.progressAlert {
+  margin: 0;
+}
+
+/* Recent searches divider */
+.recentDivider {
+  margin: 12px 0 4px !important;
+  font-size: 12px;
+}
+
+/* Hold search container */
+.holdSearchContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Mobile adjustments */
+@media (max-width: 767px) {
+  .switchRow {
+    padding: 8px 10px;
+  }
+
+  .panelContent {
+    gap: 12px;
+  }
+}

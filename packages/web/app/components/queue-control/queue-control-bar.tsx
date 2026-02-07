@@ -203,8 +203,9 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
       return;
     }
 
-    // On mobile, open play drawer
+    // On mobile, open play drawer — only if there's a current climb
     if (typeof window !== 'undefined' && !window.matchMedia('(min-width: 768px)').matches) {
+      if (!currentClimb) return;
       setActiveDrawer('play');
       track('Play Drawer Opened', {
         boardLayout: boardDetails.layout_name || '',
@@ -219,7 +220,7 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
       action: activeDrawer === 'queue' ? 'closed' : 'opened',
       boardLayout: boardDetails.layout_name || '',
     });
-  }, [isListPage, boardDetails, activeDrawer]);
+  }, [isListPage, boardDetails, activeDrawer, currentClimb]);
 
   // Transition style shared by current and peek text
   const getTextTransitionStyle = () => {

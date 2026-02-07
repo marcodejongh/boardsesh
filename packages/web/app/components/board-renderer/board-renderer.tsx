@@ -61,6 +61,7 @@ const BoardRenderer = React.memo(
             holdsData={holdsData}
             litUpHoldsMap={litUpHoldsMap}
             mirrored={mirrored}
+            thumbnail={thumbnail}
           />
         )}
       </svg>

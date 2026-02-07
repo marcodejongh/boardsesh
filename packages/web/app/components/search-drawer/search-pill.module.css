@@ -1,0 +1,45 @@
+.pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  background: #F9FAFB;
+  border: 1px solid #E5E7EB;
+  cursor: pointer;
+  transition: box-shadow 200ms ease;
+  font-size: 14px;
+  color: #6B7280;
+  line-height: 1.4;
+  position: relative;
+}
+
+.pill:hover {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+}
+
+.pill:active {
+  background: #F3F4F6;
+}
+
+.icon {
+  flex-shrink: 0;
+  font-size: 14px;
+  color: #9CA3AF;
+}
+
+.text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activeIndicator {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #06B6D4;
+  flex-shrink: 0;
+}

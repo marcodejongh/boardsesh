@@ -191,7 +191,7 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
           }}
         >
           {/* Thumbnail */}
-          <div style={{ width: 48, flexShrink: 0 }}>
+          <div style={{ width: themeTokens.spacing[16], flexShrink: 0 }}>
             <ClimbThumbnail
               boardDetails={boardDetails}
               currentClimb={climb}
@@ -203,7 +203,7 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
           <div style={{ flex: 1, minWidth: 0 }}>
             <Text
               style={{
-                fontSize: themeTokens.typography.fontSize.sm,
+                fontSize: themeTokens.typography.fontSize.xl,
                 fontWeight: themeTokens.typography.fontWeight.semibold,
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
