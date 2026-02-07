@@ -155,16 +155,6 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
   ];
 
   const mobileMenuItems: MenuProps['items'] = [
-    ...(createClimbUrl ? [{
-      key: 'create-climb',
-      icon: <PlusOutlined />,
-      label: <Link href={createClimbUrl}>Create Climb</Link>,
-    }] : []),
-    ...(session?.user && playlistsUrl && !isMoonboard ? [{
-      key: 'playlists',
-      icon: <TagOutlined />,
-      label: <Link href={playlistsUrl}>My Playlists</Link>,
-    }] : []),
     ...(session?.user ? [
       ...(!isMoonboard ? [{
         key: 'classify-holds',
@@ -228,12 +218,17 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
     <Header
       className={`${styles.header} header-shadow`}
       style={{
-        background: '#fff',
+        background: 'var(--semantic-surface)',
         height: '8dvh',
         minHeight: 48,
         lineHeight: 'normal',
         display: 'flex',
         padding: '0 12px',
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 10,
       }}
     >
       <UISearchParamsProvider>
@@ -278,7 +273,7 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
               <CreateModeButtons />
             ) : (
               <>
-                {angle !== undefined && <AngleSelector boardName={boardDetails.board_name} currentAngle={angle} currentClimb={currentClimb} />}
+                {angle !== undefined && <AngleSelector boardName={boardDetails.board_name} boardDetails={boardDetails} currentAngle={angle} currentClimb={currentClimb} />}
 
                 {/* Desktop: show Create Climb button */}
                 {createClimbUrl && (

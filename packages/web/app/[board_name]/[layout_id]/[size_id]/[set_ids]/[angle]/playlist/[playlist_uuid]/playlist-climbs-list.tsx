@@ -131,10 +131,8 @@ export default function PlaylistClimbsList({
     const element = loadMoreRef.current;
     if (!element) return;
 
-    const scrollContainer = document.getElementById('content-for-scrollable');
-
     const observer = new IntersectionObserver(handleObserver, {
-      root: scrollContainer,
+      root: null,
       rootMargin: '100px',
       threshold: 0,
     });

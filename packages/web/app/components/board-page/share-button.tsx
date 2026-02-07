@@ -11,7 +11,8 @@ import {
   PlayCircleOutlined,
   CloseCircleOutlined,
 } from '@ant-design/icons';
-import { Button, Input, Drawer, QRCode, Flex, App, Typography, Badge, Switch, Tabs, Space } from 'antd';
+import { Button, Input, QRCode, Flex, App, Typography, Badge, Switch, Tabs, Space } from 'antd';
+import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useQueueContext } from '../graphql-queue';
@@ -31,7 +32,7 @@ const getShareUrl = (pathname: string, sessionId: string | null) => {
   }
 };
 
-export const ShareBoardButton = () => {
+export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'default' | 'text' }) => {
   const { message } = App.useApp();
   const {
     users,
@@ -146,12 +147,12 @@ export const ShareBoardButton = () => {
     <>
       <Badge count={connectionCount} overflowCount={100} showZero={false} color="cyan">
         <Button
-          type={isSessionActive ? 'primary' : 'default'}
+          type={isSessionActive ? 'primary' : buttonType}
           onClick={showDrawer}
           icon={isConnecting ? <LoadingOutlined /> : <TeamOutlined />}
         />
       </Badge>
-      <Drawer
+      <SwipeableDrawer
         title={isControllerMode ? 'Controller Mode' : 'Party Mode'}
         placement="top"
         onClose={handleClose}
@@ -424,7 +425,7 @@ export const ShareBoardButton = () => {
             </>
           )}
         </Flex>
-      </Drawer>
+      </SwipeableDrawer>
 
       <AuthModal
         open={showAuthModal}

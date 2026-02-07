@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Drawer, Button } from 'antd';
+import { Button, Badge, Space } from 'antd';
 import {
   SyncOutlined,
   HeartOutlined,
@@ -10,18 +10,25 @@ import {
   StepForwardOutlined,
   DownOutlined,
   MoreOutlined,
+  UnorderedListOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  CloseOutlined,
+  HistoryOutlined,
 } from '@ant-design/icons';
-import { useSwipeable } from 'react-swipeable';
 import dynamic from 'next/dynamic';
 import { useQueueContext } from '../graphql-queue';
 import { useFavorite, ClimbActions } from '../climb-actions';
 import { ShareBoardButton } from '../board-page/share-button';
 import { TickButton } from '../logbook/tick-button';
+import QueueList, { QueueListHandle } from '../queue-control/queue-list';
 import ClimbTitle from '../climb-card/climb-title';
 import BoardRenderer from '../board-renderer/board-renderer';
 import { useCardSwipeNavigation, EXIT_DURATION, SNAP_BACK_DURATION } from '@/app/hooks/use-card-swipe-navigation';
 import { useWakeLock } from '../board-bluetooth-control/use-wake-lock';
 import { themeTokens } from '@/app/theme/theme-config';
+import DrawerContext from '@rc-component/drawer/es/context';
+import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import type { ActiveDrawer } from '../queue-control/queue-control-bar';
 import type { BoardDetails, Angle } from '@/app/lib/types';
 import styles from './play-view-drawer.module.css';
@@ -31,16 +38,15 @@ const SendClimbToBoardButton = dynamic(
   { ssr: false },
 );
 
-// Threshold for downward swipe to dismiss the drawer
-const DISMISS_THRESHOLD = 120;
-const DISMISS_ANIMATION_MS = 300;
-
 interface PlayViewDrawerProps {
   activeDrawer: ActiveDrawer;
   setActiveDrawer: (drawer: ActiveDrawer) => void;
   boardDetails: BoardDetails;
   angle: Angle;
 }
+
+// Stable no-op context to prevent child drawers from pushing the parent.
+const noPushContext = { pushDistance: 0, push: () => {}, pull: () => {} };
 
 const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
   activeDrawer,
@@ -49,16 +55,20 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
   angle,
 }) => {
   const isOpen = activeDrawer === 'play';
-  const [dragOffset, setDragOffset] = useState(0);
   const [isActionsOpen, setIsActionsOpen] = useState(false);
-  const isDraggingRef = useRef(false);
-  const isDismissingRef = useRef(false);
+  const [isQueueOpen, setIsQueueOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const queueListRef = useRef<QueueListHandle>(null);
+  const queueScrollRef = useRef<HTMLDivElement>(null);
 
   const {
     currentClimb,
     currentClimbQueueItem,
     mirrorClimb,
     queue,
+    setQueue,
     getNextClimbQueueItem,
     getPreviousClimbQueueItem,
     setCurrentClimbQueueItem,
@@ -69,14 +79,41 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
     climbUuid: currentClimb?.uuid ?? '',
   });
 
+  const currentQueueIndex = currentClimbQueueItem
+    ? queue.findIndex(item => item.uuid === currentClimbQueueItem.uuid)
+    : -1;
+  const remainingQueueCount = currentQueueIndex >= 0 ? queue.length - currentQueueIndex : queue.length;
+
   // Wake lock when drawer is open
   useWakeLock(isOpen);
+
+  const handleToggleSelect = useCallback((uuid: string) => {
+    setSelectedItems((prev) => {
+      const next = new Set(prev);
+      if (next.has(uuid)) {
+        next.delete(uuid);
+      } else {
+        next.add(uuid);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleBulkRemove = useCallback(() => {
+    setQueue(queue.filter((item) => !selectedItems.has(item.uuid)));
+    setSelectedItems(new Set());
+    setIsEditMode(false);
+  }, [queue, selectedItems, setQueue]);
+
+  const handleExitEditMode = useCallback(() => {
+    setIsEditMode(false);
+    setSelectedItems(new Set());
+  }, []);
 
   // Hash-based back button support
   useEffect(() => {
     if (!isOpen) return;
 
-    // Push a hash state so back button closes the drawer
     window.history.pushState(null, '', '#playing');
 
     const handlePopState = () => {
@@ -86,7 +123,6 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
     window.addEventListener('popstate', handlePopState);
     return () => {
       window.removeEventListener('popstate', handlePopState);
-      // Clean up hash if still present
       if (window.location.hash === '#playing') {
         window.history.replaceState(null, '', window.location.pathname + window.location.search);
       }
@@ -95,44 +131,10 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
 
   const handleClose = useCallback(() => {
     setActiveDrawer('none');
-    // Remove hash if present
     if (window.location.hash === '#playing') {
       window.history.back();
     }
   }, [setActiveDrawer]);
-
-  // Swipe-down-to-close (covers entire drawer content)
-  const dragHandlers = useSwipeable({
-    onSwiping: (eventData) => {
-      const { deltaY, dir } = eventData;
-      if (dir === 'Down' && deltaY > 0) {
-        isDraggingRef.current = true;
-        setDragOffset(deltaY);
-      }
-    },
-    onSwipedDown: (eventData) => {
-      isDraggingRef.current = false;
-      if (eventData.deltaY >= DISMISS_THRESHOLD) {
-        // Animate the drawer fully off-screen, then close
-        isDismissingRef.current = true;
-        setDragOffset(window.innerHeight);
-        setTimeout(() => {
-          handleClose();
-        }, DISMISS_ANIMATION_MS);
-      } else {
-        setDragOffset(0);
-      }
-    },
-    onTouchEndOrOnMouseUp: () => {
-      if (!isDismissingRef.current) {
-        setDragOffset(0);
-      }
-      isDraggingRef.current = false;
-    },
-    trackMouse: false,
-    trackTouch: true,
-    preventScrollOnSwipe: true,
-  });
 
   // Card-swipe navigation
   const nextItem = getNextClimbQueueItem();
@@ -170,35 +172,23 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
   const isMirrored = !!currentClimb?.mirrored;
 
   return (
-    <Drawer
+    <SwipeableDrawer
       placement="bottom"
       height="100%"
       open={isOpen}
       onClose={handleClose}
       closable={false}
-      afterOpenChange={(open) => {
-        if (!open) {
-          setDragOffset(0);
-          isDismissingRef.current = false;
-        }
-      }}
+      push={false}
+      swipeRegion="body"
+      swipeEnabled={!isActionsOpen && !isQueueOpen}
+      showDragHandle={true}
       styles={{
-        body: { padding: 0, overflow: 'hidden', overscrollBehaviorY: 'contain', touchAction: 'none' },
-        wrapper: { height: '100%', boxShadow: dragOffset > 0 ? 'none' : undefined },
-        mask: dragOffset > 0
-          ? {
-              opacity: Math.max(0, 1 - dragOffset / window.innerHeight),
-              transition: isDraggingRef.current ? 'none' : `opacity ${DISMISS_ANIMATION_MS}ms ease-out`,
-            }
-          : {},
-      }}
-      style={{
-        transform: dragOffset > 0 ? `translateY(${dragOffset}px)` : undefined,
-        transition: isDraggingRef.current ? 'none' : `transform ${DISMISS_ANIMATION_MS}ms ease-out`,
+        body: { padding: 0, overflow: 'hidden', touchAction: 'none', overscrollBehaviorY: 'contain' },
+        wrapper: { height: '100%' },
       }}
     >
-      <div {...dragHandlers} className={styles.drawerContent}>
-        {/* Top bar: close button, drag handle, ellipsis menu */}
+      <div className={styles.drawerContent}>
+        {/* Top bar: close button, ellipsis menu */}
         <div className={styles.topBar}>
           <Button
             type="text"
@@ -206,11 +196,13 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
             onClick={handleClose}
             aria-label="Close play view"
           />
-          <div className={styles.dragHandleBar} />
           <Button
             type="text"
             icon={<MoreOutlined />}
-            onClick={() => setIsActionsOpen(true)}
+            onClick={() => {
+              setIsQueueOpen(false);
+              setIsActionsOpen(true);
+            }}
             aria-label="Climb actions"
           />
         </div>
@@ -243,6 +235,8 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
             layout="horizontal"
             showSetterInfo
             showAngle
+            centered
+            titleScale={1.4}
           />
         </div>
 
@@ -280,13 +274,26 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
           />
 
           {/* Party */}
-          <ShareBoardButton />
+          <ShareBoardButton buttonType="text" />
 
           {/* LED */}
-          <SendClimbToBoardButton boardDetails={boardDetails} />
+          <SendClimbToBoardButton boardDetails={boardDetails} buttonType="text" />
 
           {/* Tick */}
-          <TickButton currentClimb={currentClimb} angle={angle} boardDetails={boardDetails} />
+          <TickButton currentClimb={currentClimb} angle={angle} boardDetails={boardDetails} buttonType="text" />
+
+          {/* Queue */}
+          <Badge count={remainingQueueCount} overflowCount={99} showZero={false} color="cyan">
+            <Button
+              type="text"
+              icon={<UnorderedListOutlined />}
+              onClick={() => {
+                setIsActionsOpen(false);
+                setIsQueueOpen(true);
+              }}
+              aria-label="Open queue"
+            />
+          </Badge>
 
           <Button
             type="text"
@@ -300,28 +307,113 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
         </div>
       </div>
 
-      {/* Climb actions drawer (same as ellipsis menu in climb list) */}
-      {currentClimb && (
-        <Drawer
-          title={currentClimb.name}
+      {/* Isolate child drawers from parent push context */}
+      <DrawerContext.Provider value={noPushContext}>
+        {/* Climb actions drawer */}
+        {currentClimb && (
+          <SwipeableDrawer
+            title={currentClimb.name}
+            placement="bottom"
+            open={isActionsOpen}
+            onClose={() => setIsActionsOpen(false)}
+            getContainer={false}
+            swipeRegion="body"
+            styles={{
+              wrapper: { height: 'auto' },
+              body: { padding: `${themeTokens.spacing[2]}px 0` },
+            }}
+          >
+            <ClimbActions
+              climb={currentClimb}
+              boardDetails={boardDetails}
+              angle={typeof angle === 'string' ? parseInt(angle, 10) : angle}
+              viewMode="list"
+              onActionComplete={() => setIsActionsOpen(false)}
+            />
+          </SwipeableDrawer>
+        )}
+
+        {/* Queue list drawer */}
+        <SwipeableDrawer
+          title="Queue"
           placement="bottom"
-          open={isActionsOpen}
-          onClose={() => setIsActionsOpen(false)}
-          styles={{
-            wrapper: { height: 'auto' },
-            body: { padding: `${themeTokens.spacing[2]}px 0` },
+          height="60%"
+          open={isQueueOpen}
+          getContainer={false}
+          onClose={() => {
+            setIsQueueOpen(false);
+            handleExitEditMode();
+            setShowHistory(false);
           }}
+          swipeRegion="scrollBody"
+          scrollBodyRef={queueScrollRef}
+          afterOpenChange={(open) => {
+            if (open) {
+              setTimeout(() => {
+                queueListRef.current?.scrollToCurrentClimb();
+              }, 100);
+            }
+          }}
+          styles={{
+            wrapper: { height: '60%' },
+            body: { padding: 0 },
+          }}
+          extra={
+            queue.length > 0 && !viewOnlyMode && (
+              isEditMode ? (
+                <Space>
+                  <Button
+                    type="text"
+                    icon={<DeleteOutlined />}
+                    style={{ color: themeTokens.neutral[400] }}
+                    onClick={() => {
+                      setQueue([]);
+                      handleExitEditMode();
+                    }}
+                  >
+                    Clear
+                  </Button>
+                  <Button type="text" icon={<CloseOutlined />} onClick={handleExitEditMode} />
+                </Space>
+              ) : (
+                <Space>
+                  <Button
+                    type={showHistory ? 'default' : 'text'}
+                    icon={<HistoryOutlined />}
+                    onClick={() => setShowHistory((prev) => !prev)}
+                  />
+                  <Button type="text" icon={<EditOutlined />} onClick={() => setIsEditMode(true)} />
+                </Space>
+              )
+            )
+          }
         >
-          <ClimbActions
-            climb={currentClimb}
-            boardDetails={boardDetails}
-            angle={typeof angle === 'string' ? parseInt(angle, 10) : angle}
-            viewMode="list"
-            onActionComplete={() => setIsActionsOpen(false)}
-          />
-        </Drawer>
-      )}
-    </Drawer>
+          <div className={styles.queueBodyLayout}>
+            <div ref={queueScrollRef} className={styles.queueScrollContainer}>
+              <QueueList
+                ref={queueListRef}
+                boardDetails={boardDetails}
+                onClimbNavigate={() => {
+                  setIsQueueOpen(false);
+                  setActiveDrawer('none');
+                }}
+                isEditMode={isEditMode}
+                showHistory={showHistory}
+                selectedItems={selectedItems}
+                onToggleSelect={handleToggleSelect}
+              />
+            </div>
+            {isEditMode && selectedItems.size > 0 && (
+              <div className={styles.bulkRemoveBar}>
+                <Button type="primary" danger block onClick={handleBulkRemove}>
+                  Remove {selectedItems.size} {selectedItems.size === 1 ? 'item' : 'items'}
+                </Button>
+              </div>
+            )}
+          </div>
+        </SwipeableDrawer>
+      </DrawerContext.Provider>
+    </SwipeableDrawer>
   );
 };
 

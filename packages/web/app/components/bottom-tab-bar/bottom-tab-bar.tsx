@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { Drawer, Button, Flex, Form, Input, ColorPicker, message } from 'antd';
+import { Button, Flex, Form, Input, ColorPicker, message } from 'antd';
+import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import { UnorderedListOutlined, PlusOutlined, TagOutlined, EditOutlined } from '@ant-design/icons';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -220,11 +221,12 @@ function BottomTabBar({ boardDetails, angle }: BottomTabBarProps) {
       </div>
 
       {/* Create Menu Drawer */}
-      <Drawer
+      <SwipeableDrawer
         title="Create"
         placement="bottom"
         open={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
+        swipeRegion="body"
         styles={{
           wrapper: { height: 'auto' },
           body: { padding: `${themeTokens.spacing[2]}px 0` },
@@ -270,10 +272,10 @@ function BottomTabBar({ boardDetails, angle }: BottomTabBarProps) {
             </Button>
           )}
         </Flex>
-      </Drawer>
+      </SwipeableDrawer>
 
       {/* Create Playlist Drawer */}
-      <Drawer
+      <SwipeableDrawer
         title="Create Playlist"
         placement="bottom"
         open={isCreatePlaylistOpen}
@@ -321,7 +323,7 @@ function BottomTabBar({ boardDetails, angle }: BottomTabBarProps) {
             <ColorPicker format="hex" showText />
           </Form.Item>
         </Form>
-      </Drawer>
+      </SwipeableDrawer>
 
       <AuthModal
         open={showAuthModal}

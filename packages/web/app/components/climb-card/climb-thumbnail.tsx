@@ -10,9 +10,10 @@ type ClimbThumbnailProps = {
   boardDetails: BoardDetails;
   enableNavigation?: boolean;
   onNavigate?: () => void;
+  maxHeight?: string;
 };
 
-const ClimbThumbnail = ({ boardDetails, currentClimb, enableNavigation = false, onNavigate }: ClimbThumbnailProps) => {
+const ClimbThumbnail = ({ boardDetails, currentClimb, enableNavigation = false, onNavigate, maxHeight }: ClimbThumbnailProps) => {
   if (enableNavigation && currentClimb) {
     // Use slug-based URL construction if slug names are available
     const climbViewUrl =
@@ -45,6 +46,7 @@ const ClimbThumbnail = ({ boardDetails, currentClimb, enableNavigation = false, 
           mirrored={!!currentClimb?.mirrored}
           boardDetails={boardDetails}
           thumbnail
+          maxHeight={maxHeight}
         />
       </Link>
     );
@@ -56,6 +58,7 @@ const ClimbThumbnail = ({ boardDetails, currentClimb, enableNavigation = false, 
       mirrored={!!currentClimb?.mirrored}
       boardDetails={boardDetails}
       thumbnail
+      maxHeight={maxHeight}
     />
   );
 };

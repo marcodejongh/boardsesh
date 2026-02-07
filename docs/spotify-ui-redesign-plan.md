@@ -990,19 +990,19 @@ Board layout.tsx (server component)
 ## Testing Checklist
 
 ### Phase 1
-- [ ] Bottom tab bar renders on mobile, hidden on desktop
-- [ ] Climb tab navigates to /list
-- [ ] Your Library tab navigates to /playlists
-- [ ] Your Library tab shows as active when on playlists page
-- [ ] Create tab opens create drawer
-- [ ] Create drawer options work (Climb navigates to /create, Playlist opens create playlist form)
-- [ ] Create drawer hides playlist option for MoonBoard
-- [ ] iOS safe area padding works (`env(safe-area-inset-bottom)`)
-- [ ] Tab bar does not overlap QueueControlBar
-- [ ] Content area scrolling is not blocked by tab bar
-- [ ] Tab bar shows on play/view pages
-- [ ] Active tab state highlights correctly on /list, /playlists, and other pages
-- [ ] Search input and advanced search button remain in header on list pages (mobile)
+- [x] Bottom tab bar renders on mobile, hidden on desktop
+- [x] Climb tab navigates to /list
+- [x] Your Library tab navigates to /playlists
+- [x] Your Library tab shows as active when on playlists page
+- [x] Create tab opens create drawer
+- [x] Create drawer options work (Climb navigates to /create, Playlist opens create playlist form)
+- [x] Create drawer hides playlist option for MoonBoard
+- [x] iOS safe area padding works (`env(safe-area-inset-bottom)`)
+- [x] Tab bar does not overlap QueueControlBar
+- [x] Content area scrolling is not blocked by tab bar
+- [x] Tab bar shows on play/view pages
+- [x] Active tab state highlights correctly on /list, /playlists, and other pages
+- [x] Search input and advanced search button remain in header on list pages (mobile)
 
 ### Phase 2
 - [ ] Compact list items render correctly with proper layout

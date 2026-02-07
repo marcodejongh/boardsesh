@@ -85,10 +85,7 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
 
   useEffect(() => {
     if (page === '0' && hasDoneFirstFetch && isFetchingClimbs) {
-      const scrollContainer = document.getElementById('content-for-scrollable');
-      if (scrollContainer) {
-        scrollContainer.scrollTo({ top: 0, behavior: 'instant' });
-      }
+      window.scrollTo({ top: 0, behavior: 'instant' });
     }
   }, [page, hasDoneFirstFetch, isFetchingClimbs]);
 
@@ -123,10 +120,8 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
     const element = loadMoreRef.current;
     if (!element) return;
 
-    const scrollContainer = document.getElementById('content-for-scrollable');
-
     const observer = new IntersectionObserver(handleObserver, {
-      root: scrollContainer,
+      root: null,
       rootMargin: '100px',
       threshold: 0,
     });

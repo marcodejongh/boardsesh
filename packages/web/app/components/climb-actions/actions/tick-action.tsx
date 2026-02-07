@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useCallback, useMemo } from 'react';
-import { Button, Badge, Drawer, Typography, Space } from 'antd';
+import { Button, Badge, Typography, Space } from 'antd';
+import SwipeableDrawer from '../../swipeable-drawer/swipeable-drawer';
 import { ActionTooltip } from '../action-tooltip';
 import { CheckOutlined, LoginOutlined, AppstoreOutlined } from '@ant-design/icons';
 import { ClimbActionProps, ClimbActionResult } from '../types';
@@ -102,15 +103,16 @@ export function TickAction({
           boardDetails={boardDetails}
         />
       ) : (
-        <Drawer
+        <SwipeableDrawer
           title="Sign In Required"
           placement="bottom"
           onClose={closeDrawer}
           open={drawerVisible}
+          swipeRegion="body"
           styles={{ wrapper: { height: '50%' } }}
         >
           {renderSignInPrompt()}
-        </Drawer>
+        </SwipeableDrawer>
       )}
       <AuthModal
         open={showAuthModal}

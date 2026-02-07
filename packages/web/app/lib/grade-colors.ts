@@ -148,3 +148,42 @@ export function getGradeTextColor(gradeColor: string | undefined): string {
   if (!gradeColor) return 'inherit';
   return isLightColor(gradeColor) ? '#000000' : '#FFFFFF';
 }
+
+function hexToHue(hex: string): number {
+  const clean = hex.replace('#', '');
+  const r = parseInt(clean.substring(0, 2), 16) / 255;
+  const g = parseInt(clean.substring(2, 4), 16) / 255;
+  const b = parseInt(clean.substring(4, 6), 16) / 255;
+
+  const max = Math.max(r, g, b);
+  const delta = max - Math.min(r, g, b);
+
+  if (delta === 0) return 0;
+
+  let hue: number;
+  if (max === r) hue = ((g - b) / delta) % 6;
+  else if (max === g) hue = (b - r) / delta + 2;
+  else hue = (r - g) / delta + 4;
+  hue *= 60;
+  if (hue < 0) hue += 360;
+
+  return hue;
+}
+
+/**
+ * Get a subtle HSL tint color derived from a climb's grade color.
+ * @param difficulty - Difficulty string like "6a/V3" or "V5"
+ * @param variant - 'default' for queue bar (30% sat, 88% light), 'light' for list items (20% sat, 94% light)
+ * @returns HSL color string or undefined if no grade color found
+ */
+export function getGradeTintColor(difficulty: string | null | undefined, variant: 'default' | 'light' = 'default'): string | undefined {
+  const color = getGradeColor(difficulty);
+  if (!color) return undefined;
+
+  const hue = Math.round(hexToHue(color));
+
+  if (variant === 'light') {
+    return `hsl(${hue}, 20%, 94%)`;
+  }
+  return `hsl(${hue}, 30%, 88%)`;
+}

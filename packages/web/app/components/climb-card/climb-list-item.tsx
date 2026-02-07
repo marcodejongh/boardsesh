@@ -1,17 +1,19 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { Drawer, Button, Typography } from 'antd';
+import { Button, Typography } from 'antd';
+import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import { MoreOutlined, HeartOutlined, HeartFilled, PlusOutlined } from '@ant-design/icons';
 import { useSwipeable } from 'react-swipeable';
 import { Climb, BoardDetails } from '@/app/lib/types';
 import ClimbThumbnail from './climb-thumbnail';
+import DrawerClimbHeader from './drawer-climb-header';
 import { AscentStatus } from '../queue-control/queue-list-item';
 import { ClimbActions } from '../climb-actions';
 import { useQueueContext } from '../graphql-queue';
 import { useFavorite } from '../climb-actions';
 import { themeTokens } from '@/app/theme/theme-config';
-import { getGradeColor } from '@/app/lib/grade-colors';
+import { getGradeColor, getGradeTintColor } from '@/app/lib/grade-colors';
 
 const { Text } = Typography;
 
@@ -173,9 +175,9 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
             alignItems: 'center',
             padding: `${themeTokens.spacing[2]}px ${themeTokens.spacing[3]}px`,
             gap: themeTokens.spacing[3],
-            backgroundColor: selected ? themeTokens.semantic.selected : themeTokens.semantic.surface,
+            backgroundColor: selected ? (getGradeTintColor(climb.difficulty, 'light') ?? themeTokens.semantic.selected) : themeTokens.semantic.surface,
             borderBottom: `1px solid ${themeTokens.neutral[200]}`,
-            borderLeft: selected ? `3px solid ${themeTokens.colors.primary}` : '3px solid transparent',
+            borderLeft: selected ? `3px solid ${gradeColor ?? themeTokens.colors.primary}` : '3px solid transparent',
             transform: `translateX(${swipeOffset}px)`,
             transition: swipeOffset === 0 ? `transform ${themeTokens.transitions.fast}` : 'none',
             cursor: 'pointer',
@@ -264,35 +266,14 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
       </div>
 
       {/* Actions Drawer */}
-      <Drawer
-        title={
-          <div style={{ display: 'flex', alignItems: 'center', gap: themeTokens.spacing[3] }}>
-            <div style={{ width: 48, flexShrink: 0 }}>
-              <ClimbThumbnail boardDetails={boardDetails} currentClimb={climb} />
-            </div>
-            <div style={{ minWidth: 0, flex: 1 }}>
-              <Text
-                strong
-                style={{
-                  display: 'block',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                }}
-              >
-                {climb.name}
-              </Text>
-              <Text type="secondary" style={{ fontSize: themeTokens.typography.fontSize.xs }}>
-                {climb.difficulty} {hasQuality ? `${climb.quality_average}\u2605` : ''}
-              </Text>
-            </div>
-          </div>
-        }
+      <SwipeableDrawer
+        title={<DrawerClimbHeader climb={climb} boardDetails={boardDetails} />}
         placement="bottom"
         open={isActionsOpen}
         onClose={() => setIsActionsOpen(false)}
+        swipeRegion="body"
         styles={{
-          wrapper: { height: 'auto' },
+          wrapper: { height: 'auto', width: '100%' },
           body: { padding: `${themeTokens.spacing[2]}px 0` },
         }}
       >
@@ -304,7 +285,7 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
           exclude={excludeActions}
           onActionComplete={() => setIsActionsOpen(false)}
         />
-      </Drawer>
+      </SwipeableDrawer>
     </>
   );
 }, (prev, next) => {

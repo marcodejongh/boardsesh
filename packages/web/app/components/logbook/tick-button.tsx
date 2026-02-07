@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { Angle, Climb, BoardDetails } from '@/app/lib/types';
 import { useBoardProvider } from '../board-provider/board-provider-context';
-import { Button, Badge, Drawer, Typography, Space } from 'antd';
+import { Button, Badge, Typography, Space } from 'antd';
+import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import { CheckOutlined, LoginOutlined, AppstoreOutlined } from '@ant-design/icons';
 import { track } from '@vercel/analytics';
 import { LogAscentDrawer } from './log-ascent-drawer';
@@ -14,9 +15,10 @@ interface TickButtonProps {
   angle: Angle;
   currentClimb: Climb | null;
   boardDetails: BoardDetails;
+  buttonType?: 'default' | 'text';
 }
 
-export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boardDetails }) => {
+export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boardDetails, buttonType = 'default' }) => {
   const { logbook, isAuthenticated } = useBoardProvider();
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -52,7 +54,7 @@ export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boa
         showZero={false}
         color={hasSuccessfulAscent ? 'cyan' : 'red'}
       >
-        <Button id="button-tick" type="default" icon={<CheckOutlined />} onClick={showDrawer} />
+        <Button id="button-tick" type={buttonType} icon={<CheckOutlined />} onClick={showDrawer} />
       </Badge>
 
       {isAuthenticated ? (
@@ -63,11 +65,12 @@ export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boa
           boardDetails={boardDetails}
         />
       ) : (
-        <Drawer
+        <SwipeableDrawer
           title="Sign In Required"
           placement="bottom"
           onClose={closeDrawer}
           open={drawerVisible}
+          swipeRegion="body"
           styles={{ wrapper: { height: '50%' } }}
         >
           <Space orientation="vertical" size="large" style={{ width: '100%', textAlign: 'center', padding: '24px 0' }}>
@@ -85,7 +88,7 @@ export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boa
               Open in App
             </Button>
           </Space>
-        </Drawer>
+        </SwipeableDrawer>
       )}
 
       <AuthModal

@@ -13,6 +13,7 @@ import { useCardSwipeNavigation, EXIT_DURATION, SNAP_BACK_DURATION } from '@/app
 import { themeTokens } from '@/app/theme/theme-config';
 import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import type { ClimbQueueItem } from './types';
+import type { BoardDetails, Angle, Climb } from '@/app/lib/types';
 
 const GlobalQueueControlBar: React.FC = () => {
   const router = useRouter();
@@ -115,9 +116,9 @@ const GlobalQueueControlBar: React.FC = () => {
 
 // Inner component that uses the hook (hooks can't be called conditionally)
 const GlobalQueueControlBarInner: React.FC<{
-  boardDetails: any;
-  currentClimb: any;
-  angle: number | string;
+  boardDetails: BoardDetails | null;
+  currentClimb: Climb | null;
+  angle: Angle;
   queue: ClimbQueueItem[];
   isPartyMode: boolean;
   userCount: number;
@@ -240,7 +241,7 @@ const GlobalQueueControlBarInner: React.FC<{
                   {boardDetails && (
                     <TickButton
                       currentClimb={currentClimb}
-                      angle={typeof angle === 'string' ? parseInt(angle, 10) : angle}
+                      angle={angle}
                       boardDetails={boardDetails}
                     />
                   )}

@@ -5,7 +5,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  touch-action: pan-y pinch-zoom;
+  touch-action: manipulation;
   /* semantic.background = neutral-50 */
   background-color: var(--semantic-background, #F9FAFB);
 }

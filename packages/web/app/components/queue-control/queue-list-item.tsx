@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation';
 import { Row, Col, Avatar, Tooltip, Dropdown, Button } from 'antd';
 import { CheckOutlined, CloseOutlined, UserOutlined, DeleteOutlined, MoreOutlined, InfoCircleOutlined, AppstoreOutlined } from '@ant-design/icons';
+import { Checkbox } from 'antd';
 import BluetoothIcon from './bluetooth-icon';
 import { BoardDetails, ClimbUuid, Climb } from '@/app/lib/types';
 import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
@@ -15,7 +16,9 @@ import ClimbThumbnail from '../climb-card/climb-thumbnail';
 import ClimbTitle from '../climb-card/climb-title';
 import { useBoardProvider } from '../board-provider/board-provider-context';
 import { themeTokens } from '@/app/theme/theme-config';
+import { getGradeTintColor, getGradeColor } from '@/app/lib/grade-colors';
 import { constructClimbViewUrl, constructClimbViewUrlWithSlugs, parseBoardRouteParams, constructClimbInfoUrl } from '@/app/lib/url-utils';
+import { useDoubleTap } from '@/app/lib/hooks/use-double-tap';
 import styles from './queue-list-item.module.css';
 
 type QueueListItemProps = {
@@ -29,6 +32,9 @@ type QueueListItemProps = {
   removeFromQueue: (item: ClimbQueueItem) => void;
   onTickClick: (climb: Climb) => void;
   onClimbNavigate?: () => void;
+  isEditMode?: boolean;
+  isSelected?: boolean;
+  onToggleSelect?: (uuid: string) => void;
 };
 
 export const AscentStatus = ({ climbUuid }: { climbUuid: ClimbUuid }) => {
@@ -91,6 +97,9 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
   removeFromQueue,
   onTickClick,
   onClimbNavigate,
+  isEditMode = false,
+  isSelected = false,
+  onToggleSelect,
 }) => {
   const router = useRouter();
   const [closestEdge, setClosestEdge] = useState<Edge | null>(null);
@@ -153,6 +162,14 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
     window.open(url, '_blank', 'noopener');
   }, [item.climb, boardDetails]);
 
+  const doubleTapCallback = useCallback(() => {
+    if (!isEditMode) {
+      setCurrentClimbQueueItem(item);
+    }
+  }, [isEditMode, setCurrentClimbQueueItem, item]);
+
+  const { ref: doubleTapRef, onDoubleClick: handleDoubleTap } = useDoubleTap(isEditMode ? undefined : doubleTapCallback);
+
   const swipeHandlers = useSwipeable({
     onSwiping: (eventData) => {
       const { deltaX, deltaY, event } = eventData;
@@ -212,6 +229,7 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
   });
 
   useEffect(() => {
+    if (isEditMode) return;
     const element = itemRef.current;
 
     if (element) {
@@ -244,7 +262,7 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
         }),
       );
     }
-  }, [index, item.uuid]);
+  }, [index, item.uuid, isEditMode]);
 
   // Calculate action visibility based on swipe offset
   const showLeftAction = swipeOffset < 0; // Swiping left reveals delete action on right
@@ -288,30 +306,45 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
 
         {/* Swipeable content */}
         <div
-          {...swipeHandlers}
+          {...(isEditMode ? {} : swipeHandlers)}
+          ref={isEditMode ? undefined : (node: HTMLDivElement | null) => {
+            doubleTapRef(node);
+            swipeHandlers.ref(node);
+          }}
           className={styles.swipeableContent}
           style={{
             padding: `${themeTokens.spacing[3]}px ${themeTokens.spacing[2]}px`,
             backgroundColor: isCurrent
-              ? themeTokens.semantic.selected
+              ? (getGradeTintColor(item.climb?.difficulty, 'light') ?? themeTokens.semantic.selected)
               : isHistory
                 ? themeTokens.neutral[100]
                 : themeTokens.semantic.surface,
             opacity: isSwipeComplete ? 0 : isHistory ? 0.6 : 1,
-            borderLeft: isCurrent ? `3px solid ${themeTokens.colors.primary}` : undefined,
+            borderLeft: isCurrent ? `3px solid ${getGradeColor(item.climb?.difficulty) ?? themeTokens.colors.primary}` : undefined,
             transform: `translateX(${swipeOffset}px)`,
             transition: swipeOffset === 0 || isSwipeComplete ? `transform ${themeTokens.transitions.fast}, opacity ${themeTokens.transitions.fast}` : 'none',
+            cursor: isEditMode ? 'pointer' : undefined,
           }}
-          onDoubleClick={() => setCurrentClimbQueueItem(item)}
+          onDoubleClick={isEditMode ? undefined : handleDoubleTap}
+          onClick={isEditMode ? () => onToggleSelect?.(item.uuid) : undefined}
         >
           <Row className={styles.contentRow} gutter={[8, 8]} align="middle" wrap={false}>
-            <Col xs={6} sm={5}>
+            {isEditMode && (
+              <Col xs={2} sm={2}>
+                <Checkbox
+                  checked={isSelected}
+                  onClick={(e) => e.stopPropagation()}
+                  onChange={() => onToggleSelect?.(item.uuid)}
+                />
+              </Col>
+            )}
+            <Col xs={isEditMode ? 5 : 6} sm={isEditMode ? 4 : 5}>
               <ClimbThumbnail
                 boardDetails={boardDetails}
                 currentClimb={item.climb}
               />
             </Col>
-            <Col xs={13} sm={15}>
+            <Col xs={isEditMode ? 14 : 13} sm={isEditMode ? 16 : 15}>
               <ClimbTitle
                 climb={item.climb}
                 showAngle
@@ -334,43 +367,45 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
                 </Tooltip>
               )}
             </Col>
-            <Col xs={3} sm={2}>
-              <Dropdown
-                menu={{
-                  items: [
-                    {
-                      key: 'info',
-                      label: 'View Climb',
-                      icon: <InfoCircleOutlined />,
-                      onClick: handleViewClimb,
-                    },
-                    {
-                      key: 'tick',
-                      label: 'Tick Climb',
-                      icon: <CheckOutlined />,
-                      onClick: () => item.climb && onTickClick(item.climb),
-                    },
-                    {
-                      key: 'openInApp',
-                      label: 'Open in App',
-                      icon: <AppstoreOutlined />,
-                      onClick: handleOpenInApp,
-                    },
-                    {
-                      key: 'remove',
-                      label: 'Remove from Queue',
-                      icon: <DeleteOutlined />,
-                      danger: true,
-                      onClick: () => removeFromQueue(item),
-                    },
-                  ],
-                }}
-                trigger={['click']}
-                placement="bottomRight"
-              >
-                <Button type="text" icon={<MoreOutlined />} />
-              </Dropdown>
-            </Col>
+            {!isEditMode && (
+              <Col xs={3} sm={2}>
+                <Dropdown
+                  menu={{
+                    items: [
+                      {
+                        key: 'info',
+                        label: 'View Climb',
+                        icon: <InfoCircleOutlined />,
+                        onClick: handleViewClimb,
+                      },
+                      {
+                        key: 'tick',
+                        label: 'Tick Climb',
+                        icon: <CheckOutlined />,
+                        onClick: () => item.climb && onTickClick(item.climb),
+                      },
+                      {
+                        key: 'openInApp',
+                        label: 'Open in App',
+                        icon: <AppstoreOutlined />,
+                        onClick: handleOpenInApp,
+                      },
+                      {
+                        key: 'remove',
+                        label: 'Remove from Queue',
+                        icon: <DeleteOutlined />,
+                        danger: true,
+                        onClick: () => removeFromQueue(item),
+                      },
+                    ],
+                  }}
+                  trigger={['click']}
+                  placement="bottomRight"
+                >
+                  <Button type="text" icon={<MoreOutlined />} />
+                </Dropdown>
+              </Col>
+            )}
           </Row>
         </div>
         {closestEdge && <DropIndicator edge={closestEdge} gap="1px" />}
