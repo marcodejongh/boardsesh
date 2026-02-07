@@ -7,8 +7,7 @@ import { DeleteOutlined } from '@ant-design/icons';
 import { track } from '@vercel/analytics';
 import { BoardDetails } from '@/app/lib/types';
 import { themeTokens } from '@/app/theme/theme-config';
-import BasicSearchForm from '@/app/components/search-drawer/basic-search-form';
-import ClimbHoldSearchForm from '@/app/components/search-drawer/climb-hold-search-form';
+import AccordionSearchForm from '@/app/components/search-drawer/accordion-search-form';
 import SearchResultsFooter from '@/app/components/search-drawer/search-results-footer';
 import QueueList from '@/app/components/queue-control/queue-list';
 import { UISearchParamsProvider } from '@/app/components/queue-control/ui-searchparams-provider';
@@ -84,19 +83,7 @@ const TabsWrapper: React.FC<{ boardDetails: BoardDetails }> = ({ boardDetails })
         children: (
           <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
             <div style={{ flex: 1, overflow: 'auto' }}>
-              <BasicSearchForm boardDetails={boardDetails} />
-            </div>
-            <SearchResultsFooter />
-          </div>
-        ),
-      },
-      {
-        key: 'holds',
-        label: 'Search by Hold',
-        children: (
-          <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ flex: 1, overflow: 'auto' }}>
-              <ClimbHoldSearchForm boardDetails={boardDetails} />
+              <AccordionSearchForm boardDetails={boardDetails} showRecentSearches={false} />
             </div>
             <SearchResultsFooter />
           </div>

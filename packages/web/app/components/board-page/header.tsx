@@ -1,24 +1,16 @@
 'use client';
-import React from 'react';
-import dynamic from 'next/dynamic';
+import React, { useState } from 'react';
 import { Flex, Button } from 'antd';
 import { Header } from 'antd/es/layout/layout';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
-import SearchButton from '../search-drawer/search-button';
-import SearchClimbNameInput from '../search-drawer/search-climb-name-input';
+import SearchPill from '../search-drawer/search-pill';
+import SearchDropdown from '../search-drawer/search-dropdown';
 import { UISearchParamsProvider } from '../queue-control/ui-searchparams-provider';
 import { BoardDetails } from '@/app/lib/types';
 import { ExperimentOutlined } from '@ant-design/icons';
 import { themeTokens } from '@/app/theme/theme-config';
 
-// Dynamically import bluetooth component to reduce initial bundle size
-// LED placement data (~50KB) is only loaded when bluetooth is actually used
-const SendClimbToBoardButton = dynamic(
-  () => import('../board-bluetooth-control/send-climb-to-board-button'),
-  { ssr: false }
-);
 import { constructClimbListWithSlugs, generateLayoutSlug, generateSizeSlug, generateSetSlug } from '@/app/lib/url-utils';
-import { ShareBoardButton } from './share-button';
 import { useQueueContext } from '../graphql-queue';
 import { PlusOutlined, LeftOutlined } from '@ant-design/icons';
 import AngleSelector from './angle-selector';
@@ -75,6 +67,7 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
   const pageMode = usePageMode();
   const searchParams = useSearchParams();
   const router = useRouter();
+  const [searchDropdownOpen, setSearchDropdownOpen] = useState(false);
 
   // Build back to list URL for play/view pages
   const getBackToListUrl = () => {
@@ -139,16 +132,11 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
 
           {/* Center Section - Content varies by page mode */}
           <Flex justify="center" gap={2} style={{ flex: 1 }} align="center">
-            {/* List page: Show search (mobile only) */}
+            {/* List page: Show search pill (mobile only) */}
             {pageMode === 'list' && (
-              <>
-                <div className={styles.mobileOnly} style={{ flex: 1 }}>
-                  <SearchClimbNameInput />
-                </div>
-                <div className={styles.mobileOnly}>
-                  <SearchButton boardDetails={boardDetails} />
-                </div>
-              </>
+              <div className={styles.mobileOnly} style={{ flex: 1 }}>
+                <SearchPill onClick={() => setSearchDropdownOpen(true)} />
+              </div>
             )}
           </Flex>
 
@@ -169,15 +157,17 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
                     </Link>
                   </div>
                 )}
-
-                <span id="onboarding-party-light-buttons" style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
-                  <ShareBoardButton />
-                  <SendClimbToBoardButton />
-                </span>
               </>
             )}
           </Flex>
         </Flex>
+
+        {/* Search dropdown drawer (mobile) */}
+        <SearchDropdown
+          boardDetails={boardDetails}
+          open={searchDropdownOpen}
+          onClose={() => setSearchDropdownOpen(false)}
+        />
       </UISearchParamsProvider>
     </Header>
   );
