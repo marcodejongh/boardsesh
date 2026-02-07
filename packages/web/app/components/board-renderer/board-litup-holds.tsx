@@ -57,7 +57,7 @@ const BoardLitupHolds = React.memo(
               r={renderHold.r}
               stroke={color}
               strokeWidth={thumbnail ? 8 : 6}
-              fillOpacity={thumbnail ? 1 : 0}
+              fillOpacity={thumbnail ? 0.3 : 0}
               fill={thumbnail ? color : undefined}
               style={{ cursor: onHoldClick ? 'pointer' : 'default' }}
               onClick={onHoldClick ? () => onHoldClick(renderHold.id) : undefined}
