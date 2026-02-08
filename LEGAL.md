@@ -82,7 +82,7 @@ We will review all valid requests promptly and in good faith. We may also file a
 
 The climbing community has a long tradition of openly sharing beta. This project exists in that spirit. We are not trying to harm any company — we are trying to give climbers better tools to interact with hardware they already own and data they helped create.
 
-Manufacturers continue to benefit from this ecosystem. Our project drives demand for their physical products (holds, boards, panels) where they provide genuine value. We simply believe that a $2,000 LED controller built from $50 in commodity parts, locked behind a proprietary app, is not serving the community well — and that climbers deserve the choice.
+Manufacturers continue to benefit from this ecosystem. Our project drives demand for their physical products (holds, boards, panels) where they provide genuine value. We simply believe climbers deserve a choice in how they interact with their hardware.
 
 If you are a board manufacturer and would like to discuss collaboration or have concerns, we welcome open dialogue. Please reach out.
 
