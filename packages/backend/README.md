@@ -148,7 +148,7 @@ Once deployed, users connect via:
 https://boardsesh.com?backendUrl=wss://boardsesh-ws.yourdomain.com
 ```
 
-The `backendUrl` parameter is saved to localStorage for future sessions.
+The `backendUrl` is configured via the `NEXT_PUBLIC_WS_URL` environment variable.
 
 ## API
 
