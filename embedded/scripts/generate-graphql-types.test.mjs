@@ -11,136 +11,21 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 
+// Import functions directly from the source module
+import {
+  parseGraphQLSchema,
+  graphqlTypeToCpp,
+  generateCppStruct,
+  generateHeader,
+  TYPE_MAP,
+  FIELD_TYPE_OVERRIDES,
+  CONTROLLER_TYPES,
+  ROLE_NOT_SET,
+  ANGLE_NOT_SET,
+} from './generate-graphql-types.mjs';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-// Import functions to test by extracting them from the module
-// Since the module runs main() on import, we need to re-implement the core functions for testing
-
-// GraphQL to C++ type mapping (copied from source for testing)
-const TYPE_MAP = {
-  'Int': 'int32_t',
-  'Int!': 'int32_t',
-  'Float': 'float',
-  'Float!': 'float',
-  'String': 'const char*',
-  'String!': 'const char*',
-  'Boolean': 'bool',
-  'Boolean!': 'bool',
-  'ID': 'const char*',
-  'ID!': 'const char*',
-};
-
-const FIELD_TYPE_OVERRIDES = {
-  'LedCommand.r': 'uint8_t',
-  'LedCommand.g': 'uint8_t',
-  'LedCommand.b': 'uint8_t',
-  'LedCommandInput.r': 'uint8_t',
-  'LedCommandInput.g': 'uint8_t',
-  'LedCommandInput.b': 'uint8_t',
-};
-
-const CONTROLLER_TYPES = [
-  'LedCommand',
-  'LedCommandInput',
-  'LedUpdate',
-  'ControllerPing',
-  'ControllerEvent',
-  'ClimbMatchResult',
-  'DeviceLogEntry',
-  'SendDeviceLogsInput',
-  'SendDeviceLogsResponse',
-];
-
-function parseGraphQLSchema(schemaContent) {
-  const types = new Map();
-  const cleanSchema = schemaContent.replace(/"""[\s\S]*?"""/g, '');
-  const typeRegex = /(type|input)\s+(\w+)\s*\{([^}]+)\}/g;
-  let match;
-
-  while ((match = typeRegex.exec(cleanSchema)) !== null) {
-    const kind = match[1];
-    const name = match[2];
-    const body = match[3];
-
-    if (!CONTROLLER_TYPES.includes(name)) continue;
-
-    const fields = [];
-    const fieldRegex = /(\w+)\s*:\s*(\[?\w+!?\]?!?)/g;
-    let fieldMatch;
-
-    while ((fieldMatch = fieldRegex.exec(body)) !== null) {
-      const fieldName = fieldMatch[1];
-      let fieldType = fieldMatch[2];
-
-      const isArray = fieldType.startsWith('[');
-      const isNullable = !fieldType.endsWith('!');
-      fieldType = fieldType.replace(/[\[\]!]/g, '');
-
-      fields.push({
-        name: fieldName,
-        type: fieldType,
-        isNullable,
-        isArray,
-      });
-    }
-
-    types.set(name, { name, kind, fields });
-  }
-
-  const unionRegex = /union\s+(\w+)\s*=\s*([^#\n]+)/g;
-  while ((match = unionRegex.exec(cleanSchema)) !== null) {
-    const name = match[1];
-    const unionBody = match[2].trim();
-
-    if (!CONTROLLER_TYPES.includes(name)) continue;
-
-    const unionTypes = unionBody.split('|').map(t => t.trim());
-    types.set(name, {
-      name,
-      kind: 'union',
-      fields: [],
-      unionTypes,
-    });
-  }
-
-  return types;
-}
-
-function graphqlTypeToCpp(graphqlType, isNullable, isArray) {
-  const key = isNullable ? graphqlType : `${graphqlType}!`;
-  if (TYPE_MAP[key]) return TYPE_MAP[key];
-  if (TYPE_MAP[graphqlType]) return TYPE_MAP[graphqlType];
-  return graphqlType;
-}
-
-function generateCppStruct(type) {
-  if (type.kind === 'union') {
-    return `// Union type: ${type.name} = ${type.unionTypes?.join(' | ')}\n// Use __typename field to determine actual type`;
-  }
-
-  const lines = [];
-  lines.push(`struct ${type.name} {`);
-
-  for (const field of type.fields) {
-    const overrideKey = `${type.name}.${field.name}`;
-    let cppType = FIELD_TYPE_OVERRIDES[overrideKey];
-
-    if (!cppType) {
-      cppType = graphqlTypeToCpp(field.type, field.isNullable, field.isArray);
-    }
-
-    if (field.isArray) {
-      lines.push(`    ${cppType}* ${field.name};`);
-      lines.push(`    size_t ${field.name}Count;`);
-    } else {
-      lines.push(`    ${cppType} ${field.name};`);
-    }
-  }
-
-  lines.push(`};`);
-  return lines.join('\n');
-}
 
 // ============================================
 // Tests
@@ -490,5 +375,71 @@ describe('Edge Cases', () => {
 
     assert.strictEqual(matched.isNullable, false);
     assert.strictEqual(climbUuid.isNullable, true);
+  });
+});
+
+describe('Generated Code Verification', () => {
+  it('should generate parse failure cleanup code', () => {
+    const outputPath = path.join(__dirname, '../libs/graphql-types/src/graphql_types.h');
+
+    if (!fs.existsSync(outputPath)) {
+      console.log('Skipping parse cleanup test: generated file not found');
+      return;
+    }
+
+    const content = fs.readFileSync(outputPath, 'utf-8');
+
+    // Verify parseLedUpdate checks parseLedCommand return value
+    assert.ok(
+      content.includes('if (!parseLedCommand(cmd, update.commands[i]))'),
+      'Should check parseLedCommand return value'
+    );
+
+    // Verify cleanup happens on parse failure
+    assert.ok(
+      content.includes('// Parsing failed - free memory and return false'),
+      'Should have cleanup comment for parse failure'
+    );
+
+    // Verify memory is freed on parse failure (delete before nullptr assignment)
+    const parseFailureSection = content.substring(
+      content.indexOf('if (!parseLedCommand(cmd, update.commands[i]))'),
+      content.indexOf('if (!parseLedCommand(cmd, update.commands[i]))') + 300
+    );
+    assert.ok(
+      parseFailureSection.includes('delete[] update.commands'),
+      'Should delete commands array on parse failure'
+    );
+    assert.ok(
+      parseFailureSection.includes('update.commands = nullptr'),
+      'Should set commands to nullptr after delete'
+    );
+    assert.ok(
+      parseFailureSection.includes('update.commandsCount = 0'),
+      'Should reset commandsCount to 0 on failure'
+    );
+  });
+
+  it('should verify constants match between JS and generated code', () => {
+    const outputPath = path.join(__dirname, '../libs/graphql-types/src/graphql_types.h');
+
+    if (!fs.existsSync(outputPath)) {
+      console.log('Skipping constants test: generated file not found');
+      return;
+    }
+
+    const content = fs.readFileSync(outputPath, 'utf-8');
+
+    // Verify ROLE_NOT_SET value matches
+    assert.ok(
+      content.includes(`constexpr int32_t ROLE_NOT_SET = ${ROLE_NOT_SET}`),
+      `Generated ROLE_NOT_SET should match JS value (${ROLE_NOT_SET})`
+    );
+
+    // Verify ANGLE_NOT_SET value matches
+    assert.ok(
+      content.includes(`constexpr int32_t ANGLE_NOT_SET = ${ANGLE_NOT_SET}`),
+      `Generated ANGLE_NOT_SET should match JS value (${ANGLE_NOT_SET})`
+    );
   });
 });

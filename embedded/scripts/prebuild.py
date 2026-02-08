@@ -26,8 +26,19 @@ OUTPUT_PATH = SCRIPT_DIR.parent / "libs" / "graphql-types" / "src" / "graphql_ty
 HASH_FILE = SCRIPT_DIR.parent / "libs" / "graphql-types" / ".schema_hash"
 CODEGEN_SCRIPT = SCRIPT_DIR / "generate-graphql-types.mjs"
 
-# Flag to prevent duplicate runs during a single build
-_codegen_ran = False
+# Use environment variable to track execution across potential script reloads.
+# This is more robust than a module-level variable if PlatformIO reloads scripts.
+_CODEGEN_RAN_ENV_KEY = "_GRAPHQL_CODEGEN_RAN"
+
+
+def _has_codegen_run() -> bool:
+    """Check if codegen has already run in this build session."""
+    return os.environ.get(_CODEGEN_RAN_ENV_KEY) == "1"
+
+
+def _mark_codegen_run():
+    """Mark that codegen has run in this build session."""
+    os.environ[_CODEGEN_RAN_ENV_KEY] = "1"
 
 
 def get_combined_hash() -> str:
@@ -92,10 +103,9 @@ def run_codegen():
 
 def before_build(source, target, env):
     """Pre-build hook to check and regenerate types if needed."""
-    global _codegen_ran
-    if _codegen_ran:
+    if _has_codegen_run():
         return
-    _codegen_ran = True
+    _mark_codegen_run()
 
     print("\n[GraphQL Codegen] Checking if types need regeneration...")
 

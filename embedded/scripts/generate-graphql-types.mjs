@@ -515,4 +515,23 @@ async function main() {
   console.log('\nDone!');
 }
 
-main().catch(console.error);
+// Run main only when script is executed directly (not when imported for testing)
+const isMainModule = process.argv[1] &&
+  fileURLToPath(import.meta.url) === process.argv[1];
+
+if (isMainModule) {
+  main().catch(console.error);
+}
+
+// Export functions for testing
+export {
+  parseGraphQLSchema,
+  graphqlTypeToCpp,
+  generateCppStruct,
+  generateHeader,
+  TYPE_MAP,
+  FIELD_TYPE_OVERRIDES,
+  CONTROLLER_TYPES,
+  ROLE_NOT_SET,
+  ANGLE_NOT_SET,
+};
