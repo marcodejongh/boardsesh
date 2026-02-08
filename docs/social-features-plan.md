@@ -330,7 +330,7 @@ This is distinct from Aurora's `board_walls` table (which tracks serial numbers 
 | `location_name` | `text` | Nullable. Gym name or location label (e.g., "Brooklyn Boulders Queensbridge") |
 | `latitude` | `double precision` | Nullable. GPS latitude for display and input convenience. |
 | `longitude` | `double precision` | Nullable. GPS longitude for display and input convenience. |
-| `location` | `geography(Point, 4326)` | Nullable. PostGIS geography point derived from `latitude`/`longitude`. Used for efficient proximity queries. Populated by the resolver when lat/lng are provided. |
+| `location` | `geography(Point, 4326)` | **Deferred to Milestone 8.** Nullable. PostGIS geography point derived from `latitude`/`longitude`. Used for efficient proximity queries. Not created in the initial Milestone 3 migration -- added via `ALTER TABLE` when proximity search is built. |
 | `is_public` | `boolean` | DEFAULT true. Whether this board is discoverable by other users. |
 | `is_owned` | `boolean` | DEFAULT true. Whether the user physically owns this board (vs. just climbs on it, e.g., a gym board). |
 | `created_at` | `timestamp` | DEFAULT now() |
@@ -343,11 +343,12 @@ This is distinct from Aurora's `board_walls` table (which tracks serial numbers 
 **Indexes:**
 - `(owner_id, is_owned) WHERE deleted_at IS NULL` -- "my boards" (owned boards first)
 - `(board_type, layout_id, is_public) WHERE deleted_at IS NULL` -- discover public boards
-- GiST index on `(location) WHERE is_public = true AND deleted_at IS NULL` -- PostGIS proximity search for nearby boards
+- GiST index on `(location) WHERE is_public = true AND deleted_at IS NULL` -- PostGIS proximity search for nearby boards (**deferred to Milestone 8**, added alongside the `location` column)
 
-**PostGIS note:**
+**PostGIS note (Milestone 8):**
+- The `location` column and GiST index are **not created in Milestone 3**. Initially, only `latitude` and `longitude` (plain `double precision`) are stored for display purposes. In Milestone 8, when unified search with proximity is built, a migration adds: `CREATE EXTENSION IF NOT EXISTS postgis;` then `ALTER TABLE user_boards ADD COLUMN location geography(Point, 4326)` plus the GiST index. A backfill query populates `location` from existing `latitude`/`longitude` values: `UPDATE user_boards SET location = ST_MakePoint(longitude, latitude)::geography WHERE latitude IS NOT NULL AND longitude IS NOT NULL`.
 - Neon DB fully supports the PostGIS extension. The `location` column uses `geography(Point, 4326)` for accurate Earth-surface distance calculations. The resolver converts `latitude`/`longitude` input to the `location` column: `ST_MakePoint(longitude, latitude)::geography`.
-- The `CreateBoardInput` and `UpdateBoardInput` GraphQL inputs accept `latitude`/`longitude` (the resolver converts to geography internally). The `UserBoard` GraphQL type returns `latitude`/`longitude` for display.
+- The `CreateBoardInput` and `UpdateBoardInput` GraphQL inputs accept `latitude`/`longitude` (the resolver converts to geography internally). The `UserBoard` GraphQL type returns `latitude`/`longitude` for display. Once Milestone 8 is deployed, the `createBoard`/`updateBoard` resolvers also populate the `location` geography column.
 
 **Relationship to URL routing:**
 The existing route pattern `/{board_name}/{layout_id}/{size_id}/{set_ids}/{angle}` maps directly to a `user_boards` row (minus angle, which varies per session). When the user navigates to a board path, the app can resolve which `user_board` they're using.
@@ -2650,146 +2651,313 @@ To avoid notification spam:
 
 ## Implementation Order
 
-### Milestone 1: Core Infrastructure (DB + types)
-0. Prerequisite migration: `CREATE EXTENSION IF NOT EXISTS postgis;` (Neon supports PostGIS natively)
-1. Add `social_entity_type` (including `'board'`), `notification_type`, `feed_item_type`, `proposal_type`, `proposal_status`, `community_role_type` Postgres enums
-2. Create `user_follows` table + migration
-3. Create `comments` table + migration
-4. Create `votes` table + migration
-5. Create `notifications` table + migration
-6. Create `new_climb_subscriptions` table + migration
-7. Create `user_boards` table + migration
-8. Add `board_id` column to `boardsesh_ticks` + migration (nullable FK -> user_boards, plus indexes on `(board_id, climbed_at)` and `(board_id, user_id)` for per-board leaderboard and stats queries)
-9. Add `board_id` column to `board_sessions` + migration (nullable FK -> user_boards)
-10. Create `community_roles` table + migration
-11. Create `community_settings` table + migration
-12. Create `climb_proposals` table + migration (with nullable `angle` for classic proposals)
-13. Create `proposal_votes` table + migration
-14. Create `climb_community_status` table + migration (angle-specific: grade, benchmark)
-15. Create `climb_classic_status` table + migration (angle-independent: classic)
-16. Create `feed_items` table + migration (fan-out-on-write activity feed, section 1.17)
-17. Export types from `packages/db`
-18. Add new GraphQL types to `packages/shared-schema`
+Each milestone creates only the DB tables and types it needs, and delivers testable, user-visible value. Migrations are additive -- each one adds new tables/columns without touching prior ones. Postgres enums can be extended with `ALTER TYPE ADD VALUE` if needed in later milestones.
 
-### Milestone 2: Follow System
-1. `followUser` / `unfollowUser` resolver mutations
-2. `followers` / `following` / `isFollowing` resolver queries
-3. `PublicUserProfile` resolver with follower counts + `isFollowedByMe`
-4. `FollowButton` client component
-5. Integration with user profile page (counts + button + follower/following tabs)
+**Dependency chain**: M1 → M4 (follows → notifications), M1+M2 → M4 → M5 (follows + comments → notifications → feed), M5 → M6 (feed → proposals with notification wiring).
 
-### Milestone 3: Comments and Votes
-1. `addComment` / `updateComment` / `deleteComment` resolver mutations
-2. `comments` / `commentReplies` resolver queries
+### Milestone 1: User Profiles & Follow System
+
+**User value**: "I can find other climbers, view their profiles, and follow them."
+
+**DB schema (created in this milestone):**
+- `user_follows` table (section 1.2)
+
+**GraphQL types:**
+- `PublicUserProfile`, `FollowConnection`, `FollowInput`, `FollowListInput`
+
+**Backend:**
+1. `followUser` / `unfollowUser` mutations
+2. `followers` / `following` / `isFollowing` queries
+3. `publicProfile` query with follower/following counts + `isFollowedByMe`
+4. `searchUsers` query (basic user search -- needed to find people to follow)
+
+**Frontend:**
+5. `FollowButton` component
+6. `FollowerCount` display
+7. User profile page additions (follower/following counts, follow button, tabs)
+8. Basic user search (text input + results list, can be a simple page or drawer)
+
+**Testable outcomes:**
+- Search for a user by name → see their profile → follow them
+- View your followers/following lists
+- Follower counts update correctly
+
+### Milestone 2: Comments & Votes
+
+**User value**: "I can discuss climbs and playlists, and upvote/downvote content."
+
+**DB schema (created in this milestone):**
+- `social_entity_type` Postgres enum (section 1.1) -- create with all planned values upfront (cheap, avoids future ALTER TYPE)
+- `comments` table (section 1.3)
+- `votes` table (section 1.4)
+
+**GraphQL types:**
+- `Comment`, `CommentConnection`, `VoteSummary`, `SortMode`, `TimePeriod`
+- `AddCommentInput`, `UpdateCommentInput`, `VoteInput`, `CommentsInput`, `BulkVoteSummaryInput`
+
+**Backend:**
+1. `addComment` / `updateComment` / `deleteComment` mutations
+2. `comments` / `commentReplies` queries (with sort modes: new, top, controversial, hot)
 3. `vote` mutation with toggle behavior
 4. `voteSummary` / `bulkVoteSummaries` queries
-5. `VoteButton` client component with optimistic UI
-6. `CommentSection` component (form + list + item)
-7. Integration with playlist detail view (playlist_climb comments + votes)
-8. Integration with climb detail view (global climb comments)
+5. Entity validation for comments/votes (section 8.1, for entity types available so far: `climb`, `playlist_climb`, `tick`, `comment`)
+6. Rate limiting on comment and vote mutations (section 8.2)
 
-### Milestone 4: Real-Time Comment Updates
-1. Extend PubSub with comment channels (`subscribeComments`, `publishCommentEvent`)
-2. Extend Redis adapter with comment channels
-3. `commentUpdates` subscription resolver
-4. `CommentEvent` union type resolver
-5. Wire comment mutations to publish events
-6. Update `CommentSection` component to subscribe and render live updates
+**Frontend:**
+7. `VoteButton` component with optimistic UI
+8. `VoteSummary` display
+9. `CommentSection` (form + list + item) with sort toggle
+10. `CommentItem` with vote, reply, edit, delete actions
+11. Integration: playlist climb detail (per-climb votes + `playlist_climb` comments)
+12. Integration: climb detail view (global `climb` comments + votes)
+13. Integration: ascent/tick detail (`tick` comments + votes)
 
-### Milestone 5: Notification Pipeline (Message Broker)
-1. Implement `EventBroker` using Redis Streams (`XADD`, `XREADGROUP`, `XACK`)
-2. Define `SocialEvent` types and metadata schemas (including `climb.created`)
-3. Wire mutations to publish events via `eventBroker.publish()` (fire-and-forget)
-4. Implement notification worker consumer:
-   a. Recipient resolution (lookup followers, entity owners, board+layout subscribers, etc.)
-   b. Deduplication via Redis (1h window for votes, 24h for follows)
-   c. Cross-source deduplication for new climbs (follower + board subscriber → one notification)
-   d. Persist to `notifications` table
-   e. Real-time delivery via `pubsub.publishNotificationEvent()`
-5. Consumer group setup with dead-consumer recovery (`XAUTOCLAIM`)
-6. Extend PubSub with notification channels (`subscribeNotifications`, `publishNotificationEvent`)
-7. Extend Redis adapter with notification channels
-8. `notificationReceived` subscription resolver
-9. `notifications` query resolver
-10. `markNotificationRead` / `markAllNotificationsRead` mutations
-11. `NotificationBell` component (bell + badge + dropdown)
-12. Integration in app navigation
-13. Notification retention cleanup job: periodic `DELETE FROM notifications WHERE created_at < NOW() - INTERVAL '90 days'`
+**Testable outcomes:**
+- Open a climb → post a comment → edit it → delete it
+- Upvote/downvote a climb or comment → see score change
+- Sort comments by new/top/controversial/hot
+- Reply to a comment (1-level threading)
+- Bulk vote summaries load for playlist climb lists
 
-### Milestone 6: Admin and Community Roles
+### Milestone 3: Board Entity + Leaderboards
+
+**User value**: "I can name my physical board, see who climbs on it, and compete on leaderboards."
+
+**DB schema (created in this milestone):**
+- `user_boards` table (section 1.7) -- **without PostGIS `location` column initially** (uses `latitude`/`longitude` as plain doubles; PostGIS proximity search deferred to Milestone 8 when search is built)
+- `board_follows` table (section 1.14)
+- Add `board_id` column to `boardsesh_ticks` (section 1.16)
+- Add `board_id` column to `board_sessions` (section 1.16)
+
+**GraphQL types:**
+- `UserBoard`, `UserBoardConnection`, `BoardLeaderboardEntry`, `BoardLeaderboard`
+- `CreateBoardInput`, `UpdateBoardInput`, `BoardLeaderboardInput`, `MyBoardsInput`, `FollowBoardInput`
+
+**Backend:**
+1. `createBoard` / `updateBoard` / `deleteBoard` mutations
+2. `board` / `myBoards` / `defaultBoard` queries
+3. `followBoard` / `unfollowBoard` mutations
+4. `boardLeaderboard` query (ranked by sends, flashes, hardest grade)
+5. `resolveBoardFromPath` helper (match URL path → user board)
+6. Wire tick logging to auto-populate `board_id`
+7. Board comment section (entity_type = `board`)
+
+**Frontend:**
+8. `CreateBoardForm` (pre-fill from current URL context)
+9. `EditBoardForm`
+10. `BoardCard` for lists
+11. `BoardDetailView` (stats, leaderboard, comment section)
+12. `BoardLeaderboard` with time period filter
+13. `BoardSelectorPills` on home page
+14. `BoardCreationBanner` on climb list page (when no matching board exists)
+15. `FollowBoardButton`
+
+**Testable outcomes:**
+- Navigate to a board URL → see "Create board" banner → create board with name/location
+- View board detail page → see leaderboard (sends, flashes, hardest grade)
+- Filter leaderboard by week/month/year/all
+- Follow a public board → see it in your board selector
+- Post comments on a board's discussion thread
+
+### Milestone 4: Notification Pipeline + Real-Time Updates
+
+**User value**: "I get notified when someone follows me, replies to my comment, or votes on my content. Comments appear live."
+
+**DB schema (created in this milestone):**
+- `notification_type` Postgres enum (section 1.5)
+- `notifications` table (section 1.5)
+
+**Infrastructure (built once, supports all future milestones):**
+1. `EventBroker` using Redis Streams (section 5.1-5.7) -- `XADD`, `XREADGROUP`, `XACK`, consumer groups
+2. `SocialEvent` type and all event types (section 5.3) -- define the full set upfront including `climb.created`, `proposal.*` events (even if producers aren't wired yet)
+3. Notification worker consumer pipeline: recipient resolution, deduplication, persistence, real-time delivery
+4. Consumer group setup with dead-consumer recovery (`XAUTOCLAIM`)
+5. PubSub extensions: notification channels + comment channels + new climb channels (section 4.1-4.2) -- wire all channel patterns now even if some aren't used yet
+6. Notification retention cleanup job (90-day hard delete)
+
+**Wire existing mutations to publish events:**
+7. `addComment` → `comment.created` / `comment.reply` events → notifications for entity owner / parent comment author
+8. `vote` → `vote.cast` event → notification for entity owner (deduplicated)
+9. `followUser` → `follow.created` event → `new_follower` notification
+10. Comment mutations → `CommentAdded`/`Updated`/`Deleted` pubsub events for live updates
+
+**GraphQL types:**
+- `Notification`, `NotificationConnection`, `NotificationType`, `NotificationEvent`
+- `CommentEvent` union (`CommentAdded`, `CommentUpdated`, `CommentDeleted`)
+- `notificationReceived` subscription
+- `commentUpdates` subscription
+
+**Backend:**
+11. `notifications` query (paginated, unread filter)
+12. `markNotificationRead` / `markAllNotificationsRead` mutations
+13. `notificationReceived` subscription resolver
+14. `commentUpdates` subscription resolver
+
+**Frontend:**
+15. `NotificationBell` (bell icon + unread badge in app header)
+16. `NotificationList` (dropdown/drawer)
+17. Update `CommentSection` to subscribe to live comment updates
+18. Toast/snackbar on new notification
+
+**Testable outcomes:**
+- User A follows User B → B sees notification in bell
+- User A comments on User B's tick → B gets notified
+- User A replies to User B's comment → B gets notified
+- Two users viewing same climb → comments appear live for both
+- Mark notification as read → badge count decrements
+- Mark all as read
+
+### Milestone 5: Activity Feed
+
+**User value**: "My home page shows what my friends are climbing."
+
+**DB schema (created in this milestone):**
+- `feed_item_type` Postgres enum
+- `feed_items` table (section 1.17)
+
+**Infrastructure:**
+1. Feed fan-out in notification worker: when ascent logged, climb created, or significant comment posted, fan out `feed_item` rows to each follower of the actor (async via Redis Streams)
+2. Feed retention cleanup job (180-day hard delete)
+
+**GraphQL types:**
+- `ActivityFeedItem`, `ActivityFeedItemType`, `ActivityFeedResult`
+- `ActivityFeedInput` (cursor-based pagination, board scoping, sort modes)
+
+**Backend:**
+3. `activityFeed` query reading from `feed_items` table
+4. Cursor-based pagination with `(created_at, id)` encoding
+5. Board-scoped feed: filter by `board_uuid`
+6. Sort modes: new (default), top, controversial, hot
+7. Unauthenticated trending feed (fan-out-on-read for global trending content)
+
+**Frontend:**
+8. `ActivityFeed` server component
+9. `FeedItem` components: `FeedItemAscent`, `FeedItemNewClimb`, `FeedItemComment`
+10. Home page integration with board-scoped feed (default to user's `defaultBoard`)
+11. Board selector pills to switch feed scope
+12. Empty state: "Follow climbers to see their activity here"
+13. Unauthenticated: trending content + sign-in prompt
+14. Infinite scroll / load more
+
+**Testable outcomes:**
+- Follow User A → A logs an ascent → see it in your feed
+- Follow User A → A creates a climb → see it in your feed
+- Filter feed by board → only see activity on that board
+- Switch sort mode → items re-sort
+- Unauthenticated: see trending content
+
+### Milestone 6: Community Proposals + Admin Roles
+
+**User value**: "I can propose grade changes and vote on them. Admins can manage the community."
+
+**DB schema (created in this milestone):**
+- `community_role_type` Postgres enum
+- `proposal_type`, `proposal_status` Postgres enums
+- `community_roles` table (section 1.8)
+- `community_settings` table (section 1.9)
+- `climb_proposals` table (section 1.10)
+- `proposal_votes` table (section 1.11)
+- `climb_community_status` table (section 1.12)
+- `climb_classic_status` table (section 1.13)
+
+**Backend:**
 1. `grantRole` / `revokeRole` mutations (admin only)
 2. `communityRoles` / `myRoles` queries
 3. `setCommunitySettings` mutation with scope resolution
 4. `communitySettings` query
-5. Role management UI panel (admin-only page)
-6. Community settings UI panel
+5. `createProposal` mutation (with supersede logic, auto-vote, angle-awareness)
+6. Adjacent-angle outlier detection algorithm (auto-approve grade outliers)
+7. `voteOnProposal` mutation (weighted votes, auto-approval threshold)
+8. `resolveProposal` mutation (admin/leader manual approve/reject)
+9. `setterOverrideCommunityStatus` mutation (grade-only setter privilege)
+10. `freezeClimb` mutation
+11. `climbProposals` / `browseProposals` queries
+12. `climbCommunityStatus` / `bulkClimbCommunityStatus` / `climbClassicStatus` queries
+13. Wire proposal events to notification pipeline (proposal_approved, proposal_rejected, proposal_vote)
 
-### Milestone 7: Community Proposals
-1. `createProposal` mutation with supersede logic, auto-vote, and angle-awareness (nullable angle for classic proposals)
-2. Adjacent-angle outlier detection algorithm (runs on grade proposal creation, auto-approves when outlier confirmed)
-3. `voteOnProposal` mutation with weighted votes and auto-approval threshold check
-4. `resolveProposal` mutation (admin/leader override)
-5. `setterOverrideCommunityStatus` mutation (grade-only setter privilege)
-6. `climbProposals` / `browseProposals` queries
-7. `climbCommunityStatus` / `bulkClimbCommunityStatus` / `climbClassicStatus` queries (include `gradeOutlierAnalysis`)
-8. `freezeClimb` mutation
-9. `ProposalCard` component with vote progress bar + "Auto-approved" badge for outlier corrections
-10. `ProposalSection` component for climb detail view (show outlier warning when `gradeOutlierAnalysis.isOutlier`)
-11. `CreateProposalForm` (grade picker at specific angle, classic toggle angle-independent, benchmark toggle at specific angle)
-12. `CommunityStatusBadge` on climb cards (shows community grade, classic, benchmark)
-13. Integration with climb detail view (including setter controls for grade only)
-14. Proposal notifications (approved, rejected, vote on your proposal)
+**Frontend:**
+14. `ProposalCard` with vote progress bar + "Auto-approved" badge
+15. `ProposalSection` for climb detail view (with outlier warning banner)
+16. `CreateProposalForm` (grade picker, classic toggle, benchmark toggle)
+17. `ProposalVoteBar` (visual weighted vote progress)
+18. `CommunityStatusBadge` on climb cards
+19. `FreezeIndicator`
+20. Setter controls in climb detail (direct grade adjustment for creators)
+21. Admin panel: `RoleManagement`, `CommunitySettings`
+22. `FreezeClimbDialog`
 
-### Milestone 8: Activity Feed + New Climb Feed
-1. `activityFeed` query resolver reading from `feed_items` table with cursor-based pagination
-2. Feed item fan-out in the notification worker: when social events occur (ascent, new climb, comment, proposal approved), fan out `feed_item` rows to each follower of the actor. Runs asynchronously via Redis Streams (same pipeline as notifications).
-3. Feed retention cleanup job: `DELETE FROM feed_items WHERE created_at < NOW() - INTERVAL '180 days'`
-4. `ActivityFeed` server component
-5. `FeedItem` components (ascent, new_climb, comment, playlist, proposal)
-6. Home page integration
-7. Empty state for users with no follows
-8. Unauthenticated trending feed (fan-out-on-read for global trending content only)
-9. `newClimbFeed` query resolver for board+layout new climb feed
-10. `newClimbCreated` WebSocket subscription + PubSub channels
-11. `subscribeNewClimbs` / `unsubscribeNewClimbs` mutations
-12. New climb feed UI components (`NewClimbFeed`, `NewClimbFeedItem`, `SubscribeButton`)
-13. New climb notifications: followed-user creates climb → `new_climb` notification
-14. Global new climb notifications: board+layout subscription → `new_climb_global` notification
+**Testable outcomes:**
+- Open a climb → propose a grade change → see vote progress bar
+- Another user votes on your proposal → weighted votes update → auto-approve at threshold
+- Create a grade proposal where adjacent angles disagree → auto-approved immediately
+- Setter can directly adjust grade without proposal
+- Admin grants community leader role → leader's votes count double
+- Admin freezes a climb → no new proposals allowed
+- Community status badges appear on climb cards
 
-### Milestone 9: Board Entity
-1. Create `board_follows` table + migration
-2. `createBoard` / `updateBoard` / `deleteBoard` mutations
-3. `board` / `myBoards` / `searchBoards` / `defaultBoard` queries
-4. `followBoard` / `unfollowBoard` mutations
-5. `resolveBoardFromPath` helper (match URL path to user board)
-6. Wire tick logging to auto-populate `board_id` from current board context
-7. `CreateBoardForm` component (pre-fill from URL context)
-8. `BoardCard` component for board lists
-9. `BoardDetailView` (stats, leaderboard, activity feed, comments)
-10. `BoardSelectorPills` on home page (default board > other boards > all)
-11. `BoardCreationBanner` on climb list page when no matching board exists
-12. `boardLeaderboard` query resolver
-13. `BoardLeaderboard` component with time period filter
-14. Add "Boards" category to unified search (`SearchCategoryPills`, `searchBoards` resolver)
+### Milestone 7: New Climb Feed + Subscriptions
 
-### Milestone 10: Unified Search
-1. `searchUsers` query resolver
-2. `searchPlaylists` query resolver
-3. `searchBoards` query resolver (proximity + text search)
-4. `SearchCategoryPills` component (Climbs | Users | Playlists | Boards)
-5. Modify `SearchDropdown` to accept `defaultCategory` prop and render category-specific content
-6. `UserSearchResults` component with follow buttons
-7. `PlaylistSearchResults` component
-8. `BoardSearchResults` component with follow buttons
-9. Home page integration (search bar defaulting to Users category)
-10. Climb list page integration (search bar defaulting to Climbs category)
+**User value**: "I can see new climbs being set on my board type and get notified."
 
-### Milestone 11: Polish and Performance
-1. Bulk vote summary loading for list views
-2. Rate limiting via Redis on all social mutations
-3. `vote_counts` materialized table if needed
-4. Notification batching/grouping in the UI (e.g. "3 people upvoted your ascent")
-5. Infinite scroll for feed and comment lists
+**DB schema (created in this milestone):**
+- `new_climb_subscriptions` table (section 1.6)
+
+**Backend:**
+1. `newClimbFeed` query (recent climbs for board+layout)
+2. `myNewClimbSubscriptions` query
+3. `subscribeNewClimbs` / `unsubscribeNewClimbs` mutations
+4. `newClimbCreated` WebSocket subscription
+5. Wire climb creation to notification pipeline:
+   - Followers of setter → `new_climb` notification
+   - Board+layout subscribers → `new_climb_global` notification
+   - Deduplication (follower + subscriber → one notification)
+
+**Frontend:**
+6. `NewClimbFeed` (live-updating list)
+7. `NewClimbFeedItem` card
+8. `SubscribeButton` (subscribe/unsubscribe to board+layout)
+
+**Testable outcomes:**
+- View new climb feed for kilter/layout 1 → see recent climbs
+- Subscribe to kilter/layout 1 → someone creates a climb → get notified
+- Follow a setter → they create a climb → get `new_climb` notification
+- Live: viewing the feed → new climb appears in real-time
+
+### Milestone 8: Unified Search + Discovery
+
+**User value**: "I can search for users, playlists, and boards from one search bar."
+
+**DB schema (created in this milestone):**
+- Add PostGIS `location` column to `user_boards` (section 1.7) + GiST index for proximity search
+- Migration: `CREATE EXTENSION IF NOT EXISTS postgis;` then `ALTER TABLE user_boards ADD COLUMN location geography(Point, 4326)`
+
+**Backend:**
+1. `searchPlaylists` query
+2. `searchBoards` query (with PostGIS proximity search: `ST_DWithin`, `ST_Distance`)
+3. Enhance `searchUsers` (already exists from M1, add board type filtering)
+
+**Frontend:**
+4. `SearchCategoryPills` (Climbs | Users | Playlists | Boards)
+5. Modify `SearchDropdown` to accept `defaultCategory` and render category-specific content
+6. `UserSearchResults` (enhanced from M1 with follow buttons inline)
+7. `PlaylistSearchResults`
+8. `BoardSearchResults` with follow buttons
+9. Home page: search bar defaults to "Users" category
+10. Climb list page: search bar defaults to "Climbs" category
+
+**Testable outcomes:**
+- On home page, tap search → see "Users" pre-selected → search for a user → follow them
+- Switch to "Playlists" pill → search playlists by name → navigate to one
+- Switch to "Boards" pill → search by name or proximity → follow a board
+- On climb list, search defaults to existing climb search (no regression)
+
+### Milestone 9: Polish & Performance
+
+1. `vote_counts` materialized table (section 1.15) if COUNT queries are slow
+2. Notification batching/grouping in UI ("3 people upvoted your ascent")
+3. Infinite scroll refinements for feed and comment lists
+4. Comprehensive rate limiting audit via Redis
+5. Feed sort mode performance (materialized hot scores if needed)
 
 ---
 
