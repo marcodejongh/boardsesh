@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 import MuiButton from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
@@ -10,9 +11,31 @@ import TextField from '@mui/material/TextField';
 import MuiSwitch from '@mui/material/Switch';
 import SwipeableDrawer from '@/app/components/swipeable-drawer/swipeable-drawer';
 import Popover from '@mui/material/Popover';
+import CircularProgress from '@mui/material/CircularProgress';
 import { PublicOutlined, LockOutlined, CloseOutlined } from '@mui/icons-material';
-import Picker from '@emoji-mart/react';
-import data from '@emoji-mart/data';
+
+const EmojiPicker = dynamic(
+  () => import('@emoji-mart/react').then((mod) => {
+    // Pre-load the data module alongside the picker
+    return import('@emoji-mart/data').then((dataModule) => {
+      const PickerComponent = mod.default;
+      // Return a wrapper that injects the data prop
+      const PickerWithData = (props: Record<string, unknown>) => (
+        <PickerComponent data={dataModule.default} {...props} />
+      );
+      PickerWithData.displayName = 'EmojiPicker';
+      return { default: PickerWithData };
+    });
+  }),
+  {
+    ssr: false,
+    loading: () => (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 4 }}>
+        <CircularProgress />
+      </Box>
+    ),
+  },
+);
 import { executeGraphQL } from '@/app/lib/graphql/client';
 import {
   UPDATE_PLAYLIST,
@@ -223,8 +246,7 @@ export default function PlaylistEditDrawer({ open, playlist, onClose, onSuccess 
             onClose={() => setEmojiAnchor(null)}
             anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
           >
-            <Picker
-              data={data}
+            <EmojiPicker
               onEmojiSelect={(emoji: { native: string }) => {
                 setFormValues((prev) => ({ ...prev, icon: emoji.native }));
                 setEmojiAnchor(null);

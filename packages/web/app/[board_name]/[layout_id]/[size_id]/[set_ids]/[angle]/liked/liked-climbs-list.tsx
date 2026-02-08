@@ -15,6 +15,7 @@ import {
 } from '@/app/lib/graphql/operations/favorites';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { useQueueContext } from '@/app/components/graphql-queue';
+import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 import ClimbCard from '@/app/components/climb-card/climb-card';
 import ClimbListItem from '@/app/components/climb-card/climb-list-item';
 import { ClimbCardSkeleton } from '@/app/components/board-page/board-page-skeleton';
@@ -49,6 +50,7 @@ export default function LikedClimbsList({
 }: LikedClimbsListProps) {
   const { token, isLoading: tokenLoading } = useWsAuthToken();
   const { setCurrentClimb } = useQueueContext();
+  const { showMessage } = useSnackbar();
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const [selectedClimbUuid, setSelectedClimbUuid] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
@@ -107,6 +109,13 @@ export default function LikedClimbsList({
 
   const allClimbs: Climb[] = data?.pages.flatMap((page) => page.climbs as Climb[]) ?? [];
   const totalCount = data?.pages[0]?.totalCount ?? 0;
+
+  useEffect(() => {
+    if (error) {
+      console.error('Error loading liked climbs:', error);
+      showMessage('Failed to load liked climbs', 'error');
+    }
+  }, [error, showMessage]);
 
   // Show all liked climbs regardless of layout (unlike playlists, favorites span all layouts)
   const visibleClimbs: Climb[] = useMemo(() => {
@@ -188,7 +197,7 @@ export default function LikedClimbsList({
     );
   }
 
-  if (error) {
+  if (error && allClimbs.length === 0) {
     return (
       <div className={styles.climbsSection}>
         <EmptyState description="Failed to load liked climbs" />
