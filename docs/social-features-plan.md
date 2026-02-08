@@ -30,6 +30,7 @@ This document describes the plan for adding social features to Boardsesh: commen
 - **Cursor-based pagination** for the activity feed (better for constantly-changing datasets than offset).
 - **Reddit-style ranking modes**: Four sort modes available across comments, feeds, and entity lists -- New (chronological), Top (highest score), Controversial (high engagement, divisive), and Hot (recent + high velocity). See [Ranking Algorithms](#ranking-algorithms) section for implementation details.
 - **Real-time via existing WebSocket infrastructure**: Notifications and live comment updates use the same graphql-ws + Redis pub/sub system as party sessions.
+- **Adjacent-angle outlier detection**: Grade proposals are automatically fast-tracked (auto-approved) when the existing grade at an angle is a statistical outlier compared to adjacent angles with strong ascent data. If neighboring angles agree the grade is significantly off, the system trusts the data and skips the voting process.
 - **Server-side rendering** where possible for the feed. Interactive elements (vote buttons, comment forms) are client components embedded within server-rendered shells.
 - **Rate limiting** on social mutations.
 - **Message broker for notifications**: Mutations publish lightweight events to a Redis Streams-backed broker. A separate consumer pipeline handles notification creation, deduplication, persistence, and real-time delivery. This decouples mutation latency from notification fanout and makes the system horizontally scalable from day one.
@@ -356,6 +357,8 @@ Global and per-climb configuration for the proposal system.
 | `leader_vote_weight` | `2` | How many votes a community leader's vote counts as |
 | `climb_frozen` | `false` | Whether proposals are blocked on this climb/angle |
 | `freeze_reason` | NULL | Optional reason displayed when a climb is frozen |
+| `outlier_min_ascents` | `10` | Minimum `ascensionist_count` at each adjacent angle for outlier detection to apply |
+| `outlier_grade_diff` | `2` | Minimum grade difference (difficulty units) between the target angle and its neighbors to qualify as an outlier |
 
 **Scope resolution order (most specific wins):**
 1. `climb` scope with `scope_key = "{climbUuid}:{angle}"` -- per-climb-angle override
@@ -729,6 +732,17 @@ type ProposalConnection {
   hasMore: Boolean!
 }
 
+type OutlierAnalysis {
+  isOutlier: Boolean!              # Whether the current grade qualifies as an outlier
+  neighborAngles: [Int!]!          # Adjacent angles used for comparison (e.g., [30, 40])
+  neighborAscents: [Int!]!         # Ascensionist count at each neighbor angle
+  neighborGrade: Int!              # Weighted average difficulty of neighbors (rounded)
+  neighborGradeName: String!       # Human-readable grade name for the neighbor consensus
+  currentGrade: Int!               # Current difficulty at the analyzed angle
+  currentGradeName: String!        # Human-readable grade name
+  diffFromNeighbors: Float!        # How far off the current grade is (in difficulty units)
+}
+
 type ProposalVoteSummary {
   proposalUuid: ID!
   weightedUpvotes: Int!
@@ -750,6 +764,7 @@ type ClimbCommunityStatus {
   freezeReason: String
   openProposalCount: Int!     # Grade + benchmark proposals at this angle, plus any classic proposals
   isCurrentUserSetter: Boolean!  # Whether the authenticated user is the climb creator (enables setter controls)
+  gradeOutlierAnalysis: OutlierAnalysis  # Non-null if the grade at this angle appears to be an outlier vs adjacent angles
 }
 
 type ClimbClassicStatus {
@@ -1271,8 +1286,116 @@ New file: `packages/backend/src/graphql/resolvers/social/proposals.ts`
 - If an open proposal of the same `(climb_uuid, angle, type)` already exists: set its status to `superseded`. For classic proposals, match on `(climb_uuid, type)` where `angle IS NULL`.
 - Insert into `climb_proposals`
 - Auto-insert a +1 proposal vote from the proposer (with their role weight)
+- **Adjacent-angle outlier check** (grade proposals only): Before checking the normal vote threshold, run the outlier detection algorithm (see below). If the proposed grade aligns with adjacent-angle data and the current grade is a statistical outlier, **auto-approve immediately** regardless of vote count.
 - **Check threshold immediately** (an admin creating a proposal might auto-approve if their weight alone meets the threshold)
 - Return created proposal
+
+#### Adjacent-Angle Outlier Detection (Auto-Approval for Grade Proposals)
+
+When a grade proposal is created, the system checks whether the current grade at that angle is a statistical outlier compared to adjacent angles. If it is, and the proposed grade moves the grade *toward* the consensus of neighboring angles, the proposal is **auto-approved immediately** -- no voting required.
+
+This addresses a common real-world problem: a climb graded V2 at 35° while 30° has it at V4 and 40° at V5. The V2 is clearly wrong, and the adjacent angle data from many ascensionists is strong evidence.
+
+**Algorithm:**
+
+```
+function checkAdjacentAngleOutlier(climbUuid, boardType, angle, proposedDifficulty):
+  # 1. Fetch stats for the target angle and its neighbors
+  targetStats = board_climb_stats WHERE climb_uuid AND angle
+  lowerStats  = board_climb_stats WHERE climb_uuid AND angle = (angle - 5)
+  upperStats  = board_climb_stats WHERE climb_uuid AND angle = (angle + 5)
+
+  # 2. Resolve configurable thresholds
+  minAscents = resolve_setting('outlier_min_ascents', climb+angle scope)  # default 10
+  minGradeDiff = resolve_setting('outlier_grade_diff', climb+angle scope)  # default 2
+
+  # 3. Need at least ONE adjacent angle with sufficient ascent data
+  #    (climbs at the edge of the angle range may only have one neighbor)
+  eligibleNeighbors = []
+  if lowerStats AND lowerStats.ascensionist_count >= minAscents:
+    eligibleNeighbors.push(lowerStats)
+  if upperStats AND upperStats.ascensionist_count >= minAscents:
+    eligibleNeighbors.push(upperStats)
+
+  if eligibleNeighbors.length == 0:
+    return { isOutlier: false }  # Not enough data to determine
+
+  # 4. Compute the neighbor consensus grade
+  #    Weighted average by ascensionist count
+  neighborGrade = SUM(neighbor.display_difficulty * neighbor.ascensionist_count)
+                / SUM(neighbor.ascensionist_count)
+
+  # 5. Check if the current grade is an outlier
+  currentDifficulty = targetStats.display_difficulty
+  diffFromNeighbors = ABS(currentDifficulty - neighborGrade)
+
+  if diffFromNeighbors < minGradeDiff:
+    return { isOutlier: false }  # Grade is within acceptable range of neighbors
+
+  # 6. Check the proposed grade moves TOWARD the neighbor consensus
+  #    (we don't auto-approve proposals that move AWAY from consensus)
+  proposedDiffFromNeighbors = ABS(proposedDifficulty - neighborGrade)
+  if proposedDiffFromNeighbors >= diffFromNeighbors:
+    return { isOutlier: false }  # Proposed grade doesn't improve alignment
+
+  # 7. All checks pass: this is a legitimate outlier correction
+  return {
+    isOutlier: true,
+    currentDifficulty,
+    neighborGrade: ROUND(neighborGrade),
+    neighborAngles: eligibleNeighbors.map(n => n.angle),
+    neighborAscents: eligibleNeighbors.map(n => n.ascensionist_count),
+    diffFromNeighbors
+  }
+```
+
+**When outlier is detected:**
+1. The proposal is **auto-approved immediately** (status = `approved`, `resolved_at = now()`)
+2. `resolved_by` is set to `NULL` (system-approved, not a user)
+3. The effect is applied to `climb_community_status` at that angle
+4. The proposal's `reason` field is augmented with a system note:
+   `"[Auto-approved: grade outlier detected. Adjacent angles grade {neighborGrade} with {totalAscents} ascents vs current {currentGrade} at this angle.]"`
+5. Any open grade proposal at this climb+angle is superseded
+6. Notifications are still sent (proposer gets `proposal_approved`)
+
+**What the UI shows:**
+- The proposal card shows an "Auto-approved" badge with the explanation
+- The climb detail view shows a system note: "Grade adjusted from V2 to V4 based on adjacent angle consensus (V4 at 30° with 47 ascents, V5 at 40° with 32 ascents)"
+- In the proposal history, auto-approved proposals are visually distinct (system icon instead of user avatar)
+
+**Edge cases:**
+- **Edge angles** (0° or 70°): Only one adjacent angle exists. Still works -- a single well-attested neighbor is enough evidence if the diff is large enough.
+- **Target angle has many ascents too**: The algorithm still applies. Even if the target has 50 ascents, if neighbors with 200+ ascents disagree by 3+ grades, the correction should still be fast-tracked. The ascent count threshold only applies to *neighbors*.
+- **Community status override exists**: If `climb_community_status` already has a `community_grade` at this angle, use that instead of `board_climb_stats.display_difficulty` as the "current" grade.
+- **Climb is frozen**: Outlier auto-approval is blocked on frozen climbs (same as normal proposals). Admins must unfreeze first.
+
+**Configurable behavior (via `community_settings`):**
+- `outlier_min_ascents` (default 10): Minimum ascensionist count at each adjacent angle. Higher values = more conservative. Can be adjusted per board or globally.
+- `outlier_grade_diff` (default 2): Minimum difficulty unit difference to trigger outlier detection. A value of 2 means roughly 1 V-grade difference (V-grades span ~2 difficulty units). Set to 3 for stricter detection.
+
+**GraphQL additions:**
+
+```graphql
+# Added to Proposal type:
+type Proposal {
+  # ... existing fields ...
+  isAutoApproved: Boolean!        # True if auto-approved by outlier detection
+  outlierAnalysis: OutlierAnalysis # Non-null when outlier detection was triggered
+}
+
+type OutlierAnalysis {
+  isOutlier: Boolean!
+  neighborAngles: [Int!]!          # Adjacent angles used for comparison
+  neighborAscents: [Int!]!         # Ascensionist count at each neighbor angle
+  neighborGrade: Int!              # Weighted average difficulty of neighbors
+  neighborGradeName: String!       # Human-readable grade
+  currentGrade: Int!               # Current difficulty at the proposed angle
+  currentGradeName: String!        # Human-readable grade
+  diffFromNeighbors: Float!        # How far off the current grade is
+}
+```
+
+**`OutlierAnalysis` is returned on every grade proposal** (even non-outliers), so the UI can always show the user how the proposed angle compares to its neighbors. This provides context for voters even when the auto-approval threshold isn't met.
 
 **`voteOnProposal` mutation:**
 - Auth required
@@ -2036,6 +2159,9 @@ The climb detail page (when viewing from search results, not within a playlist):
 - **Vote buttons** on the climb
 - This is the climb's own discussion, independent of any playlist context
 - **Community status badges** showing community grade (if different from Aurora), classic, benchmark
+- **Grade outlier warning**: If `gradeOutlierAnalysis.isOutlier` is true, show a prominent banner:
+  "This grade may be inaccurate. Adjacent angles (30° and 40°) suggest V4 based on 79 ascents. [Propose correction]"
+  The "Propose correction" button pre-fills a grade proposal with the neighbor consensus grade and auto-approves it.
 - **Proposal section** (below or in a tab alongside comments):
   - Shows open proposals for this climb: grade/benchmark proposals at the current angle, plus any classic proposals (which are angle-independent)
   - "Propose grade change" / "Propose as benchmark" (angle-specific) / "Propose as classic" (angle-independent) buttons
@@ -2198,18 +2324,19 @@ To avoid notification spam:
 
 ### Milestone 7: Community Proposals
 1. `createProposal` mutation with supersede logic, auto-vote, and angle-awareness (nullable angle for classic proposals)
-2. `voteOnProposal` mutation with weighted votes and auto-approval threshold check
-3. `resolveProposal` mutation (admin/leader override)
-4. `setterOverrideCommunityStatus` mutation (grade-only setter privilege)
-5. `climbProposals` / `browseProposals` queries
-6. `climbCommunityStatus` / `bulkClimbCommunityStatus` / `climbClassicStatus` queries
-7. `freezeClimb` mutation
-8. `ProposalCard` component with vote progress bar
-9. `ProposalSection` component for climb detail view
-10. `CreateProposalForm` (grade picker at specific angle, classic toggle angle-independent, benchmark toggle at specific angle)
-11. `CommunityStatusBadge` on climb cards (shows community grade, classic, benchmark)
-12. Integration with climb detail view (including setter controls for grade only)
-13. Proposal notifications (approved, rejected, vote on your proposal)
+2. Adjacent-angle outlier detection algorithm (runs on grade proposal creation, auto-approves when outlier confirmed)
+3. `voteOnProposal` mutation with weighted votes and auto-approval threshold check
+4. `resolveProposal` mutation (admin/leader override)
+5. `setterOverrideCommunityStatus` mutation (grade-only setter privilege)
+6. `climbProposals` / `browseProposals` queries
+7. `climbCommunityStatus` / `bulkClimbCommunityStatus` / `climbClassicStatus` queries (include `gradeOutlierAnalysis`)
+8. `freezeClimb` mutation
+9. `ProposalCard` component with vote progress bar + "Auto-approved" badge for outlier corrections
+10. `ProposalSection` component for climb detail view (show outlier warning when `gradeOutlierAnalysis.isOutlier`)
+11. `CreateProposalForm` (grade picker at specific angle, classic toggle angle-independent, benchmark toggle at specific angle)
+12. `CommunityStatusBadge` on climb cards (shows community grade, classic, benchmark)
+13. Integration with climb detail view (including setter controls for grade only)
+14. Proposal notifications (approved, rejected, vote on your proposal)
 
 ### Milestone 8: Activity Feed + New Climb Feed
 1. `activityFeed` query resolver with cursor-based pagination
