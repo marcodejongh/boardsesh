@@ -5,6 +5,7 @@ import { PartyProfileProvider } from '../party-manager/party-profile-context';
 import { PersistentSessionProvider, usePersistentSession, useIsOnBoardRoute } from '../persistent-session';
 import { PersistentQueueProvider } from '../queue-control/persistent-queue-provider';
 import { BoardProvider } from '../board-provider/board-provider-context';
+import { BluetoothProvider } from '../board-bluetooth-control/bluetooth-context';
 import QueueControlBar from '../queue-control/queue-control-bar';
 
 interface PersistentSessionWrapperProps {
@@ -66,7 +67,9 @@ function OffBoardQueueBar() {
     >
       <BoardProvider boardName={boardDetails.board_name}>
         <PersistentQueueProvider boardDetails={boardDetails} angle={angle}>
-          <QueueControlBar boardDetails={boardDetails} angle={angle} />
+          <BluetoothProvider boardDetails={boardDetails}>
+            <QueueControlBar boardDetails={boardDetails} angle={angle} />
+          </BluetoothProvider>
         </PersistentQueueProvider>
       </BoardProvider>
     </div>
