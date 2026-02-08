@@ -4,7 +4,6 @@ import Skeleton from '@mui/material/Skeleton';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
-import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import MuiDivider from '@mui/material/Divider';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
@@ -175,7 +174,7 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
 
   return (
     <>
-      <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+      <div className={styles.queueColumn}>
         {/* History items (oldest to newest at top) - only shown when showHistory is true */}
         {showHistory && historyItems.length > 0 && (
           <>
@@ -259,40 +258,39 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
             </div>
           );
         })}
-      </Box>
+      </div>
       {!viewOnlyMode && (
         <>
           <MuiDivider>Suggested Items</MuiDivider>
-          <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+          <div className={styles.suggestedColumn}>
             {suggestedClimbs.map((climb: Climb) => (
               <div
                 key={`suggested-${climb.uuid}`}
+                className={styles.suggestedItem}
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
                   padding: `${themeTokens.spacing[3]}px ${themeTokens.spacing[2]}px`,
                   borderBottom: `1px solid ${themeTokens.neutral[200]}`,
                 }}
               >
-                <Box sx={{ display: 'flex', flexWrap: 'nowrap', gap: '8px 8px', width: '100%', alignItems: 'center' }}>
-                  <Box sx={{ width: { xs: '25%', sm: '20.83%' } }}>
+                <div className={styles.suggestedItemRow}>
+                  <div className={styles.suggestedThumbnailCol}>
                     <ClimbThumbnail
                       boardDetails={boardDetails}
                       currentClimb={climb}
                       enableNavigation={true}
                       onNavigate={onClimbNavigate}
                     />
-                  </Box>
-                  <Box sx={{ width: { xs: '62.5%', sm: '70.83%' } }}>
+                  </div>
+                  <div className={styles.suggestedTitleCol}>
                     <ClimbTitle climb={climb} showAngle centered />
-                  </Box>
-                  <Box sx={{ width: { xs: '12.5%', sm: '8.33%' } }}>
+                  </div>
+                  <div className={styles.suggestedActionCol}>
                     <IconButton onClick={() => addToQueue(climb)}><AddOutlined /></IconButton>
-                  </Box>
-                </Box>
+                  </div>
+                </div>
               </div>
             ))}
-          </Box>
+          </div>
           {/* Sentinel element for Intersection Observer - only render when needed */}
           {/* Include isFetchingClimbs to show skeleton during initial page load */}
           {(suggestedClimbs.length > 0 || isFetchingClimbs || isFetchingNextPage || hasMoreResults) && (
@@ -301,26 +299,29 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
               style={{ minHeight: themeTokens.spacing[5], marginTop: themeTokens.spacing[2] }}
             >
               {(isFetchingClimbs || isFetchingNextPage) && (
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: `${themeTokens.spacing[2]}px`, padding: `${themeTokens.spacing[2]}px` }}>
+                <div
+                  className={styles.loadMoreContainer}
+                  style={{ gap: `${themeTokens.spacing[2]}px`, padding: `${themeTokens.spacing[2]}px` }}
+                >
                   {[1, 2, 3].map((i) => (
-                    <Box key={i} sx={{ display: 'flex', flexWrap: 'nowrap', gap: '8px 8px', alignItems: 'center' }}>
-                      <Box sx={{ width: { xs: '25%', sm: '20.83%' } }}>
+                    <div key={i} className={styles.loadMoreSkeletonRow}>
+                      <div className={styles.suggestedThumbnailCol}>
                         <Skeleton variant="rectangular" width="100%" height={60} animation="wave" />
-                      </Box>
-                      <Box sx={{ width: { xs: '62.5%', sm: '70.83%' } }}>
+                      </div>
+                      <div className={styles.suggestedTitleCol}>
                         <Skeleton variant="text" animation="wave" />
-                      </Box>
-                      <Box sx={{ width: { xs: '12.5%', sm: '8.33%' } }}>
+                      </div>
+                      <div className={styles.suggestedActionCol}>
                         <Skeleton variant="rectangular" width={32} height={32} animation="wave" />
-                      </Box>
-                    </Box>
+                      </div>
+                    </div>
                   ))}
-                </Box>
+                </div>
               )}
               {!hasMoreResults && !isFetchingClimbs && suggestedClimbs.length > 0 && (
                 <div
+                  className={styles.noMoreSuggestions}
                   style={{
-                    textAlign: 'center',
                     padding: themeTokens.spacing[4],
                     color: themeTokens.neutral[400],
                   }}

@@ -38,6 +38,61 @@
 
 .contentRow {
   width: 100%;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Grid columns - 24-column grid percentages */
+.colCheckbox {
+  width: 8.33%;
+}
+
+.colThumbnail {
+  width: 25%;
+}
+
+.colThumbnailEdit {
+  width: 20.83%;
+}
+
+.colTitle {
+  width: 54.17%;
+}
+
+.colTitleEdit {
+  width: 58.33%;
+}
+
+.colAvatar {
+  width: 8.33%;
+}
+
+.colMenu {
+  width: 12.5%;
+}
+
+@media (min-width: 600px) {
+  .colThumbnail {
+    width: 20.83%;
+  }
+
+  .colThumbnailEdit {
+    width: 16.67%;
+  }
+
+  .colTitle {
+    width: 62.5%;
+  }
+
+  .colTitleEdit {
+    width: 66.67%;
+  }
+
+  .colMenu {
+    width: 8.33%;
+  }
 }
 
 /* Ascent status styles */
