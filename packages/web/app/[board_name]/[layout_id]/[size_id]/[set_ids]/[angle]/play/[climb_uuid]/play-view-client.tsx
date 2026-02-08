@@ -12,6 +12,8 @@ import { AscentStatus } from '@/app/components/queue-control/queue-list-item';
 import { constructClimbListWithSlugs, constructPlayUrlWithSlugs } from '@/app/lib/url-utils';
 import { themeTokens } from '@/app/theme/theme-config';
 import { EmptyState } from '@/app/components/ui/empty-state';
+import PlayViewBetaSlider from '@/app/components/play-view/play-view-beta-slider';
+import PlayViewComments from '@/app/components/play-view/play-view-comments';
 import styles from './play-view.module.css';
 
 type PlayViewClientProps = {
@@ -156,6 +158,12 @@ const PlayViewClient: React.FC<PlayViewClientProps> = ({ boardDetails, initialCl
           className={styles.swipeContainer}
           boardContainerClassName={styles.boardContainer}
         />
+      </div>
+
+      {/* Beta videos & comments */}
+      <div className={styles.extrasSection}>
+        <PlayViewBetaSlider boardName={boardDetails.board_name} climbUuid={displayClimb.uuid} />
+        <PlayViewComments climbUuid={displayClimb.uuid} />
       </div>
     </div>
   );

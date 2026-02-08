@@ -29,6 +29,8 @@ import { themeTokens } from '@/app/theme/theme-config';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import type { ActiveDrawer } from '../queue-control/queue-control-bar';
 import type { BoardDetails, Angle } from '@/app/lib/types';
+import PlayViewBetaSlider from './play-view-beta-slider';
+import PlayViewComments from './play-view-comments';
 import styles from './play-view-drawer.module.css';
 
 const SendClimbToBoardButton = dynamic(
@@ -304,6 +306,14 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
             <SkipNextOutlined />
           </IconButton>
         </div>
+
+        {/* Beta videos & comments */}
+        {currentClimb && (
+          <div className={styles.extrasSection}>
+            <PlayViewBetaSlider boardName={boardDetails.board_name} climbUuid={currentClimb.uuid} />
+            <PlayViewComments climbUuid={currentClimb.uuid} />
+          </div>
+        )}
       </div>
 
         {/* Climb actions drawer */}
