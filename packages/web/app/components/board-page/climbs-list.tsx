@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useRef, useCallback, useState } from 'react';
+import React, { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import IconButton from '@mui/material/IconButton';
 import Box from '@mui/material/Box';
 import AppsOutlined from '@mui/icons-material/AppsOutlined';
@@ -72,10 +72,13 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
   // fill on the server side in the page component. This way the user never sees a loading state for
   // the climb list.
   // Deduplicate climbs by uuid to prevent React key warnings during hydration/re-renders
-  const rawClimbs = !hasDoneFirstFetch ? initialClimbs : climbSearchResults || [];
-  const climbs = rawClimbs.filter((climb, index, self) =>
-    index === self.findIndex((c) => c.uuid === climb.uuid)
-  );
+  // Memoized to prevent unnecessary re-filtering on every render
+  const climbs = useMemo(() => {
+    const rawClimbs = !hasDoneFirstFetch ? initialClimbs : climbSearchResults || [];
+    return rawClimbs.filter((climb, index, self) =>
+      index === self.findIndex((c) => c.uuid === climb.uuid)
+    );
+  }, [hasDoneFirstFetch, initialClimbs, climbSearchResults]);
 
   // Ref for the intersection observer sentinel element
   const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -112,6 +115,59 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
     [setCurrentClimb],
   );
 
+  // Memoize climb-specific handlers to prevent unnecessary re-renders
+  const climbHandlersMap = useMemo(() => {
+    const map = new Map<string, () => void>();
+    climbs.forEach(climb => {
+      map.set(climb.uuid, () => handleClimbDoubleClick(climb));
+    });
+    return map;
+  }, [climbs, handleClimbDoubleClick]);
+
+  // Memoize sx prop objects to prevent recreation on every render
+  const headerBoxSx = useMemo(() => ({
+    display: 'flex',
+    alignItems: 'center',
+    position: 'relative' as const,
+    padding: `${themeTokens.spacing[1]}px 60px ${themeTokens.spacing[2]}px ${themeTokens.spacing[1]}px`,
+    minWidth: 0,
+  }), []);
+
+  const viewModeToggleBoxSx = useMemo(() => ({
+    position: 'absolute' as const,
+    right: `${themeTokens.spacing[1]}px`,
+    top: '50%',
+    transform: 'translateY(-50%)',
+    display: 'flex',
+    gap: '2px',
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+    borderRadius: `${themeTokens.borderRadius.sm}px`,
+    padding: '2px',
+  }), []);
+
+  const iconButtonSx = useMemo(() => ({ padding: '4px' }), []);
+
+  const gridContainerSx = useMemo(() => ({
+    display: 'flex',
+    flexWrap: 'wrap' as const,
+    gap: `${themeTokens.spacing[4]}px`,
+  }), []);
+
+  const cardBoxSx = useMemo(() => ({
+    width: { xs: '100%', lg: '50%' },
+  }), []);
+
+  const sentinelBoxSx = useMemo(() => ({
+    minHeight: `${themeTokens.spacing[5]}px`,
+    mt: viewMode === 'grid' ? `${themeTokens.spacing[4]}px` : 0,
+  }), [viewMode]);
+
+  const noMoreClimbsBoxSx = useMemo(() => ({
+    textAlign: 'center' as const,
+    padding: `${themeTokens.spacing[5]}px`,
+    color: themeTokens.neutral[400],
+  }), []);
+
   // Set up Intersection Observer
   useEffect(() => {
     const element = loadMoreRef.current;
@@ -133,35 +189,15 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
   return (
     <Box sx={{ pt: `${themeTokens.spacing[1]}px` }}>
       {/* View mode toggle + recent searches */}
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          position: 'relative',
-          padding: `${themeTokens.spacing[1]}px 60px ${themeTokens.spacing[2]}px ${themeTokens.spacing[1]}px`,
-          minWidth: 0,
-        }}
-      >
+      <Box sx={headerBoxSx}>
         <RecentSearchPills />
-        <Box
-          sx={{
-            position: 'absolute',
-            right: `${themeTokens.spacing[1]}px`,
-            top: '50%',
-            transform: 'translateY(-50%)',
-            display: 'flex',
-            gap: '2px',
-            backgroundColor: 'rgba(255, 255, 255, 0.6)',
-            borderRadius: `${themeTokens.borderRadius.sm}px`,
-            padding: '2px',
-          }}
-        >
+        <Box sx={viewModeToggleBoxSx}>
           <IconButton
             onClick={() => handleViewModeChange('list')}
             aria-label="List view"
             color={viewMode === 'list' ? 'primary' : 'default'}
             size="small"
-            sx={{ padding: '4px' }}
+            sx={iconButtonSx}
           >
             <FormatListBulletedOutlined fontSize="small" />
           </IconButton>
@@ -170,7 +206,7 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
             aria-label="Grid view"
             color={viewMode === 'grid' ? 'primary' : 'default'}
             size="small"
-            sx={{ padding: '4px' }}
+            sx={iconButtonSx}
           >
             <AppsOutlined fontSize="small" />
           </IconButton>
@@ -179,9 +215,9 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
 
       {viewMode === 'grid' ? (
         /* Grid (card) mode */
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: `${themeTokens.spacing[4]}px` }}>
+        <Box sx={gridContainerSx}>
           {climbs.map((climb, index) => (
-            <Box key={climb.uuid} sx={{ width: { xs: '100%', lg: '50%' } }}>
+            <Box key={climb.uuid} sx={cardBoxSx}>
               <div
                 {...(index === 0 ? { id: 'onboarding-climb-card' } : {})}
               >
@@ -189,7 +225,7 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
                   climb={climb}
                   boardDetails={boardDetails}
                   selected={currentClimb?.uuid === climb.uuid}
-                  onCoverDoubleClick={() => handleClimbDoubleClick(climb)}
+                  onCoverDoubleClick={climbHandlersMap.get(climb.uuid)}
                 />
               </div>
             </Box>
@@ -210,7 +246,7 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
                 climb={climb}
                 boardDetails={boardDetails}
                 selected={currentClimb?.uuid === climb.uuid}
-                onSelect={() => handleClimbDoubleClick(climb)}
+                onSelect={climbHandlersMap.get(climb.uuid)}
               />
             </div>
           ))}
@@ -221,10 +257,10 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
       )}
 
       {/* Sentinel element for Intersection Observer - needs min-height to be observable */}
-      <Box ref={loadMoreRef} sx={{ minHeight: `${themeTokens.spacing[5]}px`, mt: viewMode === 'grid' ? `${themeTokens.spacing[4]}px` : 0 }}>
+      <Box ref={loadMoreRef} sx={sentinelBoxSx}>
         {isFetchingClimbs && climbs.length > 0 && (
           viewMode === 'grid' ? (
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: `${themeTokens.spacing[4]}px` }}>
+            <Box sx={gridContainerSx}>
               <ClimbsListSkeleton aspectRatio={boardDetails.boardWidth / boardDetails.boardHeight} viewMode="grid" />
             </Box>
           ) : (
@@ -232,7 +268,7 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
           )
         )}
         {!hasMoreResults && climbs.length > 0 && (
-          <Box sx={{ textAlign: 'center', padding: `${themeTokens.spacing[5]}px`, color: themeTokens.neutral[400] }}>
+          <Box sx={noMoreClimbsBoxSx}>
             No more climbs
           </Box>
         )}

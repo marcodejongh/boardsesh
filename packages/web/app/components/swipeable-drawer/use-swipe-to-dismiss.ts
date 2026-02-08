@@ -153,11 +153,23 @@ export function useSwipeToDismiss({
       const deltaX = currentX - startX;
 
       // Only engage dismiss when at scroll top, pulling down, and vertical > horizontal
+      // Allow normal scrolling in all other cases
       if (el.scrollTop <= 0 && deltaY > 0 && Math.abs(deltaY) > Math.abs(deltaX)) {
+        // At top and pulling down - engage dismiss
         e.preventDefault();
         isDismissMode = true;
         isDraggingRef.current = true;
         setDragOffset(deltaY);
+      } else if (el.scrollTop > 0 || deltaY < 0 || Math.abs(deltaX) > Math.abs(deltaY)) {
+        // Scrolling down, or horizontal swipe, or already scrolled - allow normal behavior
+        if (isDismissMode) {
+          // Was in dismiss mode but user changed direction, snap back
+          isDismissMode = false;
+          isDraggingRef.current = false;
+          setDragOffset(0);
+        }
+        // Don't prevent default - allow scrolling
+        return;
       } else if (isDismissMode) {
         // Was in dismiss mode but user changed direction, snap back
         isDismissMode = false;
