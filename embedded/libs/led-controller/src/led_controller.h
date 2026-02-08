@@ -8,8 +8,16 @@
 
 /**
  * LED command structure matching GraphQL LedCommand type.
- * This is defined here for native test compatibility.
- * The same struct is also generated in graphql_types.h with include guards.
+ *
+ * IMPORTANT: This struct is duplicated here and in graphql_types.h.
+ * - This copy enables native tests (which can't include Arduino.h from graphql_types.h)
+ * - The graphql_types.h copy is auto-generated from the GraphQL schema
+ * - Both use LEDCOMMAND_DEFINED include guard to prevent redefinition
+ *
+ * If fields change, update BOTH:
+ *   1. packages/shared-schema/src/schema.ts (source of truth)
+ *   2. Run `npm run controller:codegen` to regenerate graphql_types.h
+ *   3. Update this struct to match
  */
 #ifndef LEDCOMMAND_DEFINED
 #define LEDCOMMAND_DEFINED

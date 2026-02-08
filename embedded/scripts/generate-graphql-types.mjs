@@ -313,6 +313,7 @@ namespace GraphQLTypename {
     'ControllerPing',
     'ClimbMatchResult',
     'DeviceLogEntry',
+    'SendDeviceLogsInput',
     'SendDeviceLogsResponse',
   ];
 

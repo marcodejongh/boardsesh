@@ -134,9 +134,9 @@ def before_build(source, target, env):
         print("[GraphQL Codegen] Types are up-to-date")
 
 
-# Register the pre-build action
+# Register the pre-build action.
+# "buildprog" runs before final linking, "$BUILD_DIR/firmware.elf" catches the build early.
+# The environment variable deduplication ensures we only run once regardless of which fires first.
 env.AddPreAction("buildprog", before_build)
-
-# Also run on first build (library build)
-env.AddPreAction("$BUILD_DIR/src/main.cpp.o", before_build)
+env.AddPreAction("$BUILD_DIR/${PROGNAME}.elf", before_build)
 
