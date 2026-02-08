@@ -308,7 +308,6 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
           placement="bottom"
           open={isActionsOpen}
           onClose={() => setIsActionsOpen(false)}
-          swipeRegion="body"
           styles={drawerStyles}
         >
           <ClimbActions

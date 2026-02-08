@@ -375,7 +375,6 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
           placement="bottom"
           onClose={closeTickDrawer}
           open={tickDrawerVisible}
-          swipeRegion="body"
           styles={{ wrapper: { height: '50%' } }}
         >
           <Stack spacing={3} sx={{ width: '100%', textAlign: 'center', padding: `${themeTokens.spacing[6]}px 0` }}>

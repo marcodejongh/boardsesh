@@ -110,7 +110,6 @@ export default function UserDrawer({ boardDetails, angle }: UserDrawerProps) {
         placement="left"
         open={isOpen}
         onClose={handleClose}
-        showCloseButton
         width={300}
         title={null}
       >
