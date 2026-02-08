@@ -366,7 +366,12 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
   const clientId = isPersistentSessionActive ? persistentSession.clientId : null;
   const isLeader = isPersistentSessionActive ? persistentSession.isLeader : false;
   const hasConnected = isPersistentSessionActive ? persistentSession.hasConnected : false;
-  const users = isPersistentSessionActive ? persistentSession.users : [];
+  // Memoize users array to prevent unnecessary context value recreation
+  // Note: persistentSession.users is already stable from the persistent session context
+  const users = useMemo(
+    () => (isPersistentSessionActive ? persistentSession.users : []),
+    [isPersistentSessionActive, persistentSession.users]
+  );
   const connectionError = isPersistentSessionActive ? persistentSession.error : null;
 
   // Session management functions

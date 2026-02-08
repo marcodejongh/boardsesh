@@ -28,11 +28,14 @@ type PlaylistClimbsListProps = {
   angle: number;
 };
 
+// Memoized sx prop for skeleton cards
+const skeletonCardBoxSx = { width: { xs: '100%', lg: '50%' } };
+
 const ClimbsListSkeleton = ({ aspectRatio }: { aspectRatio: number }) => {
   return (
     <>
       {Array.from({ length: 6 }, (_, i) => (
-        <Box sx={{ width: { xs: '100%', lg: '50%' } }} key={i}>
+        <Box sx={skeletonCardBoxSx} key={i}>
           <ClimbCardSkeleton aspectRatio={aspectRatio} />
         </Box>
       ))}
@@ -158,6 +161,32 @@ export default function PlaylistClimbsList({
     });
   }, [playlistUuid, setCurrentClimb]);
 
+  // Memoize climb-specific handlers to prevent unnecessary re-renders
+  const climbHandlersMap = useMemo(() => {
+    const map = new Map<string, () => void>();
+    visibleClimbs.forEach(climb => {
+      map.set(climb.uuid, () => handleClimbDoubleClick(climb));
+    });
+    return map;
+  }, [visibleClimbs, handleClimbDoubleClick]);
+
+  // Memoize inline style objects
+  const sentinelStyle = useMemo(
+    () => ({ minHeight: '20px', marginTop: '16px' }),
+    [],
+  );
+
+  // Memoize sx prop objects to prevent recreation on every render
+  const gridContainerSx = useMemo(() => ({
+    display: 'flex',
+    flexWrap: 'wrap' as const,
+    gap: '16px',
+  }), []);
+
+  const cardBoxSx = useMemo(() => ({
+    width: { xs: '100%', lg: '50%' },
+  }), []);
+
   const aspectRatio = boardDetails.boardWidth / boardDetails.boardHeight;
 
   // Loading state
@@ -167,7 +196,7 @@ export default function PlaylistClimbsList({
         <div className={styles.climbsSectionHeader}>
           <Typography variant="body2" component="span" fontWeight={600} className={styles.climbsSectionTitle}>Climbs</Typography>
         </div>
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
+        <Box sx={gridContainerSx}>
           <ClimbsListSkeleton aspectRatio={aspectRatio} />
         </Box>
       </div>
@@ -221,14 +250,14 @@ export default function PlaylistClimbsList({
         <EmptyState description="All climbs in this playlist are from other layouts" />
       )}
 
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
+      <Box sx={gridContainerSx}>
         {visibleClimbs.map((climb) => (
-          <Box sx={{ width: { xs: '100%', lg: '50%' } }} key={climb.uuid}>
+          <Box sx={cardBoxSx} key={climb.uuid}>
             <ClimbCard
               climb={climb}
               boardDetails={boardDetails}
               selected={selectedClimbUuid === climb.uuid}
-              onCoverDoubleClick={() => handleClimbDoubleClick(climb)}
+              onCoverDoubleClick={climbHandlersMap.get(climb.uuid)}
             />
           </Box>
         ))}
@@ -238,9 +267,9 @@ export default function PlaylistClimbsList({
       </Box>
 
       {/* Sentinel element for Intersection Observer */}
-      <div ref={loadMoreRef} style={{ minHeight: '20px', marginTop: '16px' }}>
+      <div ref={loadMoreRef} style={sentinelStyle}>
         {isFetchingNextPage && (
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
+          <Box sx={gridContainerSx}>
             <ClimbsListSkeleton aspectRatio={aspectRatio} />
           </Box>
         )}

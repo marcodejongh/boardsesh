@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { getImageUrl } from './util';
 import { BoardDetails } from '@/app/lib/types';
 import BoardLitupHolds from './board-litup-holds';
@@ -42,8 +42,11 @@ const BoardRenderer = React.memo(
       ? `${styles.svg} ${styles.svgFillHeight}`
       : `${styles.svg} ${styles.svgAutoHeight}`;
 
-    // Only compute maxHeight when not using fillHeight
-    const svgStyle = fillHeight ? undefined : { maxHeight: maxHeight ?? (thumbnail ? '10vh' : '55vh') };
+    // Only compute maxHeight when not using fillHeight - memoized to prevent recreation
+    const svgStyle = useMemo(() => 
+      fillHeight ? undefined : { maxHeight: maxHeight ?? (thumbnail ? '10vh' : '55vh') },
+      [fillHeight, maxHeight, thumbnail]
+    );
 
     return (
       <svg

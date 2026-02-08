@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   MOONBOARD_GRID,
   MOONBOARD_SIZE,
@@ -61,17 +61,20 @@ const MoonBoardRenderer: React.FC<MoonBoardRendererProps> = ({
     }
   };
 
+  // Memoize SVG style object to prevent recreation on every render
+  const svgStyle = useMemo(() => ({
+    width: '100%',
+    height: 'auto',
+    display: 'block' as const,
+    maxHeight: thumbnail ? '10vh' : '55vh',
+    transform: mirrored ? 'scaleX(-1)' : undefined,
+  }), [thumbnail, mirrored]);
+
   return (
     <svg
       viewBox={`0 0 ${width} ${height}`}
       preserveAspectRatio="xMidYMid meet"
-      style={{
-        width: '100%',
-        height: 'auto',
-        display: 'block',
-        maxHeight: thumbnail ? '10vh' : '55vh',
-        transform: mirrored ? 'scaleX(-1)' : undefined,
-      }}
+      style={svgStyle}
     >
       {/* Render MoonBoard background first */}
       <image

@@ -180,6 +180,58 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
     disabled: isEditMode,
   });
 
+  // Memoize style objects to prevent recreation on every render
+  const borderBottomStyle = useMemo(
+    () => ({ borderBottom: `1px solid ${themeTokens.neutral[200]}` }),
+    [],
+  );
+
+  const leftActionStyle = useMemo(
+    () => ({
+      width: MAX_SWIPE,
+      backgroundColor: themeTokens.colors.success,
+      paddingLeft: themeTokens.spacing[4],
+      opacity: 0,
+      visibility: 'hidden' as const,
+    }),
+    [],
+  );
+
+  const rightActionStyle = useMemo(
+    () => ({
+      width: MAX_SWIPE,
+      backgroundColor: themeTokens.colors.error,
+      paddingRight: themeTokens.spacing[4],
+      opacity: 0,
+      visibility: 'hidden' as const,
+    }),
+    [],
+  );
+
+  const swipeableContentStyle = useMemo(
+    () => ({
+      padding: `${themeTokens.spacing[3]}px ${themeTokens.spacing[2]}px`,
+      backgroundColor: isCurrent
+        ? (getGradeTintColor(item.climb?.difficulty, 'light') ?? themeTokens.semantic.selected)
+        : isHistory
+          ? themeTokens.neutral[100]
+          : themeTokens.semantic.surface,
+      opacity: isSwipeComplete ? 0 : isHistory ? 0.6 : 1,
+      cursor: isEditMode ? 'pointer' : undefined,
+    }),
+    [isCurrent, isHistory, isSwipeComplete, isEditMode, item.climb?.difficulty],
+  );
+
+  const avatarStyle = useMemo(
+    () => ({ width: 24, height: 24 }),
+    [],
+  );
+
+  const avatarBluetoothStyle = useMemo(
+    () => ({ width: 24, height: 24, backgroundColor: 'transparent' }),
+    [],
+  );
+
   useEffect(() => {
     if (isEditMode) return;
     const element = itemRef.current;
@@ -220,19 +272,13 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
     <div ref={itemRef} data-testid="queue-item">
       <div
         className={styles.itemWrapper}
-        style={{ borderBottom: `1px solid ${themeTokens.neutral[200]}` }}
+        style={borderBottomStyle}
       >
         {/* Left action background (tick - revealed on swipe right) */}
         <div
           ref={leftActionRef}
           className={styles.leftAction}
-          style={{
-            width: MAX_SWIPE,
-            backgroundColor: themeTokens.colors.success,
-            paddingLeft: themeTokens.spacing[4],
-            opacity: 0,
-            visibility: 'hidden',
-          }}
+          style={leftActionStyle}
         >
           <CheckOutlined className={styles.actionIcon} />
         </div>
@@ -241,13 +287,7 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
         <div
           ref={rightActionRef}
           className={styles.rightAction}
-          style={{
-            width: MAX_SWIPE,
-            backgroundColor: themeTokens.colors.error,
-            paddingRight: themeTokens.spacing[4],
-            opacity: 0,
-            visibility: 'hidden',
-          }}
+          style={rightActionStyle}
         >
           <DeleteOutlined className={styles.actionIcon} />
         </div>
@@ -261,16 +301,7 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
             contentRef(node);
           }}
           className={styles.swipeableContent}
-          style={{
-            padding: `${themeTokens.spacing[3]}px ${themeTokens.spacing[2]}px`,
-            backgroundColor: isCurrent
-              ? (getGradeTintColor(item.climb?.difficulty, 'light') ?? themeTokens.semantic.selected)
-              : isHistory
-                ? themeTokens.neutral[100]
-                : themeTokens.semantic.surface,
-            opacity: isSwipeComplete ? 0 : isHistory ? 0.6 : 1,
-            cursor: isEditMode ? 'pointer' : undefined,
-          }}
+          style={swipeableContentStyle}
           onDoubleClick={isEditMode ? undefined : handleDoubleTap}
           onClick={isEditMode ? () => onToggleSelect?.(item.uuid) : undefined}
         >
@@ -301,15 +332,13 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
             <div className={styles.colAvatar}>
               {item.addedByUser ? (
                 <MuiTooltip title={item.addedByUser.username}>
-                  <MuiAvatar sx={{ width: 24, height: 24 }} src={item.addedByUser.avatarUrl}>
+                  <MuiAvatar sx={avatarStyle} src={item.addedByUser.avatarUrl}>
                     <PersonOutlined />
                   </MuiAvatar>
                 </MuiTooltip>
               ) : (
                 <MuiTooltip title="Added via Bluetooth">
-                  <MuiAvatar
-                    sx={{ width: 24, height: 24, backgroundColor: 'transparent' }}
-                  >
+                  <MuiAvatar sx={avatarBluetoothStyle}>
                     <BluetoothIcon style={{ color: themeTokens.neutral[400] }} />
                   </MuiAvatar>
                 </MuiTooltip>

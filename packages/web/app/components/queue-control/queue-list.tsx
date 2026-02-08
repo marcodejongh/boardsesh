@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useState, useCallback, useRef, useImperativeHandle, forwardRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useImperativeHandle, forwardRef, useMemo } from 'react';
 import Skeleton from '@mui/material/Skeleton';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
@@ -172,6 +172,39 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
   // Show only 2 history items above current, so scroll target is at index (length - 2)
   const scrollToHistoryIndex = historyItems.length > 2 ? historyItems.length - 2 : 0;
 
+  // Memoize inline style objects to prevent recreation on every render
+  const suggestedItemStyle = useMemo(
+    () => ({
+      padding: `${themeTokens.spacing[3]}px ${themeTokens.spacing[2]}px`,
+      borderBottom: `1px solid ${themeTokens.neutral[200]}`,
+    }),
+    [],
+  );
+
+  const loadMoreContainerStyle = useMemo(
+    () => ({
+      minHeight: themeTokens.spacing[5],
+      marginTop: themeTokens.spacing[2],
+    }),
+    [],
+  );
+
+  const loadMoreSkeletonStyle = useMemo(
+    () => ({
+      gap: `${themeTokens.spacing[2]}px`,
+      padding: `${themeTokens.spacing[2]}px`,
+    }),
+    [],
+  );
+
+  const noMoreSuggestionsStyle = useMemo(
+    () => ({
+      padding: themeTokens.spacing[4],
+      color: themeTokens.neutral[400],
+    }),
+    [],
+  );
+
   return (
     <>
       <div className={styles.queueColumn}>
@@ -267,10 +300,7 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
               <div
                 key={`suggested-${climb.uuid}`}
                 className={styles.suggestedItem}
-                style={{
-                  padding: `${themeTokens.spacing[3]}px ${themeTokens.spacing[2]}px`,
-                  borderBottom: `1px solid ${themeTokens.neutral[200]}`,
-                }}
+                style={suggestedItemStyle}
               >
                 <div className={styles.suggestedItemRow}>
                   <div className={styles.suggestedThumbnailCol}>
@@ -296,12 +326,12 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
           {(suggestedClimbs.length > 0 || isFetchingClimbs || isFetchingNextPage || hasMoreResults) && (
             <div
               ref={loadMoreRef}
-              style={{ minHeight: themeTokens.spacing[5], marginTop: themeTokens.spacing[2] }}
+              style={loadMoreContainerStyle}
             >
               {(isFetchingClimbs || isFetchingNextPage) && (
                 <div
                   className={styles.loadMoreContainer}
-                  style={{ gap: `${themeTokens.spacing[2]}px`, padding: `${themeTokens.spacing[2]}px` }}
+                  style={loadMoreSkeletonStyle}
                 >
                   {[1, 2, 3].map((i) => (
                     <div key={i} className={styles.loadMoreSkeletonRow}>
@@ -321,10 +351,7 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
               {!hasMoreResults && !isFetchingClimbs && suggestedClimbs.length > 0 && (
                 <div
                   className={styles.noMoreSuggestions}
-                  style={{
-                    padding: themeTokens.spacing[4],
-                    color: themeTokens.neutral[400],
-                  }}
+                  style={noMoreSuggestionsStyle}
                 >
                   No more suggestions
                 </div>

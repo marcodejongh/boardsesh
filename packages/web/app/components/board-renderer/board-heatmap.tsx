@@ -172,13 +172,26 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({ boardDetails, litUpHoldsMap
     }
   }, [colorMode]);
 
+  // Pre-filter and memoize holds that need rendering to avoid repeated filtering
+  const holdsToRender = useMemo(() => {
+    return holdsData
+      .map((hold) => {
+        const data = heatmapMap.get(hold.id);
+        const value = getValue(data);
+        return { hold, data, value };
+      })
+      .filter(({ value, data }) => {
+        if (!value || value < threshold) return false;
+        if (excludeFootHolds && isFootOnlyHold(data)) return false;
+        return true;
+      });
+  }, [holdsData, heatmapMap, getValue, threshold, excludeFootHolds, isFootOnlyHold]);
+
   // Create scales for better distribution of colors
   const { colorScale, opacityScale } = useMemo(() => {
-    const values = heatmapData
-      .filter((data) => !litUpHoldsMap?.[data.holdId])
-      .filter((data) => !excludeFootHolds || !isFootOnlyHold(data))
-      .map((data) => getValue(data))
-      .filter((val) => val && val >= threshold)
+    const values = holdsToRender
+      .map(({ value }) => value)
+      .filter((val) => val > 0)
       .sort((a, b) => a - b);
 
     if (values.length === 0) {
@@ -216,7 +229,7 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({ boardDetails, litUpHoldsMap
       colorScale: getColorScale(),
       opacityScale: getOpacityScale(),
     };
-  }, [heatmapData, threshold, litUpHoldsMap, getValue, excludeFootHolds, isFootOnlyHold]);
+  }, [holdsToRender, threshold]);
 
   const ColorLegend = () => {
     const gradientId = 'heatmap-gradient';
@@ -338,64 +351,48 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({ boardDetails, litUpHoldsMap
             <>
               {/* Blurred background layer */}
               <g filter="url(#blur)">
-                {holdsData.map((hold) => {
-                  const data = heatmapMap.get(hold.id);
-                  const value = getValue(data);
-
-                  if (value === 0 || value < threshold) return null;
-                  if (excludeFootHolds && isFootOnlyHold(data)) return null;
-
-                  return (
-                    <circle
-                      key={`heat-blur-${hold.id}`}
-                      cx={hold.cx}
-                      cy={hold.cy}
-                      r={hold.r * HEAT_RADIUS_MULTIPLIER}
-                      fill={colorScale(value)}
-                      opacity={opacityScale(value) * 0.5}
-                    />
-                  );
-                })}
+                {holdsToRender.map(({ hold, value }) => (
+                  <circle
+                    key={`heat-blur-${hold.id}`}
+                    cx={hold.cx}
+                    cy={hold.cy}
+                    r={hold.r * HEAT_RADIUS_MULTIPLIER}
+                    fill={colorScale(value)}
+                    opacity={opacityScale(value) * 0.5}
+                  />
+                ))}
               </g>
               <filter id="blurMe">
                 <feGaussianBlur in="SourceGraphic" stdDeviation="20" />
               </filter>
 
               {/* Sharp circles with numbers */}
-              {holdsData.map((hold) => {
-                const data = heatmapMap.get(hold.id);
-                const value = getValue(data);
-
-                if (value < threshold) return null;
-                if (excludeFootHolds && isFootOnlyHold(data)) return null;
-
-                return (
-                  <g key={`heat-sharp-${hold.id}`}>
-                    <circle
-                      cx={hold.cx}
-                      cy={hold.cy}
-                      r={hold.r}
-                      fill={colorScale(value)}
-                      opacity={opacityScale(value)}
-                      filter="url(#blurMe)"
-                    />
-                    {showNumbers && (
-                      <text
-                        x={hold.cx}
-                        y={hold.cy}
-                        textAnchor="middle"
-                        dominantBaseline="middle"
-                        fontSize={Math.max(8, hold.r * 0.6)}
-                        fontWeight="bold"
-                        fill={'#000'}
-                        style={{ userSelect: 'none' }}
-                      >
-                        {value}
-                      </text>
-                    )}
-                  </g>
-                );
-              })}
+              {holdsToRender.map(({ hold, value }) => (
+                <g key={`heat-sharp-${hold.id}`}>
+                  <circle
+                    cx={hold.cx}
+                    cy={hold.cy}
+                    r={hold.r}
+                    fill={colorScale(value)}
+                    opacity={opacityScale(value)}
+                    filter="url(#blurMe)"
+                  />
+                  {showNumbers && (
+                    <text
+                      x={hold.cx}
+                      y={hold.cy}
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      fontSize={Math.max(8, hold.r * 0.6)}
+                      fontWeight="bold"
+                      fill={'#000'}
+                      style={{ userSelect: 'none' }}
+                    >
+                      {value}
+                    </text>
+                  )}
+                </g>
+              ))}
             </>
           )}
 

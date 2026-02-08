@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import IconButton from '@mui/material/IconButton';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
@@ -123,6 +123,11 @@ export function ClimbActions({
     [climb, boardDetails, angle, viewMode, size, auroraAppUrl]
   );
 
+  // Memoize action complete handler to prevent creating new functions on every render
+  const handleActionComplete = useCallback((actionType: ClimbActionType) => {
+    onActionComplete?.(actionType);
+  }, [onActionComplete]);
+
   // Icon mode - render each action as a component
   if (viewMode === 'icon') {
     return (
@@ -134,7 +139,7 @@ export function ClimbActions({
             <Renderer
               key={actionType}
               {...commonProps}
-              onComplete={onActionComplete ? () => onActionComplete(actionType) : undefined}
+              onComplete={onActionComplete ? () => handleActionComplete(actionType) : undefined}
             />
           );
         })}
@@ -153,7 +158,7 @@ export function ClimbActions({
             <Renderer
               key={actionType}
               {...commonProps}
-              onComplete={onActionComplete ? () => onActionComplete(actionType) : undefined}
+              onComplete={onActionComplete ? () => handleActionComplete(actionType) : undefined}
             />
           );
         })}
@@ -172,7 +177,7 @@ export function ClimbActions({
             <Renderer
               key={actionType}
               {...commonProps}
-              onComplete={onActionComplete ? () => onActionComplete(actionType) : undefined}
+              onComplete={onActionComplete ? () => handleActionComplete(actionType) : undefined}
             />
           );
         })}
@@ -303,12 +308,17 @@ function DropdownActionRenderer({
   const onMenuItemRef = React.useRef(onMenuItem);
   onMenuItemRef.current = onMenuItem;
 
+  // Memoize action complete handler for this specific action type
+  const handleActionCompleteForType = React.useCallback(() => {
+    onActionComplete?.(actionType);
+  }, [onActionComplete, actionType]);
+
   // Call action function at component level - hooks are valid here
   // Note: actionFn must be called unconditionally to maintain hooks order
   const result = actionFn({
     ...commonProps,
     viewMode: 'dropdown',
-    onComplete: onActionComplete ? () => onActionComplete(actionType) : undefined,
+    onComplete: onActionComplete ? handleActionCompleteForType : undefined,
   });
 
   // Report menu item to parent only once on mount
