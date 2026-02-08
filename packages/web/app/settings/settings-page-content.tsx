@@ -25,8 +25,6 @@ import ControllersSection from '@/app/components/settings/controllers-section';
 import BackButton from '@/app/components/back-button';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { usePartyProfile } from '@/app/components/party-manager/party-profile-context';
-import { themeTokens } from '@/app/theme/theme-config';
-
 const { Content, Header } = Layout;
 const { Title, Text } = Typography;
 
@@ -257,7 +255,7 @@ export default function SettingsPageContent() {
 
   if (status === 'loading' || loading) {
     return (
-      <Layout style={{ minHeight: '100vh', background: themeTokens.semantic.background }}>
+      <Layout style={{ minHeight: '100vh', background: 'var(--semantic-background)' }}>
         <Content style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
           <Spin size="large" />
         </Content>
@@ -270,15 +268,15 @@ export default function SettingsPageContent() {
   }
 
   return (
-    <Layout style={{ minHeight: '100vh', background: themeTokens.semantic.background }}>
+    <Layout style={{ minHeight: '100vh', background: 'var(--semantic-background)' }}>
       <Header
         style={{
-          background: themeTokens.semantic.surface,
+          background: 'var(--semantic-surface)',
           padding: '0 16px',
           display: 'flex',
           alignItems: 'center',
           gap: 16,
-          boxShadow: themeTokens.shadows.xs,
+          boxShadow: 'var(--shadow-xs)',
         }}
       >
         <BackButton />

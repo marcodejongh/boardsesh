@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { Select, Button, Typography, Form } from 'antd';
 import { ANGLES } from '@/app/lib/board-data';
 import { BoardName } from '@/app/lib/types';
-import { themeTokens } from '@/app/theme/theme-config';
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -23,7 +22,7 @@ const AngleSelection = ({ board_name }: { board_name: BoardName }) => {
   };
 
   return (
-    <div style={{ padding: '24px', background: themeTokens.semantic.background, borderRadius: '8px' }}>
+    <div style={{ padding: '24px', background: 'var(--semantic-background)', borderRadius: '8px' }}>
       <Title level={4}>Select an angle</Title>
       <Form layout="vertical">
         <Form.Item label="Angle">
