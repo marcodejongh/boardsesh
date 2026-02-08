@@ -50,7 +50,7 @@
 }
 
 .pillActive:hover {
-  background: var(--semantic-selected);
+  background: var(--semantic-selected-hover);
   border-color: var(--color-primary);
 }
 

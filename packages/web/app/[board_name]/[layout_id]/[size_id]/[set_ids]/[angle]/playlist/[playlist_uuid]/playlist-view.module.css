@@ -314,6 +314,13 @@
   }
 }
 
+/* End of list message */
+.endOfList {
+  text-align: center;
+  padding: 20px;
+  color: var(--neutral-400);
+}
+
 /* Hidden climbs notice */
 .hiddenClimbsNotice {
   margin-bottom: 16px;

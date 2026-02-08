@@ -36,6 +36,7 @@ export const themeTokens = {
   // Semantic colors
   semantic: {
     selected: '#F7F2F3', // Very light warm grey with subtle rose tint
+    selectedHover: '#EFE6E8', // Darker rose tint for hover feedback
     selectedLight: 'rgba(140, 74, 82, 0.06)', // Very subtle rose highlight
     selectedBorder: '#8C4A52', // Matches primary
     background: '#F9FAFB',

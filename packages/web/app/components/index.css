@@ -23,6 +23,7 @@
   --semantic-surface: #FFFFFF;
   --semantic-surface-overlay: rgba(255, 255, 255, 0.95);
   --semantic-selected: #F7F2F3;
+  --semantic-selected-hover: #EFE6E8;
   --semantic-selected-light: rgba(140, 74, 82, 0.06);
   --semantic-selected-border: #8C4A52;
 
