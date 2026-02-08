@@ -22,7 +22,6 @@ import QueueList, { QueueListHandle } from './queue-list';
 import { TickButton } from '../logbook/tick-button';
 import ClimbThumbnail from '../climb-card/climb-thumbnail';
 import ClimbTitle from '../climb-card/climb-title';
-import { AscentStatus } from './queue-list-item';
 import { themeTokens } from '@/app/theme/theme-config';
 import { TOUR_DRAWER_EVENT } from '../onboarding/onboarding-tour';
 import { ShareBoardButton } from '../board-page/share-button';
@@ -313,7 +312,6 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
                       <ClimbTitle
                         climb={currentClimb}
                         showAngle
-                        nameAddon={currentClimb?.name && <AscentStatus climbUuid={currentClimb.uuid} />}
                       />
                     </div>
 
@@ -329,7 +327,6 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
                         <ClimbTitle
                           climb={peekClimbData}
                           showAngle
-                          nameAddon={peekClimbData?.name && <AscentStatus climbUuid={peekClimbData.uuid} />}
                         />
                       </div>
                     )}
