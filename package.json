@@ -27,6 +27,7 @@
     "db:setup": "docker-compose up db_setup",
     "db:migrate": "npm run db:migrate --workspace=@boardsesh/db",
     "db:studio": "npm run db:studio --workspace=@boardsesh/db",
+    "db:import-moonboard": "npm run db:import-moonboard --workspace=@boardsesh/db",
     "controller:build": "cd embedded/projects/board-controller && pio run",
     "controller:upload": "cd embedded/projects/board-controller && pio run -t upload",
     "controller:monitor": "cd embedded/projects/board-controller && pio device monitor",

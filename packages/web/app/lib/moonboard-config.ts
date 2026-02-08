@@ -33,6 +33,7 @@ export const MOONBOARD_LAYOUTS = {
   'moonboard-2024': { id: 3, name: 'MoonBoard 2024', folder: 'moonboard2024' },
   'moonboard-masters-2017': { id: 4, name: 'MoonBoard Masters 2017', folder: 'moonboardmasters2017' },
   'moonboard-masters-2019': { id: 5, name: 'MoonBoard Masters 2019', folder: 'moonboardmasters2019' },
+  'mini-moonboard-2020': { id: 6, name: 'Mini MoonBoard 2020', folder: 'minimoonboard2020' },
 } as const;
 
 export type MoonBoardLayoutKey = keyof typeof MOONBOARD_LAYOUTS;
@@ -71,6 +72,12 @@ export const MOONBOARD_SETS: Record<MoonBoardLayoutKey, { id: number; name: stri
     { id: 21, name: 'Wooden Holds', imageFile: 'woodenholds.png' },
     { id: 22, name: 'Wooden Holds B', imageFile: 'woodenholdsb.png' },
     { id: 23, name: 'Wooden Holds C', imageFile: 'woodenholdsc.png' },
+  ],
+  'mini-moonboard-2020': [
+    { id: 24, name: 'Original School Holds', imageFile: 'originalschoolholds.png' },
+    { id: 25, name: 'Wooden Holds', imageFile: 'woodenholds.png' },
+    { id: 26, name: 'Wooden Holds B', imageFile: 'woodenholdsb.png' },
+    { id: 27, name: 'Wooden Holds C', imageFile: 'woodenholdsc.png' },
   ],
 };
 

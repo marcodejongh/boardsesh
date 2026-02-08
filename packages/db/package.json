@@ -48,7 +48,8 @@
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/migrate.ts",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "db:import-moonboard": "tsx scripts/import-moonboard-problems.ts"
   },
   "dependencies": {
     "@boardsesh/shared-schema": "*",
