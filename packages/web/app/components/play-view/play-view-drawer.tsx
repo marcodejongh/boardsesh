@@ -113,47 +113,23 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
     setSelectedItems(new Set());
   }, []);
 
-  // Handle scroll-based drawer expansion with smooth animation
+  // Handle scroll-based drawer expansion - two-state snap
   useEffect(() => {
     const scrollEl = queueScrollRef.current;
     if (!scrollEl || !isQueueOpen) return;
 
-    const calculateHeight = (scrollTop: number, scrollHeight: number, clientHeight: number) => {
-      if (scrollTop <= 0) {
-        return '60%';
-      }
-      
-      // Calculate maximum scrollable distance
-      const maxScroll = scrollHeight - clientHeight;
-      if (maxScroll <= 0) {
-        return '60%';
-      }
-      
-      // Calculate progress from 0 to 1 based on scroll position relative to max scroll
-      // Use a smooth curve - starts expanding quickly, then slows down
-      const scrollProgress = Math.min(scrollTop / maxScroll, 1);
-      // Apply easing function for smoother expansion (ease-out curve)
-      const easedProgress = 1 - Math.pow(1 - scrollProgress, 2);
-      
-      // Interpolate between 60% and 100%
-      const heightPercent = 60 + (easedProgress * 40);
-      return `${heightPercent}%`;
-    };
+    const EXPAND_THRESHOLD = 10; // px of scroll to trigger expansion
 
     const handleScroll = () => {
-      const scrollTop = scrollEl.scrollTop;
-      const scrollHeight = scrollEl.scrollHeight;
-      const clientHeight = scrollEl.clientHeight;
-      setQueueDrawerHeight(calculateHeight(scrollTop, scrollHeight, clientHeight));
+      const isScrolled = scrollEl.scrollTop > EXPAND_THRESHOLD;
+      setQueueDrawerHeight(isScrolled ? '100%' : '60%');
     };
 
-    // Check initial scroll position when drawer opens
+    // Check initial scroll position
     handleScroll();
 
     scrollEl.addEventListener('scroll', handleScroll, { passive: true });
-    return () => {
-      scrollEl.removeEventListener('scroll', handleScroll);
-    };
+    return () => scrollEl.removeEventListener('scroll', handleScroll);
   }, [isQueueOpen]);
 
   // Reset drawer height when queue drawer closes
@@ -226,7 +202,7 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
     >
       <div className={styles.drawerContent}>
         {/* Board renderer with card-swipe */}
-        {isOpen && currentClimb && (
+        {currentClimb && (
           <SwipeBoardCarousel
             boardDetails={boardDetails}
             currentClimb={currentClimb}
