@@ -18,6 +18,7 @@ This document describes the plan for adding social features to Boardsesh: commen
 10. **Admin and community leader roles** with weighted votes on proposals, configurable approval thresholds, and the ability to freeze climbs from further proposals
 11. **Unified search** with a category pill (Climbs | Users | Playlists) in the search drawer. The home page shows the same search bar as the climb list, defaulting to "Users" search; the climb list page defaults to "Climbs" search.
 12. **New climb notifications**: When someone you follow creates a new climb, you get a notification. A global "new climbs" feed is also available, subscribable per board + layout combination.
+13. **Board entity**: Users can create named boards representing specific physical board installations (board type + layout + size + hold sets). Boards have a name, location, public/private visibility, and an ownership flag. Ascents are associated with the board they were climbed on, enabling future per-board leaderboards. The home page activity feed defaults to the user's owned board.
 
 ---
 
@@ -46,8 +47,9 @@ The polymorphic system uses a string enum `entity_type` to identify what's being
 | `tick` | A user's ascent/attempt record | tick `uuid` | Per-tick thread |
 | `comment` | A comment (for voting on comments) | comment `uuid` | N/A (votes only) |
 | `proposal` | A community proposal on a climb | proposal `uuid` | Discussion thread on the proposal |
+| `board` | A user-created board entity | board `uuid` | Board discussion / community thread |
 
-This is extensible -- new entity types (e.g. `playlist`, `session`) can be added later by extending the enum.
+This is extensible -- new entity types (e.g. `session`) can be added later by extending the enum.
 
 **Key distinction**: A climb can have comments in two independent scopes:
 - `playlist_climb` with `entity_id = "{playlist_uuid}:{climb_uuid}"` -- discussion in the context of a curated playlist
@@ -149,7 +151,7 @@ All new tables in `packages/db/src/schema/app/`. Migrations via `npx drizzle-kit
 
 ### 1.1 `social_entity_type` Postgres Enum
 
-Values: `'playlist_climb'`, `'climb'`, `'tick'`, `'comment'`, `'proposal'`
+Values: `'playlist_climb'`, `'climb'`, `'tick'`, `'comment'`, `'proposal'`, `'board'`
 
 Used in `comments`, `votes`, and `proposal_votes` tables.
 
@@ -296,7 +298,53 @@ Allows users to subscribe to the global "new climbs" feed for specific board + l
 - Users can subscribe to multiple board+layout combinations.
 - The notification fanout for popular board+layouts could be large, so this goes through the Redis Streams broker (Phase 5).
 
-### 1.7 `community_roles` table
+### 1.7 `user_boards` table
+
+```
+packages/db/src/schema/app/boards.ts
+```
+
+Represents a specific physical board installation that a user creates, names, and optionally shares publicly. A board is defined by its hardware configuration (`board_type` + `layout_id` + `size_id` + `set_ids`) plus user-provided metadata (name, location).
+
+This is distinct from Aurora's `board_walls` table (which tracks serial numbers and is keyed to Aurora users). `user_boards` is a Boardsesh-native entity for social features, leaderboards, and activity scoping.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `bigserial` | PK |
+| `uuid` | `text` | Unique, client-generated UUID |
+| `owner_id` | `text` | FK -> `users.id`, ON DELETE CASCADE. The user who created this board entry. |
+| `board_type` | `text` | `'kilter'`, `'tension'`, etc. |
+| `layout_id` | `integer` | FK -> `board_layouts(board_type, id)`. The hold layout. |
+| `size_id` | `integer` | FK -> `board_product_sizes(board_type, id)`. Physical dimensions. |
+| `set_ids` | `text` | Comma-separated hold set IDs (e.g., `"12,13"`). Matches the URL segment format. |
+| `name` | `text` | User-assigned name (e.g., "Home Board", "Brooklyn Boulders Kilter") |
+| `description` | `text` | Nullable. Optional description or notes. |
+| `location_name` | `text` | Nullable. Gym name or location label (e.g., "Brooklyn Boulders Queensbridge") |
+| `latitude` | `double precision` | Nullable. GPS latitude for map display and proximity discovery. |
+| `longitude` | `double precision` | Nullable. GPS longitude. |
+| `is_public` | `boolean` | DEFAULT true. Whether this board is discoverable by other users. |
+| `is_owned` | `boolean` | DEFAULT true. Whether the user physically owns this board (vs. just climbs on it, e.g., a gym board). |
+| `created_at` | `timestamp` | DEFAULT now() |
+| `updated_at` | `timestamp` | DEFAULT now() |
+
+**Constraints:**
+- Unique index on `(owner_id, board_type, layout_id, size_id, set_ids)` -- a user can't create duplicate boards with the same hardware config. If they climb at two gyms with identical setups, they can differentiate by name/location but the config must differ (or they use the same board entry).
+
+**Indexes:**
+- `(owner_id, is_owned)` -- "my boards" (owned boards first)
+- `(board_type, layout_id, is_public)` -- discover public boards
+- `(latitude, longitude) WHERE is_public = true` -- proximity search for nearby boards
+
+**Relationship to URL routing:**
+The existing route pattern `/{board_name}/{layout_id}/{size_id}/{set_ids}/{angle}` maps directly to a `user_boards` row (minus angle, which varies per session). When the user navigates to a board path, the app can resolve which `user_board` they're using.
+
+**Relationship to sessions:**
+`board_sessions.board_path` encodes the same `/{board_type}/{layout_id}/{size_id}/{set_ids}` config. A session can be linked to a `user_board` by matching these fields.
+
+**Relationship to ESP32 controllers:**
+`esp32_controllers` already stores `board_name`, `layout_id`, `size_id`, `set_ids`. A controller can be associated with a `user_board` by matching config.
+
+### 1.8 `community_roles` table
 
 ```
 packages/db/src/schema/app/community-roles.ts
@@ -326,7 +374,7 @@ packages/db/src/schema/app/community-roles.ts
 - `board_type` scoping: A community leader with `board_type = 'kilter'` has authority only over Kilter climbs. An admin with `board_type = NULL` has global authority.
 - Admins can grant/revoke both `admin` and `community_leader` roles. Community leaders cannot grant roles.
 
-### 1.8 `community_settings` table
+### 1.9 `community_settings` table
 
 ```
 packages/db/src/schema/app/community-settings.ts
@@ -367,7 +415,7 @@ Global and per-climb configuration for the proposal system.
 
 Example: A community leader can set `proposal_approval_threshold = 5` for a specific popular climb at a specific angle, overriding the global default of 3.
 
-### 1.9 `climb_proposals` table
+### 1.10 `climb_proposals` table
 
 ```
 packages/db/src/schema/app/proposals.ts
@@ -419,7 +467,7 @@ packages/db/src/schema/app/proposals.ts
 - `(status, created_at)` -- browse open proposals
 - `(board_type, status)` -- browse by board
 
-### 1.10 `proposal_votes` table
+### 1.11 `proposal_votes` table
 
 ```
 packages/db/src/schema/app/proposals.ts
@@ -450,7 +498,7 @@ Separate from the general `votes` table because proposal votes have special sema
 - The proposer automatically gets a +1 vote with their role's weight when creating the proposal.
 - **Auto-approval check**: After each vote, compute `SUM(value * weight) WHERE value > 0` (weighted upvotes). If this meets or exceeds the `proposal_approval_threshold` for that climb+angle, the proposal is automatically approved and its effect applied.
 
-### 1.11 `climb_community_status` table (angle-specific)
+### 1.12 `climb_community_status` table (angle-specific)
 
 ```
 packages/db/src/schema/app/proposals.ts
@@ -478,7 +526,7 @@ Stores **angle-specific** community-determined metadata for climbs (separate fro
 - `community_grade` is nullable -- NULL means no community override, use Aurora's grade.
 - **Benchmark means strong grade consensus**: A climb is marked as a benchmark at a specific angle when the community is confident in the grade at that angle. Benchmark is inherently tied to the grade and angle.
 
-### 1.12 `climb_classic_status` table (angle-independent)
+### 1.13 `climb_classic_status` table (angle-independent)
 
 ```
 packages/db/src/schema/app/proposals.ts
@@ -503,7 +551,7 @@ Stores **angle-independent** classic status for climbs. Classic means "this is a
 - This table is the "output" of the proposal system for classic proposals.
 - Separated from `climb_community_status` because classic has no angle dimension.
 
-### 1.13 `vote_counts` materialized table (optional, Phase 9 optimization)
+### 1.14 `vote_counts` materialized table (optional, Phase 10 optimization)
 
 If `COUNT()` becomes slow:
 
@@ -516,6 +564,28 @@ If `COUNT()` becomes slow:
 | `score` | `integer` (upvotes - downvotes) |
 
 Updated via trigger or periodic refresh. **Not needed for initial launch.**
+
+### 1.15 Schema modifications to existing tables
+
+**`boardsesh_ticks`** -- add `board_id` column:
+
+| Column | Type | Notes |
+|---|---|---|
+| `board_id` | `bigint` | Nullable. FK -> `user_boards.id`, ON DELETE SET NULL. The board this ascent was logged on. |
+
+- Nullable because existing ticks predate the board entity, and users may log climbs without associating a board.
+- New index: `(board_id, climbed_at)` -- per-board leaderboard queries, ordered by time.
+- New index: `(board_id, user_id)` -- per-board per-user stats.
+- When logging a tick from within a board context (the user has navigated to `/{board_type}/{layout_id}/{size_id}/{set_ids}/{angle}`), the app resolves the matching `user_board` and auto-populates `board_id`. If the user doesn't have a matching board entry, `board_id` is NULL (they can create one later).
+
+**`board_sessions`** -- add `board_id` column:
+
+| Column | Type | Notes |
+|---|---|---|
+| `board_id` | `bigint` | Nullable. FK -> `user_boards.id`, ON DELETE SET NULL. Links session to a user board. |
+
+- Resolved by matching `board_sessions.board_path` against `user_boards` config fields.
+- Allows filtering sessions by board.
 
 ---
 
@@ -532,6 +602,7 @@ enum SocialEntityType {
   tick
   comment
   proposal
+  board
 }
 
 type Comment {
@@ -796,6 +867,7 @@ enum SearchCategory {
   climbs      # Default on climb list page
   users       # Default on home page
   playlists   # Playlist discovery
+  boards      # Board discovery (by name, location, proximity)
 }
 
 type UserSearchResult {
@@ -827,6 +899,64 @@ type PlaylistSearchConnection {
   results: [PlaylistSearchResult!]!
   totalCount: Int!
   hasMore: Boolean!
+}
+
+# --- Board Entity ---
+
+type UserBoard {
+  uuid: ID!
+  ownerId: ID!
+  ownerDisplayName: String
+  ownerAvatarUrl: String
+  boardType: String!
+  layoutId: Int!
+  sizeId: Int!
+  setIds: String!                # Comma-separated hold set IDs
+  name: String!
+  description: String
+  locationName: String           # Gym name or location label
+  latitude: Float
+  longitude: Float
+  isPublic: Boolean!
+  isOwned: Boolean!              # Whether the owner physically owns this board
+  createdAt: String!
+  # Computed fields
+  layoutName: String             # Human-readable layout name (from board_layouts)
+  sizeName: String               # Human-readable size name (from board_product_sizes)
+  sizeDescription: String        # Size description (e.g., "LED Kit")
+  setNames: [String!]            # Human-readable set names (from board_sets)
+  totalAscents: Int!             # Total ticks logged on this board
+  uniqueClimbers: Int!           # Distinct users who have logged ticks
+  followerCount: Int!            # Users who follow/subscribe to this board's feed
+  # Social
+  commentCount: Int!             # Comments on this board (entity_type=board)
+  isFollowedByMe: Boolean!      # Whether the authenticated user follows this board
+}
+
+type UserBoardConnection {
+  boards: [UserBoard!]!
+  totalCount: Int!
+  hasMore: Boolean!
+}
+
+type BoardLeaderboardEntry {
+  userId: ID!
+  userDisplayName: String
+  userAvatarUrl: String
+  rank: Int!
+  totalSends: Int!              # Completed climbs (flash + send)
+  totalFlashes: Int!            # First-try sends
+  hardestGrade: Int             # Difficulty ID of hardest send
+  hardestGradeName: String      # Human-readable
+  totalSessions: Int!           # Distinct session days
+}
+
+type BoardLeaderboard {
+  boardUuid: ID!
+  entries: [BoardLeaderboardEntry!]!
+  totalCount: Int!
+  hasMore: Boolean!
+  periodLabel: String           # e.g., "All Time", "This Month"
 }
 ```
 
@@ -863,7 +993,8 @@ input CommentsInput {
 input ActivityFeedInput {
   cursor: String
   limit: Int         # default 20, max 50
-  boardType: String  # optional filter
+  boardType: String  # optional filter by board type
+  boardUuid: ID      # optional filter: only show activity on a specific board entity
   sortBy: SortMode   # new (default), top, controversial, hot
   topPeriod: TimePeriod  # Only used when sortBy=top. Defaults to 'week'
 }
@@ -994,6 +1125,59 @@ input SubscribeNewClimbsInput {
   boardType: String!
   layoutId: Int!
 }
+
+# --- Board Entity Inputs ---
+
+input CreateBoardInput {
+  boardType: String!
+  layoutId: Int!
+  sizeId: Int!
+  setIds: String!               # Comma-separated hold set IDs
+  name: String!
+  description: String
+  locationName: String
+  latitude: Float
+  longitude: Float
+  isPublic: Boolean             # Default true
+  isOwned: Boolean              # Default true
+}
+
+input UpdateBoardInput {
+  boardUuid: ID!
+  name: String
+  description: String
+  locationName: String
+  latitude: Float
+  longitude: Float
+  isPublic: Boolean
+  isOwned: Boolean
+}
+
+input SearchBoardsInput {
+  query: String                 # Search by name or location
+  boardType: String             # Optional: filter by board type
+  nearLatitude: Float           # Optional: proximity search
+  nearLongitude: Float
+  radiusKm: Float               # Optional: search radius (default 50km)
+  limit: Int                    # Default 20, max 50
+  offset: Int
+}
+
+input BoardLeaderboardInput {
+  boardUuid: ID!
+  period: TimePeriod            # week, month, year, all (default: all)
+  limit: Int                    # Default 20, max 100
+  offset: Int
+}
+
+input MyBoardsInput {
+  limit: Int
+  offset: Int
+}
+
+input FollowBoardInput {
+  boardUuid: ID!
+}
 ```
 
 ### 2.3 New Queries
@@ -1043,6 +1227,13 @@ extend type Query {
   # New Climb Feed
   newClimbFeed(input: NewClimbFeedInput!): NewClimbFeedConnection!
   myNewClimbSubscriptions: [NewClimbSubscription!]!   # List of board+layout pairs the user subscribes to
+
+  # Board Entity
+  board(boardUuid: ID!): UserBoard                    # Get a single board by UUID
+  myBoards(input: MyBoardsInput): UserBoardConnection! # User's boards (owned first, then most-used)
+  searchBoards(input: SearchBoardsInput!): UserBoardConnection! # Discover public boards
+  boardLeaderboard(input: BoardLeaderboardInput!): BoardLeaderboard!
+  defaultBoard: UserBoard                             # Resolve user's "default" board (owned > most ascents)
 }
 ```
 
@@ -1083,6 +1274,13 @@ extend type Mutation {
   # New Climb Feed subscriptions
   subscribeNewClimbs(input: SubscribeNewClimbsInput!): NewClimbSubscription!    # Subscribe to a board+layout
   unsubscribeNewClimbs(input: SubscribeNewClimbsInput!): Boolean!               # Unsubscribe from a board+layout
+
+  # Board Entity
+  createBoard(input: CreateBoardInput!): UserBoard!
+  updateBoard(input: UpdateBoardInput!): UserBoard!
+  deleteBoard(boardUuid: ID!): Boolean!               # Only owner can delete
+  followBoard(input: FollowBoardInput!): Boolean!     # Follow a public board's activity
+  unfollowBoard(input: FollowBoardInput!): Boolean!
 }
 ```
 
@@ -1248,6 +1446,7 @@ New file: `packages/backend/src/graphql/resolvers/social/feed.ts`
 
 **`activityFeed` query:**
 - Auth required
+- **Board scoping**: When `boardUuid` is provided, filter all feed sources to activity on that specific board (ticks with `board_id`, new climbs matching the board's config, etc.). On the home page, this defaults to the user's `defaultBoard`.
 - Multi-source aggregation:
 
   1. **Followed-user ascents**: Query `boardsesh_ticks` WHERE `user_id IN (SELECT following_id FROM user_follows WHERE follower_id = $me)` AND `status IN ('flash', 'send')`
@@ -1540,6 +1739,82 @@ New file: `packages/backend/src/graphql/resolvers/social/new-climbs.ts`
   2. **Board+layout subscribers**: Users subscribed to this `(boardType, layoutId)` → `new_climb_global` notification
 - **Deduplication**: Don't notify the same user twice if they both follow the setter AND subscribe to the board+layout
 - **Publish to WebSocket**: `newClimbCreated` subscription for live feed updates
+
+### 3.9 Board Entity Resolvers
+
+New file: `packages/backend/src/graphql/resolvers/social/boards.ts`
+
+**`createBoard` mutation:**
+- Auth required
+- Validate `boardType` is valid
+- Validate `layoutId`, `sizeId` exist for this board type (check `board_layouts`, `board_product_sizes`)
+- Validate `setIds` are valid set IDs for this board type (check `board_sets`)
+- Validate name length (1-100 chars)
+- Check unique constraint: user can't already have a board with the same `(boardType, layoutId, sizeId, setIds)` config
+- INSERT into `user_boards`
+- Return created board
+
+**`updateBoard` mutation:**
+- Auth required, must be board owner
+- Only metadata fields can be updated (name, description, locationName, lat/lng, isPublic, isOwned)
+- Hardware config (boardType, layoutId, sizeId, setIds) is immutable after creation -- delete and recreate if the physical board changes
+- Return updated board
+
+**`deleteBoard` mutation:**
+- Auth required, must be board owner
+- SET NULL on any `boardsesh_ticks.board_id` and `board_sessions.board_id` referencing this board
+- DELETE from `user_boards`
+
+**`followBoard` / `unfollowBoard` mutations:**
+- Auth required
+- Uses the existing `user_follows` table or a new `board_follows` junction (TBD -- could reuse the entity follow pattern)
+- Following a board means you see its activity in your feed
+- Public boards only (reject follow on private boards unless you're the owner)
+
+**`board` query:**
+- Fetch a single board by UUID
+- JOIN `board_layouts`, `board_product_sizes`, `board_sets` for human-readable names
+- Compute `totalAscents` and `uniqueClimbers` from `boardsesh_ticks` where `board_id = this board`
+- If authenticated, include `isFollowedByMe`
+
+**`myBoards` query:**
+- Auth required
+- Fetch all `user_boards` where `owner_id = currentUser`
+- **Sort order**: `is_owned DESC` (owned boards first), then by most recent tick activity (board with most recent ascent logged on it comes first)
+- Paginated
+
+**`searchBoards` query:**
+- Search `user_boards` WHERE `is_public = true`
+- Text search: `name` ILIKE `%query%` OR `location_name` ILIKE `%query%`
+- Optional `boardType` filter
+- Optional proximity search: `WHERE ST_DWithin(point(longitude, latitude), point(nearLongitude, nearLatitude), radiusKm * 1000)` or equivalent Haversine distance filter
+- ORDER BY relevance, then by `totalAscents` DESC
+- Paginated
+
+**`boardLeaderboard` query:**
+- Fetch leaderboard for a specific board
+- Query `boardsesh_ticks` WHERE `board_id = boardId` AND `status IN ('flash', 'send')`
+- Optional time period filter on `climbed_at`
+- Aggregate per user: total sends, total flashes, hardest grade, distinct session days
+- ORDER BY `totalSends DESC, hardestGrade DESC`
+- Paginated
+
+**`defaultBoard` query:**
+- Auth required
+- Resolution order:
+  1. The user's board where `is_owned = true`, ordered by `created_at ASC` (first owned board)
+  2. Fallback: the board (owned or not) with the most `boardsesh_ticks` for this user (most-used board)
+  3. Fallback: NULL (user has no boards -- prompt to create one)
+- Returns a single `UserBoard` or null
+
+**Board resolution from URL path:**
+- Helper function (not a GraphQL resolver, used internally):
+  ```
+  resolveBoardFromPath(userId, boardType, layoutId, sizeId, setIds) → UserBoard | null
+  ```
+- Matches `user_boards` where `owner_id = userId AND board_type AND layout_id AND size_id AND set_ids` match
+- Used when logging ticks to auto-populate `board_id`
+- Also used by party mode to link sessions to boards
 
 ---
 
@@ -1892,6 +2167,16 @@ packages/web/app/components/search-drawer/
 
 packages/web/app/components/board-page/
   header.tsx                 # MODIFIED: Search bar also appears on home page
+
+packages/web/app/components/board-entity/
+  create-board-form.tsx      # Client component: create a board (pre-fill from URL context)
+  edit-board-form.tsx        # Client component: edit board metadata
+  board-card.tsx             # Board card for lists (name, location, stats)
+  board-detail.tsx           # Board detail view (stats, leaderboard, comment section)
+  board-leaderboard.tsx      # Leaderboard table for a board
+  board-selector-pills.tsx   # Pill bar on home page for switching board context
+  board-creation-banner.tsx  # Non-intrusive banner prompting board creation
+  follow-board-button.tsx    # Follow/unfollow a public board
 ```
 
 ### 5.2 Vote Button (`vote-button.tsx`)
@@ -2195,7 +2480,31 @@ The home page currently redirects to a board. For authenticated users:
 - Show the activity feed before/alongside the board redirect
 - The feed is the new "landing experience" for returning users
 
-### 6.6 App Navigation
+**Board-scoped feed on home page:**
+- On load, resolve the user's `defaultBoard` (owned board > most-used board)
+- The activity feed pill selector at the top shows board options: `[My Board (default)] [All Boards] [Board 2] ...`
+- The default pill pre-selects the user's default board, scoping the feed to activity on that board
+- Users can switch to "All Boards" for a global feed, or select a specific board
+- If the user has no boards, show "All Boards" and a prompt: "Create a board to see local activity and leaderboards"
+- The pill list comes from `myBoards` query (owned boards + boards the user follows)
+
+**Board creation prompt:**
+- If the user navigates to a `/{board_type}/{layout_id}/{size_id}/{set_ids}` path and has no matching `user_board`, show a non-intrusive banner: "Climbing here? Save this board for leaderboards and a personalized feed."
+- Tapping the banner opens a quick creation form (pre-filled with board config, user just adds name and optional location)
+
+### 6.6 Board Detail View
+
+New page (accessible from search, board cards, or the home page board selector):
+
+- **Board header**: Name, location, board type badge, owner info
+- **Board stats**: Total ascents, unique climbers, most popular grade range
+- **Leaderboard tab**: Sortable table of top climbers on this board (sends, flashes, hardest grade, session count). Filter by time period (week, month, year, all).
+- **Activity tab**: Feed scoped to this board (`boardUuid` filter on `activityFeed`)
+- **Comment section**: Using `entity_type = 'board'`, `entity_id = boardUuid`. General discussion about this board (conditions, tips, etc.)
+- **Follow button**: For public boards (adds to your board selector and feed sources)
+- **Edit button**: For board owner (edit name, location, visibility)
+
+### 6.7 App Navigation
 
 - **Notification bell** in the top navigation bar
 - Unread badge synced via WebSocket subscription
@@ -2216,6 +2525,7 @@ Before accepting a comment or vote, validate the entity exists:
 | `tick` | Tick exists |
 | `comment` | Comment exists and is not deleted (for votes on comments) |
 | `proposal` | Proposal exists and is not rejected/superseded (for comments on proposals) |
+| `board` | Board exists and is public (or requester is the owner) |
 
 ### 7.2 Rate Limits
 
@@ -2255,20 +2565,23 @@ To avoid notification spam:
 ## Implementation Order
 
 ### Milestone 1: Core Infrastructure (DB + types)
-1. Add `social_entity_type`, `notification_type`, `proposal_type`, `proposal_status`, `community_role_type` Postgres enums
+1. Add `social_entity_type` (including `'board'`), `notification_type`, `proposal_type`, `proposal_status`, `community_role_type` Postgres enums
 2. Create `user_follows` table + migration
 3. Create `comments` table + migration
 4. Create `votes` table + migration
 5. Create `notifications` table + migration
 6. Create `new_climb_subscriptions` table + migration
-7. Create `community_roles` table + migration
-8. Create `community_settings` table + migration
-9. Create `climb_proposals` table + migration (with nullable `angle` for classic proposals)
-10. Create `proposal_votes` table + migration
-11. Create `climb_community_status` table + migration (angle-specific: grade, benchmark)
-12. Create `climb_classic_status` table + migration (angle-independent: classic)
-13. Export types from `packages/db`
-14. Add new GraphQL types to `packages/shared-schema`
+7. Create `user_boards` table + migration
+8. Add `board_id` column to `boardsesh_ticks` + migration (nullable FK -> user_boards)
+9. Add `board_id` column to `board_sessions` + migration (nullable FK -> user_boards)
+10. Create `community_roles` table + migration
+11. Create `community_settings` table + migration
+12. Create `climb_proposals` table + migration (with nullable `angle` for classic proposals)
+13. Create `proposal_votes` table + migration
+14. Create `climb_community_status` table + migration (angle-specific: grade, benchmark)
+15. Create `climb_classic_status` table + migration (angle-independent: classic)
+16. Export types from `packages/db`
+17. Add new GraphQL types to `packages/shared-schema`
 
 ### Milestone 2: Follow System
 1. `followUser` / `unfollowUser` resolver mutations
@@ -2352,17 +2665,34 @@ To avoid notification spam:
 11. New climb notifications: followed-user creates climb → `new_climb` notification
 12. Global new climb notifications: board+layout subscription → `new_climb_global` notification
 
-### Milestone 9: Unified Search
+### Milestone 9: Board Entity
+1. `createBoard` / `updateBoard` / `deleteBoard` mutations
+2. `board` / `myBoards` / `searchBoards` / `defaultBoard` queries
+3. `followBoard` / `unfollowBoard` mutations
+4. `resolveBoardFromPath` helper (match URL path to user board)
+5. Wire tick logging to auto-populate `board_id` from current board context
+6. `CreateBoardForm` component (pre-fill from URL context)
+7. `BoardCard` component for board lists
+8. `BoardDetailView` (stats, leaderboard, activity feed, comments)
+9. `BoardSelectorPills` on home page (default board > other boards > all)
+10. `BoardCreationBanner` on climb list page when no matching board exists
+11. `boardLeaderboard` query resolver
+12. `BoardLeaderboard` component with time period filter
+13. Add "Boards" category to unified search (`SearchCategoryPills`, `searchBoards` resolver)
+
+### Milestone 10: Unified Search
 1. `searchUsers` query resolver
 2. `searchPlaylists` query resolver
-3. `SearchCategoryPills` component (Climbs | Users | Playlists)
-4. Modify `SearchDropdown` to accept `defaultCategory` prop and render category-specific content
-5. `UserSearchResults` component with follow buttons
-6. `PlaylistSearchResults` component
-7. Home page integration (search bar defaulting to Users category)
-8. Climb list page integration (search bar defaulting to Climbs category)
+3. `searchBoards` query resolver (proximity + text search)
+4. `SearchCategoryPills` component (Climbs | Users | Playlists | Boards)
+5. Modify `SearchDropdown` to accept `defaultCategory` prop and render category-specific content
+6. `UserSearchResults` component with follow buttons
+7. `PlaylistSearchResults` component
+8. `BoardSearchResults` component with follow buttons
+9. Home page integration (search bar defaulting to Users category)
+10. Climb list page integration (search bar defaulting to Climbs category)
 
-### Milestone 10: Polish and Performance
+### Milestone 11: Polish and Performance
 1. Bulk vote summary loading for list views
 2. Rate limiting via Redis on all social mutations
 3. `vote_counts` materialized table if needed
