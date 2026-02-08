@@ -43,7 +43,7 @@ const PlayViewComments: React.FC<PlayViewCommentsProps> = ({ climbUuid }) => {
           fontSize: themeTokens.typography.fontSize.xs,
         }}
       >
-        <ChatBubbleOutlineOutlined sx={{ fontSize: 14 }} />
+        <ChatBubbleOutlineOutlined sx={{ fontSize: themeTokens.typography.fontSize.sm }} />
         Your Ascents ({ascents.length})
       </Typography>
 
@@ -63,9 +63,9 @@ const PlayViewComments: React.FC<PlayViewCommentsProps> = ({ climbUuid }) => {
             {/* Status icon */}
             <Box sx={{ pt: '2px', flexShrink: 0 }}>
               {ascent.is_ascent ? (
-                <CheckOutlined sx={{ fontSize: 16, color: themeTokens.colors.success }} />
+                <CheckOutlined sx={{ fontSize: themeTokens.typography.fontSize.base, color: themeTokens.colors.success }} />
               ) : (
-                <CloseOutlined sx={{ fontSize: 16, color: themeTokens.neutral[400] }} />
+                <CloseOutlined sx={{ fontSize: themeTokens.typography.fontSize.base, color: themeTokens.neutral[400] }} />
               )}
             </Box>
 
@@ -79,20 +79,20 @@ const PlayViewComments: React.FC<PlayViewCommentsProps> = ({ climbUuid }) => {
                   label={ascent.is_ascent ? (ascent.tries === 1 ? 'Flash' : 'Send') : 'Attempt'}
                   size="small"
                   sx={{
-                    height: 18,
-                    fontSize: 10,
+                    height: themeTokens.spacing[5],
+                    fontSize: themeTokens.typography.fontSize.xs,
                     bgcolor: ascent.is_ascent ? themeTokens.colors.successBg : themeTokens.neutral[100],
                     color: ascent.is_ascent ? themeTokens.colors.success : themeTokens.neutral[500],
                   }}
                 />
                 {ascent.tries > 1 && (
-                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: 10 }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: themeTokens.typography.fontSize.xs }}>
                     {ascent.tries} tries
                   </Typography>
                 )}
               </Box>
               {ascent.is_ascent && ascent.quality != null && ascent.quality > 0 && (
-                <Rating readOnly value={ascent.quality} max={5} size="small" sx={{ mt: 0.25, fontSize: 12 }} />
+                <Rating readOnly value={ascent.quality} max={5} size="small" sx={{ mt: 0.25, fontSize: themeTokens.typography.fontSize.xs }} />
               )}
               {ascent.comment && (
                 <Typography

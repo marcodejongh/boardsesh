@@ -15,7 +15,7 @@ import { Instagram, PersonOutlined } from '@mui/icons-material';
 import { BetaLink } from '@/app/lib/api-wrappers/sync-api-types';
 import { themeTokens } from '@/app/theme/theme-config';
 
-const THUMB_SIZE = 72;
+const THUMB_SIZE = themeTokens.spacing[16]; // 64px
 
 function getInstagramEmbedUrl(link: string): string | null {
   const instagramRegex = /(?:instagram\.com|instagr\.am)\/(?:p|reel|tv)\/([\w-]+)/;
@@ -50,8 +50,8 @@ const PlayViewBetaSlider: React.FC<PlayViewBetaSliderProps> = ({ boardName, clim
         if (!res.ok) return;
         const data: BetaLink[] = await res.json();
         if (!cancelled) setBetaLinks(data);
-      } catch {
-        // silently fail
+      } catch (error) {
+        console.error('Failed to fetch beta links:', error);
       }
     };
 
@@ -83,7 +83,7 @@ const PlayViewBetaSlider: React.FC<PlayViewBetaSliderProps> = ({ boardName, clim
             fontSize: themeTokens.typography.fontSize.xs,
           }}
         >
-          <VideocamOutlined sx={{ fontSize: 14 }} />
+          <VideocamOutlined sx={{ fontSize: themeTokens.typography.fontSize.sm }} />
           Beta ({betaLinks.length})
         </Typography>
 
@@ -133,7 +133,7 @@ const PlayViewBetaSlider: React.FC<PlayViewBetaSliderProps> = ({ boardName, clim
                   }}
                 />
               ) : (
-                <Instagram sx={{ fontSize: 24, color: themeTokens.neutral[400] }} />
+                <Instagram sx={{ fontSize: themeTokens.typography.fontSize['2xl'], color: themeTokens.neutral[400] }} />
               )}
               {/* Play overlay */}
               <Box
@@ -143,13 +143,13 @@ const PlayViewBetaSlider: React.FC<PlayViewBetaSliderProps> = ({ boardName, clim
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  bgcolor: 'rgba(0,0,0,0.3)',
+                  bgcolor: themeTokens.semantic.overlayLight,
                   opacity: 0,
                   transition: `opacity ${themeTokens.transitions.fast}`,
                   '&:hover': { opacity: 1 },
                 }}
               >
-                <PlayArrowOutlined sx={{ color: 'white', fontSize: 28 }} />
+                <PlayArrowOutlined sx={{ color: 'white', fontSize: themeTokens.typography.fontSize['2xl'] }} />
               </Box>
               {/* Username chip */}
               {link.foreign_username && (
@@ -160,9 +160,9 @@ const PlayViewBetaSlider: React.FC<PlayViewBetaSliderProps> = ({ boardName, clim
                     bottom: 0,
                     left: 0,
                     right: 0,
-                    bgcolor: 'rgba(0,0,0,0.6)',
+                    bgcolor: themeTokens.semantic.overlayDark,
                     color: 'white',
-                    fontSize: 9,
+                    fontSize: themeTokens.typography.fontSize.xs,
                     px: 0.5,
                     py: '1px',
                     textAlign: 'center',
@@ -193,7 +193,7 @@ const PlayViewBetaSlider: React.FC<PlayViewBetaSliderProps> = ({ boardName, clim
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               {selectedVideo.foreign_username && (
                 <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                  <PersonOutlined sx={{ fontSize: 16 }} />
+                  <PersonOutlined sx={{ fontSize: themeTokens.typography.fontSize.base }} />
                   @{selectedVideo.foreign_username}
                 </Typography>
               )}
@@ -246,7 +246,7 @@ const PlayViewBetaSlider: React.FC<PlayViewBetaSliderProps> = ({ boardName, clim
                 textDecoration: 'none',
               }}
             >
-              <Instagram sx={{ fontSize: 16 }} /> View on Instagram
+              <Instagram sx={{ fontSize: themeTokens.typography.fontSize.base }} /> View on Instagram
             </Box>
           </DialogActions>
         </Dialog>

@@ -47,6 +47,8 @@ export const themeTokens = {
     surface: '#FFFFFF',
     surfaceElevated: '#FFFFFF',
     surfaceOverlay: 'rgba(255, 255, 255, 0.95)', // Semi-transparent overlay
+    overlayLight: 'rgba(0, 0, 0, 0.3)', // Light dark overlay for hover states
+    overlayDark: 'rgba(0, 0, 0, 0.6)', // Dark overlay for text backgrounds
   },
 
   // Syntax highlighting colors (VS Code dark theme inspired)
