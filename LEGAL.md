@@ -20,7 +20,11 @@ Under U.S. copyright law, **facts are not copyrightable** (*Feist Publications, 
 
 The climb databases for these boards are almost entirely **user-generated content**. Individual climbers create and submit climbs. The board manufacturers did not author this content — they provide a platform for submission and display.
 
-Under standard terms of service for platforms hosting user-generated content, users typically grant the platform a **non-exclusive license** to display their submissions. This license does not transfer ownership of the content to the platform, nor does it give the platform the right to prevent third parties from independently collecting or presenting the same factual data.
+The licensing position varies by manufacturer, but in no case does a manufacturer own the community's climb data:
+
+**Aurora Climbing** (Kilter Board, Tension Board, and others): Aurora's Terms of Use grant them a *"perpetual, unrestricted, unlimited, non-exclusive, irrevocable license"* over user-submitted content ("Contributed Content"). Crucially, this license is **non-exclusive** — it does not transfer ownership to Aurora, nor does it prevent the original creator (or third parties) from independently using, collecting, or presenting the same factual data. A non-exclusive license grants the licensee the right to use the content; it does not grant standing to prevent others from doing the same.
+
+**Moon Climbing** (MoonBoard): As of the last review of Moon Climbing's public-facing legal documents (February 2026), Moon Climbing has **no app-specific Terms of Service, no End User License Agreement, and no contributed content license** governing the MoonBoard app or its climb database. Their website Terms and Conditions cover only e-commerce matters (shipping, returns, pricing). Their Privacy Policy covers only personal data under GDPR. Neither document addresses user-generated climb data, intellectual property licensing, or restrictions on data use. In the absence of any such agreement, Moon Climbing has no contractual claim over climbs created and submitted by its users.
 
 ### Comprehensive databases have weak compilation protection
 
@@ -40,7 +44,19 @@ We respect the climbing community and the people who create climbs.
 
 ## Interoperability & Hardware Compatibility
 
-This project provides software that is compatible with standardised climbing board hardware. Climbers who have purchased these boards have a right to use third-party software with their own hardware.
+This project provides software and hardware designs that are compatible with standardised climbing board hardware. Climbers who have purchased these boards have a right to use third-party software and controllers with their own hardware.
+
+### Software interoperability
+
+Our app communicates with board controllers over standard Bluetooth protocols. The Bluetooth communication protocol used by these boards is unencrypted and based on commodity hardware (WS2812B addressable LEDs driven by standard Bluetooth controllers). Implementing a compatible Bluetooth interface for the purpose of interoperability is well-established as lawful under both U.S. and EU law (*Sega Enterprises Ltd. v. Accolade, Inc.*, 977 F.2d 1510 (9th Cir. 1992); EU Directive 2009/24/EC, Article 6).
+
+### Open-source controller
+
+This project also offers open-source controller hardware and firmware designs. The controller is an independent, original implementation that communicates using the same Bluetooth protocol as the official controllers. It is built on commodity components (standard microcontrollers and WS2812B LEDs) and does not incorporate any proprietary firmware, code, or hardware designs from any board manufacturer. No patents are known to exist covering the LED controller systems used by any current board manufacturer.
+
+Our controller is designed to be interoperable with both this project's software and, at the user's discretion, official manufacturer apps. Any such interoperability is initiated by the end user on their own hardware.
+
+### Trademark usage
 
 We use board and product names (e.g. "Kilter Board", "MoonBoard", "Tension Board") solely to describe hardware compatibility and interoperability. These names are trademarks of their respective owners. This project is not affiliated with, endorsed by, or sponsored by Aurora Climbing, Moon Climbing, or any board manufacturer.
 
@@ -58,7 +74,7 @@ We take intellectual property concerns seriously. If you believe any material in
 
 We will review all valid requests promptly and in good faith. We may also file a counter-notice where we believe a takedown request is based on a misidentification of the material or a misunderstanding of the law.
 
-**Contact:** [INSERT YOUR EMAIL]
+**Contact:** legal@mdj.ac
 
 ---
 
@@ -66,8 +82,10 @@ We will review all valid requests promptly and in good faith. We may also file a
 
 The climbing community has a long tradition of openly sharing beta. This project exists in that spirit. We are not trying to harm any company — we are trying to give climbers better tools to interact with hardware they already own and data they helped create.
 
+Manufacturers continue to benefit from this ecosystem. Our project drives demand for their physical products (holds, boards, panels) where they provide genuine value. We simply believe that a $2,000 LED controller built from $50 in commodity parts, locked behind a proprietary app, is not serving the community well — and that climbers deserve the choice.
+
 If you are a board manufacturer and would like to discuss collaboration or have concerns, we welcome open dialogue. Please reach out.
 
 ---
 
-*This document is provided for informational purposes and does not constitute legal advice. Last updated: [DATE]*
+*This document is provided for informational purposes and does not constitute legal advice. Last updated: 08-02-2026*
