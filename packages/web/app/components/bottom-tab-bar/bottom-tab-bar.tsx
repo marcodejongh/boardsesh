@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Form, Input, ColorPicker, message } from 'antd';
+import { Form, Input, ColorPicker } from 'antd';
+import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 import MuiButton from '@mui/material/Button';
 import Box from '@mui/material/Box';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
@@ -57,6 +58,7 @@ function BottomTabBar({ boardDetails, angle }: BottomTabBarProps) {
   const router = useRouter();
 
   const { createPlaylist, isAuthenticated } = usePlaylistsContext();
+  const { showMessage } = useSnackbar();
 
   // Hide playlists for moonboard (not yet supported)
   const isMoonboard = boardDetails.board_name === 'moonboard';
@@ -211,7 +213,7 @@ function BottomTabBar({ boardDetails, angle }: BottomTabBarProps) {
 
       const newPlaylist = await createPlaylist(values.name, values.description, colorHex, undefined);
 
-      message.success(`Created playlist "${values.name}"`);
+      showMessage(`Created playlist "${values.name}"`, 'success');
       track('Create Playlist', {
         boardName: boardDetails.board_name,
         playlistName: values.name,
@@ -231,7 +233,7 @@ function BottomTabBar({ boardDetails, angle }: BottomTabBarProps) {
         // Form validation error - don't show message
         return;
       }
-      message.error('Failed to create playlist');
+      showMessage('Failed to create playlist', 'error');
     } finally {
       setIsCreatingPlaylist(false);
     }

@@ -85,7 +85,7 @@ export default function UserDrawer({ boardDetails, angle }: UserDrawerProps) {
     return null;
   })();
 
-  const userAvatar = session?.user?.image;
+  const userAvatar = session?.user?.image ?? undefined;
   const userName = session?.user?.name;
   const userEmail = session?.user?.email;
   const avatarClass = session?.user ? styles.avatarLoggedIn : styles.avatarLoggedOut;
@@ -97,12 +97,13 @@ export default function UserDrawer({ boardDetails, angle }: UserDrawerProps) {
         aria-label="User menu"
         className={styles.avatarButton}
       >
-        <Avatar
-          size={28}
+        <MuiAvatar
+          sx={{ width: 28, height: 28 }}
           src={userAvatar}
-          icon={!userAvatar ? <PersonOutlined /> : undefined}
           className={avatarClass}
-        />
+        >
+          {!userAvatar ? <PersonOutlined /> : null}
+        </MuiAvatar>
       </IconButton>
 
       <SwipeableDrawer
@@ -116,12 +117,13 @@ export default function UserDrawer({ boardDetails, angle }: UserDrawerProps) {
         <div className={styles.drawerBody}>
           {/* Profile section */}
           <div className={styles.profileSection}>
-            <Avatar
-              size={64}
+            <MuiAvatar
+              sx={{ width: 64, height: 64 }}
               src={userAvatar}
-              icon={!userAvatar ? <PersonOutlined /> : undefined}
               className={avatarClass}
-            />
+            >
+              {!userAvatar ? <PersonOutlined /> : null}
+            </MuiAvatar>
             {session?.user ? (
               <>
                 {userName && (

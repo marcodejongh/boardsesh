@@ -1,7 +1,10 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Spin, List, Tabs } from 'antd';
+import { List } from 'antd';
+import Tabs from '@mui/material/Tabs';
+import Tab from '@mui/material/Tab';
+import CircularProgress from '@mui/material/CircularProgress';
 import MuiButton from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import {
@@ -26,6 +29,7 @@ import {
 } from '@/app/lib/graphql/operations/playlists';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { constructClimbListWithSlugs, generateLayoutSlug, generateSizeSlug, generateSetSlug } from '@/app/lib/url-utils';
+import { TabPanel } from '@/app/components/ui/tab-panel';
 import { themeTokens } from '@/app/theme/theme-config';
 import BackButton from '@/app/components/back-button';
 import AuthModal from '@/app/components/auth/auth-modal';
@@ -54,6 +58,7 @@ export default function PlaylistsListContent({
   const [error, setError] = useState<string | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const { token, isLoading: tokenLoading } = useWsAuthToken();
+  const [activeTab, setActiveTab] = useState('your');
 
   const isAuthenticated = sessionStatus === 'authenticated';
 
@@ -165,7 +170,7 @@ export default function PlaylistsListContent({
     if (loading || tokenLoading || sessionStatus === 'loading') {
       return (
         <div className={styles.loadingContainer}>
-          <Spin size="large" />
+          <CircularProgress size={40} />
         </div>
       );
     }
@@ -231,38 +236,6 @@ export default function PlaylistsListContent({
     );
   };
 
-  const tabItems = [
-    {
-      key: 'your',
-      label: (
-        <span>
-          <LabelOutlined />
-          Your playlists
-        </span>
-      ),
-      children: (
-        <div className={styles.contentWrapper}>
-          {renderYourPlaylists()}
-        </div>
-      ),
-    },
-    {
-      key: 'discover',
-      label: (
-        <span>
-          <ExploreOutlined />
-          Discover
-        </span>
-      ),
-      children: (
-        <DiscoverPlaylistsContent
-          boardDetails={boardDetails}
-          angle={angle}
-        />
-      ),
-    },
-  ];
-
   return (
     <>
       {/* Actions Section */}
@@ -276,10 +249,32 @@ export default function PlaylistsListContent({
       {/* Tabs */}
       <div className={styles.tabsContainer}>
         <Tabs
-          defaultActiveKey="your"
-          items={tabItems}
+          value={activeTab}
+          onChange={(_, v) => setActiveTab(v)}
           className={styles.playlistTabs}
-        />
+        >
+          <Tab
+            label={<span><LabelOutlined /> Your playlists</span>}
+            value="your"
+          />
+          <Tab
+            label={<span><ExploreOutlined /> Discover</span>}
+            value="discover"
+          />
+        </Tabs>
+
+        <TabPanel value={activeTab} index="your">
+          <div className={styles.contentWrapper}>
+            {renderYourPlaylists()}
+          </div>
+        </TabPanel>
+
+        <TabPanel value={activeTab} index="discover">
+          <DiscoverPlaylistsContent
+            boardDetails={boardDetails}
+            angle={angle}
+          />
+        </TabPanel>
       </div>
 
       <AuthModal

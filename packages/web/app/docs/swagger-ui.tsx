@@ -8,7 +8,9 @@
  */
 
 import { useEffect, useState } from 'react';
-import { Alert, Spin } from 'antd';
+import MuiAlert from '@mui/material/Alert';
+import AlertTitle from '@mui/material/AlertTitle';
+import CircularProgress from '@mui/material/CircularProgress';
 import Typography from '@mui/material/Typography';
 import SwaggerUI from 'swagger-ui-react';
 import 'swagger-ui-react/swagger-ui.css';
@@ -50,7 +52,7 @@ export default function SwaggerUIComponent() {
   if (loadState === 'loading') {
     return (
       <div className={styles.swaggerLoading}>
-        <Spin size="large" />
+        <CircularProgress size={48} />
         <div className={styles.swaggerLoadingText}>
           <Typography variant="body2" component="span" color="text.secondary">Loading API documentation...</Typography>
         </div>
@@ -60,38 +62,32 @@ export default function SwaggerUIComponent() {
 
   if (loadState === 'not-found') {
     return (
-      <Alert
-        type="warning"
-        message="OpenAPI Specification Not Generated"
-        description={
-          <div>
-            <Typography variant="body1" component="p" className={styles.swaggerInstructions}>
-              The OpenAPI specification file has not been generated yet. This is expected during local development.
-            </Typography>
-            <Typography variant="body1" component="p" className={styles.swaggerInstructionsFinal}>
-              Run the following command to generate it:
-            </Typography>
-            <pre className={styles.swaggerCommandBlock}>
-              npm run generate:openapi
-            </pre>
-            <Typography variant="body1" component="p" color="text.secondary" className={styles.swaggerNote}>
-              In production, this runs automatically during the build process.
-            </Typography>
-          </div>
-        }
-        className={styles.swaggerAlert}
-      />
+      <MuiAlert severity="warning" className={styles.swaggerAlert}>
+        <AlertTitle>OpenAPI Specification Not Generated</AlertTitle>
+        <div>
+          <Typography variant="body1" component="p" className={styles.swaggerInstructions}>
+            The OpenAPI specification file has not been generated yet. This is expected during local development.
+          </Typography>
+          <Typography variant="body1" component="p" className={styles.swaggerInstructionsFinal}>
+            Run the following command to generate it:
+          </Typography>
+          <pre className={styles.swaggerCommandBlock}>
+            npm run generate:openapi
+          </pre>
+          <Typography variant="body1" component="p" color="text.secondary" className={styles.swaggerNote}>
+            In production, this runs automatically during the build process.
+          </Typography>
+        </div>
+      </MuiAlert>
     );
   }
 
   if (loadState === 'error') {
     return (
-      <Alert
-        type="error"
-        message="Failed to Load API Documentation"
-        description={`Error: ${errorMessage}`}
-        className={styles.swaggerAlert}
-      />
+      <MuiAlert severity="error" className={styles.swaggerAlert}>
+        <AlertTitle>Failed to Load API Documentation</AlertTitle>
+        {`Error: ${errorMessage}`}
+      </MuiAlert>
     );
   }
 

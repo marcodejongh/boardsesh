@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Empty, Spin, Alert } from 'antd';
+import MuiAlert from '@mui/material/Alert';
+import CircularProgress from '@mui/material/CircularProgress';
+import { EmptyState } from '@/app/components/ui/empty-state';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
-import Stack from '@mui/material/Stack';
 import LocationOnOutlined from '@mui/icons-material/LocationOnOutlined';
 import RefreshOutlined from '@mui/icons-material/RefreshOutlined';
 import { useGeolocation, getGeolocationErrorMessage } from '@/app/hooks/use-geolocation';
@@ -88,11 +89,9 @@ const JoinSessionTab = () => {
           To find climbing sessions near you, we need access to your location.
         </Typography>
         {error && (
-          <Alert
-            type="warning"
-            title={getGeolocationErrorMessage(error)}
-            style={{ marginBottom: themeTokens.spacing[4] }}
-          />
+          <MuiAlert severity="warning" sx={{ marginBottom: themeTokens.spacing[4] }}>
+            {getGeolocationErrorMessage(error)}
+          </MuiAlert>
         )}
         <Button
           variant="contained"
@@ -110,7 +109,7 @@ const JoinSessionTab = () => {
   if (loading || fetchingNearby) {
     return (
       <div style={{ textAlign: 'center', padding: themeTokens.spacing[8] }}>
-        <Spin size="large" />
+        <CircularProgress size={48} />
         <Typography variant="body1" component="p" sx={{ marginTop: themeTokens.spacing[4] }}>
           {loading ? 'Getting your location...' : 'Finding nearby sessions...'}
         </Typography>
@@ -122,16 +121,11 @@ const JoinSessionTab = () => {
   if (!backendHttpUrl) {
     return (
       <div style={{ textAlign: 'center', padding: themeTokens.spacing[8] }}>
-        <Empty
-          description={
-            <Stack spacing={1}>
-              <Typography variant="body2" component="span">No backend server configured</Typography>
-              <Typography variant="body1" component="p" color="text.secondary" sx={{ marginBottom: 0 }}>
-                To join sessions, you need to connect to a Boardsesh backend server.
-              </Typography>
-            </Stack>
-          }
-        />
+        <EmptyState description="No backend server configured">
+          <Typography variant="body1" component="p" color="text.secondary" sx={{ marginBottom: 0 }}>
+            To join sessions, you need to connect to a Boardsesh backend server.
+          </Typography>
+        </EmptyState>
       </div>
     );
   }
@@ -140,11 +134,9 @@ const JoinSessionTab = () => {
   if (fetchError) {
     return (
       <div style={{ textAlign: 'center', padding: themeTokens.spacing[8] }}>
-        <Alert
-          type="error"
-          title={fetchError}
-          style={{ marginBottom: themeTokens.spacing[4] }}
-        />
+        <MuiAlert severity="error" sx={{ marginBottom: themeTokens.spacing[4] }}>
+          {fetchError}
+        </MuiAlert>
         <Button variant="outlined" startIcon={<RefreshOutlined />} onClick={refresh}>
           Try Again
         </Button>
@@ -156,17 +148,12 @@ const JoinSessionTab = () => {
   if (nearbySessions.length === 0) {
     return (
       <div style={{ textAlign: 'center', padding: themeTokens.spacing[8] }}>
-        <Empty
-          description={
-            <Stack spacing={1}>
-              <Typography variant="body2" component="span">No sessions found nearby</Typography>
-              <Typography variant="body1" component="p" color="text.secondary" sx={{ marginBottom: 0 }}>
-                There are no active climbing sessions within 500 meters.
-                Start your own session and enable &quot;Allow others to join&quot;!
-              </Typography>
-            </Stack>
-          }
-        />
+        <EmptyState description="No sessions found nearby">
+          <Typography variant="body1" component="p" color="text.secondary" sx={{ marginBottom: 0 }}>
+            There are no active climbing sessions within 500 meters.
+            Start your own session and enable &quot;Allow others to join&quot;!
+          </Typography>
+        </EmptyState>
         <Button
           variant="outlined"
           startIcon={<RefreshOutlined />}

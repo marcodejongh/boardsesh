@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { Form, Input, Switch, ColorPicker, message } from 'antd';
+import { Form, Input, Switch, ColorPicker } from 'antd';
+import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 import MuiButton from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import Stack from '@mui/material/Stack';
@@ -37,6 +38,7 @@ export default function PlaylistEditDrawer({ open, playlist, onClose, onSuccess 
   const [loading, setLoading] = useState(false);
   const [isPublic, setIsPublic] = useState(playlist.isPublic);
   const { token } = useWsAuthToken();
+  const { showMessage } = useSnackbar();
 
   // Reset form when drawer opens with new playlist
   useEffect(() => {
@@ -84,7 +86,7 @@ export default function PlaylistEditDrawer({ open, playlist, onClose, onSuccess 
         token,
       );
 
-      message.success('Playlist updated successfully');
+      showMessage('Playlist updated successfully', 'success');
       onSuccess(response.updatePlaylist);
       onClose();
     } catch (error) {
@@ -93,7 +95,7 @@ export default function PlaylistEditDrawer({ open, playlist, onClose, onSuccess 
         return;
       }
       console.error('Error updating playlist:', error);
-      message.error('Failed to update playlist');
+      showMessage('Failed to update playlist', 'error');
     } finally {
       setLoading(false);
     }

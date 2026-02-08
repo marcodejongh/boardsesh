@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Select, InputNumber, Switch, Tooltip } from 'antd';
+import { Select, InputNumber, Switch } from 'antd';
+import MuiTooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import MuiButton from '@mui/material/Button';
@@ -171,9 +172,9 @@ const GeneratorOptionsForm: React.FC<GeneratorOptionsFormProps> = ({
       {/* Tall Climbs Only - only for Kilter Homewall large size */}
       {showTallClimbsFilter && (
         <div className={styles.formRow}>
-          <Tooltip title="Show only climbs that use holds in the bottom 8 rows (only available on 10x12 boards)">
+          <MuiTooltip title="Show only climbs that use holds in the bottom 8 rows (only available on 10x12 boards)">
             <Typography variant="body2" component="span" className={styles.label}>Tall Climbs Only</Typography>
-          </Tooltip>
+          </MuiTooltip>
           <Switch
             checked={options.onlyTallClimbs}
             onChange={(checked) => updateOption('onlyTallClimbs', checked)}

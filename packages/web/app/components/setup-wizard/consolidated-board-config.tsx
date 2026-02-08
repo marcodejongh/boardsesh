@@ -1,7 +1,14 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Form, Select, Collapse, Tabs, Switch, Tooltip } from 'antd';
+import { Form, Select, Switch } from 'antd';
+import MuiTabs from '@mui/material/Tabs';
+import MuiTab from '@mui/material/Tab';
+import Accordion from '@mui/material/Accordion';
+import AccordionSummary from '@mui/material/AccordionSummary';
+import AccordionDetails from '@mui/material/AccordionDetails';
+import MuiTooltip from '@mui/material/Tooltip';
+import ExpandMoreOutlined from '@mui/icons-material/ExpandMoreOutlined';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
@@ -31,6 +38,7 @@ import BoardRenderer from '../board-renderer/board-renderer';
 import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { BoardConfigData } from '@/app/lib/server-board-configs';
 import Logo from '../brand/logo';
+import { TabPanel } from '@/app/components/ui/tab-panel';
 import { themeTokens } from '@/app/theme/theme-config';
 import JoinSessionTab from './join-session-tab';
 import SessionHistoryPanel from './session-history-panel';
@@ -92,7 +100,8 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
   const [useAsDefault, setUseAsDefault] = useState(false);
   const [savedConfigurations, setSavedConfigurations] = useState<StoredBoardConfig[]>([]);
   const [suggestedName, setSuggestedName] = useState<string>('');
-  const [activeCollapsePanels, setActiveCollapsePanels] = useState<string[]>([]);
+  const [savedBoardsExpanded, setSavedBoardsExpanded] = useState(false);
+  const [previewExpanded, setPreviewExpanded] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
 
   // Get board details for the preview (shared with loading animation)
@@ -230,7 +239,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
 
       // Expand saved boards panel if there are saved configurations
       if (allConfigs.length > 0) {
-        setActiveCollapsePanels((prev) => (prev.includes('saved') ? prev : [...prev, 'saved']));
+        setSavedBoardsExpanded(true);
       }
 
       // Check if there's a default board cookie set
@@ -458,66 +467,70 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
               </div>
             </div>
 
-            <Tabs
-              activeKey={activeTab}
-              onChange={setActiveTab}
+            <MuiTabs
+              value={activeTab}
+              onChange={(_, v) => setActiveTab(v)}
               centered
-              items={[
-                {
-                  key: 'start',
-                  label: 'Start a sesh',
-                  children: (
-                    <>
+            >
+              <MuiTab label="Start a sesh" value="start" />
+              <MuiTab label="Join a sesh" value="join" />
+            </MuiTabs>
+
+            <TabPanel value={activeTab} index="start">
                       <SessionHistoryPanel />
 
-                      <Collapse
-            activeKey={activeCollapsePanels}
-            onChange={(keys) => setActiveCollapsePanels(keys as string[])}
-            size="small"
-            items={[
-              {
-                key: 'saved',
-                label: `Saved Boards (${savedConfigurations.length})`,
-                extra: savedConfigurations.length > 0 ? (
-                  <IconButton
-                    color={isEditMode ? 'primary' : 'default'}
-                    size="small"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsEditMode(!isEditMode);
-                    }}
-                  >
-                    <EditOutlined />
-                  </IconButton>
-                ) : undefined,
-                children:
-                  savedConfigurations.length > 0 ? (
-                    <div
-                      style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(2, 1fr)',
-                        gap: '16px',
-                        width: '100%',
-                        overflow: 'hidden',
-                      }}
-                    >
-                      {savedConfigurations.map((config) => (
-                        <BoardConfigPreview
-                          key={config.name}
-                          config={config}
-                          onDelete={deleteConfiguration}
-                          onSelect={handleSavedBoardSelect}
-                          boardConfigs={boardConfigs}
-                          isEditMode={isEditMode}
-                        />
-                      ))}
-                    </div>
-                  ) : (
-                    <Typography variant="body2" component="span" color="text.secondary">No saved boards yet. Configure your board below and it will be saved automatically.</Typography>
-                  ),
-              },
-            ]}
-          />
+                      <Accordion
+                        expanded={savedBoardsExpanded}
+                        onChange={(_, isExpanded) => setSavedBoardsExpanded(isExpanded)}
+                        elevation={0}
+                        sx={{ '&:before': { display: 'none' } }}
+                      >
+                        <AccordionSummary expandIcon={<ExpandMoreOutlined />}>
+                          <Stack direction="row" spacing={1} alignItems="center" sx={{ width: '100%' }}>
+                            <Typography variant="body2" sx={{ flexGrow: 1 }}>
+                              {`Saved Boards (${savedConfigurations.length})`}
+                            </Typography>
+                            {savedConfigurations.length > 0 && (
+                              <IconButton
+                                color={isEditMode ? 'primary' : 'default'}
+                                size="small"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setIsEditMode(!isEditMode);
+                                }}
+                              >
+                                <EditOutlined />
+                              </IconButton>
+                            )}
+                          </Stack>
+                        </AccordionSummary>
+                        <AccordionDetails>
+                          {savedConfigurations.length > 0 ? (
+                            <div
+                              style={{
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(2, 1fr)',
+                                gap: '16px',
+                                width: '100%',
+                                overflow: 'hidden',
+                              }}
+                            >
+                              {savedConfigurations.map((config) => (
+                                <BoardConfigPreview
+                                  key={config.name}
+                                  config={config}
+                                  onDelete={deleteConfiguration}
+                                  onSelect={handleSavedBoardSelect}
+                                  boardConfigs={boardConfigs}
+                                  isEditMode={isEditMode}
+                                />
+                              ))}
+                            </div>
+                          ) : (
+                            <Typography variant="body2" component="span" color="text.secondary">No saved boards yet. Configure your board below and it will be saved automatically.</Typography>
+                          )}
+                        </AccordionDetails>
+                      </Accordion>
           <MuiDivider />
 
           <Form layout="vertical">
@@ -630,9 +643,9 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
                   <GroupOutlined style={{ marginRight: themeTokens.spacing[1] }} />
                   Allow others nearby to join
                 </span>
-                <Tooltip title="When enabled, climbers within 500 meters can find and join your session. Requires you to be signed in.">
+                <MuiTooltip title="When enabled, climbers within 500 meters can find and join your session. Requires you to be signed in.">
                   <InfoOutlined style={{ color: themeTokens.neutral[400] }} />
-                </Tooltip>
+                </MuiTooltip>
               </div>
               {allowOthersToJoin && !session && (
                 <Typography variant="body2" component="span" sx={{ display: 'block', marginTop: themeTokens.spacing[2], color: 'warning.main' }}>
@@ -652,9 +665,9 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
                   <StarBorderOutlined style={{ marginRight: themeTokens.spacing[1] }} />
                   Set as my default board
                 </span>
-                <Tooltip title="When enabled, visiting boardsesh.com will automatically load this board. Click the logo anytime to return to board selection.">
+                <MuiTooltip title="When enabled, visiting boardsesh.com will automatically load this board. Click the logo anytime to return to board selection.">
                   <InfoOutlined style={{ color: themeTokens.neutral[400] }} />
-                </Tooltip>
+                </MuiTooltip>
               </div>
             </Form.Item>
 
@@ -685,22 +698,16 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
           {isFormComplete && (
             <>
               <MuiDivider />
-              <Collapse
-                activeKey={activeCollapsePanels.includes('preview') ? ['preview'] : []}
-                onChange={(keys) => {
-                  const updatedKeys = keys as string[];
-                  if (updatedKeys.includes('preview')) {
-                    setActiveCollapsePanels([...activeCollapsePanels.filter((k) => k !== 'preview'), 'preview']);
-                  } else {
-                    setActiveCollapsePanels(activeCollapsePanels.filter((k) => k !== 'preview'));
-                  }
-                }}
-                size="small"
-                items={[
-                  {
-                    key: 'preview',
-                    label: 'Preview',
-                    children: (
+              <Accordion
+                expanded={previewExpanded}
+                onChange={(_, isExpanded) => setPreviewExpanded(isExpanded)}
+                elevation={0}
+                sx={{ '&:before': { display: 'none' } }}
+              >
+                <AccordionSummary expandIcon={<ExpandMoreOutlined />}>
+                  <Typography variant="body2">Preview</Typography>
+                </AccordionSummary>
+                <AccordionDetails>
                       <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
                         {previewBoardDetails ? (
                           <Card
@@ -726,22 +733,15 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
                           </Card>
                         )}
                       </Box>
-                    ),
-                  },
-                ]}
-              />
+                </AccordionDetails>
+              </Accordion>
             </>
           )}
-                    </>
-                  ),
-                },
-                {
-                  key: 'join',
-                  label: 'Join a sesh',
-                  children: <JoinSessionTab />,
-                },
-              ]}
-            />
+            </TabPanel>
+
+            <TabPanel value={activeTab} index="join">
+              <JoinSessionTab />
+            </TabPanel>
 
           <MuiDivider />
           <Stack direction="row" spacing={1} style={{ width: '100%', justifyContent: 'center' }}>

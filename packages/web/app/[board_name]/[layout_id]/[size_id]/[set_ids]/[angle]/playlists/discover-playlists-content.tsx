@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { Spin, List, Input, Form } from 'antd';
+import { List, Input, Form } from 'antd';
+import CircularProgress from '@mui/material/CircularProgress';
 import MuiButton from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import {
@@ -182,7 +183,7 @@ export default function DiscoverPlaylistsContent({
       {/* Content */}
       {loading ? (
         <div className={styles.loadingContainer}>
-          <Spin size="large" />
+          <CircularProgress size={48} />
         </div>
       ) : playlists.length === 0 ? (
         <div className={styles.emptyContainer}>

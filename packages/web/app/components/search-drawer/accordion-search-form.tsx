@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { InputNumber, Select, Switch, Alert, Tooltip } from 'antd';
+import { InputNumber, Select, Switch } from 'antd';
+import MuiAlert from '@mui/material/Alert';
+import MuiTooltip from '@mui/material/Tooltip';
 import MuiTypography from '@mui/material/Typography';
 import MuiButton from '@mui/material/Button';
 import Box from '@mui/material/Box';
@@ -130,9 +132,9 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
           {showTallClimbsFilter && (
             <div className={styles.switchGroup}>
               <div className={styles.switchRow}>
-                <Tooltip title="Show only climbs that use holds in the bottom 8 rows (only available on 10x12 boards)">
+                <MuiTooltip title="Show only climbs that use holds in the bottom 8 rows (only available on 10x12 boards)">
                   <MuiTypography variant="body2" component="span">Tall Climbs Only</MuiTypography>
-                </Tooltip>
+                </MuiTooltip>
                 <Switch
                   size="small"
                   checked={uiSearchParams.onlyTallClimbs}
@@ -265,11 +267,8 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
       content: (
         <div className={styles.panelContent}>
           {!isAuthenticated ? (
-            <Alert
-              title="Sign in to filter by progress"
-              description="Login to filter climbs based on your attempt and completion history."
-              type="info"
-              showIcon
+            <MuiAlert
+              severity="info"
               className={styles.progressAlert}
               action={
                 <MuiButton
@@ -281,7 +280,11 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
                   Sign In
                 </MuiButton>
               }
-            />
+            >
+              <strong>Sign in to filter by progress</strong>
+              <br />
+              Login to filter climbs based on your attempt and completion history.
+            </MuiAlert>
           ) : (
             <div className={styles.switchGroup}>
               <div className={styles.switchRow}>

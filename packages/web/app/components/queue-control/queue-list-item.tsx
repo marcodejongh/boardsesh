@@ -118,6 +118,7 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
 }) => {
   const router = useRouter();
   const [closestEdge, setClosestEdge] = useState<Edge | null>(null);
+  const [menuAnchorEl, setMenuAnchorEl] = useState<HTMLElement | null>(null);
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [isSwipeComplete, setIsSwipeComplete] = useState(false);
   const [isHorizontalSwipe, setIsHorizontalSwipe] = useState<boolean | null>(null);
@@ -345,7 +346,7 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
           <Box className={styles.contentRow} sx={{ display: 'flex', flexWrap: 'nowrap', gap: '8px 8px', alignItems: 'center' }}>
             {isEditMode && (
               <Box sx={{ width: { xs: '8.33%', sm: '8.33%' } }}>
-                <Checkbox
+                <MuiCheckbox
                   checked={isSelected}
                   onClick={(e) => e.stopPropagation()}
                   onChange={() => onToggleSelect?.(item.uuid)}
@@ -368,56 +369,48 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
             </Box>
             <Box sx={{ width: { xs: '8.33%', sm: '8.33%' } }}>
               {item.addedByUser ? (
-                <Tooltip title={item.addedByUser.username}>
-                  <Avatar size="small" src={item.addedByUser.avatarUrl} icon={<PersonOutlined />} />
-                </Tooltip>
+                <MuiTooltip title={item.addedByUser.username}>
+                  <MuiAvatar sx={{ width: 24, height: 24 }} src={item.addedByUser.avatarUrl}>
+                    <PersonOutlined />
+                  </MuiAvatar>
+                </MuiTooltip>
               ) : (
-                <Tooltip title="Added via Bluetooth">
-                  <Avatar
-                    size="small"
-                    style={{ backgroundColor: 'transparent' }}
-                    icon={<BluetoothIcon style={{ color: themeTokens.neutral[400] }} />}
-                  />
-                </Tooltip>
+                <MuiTooltip title="Added via Bluetooth">
+                  <MuiAvatar
+                    sx={{ width: 24, height: 24, backgroundColor: 'transparent' }}
+                  >
+                    <BluetoothIcon style={{ color: themeTokens.neutral[400] }} />
+                  </MuiAvatar>
+                </MuiTooltip>
               )}
             </Box>
             {!isEditMode && (
               <Box sx={{ width: { xs: '12.5%', sm: '8.33%' } }}>
-                <Dropdown
-                  menu={{
-                    items: [
-                      {
-                        key: 'info',
-                        label: 'View Climb',
-                        icon: <InfoOutlined />,
-                        onClick: handleViewClimb,
-                      },
-                      {
-                        key: 'tick',
-                        label: 'Tick Climb',
-                        icon: <CheckOutlined />,
-                        onClick: () => item.climb && onTickClick(item.climb),
-                      },
-                      {
-                        key: 'openInApp',
-                        label: 'Open in App',
-                        icon: <AppsOutlined />,
-                        onClick: handleOpenInApp,
-                      },
-                      {
-                        key: 'remove',
-                        label: 'Remove from Queue',
-                        icon: <DeleteOutlined />,
-                        danger: true,
-                        onClick: () => removeFromQueue(item),
-                      },
-                    ],
-                  }}
-                  trigger={['click']}
-                  placement="bottomRight"
+                <IconButton onClick={(e) => setMenuAnchorEl(e.currentTarget)}><MoreVertOutlined /></IconButton>
+                <Menu
+                  anchorEl={menuAnchorEl}
+                  open={Boolean(menuAnchorEl)}
+                  onClose={() => setMenuAnchorEl(null)}
+                  anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                  transformOrigin={{ vertical: 'top', horizontal: 'right' }}
                 >
-                  <IconButton><MoreVertOutlined /></IconButton>
-                </Dropdown>
+                  <MenuItem onClick={() => { setMenuAnchorEl(null); handleViewClimb(); }}>
+                    <ListItemIcon><InfoOutlined /></ListItemIcon>
+                    <ListItemText>View Climb</ListItemText>
+                  </MenuItem>
+                  <MenuItem onClick={() => { setMenuAnchorEl(null); item.climb && onTickClick(item.climb); }}>
+                    <ListItemIcon><CheckOutlined /></ListItemIcon>
+                    <ListItemText>Tick Climb</ListItemText>
+                  </MenuItem>
+                  <MenuItem onClick={() => { setMenuAnchorEl(null); handleOpenInApp(); }}>
+                    <ListItemIcon><AppsOutlined /></ListItemIcon>
+                    <ListItemText>Open in App</ListItemText>
+                  </MenuItem>
+                  <MenuItem onClick={() => { setMenuAnchorEl(null); removeFromQueue(item); }} sx={{ color: 'error.main' }}>
+                    <ListItemIcon><DeleteOutlined color="error" /></ListItemIcon>
+                    <ListItemText>Remove from Queue</ListItemText>
+                  </MenuItem>
+                </Menu>
               </Box>
             )}
           </Box>

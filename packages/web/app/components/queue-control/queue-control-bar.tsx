@@ -1,6 +1,5 @@
 'use client';
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { Popconfirm } from 'antd';
 import MuiButton from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import MuiCard from '@mui/material/Card';
@@ -30,6 +29,7 @@ import { ShareBoardButton } from '../board-page/share-button';
 import { useCardSwipeNavigation, EXIT_DURATION, SNAP_BACK_DURATION, ENTER_ANIMATION_DURATION } from '@/app/hooks/use-card-swipe-navigation';
 import PlayViewDrawer from '../play-view/play-view-drawer';
 import { getGradeTintColor } from '@/app/lib/grade-colors';
+import { ConfirmPopover } from '@/app/components/ui/confirm-popover';
 import styles from './queue-control-bar.module.css';
 
 export type ActiveDrawer = 'none' | 'play' | 'queue';
@@ -407,7 +407,7 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
         styles={{ wrapper: { height: '70%' }, body: { padding: 0 } }}
         extra={
           queue.length > 0 && (
-            <Popconfirm
+            <ConfirmPopover
               title="Clear queue"
               description="Are you sure you want to clear all items from the queue?"
               onConfirm={handleClearQueue}
@@ -417,7 +417,7 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
               <MuiButton variant="text" startIcon={<DeleteOutlined />} sx={{ color: themeTokens.neutral[400] }}>
                 Clear
               </MuiButton>
-            </Popconfirm>
+            </ConfirmPopover>
           )
         }
       >

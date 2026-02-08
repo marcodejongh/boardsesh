@@ -1,7 +1,11 @@
 'use client';
 
-import React from 'react';
-import { Collapse, Image } from 'antd';
+import React, { useState } from 'react';
+import { Image } from 'antd';
+import Accordion from '@mui/material/Accordion';
+import AccordionSummary from '@mui/material/AccordionSummary';
+import AccordionDetails from '@mui/material/AccordionDetails';
+import ExpandMoreOutlined from '@mui/icons-material/ExpandMoreOutlined';
 import MuiCard from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Typography from '@mui/material/Typography';
@@ -88,7 +92,7 @@ const helpSections = [
               <li><Typography variant="body2" component="span" fontWeight={600}>Hold Type:</Typography> Jug, Sloper, Pinch, Crimp, or Pocket</li>
               <li><Typography variant="body2" component="span" fontWeight={600}>Hand Rating:</Typography> 1-5 difficulty scale for hand use</li>
               <li><Typography variant="body2" component="span" fontWeight={600}>Foot Rating:</Typography> 1-5 difficulty scale for foot use</li>
-              <li><Typography variant="body2" component="span" fontWeight={600}>Pull Direction:</Typography> 0-360° optimal pulling angle</li>
+              <li><Typography variant="body2" component="span" fontWeight={600}>Pull Direction:</Typography> 0-360 optimal pulling angle</li>
             </ul>
             <Typography variant="body1" component="p">
               Classifications are personal and stored in your account, allowing you to build a
@@ -466,22 +470,7 @@ const helpSections = [
 ];
 
 export default function HelpContent() {
-  // Transform sections into Collapse items format
-  const collapseItems = helpSections.map((section) => ({
-    key: section.key,
-    label: section.label,
-    children: (
-      <Collapse
-        accordion
-        items={section.children.map((item) => ({
-          key: item.key,
-          label: item.label,
-          children: item.children,
-        }))}
-        className={styles.nestedCollapse}
-      />
-    ),
-  }));
+  const [expandedSection, setExpandedSection] = useState<string | false>('visualization');
 
   return (
     <Box className={styles.pageLayout}>
@@ -505,12 +494,30 @@ export default function HelpContent() {
             </Typography>
           </div>
 
-          <Collapse
-            accordion
-            items={collapseItems}
-            className={styles.mainCollapse}
-            defaultActiveKey={['visualization']}
-          />
+          {helpSections.map((section) => (
+            <Accordion
+              key={section.key}
+              expanded={expandedSection === section.key}
+              onChange={(_, isExpanded) => setExpandedSection(isExpanded ? section.key : false)}
+              className={styles.mainCollapse}
+            >
+              <AccordionSummary expandIcon={<ExpandMoreOutlined />}>
+                {section.label}
+              </AccordionSummary>
+              <AccordionDetails>
+                {section.children.map((item) => (
+                  <Accordion key={item.key} className={styles.nestedCollapse}>
+                    <AccordionSummary expandIcon={<ExpandMoreOutlined />}>
+                      {item.label}
+                    </AccordionSummary>
+                    <AccordionDetails>
+                      {item.children}
+                    </AccordionDetails>
+                  </Accordion>
+                ))}
+              </AccordionDetails>
+            </Accordion>
+          ))}
         </CardContent></MuiCard>
       </Box>
     </Box>

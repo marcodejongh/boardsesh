@@ -32,6 +32,7 @@ import { themeTokens } from '@/app/theme/theme-config';
 import { parseScreenshot } from '@boardsesh/moonboard-ocr/browser';
 import { convertOcrHoldsToMap } from '@/app/lib/moonboard-climbs-db';
 import AuthModal from '../auth/auth-modal';
+import { useSnackbar } from '../providers/snackbar-provider';
 import { useCreateClimbContext } from './create-climb-context';
 import CreateClimbHeatmapOverlay from './create-climb-heatmap-overlay';
 import styles from './create-climb-form.module.css';
@@ -74,6 +75,7 @@ export default function CreateClimbForm({
 
   // Aurora-specific hooks
   const { isAuthenticated, saveClimb } = useBoardProvider();
+  const { showMessage } = useSnackbar();
 
   // Determine which auth check to use based on board type
   const isLoggedIn = boardType === 'aurora' ? isAuthenticated : !!session?.user?.id;
@@ -294,13 +296,13 @@ export default function CreateClimbForm({
         throw new Error(errorData.error || 'Failed to save climb');
       }
 
-      message.success('Climb saved to database!');
+      showMessage('Climb saved to database!', 'success');
 
       const listUrl = pathname.replace(/\/create$/, '/list');
       router.push(listUrl);
     } catch (error) {
       console.error('Failed to save climb:', error);
-      message.error(error instanceof Error ? error.message : 'Failed to save climb. Please try again.');
+      showMessage(error instanceof Error ? error.message : 'Failed to save climb. Please try again.', 'error');
     } finally {
       setIsSaving(false);
     }
@@ -474,11 +476,8 @@ export default function CreateClimbForm({
 
       {/* Auth alert for both board types */}
       {!isLoggedIn && (
-        <Alert
-          title="Sign in required"
-          description="Sign in to your Boardsesh account to save your climb."
-          type="warning"
-          showIcon
+        <MuiAlert
+          severity="warning"
           className={styles.authAlert}
           action={
             boardType === 'aurora' ? (
@@ -493,32 +492,30 @@ export default function CreateClimbForm({
               </Link>
             )
           }
-        />
+        >
+          Sign in to your Boardsesh account to save your climb.
+        </MuiAlert>
       )}
 
       {/* MoonBoard OCR errors */}
       {boardType === 'moonboard' && ocrError && (
-        <Alert
-          message="Import Failed"
-          description={ocrError}
-          type="error"
-          showIcon
-          closable
+        <MuiAlert
+          severity="error"
           onClose={() => setOcrError(null)}
           className={styles.alertBanner}
-        />
+        >
+          Import Failed: {ocrError}
+        </MuiAlert>
       )}
 
       {boardType === 'moonboard' && ocrWarnings.length > 0 && (
-        <Alert
-          message="Import Warnings"
-          description={ocrWarnings.map((w, i) => <div key={i}>{w}</div>)}
-          type="warning"
-          showIcon
-          closable
+        <MuiAlert
+          severity="warning"
           onClose={() => setOcrWarnings([])}
           className={styles.alertBanner}
-        />
+        >
+          Import Warnings: {ocrWarnings.map((w, i) => <div key={i}>{w}</div>)}
+        </MuiAlert>
       )}
 
       <div className={styles.contentWrapper}>
@@ -536,7 +533,7 @@ export default function CreateClimbForm({
             {/* Aurora-only: Heatmap toggle */}
             {boardType === 'aurora' && (
               <>
-                <Tooltip title={showHeatmap ? 'Hide heatmap' : 'Show hold popularity heatmap'}>
+                <MuiTooltip title={showHeatmap ? 'Hide heatmap' : 'Show hold popularity heatmap'}>
                   <IconButton
                     color={showHeatmap ? 'error' : 'default'}
                     size="small"
@@ -545,7 +542,7 @@ export default function CreateClimbForm({
                   >
                     <LocalFireDepartmentOutlined />
                   </IconButton>
-                </Tooltip>
+                </MuiTooltip>
                 {showHeatmap && (
                   <>
                     <Typography variant="body2" component="span" color="text.secondary" className={styles.draftLabel}>
@@ -672,16 +669,16 @@ export default function CreateClimbForm({
           <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
             {boardType === 'aurora' ? (
               <>
-                <Tag color={startingCount > 0 ? 'green' : 'default'}>Starting: {startingCount}/2</Tag>
-                <Tag color={finishCount > 0 ? 'magenta' : 'default'}>Finish: {finishCount}/2</Tag>
-                <Tag color={totalHolds > 0 ? 'blue' : 'default'}>Total: {totalHolds}</Tag>
+                <Chip label={`Starting: ${startingCount}/2`} size="small" color={startingCount > 0 ? 'success' : undefined} />
+                <Chip label={`Finish: ${finishCount}/2`} size="small" sx={finishCount > 0 ? { bgcolor: '#EC4899', color: '#fff' } : undefined} />
+                <Chip label={`Total: ${totalHolds}`} size="small" color={totalHolds > 0 ? 'primary' : undefined} />
               </>
             ) : (
               <>
-                <Tag color={startingCount > 0 ? 'red' : 'default'}>Start: {startingCount}/2</Tag>
-                <Tag color={handCount > 0 ? 'blue' : 'default'}>Hand: {handCount}</Tag>
-                <Tag color={finishCount > 0 ? 'green' : 'default'}>Finish: {finishCount}/2</Tag>
-                <Tag color={totalHolds > 0 ? 'purple' : 'default'}>Total: {totalHolds}</Tag>
+                <Chip label={`Start: ${startingCount}/2`} size="small" color={startingCount > 0 ? 'error' : undefined} />
+                <Chip label={`Hand: ${handCount}`} size="small" color={handCount > 0 ? 'primary' : undefined} />
+                <Chip label={`Finish: ${finishCount}/2`} size="small" color={finishCount > 0 ? 'success' : undefined} />
+                <Chip label={`Total: ${totalHolds}`} size="small" color={totalHolds > 0 ? 'secondary' : undefined} />
               </>
             )}
           </Stack>

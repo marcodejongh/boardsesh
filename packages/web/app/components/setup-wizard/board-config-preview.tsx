@@ -153,7 +153,9 @@ export default function BoardConfigPreview({ config, onDelete, onSelect, boardCo
     return (
       <Card sx={{ minWidth: 0, '&:hover': { boxShadow: 3 } }}>
         <CardContent sx={{ p: 1.5 }}>
-          <Skeleton active paragraph={{ rows: 2 }} />
+          <MuiSkeleton variant="text" width="60%" />
+          <MuiSkeleton variant="text" width="80%" />
+          <MuiSkeleton variant="text" width="40%" />
         </CardContent>
       </Card>
     );
@@ -177,10 +179,10 @@ export default function BoardConfigPreview({ config, onDelete, onSelect, boardCo
               <Typography variant="body2" component="span" color="text.secondary">Preview unavailable</Typography>
               <Typography variant="body2" component="span" fontWeight={600}>{config.name}</Typography>
               <Stack spacing={0.25}>
-                <Tag>{layoutName}</Tag>
+                <Chip label={layoutName} size="small" />
                 <Stack direction="row" spacing={0.25}>
-                  <Tag>{sizeName}</Tag>
-                  <Tag>{config.angle || 40}</Tag>
+                  <Chip label={sizeName} size="small" />
+                  <Chip label={config.angle || 40} size="small" />
                   {config.useAsDefault && <Star />}
                 </Stack>
               </Stack>
@@ -212,14 +214,14 @@ export default function BoardConfigPreview({ config, onDelete, onSelect, boardCo
           )}
           <Typography variant="body2" component="span" fontWeight={600}>{config.name}</Typography>
           <Stack spacing={0.25}>
-            <Tag>{layoutName}</Tag>
+            <Chip label={layoutName} size="small" />
             <Stack direction="row" spacing={0.25}>
-              <Tag>{sizeName}</Tag>
-              <Tag>{config.angle || 40}</Tag>
+              <Chip label={sizeName} size="small" />
+              <Chip label={config.angle || 40} size="small" />
               {config.useAsDefault && (
-                <Tooltip title="Default configuration">
+                <MuiTooltip title="Default configuration">
                   <Star />
-                </Tooltip>
+                </MuiTooltip>
               )}
             </Stack>
           </Stack>

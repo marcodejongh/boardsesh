@@ -4,15 +4,14 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import {
   Layout,
-  Avatar,
-  Spin,
   Segmented,
-  Empty,
   Space,
   DatePicker,
-  message,
-  Tooltip,
 } from 'antd';
+import MuiAvatar from '@mui/material/Avatar';
+import MuiTooltip from '@mui/material/Tooltip';
+import CircularProgress from '@mui/material/CircularProgress';
+import { EmptyState } from '@/app/components/ui/empty-state';
 import MuiCard from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Typography from '@mui/material/Typography';
@@ -38,6 +37,7 @@ import {
 } from '@/app/lib/graphql/operations';
 import { FONT_GRADE_COLORS, getGradeColorWithOpacity } from '@/app/lib/grade-colors';
 import { SUPPORTED_BOARDS } from '@/app/lib/board-data';
+import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 
 dayjs.extend(isoWeek);
 dayjs.extend(isSameOrAfter);
@@ -48,7 +48,7 @@ const ProfileStatsCharts = dynamic(() => import('./profile-stats-charts'), {
   ssr: false,
   loading: () => (
     <div className={styles.loadingStats}>
-      <Spin />
+      <CircularProgress />
     </div>
   ),
 });
@@ -203,6 +203,7 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
   const [loadingProfileStats, setLoadingProfileStats] = useState(false);
 
   const isOwnProfile = session?.user?.id === userId;
+  const { showMessage } = useSnackbar();
 
   // Fetch profile data for the userId in the URL
   const fetchProfile = useCallback(async () => {
@@ -228,7 +229,7 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
       });
     } catch (error) {
       console.error('Failed to fetch profile:', error);
-      message.error('Failed to load profile data');
+      showMessage('Failed to load profile data', 'error');
     } finally {
       setLoading(false);
     }
@@ -260,7 +261,7 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
       setLogbook(entries);
     } catch (error) {
       console.error('Error fetching ticks:', error);
-      message.error('Failed to load climbing stats');
+      showMessage('Failed to load climbing stats', 'error');
       setLogbook([]);
     } finally {
       setLoadingStats(false);
@@ -615,7 +616,7 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
     return (
       <Layout className={styles.layout}>
         <Content className={styles.loadingContent}>
-          <Spin size="large" />
+          <CircularProgress size={48} />
         </Content>
       </Layout>
     );
@@ -632,7 +633,7 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
           </Typography>
         </Header>
         <Content className={styles.content}>
-          <Empty description="User not found" />
+          <EmptyState description="User not found" />
         </Content>
       </Layout>
     );
@@ -678,7 +679,9 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
         {/* Profile Card */}
         <MuiCard className={styles.profileCard}><CardContent>
           <div className={styles.profileInfo}>
-            <Avatar size={80} src={avatarUrl} icon={<PersonOutlined />} />
+            <MuiAvatar sx={{ width: 80, height: 80 }} src={avatarUrl ?? undefined}>
+              {!avatarUrl && <PersonOutlined />}
+            </MuiAvatar>
             <div className={styles.profileDetails}>
               <Typography variant="h6" component="h4" className={styles.displayName}>
                 {displayName}
@@ -718,7 +721,7 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
             <div className={styles.percentageBarContainer}>
               <div className={styles.percentageBar}>
                 {statisticsSummary.layoutPercentages.map((layout) => (
-                  <Tooltip
+                  <MuiTooltip
                     key={layout.layoutKey}
                     title={`${layout.displayName}: ${layout.count} distinct climbs (${layout.percentage}%)`}
                   >
@@ -735,7 +738,7 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
                         </span>
                       )}
                     </div>
-                  </Tooltip>
+                  </MuiTooltip>
                 ))}
               </div>
               <div className={styles.percentageLegend}>
@@ -775,7 +778,7 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
                         return gradeOrder.indexOf(a[0]) - gradeOrder.indexOf(b[0]);
                       })
                       .map(([grade, count]) => (
-                        <Tooltip
+                        <MuiTooltip
                           key={grade}
                           title={`${grade}: ${count} climb${count !== 1 ? 's' : ''}`}
                         >
@@ -786,7 +789,7 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
                             <span className={styles.gradeBlockLabel}>{grade}</span>
                             <span className={styles.gradeBlockCount}>{count}</span>
                           </div>
-                        </Tooltip>
+                        </MuiTooltip>
                       ))}
                   </div>
                 </div>
@@ -812,10 +815,10 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
 
           {loadingAggregated ? (
             <div className={styles.loadingStats}>
-              <Spin />
+              <CircularProgress />
             </div>
           ) : !chartDataAggregated ? (
-            <Empty description="No ascent data for this period" />
+            <EmptyState description="No ascent data for this period" />
           ) : (
             <div className={styles.chartsContainer}>
               <ProfileStatsCharts
@@ -870,10 +873,10 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
 
             {loadingStats ? (
               <div className={styles.loadingStats}>
-                <Spin />
+                <CircularProgress />
               </div>
             ) : filteredLogbook.length === 0 ? (
-              <Empty description="No climbing data for this period" />
+              <EmptyState description="No climbing data for this period" />
             ) : (
               <div className={styles.chartsContainer}>
                 <ProfileStatsCharts

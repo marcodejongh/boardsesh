@@ -11,8 +11,12 @@
  * - WebSocket connection guide
  */
 
-import { Suspense, lazy } from 'react';
-import { Tabs, Alert, Spin } from 'antd';
+import { Suspense, lazy, useState } from 'react';
+import Tabs from '@mui/material/Tabs';
+import Tab from '@mui/material/Tab';
+import MuiAlert from '@mui/material/Alert';
+import AlertTitle from '@mui/material/AlertTitle';
+import CircularProgress from '@mui/material/CircularProgress';
 import MuiCard from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Typography from '@mui/material/Typography';
@@ -24,6 +28,7 @@ import {
   ElectricBoltOutlined,
   MenuBookOutlined,
 } from '@mui/icons-material';
+import { TabPanel } from '@/app/components/ui/tab-panel';
 import styles from './docs.module.css';
 
 // Typography destructuring removed - using MUI Typography directly
@@ -36,7 +41,7 @@ const GraphQLSchemaViewer = lazy(() => import('./graphql-schema'));
 function LoadingSpinner() {
   return (
     <div className={styles.loadingContainer}>
-      <Spin size="large" />
+      <CircularProgress size={40} />
       <div className={styles.loadingText}>Loading documentation...</div>
     </div>
   );
@@ -113,11 +118,10 @@ const client = createClient({
           </pre>
         </CardContent></MuiCard>
 
-        <Alert
-          type="info"
-          message="Rate Limiting"
-          description="Authentication endpoints are rate-limited to prevent abuse. Rate limit headers are included in responses. Public read endpoints have generous limits."
-        />
+        <MuiAlert severity="info">
+          <AlertTitle>Rate Limiting</AlertTitle>
+          Authentication endpoints are rate-limited to prevent abuse. Rate limit headers are included in responses. Public read endpoints have generous limits.
+        </MuiAlert>
       </Stack>
     </div>
   );
@@ -256,17 +260,17 @@ for (const event of eventsReplay.events) {
 lastSequence = eventsReplay.currentSequence;`}
       </pre>
 
-      <Alert
-        type="warning"
-        message="Connection Handling"
-        description="The WebSocket connection may be interrupted by network changes. Implement reconnection logic with the graphql-ws retry options and use delta sync to maintain state consistency."
-        className={styles.alertWithMargin}
-      />
+      <MuiAlert severity="warning" className={styles.alertWithMargin}>
+        <AlertTitle>Connection Handling</AlertTitle>
+        The WebSocket connection may be interrupted by network changes. Implement reconnection logic with the graphql-ws retry options and use delta sync to maintain state consistency.
+      </MuiAlert>
     </div>
   );
 }
 
 export default function DocsClientPage() {
+  const [activeTab, setActiveTab] = useState('overview');
+
   return (
     <div className={styles.docsContainer}>
       <div className={styles.docsHeader}>
@@ -278,56 +282,44 @@ export default function DocsClientPage() {
         </Typography>
       </div>
 
-      <Tabs
-        defaultActiveKey="overview"
-        size="large"
-        items={[
-          {
-            key: 'overview',
-            label: (
-              <span>
-                <MenuBookOutlined /> Overview
-              </span>
-            ),
-            children: <OverviewTab />,
-          },
-          {
-            key: 'rest',
-            label: (
-              <span>
-                <ApiOutlined /> REST API
-              </span>
-            ),
-            children: (
-              <Suspense fallback={<LoadingSpinner />}>
-                <SwaggerUI />
-              </Suspense>
-            ),
-          },
-          {
-            key: 'graphql',
-            label: (
-              <span>
-                <ElectricBoltOutlined /> GraphQL Schema
-              </span>
-            ),
-            children: (
-              <Suspense fallback={<LoadingSpinner />}>
-                <GraphQLSchemaViewer />
-              </Suspense>
-            ),
-          },
-          {
-            key: 'websocket',
-            label: (
-              <span>
-                <CloudOutlined /> WebSocket Guide
-              </span>
-            ),
-            children: <WebSocketGuideTab />,
-          },
-        ]}
-      />
+      <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)}>
+        <Tab
+          label={<span><MenuBookOutlined /> Overview</span>}
+          value="overview"
+        />
+        <Tab
+          label={<span><ApiOutlined /> REST API</span>}
+          value="rest"
+        />
+        <Tab
+          label={<span><ElectricBoltOutlined /> GraphQL Schema</span>}
+          value="graphql"
+        />
+        <Tab
+          label={<span><CloudOutlined /> WebSocket Guide</span>}
+          value="websocket"
+        />
+      </Tabs>
+
+      <TabPanel value={activeTab} index="overview">
+        <OverviewTab />
+      </TabPanel>
+
+      <TabPanel value={activeTab} index="rest">
+        <Suspense fallback={<LoadingSpinner />}>
+          <SwaggerUI />
+        </Suspense>
+      </TabPanel>
+
+      <TabPanel value={activeTab} index="graphql">
+        <Suspense fallback={<LoadingSpinner />}>
+          <GraphQLSchemaViewer />
+        </Suspense>
+      </TabPanel>
+
+      <TabPanel value={activeTab} index="websocket">
+        <WebSocketGuideTab />
+      </TabPanel>
     </div>
   );
 }

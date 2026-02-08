@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { message, Spin, Alert } from 'antd';
+import CircularProgress from '@mui/material/CircularProgress';
+import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 import MuiButton from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
@@ -47,6 +48,7 @@ const PlaylistGeneratorDrawer: React.FC<PlaylistGeneratorDrawerProps> = ({
 }) => {
   const { token } = useWsAuthToken();
   const { isAuthenticated } = useBoardProvider();
+  const { showMessage } = useSnackbar();
 
   // Default target grade (middle of range)
   const defaultTargetGrade = 18; // 6b/V4
@@ -145,7 +147,7 @@ const PlaylistGeneratorDrawer: React.FC<PlaylistGeneratorDrawerProps> = ({
   // Generate the playlist
   const handleGenerate = useCallback(async () => {
     if (!options || plannedSlots.length === 0) {
-      message.error('No climbs to generate');
+      showMessage('No climbs to generate', 'error');
       return;
     }
 
@@ -228,13 +230,14 @@ const PlaylistGeneratorDrawer: React.FC<PlaylistGeneratorDrawerProps> = ({
     setGenerating(false);
 
     if (failedSlots.length === 0) {
-      message.success(`Added ${plannedSlots.length} climbs to playlist`);
+      showMessage(`Added ${plannedSlots.length} climbs to playlist`, 'success');
     } else if (failedSlots.length < plannedSlots.length) {
-      message.warning(
-        `Added ${plannedSlots.length - failedSlots.length} climbs. ${failedSlots.length} slots couldn't be filled.`
+      showMessage(
+        `Added ${plannedSlots.length - failedSlots.length} climbs. ${failedSlots.length} slots couldn't be filled.`,
+        'warning'
       );
     } else {
-      message.error('Failed to generate playlist. No suitable climbs found.');
+      showMessage('Failed to generate playlist. No suitable climbs found.', 'error');
     }
 
     onSuccess?.();
@@ -266,7 +269,7 @@ const PlaylistGeneratorDrawer: React.FC<PlaylistGeneratorDrawerProps> = ({
     if (drawerState === 'generating') {
       return (
         <div className={styles.generatingContainer}>
-          <Spin size="large" />
+          <CircularProgress size={48} />
           <Typography variant="body2" component="span" className={styles.generatingText}>
             Adding climbs... {progress.current} / {progress.total}
           </Typography>

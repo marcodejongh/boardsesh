@@ -135,55 +135,59 @@ export default function MoonBoardEditModal({
   };
 
   return (
-    <Modal
-      title="Edit Climb"
+    <Dialog
       open={open}
-      onOk={handleOk}
-      onCancel={onCancel}
-      okText="Save Changes"
-      okButtonProps={{ disabled: !isValid }}
-      width={600}
+      onClose={onCancel}
+      maxWidth="sm"
+      fullWidth
       className={styles.modal}
     >
-      <div className={styles.content}>
-        <div className={styles.boardSection}>
-          <MoonBoardRenderer
-            layoutFolder={layoutFolder}
-            holdSetImages={holdSetImages}
-            litUpHoldsMap={litUpHoldsMap}
-            onHoldClick={handleHoldClick}
-          />
+      <DialogTitle>Edit Climb</DialogTitle>
+      <DialogContent>
+        <div className={styles.content}>
+          <div className={styles.boardSection}>
+            <MoonBoardRenderer
+              layoutFolder={layoutFolder}
+              holdSetImages={holdSetImages}
+              litUpHoldsMap={litUpHoldsMap}
+              onHoldClick={handleHoldClick}
+            />
 
-          <div className={styles.holdCounts}>
-            <Tag color={startingCount > 0 ? 'red' : 'default'}>Start: {startingCount}/2</Tag>
-            <Tag color={handCount > 0 ? 'blue' : 'default'}>Hand: {handCount}</Tag>
-            <Tag color={finishCount > 0 ? 'green' : 'default'}>Finish: {finishCount}/2</Tag>
-            <Tag color={totalHolds > 0 ? 'purple' : 'default'}>Total: {totalHolds}</Tag>
+            <div className={styles.holdCounts}>
+              <Chip label={`Start: ${startingCount}/2`} size="small" color={startingCount > 0 ? 'error' : undefined} />
+              <Chip label={`Hand: ${handCount}`} size="small" color={handCount > 0 ? 'primary' : undefined} />
+              <Chip label={`Finish: ${finishCount}/2`} size="small" color={finishCount > 0 ? 'success' : undefined} />
+              <Chip label={`Total: ${totalHolds}`} size="small" color={totalHolds > 0 ? 'secondary' : undefined} />
+            </div>
+
+            {!isValid && totalHolds > 0 && (
+              <Typography variant="body2" component="span" color="text.secondary" className={styles.validationHint}>
+                A valid climb needs at least 1 start hold and 1 finish hold
+              </Typography>
+            )}
           </div>
 
-          {!isValid && totalHolds > 0 && (
-            <Typography variant="body2" component="span" color="text.secondary" className={styles.validationHint}>
-              A valid climb needs at least 1 start hold and 1 finish hold
-            </Typography>
-          )}
+          <Form form={form} layout="vertical" className={styles.formSection}>
+            <Form.Item
+              name="name"
+              label="Climb Name"
+              rules={[{ required: true, message: 'Please enter a name' }]}
+            >
+              <Input placeholder="Climb name" maxLength={100} />
+            </Form.Item>
+
+            <div className={styles.climbInfo}>
+              <Typography variant="body2" component="span" color="text.secondary">Setter: {climb.setter || 'Unknown'}</Typography>
+              <Typography variant="body2" component="span" color="text.secondary">Grade: {climb.userGrade || 'Unknown'}</Typography>
+              <Typography variant="body2" component="span" color="text.secondary">Angle: {climb.angle}°</Typography>
+            </div>
+          </Form>
         </div>
-
-        <Form form={form} layout="vertical" className={styles.formSection}>
-          <Form.Item
-            name="name"
-            label="Climb Name"
-            rules={[{ required: true, message: 'Please enter a name' }]}
-          >
-            <Input placeholder="Climb name" maxLength={100} />
-          </Form.Item>
-
-          <div className={styles.climbInfo}>
-            <Typography variant="body2" component="span" color="text.secondary">Setter: {climb.setter || 'Unknown'}</Typography>
-            <Typography variant="body2" component="span" color="text.secondary">Grade: {climb.userGrade || 'Unknown'}</Typography>
-            <Typography variant="body2" component="span" color="text.secondary">Angle: {climb.angle}°</Typography>
-          </div>
-        </Form>
-      </div>
-    </Modal>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onCancel}>Cancel</Button>
+        <Button variant="contained" onClick={handleOk} disabled={!isValid}>Save Changes</Button>
+      </DialogActions>
+    </Dialog>
   );
 }

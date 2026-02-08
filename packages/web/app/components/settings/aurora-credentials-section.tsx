@@ -1,16 +1,17 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import {
-  Form,
-  Space,
-  Modal,
-  message,
-  Spin,
-  Tag,
-  Popconfirm,
-  Alert,
-} from 'antd';
+import { Form } from 'antd';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import MuiAlert from '@mui/material/Alert';
+import AlertTitle from '@mui/material/AlertTitle';
+import Chip from '@mui/material/Chip';
+import Stack from '@mui/material/Stack';
+import { ConfirmPopover } from '@/app/components/ui/confirm-popover';
+import { useSnackbar } from '@/app/components/providers/snackbar-provider';
+import { LoadingSpinner } from '@/app/components/ui/loading-spinner';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
@@ -59,27 +60,19 @@ function BoardCredentialCard({
     switch (credential.syncStatus) {
       case 'active':
         return (
-          <Tag icon={<CheckCircleOutlined />} color="success">
-            Connected
-          </Tag>
+          <Chip icon={<CheckCircleOutlined />} label="Connected" size="small" color="success" />
         );
       case 'error':
         return (
-          <Tag icon={<WarningAmberOutlined />} color="error">
-            Error
-          </Tag>
+          <Chip icon={<WarningAmberOutlined />} label="Error" size="small" color="error" />
         );
       case 'expired':
         return (
-          <Tag icon={<AccessTimeOutlined />} color="warning">
-            Expired
-          </Tag>
+          <Chip icon={<AccessTimeOutlined />} label="Expired" size="small" color="warning" />
         );
       default:
         return (
-          <Tag icon={<SyncOutlined />} color="processing">
-            Syncing
-          </Tag>
+          <Chip icon={<SyncOutlined />} label="Syncing" size="small" color="primary" />
         );
     }
   };
@@ -134,29 +127,22 @@ function BoardCredentialCard({
             </div>
           )}
           {totalUnsynced > 0 && (
-            <Alert
-              type="warning"
-              icon={<WarningOutlined />}
-              showIcon
-              title={`${totalUnsynced} item${totalUnsynced > 1 ? 's' : ''} pending sync`}
-              description={
-                <Typography variant="body2" component="span" color="text.secondary">
-                  {unsyncedCounts.ascents > 0 && `${unsyncedCounts.ascents} ascent${unsyncedCounts.ascents > 1 ? 's' : ''}`}
-                  {unsyncedCounts.ascents > 0 && unsyncedCounts.climbs > 0 && ', '}
-                  {unsyncedCounts.climbs > 0 && `${unsyncedCounts.climbs} climb${unsyncedCounts.climbs > 1 ? 's' : ''}`}
-                </Typography>
-              }
-              className={styles.unsyncedAlert}
-            />
+            <MuiAlert severity="warning" icon={<WarningOutlined />} className={styles.unsyncedAlert}>
+              <AlertTitle>{`${totalUnsynced} item${totalUnsynced > 1 ? 's' : ''} pending sync`}</AlertTitle>
+              <Typography variant="body2" component="span" color="text.secondary">
+                {unsyncedCounts.ascents > 0 && `${unsyncedCounts.ascents} ascent${unsyncedCounts.ascents > 1 ? 's' : ''}`}
+                {unsyncedCounts.ascents > 0 && unsyncedCounts.climbs > 0 && ', '}
+                {unsyncedCounts.climbs > 0 && `${unsyncedCounts.climbs} climb${unsyncedCounts.climbs > 1 ? 's' : ''}`}
+              </Typography>
+            </MuiAlert>
           )}
         </div>
-        <Popconfirm
+        <ConfirmPopover
           title="Remove account link"
           description={`Are you sure you want to unlink your ${boardName} account?`}
           onConfirm={onRemove}
           okText="Yes, unlink"
-          cancelText="Cancel"
-          okButtonProps={{ danger: true }}
+          okButtonProps={{ color: 'error' }}
         >
           <Button
             color="error"
@@ -167,13 +153,14 @@ function BoardCredentialCard({
           >
             Unlink Account
           </Button>
-        </Popconfirm>
+        </ConfirmPopover>
       </CardContent>
     </Card>
   );
 }
 
 export default function AuroraCredentialsSection() {
+  const { showMessage } = useSnackbar();
   const [credentials, setCredentials] = useState<AuroraCredentialStatus[]>([]);
   const [unsyncedCounts, setUnsyncedCounts] = useState<UnsyncedCounts | null>(null);
   const [loading, setLoading] = useState(true);
@@ -243,12 +230,12 @@ export default function AuroraCredentialsSection() {
         throw new Error(error.error || 'Failed to save credentials');
       }
 
-      message.success(`${selectedBoard.charAt(0).toUpperCase() + selectedBoard.slice(1)} account linked successfully`);
+      showMessage(`${selectedBoard.charAt(0).toUpperCase() + selectedBoard.slice(1)} account linked successfully`, 'success');
       setIsModalOpen(false);
       form.resetFields();
       await fetchCredentials();
     } catch (error) {
-      message.error(error instanceof Error ? error.message : 'Failed to link account');
+      showMessage(error instanceof Error ? error.message : 'Failed to link account', 'error');
     } finally {
       setIsSaving(false);
     }
@@ -268,10 +255,10 @@ export default function AuroraCredentialsSection() {
         throw new Error(error.error || 'Failed to remove credentials');
       }
 
-      message.success('Account unlinked successfully');
+      showMessage('Account unlinked successfully', 'success');
       await fetchCredentials();
     } catch (error) {
-      message.error(error instanceof Error ? error.message : 'Failed to unlink account');
+      showMessage(error instanceof Error ? error.message : 'Failed to unlink account', 'error');
     } finally {
       setRemovingBoard(null);
     }
@@ -286,7 +273,7 @@ export default function AuroraCredentialsSection() {
       <Card>
         <CardContent>
           <div className={styles.loadingContainer}>
-            <Spin />
+            <LoadingSpinner />
           </div>
         </CardContent>
       </Card>
@@ -304,7 +291,7 @@ export default function AuroraCredentialsSection() {
             Data created in Boardsesh stays local and does not sync back to Aurora.
           </Typography>
 
-          <Space orientation="vertical" size="middle" className={styles.cardsContainer}>
+          <Stack spacing={2} className={styles.cardsContainer}>
             <BoardCredentialCard
               boardType="kilter"
               credential={getCredentialForBoard('kilter')}
@@ -321,17 +308,18 @@ export default function AuroraCredentialsSection() {
               onRemove={() => handleRemove('tension')}
               isRemoving={removingBoard === 'tension'}
             />
-          </Space>
+          </Stack>
         </CardContent>
       </Card>
 
-      <Modal
-        title={`Link ${selectedBoard.charAt(0).toUpperCase() + selectedBoard.slice(1)} Account`}
+      <Dialog
         open={isModalOpen}
-        onCancel={handleModalCancel}
-        footer={null}
-        destroyOnClose
+        onClose={handleModalCancel}
+        maxWidth="sm"
+        fullWidth
       >
+        <DialogTitle>{`Link ${selectedBoard.charAt(0).toUpperCase() + selectedBoard.slice(1)} Account`}</DialogTitle>
+        <DialogContent>
         <Typography variant="body2" component="span" color="text.secondary" className={styles.modalDescription}>
           Enter your {selectedBoard.charAt(0).toUpperCase() + selectedBoard.slice(1)} Board
           username and password to import your Aurora data.
@@ -364,7 +352,8 @@ export default function AuroraCredentialsSection() {
             {isSaving ? 'Linking...' : 'Link Account'}
           </Button>
         </Form>
-      </Modal>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

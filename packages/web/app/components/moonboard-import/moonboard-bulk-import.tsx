@@ -1,7 +1,14 @@
 'use client';
 
 import React, { useReducer, useCallback, useState, useRef } from 'react';
-import { Upload, Alert, Progress, Result, message, Checkbox } from 'antd';
+import { Upload } from 'antd';
+import MuiAlert from '@mui/material/Alert';
+import AlertTitle from '@mui/material/AlertTitle';
+import LinearProgress from '@mui/material/LinearProgress';
+import MuiCheckbox from '@mui/material/Checkbox';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import { ResultPage } from '@/app/components/ui/result-page';
+import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import MuiButton from '@mui/material/Button';
@@ -121,6 +128,7 @@ export default function MoonBoardBulkImport({
   const [state, dispatch] = useReducer(importReducer, initialState);
   const [isSaving, setIsSaving] = useState(false);
   const [contributeImages, setContributeImages] = useState(true);
+  const { showMessage } = useSnackbar();
 
   // Store original files for OCR test data upload
   const filesMapRef = useRef<Map<string, File>>(new Map());
@@ -173,7 +181,7 @@ export default function MoonBoardBulkImport({
 
     const userId = session?.user?.id;
     if (!userId) {
-      message.error('Please log in to save climbs');
+      showMessage('Please log in to save climbs', 'error');
       return;
     }
 
@@ -217,7 +225,7 @@ export default function MoonBoardBulkImport({
       }
 
       if (savedCount > 0) {
-        message.success(`Successfully saved ${savedCount} climb(s) to database`);
+        showMessage(`Successfully saved ${savedCount} climb(s) to database`, 'success');
 
         // Fire-and-forget: upload OCR test data if opted in
         if (contributeImages && backendUrl && authToken && savedClimbs.length > 0) {
@@ -230,7 +238,7 @@ export default function MoonBoardBulkImport({
         }
       }
       if (errors.length > 0) {
-        message.warning(`Failed to save ${errors.length} climb(s)`);
+        showMessage(`Failed to save ${errors.length} climb(s)`, 'warning');
         console.error('Save errors:', errors);
       }
 
@@ -241,7 +249,7 @@ export default function MoonBoardBulkImport({
       }
     } catch (error) {
       console.error('Failed to save climbs:', error);
-      message.error('Failed to save climbs. Please try again.');
+      showMessage('Failed to save climbs. Please try again.', 'error');
     } finally {
       setIsSaving(false);
     }
@@ -284,23 +292,15 @@ export default function MoonBoardBulkImport({
       </div>
 
       {!session?.user && (
-        <Alert
-          title="Login Required"
-          description={
-            <>
-              Please log in to save climbs to the database.{' '}
-              <Link href="/api/auth/signin">
-                <MuiButton variant="text" startIcon={<LoginOutlined />} sx={{ padding: 0 }}>
-                  Log in
-                </MuiButton>
-              </Link>
-            </>
-          }
-          type="warning"
-          showIcon
-          className={styles.warningAlert}
-          banner
-        />
+        <MuiAlert severity="warning" variant="filled" sx={{ borderRadius: 0 }} className={styles.warningAlert}>
+          <AlertTitle>Login Required</AlertTitle>
+          Please log in to save climbs to the database.{' '}
+          <Link href="/api/auth/signin">
+            <MuiButton variant="text" startIcon={<LoginOutlined />} sx={{ padding: 0, color: 'inherit' }}>
+              Log in
+            </MuiButton>
+          </Link>
+        </MuiAlert>
       )}
 
       {/* Upload Section */}
@@ -333,9 +333,9 @@ export default function MoonBoardBulkImport({
       {state.status === 'processing' && (
         <div className={styles.processingSection}>
           <Typography variant="h4">Processing Screenshots...</Typography>
-          <Progress
-            percent={Math.round((state.progress.current / state.progress.total) * 100)}
-            status="active"
+          <LinearProgress
+            variant="determinate"
+            value={Math.round((state.progress.current / state.progress.total) * 100)}
           />
           <Typography variant="body2" component="span" color="text.secondary">
             {state.progress.current} / {state.progress.total}: {state.progress.name}
@@ -348,33 +348,24 @@ export default function MoonBoardBulkImport({
         <>
           {/* Errors */}
           {state.errors.length > 0 && (
-            <Alert
-              title={`${state.errors.length} Warning(s)`}
-              description={
-                <ul className={styles.errorList}>
-                  {state.errors.map((err, i) => (
-                    <li key={i}>
-                      <strong>{err.name}:</strong> {err.error}
-                    </li>
-                  ))}
-                </ul>
-              }
-              type="warning"
-              showIcon
-              closable
-              className={styles.errorAlert}
-            />
+            <MuiAlert severity="warning" className={styles.errorAlert}>
+              <AlertTitle>{`${state.errors.length} Warning(s)`}</AlertTitle>
+              <ul className={styles.errorList}>
+                {state.errors.map((err, i) => (
+                  <li key={i}>
+                    <strong>{err.name}:</strong> {err.error}
+                  </li>
+                ))}
+              </ul>
+            </MuiAlert>
           )}
 
           {/* Success Summary */}
           {state.climbs.length > 0 && (
-            <Alert
-              title={`${state.climbs.length} climb(s) ready to import`}
-              description="Review the climbs below. You can edit or remove any before saving."
-              type="success"
-              showIcon
-              className={styles.successAlert}
-            />
+            <MuiAlert severity="success" className={styles.successAlert}>
+              <AlertTitle>{`${state.climbs.length} climb(s) ready to import`}</AlertTitle>
+              Review the climbs below. You can edit or remove any before saving.
+            </MuiAlert>
           )}
 
           {/* Action Buttons */}
@@ -396,9 +387,10 @@ export default function MoonBoardBulkImport({
                   </MuiButton>
                 </Stack>
                 {backendUrl && (
-                  <Checkbox checked={contributeImages} onChange={(e) => setContributeImages(e.target.checked)}>
-                    Contribute images to improve OCR accuracy
-                  </Checkbox>
+                  <FormControlLabel
+                    control={<MuiCheckbox checked={contributeImages} onChange={(e) => setContributeImages(e.target.checked)} />}
+                    label="Contribute images to improve OCR accuracy"
+                  />
                 )}
               </Stack>
             </div>
@@ -421,7 +413,7 @@ export default function MoonBoardBulkImport({
               ))}
             </Box>
           ) : (
-            <Result
+            <ResultPage
               status="warning"
               title="No climbs could be imported"
               subTitle="Please check the errors above and try again with different screenshots."

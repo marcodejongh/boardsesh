@@ -110,6 +110,7 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
   onComplete,
 }) => {
   const { status: sessionStatus } = useSession();
+  const { showMessage } = useSnackbar();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -204,7 +205,7 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
       }
     } catch (error) {
       console.error('Failed to save classification:', error);
-      message.error('Failed to save classification');
+      showMessage('Failed to save classification', 'error');
     } finally {
       setSaving(false);
     }
@@ -355,7 +356,7 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
         }}
       >
         <div className={styles.loadingContainer}>
-          <Spin size="large" />
+          <CircularProgress size={48} />
           <Typography variant="body2" component="span" className={styles.loadingText}>Loading holds...</Typography>
         </div>
       </SwipeableDrawer>
@@ -439,10 +440,10 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
           <Typography variant="body2" component="span" className={styles.progressText}>
             Hold {currentIndex + 1} of {holds.length} ({classifiedCount} classified)
           </Typography>
-          <Progress
-            percent={progress}
-            showInfo={false}
-            strokeColor={themeTokens.colors.primary}
+          <LinearProgress
+            variant="determinate"
+            value={progress}
+            sx={{ '& .MuiLinearProgress-bar': { backgroundColor: themeTokens.colors.primary } }}
           />
         </div>
 
@@ -495,10 +496,10 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
             <div className={styles.ratingLabel}>
               5 = Easy to grip, 1 = Very difficult
             </div>
-            <Rate
+            <Rating
               value={currentClassification.handRating || 0}
-              onChange={handleHandRatingChange}
-              disabled={saving}
+              onChange={(_, val) => val !== null && handleHandRatingChange(val)}
+              readOnly={saving}
             />
           </div>
 
@@ -508,10 +509,10 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
             <div className={styles.ratingLabel}>
               5 = Easy to stand on, 1 = Very difficult
             </div>
-            <Rate
+            <Rating
               value={currentClassification.footRating || 0}
-              onChange={handleFootRatingChange}
-              disabled={saving}
+              onChange={(_, val) => val !== null && handleFootRatingChange(val)}
+              readOnly={saving}
             />
           </div>
 

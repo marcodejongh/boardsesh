@@ -11,12 +11,20 @@
  */
 
 import { useState, type ReactNode } from 'react';
-import { Tabs, Input, Collapse, Tag } from 'antd';
+import { Input } from 'antd';
+import Tabs from '@mui/material/Tabs';
+import Tab from '@mui/material/Tab';
+import Accordion from '@mui/material/Accordion';
+import AccordionSummary from '@mui/material/AccordionSummary';
+import AccordionDetails from '@mui/material/AccordionDetails';
+import Chip from '@mui/material/Chip';
+import ExpandMoreOutlined from '@mui/icons-material/ExpandMoreOutlined';
 import MuiCard from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Typography from '@mui/material/Typography';
 import Stack from '@mui/material/Stack';
 import { typeDefs } from '@boardsesh/shared-schema/schema';
+import { TabPanel } from '@/app/components/ui/tab-panel';
 import { themeTokens } from '@/app/theme/theme-config';
 import { tokenizeLine } from './graphql-tokenizer';
 import styles from './docs.module.css';
@@ -103,19 +111,19 @@ function parseSchema(schema: string): SchemaSection[] {
   return sections;
 }
 
-function TypeBadge({ type }: { type: SchemaSection['type'] }) {
-  const colors: Record<SchemaSection['type'], string> = {
-    type: 'blue',
-    input: 'green',
-    enum: 'purple',
-    query: 'geekblue',
-    mutation: 'orange',
-    subscription: 'magenta',
-    union: 'gold',
-    scalar: 'default',
-  };
+const chipColors: Record<SchemaSection['type'], 'primary' | 'success' | 'secondary' | 'info' | 'warning' | 'error' | 'default'> = {
+  type: 'primary',
+  input: 'success',
+  enum: 'secondary',
+  query: 'info',
+  mutation: 'warning',
+  subscription: 'error',
+  union: 'warning',
+  scalar: 'default',
+};
 
-  return <Tag color={colors[type]}>{type.toUpperCase()}</Tag>;
+function TypeBadge({ type }: { type: SchemaSection['type'] }) {
+  return <Chip label={type.toUpperCase()} color={chipColors[type]} size="small" />;
 }
 
 function SchemaBlock({ content }: { content: string }) {
@@ -128,6 +136,7 @@ function SchemaBlock({ content }: { content: string }) {
 
 export default function GraphQLSchemaViewer() {
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState('operations');
   const sections = parseSchema(typeDefs);
 
   const filteredSections = searchQuery
@@ -147,18 +156,21 @@ export default function GraphQLSchemaViewer() {
   };
 
   const renderSectionList = (sectionList: SchemaSection[]) => (
-    <Collapse
-      items={sectionList.map((section) => ({
-        key: section.name,
-        label: (
-          <Stack direction="row" spacing={1}>
-            <TypeBadge type={section.type} />
-            <Typography variant="body2" component="span" fontWeight={600}>{section.name}</Typography>
-          </Stack>
-        ),
-        children: <SchemaBlock content={section.content} />,
-      }))}
-    />
+    <>
+      {sectionList.map((section) => (
+        <Accordion key={section.name}>
+          <AccordionSummary expandIcon={<ExpandMoreOutlined />}>
+            <Stack direction="row" spacing={1}>
+              <TypeBadge type={section.type} />
+              <Typography variant="body2" component="span" fontWeight={600}>{section.name}</Typography>
+            </Stack>
+          </AccordionSummary>
+          <AccordionDetails>
+            <SchemaBlock content={section.content} />
+          </AccordionDetails>
+        </Accordion>
+      ))}
+    </>
   );
 
   return (
@@ -172,52 +184,45 @@ export default function GraphQLSchemaViewer() {
         />
       </div>
 
-      <Tabs
-        defaultActiveKey="operations"
-        items={[
-          {
-            key: 'operations',
-            label: `Operations (${groupedSections.operations.length})`,
-            children: (
-              <div>
-                <Typography variant="body1" component="p" color="text.secondary" className={styles.operationsDescription}>
-                  Queries, Mutations, and Subscriptions available via the WebSocket GraphQL API.
-                </Typography>
-                {renderSectionList(groupedSections.operations)}
-              </div>
-            ),
-          },
-          {
-            key: 'types',
-            label: `Types (${groupedSections.types.length})`,
-            children: renderSectionList(groupedSections.types),
-          },
-          {
-            key: 'inputs',
-            label: `Inputs (${groupedSections.inputs.length})`,
-            children: renderSectionList(groupedSections.inputs),
-          },
-          {
-            key: 'enums',
-            label: `Enums (${groupedSections.enums.length})`,
-            children: renderSectionList(groupedSections.enums),
-          },
-          {
-            key: 'others',
-            label: `Others (${groupedSections.others.length})`,
-            children: renderSectionList(groupedSections.others),
-          },
-          {
-            key: 'full',
-            label: 'Full Schema',
-            children: (
-              <MuiCard><CardContent>
-                <SchemaBlock content={typeDefs} />
-              </CardContent></MuiCard>
-            ),
-          },
-        ]}
-      />
+      <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)}>
+        <Tab label={`Operations (${groupedSections.operations.length})`} value="operations" />
+        <Tab label={`Types (${groupedSections.types.length})`} value="types" />
+        <Tab label={`Inputs (${groupedSections.inputs.length})`} value="inputs" />
+        <Tab label={`Enums (${groupedSections.enums.length})`} value="enums" />
+        <Tab label={`Others (${groupedSections.others.length})`} value="others" />
+        <Tab label="Full Schema" value="full" />
+      </Tabs>
+
+      <TabPanel value={activeTab} index="operations">
+        <div>
+          <Typography variant="body1" component="p" color="text.secondary" className={styles.operationsDescription}>
+            Queries, Mutations, and Subscriptions available via the WebSocket GraphQL API.
+          </Typography>
+          {renderSectionList(groupedSections.operations)}
+        </div>
+      </TabPanel>
+
+      <TabPanel value={activeTab} index="types">
+        {renderSectionList(groupedSections.types)}
+      </TabPanel>
+
+      <TabPanel value={activeTab} index="inputs">
+        {renderSectionList(groupedSections.inputs)}
+      </TabPanel>
+
+      <TabPanel value={activeTab} index="enums">
+        {renderSectionList(groupedSections.enums)}
+      </TabPanel>
+
+      <TabPanel value={activeTab} index="others">
+        {renderSectionList(groupedSections.others)}
+      </TabPanel>
+
+      <TabPanel value={activeTab} index="full">
+        <MuiCard><CardContent>
+          <SchemaBlock content={typeDefs} />
+        </CardContent></MuiCard>
+      </TabPanel>
     </div>
   );
 }

@@ -50,9 +50,7 @@ export default function MoonBoardImportCard({
             {climb.name || 'Unnamed Climb'}
           </Typography>
           {climb.isBenchmark && (
-            <Tag color="orange" className={styles.benchmarkTag}>
-              B
-            </Tag>
+            <Chip label="B" size="small" sx={{ bgcolor: '#FBBF24', color: '#000' }} className={styles.benchmarkTag} />
           )}
         </div>
         <div className={styles.metadata}>
@@ -60,9 +58,9 @@ export default function MoonBoardImportCard({
             by {climb.setter || 'Unknown'}
           </Typography>
           <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
-            <Tag color="blue">{climb.userGrade || 'No grade'}</Tag>
-            <Tag>{climb.angle}°</Tag>
-            <Tag>{totalHolds} holds</Tag>
+            <Chip label={climb.userGrade || 'No grade'} size="small" color="primary" />
+            <Chip label={`${climb.angle}°`} size="small" />
+            <Chip label={`${totalHolds} holds`} size="small" />
           </Stack>
         </div>
       </CardContent>
@@ -70,8 +68,7 @@ export default function MoonBoardImportCard({
         <MuiButton key="edit" variant="text" startIcon={<EditOutlined />} onClick={onEdit}>
           Edit
         </MuiButton>
-        <Popconfirm
-          key="delete"
+        <ConfirmPopover
           title="Remove this climb?"
           description="This climb will not be imported."
           onConfirm={onRemove}
@@ -81,7 +78,7 @@ export default function MoonBoardImportCard({
           <MuiButton variant="text" color="error" startIcon={<DeleteOutlined />}>
             Remove
           </MuiButton>
-        </Popconfirm>
+        </ConfirmPopover>
       </CardActions>
     </MuiCard>
   );

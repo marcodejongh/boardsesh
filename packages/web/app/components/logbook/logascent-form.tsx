@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { DatePicker, Select, InputNumber, Form, Segmented } from 'antd';
-import Rating from '@mui/material/Rating';
+import MuiRating from '@mui/material/Rating';
 import Chip from '@mui/material/Chip';
 import MuiTooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
@@ -17,6 +17,11 @@ import { useBoardProvider, TickStatus } from '../board-provider/board-provider-c
 import { TENSION_KILTER_GRADES, ANGLES } from '@/app/lib/board-data';
 import { themeTokens } from '@/app/theme/theme-config';
 import dayjs from 'dayjs';
+
+// Wrapper to bridge MUI Rating's onChange(event, value) with AntD Form.Item's onChange(value)
+const FormRating = ({ value, onChange, ...props }: { value?: number; onChange?: (value: number | null) => void; max?: number }) => (
+  <MuiRating value={value ?? 0} onChange={(_, val) => onChange?.(val)} {...props} />
+);
 
 type LogType = 'ascent' | 'attempt';
 
@@ -169,16 +174,16 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boar
           <strong>{currentClimb?.name || 'N/A'}</strong>
           {showMirrorTag && (
             <Stack direction="row" spacing={0.5}>
-              <Tag
-                color={isMirrored ? 'purple' : 'default'}
-                style={{ cursor: 'pointer', margin: 0 }}
+              <Chip
+                label="Mirrored"
+                size="small"
+                color={isMirrored ? 'secondary' : undefined}
+                sx={{ cursor: 'pointer', margin: 0 }}
                 onClick={handleMirrorToggle}
-              >
-                Mirrored
-              </Tag>
-              <Tooltip title="Click the tag to toggle whether you completed this climb on the mirrored side">
+              />
+              <MuiTooltip title="Click the tag to toggle whether you completed this climb on the mirrored side">
                 <InfoOutlined style={{ color: themeTokens.neutral[400], cursor: 'pointer' }} />
-              </Tooltip>
+              </MuiTooltip>
             </Stack>
           )}
         </Stack>
@@ -204,7 +209,7 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boar
 
       {logType === 'ascent' && (
         <Form.Item name="quality" label="Quality" {...formItemLayout} rules={[{ required: true, message: 'Please rate the climb' }]}>
-          <Rate count={5} />
+          <FormRating max={5} />
         </Form.Item>
       )}
 

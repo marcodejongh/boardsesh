@@ -4,13 +4,11 @@ import React, { useState, useEffect } from 'react';
 import {
   Layout,
   Form,
-  Avatar,
   Upload,
   Space,
   Divider,
-  message,
-  Spin,
 } from 'antd';
+import MuiAvatar from '@mui/material/Avatar';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
@@ -30,6 +28,7 @@ import ControllersSection from '@/app/components/settings/controllers-section';
 import BackButton from '@/app/components/back-button';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { usePartyProfile } from '@/app/components/party-manager/party-profile-context';
+import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 const { Content, Header } = Layout;
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
@@ -79,6 +78,7 @@ export default function SettingsPageContent() {
   const [previewUrl, setPreviewUrl] = useState<string | undefined>();
   const { token: authToken } = useWsAuthToken();
   const { refreshProfile: refreshPartyProfile } = usePartyProfile();
+  const { showMessage } = useSnackbar();
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -118,7 +118,7 @@ export default function SettingsPageContent() {
       setPreviewUrl(data.profile?.avatarUrl || data.image || undefined);
     } catch (error) {
       console.error('Failed to fetch profile:', error);
-      message.error('Failed to load profile');
+      showMessage('Failed to load profile', 'error');
     } finally {
       setLoading(false);
     }
@@ -127,13 +127,13 @@ export default function SettingsPageContent() {
   const beforeUpload = (file: File): boolean => {
     // Validate file type
     if (!ALLOWED_TYPES.includes(file.type)) {
-      message.error('Only JPG, PNG, GIF, and WebP images are allowed');
+      showMessage('Only JPG, PNG, GIF, and WebP images are allowed', 'error');
       return false;
     }
 
     // Validate file size
     if (file.size > MAX_FILE_SIZE) {
-      message.error('Image must be smaller than 2MB');
+      showMessage('Image must be smaller than 2MB', 'error');
       return false;
     }
 
@@ -207,11 +207,11 @@ export default function SettingsPageContent() {
               : uploadData.avatarUrl;
           } else {
             const errorData = await uploadResponse.json().catch(() => ({}));
-            message.warning(errorData.error || 'Avatar upload failed');
+            showMessage(errorData.error || 'Avatar upload failed', 'warning');
           }
         } catch (error) {
           console.error('Avatar upload failed:', error);
-          message.warning(error instanceof Error ? error.message : 'Avatar upload failed');
+          showMessage(error instanceof Error ? error.message : 'Avatar upload failed', 'warning');
         } finally {
           setUploading(false);
         }
@@ -235,14 +235,14 @@ export default function SettingsPageContent() {
         throw new Error(error.error || 'Failed to update profile');
       }
 
-      message.success('Settings saved successfully');
+      showMessage('Settings saved successfully', 'success');
       setFileList([]);
       // Refresh profile locally and in context (so queue items show updated avatar)
       await fetchProfile();
       await refreshPartyProfile();
     } catch (error) {
       console.error('Failed to save settings:', error);
-      message.error(error instanceof Error ? error.message : 'Failed to save settings');
+      showMessage(error instanceof Error ? error.message : 'Failed to save settings', 'error');
     } finally {
       setSaving(false);
     }
@@ -261,7 +261,7 @@ export default function SettingsPageContent() {
     return (
       <Layout style={{ minHeight: '100vh', background: 'var(--semantic-background)' }}>
         <Content style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-          <Spin size="large" />
+          <CircularProgress size={48} />
         </Content>
       </Layout>
     );
@@ -301,7 +301,9 @@ export default function SettingsPageContent() {
             <Form form={form} layout="vertical">
               <Form.Item label="Avatar">
                 <Space orientation="vertical" align="center" style={{ width: '100%' }}>
-                  <Avatar size={96} src={previewUrl} icon={<PersonOutlined />} />
+                  <MuiAvatar sx={{ width: 96, height: 96 }} src={previewUrl ?? undefined}>
+                    {!previewUrl && <PersonOutlined />}
+                  </MuiAvatar>
                   <Space>
                     <Upload {...uploadProps}>
                       <Button

@@ -4,14 +4,16 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   Form,
   Space,
-  Modal,
-  message,
-  Spin,
-  Tag,
-  Popconfirm,
   Select,
-  Alert,
 } from 'antd';
+import Chip from '@mui/material/Chip';
+import MuiAlert from '@mui/material/Alert';
+import AlertTitle from '@mui/material/AlertTitle';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import { ConfirmPopover } from '@/app/components/ui/confirm-popover';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
@@ -28,6 +30,7 @@ import type { ControllerInfo } from '@/app/api/internal/controllers/route';
 import { getBoardSelectorOptions } from '@/app/lib/__generated__/product-sizes-data';
 import { BoardName } from '@/app/lib/types';
 import styles from './controllers-section.module.css';
+import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 
 const { Option } = Select;
 
@@ -46,22 +49,16 @@ function ControllerCard({ controller, onRemove, isRemoving }: ControllerCardProp
   const getStatusTag = () => {
     if (controller.isOnline) {
       return (
-        <Tag icon={<CheckCircleOutlined />} color="success">
-          Online
-        </Tag>
+        <Chip icon={<CheckCircleOutlined />} label="Online" size="small" color="success" />
       );
     }
     if (controller.lastSeen) {
       return (
-        <Tag icon={<AccessTimeOutlined />} color="default">
-          Offline
-        </Tag>
+        <Chip icon={<AccessTimeOutlined />} label="Offline" size="small" color="default" />
       );
     }
     return (
-      <Tag color="default">
-        Never connected
-      </Tag>
+      <Chip label="Never connected" size="small" color="default" />
     );
   };
 
@@ -91,7 +88,7 @@ function ControllerCard({ controller, onRemove, isRemoving }: ControllerCardProp
         <div className={styles.controllerInfo}>
           <div className={styles.infoRow}>
             <Typography variant="body2" component="span" color="text.secondary">Board:</Typography>
-            <Tag color="blue">{boardName}</Tag>
+            <Chip label={boardName} size="small" color="primary" />
           </div>
           <div className={styles.infoRow}>
             <Typography variant="body2" component="span" color="text.secondary">Layout:</Typography>
@@ -102,13 +99,13 @@ function ControllerCard({ controller, onRemove, isRemoving }: ControllerCardProp
             <Typography variant="body2" component="span">{formatLastSeen(controller.lastSeen)}</Typography>
           </div>
         </div>
-        <Popconfirm
+        <ConfirmPopover
           title="Delete controller"
           description="Are you sure you want to delete this controller? This cannot be undone."
           onConfirm={onRemove}
           okText="Yes, delete"
           cancelText="Cancel"
-          okButtonProps={{ danger: true }}
+          okButtonProps={{ color: 'error' }}
         >
           <Button
             color="error"
@@ -119,7 +116,7 @@ function ControllerCard({ controller, onRemove, isRemoving }: ControllerCardProp
           >
             Delete Controller
           </Button>
-        </Popconfirm>
+        </ConfirmPopover>
       </CardContent>
     </Card>
   );
@@ -133,56 +130,57 @@ interface ApiKeySuccessModalProps {
 }
 
 function ApiKeySuccessModal({ isOpen, apiKey, controllerName, onClose }: ApiKeySuccessModalProps) {
+  const { showMessage } = useSnackbar();
+
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(apiKey);
-      message.success('API key copied to clipboard');
+      showMessage('API key copied to clipboard', 'success');
     } catch {
-      message.error('Failed to copy - please select and copy manually');
+      showMessage('Failed to copy - please select and copy manually', 'error');
     }
   };
 
   return (
-    <Modal
-      title="Controller Registered"
+    <Dialog
       open={isOpen}
-      onCancel={onClose}
-      footer={
+      onClose={onClose}
+      disableEscapeKeyDown
+      maxWidth="sm"
+      fullWidth
+    >
+      <DialogTitle>Controller Registered</DialogTitle>
+      <DialogContent>
+        <MuiAlert severity="warning" icon={<WarningOutlined />} sx={{ marginBottom: 2 }}>
+          <AlertTitle>Save this API key now!</AlertTitle>
+          This is the only time you'll see this key. If you lose it, you'll need to delete and re-register the controller.
+        </MuiAlert>
+        <Typography variant="body1" component="p">
+          Your controller <strong>{controllerName || 'Unnamed Controller'}</strong> has been registered.
+        </Typography>
+        <Typography variant="body1" component="p" color="text.secondary">
+          Enter this API key in your ESP32 configuration:
+        </Typography>
+        <TextField
+          value={apiKey}
+          multiline
+          rows={2}
+          fullWidth
+          variant="outlined"
+          size="small"
+          slotProps={{ input: { readOnly: true, style: { fontFamily: 'monospace' } } }}
+          sx={{ marginBottom: 1 }}
+        />
+        <Button variant="outlined" startIcon={<ContentCopyOutlined />} onClick={handleCopy} fullWidth>
+          Copy API Key
+        </Button>
+      </DialogContent>
+      <DialogActions>
         <Button variant="contained" onClick={onClose}>
           Done
         </Button>
-      }
-      closable={false}
-      maskClosable={false}
-    >
-      <Alert
-        type="warning"
-        icon={<WarningOutlined />}
-        showIcon
-        message="Save this API key now!"
-        description="This is the only time you'll see this key. If you lose it, you'll need to delete and re-register the controller."
-        style={{ marginBottom: 16 }}
-      />
-      <Typography variant="body1" component="p">
-        Your controller <strong>{controllerName || 'Unnamed Controller'}</strong> has been registered.
-      </Typography>
-      <Typography variant="body1" component="p" color="text.secondary">
-        Enter this API key in your ESP32 configuration:
-      </Typography>
-      <TextField
-        value={apiKey}
-        multiline
-        rows={2}
-        fullWidth
-        variant="outlined"
-        size="small"
-        slotProps={{ input: { readOnly: true, style: { fontFamily: 'monospace' } } }}
-        sx={{ marginBottom: 1 }}
-      />
-      <Button variant="outlined" startIcon={<ContentCopyOutlined />} onClick={handleCopy} fullWidth>
-        Copy API Key
-      </Button>
-    </Modal>
+      </DialogActions>
+    </Dialog>
   );
 }
 
@@ -193,6 +191,7 @@ export default function ControllersSection() {
   const [isSaving, setIsSaving] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [form] = Form.useForm();
+  const { showMessage } = useSnackbar();
 
   // Board configuration selection state
   const [selectedBoard, setSelectedBoard] = useState<BoardName | undefined>(undefined);
@@ -328,7 +327,7 @@ export default function ControllersSection() {
 
       await fetchControllers();
     } catch (error) {
-      message.error(error instanceof Error ? error.message : 'Failed to register controller');
+      showMessage(error instanceof Error ? error.message : 'Failed to register controller', 'error');
     } finally {
       setIsSaving(false);
     }
@@ -348,10 +347,10 @@ export default function ControllersSection() {
         throw new Error(error.error || 'Failed to delete controller');
       }
 
-      message.success('Controller deleted successfully');
+      showMessage('Controller deleted successfully', 'success');
       await fetchControllers();
     } catch (error) {
-      message.error(error instanceof Error ? error.message : 'Failed to delete controller');
+      showMessage(error instanceof Error ? error.message : 'Failed to delete controller', 'error');
     } finally {
       setRemovingId(null);
     }
@@ -367,7 +366,7 @@ export default function ControllersSection() {
       <Card>
         <CardContent>
           <div className={styles.loadingContainer}>
-            <Spin />
+            <CircularProgress />
           </div>
         </CardContent>
       </Card>
@@ -415,17 +414,18 @@ export default function ControllersSection() {
         </CardContent>
       </Card>
 
-      <Modal
-        title="Register ESP32 Controller"
+      <Dialog
         open={isModalOpen}
-        onCancel={handleModalCancel}
-        footer={null}
-        destroyOnClose
+        onClose={handleModalCancel}
+        maxWidth="sm"
+        fullWidth
       >
-        <Typography variant="body2" component="span" color="text.secondary" className={styles.modalDescription}>
-          Register a new ESP32 controller to receive LED commands from BoardSesh.
-          You'll receive an API key to configure on the device.
-        </Typography>
+        <DialogTitle>Register ESP32 Controller</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" component="span" color="text.secondary" className={styles.modalDescription}>
+            Register a new ESP32 controller to receive LED commands from BoardSesh.
+            You'll receive an API key to configure on the device.
+          </Typography>
         <Form form={form} layout="vertical" onFinish={handleRegister}>
           <Form.Item
             name="name"
@@ -511,7 +511,8 @@ export default function ControllersSection() {
             {isSaving ? 'Registering...' : 'Register Controller'}
           </Button>
         </Form>
-      </Modal>
+        </DialogContent>
+      </Dialog>
 
       <ApiKeySuccessModal
         isOpen={!!successApiKey}
