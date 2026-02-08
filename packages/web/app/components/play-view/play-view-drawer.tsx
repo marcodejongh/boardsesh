@@ -337,6 +337,7 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
           open={isQueueOpen}
           showCloseButton={false}
           swipeEnabled={true}
+          disablePortal
           onClose={() => {
             setIsQueueOpen(false);
             handleExitEditMode();
