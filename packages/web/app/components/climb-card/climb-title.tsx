@@ -100,7 +100,7 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
       return showAngle ? `${baseText} @ ${climb.angle}°` : baseText;
     }
     const projectText = showAngle ? `project @ ${climb.angle}°` : 'project';
-    return <span style={{ fontStyle: 'italic' }}>{projectText}</span>;
+    return <Box component="span" sx={{ fontStyle: 'italic' }}>{projectText}</Box>;
   };
 
   const nameFontSize = titleFontSize ?? themeTokens.typography.fontSize.sm;
@@ -194,10 +194,10 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
         {/* Center: Name and quality/setter stacked */}
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0, flex: 1, minWidth: 0, alignItems: centered ? 'center' : 'flex-start' }}>
           {/* Row 1: Name with addon */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: themeTokens.spacing[2] }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: `${themeTokens.spacing[2]}px` }}>
             {nameElement}
             {nameAddon}
-          </div>
+          </Box>
           {/* Row 2: Quality, setter, ascents */}
           <Typography
             variant="body2"
@@ -209,7 +209,7 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
               ...textOverflowStyles,
             }}
           >
-            {secondLineContent.length > 0 ? secondLineContent.join(' · ') : <span style={{ fontStyle: 'italic' }}>project</span>}
+            {secondLineContent.length > 0 ? secondLineContent.join(' · ') : <Box component="span" sx={{ fontStyle: 'italic' }}>project</Box>}
           </Typography>
         </Box>
         {/* Right addon (e.g., ascent status) */}
@@ -221,10 +221,10 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: '2px', alignItems: centered ? 'center' : 'flex-start' }} className={className}>
       {/* Row 1: Name with optional benchmark icon and addon (e.g., AscentStatus) */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: themeTokens.spacing[2] }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: `${themeTokens.spacing[2]}px` }}>
         {nameElement}
         {nameAddon}
-      </div>
+      </Box>
       {/* Row 2: Difficulty/Quality and optional Angle */}
       {gradeElement}
       {/* Row 3 (optional): Setter info */}

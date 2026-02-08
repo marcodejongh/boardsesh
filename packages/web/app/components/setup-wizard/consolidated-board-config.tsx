@@ -450,9 +450,9 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
   const isFormComplete = selectedBoard && selectedLayout && selectedSize && selectedSets.length > 0;
 
   return (
-    <div
-        style={{
-          padding: themeTokens.spacing[6],
+    <Box
+        sx={{
+          padding: `${themeTokens.spacing[6]}px`,
           maxWidth: '600px',
           margin: '0 auto',
           minHeight: '100vh',
@@ -463,11 +463,11 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
       >
         <Card sx={{ boxShadow: themeTokens.shadows.lg }}>
           <CardContent>
-            <div style={{ textAlign: 'center', marginBottom: themeTokens.spacing[4] }}>
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: themeTokens.spacing[4] }}>
+            <Box sx={{ textAlign: 'center', marginBottom: `${themeTokens.spacing[4]}px` }}>
+              <Box sx={{ display: 'flex', justifyContent: 'center', marginBottom: `${themeTokens.spacing[4]}px` }}>
                 <Logo size="lg" showText={true} linkToHome={false} />
-              </div>
-            </div>
+              </Box>
+            </Box>
 
             <MuiTabs
               value={activeTab}
@@ -508,8 +508,8 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
                         </AccordionSummary>
                         <AccordionDetails>
                           {savedConfigurations.length > 0 ? (
-                            <div
-                              style={{
+                            <Box
+                              sx={{
                                 display: 'grid',
                                 gridTemplateColumns: 'repeat(2, 1fr)',
                                 gap: '16px',
@@ -527,7 +527,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
                                   isEditMode={isEditMode}
                                 />
                               ))}
-                            </div>
+                            </Box>
                           ) : (
                             <Typography variant="body2" component="span" color="text.secondary">No saved boards yet. Configure your board below and it will be saved automatically.</Typography>
                           )}
@@ -647,7 +647,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
 
             <Box>
               <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>Session Settings</Typography>
-              <div style={{ display: 'flex', alignItems: 'center', gap: themeTokens.spacing[2] }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: `${themeTokens.spacing[2]}px` }}>
                 <MuiSwitch
                   checked={allowOthersToJoin}
                   onChange={(_, checked) => {
@@ -658,36 +658,36 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
                     }
                   }}
                 />
-                <span>
-                  <GroupOutlined style={{ marginRight: themeTokens.spacing[1] }} />
+                <Box component="span">
+                  <GroupOutlined sx={{ marginRight: `${themeTokens.spacing[1]}px` }} />
                   Allow others nearby to join
-                </span>
+                </Box>
                 <MuiTooltip title="When enabled, climbers within 500 meters can find and join your session. Requires you to be signed in.">
-                  <InfoOutlined style={{ color: themeTokens.neutral[400] }} />
+                  <InfoOutlined sx={{ color: themeTokens.neutral[400] }} />
                 </MuiTooltip>
-              </div>
+              </Box>
               {allowOthersToJoin && !session && (
-                <Typography variant="body2" component="span" sx={{ display: 'block', marginTop: themeTokens.spacing[2], color: 'warning.main' }}>
+                <Typography variant="body2" component="span" sx={{ display: 'block', marginTop: `${themeTokens.spacing[2]}px`, color: 'warning.main' }}>
                   Please sign in to enable discoverable sessions.
                 </Typography>
               )}
             </Box>
 
             <Box>
-              <div style={{ display: 'flex', alignItems: 'center', gap: themeTokens.spacing[2] }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: `${themeTokens.spacing[2]}px` }}>
                 <MuiSwitch
                   checked={useAsDefault}
                   onChange={(_, checked) => setUseAsDefault(checked)}
                   disabled={!isFormComplete}
                 />
-                <span>
-                  <StarBorderOutlined style={{ marginRight: themeTokens.spacing[1] }} />
+                <Box component="span">
+                  <StarBorderOutlined sx={{ marginRight: `${themeTokens.spacing[1]}px` }} />
                   Set as my default board
-                </span>
+                </Box>
                 <MuiTooltip title="When enabled, visiting boardsesh.com will automatically load this board. Click the logo anytime to return to board selection.">
-                  <InfoOutlined style={{ color: themeTokens.neutral[400] }} />
+                  <InfoOutlined sx={{ color: themeTokens.neutral[400] }} />
                 </MuiTooltip>
-              </div>
+              </Box>
             </Box>
 
             {targetUrl ? (
@@ -737,11 +737,11 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
                         ) : selectedBoard && selectedLayout && selectedSize && selectedSets.length > 0 ? (
                           <Card sx={{ width: 400 }}>
                             <CardContent>
-                              <div style={{ textAlign: 'center', padding: '20px' }}>
-                                <div style={{ color: themeTokens.colors.primary, marginBottom: '8px' }}>
+                              <Box sx={{ textAlign: 'center', padding: '20px' }}>
+                                <Box sx={{ color: themeTokens.colors.primary, marginBottom: '8px' }}>
                                   Loading preview...
-                                </div>
-                              </div>
+                                </Box>
+                              </Box>
                             </CardContent>
                           </Card>
                         ) : (
@@ -763,7 +763,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
             </TabPanel>
 
           <MuiDivider />
-          <Stack direction="row" spacing={1} style={{ width: '100%', justifyContent: 'center' }}>
+          <Stack direction="row" spacing={1} sx={{ width: '100%', justifyContent: 'center' }}>
             <a href="https://github.com/marcodejongh/boardsesh" target="_blank" rel="noopener noreferrer">
               <Button variant="text" startIcon={<GitHub />}>
                 GitHub
@@ -798,7 +798,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
           setAllowOthersToJoin(true);
         }}
       />
-    </div>
+    </Box>
   );
 };
 

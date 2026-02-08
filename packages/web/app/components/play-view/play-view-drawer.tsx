@@ -59,6 +59,12 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const queueListRef = useRef<QueueListHandle>(null);
   const queueScrollRef = useRef<HTMLDivElement>(null);
+  const [queueScrollEl, setQueueScrollEl] = useState<HTMLDivElement | null>(null);
+
+  const queueScrollCallbackRef = useCallback((node: HTMLDivElement | null) => {
+    queueScrollRef.current = node;
+    setQueueScrollEl(node);
+  }, []);
 
   const {
     currentClimb,
@@ -238,7 +244,7 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
               onClick={() => mirrorClimb()}
               sx={
                 isMirrored
-                  ? { backgroundColor: themeTokens.colors.purple, borderColor: themeTokens.colors.purple, color: '#fff', '&:hover': { backgroundColor: themeTokens.colors.purple } }
+                  ? { backgroundColor: themeTokens.colors.purple, borderColor: themeTokens.colors.purple, color: 'common.white', '&:hover': { backgroundColor: themeTokens.colors.purple } }
                   : undefined
               }
             >
@@ -260,7 +266,7 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
           <SendClimbToBoardButton buttonType="text" />
 
           {/* Queue */}
-          <MuiBadge badgeContent={remainingQueueCount} max={99} sx={{ '& .MuiBadge-badge': { backgroundColor: themeTokens.colors.primary, color: '#fff' } }}>
+          <MuiBadge badgeContent={remainingQueueCount} max={99} sx={{ '& .MuiBadge-badge': { backgroundColor: themeTokens.colors.primary, color: 'common.white' } }}>
             <IconButton
               onClick={() => {
                 setIsActionsOpen(false);
@@ -368,7 +374,7 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
           }
         >
           <div className={styles.queueBodyLayout}>
-            <div ref={queueScrollRef} className={styles.queueScrollContainer}>
+            <div ref={queueScrollCallbackRef} className={styles.queueScrollContainer}>
               <QueueList
                 ref={queueListRef}
                 boardDetails={boardDetails}
@@ -380,7 +386,7 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
                 showHistory={showHistory}
                 selectedItems={selectedItems}
                 onToggleSelect={handleToggleSelect}
-                scrollContainerRef={queueScrollRef}
+                scrollContainer={queueScrollEl}
               />
             </div>
             {isEditMode && selectedItems.size > 0 && (

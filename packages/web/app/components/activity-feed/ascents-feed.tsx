@@ -24,6 +24,7 @@ import {
   type GetUserGroupedAscentsFeedQueryResponse,
 } from '@/app/lib/graphql/operations';
 import AscentThumbnail from './ascent-thumbnail';
+import { themeTokens } from '@/app/theme/theme-config';
 import styles from './ascents-feed.module.css';
 
 dayjs.extend(relativeTime);
@@ -123,7 +124,7 @@ const GroupedFeedItem: React.FC<{ group: GroupedAscentFeedItem }> = ({ group }) 
                 label={statusSummary.text}
                 size="small"
                 color={statusSummary.color === 'green' ? 'success' : undefined}
-                sx={statusSummary.color === 'gold' ? { bgcolor: '#FBBF24', color: '#000' } : undefined}
+                sx={statusSummary.color === 'gold' ? { bgcolor: themeTokens.colors.amber, color: themeTokens.neutral[900] } : undefined}
                 className={styles.statusTag}
               />
               <MuiTypography variant="body2" component="span" fontWeight={600} className={styles.climbName}>

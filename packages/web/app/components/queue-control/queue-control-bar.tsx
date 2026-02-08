@@ -272,7 +272,7 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
   return (
     <div id="onboarding-queue-bar" className={`queue-bar-shadow ${styles.queueBar}`} data-testid="queue-control-bar">
       {/* Main Control Bar */}
-      <MuiCard variant="outlined" className={styles.card} sx={{ border: 'none' }}>
+      <MuiCard variant="outlined" className={styles.card} sx={{ border: 'none', background: 'transparent' }}>
         <CardContent sx={{ p: 0, '&:last-child': { pb: 0 } }}>
         {/* Swipe container - captures swipe gestures, does NOT translate */}
         <div className={styles.swipeWrapper}>
@@ -338,7 +338,7 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
               </Box>
 
               {/* Button cluster — STATIC */}
-              <Box sx={{ flex: 'none', marginLeft: themeTokens.spacing[2] }}>
+              <Box sx={{ flex: 'none', marginLeft: `${themeTokens.spacing[2]}px` }}>
                 <Stack direction="row" spacing={1}>
                   {/* Mirror button - desktop only */}
                   {boardDetails.supportsMirroring ? (
@@ -355,7 +355,7 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
                         color={currentClimb?.mirrored ? 'primary' : 'default'}
                         sx={
                           currentClimb?.mirrored
-                            ? { backgroundColor: themeTokens.colors.purple, borderColor: themeTokens.colors.purple, color: '#fff', '&:hover': { backgroundColor: themeTokens.colors.purple } }
+                            ? { backgroundColor: themeTokens.colors.purple, borderColor: themeTokens.colors.purple, color: 'common.white', '&:hover': { backgroundColor: themeTokens.colors.purple } }
                             : undefined
                         }
                       >

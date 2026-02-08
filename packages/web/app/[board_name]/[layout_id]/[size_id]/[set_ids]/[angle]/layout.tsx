@@ -159,9 +159,6 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
                     id="content-for-scrollable"
                     style={{
                       flex: 1,
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      overflowX: 'hidden',
                       paddingLeft: '10px',
                       paddingRight: '10px',
                       paddingTop: 'calc(max(8dvh, 48px) + env(safe-area-inset-top, 0px))',
@@ -173,7 +170,7 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
                     </Suspense>
                   </main>
 
-                  <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 10 }}>
+                  <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 10, background: 'linear-gradient(to bottom, rgba(255,255,255,0.6), rgba(255,255,255,1.0))' }}>
                     <QueueControlBar boardDetails={boardDetails} angle={angle} />
                     <BottomTabBar boardDetails={boardDetails} angle={angle} />
                   </div>

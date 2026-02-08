@@ -5,6 +5,7 @@ import MuiButton from '@mui/material/Button';
 import MuiBadge from '@mui/material/Badge';
 import Typography from '@mui/material/Typography';
 import Stack from '@mui/material/Stack';
+import Box from '@mui/material/Box';
 import SwipeableDrawer from '../../swipeable-drawer/swipeable-drawer';
 import { ActionTooltip } from '../action-tooltip';
 import CheckOutlined from '@mui/icons-material/CheckOutlined';
@@ -82,7 +83,7 @@ export function TickAction({
   }, [boardDetails, climb.uuid, angle, closeDrawer]);
 
   const renderSignInPrompt = () => (
-    <Stack spacing={3} style={{ width: '100%', textAlign: 'center', padding: '24px 0' }}>
+    <Stack spacing={3} sx={{ width: '100%', textAlign: 'center', padding: '24px 0' }}>
       <Typography variant="body2" component="span" fontWeight={600} sx={{ fontSize: 16 }}>Sign in to record ticks</Typography>
       <Typography variant="body1" component="p" color="text.secondary">
         Create a Boardsesh account to log your climbs and track your progress.
@@ -151,10 +152,10 @@ export function TickAction({
   const iconElement = (
     <>
       <ActionTooltip title={label}>
-        <MuiBadge badgeContent={badgeCount} max={99} sx={{ '& .MuiBadge-badge': { backgroundColor: badgeColor, color: '#fff' } }}>
-          <span onClick={handleClick} style={{ cursor: 'pointer' }} className={className}>
+        <MuiBadge badgeContent={badgeCount} max={99} sx={{ '& .MuiBadge-badge': { backgroundColor: badgeColor, color: 'common.white' } }}>
+          <Box component="span" onClick={handleClick} sx={{ cursor: 'pointer' }} className={className}>
             {icon}
-          </span>
+          </Box>
         </MuiBadge>
       </ActionTooltip>
       {drawers}
@@ -164,7 +165,7 @@ export function TickAction({
   // Button mode
   const buttonElement = (
     <>
-      <MuiBadge badgeContent={badgeCount} max={99} sx={{ '& .MuiBadge-badge': { backgroundColor: badgeColor, color: '#fff' } }}>
+      <MuiBadge badgeContent={badgeCount} max={99} sx={{ '& .MuiBadge-badge': { backgroundColor: badgeColor, color: 'common.white' } }}>
         <MuiButton
           variant="outlined"
           startIcon={icon}

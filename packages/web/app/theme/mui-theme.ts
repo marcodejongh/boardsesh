@@ -107,7 +107,7 @@ export const muiTheme = createTheme({
           textTransform: 'none' as const,
           '&:not(:disabled):not(.MuiButton-text):hover': {
             transform: 'translateY(-1px)',
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+            boxShadow: themeTokens.shadows.sm,
           },
           '&:not(:disabled):active': {
             transform: 'translateY(0)',
@@ -115,7 +115,7 @@ export const muiTheme = createTheme({
         },
         sizeMedium: {
           height: 40,
-          padding: '0 16px',
+          padding: `0 ${themeTokens.spacing[4]}px`,
         },
         sizeSmall: {
           height: 32,
@@ -136,7 +136,7 @@ export const muiTheme = createTheme({
           transition: 'box-shadow 0.2s ease, transform 0.2s ease',
           userSelect: 'none' as const,
           '&:hover': {
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+            boxShadow: themeTokens.shadows.md,
           },
         },
       },
@@ -230,14 +230,14 @@ export const muiTheme = createTheme({
       styleOverrides: {
         badge: {
           fontWeight: themeTokens.typography.fontWeight.semibold,
-          boxShadow: '0 0 0 2px #fff',
+          boxShadow: `0 0 0 2px ${themeTokens.semantic.surface}`,
         },
       },
     },
     MuiRating: {
       styleOverrides: {
         iconFilled: {
-          color: '#FBBF24',
+          color: themeTokens.colors.amber,
         },
         icon: {
           transition: 'transform 0.15s ease',

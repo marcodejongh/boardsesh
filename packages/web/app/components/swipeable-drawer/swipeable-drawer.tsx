@@ -8,6 +8,7 @@ import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
 import CloseOutlined from '@mui/icons-material/CloseOutlined';
 import { useSwipeToDismiss } from './use-swipe-to-dismiss';
+import { themeTokens } from '@/app/theme/theme-config';
 import styles from './swipeable-drawer.module.css';
 
 type Placement = 'left' | 'right' | 'top' | 'bottom';
@@ -19,7 +20,7 @@ export interface SwipeableDrawerProps {
   dismissAnimationMs?: number;
   showDragHandle?: boolean;
   scrollBodyRef?: React.RefObject<HTMLElement | null>;
-  // Mapped from AntD Drawer props
+  // Drawer props
   open?: boolean;
   onClose?: (e?: React.MouseEvent | React.KeyboardEvent) => void;
   placement?: Placement;
@@ -189,12 +190,12 @@ const SwipeableDrawer: React.FC<SwipeableDrawerProps> = ({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '16px 24px',
-          borderBottom: '1px solid var(--neutral-200, #e8e8e8)',
+          padding: `${themeTokens.spacing[4]}px ${themeTokens.spacing[6]}px`,
+          borderBottom: `1px solid ${themeTokens.neutral[200]}`,
           ...mergedStyles?.header,
         }}
       >
-        <Typography variant="h6" component="div" sx={{ fontWeight: 600, fontSize: '16px' }}>
+        <Typography variant="h6" component="div" sx={{ fontWeight: themeTokens.typography.fontWeight.semibold, fontSize: themeTokens.typography.fontSize.base }}>
           {userTitle}
         </Typography>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -259,7 +260,7 @@ const SwipeableDrawer: React.FC<SwipeableDrawerProps> = ({
   const paperSx = useMemo(() => {
     const sx: Record<string, unknown> = {};
 
-    // Apply wrapper styles (AntD styles.wrapper → MUI PaperProps.sx)
+    // Apply wrapper styles (styles.wrapper → MUI PaperProps.sx)
     if (mergedStyles?.wrapper) {
       Object.assign(sx, mergedStyles.wrapper);
     }
@@ -283,12 +284,6 @@ const SwipeableDrawer: React.FC<SwipeableDrawerProps> = ({
     return sx;
   }, [mergedStyles?.wrapper, height, width, mergedStyle?.transform, mergedStyle?.transition]);
 
-  // Backdrop sx from mask styles
-  const backdropSx = useMemo(() => {
-    if (!mergedStyles?.mask) return undefined;
-    return mergedStyles.mask;
-  }, [mergedStyles?.mask]);
-
   const handleMuiClose: MuiDrawerProps['onClose'] = useCallback((_event: object, reason: string) => {
     if (reason === 'backdropClick' && maskClosable === false) {
       return;
@@ -309,7 +304,7 @@ const SwipeableDrawer: React.FC<SwipeableDrawerProps> = ({
         onEntered: () => handleAfterOpenChange(true),
       }}
       slotProps={{
-        backdrop: backdropSx ? { sx: backdropSx } : undefined,
+        backdrop: mergedStyles?.mask ? { style: mergedStyles.mask } : undefined,
       }}
       PaperProps={{
         sx: paperSx,
@@ -321,7 +316,7 @@ const SwipeableDrawer: React.FC<SwipeableDrawerProps> = ({
         sx={{
           flex: 1,
           overflow: 'auto',
-          padding: '24px',
+          padding: `${themeTokens.spacing[6]}px`,
           ...mergedStyles?.body,
         }}
       >
@@ -330,8 +325,8 @@ const SwipeableDrawer: React.FC<SwipeableDrawerProps> = ({
       {footer && (
         <Box
           sx={{
-            padding: '10px 16px',
-            borderTop: '1px solid var(--neutral-200, #e8e8e8)',
+            padding: `${themeTokens.spacing[3]}px ${themeTokens.spacing[4]}px`,
+            borderTop: `1px solid ${themeTokens.neutral[200]}`,
             ...mergedStyles?.footer,
           }}
         >

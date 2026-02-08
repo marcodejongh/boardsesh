@@ -6,6 +6,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import { EmptyState } from '@/app/components/ui/empty-state';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
+import Box from '@mui/material/Box';
 import LocationOnOutlined from '@mui/icons-material/LocationOnOutlined';
 import RefreshOutlined from '@mui/icons-material/RefreshOutlined';
 import { useGeolocation, getGeolocationErrorMessage } from '@/app/hooks/use-geolocation';
@@ -83,13 +84,13 @@ const JoinSessionTab = () => {
   // Show permission request UI
   if (permissionState !== 'granted' && !loading) {
     return (
-      <div style={{ textAlign: 'center', padding: themeTokens.spacing[8] }}>
-        <LocationOnOutlined style={{ fontSize: 48, color: themeTokens.colors.primary, marginBottom: themeTokens.spacing[4] }} />
-        <Typography variant="body1" component="p" sx={{ marginBottom: themeTokens.spacing[4] }}>
+      <Box sx={{ textAlign: 'center', padding: `${themeTokens.spacing[8]}px` }}>
+        <LocationOnOutlined sx={{ fontSize: 48, color: themeTokens.colors.primary, marginBottom: `${themeTokens.spacing[4]}px` }} />
+        <Typography variant="body1" component="p" sx={{ marginBottom: `${themeTokens.spacing[4]}px` }}>
           To find climbing sessions near you, we need access to your location.
         </Typography>
         {error && (
-          <MuiAlert severity="warning" sx={{ marginBottom: themeTokens.spacing[4] }}>
+          <MuiAlert severity="warning" sx={{ marginBottom: `${themeTokens.spacing[4]}px` }}>
             {getGeolocationErrorMessage(error)}
           </MuiAlert>
         )}
@@ -101,53 +102,53 @@ const JoinSessionTab = () => {
         >
           Enable Location Access
         </Button>
-      </div>
+      </Box>
     );
   }
 
   // Loading state
   if (loading || fetchingNearby) {
     return (
-      <div style={{ textAlign: 'center', padding: themeTokens.spacing[8] }}>
+      <Box sx={{ textAlign: 'center', padding: `${themeTokens.spacing[8]}px` }}>
         <CircularProgress size={48} />
-        <Typography variant="body1" component="p" sx={{ marginTop: themeTokens.spacing[4] }}>
+        <Typography variant="body1" component="p" sx={{ marginTop: `${themeTokens.spacing[4]}px` }}>
           {loading ? 'Getting your location...' : 'Finding nearby sessions...'}
         </Typography>
-      </div>
+      </Box>
     );
   }
 
   // No backend URL configured
   if (!backendHttpUrl) {
     return (
-      <div style={{ textAlign: 'center', padding: themeTokens.spacing[8] }}>
+      <Box sx={{ textAlign: 'center', padding: `${themeTokens.spacing[8]}px` }}>
         <EmptyState description="No backend server configured">
           <Typography variant="body1" component="p" color="text.secondary" sx={{ marginBottom: 0 }}>
             To join sessions, you need to connect to a Boardsesh backend server.
           </Typography>
         </EmptyState>
-      </div>
+      </Box>
     );
   }
 
   // Error state
   if (fetchError) {
     return (
-      <div style={{ textAlign: 'center', padding: themeTokens.spacing[8] }}>
-        <MuiAlert severity="error" sx={{ marginBottom: themeTokens.spacing[4] }}>
+      <Box sx={{ textAlign: 'center', padding: `${themeTokens.spacing[8]}px` }}>
+        <MuiAlert severity="error" sx={{ marginBottom: `${themeTokens.spacing[4]}px` }}>
           {fetchError}
         </MuiAlert>
         <Button variant="outlined" startIcon={<RefreshOutlined />} onClick={refresh}>
           Try Again
         </Button>
-      </div>
+      </Box>
     );
   }
 
   // No sessions found
   if (nearbySessions.length === 0) {
     return (
-      <div style={{ textAlign: 'center', padding: themeTokens.spacing[8] }}>
+      <Box sx={{ textAlign: 'center', padding: `${themeTokens.spacing[8]}px` }}>
         <EmptyState description="No sessions found nearby">
           <Typography variant="body1" component="p" color="text.secondary" sx={{ marginBottom: 0 }}>
             There are no active climbing sessions within 500 meters.
@@ -158,18 +159,18 @@ const JoinSessionTab = () => {
           variant="outlined"
           startIcon={<RefreshOutlined />}
           onClick={refresh}
-          sx={{ marginTop: themeTokens.spacing[4] }}
+          sx={{ marginTop: `${themeTokens.spacing[4]}px` }}
         >
           Refresh
         </Button>
-      </div>
+      </Box>
     );
   }
 
   // Show nearby sessions
   return (
-    <div style={{ padding: themeTokens.spacing[2] }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: themeTokens.spacing[4] }}>
+    <Box sx={{ padding: `${themeTokens.spacing[2]}px` }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: `${themeTokens.spacing[4]}px` }}>
         <Typography variant="body2" component="span" fontWeight={600}>Sessions nearby ({nearbySessions.length})</Typography>
         <Button
           variant="outlined"
@@ -180,16 +181,16 @@ const JoinSessionTab = () => {
         >
           Refresh
         </Button>
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: themeTokens.spacing[3] }}>
+      </Box>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: `${themeTokens.spacing[3]}px` }}>
         {nearbySessions.map((session) => (
           <NearbySessionCard
             key={session.id}
             session={session}
           />
         ))}
-      </div>
-    </div>
+      </Box>
+    </Box>
   );
 };
 

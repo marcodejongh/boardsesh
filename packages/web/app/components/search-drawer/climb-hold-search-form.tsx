@@ -81,8 +81,8 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
               </MenuItem>
             ))}
           </MuiSelect>
-          {anyHoldsCount > 0 && <Chip label={`${anyHoldsCount} in`} size="small" sx={{ bgcolor: themeTokens.colors.primary, color: '#fff', margin: 0 }} />}
-          {notHoldsCount > 0 && <Chip label={`${notHoldsCount} out`} size="small" sx={{ bgcolor: themeTokens.colors.error, color: '#fff', margin: 0 }} />}
+          {anyHoldsCount > 0 && <Chip label={`${anyHoldsCount} in`} size="small" sx={{ bgcolor: themeTokens.colors.primary, color: 'common.white', margin: 0 }} />}
+          {notHoldsCount > 0 && <Chip label={`${notHoldsCount} out`} size="small" sx={{ bgcolor: themeTokens.colors.error, color: 'common.white', margin: 0 }} />}
         </Stack>
       </div>
 

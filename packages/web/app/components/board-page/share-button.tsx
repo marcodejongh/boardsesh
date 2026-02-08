@@ -145,7 +145,7 @@ function LedConnectionTab() {
             <Lightbulb
               sx={{ color: themeTokens.colors.success, fontSize: '18px' }}
             />
-            <div style={{ flex: 1 }}>
+            <Box sx={{ flex: 1 }}>
               <Typography variant="body2" component="span" fontWeight={600} sx={{ color: themeTokens.colors.success }}>
                 Board Connected
               </Typography>
@@ -153,7 +153,7 @@ function LedConnectionTab() {
               <Typography variant="body2" component="span" color="text.secondary" sx={{ fontSize: '12px' }}>
                 Routes illuminate automatically when navigating
               </Typography>
-            </div>
+            </Box>
             <MuiButton
               variant="text"
               color="error"
@@ -293,7 +293,7 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
         }}
       >
         <CheckCircleOutlined sx={{ color: themeTokens.colors.success, fontSize: '18px' }} />
-        <div style={{ flex: 1 }}>
+        <Box sx={{ flex: 1 }}>
           <Typography variant="body2" component="span" fontWeight={600} sx={{ color: themeTokens.colors.success }}>
             Party Mode Active
           </Typography>
@@ -301,7 +301,7 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
           <Typography variant="body2" component="span" color="text.secondary" sx={{ fontSize: '12px' }}>
             Session: {sessionId?.substring(0, 8)}...
           </Typography>
-        </div>
+        </Box>
         <MuiButton
           variant="text"
           color="error"
@@ -503,18 +503,18 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
         <Box sx={{ display: 'flex', gap: 2, flexDirection: 'column' }}>
           {/* Controller Mode Banner */}
           {isControllerMode && (
-            <div
-              style={{
+            <Box
+              sx={{
                 padding: '12px',
                 background: themeTokens.semantic.selected,
                 border: `1px solid ${themeTokens.colors.primary}`,
                 borderRadius: themeTokens.borderRadius.md,
-                marginBottom: '16px',
+                mb: '16px',
               }}
             >
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <span style={{ fontSize: '18px' }}>🎮</span>
-                <div>
+                <Box component="span" sx={{ fontSize: '18px' }}>🎮</Box>
+                <Box>
                   <Typography variant="body2" component="span" fontWeight={600} sx={{ color: themeTokens.colors.primary }}>
                     Board Controller Connected
                   </Typography>
@@ -522,9 +522,9 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
                   <Typography variant="body2" component="span" color="text.secondary" sx={{ fontSize: '12px' }}>
                     Queue management is handled by your Board Controller
                   </Typography>
-                </div>
+                </Box>
               </Box>
-            </div>
+            </Box>
           )}
 
           {/* Party Mode Content */}

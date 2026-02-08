@@ -46,7 +46,7 @@ export function MirrorAction({
   const iconSize = size === 'small' ? 14 : size === 'large' ? 20 : 16;
 
   const iconStyle = isMirrored
-    ? { color: '#1890ff', fontSize: iconSize }
+    ? { color: themeTokens.colors.purple, fontSize: iconSize }
     : { fontSize: iconSize };
   const icon = <SwapHorizOutlined sx={iconStyle} />;
 

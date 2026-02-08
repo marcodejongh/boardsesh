@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
+import Box from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
@@ -125,10 +126,10 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
 
   return (
     <>
-      <div style={{ position: 'relative', overflow: 'hidden' }}>
+      <Box sx={{ position: 'relative', overflow: 'hidden' }}>
         {/* Left action background (favorite - revealed on swipe right) */}
-        <div
-          style={{
+        <Box
+          sx={{
             position: 'absolute',
             left: 0,
             top: 0,
@@ -138,21 +139,21 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'flex-start',
-            paddingLeft: themeTokens.spacing[4],
+            paddingLeft: `${themeTokens.spacing[4]}px`,
             opacity: leftActionOpacity,
             visibility: showLeftAction ? 'visible' : 'hidden',
           }}
         >
           {isFavorited ? (
-            <Favorite style={{ color: 'white', fontSize: 20 }} />
+            <Favorite sx={{ color: 'white', fontSize: 20 }} />
           ) : (
-            <FavoriteBorderOutlined style={{ color: 'white', fontSize: 20 }} />
+            <FavoriteBorderOutlined sx={{ color: 'white', fontSize: 20 }} />
           )}
-        </div>
+        </Box>
 
         {/* Right action background (add to queue - revealed on swipe left) */}
-        <div
-          style={{
+        <Box
+          sx={{
             position: 'absolute',
             right: 0,
             top: 0,
@@ -162,27 +163,27 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'flex-end',
-            paddingRight: themeTokens.spacing[4],
+            paddingRight: `${themeTokens.spacing[4]}px`,
             opacity: rightActionOpacity,
             visibility: showRightAction ? 'visible' : 'hidden',
           }}
         >
-          <AddOutlined style={{ color: 'white', fontSize: 20 }} />
-        </div>
+          <AddOutlined sx={{ color: 'white', fontSize: 20 }} />
+        </Box>
 
         {/* Swipeable content */}
-        <div
+        <Box
           {...swipeHandlers}
           ref={(node: HTMLDivElement | null) => {
             doubleTapRef(node);
             swipeHandlers.ref(node);
           }}
           onDoubleClick={handleDoubleClick}
-          style={{
+          sx={{
             display: 'flex',
             alignItems: 'center',
             padding: `${themeTokens.spacing[2]}px ${themeTokens.spacing[3]}px`,
-            gap: themeTokens.spacing[3],
+            gap: `${themeTokens.spacing[3]}px`,
             backgroundColor: selected ? (getGradeTintColor(climb.difficulty, 'light') ?? themeTokens.semantic.selected) : themeTokens.semantic.surface,
             borderBottom: `1px solid ${themeTokens.neutral[200]}`,
             transform: `translateX(${swipeOffset}px)`,
@@ -192,16 +193,16 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
           }}
         >
           {/* Thumbnail */}
-          <div style={{ width: themeTokens.spacing[16], flexShrink: 0 }}>
+          <Box sx={{ width: themeTokens.spacing[16], flexShrink: 0 }}>
             <ClimbThumbnail
               boardDetails={boardDetails}
               currentClimb={climb}
               enableNavigation
             />
-          </div>
+          </Box>
 
           {/* Center: Name, quality, setter */}
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
             <Typography
               variant="body2"
               component="span"
@@ -231,10 +232,10 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
               {hasQuality ? `${climb.quality_average}\u2605` : ''}{' '}
               {climb.setter_username && `${climb.setter_username}`}
             </Typography>
-          </div>
+          </Box>
 
           {/* Right: Ascent status + V-grade colorized */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: themeTokens.spacing[1], flexShrink: 0 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: `${themeTokens.spacing[1]}px`, flexShrink: 0 }}>
             <AscentStatus climbUuid={climb.uuid} fontSize={20} />
             {vGrade && (
               <Typography
@@ -263,7 +264,7 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
                 {climb.difficulty}
               </Typography>
             )}
-          </div>
+          </Box>
 
           {/* Ellipsis menu button */}
           <IconButton
@@ -276,8 +277,8 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
           >
             <MoreHorizOutlined />
           </IconButton>
-        </div>
-      </div>
+        </Box>
+      </Box>
 
       {/* Actions Drawer */}
       <SwipeableDrawer

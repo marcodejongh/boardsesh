@@ -37,9 +37,10 @@ type QueueListProps = {
   showHistory?: boolean;
   selectedItems?: Set<string>;
   onToggleSelect?: (uuid: string) => void;
+  scrollContainer?: HTMLElement | null;
 };
 
-const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, onClimbNavigate, isEditMode = false, showHistory = false, selectedItems, onToggleSelect }, ref) => {
+const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, onClimbNavigate, isEditMode = false, showHistory = false, selectedItems, onToggleSelect, scrollContainer }, ref) => {
   const {
     viewOnlyMode,
     currentClimbQueueItem,
@@ -140,14 +141,14 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
   );
 
   // Set up Intersection Observer for infinite scroll
-  // Using root: null (viewport) is more robust than querying for specific DOM elements
-  // and works correctly with any scrollable ancestor
+  // Uses scrollContainerRef as root when provided (for nested scroll containers like drawers/sidebars),
+  // falls back to null (viewport) for top-level scrolling
   useEffect(() => {
     const element = loadMoreRef.current;
     if (!element || viewOnlyMode) return;
 
     const observer = new IntersectionObserver(handleObserver, {
-      root: null,
+      root: scrollContainer ?? null,
       rootMargin: '100px',
       threshold: 0,
     });
@@ -157,7 +158,7 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
     return () => {
       observer.disconnect();
     };
-  }, [handleObserver, viewOnlyMode]);
+  }, [handleObserver, viewOnlyMode, scrollContainer]);
 
   // Find the index of the current climb in the queue
   const currentIndex = queue.findIndex((item) => item.uuid === currentClimbQueueItem?.uuid);
@@ -300,7 +301,7 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
               style={{ minHeight: themeTokens.spacing[5], marginTop: themeTokens.spacing[2] }}
             >
               {(isFetchingClimbs || isFetchingNextPage) && (
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: themeTokens.spacing[2], padding: themeTokens.spacing[2] }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: `${themeTokens.spacing[2]}px`, padding: `${themeTokens.spacing[2]}px` }}>
                   {[1, 2, 3].map((i) => (
                     <Box key={i} sx={{ display: 'flex', flexWrap: 'nowrap', gap: '8px 8px', alignItems: 'center' }}>
                       <Box sx={{ width: { xs: '25%', sm: '20.83%' } }}>

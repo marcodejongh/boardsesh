@@ -14,6 +14,7 @@ import MuiSwitch from '@mui/material/Switch';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import MuiButton from '@mui/material/Button';
 import { track } from '@vercel/analytics';
+import { themeTokens } from '@/app/theme/theme-config';
 import BoardRenderer from './board-renderer';
 
 const LEGEND_HEIGHT = 96; // Increased from 80
@@ -307,7 +308,7 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({ boardDetails, litUpHoldsMap
                 thumbnail={true}
               />
             </div>
-            <span style={{ fontSize: '14px', color: '#fff', fontWeight: 500 }}>Loading heatmap...</span>
+            <span style={{ fontSize: '14px', color: themeTokens.semantic.surface, fontWeight: 500 }}>Loading heatmap...</span>
           </div>
         )}
         <svg

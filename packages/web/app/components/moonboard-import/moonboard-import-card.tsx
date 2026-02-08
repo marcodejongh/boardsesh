@@ -10,6 +10,7 @@ import Typography from '@mui/material/Typography';
 import Chip from '@mui/material/Chip';
 import { ConfirmPopover } from '@/app/components/ui/confirm-popover';
 import { EditOutlined, DeleteOutlined } from '@mui/icons-material';
+import { themeTokens } from '@/app/theme/theme-config';
 import MoonBoardRenderer from '../moonboard-renderer/moonboard-renderer';
 import type { MoonBoardClimb } from '@boardsesh/moonboard-ocr/browser';
 import type { LitUpHoldsMap } from '../board-renderer/types';
@@ -50,7 +51,7 @@ export default function MoonBoardImportCard({
             {climb.name || 'Unnamed Climb'}
           </Typography>
           {climb.isBenchmark && (
-            <Chip label="B" size="small" sx={{ bgcolor: '#FBBF24', color: '#000' }} className={styles.benchmarkTag} />
+            <Chip label="B" size="small" sx={{ bgcolor: themeTokens.colors.amber, color: themeTokens.neutral[900] }} className={styles.benchmarkTag} />
           )}
         </div>
         <div className={styles.metadata}>

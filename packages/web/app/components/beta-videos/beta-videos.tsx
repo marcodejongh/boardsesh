@@ -66,8 +66,8 @@ const BetaVideos: React.FC<BetaVideosProps> = ({ betaLinks }) => {
         >
         <CardContent sx={{ p: 0, '&:last-child': { pb: 0 } }}>
           {embedUrl ? (
-            <div
-              style={{
+            <Box
+              sx={{
                 position: 'relative',
                 paddingBottom: '100%',
                 overflow: 'hidden',
@@ -88,24 +88,24 @@ const BetaVideos: React.FC<BetaVideosProps> = ({ betaLinks }) => {
                 scrolling="no"
                 title={`Beta video by ${betaLink.foreign_username || 'unknown'}`}
               />
-            </div>
+            </Box>
           ) : (
-            <div
-              style={{
-                padding: themeTokens.spacing[8],
+            <Box
+              sx={{
+                padding: `${themeTokens.spacing[8]}px`,
                 textAlign: 'center',
                 background: themeTokens.neutral[100],
               }}
             >
-              <Instagram style={{ fontSize: 32, color: themeTokens.neutral[400] }} />
-              <p style={{ margin: `${themeTokens.spacing[2]}px 0 0`, color: themeTokens.neutral[500] }}>
+              <Instagram sx={{ fontSize: 32, color: themeTokens.neutral[400] }} />
+              <Box component="p" sx={{ margin: `${themeTokens.spacing[2]}px 0 0`, color: themeTokens.neutral[500] }}>
                 Unable to load video
-              </p>
-            </div>
+              </Box>
+            </Box>
           )}
-          <div
-            style={{
-              padding: themeTokens.spacing[3],
+          <Box
+            sx={{
+              padding: `${themeTokens.spacing[3]}px`,
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
@@ -114,16 +114,17 @@ const BetaVideos: React.FC<BetaVideosProps> = ({ betaLinks }) => {
           >
             {betaLink.foreign_username && (
               <Typography variant="body2" component="span" color="text.secondary" sx={{ fontSize: themeTokens.typography.fontSize.sm }}>
-                <PersonOutlined style={{ marginRight: 4, fontSize: 'inherit', verticalAlign: 'middle' }} />@{betaLink.foreign_username}
-                {betaLink.angle && <span style={{ marginLeft: 8 }}>{betaLink.angle}&deg;</span>}
+                <PersonOutlined sx={{ marginRight: 4, fontSize: 'inherit', verticalAlign: 'middle' }} />@{betaLink.foreign_username}
+                {betaLink.angle && <Box component="span" sx={{ marginLeft: 8 }}>{betaLink.angle}&deg;</Box>}
               </Typography>
             )}
-            <a
+            <Box
+              component="a"
               href={betaLink.link}
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
-              style={{
+              sx={{
                 color: themeTokens.colors.primary,
                 fontSize: themeTokens.typography.fontSize.sm,
                 display: 'flex',
@@ -132,8 +133,8 @@ const BetaVideos: React.FC<BetaVideosProps> = ({ betaLinks }) => {
               }}
             >
               <Instagram sx={{ fontSize: 'inherit' }} /> View
-            </a>
-          </div>
+            </Box>
+          </Box>
         </CardContent>
         </Card>
       </Box>
@@ -147,7 +148,7 @@ const BetaVideos: React.FC<BetaVideosProps> = ({ betaLinks }) => {
   const summaryLabel = (
     <Stack direction="row" spacing={2}>
       <Typography variant="body2" component="span" fontWeight={600}>
-        <VideocamOutlined style={{ marginRight: 8, fontSize: 'inherit', verticalAlign: 'middle' }} />
+        <VideocamOutlined sx={{ marginRight: 8, fontSize: 'inherit', verticalAlign: 'middle' }} />
         Beta Videos
       </Typography>
       <Typography variant="body2" component="span" color="text.secondary">
@@ -163,7 +164,7 @@ const BetaVideos: React.FC<BetaVideosProps> = ({ betaLinks }) => {
         <AccordionSummary expandIcon={<ExpandMoreOutlined />}>
           <Stack direction="row" spacing={2}>
             <Typography variant="body2" component="span" fontWeight={600}>
-              <VideocamOutlined style={{ marginRight: 8, fontSize: 'inherit', verticalAlign: 'middle' }} />
+              <VideocamOutlined sx={{ marginRight: 8, fontSize: 'inherit', verticalAlign: 'middle' }} />
               Beta Videos
             </Typography>
             <Typography variant="body2" component="span" color="text.secondary">No videos available</Typography>
@@ -219,8 +220,8 @@ const BetaVideos: React.FC<BetaVideosProps> = ({ betaLinks }) => {
           </DialogTitle>
           <DialogContent>
             {selectedVideo && (
-              <div
-                style={{
+              <Box
+                sx={{
                   position: 'relative',
                   paddingBottom: '140%',
                   overflow: 'hidden',
@@ -241,15 +242,16 @@ const BetaVideos: React.FC<BetaVideosProps> = ({ betaLinks }) => {
                   scrolling="no"
                   title="Beta video"
                 />
-              </div>
+              </Box>
             )}
           </DialogContent>
           <DialogActions>
-            <a
+            <Box
+              component="a"
               href={selectedVideo?.link}
               target="_blank"
               rel="noopener noreferrer"
-              style={{
+              sx={{
                 color: themeTokens.colors.primary,
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -257,7 +259,7 @@ const BetaVideos: React.FC<BetaVideosProps> = ({ betaLinks }) => {
               }}
             >
               <Instagram sx={{ fontSize: 'inherit' }} /> View on Instagram
-            </a>
+            </Box>
           </DialogActions>
         </Dialog>
       )}

@@ -36,7 +36,6 @@ import { parseScreenshot } from '@boardsesh/moonboard-ocr/browser';
 import { convertOcrHoldsToMap } from '@/app/lib/moonboard-climbs-db';
 import AuthModal from '../auth/auth-modal';
 import { useSnackbar } from '../providers/snackbar-provider';
-import { useCreateClimbContext } from './create-climb-context';
 import CreateClimbHeatmapOverlay from './create-climb-heatmap-overlay';
 import styles from './create-climb-form.module.css';
 
@@ -115,8 +114,6 @@ export default function CreateClimbForm({
   const { isConnected, sendFramesToBoard } = useBoardBluetooth({
     boardDetails: boardType === 'aurora' ? boardDetails : undefined
   });
-
-  const createClimbContext = useCreateClimbContext();
 
   // Refs
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -374,29 +371,6 @@ export default function CreateClimbForm({
     });
   }, [boardType, boardDetails]);
 
-  // Register actions with context for header to use
-  useEffect(() => {
-    if (createClimbContext) {
-      createClimbContext.registerActions({
-        onPublish: handlePublish,
-        onCancel: handleCancel,
-      });
-    }
-  }, [createClimbContext, handlePublish, handleCancel]);
-
-  // Update context state
-  useEffect(() => {
-    if (createClimbContext) {
-      createClimbContext.setCanPublish(canSave);
-    }
-  }, [createClimbContext, canSave]);
-
-  useEffect(() => {
-    if (createClimbContext) {
-      createClimbContext.setIsPublishing(isSaving);
-    }
-  }, [createClimbContext, isSaving]);
-
   // Render save/login button
   const renderSaveButton = () => {
     if (boardType === 'aurora') {
@@ -479,29 +453,6 @@ export default function CreateClimbForm({
         </IconButton>
         {renderSaveButton()}
       </div>
-
-      {/* Auth alert for both board types */}
-      {!isLoggedIn && (
-        <MuiAlert
-          severity="warning"
-          className={styles.authAlert}
-          action={
-            boardType === 'aurora' ? (
-              <MuiButton size="small" variant="contained" onClick={() => setShowAuthModal(true)}>
-                Sign In
-              </MuiButton>
-            ) : (
-              <Link href="/api/auth/signin">
-                <MuiButton size="small" variant="contained">
-                  Sign In
-                </MuiButton>
-              </Link>
-            )
-          }
-        >
-          Sign in to your Boardsesh account to save your climb.
-        </MuiAlert>
-      )}
 
       {/* MoonBoard OCR errors */}
       {boardType === 'moonboard' && ocrError && (
@@ -684,7 +635,7 @@ export default function CreateClimbForm({
             {boardType === 'aurora' ? (
               <>
                 <Chip label={`Starting: ${startingCount}/2`} size="small" color={startingCount > 0 ? 'success' : undefined} />
-                <Chip label={`Finish: ${finishCount}/2`} size="small" sx={finishCount > 0 ? { bgcolor: '#EC4899', color: '#fff' } : undefined} />
+                <Chip label={`Finish: ${finishCount}/2`} size="small" sx={finishCount > 0 ? { bgcolor: themeTokens.colors.pink, color: themeTokens.semantic.surface } : undefined} />
                 <Chip label={`Total: ${totalHolds}`} size="small" color={totalHolds > 0 ? 'primary' : undefined} />
               </>
             ) : (

@@ -70,7 +70,7 @@ export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boa
         sx={{
           '& .MuiBadge-badge': {
             backgroundColor: hasSuccessfulAscent ? themeTokens.colors.success : themeTokens.colors.error,
-            color: '#fff',
+            color: 'common.white',
           },
         }}
       >
@@ -92,10 +92,10 @@ export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boa
           placement="bottom"
           onClose={closeDrawer}
           open={drawerVisible}
-          swipeRegion="body"
+          swipeRegion="handle"
           styles={{ wrapper: { height: '60%' } }}
         >
-          <Stack spacing={3} style={{ width: '100%', textAlign: 'center', padding: '24px 0' }}>
+          <Stack spacing={3} sx={{ width: '100%', textAlign: 'center', padding: '24px 0' }}>
             <Typography variant="body2" component="span" fontWeight={600} sx={{ fontSize: 16 }}>Sign in to record ticks</Typography>
             <Typography variant="body1" component="p" color="text.secondary">
               Create a Boardsesh account to log your climbs and track your progress.

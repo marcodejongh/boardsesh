@@ -1,7 +1,5 @@
 'use client';
 import React, { useEffect, useRef, useCallback, useState } from 'react';
-import Button from '@mui/material/Button';
-import ButtonGroup from '@mui/material/ButtonGroup';
 import IconButton from '@mui/material/IconButton';
 import Box from '@mui/material/Box';
 import AppsOutlined from '@mui/icons-material/AppsOutlined';
@@ -139,37 +137,50 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
   }, [handleObserver]);
 
   return (
-    <div style={{ paddingTop: themeTokens.spacing[1] }}>
+    <Box sx={{ pt: `${themeTokens.spacing[1]}px` }}>
       {/* View mode toggle + recent searches */}
       <Box
         sx={{
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'flex-end',
-          gap: themeTokens.spacing[2],
-          padding: `${themeTokens.spacing[1]}px ${themeTokens.spacing[1]}px ${themeTokens.spacing[2]}px`,
+          position: 'relative',
+          padding: `${themeTokens.spacing[1]}px 60px ${themeTokens.spacing[2]}px ${themeTokens.spacing[1]}px`,
           minWidth: 0,
         }}
       >
         <RecentSearchPills />
-        <ButtonGroup size="small" sx={{ flexShrink: 0 }}>
+        <Box
+          sx={{
+            position: 'absolute',
+            right: `${themeTokens.spacing[1]}px`,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            display: 'flex',
+            gap: '2px',
+            backgroundColor: 'rgba(255, 255, 255, 0.6)',
+            borderRadius: `${themeTokens.borderRadius.sm}px`,
+            padding: '2px',
+          }}
+        >
           <IconButton
             onClick={() => handleViewModeChange('list')}
             aria-label="List view"
             color={viewMode === 'list' ? 'primary' : 'default'}
             size="small"
+            sx={{ padding: '4px' }}
           >
-            <FormatListBulletedOutlined />
+            <FormatListBulletedOutlined fontSize="small" />
           </IconButton>
           <IconButton
             onClick={() => handleViewModeChange('grid')}
             aria-label="Grid view"
             color={viewMode === 'grid' ? 'primary' : 'default'}
             size="small"
+            sx={{ padding: '4px' }}
           >
-            <AppsOutlined />
+            <AppsOutlined fontSize="small" />
           </IconButton>
-        </ButtonGroup>
+        </Box>
       </Box>
 
       {viewMode === 'grid' ? (
@@ -216,7 +227,7 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
       )}
 
       {/* Sentinel element for Intersection Observer - needs min-height to be observable */}
-      <div ref={loadMoreRef} style={{ minHeight: themeTokens.spacing[5], marginTop: viewMode === 'grid' ? themeTokens.spacing[4] : 0 }}>
+      <Box ref={loadMoreRef} sx={{ minHeight: `${themeTokens.spacing[5]}px`, mt: viewMode === 'grid' ? `${themeTokens.spacing[4]}px` : 0 }}>
         {isFetchingClimbs && climbs.length > 0 && (
           viewMode === 'grid' ? (
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: `${themeTokens.spacing[4]}px` }}>
@@ -227,12 +238,12 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
           )
         )}
         {!hasMoreResults && climbs.length > 0 && (
-          <div style={{ textAlign: 'center', padding: themeTokens.spacing[5], color: themeTokens.neutral[400] }}>
+          <Box sx={{ textAlign: 'center', padding: `${themeTokens.spacing[5]}px`, color: themeTokens.neutral[400] }}>
             No more climbs
-          </div>
+          </Box>
         )}
-      </div>
-    </div>
+      </Box>
+    </Box>
   );
 };
 
