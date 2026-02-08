@@ -4,10 +4,17 @@ import ws from 'ws';
 import { config } from 'dotenv';
 import path from 'path';
 import fs from 'fs';
-import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import { sql } from 'drizzle-orm';
 import { boardClimbs, boardClimbStats, boardClimbHolds } from '../src/schema/boards/unified.js';
+import {
+  uuidv5,
+  coordinateToHoldId,
+  movesToFrames,
+  moveToHoldState,
+  MOONBOARD_UUID_NAMESPACE,
+  type MoonBoardMove,
+} from './moonboard-helpers.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -37,13 +44,6 @@ function configureNeonForLocal(connectionString: string): void {
 // =============================================================================
 // Types for the MoonBoard JSON dump
 // =============================================================================
-
-interface MoonBoardMove {
-  problemId: number;
-  description: string; // e.g., "J3", "E4"
-  isStart: boolean;
-  isEnd: boolean;
-}
 
 interface MoonBoardProblem {
   name: string;
@@ -82,9 +82,6 @@ interface DumpFile {
 // Mapping constants
 // =============================================================================
 
-// Fixed namespace UUID for deterministic v5 UUID generation
-const MOONBOARD_UUID_NAMESPACE = '6ba7b810-9dad-11d1-80b4-00c04fd430c8'; // DNS namespace
-
 // holdsetup.apiId → layout ID in our database
 const HOLDSETUP_TO_LAYOUT: Record<number, number> = {
   1: 2,  // MoonBoard 2016
@@ -114,83 +111,6 @@ const GRADE_TO_DIFFICULTY: Record<string, number> = {
   '8B': 30, '8b': 30,
   '8B+': 31, '8b+': 31,
 };
-
-// Hold state codes for frames encoding
-const HOLD_STATE_CODES = {
-  start: 42,
-  hand: 43,
-  finish: 44,
-};
-
-// MoonBoard grid: 11 columns (A-K)
-const COLUMNS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K'];
-const NUM_COLUMNS = 11;
-
-// =============================================================================
-// Helper functions
-// =============================================================================
-
-/**
- * Generate deterministic UUID v5 from a string using a fixed namespace.
- */
-function uuidv5(name: string, namespace: string): string {
-  // Parse namespace UUID into bytes
-  const nsBytes = Buffer.from(namespace.replace(/-/g, ''), 'hex');
-
-  // Hash namespace + name with SHA-1
-  const hash = crypto.createHash('sha1');
-  hash.update(nsBytes);
-  hash.update(name);
-  const bytes = hash.digest();
-
-  // Set version (5) and variant (RFC 4122)
-  bytes[6] = (bytes[6] & 0x0f) | 0x50;
-  bytes[8] = (bytes[8] & 0x3f) | 0x80;
-
-  // Format as UUID string
-  const hex = bytes.subarray(0, 16).toString('hex');
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
-}
-
-/**
- * Convert a grid coordinate (e.g., "J3") to a numeric hold ID.
- * ID = (row - 1) * 11 + colIndex + 1
- */
-function coordinateToHoldId(coord: string): number {
-  const col = coord.charAt(0).toUpperCase();
-  const row = parseInt(coord.slice(1), 10);
-  const colIndex = COLUMNS.indexOf(col);
-  if (colIndex === -1) throw new Error(`Invalid column in coordinate: ${coord}`);
-  return (row - 1) * NUM_COLUMNS + colIndex + 1;
-}
-
-/**
- * Convert moves to frames string.
- * Format: p{holdId}r{roleCode}
- */
-function movesToFrames(moves: MoonBoardMove[]): string {
-  return moves.map((move) => {
-    const holdId = coordinateToHoldId(move.description);
-    let role: number;
-    if (move.isStart) {
-      role = HOLD_STATE_CODES.start;
-    } else if (move.isEnd) {
-      role = HOLD_STATE_CODES.finish;
-    } else {
-      role = HOLD_STATE_CODES.hand;
-    }
-    return `p${holdId}r${role}`;
-  }).join('');
-}
-
-/**
- * Get the hold state name for a move.
- */
-function moveToHoldState(move: MoonBoardMove): string {
-  if (move.isStart) return 'STARTING';
-  if (move.isEnd) return 'FINISH';
-  return 'HAND';
-}
 
 // =============================================================================
 // Files to import

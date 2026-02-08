@@ -6,8 +6,11 @@ export const MOONBOARD_ENABLED = true;
 
 // MoonBoard grades - uses uppercase Font notation for display
 // These grades match the board_difficulty_grades table and BOULDER_GRADES in board-data.ts
-// MoonBoard only supports V3+ (starting from 6a)
+// MoonBoard supports grades from 5+ (V1) and above
 export const MOONBOARD_GRADES = [
+  { value: '5+', label: '5+ (V1)', difficultyId: 13 },
+  { value: '5B', label: '5B (V1)', difficultyId: 14 },
+  { value: '5C', label: '5C (V2)', difficultyId: 15 },
   { value: '6A', label: '6A (V3)', difficultyId: 16 },
   { value: '6A+', label: '6A+ (V3)', difficultyId: 17 },
   { value: '6B', label: '6B (V4)', difficultyId: 18 },
