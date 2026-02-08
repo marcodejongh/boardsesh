@@ -198,116 +198,118 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
       swipeEnabled={!isActionsOpen && !isQueueOpen}
       showDragHandle={true}
       styles={{
-        body: { padding: 0, overflow: 'hidden', touchAction: 'none', overscrollBehaviorY: 'contain' },
+        body: { padding: 0, overflow: 'hidden' },
         wrapper: { height: '100%' },
       }}
     >
       <div className={styles.drawerContent}>
-        {/* Board renderer with card-swipe */}
-        {currentClimb && (
-          <SwipeBoardCarousel
-            boardDetails={boardDetails}
-            currentClimb={currentClimb}
-            nextClimb={nextItem?.climb}
-            previousClimb={prevItem?.climb}
-            onSwipeNext={handleSwipeNext}
-            onSwipePrevious={handleSwipePrevious}
-            canSwipeNext={canSwipeNext}
-            canSwipePrevious={canSwipePrevious}
-            className={styles.boardSection}
-            boardContainerClassName={styles.swipeCardContainer}
-          />
-        )}
-
-        {/* Climb info below board */}
-        <div className={styles.climbInfoSection}>
-          <ClimbTitle
-            climb={currentClimb}
-            layout="horizontal"
-            showSetterInfo
-            showAngle
-            centered
-            titleFontSize={themeTokens.typography.fontSize.xl}
-            rightAddon={currentClimb && <TickButton currentClimb={currentClimb} angle={angle} boardDetails={boardDetails} buttonType="text" />}
-          />
-        </div>
-
-        {/* Action bar with prev/next on the outside */}
-        <div className={styles.actionBar}>
-          <IconButton
-            disabled={!canSwipePrevious}
-            onClick={() => {
-              const prev = getPreviousClimbQueueItem();
-              if (prev) setCurrentClimbQueueItem(prev);
-            }}
-          >
-            <SkipPreviousOutlined />
-          </IconButton>
-
-          {/* Mirror */}
-          {boardDetails.supportsMirroring && (
-            <IconButton
-              color={isMirrored ? 'primary' : 'default'}
-              onClick={() => mirrorClimb()}
-              sx={
-                isMirrored
-                  ? { backgroundColor: themeTokens.colors.purple, borderColor: themeTokens.colors.purple, color: 'common.white', '&:hover': { backgroundColor: themeTokens.colors.purple } }
-                  : undefined
-              }
-            >
-              <SyncOutlined />
-            </IconButton>
+        <div className={styles.aboveFold}>
+          {/* Board renderer with card-swipe */}
+          {currentClimb && (
+            <SwipeBoardCarousel
+              boardDetails={boardDetails}
+              currentClimb={currentClimb}
+              nextClimb={nextItem?.climb}
+              previousClimb={prevItem?.climb}
+              onSwipeNext={handleSwipeNext}
+              onSwipePrevious={handleSwipePrevious}
+              canSwipeNext={canSwipeNext}
+              canSwipePrevious={canSwipePrevious}
+              className={styles.boardSection}
+              boardContainerClassName={styles.swipeCardContainer}
+            />
           )}
 
-          {/* Favorite */}
-          <IconButton
-            onClick={() => toggleFavorite()}
-          >
-            {isFavorited ? <Favorite sx={{ color: themeTokens.colors.error }} /> : <FavoriteBorderOutlined />}
-          </IconButton>
+          {/* Climb info below board */}
+          <div className={styles.climbInfoSection}>
+            <ClimbTitle
+              climb={currentClimb}
+              layout="horizontal"
+              showSetterInfo
+              showAngle
+              centered
+              titleFontSize={themeTokens.typography.fontSize.xl}
+              rightAddon={currentClimb && <TickButton currentClimb={currentClimb} angle={angle} boardDetails={boardDetails} buttonType="text" />}
+            />
+          </div>
 
-          {/* Party */}
-          <ShareBoardButton buttonType="text" />
+          {/* Action bar with prev/next on the outside */}
+          <div className={styles.actionBar}>
+            <IconButton
+              disabled={!canSwipePrevious}
+              onClick={() => {
+                const prev = getPreviousClimbQueueItem();
+                if (prev) setCurrentClimbQueueItem(prev);
+              }}
+            >
+              <SkipPreviousOutlined />
+            </IconButton>
 
-          {/* LED */}
-          <SendClimbToBoardButton buttonType="text" />
+            {/* Mirror */}
+            {boardDetails.supportsMirroring && (
+              <IconButton
+                color={isMirrored ? 'primary' : 'default'}
+                onClick={() => mirrorClimb()}
+                sx={
+                  isMirrored
+                    ? { backgroundColor: themeTokens.colors.purple, borderColor: themeTokens.colors.purple, color: 'common.white', '&:hover': { backgroundColor: themeTokens.colors.purple } }
+                    : undefined
+                }
+              >
+                <SyncOutlined />
+              </IconButton>
+            )}
 
-          {/* More actions */}
-          <IconButton
-            onClick={() => {
-              setIsQueueOpen(false);
-              setIsActionsOpen(true);
-            }}
-            aria-label="Climb actions"
-          >
-            <MoreHorizOutlined />
-          </IconButton>
+            {/* Favorite */}
+            <IconButton
+              onClick={() => toggleFavorite()}
+            >
+              {isFavorited ? <Favorite sx={{ color: themeTokens.colors.error }} /> : <FavoriteBorderOutlined />}
+            </IconButton>
 
-          {/* Queue */}
-          <MuiBadge badgeContent={remainingQueueCount} max={99} sx={{ '& .MuiBadge-badge': { backgroundColor: themeTokens.colors.primary, color: 'common.white' } }}>
+            {/* Party */}
+            <ShareBoardButton buttonType="text" />
+
+            {/* LED */}
+            <SendClimbToBoardButton buttonType="text" />
+
+            {/* More actions */}
             <IconButton
               onClick={() => {
-                setIsActionsOpen(false);
-                setIsQueueOpen(true);
+                setIsQueueOpen(false);
+                setIsActionsOpen(true);
               }}
-              aria-label="Open queue"
+              aria-label="Climb actions"
             >
-              <FormatListBulletedOutlined />
+              <MoreHorizOutlined />
             </IconButton>
-          </MuiBadge>
 
-          <IconButton
-            disabled={!canSwipeNext}
-            onClick={() => {
-              const next = getNextClimbQueueItem();
-              if (next) setCurrentClimbQueueItem(next);
-            }}
-          >
-            <SkipNextOutlined />
-          </IconButton>
+            {/* Queue */}
+            <MuiBadge badgeContent={remainingQueueCount} max={99} sx={{ '& .MuiBadge-badge': { backgroundColor: themeTokens.colors.primary, color: 'common.white' } }}>
+              <IconButton
+                onClick={() => {
+                  setIsActionsOpen(false);
+                  setIsQueueOpen(true);
+                }}
+                aria-label="Open queue"
+              >
+                <FormatListBulletedOutlined />
+              </IconButton>
+            </MuiBadge>
+
+            <IconButton
+              disabled={!canSwipeNext}
+              onClick={() => {
+                const next = getNextClimbQueueItem();
+                if (next) setCurrentClimbQueueItem(next);
+              }}
+            >
+              <SkipNextOutlined />
+            </IconButton>
+          </div>
         </div>
 
-        {/* Beta videos & comments */}
+        {/* Beta videos & comments — below the fold, scroll to reveal */}
         {currentClimb && (
           <div className={styles.extrasSection}>
             <PlayViewBetaSlider boardName={boardDetails.board_name} climbUuid={currentClimb.uuid} />
