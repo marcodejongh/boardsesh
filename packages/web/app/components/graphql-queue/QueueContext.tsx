@@ -60,7 +60,7 @@ const createClimbQueueItem = (
   suggested: !!suggested,
 });
 
-const QueueContext = createContext<GraphQLQueueContextType | undefined>(undefined);
+export const QueueContext = createContext<GraphQLQueueContextType | undefined>(undefined);
 
 
 export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: GraphQLQueueContextProps) => {

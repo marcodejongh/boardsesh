@@ -81,8 +81,8 @@ test.describe('Queue Persistence - Local Mode', () => {
     await page.goto('/settings');
     await page.waitForLoadState('networkidle');
 
-    // Check for global queue control bar
-    const globalBar = page.locator('[data-testid="global-queue-control-bar"]');
+    // Check for queue control bar (same unified component used everywhere)
+    const globalBar = page.locator('[data-testid="queue-control-bar"]');
     await expect(globalBar).toBeVisible({ timeout: 5000 });
   });
 
@@ -101,8 +101,8 @@ test.describe('Queue Persistence - Local Mode', () => {
     await page.goto('/settings');
     await page.waitForLoadState('networkidle');
 
-    // Click the global bar
-    const globalBar = page.locator('[data-testid="global-queue-control-bar"]');
+    // Click the queue control bar
+    const globalBar = page.locator('[data-testid="queue-control-bar"]');
     if (await globalBar.isVisible()) {
       await globalBar.click();
 
