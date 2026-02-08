@@ -1,18 +1,12 @@
-/* Drag handle zone - shared base */
+/* Drag handle zone - shared base (visual affordance only, MUI handles swipe) */
 .dragHandleZone {
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  cursor: grab;
   user-select: none;
   -webkit-user-select: none;
-  touch-action: none;
   -webkit-touch-callout: none;
-}
-
-.dragHandleZone:active {
-  cursor: grabbing;
 }
 
 /* Horizontal drag handle (top/bottom placements) */
@@ -60,15 +54,6 @@
 /* Title wrapper: handle injected above/below the user's title in the header */
 .titleWithHandle {
   margin: 0;
-}
-
-/* Body wrapper for swipeRegion='body' - just a handler target, sizing from parent */
-.bodySwipeWrapper {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  touch-action: none;
-  -webkit-touch-callout: none;
 }
 
 /* Mobile: hide close button, show drag handle */

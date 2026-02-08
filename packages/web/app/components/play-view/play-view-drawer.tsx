@@ -10,7 +10,6 @@ import FavoriteBorderOutlined from '@mui/icons-material/FavoriteBorderOutlined';
 import Favorite from '@mui/icons-material/Favorite';
 import SkipPreviousOutlined from '@mui/icons-material/SkipPreviousOutlined';
 import SkipNextOutlined from '@mui/icons-material/SkipNextOutlined';
-import ExpandMoreOutlined from '@mui/icons-material/ExpandMoreOutlined';
 import MoreHorizOutlined from '@mui/icons-material/MoreHorizOutlined';
 import FormatListBulletedOutlined from '@mui/icons-material/FormatListBulletedOutlined';
 import DeleteOutlined from '@mui/icons-material/DeleteOutlined';
@@ -218,7 +217,6 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
       open={isOpen}
       onClose={handleClose}
       showCloseButton={false}
-      swipeRegion="body"
       swipeEnabled={!isActionsOpen && !isQueueOpen}
       showDragHandle={true}
       styles={{
@@ -227,25 +225,6 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
       }}
     >
       <div className={styles.drawerContent}>
-        {/* Top bar: close button, ellipsis menu */}
-        <div className={styles.topBar}>
-          <IconButton
-            onClick={handleClose}
-            aria-label="Close play view"
-          >
-            <ExpandMoreOutlined />
-          </IconButton>
-          <IconButton
-            onClick={() => {
-              setIsQueueOpen(false);
-              setIsActionsOpen(true);
-            }}
-            aria-label="Climb actions"
-          >
-            <MoreHorizOutlined />
-          </IconButton>
-        </div>
-
         {/* Board renderer with card-swipe */}
         {isOpen && currentClimb && (
           <SwipeBoardCarousel
@@ -315,6 +294,17 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
           {/* LED */}
           <SendClimbToBoardButton buttonType="text" />
 
+          {/* More actions */}
+          <IconButton
+            onClick={() => {
+              setIsQueueOpen(false);
+              setIsActionsOpen(true);
+            }}
+            aria-label="Climb actions"
+          >
+            <MoreHorizOutlined />
+          </IconButton>
+
           {/* Queue */}
           <MuiBadge badgeContent={remainingQueueCount} max={99} sx={{ '& .MuiBadge-badge': { backgroundColor: themeTokens.colors.primary, color: 'common.white' } }}>
             <IconButton
@@ -348,7 +338,6 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
             open={isActionsOpen}
             onClose={() => setIsActionsOpen(false)}
             disablePortal
-            swipeRegion="body"
             styles={{
               wrapper: { height: 'auto' },
               body: { padding: `${themeTokens.spacing[2]}px 0` },
@@ -377,8 +366,6 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
             handleExitEditMode();
             setShowHistory(false);
           }}
-          swipeRegion="scrollBody"
-          scrollBodyRef={queueScrollRef}
           onTransitionEnd={(open) => {
             if (open) {
               setTimeout(() => {

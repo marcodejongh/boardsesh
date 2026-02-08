@@ -133,7 +133,6 @@ export function TickAction({
           placement="bottom"
           onClose={closeDrawer}
           open={drawerVisible}
-          swipeRegion="handle"
           styles={{ wrapper: { height: '60%' } }}
         >
           {renderSignInPrompt()}
