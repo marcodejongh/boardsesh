@@ -21,7 +21,7 @@
   justify-content: center;
   overflow: hidden;
   position: relative;
-  touch-action: none;
+  touch-action: pan-y;
 }
 
 .climbInfoSection {
