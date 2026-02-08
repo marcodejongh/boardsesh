@@ -32,16 +32,19 @@ export const ConnectionSettingsProvider: React.FC<{ children: React.ReactNode }>
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    getPreference<PartyMode>(PARTY_MODE_PREFERENCE_KEY).then((storedMode) => {
-      if (storedMode === 'direct' || storedMode === 'backend') {
-        setStoredPartyMode(storedMode);
-      }
+    getPreference<PartyMode>(PARTY_MODE_PREFERENCE_KEY)
+      .then((storedMode) => {
+        if (storedMode === 'direct' || storedMode === 'backend') {
+          setStoredPartyMode(storedMode);
+        }
 
-      // Clean up old preference keys if they exist
-      removePreference('boardsesh:backendUrl').catch(() => {});
-
-      setIsLoaded(true);
-    });
+        // Clean up old preference keys if they exist
+        removePreference('boardsesh:backendUrl').catch(() => {});
+      })
+      .catch(() => {})
+      .finally(() => {
+        setIsLoaded(true);
+      });
   }, []);
 
   // Effective party mode - env var forces backend mode

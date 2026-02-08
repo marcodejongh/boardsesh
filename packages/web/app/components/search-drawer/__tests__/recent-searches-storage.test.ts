@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { openDB } from 'idb';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   getRecentSearches,
   addRecentSearch,
@@ -144,6 +144,41 @@ describe('recent-searches-storage', () => {
       const results = await getRecentSearches();
       expect(results).toHaveLength(1);
       expect(results[0].label).toBe('Old search');
+    });
+  });
+
+  describe('error handling', () => {
+    it('getRecentSearches should return empty array and log error on db failure', async () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      vi.resetModules();
+      vi.doMock('idb', () => ({
+        openDB: () => Promise.reject(new Error('IndexedDB unavailable')),
+      }));
+      const mod = await import('../recent-searches-storage');
+
+      const result = await mod.getRecentSearches();
+      expect(result).toEqual([]);
+      expect(errorSpy).toHaveBeenCalledWith('Failed to get recent searches:', expect.any(Error));
+
+      errorSpy.mockRestore();
+      vi.doUnmock('idb');
+    });
+
+    it('addRecentSearch should not throw and log error on db failure', async () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      vi.resetModules();
+      vi.doMock('idb', () => ({
+        openDB: () => Promise.reject(new Error('IndexedDB unavailable')),
+      }));
+      const mod = await import('../recent-searches-storage');
+
+      await expect(mod.addRecentSearch('test', { minGrade: 5 })).resolves.toBeUndefined();
+      expect(errorSpy).toHaveBeenCalled();
+
+      errorSpy.mockRestore();
+      vi.doUnmock('idb');
     });
   });
 });

@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { openDB } from 'idb';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getPreference, setPreference, removePreference } from '../user-preferences-db';
 
 const DB_NAME = 'boardsesh-user-preferences';
@@ -128,6 +128,63 @@ describe('user-preferences-db', () => {
       // Second read should return from IndexedDB (localStorage is already cleared)
       const result = await getPreference<string>('climbListViewMode');
       expect(result).toBe('grid');
+    });
+  });
+
+  describe('error handling', () => {
+    it('getPreference should return null and log error on db failure', async () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      // Corrupt the store by writing a value, then force an error by
+      // closing the underlying connection and operating on a closed db
+      const db = await openDB(DB_NAME, 1);
+      db.close();
+
+      // Re-import with a broken openDB to test error path
+      vi.resetModules();
+      vi.doMock('idb', () => ({
+        openDB: () => Promise.reject(new Error('IndexedDB unavailable')),
+      }));
+      const mod = await import('../user-preferences-db');
+
+      const result = await mod.getPreference<string>('anyKey');
+      expect(result).toBeNull();
+      expect(errorSpy).toHaveBeenCalledWith('Failed to get preference:', expect.any(Error));
+
+      errorSpy.mockRestore();
+      vi.doUnmock('idb');
+    });
+
+    it('setPreference should not throw and log error on db failure', async () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      vi.resetModules();
+      vi.doMock('idb', () => ({
+        openDB: () => Promise.reject(new Error('IndexedDB unavailable')),
+      }));
+      const mod = await import('../user-preferences-db');
+
+      await expect(mod.setPreference('key', 'val')).resolves.toBeUndefined();
+      expect(errorSpy).toHaveBeenCalledWith('Failed to save preference:', expect.any(Error));
+
+      errorSpy.mockRestore();
+      vi.doUnmock('idb');
+    });
+
+    it('removePreference should not throw and log error on db failure', async () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      vi.resetModules();
+      vi.doMock('idb', () => ({
+        openDB: () => Promise.reject(new Error('IndexedDB unavailable')),
+      }));
+      const mod = await import('../user-preferences-db');
+
+      await expect(mod.removePreference('key')).resolves.toBeUndefined();
+      expect(errorSpy).toHaveBeenCalledWith('Failed to remove preference:', expect.any(Error));
+
+      errorSpy.mockRestore();
+      vi.doUnmock('idb');
     });
   });
 });
