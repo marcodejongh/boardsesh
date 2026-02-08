@@ -2,9 +2,8 @@
 import React from 'react';
 import { AntdRegistry } from '@ant-design/nextjs-registry';
 import { App, ConfigProvider } from 'antd';
-import { ThemeProvider } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
 import { AppRouterCacheProvider } from '@mui/material-nextjs/v15-appRouter';
+import ThemeRegistry from './components/providers/theme-registry';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import SessionProviderWrapper from './components/providers/session-provider';
@@ -13,7 +12,6 @@ import { NavigationLoadingProvider } from './components/providers/navigation-loa
 import PersistentSessionWrapper from './components/providers/persistent-session-wrapper';
 import { SnackbarProvider } from './components/providers/snackbar-provider';
 import { antdTheme } from './theme/antd-theme';
-import { muiTheme } from './theme/mui-theme';
 import './components/index.css';
 import type { Viewport } from 'next';
 
@@ -32,8 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <QueryClientProvider>
           <SessionProviderWrapper>
             <AppRouterCacheProvider>
-              <ThemeProvider theme={muiTheme}>
-                <CssBaseline />
+              <ThemeRegistry>
                 <AntdRegistry>
                   <ConfigProvider theme={antdTheme}>
                     <App style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column' }}>
@@ -45,7 +42,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     </App>
                   </ConfigProvider>
                 </AntdRegistry>
-              </ThemeProvider>
+              </ThemeRegistry>
             </AppRouterCacheProvider>
           </SessionProviderWrapper>
         </QueryClientProvider>

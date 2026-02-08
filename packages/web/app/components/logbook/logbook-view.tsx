@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 import { Card, Rate, Tag, Typography, Empty } from 'antd';
 import Box from '@mui/material/Box';

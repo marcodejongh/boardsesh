@@ -1,6 +1,5 @@
 import React, { Suspense } from 'react';
 import { PropsWithChildren } from 'react';
-import Box from '@mui/material/Box';
 import { ParsedBoardRouteParameters, BoardRouteParameters, BoardDetails } from '@/app/lib/types';
 import { parseBoardRouteParams, constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
@@ -147,7 +146,7 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
   const boardDetails = getBoardDetailsUniversal(parsedParams);
 
   return (
-    <Box sx={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', padding: 0, background: 'var(--semantic-surface)' }}>
+    <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', padding: 0, background: 'var(--semantic-surface)' }}>
       <BoardSessionBridge boardDetails={boardDetails} parsedParams={parsedParams}>
         <ConnectionSettingsProvider>
           <GraphQLQueueProvider parsedParams={parsedParams} boardDetails={boardDetails}>
@@ -156,10 +155,9 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
                 <UISearchParamsProvider>
                   <BoardSeshHeader boardDetails={boardDetails} angle={angle} />
 
-                  <Box
-                    component="main"
+                  <main
                     id="content-for-scrollable"
-                    sx={{
+                    style={{
                       flex: 1,
                       justifyContent: 'center',
                       alignItems: 'center',
@@ -173,7 +171,7 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
                     <Suspense fallback={<BoardPageSkeleton aspectRatio={boardDetails.boardWidth / boardDetails.boardHeight} />}>
                       {children}
                     </Suspense>
-                  </Box>
+                  </main>
 
                   <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 10 }}>
                     <QueueControlBar boardDetails={boardDetails} angle={angle} />
@@ -185,6 +183,6 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
           </GraphQLQueueProvider>
         </ConnectionSettingsProvider>
       </BoardSessionBridge>
-    </Box>
+    </div>
   );
 }
