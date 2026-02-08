@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { Button, Space, Typography, message, Spin, Alert } from 'antd';
+import { Button, Typography, message, Spin, Alert } from 'antd';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import { ArrowLeftOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { BoardDetails, Climb } from '@/app/lib/types';

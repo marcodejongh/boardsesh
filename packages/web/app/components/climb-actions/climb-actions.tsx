@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { Space, Dropdown, Button, Flex } from 'antd';
+import { Dropdown, Button } from 'antd';
+import Box from '@mui/material/Box';
+import Stack from '@mui/material/Stack';
 import { MoreOutlined } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 import {
@@ -131,7 +133,7 @@ export function ClimbActions({
   // Button mode - render each action as a component inside Space
   if (viewMode === 'button' || viewMode === 'compact') {
     return (
-      <Space wrap className={className}>
+      <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }} className={className}>
         {actionsToShow.map((actionType) => {
           const Renderer = ACTION_RENDERERS[actionType];
           if (!Renderer) return null;
@@ -143,14 +145,14 @@ export function ClimbActions({
             />
           );
         })}
-      </Space>
+      </Stack>
     );
   }
 
   // List mode - render each action as a full-width row (for drawer menus)
   if (viewMode === 'list') {
     return (
-      <Flex vertical className={className}>
+      <Box sx={{ display: 'flex', flexDirection: 'column' }} className={className}>
         {actionsToShow.map((actionType) => {
           const Renderer = ACTION_RENDERERS[actionType];
           if (!Renderer) return null;
@@ -162,7 +164,7 @@ export function ClimbActions({
             />
           );
         })}
-      </Flex>
+      </Box>
     );
   }
 

@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Card, Button, Tag, Space, Popconfirm, Typography } from 'antd';
+import { Card, Button, Tag, Popconfirm, Typography } from 'antd';
+import Stack from '@mui/material/Stack';
 import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import MoonBoardRenderer from '../moonboard-renderer/moonboard-renderer';
 import type { MoonBoardClimb } from '@boardsesh/moonboard-ocr/browser';
@@ -77,11 +78,11 @@ export default function MoonBoardImportCard({
             <Paragraph type="secondary" ellipsis={{ rows: 1 }} className={styles.setter}>
               by {climb.setter || 'Unknown'}
             </Paragraph>
-            <Space size="small" wrap>
+            <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
               <Tag color="blue">{climb.userGrade || 'No grade'}</Tag>
               <Tag>{climb.angle}°</Tag>
               <Tag>{totalHolds} holds</Tag>
-            </Space>
+            </Stack>
           </div>
         }
       />

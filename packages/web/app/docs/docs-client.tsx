@@ -12,7 +12,9 @@
  */
 
 import { Suspense, lazy } from 'react';
-import { Tabs, Typography, Card, Alert, Space, Divider, Spin } from 'antd';
+import { Tabs, Typography, Card, Alert, Spin } from 'antd';
+import Stack from '@mui/material/Stack';
+import MuiDivider from '@mui/material/Divider';
 import {
   ApiOutlined,
   CloudServerOutlined,
@@ -46,7 +48,7 @@ function OverviewTab() {
         training boards (Kilter, Tension):
       </Paragraph>
 
-      <Space direction="vertical" size="large" className={styles.fullWidth}>
+      <Stack spacing={3} className={styles.fullWidth}>
         <Card>
           <Title level={4}>
             <ApiOutlined /> REST API
@@ -112,7 +114,7 @@ const client = createClient({
           message="Rate Limiting"
           description="Authentication endpoints are rate-limited to prevent abuse. Rate limit headers are included in responses. Public read endpoints have generous limits."
         />
-      </Space>
+      </Stack>
     </div>
   );
 }
@@ -130,7 +132,7 @@ function WebSocketGuideTab() {
         protocol for real-time GraphQL subscriptions.
       </Paragraph>
 
-      <Divider />
+      <MuiDivider />
 
       <Title level={4}>Connection Setup</Title>
 
@@ -183,7 +185,7 @@ const unsubscribe = client.subscribe(
 );`}
       </pre>
 
-      <Divider />
+      <MuiDivider />
 
       <Title level={4}>Session Management</Title>
 
@@ -215,7 +217,7 @@ const result = await client.query({
 });`}
       </pre>
 
-      <Divider />
+      <MuiDivider />
 
       <Title level={4}>Delta Synchronization</Title>
 

@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Collapse, Spin, Typography, Card, Button, Space, Tag } from 'antd';
+import { Collapse, Spin, Typography, Card, Button, Tag } from 'antd';
+import Stack from '@mui/material/Stack';
 import { HistoryOutlined, PlayCircleOutlined, TeamOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import { themeTokens } from '@/app/theme/theme-config';
@@ -55,10 +56,10 @@ const SessionHistoryPanel = () => {
         {
           key: 'history',
           label: (
-            <Space>
+            <Stack direction="row" spacing={1}>
               <HistoryOutlined />
               <span>Continue Previous Session ({sessions.length})</span>
-            </Space>
+            </Stack>
           ),
           children: (
             <div style={{ display: 'flex', flexDirection: 'column', gap: themeTokens.spacing[2] }}>
@@ -74,7 +75,7 @@ const SessionHistoryPanel = () => {
                     <div>
                       <Text strong>{session.name || `${extractBoardName(session.boardPath)} Session`}</Text>
                       <div>
-                        <Space size="small">
+                        <Stack direction="row" spacing={1}>
                           <Tag color="blue">{extractBoardName(session.boardPath)}</Tag>
                           <Text type="secondary" style={{ fontSize: themeTokens.typography.fontSize.sm }}>
                             {formatRelativeTime(session.lastActivity || session.createdAt)}
@@ -84,7 +85,7 @@ const SessionHistoryPanel = () => {
                               <TeamOutlined /> {session.participantCount}
                             </Text>
                           )}
-                        </Space>
+                        </Stack>
                       </div>
                     </div>
                     <Button

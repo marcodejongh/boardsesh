@@ -1,7 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Layout, Card, Form, Input, Button, Tabs, Typography, Divider, message, Space } from 'antd';
+import { Card, Form, Input, Button, Tabs, Typography, message } from 'antd';
+import Box from '@mui/material/Box';
+import Stack from '@mui/material/Stack';
+import MuiDivider from '@mui/material/Divider';
 import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
 import { signIn, useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -10,7 +13,6 @@ import BackButton from '@/app/components/back-button';
 import SocialLoginButtons from '@/app/components/auth/social-login-buttons';
 import { themeTokens } from '@/app/theme/theme-config';
 
-const { Content, Header } = Layout;
 const { Title, Text } = Typography;
 
 export default function AuthPageContent() {
@@ -240,15 +242,17 @@ export default function AuthPageContent() {
   ];
 
   return (
-    <Layout style={{ minHeight: '100vh', background: themeTokens.semantic.background }}>
-      <Header
-        style={{
+    <Box sx={{ minHeight: '100vh', background: themeTokens.semantic.background }}>
+      <Box
+        component="header"
+        sx={{
           background: themeTokens.semantic.surface,
           padding: '0 16px',
           display: 'flex',
           alignItems: 'center',
-          gap: 16,
+          gap: 2,
           boxShadow: themeTokens.shadows.xs,
+          height: 64,
         }}
       >
         <BackButton />
@@ -256,10 +260,11 @@ export default function AuthPageContent() {
         <Title level={4} style={{ margin: 0, flex: 1 }}>
           Welcome
         </Title>
-      </Header>
+      </Box>
 
-      <Content
-        style={{
+      <Box
+        component="main"
+        sx={{
           padding: '24px',
           display: 'flex',
           justifyContent: 'center',
@@ -268,20 +273,20 @@ export default function AuthPageContent() {
         }}
       >
         <Card style={{ width: '100%', maxWidth: 400 }}>
-          <Space orientation="vertical" style={{ width: '100%', textAlign: 'center', marginBottom: 24 }}>
+          <Stack spacing={1} sx={{ width: '100%', textAlign: 'center', marginBottom: 3 }}>
             <Logo size="md" />
             <Text type="secondary">Sign in or create an account to continue</Text>
-          </Space>
+          </Stack>
 
           <Tabs activeKey={activeTab} onChange={setActiveTab} items={tabItems} centered />
 
-          <Divider>
+          <MuiDivider>
             <Text type="secondary">or</Text>
-          </Divider>
+          </MuiDivider>
 
           <SocialLoginButtons callbackUrl={callbackUrl} />
         </Card>
-      </Content>
-    </Layout>
+      </Box>
+    </Box>
   );
 }

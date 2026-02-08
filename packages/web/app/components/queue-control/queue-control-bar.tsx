@@ -1,6 +1,8 @@
 'use client';
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { Button, Row, Col, Card, Space, Popconfirm } from 'antd';
+import { Button, Card, Popconfirm } from 'antd';
+import Box from '@mui/material/Box';
+import Stack from '@mui/material/Stack';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import { SyncOutlined, DeleteOutlined, ExpandOutlined } from '@ant-design/icons';
 import { track } from '@vercel/analytics';
@@ -283,9 +285,9 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
               backgroundColor: gradeTintColor ?? themeTokens.semantic.surface,
             }}
           >
-            <Row justify="space-between" align="middle" className={styles.row}>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center' }} className={styles.row}>
               {/* Left section: Thumbnail and climb info */}
-              <Col flex="auto" className={styles.climbInfoCol}>
+              <Box sx={{ flex: 'auto' }} className={styles.climbInfoCol}>
                 <div className={styles.climbInfoInner} style={{ gap: themeTokens.spacing[2] }}>
                   {/* Board preview — STATIC, with crossfade on enter */}
                   <div className={`${styles.boardPreviewContainer} ${enterDirection ? styles.thumbnailEnter : ''}`}>
@@ -334,11 +336,11 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
                     )}
                   </div>
                 </div>
-              </Col>
+              </Box>
 
               {/* Button cluster — STATIC */}
-              <Col flex="none" style={{ marginLeft: themeTokens.spacing[2] }}>
-                <Space>
+              <Box sx={{ flex: 'none', marginLeft: themeTokens.spacing[2] }}>
+                <Stack direction="row" spacing={1}>
                   {/* Mirror button - desktop only */}
                   {boardDetails.supportsMirroring ? (
                     <span className={styles.desktopOnly}>
@@ -378,18 +380,18 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
                   )}
                   {/* Navigation buttons - desktop only */}
                   <span className={styles.navButtons}>
-                    <Space>
+                    <Stack direction="row" spacing={1}>
                       <PreviousClimbButton navigate={isViewPage || isPlayPage} boardDetails={boardDetails} />
                       <NextClimbButton navigate={isViewPage || isPlayPage} boardDetails={boardDetails} />
-                    </Space>
+                    </Stack>
                   </span>
                   {/* Party button */}
                   <ShareBoardButton buttonType="text" />
                   {/* Tick button */}
                   <TickButton currentClimb={currentClimb} angle={angle} boardDetails={boardDetails} buttonType="text" />
-                </Space>
-              </Col>
-            </Row>
+                </Stack>
+              </Box>
+            </Box>
           </div>
         </div>
       </Card>

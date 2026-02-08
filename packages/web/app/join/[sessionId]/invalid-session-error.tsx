@@ -1,6 +1,7 @@
 'use client';
 
-import { Result, Button, Typography, Flex } from 'antd';
+import { Result, Button, Typography } from 'antd';
+import Box from '@mui/material/Box';
 import Link from 'next/link';
 import { SESSION_ID_MAX_LENGTH } from '@/app/lib/validation/session';
 
@@ -30,10 +31,8 @@ export default function InvalidSessionError({ sessionId, errorMessage }: Invalid
   const sanitizedSessionId = sanitizeSessionIdForDisplay(sessionId);
 
   return (
-    <Flex
-      align="center"
-      justify="center"
-      style={{ minHeight: '100vh', padding: 24 }}
+    <Box
+      sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: 3 }}
     >
       <Result
         status="error"
@@ -45,7 +44,7 @@ export default function InvalidSessionError({ sessionId, errorMessage }: Invalid
           </Link>,
         ]}
       >
-        <Flex vertical align="start">
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
           <Paragraph>
             <Text strong>Session ID provided: </Text>
             <Text code>{sanitizedSessionId}</Text>
@@ -64,8 +63,8 @@ export default function InvalidSessionError({ sessionId, errorMessage }: Invalid
               <Text code>MarcoSession1</Text>
             </Text>
           </Paragraph>
-        </Flex>
+        </Box>
       </Result>
-    </Flex>
+    </Box>
   );
 }

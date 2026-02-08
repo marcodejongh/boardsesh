@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Input, Switch, Button, Typography, Tag, Alert, Flex, Slider, Tooltip, Space, Upload, message, Select } from 'antd';
+import { Input, Switch, Button, Typography, Tag, Alert, Slider, Tooltip, Upload, message, Select } from 'antd';
+import Box from '@mui/material/Box';
+import Stack from '@mui/material/Stack';
 import { SettingOutlined, CloseOutlined, FireOutlined, ArrowLeftOutlined, SaveOutlined, LoginOutlined, UploadOutlined, LoadingOutlined, ImportOutlined } from '@ant-design/icons';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
@@ -516,7 +518,7 @@ export default function CreateClimbForm({
       <div className={styles.contentWrapper}>
         {/* Controls bar with draft toggle (all boards) and heatmap (Aurora only) */}
         <div className={styles.climbTitleContainer}>
-          <Flex gap={8} align="center">
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
             <Text type="secondary" className={styles.draftLabel}>
               Draft
             </Text>
@@ -555,7 +557,7 @@ export default function CreateClimbForm({
                 )}
               </>
             )}
-          </Flex>
+          </Box>
         </div>
 
         {/* Board Section */}
@@ -626,14 +628,14 @@ export default function CreateClimbForm({
                       />
                     </div>
                     <div className={styles.settingsField}>
-                      <Flex gap={8} align="center">
+                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
                         <Switch
                           size="small"
                           checked={isBenchmark}
                           onChange={setIsBenchmark}
                         />
                         <Text>Benchmark</Text>
-                      </Flex>
+                      </Box>
                     </div>
                   </>
                 )}
@@ -658,7 +660,7 @@ export default function CreateClimbForm({
 
         {/* Hold counts bar at bottom */}
         <div className={styles.holdCountsBar}>
-          <Space wrap size="small">
+          <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
             {boardType === 'aurora' ? (
               <>
                 <Tag color={startingCount > 0 ? 'green' : 'default'}>Starting: {startingCount}/2</Tag>
@@ -673,8 +675,8 @@ export default function CreateClimbForm({
                 <Tag color={totalHolds > 0 ? 'purple' : 'default'}>Total: {totalHolds}</Tag>
               </>
             )}
-          </Space>
-          <Space wrap size="small">
+          </Stack>
+          <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
             {totalHolds > 0 && (
               <Button size="small" onClick={resetHolds}>
                 Clear
@@ -701,7 +703,7 @@ export default function CreateClimbForm({
                 </Link>
               </>
             )}
-          </Space>
+          </Stack>
         </div>
       </div>
 

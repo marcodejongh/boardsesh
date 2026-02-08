@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Layout, Card, Typography, Collapse, Image } from 'antd';
+import { Card, Typography, Collapse, Image } from 'antd';
 import {
   HeatMapOutlined,
   TeamOutlined,
@@ -10,12 +10,11 @@ import {
   ApiOutlined,
   QuestionCircleOutlined,
 } from '@ant-design/icons';
+import Box from '@mui/material/Box';
 import Logo from '@/app/components/brand/logo';
 import BackButton from '@/app/components/back-button';
-import { Header } from 'antd/es/layout/layout';
 import styles from './help.module.css';
 
-const { Content } = Layout;
 const { Title, Text, Paragraph } = Typography;
 
 const helpSections = [
@@ -482,16 +481,16 @@ export default function HelpContent() {
   }));
 
   return (
-    <Layout className={styles.pageLayout}>
-      <Header className={styles.header}>
+    <Box className={styles.pageLayout}>
+      <Box component="header" className={styles.header}>
         <BackButton fallbackUrl="/" />
         <Logo size="sm" showText={false} />
         <Title level={4} className={styles.headerTitle}>
           Help
         </Title>
-      </Header>
+      </Box>
 
-      <Content className={styles.content}>
+      <Box component="main" className={styles.content}>
         <Card>
           <div className={styles.heroSection}>
             <QuestionCircleOutlined className={styles.heroIcon} />
@@ -510,7 +509,7 @@ export default function HelpContent() {
             defaultActiveKey={['visualization']}
           />
         </Card>
-      </Content>
-    </Layout>
+      </Box>
+    </Box>
   );
 }

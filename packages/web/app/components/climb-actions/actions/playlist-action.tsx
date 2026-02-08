@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { Button, List, Input, Form, Space, Typography, Badge, ColorPicker, message } from 'antd';
+import { Button, List, Input, Form, Typography, Badge, ColorPicker, message } from 'antd';
+import Stack from '@mui/material/Stack';
 import { ActionTooltip } from '../action-tooltip';
 import { TagOutlined, PlusOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { track } from '@vercel/analytics';
@@ -161,7 +162,7 @@ export function PlaylistAction({
         <Text strong>Add to Playlist</Text>
       </div>
       {playlists.length === 0 && !showCreateForm ? (
-        <Space orientation="vertical" style={{ width: '100%', textAlign: 'center', padding: themeTokens.spacing[2] }}>
+        <Stack spacing={1} style={{ width: '100%', textAlign: 'center', padding: themeTokens.spacing[2] }}>
           <Text type="secondary">No playlists yet</Text>
           <Button
             type="primary"
@@ -172,7 +173,7 @@ export function PlaylistAction({
           >
             Create Your First Playlist
           </Button>
-        </Space>
+        </Stack>
       ) : (
         <>
           {!showCreateForm && (
@@ -197,17 +198,17 @@ export function PlaylistAction({
                       }}
                       onClick={() => handleTogglePlaylist(playlist.uuid, isInPlaylist)}
                     >
-                      <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-                        <Space orientation="vertical" size={0}>
+                      <Stack direction="row" spacing={1} style={{ width: '100%', justifyContent: 'space-between' }}>
+                        <Stack spacing={0}>
                           <Text strong style={{ fontSize: 13 }}>{playlist.name}</Text>
                           <Text type="secondary" style={{ fontSize: 11 }}>
                             {playlist.climbCount} {playlist.climbCount === 1 ? 'climb' : 'climbs'}
                           </Text>
-                        </Space>
+                        </Stack>
                         {isInPlaylist && (
                           <CheckOutlined style={{ color: themeTokens.colors.success, fontSize: 14 }} />
                         )}
-                      </Space>
+                      </Stack>
                     </List.Item>
                   );
                 }}
@@ -255,7 +256,7 @@ export function PlaylistAction({
                   <ColorPicker format="hex" showText size="small" />
                 </Form.Item>
               </Form>
-              <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+              <Stack direction="row" spacing={1} style={{ width: '100%', justifyContent: 'flex-end' }}>
                 <Button
                   size="small"
                   onClick={() => {
@@ -268,7 +269,7 @@ export function PlaylistAction({
                 <Button type="primary" size="small" onClick={handleCreatePlaylist} loading={creatingPlaylist}>
                   Create
                 </Button>
-              </Space>
+              </Stack>
             </div>
           )}
         </>

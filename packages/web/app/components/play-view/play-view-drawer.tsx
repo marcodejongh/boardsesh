@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Button, Badge, Space } from 'antd';
+import { Button, Badge } from 'antd';
+import Stack from '@mui/material/Stack';
 import {
   SyncOutlined,
   HeartOutlined,
@@ -339,7 +340,7 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
           extra={
             queue.length > 0 && !viewOnlyMode && (
               isEditMode ? (
-                <Space>
+                <Stack direction="row" spacing={1}>
                   <Button
                     type="text"
                     icon={<DeleteOutlined />}
@@ -352,16 +353,16 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
                     Clear
                   </Button>
                   <Button type="text" icon={<CloseOutlined />} onClick={handleExitEditMode} />
-                </Space>
+                </Stack>
               ) : (
-                <Space>
+                <Stack direction="row" spacing={1}>
                   <Button
                     type={showHistory ? 'default' : 'text'}
                     icon={<HistoryOutlined />}
                     onClick={() => setShowHistory((prev) => !prev)}
                   />
                   <Button type="text" icon={<EditOutlined />} onClick={() => setIsEditMode(true)} />
-                </Space>
+                </Stack>
               )
             )
           }

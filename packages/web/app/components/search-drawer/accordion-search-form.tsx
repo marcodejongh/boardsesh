@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { InputNumber, Row, Col, Select, Switch, Alert, Typography, Tooltip, Button } from 'antd';
+import { InputNumber, Select, Switch, Alert, Typography, Tooltip, Button } from 'antd';
+import Box from '@mui/material/Box';
 import { LoginOutlined, SortAscendingOutlined } from '@ant-design/icons';
 import { TENSION_KILTER_GRADES } from '@/app/lib/board-data';
 import { getGradeTintColor } from '@/app/lib/grade-colors';
@@ -88,8 +89,8 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
 
           <div className={styles.inputGroup}>
             <Text strong>Grade Range</Text>
-            <Row gutter={8}>
-              <Col span={12}>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '0px 8px' }}>
+              <Box sx={{ width: '50%' }}>
                 <Select
                   value={uiSearchParams.minGrade || 0}
                   onChange={(value) => handleGradeChange('min', value)}
@@ -104,8 +105,8 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
                     </Select.Option>
                   ))}
                 </Select>
-              </Col>
-              <Col span={12}>
+              </Box>
+              <Box sx={{ width: '50%' }}>
                 <Select
                   value={uiSearchParams.maxGrade || 0}
                   onChange={(value) => handleGradeChange('max', value)}
@@ -120,8 +121,8 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
                     </Select.Option>
                   ))}
                 </Select>
-              </Col>
-            </Row>
+              </Box>
+            </Box>
           </div>
 
           {showTallClimbsFilter && (
@@ -156,8 +157,8 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
 
           {showSort && (
             <div className={styles.inputGroup}>
-              <Row gutter={8}>
-                <Col span={14}>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '0px 8px' }}>
+                <Box sx={{ width: '58.33%' }}>
                   <Select
                     value={uiSearchParams.sortBy}
                     onChange={(value) => updateFilters({ sortBy: value })}
@@ -170,8 +171,8 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
                     <Select.Option value="name">Name</Select.Option>
                     <Select.Option value="quality">Quality</Select.Option>
                   </Select>
-                </Col>
-                <Col span={10}>
+                </Box>
+                <Box sx={{ width: '41.67%' }}>
                   <Select
                     value={uiSearchParams.sortOrder}
                     onChange={(value) => updateFilters({ sortOrder: value })}
@@ -181,8 +182,8 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
                     <Select.Option value="desc">Desc</Select.Option>
                     <Select.Option value="asc">Asc</Select.Option>
                   </Select>
-                </Col>
-              </Row>
+                </Box>
+              </Box>
             </div>
           )}
 
@@ -197,8 +198,8 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
       getSummary: () => getQualityPanelSummary(uiSearchParams),
       content: (
         <div className={styles.panelContent}>
-          <Row gutter={[12, 12]}>
-            <Col span={12}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '12px 12px' }}>
+            <Box sx={{ width: '50%' }}>
               <div className={styles.compactInputGroup}>
                 <Text>Min Ascents</Text>
                 <InputNumber
@@ -209,8 +210,8 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
                   placeholder="Any"
                 />
               </div>
-            </Col>
-            <Col span={12}>
+            </Box>
+            <Box sx={{ width: '50%' }}>
               <div className={styles.compactInputGroup}>
                 <Text>Min Rating</Text>
                 <InputNumber
@@ -223,8 +224,8 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
                   placeholder="Any"
                 />
               </div>
-            </Col>
-          </Row>
+            </Box>
+          </Box>
 
           <div className={styles.inputGroup}>
             <Text>Grade Accuracy</Text>

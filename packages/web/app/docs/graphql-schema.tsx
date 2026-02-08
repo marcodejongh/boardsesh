@@ -11,7 +11,8 @@
  */
 
 import { useState, type ReactNode } from 'react';
-import { Tabs, Typography, Card, Input, Collapse, Tag, Space } from 'antd';
+import { Tabs, Typography, Card, Input, Collapse, Tag } from 'antd';
+import Stack from '@mui/material/Stack';
 import { typeDefs } from '@boardsesh/shared-schema/schema';
 import { themeTokens } from '@/app/theme/theme-config';
 import { tokenizeLine } from './graphql-tokenizer';
@@ -147,10 +148,10 @@ export default function GraphQLSchemaViewer() {
       items={sectionList.map((section) => ({
         key: section.name,
         label: (
-          <Space>
+          <Stack direction="row" spacing={1}>
             <TypeBadge type={section.type} />
             <Text strong>{section.name}</Text>
-          </Space>
+          </Stack>
         ),
         children: <SchemaBlock content={section.content} />,
       }))}

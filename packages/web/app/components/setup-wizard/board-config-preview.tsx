@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Card, Typography, Button, Tooltip, Tag, Space, Skeleton } from 'antd';
+import { Card, Typography, Button, Tooltip, Tag, Skeleton } from 'antd';
+import Stack from '@mui/material/Stack';
 import { DeleteOutlined, StarFilled } from '@ant-design/icons';
 import Link from 'next/link';
 import { BoardDetails, BoardName } from '@/app/lib/types';
@@ -159,18 +160,18 @@ export default function BoardConfigPreview({ config, onDelete, onSelect, boardCo
           style={{ minWidth: 0 }}
           extra={isEditMode ? <Button type="text" icon={<DeleteOutlined />} onClick={handleDelete} danger size="small" /> : undefined}
         >
-          <Space orientation="vertical" size="small" align="center">
+          <Stack spacing={1} alignItems="center">
             <Text type="secondary">Preview unavailable</Text>
             <Text strong>{config.name}</Text>
-            <Space orientation="vertical" size={2}>
+            <Stack spacing={0.25}>
               <Tag>{layoutName}</Tag>
-              <Space size={2}>
+              <Stack direction="row" spacing={0.25}>
                 <Tag>{sizeName}</Tag>
                 <Tag>{config.angle || 40}°</Tag>
                 {config.useAsDefault && <StarFilled />}
-              </Space>
-            </Space>
-          </Space>
+              </Stack>
+            </Stack>
+          </Stack>
         </Card>
       </Link>
     );
@@ -195,9 +196,9 @@ export default function BoardConfigPreview({ config, onDelete, onSelect, boardCo
         <Card.Meta
           title={<Text strong>{config.name}</Text>}
           description={
-            <Space orientation="vertical" size={2}>
+            <Stack spacing={0.25}>
               <Tag>{layoutName}</Tag>
-              <Space size={2}>
+              <Stack direction="row" spacing={0.25}>
                 <Tag>{sizeName}</Tag>
                 <Tag>{config.angle || 40}°</Tag>
                 {config.useAsDefault && (
@@ -205,8 +206,8 @@ export default function BoardConfigPreview({ config, onDelete, onSelect, boardCo
                     <StarFilled />
                   </Tooltip>
                 )}
-              </Space>
-            </Space>
+              </Stack>
+            </Stack>
           }
         />
       </Card>

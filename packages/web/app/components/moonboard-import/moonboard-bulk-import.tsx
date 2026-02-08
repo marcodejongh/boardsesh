@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useReducer, useCallback, useState, useRef } from 'react';
-import { Upload, Button, Alert, Progress, Typography, Row, Col, Space, Result, message, Checkbox } from 'antd';
+import { Upload, Button, Alert, Progress, Typography, Result, message, Checkbox } from 'antd';
+import Box from '@mui/material/Box';
+import Stack from '@mui/material/Stack';
 import { InboxOutlined, SaveOutlined, ClearOutlined, ArrowLeftOutlined, LoginOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -376,8 +378,8 @@ export default function MoonBoardBulkImport({
           {/* Action Buttons */}
           {state.climbs.length > 0 && (
             <div className={styles.actions}>
-              <Space direction="vertical" size="middle">
-                <Space>
+              <Stack spacing={2}>
+                <Stack direction="row" spacing={1}>
                   <Button
                     type="primary"
                     icon={<SaveOutlined />}
@@ -391,21 +393,21 @@ export default function MoonBoardBulkImport({
                   <Button icon={<ClearOutlined />} onClick={handleReset}>
                     Clear & Start Over
                   </Button>
-                </Space>
+                </Stack>
                 {backendUrl && (
                   <Checkbox checked={contributeImages} onChange={(e) => setContributeImages(e.target.checked)}>
                     Contribute images to improve OCR accuracy
                   </Checkbox>
                 )}
-              </Space>
+              </Stack>
             </div>
           )}
 
           {/* Climb Cards Grid */}
           {state.climbs.length > 0 ? (
-            <Row gutter={[16, 16]} className={styles.climbGrid}>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }} className={styles.climbGrid}>
               {state.climbs.map((climb) => (
-                <Col key={climb.sourceFile} xs={24} sm={12} md={8} lg={6}>
+                <Box key={climb.sourceFile} sx={{ width: { xs: '100%', sm: '50%', md: '33.33%', lg: '25%' }, boxSizing: 'border-box' }}>
                   <MoonBoardImportCard
                     climb={climb}
                     layoutFolder={layoutFolder}
@@ -414,9 +416,9 @@ export default function MoonBoardBulkImport({
                     onEdit={() => handleEditClimb(climb)}
                     onRemove={() => handleRemoveClimb(climb.sourceFile)}
                   />
-                </Col>
+                </Box>
               ))}
-            </Row>
+            </Box>
           ) : (
             <Result
               status="warning"

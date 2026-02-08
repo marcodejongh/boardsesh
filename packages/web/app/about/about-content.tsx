@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Layout, Card, Typography, Space } from 'antd';
+import { Card, Typography } from 'antd';
 import {
   GithubOutlined,
   TeamOutlined,
@@ -9,28 +9,28 @@ import {
   ApiOutlined,
   RocketOutlined,
 } from '@ant-design/icons';
+import Box from '@mui/material/Box';
+import Stack from '@mui/material/Stack';
 import Logo from '@/app/components/brand/logo';
 import BackButton from '@/app/components/back-button';
-import { Header } from 'antd/es/layout/layout';
 import styles from './about.module.css';
 
-const { Content } = Layout;
 const { Title, Paragraph, Text, Link } = Typography;
 
 export default function AboutContent() {
   return (
-    <Layout className={styles.pageLayout}>
-      <Header className={styles.header}>
+    <Box className={styles.pageLayout}>
+      <Box component="header" className={styles.header}>
         <BackButton fallbackUrl="/" />
         <Logo size="sm" showText={false} />
         <Title level={4} className={styles.headerTitle}>
           About
         </Title>
-      </Header>
+      </Box>
 
-      <Content className={styles.content}>
+      <Box component="main" className={styles.content}>
         <Card>
-          <Space orientation="vertical" size="large" className={styles.cardContent}>
+          <Stack spacing={3} className={styles.cardContent}>
             {/* Hero Section */}
             <div className={styles.heroSection}>
               <Logo size="lg" linkToHome={false} />
@@ -144,9 +144,9 @@ export default function AboutContent() {
                 Together, we can build the best training companion for board climbers everywhere.
               </Paragraph>
             </section>
-          </Space>
+          </Stack>
         </Card>
-      </Content>
-    </Layout>
+      </Box>
+    </Box>
   );
 }

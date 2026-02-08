@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Card, Button, Typography, Space, Tag } from 'antd';
+import { Card, Button, Typography, Tag } from 'antd';
+import Stack from '@mui/material/Stack';
 import { TeamOutlined, EnvironmentOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import { themeTokens } from '@/app/theme/theme-config';
@@ -73,7 +74,7 @@ const NearbySessionCard = ({ session }: NearbySessionCardProps) => {
           <Title level={5} style={{ margin: 0, marginBottom: themeTokens.spacing[1] }}>
             {sessionName}
           </Title>
-          <Space size="small" wrap>
+          <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
             <Tag color="blue">{boardName}</Tag>
             {session.distance !== null && (
               <Text type="secondary" style={{ fontSize: themeTokens.typography.fontSize.sm }}>
@@ -83,7 +84,7 @@ const NearbySessionCard = ({ session }: NearbySessionCardProps) => {
             <Text type="secondary" style={{ fontSize: themeTokens.typography.fontSize.sm }}>
               <TeamOutlined /> {session.participantCount} {session.participantCount === 1 ? 'climber' : 'climbers'}
             </Text>
-          </Space>
+          </Stack>
         </div>
         <Button type="primary" size="small" onClick={handleJoin}>
           Join

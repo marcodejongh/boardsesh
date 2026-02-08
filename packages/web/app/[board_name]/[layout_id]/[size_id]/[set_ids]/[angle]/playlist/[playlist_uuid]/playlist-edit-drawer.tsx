@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { Form, Input, Switch, ColorPicker, message, Space, Typography, Button } from 'antd';
+import { Form, Input, Switch, ColorPicker, message, Typography, Button } from 'antd';
+import Stack from '@mui/material/Stack';
 import SwipeableDrawer from '@/app/components/swipeable-drawer/swipeable-drawer';
 import { GlobalOutlined, LockOutlined } from '@ant-design/icons';
 import type { Color } from 'antd/es/color-picker';
@@ -119,12 +120,12 @@ export default function PlaylistEditDrawer({ open, playlist, onClose, onSuccess 
         },
       }}
       extra={
-        <Space>
+        <Stack direction="row" spacing={1}>
           <Button onClick={handleCancel}>Cancel</Button>
           <Button type="primary" onClick={handleSubmit} loading={loading}>
             Save
           </Button>
-        </Space>
+        </Stack>
       }
     >
       <Form
@@ -165,7 +166,7 @@ export default function PlaylistEditDrawer({ open, playlist, onClose, onSuccess 
           label="Visibility"
           valuePropName="checked"
         >
-          <Space orientation="vertical" size={4}>
+          <Stack spacing={0.5}>
             <Switch
               checked={isPublic}
               onChange={handleVisibilityChange}
@@ -177,7 +178,7 @@ export default function PlaylistEditDrawer({ open, playlist, onClose, onSuccess 
                 ? 'Public playlists can be viewed by anyone with the link'
                 : 'Private playlists are only visible to you'}
             </Text>
-          </Space>
+          </Stack>
         </Form.Item>
       </Form>
     </SwipeableDrawer>

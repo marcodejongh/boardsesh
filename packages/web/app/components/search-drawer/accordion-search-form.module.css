@@ -8,7 +8,7 @@
 
 /* Section card base */
 .sectionCard {
-  background: var(--ant-color-bg-container, #FFFFFF);
+  background: var(--semantic-surface, #FFFFFF);
   border-radius: 16px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.08);
   overflow: hidden;
@@ -42,7 +42,7 @@
 
 .collapsedLabel {
   font-size: 14px;
-  color: var(--ant-color-text-tertiary, #9CA3AF);
+  color: var(--neutral-400, #9CA3AF);
   font-weight: 400;
   flex-shrink: 0;
   transition: font-size 250ms ease, color 250ms ease;
@@ -51,13 +51,13 @@
 .sectionCardActive .collapsedLabel {
   font-size: 22px;
   font-weight: 700;
-  color: var(--ant-color-text, #111827);
+  color: var(--neutral-900, #111827);
   line-height: 1.2;
 }
 
 .collapsedSummary {
   font-size: 14px;
-  color: var(--ant-color-text, #111827);
+  color: var(--neutral-900, #111827);
   font-weight: 500;
   text-align: right;
   max-width: 65%;
@@ -120,7 +120,7 @@
   display: flex;
   flex-direction: column;
   gap: 0;
-  background-color: var(--ant-color-bg-layout, #F9FAFB);
+  background-color: var(--semantic-background, #F9FAFB);
   border-radius: 12px;
   padding: 4px 0;
 }
@@ -134,13 +134,13 @@
 }
 
 .switchRow:hover {
-  background-color: var(--ant-color-fill-quaternary, #F3F4F6);
+  background-color: var(--neutral-100, #F3F4F6);
 }
 
 /* Sort toggle */
 .sortToggle {
   font-size: 13px;
-  color: var(--ant-color-text-secondary, #6B7280);
+  color: var(--neutral-500, #6B7280);
   padding: 0;
   height: auto;
 }

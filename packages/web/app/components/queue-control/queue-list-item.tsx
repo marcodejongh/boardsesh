@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Row, Col, Avatar, Tooltip, Dropdown, Button } from 'antd';
+import { Avatar, Tooltip, Dropdown, Button } from 'antd';
+import Box from '@mui/material/Box';
 import { CheckOutlined, CloseOutlined, UserOutlined, DeleteOutlined, MoreOutlined, InfoCircleOutlined, AppstoreOutlined } from '@ant-design/icons';
 import { Checkbox } from 'antd';
 import BluetoothIcon from './bluetooth-icon';
@@ -327,31 +328,31 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
           onDoubleClick={isEditMode ? undefined : handleDoubleTap}
           onClick={isEditMode ? () => onToggleSelect?.(item.uuid) : undefined}
         >
-          <Row className={styles.contentRow} gutter={[8, 8]} align="middle" wrap={false}>
+          <Box className={styles.contentRow} sx={{ display: 'flex', flexWrap: 'nowrap', gap: '8px 8px', alignItems: 'center' }}>
             {isEditMode && (
-              <Col xs={2} sm={2}>
+              <Box sx={{ width: { xs: '8.33%', sm: '8.33%' } }}>
                 <Checkbox
                   checked={isSelected}
                   onClick={(e) => e.stopPropagation()}
                   onChange={() => onToggleSelect?.(item.uuid)}
                 />
-              </Col>
+              </Box>
             )}
-            <Col xs={isEditMode ? 5 : 6} sm={isEditMode ? 4 : 5}>
+            <Box sx={{ width: { xs: isEditMode ? '20.83%' : '25%', sm: isEditMode ? '16.67%' : '20.83%' } }}>
               <ClimbThumbnail
                 boardDetails={boardDetails}
                 currentClimb={item.climb}
               />
-            </Col>
-            <Col xs={isEditMode ? 14 : 13} sm={isEditMode ? 16 : 15}>
+            </Box>
+            <Box sx={{ width: { xs: isEditMode ? '58.33%' : '54.17%', sm: isEditMode ? '66.67%' : '62.5%' } }}>
               <ClimbTitle
                 climb={item.climb}
                 showAngle
                 centered
                 nameAddon={<AscentStatus climbUuid={item.climb?.uuid} />}
               />
-            </Col>
-            <Col xs={2} sm={2}>
+            </Box>
+            <Box sx={{ width: { xs: '8.33%', sm: '8.33%' } }}>
               {item.addedByUser ? (
                 <Tooltip title={item.addedByUser.username}>
                   <Avatar size="small" src={item.addedByUser.avatarUrl} icon={<UserOutlined />} />
@@ -365,9 +366,9 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
                   />
                 </Tooltip>
               )}
-            </Col>
+            </Box>
             {!isEditMode && (
-              <Col xs={3} sm={2}>
+              <Box sx={{ width: { xs: '12.5%', sm: '8.33%' } }}>
                 <Dropdown
                   menu={{
                     items: [
@@ -403,9 +404,9 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
                 >
                   <Button type="text" icon={<MoreOutlined />} />
                 </Dropdown>
-              </Col>
+              </Box>
             )}
-          </Row>
+          </Box>
         </div>
         {closestEdge && <DropIndicator edge={closestEdge} gap="1px" />}
       </div>

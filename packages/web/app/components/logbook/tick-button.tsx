@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { Angle, Climb, BoardDetails } from '@/app/lib/types';
 import { useBoardProvider } from '../board-provider/board-provider-context';
-import { Button, Badge, Typography, Space } from 'antd';
+import { Button, Badge, Typography } from 'antd';
+import Stack from '@mui/material/Stack';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import { CheckOutlined, LoginOutlined, AppstoreOutlined } from '@ant-design/icons';
 import { track } from '@vercel/analytics';
@@ -74,7 +75,7 @@ export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boa
           swipeRegion="body"
           styles={{ wrapper: { height: '50%' } }}
         >
-          <Space orientation="vertical" size="large" style={{ width: '100%', textAlign: 'center', padding: '24px 0' }}>
+          <Stack spacing={3} style={{ width: '100%', textAlign: 'center', padding: '24px 0' }}>
             <Text strong style={{ fontSize: 16 }}>Sign in to record ticks</Text>
             <Paragraph type="secondary">
               Create a Boardsesh account to log your climbs and track your progress.
@@ -88,7 +89,7 @@ export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boa
             <Button icon={<AppstoreOutlined />} onClick={handleOpenInApp} block>
               Open in App
             </Button>
-          </Space>
+          </Stack>
         </SwipeableDrawer>
       )}
 

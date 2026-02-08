@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Flex, Typography } from 'antd';
+import { Typography } from 'antd';
+import Box from '@mui/material/Box';
 import { CopyrightOutlined } from '@ant-design/icons';
 import { themeTokens } from '@/app/theme/theme-config';
 import { getSoftVGradeColor } from '@/app/lib/grade-colors';
@@ -179,11 +180,11 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
     }
 
     return (
-      <Flex gap={12} align="center" className={className} style={centered ? { position: 'relative' } : undefined}>
+      <Box sx={{ display: 'flex', gap: '12px', alignItems: 'center', ...(centered ? { position: 'relative' } : {}) }} className={className}>
         {/* Colorized V grade on the left */}
         {largeGradeElement}
         {/* Center: Name and quality/setter stacked */}
-        <Flex vertical gap={0} style={{ flex: 1, minWidth: 0 }} align={centered ? 'center' : 'flex-start'}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0, flex: 1, minWidth: 0, alignItems: centered ? 'center' : 'flex-start' }}>
           {/* Row 1: Name with addon */}
           <div style={{ display: 'flex', alignItems: 'center', gap: themeTokens.spacing[2] }}>
             {nameElement}
@@ -200,15 +201,15 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
           >
             {secondLineContent.length > 0 ? secondLineContent.join(' · ') : <span style={{ fontStyle: 'italic' }}>project</span>}
           </Text>
-        </Flex>
+        </Box>
         {/* Right addon (e.g., ascent status) */}
         {rightAddon}
-      </Flex>
+      </Box>
     );
   }
 
   return (
-    <Flex vertical gap={2} className={className} align={centered ? 'center' : 'flex-start'}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: '2px', alignItems: centered ? 'center' : 'flex-start' }} className={className}>
       {/* Row 1: Name with optional benchmark icon and addon (e.g., AscentStatus) */}
       <div style={{ display: 'flex', alignItems: 'center', gap: themeTokens.spacing[2] }}>
         {nameElement}
@@ -218,7 +219,7 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
       {gradeElement}
       {/* Row 3 (optional): Setter info */}
       {setterElement}
-    </Flex>
+    </Box>
   );
 };
 

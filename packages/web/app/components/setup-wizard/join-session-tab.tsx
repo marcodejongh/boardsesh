@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Button, Empty, Spin, Typography, Alert, Space } from 'antd';
+import { Button, Empty, Spin, Typography, Alert } from 'antd';
+import Stack from '@mui/material/Stack';
 import { EnvironmentOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useGeolocation, getGeolocationErrorMessage } from '@/app/hooks/use-geolocation';
 import { themeTokens } from '@/app/theme/theme-config';
@@ -122,12 +123,12 @@ const JoinSessionTab = () => {
       <div style={{ textAlign: 'center', padding: themeTokens.spacing[8] }}>
         <Empty
           description={
-            <Space orientation="vertical" size="small">
+            <Stack spacing={1}>
               <Text>No backend server configured</Text>
               <Paragraph type="secondary" style={{ marginBottom: 0 }}>
                 To join sessions, you need to connect to a Boardsesh backend server.
               </Paragraph>
-            </Space>
+            </Stack>
           }
         />
       </div>
@@ -156,13 +157,13 @@ const JoinSessionTab = () => {
       <div style={{ textAlign: 'center', padding: themeTokens.spacing[8] }}>
         <Empty
           description={
-            <Space orientation="vertical" size="small">
+            <Stack spacing={1}>
               <Text>No sessions found nearby</Text>
               <Paragraph type="secondary" style={{ marginBottom: 0 }}>
                 There are no active climbing sessions within 500 meters.
                 Start your own session and enable &quot;Allow others to join&quot;!
               </Paragraph>
-            </Space>
+            </Stack>
           }
         />
         <Button

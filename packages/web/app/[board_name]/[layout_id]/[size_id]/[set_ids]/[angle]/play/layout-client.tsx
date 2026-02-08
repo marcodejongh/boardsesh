@@ -2,7 +2,8 @@
 
 import React from 'react';
 import { PropsWithChildren } from 'react';
-import { Layout, Tabs, Badge, Button, Popconfirm, Flex } from 'antd';
+import { Tabs, Badge, Button, Popconfirm } from 'antd';
+import Box from '@mui/material/Box';
 import { DeleteOutlined } from '@ant-design/icons';
 import { track } from '@vercel/analytics';
 import { BoardDetails } from '@/app/lib/types';
@@ -11,7 +12,6 @@ import QueueList from '@/app/components/queue-control/queue-list';
 import { useQueueContext } from '@/app/components/graphql-queue';
 import styles from './layout-client.module.css';
 
-const { Content, Sider } = Layout;
 
 interface PlayLayoutClientProps {
   boardDetails: BoardDetails;
@@ -66,12 +66,12 @@ const QueueSidebar: React.FC<{ boardDetails: BoardDetails }> = ({ boardDetails }
 
 const PlayLayoutClient: React.FC<PropsWithChildren<PlayLayoutClientProps>> = ({ boardDetails, children }) => {
   return (
-    <Layout className={styles.playLayout}>
-      <Content className={styles.mainContent}>{children}</Content>
-      <Sider width={400} className={styles.sider} theme="light">
+    <Box className={styles.playLayout}>
+      <Box component="main" className={styles.mainContent}>{children}</Box>
+      <Box component="aside" className={styles.sider} sx={{ width: 400 }}>
         <QueueSidebar boardDetails={boardDetails} />
-      </Sider>
-    </Layout>
+      </Box>
+    </Box>
   );
 };
 

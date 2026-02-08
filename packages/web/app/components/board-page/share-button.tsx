@@ -15,7 +15,9 @@ import {
   AppleOutlined,
   ApiOutlined,
 } from '@ant-design/icons';
-import { Button, Input, QRCode, Flex, App, Typography, Badge, Switch, Tabs, Space } from 'antd';
+import { Button, Input, QRCode, App, Typography, Badge, Switch, Tabs } from 'antd';
+import Box from '@mui/material/Box';
+import Stack from '@mui/material/Stack';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
@@ -60,17 +62,18 @@ function LedConnectionTab() {
   };
 
   return (
-    <Flex vertical gap="middle">
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       <Text>
         Connect to your board via Bluetooth to illuminate routes with LEDs.
         Routes will automatically update as you navigate between climbs.
       </Text>
 
       {!isBluetoothSupported && (
-        <Flex
-          vertical
-          gap="small"
-          style={{
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 1,
             padding: '12px',
             background: themeTokens.colors.warningBg,
             border: `1px solid ${themeTokens.colors.warning}`,
@@ -104,7 +107,7 @@ function LedConnectionTab() {
               Chromium-based browser.
             </Paragraph>
           )}
-        </Flex>
+        </Box>
       )}
 
       {isBluetoothSupported && !isConnected && (
@@ -121,11 +124,12 @@ function LedConnectionTab() {
       )}
 
       {isConnected && (
-        <Flex vertical gap="small">
-          <Flex
-            align="center"
-            gap="small"
-            style={{
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
               padding: '12px',
               background: themeTokens.colors.successBg,
               border: `1px solid ${themeTokens.colors.success}`,
@@ -152,10 +156,10 @@ function LedConnectionTab() {
             >
               Disconnect
             </Button>
-          </Flex>
-        </Flex>
+          </Box>
+        </Box>
       )}
-    </Flex>
+    </Box>
   );
 }
 
@@ -269,10 +273,11 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
   // Session info content (shared between active and inactive states)
   const sessionInfoContent = (
     <>
-      <Flex
-        align="center"
-        gap="small"
-        style={{
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1,
           padding: '12px',
           background: themeTokens.colors.successBg,
           border: `1px solid ${themeTokens.colors.success}`,
@@ -297,26 +302,28 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
         >
           Leave
         </Button>
-      </Flex>
+      </Box>
 
       {users && users.length > 0 && (
-        <Flex vertical gap="small">
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
           <Text strong>Connected Users ({users.length}):</Text>
-          <Flex
-            vertical
-            gap="small"
-            style={{
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 1,
               maxHeight: '150px',
               overflowY: 'auto',
               padding: '4px',
             }}
           >
             {users.map((user) => (
-              <Flex
+              <Box
                 key={user.id}
-                justify="space-between"
-                align="center"
-                style={{
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
                   background:
                     user.id === currentUserId ? themeTokens.semantic.selected : themeTokens.neutral[100],
                   padding: '8px 12px',
@@ -324,26 +331,27 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
                   width: '100%',
                 }}
               >
-                <Flex gap="small" align="center">
+                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
                   <Text style={{ fontSize: '14px' }}>
                     {user.username}
                     {user.id === currentUserId && ' (you)'}
                   </Text>
-                </Flex>
+                </Box>
                 {user.isLeader && (
                   <CrownFilled style={{ color: themeTokens.colors.warning, fontSize: '16px' }} />
                 )}
-              </Flex>
+              </Box>
             ))}
-          </Flex>
-        </Flex>
+          </Box>
+        </Box>
       )}
 
       {!isLoggedIn && (
-        <Flex
-          align="center"
-          justify="space-between"
-          style={{
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
             padding: '12px',
             background: themeTokens.neutral[100],
             borderRadius: themeTokens.borderRadius.md,
@@ -355,22 +363,22 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
           <Button type="link" size="small" icon={<LoginOutlined />} onClick={() => setShowAuthModal(true)}>
             Sign in
           </Button>
-        </Flex>
+        </Box>
       )}
 
-      <Flex vertical gap="small">
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
         <Text strong>Invite others to join:</Text>
-        <Flex style={{ width: '100%' }} align="center">
+        <Box sx={{ display: 'flex', width: '100%', alignItems: 'center' }}>
           <Input
             value={shareUrl}
             readOnly
             addonAfter={<Button icon={<CopyOutlined />} onClick={copyToClipboard} />}
           />
-        </Flex>
-        <Flex justify="center">
+        </Box>
+        <Box sx={{ display: 'flex', justifyContent: 'center' }}>
           <QRCode value={shareUrl} size={160} bordered={false} />
-        </Flex>
-      </Flex>
+        </Box>
+      </Box>
     </>
   );
 
@@ -380,16 +388,17 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
       key: 'start',
       label: 'Start Session',
       children: (
-        <Flex vertical gap="middle">
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <Text>
             Start a party mode session to climb with others. Share your queue and take turns!
           </Text>
 
           {!isLoggedIn && (
-            <Flex
-              align="center"
-              gap="small"
-              style={{
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
                 padding: '12px',
                 background: themeTokens.colors.warningBg,
                 border: `1px solid ${themeTokens.colors.warning}`,
@@ -400,12 +409,12 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
               <Button type="primary" size="small" icon={<LoginOutlined />} onClick={() => setShowAuthModal(true)}>
                 Sign in
               </Button>
-            </Flex>
+            </Box>
           )}
 
           {isLoggedIn && (
             <>
-              <Flex vertical gap="small">
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                 <Text strong>Session Name (optional)</Text>
                 <Input
                   placeholder="e.g., Tuesday Night Climbs"
@@ -413,17 +422,17 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
                   onChange={(e) => setSessionName(e.target.value)}
                   maxLength={50}
                 />
-              </Flex>
+              </Box>
 
-              <Flex align="center" justify="space-between">
-                <Space orientation="vertical" size={0}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Stack spacing={0}>
                   <Text strong>Allow others to discover this session</Text>
                   <Text type="secondary" style={{ fontSize: '12px' }}>
                     Others nearby can find and join your session
                   </Text>
-                </Space>
+                </Stack>
                 <Switch checked={discoverable} onChange={setDiscoverable} />
-              </Flex>
+              </Box>
 
               <Button
                 type="primary"
@@ -437,14 +446,14 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
               </Button>
             </>
           )}
-        </Flex>
+        </Box>
       ),
     },
     {
       key: 'join',
       label: 'Join Session',
       children: (
-        <Flex vertical gap="middle">
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <Text>Enter a session link or ID to join an existing party.</Text>
 
           <Input
@@ -457,7 +466,7 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
           <Button type="primary" size="large" onClick={handleJoinSession} block>
             Join Session
           </Button>
-        </Flex>
+        </Box>
       ),
     },
     {
@@ -473,9 +482,9 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
       key: 'session',
       label: 'Session',
       children: (
-        <Flex gap="middle" vertical>
+        <Box sx={{ display: 'flex', gap: 2, flexDirection: 'column' }}>
           {sessionInfoContent}
-        </Flex>
+        </Box>
       ),
     },
     {
@@ -503,7 +512,7 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
           wrapper: { height: '70vh' },
         }}
       >
-        <Flex gap="middle" vertical>
+        <Box sx={{ display: 'flex', gap: 2, flexDirection: 'column' }}>
           {/* Controller Mode Banner */}
           {isControllerMode && (
             <div
@@ -515,7 +524,7 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
                 marginBottom: '16px',
               }}
             >
-              <Flex align="center" gap="small">
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <span style={{ fontSize: '18px' }}>🎮</span>
                 <div>
                   <Text strong style={{ color: themeTokens.colors.primary }}>
@@ -526,7 +535,7 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
                     Queue management is handled by your Board Controller
                   </Text>
                 </div>
-              </Flex>
+              </Box>
             </div>
           )}
 
@@ -540,18 +549,19 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
 
               {/* Connecting */}
               {isConnecting && (
-                <Flex vertical align="center" gap="middle" style={{ padding: '24px' }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, padding: '24px' }}>
                   <LoadingOutlined style={{ fontSize: '32px', color: themeTokens.colors.primary }} />
                   <Text>Connecting to session...</Text>
-                </Flex>
+                </Box>
               )}
 
               {/* Connection error */}
               {connectionError && !isConnecting && (
-                <Flex
-                  align="center"
-                  gap="small"
-                  style={{
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
                     padding: '12px',
                     background: themeTokens.colors.errorBg,
                     border: `1px solid ${themeTokens.colors.error}`,
@@ -559,7 +569,7 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
                   }}
                 >
                   <Text type="danger">{connectionError.message}</Text>
-                </Flex>
+                </Box>
               )}
 
               {/* Connected - show session info + LED tabs */}
@@ -568,7 +578,7 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
               )}
             </>
           )}
-        </Flex>
+        </Box>
       </SwipeableDrawer>
 
       <AuthModal

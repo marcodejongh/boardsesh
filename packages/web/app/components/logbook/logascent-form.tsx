@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Button, DatePicker, Select, Input, Rate, InputNumber, Form, Space, Tag, Tooltip, Segmented } from 'antd';
+import { Button, DatePicker, Select, Input, Rate, InputNumber, Form, Tag, Tooltip, Segmented } from 'antd';
+import Stack from '@mui/material/Stack';
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { track } from '@vercel/analytics';
 import { Climb, BoardDetails } from '@/app/lib/types';
@@ -157,10 +158,10 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boar
       </Form.Item>
 
       <Form.Item label="Boulder" {...formItemLayout}>
-        <Space>
+        <Stack direction="row" spacing={1}>
           <strong>{currentClimb?.name || 'N/A'}</strong>
           {showMirrorTag && (
-            <Space size={4}>
+            <Stack direction="row" spacing={0.5}>
               <Tag
                 color={isMirrored ? 'purple' : 'default'}
                 style={{ cursor: 'pointer', margin: 0 }}
@@ -171,9 +172,9 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boar
               <Tooltip title="Click the tag to toggle whether you completed this climb on the mirrored side">
                 <InfoCircleOutlined style={{ color: themeTokens.neutral[400], cursor: 'pointer' }} />
               </Tooltip>
-            </Space>
+            </Stack>
           )}
-        </Space>
+        </Stack>
       </Form.Item>
 
       <Form.Item name="date" label="Date and Time" {...formItemLayout}>

@@ -47,14 +47,14 @@
   width: 36px;
   height: 4px;
   border-radius: 2px;
-  background-color: var(--ant-color-text-quaternary, #d9d9d9);
+  background-color: var(--neutral-300, #d9d9d9);
 }
 
 .dragHandleBarVertical {
   width: 4px;
   height: 36px;
   border-radius: 2px;
-  background-color: var(--ant-color-text-quaternary, #d9d9d9);
+  background-color: var(--neutral-300, #d9d9d9);
 }
 
 /* Title wrapper: handle injected above/below the user's title in the header */

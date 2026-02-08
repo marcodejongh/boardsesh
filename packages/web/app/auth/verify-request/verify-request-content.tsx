@@ -1,14 +1,15 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Layout, Card, Typography, Button, Space, Alert, Input, Form, message } from 'antd';
+import { Card, Typography, Button, Alert, Input, Form, message } from 'antd';
+import Box from '@mui/material/Box';
+import Stack from '@mui/material/Stack';
 import { MailOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import { useSearchParams } from 'next/navigation';
 import Logo from '@/app/components/brand/logo';
 import BackButton from '@/app/components/back-button';
 import { themeTokens } from '@/app/theme/theme-config';
 
-const { Content, Header } = Layout;
 const { Title, Text, Paragraph } = Typography;
 
 export default function VerifyRequestContent() {
@@ -60,15 +61,17 @@ export default function VerifyRequestContent() {
   const errorMessage = getErrorMessage();
 
   return (
-    <Layout style={{ minHeight: '100vh', background: themeTokens.semantic.background }}>
-      <Header
-        style={{
+    <Box sx={{ minHeight: '100vh', background: themeTokens.semantic.background }}>
+      <Box
+        component="header"
+        sx={{
           background: themeTokens.semantic.surface,
           padding: '0 16px',
           display: 'flex',
           alignItems: 'center',
-          gap: 16,
+          gap: 2,
           boxShadow: themeTokens.shadows.xs,
+          height: 64,
         }}
       >
         <BackButton />
@@ -76,10 +79,11 @@ export default function VerifyRequestContent() {
         <Title level={4} style={{ margin: 0, flex: 1 }}>
           Email Verification
         </Title>
-      </Header>
+      </Box>
 
-      <Content
-        style={{
+      <Box
+        component="main"
+        sx={{
           padding: '24px',
           display: 'flex',
           justifyContent: 'center',
@@ -88,7 +92,7 @@ export default function VerifyRequestContent() {
         }}
       >
         <Card style={{ width: '100%', maxWidth: 400, textAlign: 'center' }}>
-          <Space orientation="vertical" size="large" style={{ width: '100%' }}>
+          <Stack spacing={3} sx={{ width: '100%' }}>
             {errorMessage ? (
               <>
                 <CloseCircleOutlined style={{ fontSize: 48, color: themeTokens.colors.error }} />
@@ -133,9 +137,9 @@ export default function VerifyRequestContent() {
             <Button type="link" href="/auth/login">
               Back to Login
             </Button>
-          </Space>
+          </Stack>
         </Card>
-      </Content>
-    </Layout>
+      </Box>
+    </Box>
   );
 }

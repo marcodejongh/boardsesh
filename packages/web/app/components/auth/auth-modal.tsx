@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Modal, Form, Input, Button, Tabs, Typography, Divider, message, Space } from 'antd';
+import { Modal, Form, Input, Button, Tabs, Typography, message } from 'antd';
+import Stack from '@mui/material/Stack';
+import MuiDivider from '@mui/material/Divider';
 import { UserOutlined, LockOutlined, MailOutlined, HeartFilled } from '@ant-design/icons';
 import { signIn } from 'next-auth/react';
 import SocialLoginButtons from '@/app/components/auth/social-login-buttons';
@@ -228,21 +230,21 @@ export default function AuthModal({
       width={400}
       centered
     >
-      <Space direction="vertical" size="large" style={{ width: '100%' }}>
-        <Space direction="vertical" style={{ width: '100%', textAlign: 'center' }}>
+      <Stack spacing={3} style={{ width: '100%' }}>
+        <Stack spacing={1} style={{ width: '100%', textAlign: 'center' }}>
           <HeartFilled style={{ fontSize: 32, color: themeTokens.colors.error }} />
           <Text strong style={{ fontSize: 18 }}>{title}</Text>
           <Text type="secondary">{description}</Text>
-        </Space>
+        </Stack>
 
         <Tabs activeKey={activeTab} onChange={setActiveTab} items={tabItems} centered destroyOnHidden={false} />
 
-        <Divider style={{ margin: '8px 0' }}>
+        <MuiDivider sx={{ margin: '8px 0' }}>
           <Text type="secondary">or</Text>
-        </Divider>
+        </MuiDivider>
 
         <SocialLoginButtons />
-      </Space>
+      </Stack>
     </Modal>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 import React, { useEffect, useRef, useCallback, useState } from 'react';
-import { Row, Col, Button, Flex } from 'antd';
+import { Button } from 'antd';
+import Box from '@mui/material/Box';
 import { AppstoreOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import { track } from '@vercel/analytics';
 import { Climb, ParsedBoardRouteParameters, BoardDetails } from '@/app/lib/types';
@@ -28,9 +29,9 @@ const ClimbsListSkeleton = ({ aspectRatio, viewMode }: { aspectRatio: number; vi
     ));
   }
   return Array.from({ length: 10 }, (_, i) => (
-    <Col xs={24} lg={12} xl={12} key={i}>
+    <Box key={i} sx={{ width: { xs: '100%', lg: '50%' } }}>
       <ClimbCardSkeleton aspectRatio={aspectRatio} />
-    </Col>
+    </Box>
   ));
 };
 
@@ -137,10 +138,11 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
   return (
     <div style={{ paddingTop: themeTokens.spacing[1] }}>
       {/* View mode toggle + recent searches */}
-      <Flex
-        align="center"
-        gap={themeTokens.spacing[2]}
-        style={{
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: themeTokens.spacing[2],
           padding: `${themeTokens.spacing[1]}px ${themeTokens.spacing[1]}px ${themeTokens.spacing[2]}px`,
           minWidth: 0,
         }}
@@ -160,13 +162,13 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
             aria-label="Grid view"
           />
         </Button.Group>
-      </Flex>
+      </Box>
 
       {viewMode === 'grid' ? (
         /* Grid (card) mode */
-        <Row gutter={[themeTokens.spacing[4], themeTokens.spacing[4]]}>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: `${themeTokens.spacing[4]}px` }}>
           {climbs.map((climb, index) => (
-            <Col xs={24} lg={12} xl={12} key={climb.uuid}>
+            <Box key={climb.uuid} sx={{ width: { xs: '100%', lg: '50%' } }}>
               <div
                 {...(index === 0 ? { id: 'onboarding-climb-card' } : {})}
               >
@@ -177,12 +179,12 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
                   onCoverDoubleClick={() => handleClimbDoubleClick(climb)}
                 />
               </div>
-            </Col>
+            </Box>
           ))}
           {isFetchingClimbs && (!climbs || climbs.length === 0) ? (
             <ClimbsListSkeleton aspectRatio={boardDetails.boardWidth / boardDetails.boardHeight} viewMode="grid" />
           ) : null}
-        </Row>
+        </Box>
       ) : (
         /* List (compact) mode */
         <div>
@@ -209,9 +211,9 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
       <div ref={loadMoreRef} style={{ minHeight: themeTokens.spacing[5], marginTop: viewMode === 'grid' ? themeTokens.spacing[4] : 0 }}>
         {isFetchingClimbs && climbs.length > 0 && (
           viewMode === 'grid' ? (
-            <Row gutter={[themeTokens.spacing[4], themeTokens.spacing[4]]}>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: `${themeTokens.spacing[4]}px` }}>
               <ClimbsListSkeleton aspectRatio={boardDetails.boardWidth / boardDetails.boardHeight} viewMode="grid" />
-            </Row>
+            </Box>
           ) : (
             <ClimbsListSkeleton aspectRatio={boardDetails.boardWidth / boardDetails.boardHeight} viewMode="list" />
           )

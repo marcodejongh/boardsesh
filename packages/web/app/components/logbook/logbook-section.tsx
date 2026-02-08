@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { Typography, Collapse, Space, Tag } from 'antd';
+import { Typography, Collapse, Tag } from 'antd';
+import Stack from '@mui/material/Stack';
 import { BookOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import { LogbookView } from './logbook-view';
 import { Climb } from '@/app/lib/types';
@@ -57,7 +58,7 @@ export const LogbookSection: React.FC<LogbookSectionProps> = ({ climb }) => {
   }
 
   const summaryLabel = (
-    <Space size="middle" wrap>
+    <Stack direction="row" spacing={2} sx={{ flexWrap: 'wrap' }}>
       <Text strong>
         <BookOutlined style={{ marginRight: 8 }} />
         Your Logbook
@@ -75,7 +76,7 @@ export const LogbookSection: React.FC<LogbookSectionProps> = ({ climb }) => {
           {summary.failedAttempts} logged attempt{summary.failedAttempts !== 1 ? 's' : ''}
         </Tag>
       )}
-    </Space>
+    </Stack>
   );
 
   return (

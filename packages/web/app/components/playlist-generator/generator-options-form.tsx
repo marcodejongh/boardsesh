@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Typography, Select, Button, Row, Col, InputNumber, Switch, Tooltip } from 'antd';
+import { Typography, Select, Button, InputNumber, Switch, Tooltip } from 'antd';
 import { MinusOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import { TENSION_KILTER_GRADES } from '@/app/lib/board-data';
 import { BoardDetails } from '@/app/lib/types';

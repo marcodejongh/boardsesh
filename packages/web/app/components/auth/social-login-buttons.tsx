@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Button, Flex, Skeleton } from 'antd';
+import { Button, Skeleton } from 'antd';
+import Box from '@mui/material/Box';
 import { signIn } from 'next-auth/react';
 import { themeTokens } from '@/app/theme/theme-config';
 
@@ -98,7 +99,7 @@ export default function SocialLoginButtons({
   };
 
   return (
-    <Flex vertical gap="middle">
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       {providers.google && (
         <Button
           block
@@ -135,6 +136,6 @@ export default function SocialLoginButtons({
           Continue with Facebook
         </Button>
       )}
-    </Flex>
+    </Box>
   );
 }

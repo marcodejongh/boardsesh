@@ -1,7 +1,8 @@
 import React from 'react';
 import { BoardDetails, HoldState } from '@/app/lib/types';
 import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
-import { Select, Typography, Space, Tag } from 'antd';
+import { Select, Typography, Tag } from 'antd';
+import Stack from '@mui/material/Stack';
 import { CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import BoardHeatmap from '../board-renderer/board-heatmap';
 import { track } from '@vercel/analytics';
@@ -51,7 +52,7 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
   return (
     <div className={styles.holdSearchForm}>
       <div className={styles.holdSearchHeaderCompact}>
-        <Space size={8} wrap>
+        <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
           <Text type="secondary">Tap to:</Text>
           <Select
             value={selectedState}
@@ -67,16 +68,16 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
             options={stateItems.map(item => ({
               value: item.value,
               label: (
-                <Space size={4}>
+                <Stack direction="row" spacing={0.5}>
                   {item.icon}
                   {item.label}
-                </Space>
+                </Stack>
               ),
             }))}
           />
           {anyHoldsCount > 0 && <Tag color={themeTokens.colors.primary} style={{ margin: 0 }}>{anyHoldsCount} in</Tag>}
           {notHoldsCount > 0 && <Tag color={themeTokens.colors.error} style={{ margin: 0 }}>{notHoldsCount} out</Tag>}
-        </Space>
+        </Stack>
       </div>
 
       <div className={styles.boardContainer}>

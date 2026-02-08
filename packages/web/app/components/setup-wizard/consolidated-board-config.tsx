@@ -1,7 +1,10 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Button, Form, Select, Typography, Input, Divider, Card, Row, Col, Flex, Collapse, Space, Tabs, Switch, Tooltip } from 'antd';
+import { Button, Form, Select, Typography, Input, Card, Collapse, Tabs, Switch, Tooltip } from 'antd';
+import Box from '@mui/material/Box';
+import Stack from '@mui/material/Stack';
+import MuiDivider from '@mui/material/Divider';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { GithubOutlined, EditOutlined, TeamOutlined, InfoCircleOutlined, QuestionCircleOutlined, StarOutlined } from '@ant-design/icons';
@@ -503,12 +506,12 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
             },
           ]}
         />
-        <Divider />
+        <MuiDivider />
 
         <Form layout="vertical">
           <Form.Item label="Board Configuration" required>
-            <Row gutter={[16, 16]}>
-              <Col xs={24} sm={12}>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
+              <Box sx={{ width: { xs: '100%', sm: '50%' } }}>
                 <Form.Item label="Board" noStyle>
                   <Select value={selectedBoard} onChange={handleBoardChange} placeholder="Please select">
                     {SUPPORTED_BOARDS.map((board_name) => (
@@ -518,9 +521,9 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
                     ))}
                   </Select>
                 </Form.Item>
-              </Col>
+              </Box>
 
-              <Col xs={24} sm={12}>
+              <Box sx={{ width: { xs: '100%', sm: '50%' } }}>
                 <Form.Item label="Layout" noStyle>
                   <Select
                     value={selectedLayout}
@@ -535,9 +538,9 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
                     ))}
                   </Select>
                 </Form.Item>
-              </Col>
+              </Box>
 
-              <Col xs={24} sm={12}>
+              <Box sx={{ width: { xs: '100%', sm: '50%' } }}>
                 <Form.Item label="Size" noStyle>
                   <Select
                     value={selectedSize}
@@ -552,9 +555,9 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
                     ))}
                   </Select>
                 </Form.Item>
-              </Col>
+              </Box>
 
-              <Col xs={24} sm={12}>
+              <Box sx={{ width: { xs: '100%', sm: '50%' } }}>
                 <Form.Item label="Hold Sets" noStyle>
                   <Select
                     mode="multiple"
@@ -570,9 +573,9 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
                     ))}
                   </Select>
                 </Form.Item>
-              </Col>
+              </Box>
 
-              <Col xs={24} sm={12}>
+              <Box sx={{ width: { xs: '100%', sm: '50%' } }}>
                 <Form.Item label="Angle" noStyle>
                   <Select value={selectedAngle} onChange={handleAngleChange} disabled={!selectedBoard}>
                     {selectedBoard &&
@@ -583,8 +586,8 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
                       ))}
                   </Select>
                 </Form.Item>
-              </Col>
-            </Row>
+              </Box>
+            </Box>
           </Form.Item>
 
           <Form.Item label="Board Name (Optional)">
@@ -666,7 +669,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
 
         {isFormComplete && (
           <>
-            <Divider />
+            <MuiDivider />
             <Collapse
               activeKey={activeCollapsePanels.includes('preview') ? ['preview'] : []}
               onChange={(keys) => {
@@ -683,7 +686,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
                   key: 'preview',
                   label: 'Preview',
                   children: (
-                    <Flex gap="middle" wrap="wrap">
+                    <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
                       {previewBoardDetails ? (
                         <Card
                           style={{ width: 400 }}
@@ -702,7 +705,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
                           <Text type="secondary">Select board configuration to see preview</Text>
                         </Card>
                       )}
-                    </Flex>
+                    </Box>
                   ),
                 },
               ]}
@@ -720,8 +723,8 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
             ]}
           />
 
-        <Divider />
-        <Space style={{ width: '100%', justifyContent: 'center' }}>
+        <MuiDivider />
+        <Stack direction="row" spacing={1} style={{ width: '100%', justifyContent: 'center' }}>
           <a href="https://github.com/marcodejongh/boardsesh" target="_blank" rel="noopener noreferrer">
             <Button type="text" icon={<GithubOutlined />}>
               GitHub
@@ -744,7 +747,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
               About
             </Button>
           </Link>
-        </Space>
+        </Stack>
       </Card>
 
       <AuthModal

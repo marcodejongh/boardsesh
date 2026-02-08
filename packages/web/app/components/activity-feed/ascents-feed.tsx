@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Card, Flex, Tag, Typography, Rate, Empty, Spin, Button } from 'antd';
+import { Card, Tag, Typography, Rate, Empty, Spin, Button } from 'antd';
+import Box from '@mui/material/Box';
 import {
   CheckCircleOutlined,
   ThunderboltOutlined,
@@ -93,7 +94,7 @@ const GroupedFeedItem: React.FC<{ group: GroupedAscentFeedItem }> = ({ group }) 
 
   return (
     <Card className={styles.feedItem} size="small">
-      <Flex gap={12}>
+      <Box sx={{ display: 'flex', gap: '12px' }}>
         {/* Thumbnail */}
         {group.frames && group.layoutId && (
           <AscentThumbnail
@@ -108,10 +109,10 @@ const GroupedFeedItem: React.FC<{ group: GroupedAscentFeedItem }> = ({ group }) 
         )}
 
         {/* Content */}
-        <Flex vertical gap={8} className={styles.feedItemContent}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: '8px' }} className={styles.feedItemContent}>
           {/* Header with status and time */}
-          <Flex justify="space-between" align="center" wrap="wrap" gap={8}>
-            <Flex align="center" gap={8}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Tag
                 icon={statusSummary.icon}
                 color={statusSummary.color}
@@ -122,14 +123,14 @@ const GroupedFeedItem: React.FC<{ group: GroupedAscentFeedItem }> = ({ group }) 
               <Text strong className={styles.climbName}>
                 {group.climbName}
               </Text>
-            </Flex>
+            </Box>
             <Text type="secondary" className={styles.timeAgo}>
               {timeAgo}
             </Text>
-          </Flex>
+          </Box>
 
           {/* Climb details */}
-          <Flex gap={8} wrap="wrap" align="center">
+          <Box sx={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
             {group.difficultyName && (
               <Tag color="blue">{group.difficultyName}</Tag>
             )}
@@ -139,7 +140,7 @@ const GroupedFeedItem: React.FC<{ group: GroupedAscentFeedItem }> = ({ group }) 
             </Text>
             {group.isMirror && <Tag color="purple">Mirrored</Tag>}
             {group.isBenchmark && <Tag color="default">Benchmark</Tag>}
-          </Flex>
+          </Box>
 
           {/* Rating for successful sends */}
           {hasSuccess && group.bestQuality && (
@@ -157,8 +158,8 @@ const GroupedFeedItem: React.FC<{ group: GroupedAscentFeedItem }> = ({ group }) 
           {group.latestComment && (
             <Text className={styles.comment}>{group.latestComment}</Text>
           )}
-        </Flex>
-      </Flex>
+        </Box>
+      </Box>
     </Card>
   );
 };
@@ -253,11 +254,11 @@ export const AscentsFeed: React.FC<AscentsFeedProps> = ({ userId, pageSize = 10 
 
   return (
     <div className={styles.feed}>
-      <Flex vertical gap={12}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         {groups.map((group) => (
           <GroupedFeedItem key={group.key} group={group} />
         ))}
-      </Flex>
+      </Box>
 
       {hasMore && (
         <div className={styles.loadMoreContainer} ref={loadMoreRef}>

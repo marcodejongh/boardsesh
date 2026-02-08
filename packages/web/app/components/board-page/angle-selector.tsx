@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Button, Spin, Typography, Flex, Row, Col, Card } from 'antd';
+import { Button, Spin, Typography, Card } from 'antd';
+import Box from '@mui/material/Box';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import { useRouter, usePathname } from 'next/navigation';
 import { track } from '@vercel/analytics';
@@ -86,7 +87,7 @@ export default function AngleSelector({ boardName, boardDetails, currentAngle, c
     const hasStats = currentClimb && stats;
 
     return (
-      <Col xs={8} sm={6} md={4} key={angle}>
+      <Box key={angle} sx={{ width: { xs: '33.33%', sm: '25%', md: '16.67%' } }}>
         <div ref={isSelected ? currentAngleRef : null}>
           <Card
             hoverable
@@ -112,11 +113,11 @@ export default function AngleSelector({ boardName, boardDetails, currentAngle, c
               {angle}°
             </Text>
             {hasStats && (
-              <Flex vertical gap={2} align="center" style={{ marginTop: 4 }}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: '2px', alignItems: 'center', marginTop: '4px' }}>
                 {stats.difficulty && (
                   <Text style={{ fontSize: 12, fontWeight: 500 }}>{stats.difficulty}</Text>
                 )}
-                <Flex gap={4} align="center" justify="center" wrap="wrap">
+                <Box sx={{ display: 'flex', gap: '4px', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
                   {stats.quality_average !== null && Number(stats.quality_average) > 0 && (
                     <Text style={{ fontSize: 11, color: themeTokens.colors.warning }}>
                       ★{Number(stats.quality_average).toFixed(1)}
@@ -125,8 +126,8 @@ export default function AngleSelector({ boardName, boardDetails, currentAngle, c
                   <Text type="secondary" style={{ fontSize: 10 }}>
                     {stats.ascensionist_count} sends
                   </Text>
-                </Flex>
-              </Flex>
+                </Box>
+              </Box>
             )}
             {currentClimb && !hasStats && !isLoading && (
               <Text type="secondary" style={{ fontSize: 10, marginTop: 4 }}>
@@ -135,7 +136,7 @@ export default function AngleSelector({ boardName, boardDetails, currentAngle, c
             )}
           </Card>
         </div>
-      </Col>
+      </Box>
     );
   };
 
@@ -158,14 +159,14 @@ export default function AngleSelector({ boardName, boardDetails, currentAngle, c
           </div>
         )}
         {currentClimb && isLoading && (
-          <Flex align="center" justify="center" gap={8} style={{ marginBottom: 12 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '12px' }}>
             <Spin size="small" />
             <Text type="secondary" style={{ fontSize: 12 }}>Loading stats...</Text>
-          </Flex>
+          </Box>
         )}
-        <Row gutter={[8, 8]}>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
           {ANGLES[boardName].map(renderAngleCard)}
-        </Row>
+        </Box>
       </SwipeableDrawer>
     </>
   );

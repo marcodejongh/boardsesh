@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Card, Row, Col, Typography, Empty, Modal, Collapse, Button, Space } from 'antd';
+import { Card, Typography, Empty, Modal, Collapse, Button } from 'antd';
+import Box from '@mui/material/Box';
+import Stack from '@mui/material/Stack';
 import { InstagramOutlined, UserOutlined, VideoCameraOutlined, DownOutlined, UpOutlined } from '@ant-design/icons';
 import { BetaLink } from '@/app/lib/api-wrappers/sync-api-types';
 import { themeTokens } from '@/app/theme/theme-config';
@@ -47,7 +49,7 @@ const BetaVideos: React.FC<BetaVideosProps> = ({ betaLinks }) => {
     const embedUrl = getInstagramEmbedUrl(betaLink.link);
 
     return (
-      <Col xs={24} key={betaLink.link}>
+      <Box sx={{ width: '100%' }} key={betaLink.link}>
         <Card
           hoverable
           size="small"
@@ -124,7 +126,7 @@ const BetaVideos: React.FC<BetaVideosProps> = ({ betaLinks }) => {
             </a>
           </div>
         </Card>
-      </Col>
+      </Box>
     );
   };
 
@@ -133,7 +135,7 @@ const BetaVideos: React.FC<BetaVideosProps> = ({ betaLinks }) => {
   const hasMoreVideos = betaLinks.length > 1;
 
   const summaryLabel = (
-    <Space size="middle">
+    <Stack direction="row" spacing={2}>
       <Text strong>
         <VideoCameraOutlined style={{ marginRight: 8 }} />
         Beta Videos
@@ -141,7 +143,7 @@ const BetaVideos: React.FC<BetaVideosProps> = ({ betaLinks }) => {
       <Text type="secondary">
         {betaLinks.length} video{betaLinks.length !== 1 ? 's' : ''} available
       </Text>
-    </Space>
+    </Stack>
   );
 
   // Empty state
@@ -154,13 +156,13 @@ const BetaVideos: React.FC<BetaVideosProps> = ({ betaLinks }) => {
           {
             key: 'beta',
             label: (
-              <Space size="middle">
+              <Stack direction="row" spacing={2}>
                 <Text strong>
                   <VideoCameraOutlined style={{ marginRight: 8 }} />
                   Beta Videos
                 </Text>
                 <Text type="secondary">No videos available</Text>
-              </Space>
+              </Stack>
             ),
             children: <Empty description="No beta videos available" image={Empty.PRESENTED_IMAGE_SIMPLE} />,
           },
@@ -181,9 +183,9 @@ const BetaVideos: React.FC<BetaVideosProps> = ({ betaLinks }) => {
             label: summaryLabel,
             children: (
               <>
-                <Row gutter={[12, 12]}>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
                   {visibleVideos.map((betaLink) => renderVideoCard(betaLink))}
-                </Row>
+                </Box>
                 {hasMoreVideos && (
                   <Button
                     type="text"

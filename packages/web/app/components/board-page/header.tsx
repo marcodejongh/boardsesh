@@ -1,6 +1,7 @@
 'use client';
 import React, { useState } from 'react';
-import { Flex, Button } from 'antd';
+import { Button } from 'antd';
+import Box from '@mui/material/Box';
 import { Header } from 'antd/es/layout/layout';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import SearchPill from '../search-drawer/search-pill';
@@ -108,9 +109,9 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
         zIndex: 10,
       }}
     >
-      <Flex justify="space-between" align="center" style={{ width: '100%' }} gap={8}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '8px' }}>
         {/* Left section: Avatar + Back button */}
-        <Flex align="center" gap={4} style={{ flexShrink: 0 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
           {pageMode !== 'create' && (
             <UserDrawer boardDetails={boardDetails} angle={angle} />
           )}
@@ -126,20 +127,20 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
               />
             </div>
           )}
-        </Flex>
+        </Box>
 
         {/* Center Section - Content varies by page mode */}
-        <Flex justify="center" gap={2} style={{ flex: 1 }} align="center">
+        <Box sx={{ display: 'flex', justifyContent: 'center', gap: '2px', flex: 1, alignItems: 'center' }}>
           {/* List page: Show search pill (mobile only) */}
           {pageMode === 'list' && (
             <div className={styles.mobileOnly} style={{ flex: 1 }}>
               <SearchPill onClick={() => setSearchDropdownOpen(true)} />
             </div>
           )}
-        </Flex>
+        </Box>
 
         {/* Right Section */}
-        <Flex gap={4} align="center">
+        <Box sx={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
           {/* Create mode: Show cancel and publish buttons */}
           {pageMode === 'create' ? (
             <CreateModeButtons />
@@ -157,8 +158,8 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
               )}
             </>
           )}
-        </Flex>
-      </Flex>
+        </Box>
+      </Box>
 
       {/* Search dropdown drawer (mobile) */}
       <SearchDropdown

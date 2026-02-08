@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useCallback, useMemo } from 'react';
-import { Button, Badge, Typography, Space } from 'antd';
+import { Button, Badge, Typography } from 'antd';
+import Stack from '@mui/material/Stack';
 import SwipeableDrawer from '../../swipeable-drawer/swipeable-drawer';
 import { ActionTooltip } from '../action-tooltip';
 import { CheckOutlined, LoginOutlined, AppstoreOutlined } from '@ant-design/icons';
@@ -69,7 +70,7 @@ export function TickAction({
   }, [boardDetails, climb.uuid, angle, closeDrawer]);
 
   const renderSignInPrompt = () => (
-    <Space orientation="vertical" size="large" style={{ width: '100%', textAlign: 'center', padding: '24px 0' }}>
+    <Stack spacing={3} style={{ width: '100%', textAlign: 'center', padding: '24px 0' }}>
       <Text strong style={{ fontSize: 16 }}>Sign in to record ticks</Text>
       <Paragraph type="secondary">
         Create a Boardsesh account to log your climbs and track your progress.
@@ -83,7 +84,7 @@ export function TickAction({
       <Button icon={<AppstoreOutlined />} onClick={handleOpenInApp} block>
         Open in App
       </Button>
-    </Space>
+    </Stack>
   );
 
   const label = 'Tick';

@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Typography, Spin, Space } from 'antd';
+import { Typography, Spin } from 'antd';
+import Stack from '@mui/material/Stack';
 import { FilterOutlined } from '@ant-design/icons';
 import { useQueueContext } from '@/app/components/graphql-queue';
 import ClearButton from './clear-button';
@@ -36,12 +37,12 @@ const SearchResultsFooter = () => {
         {isFetchingClimbs ? (
           <Spin size="small" />
         ) : (
-          <Space size={8}>
+          <Stack direction="row" spacing={1}>
             <FilterOutlined style={{ color: themeTokens.colors.primary }} />
             <Text type="secondary">
               <span className={styles.resultBadge}>{(totalSearchResultCount ?? 0).toLocaleString()}</span> results
             </Text>
-          </Space>
+          </Stack>
         )}
       </div>
       <ClearButton />

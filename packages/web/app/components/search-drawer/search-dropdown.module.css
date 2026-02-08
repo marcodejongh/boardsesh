@@ -1,6 +1,6 @@
 /* Search Dropdown Drawer */
 .drawerRoot :global(.ant-drawer-body) {
-  background-color: var(--ant-color-bg-layout, #F3F4F6);
+  background-color: var(--semantic-background, #F3F4F6);
 }
 
 /* Footer bar */
@@ -9,8 +9,8 @@
   justify-content: space-between;
   align-items: center;
   padding: 16px 24px;
-  background: var(--ant-color-bg-container, #FFFFFF);
-  border-top: 1px solid var(--ant-color-border-secondary, #F0F0F0);
+  background: var(--semantic-surface, #FFFFFF);
+  border-top: 1px solid var(--neutral-100, #F0F0F0);
 }
 
 /* Clear all - underlined text link */
@@ -20,14 +20,14 @@
   padding: 0;
   font-size: 16px;
   font-weight: 600;
-  color: var(--ant-color-text, #111827);
+  color: var(--neutral-900, #111827);
   text-decoration: underline;
   cursor: pointer;
   line-height: 1.5;
 }
 
 .clearAllButton:hover {
-  color: var(--ant-color-text-secondary, #6B7280);
+  color: var(--neutral-500, #6B7280);
 }
 
 .clearAllButton:active {

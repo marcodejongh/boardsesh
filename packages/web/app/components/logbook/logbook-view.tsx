@@ -1,5 +1,7 @@
 import React from 'react';
-import { Card, Rate, Tag, Typography, Space, Flex, Empty } from 'antd';
+import { Card, Rate, Tag, Typography, Empty } from 'antd';
+import Box from '@mui/material/Box';
+import Stack from '@mui/material/Stack';
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Climb } from '@/app/lib/types';
 import { useBoardProvider } from '../board-provider/board-provider-context';
@@ -32,11 +34,11 @@ export const LogbookView: React.FC<LogbookViewProps> = ({ currentClimb }) => {
   }
 
   return (
-    <Flex vertical gap={8}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
       {climbAscents.map((ascent) => (
         <Card key={`${ascent.climb_uuid}-${ascent.climbed_at}`} style={{ width: '100%' }} size="small">
-          <Space orientation="vertical" style={{ width: '100%' }}>
-            <Space wrap>
+          <Stack spacing={1} style={{ width: '100%' }}>
+            <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
               <Text strong>{dayjs(ascent.climbed_at).format('MMM D, YYYY h:mm A')}</Text>
               {ascent.angle !== currentClimb.angle && (
                 <>
@@ -49,26 +51,26 @@ export const LogbookView: React.FC<LogbookViewProps> = ({ currentClimb }) => {
                 </>
               )}
               {showMirrorTag && ascent.is_mirror && <Tag color="purple">Mirrored</Tag>}
-            </Space>
+            </Stack>
             {ascent.is_ascent && ascent.quality && (
               <>
-                <Space>
+                <Stack direction="row" spacing={1}>
                   <Rate disabled value={ascent.quality} count={5} style={{ fontSize: 14 }} />
-                </Space>
+                </Stack>
               </>
             )}
-            <Space>
+            <Stack direction="row" spacing={1}>
               <Text>Attempts: {ascent.tries}</Text>
-            </Space>
+            </Stack>
 
             {ascent.comment && (
               <Text type="secondary" style={{ whiteSpace: 'pre-wrap' }}>
                 {ascent.comment}
               </Text>
             )}
-          </Space>
+          </Stack>
         </Card>
       ))}
-    </Flex>
+    </Box>
   );
 };

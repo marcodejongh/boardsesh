@@ -2,7 +2,8 @@
 
 import React, { useMemo } from 'react';
 import { PropsWithChildren } from 'react';
-import { Layout, Tabs, Badge, Button, Popconfirm, Flex } from 'antd';
+import { Tabs, Badge, Button, Popconfirm } from 'antd';
+import Box from '@mui/material/Box';
 import { DeleteOutlined } from '@ant-design/icons';
 import { track } from '@vercel/analytics';
 import { BoardDetails } from '@/app/lib/types';
@@ -14,7 +15,6 @@ import { useQueueContext } from '@/app/components/graphql-queue';
 import OnboardingTour from '@/app/components/onboarding/onboarding-tour';
 import styles from './layout-client.module.css';
 
-const { Content, Sider } = Layout;
 
 interface ListLayoutClientProps {
   boardDetails: BoardDetails;
@@ -45,7 +45,7 @@ const QueueTabContent: React.FC<{ boardDetails: BoardDetails }> = ({ boardDetail
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       {queue.length > 0 && (
-        <Flex justify="flex-end" style={{ padding: '8px 8px 0 8px' }}>
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', padding: '8px 8px 0 8px' }}>
           <Popconfirm
             title="Clear queue"
             description="Are you sure you want to clear all items from the queue?"
@@ -57,7 +57,7 @@ const QueueTabContent: React.FC<{ boardDetails: BoardDetails }> = ({ boardDetail
               Clear
             </Button>
           </Popconfirm>
-        </Flex>
+        </Box>
       )}
       <div style={{ flex: 1, overflow: 'auto' }}>
         <QueueList boardDetails={boardDetails} />
@@ -97,13 +97,13 @@ const TabsWrapper: React.FC<{ boardDetails: BoardDetails }> = ({ boardDetails })
 
 const ListLayoutClient: React.FC<PropsWithChildren<ListLayoutClientProps>> = ({ boardDetails, children }) => {
   return (
-    <Layout className={styles.listLayout}>
-      <Content className={styles.mainContent}>{children}</Content>
-      <Sider width={400} className={styles.sider} theme="light" style={{ padding: '0 8px 20px 8px' }}>
+    <Box className={styles.listLayout}>
+      <Box component="main" className={styles.mainContent}>{children}</Box>
+      <Box component="aside" className={styles.sider} sx={{ width: 400, padding: '0 8px 20px 8px' }}>
         <TabsWrapper boardDetails={boardDetails} />
-      </Sider>
+      </Box>
       <OnboardingTour />
-    </Layout>
+    </Box>
   );
 };
 

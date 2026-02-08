@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Button, Flex, Form, Input, ColorPicker, message } from 'antd';
+import { Button, Form, Input, ColorPicker, message } from 'antd';
+import Box from '@mui/material/Box';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import { UnorderedListOutlined, PlusOutlined, TagOutlined, EditOutlined } from '@ant-design/icons';
 import { usePathname, useRouter } from 'next/navigation';
@@ -292,7 +293,7 @@ function BottomTabBar({ boardDetails, angle }: BottomTabBarProps) {
           body: { padding: `${themeTokens.spacing[2]}px 0` },
         }}
       >
-        <Flex vertical>
+        <Box sx={{ display: 'flex', flexDirection: 'column' }}>
           {createClimbUrl && (
             <Link
               href={createClimbUrl}
@@ -331,7 +332,7 @@ function BottomTabBar({ boardDetails, angle }: BottomTabBarProps) {
               Playlist
             </Button>
           )}
-        </Flex>
+        </Box>
       </SwipeableDrawer>
 
       {/* Create Playlist Drawer */}

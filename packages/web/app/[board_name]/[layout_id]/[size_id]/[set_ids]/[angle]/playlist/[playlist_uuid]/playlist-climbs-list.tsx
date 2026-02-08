@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useRef, useCallback, useState, useMemo } from 'react';
-import { Row, Col, Empty, Typography, Alert } from 'antd';
+import { Empty, Typography, Alert } from 'antd';
+import Box from '@mui/material/Box';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { track } from '@vercel/analytics';
 import { Climb, BoardDetails } from '@/app/lib/types';
@@ -29,9 +30,9 @@ const ClimbsListSkeleton = ({ aspectRatio }: { aspectRatio: number }) => {
   return (
     <>
       {Array.from({ length: 6 }, (_, i) => (
-        <Col xs={24} lg={12} xl={12} key={i}>
+        <Box sx={{ width: { xs: '100%', lg: '50%' } }} key={i}>
           <ClimbCardSkeleton aspectRatio={aspectRatio} />
-        </Col>
+        </Box>
       ))}
     </>
   );
@@ -164,9 +165,9 @@ export default function PlaylistClimbsList({
         <div className={styles.climbsSectionHeader}>
           <Text strong className={styles.climbsSectionTitle}>Climbs</Text>
         </div>
-        <Row gutter={[16, 16]}>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
           <ClimbsListSkeleton aspectRatio={aspectRatio} />
-        </Row>
+        </Box>
       </div>
     );
   }
@@ -230,28 +231,28 @@ export default function PlaylistClimbsList({
         />
       )}
 
-      <Row gutter={[16, 16]}>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
         {visibleClimbs.map((climb) => (
-          <Col xs={24} lg={12} xl={12} key={climb.uuid}>
+          <Box sx={{ width: { xs: '100%', lg: '50%' } }} key={climb.uuid}>
             <ClimbCard
               climb={climb}
               boardDetails={boardDetails}
               selected={selectedClimbUuid === climb.uuid}
               onCoverDoubleClick={() => handleClimbDoubleClick(climb)}
             />
-          </Col>
+          </Box>
         ))}
         {isFetching && allClimbs.length === 0 && (
           <ClimbsListSkeleton aspectRatio={aspectRatio} />
         )}
-      </Row>
+      </Box>
 
       {/* Sentinel element for Intersection Observer */}
       <div ref={loadMoreRef} style={{ minHeight: '20px', marginTop: '16px' }}>
         {isFetchingNextPage && (
-          <Row gutter={[16, 16]}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
             <ClimbsListSkeleton aspectRatio={aspectRatio} />
-          </Row>
+          </Box>
         )}
         {!hasNextPage && visibleClimbs.length > 0 && (
           <div className={styles.endOfList}>
