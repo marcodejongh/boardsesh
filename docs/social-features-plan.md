@@ -24,7 +24,7 @@ This document describes the plan for adding social features to Boardsesh: commen
 - **Polymorphic comments and votes**: A single `comments` table and a single `votes` table, each with an `entity_type` + `entity_id` discriminator. This avoids creating N separate tables per commentable/voteable entity.
 - **Fan-out on read**: The activity feed is assembled at query time. No separate denormalized feed table.
 - **Cursor-based pagination** for the activity feed (better for constantly-changing datasets than offset).
-- **Chronological feed only**: No algorithmic ranking. Items sorted strictly by timestamp.
+- **Reddit-style ranking modes**: Four sort modes available across comments, feeds, and entity lists -- New (chronological), Top (highest score), Controversial (high engagement, divisive), and Hot (recent + high velocity). See [Ranking Algorithms](#ranking-algorithms) section for implementation details.
 - **Real-time via existing WebSocket infrastructure**: Notifications and live comment updates use the same graphql-ws + Redis pub/sub system as party sessions.
 - **Server-side rendering** where possible for the feed. Interactive elements (vote buttons, comment forms) are client components embedded within server-rendered shells.
 - **Rate limiting** on social mutations.
@@ -45,6 +45,94 @@ This is extensible -- new entity types (e.g. `playlist`, `session`) can be added
 **Key distinction**: A climb can have comments in two independent scopes:
 - `playlist_climb` with `entity_id = "{playlist_uuid}:{climb_uuid}"` -- discussion in the context of a curated playlist
 - `climb` with `entity_id = "{climb_uuid}"` -- the climb's own global discussion (accessible from the climb detail view, search results, etc.)
+
+### Ranking Algorithms
+
+Four Reddit-style sort modes are available wherever sortable content is displayed (comments, activity feed, playlist climb lists). The `sortBy` field in GraphQL inputs accepts these values:
+
+#### `new` (Chronological)
+```sql
+ORDER BY created_at DESC
+```
+Pure reverse-chronological. Default for comment threads and the activity feed.
+
+#### `top` (Highest Score)
+```sql
+ORDER BY (upvotes - downvotes) DESC, created_at DESC
+```
+Ranks by net score. Ties broken by recency. Can be combined with a time window filter (`topPeriod`: `hour`, `day`, `week`, `month`, `year`, `all`) to show "top this week", "top all time", etc.
+
+#### `controversial` (Divisive)
+Uses Reddit's controversy formula. A controversial item has a high total vote count but a score close to zero (roughly equal upvotes and downvotes).
+
+```
+controversy_score = (upvotes + downvotes) ^ balance_factor
+where balance_factor = min(upvotes, downvotes) / max(upvotes, downvotes) if max > 0, else 0
+```
+
+In SQL (computed in the query):
+```sql
+ORDER BY
+  CASE WHEN GREATEST(upvotes, downvotes) = 0 THEN 0
+       ELSE POWER(upvotes + downvotes, LEAST(upvotes, downvotes)::float / GREATEST(upvotes, downvotes))
+  END DESC,
+  created_at DESC
+```
+
+Items with very few votes naturally score low. Items with many votes that are evenly split score highest.
+
+#### `hot` (Trending)
+Uses a time-decay formula inspired by Reddit's hot ranking. Recent items with high scores bubble up; older items decay.
+
+```
+hot_score = sign(score) * log10(max(|score|, 1)) + (created_epoch - reference_epoch) / 45000
+```
+
+Where:
+- `score` = upvotes - downvotes
+- `created_epoch` = Unix timestamp of creation (seconds)
+- `reference_epoch` = a fixed reference point (e.g., app launch date as Unix timestamp)
+- `45000` = decay constant (~12.5 hours per order of magnitude). Tunable.
+
+In SQL:
+```sql
+ORDER BY
+  SIGN(upvotes - downvotes) * LOG(GREATEST(ABS(upvotes - downvotes), 1))
+  + EXTRACT(EPOCH FROM created_at - '2024-01-01'::timestamp) / 45000.0
+  DESC
+```
+
+The `hot` sort is the default for entity discovery (e.g., "Discover playlists" could sort by hot).
+
+#### Implementation Strategy
+
+The ranking formulas are computed in SQL at query time using the `votes` table aggregation. For the initial implementation:
+
+1. **Comments**: Sort computed inline via subquery that aggregates votes per comment
+2. **Activity feed**: Sort computed inline on the merged result set
+3. **Playlist climbs**: Sort computed via JOIN with `bulkVoteSummaries`-style aggregation
+
+If performance becomes an issue (Phase 7), the `vote_counts` materialized table can store pre-computed `upvotes`, `downvotes`, and `score` columns, making the ranking formulas simple column references instead of aggregations.
+
+#### GraphQL Enum
+
+```graphql
+enum SortMode {
+  new           # Chronological (most recent first)
+  top           # Highest net score
+  controversial # High engagement, divisive (close to 50/50 split)
+  hot           # Trending (recent + high vote velocity)
+}
+
+enum TimePeriod {
+  hour
+  day
+  week
+  month
+  year
+  all
+}
+```
 
 ---
 
@@ -213,8 +301,10 @@ type Comment {
   isDeleted: Boolean!
   # Computed fields
   replyCount: Int!
-  voteScore: Int!
-  userVote: Int  # +1, -1, or null if not voted (requires auth)
+  upvotes: Int!
+  downvotes: Int!
+  voteScore: Int!      # upvotes - downvotes
+  userVote: Int        # +1, -1, or null if not voted (requires auth)
 }
 
 type CommentConnection {
@@ -333,13 +423,16 @@ input CommentsInput {
   entityId: String!
   limit: Int
   offset: Int
-  sortBy: String  # 'recent' (default) or 'top' (by vote score)
+  sortBy: SortMode    # new (default), top, controversial, hot
+  topPeriod: TimePeriod  # Only used when sortBy=top. Defaults to 'all'
 }
 
 input ActivityFeedInput {
   cursor: String
-  limit: Int  # default 20, max 50
+  limit: Int         # default 20, max 50
   boardType: String  # optional filter
+  sortBy: SortMode   # new (default), top, controversial, hot
+  topPeriod: TimePeriod  # Only used when sortBy=top. Defaults to 'week'
 }
 
 input FollowInput {
@@ -458,9 +551,13 @@ New file: `packages/backend/src/graphql/resolvers/social/comments.ts`
 - Fetch comments for `(entity_type, entity_id)` with pagination
 - JOIN `users` + `user_profiles` for `displayName`, `avatarUrl`
 - Subquery for `reply_count` (COUNT of children)
-- Subquery for `vote_score` (SUM of votes where `entity_type = 'comment'`)
+- Subquery for `upvotes` and `downvotes` counts (from votes where `entity_type = 'comment'`)
 - If authenticated, LEFT JOIN to get `user_vote`
-- Sort by `created_at DESC` (recent) or `vote_score DESC` (top)
+- Apply ranking algorithm based on `sortBy` parameter:
+  - `new`: ORDER BY `created_at DESC`
+  - `top`: ORDER BY `(upvotes - downvotes) DESC`, with optional `topPeriod` time window filter on `created_at`
+  - `controversial`: ORDER BY controversy formula (see Ranking Algorithms section)
+  - `hot`: ORDER BY hot score formula (see Ranking Algorithms section)
 - Filter out soft-deleted comments unless they have replies (show as "[deleted]")
 
 **`addComment` mutation:**
@@ -569,15 +666,18 @@ New file: `packages/backend/src/graphql/resolvers/social/feed.ts`
 
 **`activityFeed` query:**
 - Auth required
-- Strictly chronological, no algorithmic ranking
 - Multi-source aggregation:
 
-  1. **Followed-user ascents**: Query `boardsesh_ticks` WHERE `user_id IN (SELECT following_id FROM user_follows WHERE follower_id = $me)` AND `status IN ('flash', 'send')`, ordered by `climbed_at DESC`
-  2. **Top-voted playlist climbs**: Query votes for `entity_type = 'playlist_climb'` with high scores in the last 7 days, joined with playlist + climb data
-  3. **Recent comments**: Query comments on entities with high engagement in the last 24h
+  1. **Followed-user ascents**: Query `boardsesh_ticks` WHERE `user_id IN (SELECT following_id FROM user_follows WHERE follower_id = $me)` AND `status IN ('flash', 'send')`
+  2. **Top-voted playlist climbs**: Query votes for `entity_type = 'playlist_climb'` with high scores, joined with playlist + climb data
+  3. **Recent comments**: Query comments on entities with high engagement
 
-- **Merge strategy**: All items sorted by timestamp descending. No interleaving tricks -- pure chronological.
-- **Cursor**: Encode `(timestamp, source_type, id)` as opaque base64 cursor
+- **Sort modes** (via `sortBy` parameter):
+  - `new` (default): All items sorted by timestamp descending. Pure chronological.
+  - `top`: Items ranked by net vote score. When `topPeriod` is set, only items within that time window are included (e.g., "top this week").
+  - `controversial`: Items with high total votes but divisive scores. Good for discovering debated ascents or playlist picks.
+  - `hot`: Items ranked by the hot formula -- recent items with high vote velocity surface first. Good default for discovery.
+- **Cursor**: Encode `(sort_score, timestamp, source_type, id)` as opaque base64 cursor. Sort score varies by mode (timestamp for `new`, net score for `top`, controversy score for `controversial`, hot score for `hot`).
 - **Default limit**: 20 items per page, max 50
 
 **For unauthenticated users:**
@@ -737,7 +837,7 @@ Used on:
 **Structure:**
 ```
 [Comment count header]
-[Sort toggle: Recent | Top]
+[Sort toggle: New | Top | Controversial | Hot]
 [Comment list]
   [Comment item]
     [Avatar] [Name] [Timestamp] [(edited) if updated_at > created_at]
@@ -821,7 +921,7 @@ Extends the home page for authenticated users.
 Additions to the existing playlist detail:
 - **Per-climb vote buttons** inline in the climb list
 - **Comment section** below each climb when expanded (or slide-up drawer on mobile)
-- **Sort by votes** option (in addition to existing position sort)
+- **Sort modes** for the climb list: Position (existing manual order), New, Top, Controversial, Hot -- in addition to existing position sort
 - **Vote count** badge on each climb card
 - **Comment count** badge on each climb card
 - Use `bulkVoteSummaries` to batch-load scores for all visible climbs
