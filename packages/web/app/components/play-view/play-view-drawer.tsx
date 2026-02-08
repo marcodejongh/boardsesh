@@ -5,6 +5,11 @@ import MuiBadge from '@mui/material/Badge';
 import MuiButton from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import DialogActions from '@mui/material/DialogActions';
 import SyncOutlined from '@mui/icons-material/SyncOutlined';
 import FavoriteBorderOutlined from '@mui/icons-material/FavoriteBorderOutlined';
 import Favorite from '@mui/icons-material/Favorite';
@@ -20,6 +25,7 @@ import HeadsetOutlined from '@mui/icons-material/HeadsetOutlined';
 import dynamic from 'next/dynamic';
 import { useQueueContext } from '../graphql-queue';
 import { useMediaSession } from '@/app/hooks/use-media-session';
+import { getPreference, setPreference } from '@/app/lib/user-preferences-db';
 import { useFavorite, ClimbActions } from '../climb-actions';
 import { ShareBoardButton } from '../board-page/share-button';
 import { TickButton } from '../logbook/tick-button';
@@ -84,7 +90,36 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
     climbUuid: currentClimb?.uuid ?? '',
   });
 
-  const { toggle: toggleMediaSession, isActive: isMediaSessionActive } = useMediaSession();
+  const { activate: activateMediaSession, deactivate: deactivateMediaSession, isActive: isMediaSessionActive } = useMediaSession();
+  const [showMediaSessionDialog, setShowMediaSessionDialog] = useState(false);
+  const hasAcknowledgedRef = useRef<boolean | null>(null);
+
+  // Load the acknowledgment preference on mount
+  useEffect(() => {
+    getPreference<boolean>('mediaSessionAcknowledged').then((val) => {
+      hasAcknowledgedRef.current = val === true;
+    });
+  }, []);
+
+  const handleMediaSessionToggle = useCallback(() => {
+    if (isMediaSessionActive) {
+      deactivateMediaSession();
+      return;
+    }
+    // First time: show warning dialog
+    if (!hasAcknowledgedRef.current) {
+      setShowMediaSessionDialog(true);
+      return;
+    }
+    activateMediaSession();
+  }, [isMediaSessionActive, activateMediaSession, deactivateMediaSession]);
+
+  const handleMediaSessionConfirm = useCallback(() => {
+    setShowMediaSessionDialog(false);
+    hasAcknowledgedRef.current = true;
+    setPreference('mediaSessionAcknowledged', true);
+    activateMediaSession();
+  }, [activateMediaSession]);
 
   const currentQueueIndex = currentClimbQueueItem
     ? queue.findIndex(item => item.uuid === currentClimbQueueItem.uuid)
@@ -276,7 +311,7 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
 
           {/* Media session controls (lock screen next/prev) */}
           <IconButton
-            onClick={toggleMediaSession}
+            onClick={handleMediaSessionToggle}
             aria-label={isMediaSessionActive ? 'Disable lock screen controls' : 'Enable lock screen controls'}
             color={isMediaSessionActive ? 'primary' : 'default'}
             sx={
@@ -436,6 +471,24 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
             )}
           </div>
         </SwipeableDrawer>
+
+        {/* Media session confirmation dialog */}
+        <Dialog
+          open={showMediaSessionDialog}
+          onClose={() => setShowMediaSessionDialog(false)}
+        >
+          <DialogTitle>Enable lock screen controls?</DialogTitle>
+          <DialogContent>
+            <DialogContentText>
+              This lets you skip between climbs from your lock screen or Control Center.
+              It will take over your media controls and may pause any music that&apos;s currently playing.
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions>
+            <MuiButton onClick={() => setShowMediaSessionDialog(false)}>Cancel</MuiButton>
+            <MuiButton onClick={handleMediaSessionConfirm} variant="contained">Enable</MuiButton>
+          </DialogActions>
+        </Dialog>
     </SwipeableDrawer>
   );
 };

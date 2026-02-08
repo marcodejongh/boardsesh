@@ -110,15 +110,6 @@ export function useMediaSession() {
     setIsActive(false);
   }, []);
 
-  // Toggle activation
-  const toggle = useCallback(() => {
-    if (isActive) {
-      deactivate();
-    } else {
-      activate();
-    }
-  }, [isActive, activate, deactivate]);
-
   // Update metadata when the current climb changes
   useEffect(() => {
     if (typeof window === 'undefined' || !('mediaSession' in navigator)) return;
@@ -226,8 +217,6 @@ export function useMediaSession() {
     activate,
     /** Deactivate media session controls */
     deactivate,
-    /** Toggle media session on/off - must be called from user gesture to activate */
-    toggle,
     /** Whether the media session is currently active */
     isActive,
   };
