@@ -145,6 +145,7 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
         sx={{
           display: 'flex',
           alignItems: 'center',
+          justifyContent: 'flex-end',
           gap: themeTokens.spacing[2],
           padding: `${themeTokens.spacing[1]}px ${themeTokens.spacing[1]}px ${themeTokens.spacing[2]}px`,
           minWidth: 0,
