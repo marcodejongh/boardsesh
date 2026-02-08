@@ -381,6 +381,8 @@ export const DiscoverPlaylistsInputSchema = z.object({
   // Optional filters
   name: z.string().max(100).optional(),
   creatorIds: z.array(z.string().min(1)).optional(),
+  // Sort
+  sortBy: z.enum(['recent', 'popular']).optional(),
   // Pagination
   page: z.number().int().min(0).optional(),
   pageSize: z.number().int().min(1).max(100).optional(),

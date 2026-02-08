@@ -107,6 +107,7 @@ export const playlistQueries = {
         icon: dbSchema.playlists.icon,
         createdAt: dbSchema.playlists.createdAt,
         updatedAt: dbSchema.playlists.updatedAt,
+        lastAccessedAt: dbSchema.playlists.lastAccessedAt,
         role: dbSchema.playlistOwnership.role,
       })
       .from(dbSchema.playlists)
@@ -125,7 +126,9 @@ export const playlistQueries = {
           )
         )
       )
-      .orderBy(desc(dbSchema.playlists.updatedAt));
+      .orderBy(
+        desc(sql`COALESCE(${dbSchema.playlists.lastAccessedAt}, ${dbSchema.playlists.updatedAt})`),
+      );
 
     // Get climb counts for each playlist
     const playlistIds = userPlaylists.map(p => p.id);
@@ -156,6 +159,7 @@ export const playlistQueries = {
       icon: p.icon,
       createdAt: p.createdAt.toISOString(),
       updatedAt: p.updatedAt.toISOString(),
+      lastAccessedAt: p.lastAccessedAt?.toISOString() ?? null,
       climbCount: countMap.get(p.id.toString()) || 0,
       userRole: p.role,
     }));
@@ -187,6 +191,7 @@ export const playlistQueries = {
         icon: dbSchema.playlists.icon,
         createdAt: dbSchema.playlists.createdAt,
         updatedAt: dbSchema.playlists.updatedAt,
+        lastAccessedAt: dbSchema.playlists.lastAccessedAt,
         role: dbSchema.playlistOwnership.role,
       })
       .from(dbSchema.playlists)
@@ -225,6 +230,7 @@ export const playlistQueries = {
       icon: playlist.icon,
       createdAt: playlist.createdAt.toISOString(),
       updatedAt: playlist.updatedAt.toISOString(),
+      lastAccessedAt: playlist.lastAccessedAt?.toISOString() ?? null,
       climbCount: climbCount[0]?.count || 0,
       userRole: playlist.role,
     };
@@ -435,6 +441,7 @@ export const playlistQueries = {
       layoutId: number;
       name?: string;
       creatorIds?: string[];
+      sortBy?: 'recent' | 'popular';
       page?: number;
       pageSize?: number;
     } },
@@ -486,9 +493,9 @@ export const playlistQueries = {
 
     const totalCount = countResult[0]?.count || 0;
 
-    // Get playlists with creator info and climb counts
+    // Get playlists with creator info and climb counts in a single query
     const results = await db
-      .selectDistinctOn([dbSchema.playlists.id], {
+      .select({
         id: dbSchema.playlists.id,
         uuid: dbSchema.playlists.uuid,
         boardType: dbSchema.playlists.boardType,
@@ -501,6 +508,7 @@ export const playlistQueries = {
         updatedAt: dbSchema.playlists.updatedAt,
         creatorId: dbSchema.playlistOwnership.userId,
         creatorName: sql<string>`COALESCE(${dbSchema.users.name}, 'Anonymous')`,
+        climbCount: sql<number>`count(DISTINCT ${dbSchema.playlistClimbs.id})::int`,
       })
       .from(dbSchema.playlists)
       .innerJoin(
@@ -516,28 +524,32 @@ export const playlistQueries = {
         eq(dbSchema.users.id, dbSchema.playlistOwnership.userId)
       )
       .where(and(...conditions, eq(dbSchema.playlistOwnership.role, 'owner')))
-      .orderBy(dbSchema.playlists.id, desc(dbSchema.playlists.updatedAt))
+      .groupBy(
+        dbSchema.playlists.id,
+        dbSchema.playlists.uuid,
+        dbSchema.playlists.boardType,
+        dbSchema.playlists.layoutId,
+        dbSchema.playlists.name,
+        dbSchema.playlists.description,
+        dbSchema.playlists.color,
+        dbSchema.playlists.icon,
+        dbSchema.playlists.createdAt,
+        dbSchema.playlists.updatedAt,
+        dbSchema.playlistOwnership.userId,
+        dbSchema.users.name,
+      )
+      .orderBy(
+        input.sortBy === 'popular'
+          ? desc(sql`count(DISTINCT ${dbSchema.playlistClimbs.id})`)
+          : desc(dbSchema.playlists.createdAt),
+        desc(dbSchema.playlists.updatedAt),
+      )
       .limit(pageSize + 1)
       .offset(page * pageSize);
 
     // Check if there are more results
     const hasMore = results.length > pageSize;
     const trimmedResults = hasMore ? results.slice(0, pageSize) : results;
-
-    // Get climb counts for each playlist
-    const playlistIds = trimmedResults.map(p => p.id);
-    const climbCounts = playlistIds.length > 0
-      ? await db
-          .select({
-            playlistId: dbSchema.playlistClimbs.playlistId,
-            count: sql<number>`count(*)::int`,
-          })
-          .from(dbSchema.playlistClimbs)
-          .where(inArray(dbSchema.playlistClimbs.playlistId, playlistIds))
-          .groupBy(dbSchema.playlistClimbs.playlistId)
-      : [];
-
-    const countMap = new Map(climbCounts.map(c => [c.playlistId.toString(), c.count]));
 
     const playlists = trimmedResults.map(p => ({
       id: p.id.toString(),
@@ -550,7 +562,7 @@ export const playlistQueries = {
       icon: p.icon,
       createdAt: p.createdAt.toISOString(),
       updatedAt: p.updatedAt.toISOString(),
-      climbCount: countMap.get(p.id.toString()) || 0,
+      climbCount: p.climbCount,
       creatorId: p.creatorId,
       creatorName: p.creatorName,
     }));

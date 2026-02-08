@@ -2,8 +2,9 @@
 
 import React, { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import MuiAlert from '@mui/material/Alert';
-import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
+import IconButton from '@mui/material/IconButton';
+import { FormatListBulletedOutlined, AppsOutlined } from '@mui/icons-material';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { track } from '@vercel/analytics';
 import { Climb, BoardDetails } from '@/app/lib/types';
@@ -16,11 +17,13 @@ import {
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { useQueueContext } from '@/app/components/graphql-queue';
 import ClimbCard from '@/app/components/climb-card/climb-card';
+import ClimbListItem from '@/app/components/climb-card/climb-list-item';
 import { ClimbCardSkeleton } from '@/app/components/board-page/board-page-skeleton';
 import { EmptyState } from '@/app/components/ui/empty-state';
+import { getPreference, setPreference } from '@/app/lib/user-preferences-db';
 import styles from './playlist-view.module.css';
 
-// Typography destructuring removed - using MUI Typography directly
+type ViewMode = 'grid' | 'list';
 
 type PlaylistClimbsListProps = {
   playlistUuid: string;
@@ -52,6 +55,20 @@ export default function PlaylistClimbsList({
   const { setCurrentClimb } = useQueueContext();
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const [selectedClimbUuid, setSelectedClimbUuid] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
+
+  // Load saved view mode preference
+  useEffect(() => {
+    getPreference<ViewMode>('playlistClimbListViewMode').then((saved) => {
+      if (saved) setViewMode(saved);
+    });
+  }, []);
+
+  const handleViewModeChange = useCallback((mode: ViewMode) => {
+    setViewMode(mode);
+    setPreference('playlistClimbListViewMode', mode);
+    track('Playlist View Mode Changed', { mode, playlistUuid });
+  }, [playlistUuid]);
 
   const {
     data,
@@ -108,7 +125,6 @@ export default function PlaylistClimbsList({
       if (isCrossLayout) {
         hidden++;
       } else {
-        // Use the route angle instead of the climb's stored angle
         visible.push({ ...climb, angle });
       }
     }
@@ -193,9 +209,6 @@ export default function PlaylistClimbsList({
   if ((isLoading || tokenLoading) && allClimbs.length === 0) {
     return (
       <div className={styles.climbsSection}>
-        <div className={styles.climbsSectionHeader}>
-          <Typography variant="body2" component="span" fontWeight={600} className={styles.climbsSectionTitle}>Climbs</Typography>
-        </div>
         <Box sx={gridContainerSx}>
           <ClimbsListSkeleton aspectRatio={aspectRatio} />
         </Box>
@@ -207,9 +220,6 @@ export default function PlaylistClimbsList({
   if (error) {
     return (
       <div className={styles.climbsSection}>
-        <div className={styles.climbsSectionHeader}>
-          <Typography variant="body2" component="span" fontWeight={600} className={styles.climbsSectionTitle}>Climbs</Typography>
-        </div>
         <EmptyState description="Failed to load climbs" />
       </div>
     );
@@ -219,23 +229,31 @@ export default function PlaylistClimbsList({
   if (visibleClimbs.length === 0 && hiddenCount === 0 && !isFetching) {
     return (
       <div className={styles.climbsSection}>
-        <div className={styles.climbsSectionHeader}>
-          <Typography variant="body2" component="span" fontWeight={600} className={styles.climbsSectionTitle}>Climbs</Typography>
-        </div>
         <EmptyState description="No climbs in this playlist yet" />
       </div>
     );
   }
 
-  // Calculate visible count for display
-  const visibleCount = visibleClimbs.length;
-
   return (
     <div className={styles.climbsSection}>
-      <div className={styles.climbsSectionHeader}>
-        <Typography variant="body2" component="span" fontWeight={600} className={styles.climbsSectionTitle}>
-          Climbs ({visibleCount})
-        </Typography>
+      {/* View Mode Toggle */}
+      <div className={styles.viewModeToggle}>
+        <IconButton
+          size="small"
+          color={viewMode === 'list' ? 'primary' : 'default'}
+          onClick={() => handleViewModeChange('list')}
+          aria-label="List view"
+        >
+          <FormatListBulletedOutlined />
+        </IconButton>
+        <IconButton
+          size="small"
+          color={viewMode === 'grid' ? 'primary' : 'default'}
+          onClick={() => handleViewModeChange('grid')}
+          aria-label="Grid view"
+        >
+          <AppsOutlined />
+        </IconButton>
       </div>
 
       {/* Notice for hidden cross-layout climbs */}
@@ -250,21 +268,35 @@ export default function PlaylistClimbsList({
         <EmptyState description="All climbs in this playlist are from other layouts" />
       )}
 
-      <Box sx={gridContainerSx}>
-        {visibleClimbs.map((climb) => (
-          <Box sx={cardBoxSx} key={climb.uuid}>
-            <ClimbCard
+      {viewMode === 'grid' ? (
+        <Box sx={gridContainerSx}>
+          {visibleClimbs.map((climb) => (
+            <Box sx={cardBoxSx} key={climb.uuid}>
+              <ClimbCard
+                climb={climb}
+                boardDetails={boardDetails}
+                selected={selectedClimbUuid === climb.uuid}
+                onCoverDoubleClick={climbHandlersMap.get(climb.uuid)}
+              />
+            </Box>
+          ))}
+          {isFetching && allClimbs.length === 0 && (
+            <ClimbsListSkeleton aspectRatio={aspectRatio} />
+          )}
+        </Box>
+      ) : (
+        <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+          {visibleClimbs.map((climb) => (
+            <ClimbListItem
+              key={climb.uuid}
               climb={climb}
               boardDetails={boardDetails}
               selected={selectedClimbUuid === climb.uuid}
-              onCoverDoubleClick={climbHandlersMap.get(climb.uuid)}
+              onSelect={climbHandlersMap.get(climb.uuid)}
             />
-          </Box>
-        ))}
-        {isFetching && allClimbs.length === 0 && (
-          <ClimbsListSkeleton aspectRatio={aspectRatio} />
-        )}
-      </Box>
+          ))}
+        </Box>
+      )}
 
       {/* Sentinel element for Intersection Observer */}
       <div ref={loadMoreRef} style={sentinelStyle}>
@@ -275,7 +307,7 @@ export default function PlaylistClimbsList({
         )}
         {!hasNextPage && visibleClimbs.length > 0 && (
           <div className={styles.endOfList}>
-            {allClimbs.length >= totalCount ? `All ${visibleCount} climbs loaded` : 'No more climbs'}
+            {allClimbs.length >= totalCount ? `All ${visibleClimbs.length} climbs loaded` : 'No more climbs'}
           </div>
         )}
       </div>

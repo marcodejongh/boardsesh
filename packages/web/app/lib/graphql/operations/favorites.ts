@@ -41,3 +41,33 @@ export interface ToggleFavoriteMutationResponse {
     favorited: boolean;
   };
 }
+
+// Get user favorites counts per board
+export const GET_USER_FAVORITES_COUNTS = gql`
+  query UserFavoritesCounts {
+    userFavoritesCounts {
+      boardName
+      count
+    }
+  }
+`;
+
+export interface FavoritesCount {
+  boardName: string;
+  count: number;
+}
+
+export interface UserFavoritesCountsQueryResponse {
+  userFavoritesCounts: FavoritesCount[];
+}
+
+// Get active boards for the current user
+export const GET_USER_ACTIVE_BOARDS = gql`
+  query UserActiveBoards {
+    userActiveBoards
+  }
+`;
+
+export interface UserActiveBoardsQueryResponse {
+  userActiveBoards: string[];
+}

@@ -39,6 +39,7 @@ export const playlists = pgTable(
     // Timestamps
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
+    lastAccessedAt: timestamp('last_accessed_at'),
   },
   (table) => ({
     // Index for efficient lookup by board + layout
@@ -50,6 +51,8 @@ export const playlists = pgTable(
     uuidIdx: index('playlists_uuid_idx').on(table.uuid),
     // Index for ordering by updatedAt (used in userPlaylists query)
     updatedAtIdx: index('playlists_updated_at_idx').on(table.updatedAt),
+    // Index for ordering by lastAccessedAt (used in library view)
+    lastAccessedAtIdx: index('playlists_last_accessed_at_idx').on(table.lastAccessedAt),
     // Index for Aurora sync conflict resolution
     auroraIdIdx: uniqueIndex('playlists_aurora_id_idx').on(table.auroraId),
   })

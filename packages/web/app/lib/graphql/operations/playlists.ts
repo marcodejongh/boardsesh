@@ -14,6 +14,7 @@ export const PLAYLIST_FIELDS = gql`
     icon
     createdAt
     updatedAt
+    lastAccessedAt
     climbCount
     userRole
   }
@@ -134,6 +135,7 @@ export interface Playlist {
   icon?: string;
   createdAt: string;
   updatedAt: string;
+  lastAccessedAt?: string | null;
   climbCount: number;
   userRole?: string;
 }
@@ -322,6 +324,7 @@ export interface DiscoverPlaylistsInput {
   layoutId: number;
   name?: string;
   creatorIds?: string[];
+  sortBy?: 'recent' | 'popular';
   page?: number;
   pageSize?: number;
 }
@@ -389,3 +392,18 @@ export const GET_PLAYLIST_CREATORS = gql`
     }
   }
 `;
+
+// Update playlist last accessed timestamp
+export const UPDATE_PLAYLIST_LAST_ACCESSED = gql`
+  mutation UpdatePlaylistLastAccessed($playlistId: ID!) {
+    updatePlaylistLastAccessed(playlistId: $playlistId)
+  }
+`;
+
+export interface UpdatePlaylistLastAccessedMutationVariables {
+  playlistId: string;
+}
+
+export interface UpdatePlaylistLastAccessedMutationResponse {
+  updatePlaylistLastAccessed: boolean;
+}

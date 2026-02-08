@@ -274,6 +274,13 @@
       "when": 1768617600000,
       "tag": "0042_add_controller_session_auth",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1768704000000,
+      "tag": "0043_add_playlist_last_accessed_at",
+      "breakpoints": true
     }
   ]
 }

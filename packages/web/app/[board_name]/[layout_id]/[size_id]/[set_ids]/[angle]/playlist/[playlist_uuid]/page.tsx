@@ -1,11 +1,9 @@
 import React from 'react';
 import { notFound } from 'next/navigation';
-import { getServerSession } from 'next-auth/next';
-import { BoardRouteParameters, BoardDetails, ParsedBoardRouteParameters } from '@/app/lib/types';
+import { BoardRouteParameters } from '@/app/lib/types';
 import { getBoardDetailsForBoard } from '@/app/lib/board-utils';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import { Metadata } from 'next';
-import { authOptions } from '@/app/lib/auth/auth-options';
 import PlaylistViewContent from './playlist-view-content';
 import styles from './playlist-view.module.css';
 
@@ -28,16 +26,12 @@ export default async function PlaylistViewPage(props: { params: Promise<Playlist
     const parsedParams = await parseBoardRouteParamsWithSlugs(params);
     const boardDetails = getBoardDetailsForBoard(parsedParams);
 
-    // Get auth session for ownership check
-    const session = await getServerSession(authOptions);
-
     return (
       <div className={styles.pageContainer}>
         <PlaylistViewContent
           playlistUuid={params.playlist_uuid}
           boardDetails={boardDetails}
           angle={parsedParams.angle}
-          currentUserId={session?.user?.id}
         />
       </div>
     );
