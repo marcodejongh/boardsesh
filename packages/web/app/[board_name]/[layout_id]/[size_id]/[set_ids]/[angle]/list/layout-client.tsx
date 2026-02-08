@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { PropsWithChildren } from 'react';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
@@ -38,6 +38,7 @@ const QueueTabLabel: React.FC = () => {
 // Isolated component for the queue tab content - subscribes to context independently
 const QueueTabContent: React.FC<{ boardDetails: BoardDetails }> = ({ boardDetails }) => {
   const { queue, setQueue } = useQueueContext();
+  const [scrollContainerEl, setScrollContainerEl] = useState<HTMLDivElement | null>(null);
 
   const handleClearQueue = () => {
     setQueue([]);
@@ -64,8 +65,8 @@ const QueueTabContent: React.FC<{ boardDetails: BoardDetails }> = ({ boardDetail
           </ConfirmPopover>
         </Box>
       )}
-      <div style={{ flex: 1, overflow: 'auto' }}>
-        <QueueList boardDetails={boardDetails} />
+      <div ref={setScrollContainerEl} style={{ flex: 1, overflow: 'auto' }}>
+        <QueueList boardDetails={boardDetails} scrollContainer={scrollContainerEl} />
       </div>
     </div>
   );

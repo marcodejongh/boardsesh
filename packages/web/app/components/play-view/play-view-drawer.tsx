@@ -166,8 +166,7 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
       height="100%"
       open={isOpen}
       onClose={handleClose}
-      closable={false}
-      push={false}
+      showCloseButton={false}
       swipeRegion="body"
       swipeEnabled={!isActionsOpen && !isQueueOpen}
       showDragHandle={true}
@@ -297,7 +296,7 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
             placement="bottom"
             open={isActionsOpen}
             onClose={() => setIsActionsOpen(false)}
-            getContainer={false}
+            disablePortal
             swipeRegion="body"
             styles={{
               wrapper: { height: 'auto' },
@@ -320,9 +319,9 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
           placement="bottom"
           height="60%"
           open={isQueueOpen}
-          closable={false}
+          showCloseButton={false}
           swipeEnabled={true}
-          getContainer={false}
+          disablePortal
           onClose={() => {
             setIsQueueOpen(false);
             handleExitEditMode();
@@ -330,7 +329,7 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
           }}
           swipeRegion="scrollBody"
           scrollBodyRef={queueScrollRef}
-          afterOpenChange={(open) => {
+          onTransitionEnd={(open) => {
             if (open) {
               setTimeout(() => {
                 queueListRef.current?.scrollToCurrentClimb();

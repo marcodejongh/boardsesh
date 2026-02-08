@@ -4,9 +4,7 @@ import React, { useMemo, useCallback } from 'react';
 import MuiDrawer from '@mui/material/Drawer';
 import type { DrawerProps as MuiDrawerProps } from '@mui/material/Drawer';
 import Box from '@mui/material/Box';
-import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
-import CloseOutlined from '@mui/icons-material/CloseOutlined';
 import { useSwipeToDismiss } from './use-swipe-to-dismiss';
 import { themeTokens } from '@/app/theme/theme-config';
 import styles from './swipeable-drawer.module.css';
@@ -25,9 +23,9 @@ export interface SwipeableDrawerProps {
   onClose?: (e?: React.MouseEvent | React.KeyboardEvent) => void;
   placement?: Placement;
   title?: React.ReactNode;
-  closable?: boolean;
-  maskClosable?: boolean;
-  afterOpenChange?: (open: boolean) => void;
+  showCloseButton?: boolean;
+  disableBackdropClick?: boolean;
+  onTransitionEnd?: (open: boolean) => void;
   styles?: {
     wrapper?: React.CSSProperties;
     body?: React.CSSProperties;
@@ -42,12 +40,9 @@ export interface SwipeableDrawerProps {
   width?: string | number;
   extra?: React.ReactNode;
   footer?: React.ReactNode;
-  getContainer?: false;
-  push?: boolean;
-  destroyOnClose?: boolean;
+  disablePortal?: boolean;
+  keepMounted?: boolean;
   children?: React.ReactNode;
-  /** @deprecated Use zIndex on the MUI Drawer directly */
-  zIndex?: number;
 }
 
 function mergeStyles(
@@ -83,9 +78,9 @@ const SwipeableDrawer: React.FC<SwipeableDrawerProps> = ({
   showDragHandle = true,
   scrollBodyRef,
   placement = 'bottom',
-  closable,
+  showCloseButton,
   onClose,
-  afterOpenChange: userAfterOpenChange,
+  onTransitionEnd: userOnTransitionEnd,
   style: userStyle,
   styles: userStyles,
   rootClassName: userRootClassName,
@@ -95,17 +90,15 @@ const SwipeableDrawer: React.FC<SwipeableDrawerProps> = ({
   width,
   extra,
   footer,
-  getContainer,
-  push: _push,
-  destroyOnClose,
-  maskClosable,
+  disablePortal,
+  keepMounted = true,
+  disableBackdropClick,
   open,
-  zIndex,
   children,
 }) => {
   // If swipeEnabled is explicitly passed, use it directly.
-  // Otherwise, disable swipe when closable is explicitly false.
-  const effectiveEnabled = swipeEnabled ?? (closable !== false);
+  // Otherwise, disable swipe when showCloseButton is explicitly false.
+  const effectiveEnabled = swipeEnabled ?? (showCloseButton !== false);
 
   const {
     handleRegionProps,
@@ -125,8 +118,8 @@ const SwipeableDrawer: React.FC<SwipeableDrawerProps> = ({
 
   const handleAfterOpenChange = useCallback((open: boolean) => {
     hookAfterOpenChange(open);
-    userAfterOpenChange?.(open);
-  }, [hookAfterOpenChange, userAfterOpenChange]);
+    userOnTransitionEnd?.(open);
+  }, [hookAfterOpenChange, userOnTransitionEnd]);
 
   const hookDrawerStyle = getDrawerStyle();
   const hookDrawerStyles = getDrawerStyles();
@@ -178,7 +171,7 @@ const SwipeableDrawer: React.FC<SwipeableDrawerProps> = ({
   const headerElement = useMemo(() => {
     if (userTitle === undefined || userTitle === null) {
       // No title: check if we need close button
-      if (closable !== false) {
+      if (showCloseButton !== false) {
         return null; // No header, but close will be handled differently
       }
       return null;
@@ -200,11 +193,11 @@ const SwipeableDrawer: React.FC<SwipeableDrawerProps> = ({
         </Typography>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           {extra}
-          {closable !== false && (
+          {/* TODO: Only show the close button on desktop {showCloseButton !== false && (
             <IconButton onClick={(e) => onClose?.(e)} size="small">
               <CloseOutlined fontSize="small" />
             </IconButton>
-          )}
+          )} */}
         </Box>
       </Box>
     );
@@ -226,7 +219,7 @@ const SwipeableDrawer: React.FC<SwipeableDrawerProps> = ({
         {horizontalDragHandle}
       </div>
     );
-  }, [userTitle, closable, extra, onClose, placement, handleInHeader, horizontalDragHandle, mergedStyles?.header]);
+  }, [userTitle, showCloseButton, extra, onClose, placement, handleInHeader, horizontalDragHandle, mergedStyles?.header]);
 
   const wrappedChildren = useMemo(() => {
     if (swipeRegion === 'body') {
@@ -285,11 +278,11 @@ const SwipeableDrawer: React.FC<SwipeableDrawerProps> = ({
   }, [mergedStyles?.wrapper, height, width, mergedStyle?.transform, mergedStyle?.transition]);
 
   const handleMuiClose: MuiDrawerProps['onClose'] = useCallback((_event: object, reason: string) => {
-    if (reason === 'backdropClick' && maskClosable === false) {
+    if (reason === 'backdropClick' && disableBackdropClick) {
       return;
     }
     onClose?.();
-  }, [onClose, maskClosable]);
+  }, [onClose, disableBackdropClick]);
 
   return (
     <MuiDrawer
@@ -297,8 +290,8 @@ const SwipeableDrawer: React.FC<SwipeableDrawerProps> = ({
       open={open}
       onClose={handleMuiClose}
       className={rootClassName}
-      disablePortal={getContainer === false}
-      keepMounted={!destroyOnClose}
+      disablePortal={disablePortal}
+      keepMounted={keepMounted}
       SlideProps={{
         onExited: () => handleAfterOpenChange(false),
         onEntered: () => handleAfterOpenChange(true),
@@ -309,7 +302,6 @@ const SwipeableDrawer: React.FC<SwipeableDrawerProps> = ({
       PaperProps={{
         sx: paperSx,
       }}
-      sx={zIndex ? { zIndex } : undefined}
     >
       {headerElement}
       <Box

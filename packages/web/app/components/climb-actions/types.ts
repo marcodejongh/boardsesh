@@ -17,7 +17,7 @@ export type ClimbActionType =
 
 /**
  * View modes for rendering climb actions
- * - icon: Icon-only display (for Ant Design Card actions prop)
+ * - icon: Icon-only display (for Card actions)
  * - button: Full buttons with labels
  * - dropdown: Menu items for Dropdown component
  * - compact: Small buttons with labels on hover

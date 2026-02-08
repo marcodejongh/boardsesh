@@ -1,8 +1,7 @@
 .listLayout {
   background: transparent;
-  height: 100%;
+  min-height: 100%;
   position: relative;
-  overflow-x: hidden;
   max-width: 100%;
 }
 
@@ -11,7 +10,6 @@
   padding: 0;
   margin-right: 0;
   transition: margin-right 0.2s;
-  overflow-x: hidden;
   max-width: 100%;
 }
 
@@ -30,15 +28,6 @@
   padding: 0;
 }
 
-.siderTabs .ant-tabs-nav {
-  padding: 0 16px;
-  margin-bottom: 0;
-}
-
-.siderTabs .ant-tabs-content-holder {
-  padding: 0 16px 16px 16px;
-}
-
 /* Only show sider on desktop */
 @media (min-width: 768px) {
   .sider {
@@ -48,14 +37,4 @@
   .mainContent {
     margin-right: 400px; /* Same as sider width */
   }
-}
-
-/* Ensure tabs fill the sider properly */
-.siderTabs .ant-tabs-content {
-  padding: 0;
-}
-
-.siderTabs .ant-tabs-tabpane {
-  padding: 0;
-  height: 100%;
 }

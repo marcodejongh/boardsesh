@@ -170,7 +170,7 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
                     </Suspense>
                   </main>
 
-                  <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 10, background: 'linear-gradient(to bottom, rgba(255,255,255,0.6), rgba(255,255,255,1.0))' }}>
+                  <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 10 }}>
                     <QueueControlBar boardDetails={boardDetails} angle={angle} />
                     <BottomTabBar boardDetails={boardDetails} angle={angle} />
                   </div>

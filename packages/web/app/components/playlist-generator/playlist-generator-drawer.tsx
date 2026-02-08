@@ -342,8 +342,8 @@ const PlaylistGeneratorDrawer: React.FC<PlaylistGeneratorDrawerProps> = ({
       open={open}
       onClose={generating ? undefined : onClose}
       placement="bottom"
-      closable={!generating}
-      maskClosable={!generating}
+      showCloseButton={!generating}
+      disableBackdropClick={generating}
       styles={{
         wrapper: { height: '85vh' },
         header: {
