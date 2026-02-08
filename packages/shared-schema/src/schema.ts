@@ -703,10 +703,22 @@ export const typeDefs = /* GraphQL */ `
     createdAt: String!
     "When last updated (ISO 8601)"
     updatedAt: String!
+    "When last accessed/viewed (ISO 8601)"
+    lastAccessedAt: String
     "Number of climbs in playlist"
     climbCount: Int!
     "Current user's role (owner/editor/viewer)"
     userRole: String
+  }
+
+  """
+  Count of favorited climbs per board.
+  """
+  type FavoritesCount {
+    "Board name"
+    boardName: String!
+    "Number of favorited climbs"
+    count: Int!
   }
 
   """
@@ -897,6 +909,8 @@ export const typeDefs = /* GraphQL */ `
     name: String
     "Filter by creator IDs"
     creatorIds: [ID!]
+    "Sort by: 'recent' (default) or 'popular'"
+    sortBy: String
     "Page number"
     page: Int
     "Page size"
@@ -925,6 +939,26 @@ export const typeDefs = /* GraphQL */ `
     layoutId: Int!
     "Search query for autocomplete"
     searchQuery: String
+  }
+
+  """
+  Input for getting user's favorite climbs with full data.
+  """
+  input GetUserFavoriteClimbsInput {
+    "Board type"
+    boardName: String!
+    "Layout ID"
+    layoutId: Int!
+    "Size ID"
+    sizeId: Int!
+    "Set IDs"
+    setIds: String!
+    "Board angle"
+    angle: Int!
+    "Page number"
+    page: Int
+    "Page size"
+    pageSize: Int
   }
 
   """
@@ -1022,6 +1056,24 @@ export const typeDefs = /* GraphQL */ `
     Returns array of favorited climb UUIDs.
     """
     favorites(boardName: String!, climbUuids: [String!]!, angle: Int!): [String!]!
+
+    """
+    Get count of favorited climbs per board for the current user.
+    Requires authentication.
+    """
+    userFavoritesCounts: [FavoritesCount!]!
+
+    """
+    Get board names where the current user has playlists or favorites.
+    Requires authentication.
+    """
+    userActiveBoards: [String!]!
+
+    """
+    Get user's favorite climbs with full climb data.
+    Requires authentication.
+    """
+    userFavoriteClimbs(input: GetUserFavoriteClimbsInput!): PlaylistClimbsResult!
 
     # ============================================
     # Ticks Queries (require auth)
@@ -1243,6 +1295,11 @@ export const typeDefs = /* GraphQL */ `
     Remove a climb from a playlist.
     """
     removeClimbFromPlaylist(input: RemoveClimbFromPlaylistInput!): Boolean!
+
+    """
+    Update only lastAccessedAt for a playlist (does not update updatedAt).
+    """
+    updatePlaylistLastAccessed(playlistId: ID!): Boolean!
 
     # ============================================
     # ESP32 Controller Mutations

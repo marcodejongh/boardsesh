@@ -268,10 +268,11 @@ export const playlistMutations = {
         })
         .returning();
 
-      // Update playlist updatedAt
+      // Update playlist updatedAt and lastAccessedAt
+      const now = new Date();
       await tx
         .update(dbSchema.playlists)
-        .set({ updatedAt: new Date() })
+        .set({ updatedAt: now, lastAccessedAt: now })
         .where(eq(dbSchema.playlists.id, playlistId));
 
       return newClimb;
@@ -340,6 +341,46 @@ export const playlistMutations = {
       .update(dbSchema.playlists)
       .set({ updatedAt: new Date() })
       .where(eq(dbSchema.playlists.id, playlistId));
+
+    return true;
+  },
+
+  /**
+   * Update only lastAccessedAt for a playlist (does not update updatedAt)
+   */
+  updatePlaylistLastAccessed: async (
+    _: unknown,
+    { playlistId }: { playlistId: string },
+    ctx: ConnectionContext
+  ): Promise<boolean> => {
+    requireAuthenticated(ctx);
+
+    const userId = ctx.userId!;
+
+    // Verify ownership
+    const ownership = await db
+      .select({ id: dbSchema.playlists.id })
+      .from(dbSchema.playlistOwnership)
+      .innerJoin(
+        dbSchema.playlists,
+        eq(dbSchema.playlists.id, dbSchema.playlistOwnership.playlistId)
+      )
+      .where(
+        and(
+          eq(dbSchema.playlists.uuid, playlistId),
+          eq(dbSchema.playlistOwnership.userId, userId)
+        )
+      )
+      .limit(1);
+
+    if (ownership.length === 0) {
+      throw new Error('Playlist not found or access denied');
+    }
+
+    await db
+      .update(dbSchema.playlists)
+      .set({ lastAccessedAt: new Date() })
+      .where(eq(dbSchema.playlists.id, ownership[0].id));
 
     return true;
   },

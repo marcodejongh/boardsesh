@@ -1,0 +1,16 @@
+.anglePill {
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--neutral-200);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.anglePill:hover {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.anglePill:active {
+  background: rgba(255, 255, 255, 0.95);
+}

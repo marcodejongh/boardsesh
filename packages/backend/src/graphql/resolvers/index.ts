@@ -9,6 +9,7 @@ import { userMutations } from './users/mutations';
 import { climbQueries } from './climbs/queries';
 import { climbFieldResolvers } from './climbs/field-resolvers';
 import { favoriteQueries } from './favorites/queries';
+import { favoriteClimbsQuery } from './favorites/favorite-climbs-query';
 import { favoriteMutations } from './favorites/mutations';
 import { playlistQueries } from './playlists/queries';
 import { playlistMutations } from './playlists/mutations';
@@ -35,6 +36,7 @@ export const resolvers = {
     ...tickQueries,
     ...userQueries,
     ...favoriteQueries,
+    ...favoriteClimbsQuery,
     ...playlistQueries,
     ...controllerQueries,
   },

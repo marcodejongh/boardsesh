@@ -373,6 +373,19 @@ export const GetPlaylistClimbsInputSchema = z.object({
 });
 
 /**
+ * Get user favorite climbs input validation schema
+ */
+export const GetUserFavoriteClimbsInputSchema = z.object({
+  boardName: BoardNameSchema,
+  layoutId: z.number().int().positive(),
+  sizeId: z.number().int().positive(),
+  setIds: z.string().min(1),
+  angle: z.number().int(),
+  page: z.number().int().min(0).optional(),
+  pageSize: z.number().int().min(1).max(100).optional(),
+});
+
+/**
  * Discover playlists input validation schema
  */
 export const DiscoverPlaylistsInputSchema = z.object({
@@ -381,6 +394,8 @@ export const DiscoverPlaylistsInputSchema = z.object({
   // Optional filters
   name: z.string().max(100).optional(),
   creatorIds: z.array(z.string().min(1)).optional(),
+  // Sort
+  sortBy: z.enum(['recent', 'popular']).optional(),
   // Pagination
   page: z.number().int().min(0).optional(),
   pageSize: z.number().int().min(1).max(100).optional(),

@@ -1,16 +1,16 @@
 import React from 'react';
 import { notFound } from 'next/navigation';
-import { BoardRouteParameters, BoardDetails, ParsedBoardRouteParameters } from '@/app/lib/types';
+import { BoardRouteParameters } from '@/app/lib/types';
 import { getBoardDetailsForBoard } from '@/app/lib/board-utils';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import { Metadata } from 'next';
-import PlaylistsListContent from './playlists-list-content';
-import styles from './playlists.module.css';
+import LibraryViewContent from './library-view-content';
+import styles from './library.module.css';
 
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: 'My Playlists | Boardsesh',
+    title: 'Your Library | Boardsesh',
     description: 'View and manage your climb playlists',
   };
 }
@@ -24,7 +24,7 @@ export default async function PlaylistsListPage(props: { params: Promise<BoardRo
 
     return (
       <div className={styles.pageContainer}>
-        <PlaylistsListContent
+        <LibraryViewContent
           boardDetails={boardDetails}
           angle={parsedParams.angle}
         />
