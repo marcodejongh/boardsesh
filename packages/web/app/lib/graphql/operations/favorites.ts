@@ -71,3 +71,68 @@ export const GET_USER_ACTIVE_BOARDS = gql`
 export interface UserActiveBoardsQueryResponse {
   userActiveBoards: string[];
 }
+
+// Get user's favorite climbs with full data
+export const GET_USER_FAVORITE_CLIMBS = gql`
+  query GetUserFavoriteClimbs($input: GetUserFavoriteClimbsInput!) {
+    userFavoriteClimbs(input: $input) {
+      climbs {
+        uuid
+        layoutId
+        setter_username
+        name
+        description
+        frames
+        angle
+        ascensionist_count
+        difficulty
+        quality_average
+        stars
+        difficulty_error
+        litUpHoldsMap
+        benchmark_difficulty
+      }
+      totalCount
+      hasMore
+    }
+  }
+`;
+
+export interface GetUserFavoriteClimbsInput {
+  boardName: string;
+  layoutId: number;
+  sizeId: number;
+  setIds: string;
+  angle: number;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface GetUserFavoriteClimbsQueryVariables {
+  input: GetUserFavoriteClimbsInput;
+}
+
+export interface UserFavoriteClimbsResult {
+  climbs: Array<{
+    uuid: string;
+    layoutId?: number | null;
+    setter_username: string;
+    name: string;
+    description: string;
+    frames: string;
+    angle: number;
+    ascensionist_count: number;
+    difficulty: string;
+    quality_average: string;
+    stars: number;
+    difficulty_error: string;
+    litUpHoldsMap: Record<string, unknown>;
+    benchmark_difficulty: string | null;
+  }>;
+  totalCount: number;
+  hasMore: boolean;
+}
+
+export interface GetUserFavoriteClimbsQueryResponse {
+  userFavoriteClimbs: UserFavoriteClimbsResult;
+}

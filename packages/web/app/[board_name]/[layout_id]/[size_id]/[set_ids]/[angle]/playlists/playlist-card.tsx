@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { LabelOutlined, FavoriteOutlined } from '@mui/icons-material';
-import { SvgIconComponent } from '@mui/icons-material';
 import Link from 'next/link';
 import { themeTokens } from '@/app/theme/theme-config';
 import styles from './library.module.css';
@@ -27,7 +26,7 @@ export type PlaylistCardProps = {
   name: string;
   climbCount: number;
   color?: string;
-  icon?: SvgIconComponent;
+  icon?: string;
   href: string;
   variant: 'grid' | 'scroll';
   index?: number;
@@ -38,7 +37,7 @@ export default function PlaylistCard({
   name,
   climbCount,
   color,
-  icon: IconComponent,
+  icon,
   href,
   variant,
   index = 0,
@@ -50,9 +49,17 @@ export default function PlaylistCard({
       ? color
       : PLAYLIST_COLORS[index % PLAYLIST_COLORS.length];
 
-  const Icon = isLikedClimbs
-    ? FavoriteOutlined
-    : IconComponent ?? LabelOutlined;
+  const FallbackIcon = isLikedClimbs ? FavoriteOutlined : LabelOutlined;
+
+  const renderIcon = (sizeClass: string) => {
+    if (isLikedClimbs) {
+      return <FavoriteOutlined className={sizeClass} />;
+    }
+    if (icon) {
+      return <span className={variant === 'grid' ? styles.cardCompactEmoji : styles.cardEmoji}>{icon}</span>;
+    }
+    return <FallbackIcon className={sizeClass} />;
+  };
 
   if (variant === 'grid') {
     return (
@@ -61,7 +68,7 @@ export default function PlaylistCard({
           className={`${styles.cardCompactSquare} ${isLikedClimbs ? styles.likedGradient : ''}`}
           style={!isLikedClimbs ? { backgroundColor } : undefined}
         >
-          <Icon className={styles.cardCompactIcon} />
+          {renderIcon(styles.cardCompactIcon)}
         </div>
         <div className={styles.cardCompactInfo}>
           <div className={styles.cardCompactName}>{name}</div>
@@ -82,7 +89,7 @@ export default function PlaylistCard({
         className={`${styles.cardSquare} ${isLikedClimbs ? styles.likedGradient : ''}`}
         style={!isLikedClimbs ? { backgroundColor } : undefined}
       >
-        <Icon className={styles.cardIcon} />
+        {renderIcon(styles.cardIcon)}
       </div>
       <div className={styles.cardName}>{name}</div>
       <div className={styles.cardMeta}>

@@ -43,7 +43,7 @@ import { LoadingSpinner } from '@/app/components/ui/loading-spinner';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { useQueueContext } from '@/app/components/graphql-queue';
 import { themeTokens } from '@/app/theme/theme-config';
-import { constructClimbListWithSlugs, generateLayoutSlug, generateSizeSlug, generateSetSlug } from '@/app/lib/url-utils';
+import { generateLayoutSlug, generateSizeSlug, generateSetSlug } from '@/app/lib/url-utils';
 import { useRouter } from 'next/navigation';
 import BackButton from '@/app/components/back-button';
 import { PlaylistGeneratorDrawer } from '@/app/components/playlist-generator';
@@ -275,9 +275,12 @@ export default function PlaylistViewContent({
   const getBackUrl = () => {
     const { board_name, layout_name, size_name, size_description, set_names } = boardDetails;
     if (layout_name && size_name && set_names) {
-      return constructClimbListWithSlugs(board_name, layout_name, size_name, size_description, set_names, angle);
+      const layoutSlug = generateLayoutSlug(layout_name);
+      const sizeSlug = generateSizeSlug(size_name, size_description);
+      const setSlug = generateSetSlug(set_names);
+      return `/${board_name}/${layoutSlug}/${sizeSlug}/${setSlug}/${angle}/playlists`;
     }
-    return `/${board_name}/${boardDetails.layout_id}/${boardDetails.size_id}/${boardDetails.set_ids.join(',')}/${angle}/list`;
+    return `/${board_name}/${boardDetails.layout_id}/${boardDetails.size_id}/${boardDetails.set_ids.join(',')}/${angle}/playlists`;
   };
 
   if (loading || tokenLoading) {
@@ -321,7 +324,11 @@ export default function PlaylistViewContent({
               className={styles.heroSquare}
               style={{ backgroundColor: getPlaylistColor() }}
             >
-              <LabelOutlined className={styles.heroSquareIcon} />
+              {playlist.icon ? (
+                <span className={styles.heroSquareEmoji}>{playlist.icon}</span>
+              ) : (
+                <LabelOutlined className={styles.heroSquareIcon} />
+              )}
             </div>
             <div className={styles.heroInfo}>
               <Typography variant="h5" component="h2" className={styles.heroName}>

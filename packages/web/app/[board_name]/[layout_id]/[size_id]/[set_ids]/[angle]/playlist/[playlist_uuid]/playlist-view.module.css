@@ -55,6 +55,11 @@
   color: rgba(255, 255, 255, 0.9);
 }
 
+.heroSquareEmoji {
+  font-size: 40px;
+  line-height: 1;
+}
+
 .heroInfo {
   flex: 1;
   min-width: 0;
@@ -214,6 +219,10 @@
     font-size: 32px;
   }
 
+  .heroSquareEmoji {
+    font-size: 32px;
+  }
+
   .heroContent {
     gap: 12px;
   }
@@ -262,6 +271,10 @@
   }
 
   .heroSquareIcon {
+    font-size: 48px;
+  }
+
+  .heroSquareEmoji {
     font-size: 48px;
   }
 

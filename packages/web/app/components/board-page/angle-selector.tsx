@@ -16,6 +16,7 @@ import { BoardName, BoardDetails, Climb } from '@/app/lib/types';
 import { ClimbStatsForAngle } from '@/app/lib/data/queries';
 import { themeTokens } from '@/app/theme/theme-config';
 import DrawerClimbHeader from '../climb-card/drawer-climb-header';
+import styles from './angle-selector.module.css';
 
 type AngleSelectorProps = {
   boardName: BoardName;
@@ -145,7 +146,7 @@ export default function AngleSelector({ boardName, boardDetails, currentAngle, c
 
   return (
     <>
-      <MuiButton variant="outlined" onClick={() => setIsDrawerOpen(true)} sx={{ minWidth: '38px', padding: '4px 6px' }}>
+      <MuiButton variant="text" className={styles.anglePill} onClick={() => setIsDrawerOpen(true)} sx={{ textTransform: 'none', minWidth: '38px', padding: '4px 6px' }}>
         {currentAngle}°
       </MuiButton>
 

@@ -172,8 +172,15 @@ export default function LibraryViewContent({
   }, [boardDetails, angle]);
 
   const getFavoritesUrl = useCallback(() => {
-    return getBackToListUrl();
-  }, [getBackToListUrl]);
+    const { board_name, layout_name, size_name, size_description, set_names } = boardDetails;
+    if (layout_name && size_name && set_names) {
+      const layoutSlug = generateLayoutSlug(layout_name);
+      const sizeSlug = generateSizeSlug(size_name, size_description);
+      const setSlug = generateSetSlug(set_names);
+      return `/${board_name}/${layoutSlug}/${sizeSlug}/${setSlug}/${angle}/liked`;
+    }
+    return `/${board_name}/${boardDetails.layout_id}/${boardDetails.size_id}/${boardDetails.set_ids.join(',')}/${angle}/liked`;
+  }, [boardDetails, angle]);
 
   // Get total favorites count (optionally filtered by board)
   const getTotalFavoritesCount = useCallback(() => {
@@ -236,6 +243,7 @@ export default function LibraryViewContent({
                 name={p.name}
                 climbCount={p.climbCount}
                 color={p.color}
+                icon={p.icon}
                 href={getPlaylistUrl(p.uuid)}
                 variant="scroll"
                 index={i}
@@ -338,6 +346,7 @@ export default function LibraryViewContent({
               name={p.name}
               climbCount={p.climbCount}
               color={p.color}
+              icon={p.icon}
               href={getPlaylistUrl(p.uuid)}
               variant="scroll"
               index={i}
@@ -355,6 +364,7 @@ export default function LibraryViewContent({
               name={p.name}
               climbCount={p.climbCount}
               color={p.color}
+              icon={p.icon}
               href={getPlaylistUrl(p.uuid)}
               variant="scroll"
               index={i}

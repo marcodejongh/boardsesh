@@ -942,6 +942,26 @@ export const typeDefs = /* GraphQL */ `
   }
 
   """
+  Input for getting user's favorite climbs with full data.
+  """
+  input GetUserFavoriteClimbsInput {
+    "Board type"
+    boardName: String!
+    "Layout ID"
+    layoutId: Int!
+    "Size ID"
+    sizeId: Int!
+    "Set IDs"
+    setIds: String!
+    "Board angle"
+    angle: Int!
+    "Page number"
+    page: Int
+    "Page size"
+    pageSize: Int
+  }
+
+  """
   Root query type for all read operations.
   """
   type Query {
@@ -1048,6 +1068,12 @@ export const typeDefs = /* GraphQL */ `
     Requires authentication.
     """
     userActiveBoards: [String!]!
+
+    """
+    Get user's favorite climbs with full climb data.
+    Requires authentication.
+    """
+    userFavoriteClimbs(input: GetUserFavoriteClimbsInput!): PlaylistClimbsResult!
 
     # ============================================
     # Ticks Queries (require auth)

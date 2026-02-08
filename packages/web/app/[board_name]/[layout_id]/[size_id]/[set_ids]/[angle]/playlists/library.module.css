@@ -15,6 +15,10 @@
   align-items: center;
   gap: 12px;
   margin-bottom: 20px;
+  background-color: var(--semantic-surface);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: var(--shadow-sm);
 }
 
 .pillsScroll {
@@ -125,12 +129,22 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 0;
+  border-radius: 8px;
 }
 
 .cardCompactIcon {
   font-size: 20px;
   color: rgba(255, 255, 255, 0.9);
+}
+
+.cardCompactEmoji {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.cardEmoji {
+  font-size: 32px;
+  line-height: 1;
 }
 
 .cardCompactInfo {
@@ -299,6 +313,8 @@
 
   .header {
     margin-bottom: 16px;
+    padding: 12px;
+    border-radius: 8px;
   }
 
   .cardScroll {

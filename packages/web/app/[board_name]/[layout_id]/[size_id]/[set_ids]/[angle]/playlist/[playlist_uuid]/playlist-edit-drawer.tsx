@@ -9,7 +9,10 @@ import Box from '@mui/material/Box';
 import TextField from '@mui/material/TextField';
 import MuiSwitch from '@mui/material/Switch';
 import SwipeableDrawer from '@/app/components/swipeable-drawer/swipeable-drawer';
-import { PublicOutlined, LockOutlined } from '@mui/icons-material';
+import Popover from '@mui/material/Popover';
+import { PublicOutlined, LockOutlined, CloseOutlined } from '@mui/icons-material';
+import Picker from '@emoji-mart/react';
+import data from '@emoji-mart/data';
 import { executeGraphQL } from '@/app/lib/graphql/client';
 import {
   UPDATE_PLAYLIST,
@@ -32,13 +35,14 @@ type PlaylistEditDrawerProps = {
   onSuccess: (updatedPlaylist: Playlist) => void;
 };
 
-const INITIAL_FORM_VALUES = { name: '', description: '', color: '', isPublic: false };
+const INITIAL_FORM_VALUES = { name: '', description: '', color: '', icon: '', isPublic: false };
 
 export default function PlaylistEditDrawer({ open, playlist, onClose, onSuccess }: PlaylistEditDrawerProps) {
   const [formValues, setFormValues] = useState(INITIAL_FORM_VALUES);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [isPublic, setIsPublic] = useState(playlist.isPublic);
+  const [emojiAnchor, setEmojiAnchor] = useState<HTMLElement | null>(null);
   const { token } = useWsAuthToken();
   const { showMessage } = useSnackbar();
 
@@ -49,6 +53,7 @@ export default function PlaylistEditDrawer({ open, playlist, onClose, onSuccess 
         name: playlist.name,
         description: playlist.description || '',
         color: playlist.color || '',
+        icon: playlist.icon || '',
         isPublic: playlist.isPublic,
       });
       setFormErrors({});
@@ -92,6 +97,7 @@ export default function PlaylistEditDrawer({ open, playlist, onClose, onSuccess 
             name: formValues.name,
             description: formValues.description || undefined,
             color: colorHex,
+            icon: formValues.icon || undefined,
             isPublic: formValues.isPublic,
           },
         },
@@ -188,6 +194,45 @@ export default function PlaylistEditDrawer({ open, playlist, onClose, onSuccess 
             size="small"
             sx={{ width: 80 }}
           />
+        </Box>
+
+        <Box>
+          <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>Icon</Typography>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <MuiButton
+              variant="outlined"
+              onClick={(e) => setEmojiAnchor(e.currentTarget)}
+              sx={{ minWidth: 48, height: 48, fontSize: 24, lineHeight: 1 }}
+            >
+              {formValues.icon || '+'}
+            </MuiButton>
+            {formValues.icon && (
+              <MuiButton
+                variant="text"
+                size="small"
+                startIcon={<CloseOutlined />}
+                onClick={() => setFormValues((prev) => ({ ...prev, icon: '' }))}
+              >
+                Remove
+              </MuiButton>
+            )}
+          </Stack>
+          <Popover
+            open={Boolean(emojiAnchor)}
+            anchorEl={emojiAnchor}
+            onClose={() => setEmojiAnchor(null)}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+          >
+            <Picker
+              data={data}
+              onEmojiSelect={(emoji: { native: string }) => {
+                setFormValues((prev) => ({ ...prev, icon: emoji.native }));
+                setEmojiAnchor(null);
+              }}
+              theme="light"
+              previewPosition="none"
+            />
+          </Popover>
         </Box>
 
         <Box>
