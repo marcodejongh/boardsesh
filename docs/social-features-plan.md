@@ -658,6 +658,7 @@ type ClimbCommunityStatus {
   isFrozen: Boolean!
   freezeReason: String
   openProposalCount: Int!
+  isCurrentUserSetter: Boolean!  # Whether the authenticated user is the climb creator (enables setter controls)
 }
 
 type CommunityRoleAssignment {
@@ -784,6 +785,15 @@ input SetCommunitySettingInput {
   value: String!
 }
 
+input SetterOverrideInput {
+  climbUuid: String!
+  boardType: String!
+  angle: Int!
+  communityGrade: Int         # Nullable. Set to update grade, omit to leave unchanged
+  isClassic: Boolean          # Nullable. Set to update, omit to leave unchanged
+  isBenchmark: Boolean        # Nullable. Set to update, omit to leave unchanged
+}
+
 input FreezeClimbInput {
   climbUuid: String!
   boardType: String!
@@ -868,6 +878,9 @@ extend type Mutation {
   createProposal(input: CreateProposalInput!): Proposal!
   voteOnProposal(input: VoteOnProposalInput!): ProposalVoteSummary!
   resolveProposal(input: ResolveProposalInput!): Proposal!  # Admin/leader only
+
+  # Setter override (climb creator can bypass proposals)
+  setterOverrideCommunityStatus(input: SetterOverrideInput!): ClimbCommunityStatus!
 
   # Admin / Community Settings
   setCommunitySettings(input: SetCommunitySettingInput!): CommunitySetting!  # Admin/leader only
@@ -1095,6 +1108,25 @@ New file: `packages/backend/src/graphql/resolvers/social/proposals.ts`
 - If `reject`: set status to `rejected`, `resolved_at = now()`, `resolved_by` = admin/leader
 - Create `proposal_approved` or `proposal_rejected` notification for the proposer
 - Return updated proposal
+
+**`setterOverrideCommunityStatus` mutation:**
+- Auth required
+- Verify the authenticated user is the climb's creator. Setter identity is determined by:
+  1. `board_climbs.userId` -- Boardsesh user who created the climb locally (set for locally-created climbs)
+  2. Fallback: `board_climbs.setterId` matched via `user_board_mappings` to the authenticated user's account (for Aurora-synced climbs where the user has linked their Aurora account)
+- If neither match, reject with "Only the climb setter can use this action"
+- Validate `communityGrade` is a valid difficulty ID if provided
+- UPSERT into `climb_community_status` with the provided fields (only update non-null fields)
+- If there are any `open` proposals of the affected type(s) for this climb+angle, set them to `superseded` (the setter's word takes precedence)
+- Record in `climb_community_status.last_proposal_id = NULL` to indicate this was a setter override, not a proposal result
+- Return updated `ClimbCommunityStatus`
+
+**Notes on setter privilege:**
+- The setter can adjust grade, classic, and benchmark status at any angle without going through the proposal system
+- This works even if the climb is frozen (setters are not blocked by freeze)
+- The setter override is logged in `climb_community_status.updated_at` for audit purposes
+- Other users can still create proposals to contest the setter's choice -- proposals work normally alongside setter overrides
+- Admins and community leaders also have override ability via `resolveProposal`
 
 **`climbProposals` query:**
 - Fetch proposals for a specific `(climbUuid, boardType, angle)`
@@ -1601,6 +1633,11 @@ The climb detail page (when viewing from search results, not within a playlist):
   - Click through to full proposal discussion (comments via `entity_type = 'proposal'`)
   - **Frozen indicator** if the climb is frozen at this angle (with reason, no "propose" buttons)
   - **Proposal history** toggle: show approved/rejected proposals for context
+- **Setter controls** (only visible if the authenticated user is the climb's creator):
+  - Direct grade adjustment dropdown (bypasses proposal system)
+  - Direct classic/benchmark toggle
+  - These apply immediately via `setterOverrideCommunityStatus` mutation
+  - Supersedes any open proposals of the affected type
 
 ### 6.3 Ascent/Tick Detail
 
