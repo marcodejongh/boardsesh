@@ -31,7 +31,10 @@ import type { ActiveDrawer } from '../queue-control/queue-control-bar';
 import type { BoardDetails, Angle } from '@/app/lib/types';
 import PlayViewBetaSlider from './play-view-beta-slider';
 import PlayViewComments from './play-view-comments';
+import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
 import styles from './play-view-drawer.module.css';
+import drawerStyles from '../swipeable-drawer/swipeable-drawer.module.css';
 
 const SendClimbToBoardButton = dynamic(
   () => import('../board-bluetooth-control/send-climb-to-board-button').then((mod) => mod.default || mod),
@@ -115,24 +118,45 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
     setSelectedItems(new Set());
   }, []);
 
-  // Handle scroll-based drawer expansion - two-state snap
-  useEffect(() => {
-    const scrollEl = queueScrollRef.current;
-    if (!scrollEl || !isQueueOpen) return;
+  // Drag-to-resize handlers for queue drawer header
+  const dragStartY = useRef<number>(0);
+  const dragStartHeightRef = useRef<string>('60%');
+  const isDragGestureRef = useRef(false);
 
-    const EXPAND_THRESHOLD = 10; // px of scroll to trigger expansion
+  const handleQueueDragStart = useCallback((e: React.TouchEvent) => {
+    dragStartY.current = e.touches[0].clientY;
+    dragStartHeightRef.current = queueDrawerHeight;
+    isDragGestureRef.current = false;
+  }, [queueDrawerHeight]);
 
-    const handleScroll = () => {
-      const isScrolled = scrollEl.scrollTop > EXPAND_THRESHOLD;
-      setQueueDrawerHeight(isScrolled ? '100%' : '60%');
-    };
+  const handleQueueDragMove = useCallback((e: React.TouchEvent) => {
+    const delta = Math.abs(e.touches[0].clientY - dragStartY.current);
+    if (delta > 10) {
+      isDragGestureRef.current = true;
+    }
+  }, []);
 
-    // Check initial scroll position
-    handleScroll();
+  const handleQueueDragEnd = useCallback((e: React.TouchEvent) => {
+    if (!isDragGestureRef.current) return;
 
-    scrollEl.addEventListener('scroll', handleScroll, { passive: true });
-    return () => scrollEl.removeEventListener('scroll', handleScroll);
-  }, [isQueueOpen]);
+    const deltaY = e.changedTouches[0].clientY - dragStartY.current;
+    const THRESHOLD = 30;
+
+    if (deltaY < -THRESHOLD) {
+      // Dragged up → expand to 100%
+      setQueueDrawerHeight('100%');
+    } else if (deltaY > THRESHOLD) {
+      if (dragStartHeightRef.current === '100%') {
+        // Dragged down from 100% → collapse to 60%
+        setQueueDrawerHeight('60%');
+      } else {
+        // Dragged down from 60% → close drawer
+        setIsQueueOpen(false);
+        handleExitEditMode();
+        setShowHistory(false);
+      }
+    }
+  }, [handleExitEditMode]);
 
   // Reset drawer height when queue drawer closes
   useEffect(() => {
@@ -344,12 +368,12 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
 
         {/* Queue list drawer */}
         <SwipeableDrawer
-          title="Queue"
           placement="bottom"
           height={queueDrawerHeight}
           open={isQueueOpen}
           showCloseButton={false}
-          swipeEnabled={true}
+          swipeEnabled={false}
+          showDragHandle={false}
           disablePortal
           onClose={() => {
             setIsQueueOpen(false);
@@ -364,45 +388,69 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
             }
           }}
           styles={{
-            wrapper: { 
-              height: queueDrawerHeight, 
+            wrapper: {
+              height: queueDrawerHeight,
               touchAction: 'pan-y',
               transition: 'height 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
             },
             body: { padding: 0, touchAction: 'pan-y' },
           }}
-          extra={
-            queue.length > 0 && !viewOnlyMode && (
-              isEditMode ? (
-                <Stack direction="row" spacing={1}>
-                  <MuiButton
-                    variant="text"
-                    startIcon={<DeleteOutlined />}
-                    sx={{ color: themeTokens.neutral[400] }}
-                    onClick={() => {
-                      setQueue([]);
-                      handleExitEditMode();
-                    }}
-                  >
-                    Clear
-                  </MuiButton>
-                  <IconButton onClick={handleExitEditMode}><CloseOutlined /></IconButton>
-                </Stack>
-              ) : (
-                <Stack direction="row" spacing={1}>
-                  <IconButton
-                    color={showHistory ? 'default' : 'default'}
-                    onClick={() => setShowHistory((prev) => !prev)}
-                    sx={showHistory ? { border: '1px solid', borderColor: 'divider' } : undefined}
-                  >
-                    <HistoryOutlined />
-                  </IconButton>
-                  <IconButton onClick={() => setIsEditMode(true)}><EditOutlined /></IconButton>
-                </Stack>
-              )
-            )
-          }
         >
+          {/* Custom drag header — resize only on deliberate drag, not scroll */}
+          <div
+            className={styles.queueDragHeader}
+            onTouchStart={handleQueueDragStart}
+            onTouchMove={handleQueueDragMove}
+            onTouchEnd={handleQueueDragEnd}
+          >
+            <div className={drawerStyles.dragHandleZoneHorizontal}>
+              <div className={drawerStyles.dragHandleBarHorizontal} />
+            </div>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: `${themeTokens.spacing[4]}px ${themeTokens.spacing[6]}px`,
+                borderBottom: `1px solid ${themeTokens.neutral[200]}`,
+              }}
+            >
+              <Typography variant="h6" component="div" sx={{ fontWeight: themeTokens.typography.fontWeight.semibold, fontSize: themeTokens.typography.fontSize.base }}>
+                Queue
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                {queue.length > 0 && !viewOnlyMode && (
+                  isEditMode ? (
+                    <Stack direction="row" spacing={1}>
+                      <MuiButton
+                        variant="text"
+                        startIcon={<DeleteOutlined />}
+                        sx={{ color: themeTokens.neutral[400] }}
+                        onClick={() => {
+                          setQueue([]);
+                          handleExitEditMode();
+                        }}
+                      >
+                        Clear
+                      </MuiButton>
+                      <IconButton onClick={handleExitEditMode}><CloseOutlined /></IconButton>
+                    </Stack>
+                  ) : (
+                    <Stack direction="row" spacing={1}>
+                      <IconButton
+                        color={showHistory ? 'default' : 'default'}
+                        onClick={() => setShowHistory((prev) => !prev)}
+                        sx={showHistory ? { border: '1px solid', borderColor: 'divider' } : undefined}
+                      >
+                        <HistoryOutlined />
+                      </IconButton>
+                      <IconButton onClick={() => setIsEditMode(true)}><EditOutlined /></IconButton>
+                    </Stack>
+                  )
+                )}
+              </Box>
+            </Box>
+          </div>
           <div className={styles.queueBodyLayout}>
             <div 
               ref={queueScrollCallbackRef} 
