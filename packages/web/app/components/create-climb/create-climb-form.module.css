@@ -1,11 +1,14 @@
 /* Create Climb Form Styles - matches play view layout */
 
 .pageContainer {
-  height: 100%;
+  height: calc(100% + max(8dvh, 48px) + env(safe-area-inset-top, 0px));
   display: flex;
   flex-direction: column;
   overflow: hidden;
   touch-action: manipulation;
+  /* Offset the parent layout's paddingTop since we hide the global header */
+  margin-top: calc(-1 * (max(8dvh, 48px) + env(safe-area-inset-top, 0px)));
+  padding-top: env(safe-area-inset-top, 0px);
   /* semantic.background = neutral-50 */
   background-color: var(--semantic-background);
 }
@@ -46,12 +49,6 @@
   text-align: center;
   background-color: var(--semantic-surface);
   border-top: 1px solid var(--border-subtle);
-  flex-shrink: 0;
-}
-
-/* Auth alert styling */
-.authAlert {
-  margin: 8px 12px;
   flex-shrink: 0;
 }
 
@@ -223,10 +220,6 @@
 
 /* Mobile adjustments */
 @media (max-width: 767px) {
-  .authAlert {
-    margin: 6px 8px;
-  }
-
   .holdCountsBar {
     padding: 6px 8px;
     gap: 6px;
