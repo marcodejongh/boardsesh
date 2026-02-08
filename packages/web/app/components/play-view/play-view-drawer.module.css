@@ -13,12 +13,10 @@
 }
 
 .boardSection {
-  flex: 1;
+  flex-shrink: 0;
   min-height: 0;
   max-height: 60dvh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  width: 100%;
   overflow: hidden;
   position: relative;
   touch-action: pan-y;
