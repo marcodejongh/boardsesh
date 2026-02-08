@@ -1,13 +1,19 @@
 'use client';
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Card, Flex, Tag, Typography, Rate, Empty, Spin, Button } from 'antd';
-import {
-  CheckCircleOutlined,
-  ThunderboltOutlined,
-  CloseCircleOutlined,
-  EnvironmentOutlined,
-} from '@ant-design/icons';
+import MuiCard from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import MuiTypography from '@mui/material/Typography';
+import MuiButton from '@mui/material/Button';
+import Box from '@mui/material/Box';
+import Chip from '@mui/material/Chip';
+import Rating from '@mui/material/Rating';
+import { EmptyState } from '@/app/components/ui/empty-state';
+import { LoadingSpinner } from '@/app/components/ui/loading-spinner';
+import CheckCircleOutlined from '@mui/icons-material/CheckCircleOutlined';
+import ElectricBoltOutlined from '@mui/icons-material/ElectricBoltOutlined';
+import CancelOutlined from '@mui/icons-material/CancelOutlined';
+import LocationOnOutlined from '@mui/icons-material/LocationOnOutlined';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
@@ -18,11 +24,11 @@ import {
   type GetUserGroupedAscentsFeedQueryResponse,
 } from '@/app/lib/graphql/operations';
 import AscentThumbnail from './ascent-thumbnail';
+import { themeTokens } from '@/app/theme/theme-config';
 import styles from './ascents-feed.module.css';
 
 dayjs.extend(relativeTime);
 
-const { Text } = Typography;
 
 interface AscentsFeedProps {
   userId: string;
@@ -68,13 +74,13 @@ const getGroupStatusSummary = (group: GroupedAscentFeedItem): { text: string; ic
   let icon: React.ReactNode;
   let color: string;
   if (group.flashCount > 0) {
-    icon = <ThunderboltOutlined />;
+    icon = <ElectricBoltOutlined />;
     color = 'gold';
   } else if (group.sendCount > 0) {
     icon = <CheckCircleOutlined />;
     color = 'green';
   } else {
-    icon = <CloseCircleOutlined />;
+    icon = <CancelOutlined />;
     color = 'default';
   }
 
@@ -92,8 +98,9 @@ const GroupedFeedItem: React.FC<{ group: GroupedAscentFeedItem }> = ({ group }) 
   const hasSuccess = group.flashCount > 0 || group.sendCount > 0;
 
   return (
-    <Card className={styles.feedItem} size="small">
-      <Flex gap={12}>
+    <MuiCard className={styles.feedItem}>
+      <CardContent sx={{ p: 1.5 }}>
+      <Box sx={{ display: 'flex', gap: '12px' }}>
         {/* Thumbnail */}
         {group.frames && group.layoutId && (
           <AscentThumbnail
@@ -108,58 +115,60 @@ const GroupedFeedItem: React.FC<{ group: GroupedAscentFeedItem }> = ({ group }) 
         )}
 
         {/* Content */}
-        <Flex vertical gap={8} className={styles.feedItemContent}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: '8px' }} className={styles.feedItemContent}>
           {/* Header with status and time */}
-          <Flex justify="space-between" align="center" wrap="wrap" gap={8}>
-            <Flex align="center" gap={8}>
-              <Tag
-                icon={statusSummary.icon}
-                color={statusSummary.color}
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Chip
+                icon={statusSummary.icon as React.ReactElement}
+                label={statusSummary.text}
+                size="small"
+                color={statusSummary.color === 'green' ? 'success' : undefined}
+                sx={statusSummary.color === 'gold' ? { bgcolor: themeTokens.colors.amber, color: themeTokens.neutral[900] } : undefined}
                 className={styles.statusTag}
-              >
-                {statusSummary.text}
-              </Tag>
-              <Text strong className={styles.climbName}>
+              />
+              <MuiTypography variant="body2" component="span" fontWeight={600} className={styles.climbName}>
                 {group.climbName}
-              </Text>
-            </Flex>
-            <Text type="secondary" className={styles.timeAgo}>
+              </MuiTypography>
+            </Box>
+            <MuiTypography variant="body2" component="span" color="text.secondary" className={styles.timeAgo}>
               {timeAgo}
-            </Text>
-          </Flex>
+            </MuiTypography>
+          </Box>
 
           {/* Climb details */}
-          <Flex gap={8} wrap="wrap" align="center">
+          <Box sx={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
             {group.difficultyName && (
-              <Tag color="blue">{group.difficultyName}</Tag>
+              <Chip label={group.difficultyName} size="small" color="primary" />
             )}
-            <Tag icon={<EnvironmentOutlined />}>{group.angle}°</Tag>
-            <Text type="secondary" className={styles.boardType}>
+            <Chip icon={<LocationOnOutlined />} label={`${group.angle}°`} size="small" />
+            <MuiTypography variant="body2" component="span" color="text.secondary" className={styles.boardType}>
               {boardDisplay}
-            </Text>
-            {group.isMirror && <Tag color="purple">Mirrored</Tag>}
-            {group.isBenchmark && <Tag color="default">Benchmark</Tag>}
-          </Flex>
+            </MuiTypography>
+            {group.isMirror && <Chip label="Mirrored" size="small" color="secondary" />}
+            {group.isBenchmark && <Chip label="Benchmark" size="small" />}
+          </Box>
 
           {/* Rating for successful sends */}
           {hasSuccess && group.bestQuality && (
-            <Rate disabled value={group.bestQuality} count={5} className={styles.rating} />
+            <Rating readOnly value={group.bestQuality} max={5} className={styles.rating} />
           )}
 
           {/* Setter info */}
           {group.setterUsername && (
-            <Text type="secondary" className={styles.setter}>
+            <MuiTypography variant="body2" component="span" color="text.secondary" className={styles.setter}>
               Set by {group.setterUsername}
-            </Text>
+            </MuiTypography>
           )}
 
           {/* Comment */}
           {group.latestComment && (
-            <Text className={styles.comment}>{group.latestComment}</Text>
+            <MuiTypography variant="body2" component="span" className={styles.comment}>{group.latestComment}</MuiTypography>
           )}
-        </Flex>
-      </Flex>
-    </Card>
+        </Box>
+      </Box>
+      </CardContent>
+    </MuiCard>
   );
 };
 
@@ -228,47 +237,45 @@ export const AscentsFeed: React.FC<AscentsFeedProps> = ({ userId, pageSize = 10 
   if (loading) {
     return (
       <div className={styles.loading}>
-        <Spin />
+        <LoadingSpinner />
       </div>
     );
   }
 
   if (error) {
     return (
-      <Empty
+      <EmptyState
         description={error}
-        image={Empty.PRESENTED_IMAGE_SIMPLE}
       />
     );
   }
 
   if (groups.length === 0) {
     return (
-      <Empty
+      <EmptyState
         description="No ascents logged yet"
-        image={Empty.PRESENTED_IMAGE_SIMPLE}
       />
     );
   }
 
   return (
     <div className={styles.feed}>
-      <Flex vertical gap={12}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         {groups.map((group) => (
           <GroupedFeedItem key={group.key} group={group} />
         ))}
-      </Flex>
+      </Box>
 
       {hasMore && (
         <div className={styles.loadMoreContainer} ref={loadMoreRef}>
-          <Button
+          <MuiButton
             onClick={handleLoadMore}
-            loading={loadingMore}
-            type="default"
-            block
+            disabled={loadingMore}
+            variant="outlined"
+            fullWidth
           >
-            Load more ({groups.length} of {totalCount})
-          </Button>
+            {loadingMore ? 'Loading...' : `Load more (${groups.length} of ${totalCount})`}
+          </MuiButton>
         </div>
       )}
     </div>

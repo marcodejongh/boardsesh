@@ -1,16 +1,23 @@
+'use client';
+
 import React, { useState, useMemo } from 'react';
 import { Angle, Climb, BoardDetails } from '@/app/lib/types';
 import { useBoardProvider } from '../board-provider/board-provider-context';
-import { Button, Badge, Typography, Space } from 'antd';
+import MuiBadge from '@mui/material/Badge';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
+import Stack from '@mui/material/Stack';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
-import { CheckOutlined, LoginOutlined, AppstoreOutlined } from '@ant-design/icons';
+import CheckOutlined from '@mui/icons-material/CheckOutlined';
+import LoginOutlined from '@mui/icons-material/LoginOutlined';
+import AppsOutlined from '@mui/icons-material/AppsOutlined';
 import { track } from '@vercel/analytics';
 import { LogAscentDrawer } from './log-ascent-drawer';
 import AuthModal from '../auth/auth-modal';
 import { constructClimbInfoUrl } from '@/app/lib/url-utils';
 import { themeTokens } from '@/app/theme/theme-config';
-
-const { Text, Paragraph } = Typography;
+import { useAlwaysTickInApp } from '@/app/hooks/use-always-tick-in-app';
 
 interface TickButtonProps {
   angle: Angle;
@@ -23,13 +30,21 @@ export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boa
   const { logbook, isAuthenticated } = useBoardProvider();
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const { alwaysUseApp, loaded, enableAlwaysUseApp } = useAlwaysTickInApp();
 
   const showDrawer = () => {
-    setDrawerVisible(true);
     track('Tick Button Clicked', {
       boardLayout: boardDetails.layout_name || '',
       existingAscentCount: badgeCount,
     });
+
+    if (!isAuthenticated && alwaysUseApp && loaded && currentClimb) {
+      const url = constructClimbInfoUrl(boardDetails, currentClimb.uuid, angle);
+      window.open(url, '_blank', 'noopener');
+      return;
+    }
+
+    setDrawerVisible(true);
   };
   const closeDrawer = () => setDrawerVisible(false);
 
@@ -49,14 +64,20 @@ export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boa
 
   return (
     <>
-      <Badge
-        count={badgeCount > 0 ? badgeCount : 0}
-        overflowCount={100}
-        showZero={false}
-        color={hasSuccessfulAscent ? themeTokens.colors.success : themeTokens.colors.error}
+      <MuiBadge
+        badgeContent={badgeCount > 0 ? badgeCount : 0}
+        max={100}
+        sx={{
+          '& .MuiBadge-badge': {
+            backgroundColor: hasSuccessfulAscent ? themeTokens.colors.success : themeTokens.colors.error,
+            color: 'common.white',
+          },
+        }}
       >
-        <Button id="button-tick" type={buttonType} icon={<CheckOutlined />} onClick={showDrawer} />
-      </Badge>
+        <IconButton id="button-tick" onClick={showDrawer}>
+          <CheckOutlined />
+        </IconButton>
+      </MuiBadge>
 
       {isAuthenticated ? (
         <LogAscentDrawer
@@ -71,24 +92,35 @@ export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boa
           placement="bottom"
           onClose={closeDrawer}
           open={drawerVisible}
-          swipeRegion="body"
-          styles={{ wrapper: { height: '50%' } }}
+          swipeRegion="handle"
+          styles={{ wrapper: { height: '60%' } }}
         >
-          <Space orientation="vertical" size="large" style={{ width: '100%', textAlign: 'center', padding: '24px 0' }}>
-            <Text strong style={{ fontSize: 16 }}>Sign in to record ticks</Text>
-            <Paragraph type="secondary">
+          <Stack spacing={3} sx={{ width: '100%', textAlign: 'center', padding: '24px 0' }}>
+            <Typography variant="body2" component="span" fontWeight={600} sx={{ fontSize: 16 }}>Sign in to record ticks</Typography>
+            <Typography variant="body1" component="p" color="text.secondary">
               Create a Boardsesh account to log your climbs and track your progress.
-            </Paragraph>
-            <Button type="primary" icon={<LoginOutlined />} onClick={() => setShowAuthModal(true)} block>
+            </Typography>
+            <Button variant="contained" startIcon={<LoginOutlined />} onClick={() => setShowAuthModal(true)} fullWidth>
               Sign In
             </Button>
-            <Paragraph type="secondary">
+            <Typography variant="body1" component="p" color="text.secondary">
               Or log your tick in the official app:
-            </Paragraph>
-            <Button icon={<AppstoreOutlined />} onClick={handleOpenInApp} block>
+            </Typography>
+            <Button variant="outlined" startIcon={<AppsOutlined />} onClick={handleOpenInApp} fullWidth>
               Open in App
             </Button>
-          </Space>
+            <Button
+              variant="text"
+              size="small"
+              color="secondary"
+              onClick={async () => {
+                await enableAlwaysUseApp();
+                handleOpenInApp();
+              }}
+            >
+              Always open in app
+            </Button>
+          </Stack>
         </SwipeableDrawer>
       )}
 

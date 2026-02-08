@@ -1,17 +1,73 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Layout, Card, Form, Input, Button, Tabs, Typography, Divider, message, Space } from 'antd';
-import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
+import Tabs from '@mui/material/Tabs';
+import Tab from '@mui/material/Tab';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import TextField from '@mui/material/TextField';
+import InputAdornment from '@mui/material/InputAdornment';
+import CircularProgress from '@mui/material/CircularProgress';
+import Box from '@mui/material/Box';
+import Stack from '@mui/material/Stack';
+import MuiDivider from '@mui/material/Divider';
+import PersonOutlined from '@mui/icons-material/PersonOutlined';
+import LockOutlined from '@mui/icons-material/LockOutlined';
+import MailOutlined from '@mui/icons-material/MailOutlined';
 import { signIn, useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Logo from '@/app/components/brand/logo';
 import BackButton from '@/app/components/back-button';
 import SocialLoginButtons from '@/app/components/auth/social-login-buttons';
+import { TabPanel } from '@/app/components/ui/tab-panel';
+import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 import { themeTokens } from '@/app/theme/theme-config';
 
-const { Content, Header } = Layout;
-const { Title, Text } = Typography;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const initialLoginValues = { email: '', password: '' };
+const initialRegisterValues = { name: '', email: '', password: '', confirmPassword: '' };
+
+type LoginErrors = Partial<Record<keyof typeof initialLoginValues, string>>;
+type RegisterErrors = Partial<Record<keyof typeof initialRegisterValues, string>>;
+
+function validateLoginFields(values: typeof initialLoginValues): LoginErrors {
+  const errors: LoginErrors = {};
+  if (!values.email) {
+    errors.email = 'Please enter your email';
+  } else if (!EMAIL_REGEX.test(values.email)) {
+    errors.email = 'Please enter a valid email';
+  }
+  if (!values.password) {
+    errors.password = 'Please enter your password';
+  }
+  return errors;
+}
+
+function validateRegisterFields(values: typeof initialRegisterValues): RegisterErrors {
+  const errors: RegisterErrors = {};
+  if (values.name && values.name.length > 100) {
+    errors.name = 'Name must be less than 100 characters';
+  }
+  if (!values.email) {
+    errors.email = 'Please enter your email';
+  } else if (!EMAIL_REGEX.test(values.email)) {
+    errors.email = 'Please enter a valid email';
+  }
+  if (!values.password) {
+    errors.password = 'Please enter a password';
+  } else if (values.password.length < 8) {
+    errors.password = 'Password must be at least 8 characters';
+  }
+  if (!values.confirmPassword) {
+    errors.confirmPassword = 'Please confirm your password';
+  } else if (values.confirmPassword !== values.password) {
+    errors.confirmPassword = 'Passwords do not match';
+  }
+  return errors;
+}
 
 export default function AuthPageContent() {
   const { status } = useSession();
@@ -19,9 +75,12 @@ export default function AuthPageContent() {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get('callbackUrl') || '/';
   const error = searchParams.get('error');
+  const { showMessage } = useSnackbar();
 
-  const [loginForm] = Form.useForm();
-  const [registerForm] = Form.useForm();
+  const [loginValues, setLoginValues] = useState(initialLoginValues);
+  const [loginErrors, setLoginErrors] = useState<LoginErrors>({});
+  const [registerValues, setRegisterValues] = useState(initialRegisterValues);
+  const [registerErrors, setRegisterErrors] = useState<RegisterErrors>({});
   const [loginLoading, setLoginLoading] = useState(false);
   const [registerLoading, setRegisterLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('login');
@@ -32,19 +91,19 @@ export default function AuthPageContent() {
   useEffect(() => {
     if (error) {
       if (error === 'CredentialsSignin') {
-        message.error('Invalid email or password');
+        showMessage('Invalid email or password', 'error');
       } else {
-        message.error('Authentication failed. Please try again.');
+        showMessage('Authentication failed. Please try again.', 'error');
       }
     }
-  }, [error]);
+  }, [error, showMessage]);
 
   // Show success message when email is verified
   useEffect(() => {
     if (verified === 'true') {
-      message.success('Email verified! You can now log in.');
+      showMessage('Email verified! You can now log in.', 'success');
     }
-  }, [verified]);
+  }, [verified, showMessage]);
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -54,20 +113,23 @@ export default function AuthPageContent() {
   }, [status, router, callbackUrl]);
 
   const handleLogin = async () => {
+    const errors = validateLoginFields(loginValues);
+    setLoginErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
     try {
-      const values = await loginForm.validateFields();
       setLoginLoading(true);
 
       const result = await signIn('credentials', {
-        email: values.email,
-        password: values.password,
+        email: loginValues.email,
+        password: loginValues.password,
         redirect: false,
       });
 
       if (result?.error) {
-        message.error('Invalid email or password');
+        showMessage('Invalid email or password', 'error');
       } else if (result?.ok) {
-        message.success('Logged in successfully');
+        showMessage('Logged in successfully', 'success');
         router.push(callbackUrl);
       }
     } catch (error) {
@@ -78,8 +140,11 @@ export default function AuthPageContent() {
   };
 
   const handleRegister = async () => {
+    const errors = validateRegisterFields(registerValues);
+    setRegisterErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
     try {
-      const values = await registerForm.validateFields();
       setRegisterLoading(true);
 
       // Call registration API
@@ -89,33 +154,33 @@ export default function AuthPageContent() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email: values.email,
-          password: values.password,
-          name: values.name,
+          email: registerValues.email,
+          password: registerValues.password,
+          name: registerValues.name,
         }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        message.error(data.error || 'Registration failed');
+        showMessage(data.error || 'Registration failed', 'error');
         return;
       }
 
       // Check if email verification is required
       if (data.requiresVerification) {
-        message.info('Please check your email to verify your account');
+        showMessage('Please check your email to verify your account', 'info');
         setActiveTab('login');
-        loginForm.setFieldValue('email', values.email);
+        setLoginValues(prev => ({ ...prev, email: registerValues.email }));
         return;
       }
 
       // Email verification disabled - auto-login after successful registration
-      message.success('Account created! Logging you in...');
+      showMessage('Account created! Logging you in...', 'success');
 
       const loginResult = await signIn('credentials', {
-        email: values.email,
-        password: values.password,
+        email: registerValues.email,
+        password: registerValues.password,
         redirect: false,
       });
 
@@ -123,12 +188,12 @@ export default function AuthPageContent() {
         router.push(callbackUrl);
       } else {
         setActiveTab('login');
-        loginForm.setFieldValue('email', values.email);
-        message.info('Please log in with your account');
+        setLoginValues(prev => ({ ...prev, email: registerValues.email }));
+        showMessage('Please log in with your account', 'info');
       }
     } catch (error) {
       console.error('Registration error:', error);
-      message.error('Registration failed. Please try again.');
+      showMessage('Registration failed. Please try again.', 'error');
     } finally {
       setRegisterLoading(false);
     }
@@ -142,124 +207,30 @@ export default function AuthPageContent() {
     return null;
   }
 
-  const tabItems = [
-    {
-      key: 'login',
-      label: 'Login',
-      children: (
-        <Form form={loginForm} layout="vertical" onFinish={handleLogin}>
-          <Form.Item
-            name="email"
-            label="Email"
-            rules={[
-              { required: true, message: 'Please enter your email' },
-              { type: 'email', message: 'Please enter a valid email' },
-            ]}
-          >
-            <Input prefix={<MailOutlined />} placeholder="your@email.com" size="large" />
-          </Form.Item>
-
-          <Form.Item
-            name="password"
-            label="Password"
-            rules={[{ required: true, message: 'Please enter your password' }]}
-          >
-            <Input.Password prefix={<LockOutlined />} placeholder="Password" size="large" />
-          </Form.Item>
-
-          <Form.Item style={{ marginBottom: 0 }}>
-            <Button type="primary" htmlType="submit" loading={loginLoading} block size="large">
-              Login
-            </Button>
-          </Form.Item>
-        </Form>
-      ),
-    },
-    {
-      key: 'register',
-      label: 'Create Account',
-      children: (
-        <Form form={registerForm} layout="vertical" onFinish={handleRegister}>
-          <Form.Item
-            name="name"
-            label="Name"
-            rules={[{ max: 100, message: 'Name must be less than 100 characters' }]}
-          >
-            <Input prefix={<UserOutlined />} placeholder="Your name (optional)" size="large" />
-          </Form.Item>
-
-          <Form.Item
-            name="email"
-            label="Email"
-            rules={[
-              { required: true, message: 'Please enter your email' },
-              { type: 'email', message: 'Please enter a valid email' },
-            ]}
-          >
-            <Input prefix={<MailOutlined />} placeholder="your@email.com" size="large" />
-          </Form.Item>
-
-          <Form.Item
-            name="password"
-            label="Password"
-            rules={[
-              { required: true, message: 'Please enter a password' },
-              { min: 8, message: 'Password must be at least 8 characters' },
-            ]}
-          >
-            <Input.Password prefix={<LockOutlined />} placeholder="Password (min 8 characters)" size="large" />
-          </Form.Item>
-
-          <Form.Item
-            name="confirmPassword"
-            label="Confirm Password"
-            dependencies={['password']}
-            rules={[
-              { required: true, message: 'Please confirm your password' },
-              ({ getFieldValue }) => ({
-                validator(_, value) {
-                  if (!value || getFieldValue('password') === value) {
-                    return Promise.resolve();
-                  }
-                  return Promise.reject(new Error('Passwords do not match'));
-                },
-              }),
-            ]}
-          >
-            <Input.Password prefix={<LockOutlined />} placeholder="Confirm password" size="large" />
-          </Form.Item>
-
-          <Form.Item style={{ marginBottom: 0 }}>
-            <Button type="primary" htmlType="submit" loading={registerLoading} block size="large">
-              Create Account
-            </Button>
-          </Form.Item>
-        </Form>
-      ),
-    },
-  ];
-
   return (
-    <Layout style={{ minHeight: '100vh', background: themeTokens.semantic.background }}>
-      <Header
-        style={{
+    <Box sx={{ minHeight: '100vh', background: themeTokens.semantic.background }}>
+      <Box
+        component="header"
+        sx={{
           background: themeTokens.semantic.surface,
           padding: '0 16px',
           display: 'flex',
           alignItems: 'center',
-          gap: 16,
+          gap: 2,
           boxShadow: themeTokens.shadows.xs,
+          height: 64,
         }}
       >
         <BackButton />
         <Logo size="sm" showText={false} />
-        <Title level={4} style={{ margin: 0, flex: 1 }}>
+        <Typography variant="h4" sx={{ margin: 0, flex: 1 }}>
           Welcome
-        </Title>
-      </Header>
+        </Typography>
+      </Box>
 
-      <Content
-        style={{
+      <Box
+        component="main"
+        sx={{
           padding: '24px',
           display: 'flex',
           justifyContent: 'center',
@@ -267,21 +238,211 @@ export default function AuthPageContent() {
           paddingTop: '48px',
         }}
       >
-        <Card style={{ width: '100%', maxWidth: 400 }}>
-          <Space orientation="vertical" style={{ width: '100%', textAlign: 'center', marginBottom: 24 }}>
-            <Logo size="md" />
-            <Text type="secondary">Sign in or create an account to continue</Text>
-          </Space>
+        <Card sx={{ width: '100%', maxWidth: 400 }}>
+          <CardContent>
+            <Stack spacing={1} sx={{ width: '100%', textAlign: 'center', marginBottom: 3 }}>
+              <Logo size="md" />
+              <Typography variant="body2" component="span" color="text.secondary">Sign in or create an account to continue</Typography>
+            </Stack>
 
-          <Tabs activeKey={activeTab} onChange={setActiveTab} items={tabItems} centered />
+            <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)} centered>
+              <Tab label="Login" value="login" />
+              <Tab label="Create Account" value="register" />
+            </Tabs>
 
-          <Divider>
-            <Text type="secondary">or</Text>
-          </Divider>
+            <TabPanel value={activeTab} index="login">
+              <Box
+                component="form"
+                onSubmit={(e: React.FormEvent) => { e.preventDefault(); handleLogin(); }}
+                sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}
+              >
+                <TextField
+                  label="Email"
+                  placeholder="your@email.com"
+                  variant="outlined"
+                  size="medium"
+                  fullWidth
+                  value={loginValues.email}
+                  onChange={(e) => {
+                    setLoginValues(prev => ({ ...prev, email: e.target.value }));
+                    if (loginErrors.email) setLoginErrors(prev => ({ ...prev, email: undefined }));
+                  }}
+                  error={!!loginErrors.email}
+                  helperText={loginErrors.email}
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <MailOutlined />
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                />
 
-          <SocialLoginButtons callbackUrl={callbackUrl} />
+                <TextField
+                  label="Password"
+                  type="password"
+                  placeholder="Password"
+                  variant="outlined"
+                  size="medium"
+                  fullWidth
+                  value={loginValues.password}
+                  onChange={(e) => {
+                    setLoginValues(prev => ({ ...prev, password: e.target.value }));
+                    if (loginErrors.password) setLoginErrors(prev => ({ ...prev, password: undefined }));
+                  }}
+                  error={!!loginErrors.password}
+                  helperText={loginErrors.password}
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <LockOutlined />
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                />
+
+                <Button
+                  variant="contained"
+                  type="submit"
+                  disabled={loginLoading}
+                  startIcon={loginLoading ? <CircularProgress size={16} /> : undefined}
+                  fullWidth
+                  size="large"
+                >
+                  Login
+                </Button>
+              </Box>
+            </TabPanel>
+
+            <TabPanel value={activeTab} index="register">
+              <Box
+                component="form"
+                onSubmit={(e: React.FormEvent) => { e.preventDefault(); handleRegister(); }}
+                sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}
+              >
+                <TextField
+                  label="Name"
+                  placeholder="Your name (optional)"
+                  variant="outlined"
+                  size="medium"
+                  fullWidth
+                  value={registerValues.name}
+                  onChange={(e) => {
+                    setRegisterValues(prev => ({ ...prev, name: e.target.value }));
+                    if (registerErrors.name) setRegisterErrors(prev => ({ ...prev, name: undefined }));
+                  }}
+                  error={!!registerErrors.name}
+                  helperText={registerErrors.name}
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <PersonOutlined />
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                />
+
+                <TextField
+                  label="Email"
+                  placeholder="your@email.com"
+                  variant="outlined"
+                  size="medium"
+                  fullWidth
+                  value={registerValues.email}
+                  onChange={(e) => {
+                    setRegisterValues(prev => ({ ...prev, email: e.target.value }));
+                    if (registerErrors.email) setRegisterErrors(prev => ({ ...prev, email: undefined }));
+                  }}
+                  error={!!registerErrors.email}
+                  helperText={registerErrors.email}
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <MailOutlined />
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                />
+
+                <TextField
+                  label="Password"
+                  type="password"
+                  placeholder="Password (min 8 characters)"
+                  variant="outlined"
+                  size="medium"
+                  fullWidth
+                  value={registerValues.password}
+                  onChange={(e) => {
+                    setRegisterValues(prev => ({ ...prev, password: e.target.value }));
+                    if (registerErrors.password) setRegisterErrors(prev => ({ ...prev, password: undefined }));
+                  }}
+                  error={!!registerErrors.password}
+                  helperText={registerErrors.password}
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <LockOutlined />
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                />
+
+                <TextField
+                  label="Confirm Password"
+                  type="password"
+                  placeholder="Confirm password"
+                  variant="outlined"
+                  size="medium"
+                  fullWidth
+                  value={registerValues.confirmPassword}
+                  onChange={(e) => {
+                    setRegisterValues(prev => ({ ...prev, confirmPassword: e.target.value }));
+                    if (registerErrors.confirmPassword) setRegisterErrors(prev => ({ ...prev, confirmPassword: undefined }));
+                  }}
+                  error={!!registerErrors.confirmPassword}
+                  helperText={registerErrors.confirmPassword}
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <LockOutlined />
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                />
+
+                <Button
+                  variant="contained"
+                  type="submit"
+                  disabled={registerLoading}
+                  startIcon={registerLoading ? <CircularProgress size={16} /> : undefined}
+                  fullWidth
+                  size="large"
+                >
+                  Create Account
+                </Button>
+              </Box>
+            </TabPanel>
+
+            <MuiDivider>
+              <Typography variant="body2" component="span" color="text.secondary">or</Typography>
+            </MuiDivider>
+
+            <SocialLoginButtons callbackUrl={callbackUrl} />
+          </CardContent>
         </Card>
-      </Content>
-    </Layout>
+      </Box>
+    </Box>
   );
 }

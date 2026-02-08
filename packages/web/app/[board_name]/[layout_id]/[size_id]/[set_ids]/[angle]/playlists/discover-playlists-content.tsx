@@ -1,13 +1,22 @@
 'use client';
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { Spin, Typography, List, Input, Form, Button } from 'antd';
+import MuiList from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import CircularProgress from '@mui/material/CircularProgress';
+import MuiButton from '@mui/material/Button';
+import Typography from '@mui/material/Typography';
+import TextField from '@mui/material/TextField';
+import InputAdornment from '@mui/material/InputAdornment';
+import IconButton from '@mui/material/IconButton';
+import Box from '@mui/material/Box';
 import {
-  TagOutlined,
+  LabelOutlined,
   SearchOutlined,
-  RightOutlined,
-  UserOutlined,
-} from '@ant-design/icons';
+  ChevronRightOutlined,
+  PersonOutlined,
+  ClearOutlined,
+} from '@mui/icons-material';
 import Link from 'next/link';
 import { BoardDetails } from '@/app/lib/types';
 import { executeGraphQL } from '@/app/lib/graphql/client';
@@ -22,7 +31,7 @@ import { themeTokens } from '@/app/theme/theme-config';
 import CreatorNameSelect from './creator-name-select';
 import styles from './playlists.module.css';
 
-const { Title, Text } = Typography;
+// Typography destructuring removed - using MUI Typography directly
 
 const SEARCH_DEBOUNCE_MS = 300;
 const PAGE_SIZE = 20;
@@ -156,67 +165,70 @@ export default function DiscoverPlaylistsContent({
     <div className={styles.contentWrapper}>
       {/* Search Filters */}
       <div className={styles.searchFilters}>
-        <Form layout="vertical">
-          <Form.Item label="Search by name" style={{ marginBottom: 12 }}>
-            <Input
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+          <Box>
+            <Typography variant="body2" sx={{ mb: 0.5 }}>Search by name</Typography>
+            <TextField
+              fullWidth
+              size="small"
               placeholder="Search playlists..."
-              prefix={<SearchOutlined />}
               value={searchName}
               onChange={(e) => setSearchName(e.target.value)}
-              allowClear
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchOutlined />
+                  </InputAdornment>
+                ),
+                endAdornment: searchName ? (
+                  <InputAdornment position="end">
+                    <IconButton size="small" onClick={() => setSearchName('')} edge="end">
+                      <ClearOutlined fontSize="small" />
+                    </IconButton>
+                  </InputAdornment>
+                ) : null,
+              }}
             />
-          </Form.Item>
-          <Form.Item label="Filter by creator" style={{ marginBottom: 0 }}>
+          </Box>
+          <Box>
+            <Typography variant="body2" sx={{ mb: 0.5 }}>Filter by creator</Typography>
             <CreatorNameSelect
               boardType={boardDetails.board_name}
               layoutId={boardDetails.layout_id}
               value={selectedCreators}
               onChange={setSelectedCreators}
             />
-          </Form.Item>
-        </Form>
+          </Box>
+        </Box>
       </div>
 
       {/* Content */}
       {loading ? (
         <div className={styles.loadingContainer}>
-          <Spin size="large" />
+          <CircularProgress size={48} />
         </div>
       ) : playlists.length === 0 ? (
         <div className={styles.emptyContainer}>
-          <TagOutlined className={styles.emptyIcon} />
-          <Title level={4} className={styles.emptyTitle}>No public playlists found</Title>
-          <Text type="secondary" className={styles.emptyText}>
+          <LabelOutlined className={styles.emptyIcon} />
+          <Typography variant="h6" component="h4" className={styles.emptyTitle}>No public playlists found</Typography>
+          <Typography variant="body2" component="span" color="text.secondary" className={styles.emptyText}>
             {debouncedSearchName || selectedCreators.length > 0
               ? 'Try adjusting your search filters.'
               : 'Be the first to share a playlist for this board!'}
-          </Text>
+          </Typography>
         </div>
       ) : (
         <div className={styles.listSection}>
-          <List
-            dataSource={playlists}
-            loadMore={
-              hasMore ? (
-                <div className={styles.loadMoreContainer}>
-                  <Button
-                    onClick={handleLoadMore}
-                    loading={loadingMore}
-                  >
-                    Load more
-                  </Button>
-                </div>
-              ) : null
-            }
-            renderItem={(playlist) => (
-              <Link href={getPlaylistUrl(playlist.uuid)} className={styles.playlistLink}>
-                <List.Item className={styles.playlistItem}>
+          <MuiList>
+            {playlists.map((playlist) => (
+              <Link key={playlist.uuid} href={getPlaylistUrl(playlist.uuid)} className={styles.playlistLink}>
+                <ListItem className={styles.playlistItem}>
                   <div className={styles.playlistItemContent}>
                     <div
                       className={styles.playlistColor}
                       style={{ backgroundColor: getPlaylistColor(playlist) }}
                     >
-                      <TagOutlined className={styles.playlistColorIcon} />
+                      <LabelOutlined className={styles.playlistColorIcon} />
                     </div>
                     <div className={styles.playlistInfo}>
                       <div className={styles.playlistName}>{playlist.name}</div>
@@ -224,16 +236,27 @@ export default function DiscoverPlaylistsContent({
                         <span>{playlist.climbCount} {playlist.climbCount === 1 ? 'climb' : 'climbs'}</span>
                         <span className={styles.metaDot}>·</span>
                         <span className={styles.creatorText}>
-                          <UserOutlined /> {playlist.creatorName}
+                          <PersonOutlined /> {playlist.creatorName}
                         </span>
                       </div>
                     </div>
                   </div>
-                  <RightOutlined className={styles.playlistArrow} />
-                </List.Item>
+                  <ChevronRightOutlined className={styles.playlistArrow} />
+                </ListItem>
               </Link>
-            )}
-          />
+            ))}
+          </MuiList>
+          {hasMore && (
+            <div className={styles.loadMoreContainer}>
+              <MuiButton
+                variant="outlined"
+                onClick={handleLoadMore}
+                disabled={loadingMore}
+              >
+                {loadingMore ? 'Loading...' : 'Load more'}
+              </MuiButton>
+            </div>
+          )}
         </div>
       )}
     </div>

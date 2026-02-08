@@ -1,21 +1,22 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Button, Badge, Space } from 'antd';
-import {
-  SyncOutlined,
-  HeartOutlined,
-  HeartFilled,
-  StepBackwardOutlined,
-  StepForwardOutlined,
-  DownOutlined,
-  MoreOutlined,
-  UnorderedListOutlined,
-  DeleteOutlined,
-  EditOutlined,
-  CloseOutlined,
-  HistoryOutlined,
-} from '@ant-design/icons';
+import MuiBadge from '@mui/material/Badge';
+import MuiButton from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
+import Stack from '@mui/material/Stack';
+import SyncOutlined from '@mui/icons-material/SyncOutlined';
+import FavoriteBorderOutlined from '@mui/icons-material/FavoriteBorderOutlined';
+import Favorite from '@mui/icons-material/Favorite';
+import SkipPreviousOutlined from '@mui/icons-material/SkipPreviousOutlined';
+import SkipNextOutlined from '@mui/icons-material/SkipNextOutlined';
+import ExpandMoreOutlined from '@mui/icons-material/ExpandMoreOutlined';
+import MoreHorizOutlined from '@mui/icons-material/MoreHorizOutlined';
+import FormatListBulletedOutlined from '@mui/icons-material/FormatListBulletedOutlined';
+import DeleteOutlined from '@mui/icons-material/DeleteOutlined';
+import EditOutlined from '@mui/icons-material/EditOutlined';
+import CloseOutlined from '@mui/icons-material/CloseOutlined';
+import HistoryOutlined from '@mui/icons-material/HistoryOutlined';
 import dynamic from 'next/dynamic';
 import { useQueueContext } from '../graphql-queue';
 import { useFavorite, ClimbActions } from '../climb-actions';
@@ -26,7 +27,6 @@ import ClimbTitle from '../climb-card/climb-title';
 import SwipeBoardCarousel from '../board-renderer/swipe-board-carousel';
 import { useWakeLock } from '../board-bluetooth-control/use-wake-lock';
 import { themeTokens } from '@/app/theme/theme-config';
-import DrawerContext from '@rc-component/drawer/es/context';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import type { ActiveDrawer } from '../queue-control/queue-control-bar';
 import type { BoardDetails, Angle } from '@/app/lib/types';
@@ -44,8 +44,6 @@ interface PlayViewDrawerProps {
   angle: Angle;
 }
 
-// Stable no-op context to prevent child drawers from pushing the parent.
-const noPushContext = { pushDistance: 0, push: () => {}, pull: () => {} };
 
 const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
   activeDrawer,
@@ -61,6 +59,12 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const queueListRef = useRef<QueueListHandle>(null);
   const queueScrollRef = useRef<HTMLDivElement>(null);
+  const [queueScrollEl, setQueueScrollEl] = useState<HTMLDivElement | null>(null);
+
+  const queueScrollCallbackRef = useCallback((node: HTMLDivElement | null) => {
+    queueScrollRef.current = node;
+    setQueueScrollEl(node);
+  }, []);
 
   const {
     currentClimb,
@@ -162,8 +166,7 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
       height="100%"
       open={isOpen}
       onClose={handleClose}
-      closable={false}
-      push={false}
+      showCloseButton={false}
       swipeRegion="body"
       swipeEnabled={!isActionsOpen && !isQueueOpen}
       showDragHandle={true}
@@ -175,21 +178,21 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
       <div className={styles.drawerContent}>
         {/* Top bar: close button, ellipsis menu */}
         <div className={styles.topBar}>
-          <Button
-            type="text"
-            icon={<DownOutlined />}
+          <IconButton
             onClick={handleClose}
             aria-label="Close play view"
-          />
-          <Button
-            type="text"
-            icon={<MoreOutlined />}
+          >
+            <ExpandMoreOutlined />
+          </IconButton>
+          <IconButton
             onClick={() => {
               setIsQueueOpen(false);
               setIsActionsOpen(true);
             }}
             aria-label="Climb actions"
-          />
+          >
+            <MoreHorizOutlined />
+          </IconButton>
         </div>
 
         {/* Board renderer with card-swipe */}
@@ -223,36 +226,37 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
 
         {/* Action bar with prev/next on the outside */}
         <div className={styles.actionBar}>
-          <Button
-            type="text"
-            icon={<StepBackwardOutlined />}
+          <IconButton
             disabled={!canSwipePrevious}
             onClick={() => {
               const prev = getPreviousClimbQueueItem();
               if (prev) setCurrentClimbQueueItem(prev);
             }}
-          />
+          >
+            <SkipPreviousOutlined />
+          </IconButton>
 
           {/* Mirror */}
           {boardDetails.supportsMirroring && (
-            <Button
-              type={isMirrored ? 'primary' : 'text'}
-              icon={<SyncOutlined />}
+            <IconButton
+              color={isMirrored ? 'primary' : 'default'}
               onClick={() => mirrorClimb()}
-              style={
+              sx={
                 isMirrored
-                  ? { backgroundColor: themeTokens.colors.purple, borderColor: themeTokens.colors.purple }
+                  ? { backgroundColor: themeTokens.colors.purple, borderColor: themeTokens.colors.purple, color: 'common.white', '&:hover': { backgroundColor: themeTokens.colors.purple } }
                   : undefined
               }
-            />
+            >
+              <SyncOutlined />
+            </IconButton>
           )}
 
           {/* Favorite */}
-          <Button
-            type="text"
-            icon={isFavorited ? <HeartFilled style={{ color: themeTokens.colors.error }} /> : <HeartOutlined />}
+          <IconButton
             onClick={() => toggleFavorite()}
-          />
+          >
+            {isFavorited ? <Favorite sx={{ color: themeTokens.colors.error }} /> : <FavoriteBorderOutlined />}
+          </IconButton>
 
           {/* Party */}
           <ShareBoardButton buttonType="text" />
@@ -261,32 +265,30 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
           <SendClimbToBoardButton buttonType="text" />
 
           {/* Queue */}
-          <Badge count={remainingQueueCount} overflowCount={99} showZero={false} color={themeTokens.colors.primary}>
-            <Button
-              type="text"
-              icon={<UnorderedListOutlined />}
+          <MuiBadge badgeContent={remainingQueueCount} max={99} sx={{ '& .MuiBadge-badge': { backgroundColor: themeTokens.colors.primary, color: 'common.white' } }}>
+            <IconButton
               onClick={() => {
                 setIsActionsOpen(false);
                 setIsQueueOpen(true);
               }}
               aria-label="Open queue"
-            />
-          </Badge>
+            >
+              <FormatListBulletedOutlined />
+            </IconButton>
+          </MuiBadge>
 
-          <Button
-            type="text"
-            icon={<StepForwardOutlined />}
+          <IconButton
             disabled={!canSwipeNext}
             onClick={() => {
               const next = getNextClimbQueueItem();
               if (next) setCurrentClimbQueueItem(next);
             }}
-          />
+          >
+            <SkipNextOutlined />
+          </IconButton>
         </div>
       </div>
 
-      {/* Isolate child drawers from parent push context */}
-      <DrawerContext.Provider value={noPushContext}>
         {/* Climb actions drawer */}
         {currentClimb && (
           <SwipeableDrawer
@@ -294,7 +296,7 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
             placement="bottom"
             open={isActionsOpen}
             onClose={() => setIsActionsOpen(false)}
-            getContainer={false}
+            disablePortal
             swipeRegion="body"
             styles={{
               wrapper: { height: 'auto' },
@@ -317,7 +319,9 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
           placement="bottom"
           height="60%"
           open={isQueueOpen}
-          getContainer={false}
+          showCloseButton={false}
+          swipeEnabled={true}
+          disablePortal
           onClose={() => {
             setIsQueueOpen(false);
             handleExitEditMode();
@@ -325,7 +329,7 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
           }}
           swipeRegion="scrollBody"
           scrollBodyRef={queueScrollRef}
-          afterOpenChange={(open) => {
+          onTransitionEnd={(open) => {
             if (open) {
               setTimeout(() => {
                 queueListRef.current?.scrollToCurrentClimb();
@@ -339,35 +343,37 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
           extra={
             queue.length > 0 && !viewOnlyMode && (
               isEditMode ? (
-                <Space>
-                  <Button
-                    type="text"
-                    icon={<DeleteOutlined />}
-                    style={{ color: themeTokens.neutral[400] }}
+                <Stack direction="row" spacing={1}>
+                  <MuiButton
+                    variant="text"
+                    startIcon={<DeleteOutlined />}
+                    sx={{ color: themeTokens.neutral[400] }}
                     onClick={() => {
                       setQueue([]);
                       handleExitEditMode();
                     }}
                   >
                     Clear
-                  </Button>
-                  <Button type="text" icon={<CloseOutlined />} onClick={handleExitEditMode} />
-                </Space>
+                  </MuiButton>
+                  <IconButton onClick={handleExitEditMode}><CloseOutlined /></IconButton>
+                </Stack>
               ) : (
-                <Space>
-                  <Button
-                    type={showHistory ? 'default' : 'text'}
-                    icon={<HistoryOutlined />}
+                <Stack direction="row" spacing={1}>
+                  <IconButton
+                    color={showHistory ? 'default' : 'default'}
                     onClick={() => setShowHistory((prev) => !prev)}
-                  />
-                  <Button type="text" icon={<EditOutlined />} onClick={() => setIsEditMode(true)} />
-                </Space>
+                    sx={showHistory ? { border: '1px solid', borderColor: 'divider' } : undefined}
+                  >
+                    <HistoryOutlined />
+                  </IconButton>
+                  <IconButton onClick={() => setIsEditMode(true)}><EditOutlined /></IconButton>
+                </Stack>
               )
             )
           }
         >
           <div className={styles.queueBodyLayout}>
-            <div ref={queueScrollRef} className={styles.queueScrollContainer}>
+            <div ref={queueScrollCallbackRef} className={styles.queueScrollContainer}>
               <QueueList
                 ref={queueListRef}
                 boardDetails={boardDetails}
@@ -379,18 +385,18 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
                 showHistory={showHistory}
                 selectedItems={selectedItems}
                 onToggleSelect={handleToggleSelect}
+                scrollContainer={queueScrollEl}
               />
             </div>
             {isEditMode && selectedItems.size > 0 && (
               <div className={styles.bulkRemoveBar}>
-                <Button type="primary" danger block onClick={handleBulkRemove}>
+                <MuiButton variant="contained" color="error" fullWidth onClick={handleBulkRemove}>
                   Remove {selectedItems.size} {selectedItems.size === 1 ? 'item' : 'items'}
-                </Button>
+                </MuiButton>
               </div>
             )}
           </div>
         </SwipeableDrawer>
-      </DrawerContext.Provider>
     </SwipeableDrawer>
   );
 };

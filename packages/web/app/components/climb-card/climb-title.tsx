@@ -1,12 +1,11 @@
 'use client';
 
 import React from 'react';
-import { Flex, Typography } from 'antd';
-import { CopyrightOutlined } from '@ant-design/icons';
+import Typography from '@mui/material/Typography';
+import Box from '@mui/material/Box';
+import CopyrightOutlined from '@mui/icons-material/CopyrightOutlined';
 import { themeTokens } from '@/app/theme/theme-config';
 import { getSoftVGradeColor } from '@/app/lib/grade-colors';
-
-const { Text } = Typography;
 
 export type ClimbTitleData = {
   name?: string;
@@ -58,14 +57,16 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
 }) => {
   if (!climb) {
     return (
-      <Text
-        style={{
+      <Typography
+        variant="body2"
+        component="span"
+        sx={{
           fontSize: themeTokens.typography.fontSize.sm,
           fontWeight: themeTokens.typography.fontWeight.bold,
         }}
       >
         No climb selected
-      </Text>
+      </Typography>
     );
   }
 
@@ -99,14 +100,16 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
       return showAngle ? `${baseText} @ ${climb.angle}°` : baseText;
     }
     const projectText = showAngle ? `project @ ${climb.angle}°` : 'project';
-    return <span style={{ fontStyle: 'italic' }}>{projectText}</span>;
+    return <Box component="span" sx={{ fontStyle: 'italic' }}>{projectText}</Box>;
   };
 
   const nameFontSize = titleFontSize ?? themeTokens.typography.fontSize.sm;
 
   const nameElement = (
-    <Text
-      style={{
+    <Typography
+      variant="body2"
+      component="span"
+      sx={{
         fontSize: nameFontSize,
         fontWeight: themeTokens.typography.fontWeight.bold,
         ...textOverflowStyles,
@@ -115,55 +118,61 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
       {climb.name}
       {isBenchmark && (
         <CopyrightOutlined
-          style={{
-            marginLeft: 4,
+          sx={{
+            marginLeft: '4px',
             fontSize: themeTokens.typography.fontSize.xs,
             color: themeTokens.colors.primary,
           }}
         />
       )}
-    </Text>
+    </Typography>
   );
 
   const gradeElement = (
-    <Text
-      type="secondary"
-      style={{
+    <Typography
+      variant="body2"
+      component="span"
+      color="text.secondary"
+      sx={{
         fontSize: themeTokens.typography.fontSize.xs,
         fontWeight: themeTokens.typography.fontWeight.normal,
         ...textOverflowStyles,
       }}
     >
       {renderDifficultyText()}
-    </Text>
+    </Typography>
   );
 
   const gradeColor = vGrade ? getSoftVGradeColor(vGrade) : undefined;
 
   const largeGradeElement = vGrade && (
-    <Text
-      style={{
+    <Typography
+      variant="body2"
+      component="span"
+      sx={{
         fontSize: nameFontSize,
         fontWeight: themeTokens.typography.fontWeight.bold,
         lineHeight: 1,
-        color: gradeColor ?? 'var(--ant-color-text-secondary)',
+        color: gradeColor ?? 'text.secondary',
       }}
     >
       {vGrade}
-    </Text>
+    </Typography>
   );
 
   const setterElement = showSetterInfo && climb.setter_username && (
-    <Text
-      type="secondary"
-      style={{
+    <Typography
+      variant="body2"
+      component="span"
+      color="text.secondary"
+      sx={{
         fontSize: themeTokens.typography.fontSize.xs,
         fontWeight: themeTokens.typography.fontWeight.normal,
         ...textOverflowStyles,
       }}
     >
       By {climb.setter_username} - {climb.ascensionist_count ?? 0} ascents
-    </Text>
+    </Typography>
   );
 
   if (layout === 'horizontal') {
@@ -179,46 +188,48 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
     }
 
     return (
-      <Flex gap={12} align="center" className={className} style={centered ? { position: 'relative' } : undefined}>
+      <Box sx={{ display: 'flex', gap: '12px', alignItems: 'center', ...(centered ? { position: 'relative' } : {}) }} className={className}>
         {/* Colorized V grade on the left */}
         {largeGradeElement}
         {/* Center: Name and quality/setter stacked */}
-        <Flex vertical gap={0} style={{ flex: 1, minWidth: 0 }} align={centered ? 'center' : 'flex-start'}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0, flex: 1, minWidth: 0, alignItems: centered ? 'center' : 'flex-start' }}>
           {/* Row 1: Name with addon */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: themeTokens.spacing[2] }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: `${themeTokens.spacing[2]}px` }}>
             {nameElement}
             {nameAddon}
-          </div>
+          </Box>
           {/* Row 2: Quality, setter, ascents */}
-          <Text
-            type="secondary"
-            style={{
+          <Typography
+            variant="body2"
+            component="span"
+            color="text.secondary"
+            sx={{
               fontSize: themeTokens.typography.fontSize.xs,
               fontWeight: themeTokens.typography.fontWeight.normal,
               ...textOverflowStyles,
             }}
           >
-            {secondLineContent.length > 0 ? secondLineContent.join(' · ') : <span style={{ fontStyle: 'italic' }}>project</span>}
-          </Text>
-        </Flex>
+            {secondLineContent.length > 0 ? secondLineContent.join(' · ') : <Box component="span" sx={{ fontStyle: 'italic' }}>project</Box>}
+          </Typography>
+        </Box>
         {/* Right addon (e.g., ascent status) */}
         {rightAddon}
-      </Flex>
+      </Box>
     );
   }
 
   return (
-    <Flex vertical gap={2} className={className} align={centered ? 'center' : 'flex-start'}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: '2px', alignItems: centered ? 'center' : 'flex-start' }} className={className}>
       {/* Row 1: Name with optional benchmark icon and addon (e.g., AscentStatus) */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: themeTokens.spacing[2] }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: `${themeTokens.spacing[2]}px` }}>
         {nameElement}
         {nameAddon}
-      </div>
+      </Box>
       {/* Row 2: Difficulty/Quality and optional Angle */}
       {gradeElement}
       {/* Row 3 (optional): Setter info */}
       {setterElement}
-    </Flex>
+    </Box>
   );
 };
 

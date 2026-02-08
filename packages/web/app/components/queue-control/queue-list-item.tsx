@@ -1,8 +1,23 @@
+'use client';
+
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Row, Col, Avatar, Tooltip, Dropdown, Button } from 'antd';
-import { CheckOutlined, CloseOutlined, UserOutlined, DeleteOutlined, MoreOutlined, InfoCircleOutlined, AppstoreOutlined } from '@ant-design/icons';
-import { Checkbox } from 'antd';
+import MuiTooltip from '@mui/material/Tooltip';
+import MuiAvatar from '@mui/material/Avatar';
+import MuiCheckbox from '@mui/material/Checkbox';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
+import Box from '@mui/material/Box';
+import IconButton from '@mui/material/IconButton';
+import CheckOutlined from '@mui/icons-material/CheckOutlined';
+import CloseOutlined from '@mui/icons-material/CloseOutlined';
+import PersonOutlined from '@mui/icons-material/PersonOutlined';
+import DeleteOutlined from '@mui/icons-material/DeleteOutlined';
+import MoreVertOutlined from '@mui/icons-material/MoreVertOutlined';
+import InfoOutlined from '@mui/icons-material/InfoOutlined';
+import AppsOutlined from '@mui/icons-material/AppsOutlined';
 import BluetoothIcon from './bluetooth-icon';
 import { BoardDetails, ClimbUuid, Climb } from '@/app/lib/types';
 import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
@@ -103,6 +118,7 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
 }) => {
   const router = useRouter();
   const [closestEdge, setClosestEdge] = useState<Edge | null>(null);
+  const [menuAnchorEl, setMenuAnchorEl] = useState<HTMLElement | null>(null);
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [isSwipeComplete, setIsSwipeComplete] = useState(false);
   const [isHorizontalSwipe, setIsHorizontalSwipe] = useState<boolean | null>(null);
@@ -327,85 +343,77 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
           onDoubleClick={isEditMode ? undefined : handleDoubleTap}
           onClick={isEditMode ? () => onToggleSelect?.(item.uuid) : undefined}
         >
-          <Row className={styles.contentRow} gutter={[8, 8]} align="middle" wrap={false}>
+          <Box className={styles.contentRow} sx={{ display: 'flex', flexWrap: 'nowrap', gap: '8px 8px', alignItems: 'center' }}>
             {isEditMode && (
-              <Col xs={2} sm={2}>
-                <Checkbox
+              <Box sx={{ width: { xs: '8.33%', sm: '8.33%' } }}>
+                <MuiCheckbox
                   checked={isSelected}
                   onClick={(e) => e.stopPropagation()}
                   onChange={() => onToggleSelect?.(item.uuid)}
                 />
-              </Col>
+              </Box>
             )}
-            <Col xs={isEditMode ? 5 : 6} sm={isEditMode ? 4 : 5}>
+            <Box sx={{ width: { xs: isEditMode ? '20.83%' : '25%', sm: isEditMode ? '16.67%' : '20.83%' } }}>
               <ClimbThumbnail
                 boardDetails={boardDetails}
                 currentClimb={item.climb}
               />
-            </Col>
-            <Col xs={isEditMode ? 14 : 13} sm={isEditMode ? 16 : 15}>
+            </Box>
+            <Box sx={{ width: { xs: isEditMode ? '58.33%' : '54.17%', sm: isEditMode ? '66.67%' : '62.5%' } }}>
               <ClimbTitle
                 climb={item.climb}
                 showAngle
                 centered
                 nameAddon={<AscentStatus climbUuid={item.climb?.uuid} />}
               />
-            </Col>
-            <Col xs={2} sm={2}>
+            </Box>
+            <Box sx={{ width: { xs: '8.33%', sm: '8.33%' } }}>
               {item.addedByUser ? (
-                <Tooltip title={item.addedByUser.username}>
-                  <Avatar size="small" src={item.addedByUser.avatarUrl} icon={<UserOutlined />} />
-                </Tooltip>
+                <MuiTooltip title={item.addedByUser.username}>
+                  <MuiAvatar sx={{ width: 24, height: 24 }} src={item.addedByUser.avatarUrl}>
+                    <PersonOutlined />
+                  </MuiAvatar>
+                </MuiTooltip>
               ) : (
-                <Tooltip title="Added via Bluetooth">
-                  <Avatar
-                    size="small"
-                    style={{ backgroundColor: 'transparent' }}
-                    icon={<BluetoothIcon style={{ color: themeTokens.neutral[400] }} />}
-                  />
-                </Tooltip>
+                <MuiTooltip title="Added via Bluetooth">
+                  <MuiAvatar
+                    sx={{ width: 24, height: 24, backgroundColor: 'transparent' }}
+                  >
+                    <BluetoothIcon style={{ color: themeTokens.neutral[400] }} />
+                  </MuiAvatar>
+                </MuiTooltip>
               )}
-            </Col>
+            </Box>
             {!isEditMode && (
-              <Col xs={3} sm={2}>
-                <Dropdown
-                  menu={{
-                    items: [
-                      {
-                        key: 'info',
-                        label: 'View Climb',
-                        icon: <InfoCircleOutlined />,
-                        onClick: handleViewClimb,
-                      },
-                      {
-                        key: 'tick',
-                        label: 'Tick Climb',
-                        icon: <CheckOutlined />,
-                        onClick: () => item.climb && onTickClick(item.climb),
-                      },
-                      {
-                        key: 'openInApp',
-                        label: 'Open in App',
-                        icon: <AppstoreOutlined />,
-                        onClick: handleOpenInApp,
-                      },
-                      {
-                        key: 'remove',
-                        label: 'Remove from Queue',
-                        icon: <DeleteOutlined />,
-                        danger: true,
-                        onClick: () => removeFromQueue(item),
-                      },
-                    ],
-                  }}
-                  trigger={['click']}
-                  placement="bottomRight"
+              <Box sx={{ width: { xs: '12.5%', sm: '8.33%' } }}>
+                <IconButton onClick={(e) => setMenuAnchorEl(e.currentTarget)}><MoreVertOutlined /></IconButton>
+                <Menu
+                  anchorEl={menuAnchorEl}
+                  open={Boolean(menuAnchorEl)}
+                  onClose={() => setMenuAnchorEl(null)}
+                  anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                  transformOrigin={{ vertical: 'top', horizontal: 'right' }}
                 >
-                  <Button type="text" icon={<MoreOutlined />} />
-                </Dropdown>
-              </Col>
+                  <MenuItem onClick={() => { setMenuAnchorEl(null); handleViewClimb(); }}>
+                    <ListItemIcon><InfoOutlined /></ListItemIcon>
+                    <ListItemText>View Climb</ListItemText>
+                  </MenuItem>
+                  <MenuItem onClick={() => { setMenuAnchorEl(null); item.climb && onTickClick(item.climb); }}>
+                    <ListItemIcon><CheckOutlined /></ListItemIcon>
+                    <ListItemText>Tick Climb</ListItemText>
+                  </MenuItem>
+                  <MenuItem onClick={() => { setMenuAnchorEl(null); handleOpenInApp(); }}>
+                    <ListItemIcon><AppsOutlined /></ListItemIcon>
+                    <ListItemText>Open in App</ListItemText>
+                  </MenuItem>
+                  <MenuItem onClick={() => { setMenuAnchorEl(null); removeFromQueue(item); }} sx={{ color: 'error.main' }}>
+                    <ListItemIcon><DeleteOutlined color="error" /></ListItemIcon>
+                    <ListItemText>Remove from Queue</ListItemText>
+                  </MenuItem>
+                </Menu>
+              </Box>
             )}
-          </Row>
+          </Box>
         </div>
         {closestEdge && <DropIndicator edge={closestEdge} gap="1px" />}
       </div>

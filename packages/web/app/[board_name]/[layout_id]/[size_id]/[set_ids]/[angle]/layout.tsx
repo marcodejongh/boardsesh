@@ -1,11 +1,9 @@
 import React, { Suspense } from 'react';
 import { PropsWithChildren } from 'react';
-import { Layout } from 'antd';
 import { ParsedBoardRouteParameters, BoardRouteParameters, BoardDetails } from '@/app/lib/types';
 import { parseBoardRouteParams, constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import { permanentRedirect } from 'next/navigation';
-import { Content } from 'antd/es/layout/layout';
 import QueueControlBar from '@/app/components/queue-control/queue-control-bar';
 import { getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
 import { getMoonBoardDetails } from '@/app/lib/moonboard-config';
@@ -148,7 +146,7 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
   const boardDetails = getBoardDetailsUniversal(parsedParams);
 
   return (
-    <Layout style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', padding: 0, background: 'var(--semantic-surface)' }}>
+    <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', padding: 0, background: 'var(--semantic-surface)' }}>
       <BoardSessionBridge boardDetails={boardDetails} parsedParams={parsedParams}>
         <ConnectionSettingsProvider>
           <GraphQLQueueProvider parsedParams={parsedParams} boardDetails={boardDetails}>
@@ -157,13 +155,10 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
                 <UISearchParamsProvider>
                   <BoardSeshHeader boardDetails={boardDetails} angle={angle} />
 
-                  <Content
+                  <main
                     id="content-for-scrollable"
                     style={{
                       flex: 1,
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      overflowX: 'hidden',
                       paddingLeft: '10px',
                       paddingRight: '10px',
                       paddingTop: 'calc(max(8dvh, 48px) + env(safe-area-inset-top, 0px))',
@@ -173,7 +168,7 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
                     <Suspense fallback={<BoardPageSkeleton aspectRatio={boardDetails.boardWidth / boardDetails.boardHeight} />}>
                       {children}
                     </Suspense>
-                  </Content>
+                  </main>
 
                   <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 10 }}>
                     <QueueControlBar boardDetails={boardDetails} angle={angle} />
@@ -185,6 +180,6 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
           </GraphQLQueueProvider>
         </ConnectionSettingsProvider>
       </BoardSessionBridge>
-    </Layout>
+    </div>
   );
 }

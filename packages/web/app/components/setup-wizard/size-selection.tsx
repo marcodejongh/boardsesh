@@ -1,15 +1,18 @@
 'use client';
 import React, { useState } from 'react';
-import { Button, Form, Select, Typography } from 'antd';
+import MuiSelect from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
+import FormControl from '@mui/material/FormControl';
+import InputLabel from '@mui/material/InputLabel';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
+import Box from '@mui/material/Box';
 import { useRouter } from 'next/navigation';
 import { SizeRow } from '@/app/lib/data/queries';
 
-const { Option } = Select;
-const { Title } = Typography;
-
 const SizeSelection = ({ sizes = [] }: { sizes: SizeRow[] }) => {
   const router = useRouter();
-  const [selectedSize, setSelectedSize] = useState<number>();
+  const [selectedSize, setSelectedSize] = useState<number | ''>('');
 
   const handleNext = () => {
     if (selectedSize) {
@@ -18,29 +21,32 @@ const SizeSelection = ({ sizes = [] }: { sizes: SizeRow[] }) => {
   };
 
   return (
-    <div style={{ padding: '24px', background: 'var(--semantic-background)', borderRadius: '8px' }}>
-      <Title level={4}>Select a size</Title>
-      <Form layout="vertical">
-        <Form.Item label="Size" required tooltip="Choose your current board size">
-          <Select placeholder="Choose a size" value={selectedSize} onChange={(value) => setSelectedSize(value)}>
-            {sizes.map(({ id, name, description }) => (
-              <Option key={id} value={id}>
-                {`${name} ${description}`}
-              </Option>
-            ))}
-          </Select>
-        </Form.Item>
-        <Button
-          type="primary"
-          block
-          style={{ marginTop: '16px' }}
-          onClick={handleNext}
-          disabled={!selectedSize} // Disable the button if no size is selected
+    <Box sx={{ padding: '24px', background: 'var(--semantic-background)', borderRadius: '8px' }}>
+      <Typography variant="h4">Select a size</Typography>
+      <FormControl fullWidth sx={{ mt: 2 }} required>
+        <InputLabel>Size</InputLabel>
+        <MuiSelect
+          value={selectedSize}
+          label="Size"
+          onChange={(e) => setSelectedSize(e.target.value as number)}
         >
-          Next
-        </Button>
-      </Form>
-    </div>
+          {sizes.map(({ id, name, description }) => (
+            <MenuItem key={id} value={id}>
+              {`${name} ${description}`}
+            </MenuItem>
+          ))}
+        </MuiSelect>
+      </FormControl>
+      <Button
+        variant="contained"
+        fullWidth
+        sx={{ marginTop: '16px' }}
+        onClick={handleNext}
+        disabled={!selectedSize}
+      >
+        Next
+      </Button>
+    </Box>
   );
 };
 

@@ -1,8 +1,21 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Input, Switch, Button, Typography, Tag, Alert, Flex, Slider, Tooltip, Space, Upload, message, Select } from 'antd';
-import { SettingOutlined, CloseOutlined, FireOutlined, ArrowLeftOutlined, SaveOutlined, LoginOutlined, UploadOutlined, LoadingOutlined, ImportOutlined } from '@ant-design/icons';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import MuiAlert from '@mui/material/Alert';
+import MuiTooltip from '@mui/material/Tooltip';
+import Chip from '@mui/material/Chip';
+import Box from '@mui/material/Box';
+import Stack from '@mui/material/Stack';
+import MuiButton from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
+import Typography from '@mui/material/Typography';
+import TextField from '@mui/material/TextField';
+import CircularProgress from '@mui/material/CircularProgress';
+import MuiSwitch from '@mui/material/Switch';
+import MuiSlider from '@mui/material/Slider';
+import MuiSelect from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
+import { SettingsOutlined, CloseOutlined, LocalFireDepartmentOutlined, ArrowBackOutlined, SaveOutlined, LoginOutlined, CloudUploadOutlined, GetAppOutlined } from '@mui/icons-material';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { track } from '@vercel/analytics';
@@ -22,12 +35,10 @@ import { themeTokens } from '@/app/theme/theme-config';
 import { parseScreenshot } from '@boardsesh/moonboard-ocr/browser';
 import { convertOcrHoldsToMap } from '@/app/lib/moonboard-climbs-db';
 import AuthModal from '../auth/auth-modal';
-import { useCreateClimbContext } from './create-climb-context';
+import { useSnackbar } from '../providers/snackbar-provider';
 import CreateClimbHeatmapOverlay from './create-climb-heatmap-overlay';
 import styles from './create-climb-form.module.css';
 
-const { Text } = Typography;
-const { TextArea } = Input;
 
 interface CreateClimbFormValues {
   name: string;
@@ -66,6 +77,7 @@ export default function CreateClimbForm({
 
   // Aurora-specific hooks
   const { isAuthenticated, saveClimb } = useBoardProvider();
+  const { showMessage } = useSnackbar();
 
   // Determine which auth check to use based on board type
   const isLoggedIn = boardType === 'aurora' ? isAuthenticated : !!session?.user?.id;
@@ -103,7 +115,8 @@ export default function CreateClimbForm({
     boardDetails: boardType === 'aurora' ? boardDetails : undefined
   });
 
-  const createClimbContext = useCreateClimbContext();
+  // Refs
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Form state
   const [isSaving, setIsSaving] = useState(false);
@@ -286,13 +299,13 @@ export default function CreateClimbForm({
         throw new Error(errorData.error || 'Failed to save climb');
       }
 
-      message.success('Climb saved to database!');
+      showMessage('Climb saved to database!', 'success');
 
       const listUrl = pathname.replace(/\/create$/, '/list');
       router.push(listUrl);
     } catch (error) {
       console.error('Failed to save climb:', error);
-      message.error(error instanceof Error ? error.message : 'Failed to save climb. Please try again.');
+      showMessage(error instanceof Error ? error.message : 'Failed to save climb. Please try again.', 'error');
     } finally {
       setIsSaving(false);
     }
@@ -358,49 +371,25 @@ export default function CreateClimbForm({
     });
   }, [boardType, boardDetails]);
 
-  // Register actions with context for header to use
-  useEffect(() => {
-    if (createClimbContext) {
-      createClimbContext.registerActions({
-        onPublish: handlePublish,
-        onCancel: handleCancel,
-      });
-    }
-  }, [createClimbContext, handlePublish, handleCancel]);
-
-  // Update context state
-  useEffect(() => {
-    if (createClimbContext) {
-      createClimbContext.setCanPublish(canSave);
-    }
-  }, [createClimbContext, canSave]);
-
-  useEffect(() => {
-    if (createClimbContext) {
-      createClimbContext.setIsPublishing(isSaving);
-    }
-  }, [createClimbContext, isSaving]);
-
   // Render save/login button
   const renderSaveButton = () => {
     if (boardType === 'aurora') {
       if (!isAuthenticated) {
         return (
-          <Button type="primary" icon={<LoginOutlined />} onClick={() => setShowAuthModal(true)}>
+          <MuiButton variant="contained" startIcon={<LoginOutlined />} onClick={() => setShowAuthModal(true)}>
             Sign In
-          </Button>
+          </MuiButton>
         );
       }
       return (
-        <Button
-          type="primary"
-          icon={<SaveOutlined />}
-          loading={isSaving}
-          disabled={!canSave}
+        <MuiButton
+          variant="contained"
+          startIcon={isSaving ? <CircularProgress size={16} /> : <SaveOutlined />}
+          disabled={isSaving || !canSave}
           onClick={handlePublish}
         >
           {isSaving ? 'Saving...' : 'Save'}
-        </Button>
+        </MuiButton>
       );
     }
 
@@ -408,22 +397,21 @@ export default function CreateClimbForm({
     if (!session?.user) {
       return (
         <Link href="/api/auth/signin">
-          <Button type="primary" icon={<LoginOutlined />}>
+          <MuiButton variant="contained" startIcon={<LoginOutlined />}>
             Log in to Save
-          </Button>
+          </MuiButton>
         </Link>
       );
     }
     return (
-      <Button
-        type="primary"
-        icon={<SaveOutlined />}
-        loading={isSaving}
-        disabled={!canSave}
+      <MuiButton
+        variant="contained"
+        startIcon={isSaving ? <CircularProgress size={16} /> : <SaveOutlined />}
+        disabled={isSaving || !canSave}
         onClick={handlePublish}
       >
         {isSaving ? 'Saving...' : 'Save'}
-      </Button>
+      </MuiButton>
     );
   };
 
@@ -431,131 +419,105 @@ export default function CreateClimbForm({
     <div className={styles.pageContainer}>
       {/* Unified Header */}
       <div className={styles.createHeader}>
-        <Button icon={<ArrowLeftOutlined />} onClick={handleCancel}>
+        <MuiButton variant="outlined" startIcon={<ArrowBackOutlined />} onClick={handleCancel}>
           Back
-        </Button>
-        <Input
+        </MuiButton>
+        <TextField
           placeholder="Climb name"
-          maxLength={100}
+          inputProps={{ maxLength: 100 }}
           className={styles.headerNameInput}
-          variant="borderless"
+          variant="standard"
           value={climbName}
           onChange={(e) => setClimbName(e.target.value)}
         />
         {/* MoonBoard: Show grade in header like climb card */}
         {boardType === 'moonboard' && userGrade && (
-          <Text
+          <Typography
+            variant="body2"
+            component="span"
             style={{
               fontSize: 28,
               fontWeight: themeTokens.typography.fontWeight.bold,
               lineHeight: 1,
-              color: getSoftFontGradeColor(userGrade) ?? 'var(--ant-color-text-secondary)',
+              color: getSoftFontGradeColor(userGrade) ?? 'var(--neutral-500)',
               flexShrink: 0,
             }}
           >
             {userGrade}
-          </Text>
+          </Typography>
         )}
-        <Button
-          type="text"
-          icon={showSettingsPanel ? <CloseOutlined /> : <SettingOutlined />}
+        <IconButton
           onClick={handleToggleSettings}
-        />
+        >
+          {showSettingsPanel ? <CloseOutlined /> : <SettingsOutlined />}
+        </IconButton>
         {renderSaveButton()}
       </div>
 
-      {/* Auth alert for both board types */}
-      {!isLoggedIn && (
-        <Alert
-          title="Sign in required"
-          description="Sign in to your Boardsesh account to save your climb."
-          type="warning"
-          showIcon
-          className={styles.authAlert}
-          action={
-            boardType === 'aurora' ? (
-              <Button size="small" type="primary" onClick={() => setShowAuthModal(true)}>
-                Sign In
-              </Button>
-            ) : (
-              <Link href="/api/auth/signin">
-                <Button size="small" type="primary">
-                  Sign In
-                </Button>
-              </Link>
-            )
-          }
-        />
-      )}
-
       {/* MoonBoard OCR errors */}
       {boardType === 'moonboard' && ocrError && (
-        <Alert
-          message="Import Failed"
-          description={ocrError}
-          type="error"
-          showIcon
-          closable
+        <MuiAlert
+          severity="error"
           onClose={() => setOcrError(null)}
           className={styles.alertBanner}
-        />
+        >
+          Import Failed: {ocrError}
+        </MuiAlert>
       )}
 
       {boardType === 'moonboard' && ocrWarnings.length > 0 && (
-        <Alert
-          message="Import Warnings"
-          description={ocrWarnings.map((w, i) => <div key={i}>{w}</div>)}
-          type="warning"
-          showIcon
-          closable
+        <MuiAlert
+          severity="warning"
           onClose={() => setOcrWarnings([])}
           className={styles.alertBanner}
-        />
+        >
+          Import Warnings: {ocrWarnings.map((w, i) => <div key={i}>{w}</div>)}
+        </MuiAlert>
       )}
 
       <div className={styles.contentWrapper}>
         {/* Controls bar with draft toggle (all boards) and heatmap (Aurora only) */}
         <div className={styles.climbTitleContainer}>
-          <Flex gap={8} align="center">
-            <Text type="secondary" className={styles.draftLabel}>
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            <Typography variant="body2" component="span" color="text.secondary" className={styles.draftLabel}>
               Draft
-            </Text>
-            <Switch
+            </Typography>
+            <MuiSwitch
               size="small"
               checked={isDraft}
-              onChange={setIsDraft}
+              onChange={(_, checked) => setIsDraft(checked)}
             />
             {/* Aurora-only: Heatmap toggle */}
             {boardType === 'aurora' && (
               <>
-                <Tooltip title={showHeatmap ? 'Hide heatmap' : 'Show hold popularity heatmap'}>
-                  <Button
-                    type={showHeatmap ? 'primary' : 'text'}
-                    icon={<FireOutlined />}
+                <MuiTooltip title={showHeatmap ? 'Hide heatmap' : 'Show hold popularity heatmap'}>
+                  <IconButton
+                    color={showHeatmap ? 'error' : 'default'}
                     size="small"
                     onClick={handleToggleHeatmap}
-                    danger={showHeatmap}
                     className={styles.heatmapButton}
-                  />
-                </Tooltip>
+                  >
+                    <LocalFireDepartmentOutlined />
+                  </IconButton>
+                </MuiTooltip>
                 {showHeatmap && (
                   <>
-                    <Text type="secondary" className={styles.draftLabel}>
+                    <Typography variant="body2" component="span" color="text.secondary" className={styles.draftLabel}>
                       Opacity
-                    </Text>
-                    <Slider
+                    </Typography>
+                    <MuiSlider
                       min={0.1}
                       max={1}
                       step={0.1}
                       value={heatmapOpacity}
-                      onChange={setHeatmapOpacity}
+                      onChange={(_, value) => setHeatmapOpacity(value as number)}
                       className={styles.opacitySlider}
                     />
                   </>
                 )}
               </>
             )}
-          </Flex>
+          </Box>
         </div>
 
         {/* Board Section */}
@@ -595,60 +557,71 @@ export default function CreateClimbForm({
               onClick={(e) => e.stopPropagation()}
             >
               <div className={styles.settingsPanelHeader}>
-                <Text strong>Climb Settings</Text>
+                <Typography variant="body2" component="span" fontWeight={600}>Climb Settings</Typography>
               </div>
               <div className={styles.settingsPanelContent}>
                 {/* MoonBoard-specific: Angle, Grade and Benchmark */}
                 {boardType === 'moonboard' && (
                   <>
                     <div className={styles.settingsField}>
-                      <Text type="secondary" className={styles.settingsLabel}>
+                      <Typography variant="body2" component="span" color="text.secondary" className={styles.settingsLabel}>
                         Angle
-                      </Text>
-                      <Select
+                      </Typography>
+                      <MuiSelect
                         value={selectedAngle}
-                        onChange={setSelectedAngle}
-                        options={MOONBOARD_ANGLES.map(a => ({ value: a, label: `${a}°` }))}
+                        onChange={(e) => setSelectedAngle(e.target.value as number)}
                         className={styles.settingsGradeField}
-                      />
+                        size="small"
+                      >
+                        {MOONBOARD_ANGLES.map(a => (
+                          <MenuItem key={a} value={a}>{a}&deg;</MenuItem>
+                        ))}
+                      </MuiSelect>
                     </div>
                     <div className={styles.settingsField}>
-                      <Text type="secondary" className={styles.settingsLabel}>
+                      <Typography variant="body2" component="span" color="text.secondary" className={styles.settingsLabel}>
                         Grade
-                      </Text>
-                      <Select
-                        placeholder="Select grade"
-                        value={userGrade}
-                        onChange={setUserGrade}
-                        options={MOONBOARD_GRADES.map(g => ({ value: g.value, label: g.label }))}
+                      </Typography>
+                      <MuiSelect
+                        displayEmpty
+                        value={userGrade ?? ''}
+                        onChange={(e) => setUserGrade(e.target.value === '' ? undefined : (e.target.value as string))}
                         className={styles.settingsGradeField}
-                        allowClear
-                      />
+                        size="small"
+                      >
+                        <MenuItem value=""><em>None</em></MenuItem>
+                        {MOONBOARD_GRADES.map(g => (
+                          <MenuItem key={g.value} value={g.value}>{g.label}</MenuItem>
+                        ))}
+                      </MuiSelect>
                     </div>
                     <div className={styles.settingsField}>
-                      <Flex gap={8} align="center">
-                        <Switch
+                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                        <MuiSwitch
                           size="small"
                           checked={isBenchmark}
-                          onChange={setIsBenchmark}
+                          onChange={(_, checked) => setIsBenchmark(checked)}
                         />
-                        <Text>Benchmark</Text>
-                      </Flex>
+                        <Typography variant="body2" component="span">Benchmark</Typography>
+                      </Box>
                     </div>
                   </>
                 )}
                 {/* Common: Description */}
                 <div className={styles.settingsField}>
-                  <Text type="secondary" className={styles.settingsLabel}>
+                  <Typography variant="body2" component="span" color="text.secondary" className={styles.settingsLabel}>
                     Description (optional)
-                  </Text>
-                  <TextArea
+                  </Typography>
+                  <TextField
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="Add beta or notes about your climb..."
+                    multiline
                     rows={3}
-                    maxLength={500}
-                    showCount
+                    inputProps={{ maxLength: 500 }}
+                    variant="outlined"
+                    size="small"
+                    fullWidth
                   />
                 </div>
               </div>
@@ -658,59 +631,61 @@ export default function CreateClimbForm({
 
         {/* Hold counts bar at bottom */}
         <div className={styles.holdCountsBar}>
-          <Space wrap size="small">
+          <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
             {boardType === 'aurora' ? (
               <>
-                <Tag color={startingCount > 0 ? 'green' : 'default'}>Starting: {startingCount}/2</Tag>
-                <Tag color={finishCount > 0 ? 'magenta' : 'default'}>Finish: {finishCount}/2</Tag>
-                <Tag color={totalHolds > 0 ? 'blue' : 'default'}>Total: {totalHolds}</Tag>
+                <Chip label={`Starting: ${startingCount}/2`} size="small" color={startingCount > 0 ? 'success' : undefined} />
+                <Chip label={`Finish: ${finishCount}/2`} size="small" sx={finishCount > 0 ? { bgcolor: themeTokens.colors.pink, color: themeTokens.semantic.surface } : undefined} />
+                <Chip label={`Total: ${totalHolds}`} size="small" color={totalHolds > 0 ? 'primary' : undefined} />
               </>
             ) : (
               <>
-                <Tag color={startingCount > 0 ? 'red' : 'default'}>Start: {startingCount}/2</Tag>
-                <Tag color={handCount > 0 ? 'blue' : 'default'}>Hand: {handCount}</Tag>
-                <Tag color={finishCount > 0 ? 'green' : 'default'}>Finish: {finishCount}/2</Tag>
-                <Tag color={totalHolds > 0 ? 'purple' : 'default'}>Total: {totalHolds}</Tag>
+                <Chip label={`Start: ${startingCount}/2`} size="small" color={startingCount > 0 ? 'error' : undefined} />
+                <Chip label={`Hand: ${handCount}`} size="small" color={handCount > 0 ? 'primary' : undefined} />
+                <Chip label={`Finish: ${finishCount}/2`} size="small" color={finishCount > 0 ? 'success' : undefined} />
+                <Chip label={`Total: ${totalHolds}`} size="small" color={totalHolds > 0 ? 'secondary' : undefined} />
               </>
             )}
-          </Space>
-          <Space wrap size="small">
+          </Stack>
+          <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
             {totalHolds > 0 && (
-              <Button size="small" onClick={resetHolds}>
+              <MuiButton size="small" variant="outlined" onClick={resetHolds}>
                 Clear
-              </Button>
+              </MuiButton>
             )}
             {/* MoonBoard-only: Import buttons */}
             {boardType === 'moonboard' && (
               <>
-                <Upload
+                <input
+                  type="file"
+                  ref={fileInputRef}
                   accept="image/png,image/jpeg,image/webp"
-                  showUploadList={false}
-                  beforeUpload={(file) => {
-                    handleOcrImport(file);
-                    return false;
+                  style={{ display: 'none' }}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleOcrImport(file);
+                    e.target.value = '';
                   }}
                   disabled={isOcrProcessing}
-                >
-                  <Button size="small" icon={isOcrProcessing ? <LoadingOutlined /> : <UploadOutlined />} disabled={isOcrProcessing}>
-                    {isOcrProcessing ? 'Processing...' : 'Import'}
-                  </Button>
-                </Upload>
+                />
+                <MuiButton size="small" variant="outlined" startIcon={isOcrProcessing ? <CircularProgress size={16} /> : <CloudUploadOutlined />} disabled={isOcrProcessing} onClick={() => fileInputRef.current?.click()}>
+                  {isOcrProcessing ? 'Processing...' : 'Import'}
+                </MuiButton>
                 <Link href={bulkImportUrl}>
-                  <Button size="small" icon={<ImportOutlined />}>Bulk</Button>
+                  <MuiButton size="small" variant="outlined" startIcon={<GetAppOutlined />}>Bulk</MuiButton>
                 </Link>
               </>
             )}
-          </Space>
+          </Stack>
         </div>
       </div>
 
       {/* MoonBoard validation hint */}
       {boardType === 'moonboard' && !isValid && totalHolds > 0 && (
         <div className={styles.validationBar}>
-          <Text type="secondary">
+          <Typography variant="body2" component="span" color="text.secondary">
             A valid climb needs at least 1 start hold and 1 finish hold
-          </Text>
+          </Typography>
         </div>
       )}
 

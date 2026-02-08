@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Select } from 'antd';
+import Autocomplete from '@mui/material/Autocomplete';
+import TextField from '@mui/material/TextField';
+import CircularProgress from '@mui/material/CircularProgress';
 import { executeGraphQL } from '@/app/lib/graphql/client';
 import {
   GET_PLAYLIST_CREATORS,
@@ -10,6 +12,12 @@ import {
   PlaylistCreator,
 } from '@/app/lib/graphql/operations/playlists';
 import useSWR from 'swr';
+
+interface CreatorOption {
+  value: string;
+  label: string;
+  count: number;
+}
 
 interface CreatorNameSelectProps {
   boardType: string;
@@ -63,8 +71,8 @@ const CreatorNameSelect = ({
     }
   );
 
-  // Map creators to Select options
-  const options = useMemo(() => {
+  // Map creators to Autocomplete options
+  const options: CreatorOption[] = useMemo(() => {
     if (!creators) return [];
 
     return creators.map((creator) => ({
@@ -74,27 +82,57 @@ const CreatorNameSelect = ({
     }));
   }, [creators]);
 
+  // Find the selected option objects from the value array
+  const selectedOptions = useMemo(() => {
+    return options.filter((option) => value.includes(option.value));
+  }, [options, value]);
+
   return (
-    <Select
-      mode="multiple"
-      placeholder="Select creators..."
-      value={value}
-      onChange={onChange}
-      onSearch={setSearchValue}
-      onOpenChange={setIsOpen}
-      loading={isLoading}
-      showSearch
-      filterOption={false}
+    <Autocomplete
+      multiple
+      limitTags={2}
+      open={isOpen}
+      onOpen={() => setIsOpen(true)}
+      onClose={() => setIsOpen(false)}
       options={options}
-      style={{ width: '100%' }}
-      maxTagCount="responsive"
-      notFoundContent={
+      getOptionLabel={(option) => option.label}
+      isOptionEqualToValue={(option, val) => option.value === val.value}
+      value={selectedOptions}
+      onChange={(_, newValue) => {
+        onChange(newValue.map((opt) => opt.value));
+      }}
+      inputValue={searchValue}
+      onInputChange={(_, newInputValue, reason) => {
+        if (reason !== 'reset') {
+          setSearchValue(newInputValue);
+        }
+      }}
+      filterOptions={(x) => x}
+      loading={isLoading}
+      noOptionsText={
         isLoading
           ? 'Loading...'
           : !isOpen && searchValue.length === 0
             ? 'Open dropdown to see creators'
             : 'No creators found'
       }
+      renderInput={(params) => (
+        <TextField
+          {...params}
+          size="small"
+          placeholder="Select creators..."
+          InputProps={{
+            ...params.InputProps,
+            endAdornment: (
+              <>
+                {isLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                {params.InputProps.endAdornment}
+              </>
+            ),
+          }}
+        />
+      )}
+      fullWidth
     />
   );
 };

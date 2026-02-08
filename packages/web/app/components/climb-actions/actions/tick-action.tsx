@@ -1,10 +1,16 @@
 'use client';
 
 import React, { useState, useCallback, useMemo } from 'react';
-import { Button, Badge, Typography, Space } from 'antd';
+import MuiButton from '@mui/material/Button';
+import MuiBadge from '@mui/material/Badge';
+import Typography from '@mui/material/Typography';
+import Stack from '@mui/material/Stack';
+import Box from '@mui/material/Box';
 import SwipeableDrawer from '../../swipeable-drawer/swipeable-drawer';
 import { ActionTooltip } from '../action-tooltip';
-import { CheckOutlined, LoginOutlined, AppstoreOutlined } from '@ant-design/icons';
+import CheckOutlined from '@mui/icons-material/CheckOutlined';
+import LoginOutlined from '@mui/icons-material/LoginOutlined';
+import AppsOutlined from '@mui/icons-material/AppsOutlined';
 import { ClimbActionProps, ClimbActionResult } from '../types';
 import { useBoardProvider } from '../../board-provider/board-provider-context';
 import AuthModal from '../../auth/auth-modal';
@@ -12,8 +18,7 @@ import { LogAscentDrawer } from '../../logbook/log-ascent-drawer';
 import { track } from '@vercel/analytics';
 import { constructClimbInfoUrl } from '@/app/lib/url-utils';
 import { themeTokens } from '@/app/theme/theme-config';
-
-const { Text, Paragraph } = Typography;
+import { useAlwaysTickInApp } from '@/app/hooks/use-always-tick-in-app';
 
 export function TickAction({
   climb,
@@ -33,6 +38,8 @@ export function TickAction({
     isAuthenticated,
     logbook,
   } = useBoardProvider();
+
+  const { alwaysUseApp, loaded, enableAlwaysUseApp } = useAlwaysTickInApp();
 
   // Find ascent entries for this climb
   const filteredLogbook = useMemo(() => {
@@ -54,9 +61,16 @@ export function TickAction({
       existingAscentCount: badgeCount,
     });
 
+    if (!isAuthenticated && alwaysUseApp && loaded) {
+      const url = constructClimbInfoUrl(boardDetails, climb.uuid, angle);
+      window.open(url, '_blank', 'noopener');
+      onComplete?.();
+      return;
+    }
+
     setDrawerVisible(true);
     onComplete?.();
-  }, [boardDetails.layout_name, badgeCount, onComplete]);
+  }, [boardDetails, badgeCount, onComplete, isAuthenticated, alwaysUseApp, loaded, climb.uuid, angle]);
 
   const closeDrawer = useCallback(() => {
     setDrawerVisible(false);
@@ -69,28 +83,39 @@ export function TickAction({
   }, [boardDetails, climb.uuid, angle, closeDrawer]);
 
   const renderSignInPrompt = () => (
-    <Space orientation="vertical" size="large" style={{ width: '100%', textAlign: 'center', padding: '24px 0' }}>
-      <Text strong style={{ fontSize: 16 }}>Sign in to record ticks</Text>
-      <Paragraph type="secondary">
+    <Stack spacing={3} sx={{ width: '100%', textAlign: 'center', padding: '24px 0' }}>
+      <Typography variant="body2" component="span" fontWeight={600} sx={{ fontSize: 16 }}>Sign in to record ticks</Typography>
+      <Typography variant="body1" component="p" color="text.secondary">
         Create a Boardsesh account to log your climbs and track your progress.
-      </Paragraph>
-      <Button type="primary" icon={<LoginOutlined />} onClick={() => setShowAuthModal(true)} block>
+      </Typography>
+      <MuiButton variant="contained" startIcon={<LoginOutlined />} onClick={() => setShowAuthModal(true)} fullWidth>
         Sign In
-      </Button>
-      <Paragraph type="secondary">
+      </MuiButton>
+      <Typography variant="body1" component="p" color="text.secondary">
         Or log your tick in the official app:
-      </Paragraph>
-      <Button icon={<AppstoreOutlined />} onClick={handleOpenInApp} block>
+      </Typography>
+      <MuiButton variant="outlined" startIcon={<AppsOutlined />} onClick={handleOpenInApp} fullWidth>
         Open in App
-      </Button>
-    </Space>
+      </MuiButton>
+      <MuiButton
+        variant="text"
+        size="small"
+        color="secondary"
+        onClick={async () => {
+          await enableAlwaysUseApp();
+          handleOpenInApp();
+        }}
+      >
+        Always open in app
+      </MuiButton>
+    </Stack>
   );
 
   const label = 'Tick';
   const shouldShowLabel = showLabel ?? (viewMode === 'button' || viewMode === 'dropdown');
   const iconSize = size === 'small' ? 14 : size === 'large' ? 20 : 16;
 
-  const icon = <CheckOutlined style={{ fontSize: iconSize }} />;
+  const icon = <CheckOutlined sx={{ fontSize: iconSize }} />;
   const badgeColor = hasSuccessfulAscent ? themeTokens.colors.success : themeTokens.colors.error;
 
   const drawers = (
@@ -108,8 +133,8 @@ export function TickAction({
           placement="bottom"
           onClose={closeDrawer}
           open={drawerVisible}
-          swipeRegion="body"
-          styles={{ wrapper: { height: '50%' } }}
+          swipeRegion="handle"
+          styles={{ wrapper: { height: '60%' } }}
         >
           {renderSignInPrompt()}
         </SwipeableDrawer>
@@ -127,11 +152,11 @@ export function TickAction({
   const iconElement = (
     <>
       <ActionTooltip title={label}>
-        <Badge count={badgeCount} size="small" color={badgeColor} overflowCount={99} showZero={false}>
-          <span onClick={handleClick} style={{ cursor: 'pointer' }} className={className}>
+        <MuiBadge badgeContent={badgeCount} max={99} sx={{ '& .MuiBadge-badge': { backgroundColor: badgeColor, color: 'common.white' } }}>
+          <Box component="span" onClick={handleClick} sx={{ cursor: 'pointer' }} className={className}>
             {icon}
-          </span>
-        </Badge>
+          </Box>
+        </MuiBadge>
       </ActionTooltip>
       {drawers}
     </>
@@ -140,17 +165,18 @@ export function TickAction({
   // Button mode
   const buttonElement = (
     <>
-      <Badge count={badgeCount} size="small" color={badgeColor} overflowCount={99} showZero={false}>
-        <Button
-          icon={icon}
+      <MuiBadge badgeContent={badgeCount} max={99} sx={{ '& .MuiBadge-badge': { backgroundColor: badgeColor, color: 'common.white' } }}>
+        <MuiButton
+          variant="outlined"
+          startIcon={icon}
           onClick={handleClick}
-          size={size === 'large' ? 'large' : size === 'small' ? 'small' : 'middle'}
+          size={size === 'large' ? 'large' : 'small'}
           disabled={disabled}
           className={className}
         >
           {shouldShowLabel && label}
-        </Button>
-      </Badge>
+        </MuiButton>
+      </MuiBadge>
       {drawers}
     </>
   );
@@ -166,21 +192,21 @@ export function TickAction({
   // List mode - full-width row for drawer menus
   const listElement = (
     <>
-      <Button
-        type="text"
-        icon={icon}
-        block
+      <MuiButton
+        variant="text"
+        startIcon={icon}
+        fullWidth
         onClick={handleClick}
         disabled={disabled}
-        style={{
+        sx={{
           height: 48,
           justifyContent: 'flex-start',
-          paddingLeft: themeTokens.spacing[4],
+          paddingLeft: `${themeTokens.spacing[4]}px`,
           fontSize: themeTokens.typography.fontSize.base,
         }}
       >
         {badgeCount > 0 ? `${label} (${badgeCount})` : label}
-      </Button>
+      </MuiButton>
       {drawers}
     </>
   );

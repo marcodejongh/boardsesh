@@ -1,12 +1,16 @@
 'use client';
 
 import React from 'react';
-import { Card, Button, Typography, Space, Tag } from 'antd';
-import { TeamOutlined, EnvironmentOutlined } from '@ant-design/icons';
+import Typography from '@mui/material/Typography';
+import Chip from '@mui/material/Chip';
+import Button from '@mui/material/Button';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import Stack from '@mui/material/Stack';
+import GroupOutlined from '@mui/icons-material/GroupOutlined';
+import LocationOnOutlined from '@mui/icons-material/LocationOnOutlined';
 import { useRouter } from 'next/navigation';
 import { themeTokens } from '@/app/theme/theme-config';
-
-const { Text, Title } = Typography;
 
 // Type for discoverable sessions from GraphQL
 type DiscoverableSession = {
@@ -63,32 +67,32 @@ const NearbySessionCard = ({ session }: NearbySessionCardProps) => {
 
   return (
     <Card
-      size="small"
-      hoverable
-      style={{ cursor: 'pointer' }}
+      sx={{ cursor: 'pointer', '&:hover': { boxShadow: 3 } }}
       onClick={handleJoin}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div style={{ flex: 1 }}>
-          <Title level={5} style={{ margin: 0, marginBottom: themeTokens.spacing[1] }}>
-            {sessionName}
-          </Title>
-          <Space size="small" wrap>
-            <Tag color="blue">{boardName}</Tag>
-            {session.distance !== null && (
-              <Text type="secondary" style={{ fontSize: themeTokens.typography.fontSize.sm }}>
-                <EnvironmentOutlined /> {formatDistance(session.distance)}
-              </Text>
-            )}
-            <Text type="secondary" style={{ fontSize: themeTokens.typography.fontSize.sm }}>
-              <TeamOutlined /> {session.participantCount} {session.participantCount === 1 ? 'climber' : 'climbers'}
-            </Text>
-          </Space>
+      <CardContent sx={{ p: 1.5 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div style={{ flex: 1 }}>
+            <Typography variant="h5" sx={{ margin: 0, marginBottom: themeTokens.spacing[1] }}>
+              {sessionName}
+            </Typography>
+            <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
+              <Chip label={boardName} size="small" color="primary" />
+              {session.distance !== null && (
+                <Typography variant="body2" component="span" color="text.secondary" sx={{ fontSize: themeTokens.typography.fontSize.sm }}>
+                  <LocationOnOutlined /> {formatDistance(session.distance)}
+                </Typography>
+              )}
+              <Typography variant="body2" component="span" color="text.secondary" sx={{ fontSize: themeTokens.typography.fontSize.sm }}>
+                <GroupOutlined /> {session.participantCount} {session.participantCount === 1 ? 'climber' : 'climbers'}
+              </Typography>
+            </Stack>
+          </div>
+          <Button variant="contained" size="small" onClick={handleJoin}>
+            Join
+          </Button>
         </div>
-        <Button type="primary" size="small" onClick={handleJoin}>
-          Join
-        </Button>
-      </div>
+      </CardContent>
     </Card>
   );
 };

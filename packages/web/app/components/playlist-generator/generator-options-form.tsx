@@ -1,8 +1,15 @@
 'use client';
 
 import React from 'react';
-import { Typography, Select, Button, Row, Col, InputNumber, Switch, Tooltip } from 'antd';
-import { MinusOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons';
+import MuiSelect from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
+import MuiSwitch from '@mui/material/Switch';
+import TextField from '@mui/material/TextField';
+import MuiTooltip from '@mui/material/Tooltip';
+import Typography from '@mui/material/Typography';
+import IconButton from '@mui/material/IconButton';
+import MuiButton from '@mui/material/Button';
+import { RemoveOutlined, AddOutlined, RefreshOutlined } from '@mui/icons-material';
 import { TENSION_KILTER_GRADES } from '@/app/lib/board-data';
 import { BoardDetails } from '@/app/lib/types';
 import {
@@ -21,7 +28,6 @@ import {
 } from './types';
 import styles from './generator-options-form.module.css';
 
-const { Text } = Typography;
 
 // Kilter Homewall layout ID
 const KILTER_HOMEWALL_LAYOUT_ID = 8;
@@ -63,24 +69,26 @@ const GeneratorOptionsForm: React.FC<GeneratorOptionsFormProps> = ({
     max: number = 50
   ) => (
     <div className={styles.formRow}>
-      <Text className={styles.label}>{label}</Text>
+      <Typography variant="body2" component="span" className={styles.label}>{label}</Typography>
       <div className={styles.stepperContainer}>
         <span className={styles.stepperValue}>{value}</span>
         <div className={styles.stepperButtons}>
-          <Button
+          <IconButton
             size="small"
-            icon={<MinusOutlined />}
             onClick={() => onUpdate(Math.max(min, value - 1))}
             disabled={value <= min}
             className={styles.stepperButton}
-          />
-          <Button
+          >
+            <RemoveOutlined />
+          </IconButton>
+          <IconButton
             size="small"
-            icon={<PlusOutlined />}
             onClick={() => onUpdate(Math.min(max, value + 1))}
             disabled={value >= max}
             className={styles.stepperButton}
-          />
+          >
+            <AddOutlined />
+          </IconButton>
         </div>
       </div>
     </div>
@@ -94,19 +102,20 @@ const GeneratorOptionsForm: React.FC<GeneratorOptionsFormProps> = ({
     onUpdate: (newValue: T) => void
   ) => (
     <div className={styles.formRow}>
-      <Text className={styles.label}>{label}</Text>
-      <Select
+      <Typography variant="body2" component="span" className={styles.label}>{label}</Typography>
+      <MuiSelect
         value={value}
-        onChange={onUpdate}
+        onChange={(e) => onUpdate(e.target.value as T)}
         className={styles.select}
-        popupMatchSelectWidth={false}
+        size="small"
+        MenuProps={{ sx: { width: 'auto' } }}
       >
         {optionsList.map((opt) => (
-          <Select.Option key={String(opt.value)} value={opt.value}>
+          <MenuItem key={String(opt.value)} value={opt.value}>
             {opt.label}
-          </Select.Option>
+          </MenuItem>
         ))}
-      </Select>
+      </MuiSelect>
     </div>
   );
 
@@ -118,19 +127,20 @@ const GeneratorOptionsForm: React.FC<GeneratorOptionsFormProps> = ({
 
       {/* Target Grade */}
       <div className={styles.formRow}>
-        <Text className={styles.label}>Target Grade</Text>
-        <Select
+        <Typography variant="body2" component="span" className={styles.label}>Target Grade</Typography>
+        <MuiSelect
           value={options.targetGrade}
-          onChange={(v) => updateOption('targetGrade', v)}
+          onChange={(e) => updateOption('targetGrade', e.target.value as number)}
           className={styles.select}
-          popupMatchSelectWidth={false}
+          size="small"
+          MenuProps={{ sx: { width: 'auto' } }}
         >
           {grades.map((grade) => (
-            <Select.Option key={grade.difficulty_id} value={grade.difficulty_id}>
+            <MenuItem key={grade.difficulty_id} value={grade.difficulty_id}>
               {grade.difficulty_name}
-            </Select.Option>
+            </MenuItem>
           ))}
-        </Select>
+        </MuiSelect>
       </div>
     </>
   );
@@ -139,24 +149,25 @@ const GeneratorOptionsForm: React.FC<GeneratorOptionsFormProps> = ({
   const renderQualityFilters = () => (
     <>
       <div className={styles.formRow}>
-        <Text className={styles.label}>Min Ascents</Text>
-        <InputNumber
-          min={0}
-          max={1000}
+        <Typography variant="body2" component="span" className={styles.label}>Min Ascents</Typography>
+        <TextField
+          type="number"
+          size="small"
           value={options.minAscents}
-          onChange={(v) => updateOption('minAscents', v || 0)}
+          onChange={(e) => updateOption('minAscents', Number(e.target.value) || 0)}
+          slotProps={{ htmlInput: { min: 0, max: 1000 } }}
           className={styles.inputNumber}
         />
       </div>
 
       <div className={styles.formRow}>
-        <Text className={styles.label}>Min Rating</Text>
-        <InputNumber
-          min={0}
-          max={3}
-          step={0.5}
+        <Typography variant="body2" component="span" className={styles.label}>Min Rating</Typography>
+        <TextField
+          type="number"
+          size="small"
           value={options.minRating}
-          onChange={(v) => updateOption('minRating', v || 0)}
+          onChange={(e) => updateOption('minRating', Number(e.target.value) || 0)}
+          slotProps={{ htmlInput: { min: 0, max: 3, step: 0.5 } }}
           className={styles.inputNumber}
         />
       </div>
@@ -167,12 +178,12 @@ const GeneratorOptionsForm: React.FC<GeneratorOptionsFormProps> = ({
       {/* Tall Climbs Only - only for Kilter Homewall large size */}
       {showTallClimbsFilter && (
         <div className={styles.formRow}>
-          <Tooltip title="Show only climbs that use holds in the bottom 8 rows (only available on 10x12 boards)">
-            <Text className={styles.label}>Tall Climbs Only</Text>
-          </Tooltip>
-          <Switch
+          <MuiTooltip title="Show only climbs that use holds in the bottom 8 rows (only available on 10x12 boards)">
+            <Typography variant="body2" component="span" className={styles.label}>Tall Climbs Only</Typography>
+          </MuiTooltip>
+          <MuiSwitch
             checked={options.onlyTallClimbs}
-            onChange={(checked) => updateOption('onlyTallClimbs', checked)}
+            onChange={(_, checked) => updateOption('onlyTallClimbs', checked)}
           />
         </div>
       )}
@@ -278,14 +289,14 @@ const GeneratorOptionsForm: React.FC<GeneratorOptionsFormProps> = ({
       </div>
 
       <div className={styles.resetContainer}>
-        <Button
-          type="link"
-          icon={<ReloadOutlined />}
+        <MuiButton
+          variant="text"
+          startIcon={<RefreshOutlined />}
           onClick={onReset}
           className={styles.resetButton}
         >
           Reset
-        </Button>
+        </MuiButton>
       </div>
     </div>
   );

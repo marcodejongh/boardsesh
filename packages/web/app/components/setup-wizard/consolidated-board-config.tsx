@@ -1,10 +1,35 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Button, Form, Select, Typography, Input, Divider, Card, Row, Col, Flex, Collapse, Space, Tabs, Switch, Tooltip } from 'antd';
+import MuiSelect, { SelectChangeEvent } from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
+import FormControl from '@mui/material/FormControl';
+import InputLabel from '@mui/material/InputLabel';
+import MuiSwitch from '@mui/material/Switch';
+import MuiTabs from '@mui/material/Tabs';
+import MuiTab from '@mui/material/Tab';
+import Accordion from '@mui/material/Accordion';
+import AccordionSummary from '@mui/material/AccordionSummary';
+import AccordionDetails from '@mui/material/AccordionDetails';
+import MuiTooltip from '@mui/material/Tooltip';
+import ExpandMoreOutlined from '@mui/icons-material/ExpandMoreOutlined';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
+import TextField from '@mui/material/TextField';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import Box from '@mui/material/Box';
+import Stack from '@mui/material/Stack';
+import MuiDivider from '@mui/material/Divider';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { GithubOutlined, EditOutlined, TeamOutlined, InfoCircleOutlined, QuestionCircleOutlined, StarOutlined } from '@ant-design/icons';
+import GitHub from '@mui/icons-material/GitHub';
+import EditOutlined from '@mui/icons-material/EditOutlined';
+import GroupOutlined from '@mui/icons-material/GroupOutlined';
+import InfoOutlined from '@mui/icons-material/InfoOutlined';
+import HelpOutlineOutlined from '@mui/icons-material/HelpOutlineOutlined';
+import StarBorderOutlined from '@mui/icons-material/StarBorderOutlined';
 import { openDB } from 'idb';
 import { track } from '@vercel/analytics';
 import { useSession } from 'next-auth/react';
@@ -17,14 +42,12 @@ import BoardRenderer from '../board-renderer/board-renderer';
 import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { BoardConfigData } from '@/app/lib/server-board-configs';
 import Logo from '../brand/logo';
+import { TabPanel } from '@/app/components/ui/tab-panel';
 import { themeTokens } from '@/app/theme/theme-config';
 import JoinSessionTab from './join-session-tab';
 import SessionHistoryPanel from './session-history-panel';
 import AuthModal from '../auth/auth-modal';
 import { setDefaultBoardCookie, clearDefaultBoardCookie, getDefaultBoardCookieClient } from '@/app/lib/default-board-cookie';
-
-const { Option } = Select;
-const { Title, Text } = Typography;
 
 // IndexedDB configuration
 const DB_NAME = 'boardsesh-config';
@@ -79,12 +102,13 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
   const [useAsDefault, setUseAsDefault] = useState(false);
   const [savedConfigurations, setSavedConfigurations] = useState<StoredBoardConfig[]>([]);
   const [suggestedName, setSuggestedName] = useState<string>('');
-  const [activeCollapsePanels, setActiveCollapsePanels] = useState<string[]>([]);
+  const [savedBoardsExpanded, setSavedBoardsExpanded] = useState(false);
+  const [previewExpanded, setPreviewExpanded] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
 
   // Get board details for the preview (shared with loading animation)
   const [previewBoardDetails, setPreviewBoardDetails] = useState<BoardDetails | null>(null);
-  
+
   // Load board details for preview when configuration changes
   useEffect(() => {
     if (!selectedBoard || !selectedLayout || !selectedSize || selectedSets.length === 0) {
@@ -217,7 +241,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
 
       // Expand saved boards panel if there are saved configurations
       if (allConfigs.length > 0) {
-        setActiveCollapsePanels((prev) => (prev.includes('saved') ? prev : [...prev, 'saved']));
+        setSavedBoardsExpanded(true);
       }
 
       // Check if there's a default board cookie set
@@ -433,9 +457,9 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
   const isFormComplete = selectedBoard && selectedLayout && selectedSize && selectedSets.length > 0;
 
   return (
-    <div
-        style={{
-          padding: themeTokens.spacing[6],
+    <Box
+        sx={{
+          padding: `${themeTokens.spacing[6]}px`,
           maxWidth: '600px',
           margin: '0 auto',
           minHeight: '100vh',
@@ -444,316 +468,335 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
           justifyContent: 'center',
         }}
       >
-        <Card style={{ boxShadow: themeTokens.shadows.lg }}>
-          <div style={{ textAlign: 'center', marginBottom: themeTokens.spacing[4] }}>
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: themeTokens.spacing[4] }}>
-              <Logo size="lg" showText={true} linkToHome={false} />
-            </div>
-          </div>
+        <Card sx={{ boxShadow: themeTokens.shadows.lg }}>
+          <CardContent>
+            <Box sx={{ textAlign: 'center', marginBottom: `${themeTokens.spacing[4]}px` }}>
+              <Box sx={{ display: 'flex', justifyContent: 'center', marginBottom: `${themeTokens.spacing[4]}px` }}>
+                <Logo size="lg" showText={true} linkToHome={false} />
+              </Box>
+            </Box>
 
-          <Tabs
-            activeKey={activeTab}
-            onChange={setActiveTab}
-            centered
-            items={[
-              {
-                key: 'start',
-                label: 'Start a sesh',
-                children: (
-                  <>
-                    <SessionHistoryPanel />
+            <MuiTabs
+              value={activeTab}
+              onChange={(_, v) => setActiveTab(v)}
+              centered
+            >
+              <MuiTab label="Start a sesh" value="start" />
+              <MuiTab label="Join a sesh" value="join" />
+            </MuiTabs>
 
-                    <Collapse
-          activeKey={activeCollapsePanels}
-          onChange={(keys) => setActiveCollapsePanels(keys as string[])}
-          size="small"
-          items={[
-            {
-              key: 'saved',
-              label: `Saved Boards (${savedConfigurations.length})`,
-              extra: savedConfigurations.length > 0 ? (
-                <Button
-                  type={isEditMode ? 'primary' : 'default'}
-                  size="small"
-                  icon={<EditOutlined />}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsEditMode(!isEditMode);
+            <TabPanel value={activeTab} index="start">
+                      <SessionHistoryPanel />
+
+                      <Accordion
+                        expanded={savedBoardsExpanded}
+                        onChange={(_, isExpanded) => setSavedBoardsExpanded(isExpanded)}
+                        elevation={0}
+                        sx={{ '&:before': { display: 'none' } }}
+                      >
+                        <AccordionSummary expandIcon={<ExpandMoreOutlined />}>
+                          <Stack direction="row" spacing={1} alignItems="center" sx={{ width: '100%' }}>
+                            <Typography variant="body2" sx={{ flexGrow: 1 }}>
+                              {`Saved Boards (${savedConfigurations.length})`}
+                            </Typography>
+                            {savedConfigurations.length > 0 && (
+                              <IconButton
+                                color={isEditMode ? 'primary' : 'default'}
+                                size="small"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setIsEditMode(!isEditMode);
+                                }}
+                              >
+                                <EditOutlined />
+                              </IconButton>
+                            )}
+                          </Stack>
+                        </AccordionSummary>
+                        <AccordionDetails>
+                          {savedConfigurations.length > 0 ? (
+                            <Box
+                              sx={{
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(2, 1fr)',
+                                gap: '16px',
+                                width: '100%',
+                                overflow: 'hidden',
+                              }}
+                            >
+                              {savedConfigurations.map((config) => (
+                                <BoardConfigPreview
+                                  key={config.name}
+                                  config={config}
+                                  onDelete={deleteConfiguration}
+                                  onSelect={handleSavedBoardSelect}
+                                  boardConfigs={boardConfigs}
+                                  isEditMode={isEditMode}
+                                />
+                              ))}
+                            </Box>
+                          ) : (
+                            <Typography variant="body2" component="span" color="text.secondary">No saved boards yet. Configure your board below and it will be saved automatically.</Typography>
+                          )}
+                        </AccordionDetails>
+                      </Accordion>
+          <MuiDivider />
+
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Box>
+              <Typography variant="body2" fontWeight={600} sx={{ mb: 1 }}>Board Configuration *</Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
+                <Box sx={{ width: { xs: '100%', sm: '50%' } }}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Board</InputLabel>
+                    <MuiSelect
+                      value={selectedBoard || ''}
+                      label="Board"
+                      onChange={(e: SelectChangeEvent) => handleBoardChange(e.target.value as BoardName)}
+                    >
+                      {SUPPORTED_BOARDS.map((board_name) => (
+                        <MenuItem key={board_name} value={board_name}>
+                          {board_name.charAt(0).toUpperCase() + board_name.slice(1)}
+                        </MenuItem>
+                      ))}
+                    </MuiSelect>
+                  </FormControl>
+                </Box>
+
+                <Box sx={{ width: { xs: '100%', sm: '50%' } }}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Layout</InputLabel>
+                    <MuiSelect
+                      value={selectedLayout ?? ''}
+                      label="Layout"
+                      onChange={(e: SelectChangeEvent<number | string>) => handleLayoutChange(e.target.value as number)}
+                      disabled={!selectedBoard}
+                    >
+                      {layouts.map(({ id: layoutId, name: layoutName }) => (
+                        <MenuItem key={layoutId} value={layoutId}>
+                          {layoutName}
+                        </MenuItem>
+                      ))}
+                    </MuiSelect>
+                  </FormControl>
+                </Box>
+
+                {selectedBoard !== 'moonboard' && (
+                  <Box sx={{ width: { xs: '100%', sm: '50%' } }}>
+                    <FormControl fullWidth size="small">
+                      <InputLabel>Size</InputLabel>
+                      <MuiSelect
+                        value={selectedSize ?? ''}
+                        label="Size"
+                        onChange={(e: SelectChangeEvent<number | string>) => handleSizeChange(e.target.value as number)}
+                        disabled={!selectedLayout}
+                      >
+                        {sizes.map(({ id, name, description }) => (
+                          <MenuItem key={id} value={id}>
+                            {`${name} ${description}`}
+                          </MenuItem>
+                        ))}
+                      </MuiSelect>
+                    </FormControl>
+                  </Box>
+                )}
+
+                <Box sx={{ width: { xs: '100%', sm: '50%' } }}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Hold Sets</InputLabel>
+                    <MuiSelect<number[]>
+                      multiple
+                      value={selectedSets}
+                      label="Hold Sets"
+                      onChange={(e) => handleSetsChange(e.target.value as number[])}
+                      disabled={!selectedSize}
+                    >
+                      {sets.map(({ id, name }) => (
+                        <MenuItem key={id} value={id}>
+                          {name}
+                        </MenuItem>
+                      ))}
+                    </MuiSelect>
+                  </FormControl>
+                </Box>
+
+                <Box sx={{ width: { xs: '100%', sm: '50%' } }}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Angle</InputLabel>
+                    <MuiSelect
+                      value={selectedAngle}
+                      label="Angle"
+                      onChange={(e: SelectChangeEvent<number>) => handleAngleChange(e.target.value as number)}
+                      disabled={!selectedBoard}
+                    >
+                      {selectedBoard &&
+                        ANGLES[selectedBoard].map((angle) => (
+                          <MenuItem key={angle} value={angle}>
+                            {angle}
+                          </MenuItem>
+                        ))}
+                    </MuiSelect>
+                  </FormControl>
+                </Box>
+              </Box>
+            </Box>
+
+            <Box>
+              <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>Board Name (Optional)</Typography>
+              <TextField
+                value={configName}
+                onChange={(e) => setConfigName(e.target.value)}
+                placeholder={suggestedName || 'Enter a name for this board'}
+                variant="outlined"
+                size="small"
+                fullWidth
+                inputProps={{ maxLength: 50 }}
+              />
+            </Box>
+
+            <Box>
+              <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>Session Settings</Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: `${themeTokens.spacing[2]}px` }}>
+                <MuiSwitch
+                  checked={allowOthersToJoin}
+                  onChange={(_, checked) => {
+                    if (checked && !session) {
+                      setShowAuthModal(true);
+                    } else {
+                      setAllowOthersToJoin(checked);
+                    }
                   }}
                 />
-              ) : undefined,
-              children:
-                savedConfigurations.length > 0 ? (
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(2, 1fr)',
-                      gap: '16px',
-                      width: '100%',
-                      overflow: 'hidden',
-                    }}
-                  >
-                    {savedConfigurations.map((config) => (
-                      <BoardConfigPreview
-                        key={config.name}
-                        config={config}
-                        onDelete={deleteConfiguration}
-                        onSelect={handleSavedBoardSelect}
-                        boardConfigs={boardConfigs}
-                        isEditMode={isEditMode}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <Text type="secondary">No saved boards yet. Configure your board below and it will be saved automatically.</Text>
-                ),
-            },
-          ]}
-        />
-        <Divider />
-
-        <Form layout="vertical">
-          <Form.Item label="Board Configuration" required>
-            <Row gutter={[16, 16]}>
-              <Col xs={24} sm={12}>
-                <Form.Item label="Board" noStyle>
-                  <Select value={selectedBoard} onChange={handleBoardChange} placeholder="Please select">
-                    {SUPPORTED_BOARDS.map((board_name) => (
-                      <Option key={board_name} value={board_name}>
-                        {board_name.charAt(0).toUpperCase() + board_name.slice(1)}
-                      </Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-              </Col>
-
-              <Col xs={24} sm={12}>
-                <Form.Item label="Layout" noStyle>
-                  <Select
-                    value={selectedLayout}
-                    onChange={handleLayoutChange}
-                    placeholder="Select layout"
-                    disabled={!selectedBoard}
-                  >
-                    {layouts.map(({ id: layoutId, name: layoutName }) => (
-                      <Option key={layoutId} value={layoutId}>
-                        {layoutName}
-                      </Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-              </Col>
-
-              {selectedBoard !== 'moonboard' && (
-                <Col xs={24} sm={12}>
-                  <Form.Item label="Size" noStyle>
-                    <Select
-                      value={selectedSize}
-                      onChange={handleSizeChange}
-                      placeholder="Select size"
-                      disabled={!selectedLayout}
-                    >
-                      {sizes.map(({ id, name, description }) => (
-                        <Option key={id} value={id}>
-                          {`${name} ${description}`}
-                        </Option>
-                      ))}
-                    </Select>
-                  </Form.Item>
-                </Col>
+                <Box component="span">
+                  <GroupOutlined sx={{ marginRight: `${themeTokens.spacing[1]}px` }} />
+                  Allow others nearby to join
+                </Box>
+                <MuiTooltip title="When enabled, climbers within 500 meters can find and join your session. Requires you to be signed in.">
+                  <InfoOutlined sx={{ color: themeTokens.neutral[400] }} />
+                </MuiTooltip>
+              </Box>
+              {allowOthersToJoin && !session && (
+                <Typography variant="body2" component="span" sx={{ display: 'block', marginTop: `${themeTokens.spacing[2]}px`, color: 'warning.main' }}>
+                  Please sign in to enable discoverable sessions.
+                </Typography>
               )}
+            </Box>
 
-              <Col xs={24} sm={12}>
-                <Form.Item label="Hold Sets" noStyle>
-                  <Select
-                    mode="multiple"
-                    value={selectedSets}
-                    onChange={handleSetsChange}
-                    placeholder="Select hold sets"
-                    disabled={!selectedSize}
-                  >
-                    {sets.map(({ id, name }) => (
-                      <Option key={id} value={id}>
-                        {name}
-                      </Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-              </Col>
+            <Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: `${themeTokens.spacing[2]}px` }}>
+                <MuiSwitch
+                  checked={useAsDefault}
+                  onChange={(_, checked) => setUseAsDefault(checked)}
+                  disabled={!isFormComplete}
+                />
+                <Box component="span">
+                  <StarBorderOutlined sx={{ marginRight: `${themeTokens.spacing[1]}px` }} />
+                  Set as my default board
+                </Box>
+                <MuiTooltip title="When enabled, visiting boardsesh.com will automatically load this board. Click the logo anytime to return to board selection.">
+                  <InfoOutlined sx={{ color: themeTokens.neutral[400] }} />
+                </MuiTooltip>
+              </Box>
+            </Box>
 
-              <Col xs={24} sm={12}>
-                <Form.Item label="Angle" noStyle>
-                  <Select value={selectedAngle} onChange={handleAngleChange} disabled={!selectedBoard}>
-                    {selectedBoard &&
-                      ANGLES[selectedBoard].map((angle) => (
-                        <Option key={angle} value={angle}>
-                          {angle}°
-                        </Option>
-                      ))}
-                  </Select>
-                </Form.Item>
-              </Col>
-            </Row>
-          </Form.Item>
-
-          <Form.Item label="Board Name (Optional)">
-            <Input
-              value={configName}
-              onChange={(e) => setConfigName(e.target.value)}
-              placeholder={suggestedName || 'Enter a name for this board'}
-              maxLength={50}
-            />
-          </Form.Item>
-
-          <Form.Item label="Session Settings">
-            <div style={{ display: 'flex', alignItems: 'center', gap: themeTokens.spacing[2] }}>
-              <Switch
-                checked={allowOthersToJoin}
-                onChange={(checked) => {
-                  if (checked && !session) {
-                    setShowAuthModal(true);
-                  } else {
-                    setAllowOthersToJoin(checked);
-                  }
-                }}
-              />
-              <span>
-                <TeamOutlined style={{ marginRight: themeTokens.spacing[1] }} />
-                Allow others nearby to join
-              </span>
-              <Tooltip title="When enabled, climbers within 500 meters can find and join your session. Requires you to be signed in.">
-                <InfoCircleOutlined style={{ color: themeTokens.neutral[400] }} />
-              </Tooltip>
-            </div>
-            {allowOthersToJoin && !session && (
-              <Text type="warning" style={{ display: 'block', marginTop: themeTokens.spacing[2] }}>
-                Please sign in to enable discoverable sessions.
-              </Text>
-            )}
-          </Form.Item>
-
-          <Form.Item>
-            <div style={{ display: 'flex', alignItems: 'center', gap: themeTokens.spacing[2] }}>
-              <Switch
-                checked={useAsDefault}
-                onChange={(checked) => setUseAsDefault(checked)}
-                disabled={!isFormComplete}
-              />
-              <span>
-                <StarOutlined style={{ marginRight: themeTokens.spacing[1] }} />
-                Set as my default board
-              </span>
-              <Tooltip title="When enabled, visiting boardsesh.com will automatically load this board. Click the logo anytime to return to board selection.">
-                <InfoCircleOutlined style={{ color: themeTokens.neutral[400] }} />
-              </Tooltip>
-            </div>
-          </Form.Item>
-
-          {targetUrl ? (
-            <Link href={targetUrl} onClick={handleStartClimbing}>
+            {targetUrl ? (
+              <Link href={targetUrl} onClick={handleStartClimbing}>
+                <Button
+                  variant="contained"
+                  size="large"
+                  fullWidth
+                  disabled={!isFormComplete}
+                >
+                  Start Climbing
+                </Button>
+              </Link>
+            ) : (
               <Button
-                type="primary"
+                variant="contained"
                 size="large"
-                block
+                fullWidth
+                onClick={handleStartClimbing}
                 disabled={!isFormComplete}
               >
                 Start Climbing
               </Button>
-            </Link>
-          ) : (
-            <Button
-              type="primary"
-              size="large"
-              block
-              onClick={handleStartClimbing}
-              disabled={!isFormComplete}
-            >
-              Start Climbing
-            </Button>
+            )}
+          </Box>
+
+          {isFormComplete && (
+            <>
+              <MuiDivider />
+              <Accordion
+                expanded={previewExpanded}
+                onChange={(_, isExpanded) => setPreviewExpanded(isExpanded)}
+                elevation={0}
+                sx={{ '&:before': { display: 'none' } }}
+              >
+                <AccordionSummary expandIcon={<ExpandMoreOutlined />}>
+                  <Typography variant="body2">Preview</Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                      <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                        {previewBoardDetails ? (
+                          <Card
+                            sx={{ width: 400 }}
+                          >
+                            <BoardRenderer litUpHoldsMap={{}} mirrored={false} boardDetails={previewBoardDetails} thumbnail={false} />
+                          </Card>
+                        ) : selectedBoard && selectedLayout && selectedSize && selectedSets.length > 0 ? (
+                          <Card sx={{ width: 400 }}>
+                            <CardContent>
+                              <Box sx={{ textAlign: 'center', padding: '20px' }}>
+                                <Box sx={{ color: themeTokens.colors.primary, marginBottom: '8px' }}>
+                                  Loading preview...
+                                </Box>
+                              </Box>
+                            </CardContent>
+                          </Card>
+                        ) : (
+                          <Card sx={{ width: 400, textAlign: 'center' }}>
+                            <CardContent>
+                              <Typography variant="body2" component="span" color="text.secondary">Select board configuration to see preview</Typography>
+                            </CardContent>
+                          </Card>
+                        )}
+                      </Box>
+                </AccordionDetails>
+              </Accordion>
+            </>
           )}
-        </Form>
+            </TabPanel>
 
-        {isFormComplete && (
-          <>
-            <Divider />
-            <Collapse
-              activeKey={activeCollapsePanels.includes('preview') ? ['preview'] : []}
-              onChange={(keys) => {
-                const updatedKeys = keys as string[];
-                if (updatedKeys.includes('preview')) {
-                  setActiveCollapsePanels([...activeCollapsePanels.filter((k) => k !== 'preview'), 'preview']);
-                } else {
-                  setActiveCollapsePanels(activeCollapsePanels.filter((k) => k !== 'preview'));
+            <TabPanel value={activeTab} index="join">
+              <JoinSessionTab />
+            </TabPanel>
+
+          <MuiDivider />
+          <Stack direction="row" spacing={1} sx={{ width: '100%', justifyContent: 'center' }}>
+            <a href="https://github.com/marcodejongh/boardsesh" target="_blank" rel="noopener noreferrer">
+              <Button variant="text" startIcon={<GitHub />}>
+                GitHub
+              </Button>
+            </a>
+            <a href="https://discord.gg/YXA8GsXfQK" target="_blank" rel="noopener noreferrer">
+              <Button
+                variant="text"
+                startIcon={
+                  <svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor">
+                    <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
+                  </svg>
                 }
-              }}
-              size="small"
-              items={[
-                {
-                  key: 'preview',
-                  label: 'Preview',
-                  children: (
-                    <Flex gap="middle" wrap="wrap">
-                      {previewBoardDetails ? (
-                        <Card
-                          style={{ width: 400 }}
-                          cover={<BoardRenderer litUpHoldsMap={{}} mirrored={false} boardDetails={previewBoardDetails} thumbnail={false} />}
-                        />
-                      ) : selectedBoard && selectedLayout && selectedSize && selectedSets.length > 0 ? (
-                        <Card style={{ width: 400 }}>
-                          <div style={{ textAlign: 'center', padding: '20px' }}>
-                            <div style={{ color: themeTokens.colors.primary, marginBottom: '8px' }}>
-                              Loading preview...
-                            </div>
-                          </div>
-                        </Card>
-                      ) : (
-                        <Card style={{ width: 400, textAlign: 'center' }}>
-                          <Text type="secondary">Select board configuration to see preview</Text>
-                        </Card>
-                      )}
-                    </Flex>
-                  ),
-                },
-              ]}
-            />
-          </>
-        )}
-                  </>
-                ),
-              },
-              {
-                key: 'join',
-                label: 'Join a sesh',
-                children: <JoinSessionTab />,
-              },
-            ]}
-          />
-
-        <Divider />
-        <Space style={{ width: '100%', justifyContent: 'center' }}>
-          <a href="https://github.com/marcodejongh/boardsesh" target="_blank" rel="noopener noreferrer">
-            <Button type="text" icon={<GithubOutlined />}>
-              GitHub
-            </Button>
-          </a>
-          <a href="https://discord.gg/YXA8GsXfQK" target="_blank" rel="noopener noreferrer">
-            <Button
-              type="text"
-              icon={
-                <svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor">
-                  <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
-                </svg>
-              }
-            >
-              Discord
-            </Button>
-          </a>
-          <Link href="/about">
-            <Button type="text" icon={<QuestionCircleOutlined />}>
-              About
-            </Button>
-          </Link>
-        </Space>
+              >
+                Discord
+              </Button>
+            </a>
+            <Link href="/about">
+              <Button variant="text" startIcon={<HelpOutlineOutlined />}>
+                About
+              </Button>
+            </Link>
+          </Stack>
+        </CardContent>
       </Card>
 
       <AuthModal
@@ -764,7 +807,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
           setAllowOthersToJoin(true);
         }}
       />
-    </div>
+    </Box>
   );
 };
 

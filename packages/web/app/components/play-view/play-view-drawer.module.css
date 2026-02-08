@@ -63,6 +63,6 @@
 .bulkRemoveBar {
   flex-shrink: 0;
   padding: 12px 16px;
-  background: var(--ant-color-bg-container);
-  border-top: 1px solid var(--ant-color-border);
+  background: var(--semantic-surface);
+  border-top: 1px solid var(--neutral-200);
 }

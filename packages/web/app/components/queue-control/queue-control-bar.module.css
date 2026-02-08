@@ -14,14 +14,15 @@
 /* Mobile bar */
 @media (max-width: 767px) {
   .queueBar {
-    padding: 0;
+    padding: 0 8px 0;
     background-color: transparent;
   }
 
   .card {
-    border-radius: 0;
+    border-radius: 4px;
     border-top: none;
     overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
   }
 }
 

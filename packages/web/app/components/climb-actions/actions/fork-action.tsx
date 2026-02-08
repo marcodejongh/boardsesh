@@ -1,9 +1,9 @@
 'use client';
 
 import React from 'react';
-import { Button } from 'antd';
+import MuiButton from '@mui/material/Button';
 import { ActionTooltip } from '../action-tooltip';
-import { ForkOutlined } from '@ant-design/icons';
+import CallSplitOutlined from '@mui/icons-material/CallSplitOutlined';
 import Link from 'next/link';
 import { track } from '@vercel/analytics';
 import { ClimbActionProps, ClimbActionResult } from '../types';
@@ -51,7 +51,7 @@ export function ForkAction({
   const shouldShowLabel = showLabel ?? (viewMode === 'button' || viewMode === 'dropdown');
   const iconSize = size === 'small' ? 14 : size === 'large' ? 20 : 16;
 
-  const icon = <ForkOutlined style={{ fontSize: iconSize }} />;
+  const icon = <CallSplitOutlined sx={{ fontSize: iconSize }} />;
 
   // Icon mode - for Card actions
   const iconElement = url ? (
@@ -65,14 +65,15 @@ export function ForkAction({
   // Button mode
   const buttonElement = url ? (
     <Link href={url} onClick={handleClick} style={linkResetStyle}>
-      <Button
-        icon={icon}
-        size={size === 'large' ? 'large' : size === 'small' ? 'small' : 'middle'}
+      <MuiButton
+        variant="outlined"
+        startIcon={icon}
+        size={size === 'large' ? 'large' : 'small'}
         disabled={disabled}
         className={className}
       >
         {shouldShowLabel && label}
-      </Button>
+      </MuiButton>
     </Link>
   ) : null;
 
@@ -97,20 +98,20 @@ export function ForkAction({
   // List mode - full-width row for drawer menus
   const listElement = url ? (
     <Link href={url} onClick={handleClick} style={linkResetStyle}>
-      <Button
-        type="text"
-        icon={icon}
-        block
+      <MuiButton
+        variant="text"
+        startIcon={icon}
+        fullWidth
         disabled={disabled}
-        style={{
+        sx={{
           height: 48,
           justifyContent: 'flex-start',
-          paddingLeft: themeTokens.spacing[4],
+          paddingLeft: `${themeTokens.spacing[4]}px`,
           fontSize: themeTokens.typography.fontSize.base,
         }}
       >
         {label}
-      </Button>
+      </MuiButton>
     </Link>
   ) : null;
 

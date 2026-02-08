@@ -2,20 +2,19 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
-import {
-  Layout,
-  Card,
-  Avatar,
-  Typography,
-  Spin,
-  Segmented,
-  Empty,
-  Space,
-  DatePicker,
-  message,
-  Tooltip,
-} from 'antd';
-import { UserOutlined, InstagramOutlined } from '@ant-design/icons';
+import Box from '@mui/material/Box';
+import Stack from '@mui/material/Stack';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
+import ToggleButton from '@mui/material/ToggleButton';
+import { DatePicker as MuiDatePicker } from '@mui/x-date-pickers/DatePicker';
+import MuiAvatar from '@mui/material/Avatar';
+import MuiTooltip from '@mui/material/Tooltip';
+import CircularProgress from '@mui/material/CircularProgress';
+import { EmptyState } from '@/app/components/ui/empty-state';
+import MuiCard from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import Typography from '@mui/material/Typography';
+import { PersonOutlined, Instagram } from '@mui/icons-material';
 import { useSession } from 'next-auth/react';
 import Logo from '@/app/components/brand/logo';
 import BackButton from '@/app/components/back-button';
@@ -37,6 +36,7 @@ import {
 } from '@/app/lib/graphql/operations';
 import { FONT_GRADE_COLORS, getGradeColorWithOpacity } from '@/app/lib/grade-colors';
 import { SUPPORTED_BOARDS } from '@/app/lib/board-data';
+import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 
 dayjs.extend(isoWeek);
 dayjs.extend(isSameOrAfter);
@@ -47,13 +47,11 @@ const ProfileStatsCharts = dynamic(() => import('./profile-stats-charts'), {
   ssr: false,
   loading: () => (
     <div className={styles.loadingStats}>
-      <Spin />
+      <CircularProgress />
     </div>
   ),
 });
 
-const { Content, Header } = Layout;
-const { Title, Text } = Typography;
 
 interface UserProfile {
   id: string;
@@ -203,6 +201,7 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
   const [loadingProfileStats, setLoadingProfileStats] = useState(false);
 
   const isOwnProfile = session?.user?.id === userId;
+  const { showMessage } = useSnackbar();
 
   // Fetch profile data for the userId in the URL
   const fetchProfile = useCallback(async () => {
@@ -228,7 +227,7 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
       });
     } catch (error) {
       console.error('Failed to fetch profile:', error);
-      message.error('Failed to load profile data');
+      showMessage('Failed to load profile data', 'error');
     } finally {
       setLoading(false);
     }
@@ -260,7 +259,7 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
       setLogbook(entries);
     } catch (error) {
       console.error('Error fetching ticks:', error);
-      message.error('Failed to load climbing stats');
+      showMessage('Failed to load climbing stats', 'error');
       setLogbook([]);
     } finally {
       setLoadingStats(false);
@@ -613,28 +612,28 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
 
   if (loading) {
     return (
-      <Layout className={styles.layout}>
-        <Content className={styles.loadingContent}>
-          <Spin size="large" />
-        </Content>
-      </Layout>
+      <Box className={styles.layout}>
+        <Box component="main" className={styles.loadingContent}>
+          <CircularProgress size={48} />
+        </Box>
+      </Box>
     );
   }
 
   if (notFound) {
     return (
-      <Layout className={styles.layout}>
-        <Header className={styles.header}>
+      <Box className={styles.layout}>
+        <Box component="header" className={styles.header}>
           <BackButton fallbackUrl="/" />
           <Logo size="sm" showText={false} />
-          <Title level={4} className={styles.headerTitle}>
+          <Typography variant="h6" component="h4" className={styles.headerTitle}>
             Profile
-          </Title>
-        </Header>
-        <Content className={styles.content}>
-          <Empty description="User not found" />
-        </Content>
-      </Layout>
+          </Typography>
+        </Box>
+        <Box component="main" className={styles.content}>
+          <EmptyState description="User not found" />
+        </Box>
+      </Box>
     );
   }
 
@@ -665,26 +664,28 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
   ];
 
   return (
-    <Layout className={styles.layout}>
-      <Header className={styles.header}>
+    <Box className={styles.layout}>
+      <Box component="header" className={styles.header}>
         <BackButton fallbackUrl="/" />
         <Logo size="sm" showText={false} />
-        <Title level={4} className={styles.headerTitle}>
+        <Typography variant="h6" component="h4" className={styles.headerTitle}>
           Profile
-        </Title>
-      </Header>
+        </Typography>
+      </Box>
 
-      <Content className={styles.content}>
+      <Box component="main" className={styles.content}>
         {/* Profile Card */}
-        <Card className={styles.profileCard}>
+        <MuiCard className={styles.profileCard}><CardContent>
           <div className={styles.profileInfo}>
-            <Avatar size={80} src={avatarUrl} icon={<UserOutlined />} />
+            <MuiAvatar sx={{ width: 80, height: 80 }} src={avatarUrl ?? undefined}>
+              {!avatarUrl && <PersonOutlined />}
+            </MuiAvatar>
             <div className={styles.profileDetails}>
-              <Title level={4} className={styles.displayName}>
+              <Typography variant="h6" component="h4" className={styles.displayName}>
                 {displayName}
-              </Title>
+              </Typography>
               {isOwnProfile && (
-                <Text type="secondary">{profile?.email}</Text>
+                <Typography variant="body2" component="span" color="text.secondary">{profile?.email}</Typography>
               )}
               {instagramUrl && (
                 <a
@@ -693,24 +694,24 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
                   rel="noopener noreferrer"
                   className={styles.instagramLink}
                 >
-                  <InstagramOutlined className={styles.instagramIcon} />
+                  <Instagram className={styles.instagramIcon} />
                   <span>{instagramUrl.replace(/^https?:\/\/(www\.)?instagram\.com\//, '@').replace(/\/$/, '')}</span>
                 </a>
               )}
             </div>
           </div>
-        </Card>
+        </CardContent></MuiCard>
 
         {/* Statistics Summary Card */}
         {!loadingProfileStats && statisticsSummary.totalAscents > 0 && (
-          <Card className={styles.statsCard}>
+          <MuiCard className={styles.statsCard}><CardContent>
             {/* Distinct Climbs Header */}
             <div className={styles.statsSummaryHeader}>
               <div className={styles.totalAscentsContainer}>
-                <Text className={styles.totalAscentsLabel}>Distinct Climbs</Text>
-                <Title level={2} className={styles.totalAscentsValue}>
+                <Typography variant="body2" component="span" className={styles.totalAscentsLabel}>Distinct Climbs</Typography>
+                <Typography variant="h4" component="h2" className={styles.totalAscentsValue}>
                   {statisticsSummary.totalAscents}
-                </Title>
+                </Typography>
               </div>
             </div>
 
@@ -718,7 +719,7 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
             <div className={styles.percentageBarContainer}>
               <div className={styles.percentageBar}>
                 {statisticsSummary.layoutPercentages.map((layout) => (
-                  <Tooltip
+                  <MuiTooltip
                     key={layout.layoutKey}
                     title={`${layout.displayName}: ${layout.count} distinct climbs (${layout.percentage}%)`}
                   >
@@ -735,7 +736,7 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
                         </span>
                       )}
                     </div>
-                  </Tooltip>
+                  </MuiTooltip>
                 ))}
               </div>
               <div className={styles.percentageLegend}>
@@ -745,9 +746,9 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
                       className={styles.legendColor}
                       style={{ backgroundColor: layout.color }}
                     />
-                    <Text className={styles.legendText}>
+                    <Typography variant="body2" component="span" className={styles.legendText}>
                       {layout.displayName} ({layout.percentage}%)
-                    </Text>
+                    </Typography>
                   </div>
                 ))}
               </div>
@@ -755,7 +756,7 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
 
             {/* Grade Blocks by Layout */}
             <div className={styles.gradeBlocksContainer}>
-              <Text strong className={styles.gradeBlocksTitle}>Grades by Board</Text>
+              <Typography variant="body2" component="span" fontWeight={600} className={styles.gradeBlocksTitle}>Grades by Board</Typography>
               {statisticsSummary.layoutPercentages.map((layout) => (
                 <div key={layout.layoutKey} className={styles.layoutGradeRow}>
                   <div className={styles.layoutGradeHeader}>
@@ -763,10 +764,10 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
                       className={styles.layoutIndicator}
                       style={{ backgroundColor: layout.color }}
                     />
-                    <Text className={styles.layoutName}>{layout.displayName}</Text>
-                    <Text type="secondary" className={styles.layoutCount}>
+                    <Typography variant="body2" component="span" className={styles.layoutName}>{layout.displayName}</Typography>
+                    <Typography variant="body2" component="span" color="text.secondary" className={styles.layoutCount}>
                       {layout.count} climbs
-                    </Text>
+                    </Typography>
                   </div>
                   <div className={styles.gradeBlocks}>
                     {Object.entries(layout.grades)
@@ -775,7 +776,7 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
                         return gradeOrder.indexOf(a[0]) - gradeOrder.indexOf(b[0]);
                       })
                       .map(([grade, count]) => (
-                        <Tooltip
+                        <MuiTooltip
                           key={grade}
                           title={`${grade}: ${count} climb${count !== 1 ? 's' : ''}`}
                         >
@@ -786,36 +787,41 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
                             <span className={styles.gradeBlockLabel}>{grade}</span>
                             <span className={styles.gradeBlockCount}>{count}</span>
                           </div>
-                        </Tooltip>
+                        </MuiTooltip>
                       ))}
                   </div>
                 </div>
               ))}
             </div>
-          </Card>
+          </CardContent></MuiCard>
         )}
 
         {/* Aggregated Stats - All Boards */}
-        <Card className={styles.statsCard}>
-          <Title level={5}>Ascents by Grade</Title>
-          <Text type="secondary" className={styles.chartDescription}>
+        <MuiCard className={styles.statsCard}><CardContent>
+          <Typography variant="h6" component="h5">Ascents by Grade</Typography>
+          <Typography variant="body2" component="span" color="text.secondary" className={styles.chartDescription}>
             Total ascents by board layout
-          </Text>
+          </Typography>
 
           <div className={styles.timeframeSelector}>
-            <Segmented
-              options={aggregatedTimeframeOptions}
+            <ToggleButtonGroup
+              exclusive
+              size="small"
               value={aggregatedTimeframe}
-              onChange={(value) => setAggregatedTimeframe(value as AggregatedTimeframeType)}
-            />
+              onChange={(_, val) => { if (val) setAggregatedTimeframe(val as AggregatedTimeframeType); }}
+            >
+              {aggregatedTimeframeOptions.map(opt => (
+                <ToggleButton key={opt.value} value={opt.value}>{opt.label}</ToggleButton>
+              ))}
+            </ToggleButtonGroup>
           </div>
 
           {loadingAggregated ? (
             <div className={styles.loadingStats}>
-              <Spin />
+              <CircularProgress />
             </div>
           ) : !chartDataAggregated ? (
-            <Empty description="No ascent data for this period" />
+            <EmptyState description="No ascent data for this period" />
           ) : (
             <div className={styles.chartsContainer}>
               <ProfileStatsCharts
@@ -826,54 +832,66 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
               />
             </div>
           )}
-        </Card>
+        </CardContent></MuiCard>
 
         {/* Board-Specific Stats */}
-        <Card className={styles.statsCard}>
-          <Title level={5}>Board Stats</Title>
+        <MuiCard className={styles.statsCard}><CardContent>
+          <Typography variant="h6" component="h5">Board Stats</Typography>
 
           <>
             {/* Board Selector */}
             <div className={styles.boardSelector}>
-              <Segmented
-                options={boardOptions}
+              <ToggleButtonGroup
+                exclusive
+                size="small"
                 value={selectedBoard}
-                onChange={(value) => setSelectedBoard(value as string)}
-              />
+                onChange={(_, val) => { if (val) setSelectedBoard(val as string); }}
+              >
+                {boardOptions.map(opt => (
+                  <ToggleButton key={opt.value} value={opt.value}>{opt.label}</ToggleButton>
+                ))}
+              </ToggleButtonGroup>
             </div>
 
             {/* Timeframe Selector */}
             <div className={styles.timeframeSelector}>
-              <Segmented
-                options={timeframeOptions}
+              <ToggleButtonGroup
+                exclusive
+                size="small"
                 value={timeframe}
-                onChange={(value) => setTimeframe(value as TimeframeType)}
-              />
+                onChange={(_, val) => { if (val) setTimeframe(val as TimeframeType); }}
+              >
+                {timeframeOptions.map(opt => (
+                  <ToggleButton key={opt.value} value={opt.value}>{opt.label}</ToggleButton>
+                ))}
+              </ToggleButtonGroup>
             </div>
 
             {timeframe === 'custom' && (
               <div className={styles.customDateRange}>
-                <Space>
-                  <Text>From:</Text>
-                  <DatePicker
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Typography variant="body2" component="span">From:</Typography>
+                  <MuiDatePicker
                     value={fromDate ? dayjs(fromDate) : null}
-                    onChange={(date) => setFromDate(date ? date.format('YYYY-MM-DD') : '')}
+                    onChange={(val) => setFromDate(val ? val.format('YYYY-MM-DD') : '')}
+                    slotProps={{ textField: { size: 'small' } }}
                   />
-                  <Text>To:</Text>
-                  <DatePicker
+                  <Typography variant="body2" component="span">To:</Typography>
+                  <MuiDatePicker
                     value={toDate ? dayjs(toDate) : null}
-                    onChange={(date) => setToDate(date ? date.format('YYYY-MM-DD') : '')}
+                    onChange={(val) => setToDate(val ? val.format('YYYY-MM-DD') : '')}
+                    slotProps={{ textField: { size: 'small' } }}
                   />
-                </Space>
+                </Stack>
               </div>
             )}
 
             {loadingStats ? (
               <div className={styles.loadingStats}>
-                <Spin />
+                <CircularProgress />
               </div>
             ) : filteredLogbook.length === 0 ? (
-              <Empty description="No climbing data for this period" />
+              <EmptyState description="No climbing data for this period" />
             ) : (
               <div className={styles.chartsContainer}>
                 <ProfileStatsCharts
@@ -885,17 +903,17 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
               </div>
             )}
           </>
-        </Card>
+        </CardContent></MuiCard>
 
         {/* Recent Ascents Feed */}
-        <Card className={styles.statsCard}>
-          <Title level={5}>Recent Activity</Title>
-          <Text type="secondary" className={styles.chartDescription}>
+        <MuiCard className={styles.statsCard}><CardContent>
+          <Typography variant="h6" component="h5">Recent Activity</Typography>
+          <Typography variant="body2" component="span" color="text.secondary" className={styles.chartDescription}>
             Latest ascents and attempts
-          </Text>
+          </Typography>
           <AscentsFeed userId={userId} pageSize={10} />
-        </Card>
-      </Content>
-    </Layout>
+        </CardContent></MuiCard>
+      </Box>
+    </Box>
   );
 }

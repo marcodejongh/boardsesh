@@ -21,12 +21,12 @@ vi.mock('@/app/theme/theme-config', () => ({
   },
 }));
 
-vi.mock('@ant-design/icons', () => ({
-  InfoCircleOutlined: () => 'InfoCircleOutlinedIcon',
+vi.mock('@mui/icons-material/InfoOutlined', () => ({
+  default: () => 'InfoOutlinedIcon',
 }));
 
-vi.mock('antd', () => ({
-  Button: ({ children }: { children?: React.ReactNode }) => children,
+vi.mock('@mui/material/Button', () => ({
+  default: ({ children }: { children?: React.ReactNode }) => children,
 }));
 
 vi.mock('../../action-tooltip', () => ({

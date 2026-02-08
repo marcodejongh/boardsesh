@@ -1,7 +1,14 @@
 'use client';
 
-import React, { useEffect } from 'react';
-import { Modal, Form, Input, Tag, Typography } from 'antd';
+import React, { useEffect, useState } from 'react';
+import Typography from '@mui/material/Typography';
+import TextField from '@mui/material/TextField';
+import Chip from '@mui/material/Chip';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import Button from '@mui/material/Button';
 import MoonBoardRenderer from '../moonboard-renderer/moonboard-renderer';
 import { useMoonBoardCreateClimb } from '../create-climb/use-moonboard-create-climb';
 import { coordinateToHoldId, holdIdToCoordinate, MOONBOARD_HOLD_STATES } from '@/app/lib/moonboard-config';
@@ -9,7 +16,6 @@ import type { MoonBoardClimb, GridCoordinate } from '@boardsesh/moonboard-ocr/br
 import type { LitUpHoldsMap } from '../board-renderer/types';
 import styles from './moonboard-edit-modal.module.css';
 
-const { Text } = Typography;
 
 interface MoonBoardEditModalProps {
   open: boolean;
@@ -92,7 +98,7 @@ export default function MoonBoardEditModal({
   onSave,
   onCancel,
 }: MoonBoardEditModalProps) {
-  const [form] = Form.useForm<{ name: string }>();
+  const [climbName, setClimbName] = useState(climb.name);
 
   const initialHoldsMap = convertClimbToHoldsMap(climb);
 
@@ -113,71 +119,79 @@ export default function MoonBoardEditModal({
     if (open) {
       const newHoldsMap = convertClimbToHoldsMap(climb);
       setLitUpHoldsMap(newHoldsMap);
-      form.setFieldsValue({ name: climb.name });
+      setClimbName(climb.name);
     }
-  }, [climb, open, setLitUpHoldsMap, form]);
+  }, [climb, open, setLitUpHoldsMap]);
 
   const handleOk = () => {
-    form.validateFields().then((values) => {
-      const updatedClimb: MoonBoardClimb = {
-        ...climb,
-        name: values.name,
-        holds: convertHoldsMapToOcrFormat(litUpHoldsMap),
-      };
-      onSave(updatedClimb);
-    });
+    if (!climbName.trim()) return;
+    const updatedClimb: MoonBoardClimb = {
+      ...climb,
+      name: climbName.trim(),
+      holds: convertHoldsMapToOcrFormat(litUpHoldsMap),
+    };
+    onSave(updatedClimb);
   };
 
   return (
-    <Modal
-      title="Edit Climb"
+    <Dialog
       open={open}
-      onOk={handleOk}
-      onCancel={onCancel}
-      okText="Save Changes"
-      okButtonProps={{ disabled: !isValid }}
-      width={600}
+      onClose={onCancel}
+      maxWidth="sm"
+      fullWidth
       className={styles.modal}
     >
-      <div className={styles.content}>
-        <div className={styles.boardSection}>
-          <MoonBoardRenderer
-            layoutFolder={layoutFolder}
-            holdSetImages={holdSetImages}
-            litUpHoldsMap={litUpHoldsMap}
-            onHoldClick={handleHoldClick}
-          />
+      <DialogTitle>Edit Climb</DialogTitle>
+      <DialogContent>
+        <div className={styles.content}>
+          <div className={styles.boardSection}>
+            <MoonBoardRenderer
+              layoutFolder={layoutFolder}
+              holdSetImages={holdSetImages}
+              litUpHoldsMap={litUpHoldsMap}
+              onHoldClick={handleHoldClick}
+            />
 
-          <div className={styles.holdCounts}>
-            <Tag color={startingCount > 0 ? 'red' : 'default'}>Start: {startingCount}/2</Tag>
-            <Tag color={handCount > 0 ? 'blue' : 'default'}>Hand: {handCount}</Tag>
-            <Tag color={finishCount > 0 ? 'green' : 'default'}>Finish: {finishCount}/2</Tag>
-            <Tag color={totalHolds > 0 ? 'purple' : 'default'}>Total: {totalHolds}</Tag>
+            <div className={styles.holdCounts}>
+              <Chip label={`Start: ${startingCount}/2`} size="small" color={startingCount > 0 ? 'error' : undefined} />
+              <Chip label={`Hand: ${handCount}`} size="small" color={handCount > 0 ? 'primary' : undefined} />
+              <Chip label={`Finish: ${finishCount}/2`} size="small" color={finishCount > 0 ? 'success' : undefined} />
+              <Chip label={`Total: ${totalHolds}`} size="small" color={totalHolds > 0 ? 'secondary' : undefined} />
+            </div>
+
+            {!isValid && totalHolds > 0 && (
+              <Typography variant="body2" component="span" color="text.secondary" className={styles.validationHint}>
+                A valid climb needs at least 1 start hold and 1 finish hold
+              </Typography>
+            )}
           </div>
 
-          {!isValid && totalHolds > 0 && (
-            <Text type="secondary" className={styles.validationHint}>
-              A valid climb needs at least 1 start hold and 1 finish hold
-            </Text>
-          )}
+          <div className={styles.formSection}>
+            <TextField
+              label="Climb Name"
+              value={climbName}
+              onChange={(e) => setClimbName(e.target.value)}
+              required
+              fullWidth
+              size="small"
+              placeholder="Climb name"
+              slotProps={{ htmlInput: { maxLength: 100 } }}
+              error={!climbName.trim()}
+              helperText={!climbName.trim() ? 'Please enter a name' : undefined}
+            />
+
+            <div className={styles.climbInfo}>
+              <Typography variant="body2" component="span" color="text.secondary">Setter: {climb.setter || 'Unknown'}</Typography>
+              <Typography variant="body2" component="span" color="text.secondary">Grade: {climb.userGrade || 'Unknown'}</Typography>
+              <Typography variant="body2" component="span" color="text.secondary">Angle: {climb.angle}°</Typography>
+            </div>
+          </div>
         </div>
-
-        <Form form={form} layout="vertical" className={styles.formSection}>
-          <Form.Item
-            name="name"
-            label="Climb Name"
-            rules={[{ required: true, message: 'Please enter a name' }]}
-          >
-            <Input placeholder="Climb name" maxLength={100} />
-          </Form.Item>
-
-          <div className={styles.climbInfo}>
-            <Text type="secondary">Setter: {climb.setter || 'Unknown'}</Text>
-            <Text type="secondary">Grade: {climb.userGrade || 'Unknown'}</Text>
-            <Text type="secondary">Angle: {climb.angle}°</Text>
-          </div>
-        </Form>
-      </div>
-    </Modal>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onCancel}>Cancel</Button>
+        <Button variant="contained" onClick={handleOk} disabled={!isValid}>Save Changes</Button>
+      </DialogActions>
+    </Dialog>
   );
 }

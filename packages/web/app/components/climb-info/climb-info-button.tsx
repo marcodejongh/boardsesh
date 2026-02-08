@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Button } from 'antd';
+import IconButton from '@mui/material/IconButton';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
-import { InfoCircleOutlined } from '@ant-design/icons';
+import InfoOutlined from '@mui/icons-material/InfoOutlined';
 import ClimbInfo from './climb-info';
 
 const ClimbInfoButton = () => {
@@ -11,7 +11,9 @@ const ClimbInfoButton = () => {
 
   return (
     <>
-      <Button type="default" icon={<InfoCircleOutlined />} onClick={() => setIsOpen(true)} />
+      <IconButton onClick={() => setIsOpen(true)}>
+        <InfoOutlined />
+      </IconButton>
       <SwipeableDrawer title="Climb Info" placement="right" styles={{ wrapper: { width: '80%' } }} open={isOpen} onClose={() => setIsOpen(false)}>
         <ClimbInfo />
       </SwipeableDrawer>

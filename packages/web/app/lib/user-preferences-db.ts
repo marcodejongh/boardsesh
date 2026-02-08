@@ -87,3 +87,18 @@ export const removePreference = async (key: string): Promise<void> => {
     console.error('Failed to remove preference:', error);
   }
 };
+
+/**
+ * Get the "always tick in app" preference.
+ */
+export const getAlwaysTickInApp = async (): Promise<boolean> => {
+  const value = await getPreference<boolean>('alwaysTickInApp');
+  return value === true;
+};
+
+/**
+ * Set the "always tick in app" preference.
+ */
+export const setAlwaysTickInApp = async (enabled: boolean): Promise<void> => {
+  await setPreference('alwaysTickInApp', enabled);
+};

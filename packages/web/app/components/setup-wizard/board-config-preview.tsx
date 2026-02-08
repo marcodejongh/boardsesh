@@ -1,8 +1,17 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Card, Typography, Button, Tooltip, Tag, Space, Skeleton } from 'antd';
-import { DeleteOutlined, StarFilled } from '@ant-design/icons';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import IconButton from '@mui/material/IconButton';
+import Stack from '@mui/material/Stack';
+import Chip from '@mui/material/Chip';
+import MuiTooltip from '@mui/material/Tooltip';
+import MuiSkeleton from '@mui/material/Skeleton';
+import DeleteOutlined from '@mui/icons-material/DeleteOutlined';
+import Star from '@mui/icons-material/Star';
 import Link from 'next/link';
 import { BoardDetails, BoardName } from '@/app/lib/types';
 import { getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
@@ -10,8 +19,6 @@ import { getMoonBoardDetails } from '@/app/lib/moonboard-config';
 import BoardRenderer from '../board-renderer/board-renderer';
 import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { BoardConfigData } from '@/app/lib/server-board-configs';
-
-const { Text } = Typography;
 
 type StoredBoardConfig = {
   name: string;
@@ -144,8 +151,12 @@ export default function BoardConfigPreview({ config, onDelete, onSelect, boardCo
 
   if (isLoading) {
     return (
-      <Card hoverable size="small" style={{ minWidth: 0 }}>
-        <Skeleton active paragraph={{ rows: 2 }} />
+      <Card sx={{ minWidth: 0, '&:hover': { boxShadow: 3 } }}>
+        <CardContent sx={{ p: 1.5 }}>
+          <MuiSkeleton variant="text" width="60%" />
+          <MuiSkeleton variant="text" width="80%" />
+          <MuiSkeleton variant="text" width="40%" />
+        </CardContent>
       </Card>
     );
   }
@@ -154,23 +165,29 @@ export default function BoardConfigPreview({ config, onDelete, onSelect, boardCo
     return (
       <Link href={boardUrl} style={{ textDecoration: 'none', minWidth: 0 }} onClick={handleSelect}>
         <Card
-          hoverable
-          size="small"
-          style={{ minWidth: 0 }}
-          extra={isEditMode ? <Button type="text" icon={<DeleteOutlined />} onClick={handleDelete} danger size="small" /> : undefined}
+          sx={{ minWidth: 0, '&:hover': { boxShadow: 3 } }}
         >
-          <Space orientation="vertical" size="small" align="center">
-            <Text type="secondary">Preview unavailable</Text>
-            <Text strong>{config.name}</Text>
-            <Space orientation="vertical" size={2}>
-              <Tag>{layoutName}</Tag>
-              <Space size={2}>
-                <Tag>{sizeName}</Tag>
-                <Tag>{config.angle || 40}°</Tag>
-                {config.useAsDefault && <StarFilled />}
-              </Space>
-            </Space>
-          </Space>
+          <CardContent sx={{ p: 1.5 }}>
+            {isEditMode && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <IconButton onClick={handleDelete} color="error" size="small">
+                  <DeleteOutlined />
+                </IconButton>
+              </div>
+            )}
+            <Stack spacing={1} alignItems="center">
+              <Typography variant="body2" component="span" color="text.secondary">Preview unavailable</Typography>
+              <Typography variant="body2" component="span" fontWeight={600}>{config.name}</Typography>
+              <Stack spacing={0.25}>
+                <Chip label={layoutName} size="small" />
+                <Stack direction="row" spacing={0.25}>
+                  <Chip label={sizeName} size="small" />
+                  <Chip label={config.angle || 40} size="small" />
+                  {config.useAsDefault && <Star />}
+                </Stack>
+              </Stack>
+            </Stack>
+          </CardContent>
         </Card>
       </Link>
     );
@@ -179,36 +196,36 @@ export default function BoardConfigPreview({ config, onDelete, onSelect, boardCo
   return (
     <Link href={boardUrl} style={{ textDecoration: 'none', minWidth: 0 }} onClick={handleSelect}>
       <Card
-        hoverable
-        size="small"
-        style={{ minWidth: 0 }}
-        cover={
-          <BoardRenderer
-            litUpHoldsMap={{}} // Empty holds map - just show the board
-            mirrored={false}
-            boardDetails={boardDetails}
-            thumbnail={true}
-          />
-        }
-        extra={isEditMode ? <Button type="text" icon={<DeleteOutlined />} onClick={handleDelete} danger size="small" /> : undefined}
+        sx={{ minWidth: 0, '&:hover': { boxShadow: 3 } }}
       >
-        <Card.Meta
-          title={<Text strong>{config.name}</Text>}
-          description={
-            <Space orientation="vertical" size={2}>
-              <Tag>{layoutName}</Tag>
-              <Space size={2}>
-                <Tag>{sizeName}</Tag>
-                <Tag>{config.angle || 40}°</Tag>
-                {config.useAsDefault && (
-                  <Tooltip title="Default configuration">
-                    <StarFilled />
-                  </Tooltip>
-                )}
-              </Space>
-            </Space>
-          }
+        <BoardRenderer
+          litUpHoldsMap={{}} // Empty holds map - just show the board
+          mirrored={false}
+          boardDetails={boardDetails}
+          thumbnail={true}
         />
+        <CardContent sx={{ p: 1.5 }}>
+          {isEditMode && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <IconButton onClick={handleDelete} color="error" size="small">
+                <DeleteOutlined />
+              </IconButton>
+            </div>
+          )}
+          <Typography variant="body2" component="span" fontWeight={600}>{config.name}</Typography>
+          <Stack spacing={0.25}>
+            <Chip label={layoutName} size="small" />
+            <Stack direction="row" spacing={0.25}>
+              <Chip label={sizeName} size="small" />
+              <Chip label={config.angle || 40} size="small" />
+              {config.useAsDefault && (
+                <MuiTooltip title="Default configuration">
+                  <Star />
+                </MuiTooltip>
+              )}
+            </Stack>
+          </Stack>
+        </CardContent>
       </Card>
     </Link>
   );

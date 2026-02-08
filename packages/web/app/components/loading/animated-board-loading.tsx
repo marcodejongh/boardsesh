@@ -1,13 +1,11 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Typography } from 'antd';
+import Typography from '@mui/material/Typography';
 import BoardRenderer from '../board-renderer/board-renderer';
 import { BoardDetails } from '@/app/lib/types';
 import { LitUpHoldsMap } from '../board-renderer/types';
 import { themeTokens } from '@/app/theme/theme-config';
-
-const { Text } = Typography;
 
 const loadingMessages = [
   "Setting up your board...",
@@ -178,7 +176,9 @@ const AnimatedBoardLoading: React.FC<AnimatedBoardLoadingProps> = ({
         />
       )}
 
-      <Text
+      <Typography
+        variant="body2"
+        component="span"
         style={{
           color: 'white',
           fontSize: themeTokens.typography.fontSize.lg,
@@ -190,7 +190,7 @@ const AnimatedBoardLoading: React.FC<AnimatedBoardLoadingProps> = ({
         }}
       >
         {currentMessage}
-      </Text>
+      </Typography>
 
       <style
         dangerouslySetInnerHTML={{

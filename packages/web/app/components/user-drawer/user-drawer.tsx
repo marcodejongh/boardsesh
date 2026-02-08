@@ -1,22 +1,23 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Avatar, Typography, Button } from 'antd';
-import {
-  UserOutlined,
-  SettingOutlined,
-  LineChartOutlined,
-  LogoutOutlined,
-  LoginOutlined,
-  QuestionCircleOutlined,
-  InfoCircleOutlined,
-  AimOutlined,
-  TagOutlined,
-  SwapOutlined,
-  HistoryOutlined,
-  PlayCircleOutlined,
-  TeamOutlined,
-} from '@ant-design/icons';
+import MuiAvatar from '@mui/material/Avatar';
+import MuiTypography from '@mui/material/Typography';
+import MuiButton from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
+import PersonOutlined from '@mui/icons-material/PersonOutlined';
+import SettingsOutlined from '@mui/icons-material/SettingsOutlined';
+import ShowChartOutlined from '@mui/icons-material/ShowChartOutlined';
+import LogoutOutlined from '@mui/icons-material/LogoutOutlined';
+import LoginOutlined from '@mui/icons-material/LoginOutlined';
+import HelpOutlineOutlined from '@mui/icons-material/HelpOutlineOutlined';
+import InfoOutlined from '@mui/icons-material/InfoOutlined';
+import GpsFixedOutlined from '@mui/icons-material/GpsFixedOutlined';
+import LocalOfferOutlined from '@mui/icons-material/LocalOfferOutlined';
+import SwapHorizOutlined from '@mui/icons-material/SwapHorizOutlined';
+import HistoryOutlined from '@mui/icons-material/HistoryOutlined';
+import PlayCircleOutlineOutlined from '@mui/icons-material/PlayCircleOutlineOutlined';
+import GroupOutlined from '@mui/icons-material/GroupOutlined';
 
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -84,68 +85,69 @@ export default function UserDrawer({ boardDetails, angle }: UserDrawerProps) {
     return null;
   })();
 
-  const userAvatar = session?.user?.image;
+  const userAvatar = session?.user?.image ?? undefined;
   const userName = session?.user?.name;
   const userEmail = session?.user?.email;
   const avatarClass = session?.user ? styles.avatarLoggedIn : styles.avatarLoggedOut;
 
   return (
     <>
-      <Button
-        type="text"
+      <IconButton
         onClick={() => setIsOpen(true)}
         aria-label="User menu"
         className={styles.avatarButton}
       >
-        <Avatar
-          size={28}
+        <MuiAvatar
+          sx={{ width: 28, height: 28 }}
           src={userAvatar}
-          icon={!userAvatar ? <UserOutlined /> : undefined}
           className={avatarClass}
-        />
-      </Button>
+        >
+          {!userAvatar ? <PersonOutlined /> : null}
+        </MuiAvatar>
+      </IconButton>
 
       <SwipeableDrawer
         placement="left"
         open={isOpen}
         onClose={handleClose}
-        closable
+        showCloseButton
         width={300}
         title={null}
       >
         <div className={styles.drawerBody}>
           {/* Profile section */}
           <div className={styles.profileSection}>
-            <Avatar
-              size={64}
+            <MuiAvatar
+              sx={{ width: 64, height: 64 }}
               src={userAvatar}
-              icon={!userAvatar ? <UserOutlined /> : undefined}
               className={avatarClass}
-            />
+            >
+              {!userAvatar ? <PersonOutlined /> : null}
+            </MuiAvatar>
             {session?.user ? (
               <>
                 {userName && (
-                  <Typography.Text strong className={styles.userName}>
+                  <MuiTypography variant="body2" component="span" fontWeight={600} className={styles.userName}>
                     {userName}
-                  </Typography.Text>
+                  </MuiTypography>
                 )}
                 {userEmail && (
-                  <Typography.Text type="secondary" className={styles.userEmail}>
+                  <MuiTypography variant="body2" component="span" color="text.secondary" className={styles.userEmail}>
                     {userEmail}
-                  </Typography.Text>
+                  </MuiTypography>
                 )}
               </>
             ) : (
-              <Button
-                type="primary"
-                icon={<LoginOutlined />}
+              <MuiButton
+                variant="contained"
+                startIcon={<LoginOutlined />}
                 onClick={() => {
                   handleClose();
                   setShowAuthModal(true);
                 }}
               >
                 Sign in
-              </Button>
+              </MuiButton>
             )}
           </div>
 
@@ -158,7 +160,7 @@ export default function UserDrawer({ boardDetails, angle }: UserDrawerProps) {
               className={styles.menuItem}
               onClick={handleClose}
             >
-              <span className={styles.menuItemIcon}><SwapOutlined /></span>
+              <span className={styles.menuItemIcon}><SwapHorizOutlined /></span>
               <span className={styles.menuItemLabel}>Change Board</span>
             </Link>
 
@@ -168,7 +170,7 @@ export default function UserDrawer({ boardDetails, angle }: UserDrawerProps) {
                 className={styles.menuItem}
                 onClick={handleClose}
               >
-                <span className={styles.menuItemIcon}><LineChartOutlined /></span>
+                <span className={styles.menuItemIcon}><ShowChartOutlined /></span>
                 <span className={styles.menuItemLabel}>Profile</span>
               </Link>
             )}
@@ -178,7 +180,7 @@ export default function UserDrawer({ boardDetails, angle }: UserDrawerProps) {
               className={styles.menuItem}
               onClick={handleClose}
             >
-              <span className={styles.menuItemIcon}><SettingOutlined /></span>
+              <span className={styles.menuItemIcon}><SettingsOutlined /></span>
               <span className={styles.menuItemLabel}>Settings</span>
             </Link>
 
@@ -191,7 +193,7 @@ export default function UserDrawer({ boardDetails, angle }: UserDrawerProps) {
                   setShowHoldClassification(true);
                 }}
               >
-                <span className={styles.menuItemIcon}><AimOutlined /></span>
+                <span className={styles.menuItemIcon}><GpsFixedOutlined /></span>
                 <span className={styles.menuItemLabel}>Classify Holds</span>
               </button>
             )}
@@ -202,7 +204,7 @@ export default function UserDrawer({ boardDetails, angle }: UserDrawerProps) {
                 className={styles.menuItem}
                 onClick={handleClose}
               >
-                <span className={styles.menuItemIcon}><TagOutlined /></span>
+                <span className={styles.menuItemIcon}><LocalOfferOutlined /></span>
                 <span className={styles.menuItemLabel}>My Playlists</span>
               </Link>
             )}
@@ -212,9 +214,9 @@ export default function UserDrawer({ boardDetails, angle }: UserDrawerProps) {
           {recentSessions.length > 0 && (
             <>
               <div className={styles.divider} />
-              <Typography.Text type="secondary" className={styles.sectionLabel}>
+              <MuiTypography variant="body2" component="span" color="text.secondary" className={styles.sectionLabel}>
                 Recent Sessions
-              </Typography.Text>
+              </MuiTypography>
               {recentSessions.slice(0, 5).map((storedSession) => (
                 <button
                   type="button"
@@ -230,12 +232,12 @@ export default function UserDrawer({ boardDetails, angle }: UserDrawerProps) {
                     <div className={styles.recentItemMeta}>
                       {extractBoardName(storedSession.boardPath)}
                       {storedSession.participantCount !== undefined && storedSession.participantCount > 0 && (
-                        <> <TeamOutlined /> {storedSession.participantCount}</>
+                        <> <GroupOutlined /> {storedSession.participantCount}</>
                       )}
                       {' '}{formatRelativeTime(storedSession.lastActivity || storedSession.createdAt)}
                     </div>
                   </div>
-                  <PlayCircleOutlined className={styles.recentItemAction} />
+                  <PlayCircleOutlineOutlined className={styles.recentItemAction} />
                 </button>
               ))}
             </>
@@ -249,7 +251,7 @@ export default function UserDrawer({ boardDetails, angle }: UserDrawerProps) {
             className={styles.menuItem}
             onClick={handleClose}
           >
-            <span className={styles.menuItemIcon}><QuestionCircleOutlined /></span>
+            <span className={styles.menuItemIcon}><HelpOutlineOutlined /></span>
             <span className={styles.menuItemLabel}>Help</span>
           </Link>
 
@@ -258,7 +260,7 @@ export default function UserDrawer({ boardDetails, angle }: UserDrawerProps) {
             className={styles.menuItem}
             onClick={handleClose}
           >
-            <span className={styles.menuItemIcon}><InfoCircleOutlined /></span>
+            <span className={styles.menuItemIcon}><InfoOutlined /></span>
             <span className={styles.menuItemLabel}>About</span>
           </Link>
 

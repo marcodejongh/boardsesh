@@ -63,51 +63,18 @@ body {
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
   max-width: 100vw;
-}
-
-/* Prevent horizontal scroll on layout */
-.ant-layout {
-  max-width: 100%;
-  overflow-x: hidden;
   min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Smooth transitions for interactive elements */
 a,
 button,
-.ant-btn,
-.ant-card,
-.ant-input,
-.ant-select,
-.ant-select-selector {
+.MuiButton-root,
+.MuiCard-root,
+.MuiOutlinedInput-root {
   transition: all 0.2s ease;
-}
-
-/* Card hover enhancement */
-.ant-card {
-  transition: box-shadow 0.2s ease, transform 0.2s ease;
-}
-
-.ant-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-/* Prevent text selection on interactive cards - intentional for drag-and-drop UX */
-.ant-card {
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  user-select: none;
-}
-
-/* Button hover polish - subtle lift effect */
-.ant-btn:not(:disabled):not(.ant-btn-text):hover {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.ant-btn:not(:disabled):active {
-  transform: translateY(0);
 }
 
 /* Selected state styling utility class - use higher specificity instead of !important */
@@ -195,90 +162,17 @@ button,
   }
 }
 
-/* Drawer transitions - Ant Design already handles this, but we customize the easing */
-.ant-drawer .ant-drawer-content-wrapper {
-  transition: transform 0.3s cubic-bezier(0.23, 1, 0.32, 1);
-}
-
-/* Improve modal animations */
-.ant-modal {
-  animation-duration: 0.2s;
-}
-
 /* Ensure all interactive elements have minimum 16px font to prevent iOS auto-zoom on focus */
 @media (max-width: 768px) {
   input,
   textarea,
   select,
   button,
-  .ant-select,
-  .ant-select-selector,
-  .ant-select-selection-item,
-  .ant-select-selection-search-input,
-  .ant-select-selection-placeholder,
-  .ant-input,
-  .ant-input-number,
-  .ant-input-number-input,
-  .ant-picker,
-  .ant-picker-input > input,
-  .ant-btn,
-  .ant-dropdown-trigger {
+  .MuiOutlinedInput-input,
+  .MuiSelect-select,
+  .MuiButton-root {
     font-size: 16px !important;
   }
-
-  /* Slightly reduce card hover effect on mobile for performance */
-  .ant-card:hover {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    transform: none;
-  }
-
-  /* Disable button lift on mobile */
-  .ant-btn:not(:disabled):hover {
-    transform: none;
-  }
-}
-
-/* Loading skeleton animation improvement */
-.ant-skeleton-content .ant-skeleton-title,
-.ant-skeleton-content .ant-skeleton-paragraph > li {
-  background: linear-gradient(90deg, var(--neutral-100) 25%, var(--neutral-200) 37%, var(--neutral-100) 63%);
-  background-size: 400% 100%;
-  animation: skeleton-loading 1.4s ease infinite;
-}
-
-@keyframes skeleton-loading {
-  0% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0 50%;
-  }
-}
-
-/* Tag styling enhancement */
-.ant-tag {
-  border-radius: 4px;
-  font-weight: 500;
-}
-
-/* Rate/star styling */
-.ant-rate-star {
-  transition: transform 0.15s ease;
-}
-
-.ant-rate-star:hover {
-  transform: scale(1.1);
-}
-
-/* Collapse panel styling - use higher specificity */
-.ant-collapse .ant-collapse-header {
-  font-weight: 500;
-}
-
-/* Badge styling */
-.ant-badge-count {
-  font-weight: 600;
-  box-shadow: 0 0 0 2px #fff;
 }
 
 /* Override Atlaskit drag-and-drop indicator color to match theme

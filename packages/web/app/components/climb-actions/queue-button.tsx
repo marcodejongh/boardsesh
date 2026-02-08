@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { PlusCircleOutlined, CheckCircleOutlined } from '@ant-design/icons';
-import { Tooltip } from 'antd';
+import AddCircleOutlined from '@mui/icons-material/AddCircleOutlined';
+import CheckCircleOutlined from '@mui/icons-material/CheckCircleOutlined';
+import MuiTooltip from '@mui/material/Tooltip';
 import { track } from '@vercel/analytics';
 import { useQueueContext } from '../graphql-queue';
 import { Climb, BoardDetails } from '@/app/lib/types';
@@ -52,11 +53,11 @@ export default function QueueButton({
     cursor: recentlyAdded ? 'not-allowed' : 'pointer',
   };
 
-  const Icon = recentlyAdded ? CheckCircleOutlined : PlusCircleOutlined;
+  const Icon = recentlyAdded ? CheckCircleOutlined : AddCircleOutlined;
   const label = recentlyAdded ? 'Added' : 'Queue';
 
   return (
-    <Tooltip title={recentlyAdded ? 'Added to queue' : 'Add to queue'}>
+    <MuiTooltip title={recentlyAdded ? 'Added to queue' : 'Add to queue'}>
       <span
         onClick={handleClick}
         className={className}
@@ -71,6 +72,6 @@ export default function QueueButton({
         <Icon style={iconStyle} />
         {showLabel && <span style={{ marginLeft: 8 }}>{label}</span>}
       </span>
-    </Tooltip>
+    </MuiTooltip>
   );
 }

@@ -73,7 +73,7 @@
   }
 
   /* Smaller buttons on mobile */
-  .buttonContainer :global(.ant-btn) {
+  .buttonContainer :global(.MuiButton-root) {
     padding: 4px 8px;
     font-size: 12px;
   }

@@ -1,7 +1,6 @@
 import React, { Suspense } from 'react';
 import { Metadata } from 'next';
 import AuthPageContent from './auth-page-content';
-import { Spin, Layout } from 'antd';
 
 export const metadata: Metadata = {
   title: 'Login | Boardsesh',
@@ -10,9 +9,9 @@ export const metadata: Metadata = {
 
 function AuthPageFallback() {
   return (
-    <Layout style={{ minHeight: '100vh', background: 'var(--semantic-background)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-      <Spin size="large" />
-    </Layout>
+    <div style={{ minHeight: '100vh', background: 'var(--semantic-background)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+      <div style={{ width: 40, height: 40, border: '3px solid var(--neutral-200)', borderTopColor: 'var(--color-primary)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+    </div>
   );
 }
 

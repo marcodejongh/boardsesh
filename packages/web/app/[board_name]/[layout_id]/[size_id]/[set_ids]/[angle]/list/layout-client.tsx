@@ -1,9 +1,13 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useState } from 'react';
 import { PropsWithChildren } from 'react';
-import { Layout, Tabs, Badge, Button, Popconfirm, Flex } from 'antd';
-import { DeleteOutlined } from '@ant-design/icons';
+import Tabs from '@mui/material/Tabs';
+import Tab from '@mui/material/Tab';
+import Badge from '@mui/material/Badge';
+import MuiButton from '@mui/material/Button';
+import Box from '@mui/material/Box';
+import { DeleteOutlined } from '@mui/icons-material';
 import { track } from '@vercel/analytics';
 import { BoardDetails } from '@/app/lib/types';
 import { themeTokens } from '@/app/theme/theme-config';
@@ -11,10 +15,11 @@ import AccordionSearchForm from '@/app/components/search-drawer/accordion-search
 import SearchResultsFooter from '@/app/components/search-drawer/search-results-footer';
 import QueueList from '@/app/components/queue-control/queue-list';
 import { useQueueContext } from '@/app/components/graphql-queue';
+import { ConfirmPopover } from '@/app/components/ui/confirm-popover';
+import { TabPanel } from '@/app/components/ui/tab-panel';
 import OnboardingTour from '@/app/components/onboarding/onboarding-tour';
 import styles from './layout-client.module.css';
 
-const { Content, Sider } = Layout;
 
 interface ListLayoutClientProps {
   boardDetails: BoardDetails;
@@ -24,7 +29,7 @@ interface ListLayoutClientProps {
 const QueueTabLabel: React.FC = () => {
   const { queue } = useQueueContext();
   return (
-    <Badge count={queue.length} overflowCount={99} showZero={false} size="small" color={themeTokens.colors.primary} offset={[8, -2]}>
+    <Badge badgeContent={queue.length} max={99} invisible={queue.length === 0} color="primary" sx={{ '& .MuiBadge-badge': { right: -8, top: -2 } }}>
       Queue
     </Badge>
   );
@@ -33,6 +38,7 @@ const QueueTabLabel: React.FC = () => {
 // Isolated component for the queue tab content - subscribes to context independently
 const QueueTabContent: React.FC<{ boardDetails: BoardDetails }> = ({ boardDetails }) => {
   const { queue, setQueue } = useQueueContext();
+  const [scrollContainerEl, setScrollContainerEl] = useState<HTMLDivElement | null>(null);
 
   const handleClearQueue = () => {
     setQueue([]);
@@ -45,65 +51,60 @@ const QueueTabContent: React.FC<{ boardDetails: BoardDetails }> = ({ boardDetail
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       {queue.length > 0 && (
-        <Flex justify="flex-end" style={{ padding: '8px 8px 0 8px' }}>
-          <Popconfirm
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', padding: '8px 8px 0 8px' }}>
+          <ConfirmPopover
             title="Clear queue"
             description="Are you sure you want to clear all items from the queue?"
             onConfirm={handleClearQueue}
             okText="Clear"
             cancelText="Cancel"
           >
-            <Button type="text" icon={<DeleteOutlined />} size="small" style={{ color: themeTokens.neutral[400] }}>
+            <MuiButton variant="text" startIcon={<DeleteOutlined />} size="small" sx={{ color: themeTokens.neutral[400] }}>
               Clear
-            </Button>
-          </Popconfirm>
-        </Flex>
+            </MuiButton>
+          </ConfirmPopover>
+        </Box>
       )}
-      <div style={{ flex: 1, overflow: 'auto' }}>
-        <QueueList boardDetails={boardDetails} />
+      <div ref={setScrollContainerEl} style={{ flex: 1, overflow: 'auto' }}>
+        <QueueList boardDetails={boardDetails} scrollContainer={scrollContainerEl} />
       </div>
     </div>
   );
 };
 
 const TabsWrapper: React.FC<{ boardDetails: BoardDetails }> = ({ boardDetails }) => {
-  // Memoize tabItems to prevent recreating the array on every render
-  // Child components (QueueTabLabel, QueueTabContent) handle their own context subscriptions
-  const tabItems = useMemo(
-    () => [
-      {
-        key: 'queue',
-        label: <QueueTabLabel />,
-        children: <QueueTabContent boardDetails={boardDetails} />,
-      },
-      {
-        key: 'search',
-        label: 'Search',
-        children: (
-          <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ flex: 1, overflow: 'auto' }}>
-              <AccordionSearchForm boardDetails={boardDetails} />
-            </div>
-            <SearchResultsFooter />
-          </div>
-        ),
-      },
-    ],
-    [boardDetails],
-  );
+  const [activeTab, setActiveTab] = useState('queue');
 
-  return <Tabs defaultActiveKey="queue" items={tabItems} className={styles.siderTabs} />;
+  return (
+    <>
+      <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)} className={styles.siderTabs}>
+        <Tab label={<QueueTabLabel />} value="queue" />
+        <Tab label="Search" value="search" />
+      </Tabs>
+      <TabPanel value={activeTab} index="queue">
+        <QueueTabContent boardDetails={boardDetails} />
+      </TabPanel>
+      <TabPanel value={activeTab} index="search">
+        <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ flex: 1, overflow: 'auto' }}>
+            <AccordionSearchForm boardDetails={boardDetails} />
+          </div>
+          <SearchResultsFooter />
+        </div>
+      </TabPanel>
+    </>
+  );
 };
 
 const ListLayoutClient: React.FC<PropsWithChildren<ListLayoutClientProps>> = ({ boardDetails, children }) => {
   return (
-    <Layout className={styles.listLayout}>
-      <Content className={styles.mainContent}>{children}</Content>
-      <Sider width={400} className={styles.sider} theme="light" style={{ padding: '0 8px 20px 8px' }}>
+    <Box className={styles.listLayout}>
+      <Box component="main" className={styles.mainContent}>{children}</Box>
+      <Box component="aside" className={styles.sider} sx={{ width: 400, padding: '0 8px 20px 8px' }}>
         <TabsWrapper boardDetails={boardDetails} />
-      </Sider>
+      </Box>
       <OnboardingTour />
-    </Layout>
+    </Box>
   );
 };
 

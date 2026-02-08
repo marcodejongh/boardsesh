@@ -1,34 +1,33 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import {
-  Card,
-  Button,
-  Form,
-  Input,
-  Typography,
-  Space,
-  Modal,
-  message,
-  Spin,
-  Tag,
-  Popconfirm,
-  Alert,
-} from 'antd';
-import {
-  CheckCircleOutlined,
-  ExclamationCircleOutlined,
-  ClockCircleOutlined,
-  DeleteOutlined,
-  PlusOutlined,
-  SyncOutlined,
-  WarningOutlined,
-} from '@ant-design/icons';
+import Box from '@mui/material/Box';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import MuiAlert from '@mui/material/Alert';
+import AlertTitle from '@mui/material/AlertTitle';
+import Chip from '@mui/material/Chip';
+import Stack from '@mui/material/Stack';
+import { ConfirmPopover } from '@/app/components/ui/confirm-popover';
+import { useSnackbar } from '@/app/components/providers/snackbar-provider';
+import { LoadingSpinner } from '@/app/components/ui/loading-spinner';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import TextField from '@mui/material/TextField';
+import CircularProgress from '@mui/material/CircularProgress';
+import CheckCircleOutlined from '@mui/icons-material/CheckCircleOutlined';
+import WarningAmberOutlined from '@mui/icons-material/WarningAmberOutlined';
+import AccessTimeOutlined from '@mui/icons-material/AccessTimeOutlined';
+import DeleteOutlined from '@mui/icons-material/DeleteOutlined';
+import AddOutlined from '@mui/icons-material/AddOutlined';
+import SyncOutlined from '@mui/icons-material/SyncOutlined';
+import WarningOutlined from '@mui/icons-material/WarningOutlined';
 import type { AuroraCredentialStatus } from '@/app/api/internal/aurora-credentials/route';
 import type { UnsyncedCounts } from '@/app/api/internal/aurora-credentials/unsynced/route';
 import styles from './aurora-credentials-section.module.css';
-
-const { Text, Title } = Typography;
 
 interface BoardUnsyncedCounts {
   ascents: number;
@@ -61,27 +60,19 @@ function BoardCredentialCard({
     switch (credential.syncStatus) {
       case 'active':
         return (
-          <Tag icon={<CheckCircleOutlined />} color="success">
-            Connected
-          </Tag>
+          <Chip icon={<CheckCircleOutlined />} label="Connected" size="small" color="success" />
         );
       case 'error':
         return (
-          <Tag icon={<ExclamationCircleOutlined />} color="error">
-            Error
-          </Tag>
+          <Chip icon={<WarningAmberOutlined />} label="Error" size="small" color="error" />
         );
       case 'expired':
         return (
-          <Tag icon={<ClockCircleOutlined />} color="warning">
-            Expired
-          </Tag>
+          <Chip icon={<AccessTimeOutlined />} label="Expired" size="small" color="warning" />
         );
       default:
         return (
-          <Tag icon={<SyncOutlined spin />} color="processing">
-            Syncing
-          </Tag>
+          <Chip icon={<SyncOutlined />} label="Syncing" size="small" color="primary" />
         );
     }
   };
@@ -95,77 +86,81 @@ function BoardCredentialCard({
   if (!credential) {
     return (
       <Card className={styles.credentialCard}>
-        <div className={styles.cardHeader}>
-          <Title level={5} style={{ margin: 0 }}>
-            {boardName} Board
-          </Title>
-        </div>
-        <Text type="secondary" className={styles.notConnectedText}>
-          Not connected. Link your {boardName} account to import your Aurora data.
-        </Text>
-        <Button type="primary" icon={<PlusOutlined />} onClick={onAdd} block>
-          Link {boardName} Account
-        </Button>
+        <CardContent>
+          <div className={styles.cardHeader}>
+            <Typography variant="h5" sx={{ margin: 0 }}>
+              {boardName} Board
+            </Typography>
+          </div>
+          <Typography variant="body2" component="span" color="text.secondary" className={styles.notConnectedText}>
+            Not connected. Link your {boardName} account to import your Aurora data.
+          </Typography>
+          <Button variant="contained" startIcon={<AddOutlined />} onClick={onAdd} fullWidth>
+            Link {boardName} Account
+          </Button>
+        </CardContent>
       </Card>
     );
   }
 
   return (
     <Card className={styles.credentialCard}>
-      <div className={styles.cardHeader}>
-        <Title level={5} style={{ margin: 0 }}>
-          {boardName} Board
-        </Title>
-        {getSyncStatusTag()}
-      </div>
-      <div className={styles.credentialInfo}>
-        <div className={styles.infoRow}>
-          <Text type="secondary">Username:</Text>
-          <Text strong>{credential.auroraUsername}</Text>
+      <CardContent>
+        <div className={styles.cardHeader}>
+          <Typography variant="h5" sx={{ margin: 0 }}>
+            {boardName} Board
+          </Typography>
+          {getSyncStatusTag()}
         </div>
-        <div className={styles.infoRow}>
-          <Text type="secondary">Last synced:</Text>
-          <Text>{formatLastSync(credential.lastSyncAt)}</Text>
-        </div>
-        {credential.syncError && (
-          <div className={styles.errorRow}>
-            <Text type="danger">{credential.syncError}</Text>
+        <div className={styles.credentialInfo}>
+          <div className={styles.infoRow}>
+            <Typography variant="body2" component="span" color="text.secondary">Username:</Typography>
+            <Typography variant="body2" component="span" fontWeight={600}>{credential.auroraUsername}</Typography>
           </div>
-        )}
-        {totalUnsynced > 0 && (
-          <Alert
-            type="warning"
-            icon={<WarningOutlined />}
-            showIcon
-            title={`${totalUnsynced} item${totalUnsynced > 1 ? 's' : ''} pending sync`}
-            description={
-              <Text type="secondary">
+          <div className={styles.infoRow}>
+            <Typography variant="body2" component="span" color="text.secondary">Last synced:</Typography>
+            <Typography variant="body2" component="span">{formatLastSync(credential.lastSyncAt)}</Typography>
+          </div>
+          {credential.syncError && (
+            <div className={styles.errorRow}>
+              <Typography variant="body2" component="span" color="error">{credential.syncError}</Typography>
+            </div>
+          )}
+          {totalUnsynced > 0 && (
+            <MuiAlert severity="warning" icon={<WarningOutlined />} className={styles.unsyncedAlert}>
+              <AlertTitle>{`${totalUnsynced} item${totalUnsynced > 1 ? 's' : ''} pending sync`}</AlertTitle>
+              <Typography variant="body2" component="span" color="text.secondary">
                 {unsyncedCounts.ascents > 0 && `${unsyncedCounts.ascents} ascent${unsyncedCounts.ascents > 1 ? 's' : ''}`}
                 {unsyncedCounts.ascents > 0 && unsyncedCounts.climbs > 0 && ', '}
                 {unsyncedCounts.climbs > 0 && `${unsyncedCounts.climbs} climb${unsyncedCounts.climbs > 1 ? 's' : ''}`}
-              </Text>
-            }
-            className={styles.unsyncedAlert}
-          />
-        )}
-      </div>
-      <Popconfirm
-        title="Remove account link"
-        description={`Are you sure you want to unlink your ${boardName} account?`}
-        onConfirm={onRemove}
-        okText="Yes, unlink"
-        cancelText="Cancel"
-        okButtonProps={{ danger: true }}
-      >
-        <Button danger icon={<DeleteOutlined />} loading={isRemoving} block>
-          Unlink Account
-        </Button>
-      </Popconfirm>
+              </Typography>
+            </MuiAlert>
+          )}
+        </div>
+        <ConfirmPopover
+          title="Remove account link"
+          description={`Are you sure you want to unlink your ${boardName} account?`}
+          onConfirm={onRemove}
+          okText="Yes, unlink"
+          okButtonProps={{ color: 'error' }}
+        >
+          <Button
+            color="error"
+            variant="outlined"
+            startIcon={isRemoving ? <CircularProgress size={16} /> : <DeleteOutlined />}
+            disabled={isRemoving}
+            fullWidth
+          >
+            Unlink Account
+          </Button>
+        </ConfirmPopover>
+      </CardContent>
     </Card>
   );
 }
 
 export default function AuroraCredentialsSection() {
+  const { showMessage } = useSnackbar();
   const [credentials, setCredentials] = useState<AuroraCredentialStatus[]>([]);
   const [unsyncedCounts, setUnsyncedCounts] = useState<UnsyncedCounts | null>(null);
   const [loading, setLoading] = useState(true);
@@ -173,7 +168,7 @@ export default function AuroraCredentialsSection() {
   const [selectedBoard, setSelectedBoard] = useState<'kilter' | 'tension'>('kilter');
   const [isSaving, setIsSaving] = useState(false);
   const [removingBoard, setRemovingBoard] = useState<string | null>(null);
-  const [form] = Form.useForm();
+  const [formValues, setFormValues] = useState({ username: '', password: '' });
 
   const fetchCredentials = async () => {
     try {
@@ -208,13 +203,13 @@ export default function AuroraCredentialsSection() {
 
   const handleAddClick = (boardType: 'kilter' | 'tension') => {
     setSelectedBoard(boardType);
-    form.resetFields();
+    setFormValues({ username: '', password: '' });
     setIsModalOpen(true);
   };
 
   const handleModalCancel = () => {
     setIsModalOpen(false);
-    form.resetFields();
+    setFormValues({ username: '', password: '' });
   };
 
   const handleSaveCredentials = async (values: { username: string; password: string }) => {
@@ -235,12 +230,12 @@ export default function AuroraCredentialsSection() {
         throw new Error(error.error || 'Failed to save credentials');
       }
 
-      message.success(`${selectedBoard.charAt(0).toUpperCase() + selectedBoard.slice(1)} account linked successfully`);
+      showMessage(`${selectedBoard.charAt(0).toUpperCase() + selectedBoard.slice(1)} account linked successfully`, 'success');
       setIsModalOpen(false);
-      form.resetFields();
+      setFormValues({ username: '', password: '' });
       await fetchCredentials();
     } catch (error) {
-      message.error(error instanceof Error ? error.message : 'Failed to link account');
+      showMessage(error instanceof Error ? error.message : 'Failed to link account', 'error');
     } finally {
       setIsSaving(false);
     }
@@ -260,10 +255,10 @@ export default function AuroraCredentialsSection() {
         throw new Error(error.error || 'Failed to remove credentials');
       }
 
-      message.success('Account unlinked successfully');
+      showMessage('Account unlinked successfully', 'success');
       await fetchCredentials();
     } catch (error) {
-      message.error(error instanceof Error ? error.message : 'Failed to unlink account');
+      showMessage(error instanceof Error ? error.message : 'Failed to unlink account', 'error');
     } finally {
       setRemovingBoard(null);
     }
@@ -276,9 +271,11 @@ export default function AuroraCredentialsSection() {
   if (loading) {
     return (
       <Card>
-        <div className={styles.loadingContainer}>
-          <Spin />
-        </div>
+        <CardContent>
+          <div className={styles.loadingContainer}>
+            <LoadingSpinner />
+          </div>
+        </CardContent>
       </Card>
     );
   }
@@ -286,67 +283,93 @@ export default function AuroraCredentialsSection() {
   return (
     <>
       <Card>
-        <Title level={5}>Board Accounts</Title>
-        <Text type="secondary" className={styles.sectionDescription}>
-          Link your Kilter and Tension board accounts to import your Aurora data to Boardsesh.
-          We'll automatically sync your logbook, ascents, and climbs FROM Aurora every 6 hours.
-          Data created in Boardsesh stays local and does not sync back to Aurora.
-        </Text>
+        <CardContent>
+          <Typography variant="h5">Board Accounts</Typography>
+          <Typography variant="body2" component="span" color="text.secondary" className={styles.sectionDescription}>
+            Link your Kilter and Tension board accounts to import your Aurora data to Boardsesh.
+            We'll automatically sync your logbook, ascents, and climbs FROM Aurora every 6 hours.
+            Data created in Boardsesh stays local and does not sync back to Aurora.
+          </Typography>
 
-        <Space orientation="vertical" size="middle" className={styles.cardsContainer}>
-          <BoardCredentialCard
-            boardType="kilter"
-            credential={getCredentialForBoard('kilter')}
-            unsyncedCounts={unsyncedCounts?.kilter ?? { ascents: 0, climbs: 0 }}
-            onAdd={() => handleAddClick('kilter')}
-            onRemove={() => handleRemove('kilter')}
-            isRemoving={removingBoard === 'kilter'}
-          />
-          <BoardCredentialCard
-            boardType="tension"
-            credential={getCredentialForBoard('tension')}
-            unsyncedCounts={unsyncedCounts?.tension ?? { ascents: 0, climbs: 0 }}
-            onAdd={() => handleAddClick('tension')}
-            onRemove={() => handleRemove('tension')}
-            isRemoving={removingBoard === 'tension'}
-          />
-        </Space>
+          <Stack spacing={2} className={styles.cardsContainer}>
+            <BoardCredentialCard
+              boardType="kilter"
+              credential={getCredentialForBoard('kilter')}
+              unsyncedCounts={unsyncedCounts?.kilter ?? { ascents: 0, climbs: 0 }}
+              onAdd={() => handleAddClick('kilter')}
+              onRemove={() => handleRemove('kilter')}
+              isRemoving={removingBoard === 'kilter'}
+            />
+            <BoardCredentialCard
+              boardType="tension"
+              credential={getCredentialForBoard('tension')}
+              unsyncedCounts={unsyncedCounts?.tension ?? { ascents: 0, climbs: 0 }}
+              onAdd={() => handleAddClick('tension')}
+              onRemove={() => handleRemove('tension')}
+              isRemoving={removingBoard === 'tension'}
+            />
+          </Stack>
+        </CardContent>
       </Card>
 
-      <Modal
-        title={`Link ${selectedBoard.charAt(0).toUpperCase() + selectedBoard.slice(1)} Account`}
+      <Dialog
         open={isModalOpen}
-        onCancel={handleModalCancel}
-        footer={null}
-        destroyOnClose
+        onClose={handleModalCancel}
+        maxWidth="sm"
+        fullWidth
       >
-        <Text type="secondary" className={styles.modalDescription}>
+        <DialogTitle>{`Link ${selectedBoard.charAt(0).toUpperCase() + selectedBoard.slice(1)} Account`}</DialogTitle>
+        <DialogContent>
+        <Typography variant="body2" component="span" color="text.secondary" className={styles.modalDescription}>
           Enter your {selectedBoard.charAt(0).toUpperCase() + selectedBoard.slice(1)} Board
           username and password to import your Aurora data.
           Your credentials are encrypted and securely stored. Data syncs every 6 hours.
-        </Text>
-        <Form form={form} layout="vertical" onFinish={handleSaveCredentials}>
-          <Form.Item
-            name="username"
+        </Typography>
+        <Box
+          component="form"
+          onSubmit={(e: React.FormEvent) => {
+            e.preventDefault();
+            const vals = formValues;
+            if (!vals.username || !vals.password) return;
+            handleSaveCredentials(vals);
+          }}
+          sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}
+        >
+          <TextField
             label="Username"
-            rules={[{ required: true, message: 'Please enter your username' }]}
-          >
-            <Input placeholder="Enter your username" />
-          </Form.Item>
+            placeholder="Enter your username"
+            variant="outlined"
+            size="small"
+            fullWidth
+            required
+            value={formValues.username}
+            onChange={(e) => setFormValues((prev) => ({ ...prev, username: e.target.value }))}
+          />
 
-          <Form.Item
-            name="password"
+          <TextField
             label="Password"
-            rules={[{ required: true, message: 'Please enter your password' }]}
-          >
-            <Input.Password placeholder="Enter your password" />
-          </Form.Item>
+            type="password"
+            placeholder="Enter your password"
+            variant="outlined"
+            size="small"
+            fullWidth
+            required
+            value={formValues.password}
+            onChange={(e) => setFormValues((prev) => ({ ...prev, password: e.target.value }))}
+          />
 
-          <Button type="primary" htmlType="submit" loading={isSaving} block>
+          <Button
+            variant="contained"
+            type="submit"
+            disabled={isSaving}
+            startIcon={isSaving ? <CircularProgress size={16} /> : undefined}
+            fullWidth
+          >
             {isSaving ? 'Linking...' : 'Link Account'}
           </Button>
-        </Form>
-      </Modal>
+        </Box>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

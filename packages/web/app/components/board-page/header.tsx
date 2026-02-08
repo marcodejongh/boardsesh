@@ -1,48 +1,22 @@
 'use client';
 import React, { useState } from 'react';
-import { Flex, Button } from 'antd';
-import { Header } from 'antd/es/layout/layout';
+import IconButton from '@mui/material/IconButton';
+import Box from '@mui/material/Box';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import SearchPill from '../search-drawer/search-pill';
 import SearchDropdown from '../search-drawer/search-dropdown';
 import { BoardDetails } from '@/app/lib/types';
-import { ExperimentOutlined } from '@ant-design/icons';
-import { themeTokens } from '@/app/theme/theme-config';
 
 import { constructClimbListWithSlugs, generateLayoutSlug, generateSizeSlug, generateSetSlug } from '@/app/lib/url-utils';
 import { useQueueContext } from '../graphql-queue';
-import { PlusOutlined, LeftOutlined } from '@ant-design/icons';
+import AddOutlined from '@mui/icons-material/AddOutlined';
+import ChevronLeftOutlined from '@mui/icons-material/ChevronLeftOutlined';
 import AngleSelector from './angle-selector';
 import styles from './header.module.css';
 import Link from 'next/link';
-import { useCreateClimbContext } from '../create-climb/create-climb-context';
 import UserDrawer from '../user-drawer/user-drawer';
 
 type PageMode = 'list' | 'view' | 'play' | 'create' | 'other';
-
-// Separate component for create mode buttons to avoid unnecessary context subscription on non-create pages
-function CreateModeButtons() {
-  const createClimbContext = useCreateClimbContext();
-
-  if (!createClimbContext) return null;
-
-  return (
-    <>
-      <Button onClick={createClimbContext.onCancel} disabled={createClimbContext.isPublishing}>
-        Cancel
-      </Button>
-      <ExperimentOutlined style={{ color: themeTokens.colors.primary }} title="Beta Feature" />
-      <Button
-        type="primary"
-        onClick={createClimbContext.onPublish}
-        loading={createClimbContext.isPublishing}
-        disabled={!createClimbContext.canPublish || createClimbContext.isPublishing}
-      >
-        {createClimbContext.isPublishing ? 'Publishing...' : 'Publish'}
-      </Button>
-    </>
-  );
-}
 
 type BoardSeshHeaderProps = {
   boardDetails: BoardDetails;
@@ -68,6 +42,11 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
   const router = useRouter();
   const [searchDropdownOpen, setSearchDropdownOpen] = useState(false);
 
+  // Create mode has its own header in the form — hide the global header
+  if (pageMode === 'create') {
+    return null;
+  }
+
   // Build back to list URL for play/view pages
   const getBackToListUrl = () => {
     const { board_name, layout_name, size_name, size_description, set_names } = boardDetails;
@@ -92,9 +71,10 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
     : null;
 
   return (
-    <Header
+    <Box
+      component="header"
       className={`${styles.header} header-shadow`}
-      style={{
+      sx={{
         background: 'var(--semantic-surface)',
         height: '8dvh',
         minHeight: 48,
@@ -108,57 +88,50 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
         zIndex: 10,
       }}
     >
-      <Flex justify="space-between" align="center" style={{ width: '100%' }} gap={8}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '8px' }}>
         {/* Left section: Avatar + Back button */}
-        <Flex align="center" gap={4} style={{ flexShrink: 0 }}>
-          {pageMode !== 'create' && (
-            <UserDrawer boardDetails={boardDetails} angle={angle} />
-          )}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+          <UserDrawer boardDetails={boardDetails} angle={angle} />
 
           {/* Play page: Show back button next to logo (mobile only) */}
           {pageMode === 'play' && (
             <div className={styles.mobileOnly}>
-              <Button
-                icon={<LeftOutlined />}
-                type="text"
+              <IconButton
                 aria-label="Back to climb list"
                 onClick={() => router.push(getBackToListUrl())}
-              />
+              >
+                <ChevronLeftOutlined />
+              </IconButton>
             </div>
           )}
-        </Flex>
+        </Box>
 
         {/* Center Section - Content varies by page mode */}
-        <Flex justify="center" gap={2} style={{ flex: 1 }} align="center">
+        <Box sx={{ display: 'flex', justifyContent: 'center', gap: '2px', flex: 1, alignItems: 'center' }}>
           {/* List page: Show search pill (mobile only) */}
           {pageMode === 'list' && (
             <div className={styles.mobileOnly} style={{ flex: 1 }}>
               <SearchPill onClick={() => setSearchDropdownOpen(true)} />
             </div>
           )}
-        </Flex>
+        </Box>
 
         {/* Right Section */}
-        <Flex gap={4} align="center">
-          {/* Create mode: Show cancel and publish buttons */}
-          {pageMode === 'create' ? (
-            <CreateModeButtons />
-          ) : (
-            <>
-              {angle !== undefined && <AngleSelector boardName={boardDetails.board_name} boardDetails={boardDetails} currentAngle={angle} currentClimb={currentClimb} />}
+        <Box sx={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+          {angle !== undefined && <AngleSelector boardName={boardDetails.board_name} boardDetails={boardDetails} currentAngle={angle} currentClimb={currentClimb} />}
 
-              {/* Desktop: show Create Climb button */}
-              {createClimbUrl && (
-                <div className={styles.desktopOnly}>
-                  <Link href={createClimbUrl}>
-                    <Button icon={<PlusOutlined />} type="text" title="Create new climb" />
-                  </Link>
-                </div>
-              )}
-            </>
+          {/* Desktop: show Create Climb button */}
+          {createClimbUrl && (
+            <div className={styles.desktopOnly}>
+              <Link href={createClimbUrl}>
+                <IconButton title="Create new climb">
+                  <AddOutlined />
+                </IconButton>
+              </Link>
+            </div>
           )}
-        </Flex>
-      </Flex>
+        </Box>
+      </Box>
 
       {/* Search dropdown drawer (mobile) */}
       <SearchDropdown
@@ -166,6 +139,6 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
         open={searchDropdownOpen}
         onClose={() => setSearchDropdownOpen(false)}
       />
-    </Header>
+    </Box>
   );
 }

@@ -1,21 +1,45 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Layout, Card, Typography, Button, Space, Alert, Input, Form, message } from 'antd';
-import { MailOutlined, CloseCircleOutlined } from '@ant-design/icons';
+import MuiAlert from '@mui/material/Alert';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import TextField from '@mui/material/TextField';
+import InputAdornment from '@mui/material/InputAdornment';
+import CircularProgress from '@mui/material/CircularProgress';
+import Box from '@mui/material/Box';
+import Stack from '@mui/material/Stack';
+import MailOutlined from '@mui/icons-material/MailOutlined';
+import CancelOutlined from '@mui/icons-material/CancelOutlined';
 import { useSearchParams } from 'next/navigation';
 import Logo from '@/app/components/brand/logo';
 import BackButton from '@/app/components/back-button';
+import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 import { themeTokens } from '@/app/theme/theme-config';
 
-const { Content, Header } = Layout;
-const { Title, Text, Paragraph } = Typography;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+type EmailErrors = { email?: string };
+
+function validateEmail(email: string): EmailErrors {
+  const errors: EmailErrors = {};
+  if (!email) {
+    errors.email = 'Please enter your email';
+  } else if (!EMAIL_REGEX.test(email)) {
+    errors.email = 'Please enter a valid email';
+  }
+  return errors;
+}
 
 export default function VerifyRequestContent() {
   const searchParams = useSearchParams();
   const error = searchParams.get('error');
   const [resendLoading, setResendLoading] = useState(false);
-  const [form] = Form.useForm();
+  const [email, setEmail] = useState('');
+  const [errors, setErrors] = useState<EmailErrors>({});
+  const { showMessage } = useSnackbar();
 
   const getErrorMessage = () => {
     switch (error) {
@@ -33,22 +57,25 @@ export default function VerifyRequestContent() {
   };
 
   const handleResend = async () => {
+    const validationErrors = validateEmail(email);
+    setErrors(validationErrors);
+    if (Object.keys(validationErrors).length > 0) return;
+
     try {
-      const values = await form.validateFields();
       setResendLoading(true);
 
       const response = await fetch('/api/auth/resend-verification', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: values.email }),
+        body: JSON.stringify({ email }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        message.success('Verification email sent! Check your inbox.');
+        showMessage('Verification email sent! Check your inbox.', 'success');
       } else {
-        message.error(data.error || 'Failed to send verification email');
+        showMessage(data.error || 'Failed to send verification email', 'error');
       }
     } catch (err) {
       console.error('Resend error:', err);
@@ -60,26 +87,29 @@ export default function VerifyRequestContent() {
   const errorMessage = getErrorMessage();
 
   return (
-    <Layout style={{ minHeight: '100vh', background: themeTokens.semantic.background }}>
-      <Header
-        style={{
+    <Box sx={{ minHeight: '100vh', background: themeTokens.semantic.background }}>
+      <Box
+        component="header"
+        sx={{
           background: themeTokens.semantic.surface,
           padding: '0 16px',
           display: 'flex',
           alignItems: 'center',
-          gap: 16,
+          gap: 2,
           boxShadow: themeTokens.shadows.xs,
+          height: 64,
         }}
       >
         <BackButton />
         <Logo size="sm" showText={false} />
-        <Title level={4} style={{ margin: 0, flex: 1 }}>
+        <Typography variant="h4" sx={{ margin: 0, flex: 1 }}>
           Email Verification
-        </Title>
-      </Header>
+        </Typography>
+      </Box>
 
-      <Content
-        style={{
+      <Box
+        component="main"
+        sx={{
           padding: '24px',
           display: 'flex',
           justifyContent: 'center',
@@ -87,55 +117,71 @@ export default function VerifyRequestContent() {
           paddingTop: '48px',
         }}
       >
-        <Card style={{ width: '100%', maxWidth: 400, textAlign: 'center' }}>
-          <Space orientation="vertical" size="large" style={{ width: '100%' }}>
-            {errorMessage ? (
-              <>
-                <CloseCircleOutlined style={{ fontSize: 48, color: themeTokens.colors.error }} />
-                <Alert type="error" title={errorMessage} showIcon />
-              </>
-            ) : (
-              <>
-                <MailOutlined style={{ fontSize: 48, color: themeTokens.colors.primary }} />
-                <Title level={3}>Check your email</Title>
-                <Paragraph type="secondary">
-                  We sent you a verification link. Click the link in your email to verify your account.
-                </Paragraph>
-              </>
-            )}
+        <Card sx={{ width: '100%', maxWidth: 400, textAlign: 'center' }}>
+          <CardContent>
+            <Stack spacing={3} sx={{ width: '100%' }}>
+              {errorMessage ? (
+                <>
+                  <CancelOutlined sx={{ fontSize: 48, color: themeTokens.colors.error, mx: 'auto' }} />
+                  <MuiAlert severity="error">{errorMessage}</MuiAlert>
+                </>
+              ) : (
+                <>
+                  <MailOutlined sx={{ fontSize: 48, color: themeTokens.colors.primary, mx: 'auto' }} />
+                  <Typography variant="h3">Check your email</Typography>
+                  <Typography variant="body1" component="p" color="text.secondary">
+                    We sent you a verification link. Click the link in your email to verify your account.
+                  </Typography>
+                </>
+              )}
 
-            <Form form={form} layout="vertical" onFinish={handleResend}>
-              <Form.Item
-                name="email"
-                rules={[
-                  { required: true, message: 'Please enter your email' },
-                  { type: 'email', message: 'Please enter a valid email' },
-                ]}
+              <Box
+                component="form"
+                onSubmit={(e: React.FormEvent) => { e.preventDefault(); handleResend(); }}
+                sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}
               >
-                <Input
-                  prefix={<MailOutlined />}
+                <TextField
                   placeholder="Enter your email to resend"
-                  size="large"
+                  variant="outlined"
+                  size="medium"
+                  fullWidth
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (errors.email) setErrors({});
+                  }}
+                  error={!!errors.email}
+                  helperText={errors.email}
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <MailOutlined />
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
                 />
-              </Form.Item>
 
-              <Button
-                type="primary"
-                htmlType="submit"
-                loading={resendLoading}
-                block
-                size="large"
-              >
-                Resend Verification Email
+                <Button
+                  variant="contained"
+                  type="submit"
+                  disabled={resendLoading}
+                  startIcon={resendLoading ? <CircularProgress size={16} /> : undefined}
+                  fullWidth
+                  size="large"
+                >
+                  Resend Verification Email
+                </Button>
+              </Box>
+
+              <Button variant="text" href="/auth/login">
+                Back to Login
               </Button>
-            </Form>
-
-            <Button type="link" href="/auth/login">
-              Back to Login
-            </Button>
-          </Space>
+            </Stack>
+          </CardContent>
         </Card>
-      </Content>
-    </Layout>
+      </Box>
+    </Box>
   );
 }

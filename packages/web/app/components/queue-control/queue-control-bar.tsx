@@ -1,8 +1,15 @@
 'use client';
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { Button, Row, Col, Card, Space, Popconfirm } from 'antd';
+import MuiButton from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
+import MuiCard from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import Box from '@mui/material/Box';
+import Stack from '@mui/material/Stack';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
-import { SyncOutlined, DeleteOutlined, ExpandOutlined } from '@ant-design/icons';
+import SyncOutlined from '@mui/icons-material/SyncOutlined';
+import DeleteOutlined from '@mui/icons-material/DeleteOutlined';
+import OpenInFullOutlined from '@mui/icons-material/OpenInFullOutlined';
 import { track } from '@vercel/analytics';
 import { useQueueContext } from '../graphql-queue';
 import NextClimbButton from './next-climb-button';
@@ -22,6 +29,7 @@ import { ShareBoardButton } from '../board-page/share-button';
 import { useCardSwipeNavigation, EXIT_DURATION, SNAP_BACK_DURATION, ENTER_ANIMATION_DURATION } from '@/app/hooks/use-card-swipe-navigation';
 import PlayViewDrawer from '../play-view/play-view-drawer';
 import { getGradeTintColor } from '@/app/lib/grade-colors';
+import { ConfirmPopover } from '@/app/components/ui/confirm-popover';
 import styles from './queue-control-bar.module.css';
 
 export type ActiveDrawer = 'none' | 'play' | 'queue';
@@ -264,15 +272,8 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
   return (
     <div id="onboarding-queue-bar" className={`queue-bar-shadow ${styles.queueBar}`} data-testid="queue-control-bar">
       {/* Main Control Bar */}
-      <Card
-        variant="borderless"
-        styles={{
-          body: {
-            padding: 0,
-          },
-        }}
-        className={styles.card}
-      >
+      <MuiCard variant="outlined" className={styles.card} sx={{ border: 'none' }}>
+        <CardContent sx={{ p: 0, '&:last-child': { pb: 0 } }}>
         {/* Swipe container - captures swipe gestures, does NOT translate */}
         <div className={styles.swipeWrapper}>
           <div
@@ -283,9 +284,9 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
               backgroundColor: gradeTintColor ?? themeTokens.semantic.surface,
             }}
           >
-            <Row justify="space-between" align="middle" className={styles.row}>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center' }} className={styles.row}>
               {/* Left section: Thumbnail and climb info */}
-              <Col flex="auto" className={styles.climbInfoCol}>
+              <Box sx={{ flex: 'auto' }} className={styles.climbInfoCol}>
                 <div className={styles.climbInfoInner} style={{ gap: themeTokens.spacing[2] }}>
                   {/* Board preview — STATIC, with crossfade on enter */}
                   <div className={`${styles.boardPreviewContainer} ${enterDirection ? styles.thumbnailEnter : ''}`}>
@@ -334,15 +335,15 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
                     )}
                   </div>
                 </div>
-              </Col>
+              </Box>
 
               {/* Button cluster — STATIC */}
-              <Col flex="none" style={{ marginLeft: themeTokens.spacing[2] }}>
-                <Space>
+              <Box sx={{ flex: 'none', marginLeft: `${themeTokens.spacing[2]}px` }}>
+                <Stack direction="row" spacing={1}>
                   {/* Mirror button - desktop only */}
                   {boardDetails.supportsMirroring ? (
                     <span className={styles.desktopOnly}>
-                      <Button
+                      <IconButton
                         id="button-mirror"
                         onClick={() => {
                           mirrorClimb();
@@ -351,14 +352,15 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
                             mirrored: !currentClimb?.mirrored,
                           });
                         }}
-                        type={currentClimb?.mirrored ? 'primary' : 'text'}
-                        style={
+                        color={currentClimb?.mirrored ? 'primary' : 'default'}
+                        sx={
                           currentClimb?.mirrored
-                            ? { backgroundColor: themeTokens.colors.purple, borderColor: themeTokens.colors.purple }
+                            ? { backgroundColor: themeTokens.colors.purple, borderColor: themeTokens.colors.purple, color: 'common.white', '&:hover': { backgroundColor: themeTokens.colors.purple } }
                             : undefined
                         }
-                        icon={<SyncOutlined />}
-                      />
+                      >
+                        <SyncOutlined />
+                      </IconButton>
                     </span>
                   ) : null}
                   {/* Play link - desktop only */}
@@ -372,27 +374,28 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
                           });
                         }}
                       >
-                        <Button type="text" icon={<ExpandOutlined />} aria-label="Enter play mode" />
+                        <IconButton aria-label="Enter play mode"><OpenInFullOutlined /></IconButton>
                       </Link>
                     </span>
                   )}
                   {/* Navigation buttons - desktop only */}
                   <span className={styles.navButtons}>
-                    <Space>
+                    <Stack direction="row" spacing={1}>
                       <PreviousClimbButton navigate={isViewPage || isPlayPage} boardDetails={boardDetails} />
                       <NextClimbButton navigate={isViewPage || isPlayPage} boardDetails={boardDetails} />
-                    </Space>
+                    </Stack>
                   </span>
                   {/* Party button */}
                   <ShareBoardButton buttonType="text" />
                   {/* Tick button */}
                   <TickButton currentClimb={currentClimb} angle={angle} boardDetails={boardDetails} buttonType="text" />
-                </Space>
-              </Col>
-            </Row>
+                </Stack>
+              </Box>
+            </Box>
           </div>
         </div>
-      </Card>
+        </CardContent>
+      </MuiCard>
 
       {/* Drawer for showing the queue */}
       <SwipeableDrawer
@@ -400,21 +403,21 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
         placement="bottom"
         open={activeDrawer === 'queue'}
         onClose={() => setActiveDrawer('none')}
-        afterOpenChange={handleDrawerOpenChange}
+        onTransitionEnd={handleDrawerOpenChange}
         styles={{ wrapper: { height: '70%' }, body: { padding: 0 } }}
         extra={
           queue.length > 0 && (
-            <Popconfirm
+            <ConfirmPopover
               title="Clear queue"
               description="Are you sure you want to clear all items from the queue?"
               onConfirm={handleClearQueue}
               okText="Clear"
               cancelText="Cancel"
             >
-              <Button type="text" icon={<DeleteOutlined />} style={{ color: themeTokens.neutral[400] }}>
+              <MuiButton variant="text" startIcon={<DeleteOutlined />} sx={{ color: themeTokens.neutral[400] }}>
                 Clear
-              </Button>
-            </Popconfirm>
+              </MuiButton>
+            </ConfirmPopover>
           )
         }
       >

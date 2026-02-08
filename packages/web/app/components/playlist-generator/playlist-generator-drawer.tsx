@@ -1,9 +1,12 @@
 'use client';
 
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { Button, Space, Typography, message, Spin, Alert } from 'antd';
+import CircularProgress from '@mui/material/CircularProgress';
+import { useSnackbar } from '@/app/components/providers/snackbar-provider';
+import MuiButton from '@mui/material/Button';
+import Typography from '@mui/material/Typography';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
-import { ArrowLeftOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import { ArrowBackOutlined, ElectricBoltOutlined } from '@mui/icons-material';
 import { BoardDetails, Climb } from '@/app/lib/types';
 import { TENSION_KILTER_GRADES } from '@/app/lib/board-data';
 import { executeGraphQL } from '@/app/lib/graphql/client';
@@ -23,7 +26,6 @@ import { generateWorkoutPlan, groupSlotsBySection, getGradeName } from './genera
 import { themeTokens } from '@/app/theme/theme-config';
 import styles from './playlist-generator-drawer.module.css';
 
-const { Title, Text } = Typography;
 
 interface PlaylistGeneratorDrawerProps {
   open: boolean;
@@ -46,6 +48,7 @@ const PlaylistGeneratorDrawer: React.FC<PlaylistGeneratorDrawerProps> = ({
 }) => {
   const { token } = useWsAuthToken();
   const { isAuthenticated } = useBoardProvider();
+  const { showMessage } = useSnackbar();
 
   // Default target grade (middle of range)
   const defaultTargetGrade = 18; // 6b/V4
@@ -144,7 +147,7 @@ const PlaylistGeneratorDrawer: React.FC<PlaylistGeneratorDrawerProps> = ({
   // Generate the playlist
   const handleGenerate = useCallback(async () => {
     if (!options || plannedSlots.length === 0) {
-      message.error('No climbs to generate');
+      showMessage('No climbs to generate', 'error');
       return;
     }
 
@@ -227,13 +230,14 @@ const PlaylistGeneratorDrawer: React.FC<PlaylistGeneratorDrawerProps> = ({
     setGenerating(false);
 
     if (failedSlots.length === 0) {
-      message.success(`Added ${plannedSlots.length} climbs to playlist`);
+      showMessage(`Added ${plannedSlots.length} climbs to playlist`, 'success');
     } else if (failedSlots.length < plannedSlots.length) {
-      message.warning(
-        `Added ${plannedSlots.length - failedSlots.length} climbs. ${failedSlots.length} slots couldn't be filled.`
+      showMessage(
+        `Added ${plannedSlots.length - failedSlots.length} climbs. ${failedSlots.length} slots couldn't be filled.`,
+        'warning'
       );
     } else {
-      message.error('Failed to generate playlist. No suitable climbs found.');
+      showMessage('Failed to generate playlist. No suitable climbs found.', 'error');
     }
 
     onSuccess?.();
@@ -265,10 +269,10 @@ const PlaylistGeneratorDrawer: React.FC<PlaylistGeneratorDrawerProps> = ({
     if (drawerState === 'generating') {
       return (
         <div className={styles.generatingContainer}>
-          <Spin size="large" />
-          <Text className={styles.generatingText}>
+          <CircularProgress size={48} />
+          <Typography variant="body2" component="span" className={styles.generatingText}>
             Adding climbs... {progress.current} / {progress.total}
-          </Text>
+          </Typography>
         </div>
       );
     }
@@ -287,18 +291,18 @@ const PlaylistGeneratorDrawer: React.FC<PlaylistGeneratorDrawerProps> = ({
           <div className={styles.summarySection}>
             {groupedSlots.map((group) => (
               <div key={group.section} className={styles.summaryRow}>
-                <Text type="secondary">{group.label}</Text>
-                <Text>
+                <Typography variant="body2" component="span" color="text.secondary">{group.label}</Typography>
+                <Typography variant="body2" component="span">
                   {group.slots.length} climb{group.slots.length !== 1 ? 's' : ''}
                   {' '}({getGradeName(group.slots[0].grade)}
                   {group.slots[0].grade !== group.slots[group.slots.length - 1].grade &&
                     ` - ${getGradeName(group.slots[group.slots.length - 1].grade)}`})
-                </Text>
+                </Typography>
               </div>
             ))}
             <div className={styles.totalRow}>
-              <Text strong>Total</Text>
-              <Text strong>{plannedSlots.length} climbs</Text>
+              <Typography variant="body2" component="span" fontWeight={600}>Total</Typography>
+              <Typography variant="body2" component="span" fontWeight={600}>{plannedSlots.length} climbs</Typography>
             </div>
           </div>
 
@@ -324,9 +328,9 @@ const PlaylistGeneratorDrawer: React.FC<PlaylistGeneratorDrawerProps> = ({
       title={
         <div className={styles.drawerHeader}>
           {drawerState === 'configure' && (
-            <Button
-              type="text"
-              icon={<ArrowLeftOutlined />}
+            <MuiButton
+              variant="text"
+              startIcon={<ArrowBackOutlined />}
               onClick={handleBack}
               className={styles.backButton}
             />
@@ -338,8 +342,8 @@ const PlaylistGeneratorDrawer: React.FC<PlaylistGeneratorDrawerProps> = ({
       open={open}
       onClose={generating ? undefined : onClose}
       placement="bottom"
-      closable={!generating}
-      maskClosable={!generating}
+      showCloseButton={!generating}
+      disableBackdropClick={generating}
       styles={{
         wrapper: { height: '85vh' },
         header: {
@@ -352,14 +356,14 @@ const PlaylistGeneratorDrawer: React.FC<PlaylistGeneratorDrawerProps> = ({
       }}
       extra={
         drawerState === 'configure' && !generating ? (
-          <Button
-            type="primary"
-            icon={<ThunderboltOutlined />}
+          <MuiButton
+            variant="contained"
+            startIcon={<ElectricBoltOutlined />}
             onClick={handleGenerate}
             disabled={plannedSlots.length === 0}
           >
             Generate
-          </Button>
+          </MuiButton>
         ) : null
       }
     >

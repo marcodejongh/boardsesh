@@ -1,8 +1,15 @@
 'use client';
 import React, { useEffect, useState, useCallback, useRef, useImperativeHandle, forwardRef } from 'react';
-import { Divider, Row, Col, Button, Flex, Space, Typography, Skeleton } from 'antd';
+import Skeleton from '@mui/material/Skeleton';
+import Button from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
+import Typography from '@mui/material/Typography';
+import Box from '@mui/material/Box';
+import Stack from '@mui/material/Stack';
+import MuiDivider from '@mui/material/Divider';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
-import { PlusOutlined, LoginOutlined } from '@ant-design/icons';
+import AddOutlined from '@mui/icons-material/AddOutlined';
+import LoginOutlined from '@mui/icons-material/LoginOutlined';
 import { useQueueContext } from '../graphql-queue';
 import { Climb, BoardDetails } from '@/app/lib/types';
 import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
@@ -18,7 +25,6 @@ import { LogAscentDrawer } from '../logbook/log-ascent-drawer';
 import AuthModal from '../auth/auth-modal';
 import styles from './queue-list.module.css';
 
-const { Text, Paragraph } = Typography;
 
 export type QueueListHandle = {
   scrollToCurrentClimb: () => void;
@@ -31,9 +37,10 @@ type QueueListProps = {
   showHistory?: boolean;
   selectedItems?: Set<string>;
   onToggleSelect?: (uuid: string) => void;
+  scrollContainer?: HTMLElement | null;
 };
 
-const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, onClimbNavigate, isEditMode = false, showHistory = false, selectedItems, onToggleSelect }, ref) => {
+const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, onClimbNavigate, isEditMode = false, showHistory = false, selectedItems, onToggleSelect, scrollContainer }, ref) => {
   const {
     viewOnlyMode,
     currentClimbQueueItem,
@@ -134,14 +141,14 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
   );
 
   // Set up Intersection Observer for infinite scroll
-  // Using root: null (viewport) is more robust than querying for specific DOM elements
-  // and works correctly with any scrollable ancestor
+  // Uses scrollContainerRef as root when provided (for nested scroll containers like drawers/sidebars),
+  // falls back to null (viewport) for top-level scrolling
   useEffect(() => {
     const element = loadMoreRef.current;
     if (!element || viewOnlyMode) return;
 
     const observer = new IntersectionObserver(handleObserver, {
-      root: null,
+      root: scrollContainer ?? null,
       rootMargin: '100px',
       threshold: 0,
     });
@@ -151,7 +158,7 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
     return () => {
       observer.disconnect();
     };
-  }, [handleObserver, viewOnlyMode]);
+  }, [handleObserver, viewOnlyMode, scrollContainer]);
 
   // Find the index of the current climb in the queue
   const currentIndex = queue.findIndex((item) => item.uuid === currentClimbQueueItem?.uuid);
@@ -168,7 +175,7 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
 
   return (
     <>
-      <Flex vertical>
+      <Box sx={{ display: 'flex', flexDirection: 'column' }}>
         {/* History items (oldest to newest at top) - only shown when showHistory is true */}
         {showHistory && historyItems.length > 0 && (
           <>
@@ -199,7 +206,7 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
                 </div>
               );
             })}
-            <Divider className={styles.historyDivider} />
+            <MuiDivider className={styles.historyDivider} />
           </>
         )}
 
@@ -252,11 +259,11 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
             </div>
           );
         })}
-      </Flex>
+      </Box>
       {!viewOnlyMode && (
         <>
-          <Divider>Suggested Items</Divider>
-          <Flex vertical>
+          <MuiDivider>Suggested Items</MuiDivider>
+          <Box sx={{ display: 'flex', flexDirection: 'column' }}>
             {suggestedClimbs.map((climb: Climb) => (
               <div
                 key={`suggested-${climb.uuid}`}
@@ -267,25 +274,25 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
                   borderBottom: `1px solid ${themeTokens.neutral[200]}`,
                 }}
               >
-                <Row style={{ width: '100%' }} gutter={[8, 8]} align="middle" wrap={false}>
-                  <Col xs={6} sm={5}>
+                <Box sx={{ display: 'flex', flexWrap: 'nowrap', gap: '8px 8px', width: '100%', alignItems: 'center' }}>
+                  <Box sx={{ width: { xs: '25%', sm: '20.83%' } }}>
                     <ClimbThumbnail
                       boardDetails={boardDetails}
                       currentClimb={climb}
                       enableNavigation={true}
                       onNavigate={onClimbNavigate}
                     />
-                  </Col>
-                  <Col xs={15} sm={17}>
+                  </Box>
+                  <Box sx={{ width: { xs: '62.5%', sm: '70.83%' } }}>
                     <ClimbTitle climb={climb} showAngle centered />
-                  </Col>
-                  <Col xs={3} sm={2}>
-                    <Button type="default" icon={<PlusOutlined />} onClick={() => addToQueue(climb)} />
-                  </Col>
-                </Row>
+                  </Box>
+                  <Box sx={{ width: { xs: '12.5%', sm: '8.33%' } }}>
+                    <IconButton onClick={() => addToQueue(climb)}><AddOutlined /></IconButton>
+                  </Box>
+                </Box>
               </div>
             ))}
-          </Flex>
+          </Box>
           {/* Sentinel element for Intersection Observer - only render when needed */}
           {/* Include isFetchingClimbs to show skeleton during initial page load */}
           {(suggestedClimbs.length > 0 || isFetchingClimbs || isFetchingNextPage || hasMoreResults) && (
@@ -294,21 +301,21 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
               style={{ minHeight: themeTokens.spacing[5], marginTop: themeTokens.spacing[2] }}
             >
               {(isFetchingClimbs || isFetchingNextPage) && (
-                <Flex vertical gap={themeTokens.spacing[2]} style={{ padding: themeTokens.spacing[2] }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: `${themeTokens.spacing[2]}px`, padding: `${themeTokens.spacing[2]}px` }}>
                   {[1, 2, 3].map((i) => (
-                    <Row key={i} gutter={[8, 8]} align="middle" wrap={false}>
-                      <Col xs={6} sm={5}>
-                        <Skeleton.Image active style={{ width: '100%', height: 60 }} />
-                      </Col>
-                      <Col xs={15} sm={17}>
-                        <Skeleton active paragraph={{ rows: 1 }} title={false} />
-                      </Col>
-                      <Col xs={3} sm={2}>
-                        <Skeleton.Button active size="small" />
-                      </Col>
-                    </Row>
+                    <Box key={i} sx={{ display: 'flex', flexWrap: 'nowrap', gap: '8px 8px', alignItems: 'center' }}>
+                      <Box sx={{ width: { xs: '25%', sm: '20.83%' } }}>
+                        <Skeleton variant="rectangular" width="100%" height={60} animation="wave" />
+                      </Box>
+                      <Box sx={{ width: { xs: '62.5%', sm: '70.83%' } }}>
+                        <Skeleton variant="text" animation="wave" />
+                      </Box>
+                      <Box sx={{ width: { xs: '12.5%', sm: '8.33%' } }}>
+                        <Skeleton variant="rectangular" width={32} height={32} animation="wave" />
+                      </Box>
+                    </Box>
                   ))}
-                </Flex>
+                </Box>
               )}
               {!hasMoreResults && !isFetchingClimbs && suggestedClimbs.length > 0 && (
                 <div
@@ -343,15 +350,15 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
           swipeRegion="body"
           styles={{ wrapper: { height: '50%' } }}
         >
-          <Space direction="vertical" size="large" style={{ width: '100%', textAlign: 'center', padding: `${themeTokens.spacing[6]}px 0` }}>
-            <Text strong style={{ fontSize: themeTokens.typography.fontSize.base }}>Sign in to record ticks</Text>
-            <Paragraph type="secondary">
+          <Stack spacing={3} sx={{ width: '100%', textAlign: 'center', padding: `${themeTokens.spacing[6]}px 0` }}>
+            <Typography variant="body2" component="span" fontWeight={600} sx={{ fontSize: themeTokens.typography.fontSize.base }}>Sign in to record ticks</Typography>
+            <Typography variant="body1" component="p" color="text.secondary">
               Create a Boardsesh account to log your climbs and track your progress.
-            </Paragraph>
-            <Button type="primary" icon={<LoginOutlined />} onClick={() => setShowAuthModal(true)} block>
+            </Typography>
+            <Button variant="contained" startIcon={<LoginOutlined />} onClick={() => setShowAuthModal(true)} fullWidth>
               Sign In
             </Button>
-          </Space>
+          </Stack>
         </SwipeableDrawer>
       )}
 

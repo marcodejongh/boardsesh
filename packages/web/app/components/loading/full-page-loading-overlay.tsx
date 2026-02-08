@@ -1,9 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Spin, Typography } from 'antd';
-
-const { Text } = Typography;
+import CircularProgress from '@mui/material/CircularProgress';
+import Typography from '@mui/material/Typography';
 
 const loadingMessages = [
   "Setting up your board...",
@@ -56,8 +55,10 @@ const FullPageLoadingOverlay: React.FC<FullPageLoadingOverlayProps> = ({ isVisib
         gap: '24px',
       }}
     >
-      <Spin size="large" />
-      <Text
+      <CircularProgress size={48} />
+      <Typography
+        variant="body2"
+        component="span"
         style={{
           color: 'white',
           fontSize: '16px',
@@ -68,7 +69,7 @@ const FullPageLoadingOverlay: React.FC<FullPageLoadingOverlayProps> = ({ isVisib
         }}
       >
         {currentMessage}
-      </Text>
+      </Typography>
     </div>
   );
 };

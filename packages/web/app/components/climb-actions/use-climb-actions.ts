@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { message } from 'antd';
+import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 import { track } from '@vercel/analytics';
 import { useQueueContext } from '../graphql-queue';
 import { useFavorite } from './use-favorite';
@@ -32,6 +32,7 @@ export function useClimbActions({
 }: UseClimbActionsOptions): UseClimbActionsReturn {
   const router = useRouter();
   const { addToQueue, queue, mirrorClimb } = useQueueContext();
+  const { showMessage } = useSnackbar();
 
   const [recentlyAddedToQueue, setRecentlyAddedToQueue] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -216,7 +217,7 @@ export function useClimbActions({
         });
       } else {
         await navigator.clipboard.writeText(shareUrl);
-        message.success('Link copied to clipboard!');
+        showMessage('Link copied to clipboard!', 'success');
         track('Climb Shared', {
           boardName: boardDetails.board_name,
           climbUuid: climb.uuid,
@@ -230,9 +231,9 @@ export function useClimbActions({
         // Fallback to clipboard
         try {
           await navigator.clipboard.writeText(shareUrl);
-          message.success('Link copied to clipboard!');
+          showMessage('Link copied to clipboard!', 'success');
         } catch {
-          message.error('Failed to share');
+          showMessage('Failed to share', 'error');
         }
       }
     }

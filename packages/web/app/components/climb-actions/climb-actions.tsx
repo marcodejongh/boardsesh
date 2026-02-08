@@ -1,9 +1,14 @@
 'use client';
 
-import React, { useMemo } from 'react';
-import { Space, Dropdown, Button, Flex } from 'antd';
-import { MoreOutlined } from '@ant-design/icons';
-import type { MenuProps } from 'antd';
+import React, { useMemo, useState } from 'react';
+import IconButton from '@mui/material/IconButton';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
+import Box from '@mui/material/Box';
+import Stack from '@mui/material/Stack';
+import MoreVertOutlined from '@mui/icons-material/MoreVertOutlined';
 import {
   ClimbActionsProps,
   ClimbActionType,
@@ -28,6 +33,15 @@ import {
 interface OpenInAppActionProps extends ClimbActionProps {
   auroraAppUrl?: string;
 }
+
+// Local type for menu items used in dropdown mode
+type ActionMenuItemType = {
+  key: string;
+  label: React.ReactNode;
+  icon?: React.ReactNode;
+  onClick?: () => void;
+  danger?: boolean;
+};
 
 // Map action types to their handler functions
 const ACTION_FUNCTIONS: Record<
@@ -131,7 +145,7 @@ export function ClimbActions({
   // Button mode - render each action as a component inside Space
   if (viewMode === 'button' || viewMode === 'compact') {
     return (
-      <Space wrap className={className}>
+      <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }} className={className}>
         {actionsToShow.map((actionType) => {
           const Renderer = ACTION_RENDERERS[actionType];
           if (!Renderer) return null;
@@ -143,14 +157,14 @@ export function ClimbActions({
             />
           );
         })}
-      </Space>
+      </Stack>
     );
   }
 
   // List mode - render each action as a full-width row (for drawer menus)
   if (viewMode === 'list') {
     return (
-      <Flex vertical className={className}>
+      <Box sx={{ display: 'flex', flexDirection: 'column' }} className={className}>
         {actionsToShow.map((actionType) => {
           const Renderer = ACTION_RENDERERS[actionType];
           if (!Renderer) return null;
@@ -162,7 +176,7 @@ export function ClimbActions({
             />
           );
         })}
-      </Flex>
+      </Box>
     );
   }
 
@@ -197,7 +211,16 @@ function DropdownActions({
   onActionComplete?: (actionType: ClimbActionType) => void;
 }) {
   // Collect menu items from all actions
-  const [menuItems, setMenuItems] = React.useState<MenuProps['items']>([]);
+  const [menuItems, setMenuItems] = React.useState<ActionMenuItemType[]>([]);
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+
+  const handleOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
 
   // Create a stable callback for collecting menu items
   const menuItemsRef = React.useRef<Map<string, ClimbActionResult['menuItem']>>(new Map());
@@ -206,20 +229,45 @@ function DropdownActions({
     menuItemsRef.current.set(actionType, item);
     // Update menu items state (collect all items in order)
     const items = actionsToShow
-      .map((type) => menuItemsRef.current.get(type))
-      .filter((item): item is ClimbActionResult['menuItem'] => item !== undefined);
+      .map((type) => {
+        const menuItem = menuItemsRef.current.get(type);
+        if (!menuItem) return undefined;
+        return {
+          key: menuItem.key as string,
+          label: menuItem.label,
+          icon: menuItem.icon,
+          onClick: menuItem.onClick,
+          danger: menuItem.danger,
+        } as ActionMenuItemType;
+      })
+      .filter((item): item is ActionMenuItemType => item !== undefined);
     setMenuItems(items);
   }, [actionsToShow]);
 
   return (
     <>
-      <Dropdown
-        menu={{ items: menuItems }}
-        placement="bottomRight"
-        trigger={['click']}
+      <IconButton className={className} onClick={handleOpen}>
+        <MoreVertOutlined />
+      </IconButton>
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleClose}
       >
-        <Button icon={<MoreOutlined />} className={className} />
-      </Dropdown>
+        {menuItems.map((item) => (
+          <MenuItem
+            key={item.key}
+            onClick={() => {
+              item.onClick?.();
+              handleClose();
+            }}
+            sx={item.danger ? { color: 'error.main' } : undefined}
+          >
+            {item.icon && <ListItemIcon>{item.icon}</ListItemIcon>}
+            <ListItemText>{item.label}</ListItemText>
+          </MenuItem>
+        ))}
+      </Menu>
       {/* Render action components to get menu items and render any needed DOM elements */}
       {actionsToShow.map((actionType) => (
         <DropdownActionRenderer

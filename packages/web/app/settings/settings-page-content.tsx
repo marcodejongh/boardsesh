@@ -1,22 +1,20 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import {
-  Layout,
-  Card,
-  Form,
-  Input,
-  Button,
-  Avatar,
-  Upload,
-  Space,
-  Typography,
-  Divider,
-  message,
-  Spin,
-} from 'antd';
-import { UserOutlined, UploadOutlined, LoadingOutlined, InstagramOutlined } from '@ant-design/icons';
-import type { UploadFile, UploadProps } from 'antd/es/upload/interface';
+import React, { useState, useEffect, useRef } from 'react';
+import Box from '@mui/material/Box';
+import Stack from '@mui/material/Stack';
+import MuiDivider from '@mui/material/Divider';
+import MuiAvatar from '@mui/material/Avatar';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import TextField from '@mui/material/TextField';
+import InputAdornment from '@mui/material/InputAdornment';
+import CircularProgress from '@mui/material/CircularProgress';
+import PersonOutlined from '@mui/icons-material/PersonOutlined';
+import UploadOutlined from '@mui/icons-material/UploadOutlined';
+import Instagram from '@mui/icons-material/Instagram';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Logo from '@/app/components/brand/logo';
@@ -25,8 +23,7 @@ import ControllersSection from '@/app/components/settings/controllers-section';
 import BackButton from '@/app/components/back-button';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { usePartyProfile } from '@/app/components/party-manager/party-profile-context';
-const { Content, Header } = Layout;
-const { Title, Text } = Typography;
+import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
@@ -66,15 +63,17 @@ interface UserProfile {
 export default function SettingsPageContent() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [form] = Form.useForm();
+  const [formValues, setFormValues] = useState({ displayName: '', instagramUrl: '' });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [fileList, setFileList] = useState<UploadFile[]>([]);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | undefined>();
   const { token: authToken } = useWsAuthToken();
   const { refreshProfile: refreshPartyProfile } = usePartyProfile();
+  const { showMessage } = useSnackbar();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -107,14 +106,14 @@ export default function SettingsPageContent() {
       }
       const data = await response.json();
       setProfile(data);
-      form.setFieldsValue({
+      setFormValues({
         displayName: data.profile?.displayName || data.name || '',
         instagramUrl: data.profile?.instagramUrl || '',
       });
       setPreviewUrl(data.profile?.avatarUrl || data.image || undefined);
     } catch (error) {
       console.error('Failed to fetch profile:', error);
-      message.error('Failed to load profile');
+      showMessage('Failed to load profile', 'error');
     } finally {
       setLoading(false);
     }
@@ -123,13 +122,13 @@ export default function SettingsPageContent() {
   const beforeUpload = (file: File): boolean => {
     // Validate file type
     if (!ALLOWED_TYPES.includes(file.type)) {
-      message.error('Only JPG, PNG, GIF, and WebP images are allowed');
+      showMessage('Only JPG, PNG, GIF, and WebP images are allowed', 'error');
       return false;
     }
 
     // Validate file size
     if (file.size > MAX_FILE_SIZE) {
-      message.error('Image must be smaller than 2MB');
+      showMessage('Image must be smaller than 2MB', 'error');
       return false;
     }
 
@@ -138,16 +137,8 @@ export default function SettingsPageContent() {
     setPreviewUrl(objectUrl);
 
     // Store file for later upload
-    setFileList([
-      {
-        uid: '-1',
-        name: file.name,
-        status: 'done',
-        originFileObj: file as unknown as UploadFile['originFileObj'],
-      },
-    ]);
+    setSelectedFile(file);
 
-    // Prevent automatic upload
     return false;
   };
 
@@ -156,18 +147,28 @@ export default function SettingsPageContent() {
       URL.revokeObjectURL(previewUrl);
     }
     setPreviewUrl(undefined);
-    setFileList([]);
+    setSelectedFile(null);
   };
 
   const handleSubmit = async () => {
     try {
-      const values = await form.validateFields();
+      // Inline validation
+      const values = { ...formValues };
+      if (values.displayName && values.displayName.length > 100) {
+        showMessage('Display name must be less than 100 characters', 'error');
+        return;
+      }
+      if (values.instagramUrl && !/^(https?:\/\/)?(www\.)?instagram\.com\/[a-zA-Z0-9._]+\/?$/.test(values.instagramUrl)) {
+        showMessage('Please enter a valid Instagram profile URL', 'error');
+        return;
+      }
+
       setSaving(true);
 
       let avatarUrl = profile?.profile?.avatarUrl || profile?.image || null;
 
       // Upload avatar if there's a new file
-      if (fileList.length > 0 && fileList[0].originFileObj) {
+      if (selectedFile) {
         setUploading(true);
         try {
           const backendUrl = getBackendHttpUrl();
@@ -184,7 +185,7 @@ export default function SettingsPageContent() {
           }
 
           const formData = new FormData();
-          formData.append('avatar', fileList[0].originFileObj as File);
+          formData.append('avatar', selectedFile);
           formData.append('userId', profile.id);
 
           const uploadResponse = await fetch(`${backendUrl}/api/avatars`, {
@@ -203,11 +204,11 @@ export default function SettingsPageContent() {
               : uploadData.avatarUrl;
           } else {
             const errorData = await uploadResponse.json().catch(() => ({}));
-            message.warning(errorData.error || 'Avatar upload failed');
+            showMessage(errorData.error || 'Avatar upload failed', 'warning');
           }
         } catch (error) {
           console.error('Avatar upload failed:', error);
-          message.warning(error instanceof Error ? error.message : 'Avatar upload failed');
+          showMessage(error instanceof Error ? error.message : 'Avatar upload failed', 'warning');
         } finally {
           setUploading(false);
         }
@@ -231,35 +232,28 @@ export default function SettingsPageContent() {
         throw new Error(error.error || 'Failed to update profile');
       }
 
-      message.success('Settings saved successfully');
-      setFileList([]);
+      showMessage('Settings saved successfully', 'success');
+      setSelectedFile(null);
       // Refresh profile locally and in context (so queue items show updated avatar)
       await fetchProfile();
       await refreshPartyProfile();
     } catch (error) {
       console.error('Failed to save settings:', error);
-      message.error(error instanceof Error ? error.message : 'Failed to save settings');
+      showMessage(error instanceof Error ? error.message : 'Failed to save settings', 'error');
     } finally {
       setSaving(false);
     }
-  };
-
-  const uploadProps: UploadProps = {
-    beforeUpload,
-    fileList: [],
-    accept: ALLOWED_TYPES.join(','),
-    showUploadList: false,
   };
 
   const isSaving = saving || uploading;
 
   if (status === 'loading' || loading) {
     return (
-      <Layout style={{ minHeight: '100vh', background: 'var(--semantic-background)' }}>
-        <Content style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-          <Spin size="large" />
-        </Content>
-      </Layout>
+      <Box sx={{ minHeight: '100vh', background: 'var(--semantic-background)' }}>
+        <Box component="main" sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+          <CircularProgress size={48} />
+        </Box>
+      </Box>
     );
   }
 
@@ -268,102 +262,164 @@ export default function SettingsPageContent() {
   }
 
   return (
-    <Layout style={{ minHeight: '100vh', background: 'var(--semantic-background)' }}>
-      <Header
-        style={{
+    <Box sx={{ minHeight: '100vh', background: 'var(--semantic-background)' }}>
+      <Box
+        component="header"
+        sx={{
           background: 'var(--semantic-surface)',
           padding: '0 16px',
           display: 'flex',
           alignItems: 'center',
-          gap: 16,
+          gap: 2,
           boxShadow: 'var(--shadow-xs)',
+          height: 64,
         }}
       >
         <BackButton />
         <Logo size="sm" showText={false} />
-        <Title level={4} style={{ margin: 0, flex: 1 }}>
+        <Typography variant="h4" sx={{ margin: 0, flex: 1 }}>
           Settings
-        </Title>
-      </Header>
+        </Typography>
+      </Box>
 
-      <Content style={{ padding: '24px', maxWidth: 600, margin: '0 auto', width: '100%' }}>
+      <Box component="main" sx={{ padding: '24px', maxWidth: 600, margin: '0 auto', width: '100%' }}>
         <Card>
-          <Title level={5}>Profile</Title>
-          <Text type="secondary" style={{ display: 'block', marginBottom: 24 }}>
-            Customize how you appear on Boardsesh
-          </Text>
+          <CardContent>
+            <Typography variant="h5">Profile</Typography>
+            <Typography variant="body2" component="span" color="text.secondary" sx={{ display: 'block', marginBottom: 3 }}>
+              Customize how you appear on Boardsesh
+            </Typography>
 
-          <Form form={form} layout="vertical">
-            <Form.Item label="Avatar">
-              <Space orientation="vertical" align="center" style={{ width: '100%' }}>
-                <Avatar size={96} src={previewUrl} icon={<UserOutlined />} />
-                <Space>
-                  <Upload {...uploadProps}>
-                    <Button icon={uploading ? <LoadingOutlined /> : <UploadOutlined />} disabled={isSaving}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <Box>
+                <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>Avatar</Typography>
+                <Stack spacing={1} alignItems="center" sx={{ width: '100%' }}>
+                  <MuiAvatar sx={{ width: 96, height: 96 }} src={previewUrl ?? undefined}>
+                    {!previewUrl && <PersonOutlined />}
+                  </MuiAvatar>
+                  <Stack direction="row" spacing={1}>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      accept={ALLOWED_TYPES.join(',')}
+                      style={{ display: 'none' }}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) beforeUpload(file);
+                        e.target.value = '';
+                      }}
+                    />
+                    <Button
+                      variant="outlined"
+                      startIcon={uploading ? <CircularProgress size={16} /> : <UploadOutlined />}
+                      disabled={isSaving}
+                      onClick={() => fileInputRef.current?.click()}
+                    >
                       {previewUrl ? 'Change' : 'Upload'}
                     </Button>
-                  </Upload>
-                  {previewUrl && (
-                    <Button onClick={handleRemoveAvatar} disabled={isSaving}>
-                      Remove
-                    </Button>
-                  )}
-                </Space>
-                <Text type="secondary" style={{ fontSize: 12 }}>
-                  JPG, PNG, GIF, or WebP. Max 2MB.
-                </Text>
-              </Space>
-            </Form.Item>
+                    {previewUrl && (
+                      <Button variant="outlined" onClick={handleRemoveAvatar} disabled={isSaving}>
+                        Remove
+                      </Button>
+                    )}
+                  </Stack>
+                  <Typography variant="body2" component="span" color="text.secondary" sx={{ fontSize: 12 }}>
+                    JPG, PNG, GIF, or WebP. Max 2MB.
+                  </Typography>
+                </Stack>
+              </Box>
 
-            <Form.Item
-              name="displayName"
-              label="Display Name"
-              rules={[{ max: 100, message: 'Display name must be less than 100 characters' }]}
-            >
-              <Input placeholder="Enter your display name" prefix={<UserOutlined />} maxLength={100} />
-            </Form.Item>
+              <Box>
+                <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>Display Name</Typography>
+                <TextField
+                  placeholder="Enter your display name"
+                  variant="outlined"
+                  size="small"
+                  fullWidth
+                  value={formValues.displayName}
+                  onChange={(e) => setFormValues((prev) => ({ ...prev, displayName: e.target.value }))}
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <PersonOutlined />
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                  inputProps={{ maxLength: 100 }}
+                />
+              </Box>
 
-            <Form.Item
-              name="instagramUrl"
-              label="Instagram Profile"
-              rules={[
-                {
-                  pattern: /^(https?:\/\/)?(www\.)?instagram\.com\/[a-zA-Z0-9._]+\/?$/,
-                  message: 'Please enter a valid Instagram profile URL',
-                },
-              ]}
-            >
-              <Input
-                placeholder="https://instagram.com/username"
-                prefix={<InstagramOutlined />}
-              />
-            </Form.Item>
+              <Box>
+                <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>Instagram Profile</Typography>
+                <TextField
+                  placeholder="https://instagram.com/username"
+                  variant="outlined"
+                  size="small"
+                  fullWidth
+                  value={formValues.instagramUrl}
+                  onChange={(e) => setFormValues((prev) => ({ ...prev, instagramUrl: e.target.value }))}
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <Instagram />
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                />
+              </Box>
 
-            <Divider />
+              <MuiDivider sx={{ my: 2 }} />
 
-            <Form.Item label="Email">
-              <Input value={profile?.email || session?.user?.email || ''} disabled prefix={<UserOutlined />} />
-              <Text type="secondary" style={{ fontSize: 12, marginTop: 4, display: 'block' }}>
-                Email cannot be changed
-              </Text>
-            </Form.Item>
+              <Box>
+                <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>Email</Typography>
+                <TextField
+                  value={profile?.email || session?.user?.email || ''}
+                  disabled
+                  variant="outlined"
+                  size="small"
+                  fullWidth
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <PersonOutlined />
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                />
+                <Typography variant="body2" component="span" color="text.secondary" sx={{ fontSize: 12, marginTop: 0.5, display: 'block' }}>
+                  Email cannot be changed
+                </Typography>
+              </Box>
 
-            <Form.Item style={{ marginBottom: 0, marginTop: 24 }}>
-              <Button type="primary" onClick={handleSubmit} loading={isSaving} block>
-                Save Changes
-              </Button>
-            </Form.Item>
-          </Form>
+              <Box sx={{ mt: 3 }}>
+                <Button
+                  variant="contained"
+                  onClick={handleSubmit}
+                  disabled={isSaving}
+                  startIcon={isSaving ? <CircularProgress size={16} /> : undefined}
+                  fullWidth
+                >
+                  Save Changes
+                </Button>
+              </Box>
+            </Box>
+          </CardContent>
         </Card>
 
-        <Divider />
+        <MuiDivider sx={{ my: 2 }} />
 
         <AuroraCredentialsSection />
 
-        <Divider />
+        <MuiDivider sx={{ my: 2 }} />
 
         <ControllersSection />
-      </Content>
-    </Layout>
+      </Box>
+    </Box>
   );
 }

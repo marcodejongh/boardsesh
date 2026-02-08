@@ -2,9 +2,7 @@
 
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { useSwipeable } from 'react-swipeable';
-import type { DrawerProps } from 'antd';
-
-type Placement = NonNullable<DrawerProps['placement']>;
+type Placement = 'left' | 'right' | 'top' | 'bottom';
 
 type DrawerStylesObject = Partial<Record<string, React.CSSProperties>>;
 
@@ -221,16 +219,13 @@ export function useSwipeToDismiss({
   }, []);
 
   const getDrawerStyle = useCallback((): React.CSSProperties => {
-    if (!enabled) return {};
     return {
       transform: getTransform(placement, dragOffset),
       transition: isDraggingRef.current ? 'none' : `transform ${dismissAnimationMs}ms ease-out`,
     };
-  }, [enabled, placement, dragOffset, dismissAnimationMs]);
+  }, [placement, dragOffset, dismissAnimationMs]);
 
   const getDrawerStyles = useCallback((): DrawerStylesObject => {
-    if (!enabled) return {};
-
     const fullOffset = getFullDismissOffset(placement);
     const maskStyle =
       dragOffset > 0
@@ -254,7 +249,7 @@ export function useSwipeToDismiss({
       wrapper: wrapperStyle,
       body: bodyStyle,
     };
-  }, [enabled, placement, dragOffset, dismissAnimationMs, swipeRegion]);
+  }, [placement, dragOffset, dismissAnimationMs, swipeRegion]);
 
   return useMemo(
     () => ({

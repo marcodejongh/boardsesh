@@ -11,17 +11,28 @@
  * - WebSocket connection guide
  */
 
-import { Suspense, lazy } from 'react';
-import { Tabs, Typography, Card, Alert, Space, Divider, Spin } from 'antd';
+import { Suspense, lazy, useState } from 'react';
+import Tabs from '@mui/material/Tabs';
+import Tab from '@mui/material/Tab';
+import MuiAlert from '@mui/material/Alert';
+import AlertTitle from '@mui/material/AlertTitle';
+import CircularProgress from '@mui/material/CircularProgress';
+import MuiCard from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import Typography from '@mui/material/Typography';
+import Stack from '@mui/material/Stack';
+import MuiDivider from '@mui/material/Divider';
 import {
   ApiOutlined,
-  CloudServerOutlined,
-  ThunderboltOutlined,
-  BookOutlined,
-} from '@ant-design/icons';
+  CloudOutlined,
+  ElectricBoltOutlined,
+  MenuBookOutlined,
+} from '@mui/icons-material';
+import { TabPanel } from '@/app/components/ui/tab-panel';
 import styles from './docs.module.css';
 
-const { Title, Text, Paragraph, Link } = Typography;
+// Typography destructuring removed - using MUI Typography directly
+import MuiLink from '@mui/material/Link';
 
 // Lazy load heavy components
 const SwaggerUI = lazy(() => import('./swagger-ui'));
@@ -30,7 +41,7 @@ const GraphQLSchemaViewer = lazy(() => import('./graphql-schema'));
 function LoadingSpinner() {
   return (
     <div className={styles.loadingContainer}>
-      <Spin size="large" />
+      <CircularProgress size={40} />
       <div className={styles.loadingText}>Loading documentation...</div>
     </div>
   );
@@ -39,62 +50,62 @@ function LoadingSpinner() {
 function OverviewTab() {
   return (
     <div className={styles.contentSection}>
-      <Title level={2}>Boardsesh API Overview</Title>
+      <Typography variant="h4" component="h2">Boardsesh API Overview</Typography>
 
-      <Paragraph>
+      <Typography variant="body1" component="p" sx={{ mb: 2 }}>
         Boardsesh provides two complementary APIs for interacting with interactive climbing
         training boards (Kilter, Tension):
-      </Paragraph>
+      </Typography>
 
-      <Space direction="vertical" size="large" className={styles.fullWidth}>
-        <Card>
-          <Title level={4}>
+      <Stack spacing={3} className={styles.fullWidth}>
+        <MuiCard><CardContent>
+          <Typography variant="h6" component="h4">
             <ApiOutlined /> REST API
-          </Title>
-          <Paragraph>
+          </Typography>
+          <Typography variant="body1" component="p" sx={{ mb: 1 }}>
             Use the REST API for stateless operations like searching climbs, fetching board
             configuration, and user authentication. The REST API is ideal for:
-          </Paragraph>
+          </Typography>
           <ul>
             <li>Fetching climb data and statistics</li>
             <li>User registration and authentication</li>
             <li>Profile management</li>
             <li>Aurora platform integration</li>
           </ul>
-          <Text type="secondary">Base URL: <code>/api/v1/</code></Text>
-        </Card>
+          <Typography variant="body2" component="span" color="text.secondary">Base URL: <code>/api/v1/</code></Typography>
+        </CardContent></MuiCard>
 
-        <Card>
-          <Title level={4}>
-            <ThunderboltOutlined /> WebSocket GraphQL API
-          </Title>
-          <Paragraph>
+        <MuiCard><CardContent>
+          <Typography variant="h6" component="h4">
+            <ElectricBoltOutlined /> WebSocket GraphQL API
+          </Typography>
+          <Typography variant="body1" component="p" sx={{ mb: 1 }}>
             Use the WebSocket API for real-time features like party sessions and queue
             synchronization. The GraphQL API provides:
-          </Paragraph>
+          </Typography>
           <ul>
             <li>Real-time queue updates via subscriptions</li>
             <li>Session management (create, join, leave)</li>
             <li>Multi-user collaboration</li>
             <li>All REST API functionality via queries/mutations</li>
           </ul>
-          <Text type="secondary">
+          <Typography variant="body2" component="span" color="text.secondary">
             Endpoint: <code>wss://your-domain/api/graphql</code> (via graphql-ws protocol)
-          </Text>
-        </Card>
+          </Typography>
+        </CardContent></MuiCard>
 
-        <Card>
-          <Title level={4}>
-            <CloudServerOutlined /> Authentication
-          </Title>
-          <Paragraph>
+        <MuiCard><CardContent>
+          <Typography variant="h6" component="h4">
+            <CloudOutlined /> Authentication
+          </Typography>
+          <Typography variant="body1" component="p" sx={{ mb: 1 }}>
             <strong>REST API:</strong> Uses NextAuth session cookies. Authenticate via{' '}
             <code>/api/auth/...</code> endpoints.
-          </Paragraph>
-          <Paragraph>
+          </Typography>
+          <Typography variant="body1" component="p" sx={{ mb: 1 }}>
             <strong>WebSocket API:</strong> Obtain a JWT token from{' '}
             <code>GET /api/internal/ws-auth</code> and include it in the connection parameters:
-          </Paragraph>
+          </Typography>
           <pre className={styles.codeBlockLight}>
 {`import { createClient } from 'graphql-ws';
 
@@ -105,14 +116,13 @@ const client = createClient({
   },
 });`}
           </pre>
-        </Card>
+        </CardContent></MuiCard>
 
-        <Alert
-          type="info"
-          message="Rate Limiting"
-          description="Authentication endpoints are rate-limited to prevent abuse. Rate limit headers are included in responses. Public read endpoints have generous limits."
-        />
-      </Space>
+        <MuiAlert severity="info">
+          <AlertTitle>Rate Limiting</AlertTitle>
+          Authentication endpoints are rate-limited to prevent abuse. Rate limit headers are included in responses. Public read endpoints have generous limits.
+        </MuiAlert>
+      </Stack>
     </div>
   );
 }
@@ -120,19 +130,19 @@ const client = createClient({
 function WebSocketGuideTab() {
   return (
     <div className={styles.contentSection}>
-      <Title level={2}>WebSocket Connection Guide</Title>
+      <Typography variant="h4" component="h2">WebSocket Connection Guide</Typography>
 
-      <Paragraph>
+      <Typography variant="body1" component="p" sx={{ mb: 2 }}>
         The Boardsesh WebSocket API uses the{' '}
-        <Link href="https://github.com/enisdenjo/graphql-ws" target="_blank">
+        <MuiLink href="https://github.com/enisdenjo/graphql-ws" target="_blank">
           graphql-ws
-        </Link>{' '}
+        </MuiLink>{' '}
         protocol for real-time GraphQL subscriptions.
-      </Paragraph>
+      </Typography>
 
-      <Divider />
+      <MuiDivider />
 
-      <Title level={4}>Connection Setup</Title>
+      <Typography variant="h6" component="h4">Connection Setup</Typography>
 
       <pre className={styles.codeBlockDark}>
 {`import { createClient } from 'graphql-ws';
@@ -183,13 +193,13 @@ const unsubscribe = client.subscribe(
 );`}
       </pre>
 
-      <Divider />
+      <MuiDivider />
 
-      <Title level={4}>Session Management</Title>
+      <Typography variant="h6" component="h4">Session Management</Typography>
 
-      <Paragraph>
+      <Typography variant="body1" component="p" sx={{ mb: 2 }}>
         Sessions are the core collaboration unit. Users join sessions to share a climb queue.
-      </Paragraph>
+      </Typography>
 
       <pre className={styles.codeBlockDark}>
 {`// Join or create a session
@@ -215,13 +225,13 @@ const result = await client.query({
 });`}
       </pre>
 
-      <Divider />
+      <MuiDivider />
 
-      <Title level={4}>Delta Synchronization</Title>
+      <Typography variant="h6" component="h4">Delta Synchronization</Typography>
 
-      <Paragraph>
+      <Typography variant="body1" component="p" sx={{ mb: 2 }}>
         When reconnecting, use delta sync to catch up without full state transfer:
-      </Paragraph>
+      </Typography>
 
       <pre className={styles.codeBlockDark}>
 {`// Store the last known sequence number
@@ -250,78 +260,66 @@ for (const event of eventsReplay.events) {
 lastSequence = eventsReplay.currentSequence;`}
       </pre>
 
-      <Alert
-        type="warning"
-        message="Connection Handling"
-        description="The WebSocket connection may be interrupted by network changes. Implement reconnection logic with the graphql-ws retry options and use delta sync to maintain state consistency."
-        className={styles.alertWithMargin}
-      />
+      <MuiAlert severity="warning" className={styles.alertWithMargin}>
+        <AlertTitle>Connection Handling</AlertTitle>
+        The WebSocket connection may be interrupted by network changes. Implement reconnection logic with the graphql-ws retry options and use delta sync to maintain state consistency.
+      </MuiAlert>
     </div>
   );
 }
 
 export default function DocsClientPage() {
+  const [activeTab, setActiveTab] = useState('overview');
+
   return (
     <div className={styles.docsContainer}>
       <div className={styles.docsHeader}>
-        <Title level={1}>
-          <BookOutlined /> API Documentation
-        </Title>
-        <Text type="secondary">
+        <Typography variant="h3" component="h1">
+          <MenuBookOutlined /> API Documentation
+        </Typography>
+        <Typography variant="body2" component="span" color="text.secondary">
           Complete reference for the Boardsesh REST and WebSocket APIs
-        </Text>
+        </Typography>
       </div>
 
-      <Tabs
-        defaultActiveKey="overview"
-        size="large"
-        items={[
-          {
-            key: 'overview',
-            label: (
-              <span>
-                <BookOutlined /> Overview
-              </span>
-            ),
-            children: <OverviewTab />,
-          },
-          {
-            key: 'rest',
-            label: (
-              <span>
-                <ApiOutlined /> REST API
-              </span>
-            ),
-            children: (
-              <Suspense fallback={<LoadingSpinner />}>
-                <SwaggerUI />
-              </Suspense>
-            ),
-          },
-          {
-            key: 'graphql',
-            label: (
-              <span>
-                <ThunderboltOutlined /> GraphQL Schema
-              </span>
-            ),
-            children: (
-              <Suspense fallback={<LoadingSpinner />}>
-                <GraphQLSchemaViewer />
-              </Suspense>
-            ),
-          },
-          {
-            key: 'websocket',
-            label: (
-              <span>
-                <CloudServerOutlined /> WebSocket Guide
-              </span>
-            ),
-            children: <WebSocketGuideTab />,
-          },
-        ]}
-      />
+      <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)}>
+        <Tab
+          label={<span><MenuBookOutlined /> Overview</span>}
+          value="overview"
+        />
+        <Tab
+          label={<span><ApiOutlined /> REST API</span>}
+          value="rest"
+        />
+        <Tab
+          label={<span><ElectricBoltOutlined /> GraphQL Schema</span>}
+          value="graphql"
+        />
+        <Tab
+          label={<span><CloudOutlined /> WebSocket Guide</span>}
+          value="websocket"
+        />
+      </Tabs>
+
+      <TabPanel value={activeTab} index="overview">
+        <OverviewTab />
+      </TabPanel>
+
+      <TabPanel value={activeTab} index="rest">
+        <Suspense fallback={<LoadingSpinner />}>
+          <SwaggerUI />
+        </Suspense>
+      </TabPanel>
+
+      <TabPanel value={activeTab} index="graphql">
+        <Suspense fallback={<LoadingSpinner />}>
+          <GraphQLSchemaViewer />
+        </Suspense>
+      </TabPanel>
+
+      <TabPanel value={activeTab} index="websocket">
+        <WebSocketGuideTab />
+      </TabPanel>
     </div>
   );
 }

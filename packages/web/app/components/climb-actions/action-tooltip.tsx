@@ -1,7 +1,10 @@
 'use client';
 
 import React from 'react';
-import { Tooltip, TooltipProps } from 'antd';
+import MuiTooltip from '@mui/material/Tooltip';
+import type { TooltipProps as MuiTooltipProps } from '@mui/material/Tooltip';
+
+type ActionTooltipProps = Pick<MuiTooltipProps, 'title' | 'placement' | 'children'>;
 
 /**
  * A tooltip wrapper for action buttons that disables tooltips on touch devices.
@@ -10,7 +13,7 @@ import { Tooltip, TooltipProps } from 'antd';
  * to show the tooltip, requiring a second tap to actually trigger the action.
  * This component disables the tooltip trigger on touch devices so clicks work immediately.
  */
-export function ActionTooltip({ children, ...props }: TooltipProps) {
+export function ActionTooltip({ children, ...props }: ActionTooltipProps) {
   // Use CSS media query to detect touch devices
   // hover: none means the device doesn't have hover capability (touch device)
   const [isTouchDevice, setIsTouchDevice] = React.useState(false);
@@ -31,7 +34,7 @@ export function ActionTooltip({ children, ...props }: TooltipProps) {
     return <>{children}</>;
   }
 
-  return <Tooltip {...props}>{children}</Tooltip>;
+  return <MuiTooltip {...props}>{children}</MuiTooltip>;
 }
 
 export default ActionTooltip;

@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useCallback } from 'react';
-import { Button, message } from 'antd';
+import MuiButton from '@mui/material/Button';
+import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 import { ActionTooltip } from '../action-tooltip';
-import { ShareAltOutlined } from '@ant-design/icons';
+import ShareOutlined from '@mui/icons-material/ShareOutlined';
 import { track } from '@vercel/analytics';
 import { ClimbActionProps, ClimbActionResult } from '../types';
 import {
@@ -23,6 +24,7 @@ export function ShareAction({
   className,
   onComplete,
 }: ClimbActionProps): ClimbActionResult {
+  const { showMessage } = useSnackbar();
   const viewUrl = boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names
     ? constructClimbViewUrlWithSlugs(
         boardDetails.board_name,
@@ -70,7 +72,7 @@ export function ShareAction({
         });
       } else {
         await navigator.clipboard.writeText(shareUrl);
-        message.success('Link copied to clipboard!');
+        showMessage('Link copied to clipboard!', 'success');
         track('Climb Shared', {
           boardName: boardDetails.board_name,
           climbUuid: climb.uuid,
@@ -84,9 +86,9 @@ export function ShareAction({
         // Fallback to clipboard
         try {
           await navigator.clipboard.writeText(shareUrl);
-          message.success('Link copied to clipboard!');
+          showMessage('Link copied to clipboard!', 'success');
         } catch {
-          message.error('Failed to share');
+          showMessage('Failed to share', 'error');
         }
       }
     }
@@ -96,7 +98,7 @@ export function ShareAction({
   const shouldShowLabel = showLabel ?? (viewMode === 'button' || viewMode === 'dropdown');
   const iconSize = size === 'small' ? 14 : size === 'large' ? 20 : 16;
 
-  const icon = <ShareAltOutlined style={{ fontSize: iconSize }} />;
+  const icon = <ShareOutlined sx={{ fontSize: iconSize }} />;
 
   // Icon mode - for Card actions
   const iconElement = (
@@ -109,15 +111,16 @@ export function ShareAction({
 
   // Button mode
   const buttonElement = (
-    <Button
-      icon={icon}
+    <MuiButton
+      variant="outlined"
+      startIcon={icon}
       onClick={handleClick}
-      size={size === 'large' ? 'large' : size === 'small' ? 'small' : 'middle'}
+      size={size === 'large' ? 'large' : 'small'}
       disabled={disabled}
       className={className}
     >
       {shouldShowLabel && label}
-    </Button>
+    </MuiButton>
   );
 
   // Menu item for dropdown
@@ -130,21 +133,21 @@ export function ShareAction({
 
   // List mode - full-width row for drawer menus
   const listElement = (
-    <Button
-      type="text"
-      icon={icon}
-      block
+    <MuiButton
+      variant="text"
+      startIcon={icon}
+      fullWidth
       onClick={handleClick}
       disabled={disabled}
-      style={{
+      sx={{
         height: 48,
         justifyContent: 'flex-start',
-        paddingLeft: themeTokens.spacing[4],
+        paddingLeft: `${themeTokens.spacing[4]}px`,
         fontSize: themeTokens.typography.fontSize.base,
       }}
     >
       {label}
-    </Button>
+    </MuiButton>
   );
 
   let element: React.ReactNode;

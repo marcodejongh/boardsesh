@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { Button } from 'antd';
+import MuiButton from '@mui/material/Button';
 import { ActionTooltip } from '../action-tooltip';
-import { PlusCircleOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import AddCircleOutlined from '@mui/icons-material/AddCircleOutlined';
+import CheckCircleOutlined from '@mui/icons-material/CheckCircleOutlined';
 import { track } from '@vercel/analytics';
 import { ClimbActionProps, ClimbActionResult } from '../types';
 import { useQueueContext } from '../../graphql-queue';
@@ -48,11 +49,11 @@ export function QueueAction({
   const shouldShowLabel = showLabel ?? (viewMode === 'button' || viewMode === 'dropdown');
   const iconSize = size === 'small' ? 14 : size === 'large' ? 20 : 16;
 
-  const Icon = recentlyAdded ? CheckCircleOutlined : PlusCircleOutlined;
+  const Icon = recentlyAdded ? CheckCircleOutlined : AddCircleOutlined;
   const iconStyle = recentlyAdded
     ? { color: themeTokens.colors.success, fontSize: iconSize }
     : { fontSize: iconSize };
-  const icon = <Icon style={iconStyle} />;
+  const icon = <Icon sx={iconStyle} />;
 
   // Icon mode - for Card actions
   const iconElement = (
@@ -69,15 +70,16 @@ export function QueueAction({
 
   // Button mode
   const buttonElement = (
-    <Button
-      icon={icon}
+    <MuiButton
+      variant="outlined"
+      startIcon={icon}
       onClick={handleClick}
       disabled={disabled || recentlyAdded}
-      size={size === 'large' ? 'large' : size === 'small' ? 'small' : 'middle'}
+      size={size === 'large' ? 'large' : 'small'}
       className={className}
     >
       {shouldShowLabel && (viewMode === 'compact' ? shortLabel : label)}
-    </Button>
+    </MuiButton>
   );
 
   // Menu item for dropdown
@@ -91,21 +93,21 @@ export function QueueAction({
 
   // List mode - full-width row for drawer menus
   const listElement = (
-    <Button
-      type="text"
-      icon={icon}
-      block
+    <MuiButton
+      variant="text"
+      startIcon={icon}
+      fullWidth
       onClick={handleClick}
       disabled={disabled || recentlyAdded}
-      style={{
+      sx={{
         height: 48,
         justifyContent: 'flex-start',
-        paddingLeft: themeTokens.spacing[4],
+        paddingLeft: `${themeTokens.spacing[4]}px`,
         fontSize: themeTokens.typography.fontSize.base,
       }}
     >
       {label}
-    </Button>
+    </MuiButton>
   );
 
   let element: React.ReactNode;

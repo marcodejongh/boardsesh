@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Card, Typography, Skeleton } from 'antd';
+import Skeleton from '@mui/material/Skeleton';
+import Typography from '@mui/material/Typography';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
 import { BoardDetails, BoardName } from '@/app/lib/types';
 import { getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
 import BoardRenderer from '../board-renderer/board-renderer';
 import { BoardConfigData } from '@/app/lib/server-board-configs';
-
-const { Text } = Typography;
 
 type BoardConfigLivePreviewProps = {
   boardName?: BoardName;
@@ -78,32 +79,39 @@ export default function BoardConfigLivePreview({
 
   if (!hasRequiredProps) {
     return (
-      <Card style={{ width: 400, textAlign: 'center' }}>
-        <Text type="secondary">Select board configuration to see preview</Text>
+      <Card sx={{ width: 400, textAlign: 'center' }}>
+        <CardContent>
+          <Typography variant="body2" component="span" color="text.secondary">Select board configuration to see preview</Typography>
+        </CardContent>
       </Card>
     );
   }
 
   if (isLoading) {
     return (
-      <Card style={{ width: 400 }}>
-        <Skeleton active paragraph={{ rows: 3 }} />
+      <Card sx={{ width: 400 }}>
+        <CardContent>
+          <Skeleton variant="text" animation="wave" />
+          <Skeleton variant="text" animation="wave" />
+          <Skeleton variant="text" animation="wave" />
+        </CardContent>
       </Card>
     );
   }
 
   if (!boardDetails) {
     return (
-      <Card style={{ width: 400, textAlign: 'center' }}>
-        <Text type="secondary">Preview unavailable</Text>
+      <Card sx={{ width: 400, textAlign: 'center' }}>
+        <CardContent>
+          <Typography variant="body2" component="span" color="text.secondary">Preview unavailable</Typography>
+        </CardContent>
       </Card>
     );
   }
 
   return (
-    <Card
-      style={{ width: 400 }}
-      cover={<BoardRenderer litUpHoldsMap={{}} mirrored={false} boardDetails={boardDetails} thumbnail={false} />}
-    />
+    <Card sx={{ width: 400 }}>
+      <BoardRenderer litUpHoldsMap={{}} mirrored={false} boardDetails={boardDetails} thumbnail={false} />
+    </Card>
   );
 }

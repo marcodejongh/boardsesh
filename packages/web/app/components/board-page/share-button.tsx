@@ -1,30 +1,38 @@
 'use client';
 
 import React, { useState } from 'react';
-import {
-  TeamOutlined,
-  CopyOutlined,
-  CrownFilled,
-  LoadingOutlined,
-  CheckCircleOutlined,
-  LoginOutlined,
-  PlayCircleOutlined,
-  CloseCircleOutlined,
-  BulbOutlined,
-  BulbFilled,
-  AppleOutlined,
-  ApiOutlined,
-} from '@ant-design/icons';
-import { Button, Input, QRCode, Flex, App, Typography, Badge, Switch, Tabs, Space } from 'antd';
+import GroupOutlined from '@mui/icons-material/GroupOutlined';
+import ContentCopyOutlined from '@mui/icons-material/ContentCopyOutlined';
+import EmojiEvents from '@mui/icons-material/EmojiEvents';
+import CircularProgress from '@mui/material/CircularProgress';
+import CheckCircleOutlined from '@mui/icons-material/CheckCircleOutlined';
+import LoginOutlined from '@mui/icons-material/LoginOutlined';
+import PlayCircleOutlineOutlined from '@mui/icons-material/PlayCircleOutlineOutlined';
+import CancelOutlined from '@mui/icons-material/CancelOutlined';
+import LightbulbOutlined from '@mui/icons-material/LightbulbOutlined';
+import Lightbulb from '@mui/icons-material/Lightbulb';
+import AppleOutlined from '@mui/icons-material/Apple';
+import ApiOutlined from '@mui/icons-material/ApiOutlined';
+import MuiButton from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
+import TextField from '@mui/material/TextField';
+import Typography from '@mui/material/Typography';
+import Badge from '@mui/material/Badge';
+import Tabs from '@mui/material/Tabs';
+import Tab from '@mui/material/Tab';
+import { QRCodeSVG } from 'qrcode.react';
+import MuiSwitch from '@mui/material/Switch';
+import Box from '@mui/material/Box';
+import Stack from '@mui/material/Stack';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useQueueContext } from '../graphql-queue';
 import { useBluetoothContext } from '../board-bluetooth-control/bluetooth-context';
+import { useSnackbar } from '@/app/components/providers/snackbar-provider';
+import { TabPanel } from '@/app/components/ui/tab-panel';
 import { themeTokens } from '@/app/theme/theme-config';
 import AuthModal from '../auth/auth-modal';
-
-const { Text, Paragraph } = Typography;
 
 const getShareUrl = (pathname: string, sessionId: string | null) => {
   try {
@@ -60,107 +68,109 @@ function LedConnectionTab() {
   };
 
   return (
-    <Flex vertical gap="middle">
-      <Text>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <Typography variant="body2" component="span">
         Connect to your board via Bluetooth to illuminate routes with LEDs.
         Routes will automatically update as you navigate between climbs.
-      </Text>
+      </Typography>
 
       {!isBluetoothSupported && (
-        <Flex
-          vertical
-          gap="small"
-          style={{
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 1,
             padding: '12px',
             background: themeTokens.colors.warningBg,
             border: `1px solid ${themeTokens.colors.warning}`,
             borderRadius: themeTokens.borderRadius.md,
           }}
         >
-          <Paragraph style={{ margin: 0 }}>
-            <Text>
+          <Typography variant="body1" component="p" sx={{ margin: 0 }}>
+            <Typography variant="body2" component="span">
               Your browser does not support Web Bluetooth, which means you
               won&#39;t be able to illuminate routes on the board.
-            </Text>
-          </Paragraph>
+            </Typography>
+          </Typography>
           {isIOS ? (
             <>
-              <Paragraph style={{ margin: 0 }}>
+              <Typography variant="body1" component="p" sx={{ margin: 0 }}>
                 To control your board from an iOS device, install the Bluefy
                 browser:
-              </Paragraph>
-              <Button
-                type="primary"
-                icon={<AppleOutlined />}
+              </Typography>
+              <MuiButton
+                variant="contained"
+                startIcon={<AppleOutlined />}
                 href="https://apps.apple.com/us/app/bluefy-web-ble-browser/id1492822055"
                 target="_blank"
               >
                 Download Bluefy from the App Store
-              </Button>
+              </MuiButton>
             </>
           ) : (
-            <Paragraph style={{ margin: 0 }}>
+            <Typography variant="body1" component="p" sx={{ margin: 0 }}>
               For the best experience, please use Chrome or another
               Chromium-based browser.
-            </Paragraph>
+            </Typography>
           )}
-        </Flex>
+        </Box>
       )}
 
       {isBluetoothSupported && !isConnected && (
-        <Button
-          type="primary"
+        <MuiButton
+          variant="contained"
           size="large"
-          icon={<BulbOutlined />}
+          startIcon={loading ? <CircularProgress size={16} /> : <LightbulbOutlined />}
           onClick={handleConnect}
-          loading={loading}
-          block
+          disabled={loading}
+          fullWidth
         >
           Connect to Board
-        </Button>
+        </MuiButton>
       )}
 
       {isConnected && (
-        <Flex vertical gap="small">
-          <Flex
-            align="center"
-            gap="small"
-            style={{
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
               padding: '12px',
               background: themeTokens.colors.successBg,
               border: `1px solid ${themeTokens.colors.success}`,
               borderRadius: themeTokens.borderRadius.md,
             }}
           >
-            <BulbFilled
-              style={{ color: themeTokens.colors.success, fontSize: '18px' }}
+            <Lightbulb
+              sx={{ color: themeTokens.colors.success, fontSize: '18px' }}
             />
-            <div style={{ flex: 1 }}>
-              <Text strong style={{ color: themeTokens.colors.success }}>
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="body2" component="span" fontWeight={600} sx={{ color: themeTokens.colors.success }}>
                 Board Connected
-              </Text>
+              </Typography>
               <br />
-              <Text type="secondary" style={{ fontSize: '12px' }}>
+              <Typography variant="body2" component="span" color="text.secondary" sx={{ fontSize: '12px' }}>
                 Routes illuminate automatically when navigating
-              </Text>
-            </div>
-            <Button
-              type="text"
-              danger
-              icon={<ApiOutlined />}
+              </Typography>
+            </Box>
+            <MuiButton
+              variant="text"
+              color="error"
+              startIcon={<ApiOutlined />}
               onClick={disconnect}
             >
               Disconnect
-            </Button>
-          </Flex>
-        </Flex>
+            </MuiButton>
+          </Box>
+        </Box>
       )}
-    </Flex>
+    </Box>
   );
 }
 
 export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'default' | 'text' }) => {
-  const { message } = App.useApp();
+  const { showMessage } = useSnackbar();
   const {
     users,
     clientId,
@@ -184,6 +194,8 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
   const [discoverable, setDiscoverable] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [sessionName, setSessionName] = useState('');
+  const [activeNoSessionTab, setActiveNoSessionTab] = useState('start');
+  const [activeSessionTab, setActiveSessionTab] = useState('session');
 
   const isLoggedIn = authStatus === 'authenticated';
 
@@ -205,10 +217,10 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
     navigator.clipboard
       .writeText(shareUrl)
       .then(() => {
-        message.success('Share URL copied to clipboard!');
+        showMessage('Share URL copied to clipboard!', 'success');
       })
       .catch(() => {
-        message.error('Failed to copy URL.');
+        showMessage('Failed to copy URL.', 'error');
       });
   };
 
@@ -221,11 +233,11 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
     setIsStartingSession(true);
     try {
       await startSession({ discoverable, name: sessionName.trim() || undefined });
-      message.success('Party mode started!');
+      showMessage('Party mode started!', 'success');
       setSessionName('');
     } catch (error) {
       console.error('Failed to start session:', error);
-      message.error('Failed to start party mode');
+      showMessage('Failed to start party mode', 'error');
     } finally {
       setIsStartingSession(false);
     }
@@ -233,7 +245,7 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
 
   const handleJoinSession = async () => {
     if (!joinSessionId.trim()) {
-      message.warning('Please enter a session ID');
+      showMessage('Please enter a session ID', 'warning');
       return;
     }
 
@@ -250,17 +262,17 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
       }
 
       await joinSession(sessionIdToJoin);
-      message.success('Joined party mode!');
+      showMessage('Joined party mode!', 'success');
       setJoinSessionId('');
     } catch (error) {
       console.error('Failed to join session:', error);
-      message.error('Failed to join session');
+      showMessage('Failed to join session', 'error');
     }
   };
 
   const handleEndSession = () => {
     endSession();
-    message.info('Left party mode');
+    showMessage('Left party mode', 'info');
   };
 
   const connectionCount = users?.length ?? 0;
@@ -269,54 +281,57 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
   // Session info content (shared between active and inactive states)
   const sessionInfoContent = (
     <>
-      <Flex
-        align="center"
-        gap="small"
-        style={{
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1,
           padding: '12px',
           background: themeTokens.colors.successBg,
           border: `1px solid ${themeTokens.colors.success}`,
           borderRadius: themeTokens.borderRadius.md,
         }}
       >
-        <CheckCircleOutlined style={{ color: themeTokens.colors.success, fontSize: '18px' }} />
-        <div style={{ flex: 1 }}>
-          <Text strong style={{ color: themeTokens.colors.success }}>
+        <CheckCircleOutlined sx={{ color: themeTokens.colors.success, fontSize: '18px' }} />
+        <Box sx={{ flex: 1 }}>
+          <Typography variant="body2" component="span" fontWeight={600} sx={{ color: themeTokens.colors.success }}>
             Party Mode Active
-          </Text>
+          </Typography>
           <br />
-          <Text type="secondary" style={{ fontSize: '12px' }}>
+          <Typography variant="body2" component="span" color="text.secondary" sx={{ fontSize: '12px' }}>
             Session: {sessionId?.substring(0, 8)}...
-          </Text>
-        </div>
-        <Button
-          type="text"
-          danger
-          icon={<CloseCircleOutlined />}
+          </Typography>
+        </Box>
+        <MuiButton
+          variant="text"
+          color="error"
+          startIcon={<CancelOutlined />}
           onClick={handleEndSession}
         >
           Leave
-        </Button>
-      </Flex>
+        </MuiButton>
+      </Box>
 
       {users && users.length > 0 && (
-        <Flex vertical gap="small">
-          <Text strong>Connected Users ({users.length}):</Text>
-          <Flex
-            vertical
-            gap="small"
-            style={{
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <Typography variant="body2" component="span" fontWeight={600}>Connected Users ({users.length}):</Typography>
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 1,
               maxHeight: '150px',
               overflowY: 'auto',
               padding: '4px',
             }}
           >
             {users.map((user) => (
-              <Flex
+              <Box
                 key={user.id}
-                justify="space-between"
-                align="center"
-                style={{
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
                   background:
                     user.id === currentUserId ? themeTokens.semantic.selected : themeTokens.neutral[100],
                   padding: '8px 12px',
@@ -324,175 +339,157 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
                   width: '100%',
                 }}
               >
-                <Flex gap="small" align="center">
-                  <Text style={{ fontSize: '14px' }}>
+                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                  <Typography variant="body2" component="span" sx={{ fontSize: '14px' }}>
                     {user.username}
                     {user.id === currentUserId && ' (you)'}
-                  </Text>
-                </Flex>
+                  </Typography>
+                </Box>
                 {user.isLeader && (
-                  <CrownFilled style={{ color: themeTokens.colors.warning, fontSize: '16px' }} />
+                  <EmojiEvents sx={{ color: themeTokens.colors.warning, fontSize: '16px' }} />
                 )}
-              </Flex>
+              </Box>
             ))}
-          </Flex>
-        </Flex>
+          </Box>
+        </Box>
       )}
 
       {!isLoggedIn && (
-        <Flex
-          align="center"
-          justify="space-between"
-          style={{
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
             padding: '12px',
             background: themeTokens.neutral[100],
             borderRadius: themeTokens.borderRadius.md,
           }}
         >
-          <Text type="secondary" style={{ fontSize: '13px' }}>
+          <Typography variant="body2" component="span" color="text.secondary" sx={{ fontSize: '13px' }}>
             Sign in to customize your username
-          </Text>
-          <Button type="link" size="small" icon={<LoginOutlined />} onClick={() => setShowAuthModal(true)}>
+          </Typography>
+          <MuiButton variant="text" size="small" startIcon={<LoginOutlined />} onClick={() => setShowAuthModal(true)}>
             Sign in
-          </Button>
-        </Flex>
+          </MuiButton>
+        </Box>
       )}
 
-      <Flex vertical gap="small">
-        <Text strong>Invite others to join:</Text>
-        <Flex style={{ width: '100%' }} align="center">
-          <Input
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+        <Typography variant="body2" component="span" fontWeight={600}>Invite others to join:</Typography>
+        <Box sx={{ display: 'flex', width: '100%', alignItems: 'center' }}>
+          <TextField
             value={shareUrl}
-            readOnly
-            addonAfter={<Button icon={<CopyOutlined />} onClick={copyToClipboard} />}
+            slotProps={{ input: { readOnly: true } }}
+            variant="outlined"
+            size="small"
+            fullWidth
           />
-        </Flex>
-        <Flex justify="center">
-          <QRCode value={shareUrl} size={160} bordered={false} />
-        </Flex>
-      </Flex>
+          <IconButton onClick={copyToClipboard}>
+            <ContentCopyOutlined />
+          </IconButton>
+        </Box>
+        <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+          <QRCodeSVG value={shareUrl} size={160} />
+        </Box>
+      </Box>
     </>
   );
 
-  // Tab items for when no session is active
-  const noSessionTabs = [
-    {
-      key: 'start',
-      label: 'Start Session',
-      children: (
-        <Flex vertical gap="middle">
-          <Text>
-            Start a party mode session to climb with others. Share your queue and take turns!
-          </Text>
+  // Tab content for when no session is active
+  const startTabContent = (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <Typography variant="body2" component="span">
+        Start a party mode session to climb with others. Share your queue and take turns!
+      </Typography>
 
-          {!isLoggedIn && (
-            <Flex
-              align="center"
-              gap="small"
-              style={{
-                padding: '12px',
-                background: themeTokens.colors.warningBg,
-                border: `1px solid ${themeTokens.colors.warning}`,
-                borderRadius: themeTokens.borderRadius.md,
-              }}
-            >
-              <Text>Sign in to start a party session</Text>
-              <Button type="primary" size="small" icon={<LoginOutlined />} onClick={() => setShowAuthModal(true)}>
-                Sign in
-              </Button>
-            </Flex>
-          )}
+      {!isLoggedIn && (
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            padding: '12px',
+            background: themeTokens.colors.warningBg,
+            border: `1px solid ${themeTokens.colors.warning}`,
+            borderRadius: themeTokens.borderRadius.md,
+          }}
+        >
+          <Typography variant="body2" component="span">Sign in to start a party session</Typography>
+          <MuiButton variant="contained" size="small" startIcon={<LoginOutlined />} onClick={() => setShowAuthModal(true)}>
+            Sign in
+          </MuiButton>
+        </Box>
+      )}
 
-          {isLoggedIn && (
-            <>
-              <Flex vertical gap="small">
-                <Text strong>Session Name (optional)</Text>
-                <Input
-                  placeholder="e.g., Tuesday Night Climbs"
-                  value={sessionName}
-                  onChange={(e) => setSessionName(e.target.value)}
-                  maxLength={50}
-                />
-              </Flex>
+      {isLoggedIn && (
+        <>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            <Typography variant="body2" component="span" fontWeight={600}>Session Name (optional)</Typography>
+            <TextField
+              placeholder="e.g., Tuesday Night Climbs"
+              value={sessionName}
+              onChange={(e) => setSessionName(e.target.value)}
+              slotProps={{ htmlInput: { maxLength: 50 } }}
+              variant="outlined"
+              size="small"
+            />
+          </Box>
 
-              <Flex align="center" justify="space-between">
-                <Space orientation="vertical" size={0}>
-                  <Text strong>Allow others to discover this session</Text>
-                  <Text type="secondary" style={{ fontSize: '12px' }}>
-                    Others nearby can find and join your session
-                  </Text>
-                </Space>
-                <Switch checked={discoverable} onChange={setDiscoverable} />
-              </Flex>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Stack spacing={0}>
+              <Typography variant="body2" component="span" fontWeight={600}>Allow others to discover this session</Typography>
+              <Typography variant="body2" component="span" color="text.secondary" sx={{ fontSize: '12px' }}>
+                Others nearby can find and join your session
+              </Typography>
+            </Stack>
+            <MuiSwitch checked={discoverable} onChange={(_, checked) => setDiscoverable(checked)} />
+          </Box>
 
-              <Button
-                type="primary"
-                size="large"
-                icon={<PlayCircleOutlined />}
-                onClick={handleStartSession}
-                loading={isStartingSession}
-                block
-              >
-                Start Party Mode
-              </Button>
-            </>
-          )}
-        </Flex>
-      ),
-    },
-    {
-      key: 'join',
-      label: 'Join Session',
-      children: (
-        <Flex vertical gap="middle">
-          <Text>Enter a session link or ID to join an existing party.</Text>
+          <MuiButton
+            variant="contained"
+            size="large"
+            startIcon={isStartingSession ? <CircularProgress size={16} /> : <PlayCircleOutlineOutlined />}
+            onClick={handleStartSession}
+            disabled={isStartingSession}
+            fullWidth
+          >
+            Start Party Mode
+          </MuiButton>
+        </>
+      )}
+    </Box>
+  );
 
-          <Input
-            placeholder="Paste session link or ID..."
-            value={joinSessionId}
-            onChange={(e) => setJoinSessionId(e.target.value)}
-            onPressEnter={handleJoinSession}
-          />
+  const joinTabContent = (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <Typography variant="body2" component="span">Enter a session link or ID to join an existing party.</Typography>
 
-          <Button type="primary" size="large" onClick={handleJoinSession} block>
-            Join Session
-          </Button>
-        </Flex>
-      ),
-    },
-    {
-      key: 'led',
-      label: 'Connect to Board',
-      children: <LedConnectionTab />,
-    },
-  ];
+      <TextField
+        placeholder="Paste session link or ID..."
+        value={joinSessionId}
+        onChange={(e) => setJoinSessionId(e.target.value)}
+        onKeyDown={(e) => e.key === 'Enter' && handleJoinSession()}
+        variant="outlined"
+        size="small"
+      />
 
-  // Tab items for when session is active
-  const activeSessionTabs = [
-    {
-      key: 'session',
-      label: 'Session',
-      children: (
-        <Flex gap="middle" vertical>
-          {sessionInfoContent}
-        </Flex>
-      ),
-    },
-    {
-      key: 'led',
-      label: 'Connect to Board',
-      children: <LedConnectionTab />,
-    },
-  ];
+      <MuiButton variant="contained" size="large" onClick={handleJoinSession} fullWidth>
+        Join Session
+      </MuiButton>
+    </Box>
+  );
+
+  const ledTabContent = <LedConnectionTab />;
 
   return (
     <>
-      <Badge count={connectionCount} overflowCount={100} showZero={false} color={themeTokens.colors.primary}>
-        <Button
-          type={isSessionActive ? 'primary' : buttonType}
+      <Badge badgeContent={connectionCount} max={100} color="primary" invisible={connectionCount === 0}>
+        <IconButton
           onClick={showDrawer}
-          icon={isConnecting ? <LoadingOutlined /> : <TeamOutlined />}
-        />
+          color={isSessionActive ? 'primary' : 'default'}
+        >
+          {isConnecting ? <CircularProgress size={16} /> : <GroupOutlined />}
+        </IconButton>
       </Badge>
       <SwipeableDrawer
         title={isControllerMode ? 'Controller Mode' : 'Party Mode'}
@@ -503,31 +500,31 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
           wrapper: { height: '70vh' },
         }}
       >
-        <Flex gap="middle" vertical>
+        <Box sx={{ display: 'flex', gap: 2, flexDirection: 'column' }}>
           {/* Controller Mode Banner */}
           {isControllerMode && (
-            <div
-              style={{
+            <Box
+              sx={{
                 padding: '12px',
                 background: themeTokens.semantic.selected,
                 border: `1px solid ${themeTokens.colors.primary}`,
                 borderRadius: themeTokens.borderRadius.md,
-                marginBottom: '16px',
+                mb: '16px',
               }}
             >
-              <Flex align="center" gap="small">
-                <span style={{ fontSize: '18px' }}>🎮</span>
-                <div>
-                  <Text strong style={{ color: themeTokens.colors.primary }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box component="span" sx={{ fontSize: '18px' }}>🎮</Box>
+                <Box>
+                  <Typography variant="body2" component="span" fontWeight={600} sx={{ color: themeTokens.colors.primary }}>
                     Board Controller Connected
-                  </Text>
+                  </Typography>
                   <br />
-                  <Text type="secondary" style={{ fontSize: '12px' }}>
+                  <Typography variant="body2" component="span" color="text.secondary" sx={{ fontSize: '12px' }}>
                     Queue management is handled by your Board Controller
-                  </Text>
-                </div>
-              </Flex>
-            </div>
+                  </Typography>
+                </Box>
+              </Box>
+            </Box>
           )}
 
           {/* Party Mode Content */}
@@ -535,40 +532,69 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
             <>
               {/* No active session and not connecting - show start/join/LED tabs */}
               {!isSessionActive && !isConnecting && (
-                <Tabs defaultActiveKey="start" items={noSessionTabs} />
+                <>
+                  <Tabs value={activeNoSessionTab} onChange={(_, v) => setActiveNoSessionTab(v)}>
+                    <Tab label="Start Session" value="start" />
+                    <Tab label="Join Session" value="join" />
+                    <Tab label="Connect to Board" value="led" />
+                  </Tabs>
+                  <TabPanel value={activeNoSessionTab} index="start">
+                    {startTabContent}
+                  </TabPanel>
+                  <TabPanel value={activeNoSessionTab} index="join">
+                    {joinTabContent}
+                  </TabPanel>
+                  <TabPanel value={activeNoSessionTab} index="led">
+                    {ledTabContent}
+                  </TabPanel>
+                </>
               )}
 
               {/* Connecting */}
               {isConnecting && (
-                <Flex vertical align="center" gap="middle" style={{ padding: '24px' }}>
-                  <LoadingOutlined style={{ fontSize: '32px', color: themeTokens.colors.primary }} />
-                  <Text>Connecting to session...</Text>
-                </Flex>
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, padding: '24px' }}>
+                  <CircularProgress size={32} sx={{ color: themeTokens.colors.primary }} />
+                  <Typography variant="body2" component="span">Connecting to session...</Typography>
+                </Box>
               )}
 
               {/* Connection error */}
               {connectionError && !isConnecting && (
-                <Flex
-                  align="center"
-                  gap="small"
-                  style={{
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
                     padding: '12px',
                     background: themeTokens.colors.errorBg,
                     border: `1px solid ${themeTokens.colors.error}`,
                     borderRadius: themeTokens.borderRadius.md,
                   }}
                 >
-                  <Text type="danger">{connectionError.message}</Text>
-                </Flex>
+                  <Typography variant="body2" component="span" color="error">{connectionError.message}</Typography>
+                </Box>
               )}
 
               {/* Connected - show session info + LED tabs */}
               {isConnected && (
-                <Tabs defaultActiveKey="session" items={activeSessionTabs} />
+                <>
+                  <Tabs value={activeSessionTab} onChange={(_, v) => setActiveSessionTab(v)}>
+                    <Tab label="Session" value="session" />
+                    <Tab label="Connect to Board" value="led" />
+                  </Tabs>
+                  <TabPanel value={activeSessionTab} index="session">
+                    <Box sx={{ display: 'flex', gap: 2, flexDirection: 'column' }}>
+                      {sessionInfoContent}
+                    </Box>
+                  </TabPanel>
+                  <TabPanel value={activeSessionTab} index="led">
+                    {ledTabContent}
+                  </TabPanel>
+                </>
               )}
             </>
           )}
-        </Flex>
+        </Box>
       </SwipeableDrawer>
 
       <AuthModal

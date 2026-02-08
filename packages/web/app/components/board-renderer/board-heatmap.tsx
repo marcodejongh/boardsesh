@@ -8,8 +8,13 @@ import { scaleLog } from 'd3-scale';
 import useHeatmapData from '../search-drawer/use-heatmap';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
-import { Button, Select, Switch } from 'antd';
+import MuiSelect from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
+import MuiSwitch from '@mui/material/Switch';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import MuiButton from '@mui/material/Button';
 import { track } from '@vercel/analytics';
+import { themeTokens } from '@/app/theme/theme-config';
 import BoardRenderer from './board-renderer';
 
 const LEGEND_HEIGHT = 96; // Increased from 80
@@ -303,7 +308,7 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({ boardDetails, litUpHoldsMap
                 thumbnail={true}
               />
             </div>
-            <span style={{ fontSize: '14px', color: '#fff', fontWeight: 500 }}>Loading heatmap...</span>
+            <span style={{ fontSize: '14px', color: themeTokens.semantic.surface, fontWeight: 500 }}>Loading heatmap...</span>
           </div>
         )}
         <svg
@@ -440,8 +445,8 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({ boardDetails, litUpHoldsMap
       </svg>
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center', marginTop: '8px' }}>
-        <Button
-          type={showHeatmap ? 'primary' : 'default'}
+        <MuiButton
+          variant={showHeatmap ? 'contained' : 'outlined'}
           size="small"
           onClick={() => {
             setShowHeatmap(!showHeatmap);
@@ -451,49 +456,66 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({ boardDetails, litUpHoldsMap
           }}
         >
           {showHeatmap ? 'Hide Heatmap' : 'Show Heatmap'}
-        </Button>
+        </MuiButton>
 
         {showHeatmap && (
           <>
-            <Select
+            <MuiSelect
               value={colorMode}
-              onChange={(value) => {
-                setColorMode(value as ColorMode);
+              onChange={(e) => {
+                const value = e.target.value as ColorMode;
+                setColorMode(value);
                 track('Heatmap Mode Changed', {
                   mode: value,
                   board: boardDetails.layout_name || '',
                 });
               }}
               size="small"
-              style={{ width: 130 }}
-              options={colorModeOptions}
-            />
-            <Select
+              sx={{ width: 130 }}
+            >
+              {colorModeOptions.map((opt) => (
+                <MenuItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </MenuItem>
+              ))}
+            </MuiSelect>
+            <MuiSelect
               value={threshold}
-              onChange={(value) => setThreshold(value)}
+              onChange={(e) => setThreshold(Number(e.target.value))}
               size="small"
-              style={{ width: 100 }}
-              options={thresholdOptions}
+              sx={{ width: 100 }}
+            >
+              {thresholdOptions.map((opt) => (
+                <MenuItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </MenuItem>
+              ))}
+            </MuiSelect>
+            <FormControlLabel
+              control={
+                <MuiSwitch
+                  checked={showNumbers}
+                  onChange={(_, checked) => setShowNumbers(checked)}
+                  size="small"
+                />
+              }
+              label="#"
             />
-            <Switch
-              checked={showNumbers}
-              onChange={setShowNumbers}
-              size="small"
-              checkedChildren="#"
-              unCheckedChildren="#"
-            />
-            <Switch
-              checked={excludeFootHolds}
-              onChange={(checked) => {
-                setExcludeFootHolds(checked);
-                track('Heatmap Foot Holds Toggle', {
-                  excluded: checked,
-                  board: boardDetails.layout_name || '',
-                });
-              }}
-              size="small"
-              checkedChildren="No Feet"
-              unCheckedChildren="Feet"
+            <FormControlLabel
+              control={
+                <MuiSwitch
+                  checked={excludeFootHolds}
+                  onChange={(_, checked) => {
+                    setExcludeFootHolds(checked);
+                    track('Heatmap Foot Holds Toggle', {
+                      excluded: checked,
+                      board: boardDetails.layout_name || '',
+                    });
+                  }}
+                  size="small"
+                />
+              }
+              label={excludeFootHolds ? 'No Feet' : 'Feet'}
             />
           </>
         )}

@@ -1,17 +1,23 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Spin, Typography, Button, List, Tabs } from 'antd';
+import MuiList from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import Tabs from '@mui/material/Tabs';
+import Tab from '@mui/material/Tab';
+import CircularProgress from '@mui/material/CircularProgress';
+import MuiButton from '@mui/material/Button';
+import Typography from '@mui/material/Typography';
 import {
-  TagOutlined,
-  PlusOutlined,
-  RightOutlined,
-  GlobalOutlined,
+  LabelOutlined,
+  AddOutlined,
+  ChevronRightOutlined,
+  PublicOutlined,
   LockOutlined,
-  FrownOutlined,
+  SentimentDissatisfiedOutlined,
   LoginOutlined,
-  CompassOutlined,
-} from '@ant-design/icons';
+  ExploreOutlined,
+} from '@mui/icons-material';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { BoardDetails } from '@/app/lib/types';
@@ -24,13 +30,14 @@ import {
 } from '@/app/lib/graphql/operations/playlists';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { constructClimbListWithSlugs, generateLayoutSlug, generateSizeSlug, generateSetSlug } from '@/app/lib/url-utils';
+import { TabPanel } from '@/app/components/ui/tab-panel';
 import { themeTokens } from '@/app/theme/theme-config';
 import BackButton from '@/app/components/back-button';
 import AuthModal from '@/app/components/auth/auth-modal';
 import DiscoverPlaylistsContent from './discover-playlists-content';
 import styles from './playlists.module.css';
 
-const { Title, Text } = Typography;
+// Typography destructuring removed - using MUI Typography directly
 
 // Validate hex color format
 const isValidHexColor = (color: string): boolean => {
@@ -52,6 +59,7 @@ export default function PlaylistsListContent({
   const [error, setError] = useState<string | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const { token, isLoading: tokenLoading } = useWsAuthToken();
+  const [activeTab, setActiveTab] = useState('your');
 
   const isAuthenticated = sessionStatus === 'authenticated';
 
@@ -126,12 +134,12 @@ export default function PlaylistsListContent({
           <BackButton fallbackUrl={getBackToListUrl()} />
         </div>
         <div className={styles.errorContainer}>
-          <FrownOutlined className={styles.errorIcon} />
+          <SentimentDissatisfiedOutlined className={styles.errorIcon} />
           <div className={styles.errorTitle}>Unable to Load Playlists</div>
           <div className={styles.errorMessage}>
             There was an error loading your playlists. Please try again.
           </div>
-          <Button onClick={fetchPlaylists}>Try Again</Button>
+          <MuiButton variant="outlined" onClick={fetchPlaylists}>Try Again</MuiButton>
         </div>
       </>
     );
@@ -143,19 +151,19 @@ export default function PlaylistsListContent({
     if (!isAuthenticated && sessionStatus !== 'loading') {
       return (
         <div className={styles.emptyContainer}>
-          <TagOutlined className={styles.emptyIcon} />
-          <Title level={4} className={styles.emptyTitle}>Sign in to view your playlists</Title>
-          <Text type="secondary" className={styles.emptyText}>
+          <LabelOutlined className={styles.emptyIcon} />
+          <Typography variant="h6" component="h4" className={styles.emptyTitle}>Sign in to view your playlists</Typography>
+          <Typography variant="body2" component="span" color="text.secondary" className={styles.emptyText}>
             Create and manage your own climb playlists by signing in.
-          </Text>
-          <Button
-            type="primary"
-            icon={<LoginOutlined />}
+          </Typography>
+          <MuiButton
+            variant="contained"
+            startIcon={<LoginOutlined />}
             onClick={() => setShowAuthModal(true)}
-            style={{ marginTop: themeTokens.spacing[4] }}
+            sx={{ marginTop: `${themeTokens.spacing[4]}px` }}
           >
             Sign In
-          </Button>
+          </MuiButton>
         </div>
       );
     }
@@ -163,7 +171,7 @@ export default function PlaylistsListContent({
     if (loading || tokenLoading || sessionStatus === 'loading') {
       return (
         <div className={styles.loadingContainer}>
-          <Spin size="large" />
+          <CircularProgress size={40} />
         </div>
       );
     }
@@ -171,19 +179,19 @@ export default function PlaylistsListContent({
     if (playlists.length === 0) {
       return (
         <div className={styles.emptyContainer}>
-          <TagOutlined className={styles.emptyIcon} />
-          <Title level={4} className={styles.emptyTitle}>No playlists yet</Title>
-          <Text type="secondary" className={styles.emptyText}>
+          <LabelOutlined className={styles.emptyIcon} />
+          <Typography variant="h6" component="h4" className={styles.emptyTitle}>No playlists yet</Typography>
+          <Typography variant="body2" component="span" color="text.secondary" className={styles.emptyText}>
             Create your first playlist by adding climbs from the climb list.
-          </Text>
+          </Typography>
           <Link href={getBackToListUrl()}>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              style={{ marginTop: themeTokens.spacing[4] }}
+            <MuiButton
+              variant="contained"
+              startIcon={<AddOutlined />}
+              sx={{ marginTop: `${themeTokens.spacing[4]}px` }}
             >
               Browse Climbs
-            </Button>
+            </MuiButton>
           </Link>
         </div>
       );
@@ -191,17 +199,16 @@ export default function PlaylistsListContent({
 
     return (
       <div className={styles.listSection}>
-        <List
-          dataSource={playlists}
-          renderItem={(playlist) => (
-            <Link href={getPlaylistUrl(playlist.uuid)} className={styles.playlistLink}>
-              <List.Item className={styles.playlistItem}>
+        <MuiList>
+          {playlists.map((playlist) => (
+            <Link key={playlist.uuid} href={getPlaylistUrl(playlist.uuid)} className={styles.playlistLink}>
+              <ListItem className={styles.playlistItem}>
                 <div className={styles.playlistItemContent}>
                   <div
                     className={styles.playlistColor}
                     style={{ backgroundColor: getPlaylistColor(playlist) }}
                   >
-                    <TagOutlined className={styles.playlistColorIcon} />
+                    <LabelOutlined className={styles.playlistColorIcon} />
                   </div>
                   <div className={styles.playlistInfo}>
                     <div className={styles.playlistName}>{playlist.name}</div>
@@ -210,7 +217,7 @@ export default function PlaylistsListContent({
                       <span className={styles.metaDot}>·</span>
                       {playlist.isPublic ? (
                         <span className={styles.visibilityText}>
-                          <GlobalOutlined /> Public
+                          <PublicOutlined /> Public
                         </span>
                       ) : (
                         <span className={styles.visibilityText}>
@@ -220,46 +227,14 @@ export default function PlaylistsListContent({
                     </div>
                   </div>
                 </div>
-                <RightOutlined className={styles.playlistArrow} />
-              </List.Item>
+                <ChevronRightOutlined className={styles.playlistArrow} />
+              </ListItem>
             </Link>
-          )}
-        />
+          ))}
+        </MuiList>
       </div>
     );
   };
-
-  const tabItems = [
-    {
-      key: 'your',
-      label: (
-        <span>
-          <TagOutlined />
-          Your playlists
-        </span>
-      ),
-      children: (
-        <div className={styles.contentWrapper}>
-          {renderYourPlaylists()}
-        </div>
-      ),
-    },
-    {
-      key: 'discover',
-      label: (
-        <span>
-          <CompassOutlined />
-          Discover
-        </span>
-      ),
-      children: (
-        <DiscoverPlaylistsContent
-          boardDetails={boardDetails}
-          angle={angle}
-        />
-      ),
-    },
-  ];
 
   return (
     <>
@@ -267,17 +242,39 @@ export default function PlaylistsListContent({
       <div className={styles.actionsSection}>
         <div className={styles.actionsContainer}>
           <BackButton fallbackUrl={getBackToListUrl()} />
-          <Title level={4} style={{ margin: 0 }}>Playlists</Title>
+          <Typography variant="h6" component="h4" sx={{ margin: 0 }}>Playlists</Typography>
         </div>
       </div>
 
       {/* Tabs */}
       <div className={styles.tabsContainer}>
         <Tabs
-          defaultActiveKey="your"
-          items={tabItems}
+          value={activeTab}
+          onChange={(_, v) => setActiveTab(v)}
           className={styles.playlistTabs}
-        />
+        >
+          <Tab
+            label={<span><LabelOutlined /> Your playlists</span>}
+            value="your"
+          />
+          <Tab
+            label={<span><ExploreOutlined /> Discover</span>}
+            value="discover"
+          />
+        </Tabs>
+
+        <TabPanel value={activeTab} index="your">
+          <div className={styles.contentWrapper}>
+            {renderYourPlaylists()}
+          </div>
+        </TabPanel>
+
+        <TabPanel value={activeTab} index="discover">
+          <DiscoverPlaylistsContent
+            boardDetails={boardDetails}
+            angle={angle}
+          />
+        </TabPanel>
       </div>
 
       <AuthModal

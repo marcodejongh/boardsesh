@@ -1,5 +1,4 @@
 import { Climb, BoardDetails } from '@/app/lib/types';
-import type { MenuItemType } from 'antd/es/menu/interface';
 
 /**
  * Available action types for climbs
@@ -18,7 +17,7 @@ export type ClimbActionType =
 
 /**
  * View modes for rendering climb actions
- * - icon: Icon-only display (for Ant Design Card actions prop)
+ * - icon: Icon-only display (for Card actions)
  * - button: Full buttons with labels
  * - dropdown: Menu items for Dropdown component
  * - compact: Small buttons with labels on hover
@@ -74,7 +73,14 @@ export interface ClimbActionsProps extends ClimbActionBaseProps {
 /**
  * Menu item type for dropdown mode
  */
-export type ClimbActionMenuItem = MenuItemType;
+export type ClimbActionMenuItem = {
+  key?: React.Key;
+  label?: React.ReactNode;
+  icon?: React.ReactNode;
+  disabled?: boolean;
+  danger?: boolean;
+  onClick?: () => void;
+};
 
 /**
  * Result from individual action components for different render modes

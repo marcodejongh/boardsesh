@@ -47,25 +47,19 @@
   width: 36px;
   height: 4px;
   border-radius: 2px;
-  background-color: var(--ant-color-text-quaternary, #d9d9d9);
+  background-color: var(--neutral-300, #d9d9d9);
 }
 
 .dragHandleBarVertical {
   width: 4px;
   height: 36px;
   border-radius: 2px;
-  background-color: var(--ant-color-text-quaternary, #d9d9d9);
+  background-color: var(--neutral-300, #d9d9d9);
 }
 
 /* Title wrapper: handle injected above/below the user's title in the header */
 .titleWithHandle {
-  /* Negate the AntD header padding so the handle spans full drawer width */
-  margin: -16px -24px 0;
-}
-
-.titleContent {
-  /* Re-apply the header padding around the actual title text */
-  padding: 0 24px;
+  margin: 0;
 }
 
 /* Body wrapper for swipeRegion='body' - just a handler target, sizing from parent */
@@ -77,9 +71,9 @@
   -webkit-touch-callout: none;
 }
 
-/* Mobile: hide Ant Drawer close button, show drag handle */
+/* Mobile: hide close button, show drag handle */
 @media (max-width: 767px) {
-  .mobileHideClose :global(.ant-drawer-close) {
+  .mobileHideClose :global(.MuiIconButton-root.drawer-close-btn) {
     display: none !important;
   }
 }

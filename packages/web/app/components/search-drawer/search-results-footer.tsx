@@ -1,8 +1,10 @@
 'use client';
 
 import React from 'react';
-import { Typography, Spin, Space } from 'antd';
-import { FilterOutlined } from '@ant-design/icons';
+import CircularProgress from '@mui/material/CircularProgress';
+import MuiTypography from '@mui/material/Typography';
+import Stack from '@mui/material/Stack';
+import FilterListOutlined from '@mui/icons-material/FilterListOutlined';
 import { useQueueContext } from '@/app/components/graphql-queue';
 import ClearButton from './clear-button';
 import { useUISearchParams } from '../queue-control/ui-searchparams-provider';
@@ -10,7 +12,6 @@ import { DEFAULT_SEARCH_PARAMS } from '@/app/lib/url-utils';
 import { themeTokens } from '@/app/theme/theme-config';
 import styles from './search-form.module.css';
 
-const { Text } = Typography;
 
 const SearchResultsFooter = () => {
   const { totalSearchResultCount, isFetchingClimbs } = useQueueContext();
@@ -34,14 +35,14 @@ const SearchResultsFooter = () => {
     <div className={styles.searchFooter}>
       <div className={styles.resultCount}>
         {isFetchingClimbs ? (
-          <Spin size="small" />
+          <CircularProgress size={20} />
         ) : (
-          <Space size={8}>
-            <FilterOutlined style={{ color: themeTokens.colors.primary }} />
-            <Text type="secondary">
+          <Stack direction="row" spacing={1}>
+            <FilterListOutlined style={{ color: themeTokens.colors.primary }} />
+            <MuiTypography variant="body2" component="span" color="text.secondary">
               <span className={styles.resultBadge}>{(totalSearchResultCount ?? 0).toLocaleString()}</span> results
-            </Text>
-          </Space>
+            </MuiTypography>
+          </Stack>
         )}
       </div>
       <ClearButton />

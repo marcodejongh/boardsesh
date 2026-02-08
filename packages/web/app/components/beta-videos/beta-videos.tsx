@@ -1,12 +1,24 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Card, Row, Col, Typography, Empty, Modal, Collapse, Button, Space } from 'antd';
-import { InstagramOutlined, UserOutlined, VideoCameraOutlined, DownOutlined, UpOutlined } from '@ant-design/icons';
+import Accordion from '@mui/material/Accordion';
+import AccordionSummary from '@mui/material/AccordionSummary';
+import AccordionDetails from '@mui/material/AccordionDetails';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import ExpandMoreOutlined from '@mui/icons-material/ExpandMoreOutlined';
+import Box from '@mui/material/Box';
+import Stack from '@mui/material/Stack';
+import Button from '@mui/material/Button';
+import Typography from '@mui/material/Typography';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import { Instagram, PersonOutlined, VideocamOutlined, ExpandLessOutlined } from '@mui/icons-material';
+import { EmptyState } from '@/app/components/ui/empty-state';
 import { BetaLink } from '@/app/lib/api-wrappers/sync-api-types';
 import { themeTokens } from '@/app/theme/theme-config';
-
-const { Text } = Typography;
 
 interface BetaVideosProps {
   betaLinks: BetaLink[];
@@ -47,16 +59,15 @@ const BetaVideos: React.FC<BetaVideosProps> = ({ betaLinks }) => {
     const embedUrl = getInstagramEmbedUrl(betaLink.link);
 
     return (
-      <Col xs={24} key={betaLink.link}>
+      <Box sx={{ width: '100%' }} key={betaLink.link}>
         <Card
-          hoverable
-          size="small"
-          styles={{ body: { padding: 0 } }}
+          sx={{ '&:hover': { boxShadow: 3 }, cursor: 'pointer' }}
           onClick={() => handleVideoClick(betaLink)}
         >
+        <CardContent sx={{ p: 0, '&:last-child': { pb: 0 } }}>
           {embedUrl ? (
-            <div
-              style={{
+            <Box
+              sx={{
                 position: 'relative',
                 paddingBottom: '100%',
                 overflow: 'hidden',
@@ -77,24 +88,24 @@ const BetaVideos: React.FC<BetaVideosProps> = ({ betaLinks }) => {
                 scrolling="no"
                 title={`Beta video by ${betaLink.foreign_username || 'unknown'}`}
               />
-            </div>
+            </Box>
           ) : (
-            <div
-              style={{
-                padding: themeTokens.spacing[8],
+            <Box
+              sx={{
+                padding: `${themeTokens.spacing[8]}px`,
                 textAlign: 'center',
                 background: themeTokens.neutral[100],
               }}
             >
-              <InstagramOutlined style={{ fontSize: 32, color: themeTokens.neutral[400] }} />
-              <p style={{ margin: `${themeTokens.spacing[2]}px 0 0`, color: themeTokens.neutral[500] }}>
+              <Instagram sx={{ fontSize: 32, color: themeTokens.neutral[400] }} />
+              <Box component="p" sx={{ margin: `${themeTokens.spacing[2]}px 0 0`, color: themeTokens.neutral[500] }}>
                 Unable to load video
-              </p>
-            </div>
+              </Box>
+            </Box>
           )}
-          <div
-            style={{
-              padding: themeTokens.spacing[3],
+          <Box
+            sx={{
+              padding: `${themeTokens.spacing[3]}px`,
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
@@ -102,17 +113,18 @@ const BetaVideos: React.FC<BetaVideosProps> = ({ betaLinks }) => {
             }}
           >
             {betaLink.foreign_username && (
-              <Text type="secondary" style={{ fontSize: themeTokens.typography.fontSize.sm }}>
-                <UserOutlined style={{ marginRight: 4 }} />@{betaLink.foreign_username}
-                {betaLink.angle && <span style={{ marginLeft: 8 }}>{betaLink.angle}°</span>}
-              </Text>
+              <Typography variant="body2" component="span" color="text.secondary" sx={{ fontSize: themeTokens.typography.fontSize.sm }}>
+                <PersonOutlined sx={{ marginRight: 4, fontSize: 'inherit', verticalAlign: 'middle' }} />@{betaLink.foreign_username}
+                {betaLink.angle && <Box component="span" sx={{ marginLeft: 8 }}>{betaLink.angle}&deg;</Box>}
+              </Typography>
             )}
-            <a
+            <Box
+              component="a"
               href={betaLink.link}
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
-              style={{
+              sx={{
                 color: themeTokens.colors.primary,
                 fontSize: themeTokens.typography.fontSize.sm,
                 display: 'flex',
@@ -120,11 +132,12 @@ const BetaVideos: React.FC<BetaVideosProps> = ({ betaLinks }) => {
                 gap: 4,
               }}
             >
-              <InstagramOutlined /> View
-            </a>
-          </div>
+              <Instagram sx={{ fontSize: 'inherit' }} /> View
+            </Box>
+          </Box>
+        </CardContent>
         </Card>
-      </Col>
+      </Box>
     );
   };
 
@@ -133,132 +146,122 @@ const BetaVideos: React.FC<BetaVideosProps> = ({ betaLinks }) => {
   const hasMoreVideos = betaLinks.length > 1;
 
   const summaryLabel = (
-    <Space size="middle">
-      <Text strong>
-        <VideoCameraOutlined style={{ marginRight: 8 }} />
+    <Stack direction="row" spacing={2}>
+      <Typography variant="body2" component="span" fontWeight={600}>
+        <VideocamOutlined sx={{ marginRight: 8, fontSize: 'inherit', verticalAlign: 'middle' }} />
         Beta Videos
-      </Text>
-      <Text type="secondary">
+      </Typography>
+      <Typography variant="body2" component="span" color="text.secondary">
         {betaLinks.length} video{betaLinks.length !== 1 ? 's' : ''} available
-      </Text>
-    </Space>
+      </Typography>
+    </Stack>
   );
 
   // Empty state
   if (betaLinks.length === 0) {
     return (
-      <Collapse
-        ghost
-        defaultActiveKey={[]}
-        items={[
-          {
-            key: 'beta',
-            label: (
-              <Space size="middle">
-                <Text strong>
-                  <VideoCameraOutlined style={{ marginRight: 8 }} />
-                  Beta Videos
-                </Text>
-                <Text type="secondary">No videos available</Text>
-              </Space>
-            ),
-            children: <Empty description="No beta videos available" image={Empty.PRESENTED_IMAGE_SIMPLE} />,
-          },
-        ]}
-        style={{ margin: '-12px -8px' }}
-      />
+      <Accordion elevation={0} sx={{ bgcolor: 'transparent', margin: '-12px -8px' }}>
+        <AccordionSummary expandIcon={<ExpandMoreOutlined />}>
+          <Stack direction="row" spacing={2}>
+            <Typography variant="body2" component="span" fontWeight={600}>
+              <VideocamOutlined sx={{ marginRight: 8, fontSize: 'inherit', verticalAlign: 'middle' }} />
+              Beta Videos
+            </Typography>
+            <Typography variant="body2" component="span" color="text.secondary">No videos available</Typography>
+          </Stack>
+        </AccordionSummary>
+        <AccordionDetails>
+          <EmptyState description="No beta videos available" />
+        </AccordionDetails>
+      </Accordion>
     );
   }
 
   return (
     <>
-      <Collapse
-        ghost
-        defaultActiveKey={[]}
-        items={[
-          {
-            key: 'beta',
-            label: summaryLabel,
-            children: (
-              <>
-                <Row gutter={[12, 12]}>
-                  {visibleVideos.map((betaLink) => renderVideoCard(betaLink))}
-                </Row>
-                {hasMoreVideos && (
-                  <Button
-                    type="text"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowAllVideos(!showAllVideos);
-                    }}
-                    style={{
-                      width: '100%',
-                      marginTop: themeTokens.spacing[3],
-                      color: themeTokens.colors.primary,
-                    }}
-                    icon={showAllVideos ? <UpOutlined /> : <DownOutlined />}
-                  >
-                    {showAllVideos ? 'Show less' : `Show ${betaLinks.length - 1} more video${betaLinks.length - 1 !== 1 ? 's' : ''}`}
-                  </Button>
-                )}
-              </>
-            ),
-          },
-        ]}
-        style={{ margin: '-12px -8px' }}
-      />
+      <Accordion elevation={0} sx={{ bgcolor: 'transparent', margin: '-12px -8px' }}>
+        <AccordionSummary expandIcon={<ExpandMoreOutlined />}>
+          {summaryLabel}
+        </AccordionSummary>
+        <AccordionDetails>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+            {visibleVideos.map((betaLink) => renderVideoCard(betaLink))}
+          </Box>
+          {hasMoreVideos && (
+            <Button
+              variant="text"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowAllVideos(!showAllVideos);
+              }}
+              fullWidth
+              sx={{
+                marginTop: `${themeTokens.spacing[3]}px`,
+                color: themeTokens.colors.primary,
+              }}
+              startIcon={showAllVideos ? <ExpandLessOutlined /> : <ExpandMoreOutlined />}
+            >
+              {showAllVideos ? 'Show less' : `Show ${betaLinks.length - 1} more video${betaLinks.length - 1 !== 1 ? 's' : ''}`}
+            </Button>
+          )}
+        </AccordionDetails>
+      </Accordion>
 
       {modalVisible && (
-        <Modal
-          title={selectedVideo?.foreign_username ? `Beta by @${selectedVideo.foreign_username}` : 'Beta Video'}
+        <Dialog
           open={modalVisible}
-          onCancel={handleModalClose}
-          footer={
-            <a
+          onClose={handleModalClose}
+          maxWidth="sm"
+          fullWidth
+          sx={{ '& .MuiDialog-paper': { maxWidth: '500px', width: '90%' } }}
+        >
+          <DialogTitle>
+            {selectedVideo?.foreign_username ? `Beta by @${selectedVideo.foreign_username}` : 'Beta Video'}
+          </DialogTitle>
+          <DialogContent>
+            {selectedVideo && (
+              <Box
+                sx={{
+                  position: 'relative',
+                  paddingBottom: '140%',
+                  overflow: 'hidden',
+                  borderRadius: themeTokens.borderRadius.md,
+                }}
+              >
+                <iframe
+                  key={iframeKey}
+                  src={getInstagramEmbedUrl(selectedVideo.link) || ''}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    border: 'none',
+                  }}
+                  scrolling="no"
+                  title="Beta video"
+                />
+              </Box>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Box
+              component="a"
               href={selectedVideo?.link}
               target="_blank"
               rel="noopener noreferrer"
-              style={{
+              sx={{
                 color: themeTokens.colors.primary,
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 6,
               }}
             >
-              <InstagramOutlined /> View on Instagram
-            </a>
-          }
-          width="90%"
-          style={{ maxWidth: '500px' }}
-          centered
-          destroyOnClose
-        >
-          {selectedVideo && (
-            <div
-              style={{
-                position: 'relative',
-                paddingBottom: '140%',
-                overflow: 'hidden',
-                borderRadius: themeTokens.borderRadius.md,
-              }}
-            >
-              <iframe
-                key={iframeKey}
-                src={getInstagramEmbedUrl(selectedVideo.link) || ''}
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: '100%',
-                  border: 'none',
-                }}
-                scrolling="no"
-                title="Beta video"
-              />
-            </div>
-          )}
-        </Modal>
+              <Instagram sx={{ fontSize: 'inherit' }} /> View on Instagram
+            </Box>
+          </DialogActions>
+        </Dialog>
       )}
     </>
   );

@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useCallback } from 'react';
-import { Button, Spin } from 'antd';
-import { SearchOutlined } from '@ant-design/icons';
+import CircularProgress from '@mui/material/CircularProgress';
+import MuiButton from '@mui/material/Button';
+import SearchOutlined from '@mui/icons-material/SearchOutlined';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import AccordionSearchForm from './accordion-search-form';
 import { BoardDetails } from '@/app/lib/types';
@@ -43,15 +44,15 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({ boardDetails, open, onC
       >
         Clear all
       </button>
-      <Button
-        type="primary"
-        icon={isFetchingClimbs ? <Spin size="small" /> : <SearchOutlined />}
+      <MuiButton
+        variant="contained"
+        startIcon={isFetchingClimbs ? <CircularProgress size={20} /> : <SearchOutlined />}
         onClick={handleClose}
         className={styles.searchButton}
         size="large"
       >
         Search{showResultCount ? ` \u00B7 ${resultCount.toLocaleString()}` : ''}
-      </Button>
+      </MuiButton>
     </div>
   );
 
@@ -62,12 +63,12 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({ boardDetails, open, onC
       onClose={handleClose}
       height="100%"
       showDragHandle
-      closable={false}
+      showCloseButton={false}
       swipeEnabled
       footer={drawerFooter}
       rootClassName={styles.drawerRoot}
       styles={{
-        body: { padding: '0 16px 16px', backgroundColor: 'var(--ant-color-bg-layout, #F3F4F6)' },
+        body: { padding: '0 16px 16px', backgroundColor: 'var(--semantic-background, #F3F4F6)' },
         footer: { padding: 0, border: 'none' },
         header: { display: 'none' },
         mask: { backgroundColor: 'rgba(128, 128, 128, 0.7)' },

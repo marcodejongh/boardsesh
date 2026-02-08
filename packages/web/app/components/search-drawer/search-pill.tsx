@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { SearchOutlined } from '@ant-design/icons';
+import SearchOutlined from '@mui/icons-material/SearchOutlined';
 import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
 import { getSearchPillSummary, hasActiveFilters } from './search-summary-utils';
 import styles from './search-pill.module.css';

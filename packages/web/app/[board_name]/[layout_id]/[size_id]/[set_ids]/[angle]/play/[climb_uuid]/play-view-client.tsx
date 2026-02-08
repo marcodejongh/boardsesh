@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback } from 'react';
-import { Button, Empty } from 'antd';
+import MuiButton from '@mui/material/Button';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { track } from '@vercel/analytics';
 import { Climb, BoardDetails, Angle } from '@/app/lib/types';
@@ -11,6 +11,7 @@ import ClimbTitle from '@/app/components/climb-card/climb-title';
 import { AscentStatus } from '@/app/components/queue-control/queue-list-item';
 import { constructClimbListWithSlugs, constructPlayUrlWithSlugs } from '@/app/lib/url-utils';
 import { themeTokens } from '@/app/theme/theme-config';
+import { EmptyState } from '@/app/components/ui/empty-state';
 import styles from './play-view.module.css';
 
 type PlayViewClientProps = {
@@ -115,10 +116,10 @@ const PlayViewClient: React.FC<PlayViewClientProps> = ({ boardDetails, initialCl
     return (
       <div className={styles.pageContainer} style={{ backgroundColor: themeTokens.semantic.background }}>
         <div className={styles.emptyState} style={{ color: themeTokens.neutral[400] }}>
-          <Empty description="No climb selected" />
-          <Button type="primary" onClick={() => router.push(getBackToListUrl())}>
+          <EmptyState description="No climb selected" />
+          <MuiButton variant="contained" onClick={() => router.push(getBackToListUrl())}>
             Browse Climbs
-          </Button>
+          </MuiButton>
         </div>
       </div>
     );

@@ -1,10 +1,16 @@
 'use client';
 
 import React from 'react';
-import Flex from 'antd/es/flex';
-import Card from 'antd/es/card';
-import Skeleton from 'antd/es/skeleton';
-import { InfoCircleOutlined, ForkOutlined, HeartOutlined, PlusCircleOutlined } from '@ant-design/icons';
+import Box from '@mui/material/Box';
+import MuiCard from '@mui/material/Card';
+import CardHeader from '@mui/material/CardHeader';
+import CardContent from '@mui/material/CardContent';
+import CardActions from '@mui/material/CardActions';
+import MuiSkeleton from '@mui/material/Skeleton';
+import InfoOutlined from '@mui/icons-material/InfoOutlined';
+import CallSplitOutlined from '@mui/icons-material/CallSplitOutlined';
+import FavoriteBorderOutlined from '@mui/icons-material/FavoriteBorderOutlined';
+import AddCircleOutlined from '@mui/icons-material/AddCircleOutlined';
 import { themeTokens } from '@/app/theme/theme-config';
 import styles from './board-page-skeleton.module.css';
 
@@ -16,15 +22,15 @@ type BoardPageSkeletonProps = {
  * Skeleton that mimics the ClimbCard title structure (horizontal layout with V grade)
  */
 const ClimbCardTitleSkeleton = () => (
-  <Flex gap={12} align="center">
+  <Box sx={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
     {/* Left side: Name and info stacked */}
-    <Flex vertical gap={4} style={{ flex: 1, minWidth: 0 }}>
-      <Skeleton.Input active size="small" style={{ width: '60%', minWidth: 80 }} />
-      <Skeleton.Input active size="small" style={{ width: '80%', minWidth: 100, height: 14 }} />
-    </Flex>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, minWidth: 0 }}>
+      <MuiSkeleton variant="rounded" width="60%" height={24} sx={{ minWidth: 80 }} animation="wave" />
+      <MuiSkeleton variant="rounded" width="80%" height={14} sx={{ minWidth: 100 }} animation="wave" />
+    </Box>
     {/* Right side: V grade placeholder */}
-    <Skeleton.Avatar active shape="square" size={32} />
-  </Flex>
+    <MuiSkeleton variant="rounded" width={32} height={32} animation="wave" />
+  </Box>
 );
 
 /**
@@ -32,41 +38,42 @@ const ClimbCardTitleSkeleton = () => (
  * Uses the actual board's aspect ratio to prevent layout shift when content loads.
  */
 const BoardRendererSkeleton = ({ aspectRatio }: { aspectRatio?: number }) => (
-  <Skeleton.Node
-    active
-    style={{
+  <MuiSkeleton
+    variant="rounded"
+    animation="wave"
+    sx={{
       width: '100%',
       minHeight: '40vh',
       aspectRatio: aspectRatio ? `${aspectRatio}` : '1 / 1.1',
     }}
-  >
-    <span />
-  </Skeleton.Node>
+  />
 );
 
 /**
  * Skeleton loading UI for ClimbCard, matching the card structure with muted action icons.
  */
 const ClimbCardSkeleton = ({ aspectRatio }: { aspectRatio?: number }) => (
-  <Card
-    size="small"
-    style={{
+  <MuiCard
+    sx={{
       backgroundColor: themeTokens.semantic.surface,
     }}
-    styles={{
-      header: { paddingTop: 8, paddingBottom: 6 },
-      body: { padding: 6, display: 'flex', justifyContent: 'center' },
-    }}
-    title={<ClimbCardTitleSkeleton />}
-    actions={[
-      <InfoCircleOutlined key="info" style={{ color: 'var(--ant-color-text-quaternary)' }} />,
-      <ForkOutlined key="fork" style={{ color: 'var(--ant-color-text-quaternary)' }} />,
-      <HeartOutlined key="heart" style={{ color: 'var(--ant-color-text-quaternary)' }} />,
-      <PlusCircleOutlined key="plus" style={{ color: 'var(--ant-color-text-quaternary)' }} />,
-    ]}
   >
-    <BoardRendererSkeleton aspectRatio={aspectRatio} />
-  </Card>
+    <CardHeader
+      title={<ClimbCardTitleSkeleton />}
+      sx={{ paddingTop: '8px', paddingBottom: '6px' }}
+    />
+    <CardContent
+      sx={{ p: '6px', display: 'flex', justifyContent: 'center' }}
+    >
+      <BoardRendererSkeleton aspectRatio={aspectRatio} />
+    </CardContent>
+    <CardActions sx={{ justifyContent: 'space-around' }}>
+      <InfoOutlined key="info" sx={{ color: themeTokens.neutral[300] }} />
+      <CallSplitOutlined key="fork" sx={{ color: themeTokens.neutral[300] }} />
+      <FavoriteBorderOutlined key="heart" sx={{ color: themeTokens.neutral[300] }} />
+      <AddCircleOutlined key="plus" sx={{ color: themeTokens.neutral[300] }} />
+    </CardActions>
+  </MuiCard>
 );
 
 /**
@@ -85,22 +92,22 @@ const ClimbListItemSkeleton = () => (
   >
     {/* Thumbnail placeholder - matches ClimbListItem width of themeTokens.spacing[16] (64px) */}
     <div style={{ width: themeTokens.spacing[16], flexShrink: 0 }}>
-      <Skeleton.Avatar active shape="square" size={48} />
+      <MuiSkeleton variant="rounded" width={48} height={48} animation="wave" />
     </div>
 
     {/* Center: Name and setter lines */}
-    <Flex vertical gap={4} style={{ flex: 1, minWidth: 0 }}>
-      <Skeleton.Input active size="small" style={{ width: '55%', minWidth: 80, height: 16 }} />
-      <Skeleton.Input active size="small" style={{ width: '35%', minWidth: 60, height: 12 }} />
-    </Flex>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, minWidth: 0 }}>
+      <MuiSkeleton variant="rounded" width="55%" height={16} sx={{ minWidth: 80 }} animation="wave" />
+      <MuiSkeleton variant="rounded" width="35%" height={12} sx={{ minWidth: 60 }} animation="wave" />
+    </Box>
 
     {/* Right: Ascent + Grade placeholder - matches ClimbListItem flex container */}
     <div style={{ display: 'flex', alignItems: 'center', gap: themeTokens.spacing[1], flexShrink: 0 }}>
-      <Skeleton.Avatar active shape="square" size={24} />
+      <MuiSkeleton variant="rounded" width={24} height={24} animation="wave" />
     </div>
 
     {/* Ellipsis dot placeholder */}
-    <Skeleton.Button active size="small" style={{ width: 24, minWidth: 24, height: 24 }} />
+    <MuiSkeleton variant="rounded" width={24} height={24} animation="wave" />
   </div>
 );
 

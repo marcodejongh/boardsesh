@@ -1,20 +1,23 @@
+'use client';
+
 import React from 'react';
 import Link from 'next/link';
 import { useQueueContext } from '../graphql-queue';
 import { useParams, usePathname, useSearchParams } from 'next/navigation';
 import { parseBoardRouteParams, constructClimbViewUrlWithSlugs, constructPlayUrlWithSlugs } from '@/app/lib/url-utils';
 import { BoardRouteParametersWithUuid, BoardDetails } from '@/app/lib/types';
-import { FastForwardOutlined } from '@ant-design/icons';
+import FastForwardOutlined from '@mui/icons-material/FastForwardOutlined';
 import { track } from '@vercel/analytics';
-import Button, { ButtonProps } from 'antd/es/button';
+import IconButton from '@mui/material/IconButton';
+import type { IconButtonProps } from '@mui/material/IconButton';
 
 type NextClimbButtonProps = {
   navigate: boolean;
   boardDetails?: BoardDetails;
 };
 
-const NextButton = (props: ButtonProps) => (
-  <Button {...props} type="text" icon={<FastForwardOutlined />} aria-label="Next climb" />
+const NextButton = (props: IconButtonProps) => (
+  <IconButton {...props} aria-label="Next climb"><FastForwardOutlined /></IconButton>
 );
 
 export default function NextClimbButton({ navigate = false, boardDetails }: NextClimbButtonProps) {

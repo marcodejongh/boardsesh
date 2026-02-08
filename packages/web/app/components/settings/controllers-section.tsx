@@ -1,36 +1,37 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import {
-  Card,
-  Button,
-  Form,
-  Input,
-  Typography,
-  Space,
-  Modal,
-  message,
-  Spin,
-  Tag,
-  Popconfirm,
-  Select,
-  Alert,
-} from 'antd';
-import {
-  CheckCircleOutlined,
-  ClockCircleOutlined,
-  DeleteOutlined,
-  PlusOutlined,
-  CopyOutlined,
-  WarningOutlined,
-} from '@ant-design/icons';
+import Box from '@mui/material/Box';
+import Stack from '@mui/material/Stack';
+import MuiSelect from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
+import FormControl from '@mui/material/FormControl';
+import InputLabel from '@mui/material/InputLabel';
+import Chip from '@mui/material/Chip';
+import MuiAlert from '@mui/material/Alert';
+import AlertTitle from '@mui/material/AlertTitle';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import { ConfirmPopover } from '@/app/components/ui/confirm-popover';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import TextField from '@mui/material/TextField';
+import CircularProgress from '@mui/material/CircularProgress';
+import CheckCircleOutlined from '@mui/icons-material/CheckCircleOutlined';
+import AccessTimeOutlined from '@mui/icons-material/AccessTimeOutlined';
+import DeleteOutlined from '@mui/icons-material/DeleteOutlined';
+import AddOutlined from '@mui/icons-material/AddOutlined';
+import ContentCopyOutlined from '@mui/icons-material/ContentCopyOutlined';
+import WarningOutlined from '@mui/icons-material/WarningOutlined';
 import type { ControllerInfo } from '@/app/api/internal/controllers/route';
 import { getBoardSelectorOptions } from '@/app/lib/__generated__/product-sizes-data';
 import { BoardName } from '@/app/lib/types';
 import styles from './controllers-section.module.css';
-
-const { Text, Title, Paragraph } = Typography;
-const { Option } = Select;
+import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 
 // Get board config data (synchronous - from generated data)
 const boardSelectorOptions = getBoardSelectorOptions();
@@ -47,22 +48,16 @@ function ControllerCard({ controller, onRemove, isRemoving }: ControllerCardProp
   const getStatusTag = () => {
     if (controller.isOnline) {
       return (
-        <Tag icon={<CheckCircleOutlined />} color="success">
-          Online
-        </Tag>
+        <Chip icon={<CheckCircleOutlined />} label="Online" size="small" color="success" />
       );
     }
     if (controller.lastSeen) {
       return (
-        <Tag icon={<ClockCircleOutlined />} color="default">
-          Offline
-        </Tag>
+        <Chip icon={<AccessTimeOutlined />} label="Offline" size="small" color="default" />
       );
     }
     return (
-      <Tag color="default">
-        Never connected
-      </Tag>
+      <Chip label="Never connected" size="small" color="default" />
     );
   };
 
@@ -82,38 +77,46 @@ function ControllerCard({ controller, onRemove, isRemoving }: ControllerCardProp
 
   return (
     <Card className={styles.controllerCard}>
-      <div className={styles.cardHeader}>
-        <Title level={5} style={{ margin: 0 }}>
-          {controller.name || 'Unnamed Controller'}
-        </Title>
-        {getStatusTag()}
-      </div>
-      <div className={styles.controllerInfo}>
-        <div className={styles.infoRow}>
-          <Text type="secondary">Board:</Text>
-          <Tag color="blue">{boardName}</Tag>
+      <CardContent>
+        <div className={styles.cardHeader}>
+          <Typography variant="h5" sx={{ margin: 0 }}>
+            {controller.name || 'Unnamed Controller'}
+          </Typography>
+          {getStatusTag()}
         </div>
-        <div className={styles.infoRow}>
-          <Text type="secondary">Layout:</Text>
-          <Text>{controller.layoutId} / Size {controller.sizeId}</Text>
+        <div className={styles.controllerInfo}>
+          <div className={styles.infoRow}>
+            <Typography variant="body2" component="span" color="text.secondary">Board:</Typography>
+            <Chip label={boardName} size="small" color="primary" />
+          </div>
+          <div className={styles.infoRow}>
+            <Typography variant="body2" component="span" color="text.secondary">Layout:</Typography>
+            <Typography variant="body2" component="span">{controller.layoutId} / Size {controller.sizeId}</Typography>
+          </div>
+          <div className={styles.infoRow}>
+            <Typography variant="body2" component="span" color="text.secondary">Last seen:</Typography>
+            <Typography variant="body2" component="span">{formatLastSeen(controller.lastSeen)}</Typography>
+          </div>
         </div>
-        <div className={styles.infoRow}>
-          <Text type="secondary">Last seen:</Text>
-          <Text>{formatLastSeen(controller.lastSeen)}</Text>
-        </div>
-      </div>
-      <Popconfirm
-        title="Delete controller"
-        description="Are you sure you want to delete this controller? This cannot be undone."
-        onConfirm={onRemove}
-        okText="Yes, delete"
-        cancelText="Cancel"
-        okButtonProps={{ danger: true }}
-      >
-        <Button danger icon={<DeleteOutlined />} loading={isRemoving} block>
-          Delete Controller
-        </Button>
-      </Popconfirm>
+        <ConfirmPopover
+          title="Delete controller"
+          description="Are you sure you want to delete this controller? This cannot be undone."
+          onConfirm={onRemove}
+          okText="Yes, delete"
+          cancelText="Cancel"
+          okButtonProps={{ color: 'error' }}
+        >
+          <Button
+            color="error"
+            variant="outlined"
+            startIcon={isRemoving ? <CircularProgress size={16} /> : <DeleteOutlined />}
+            disabled={isRemoving}
+            fullWidth
+          >
+            Delete Controller
+          </Button>
+        </ConfirmPopover>
+      </CardContent>
     </Card>
   );
 }
@@ -126,52 +129,57 @@ interface ApiKeySuccessModalProps {
 }
 
 function ApiKeySuccessModal({ isOpen, apiKey, controllerName, onClose }: ApiKeySuccessModalProps) {
+  const { showMessage } = useSnackbar();
+
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(apiKey);
-      message.success('API key copied to clipboard');
+      showMessage('API key copied to clipboard', 'success');
     } catch {
-      message.error('Failed to copy - please select and copy manually');
+      showMessage('Failed to copy - please select and copy manually', 'error');
     }
   };
 
   return (
-    <Modal
-      title="Controller Registered"
+    <Dialog
       open={isOpen}
-      onCancel={onClose}
-      footer={
-        <Button type="primary" onClick={onClose}>
+      onClose={onClose}
+      disableEscapeKeyDown
+      maxWidth="sm"
+      fullWidth
+    >
+      <DialogTitle>Controller Registered</DialogTitle>
+      <DialogContent>
+        <MuiAlert severity="warning" icon={<WarningOutlined />} sx={{ marginBottom: 2 }}>
+          <AlertTitle>Save this API key now!</AlertTitle>
+          This is the only time you'll see this key. If you lose it, you'll need to delete and re-register the controller.
+        </MuiAlert>
+        <Typography variant="body1" component="p">
+          Your controller <strong>{controllerName || 'Unnamed Controller'}</strong> has been registered.
+        </Typography>
+        <Typography variant="body1" component="p" color="text.secondary">
+          Enter this API key in your ESP32 configuration:
+        </Typography>
+        <TextField
+          value={apiKey}
+          multiline
+          rows={2}
+          fullWidth
+          variant="outlined"
+          size="small"
+          slotProps={{ input: { readOnly: true, style: { fontFamily: 'monospace' } } }}
+          sx={{ marginBottom: 1 }}
+        />
+        <Button variant="outlined" startIcon={<ContentCopyOutlined />} onClick={handleCopy} fullWidth>
+          Copy API Key
+        </Button>
+      </DialogContent>
+      <DialogActions>
+        <Button variant="contained" onClick={onClose}>
           Done
         </Button>
-      }
-      closable={false}
-      maskClosable={false}
-    >
-      <Alert
-        type="warning"
-        icon={<WarningOutlined />}
-        showIcon
-        message="Save this API key now!"
-        description="This is the only time you'll see this key. If you lose it, you'll need to delete and re-register the controller."
-        style={{ marginBottom: 16 }}
-      />
-      <Paragraph>
-        Your controller <strong>{controllerName || 'Unnamed Controller'}</strong> has been registered.
-      </Paragraph>
-      <Paragraph type="secondary">
-        Enter this API key in your ESP32 configuration:
-      </Paragraph>
-      <Input.TextArea
-        value={apiKey}
-        readOnly
-        rows={2}
-        style={{ fontFamily: 'monospace', marginBottom: 8 }}
-      />
-      <Button icon={<CopyOutlined />} onClick={handleCopy} block>
-        Copy API Key
-      </Button>
-    </Modal>
+      </DialogActions>
+    </Dialog>
   );
 }
 
@@ -181,7 +189,8 @@ export default function ControllersSection() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
-  const [form] = Form.useForm();
+  const [formValues, setFormValues] = useState({ name: '' });
+  const { showMessage } = useSnackbar();
 
   // Board configuration selection state
   const [selectedBoard, setSelectedBoard] = useState<BoardName | undefined>(undefined);
@@ -232,7 +241,7 @@ export default function ControllersSection() {
   }, []);
 
   const handleAddClick = () => {
-    form.resetFields();
+    setFormValues({ name: '' });
     setSelectedBoard(undefined);
     setSelectedLayout(undefined);
     setSelectedSize(undefined);
@@ -242,7 +251,7 @@ export default function ControllersSection() {
 
   const handleModalCancel = () => {
     setIsModalOpen(false);
-    form.resetFields();
+    setFormValues({ name: '' });
     setSelectedBoard(undefined);
     setSelectedLayout(undefined);
     setSelectedSize(undefined);
@@ -254,14 +263,12 @@ export default function ControllersSection() {
     setSelectedLayout(undefined);
     setSelectedSize(undefined);
     setSelectedSets([]);
-    form.setFieldsValue({ layoutId: undefined, sizeId: undefined, setIds: undefined });
   };
 
   const handleLayoutChange = (value: number) => {
     setSelectedLayout(value);
     setSelectedSize(undefined);
     setSelectedSets([]);
-    form.setFieldsValue({ sizeId: undefined, setIds: undefined });
   };
 
   const handleSizeChange = (value: number) => {
@@ -272,7 +279,6 @@ export default function ControllersSection() {
       : [];
     const allSetIds = availableSets.map((s) => s.id);
     setSelectedSets(allSetIds);
-    form.setFieldsValue({ setIds: allSetIds });
   };
 
   const handleSetsChange = (value: number[]) => {
@@ -309,7 +315,7 @@ export default function ControllersSection() {
 
       // Close the registration modal
       setIsModalOpen(false);
-      form.resetFields();
+      setFormValues({ name: '' });
 
       // Show the API key success modal
       setSuccessApiKey(data.apiKey);
@@ -317,7 +323,7 @@ export default function ControllersSection() {
 
       await fetchControllers();
     } catch (error) {
-      message.error(error instanceof Error ? error.message : 'Failed to register controller');
+      showMessage(error instanceof Error ? error.message : 'Failed to register controller', 'error');
     } finally {
       setIsSaving(false);
     }
@@ -337,10 +343,10 @@ export default function ControllersSection() {
         throw new Error(error.error || 'Failed to delete controller');
       }
 
-      message.success('Controller deleted successfully');
+      showMessage('Controller deleted successfully', 'success');
       await fetchControllers();
     } catch (error) {
-      message.error(error instanceof Error ? error.message : 'Failed to delete controller');
+      showMessage(error instanceof Error ? error.message : 'Failed to delete controller', 'error');
     } finally {
       setRemovingId(null);
     }
@@ -354,9 +360,11 @@ export default function ControllersSection() {
   if (loading) {
     return (
       <Card>
-        <div className={styles.loadingContainer}>
-          <Spin />
-        </div>
+        <CardContent>
+          <div className={styles.loadingContainer}>
+            <CircularProgress />
+          </div>
+        </CardContent>
       </Card>
     );
   }
@@ -364,133 +372,146 @@ export default function ControllersSection() {
   return (
     <>
       <Card>
-        <Title level={5}>ESP32 Controllers</Title>
-        <Text type="secondary" className={styles.sectionDescription}>
-          Register ESP32 devices to control your board via Bluetooth bridge.
-          This allows you to use BoardSesh with official Kilter/Tension apps.
-        </Text>
+        <CardContent>
+          <Typography variant="h5">ESP32 Controllers</Typography>
+          <Typography variant="body2" component="span" color="text.secondary" className={styles.sectionDescription}>
+            Register ESP32 devices to control your board via Bluetooth bridge.
+            This allows you to use BoardSesh with official Kilter/Tension apps.
+          </Typography>
 
-        {controllers.length === 0 ? (
-          <div className={styles.emptyState}>
-            <Text type="secondary">
-              No controllers registered. Add an ESP32 to use BoardSesh with official apps.
-            </Text>
-          </div>
-        ) : (
-          <Space direction="vertical" size="middle" className={styles.cardsContainer}>
-            {controllers.map((controller) => (
-              <ControllerCard
-                key={controller.id}
-                controller={controller}
-                onRemove={() => handleRemove(controller.id)}
-                isRemoving={removingId === controller.id}
-              />
-            ))}
-          </Space>
-        )}
+          {controllers.length === 0 ? (
+            <div className={styles.emptyState}>
+              <Typography variant="body2" component="span" color="text.secondary">
+                No controllers registered. Add an ESP32 to use BoardSesh with official apps.
+              </Typography>
+            </div>
+          ) : (
+            <Stack spacing={2} className={styles.cardsContainer}>
+              {controllers.map((controller) => (
+                <ControllerCard
+                  key={controller.id}
+                  controller={controller}
+                  onRemove={() => handleRemove(controller.id)}
+                  isRemoving={removingId === controller.id}
+                />
+              ))}
+            </Stack>
+          )}
 
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={handleAddClick}
-          block
-          className={styles.addButton}
-        >
-          Add Controller
-        </Button>
+          <Button
+            variant="contained"
+            startIcon={<AddOutlined />}
+            onClick={handleAddClick}
+            fullWidth
+            className={styles.addButton}
+          >
+            Add Controller
+          </Button>
+        </CardContent>
       </Card>
 
-      <Modal
-        title="Register ESP32 Controller"
+      <Dialog
         open={isModalOpen}
-        onCancel={handleModalCancel}
-        footer={null}
-        destroyOnClose
+        onClose={handleModalCancel}
+        maxWidth="sm"
+        fullWidth
       >
-        <Text type="secondary" className={styles.modalDescription}>
-          Register a new ESP32 controller to receive LED commands from BoardSesh.
-          You'll receive an API key to configure on the device.
-        </Text>
-        <Form form={form} layout="vertical" onFinish={handleRegister}>
-          <Form.Item
-            name="name"
+        <DialogTitle>Register ESP32 Controller</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" component="span" color="text.secondary" className={styles.modalDescription}>
+            Register a new ESP32 controller to receive LED commands from BoardSesh.
+            You'll receive an API key to configure on the device.
+          </Typography>
+        <Box
+          component="form"
+          onSubmit={(e: React.FormEvent) => {
+            e.preventDefault();
+            if (!selectedBoard || !selectedLayout || !selectedSize || selectedSets.length === 0) return;
+            handleRegister({
+              name: formValues.name,
+              boardName: selectedBoard,
+              layoutId: selectedLayout,
+              sizeId: selectedSize,
+              setIds: selectedSets,
+            });
+          }}
+          sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}
+        >
+          <TextField
             label="Controller Name (optional)"
-          >
-            <Input placeholder="e.g., Living Room Board" maxLength={100} />
-          </Form.Item>
+            placeholder="e.g., Living Room Board"
+            variant="outlined"
+            size="small"
+            fullWidth
+            value={formValues.name}
+            onChange={(e) => setFormValues((prev) => ({ ...prev, name: e.target.value }))}
+            inputProps={{ maxLength: 100 }}
+          />
 
-          <Form.Item
-            name="boardName"
-            label="Board Type"
-            rules={[{ required: true, message: 'Please select a board type' }]}
-          >
-            <Select
-              placeholder="Select board type"
-              onChange={handleBoardChange}
-              value={selectedBoard}
+          <FormControl fullWidth required>
+            <InputLabel>Board Type</InputLabel>
+            <MuiSelect
+              value={selectedBoard || ''}
+              label="Board Type"
+              onChange={(e) => handleBoardChange(e.target.value as BoardName)}
             >
-              <Option value="kilter">Kilter</Option>
-              <Option value="tension">Tension</Option>
-            </Select>
-          </Form.Item>
+              <MenuItem value="kilter">Kilter</MenuItem>
+              <MenuItem value="tension">Tension</MenuItem>
+            </MuiSelect>
+          </FormControl>
 
-          <Form.Item
-            name="layoutId"
-            label="Layout"
-            rules={[{ required: true, message: 'Please select a layout' }]}
-          >
-            <Select
-              placeholder="Select layout"
-              disabled={!selectedBoard}
-              onChange={handleLayoutChange}
-              value={selectedLayout}
+          <FormControl fullWidth required disabled={!selectedBoard}>
+            <InputLabel>Layout</InputLabel>
+            <MuiSelect
+              value={selectedLayout ?? ''}
+              label="Layout"
+              onChange={(e) => handleLayoutChange(e.target.value as number)}
             >
               {layouts.map(({ id, name }) => (
-                <Option key={id} value={id}>{name}</Option>
+                <MenuItem key={id} value={id}>{name}</MenuItem>
               ))}
-            </Select>
-          </Form.Item>
+            </MuiSelect>
+          </FormControl>
 
-          <Form.Item
-            name="sizeId"
-            label="Size"
-            rules={[{ required: true, message: 'Please select a size' }]}
-          >
-            <Select
-              placeholder="Select size"
-              disabled={!selectedLayout}
-              onChange={handleSizeChange}
-              value={selectedSize}
+          <FormControl fullWidth required disabled={!selectedLayout}>
+            <InputLabel>Size</InputLabel>
+            <MuiSelect
+              value={selectedSize ?? ''}
+              label="Size"
+              onChange={(e) => handleSizeChange(e.target.value as number)}
             >
               {sizes.map(({ id, name, description }) => (
-                <Option key={id} value={id}>{name} {description}</Option>
+                <MenuItem key={id} value={id}>{name} {description}</MenuItem>
               ))}
-            </Select>
-          </Form.Item>
+            </MuiSelect>
+          </FormControl>
 
-          <Form.Item
-            name="setIds"
-            label="Hold Sets"
-            rules={[{ required: true, message: 'Please select at least one hold set' }]}
-          >
-            <Select
-              mode="multiple"
-              placeholder="Select hold sets"
-              disabled={!selectedSize}
-              onChange={handleSetsChange}
+          <FormControl fullWidth required disabled={!selectedSize}>
+            <InputLabel>Hold Sets</InputLabel>
+            <MuiSelect
+              multiple
               value={selectedSets}
+              label="Hold Sets"
+              onChange={(e) => handleSetsChange(e.target.value as number[])}
             >
               {sets.map(({ id, name }) => (
-                <Option key={id} value={id}>{name}</Option>
+                <MenuItem key={id} value={id}>{name}</MenuItem>
               ))}
-            </Select>
-          </Form.Item>
+            </MuiSelect>
+          </FormControl>
 
-          <Button type="primary" htmlType="submit" loading={isSaving} block>
+          <Button
+            variant="contained"
+            type="submit"
+            disabled={isSaving}
+            startIcon={isSaving ? <CircularProgress size={16} /> : undefined}
+            fullWidth
+          >
             {isSaving ? 'Registering...' : 'Register Controller'}
           </Button>
-        </Form>
-      </Modal>
+        </Box>
+        </DialogContent>
+      </Dialog>
 
       <ApiKeySuccessModal
         isOpen={!!successApiKey}

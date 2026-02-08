@@ -205,6 +205,8 @@ export const parsedRouteSearchParamsToSearchParams = (urlParams: SearchRequestPa
     minRating: Number(urlParams.minRating ?? DEFAULT_SEARCH_PARAMS.minRating),
     page: Number(urlParams.page ?? DEFAULT_SEARCH_PARAMS.page),
     pageSize: Number(urlParams.pageSize ?? DEFAULT_SEARCH_PARAMS.pageSize),
+    // Next.js route search params come as strings, so coerce to boolean
+    onlyTallClimbs: String(urlParams.onlyTallClimbs) === 'true',
   };
 };
 

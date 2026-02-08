@@ -1,9 +1,9 @@
 'use client';
 
 import React from 'react';
-import { Button } from 'antd';
+import MuiButton from '@mui/material/Button';
 import { ActionTooltip } from '../action-tooltip';
-import { InfoCircleOutlined } from '@ant-design/icons';
+import InfoOutlined from '@mui/icons-material/InfoOutlined';
 import Link from 'next/link';
 import { track } from '@vercel/analytics';
 import { ClimbActionProps, ClimbActionResult } from '../types';
@@ -61,7 +61,7 @@ export function ViewDetailsAction({
   const shouldShowLabel = showLabel ?? (viewMode === 'button' || viewMode === 'dropdown');
   const iconSize = size === 'small' ? 14 : size === 'large' ? 20 : 16;
 
-  const icon = <InfoCircleOutlined style={{ fontSize: iconSize }} />;
+  const icon = <InfoOutlined sx={{ fontSize: iconSize }} />;
 
   // Icon mode - for Card actions
   const iconElement = (
@@ -75,14 +75,15 @@ export function ViewDetailsAction({
   // Button mode
   const buttonElement = (
     <Link href={url} onClick={handleClick} style={linkResetStyle}>
-      <Button
-        icon={icon}
-        size={size === 'large' ? 'large' : size === 'small' ? 'small' : 'middle'}
+      <MuiButton
+        variant="outlined"
+        startIcon={icon}
+        size={size === 'large' ? 'large' : 'small'}
         disabled={disabled}
         className={className}
       >
         {shouldShowLabel && label}
-      </Button>
+      </MuiButton>
     </Link>
   );
 
@@ -100,20 +101,20 @@ export function ViewDetailsAction({
   // List mode - full-width row for drawer menus
   const listElement = (
     <Link href={url} onClick={handleClick} style={linkResetStyle}>
-      <Button
-        type="text"
-        icon={icon}
-        block
+      <MuiButton
+        variant="text"
+        startIcon={icon}
+        fullWidth
         disabled={disabled}
-        style={{
+        sx={{
           height: 48,
           justifyContent: 'flex-start',
-          paddingLeft: themeTokens.spacing[4],
+          paddingLeft: `${themeTokens.spacing[4]}px`,
           fontSize: themeTokens.typography.fontSize.base,
         }}
       >
         {label}
-      </Button>
+      </MuiButton>
     </Link>
   );
 
