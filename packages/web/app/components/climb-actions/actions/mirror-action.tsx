@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useCallback } from 'react';
-import { Button } from 'antd';
+import MuiButton from '@mui/material/Button';
 import { ActionTooltip } from '../action-tooltip';
-import { SwapOutlined } from '@ant-design/icons';
+import SwapHorizOutlined from '@mui/icons-material/SwapHorizOutlined';
 import { track } from '@vercel/analytics';
 import { ClimbActionProps, ClimbActionResult } from '../types';
 import { useQueueContext } from '../../graphql-queue';
@@ -48,7 +48,7 @@ export function MirrorAction({
   const iconStyle = isMirrored
     ? { color: '#1890ff', fontSize: iconSize }
     : { fontSize: iconSize };
-  const icon = <SwapOutlined style={iconStyle} />;
+  const icon = <SwapHorizOutlined sx={iconStyle} />;
 
   // Icon mode - for Card actions
   const iconElement = canMirror ? (
@@ -61,16 +61,16 @@ export function MirrorAction({
 
   // Button mode
   const buttonElement = canMirror ? (
-    <Button
-      icon={icon}
+    <MuiButton
+      variant={isMirrored ? 'contained' : 'outlined'}
+      startIcon={icon}
       onClick={handleClick}
-      type={isMirrored ? 'primary' : 'default'}
-      size={size === 'large' ? 'large' : size === 'small' ? 'small' : 'middle'}
+      size={size === 'large' ? 'large' : 'small'}
       disabled={disabled}
       className={className}
     >
       {shouldShowLabel && label}
-    </Button>
+    </MuiButton>
   ) : null;
 
   // Menu item for dropdown
@@ -84,21 +84,21 @@ export function MirrorAction({
 
   // List mode - full-width row for drawer menus
   const listElement = canMirror ? (
-    <Button
-      type="text"
-      icon={icon}
-      block
+    <MuiButton
+      variant="text"
+      startIcon={icon}
+      fullWidth
       onClick={handleClick}
       disabled={disabled}
-      style={{
+      sx={{
         height: 48,
         justifyContent: 'flex-start',
-        paddingLeft: themeTokens.spacing[4],
+        paddingLeft: `${themeTokens.spacing[4]}px`,
         fontSize: themeTokens.typography.fontSize.base,
       }}
     >
       {label}
-    </Button>
+    </MuiButton>
   ) : null;
 
   let element: React.ReactNode;

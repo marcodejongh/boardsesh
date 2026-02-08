@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useCallback } from 'react';
-import { Button } from 'antd';
+import MuiButton from '@mui/material/Button';
 import { ActionTooltip } from '../action-tooltip';
-import { PlayCircleOutlined } from '@ant-design/icons';
+import PlayCircleOutlineOutlined from '@mui/icons-material/PlayCircleOutlineOutlined';
 import { track } from '@vercel/analytics';
 import { ClimbActionProps, ClimbActionResult } from '../types';
 import { useQueueContext } from '../../graphql-queue';
@@ -46,7 +46,7 @@ export function SetActiveAction({
   const iconStyle = isCurrentClimb
     ? { color: themeTokens.colors.primary, fontSize: iconSize }
     : { fontSize: iconSize };
-  const icon = <PlayCircleOutlined style={iconStyle} />;
+  const icon = <PlayCircleOutlineOutlined sx={iconStyle} />;
 
   // Icon mode - for Card actions
   const iconElement = (
@@ -63,34 +63,35 @@ export function SetActiveAction({
 
   // Button mode
   const buttonElement = (
-    <Button
-      icon={icon}
+    <MuiButton
+      variant="outlined"
+      startIcon={icon}
       onClick={handleClick}
       disabled={disabled || isCurrentClimb}
-      size={size === 'large' ? 'large' : size === 'small' ? 'small' : 'middle'}
+      size={size === 'large' ? 'large' : 'small'}
       className={className}
     >
       {shouldShowLabel && label}
-    </Button>
+    </MuiButton>
   );
 
   // List mode - full-width row for drawer menus
   const listElement = (
-    <Button
-      type="text"
-      icon={icon}
-      block
+    <MuiButton
+      variant="text"
+      startIcon={icon}
+      fullWidth
       onClick={handleClick}
       disabled={disabled || isCurrentClimb}
-      style={{
+      sx={{
         height: 48,
         justifyContent: 'flex-start',
-        paddingLeft: themeTokens.spacing[4],
+        paddingLeft: `${themeTokens.spacing[4]}px`,
         fontSize: themeTokens.typography.fontSize.base,
       }}
     >
       {label}
-    </Button>
+    </MuiButton>
   );
 
   // Menu item for dropdown

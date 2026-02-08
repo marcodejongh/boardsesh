@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { BoardName, ClimbUuid } from '@/app/lib/types';
 import { SaveClimbOptions } from '@/app/lib/api-wrappers/aurora/types';
-import { message } from 'antd';
+import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 import { useSession } from 'next-auth/react';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
@@ -75,6 +75,7 @@ interface BoardContextType {
 const BoardContext = createContext<BoardContextType | undefined>(undefined);
 
 export function BoardProvider({ boardName, children }: { boardName: BoardName; children: React.ReactNode }) {
+  const { showMessage } = useSnackbar();
   const { data: session, status: sessionStatus } = useSession();
   // Use wsAuthToken for GraphQL backend auth (NextAuth session token)
   const { token: wsAuthToken } = useWsAuthToken();
@@ -259,7 +260,7 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
         }
       }
 
-      message.error(errorMessage);
+      showMessage(errorMessage, 'error');
 
       // Rollback on error
       setLogbook((currentLogbook) =>
@@ -297,7 +298,7 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
       const data = await response.json();
       return data;
     } catch (err) {
-      message.error('Failed to save climb');
+      showMessage('Failed to save climb', 'error');
       throw err;
     }
   };

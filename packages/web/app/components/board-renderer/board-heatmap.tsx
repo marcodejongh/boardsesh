@@ -8,7 +8,8 @@ import { scaleLog } from 'd3-scale';
 import useHeatmapData from '../search-drawer/use-heatmap';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
-import { Button, Select, Switch } from 'antd';
+import { Select, Switch } from 'antd';
+import MuiButton from '@mui/material/Button';
 import { track } from '@vercel/analytics';
 import BoardRenderer from './board-renderer';
 
@@ -440,8 +441,8 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({ boardDetails, litUpHoldsMap
       </svg>
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center', marginTop: '8px' }}>
-        <Button
-          type={showHeatmap ? 'primary' : 'default'}
+        <MuiButton
+          variant={showHeatmap ? 'contained' : 'outlined'}
           size="small"
           onClick={() => {
             setShowHeatmap(!showHeatmap);
@@ -451,7 +452,7 @@ const BoardHeatmap: React.FC<BoardHeatmapProps> = ({ boardDetails, litUpHoldsMap
           }}
         >
           {showHeatmap ? 'Hide Heatmap' : 'Show Heatmap'}
-        </Button>
+        </MuiButton>
 
         {showHeatmap && (
           <>

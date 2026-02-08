@@ -11,14 +11,17 @@
  */
 
 import { useState, type ReactNode } from 'react';
-import { Tabs, Typography, Card, Input, Collapse, Tag } from 'antd';
+import { Tabs, Input, Collapse, Tag } from 'antd';
+import MuiCard from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import Typography from '@mui/material/Typography';
 import Stack from '@mui/material/Stack';
 import { typeDefs } from '@boardsesh/shared-schema/schema';
 import { themeTokens } from '@/app/theme/theme-config';
 import { tokenizeLine } from './graphql-tokenizer';
 import styles from './docs.module.css';
 
-const { Text, Paragraph } = Typography;
+// Typography destructuring removed - using MUI Typography directly
 const { Search } = Input;
 
 type SchemaSection = {
@@ -150,7 +153,7 @@ export default function GraphQLSchemaViewer() {
         label: (
           <Stack direction="row" spacing={1}>
             <TypeBadge type={section.type} />
-            <Text strong>{section.name}</Text>
+            <Typography variant="body2" component="span" fontWeight={600}>{section.name}</Typography>
           </Stack>
         ),
         children: <SchemaBlock content={section.content} />,
@@ -177,9 +180,9 @@ export default function GraphQLSchemaViewer() {
             label: `Operations (${groupedSections.operations.length})`,
             children: (
               <div>
-                <Paragraph type="secondary" className={styles.operationsDescription}>
+                <Typography variant="body1" component="p" color="text.secondary" className={styles.operationsDescription}>
                   Queries, Mutations, and Subscriptions available via the WebSocket GraphQL API.
-                </Paragraph>
+                </Typography>
                 {renderSectionList(groupedSections.operations)}
               </div>
             ),
@@ -208,9 +211,9 @@ export default function GraphQLSchemaViewer() {
             key: 'full',
             label: 'Full Schema',
             children: (
-              <Card>
+              <MuiCard><CardContent>
                 <SchemaBlock content={typeDefs} />
-              </Card>
+              </CardContent></MuiCard>
             ),
           },
         ]}

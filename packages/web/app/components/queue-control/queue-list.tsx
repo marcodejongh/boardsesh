@@ -1,11 +1,15 @@
 'use client';
 import React, { useEffect, useState, useCallback, useRef, useImperativeHandle, forwardRef } from 'react';
-import { Button, Typography, Skeleton } from 'antd';
+import Skeleton from '@mui/material/Skeleton';
+import Button from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
+import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import MuiDivider from '@mui/material/Divider';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
-import { PlusOutlined, LoginOutlined } from '@ant-design/icons';
+import AddOutlined from '@mui/icons-material/AddOutlined';
+import LoginOutlined from '@mui/icons-material/LoginOutlined';
 import { useQueueContext } from '../graphql-queue';
 import { Climb, BoardDetails } from '@/app/lib/types';
 import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
@@ -21,7 +25,6 @@ import { LogAscentDrawer } from '../logbook/log-ascent-drawer';
 import AuthModal from '../auth/auth-modal';
 import styles from './queue-list.module.css';
 
-const { Text, Paragraph } = Typography;
 
 export type QueueListHandle = {
   scrollToCurrentClimb: () => void;
@@ -283,7 +286,7 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
                     <ClimbTitle climb={climb} showAngle centered />
                   </Box>
                   <Box sx={{ width: { xs: '12.5%', sm: '8.33%' } }}>
-                    <Button type="default" icon={<PlusOutlined />} onClick={() => addToQueue(climb)} />
+                    <IconButton onClick={() => addToQueue(climb)}><AddOutlined /></IconButton>
                   </Box>
                 </Box>
               </div>
@@ -301,13 +304,13 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
                   {[1, 2, 3].map((i) => (
                     <Box key={i} sx={{ display: 'flex', flexWrap: 'nowrap', gap: '8px 8px', alignItems: 'center' }}>
                       <Box sx={{ width: { xs: '25%', sm: '20.83%' } }}>
-                        <Skeleton.Image active style={{ width: '100%', height: 60 }} />
+                        <Skeleton variant="rectangular" width="100%" height={60} animation="wave" />
                       </Box>
                       <Box sx={{ width: { xs: '62.5%', sm: '70.83%' } }}>
-                        <Skeleton active paragraph={{ rows: 1 }} title={false} />
+                        <Skeleton variant="text" animation="wave" />
                       </Box>
                       <Box sx={{ width: { xs: '12.5%', sm: '8.33%' } }}>
-                        <Skeleton.Button active size="small" />
+                        <Skeleton variant="rectangular" width={32} height={32} animation="wave" />
                       </Box>
                     </Box>
                   ))}
@@ -347,11 +350,11 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
           styles={{ wrapper: { height: '50%' } }}
         >
           <Stack spacing={3} sx={{ width: '100%', textAlign: 'center', padding: `${themeTokens.spacing[6]}px 0` }}>
-            <Text strong style={{ fontSize: themeTokens.typography.fontSize.base }}>Sign in to record ticks</Text>
-            <Paragraph type="secondary">
+            <Typography variant="body2" component="span" fontWeight={600} sx={{ fontSize: themeTokens.typography.fontSize.base }}>Sign in to record ticks</Typography>
+            <Typography variant="body1" component="p" color="text.secondary">
               Create a Boardsesh account to log your climbs and track your progress.
-            </Paragraph>
-            <Button type="primary" icon={<LoginOutlined />} onClick={() => setShowAuthModal(true)} block>
+            </Typography>
+            <Button variant="contained" startIcon={<LoginOutlined />} onClick={() => setShowAuthModal(true)} fullWidth>
               Sign In
             </Button>
           </Stack>

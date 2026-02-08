@@ -1,10 +1,13 @@
 'use client';
 
 import React, { useReducer, useCallback, useState, useRef } from 'react';
-import { Upload, Button, Alert, Progress, Typography, Result, message, Checkbox } from 'antd';
+import { Upload, Alert, Progress, Result, message, Checkbox } from 'antd';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
-import { InboxOutlined, SaveOutlined, ClearOutlined, ArrowLeftOutlined, LoginOutlined } from '@ant-design/icons';
+import MuiButton from '@mui/material/Button';
+import Typography from '@mui/material/Typography';
+import CircularProgress from '@mui/material/CircularProgress';
+import { InboxOutlined, SaveOutlined, ClearOutlined, ArrowBackOutlined, LoginOutlined } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
@@ -20,7 +23,6 @@ import { uploadOcrTestDataBatch } from '@/app/lib/moonboard-ocr-upload';
 import styles from './moonboard-bulk-import.module.css';
 
 const { Dragger } = Upload;
-const { Title, Text } = Typography;
 
 interface MoonBoardBulkImportProps {
   layoutFolder: string;
@@ -273,12 +275,12 @@ export default function MoonBoardBulkImport({
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <Button icon={<ArrowLeftOutlined />} onClick={handleBack}>
+        <MuiButton variant="outlined" startIcon={<ArrowBackOutlined />} onClick={handleBack}>
           Back
-        </Button>
-        <Title level={3} className={styles.title}>
+        </MuiButton>
+        <Typography variant="h3" className={styles.title}>
           Import MoonBoard Climbs - {layoutName} @ {angle}°
-        </Title>
+        </Typography>
       </div>
 
       {!session?.user && (
@@ -288,9 +290,9 @@ export default function MoonBoardBulkImport({
             <>
               Please log in to save climbs to the database.{' '}
               <Link href="/api/auth/signin">
-                <Button type="link" icon={<LoginOutlined />} style={{ padding: 0 }}>
+                <MuiButton variant="text" startIcon={<LoginOutlined />} sx={{ padding: 0 }}>
                   Log in
-                </Button>
+                </MuiButton>
               </Link>
             </>
           }
@@ -330,14 +332,14 @@ export default function MoonBoardBulkImport({
       {/* Processing Section */}
       {state.status === 'processing' && (
         <div className={styles.processingSection}>
-          <Title level={4}>Processing Screenshots...</Title>
+          <Typography variant="h4">Processing Screenshots...</Typography>
           <Progress
             percent={Math.round((state.progress.current / state.progress.total) * 100)}
             status="active"
           />
-          <Text type="secondary">
+          <Typography variant="body2" component="span" color="text.secondary">
             {state.progress.current} / {state.progress.total}: {state.progress.name}
-          </Text>
+          </Typography>
         </div>
       )}
 
@@ -380,19 +382,18 @@ export default function MoonBoardBulkImport({
             <div className={styles.actions}>
               <Stack spacing={2}>
                 <Stack direction="row" spacing={1}>
-                  <Button
-                    type="primary"
-                    icon={<SaveOutlined />}
+                  <MuiButton
+                    variant="contained"
+                    startIcon={isSaving ? <CircularProgress size={16} /> : <SaveOutlined />}
                     onClick={handleSaveAll}
                     size="large"
-                    loading={isSaving}
                     disabled={isSaving || !session?.user}
                   >
                     Save All ({state.climbs.length})
-                  </Button>
-                  <Button icon={<ClearOutlined />} onClick={handleReset}>
+                  </MuiButton>
+                  <MuiButton variant="outlined" startIcon={<ClearOutlined />} onClick={handleReset}>
                     Clear & Start Over
-                  </Button>
+                  </MuiButton>
                 </Stack>
                 {backendUrl && (
                   <Checkbox checked={contributeImages} onChange={(e) => setContributeImages(e.target.checked)}>
@@ -425,9 +426,9 @@ export default function MoonBoardBulkImport({
               title="No climbs could be imported"
               subTitle="Please check the errors above and try again with different screenshots."
               extra={
-                <Button onClick={handleReset} type="primary">
+                <MuiButton onClick={handleReset} variant="contained">
                   Try Again
-                </Button>
+                </MuiButton>
               }
             />
           )}

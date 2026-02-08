@@ -1,16 +1,18 @@
 'use client';
 
 import React from 'react';
-import { Card, Typography, Button, Alert } from 'antd';
+import MuiAlert from '@mui/material/Alert';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
-import { CloseCircleOutlined } from '@ant-design/icons';
+import CancelOutlined from '@mui/icons-material/CancelOutlined';
 import { useSearchParams } from 'next/navigation';
 import Logo from '@/app/components/brand/logo';
 import BackButton from '@/app/components/back-button';
 import { themeTokens } from '@/app/theme/theme-config';
-
-const { Title } = Typography;
 
 export default function AuthErrorContent() {
   const searchParams = useSearchParams();
@@ -59,9 +61,9 @@ export default function AuthErrorContent() {
       >
         <BackButton />
         <Logo size="sm" showText={false} />
-        <Title level={4} style={{ margin: 0, flex: 1 }}>
+        <Typography variant="h4" sx={{ margin: 0, flex: 1 }}>
           Authentication Error
-        </Title>
+        </Typography>
       </Box>
 
       <Box
@@ -74,15 +76,17 @@ export default function AuthErrorContent() {
           paddingTop: '48px',
         }}
       >
-        <Card style={{ width: '100%', maxWidth: 400, textAlign: 'center' }}>
-          <Stack spacing={3} sx={{ width: '100%' }}>
-            <CloseCircleOutlined style={{ fontSize: 48, color: themeTokens.colors.error }} />
-            <Title level={3}>Authentication Error</Title>
-            <Alert type="error" title={getErrorMessage()} showIcon />
-            <Button type="primary" href="/auth/login" block size="large">
-              Back to Login
-            </Button>
-          </Stack>
+        <Card sx={{ width: '100%', maxWidth: 400, textAlign: 'center' }}>
+          <CardContent>
+            <Stack spacing={3} sx={{ width: '100%' }}>
+              <CancelOutlined sx={{ fontSize: 48, color: themeTokens.colors.error, mx: 'auto' }} />
+              <Typography variant="h3">Authentication Error</Typography>
+              <MuiAlert severity="error">{getErrorMessage()}</MuiAlert>
+              <Button variant="contained" href="/auth/login" fullWidth size="large">
+                Back to Login
+              </Button>
+            </Stack>
+          </CardContent>
         </Card>
       </Box>
     </Box>

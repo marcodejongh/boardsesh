@@ -1,9 +1,23 @@
+'use client';
+
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Avatar, Tooltip, Dropdown, Button } from 'antd';
+import MuiTooltip from '@mui/material/Tooltip';
+import MuiAvatar from '@mui/material/Avatar';
+import MuiCheckbox from '@mui/material/Checkbox';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
 import Box from '@mui/material/Box';
-import { CheckOutlined, CloseOutlined, UserOutlined, DeleteOutlined, MoreOutlined, InfoCircleOutlined, AppstoreOutlined } from '@ant-design/icons';
-import { Checkbox } from 'antd';
+import IconButton from '@mui/material/IconButton';
+import CheckOutlined from '@mui/icons-material/CheckOutlined';
+import CloseOutlined from '@mui/icons-material/CloseOutlined';
+import PersonOutlined from '@mui/icons-material/PersonOutlined';
+import DeleteOutlined from '@mui/icons-material/DeleteOutlined';
+import MoreVertOutlined from '@mui/icons-material/MoreVertOutlined';
+import InfoOutlined from '@mui/icons-material/InfoOutlined';
+import AppsOutlined from '@mui/icons-material/AppsOutlined';
 import BluetoothIcon from './bluetooth-icon';
 import { BoardDetails, ClimbUuid, Climb } from '@/app/lib/types';
 import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
@@ -355,7 +369,7 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
             <Box sx={{ width: { xs: '8.33%', sm: '8.33%' } }}>
               {item.addedByUser ? (
                 <Tooltip title={item.addedByUser.username}>
-                  <Avatar size="small" src={item.addedByUser.avatarUrl} icon={<UserOutlined />} />
+                  <Avatar size="small" src={item.addedByUser.avatarUrl} icon={<PersonOutlined />} />
                 </Tooltip>
               ) : (
                 <Tooltip title="Added via Bluetooth">
@@ -375,7 +389,7 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
                       {
                         key: 'info',
                         label: 'View Climb',
-                        icon: <InfoCircleOutlined />,
+                        icon: <InfoOutlined />,
                         onClick: handleViewClimb,
                       },
                       {
@@ -387,7 +401,7 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
                       {
                         key: 'openInApp',
                         label: 'Open in App',
-                        icon: <AppstoreOutlined />,
+                        icon: <AppsOutlined />,
                         onClick: handleOpenInApp,
                       },
                       {
@@ -402,7 +416,7 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
                   trigger={['click']}
                   placement="bottomRight"
                 >
-                  <Button type="text" icon={<MoreOutlined />} />
+                  <IconButton><MoreVertOutlined /></IconButton>
                 </Dropdown>
               </Box>
             )}

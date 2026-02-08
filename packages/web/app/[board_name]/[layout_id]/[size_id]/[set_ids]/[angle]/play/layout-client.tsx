@@ -2,9 +2,10 @@
 
 import React from 'react';
 import { PropsWithChildren } from 'react';
-import { Tabs, Badge, Button, Popconfirm } from 'antd';
+import { Badge, Popconfirm } from 'antd';
+import MuiButton from '@mui/material/Button';
 import Box from '@mui/material/Box';
-import { DeleteOutlined } from '@ant-design/icons';
+import { DeleteOutlined } from '@mui/icons-material';
 import { track } from '@vercel/analytics';
 import { BoardDetails } from '@/app/lib/types';
 import { themeTokens } from '@/app/theme/theme-config';
@@ -51,9 +52,9 @@ const QueueSidebar: React.FC<{ boardDetails: BoardDetails }> = ({ boardDetails }
             okText="Clear"
             cancelText="Cancel"
           >
-            <Button type="text" icon={<DeleteOutlined />} size="small" style={{ color: themeTokens.neutral[400] }}>
+            <MuiButton variant="text" startIcon={<DeleteOutlined />} size="small" sx={{ color: themeTokens.neutral[400] }}>
               Clear
-            </Button>
+            </MuiButton>
           </Popconfirm>
         )}
       </div>

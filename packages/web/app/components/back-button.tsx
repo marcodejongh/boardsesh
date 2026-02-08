@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Button } from 'antd';
-import { ArrowLeftOutlined } from '@ant-design/icons';
+import IconButton from '@mui/material/IconButton';
+import ArrowBackOutlined from '@mui/icons-material/ArrowBackOutlined';
 import { useRouter } from 'next/navigation';
 
 type BackButtonProps = {
@@ -42,7 +42,7 @@ const BackButton = ({ fallbackUrl, className }: BackButtonProps) => {
     }
   };
 
-  return <Button icon={<ArrowLeftOutlined />} type="text" onClick={handleClick} className={className} />;
+  return <IconButton onClick={handleClick} className={className}><ArrowBackOutlined /></IconButton>;
 };
 
 export default BackButton;

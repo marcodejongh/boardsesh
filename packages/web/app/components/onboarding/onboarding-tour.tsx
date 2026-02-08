@@ -3,13 +3,13 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Tour, TourStepProps } from 'antd';
 import {
-  UnorderedListOutlined,
-  ColumnWidthOutlined,
-  CloseCircleOutlined,
+  FormatListBulletedOutlined,
+  ViewWeekOutlined,
+  CancelOutlined,
   SearchOutlined,
-  HeatMapOutlined,
-  DragOutlined,
-} from '@ant-design/icons';
+  GridOnOutlined,
+  DragIndicatorOutlined,
+} from '@mui/icons-material';
 import { useSession } from 'next-auth/react';
 import { shouldShowOnboarding, saveOnboardingStatus } from '@/app/lib/onboarding-db';
 import styles from './onboarding-tour.module.css';
@@ -141,7 +141,7 @@ const OnboardingTour: React.FC = () => {
       target: getTarget('#onboarding-queue-bar'),
       cover: (
         <div className={styles.stepIcon}>
-          <ColumnWidthOutlined />
+          <ViewWeekOutlined />
         </div>
       ),
     },
@@ -151,7 +151,7 @@ const OnboardingTour: React.FC = () => {
       target: getTarget('#onboarding-queue-toggle'),
       cover: (
         <div className={styles.stepIcon}>
-          <UnorderedListOutlined />
+          <FormatListBulletedOutlined />
         </div>
       ),
     },
@@ -164,7 +164,7 @@ const OnboardingTour: React.FC = () => {
       mask: false,
       cover: (
         <div className={styles.stepIcon}>
-          <ColumnWidthOutlined />
+          <ViewWeekOutlined />
         </div>
       ),
     },
@@ -177,7 +177,7 @@ const OnboardingTour: React.FC = () => {
       mask: false,
       cover: (
         <div className={styles.stepIcon}>
-          <DragOutlined />
+          <DragIndicatorOutlined />
         </div>
       ),
     },
@@ -188,7 +188,7 @@ const OnboardingTour: React.FC = () => {
       mask: false,
       cover: (
         <div className={styles.stepIcon}>
-          <CloseCircleOutlined />
+          <CancelOutlined />
         </div>
       ),
     },
@@ -212,7 +212,7 @@ const OnboardingTour: React.FC = () => {
       target: getTarget('#onboarding-search-button'),
       cover: (
         <div className={styles.stepIcon}>
-          <HeatMapOutlined />
+          <GridOnOutlined />
         </div>
       ),
     },

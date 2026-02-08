@@ -4,9 +4,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import {
   Layout,
-  Card,
   Avatar,
-  Typography,
   Spin,
   Segmented,
   Empty,
@@ -15,7 +13,10 @@ import {
   message,
   Tooltip,
 } from 'antd';
-import { UserOutlined, InstagramOutlined } from '@ant-design/icons';
+import MuiCard from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import Typography from '@mui/material/Typography';
+import { PersonOutlined, Instagram } from '@mui/icons-material';
 import { useSession } from 'next-auth/react';
 import Logo from '@/app/components/brand/logo';
 import BackButton from '@/app/components/back-button';
@@ -53,7 +54,6 @@ const ProfileStatsCharts = dynamic(() => import('./profile-stats-charts'), {
 });
 
 const { Content, Header } = Layout;
-const { Title, Text } = Typography;
 
 interface UserProfile {
   id: string;
@@ -627,9 +627,9 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
         <Header className={styles.header}>
           <BackButton fallbackUrl="/" />
           <Logo size="sm" showText={false} />
-          <Title level={4} className={styles.headerTitle}>
+          <Typography variant="h6" component="h4" className={styles.headerTitle}>
             Profile
-          </Title>
+          </Typography>
         </Header>
         <Content className={styles.content}>
           <Empty description="User not found" />
@@ -669,22 +669,22 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
       <Header className={styles.header}>
         <BackButton fallbackUrl="/" />
         <Logo size="sm" showText={false} />
-        <Title level={4} className={styles.headerTitle}>
+        <Typography variant="h6" component="h4" className={styles.headerTitle}>
           Profile
-        </Title>
+        </Typography>
       </Header>
 
       <Content className={styles.content}>
         {/* Profile Card */}
-        <Card className={styles.profileCard}>
+        <MuiCard className={styles.profileCard}><CardContent>
           <div className={styles.profileInfo}>
-            <Avatar size={80} src={avatarUrl} icon={<UserOutlined />} />
+            <Avatar size={80} src={avatarUrl} icon={<PersonOutlined />} />
             <div className={styles.profileDetails}>
-              <Title level={4} className={styles.displayName}>
+              <Typography variant="h6" component="h4" className={styles.displayName}>
                 {displayName}
-              </Title>
+              </Typography>
               {isOwnProfile && (
-                <Text type="secondary">{profile?.email}</Text>
+                <Typography variant="body2" component="span" color="text.secondary">{profile?.email}</Typography>
               )}
               {instagramUrl && (
                 <a
@@ -693,24 +693,24 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
                   rel="noopener noreferrer"
                   className={styles.instagramLink}
                 >
-                  <InstagramOutlined className={styles.instagramIcon} />
+                  <Instagram className={styles.instagramIcon} />
                   <span>{instagramUrl.replace(/^https?:\/\/(www\.)?instagram\.com\//, '@').replace(/\/$/, '')}</span>
                 </a>
               )}
             </div>
           </div>
-        </Card>
+        </CardContent></MuiCard>
 
         {/* Statistics Summary Card */}
         {!loadingProfileStats && statisticsSummary.totalAscents > 0 && (
-          <Card className={styles.statsCard}>
+          <MuiCard className={styles.statsCard}><CardContent>
             {/* Distinct Climbs Header */}
             <div className={styles.statsSummaryHeader}>
               <div className={styles.totalAscentsContainer}>
-                <Text className={styles.totalAscentsLabel}>Distinct Climbs</Text>
-                <Title level={2} className={styles.totalAscentsValue}>
+                <Typography variant="body2" component="span" className={styles.totalAscentsLabel}>Distinct Climbs</Typography>
+                <Typography variant="h4" component="h2" className={styles.totalAscentsValue}>
                   {statisticsSummary.totalAscents}
-                </Title>
+                </Typography>
               </div>
             </div>
 
@@ -745,9 +745,9 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
                       className={styles.legendColor}
                       style={{ backgroundColor: layout.color }}
                     />
-                    <Text className={styles.legendText}>
+                    <Typography variant="body2" component="span" className={styles.legendText}>
                       {layout.displayName} ({layout.percentage}%)
-                    </Text>
+                    </Typography>
                   </div>
                 ))}
               </div>
@@ -755,7 +755,7 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
 
             {/* Grade Blocks by Layout */}
             <div className={styles.gradeBlocksContainer}>
-              <Text strong className={styles.gradeBlocksTitle}>Grades by Board</Text>
+              <Typography variant="body2" component="span" fontWeight={600} className={styles.gradeBlocksTitle}>Grades by Board</Typography>
               {statisticsSummary.layoutPercentages.map((layout) => (
                 <div key={layout.layoutKey} className={styles.layoutGradeRow}>
                   <div className={styles.layoutGradeHeader}>
@@ -763,10 +763,10 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
                       className={styles.layoutIndicator}
                       style={{ backgroundColor: layout.color }}
                     />
-                    <Text className={styles.layoutName}>{layout.displayName}</Text>
-                    <Text type="secondary" className={styles.layoutCount}>
+                    <Typography variant="body2" component="span" className={styles.layoutName}>{layout.displayName}</Typography>
+                    <Typography variant="body2" component="span" color="text.secondary" className={styles.layoutCount}>
                       {layout.count} climbs
-                    </Text>
+                    </Typography>
                   </div>
                   <div className={styles.gradeBlocks}>
                     {Object.entries(layout.grades)
@@ -792,15 +792,15 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
                 </div>
               ))}
             </div>
-          </Card>
+          </CardContent></MuiCard>
         )}
 
         {/* Aggregated Stats - All Boards */}
-        <Card className={styles.statsCard}>
-          <Title level={5}>Ascents by Grade</Title>
-          <Text type="secondary" className={styles.chartDescription}>
+        <MuiCard className={styles.statsCard}><CardContent>
+          <Typography variant="h6" component="h5">Ascents by Grade</Typography>
+          <Typography variant="body2" component="span" color="text.secondary" className={styles.chartDescription}>
             Total ascents by board layout
-          </Text>
+          </Typography>
 
           <div className={styles.timeframeSelector}>
             <Segmented
@@ -826,11 +826,11 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
               />
             </div>
           )}
-        </Card>
+        </CardContent></MuiCard>
 
         {/* Board-Specific Stats */}
-        <Card className={styles.statsCard}>
-          <Title level={5}>Board Stats</Title>
+        <MuiCard className={styles.statsCard}><CardContent>
+          <Typography variant="h6" component="h5">Board Stats</Typography>
 
           <>
             {/* Board Selector */}
@@ -854,12 +854,12 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
             {timeframe === 'custom' && (
               <div className={styles.customDateRange}>
                 <Space>
-                  <Text>From:</Text>
+                  <Typography variant="body2" component="span">From:</Typography>
                   <DatePicker
                     value={fromDate ? dayjs(fromDate) : null}
                     onChange={(date) => setFromDate(date ? date.format('YYYY-MM-DD') : '')}
                   />
-                  <Text>To:</Text>
+                  <Typography variant="body2" component="span">To:</Typography>
                   <DatePicker
                     value={toDate ? dayjs(toDate) : null}
                     onChange={(date) => setToDate(date ? date.format('YYYY-MM-DD') : '')}
@@ -885,16 +885,16 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
               </div>
             )}
           </>
-        </Card>
+        </CardContent></MuiCard>
 
         {/* Recent Ascents Feed */}
-        <Card className={styles.statsCard}>
-          <Title level={5}>Recent Activity</Title>
-          <Text type="secondary" className={styles.chartDescription}>
+        <MuiCard className={styles.statsCard}><CardContent>
+          <Typography variant="h6" component="h5">Recent Activity</Typography>
+          <Typography variant="body2" component="span" color="text.secondary" className={styles.chartDescription}>
             Latest ascents and attempts
-          </Text>
+          </Typography>
           <AscentsFeed userId={userId} pageSize={10} />
-        </Card>
+        </CardContent></MuiCard>
       </Content>
     </Layout>
   );

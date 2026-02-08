@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { Button } from 'antd';
+import Button from '@mui/material/Button';
+import CircularProgress from '@mui/material/CircularProgress';
 import Link from 'next/link';
 import { BoardName } from '@/app/lib/types';
 import { LayoutRow, SizeRow } from '@/app/lib/data/queries';
@@ -174,7 +175,13 @@ export default function StartClimbingButton({
   if (isFormComplete && climbingUrl) {
     return (
       <Link href={climbingUrl} style={{ textDecoration: 'none' }}>
-        <Button type="primary" size="large" block disabled={isGeneratingUrl} loading={isGeneratingUrl}>
+        <Button
+          variant="contained"
+          size="large"
+          fullWidth
+          disabled={isGeneratingUrl}
+          startIcon={isGeneratingUrl ? <CircularProgress size={16} /> : undefined}
+        >
           {isGeneratingUrl ? 'Starting...' : 'Start Climbing'}
         </Button>
       </Link>
@@ -183,12 +190,12 @@ export default function StartClimbingButton({
 
   return (
     <Button
-      type="primary"
+      variant="contained"
       size="large"
-      block
+      fullWidth
       onClick={handleClick}
       disabled={!isFormComplete || isGeneratingUrl}
-      loading={isGeneratingUrl}
+      startIcon={isGeneratingUrl ? <CircularProgress size={16} /> : undefined}
     >
       {isGeneratingUrl ? 'Starting...' : 'Start Climbing'}
     </Button>

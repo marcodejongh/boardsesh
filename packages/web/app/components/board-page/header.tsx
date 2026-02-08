@@ -1,18 +1,21 @@
 'use client';
 import React, { useState } from 'react';
-import { Button } from 'antd';
+import Button from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
+import CircularProgress from '@mui/material/CircularProgress';
 import Box from '@mui/material/Box';
 import { Header } from 'antd/es/layout/layout';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import SearchPill from '../search-drawer/search-pill';
 import SearchDropdown from '../search-drawer/search-dropdown';
 import { BoardDetails } from '@/app/lib/types';
-import { ExperimentOutlined } from '@ant-design/icons';
+import ScienceOutlined from '@mui/icons-material/ScienceOutlined';
 import { themeTokens } from '@/app/theme/theme-config';
 
 import { constructClimbListWithSlugs, generateLayoutSlug, generateSizeSlug, generateSetSlug } from '@/app/lib/url-utils';
 import { useQueueContext } from '../graphql-queue';
-import { PlusOutlined, LeftOutlined } from '@ant-design/icons';
+import AddOutlined from '@mui/icons-material/AddOutlined';
+import ChevronLeftOutlined from '@mui/icons-material/ChevronLeftOutlined';
 import AngleSelector from './angle-selector';
 import styles from './header.module.css';
 import Link from 'next/link';
@@ -29,15 +32,15 @@ function CreateModeButtons() {
 
   return (
     <>
-      <Button onClick={createClimbContext.onCancel} disabled={createClimbContext.isPublishing}>
+      <Button variant="outlined" onClick={createClimbContext.onCancel} disabled={createClimbContext.isPublishing}>
         Cancel
       </Button>
-      <ExperimentOutlined style={{ color: themeTokens.colors.primary }} title="Beta Feature" />
+      <ScienceOutlined sx={{ color: themeTokens.colors.primary }} titleAccess="Beta Feature" />
       <Button
-        type="primary"
+        variant="contained"
         onClick={createClimbContext.onPublish}
-        loading={createClimbContext.isPublishing}
         disabled={!createClimbContext.canPublish || createClimbContext.isPublishing}
+        startIcon={createClimbContext.isPublishing ? <CircularProgress size={16} /> : undefined}
       >
         {createClimbContext.isPublishing ? 'Publishing...' : 'Publish'}
       </Button>
@@ -119,12 +122,12 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
           {/* Play page: Show back button next to logo (mobile only) */}
           {pageMode === 'play' && (
             <div className={styles.mobileOnly}>
-              <Button
-                icon={<LeftOutlined />}
-                type="text"
+              <IconButton
                 aria-label="Back to climb list"
                 onClick={() => router.push(getBackToListUrl())}
-              />
+              >
+                <ChevronLeftOutlined />
+              </IconButton>
             </div>
           )}
         </Box>
@@ -152,7 +155,9 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
               {createClimbUrl && (
                 <div className={styles.desktopOnly}>
                   <Link href={createClimbUrl}>
-                    <Button icon={<PlusOutlined />} type="text" title="Create new climb" />
+                    <IconButton title="Create new climb">
+                      <AddOutlined />
+                    </IconButton>
                   </Link>
                 </div>
               )}

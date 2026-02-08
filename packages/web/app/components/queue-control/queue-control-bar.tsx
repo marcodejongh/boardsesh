@@ -1,10 +1,16 @@
 'use client';
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { Button, Card, Popconfirm } from 'antd';
+import { Popconfirm } from 'antd';
+import MuiButton from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
+import MuiCard from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
-import { SyncOutlined, DeleteOutlined, ExpandOutlined } from '@ant-design/icons';
+import SyncOutlined from '@mui/icons-material/SyncOutlined';
+import DeleteOutlined from '@mui/icons-material/DeleteOutlined';
+import OpenInFullOutlined from '@mui/icons-material/OpenInFullOutlined';
 import { track } from '@vercel/analytics';
 import { useQueueContext } from '../graphql-queue';
 import NextClimbButton from './next-climb-button';
@@ -266,15 +272,8 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
   return (
     <div id="onboarding-queue-bar" className={`queue-bar-shadow ${styles.queueBar}`} data-testid="queue-control-bar">
       {/* Main Control Bar */}
-      <Card
-        variant="borderless"
-        styles={{
-          body: {
-            padding: 0,
-          },
-        }}
-        className={styles.card}
-      >
+      <MuiCard variant="outlined" className={styles.card} sx={{ border: 'none' }}>
+        <CardContent sx={{ p: 0, '&:last-child': { pb: 0 } }}>
         {/* Swipe container - captures swipe gestures, does NOT translate */}
         <div className={styles.swipeWrapper}>
           <div
@@ -344,7 +343,7 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
                   {/* Mirror button - desktop only */}
                   {boardDetails.supportsMirroring ? (
                     <span className={styles.desktopOnly}>
-                      <Button
+                      <IconButton
                         id="button-mirror"
                         onClick={() => {
                           mirrorClimb();
@@ -353,14 +352,15 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
                             mirrored: !currentClimb?.mirrored,
                           });
                         }}
-                        type={currentClimb?.mirrored ? 'primary' : 'text'}
-                        style={
+                        color={currentClimb?.mirrored ? 'primary' : 'default'}
+                        sx={
                           currentClimb?.mirrored
-                            ? { backgroundColor: themeTokens.colors.purple, borderColor: themeTokens.colors.purple }
+                            ? { backgroundColor: themeTokens.colors.purple, borderColor: themeTokens.colors.purple, color: '#fff', '&:hover': { backgroundColor: themeTokens.colors.purple } }
                             : undefined
                         }
-                        icon={<SyncOutlined />}
-                      />
+                      >
+                        <SyncOutlined />
+                      </IconButton>
                     </span>
                   ) : null}
                   {/* Play link - desktop only */}
@@ -374,7 +374,7 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
                           });
                         }}
                       >
-                        <Button type="text" icon={<ExpandOutlined />} aria-label="Enter play mode" />
+                        <IconButton aria-label="Enter play mode"><OpenInFullOutlined /></IconButton>
                       </Link>
                     </span>
                   )}
@@ -394,7 +394,8 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
             </Box>
           </div>
         </div>
-      </Card>
+        </CardContent>
+      </MuiCard>
 
       {/* Drawer for showing the queue */}
       <SwipeableDrawer
@@ -413,9 +414,9 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
               okText="Clear"
               cancelText="Cancel"
             >
-              <Button type="text" icon={<DeleteOutlined />} style={{ color: themeTokens.neutral[400] }}>
+              <MuiButton variant="text" startIcon={<DeleteOutlined />} sx={{ color: themeTokens.neutral[400] }}>
                 Clear
-              </Button>
+              </MuiButton>
             </Popconfirm>
           )
         }

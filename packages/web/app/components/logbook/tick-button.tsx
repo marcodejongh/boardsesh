@@ -1,17 +1,22 @@
+'use client';
+
 import React, { useState, useMemo } from 'react';
 import { Angle, Climb, BoardDetails } from '@/app/lib/types';
 import { useBoardProvider } from '../board-provider/board-provider-context';
-import { Button, Badge, Typography } from 'antd';
+import MuiBadge from '@mui/material/Badge';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
-import { CheckOutlined, LoginOutlined, AppstoreOutlined } from '@ant-design/icons';
+import CheckOutlined from '@mui/icons-material/CheckOutlined';
+import LoginOutlined from '@mui/icons-material/LoginOutlined';
+import AppsOutlined from '@mui/icons-material/AppsOutlined';
 import { track } from '@vercel/analytics';
 import { LogAscentDrawer } from './log-ascent-drawer';
 import AuthModal from '../auth/auth-modal';
 import { constructClimbInfoUrl } from '@/app/lib/url-utils';
 import { themeTokens } from '@/app/theme/theme-config';
-
-const { Text, Paragraph } = Typography;
 
 interface TickButtonProps {
   angle: Angle;
@@ -50,14 +55,20 @@ export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boa
 
   return (
     <>
-      <Badge
-        count={badgeCount > 0 ? badgeCount : 0}
-        overflowCount={100}
-        showZero={false}
-        color={hasSuccessfulAscent ? themeTokens.colors.success : themeTokens.colors.error}
+      <MuiBadge
+        badgeContent={badgeCount > 0 ? badgeCount : 0}
+        max={100}
+        sx={{
+          '& .MuiBadge-badge': {
+            backgroundColor: hasSuccessfulAscent ? themeTokens.colors.success : themeTokens.colors.error,
+            color: '#fff',
+          },
+        }}
       >
-        <Button id="button-tick" type={buttonType} icon={<CheckOutlined />} onClick={showDrawer} />
-      </Badge>
+        <IconButton id="button-tick" onClick={showDrawer}>
+          <CheckOutlined />
+        </IconButton>
+      </MuiBadge>
 
       {isAuthenticated ? (
         <LogAscentDrawer
@@ -76,17 +87,17 @@ export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boa
           styles={{ wrapper: { height: '50%' } }}
         >
           <Stack spacing={3} style={{ width: '100%', textAlign: 'center', padding: '24px 0' }}>
-            <Text strong style={{ fontSize: 16 }}>Sign in to record ticks</Text>
-            <Paragraph type="secondary">
+            <Typography variant="body2" component="span" fontWeight={600} sx={{ fontSize: 16 }}>Sign in to record ticks</Typography>
+            <Typography variant="body1" component="p" color="text.secondary">
               Create a Boardsesh account to log your climbs and track your progress.
-            </Paragraph>
-            <Button type="primary" icon={<LoginOutlined />} onClick={() => setShowAuthModal(true)} block>
+            </Typography>
+            <Button variant="contained" startIcon={<LoginOutlined />} onClick={() => setShowAuthModal(true)} fullWidth>
               Sign In
             </Button>
-            <Paragraph type="secondary">
+            <Typography variant="body1" component="p" color="text.secondary">
               Or log your tick in the official app:
-            </Paragraph>
-            <Button icon={<AppstoreOutlined />} onClick={handleOpenInApp} block>
+            </Typography>
+            <Button variant="outlined" startIcon={<AppsOutlined />} onClick={handleOpenInApp} fullWidth>
               Open in App
             </Button>
           </Stack>

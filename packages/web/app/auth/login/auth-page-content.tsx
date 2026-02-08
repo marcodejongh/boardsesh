@@ -1,19 +1,26 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Card, Form, Input, Button, Tabs, Typography, message } from 'antd';
+import { Form, Tabs, message } from 'antd';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import TextField from '@mui/material/TextField';
+import InputAdornment from '@mui/material/InputAdornment';
+import CircularProgress from '@mui/material/CircularProgress';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import MuiDivider from '@mui/material/Divider';
-import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
+import PersonOutlined from '@mui/icons-material/PersonOutlined';
+import LockOutlined from '@mui/icons-material/LockOutlined';
+import MailOutlined from '@mui/icons-material/MailOutlined';
 import { signIn, useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Logo from '@/app/components/brand/logo';
 import BackButton from '@/app/components/back-button';
 import SocialLoginButtons from '@/app/components/auth/social-login-buttons';
 import { themeTokens } from '@/app/theme/theme-config';
-
-const { Title, Text } = Typography;
 
 export default function AuthPageContent() {
   const { status } = useSession();
@@ -158,7 +165,21 @@ export default function AuthPageContent() {
               { type: 'email', message: 'Please enter a valid email' },
             ]}
           >
-            <Input prefix={<MailOutlined />} placeholder="your@email.com" size="large" />
+            <TextField
+              placeholder="your@email.com"
+              variant="outlined"
+              size="medium"
+              fullWidth
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <MailOutlined />
+                    </InputAdornment>
+                  ),
+                },
+              }}
+            />
           </Form.Item>
 
           <Form.Item
@@ -166,11 +187,33 @@ export default function AuthPageContent() {
             label="Password"
             rules={[{ required: true, message: 'Please enter your password' }]}
           >
-            <Input.Password prefix={<LockOutlined />} placeholder="Password" size="large" />
+            <TextField
+              type="password"
+              placeholder="Password"
+              variant="outlined"
+              size="medium"
+              fullWidth
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <LockOutlined />
+                    </InputAdornment>
+                  ),
+                },
+              }}
+            />
           </Form.Item>
 
           <Form.Item style={{ marginBottom: 0 }}>
-            <Button type="primary" htmlType="submit" loading={loginLoading} block size="large">
+            <Button
+              variant="contained"
+              type="submit"
+              disabled={loginLoading}
+              startIcon={loginLoading ? <CircularProgress size={16} /> : undefined}
+              fullWidth
+              size="large"
+            >
               Login
             </Button>
           </Form.Item>
@@ -187,7 +230,21 @@ export default function AuthPageContent() {
             label="Name"
             rules={[{ max: 100, message: 'Name must be less than 100 characters' }]}
           >
-            <Input prefix={<UserOutlined />} placeholder="Your name (optional)" size="large" />
+            <TextField
+              placeholder="Your name (optional)"
+              variant="outlined"
+              size="medium"
+              fullWidth
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <PersonOutlined />
+                    </InputAdornment>
+                  ),
+                },
+              }}
+            />
           </Form.Item>
 
           <Form.Item
@@ -198,7 +255,21 @@ export default function AuthPageContent() {
               { type: 'email', message: 'Please enter a valid email' },
             ]}
           >
-            <Input prefix={<MailOutlined />} placeholder="your@email.com" size="large" />
+            <TextField
+              placeholder="your@email.com"
+              variant="outlined"
+              size="medium"
+              fullWidth
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <MailOutlined />
+                    </InputAdornment>
+                  ),
+                },
+              }}
+            />
           </Form.Item>
 
           <Form.Item
@@ -209,7 +280,22 @@ export default function AuthPageContent() {
               { min: 8, message: 'Password must be at least 8 characters' },
             ]}
           >
-            <Input.Password prefix={<LockOutlined />} placeholder="Password (min 8 characters)" size="large" />
+            <TextField
+              type="password"
+              placeholder="Password (min 8 characters)"
+              variant="outlined"
+              size="medium"
+              fullWidth
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <LockOutlined />
+                    </InputAdornment>
+                  ),
+                },
+              }}
+            />
           </Form.Item>
 
           <Form.Item
@@ -228,11 +314,33 @@ export default function AuthPageContent() {
               }),
             ]}
           >
-            <Input.Password prefix={<LockOutlined />} placeholder="Confirm password" size="large" />
+            <TextField
+              type="password"
+              placeholder="Confirm password"
+              variant="outlined"
+              size="medium"
+              fullWidth
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <LockOutlined />
+                    </InputAdornment>
+                  ),
+                },
+              }}
+            />
           </Form.Item>
 
           <Form.Item style={{ marginBottom: 0 }}>
-            <Button type="primary" htmlType="submit" loading={registerLoading} block size="large">
+            <Button
+              variant="contained"
+              type="submit"
+              disabled={registerLoading}
+              startIcon={registerLoading ? <CircularProgress size={16} /> : undefined}
+              fullWidth
+              size="large"
+            >
               Create Account
             </Button>
           </Form.Item>
@@ -257,9 +365,9 @@ export default function AuthPageContent() {
       >
         <BackButton />
         <Logo size="sm" showText={false} />
-        <Title level={4} style={{ margin: 0, flex: 1 }}>
+        <Typography variant="h4" sx={{ margin: 0, flex: 1 }}>
           Welcome
-        </Title>
+        </Typography>
       </Box>
 
       <Box
@@ -272,19 +380,21 @@ export default function AuthPageContent() {
           paddingTop: '48px',
         }}
       >
-        <Card style={{ width: '100%', maxWidth: 400 }}>
-          <Stack spacing={1} sx={{ width: '100%', textAlign: 'center', marginBottom: 3 }}>
-            <Logo size="md" />
-            <Text type="secondary">Sign in or create an account to continue</Text>
-          </Stack>
+        <Card sx={{ width: '100%', maxWidth: 400 }}>
+          <CardContent>
+            <Stack spacing={1} sx={{ width: '100%', textAlign: 'center', marginBottom: 3 }}>
+              <Logo size="md" />
+              <Typography variant="body2" component="span" color="text.secondary">Sign in or create an account to continue</Typography>
+            </Stack>
 
-          <Tabs activeKey={activeTab} onChange={setActiveTab} items={tabItems} centered />
+            <Tabs activeKey={activeTab} onChange={setActiveTab} items={tabItems} centered />
 
-          <MuiDivider>
-            <Text type="secondary">or</Text>
-          </MuiDivider>
+            <MuiDivider>
+              <Typography variant="body2" component="span" color="text.secondary">or</Typography>
+            </MuiDivider>
 
-          <SocialLoginButtons callbackUrl={callbackUrl} />
+            <SocialLoginButtons callbackUrl={callbackUrl} />
+          </CardContent>
         </Card>
       </Box>
     </Box>

@@ -1,9 +1,13 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { Button, Typography } from 'antd';
+import IconButton from '@mui/material/IconButton';
+import Typography from '@mui/material/Typography';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
-import { EllipsisOutlined, HeartOutlined, HeartFilled, PlusOutlined } from '@ant-design/icons';
+import MoreHorizOutlined from '@mui/icons-material/MoreHorizOutlined';
+import FavoriteBorderOutlined from '@mui/icons-material/FavoriteBorderOutlined';
+import Favorite from '@mui/icons-material/Favorite';
+import AddOutlined from '@mui/icons-material/AddOutlined';
 import { useSwipeable } from 'react-swipeable';
 import { Climb, BoardDetails } from '@/app/lib/types';
 import ClimbThumbnail from './climb-thumbnail';
@@ -15,8 +19,6 @@ import { useFavorite } from '../climb-actions';
 import { useDoubleTap } from '@/app/lib/hooks/use-double-tap';
 import { themeTokens } from '@/app/theme/theme-config';
 import { getSoftGradeColor, getGradeTintColor } from '@/app/lib/grade-colors';
-
-const { Text } = Typography;
 
 // Swipe threshold in pixels to trigger the swipe action
 const SWIPE_THRESHOLD = 100;
@@ -142,9 +144,9 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
           }}
         >
           {isFavorited ? (
-            <HeartFilled style={{ color: 'white', fontSize: 20 }} />
+            <Favorite style={{ color: 'white', fontSize: 20 }} />
           ) : (
-            <HeartOutlined style={{ color: 'white', fontSize: 20 }} />
+            <FavoriteBorderOutlined style={{ color: 'white', fontSize: 20 }} />
           )}
         </div>
 
@@ -165,7 +167,7 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
             visibility: showRightAction ? 'visible' : 'hidden',
           }}
         >
-          <PlusOutlined style={{ color: 'white', fontSize: 20 }} />
+          <AddOutlined style={{ color: 'white', fontSize: 20 }} />
         </div>
 
         {/* Swipeable content */}
@@ -200,8 +202,10 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
 
           {/* Center: Name, quality, setter */}
           <div style={{ flex: 1, minWidth: 0 }}>
-            <Text
-              style={{
+            <Typography
+              variant="body2"
+              component="span"
+              sx={{
                 fontSize: themeTokens.typography.fontSize.xl,
                 fontWeight: themeTokens.typography.fontWeight.semibold,
                 whiteSpace: 'nowrap',
@@ -211,10 +215,12 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
               }}
             >
               {climb.name}
-            </Text>
-            <Text
-              type="secondary"
-              style={{
+            </Typography>
+            <Typography
+              variant="body2"
+              component="span"
+              color="text.secondary"
+              sx={{
                 fontSize: themeTokens.typography.fontSize.xs,
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
@@ -224,15 +230,17 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
             >
               {hasQuality ? `${climb.quality_average}\u2605` : ''}{' '}
               {climb.setter_username && `${climb.setter_username}`}
-            </Text>
+            </Typography>
           </div>
 
           {/* Right: Ascent status + V-grade colorized */}
           <div style={{ display: 'flex', alignItems: 'center', gap: themeTokens.spacing[1], flexShrink: 0 }}>
             <AscentStatus climbUuid={climb.uuid} fontSize={20} />
             {vGrade && (
-              <Text
-                style={{
+              <Typography
+                variant="body2"
+                component="span"
+                sx={{
                   fontSize: themeTokens.typography.fontSize['2xl'],
                   fontWeight: themeTokens.typography.fontWeight.bold,
                   lineHeight: 1,
@@ -240,32 +248,34 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
                 }}
               >
                 {vGrade}
-              </Text>
+              </Typography>
             )}
             {!vGrade && climb.difficulty && (
-              <Text
-                type="secondary"
-                style={{
+              <Typography
+                variant="body2"
+                component="span"
+                color="text.secondary"
+                sx={{
                   fontSize: themeTokens.typography.fontSize.sm,
                   fontWeight: themeTokens.typography.fontWeight.semibold,
                 }}
               >
                 {climb.difficulty}
-              </Text>
+              </Typography>
             )}
           </div>
 
           {/* Ellipsis menu button */}
-          <Button
-            type="text"
+          <IconButton
             size="small"
-            icon={<EllipsisOutlined />}
             onClick={(e) => {
               e.stopPropagation();
               setIsActionsOpen(true);
             }}
-            style={{ flexShrink: 0, color: themeTokens.neutral[400] }}
-          />
+            sx={{ flexShrink: 0, color: themeTokens.neutral[400] }}
+          >
+            <MoreHorizOutlined />
+          </IconButton>
         </div>
       </div>
 

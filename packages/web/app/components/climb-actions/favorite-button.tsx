@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { HeartOutlined, HeartFilled } from '@ant-design/icons';
-import { Tooltip, message } from 'antd';
+import FavoriteBorderOutlined from '@mui/icons-material/FavoriteBorderOutlined';
+import Favorite from '@mui/icons-material/Favorite';
+import Tooltip from '@mui/material/Tooltip';
+import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 import { track } from '@vercel/analytics';
 import { useFavorite } from './use-favorite';
 import { BoardName } from '@/app/lib/types';
@@ -31,6 +33,7 @@ export default function FavoriteButton({
   const { isFavorited, isLoading, toggleFavorite, isAuthenticated } = useFavorite({
     climbUuid,
   });
+  const { showMessage } = useSnackbar();
 
   const [showAuthModal, setShowAuthModal] = useState(false);
 
@@ -53,7 +56,7 @@ export default function FavoriteButton({
       });
     } catch (error) {
       console.error(`[FavoriteButton] Error toggling favorite for ${climbUuid}:`, error);
-      message.error('Failed to update favorite. Please try again.');
+      showMessage('Failed to update favorite. Please try again.', 'error');
     }
   };
 
@@ -77,11 +80,11 @@ export default function FavoriteButton({
         });
       } else {
         console.error(`[FavoriteButton] API error for ${climbUuid}: ${response.status}`);
-        message.error('Failed to save favorite. Please try again.');
+        showMessage('Failed to save favorite. Please try again.', 'error');
       }
     } catch (error) {
       console.error(`[FavoriteButton] Error after auth for ${climbUuid}:`, error);
-      message.error('Failed to save favorite. Please try again.');
+      showMessage('Failed to save favorite. Please try again.', 'error');
     }
   };
 
@@ -92,7 +95,7 @@ export default function FavoriteButton({
     transition: 'color 0.2s, transform 0.2s',
   };
 
-  const Icon = isFavorited ? HeartFilled : HeartOutlined;
+  const Icon = isFavorited ? Favorite : FavoriteBorderOutlined;
 
   const content = (
     <>

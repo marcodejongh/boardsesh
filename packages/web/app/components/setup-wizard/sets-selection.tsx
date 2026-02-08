@@ -1,11 +1,12 @@
 'use client';
 import React, { useState } from 'react';
-import { Button, Form, Select, Typography } from 'antd';
+import { Form, Select } from 'antd';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
 import { useRouter } from 'next/navigation';
 import { SetRow } from '@/app/lib/data/queries';
 
 const { Option } = Select;
-const { Title } = Typography;
 
 const SetsSelection = ({ sets = [] }: { sets: SetRow[] }) => {
   const router = useRouter();
@@ -17,7 +18,7 @@ const SetsSelection = ({ sets = [] }: { sets: SetRow[] }) => {
 
   return (
     <div style={{ padding: '24px', background: 'var(--semantic-background)', borderRadius: '8px' }}>
-      <Title level={4}>Select Hold Sets</Title>
+      <Typography variant="h4">Select Hold Sets</Typography>
       <Form layout="vertical">
         <Form.Item label="Sets" required tooltip="Select hold types">
           <Select mode="multiple" value={selectedSize} onChange={(value) => setSelectedSize(value)}>
@@ -29,11 +30,11 @@ const SetsSelection = ({ sets = [] }: { sets: SetRow[] }) => {
           </Select>
         </Form.Item>
         <Button
-          type="primary"
-          block
-          style={{ marginTop: '16px' }}
+          variant="contained"
+          fullWidth
+          sx={{ marginTop: '16px' }}
           onClick={handleNext}
-          disabled={!selectedSize} // Disable the button if no size is selected
+          disabled={!selectedSize}
         >
           Next
         </Button>

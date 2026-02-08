@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 
 import Link from 'next/link';
@@ -7,16 +9,17 @@ import { parseBoardRouteParams, constructClimbViewUrlWithSlugs, constructPlayUrl
 import { usePathname, useSearchParams } from 'next/navigation';
 import { BoardRouteParametersWithUuid, BoardDetails } from '@/app/lib/types';
 import { track } from '@vercel/analytics';
-import { FastBackwardOutlined } from '@ant-design/icons';
-import Button, { ButtonProps } from 'antd/es/button';
+import FastRewindOutlined from '@mui/icons-material/FastRewindOutlined';
+import IconButton from '@mui/material/IconButton';
+import type { IconButtonProps } from '@mui/material/IconButton';
 
 type PreviousClimbButtonProps = {
   navigate: boolean;
   boardDetails?: BoardDetails;
 };
 
-const PreviousButton = (props: ButtonProps) => (
-  <Button {...props} type="text" icon={<FastBackwardOutlined />} aria-label="Previous climb" />
+const PreviousButton = (props: IconButtonProps) => (
+  <IconButton {...props} aria-label="Previous climb"><FastRewindOutlined /></IconButton>
 );
 
 export default function PreviousClimbButton({ navigate = false, boardDetails }: PreviousClimbButtonProps) {

@@ -1,9 +1,20 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Collapse, Spin, Typography, Card, Button, Tag } from 'antd';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
 import Stack from '@mui/material/Stack';
-import { HistoryOutlined, PlayCircleOutlined, TeamOutlined } from '@ant-design/icons';
+import Chip from '@mui/material/Chip';
+import Accordion from '@mui/material/Accordion';
+import AccordionSummary from '@mui/material/AccordionSummary';
+import AccordionDetails from '@mui/material/AccordionDetails';
+import ExpandMoreOutlined from '@mui/icons-material/ExpandMoreOutlined';
+import CircularProgress from '@mui/material/CircularProgress';
+import HistoryOutlined from '@mui/icons-material/HistoryOutlined';
+import PlayCircleOutlineOutlined from '@mui/icons-material/PlayCircleOutlineOutlined';
+import GroupOutlined from '@mui/icons-material/GroupOutlined';
 import { useRouter } from 'next/navigation';
 import { themeTokens } from '@/app/theme/theme-config';
 import {
@@ -15,8 +26,6 @@ import {
 
 // Re-export for backwards compatibility with existing consumers
 export { saveSessionToHistory } from '@/app/lib/session-history-db';
-
-const { Text } = Typography;
 
 const SessionHistoryPanel = () => {
   const router = useRouter();
@@ -39,7 +48,7 @@ const SessionHistoryPanel = () => {
   if (loading) {
     return (
       <div style={{ textAlign: 'center', padding: themeTokens.spacing[4] }}>
-        <Spin size="small" />
+        <CircularProgress size={24} />
       </div>
     );
   }
@@ -66,40 +75,40 @@ const SessionHistoryPanel = () => {
               {sessions.map((session) => (
                 <Card
                   key={session.id}
-                  size="small"
-                  hoverable
+                  sx={{ cursor: 'pointer', '&:hover': { boxShadow: 3 } }}
                   onClick={() => handleResume(session)}
-                  style={{ cursor: 'pointer' }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <Text strong>{session.name || `${extractBoardName(session.boardPath)} Session`}</Text>
+                  <CardContent sx={{ p: 1.5 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
-                        <Stack direction="row" spacing={1}>
-                          <Tag color="blue">{extractBoardName(session.boardPath)}</Tag>
-                          <Text type="secondary" style={{ fontSize: themeTokens.typography.fontSize.sm }}>
-                            {formatRelativeTime(session.lastActivity || session.createdAt)}
-                          </Text>
-                          {session.participantCount !== undefined && session.participantCount > 0 && (
-                            <Text type="secondary" style={{ fontSize: themeTokens.typography.fontSize.sm }}>
-                              <TeamOutlined /> {session.participantCount}
-                            </Text>
-                          )}
-                        </Stack>
+                        <Typography variant="body2" component="span" fontWeight={600}>{session.name || `${extractBoardName(session.boardPath)} Session`}</Typography>
+                        <div>
+                          <Stack direction="row" spacing={1}>
+                            <Tag color="blue">{extractBoardName(session.boardPath)}</Tag>
+                            <Typography variant="body2" component="span" color="text.secondary" sx={{ fontSize: themeTokens.typography.fontSize.sm }}>
+                              {formatRelativeTime(session.lastActivity || session.createdAt)}
+                            </Typography>
+                            {session.participantCount !== undefined && session.participantCount > 0 && (
+                              <Typography variant="body2" component="span" color="text.secondary" sx={{ fontSize: themeTokens.typography.fontSize.sm }}>
+                                <GroupOutlined /> {session.participantCount}
+                              </Typography>
+                            )}
+                          </Stack>
+                        </div>
                       </div>
+                      <Button
+                        variant="contained"
+                        size="small"
+                        startIcon={<PlayCircleOutlineOutlined />}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleResume(session);
+                        }}
+                      >
+                        Resume
+                      </Button>
                     </div>
-                    <Button
-                      type="primary"
-                      size="small"
-                      icon={<PlayCircleOutlined />}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleResume(session);
-                      }}
-                    >
-                      Resume
-                    </Button>
-                  </div>
+                  </CardContent>
                 </Card>
               ))}
             </div>

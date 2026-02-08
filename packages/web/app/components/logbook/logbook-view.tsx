@@ -1,16 +1,20 @@
 'use client';
 
 import React from 'react';
-import { Card, Rate, Tag, Typography, Empty } from 'antd';
+import Typography from '@mui/material/Typography';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
-import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import Chip from '@mui/material/Chip';
+import Rating from '@mui/material/Rating';
+import { EmptyState } from '@/app/components/ui/empty-state';
+import CheckOutlined from '@mui/icons-material/CheckOutlined';
+import CloseOutlined from '@mui/icons-material/CloseOutlined';
 import { Climb } from '@/app/lib/types';
 import { useBoardProvider } from '../board-provider/board-provider-context';
 import { themeTokens } from '@/app/theme/theme-config';
 import dayjs from 'dayjs';
-
-const { Text } = Typography;
 
 interface LogbookViewProps {
   currentClimb: Climb;
@@ -32,45 +36,47 @@ export const LogbookView: React.FC<LogbookViewProps> = ({ currentClimb }) => {
   const showMirrorTag = boardName === 'tension';
 
   if (climbAscents.length === 0) {
-    return <Empty description="No ascents logged for this climb" />;
+    return <EmptyState description="No ascents logged for this climb" />;
   }
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
       {climbAscents.map((ascent) => (
-        <Card key={`${ascent.climb_uuid}-${ascent.climbed_at}`} style={{ width: '100%' }} size="small">
-          <Stack spacing={1} style={{ width: '100%' }}>
-            <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
-              <Text strong>{dayjs(ascent.climbed_at).format('MMM D, YYYY h:mm A')}</Text>
-              {ascent.angle !== currentClimb.angle && (
+        <Card key={`${ascent.climb_uuid}-${ascent.climbed_at}`} sx={{ width: '100%' }}>
+          <CardContent sx={{ p: 1.5 }}>
+            <Stack spacing={1} style={{ width: '100%' }}>
+              <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
+                <Typography variant="body2" component="span" fontWeight={600}>{dayjs(ascent.climbed_at).format('MMM D, YYYY h:mm A')}</Typography>
+                {ascent.angle !== currentClimb.angle && (
+                  <>
+                    <Chip label={ascent.angle} size="small" color="primary" />
+                    {ascent.is_ascent ? (
+                      <CheckOutlined style={{ color: themeTokens.colors.success }} />
+                    ) : (
+                      <CloseOutlined style={{ color: themeTokens.colors.error }} />
+                    )}
+                  </>
+                )}
+                {showMirrorTag && ascent.is_mirror && <Chip label="Mirrored" size="small" color="secondary" />}
+              </Stack>
+              {ascent.is_ascent && ascent.quality && (
                 <>
-                  <Tag color="blue">{ascent.angle}°</Tag>
-                  {ascent.is_ascent ? (
-                    <CheckOutlined style={{ color: themeTokens.colors.success }} />
-                  ) : (
-                    <CloseOutlined style={{ color: themeTokens.colors.error }} />
-                  )}
+                  <Stack direction="row" spacing={1}>
+                    <Rating readOnly value={ascent.quality} max={5} size="small" />
+                  </Stack>
                 </>
               )}
-              {showMirrorTag && ascent.is_mirror && <Tag color="purple">Mirrored</Tag>}
-            </Stack>
-            {ascent.is_ascent && ascent.quality && (
-              <>
-                <Stack direction="row" spacing={1}>
-                  <Rate disabled value={ascent.quality} count={5} style={{ fontSize: 14 }} />
-                </Stack>
-              </>
-            )}
-            <Stack direction="row" spacing={1}>
-              <Text>Attempts: {ascent.tries}</Text>
-            </Stack>
+              <Stack direction="row" spacing={1}>
+                <Typography variant="body2" component="span">Attempts: {ascent.tries}</Typography>
+              </Stack>
 
-            {ascent.comment && (
-              <Text type="secondary" style={{ whiteSpace: 'pre-wrap' }}>
-                {ascent.comment}
-              </Text>
-            )}
-          </Stack>
+              {ascent.comment && (
+                <Typography variant="body2" component="span" color="text.secondary" sx={{ whiteSpace: 'pre-wrap' }}>
+                  {ascent.comment}
+                </Typography>
+              )}
+            </Stack>
+          </CardContent>
         </Card>
       ))}
     </Box>

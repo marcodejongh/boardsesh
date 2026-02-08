@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { HistoryOutlined } from '@ant-design/icons';
+import HistoryOutlined from '@mui/icons-material/HistoryOutlined';
 import { getRecentSearches, getFilterKey, RecentSearch, RECENT_SEARCHES_CHANGED_EVENT } from './recent-searches-storage';
 import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
 import { SearchRequestPagination } from '@/app/lib/types';

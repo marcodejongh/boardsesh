@@ -2,11 +2,12 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { Select, Button, Typography, Form } from 'antd';
+import { Select, Form } from 'antd';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
 import { ANGLES } from '@/app/lib/board-data';
 import { BoardName } from '@/app/lib/types';
 
-const { Title } = Typography;
 const { Option } = Select;
 
 const AngleSelection = ({ board_name }: { board_name: BoardName }) => {
@@ -23,7 +24,7 @@ const AngleSelection = ({ board_name }: { board_name: BoardName }) => {
 
   return (
     <div style={{ padding: '24px', background: 'var(--semantic-background)', borderRadius: '8px' }}>
-      <Title level={4}>Select an angle</Title>
+      <Typography variant="h4">Select an angle</Typography>
       <Form layout="vertical">
         <Form.Item label="Angle">
           <Select value={angle.toString()} onChange={handleAngleChange}>
@@ -35,7 +36,7 @@ const AngleSelection = ({ board_name }: { board_name: BoardName }) => {
           </Select>
         </Form.Item>
       </Form>
-      <Button type="primary" block style={{ marginTop: '16px' }} onClick={handleNext}>
+      <Button variant="contained" fullWidth sx={{ marginTop: '16px' }} onClick={handleNext}>
         Next
       </Button>
     </div>

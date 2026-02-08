@@ -1,15 +1,27 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Modal, Form, Input, Button, Tabs, Typography, message } from 'antd';
+import { Form } from 'antd';
+import Dialog from '@mui/material/Dialog';
+import DialogContent from '@mui/material/DialogContent';
+import Tabs from '@mui/material/Tabs';
+import Tab from '@mui/material/Tab';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
+import TextField from '@mui/material/TextField';
+import InputAdornment from '@mui/material/InputAdornment';
+import CircularProgress from '@mui/material/CircularProgress';
 import Stack from '@mui/material/Stack';
 import MuiDivider from '@mui/material/Divider';
-import { UserOutlined, LockOutlined, MailOutlined, HeartFilled } from '@ant-design/icons';
+import PersonOutlined from '@mui/icons-material/PersonOutlined';
+import LockOutlined from '@mui/icons-material/LockOutlined';
+import MailOutlined from '@mui/icons-material/MailOutlined';
+import Favorite from '@mui/icons-material/Favorite';
 import { signIn } from 'next-auth/react';
 import SocialLoginButtons from '@/app/components/auth/social-login-buttons';
+import { TabPanel } from '@/app/components/ui/tab-panel';
+import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 import { themeTokens } from '@/app/theme/theme-config';
-
-const { Text } = Typography;
 
 type AuthModalProps = {
   open: boolean;
@@ -31,6 +43,7 @@ export default function AuthModal({
   const [loginLoading, setLoginLoading] = useState(false);
   const [registerLoading, setRegisterLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('login');
+  const { showMessage } = useSnackbar();
 
   const handleLogin = async () => {
     try {
@@ -44,9 +57,9 @@ export default function AuthModal({
       });
 
       if (result?.error) {
-        message.error('Invalid email or password');
+        showMessage('Invalid email or password', 'error');
       } else if (result?.ok) {
-        message.success('Logged in successfully');
+        showMessage('Logged in successfully', 'success');
         loginForm.resetFields();
         onClose();
         onSuccess?.();
@@ -78,13 +91,13 @@ export default function AuthModal({
       const data = await response.json();
 
       if (!response.ok) {
-        message.error(data.error || 'Registration failed');
+        showMessage(data.error || 'Registration failed', 'error');
         return;
       }
 
       // Check if email verification is required
       if (data.requiresVerification) {
-        message.info('Please check your email to verify your account');
+        showMessage('Please check your email to verify your account', 'info');
         setActiveTab('login');
         loginForm.setFieldValue('email', values.email);
         registerForm.resetFields();
@@ -92,7 +105,7 @@ export default function AuthModal({
       }
 
       // Email verification disabled - auto-login after successful registration
-      message.success('Account created! Logging you in...');
+      showMessage('Account created! Logging you in...', 'success');
 
       const loginResult = await signIn('credentials', {
         email: values.email,
@@ -107,11 +120,11 @@ export default function AuthModal({
       } else {
         setActiveTab('login');
         loginForm.setFieldValue('email', values.email);
-        message.info('Please log in with your account');
+        showMessage('Please log in with your account', 'info');
       }
     } catch (error) {
       console.error('Registration error:', error);
-      message.error('Registration failed. Please try again.');
+      showMessage('Registration failed. Please try again.', 'error');
     } finally {
       setRegisterLoading(false);
     }
@@ -123,128 +136,222 @@ export default function AuthModal({
     onClose();
   };
 
-  const tabItems = [
-    {
-      key: 'login',
-      label: 'Login',
-      forceRender: true,
-      children: (
-        <Form form={loginForm} layout="vertical" onFinish={handleLogin}>
-          <Form.Item
-            name="email"
-            label="Email"
-            rules={[
-              { required: true, message: 'Please enter your email' },
-              { type: 'email', message: 'Please enter a valid email' },
-            ]}
-          >
-            <Input prefix={<MailOutlined />} placeholder="your@email.com" size="large" />
-          </Form.Item>
-
-          <Form.Item
-            name="password"
-            label="Password"
-            rules={[{ required: true, message: 'Please enter your password' }]}
-          >
-            <Input.Password prefix={<LockOutlined />} placeholder="Password" size="large" />
-          </Form.Item>
-
-          <Form.Item style={{ marginBottom: 0 }}>
-            <Button type="primary" htmlType="submit" loading={loginLoading} block size="large">
-              Login
-            </Button>
-          </Form.Item>
-        </Form>
-      ),
-    },
-    {
-      key: 'register',
-      label: 'Create Account',
-      forceRender: true,
-      children: (
-        <Form form={registerForm} layout="vertical" onFinish={handleRegister}>
-          <Form.Item
-            name="name"
-            label="Name"
-            rules={[{ max: 100, message: 'Name must be less than 100 characters' }]}
-          >
-            <Input prefix={<UserOutlined />} placeholder="Your name (optional)" size="large" />
-          </Form.Item>
-
-          <Form.Item
-            name="email"
-            label="Email"
-            rules={[
-              { required: true, message: 'Please enter your email' },
-              { type: 'email', message: 'Please enter a valid email' },
-            ]}
-          >
-            <Input prefix={<MailOutlined />} placeholder="your@email.com" size="large" />
-          </Form.Item>
-
-          <Form.Item
-            name="password"
-            label="Password"
-            rules={[
-              { required: true, message: 'Please enter a password' },
-              { min: 8, message: 'Password must be at least 8 characters' },
-            ]}
-          >
-            <Input.Password prefix={<LockOutlined />} placeholder="Password (min 8 characters)" size="large" />
-          </Form.Item>
-
-          <Form.Item
-            name="confirmPassword"
-            label="Confirm Password"
-            dependencies={['password']}
-            rules={[
-              { required: true, message: 'Please confirm your password' },
-              ({ getFieldValue }) => ({
-                validator(_, value) {
-                  if (!value || getFieldValue('password') === value) {
-                    return Promise.resolve();
-                  }
-                  return Promise.reject(new Error('Passwords do not match'));
-                },
-              }),
-            ]}
-          >
-            <Input.Password prefix={<LockOutlined />} placeholder="Confirm password" size="large" />
-          </Form.Item>
-
-          <Form.Item style={{ marginBottom: 0 }}>
-            <Button type="primary" htmlType="submit" loading={registerLoading} block size="large">
-              Create Account
-            </Button>
-          </Form.Item>
-        </Form>
-      ),
-    },
-  ];
-
   return (
-    <Modal
+    <Dialog
       open={open}
-      onCancel={handleCancel}
-      footer={null}
-      width={400}
-      centered
+      onClose={handleCancel}
+      maxWidth="xs"
+      fullWidth
     >
-      <Stack spacing={3} style={{ width: '100%' }}>
-        <Stack spacing={1} style={{ width: '100%', textAlign: 'center' }}>
-          <HeartFilled style={{ fontSize: 32, color: themeTokens.colors.error }} />
-          <Text strong style={{ fontSize: 18 }}>{title}</Text>
-          <Text type="secondary">{description}</Text>
+      <DialogContent>
+        <Stack spacing={3} sx={{ width: '100%' }}>
+          <Stack spacing={1} sx={{ width: '100%', textAlign: 'center' }}>
+            <Favorite sx={{ fontSize: 32, color: themeTokens.colors.error, mx: 'auto' }} />
+            <Typography variant="body2" component="span" fontWeight={600} sx={{ fontSize: 18 }}>{title}</Typography>
+            <Typography variant="body2" component="span" color="text.secondary">{description}</Typography>
+          </Stack>
+
+          <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)} centered>
+            <Tab label="Login" value="login" />
+            <Tab label="Create Account" value="register" />
+          </Tabs>
+
+          <TabPanel value={activeTab} index="login">
+            <Form form={loginForm} layout="vertical" onFinish={handleLogin}>
+              <Form.Item
+                name="email"
+                label="Email"
+                rules={[
+                  { required: true, message: 'Please enter your email' },
+                  { type: 'email', message: 'Please enter a valid email' },
+                ]}
+              >
+                <TextField
+                  placeholder="your@email.com"
+                  variant="outlined"
+                  size="medium"
+                  fullWidth
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <MailOutlined />
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                />
+              </Form.Item>
+
+              <Form.Item
+                name="password"
+                label="Password"
+                rules={[{ required: true, message: 'Please enter your password' }]}
+              >
+                <TextField
+                  type="password"
+                  placeholder="Password"
+                  variant="outlined"
+                  size="medium"
+                  fullWidth
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <LockOutlined />
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                />
+              </Form.Item>
+
+              <Form.Item style={{ marginBottom: 0 }}>
+                <Button
+                  variant="contained"
+                  type="submit"
+                  disabled={loginLoading}
+                  startIcon={loginLoading ? <CircularProgress size={16} /> : undefined}
+                  fullWidth
+                  size="large"
+                >
+                  Login
+                </Button>
+              </Form.Item>
+            </Form>
+          </TabPanel>
+
+          <TabPanel value={activeTab} index="register">
+            <Form form={registerForm} layout="vertical" onFinish={handleRegister}>
+              <Form.Item
+                name="name"
+                label="Name"
+                rules={[{ max: 100, message: 'Name must be less than 100 characters' }]}
+              >
+                <TextField
+                  placeholder="Your name (optional)"
+                  variant="outlined"
+                  size="medium"
+                  fullWidth
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <PersonOutlined />
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                />
+              </Form.Item>
+
+              <Form.Item
+                name="email"
+                label="Email"
+                rules={[
+                  { required: true, message: 'Please enter your email' },
+                  { type: 'email', message: 'Please enter a valid email' },
+                ]}
+              >
+                <TextField
+                  placeholder="your@email.com"
+                  variant="outlined"
+                  size="medium"
+                  fullWidth
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <MailOutlined />
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                />
+              </Form.Item>
+
+              <Form.Item
+                name="password"
+                label="Password"
+                rules={[
+                  { required: true, message: 'Please enter a password' },
+                  { min: 8, message: 'Password must be at least 8 characters' },
+                ]}
+              >
+                <TextField
+                  type="password"
+                  placeholder="Password (min 8 characters)"
+                  variant="outlined"
+                  size="medium"
+                  fullWidth
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <LockOutlined />
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                />
+              </Form.Item>
+
+              <Form.Item
+                name="confirmPassword"
+                label="Confirm Password"
+                dependencies={['password']}
+                rules={[
+                  { required: true, message: 'Please confirm your password' },
+                  ({ getFieldValue }) => ({
+                    validator(_, value) {
+                      if (!value || getFieldValue('password') === value) {
+                        return Promise.resolve();
+                      }
+                      return Promise.reject(new Error('Passwords do not match'));
+                    },
+                  }),
+                ]}
+              >
+                <TextField
+                  type="password"
+                  placeholder="Confirm password"
+                  variant="outlined"
+                  size="medium"
+                  fullWidth
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <LockOutlined />
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                />
+              </Form.Item>
+
+              <Form.Item style={{ marginBottom: 0 }}>
+                <Button
+                  variant="contained"
+                  type="submit"
+                  disabled={registerLoading}
+                  startIcon={registerLoading ? <CircularProgress size={16} /> : undefined}
+                  fullWidth
+                  size="large"
+                >
+                  Create Account
+                </Button>
+              </Form.Item>
+            </Form>
+          </TabPanel>
+
+          <MuiDivider sx={{ margin: '8px 0' }}>
+            <Typography variant="body2" component="span" color="text.secondary">or</Typography>
+          </MuiDivider>
+
+          <SocialLoginButtons />
         </Stack>
-
-        <Tabs activeKey={activeTab} onChange={setActiveTab} items={tabItems} centered destroyOnHidden={false} />
-
-        <MuiDivider sx={{ margin: '8px 0' }}>
-          <Text type="secondary">or</Text>
-        </MuiDivider>
-
-        <SocialLoginButtons />
-      </Stack>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -1,12 +1,13 @@
 'use client';
 import React, { useState } from 'react';
-import { Button, Form, Select, Typography } from 'antd';
+import { Form, Select } from 'antd';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
 import { useRouter } from 'next/navigation';
 import { LayoutRow } from '@/app/lib/data/queries';
 import { BoardName } from '@/app/lib/types';
 
 const { Option } = Select;
-const { Title } = Typography;
 
 const LayoutSelection = ({ layouts = [] }: { layouts: LayoutRow[]; boardName: BoardName }) => {
   const router = useRouter();
@@ -22,7 +23,7 @@ const LayoutSelection = ({ layouts = [] }: { layouts: LayoutRow[]; boardName: Bo
 
   return (
     <div style={{ padding: '24px', background: 'var(--semantic-background)', borderRadius: '8px' }}>
-      <Title level={4}>Select a layout</Title>
+      <Typography variant="h4">Select a layout</Typography>
       <Form layout="vertical">
         <Form.Item label="Layout" required tooltip="Choose the layout you want to work with">
           <Select onChange={onLayoutChange}>
@@ -34,7 +35,7 @@ const LayoutSelection = ({ layouts = [] }: { layouts: LayoutRow[]; boardName: Bo
           </Select>
         </Form.Item>
 
-        <Button type="primary" block style={{ marginTop: '16px' }} onClick={handleNext} disabled={!selectedLayout}>
+        <Button variant="contained" fullWidth sx={{ marginTop: '16px' }} onClick={handleNext} disabled={!selectedLayout}>
           Next
         </Button>
       </Form>

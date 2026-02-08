@@ -1,9 +1,17 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Card, Typography, Button, Tooltip, Tag, Skeleton } from 'antd';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
-import { DeleteOutlined, StarFilled } from '@ant-design/icons';
+import Chip from '@mui/material/Chip';
+import MuiTooltip from '@mui/material/Tooltip';
+import MuiSkeleton from '@mui/material/Skeleton';
+import DeleteOutlined from '@mui/icons-material/DeleteOutlined';
+import Star from '@mui/icons-material/Star';
 import Link from 'next/link';
 import { BoardDetails, BoardName } from '@/app/lib/types';
 import { getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
@@ -11,8 +19,6 @@ import { getMoonBoardDetails } from '@/app/lib/moonboard-config';
 import BoardRenderer from '../board-renderer/board-renderer';
 import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { BoardConfigData } from '@/app/lib/server-board-configs';
-
-const { Text } = Typography;
 
 type StoredBoardConfig = {
   name: string;
@@ -145,8 +151,10 @@ export default function BoardConfigPreview({ config, onDelete, onSelect, boardCo
 
   if (isLoading) {
     return (
-      <Card hoverable size="small" style={{ minWidth: 0 }}>
-        <Skeleton active paragraph={{ rows: 2 }} />
+      <Card sx={{ minWidth: 0, '&:hover': { boxShadow: 3 } }}>
+        <CardContent sx={{ p: 1.5 }}>
+          <Skeleton active paragraph={{ rows: 2 }} />
+        </CardContent>
       </Card>
     );
   }
@@ -155,23 +163,29 @@ export default function BoardConfigPreview({ config, onDelete, onSelect, boardCo
     return (
       <Link href={boardUrl} style={{ textDecoration: 'none', minWidth: 0 }} onClick={handleSelect}>
         <Card
-          hoverable
-          size="small"
-          style={{ minWidth: 0 }}
-          extra={isEditMode ? <Button type="text" icon={<DeleteOutlined />} onClick={handleDelete} danger size="small" /> : undefined}
+          sx={{ minWidth: 0, '&:hover': { boxShadow: 3 } }}
         >
-          <Stack spacing={1} alignItems="center">
-            <Text type="secondary">Preview unavailable</Text>
-            <Text strong>{config.name}</Text>
-            <Stack spacing={0.25}>
-              <Tag>{layoutName}</Tag>
-              <Stack direction="row" spacing={0.25}>
-                <Tag>{sizeName}</Tag>
-                <Tag>{config.angle || 40}°</Tag>
-                {config.useAsDefault && <StarFilled />}
+          <CardContent sx={{ p: 1.5 }}>
+            {isEditMode && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <IconButton onClick={handleDelete} color="error" size="small">
+                  <DeleteOutlined />
+                </IconButton>
+              </div>
+            )}
+            <Stack spacing={1} alignItems="center">
+              <Typography variant="body2" component="span" color="text.secondary">Preview unavailable</Typography>
+              <Typography variant="body2" component="span" fontWeight={600}>{config.name}</Typography>
+              <Stack spacing={0.25}>
+                <Tag>{layoutName}</Tag>
+                <Stack direction="row" spacing={0.25}>
+                  <Tag>{sizeName}</Tag>
+                  <Tag>{config.angle || 40}</Tag>
+                  {config.useAsDefault && <Star />}
+                </Stack>
               </Stack>
             </Stack>
-          </Stack>
+          </CardContent>
         </Card>
       </Link>
     );
@@ -180,36 +194,36 @@ export default function BoardConfigPreview({ config, onDelete, onSelect, boardCo
   return (
     <Link href={boardUrl} style={{ textDecoration: 'none', minWidth: 0 }} onClick={handleSelect}>
       <Card
-        hoverable
-        size="small"
-        style={{ minWidth: 0 }}
-        cover={
-          <BoardRenderer
-            litUpHoldsMap={{}} // Empty holds map - just show the board
-            mirrored={false}
-            boardDetails={boardDetails}
-            thumbnail={true}
-          />
-        }
-        extra={isEditMode ? <Button type="text" icon={<DeleteOutlined />} onClick={handleDelete} danger size="small" /> : undefined}
+        sx={{ minWidth: 0, '&:hover': { boxShadow: 3 } }}
       >
-        <Card.Meta
-          title={<Text strong>{config.name}</Text>}
-          description={
-            <Stack spacing={0.25}>
-              <Tag>{layoutName}</Tag>
-              <Stack direction="row" spacing={0.25}>
-                <Tag>{sizeName}</Tag>
-                <Tag>{config.angle || 40}°</Tag>
-                {config.useAsDefault && (
-                  <Tooltip title="Default configuration">
-                    <StarFilled />
-                  </Tooltip>
-                )}
-              </Stack>
-            </Stack>
-          }
+        <BoardRenderer
+          litUpHoldsMap={{}} // Empty holds map - just show the board
+          mirrored={false}
+          boardDetails={boardDetails}
+          thumbnail={true}
         />
+        <CardContent sx={{ p: 1.5 }}>
+          {isEditMode && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <IconButton onClick={handleDelete} color="error" size="small">
+                <DeleteOutlined />
+              </IconButton>
+            </div>
+          )}
+          <Typography variant="body2" component="span" fontWeight={600}>{config.name}</Typography>
+          <Stack spacing={0.25}>
+            <Tag>{layoutName}</Tag>
+            <Stack direction="row" spacing={0.25}>
+              <Tag>{sizeName}</Tag>
+              <Tag>{config.angle || 40}</Tag>
+              {config.useAsDefault && (
+                <Tooltip title="Default configuration">
+                  <Star />
+                </Tooltip>
+              )}
+            </Stack>
+          </Stack>
+        </CardContent>
       </Card>
     </Link>
   );

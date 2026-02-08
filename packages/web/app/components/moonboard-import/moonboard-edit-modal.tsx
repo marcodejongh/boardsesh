@@ -1,7 +1,14 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { Modal, Form, Input, Tag, Typography } from 'antd';
+import { Form, Input } from 'antd';
+import Typography from '@mui/material/Typography';
+import Chip from '@mui/material/Chip';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import Button from '@mui/material/Button';
 import MoonBoardRenderer from '../moonboard-renderer/moonboard-renderer';
 import { useMoonBoardCreateClimb } from '../create-climb/use-moonboard-create-climb';
 import { coordinateToHoldId, holdIdToCoordinate, MOONBOARD_HOLD_STATES } from '@/app/lib/moonboard-config';
@@ -9,7 +16,6 @@ import type { MoonBoardClimb, GridCoordinate } from '@boardsesh/moonboard-ocr/br
 import type { LitUpHoldsMap } from '../board-renderer/types';
 import styles from './moonboard-edit-modal.module.css';
 
-const { Text } = Typography;
 
 interface MoonBoardEditModalProps {
   open: boolean;
@@ -156,9 +162,9 @@ export default function MoonBoardEditModal({
           </div>
 
           {!isValid && totalHolds > 0 && (
-            <Text type="secondary" className={styles.validationHint}>
+            <Typography variant="body2" component="span" color="text.secondary" className={styles.validationHint}>
               A valid climb needs at least 1 start hold and 1 finish hold
-            </Text>
+            </Typography>
           )}
         </div>
 
@@ -172,9 +178,9 @@ export default function MoonBoardEditModal({
           </Form.Item>
 
           <div className={styles.climbInfo}>
-            <Text type="secondary">Setter: {climb.setter || 'Unknown'}</Text>
-            <Text type="secondary">Grade: {climb.userGrade || 'Unknown'}</Text>
-            <Text type="secondary">Angle: {climb.angle}°</Text>
+            <Typography variant="body2" component="span" color="text.secondary">Setter: {climb.setter || 'Unknown'}</Typography>
+            <Typography variant="body2" component="span" color="text.secondary">Grade: {climb.userGrade || 'Unknown'}</Typography>
+            <Typography variant="body2" component="span" color="text.secondary">Angle: {climb.angle}°</Typography>
           </div>
         </Form>
       </div>

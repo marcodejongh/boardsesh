@@ -1,21 +1,23 @@
 'use client';
 
 import React, { useState } from 'react';
-import {
-  TeamOutlined,
-  CopyOutlined,
-  CrownFilled,
-  LoadingOutlined,
-  CheckCircleOutlined,
-  LoginOutlined,
-  PlayCircleOutlined,
-  CloseCircleOutlined,
-  BulbOutlined,
-  BulbFilled,
-  AppleOutlined,
-  ApiOutlined,
-} from '@ant-design/icons';
-import { Button, Input, QRCode, App, Typography, Badge, Switch, Tabs } from 'antd';
+import GroupOutlined from '@mui/icons-material/GroupOutlined';
+import ContentCopyOutlined from '@mui/icons-material/ContentCopyOutlined';
+import EmojiEvents from '@mui/icons-material/EmojiEvents';
+import CircularProgress from '@mui/material/CircularProgress';
+import CheckCircleOutlined from '@mui/icons-material/CheckCircleOutlined';
+import LoginOutlined from '@mui/icons-material/LoginOutlined';
+import PlayCircleOutlineOutlined from '@mui/icons-material/PlayCircleOutlineOutlined';
+import CancelOutlined from '@mui/icons-material/CancelOutlined';
+import LightbulbOutlined from '@mui/icons-material/LightbulbOutlined';
+import Lightbulb from '@mui/icons-material/Lightbulb';
+import AppleOutlined from '@mui/icons-material/Apple';
+import ApiOutlined from '@mui/icons-material/ApiOutlined';
+import MuiButton from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
+import TextField from '@mui/material/TextField';
+import Typography from '@mui/material/Typography';
+import { QRCode, App, Badge, Switch, Tabs } from 'antd';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
@@ -25,8 +27,6 @@ import { useQueueContext } from '../graphql-queue';
 import { useBluetoothContext } from '../board-bluetooth-control/bluetooth-context';
 import { themeTokens } from '@/app/theme/theme-config';
 import AuthModal from '../auth/auth-modal';
-
-const { Text, Paragraph } = Typography;
 
 const getShareUrl = (pathname: string, sessionId: string | null) => {
   try {
@@ -63,10 +63,10 @@ function LedConnectionTab() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      <Text>
+      <Typography variant="body2" component="span">
         Connect to your board via Bluetooth to illuminate routes with LEDs.
         Routes will automatically update as you navigate between climbs.
-      </Text>
+      </Typography>
 
       {!isBluetoothSupported && (
         <Box
@@ -80,47 +80,47 @@ function LedConnectionTab() {
             borderRadius: themeTokens.borderRadius.md,
           }}
         >
-          <Paragraph style={{ margin: 0 }}>
-            <Text>
+          <Typography variant="body1" component="p" sx={{ margin: 0 }}>
+            <Typography variant="body2" component="span">
               Your browser does not support Web Bluetooth, which means you
               won&#39;t be able to illuminate routes on the board.
-            </Text>
-          </Paragraph>
+            </Typography>
+          </Typography>
           {isIOS ? (
             <>
-              <Paragraph style={{ margin: 0 }}>
+              <Typography variant="body1" component="p" sx={{ margin: 0 }}>
                 To control your board from an iOS device, install the Bluefy
                 browser:
-              </Paragraph>
-              <Button
-                type="primary"
-                icon={<AppleOutlined />}
+              </Typography>
+              <MuiButton
+                variant="contained"
+                startIcon={<AppleOutlined />}
                 href="https://apps.apple.com/us/app/bluefy-web-ble-browser/id1492822055"
                 target="_blank"
               >
                 Download Bluefy from the App Store
-              </Button>
+              </MuiButton>
             </>
           ) : (
-            <Paragraph style={{ margin: 0 }}>
+            <Typography variant="body1" component="p" sx={{ margin: 0 }}>
               For the best experience, please use Chrome or another
               Chromium-based browser.
-            </Paragraph>
+            </Typography>
           )}
         </Box>
       )}
 
       {isBluetoothSupported && !isConnected && (
-        <Button
-          type="primary"
+        <MuiButton
+          variant="contained"
           size="large"
-          icon={<BulbOutlined />}
+          startIcon={loading ? <CircularProgress size={16} /> : <LightbulbOutlined />}
           onClick={handleConnect}
-          loading={loading}
-          block
+          disabled={loading}
+          fullWidth
         >
           Connect to Board
-        </Button>
+        </MuiButton>
       )}
 
       {isConnected && (
@@ -136,26 +136,26 @@ function LedConnectionTab() {
               borderRadius: themeTokens.borderRadius.md,
             }}
           >
-            <BulbFilled
-              style={{ color: themeTokens.colors.success, fontSize: '18px' }}
+            <Lightbulb
+              sx={{ color: themeTokens.colors.success, fontSize: '18px' }}
             />
             <div style={{ flex: 1 }}>
-              <Text strong style={{ color: themeTokens.colors.success }}>
+              <Typography variant="body2" component="span" fontWeight={600} sx={{ color: themeTokens.colors.success }}>
                 Board Connected
-              </Text>
+              </Typography>
               <br />
-              <Text type="secondary" style={{ fontSize: '12px' }}>
+              <Typography variant="body2" component="span" color="text.secondary" sx={{ fontSize: '12px' }}>
                 Routes illuminate automatically when navigating
-              </Text>
+              </Typography>
             </div>
-            <Button
-              type="text"
-              danger
-              icon={<ApiOutlined />}
+            <MuiButton
+              variant="text"
+              color="error"
+              startIcon={<ApiOutlined />}
               onClick={disconnect}
             >
               Disconnect
-            </Button>
+            </MuiButton>
           </Box>
         </Box>
       )}
@@ -284,29 +284,29 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
           borderRadius: themeTokens.borderRadius.md,
         }}
       >
-        <CheckCircleOutlined style={{ color: themeTokens.colors.success, fontSize: '18px' }} />
+        <CheckCircleOutlined sx={{ color: themeTokens.colors.success, fontSize: '18px' }} />
         <div style={{ flex: 1 }}>
-          <Text strong style={{ color: themeTokens.colors.success }}>
+          <Typography variant="body2" component="span" fontWeight={600} sx={{ color: themeTokens.colors.success }}>
             Party Mode Active
-          </Text>
+          </Typography>
           <br />
-          <Text type="secondary" style={{ fontSize: '12px' }}>
+          <Typography variant="body2" component="span" color="text.secondary" sx={{ fontSize: '12px' }}>
             Session: {sessionId?.substring(0, 8)}...
-          </Text>
+          </Typography>
         </div>
-        <Button
-          type="text"
-          danger
-          icon={<CloseCircleOutlined />}
+        <MuiButton
+          variant="text"
+          color="error"
+          startIcon={<CancelOutlined />}
           onClick={handleEndSession}
         >
           Leave
-        </Button>
+        </MuiButton>
       </Box>
 
       {users && users.length > 0 && (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          <Text strong>Connected Users ({users.length}):</Text>
+          <Typography variant="body2" component="span" fontWeight={600}>Connected Users ({users.length}):</Typography>
           <Box
             sx={{
               display: 'flex',
@@ -332,13 +332,13 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
                 }}
               >
                 <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                  <Text style={{ fontSize: '14px' }}>
+                  <Typography variant="body2" component="span" sx={{ fontSize: '14px' }}>
                     {user.username}
                     {user.id === currentUserId && ' (you)'}
-                  </Text>
+                  </Typography>
                 </Box>
                 {user.isLeader && (
-                  <CrownFilled style={{ color: themeTokens.colors.warning, fontSize: '16px' }} />
+                  <EmojiEvents sx={{ color: themeTokens.colors.warning, fontSize: '16px' }} />
                 )}
               </Box>
             ))}
@@ -357,23 +357,28 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
             borderRadius: themeTokens.borderRadius.md,
           }}
         >
-          <Text type="secondary" style={{ fontSize: '13px' }}>
+          <Typography variant="body2" component="span" color="text.secondary" sx={{ fontSize: '13px' }}>
             Sign in to customize your username
-          </Text>
-          <Button type="link" size="small" icon={<LoginOutlined />} onClick={() => setShowAuthModal(true)}>
+          </Typography>
+          <MuiButton variant="text" size="small" startIcon={<LoginOutlined />} onClick={() => setShowAuthModal(true)}>
             Sign in
-          </Button>
+          </MuiButton>
         </Box>
       )}
 
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-        <Text strong>Invite others to join:</Text>
+        <Typography variant="body2" component="span" fontWeight={600}>Invite others to join:</Typography>
         <Box sx={{ display: 'flex', width: '100%', alignItems: 'center' }}>
-          <Input
+          <TextField
             value={shareUrl}
-            readOnly
-            addonAfter={<Button icon={<CopyOutlined />} onClick={copyToClipboard} />}
+            slotProps={{ input: { readOnly: true } }}
+            variant="outlined"
+            size="small"
+            fullWidth
           />
+          <IconButton onClick={copyToClipboard}>
+            <ContentCopyOutlined />
+          </IconButton>
         </Box>
         <Box sx={{ display: 'flex', justifyContent: 'center' }}>
           <QRCode value={shareUrl} size={160} bordered={false} />
@@ -389,9 +394,9 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
       label: 'Start Session',
       children: (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <Text>
+          <Typography variant="body2" component="span">
             Start a party mode session to climb with others. Share your queue and take turns!
-          </Text>
+          </Typography>
 
           {!isLoggedIn && (
             <Box
@@ -405,45 +410,47 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
                 borderRadius: themeTokens.borderRadius.md,
               }}
             >
-              <Text>Sign in to start a party session</Text>
-              <Button type="primary" size="small" icon={<LoginOutlined />} onClick={() => setShowAuthModal(true)}>
+              <Typography variant="body2" component="span">Sign in to start a party session</Typography>
+              <MuiButton variant="contained" size="small" startIcon={<LoginOutlined />} onClick={() => setShowAuthModal(true)}>
                 Sign in
-              </Button>
+              </MuiButton>
             </Box>
           )}
 
           {isLoggedIn && (
             <>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <Text strong>Session Name (optional)</Text>
-                <Input
+                <Typography variant="body2" component="span" fontWeight={600}>Session Name (optional)</Typography>
+                <TextField
                   placeholder="e.g., Tuesday Night Climbs"
                   value={sessionName}
                   onChange={(e) => setSessionName(e.target.value)}
-                  maxLength={50}
+                  slotProps={{ htmlInput: { maxLength: 50 } }}
+                  variant="outlined"
+                  size="small"
                 />
               </Box>
 
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Stack spacing={0}>
-                  <Text strong>Allow others to discover this session</Text>
-                  <Text type="secondary" style={{ fontSize: '12px' }}>
+                  <Typography variant="body2" component="span" fontWeight={600}>Allow others to discover this session</Typography>
+                  <Typography variant="body2" component="span" color="text.secondary" sx={{ fontSize: '12px' }}>
                     Others nearby can find and join your session
-                  </Text>
+                  </Typography>
                 </Stack>
                 <Switch checked={discoverable} onChange={setDiscoverable} />
               </Box>
 
-              <Button
-                type="primary"
+              <MuiButton
+                variant="contained"
                 size="large"
-                icon={<PlayCircleOutlined />}
+                startIcon={isStartingSession ? <CircularProgress size={16} /> : <PlayCircleOutlineOutlined />}
                 onClick={handleStartSession}
-                loading={isStartingSession}
-                block
+                disabled={isStartingSession}
+                fullWidth
               >
                 Start Party Mode
-              </Button>
+              </MuiButton>
             </>
           )}
         </Box>
@@ -454,18 +461,20 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
       label: 'Join Session',
       children: (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <Text>Enter a session link or ID to join an existing party.</Text>
+          <Typography variant="body2" component="span">Enter a session link or ID to join an existing party.</Typography>
 
-          <Input
+          <TextField
             placeholder="Paste session link or ID..."
             value={joinSessionId}
             onChange={(e) => setJoinSessionId(e.target.value)}
-            onPressEnter={handleJoinSession}
+            onKeyDown={(e) => e.key === 'Enter' && handleJoinSession()}
+            variant="outlined"
+            size="small"
           />
 
-          <Button type="primary" size="large" onClick={handleJoinSession} block>
+          <MuiButton variant="contained" size="large" onClick={handleJoinSession} fullWidth>
             Join Session
-          </Button>
+          </MuiButton>
         </Box>
       ),
     },
@@ -497,11 +506,12 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
   return (
     <>
       <Badge count={connectionCount} overflowCount={100} showZero={false} color={themeTokens.colors.primary}>
-        <Button
-          type={isSessionActive ? 'primary' : buttonType}
+        <IconButton
           onClick={showDrawer}
-          icon={isConnecting ? <LoadingOutlined /> : <TeamOutlined />}
-        />
+          color={isSessionActive ? 'primary' : 'default'}
+        >
+          {isConnecting ? <CircularProgress size={16} /> : <GroupOutlined />}
+        </IconButton>
       </Badge>
       <SwipeableDrawer
         title={isControllerMode ? 'Controller Mode' : 'Party Mode'}
@@ -527,13 +537,13 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <span style={{ fontSize: '18px' }}>🎮</span>
                 <div>
-                  <Text strong style={{ color: themeTokens.colors.primary }}>
+                  <Typography variant="body2" component="span" fontWeight={600} sx={{ color: themeTokens.colors.primary }}>
                     Board Controller Connected
-                  </Text>
+                  </Typography>
                   <br />
-                  <Text type="secondary" style={{ fontSize: '12px' }}>
+                  <Typography variant="body2" component="span" color="text.secondary" sx={{ fontSize: '12px' }}>
                     Queue management is handled by your Board Controller
-                  </Text>
+                  </Typography>
                 </div>
               </Box>
             </div>
@@ -550,8 +560,8 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
               {/* Connecting */}
               {isConnecting && (
                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, padding: '24px' }}>
-                  <LoadingOutlined style={{ fontSize: '32px', color: themeTokens.colors.primary }} />
-                  <Text>Connecting to session...</Text>
+                  <CircularProgress size={32} sx={{ color: themeTokens.colors.primary }} />
+                  <Typography variant="body2" component="span">Connecting to session...</Typography>
                 </Box>
               )}
 
@@ -568,7 +578,7 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
                     borderRadius: themeTokens.borderRadius.md,
                   }}
                 >
-                  <Text type="danger">{connectionError.message}</Text>
+                  <Typography variant="body2" component="span" color="error">{connectionError.message}</Typography>
                 </Box>
               )}
 

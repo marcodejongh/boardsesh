@@ -1,10 +1,17 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { Button, List, Input, Form, Typography, Badge, ColorPicker, message } from 'antd';
+import MuiButton from '@mui/material/Button';
+import CircularProgress from '@mui/material/CircularProgress';
+import MuiTypography from '@mui/material/Typography';
+import { List, Form, Input, ColorPicker } from 'antd';
+import MuiBadge from '@mui/material/Badge';
 import Stack from '@mui/material/Stack';
 import { ActionTooltip } from '../action-tooltip';
-import { TagOutlined, PlusOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import LocalOfferOutlined from '@mui/icons-material/LocalOfferOutlined';
+import AddOutlined from '@mui/icons-material/AddOutlined';
+import CheckOutlined from '@mui/icons-material/CheckOutlined';
+import CloseOutlined from '@mui/icons-material/CloseOutlined';
 import { track } from '@vercel/analytics';
 import type { ClimbActionProps, ClimbActionResult } from '../types';
 import { usePlaylists } from '../use-playlists';
@@ -12,8 +19,7 @@ import AuthModal from '../../auth/auth-modal';
 import type { Playlist } from '../playlists-batch-context';
 import type { Color } from 'antd/es/color-picker';
 import { themeTokens } from '@/app/theme/theme-config';
-
-const { Text } = Typography;
+import { useSnackbar } from '../../providers/snackbar-provider';
 
 // Validate hex color format to prevent CSS injection
 const isValidHexColor = (color: string): boolean => {
@@ -68,12 +74,14 @@ export function PlaylistAction({
     [isAuthenticated]
   );
 
+  const { showMessage } = useSnackbar();
+
   const handleTogglePlaylist = useCallback(
     async (playlistId: string, isInPlaylist: boolean) => {
       try {
         if (isInPlaylist) {
           await removeFromPlaylist(playlistId);
-          message.success('Removed from playlist');
+          showMessage('Removed from playlist', 'success');
           track('Remove from Playlist', {
             boardName: boardDetails.board_name,
             climbUuid: climb.uuid,
@@ -81,7 +89,7 @@ export function PlaylistAction({
           });
         } else {
           await addToPlaylist(playlistId);
-          message.success('Added to playlist');
+          showMessage('Added to playlist', 'success');
           track('Add to Playlist', {
             boardName: boardDetails.board_name,
             climbUuid: climb.uuid,
@@ -91,10 +99,10 @@ export function PlaylistAction({
         onComplete?.();
         // Note: No need to call refreshPlaylists() - optimistic updates handle state
       } catch (error) {
-        message.error(isInPlaylist ? 'Failed to remove from playlist' : 'Failed to add to playlist');
+        showMessage(isInPlaylist ? 'Failed to remove from playlist' : 'Failed to add to playlist', 'error');
       }
     },
-    [addToPlaylist, removeFromPlaylist, boardDetails.board_name, climb.uuid, onComplete]
+    [addToPlaylist, removeFromPlaylist, boardDetails.board_name, climb.uuid, onComplete, showMessage]
   );
 
   const handleCreatePlaylist = useCallback(async () => {
@@ -122,7 +130,7 @@ export function PlaylistAction({
       // Automatically add current climb to new playlist
       await addToPlaylist(newPlaylist.id);
 
-      message.success(`Created playlist "${values.name}"`);
+      showMessage(`Created playlist "${values.name}"`, 'success');
       track('Create Playlist', {
         boardName: boardDetails.board_name,
         playlistName: values.name,
@@ -137,7 +145,7 @@ export function PlaylistAction({
         // Form validation error - don't show message
         return;
       }
-      message.error('Failed to create playlist');
+      showMessage('Failed to create playlist', 'error');
     } finally {
       setCreatingPlaylist(false);
     }
@@ -159,20 +167,20 @@ export function PlaylistAction({
       onClick={(e) => e.stopPropagation()}
     >
       <div style={{ marginBottom: themeTokens.spacing[2] }}>
-        <Text strong>Add to Playlist</Text>
+        <MuiTypography variant="body2" component="span" fontWeight={600}>Add to Playlist</MuiTypography>
       </div>
       {playlists.length === 0 && !showCreateForm ? (
         <Stack spacing={1} style={{ width: '100%', textAlign: 'center', padding: themeTokens.spacing[2] }}>
-          <Text type="secondary">No playlists yet</Text>
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
+          <MuiTypography variant="body2" component="span" color="text.secondary">No playlists yet</MuiTypography>
+          <MuiButton
+            variant="contained"
+            startIcon={<AddOutlined />}
             onClick={() => setShowCreateForm(true)}
-            block
+            fullWidth
             size="small"
           >
             Create Your First Playlist
-          </Button>
+          </MuiButton>
         </Stack>
       ) : (
         <>
@@ -200,29 +208,29 @@ export function PlaylistAction({
                     >
                       <Stack direction="row" spacing={1} style={{ width: '100%', justifyContent: 'space-between' }}>
                         <Stack spacing={0}>
-                          <Text strong style={{ fontSize: 13 }}>{playlist.name}</Text>
-                          <Text type="secondary" style={{ fontSize: 11 }}>
+                          <MuiTypography variant="body2" component="span" fontWeight={600} sx={{ fontSize: 13 }}>{playlist.name}</MuiTypography>
+                          <MuiTypography variant="body2" component="span" color="text.secondary" sx={{ fontSize: 11 }}>
                             {playlist.climbCount} {playlist.climbCount === 1 ? 'climb' : 'climbs'}
-                          </Text>
+                          </MuiTypography>
                         </Stack>
                         {isInPlaylist && (
-                          <CheckOutlined style={{ color: themeTokens.colors.success, fontSize: 14 }} />
+                          <CheckOutlined sx={{ color: themeTokens.colors.success, fontSize: 14 }} />
                         )}
                       </Stack>
                     </List.Item>
                   );
                 }}
               />
-              <Button
-                type="dashed"
-                icon={<PlusOutlined />}
+              <MuiButton
+                variant="outlined"
+                startIcon={<AddOutlined />}
                 onClick={() => setShowCreateForm(true)}
-                block
+                fullWidth
                 size="small"
-                style={{ marginTop: themeTokens.spacing[2] }}
+                sx={{ marginTop: `${themeTokens.spacing[2]}px` }}
               >
                 Create New Playlist
-              </Button>
+              </MuiButton>
             </>
           )}
 
@@ -257,7 +265,8 @@ export function PlaylistAction({
                 </Form.Item>
               </Form>
               <Stack direction="row" spacing={1} style={{ width: '100%', justifyContent: 'flex-end' }}>
-                <Button
+                <MuiButton
+                  variant="outlined"
                   size="small"
                   onClick={() => {
                     setShowCreateForm(false);
@@ -265,10 +274,16 @@ export function PlaylistAction({
                   }}
                 >
                   Cancel
-                </Button>
-                <Button type="primary" size="small" onClick={handleCreatePlaylist} loading={creatingPlaylist}>
+                </MuiButton>
+                <MuiButton
+                  variant="contained"
+                  size="small"
+                  onClick={handleCreatePlaylist}
+                  disabled={creatingPlaylist}
+                  startIcon={creatingPlaylist ? <CircularProgress size={16} /> : undefined}
+                >
                   Create
-                </Button>
+                </MuiButton>
               </Stack>
             </div>
           )}
@@ -283,13 +298,13 @@ export function PlaylistAction({
 
   const inPlaylistCount = playlistsContainingClimb.size;
   const icon = popoverOpen ? (
-    <CloseOutlined style={{ fontSize: iconSize }} />
+    <CloseOutlined sx={{ fontSize: iconSize }} />
   ) : inPlaylistCount > 0 ? (
-    <Badge count={inPlaylistCount} size="small" offset={[-2, 2]}>
-      <TagOutlined style={{ fontSize: iconSize }} />
-    </Badge>
+    <MuiBadge badgeContent={inPlaylistCount} sx={{ '& .MuiBadge-badge': { top: 2, right: -2 } }}>
+      <LocalOfferOutlined sx={{ fontSize: iconSize }} />
+    </MuiBadge>
   ) : (
-    <TagOutlined style={{ fontSize: iconSize }} />
+    <LocalOfferOutlined sx={{ fontSize: iconSize }} />
   );
 
   const authModalElement = (
@@ -317,15 +332,16 @@ export function PlaylistAction({
   // Button mode
   const buttonElement = (
     <>
-      <Button
-        icon={icon}
+      <MuiButton
+        variant="outlined"
+        startIcon={icon}
         onClick={handleClick}
-        size={size === 'large' ? 'large' : size === 'small' ? 'small' : 'middle'}
+        size={size === 'large' ? 'large' : 'small'}
         disabled={disabled}
         className={className}
       >
         {shouldShowLabel && label}
-      </Button>
+      </MuiButton>
       {authModalElement}
     </>
   );
@@ -334,7 +350,7 @@ export function PlaylistAction({
   const menuItem = {
     key: 'playlist',
     label: inPlaylistCount > 0 ? `${label} (${inPlaylistCount})` : label,
-    icon: <TagOutlined />,
+    icon: <LocalOfferOutlined />,
     onClick: () => handleClick(),
   };
 
@@ -344,21 +360,21 @@ export function PlaylistAction({
   // List mode - full-width row for drawer menus
   const listElement = (
     <>
-      <Button
-        type="text"
-        icon={icon}
-        block
+      <MuiButton
+        variant="text"
+        startIcon={icon}
+        fullWidth
         onClick={handleClick}
         disabled={disabled}
-        style={{
+        sx={{
           height: 48,
           justifyContent: 'flex-start',
-          paddingLeft: themeTokens.spacing[4],
+          paddingLeft: `${themeTokens.spacing[4]}px`,
           fontSize: themeTokens.typography.fontSize.base,
         }}
       >
         {inPlaylistCount > 0 ? `${label} (${inPlaylistCount})` : label}
-      </Button>
+      </MuiButton>
       {authModalElement}
     </>
   );

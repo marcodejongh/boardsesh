@@ -3,19 +3,24 @@
 import React, { useState, useEffect } from 'react';
 import {
   Layout,
-  Card,
   Form,
-  Input,
-  Button,
   Avatar,
   Upload,
   Space,
-  Typography,
   Divider,
   message,
   Spin,
 } from 'antd';
-import { UserOutlined, UploadOutlined, LoadingOutlined, InstagramOutlined } from '@ant-design/icons';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import TextField from '@mui/material/TextField';
+import InputAdornment from '@mui/material/InputAdornment';
+import CircularProgress from '@mui/material/CircularProgress';
+import PersonOutlined from '@mui/icons-material/PersonOutlined';
+import UploadOutlined from '@mui/icons-material/UploadOutlined';
+import Instagram from '@mui/icons-material/Instagram';
 import type { UploadFile, UploadProps } from 'antd/es/upload/interface';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -26,7 +31,6 @@ import BackButton from '@/app/components/back-button';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { usePartyProfile } from '@/app/components/party-manager/party-profile-context';
 const { Content, Header } = Layout;
-const { Title, Text } = Typography;
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
@@ -281,79 +285,132 @@ export default function SettingsPageContent() {
       >
         <BackButton />
         <Logo size="sm" showText={false} />
-        <Title level={4} style={{ margin: 0, flex: 1 }}>
+        <Typography variant="h4" style={{ margin: 0, flex: 1 }}>
           Settings
-        </Title>
+        </Typography>
       </Header>
 
       <Content style={{ padding: '24px', maxWidth: 600, margin: '0 auto', width: '100%' }}>
         <Card>
-          <Title level={5}>Profile</Title>
-          <Text type="secondary" style={{ display: 'block', marginBottom: 24 }}>
-            Customize how you appear on Boardsesh
-          </Text>
+          <CardContent>
+            <Typography variant="h5">Profile</Typography>
+            <Typography variant="body2" component="span" color="text.secondary" sx={{ display: 'block', marginBottom: 3 }}>
+              Customize how you appear on Boardsesh
+            </Typography>
 
-          <Form form={form} layout="vertical">
-            <Form.Item label="Avatar">
-              <Space orientation="vertical" align="center" style={{ width: '100%' }}>
-                <Avatar size={96} src={previewUrl} icon={<UserOutlined />} />
-                <Space>
-                  <Upload {...uploadProps}>
-                    <Button icon={uploading ? <LoadingOutlined /> : <UploadOutlined />} disabled={isSaving}>
-                      {previewUrl ? 'Change' : 'Upload'}
-                    </Button>
-                  </Upload>
-                  {previewUrl && (
-                    <Button onClick={handleRemoveAvatar} disabled={isSaving}>
-                      Remove
-                    </Button>
-                  )}
+            <Form form={form} layout="vertical">
+              <Form.Item label="Avatar">
+                <Space orientation="vertical" align="center" style={{ width: '100%' }}>
+                  <Avatar size={96} src={previewUrl} icon={<PersonOutlined />} />
+                  <Space>
+                    <Upload {...uploadProps}>
+                      <Button
+                        variant="outlined"
+                        startIcon={uploading ? <CircularProgress size={16} /> : <UploadOutlined />}
+                        disabled={isSaving}
+                      >
+                        {previewUrl ? 'Change' : 'Upload'}
+                      </Button>
+                    </Upload>
+                    {previewUrl && (
+                      <Button variant="outlined" onClick={handleRemoveAvatar} disabled={isSaving}>
+                        Remove
+                      </Button>
+                    )}
+                  </Space>
+                  <Typography variant="body2" component="span" color="text.secondary" sx={{ fontSize: 12 }}>
+                    JPG, PNG, GIF, or WebP. Max 2MB.
+                  </Typography>
                 </Space>
-                <Text type="secondary" style={{ fontSize: 12 }}>
-                  JPG, PNG, GIF, or WebP. Max 2MB.
-                </Text>
-              </Space>
-            </Form.Item>
+              </Form.Item>
 
-            <Form.Item
-              name="displayName"
-              label="Display Name"
-              rules={[{ max: 100, message: 'Display name must be less than 100 characters' }]}
-            >
-              <Input placeholder="Enter your display name" prefix={<UserOutlined />} maxLength={100} />
-            </Form.Item>
+              <Form.Item
+                name="displayName"
+                label="Display Name"
+                rules={[{ max: 100, message: 'Display name must be less than 100 characters' }]}
+              >
+                <TextField
+                  placeholder="Enter your display name"
+                  variant="outlined"
+                  size="small"
+                  fullWidth
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <PersonOutlined />
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                  inputProps={{ maxLength: 100 }}
+                />
+              </Form.Item>
 
-            <Form.Item
-              name="instagramUrl"
-              label="Instagram Profile"
-              rules={[
-                {
-                  pattern: /^(https?:\/\/)?(www\.)?instagram\.com\/[a-zA-Z0-9._]+\/?$/,
-                  message: 'Please enter a valid Instagram profile URL',
-                },
-              ]}
-            >
-              <Input
-                placeholder="https://instagram.com/username"
-                prefix={<InstagramOutlined />}
-              />
-            </Form.Item>
+              <Form.Item
+                name="instagramUrl"
+                label="Instagram Profile"
+                rules={[
+                  {
+                    pattern: /^(https?:\/\/)?(www\.)?instagram\.com\/[a-zA-Z0-9._]+\/?$/,
+                    message: 'Please enter a valid Instagram profile URL',
+                  },
+                ]}
+              >
+                <TextField
+                  placeholder="https://instagram.com/username"
+                  variant="outlined"
+                  size="small"
+                  fullWidth
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <Instagram />
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                />
+              </Form.Item>
 
-            <Divider />
+              <Divider />
 
-            <Form.Item label="Email">
-              <Input value={profile?.email || session?.user?.email || ''} disabled prefix={<UserOutlined />} />
-              <Text type="secondary" style={{ fontSize: 12, marginTop: 4, display: 'block' }}>
-                Email cannot be changed
-              </Text>
-            </Form.Item>
+              <Form.Item label="Email">
+                <TextField
+                  value={profile?.email || session?.user?.email || ''}
+                  disabled
+                  variant="outlined"
+                  size="small"
+                  fullWidth
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <PersonOutlined />
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                />
+                <Typography variant="body2" component="span" color="text.secondary" sx={{ fontSize: 12, marginTop: 0.5, display: 'block' }}>
+                  Email cannot be changed
+                </Typography>
+              </Form.Item>
 
-            <Form.Item style={{ marginBottom: 0, marginTop: 24 }}>
-              <Button type="primary" onClick={handleSubmit} loading={isSaving} block>
-                Save Changes
-              </Button>
-            </Form.Item>
-          </Form>
+              <Form.Item style={{ marginBottom: 0, marginTop: 24 }}>
+                <Button
+                  variant="contained"
+                  onClick={handleSubmit}
+                  disabled={isSaving}
+                  startIcon={isSaving ? <CircularProgress size={16} /> : undefined}
+                  fullWidth
+                >
+                  Save Changes
+                </Button>
+              </Form.Item>
+            </Form>
+          </CardContent>
         </Card>
 
         <Divider />

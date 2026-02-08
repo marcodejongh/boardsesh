@@ -1,15 +1,20 @@
 'use client';
 
 import React from 'react';
-import { Card, Button, Tag, Popconfirm, Typography } from 'antd';
 import Stack from '@mui/material/Stack';
-import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import MuiCard from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import CardActions from '@mui/material/CardActions';
+import MuiButton from '@mui/material/Button';
+import Typography from '@mui/material/Typography';
+import Chip from '@mui/material/Chip';
+import { ConfirmPopover } from '@/app/components/ui/confirm-popover';
+import { EditOutlined, DeleteOutlined } from '@mui/icons-material';
 import MoonBoardRenderer from '../moonboard-renderer/moonboard-renderer';
 import type { MoonBoardClimb } from '@boardsesh/moonboard-ocr/browser';
 import type { LitUpHoldsMap } from '../board-renderer/types';
 import styles from './moonboard-import-card.module.css';
 
-const { Text, Paragraph } = Typography;
 
 interface MoonBoardImportCardProps {
   climb: MoonBoardClimb;
@@ -31,21 +36,40 @@ export default function MoonBoardImportCard({
   const totalHolds = climb.holds.start.length + climb.holds.hand.length + climb.holds.finish.length;
 
   return (
-    <Card
-      className={styles.card}
-      cover={
-        <div className={styles.boardPreview}>
-          <MoonBoardRenderer
-            layoutFolder={layoutFolder}
-            holdSetImages={holdSetImages}
-            litUpHoldsMap={litUpHoldsMap}
-          />
+    <MuiCard className={styles.card}>
+      <div className={styles.boardPreview}>
+        <MoonBoardRenderer
+          layoutFolder={layoutFolder}
+          holdSetImages={holdSetImages}
+          litUpHoldsMap={litUpHoldsMap}
+        />
+      </div>
+      <CardContent>
+        <div className={styles.titleRow}>
+          <Typography variant="body2" component="span" fontWeight={600} noWrap>
+            {climb.name || 'Unnamed Climb'}
+          </Typography>
+          {climb.isBenchmark && (
+            <Tag color="orange" className={styles.benchmarkTag}>
+              B
+            </Tag>
+          )}
         </div>
-      }
-      actions={[
-        <Button key="edit" type="text" icon={<EditOutlined />} onClick={onEdit}>
+        <div className={styles.metadata}>
+          <Typography variant="body1" component="p" color="text.secondary" noWrap className={styles.setter}>
+            by {climb.setter || 'Unknown'}
+          </Typography>
+          <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
+            <Tag color="blue">{climb.userGrade || 'No grade'}</Tag>
+            <Tag>{climb.angle}°</Tag>
+            <Tag>{totalHolds} holds</Tag>
+          </Stack>
+        </div>
+      </CardContent>
+      <CardActions>
+        <MuiButton key="edit" variant="text" startIcon={<EditOutlined />} onClick={onEdit}>
           Edit
-        </Button>,
+        </MuiButton>
         <Popconfirm
           key="delete"
           title="Remove this climb?"
@@ -54,38 +78,11 @@ export default function MoonBoardImportCard({
           okText="Remove"
           cancelText="Cancel"
         >
-          <Button type="text" danger icon={<DeleteOutlined />}>
+          <MuiButton variant="text" color="error" startIcon={<DeleteOutlined />}>
             Remove
-          </Button>
-        </Popconfirm>,
-      ]}
-    >
-      <Card.Meta
-        title={
-          <div className={styles.titleRow}>
-            <Text strong ellipsis={{ tooltip: climb.name }}>
-              {climb.name || 'Unnamed Climb'}
-            </Text>
-            {climb.isBenchmark && (
-              <Tag color="orange" className={styles.benchmarkTag}>
-                B
-              </Tag>
-            )}
-          </div>
-        }
-        description={
-          <div className={styles.metadata}>
-            <Paragraph type="secondary" ellipsis={{ rows: 1 }} className={styles.setter}>
-              by {climb.setter || 'Unknown'}
-            </Paragraph>
-            <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
-              <Tag color="blue">{climb.userGrade || 'No grade'}</Tag>
-              <Tag>{climb.angle}°</Tag>
-              <Tag>{totalHolds} holds</Tag>
-            </Stack>
-          </div>
-        }
-      />
-    </Card>
+          </MuiButton>
+        </Popconfirm>
+      </CardActions>
+    </MuiCard>
   );
 }

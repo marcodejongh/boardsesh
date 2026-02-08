@@ -1,13 +1,15 @@
 'use client';
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { Spin, Typography, List, Input, Form, Button } from 'antd';
+import { Spin, List, Input, Form } from 'antd';
+import MuiButton from '@mui/material/Button';
+import Typography from '@mui/material/Typography';
 import {
-  TagOutlined,
+  LabelOutlined,
   SearchOutlined,
-  RightOutlined,
-  UserOutlined,
-} from '@ant-design/icons';
+  ChevronRightOutlined,
+  PersonOutlined,
+} from '@mui/icons-material';
 import Link from 'next/link';
 import { BoardDetails } from '@/app/lib/types';
 import { executeGraphQL } from '@/app/lib/graphql/client';
@@ -22,7 +24,7 @@ import { themeTokens } from '@/app/theme/theme-config';
 import CreatorNameSelect from './creator-name-select';
 import styles from './playlists.module.css';
 
-const { Title, Text } = Typography;
+// Typography destructuring removed - using MUI Typography directly
 
 const SEARCH_DEBOUNCE_MS = 300;
 const PAGE_SIZE = 20;
@@ -184,13 +186,13 @@ export default function DiscoverPlaylistsContent({
         </div>
       ) : playlists.length === 0 ? (
         <div className={styles.emptyContainer}>
-          <TagOutlined className={styles.emptyIcon} />
-          <Title level={4} className={styles.emptyTitle}>No public playlists found</Title>
-          <Text type="secondary" className={styles.emptyText}>
+          <LabelOutlined className={styles.emptyIcon} />
+          <Typography variant="h6" component="h4" className={styles.emptyTitle}>No public playlists found</Typography>
+          <Typography variant="body2" component="span" color="text.secondary" className={styles.emptyText}>
             {debouncedSearchName || selectedCreators.length > 0
               ? 'Try adjusting your search filters.'
               : 'Be the first to share a playlist for this board!'}
-          </Text>
+          </Typography>
         </div>
       ) : (
         <div className={styles.listSection}>
@@ -199,12 +201,13 @@ export default function DiscoverPlaylistsContent({
             loadMore={
               hasMore ? (
                 <div className={styles.loadMoreContainer}>
-                  <Button
+                  <MuiButton
+                    variant="outlined"
                     onClick={handleLoadMore}
-                    loading={loadingMore}
+                    disabled={loadingMore}
                   >
-                    Load more
-                  </Button>
+                    {loadingMore ? 'Loading...' : 'Load more'}
+                  </MuiButton>
                 </div>
               ) : null
             }
@@ -216,7 +219,7 @@ export default function DiscoverPlaylistsContent({
                       className={styles.playlistColor}
                       style={{ backgroundColor: getPlaylistColor(playlist) }}
                     >
-                      <TagOutlined className={styles.playlistColorIcon} />
+                      <LabelOutlined className={styles.playlistColorIcon} />
                     </div>
                     <div className={styles.playlistInfo}>
                       <div className={styles.playlistName}>{playlist.name}</div>
@@ -224,12 +227,12 @@ export default function DiscoverPlaylistsContent({
                         <span>{playlist.climbCount} {playlist.climbCount === 1 ? 'climb' : 'climbs'}</span>
                         <span className={styles.metaDot}>·</span>
                         <span className={styles.creatorText}>
-                          <UserOutlined /> {playlist.creatorName}
+                          <PersonOutlined /> {playlist.creatorName}
                         </span>
                       </div>
                     </div>
                   </div>
-                  <RightOutlined className={styles.playlistArrow} />
+                  <ChevronRightOutlined className={styles.playlistArrow} />
                 </List.Item>
               </Link>
             )}

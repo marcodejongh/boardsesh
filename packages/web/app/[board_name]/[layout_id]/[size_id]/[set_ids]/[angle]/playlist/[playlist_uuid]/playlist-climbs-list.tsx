@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useRef, useCallback, useState, useMemo } from 'react';
-import { Empty, Typography, Alert } from 'antd';
+import MuiAlert from '@mui/material/Alert';
+import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { track } from '@vercel/analytics';
@@ -16,9 +17,10 @@ import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { useQueueContext } from '@/app/components/graphql-queue';
 import ClimbCard from '@/app/components/climb-card/climb-card';
 import { ClimbCardSkeleton } from '@/app/components/board-page/board-page-skeleton';
+import { EmptyState } from '@/app/components/ui/empty-state';
 import styles from './playlist-view.module.css';
 
-const { Text } = Typography;
+// Typography destructuring removed - using MUI Typography directly
 
 type PlaylistClimbsListProps = {
   playlistUuid: string;
@@ -163,7 +165,7 @@ export default function PlaylistClimbsList({
     return (
       <div className={styles.climbsSection}>
         <div className={styles.climbsSectionHeader}>
-          <Text strong className={styles.climbsSectionTitle}>Climbs</Text>
+          <Typography variant="body2" component="span" fontWeight={600} className={styles.climbsSectionTitle}>Climbs</Typography>
         </div>
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
           <ClimbsListSkeleton aspectRatio={aspectRatio} />
@@ -177,12 +179,9 @@ export default function PlaylistClimbsList({
     return (
       <div className={styles.climbsSection}>
         <div className={styles.climbsSectionHeader}>
-          <Text strong className={styles.climbsSectionTitle}>Climbs</Text>
+          <Typography variant="body2" component="span" fontWeight={600} className={styles.climbsSectionTitle}>Climbs</Typography>
         </div>
-        <Empty
-          description="Failed to load climbs"
-          image={Empty.PRESENTED_IMAGE_SIMPLE}
-        />
+        <EmptyState description="Failed to load climbs" />
       </div>
     );
   }
@@ -192,12 +191,9 @@ export default function PlaylistClimbsList({
     return (
       <div className={styles.climbsSection}>
         <div className={styles.climbsSectionHeader}>
-          <Text strong className={styles.climbsSectionTitle}>Climbs</Text>
+          <Typography variant="body2" component="span" fontWeight={600} className={styles.climbsSectionTitle}>Climbs</Typography>
         </div>
-        <Empty
-          description="No climbs in this playlist yet"
-          image={Empty.PRESENTED_IMAGE_SIMPLE}
-        />
+        <EmptyState description="No climbs in this playlist yet" />
       </div>
     );
   }
@@ -208,27 +204,21 @@ export default function PlaylistClimbsList({
   return (
     <div className={styles.climbsSection}>
       <div className={styles.climbsSectionHeader}>
-        <Text strong className={styles.climbsSectionTitle}>
+        <Typography variant="body2" component="span" fontWeight={600} className={styles.climbsSectionTitle}>
           Climbs ({visibleCount})
-        </Text>
+        </Typography>
       </div>
 
       {/* Notice for hidden cross-layout climbs */}
       {hiddenCount > 0 && (
-        <Alert
-          type="info"
-          showIcon
-          title={`Not showing ${hiddenCount} ${hiddenCount === 1 ? 'climb' : 'climbs'} from other layouts`}
-          className={styles.hiddenClimbsNotice}
-        />
+        <MuiAlert severity="info" className={styles.hiddenClimbsNotice}>
+          {`Not showing ${hiddenCount} ${hiddenCount === 1 ? 'climb' : 'climbs'} from other layouts`}
+        </MuiAlert>
       )}
 
       {/* Empty state when all climbs are from other layouts */}
       {visibleClimbs.length === 0 && hiddenCount > 0 && !isFetching && (
-        <Empty
-          description="All climbs in this playlist are from other layouts"
-          image={Empty.PRESENTED_IMAGE_SIMPLE}
-        />
+        <EmptyState description="All climbs in this playlist are from other layouts" />
       )}
 
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>

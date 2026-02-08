@@ -2,11 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  Card,
-  Button,
   Form,
-  Input,
-  Typography,
   Space,
   Modal,
   message,
@@ -16,20 +12,23 @@ import {
   Select,
   Alert,
 } from 'antd';
-import {
-  CheckCircleOutlined,
-  ClockCircleOutlined,
-  DeleteOutlined,
-  PlusOutlined,
-  CopyOutlined,
-  WarningOutlined,
-} from '@ant-design/icons';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import TextField from '@mui/material/TextField';
+import CircularProgress from '@mui/material/CircularProgress';
+import CheckCircleOutlined from '@mui/icons-material/CheckCircleOutlined';
+import AccessTimeOutlined from '@mui/icons-material/AccessTimeOutlined';
+import DeleteOutlined from '@mui/icons-material/DeleteOutlined';
+import AddOutlined from '@mui/icons-material/AddOutlined';
+import ContentCopyOutlined from '@mui/icons-material/ContentCopyOutlined';
+import WarningOutlined from '@mui/icons-material/WarningOutlined';
 import type { ControllerInfo } from '@/app/api/internal/controllers/route';
 import { getBoardSelectorOptions } from '@/app/lib/__generated__/product-sizes-data';
 import { BoardName } from '@/app/lib/types';
 import styles from './controllers-section.module.css';
 
-const { Text, Title, Paragraph } = Typography;
 const { Option } = Select;
 
 // Get board config data (synchronous - from generated data)
@@ -54,7 +53,7 @@ function ControllerCard({ controller, onRemove, isRemoving }: ControllerCardProp
     }
     if (controller.lastSeen) {
       return (
-        <Tag icon={<ClockCircleOutlined />} color="default">
+        <Tag icon={<AccessTimeOutlined />} color="default">
           Offline
         </Tag>
       );
@@ -82,38 +81,46 @@ function ControllerCard({ controller, onRemove, isRemoving }: ControllerCardProp
 
   return (
     <Card className={styles.controllerCard}>
-      <div className={styles.cardHeader}>
-        <Title level={5} style={{ margin: 0 }}>
-          {controller.name || 'Unnamed Controller'}
-        </Title>
-        {getStatusTag()}
-      </div>
-      <div className={styles.controllerInfo}>
-        <div className={styles.infoRow}>
-          <Text type="secondary">Board:</Text>
-          <Tag color="blue">{boardName}</Tag>
+      <CardContent>
+        <div className={styles.cardHeader}>
+          <Typography variant="h5" sx={{ margin: 0 }}>
+            {controller.name || 'Unnamed Controller'}
+          </Typography>
+          {getStatusTag()}
         </div>
-        <div className={styles.infoRow}>
-          <Text type="secondary">Layout:</Text>
-          <Text>{controller.layoutId} / Size {controller.sizeId}</Text>
+        <div className={styles.controllerInfo}>
+          <div className={styles.infoRow}>
+            <Typography variant="body2" component="span" color="text.secondary">Board:</Typography>
+            <Tag color="blue">{boardName}</Tag>
+          </div>
+          <div className={styles.infoRow}>
+            <Typography variant="body2" component="span" color="text.secondary">Layout:</Typography>
+            <Typography variant="body2" component="span">{controller.layoutId} / Size {controller.sizeId}</Typography>
+          </div>
+          <div className={styles.infoRow}>
+            <Typography variant="body2" component="span" color="text.secondary">Last seen:</Typography>
+            <Typography variant="body2" component="span">{formatLastSeen(controller.lastSeen)}</Typography>
+          </div>
         </div>
-        <div className={styles.infoRow}>
-          <Text type="secondary">Last seen:</Text>
-          <Text>{formatLastSeen(controller.lastSeen)}</Text>
-        </div>
-      </div>
-      <Popconfirm
-        title="Delete controller"
-        description="Are you sure you want to delete this controller? This cannot be undone."
-        onConfirm={onRemove}
-        okText="Yes, delete"
-        cancelText="Cancel"
-        okButtonProps={{ danger: true }}
-      >
-        <Button danger icon={<DeleteOutlined />} loading={isRemoving} block>
-          Delete Controller
-        </Button>
-      </Popconfirm>
+        <Popconfirm
+          title="Delete controller"
+          description="Are you sure you want to delete this controller? This cannot be undone."
+          onConfirm={onRemove}
+          okText="Yes, delete"
+          cancelText="Cancel"
+          okButtonProps={{ danger: true }}
+        >
+          <Button
+            color="error"
+            variant="outlined"
+            startIcon={isRemoving ? <CircularProgress size={16} /> : <DeleteOutlined />}
+            disabled={isRemoving}
+            fullWidth
+          >
+            Delete Controller
+          </Button>
+        </Popconfirm>
+      </CardContent>
     </Card>
   );
 }
@@ -141,7 +148,7 @@ function ApiKeySuccessModal({ isOpen, apiKey, controllerName, onClose }: ApiKeyS
       open={isOpen}
       onCancel={onClose}
       footer={
-        <Button type="primary" onClick={onClose}>
+        <Button variant="contained" onClick={onClose}>
           Done
         </Button>
       }
@@ -156,19 +163,23 @@ function ApiKeySuccessModal({ isOpen, apiKey, controllerName, onClose }: ApiKeyS
         description="This is the only time you'll see this key. If you lose it, you'll need to delete and re-register the controller."
         style={{ marginBottom: 16 }}
       />
-      <Paragraph>
+      <Typography variant="body1" component="p">
         Your controller <strong>{controllerName || 'Unnamed Controller'}</strong> has been registered.
-      </Paragraph>
-      <Paragraph type="secondary">
+      </Typography>
+      <Typography variant="body1" component="p" color="text.secondary">
         Enter this API key in your ESP32 configuration:
-      </Paragraph>
-      <Input.TextArea
+      </Typography>
+      <TextField
         value={apiKey}
-        readOnly
+        multiline
         rows={2}
-        style={{ fontFamily: 'monospace', marginBottom: 8 }}
+        fullWidth
+        variant="outlined"
+        size="small"
+        slotProps={{ input: { readOnly: true, style: { fontFamily: 'monospace' } } }}
+        sx={{ marginBottom: 1 }}
       />
-      <Button icon={<CopyOutlined />} onClick={handleCopy} block>
+      <Button variant="outlined" startIcon={<ContentCopyOutlined />} onClick={handleCopy} fullWidth>
         Copy API Key
       </Button>
     </Modal>
@@ -354,9 +365,11 @@ export default function ControllersSection() {
   if (loading) {
     return (
       <Card>
-        <div className={styles.loadingContainer}>
-          <Spin />
-        </div>
+        <CardContent>
+          <div className={styles.loadingContainer}>
+            <Spin />
+          </div>
+        </CardContent>
       </Card>
     );
   }
@@ -364,40 +377,42 @@ export default function ControllersSection() {
   return (
     <>
       <Card>
-        <Title level={5}>ESP32 Controllers</Title>
-        <Text type="secondary" className={styles.sectionDescription}>
-          Register ESP32 devices to control your board via Bluetooth bridge.
-          This allows you to use BoardSesh with official Kilter/Tension apps.
-        </Text>
+        <CardContent>
+          <Typography variant="h5">ESP32 Controllers</Typography>
+          <Typography variant="body2" component="span" color="text.secondary" className={styles.sectionDescription}>
+            Register ESP32 devices to control your board via Bluetooth bridge.
+            This allows you to use BoardSesh with official Kilter/Tension apps.
+          </Typography>
 
-        {controllers.length === 0 ? (
-          <div className={styles.emptyState}>
-            <Text type="secondary">
-              No controllers registered. Add an ESP32 to use BoardSesh with official apps.
-            </Text>
-          </div>
-        ) : (
-          <Space direction="vertical" size="middle" className={styles.cardsContainer}>
-            {controllers.map((controller) => (
-              <ControllerCard
-                key={controller.id}
-                controller={controller}
-                onRemove={() => handleRemove(controller.id)}
-                isRemoving={removingId === controller.id}
-              />
-            ))}
-          </Space>
-        )}
+          {controllers.length === 0 ? (
+            <div className={styles.emptyState}>
+              <Typography variant="body2" component="span" color="text.secondary">
+                No controllers registered. Add an ESP32 to use BoardSesh with official apps.
+              </Typography>
+            </div>
+          ) : (
+            <Space direction="vertical" size="middle" className={styles.cardsContainer}>
+              {controllers.map((controller) => (
+                <ControllerCard
+                  key={controller.id}
+                  controller={controller}
+                  onRemove={() => handleRemove(controller.id)}
+                  isRemoving={removingId === controller.id}
+                />
+              ))}
+            </Space>
+          )}
 
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={handleAddClick}
-          block
-          className={styles.addButton}
-        >
-          Add Controller
-        </Button>
+          <Button
+            variant="contained"
+            startIcon={<AddOutlined />}
+            onClick={handleAddClick}
+            fullWidth
+            className={styles.addButton}
+          >
+            Add Controller
+          </Button>
+        </CardContent>
       </Card>
 
       <Modal
@@ -407,16 +422,16 @@ export default function ControllersSection() {
         footer={null}
         destroyOnClose
       >
-        <Text type="secondary" className={styles.modalDescription}>
+        <Typography variant="body2" component="span" color="text.secondary" className={styles.modalDescription}>
           Register a new ESP32 controller to receive LED commands from BoardSesh.
           You'll receive an API key to configure on the device.
-        </Text>
+        </Typography>
         <Form form={form} layout="vertical" onFinish={handleRegister}>
           <Form.Item
             name="name"
             label="Controller Name (optional)"
           >
-            <Input placeholder="e.g., Living Room Board" maxLength={100} />
+            <TextField placeholder="e.g., Living Room Board" variant="outlined" size="small" fullWidth inputProps={{ maxLength: 100 }} />
           </Form.Item>
 
           <Form.Item
@@ -486,7 +501,13 @@ export default function ControllersSection() {
             </Select>
           </Form.Item>
 
-          <Button type="primary" htmlType="submit" loading={isSaving} block>
+          <Button
+            variant="contained"
+            type="submit"
+            disabled={isSaving}
+            startIcon={isSaving ? <CircularProgress size={16} /> : undefined}
+            fullWidth
+          >
             {isSaving ? 'Registering...' : 'Register Controller'}
           </Button>
         </Form>

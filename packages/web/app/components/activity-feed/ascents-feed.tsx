@@ -1,14 +1,19 @@
 'use client';
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Card, Tag, Typography, Rate, Empty, Spin, Button } from 'antd';
+import MuiCard from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import MuiTypography from '@mui/material/Typography';
+import MuiButton from '@mui/material/Button';
 import Box from '@mui/material/Box';
-import {
-  CheckCircleOutlined,
-  ThunderboltOutlined,
-  CloseCircleOutlined,
-  EnvironmentOutlined,
-} from '@ant-design/icons';
+import Chip from '@mui/material/Chip';
+import Rating from '@mui/material/Rating';
+import { EmptyState } from '@/app/components/ui/empty-state';
+import { LoadingSpinner } from '@/app/components/ui/loading-spinner';
+import CheckCircleOutlined from '@mui/icons-material/CheckCircleOutlined';
+import ElectricBoltOutlined from '@mui/icons-material/ElectricBoltOutlined';
+import CancelOutlined from '@mui/icons-material/CancelOutlined';
+import LocationOnOutlined from '@mui/icons-material/LocationOnOutlined';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
@@ -23,7 +28,6 @@ import styles from './ascents-feed.module.css';
 
 dayjs.extend(relativeTime);
 
-const { Text } = Typography;
 
 interface AscentsFeedProps {
   userId: string;
@@ -69,13 +73,13 @@ const getGroupStatusSummary = (group: GroupedAscentFeedItem): { text: string; ic
   let icon: React.ReactNode;
   let color: string;
   if (group.flashCount > 0) {
-    icon = <ThunderboltOutlined />;
+    icon = <ElectricBoltOutlined />;
     color = 'gold';
   } else if (group.sendCount > 0) {
     icon = <CheckCircleOutlined />;
     color = 'green';
   } else {
-    icon = <CloseCircleOutlined />;
+    icon = <CancelOutlined />;
     color = 'default';
   }
 
@@ -93,7 +97,8 @@ const GroupedFeedItem: React.FC<{ group: GroupedAscentFeedItem }> = ({ group }) 
   const hasSuccess = group.flashCount > 0 || group.sendCount > 0;
 
   return (
-    <Card className={styles.feedItem} size="small">
+    <MuiCard className={styles.feedItem}>
+      <CardContent sx={{ p: 1.5 }}>
       <Box sx={{ display: 'flex', gap: '12px' }}>
         {/* Thumbnail */}
         {group.frames && group.layoutId && (
@@ -113,54 +118,56 @@ const GroupedFeedItem: React.FC<{ group: GroupedAscentFeedItem }> = ({ group }) 
           {/* Header with status and time */}
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Tag
-                icon={statusSummary.icon}
-                color={statusSummary.color}
+              <Chip
+                icon={statusSummary.icon as React.ReactElement}
+                label={statusSummary.text}
+                size="small"
+                color={statusSummary.color === 'green' ? 'success' : undefined}
+                sx={statusSummary.color === 'gold' ? { bgcolor: '#FBBF24', color: '#000' } : undefined}
                 className={styles.statusTag}
-              >
-                {statusSummary.text}
-              </Tag>
-              <Text strong className={styles.climbName}>
+              />
+              <MuiTypography variant="body2" component="span" fontWeight={600} className={styles.climbName}>
                 {group.climbName}
-              </Text>
+              </MuiTypography>
             </Box>
-            <Text type="secondary" className={styles.timeAgo}>
+            <MuiTypography variant="body2" component="span" color="text.secondary" className={styles.timeAgo}>
               {timeAgo}
-            </Text>
+            </MuiTypography>
           </Box>
 
           {/* Climb details */}
           <Box sx={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
             {group.difficultyName && (
-              <Tag color="blue">{group.difficultyName}</Tag>
+              <Chip label={group.difficultyName} size="small" color="primary" />
             )}
-            <Tag icon={<EnvironmentOutlined />}>{group.angle}°</Tag>
-            <Text type="secondary" className={styles.boardType}>
+            <Chip icon={<LocationOnOutlined />} label={`${group.angle}°`} size="small" />
+            <MuiTypography variant="body2" component="span" color="text.secondary" className={styles.boardType}>
               {boardDisplay}
-            </Text>
-            {group.isMirror && <Tag color="purple">Mirrored</Tag>}
-            {group.isBenchmark && <Tag color="default">Benchmark</Tag>}
+            </MuiTypography>
+            {group.isMirror && <Chip label="Mirrored" size="small" color="secondary" />}
+            {group.isBenchmark && <Chip label="Benchmark" size="small" />}
           </Box>
 
           {/* Rating for successful sends */}
           {hasSuccess && group.bestQuality && (
-            <Rate disabled value={group.bestQuality} count={5} className={styles.rating} />
+            <Rating readOnly value={group.bestQuality} max={5} className={styles.rating} />
           )}
 
           {/* Setter info */}
           {group.setterUsername && (
-            <Text type="secondary" className={styles.setter}>
+            <MuiTypography variant="body2" component="span" color="text.secondary" className={styles.setter}>
               Set by {group.setterUsername}
-            </Text>
+            </MuiTypography>
           )}
 
           {/* Comment */}
           {group.latestComment && (
-            <Text className={styles.comment}>{group.latestComment}</Text>
+            <MuiTypography variant="body2" component="span" className={styles.comment}>{group.latestComment}</MuiTypography>
           )}
         </Box>
       </Box>
-    </Card>
+      </CardContent>
+    </MuiCard>
   );
 };
 
@@ -229,25 +236,23 @@ export const AscentsFeed: React.FC<AscentsFeedProps> = ({ userId, pageSize = 10 
   if (loading) {
     return (
       <div className={styles.loading}>
-        <Spin />
+        <LoadingSpinner />
       </div>
     );
   }
 
   if (error) {
     return (
-      <Empty
+      <EmptyState
         description={error}
-        image={Empty.PRESENTED_IMAGE_SIMPLE}
       />
     );
   }
 
   if (groups.length === 0) {
     return (
-      <Empty
+      <EmptyState
         description="No ascents logged yet"
-        image={Empty.PRESENTED_IMAGE_SIMPLE}
       />
     );
   }
@@ -262,14 +267,14 @@ export const AscentsFeed: React.FC<AscentsFeedProps> = ({ userId, pageSize = 10 
 
       {hasMore && (
         <div className={styles.loadMoreContainer} ref={loadMoreRef}>
-          <Button
+          <MuiButton
             onClick={handleLoadMore}
-            loading={loadingMore}
-            type="default"
-            block
+            disabled={loadingMore}
+            variant="outlined"
+            fullWidth
           >
-            Load more ({groups.length} of {totalCount})
-          </Button>
+            {loadingMore ? 'Loading...' : `Load more (${groups.length} of ${totalCount})`}
+          </MuiButton>
         </div>
       )}
     </div>

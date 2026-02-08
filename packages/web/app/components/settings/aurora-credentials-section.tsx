@@ -2,11 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  Card,
-  Button,
   Form,
-  Input,
-  Typography,
   Space,
   Modal,
   message,
@@ -15,20 +11,22 @@ import {
   Popconfirm,
   Alert,
 } from 'antd';
-import {
-  CheckCircleOutlined,
-  ExclamationCircleOutlined,
-  ClockCircleOutlined,
-  DeleteOutlined,
-  PlusOutlined,
-  SyncOutlined,
-  WarningOutlined,
-} from '@ant-design/icons';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import TextField from '@mui/material/TextField';
+import CircularProgress from '@mui/material/CircularProgress';
+import CheckCircleOutlined from '@mui/icons-material/CheckCircleOutlined';
+import WarningAmberOutlined from '@mui/icons-material/WarningAmberOutlined';
+import AccessTimeOutlined from '@mui/icons-material/AccessTimeOutlined';
+import DeleteOutlined from '@mui/icons-material/DeleteOutlined';
+import AddOutlined from '@mui/icons-material/AddOutlined';
+import SyncOutlined from '@mui/icons-material/SyncOutlined';
+import WarningOutlined from '@mui/icons-material/WarningOutlined';
 import type { AuroraCredentialStatus } from '@/app/api/internal/aurora-credentials/route';
 import type { UnsyncedCounts } from '@/app/api/internal/aurora-credentials/unsynced/route';
 import styles from './aurora-credentials-section.module.css';
-
-const { Text, Title } = Typography;
 
 interface BoardUnsyncedCounts {
   ascents: number;
@@ -67,19 +65,19 @@ function BoardCredentialCard({
         );
       case 'error':
         return (
-          <Tag icon={<ExclamationCircleOutlined />} color="error">
+          <Tag icon={<WarningAmberOutlined />} color="error">
             Error
           </Tag>
         );
       case 'expired':
         return (
-          <Tag icon={<ClockCircleOutlined />} color="warning">
+          <Tag icon={<AccessTimeOutlined />} color="warning">
             Expired
           </Tag>
         );
       default:
         return (
-          <Tag icon={<SyncOutlined spin />} color="processing">
+          <Tag icon={<SyncOutlined />} color="processing">
             Syncing
           </Tag>
         );
@@ -95,72 +93,82 @@ function BoardCredentialCard({
   if (!credential) {
     return (
       <Card className={styles.credentialCard}>
-        <div className={styles.cardHeader}>
-          <Title level={5} style={{ margin: 0 }}>
-            {boardName} Board
-          </Title>
-        </div>
-        <Text type="secondary" className={styles.notConnectedText}>
-          Not connected. Link your {boardName} account to import your Aurora data.
-        </Text>
-        <Button type="primary" icon={<PlusOutlined />} onClick={onAdd} block>
-          Link {boardName} Account
-        </Button>
+        <CardContent>
+          <div className={styles.cardHeader}>
+            <Typography variant="h5" sx={{ margin: 0 }}>
+              {boardName} Board
+            </Typography>
+          </div>
+          <Typography variant="body2" component="span" color="text.secondary" className={styles.notConnectedText}>
+            Not connected. Link your {boardName} account to import your Aurora data.
+          </Typography>
+          <Button variant="contained" startIcon={<AddOutlined />} onClick={onAdd} fullWidth>
+            Link {boardName} Account
+          </Button>
+        </CardContent>
       </Card>
     );
   }
 
   return (
     <Card className={styles.credentialCard}>
-      <div className={styles.cardHeader}>
-        <Title level={5} style={{ margin: 0 }}>
-          {boardName} Board
-        </Title>
-        {getSyncStatusTag()}
-      </div>
-      <div className={styles.credentialInfo}>
-        <div className={styles.infoRow}>
-          <Text type="secondary">Username:</Text>
-          <Text strong>{credential.auroraUsername}</Text>
+      <CardContent>
+        <div className={styles.cardHeader}>
+          <Typography variant="h5" sx={{ margin: 0 }}>
+            {boardName} Board
+          </Typography>
+          {getSyncStatusTag()}
         </div>
-        <div className={styles.infoRow}>
-          <Text type="secondary">Last synced:</Text>
-          <Text>{formatLastSync(credential.lastSyncAt)}</Text>
-        </div>
-        {credential.syncError && (
-          <div className={styles.errorRow}>
-            <Text type="danger">{credential.syncError}</Text>
+        <div className={styles.credentialInfo}>
+          <div className={styles.infoRow}>
+            <Typography variant="body2" component="span" color="text.secondary">Username:</Typography>
+            <Typography variant="body2" component="span" fontWeight={600}>{credential.auroraUsername}</Typography>
           </div>
-        )}
-        {totalUnsynced > 0 && (
-          <Alert
-            type="warning"
-            icon={<WarningOutlined />}
-            showIcon
-            title={`${totalUnsynced} item${totalUnsynced > 1 ? 's' : ''} pending sync`}
-            description={
-              <Text type="secondary">
-                {unsyncedCounts.ascents > 0 && `${unsyncedCounts.ascents} ascent${unsyncedCounts.ascents > 1 ? 's' : ''}`}
-                {unsyncedCounts.ascents > 0 && unsyncedCounts.climbs > 0 && ', '}
-                {unsyncedCounts.climbs > 0 && `${unsyncedCounts.climbs} climb${unsyncedCounts.climbs > 1 ? 's' : ''}`}
-              </Text>
-            }
-            className={styles.unsyncedAlert}
-          />
-        )}
-      </div>
-      <Popconfirm
-        title="Remove account link"
-        description={`Are you sure you want to unlink your ${boardName} account?`}
-        onConfirm={onRemove}
-        okText="Yes, unlink"
-        cancelText="Cancel"
-        okButtonProps={{ danger: true }}
-      >
-        <Button danger icon={<DeleteOutlined />} loading={isRemoving} block>
-          Unlink Account
-        </Button>
-      </Popconfirm>
+          <div className={styles.infoRow}>
+            <Typography variant="body2" component="span" color="text.secondary">Last synced:</Typography>
+            <Typography variant="body2" component="span">{formatLastSync(credential.lastSyncAt)}</Typography>
+          </div>
+          {credential.syncError && (
+            <div className={styles.errorRow}>
+              <Typography variant="body2" component="span" color="error">{credential.syncError}</Typography>
+            </div>
+          )}
+          {totalUnsynced > 0 && (
+            <Alert
+              type="warning"
+              icon={<WarningOutlined />}
+              showIcon
+              title={`${totalUnsynced} item${totalUnsynced > 1 ? 's' : ''} pending sync`}
+              description={
+                <Typography variant="body2" component="span" color="text.secondary">
+                  {unsyncedCounts.ascents > 0 && `${unsyncedCounts.ascents} ascent${unsyncedCounts.ascents > 1 ? 's' : ''}`}
+                  {unsyncedCounts.ascents > 0 && unsyncedCounts.climbs > 0 && ', '}
+                  {unsyncedCounts.climbs > 0 && `${unsyncedCounts.climbs} climb${unsyncedCounts.climbs > 1 ? 's' : ''}`}
+                </Typography>
+              }
+              className={styles.unsyncedAlert}
+            />
+          )}
+        </div>
+        <Popconfirm
+          title="Remove account link"
+          description={`Are you sure you want to unlink your ${boardName} account?`}
+          onConfirm={onRemove}
+          okText="Yes, unlink"
+          cancelText="Cancel"
+          okButtonProps={{ danger: true }}
+        >
+          <Button
+            color="error"
+            variant="outlined"
+            startIcon={isRemoving ? <CircularProgress size={16} /> : <DeleteOutlined />}
+            disabled={isRemoving}
+            fullWidth
+          >
+            Unlink Account
+          </Button>
+        </Popconfirm>
+      </CardContent>
     </Card>
   );
 }
@@ -276,9 +284,11 @@ export default function AuroraCredentialsSection() {
   if (loading) {
     return (
       <Card>
-        <div className={styles.loadingContainer}>
-          <Spin />
-        </div>
+        <CardContent>
+          <div className={styles.loadingContainer}>
+            <Spin />
+          </div>
+        </CardContent>
       </Card>
     );
   }
@@ -286,31 +296,33 @@ export default function AuroraCredentialsSection() {
   return (
     <>
       <Card>
-        <Title level={5}>Board Accounts</Title>
-        <Text type="secondary" className={styles.sectionDescription}>
-          Link your Kilter and Tension board accounts to import your Aurora data to Boardsesh.
-          We'll automatically sync your logbook, ascents, and climbs FROM Aurora every 6 hours.
-          Data created in Boardsesh stays local and does not sync back to Aurora.
-        </Text>
+        <CardContent>
+          <Typography variant="h5">Board Accounts</Typography>
+          <Typography variant="body2" component="span" color="text.secondary" className={styles.sectionDescription}>
+            Link your Kilter and Tension board accounts to import your Aurora data to Boardsesh.
+            We'll automatically sync your logbook, ascents, and climbs FROM Aurora every 6 hours.
+            Data created in Boardsesh stays local and does not sync back to Aurora.
+          </Typography>
 
-        <Space orientation="vertical" size="middle" className={styles.cardsContainer}>
-          <BoardCredentialCard
-            boardType="kilter"
-            credential={getCredentialForBoard('kilter')}
-            unsyncedCounts={unsyncedCounts?.kilter ?? { ascents: 0, climbs: 0 }}
-            onAdd={() => handleAddClick('kilter')}
-            onRemove={() => handleRemove('kilter')}
-            isRemoving={removingBoard === 'kilter'}
-          />
-          <BoardCredentialCard
-            boardType="tension"
-            credential={getCredentialForBoard('tension')}
-            unsyncedCounts={unsyncedCounts?.tension ?? { ascents: 0, climbs: 0 }}
-            onAdd={() => handleAddClick('tension')}
-            onRemove={() => handleRemove('tension')}
-            isRemoving={removingBoard === 'tension'}
-          />
-        </Space>
+          <Space orientation="vertical" size="middle" className={styles.cardsContainer}>
+            <BoardCredentialCard
+              boardType="kilter"
+              credential={getCredentialForBoard('kilter')}
+              unsyncedCounts={unsyncedCounts?.kilter ?? { ascents: 0, climbs: 0 }}
+              onAdd={() => handleAddClick('kilter')}
+              onRemove={() => handleRemove('kilter')}
+              isRemoving={removingBoard === 'kilter'}
+            />
+            <BoardCredentialCard
+              boardType="tension"
+              credential={getCredentialForBoard('tension')}
+              unsyncedCounts={unsyncedCounts?.tension ?? { ascents: 0, climbs: 0 }}
+              onAdd={() => handleAddClick('tension')}
+              onRemove={() => handleRemove('tension')}
+              isRemoving={removingBoard === 'tension'}
+            />
+          </Space>
+        </CardContent>
       </Card>
 
       <Modal
@@ -320,18 +332,18 @@ export default function AuroraCredentialsSection() {
         footer={null}
         destroyOnClose
       >
-        <Text type="secondary" className={styles.modalDescription}>
+        <Typography variant="body2" component="span" color="text.secondary" className={styles.modalDescription}>
           Enter your {selectedBoard.charAt(0).toUpperCase() + selectedBoard.slice(1)} Board
           username and password to import your Aurora data.
           Your credentials are encrypted and securely stored. Data syncs every 6 hours.
-        </Text>
+        </Typography>
         <Form form={form} layout="vertical" onFinish={handleSaveCredentials}>
           <Form.Item
             name="username"
             label="Username"
             rules={[{ required: true, message: 'Please enter your username' }]}
           >
-            <Input placeholder="Enter your username" />
+            <TextField placeholder="Enter your username" variant="outlined" size="small" fullWidth />
           </Form.Item>
 
           <Form.Item
@@ -339,10 +351,16 @@ export default function AuroraCredentialsSection() {
             label="Password"
             rules={[{ required: true, message: 'Please enter your password' }]}
           >
-            <Input.Password placeholder="Enter your password" />
+            <TextField type="password" placeholder="Enter your password" variant="outlined" size="small" fullWidth />
           </Form.Item>
 
-          <Button type="primary" htmlType="submit" loading={isSaving} block>
+          <Button
+            variant="contained"
+            type="submit"
+            disabled={isSaving}
+            startIcon={isSaving ? <CircularProgress size={16} /> : undefined}
+            fullWidth
+          >
             {isSaving ? 'Linking...' : 'Link Account'}
           </Button>
         </Form>

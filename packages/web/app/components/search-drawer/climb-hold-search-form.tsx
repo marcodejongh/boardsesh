@@ -1,15 +1,19 @@
+'use client';
+
 import React from 'react';
 import { BoardDetails, HoldState } from '@/app/lib/types';
 import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
-import { Select, Typography, Tag } from 'antd';
+import { Select } from 'antd';
+import MuiTypography from '@mui/material/Typography';
 import Stack from '@mui/material/Stack';
-import { CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
+import Chip from '@mui/material/Chip';
+import CheckCircleOutlined from '@mui/icons-material/CheckCircleOutlined';
+import CancelOutlined from '@mui/icons-material/CancelOutlined';
 import BoardHeatmap from '../board-renderer/board-heatmap';
 import { track } from '@vercel/analytics';
 import { themeTokens } from '@/app/theme/theme-config';
 import styles from './search-form.module.css';
 
-const { Text } = Typography;
 
 interface ClimbHoldSearchFormProps {
   boardDetails: BoardDetails;
@@ -42,7 +46,7 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
 
   const stateItems = [
     { value: 'ANY', label: 'Include', icon: <CheckCircleOutlined style={{ color: themeTokens.colors.primary }} /> },
-    { value: 'NOT', label: 'Exclude', icon: <CloseCircleOutlined style={{ color: themeTokens.colors.error }} /> },
+    { value: 'NOT', label: 'Exclude', icon: <CancelOutlined style={{ color: themeTokens.colors.error }} /> },
   ];
 
   const selectedHoldsCount = Object.keys(uiSearchParams.holdsFilter || {}).length;
@@ -53,7 +57,7 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
     <div className={styles.holdSearchForm}>
       <div className={styles.holdSearchHeaderCompact}>
         <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
-          <Text type="secondary">Tap to:</Text>
+          <MuiTypography variant="body2" component="span" color="text.secondary">Tap to:</MuiTypography>
           <Select
             value={selectedState}
             onChange={(value) => {

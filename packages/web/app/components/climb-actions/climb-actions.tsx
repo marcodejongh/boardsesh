@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { Dropdown, Button } from 'antd';
+import { Dropdown } from 'antd';
+import IconButton from '@mui/material/IconButton';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
-import { MoreOutlined } from '@ant-design/icons';
+import MoreVertOutlined from '@mui/icons-material/MoreVertOutlined';
 import type { MenuProps } from 'antd';
 import {
   ClimbActionsProps,
@@ -220,7 +221,9 @@ function DropdownActions({
         placement="bottomRight"
         trigger={['click']}
       >
-        <Button icon={<MoreOutlined />} className={className} />
+        <IconButton className={className}>
+          <MoreVertOutlined />
+        </IconButton>
       </Dropdown>
       {/* Render action components to get menu items and render any needed DOM elements */}
       {actionsToShow.map((actionType) => (

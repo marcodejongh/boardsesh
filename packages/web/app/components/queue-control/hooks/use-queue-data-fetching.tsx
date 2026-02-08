@@ -1,6 +1,6 @@
 import { useCallback, useRef, useEffect, useMemo } from 'react';
 import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { message } from 'antd';
+import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 import { searchParamsToUrlParams } from '@/app/lib/url-utils';
 import { PAGE_LIMIT } from '../../board-page/constants';
 import { ClimbQueue } from '../types';
@@ -32,6 +32,7 @@ export const useQueueDataFetching = ({
   setHasDoneFirstFetch,
 }: UseQueueDataFetchingProps) => {
   const { getLogbook } = useBoardProvider();
+  const { showMessage } = useSnackbar();
   // Use wsAuthToken for GraphQL backend auth (NextAuth session token)
   const { token: wsAuthToken, isAuthenticated, isLoading: isAuthLoading } = useWsAuthToken();
   const queryClient = useQueryClient();
@@ -252,7 +253,7 @@ export const useQueueDataFetching = ({
         queryClient.setQueryData(favoritesQueryKey, context.previousFavorites);
       }
       // Show user feedback
-      message.error('Failed to update favorite. Please try again.');
+      showMessage('Failed to update favorite. Please try again.', 'error');
     },
     // Don't invalidate on settled - optimistic update is sufficient
     // Only invalidate on error (handled above via rollback)

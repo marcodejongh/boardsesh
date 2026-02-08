@@ -1,13 +1,11 @@
 'use client';
 
 import React from 'react';
-import { Typography } from 'antd';
+import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
-import { CopyrightOutlined } from '@ant-design/icons';
+import CopyrightOutlined from '@mui/icons-material/CopyrightOutlined';
 import { themeTokens } from '@/app/theme/theme-config';
 import { getSoftVGradeColor } from '@/app/lib/grade-colors';
-
-const { Text } = Typography;
 
 export type ClimbTitleData = {
   name?: string;
@@ -59,14 +57,16 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
 }) => {
   if (!climb) {
     return (
-      <Text
-        style={{
+      <Typography
+        variant="body2"
+        component="span"
+        sx={{
           fontSize: themeTokens.typography.fontSize.sm,
           fontWeight: themeTokens.typography.fontWeight.bold,
         }}
       >
         No climb selected
-      </Text>
+      </Typography>
     );
   }
 
@@ -106,8 +106,10 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
   const nameFontSize = titleFontSize ?? themeTokens.typography.fontSize.sm;
 
   const nameElement = (
-    <Text
-      style={{
+    <Typography
+      variant="body2"
+      component="span"
+      sx={{
         fontSize: nameFontSize,
         fontWeight: themeTokens.typography.fontWeight.bold,
         ...textOverflowStyles,
@@ -116,55 +118,61 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
       {climb.name}
       {isBenchmark && (
         <CopyrightOutlined
-          style={{
-            marginLeft: 4,
+          sx={{
+            marginLeft: '4px',
             fontSize: themeTokens.typography.fontSize.xs,
             color: themeTokens.colors.primary,
           }}
         />
       )}
-    </Text>
+    </Typography>
   );
 
   const gradeElement = (
-    <Text
-      type="secondary"
-      style={{
+    <Typography
+      variant="body2"
+      component="span"
+      color="text.secondary"
+      sx={{
         fontSize: themeTokens.typography.fontSize.xs,
         fontWeight: themeTokens.typography.fontWeight.normal,
         ...textOverflowStyles,
       }}
     >
       {renderDifficultyText()}
-    </Text>
+    </Typography>
   );
 
   const gradeColor = vGrade ? getSoftVGradeColor(vGrade) : undefined;
 
   const largeGradeElement = vGrade && (
-    <Text
-      style={{
+    <Typography
+      variant="body2"
+      component="span"
+      sx={{
         fontSize: nameFontSize,
         fontWeight: themeTokens.typography.fontWeight.bold,
         lineHeight: 1,
-        color: gradeColor ?? 'var(--ant-color-text-secondary)',
+        color: gradeColor ?? 'text.secondary',
       }}
     >
       {vGrade}
-    </Text>
+    </Typography>
   );
 
   const setterElement = showSetterInfo && climb.setter_username && (
-    <Text
-      type="secondary"
-      style={{
+    <Typography
+      variant="body2"
+      component="span"
+      color="text.secondary"
+      sx={{
         fontSize: themeTokens.typography.fontSize.xs,
         fontWeight: themeTokens.typography.fontWeight.normal,
         ...textOverflowStyles,
       }}
     >
       By {climb.setter_username} - {climb.ascensionist_count ?? 0} ascents
-    </Text>
+    </Typography>
   );
 
   if (layout === 'horizontal') {
@@ -191,16 +199,18 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
             {nameAddon}
           </div>
           {/* Row 2: Quality, setter, ascents */}
-          <Text
-            type="secondary"
-            style={{
+          <Typography
+            variant="body2"
+            component="span"
+            color="text.secondary"
+            sx={{
               fontSize: themeTokens.typography.fontSize.xs,
               fontWeight: themeTokens.typography.fontWeight.normal,
               ...textOverflowStyles,
             }}
           >
             {secondLineContent.length > 0 ? secondLineContent.join(' · ') : <span style={{ fontStyle: 'italic' }}>project</span>}
-          </Text>
+          </Typography>
         </Box>
         {/* Right addon (e.g., ascent status) */}
         {rightAddon}

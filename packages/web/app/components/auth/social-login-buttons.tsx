@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Button, Skeleton } from 'antd';
+import Skeleton from '@mui/material/Skeleton';
+import Button from '@mui/material/Button';
 import Box from '@mui/material/Box';
 import { signIn } from 'next-auth/react';
 import { themeTokens } from '@/app/theme/theme-config';
@@ -84,7 +85,7 @@ export default function SocialLoginButtons({
   // Show single skeleton while loading to minimize layout shift
   // (we don't know how many providers are configured yet)
   if (loading) {
-    return <Skeleton.Button active block size="large" />;
+    return <Skeleton variant="rectangular" width="100%" height={48} animation="wave" />;
   }
 
   if (!hasAnyProvider) {
@@ -102,9 +103,10 @@ export default function SocialLoginButtons({
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       {providers.google && (
         <Button
-          block
+          fullWidth
           size="large"
-          icon={<GoogleIcon />}
+          variant="outlined"
+          startIcon={<GoogleIcon />}
           onClick={() => handleSocialSignIn('google')}
           disabled={disabled}
         >
@@ -114,12 +116,13 @@ export default function SocialLoginButtons({
 
       {providers.apple && (
         <Button
-          block
+          fullWidth
           size="large"
-          icon={<AppleIcon />}
+          variant="outlined"
+          startIcon={<AppleIcon />}
           onClick={() => handleSocialSignIn('apple')}
           disabled={disabled}
-          style={appleButtonStyles}
+          sx={appleButtonStyles}
         >
           Continue with Apple
         </Button>
@@ -127,9 +130,10 @@ export default function SocialLoginButtons({
 
       {providers.facebook && (
         <Button
-          block
+          fullWidth
           size="large"
-          icon={<FacebookIcon />}
+          variant="outlined"
+          startIcon={<FacebookIcon />}
           onClick={() => handleSocialSignIn('facebook')}
           disabled={disabled}
         >

@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { Button } from 'antd';
+import MuiButton from '@mui/material/Button';
+import CircularProgress from '@mui/material/CircularProgress';
 import { ActionTooltip } from '../action-tooltip';
-import { HeartOutlined, HeartFilled } from '@ant-design/icons';
+import FavoriteBorderOutlined from '@mui/icons-material/FavoriteBorderOutlined';
+import Favorite from '@mui/icons-material/Favorite';
 import { track } from '@vercel/analytics';
 import { ClimbActionProps, ClimbActionResult } from '../types';
 import { useFavorite } from '../use-favorite';
@@ -76,9 +78,9 @@ export function FavoriteAction({
   const shouldShowLabel = showLabel ?? (viewMode === 'button' || viewMode === 'dropdown');
   const iconSize = size === 'small' ? 14 : size === 'large' ? 20 : 16;
 
-  const HeartIcon = isFavorited ? HeartFilled : HeartOutlined;
+  const HeartIcon = isFavorited ? Favorite : FavoriteBorderOutlined;
   const iconStyle = isFavorited ? { color: themeTokens.colors.error, fontSize: iconSize } : { fontSize: iconSize };
-  const icon = <HeartIcon style={iconStyle} />;
+  const icon = <HeartIcon sx={iconStyle} />;
 
   const authModalElement = (
     <AuthModal
@@ -105,16 +107,16 @@ export function FavoriteAction({
   // Button mode
   const buttonElement = (
     <>
-      <Button
-        icon={icon}
+      <MuiButton
+        variant="outlined"
+        startIcon={isLoading ? <CircularProgress size={16} /> : icon}
         onClick={handleClick}
-        loading={isLoading}
-        size={size === 'large' ? 'large' : size === 'small' ? 'small' : 'middle'}
-        disabled={disabled}
+        disabled={disabled || isLoading}
+        size={size === 'large' ? 'large' : 'small'}
         className={className}
       >
         {shouldShowLabel && label}
-      </Button>
+      </MuiButton>
       {authModalElement}
     </>
   );
@@ -130,22 +132,21 @@ export function FavoriteAction({
   // List mode - full-width row for drawer menus
   const listElement = (
     <>
-      <Button
-        type="text"
-        icon={icon}
-        block
+      <MuiButton
+        variant="text"
+        startIcon={isLoading ? <CircularProgress size={16} /> : icon}
+        fullWidth
         onClick={handleClick}
-        loading={isLoading}
-        disabled={disabled}
-        style={{
+        disabled={disabled || isLoading}
+        sx={{
           height: 48,
           justifyContent: 'flex-start',
-          paddingLeft: themeTokens.spacing[4],
+          paddingLeft: `${themeTokens.spacing[4]}px`,
           fontSize: themeTokens.typography.fontSize.base,
         }}
       >
         {label}
-      </Button>
+      </MuiButton>
       {authModalElement}
     </>
   );

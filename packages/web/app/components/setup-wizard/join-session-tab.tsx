@@ -1,14 +1,15 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Button, Empty, Spin, Typography, Alert } from 'antd';
+import { Empty, Spin, Alert } from 'antd';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
-import { EnvironmentOutlined, ReloadOutlined } from '@ant-design/icons';
+import LocationOnOutlined from '@mui/icons-material/LocationOnOutlined';
+import RefreshOutlined from '@mui/icons-material/RefreshOutlined';
 import { useGeolocation, getGeolocationErrorMessage } from '@/app/hooks/use-geolocation';
 import { themeTokens } from '@/app/theme/theme-config';
 import NearbySessionCard from './nearby-session-card';
-
-const { Text, Paragraph } = Typography;
 
 // Backend URL from environment variable
 const BACKEND_WS_URL = process.env.NEXT_PUBLIC_WS_URL || null;
@@ -82,10 +83,10 @@ const JoinSessionTab = () => {
   if (permissionState !== 'granted' && !loading) {
     return (
       <div style={{ textAlign: 'center', padding: themeTokens.spacing[8] }}>
-        <EnvironmentOutlined style={{ fontSize: 48, color: themeTokens.colors.primary, marginBottom: themeTokens.spacing[4] }} />
-        <Paragraph style={{ marginBottom: themeTokens.spacing[4] }}>
+        <LocationOnOutlined style={{ fontSize: 48, color: themeTokens.colors.primary, marginBottom: themeTokens.spacing[4] }} />
+        <Typography variant="body1" component="p" sx={{ marginBottom: themeTokens.spacing[4] }}>
           To find climbing sessions near you, we need access to your location.
-        </Paragraph>
+        </Typography>
         {error && (
           <Alert
             type="warning"
@@ -94,10 +95,10 @@ const JoinSessionTab = () => {
           />
         )}
         <Button
-          type="primary"
-          icon={<EnvironmentOutlined />}
+          variant="contained"
+          startIcon={<LocationOnOutlined />}
           onClick={requestPermission}
-          loading={loading}
+          disabled={loading}
         >
           Enable Location Access
         </Button>
@@ -110,9 +111,9 @@ const JoinSessionTab = () => {
     return (
       <div style={{ textAlign: 'center', padding: themeTokens.spacing[8] }}>
         <Spin size="large" />
-        <Paragraph style={{ marginTop: themeTokens.spacing[4] }}>
+        <Typography variant="body1" component="p" sx={{ marginTop: themeTokens.spacing[4] }}>
           {loading ? 'Getting your location...' : 'Finding nearby sessions...'}
-        </Paragraph>
+        </Typography>
       </div>
     );
   }
@@ -124,10 +125,10 @@ const JoinSessionTab = () => {
         <Empty
           description={
             <Stack spacing={1}>
-              <Text>No backend server configured</Text>
-              <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+              <Typography variant="body2" component="span">No backend server configured</Typography>
+              <Typography variant="body1" component="p" color="text.secondary" sx={{ marginBottom: 0 }}>
                 To join sessions, you need to connect to a Boardsesh backend server.
-              </Paragraph>
+              </Typography>
             </Stack>
           }
         />
@@ -144,7 +145,7 @@ const JoinSessionTab = () => {
           title={fetchError}
           style={{ marginBottom: themeTokens.spacing[4] }}
         />
-        <Button icon={<ReloadOutlined />} onClick={refresh}>
+        <Button variant="outlined" startIcon={<RefreshOutlined />} onClick={refresh}>
           Try Again
         </Button>
       </div>
@@ -158,18 +159,19 @@ const JoinSessionTab = () => {
         <Empty
           description={
             <Stack spacing={1}>
-              <Text>No sessions found nearby</Text>
-              <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+              <Typography variant="body2" component="span">No sessions found nearby</Typography>
+              <Typography variant="body1" component="p" color="text.secondary" sx={{ marginBottom: 0 }}>
                 There are no active climbing sessions within 500 meters.
                 Start your own session and enable &quot;Allow others to join&quot;!
-              </Paragraph>
+              </Typography>
             </Stack>
           }
         />
         <Button
-          icon={<ReloadOutlined />}
+          variant="outlined"
+          startIcon={<RefreshOutlined />}
           onClick={refresh}
-          style={{ marginTop: themeTokens.spacing[4] }}
+          sx={{ marginTop: themeTokens.spacing[4] }}
         >
           Refresh
         </Button>
@@ -181,12 +183,13 @@ const JoinSessionTab = () => {
   return (
     <div style={{ padding: themeTokens.spacing[2] }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: themeTokens.spacing[4] }}>
-        <Text strong>Sessions nearby ({nearbySessions.length})</Text>
+        <Typography variant="body2" component="span" fontWeight={600}>Sessions nearby ({nearbySessions.length})</Typography>
         <Button
-          icon={<ReloadOutlined />}
+          variant="outlined"
+          startIcon={<RefreshOutlined />}
           size="small"
           onClick={refresh}
-          loading={fetchingNearby}
+          disabled={fetchingNearby}
         >
           Refresh
         </Button>

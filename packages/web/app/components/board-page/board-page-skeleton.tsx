@@ -2,9 +2,15 @@
 
 import React from 'react';
 import Flex from 'antd/es/flex';
-import Card from 'antd/es/card';
+import MuiCard from '@mui/material/Card';
+import CardHeader from '@mui/material/CardHeader';
+import CardContent from '@mui/material/CardContent';
+import CardActions from '@mui/material/CardActions';
 import Skeleton from 'antd/es/skeleton';
-import { InfoCircleOutlined, ForkOutlined, HeartOutlined, PlusCircleOutlined } from '@ant-design/icons';
+import InfoOutlined from '@mui/icons-material/InfoOutlined';
+import CallSplitOutlined from '@mui/icons-material/CallSplitOutlined';
+import FavoriteBorderOutlined from '@mui/icons-material/FavoriteBorderOutlined';
+import AddCircleOutlined from '@mui/icons-material/AddCircleOutlined';
 import { themeTokens } from '@/app/theme/theme-config';
 import styles from './board-page-skeleton.module.css';
 
@@ -48,25 +54,27 @@ const BoardRendererSkeleton = ({ aspectRatio }: { aspectRatio?: number }) => (
  * Skeleton loading UI for ClimbCard, matching the card structure with muted action icons.
  */
 const ClimbCardSkeleton = ({ aspectRatio }: { aspectRatio?: number }) => (
-  <Card
-    size="small"
-    style={{
+  <MuiCard
+    sx={{
       backgroundColor: themeTokens.semantic.surface,
     }}
-    styles={{
-      header: { paddingTop: 8, paddingBottom: 6 },
-      body: { padding: 6, display: 'flex', justifyContent: 'center' },
-    }}
-    title={<ClimbCardTitleSkeleton />}
-    actions={[
-      <InfoCircleOutlined key="info" style={{ color: 'var(--ant-color-text-quaternary)' }} />,
-      <ForkOutlined key="fork" style={{ color: 'var(--ant-color-text-quaternary)' }} />,
-      <HeartOutlined key="heart" style={{ color: 'var(--ant-color-text-quaternary)' }} />,
-      <PlusCircleOutlined key="plus" style={{ color: 'var(--ant-color-text-quaternary)' }} />,
-    ]}
   >
-    <BoardRendererSkeleton aspectRatio={aspectRatio} />
-  </Card>
+    <CardHeader
+      title={<ClimbCardTitleSkeleton />}
+      sx={{ paddingTop: '8px', paddingBottom: '6px' }}
+    />
+    <CardContent
+      sx={{ p: '6px', display: 'flex', justifyContent: 'center' }}
+    >
+      <BoardRendererSkeleton aspectRatio={aspectRatio} />
+    </CardContent>
+    <CardActions sx={{ justifyContent: 'space-around' }}>
+      <InfoOutlined key="info" sx={{ color: themeTokens.neutral[300] }} />
+      <CallSplitOutlined key="fork" sx={{ color: themeTokens.neutral[300] }} />
+      <FavoriteBorderOutlined key="heart" sx={{ color: themeTokens.neutral[300] }} />
+      <AddCircleOutlined key="plus" sx={{ color: themeTokens.neutral[300] }} />
+    </CardActions>
+  </MuiCard>
 );
 
 /**

@@ -1,15 +1,20 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { Typography, Collapse, Tag } from 'antd';
+import Typography from '@mui/material/Typography';
 import Stack from '@mui/material/Stack';
-import { BookOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
+import Chip from '@mui/material/Chip';
+import Accordion from '@mui/material/Accordion';
+import AccordionSummary from '@mui/material/AccordionSummary';
+import AccordionDetails from '@mui/material/AccordionDetails';
+import ExpandMoreOutlined from '@mui/icons-material/ExpandMoreOutlined';
+import BookOutlined from '@mui/icons-material/BookOutlined';
+import CheckCircleOutlined from '@mui/icons-material/CheckCircleOutlined';
+import CancelOutlined from '@mui/icons-material/CancelOutlined';
 import { LogbookView } from './logbook-view';
 import { Climb } from '@/app/lib/types';
 import { useBoardProvider } from '../board-provider/board-provider-context';
 import dayjs from 'dayjs';
-
-const { Text } = Typography;
 
 interface LogbookSectionProps {
   climb: Climb;
@@ -50,47 +55,47 @@ export const LogbookSection: React.FC<LogbookSectionProps> = ({ climb }) => {
   // If no logbook entries, show empty state without collapse
   if (!summary) {
     return (
-      <Text type="secondary" style={{ display: 'block', textAlign: 'center', padding: '16px 0' }}>
+      <Typography variant="body2" component="span" color="text.secondary" sx={{ display: 'block', textAlign: 'center', padding: '16px 0' }}>
         <BookOutlined style={{ marginRight: 8 }} />
         No ascents logged for this climb
-      </Text>
+      </Typography>
     );
   }
 
   const summaryLabel = (
     <Stack direction="row" spacing={2} sx={{ flexWrap: 'wrap' }}>
-      <Text strong>
+      <Typography variant="body2" component="span" fontWeight={600}>
         <BookOutlined style={{ marginRight: 8 }} />
         Your Logbook
-      </Text>
-      <Text type="secondary">
+      </Typography>
+      <Typography variant="body2" component="span" color="text.secondary">
         {summary.totalAttempts} attempt{summary.totalAttempts !== 1 ? 's' : ''} in {summary.sessionCount} session{summary.sessionCount !== 1 ? 's' : ''}
-      </Text>
+      </Typography>
       {summary.successfulAscents > 0 && (
-        <Tag icon={<CheckCircleOutlined />} color="success">
-          {summary.successfulAscents} send{summary.successfulAscents !== 1 ? 's' : ''}
-        </Tag>
+        <Chip icon={<CheckCircleOutlined />} label={`${summary.successfulAscents} send${summary.successfulAscents !== 1 ? 's' : ''}`} size="small" color="success" />
       )}
       {summary.failedAttempts > 0 && (
-        <Tag icon={<CloseCircleOutlined />} color="default">
-          {summary.failedAttempts} logged attempt{summary.failedAttempts !== 1 ? 's' : ''}
-        </Tag>
+        <Chip icon={<CancelOutlined />} label={`${summary.failedAttempts} logged attempt${summary.failedAttempts !== 1 ? 's' : ''}`} size="small" />
       )}
     </Stack>
   );
 
   return (
-    <Collapse
-      ghost
-      defaultActiveKey={[]}
-      items={[
-        {
-          key: 'logbook',
-          label: summaryLabel,
-          children: <LogbookView currentClimb={climb} />,
-        },
-      ]}
-      style={{ margin: '-12px -8px' }}
-    />
+    <Accordion
+      disableGutters
+      elevation={0}
+      sx={{
+        margin: '-12px -8px',
+        '&:before': { display: 'none' },
+        backgroundColor: 'transparent',
+      }}
+    >
+      <AccordionSummary expandIcon={<ExpandMoreOutlined />}>
+        {summaryLabel}
+      </AccordionSummary>
+      <AccordionDetails>
+        <LogbookView currentClimb={climb} />
+      </AccordionDetails>
+    </Accordion>
   );
 };

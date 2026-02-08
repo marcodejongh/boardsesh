@@ -1,10 +1,14 @@
 'use client';
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Button, Form, Input, ColorPicker, message } from 'antd';
+import { Form, Input, ColorPicker, message } from 'antd';
+import MuiButton from '@mui/material/Button';
 import Box from '@mui/material/Box';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
-import { UnorderedListOutlined, PlusOutlined, TagOutlined, EditOutlined } from '@ant-design/icons';
+import FormatListBulletedOutlined from '@mui/icons-material/FormatListBulletedOutlined';
+import AddOutlined from '@mui/icons-material/AddOutlined';
+import LocalOfferOutlined from '@mui/icons-material/LocalOfferOutlined';
+import EditOutlined from '@mui/icons-material/EditOutlined';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { track } from '@vercel/analytics';
@@ -249,7 +253,7 @@ function BottomTabBar({ boardDetails, angle }: BottomTabBarProps) {
           aria-selected={activeTab === 'climbs'}
           disabled={!listUrl}
         >
-          <UnorderedListOutlined style={{ fontSize: 20 }} />
+          <FormatListBulletedOutlined style={{ fontSize: 20 }} />
           <span className={styles.tabLabel}>Climb</span>
         </button>
 
@@ -263,7 +267,7 @@ function BottomTabBar({ boardDetails, angle }: BottomTabBarProps) {
           aria-selected={activeTab === 'library'}
           disabled={!playlistsUrl}
         >
-          <TagOutlined style={{ fontSize: 20 }} />
+          <LocalOfferOutlined style={{ fontSize: 20 }} />
           <span className={styles.tabLabel}>Your Library</span>
         </button>
 
@@ -276,7 +280,7 @@ function BottomTabBar({ boardDetails, angle }: BottomTabBarProps) {
           role="tab"
           aria-selected={activeTab === 'create'}
         >
-          <PlusOutlined style={{ fontSize: 20 }} />
+          <AddOutlined style={{ fontSize: 20 }} />
           <span className={styles.tabLabel}>Create</span>
         </button>
       </div>
@@ -300,11 +304,11 @@ function BottomTabBar({ boardDetails, angle }: BottomTabBarProps) {
               onClick={() => setIsCreateOpen(false)}
               style={{ textDecoration: 'none' }}
             >
-              <Button
-                type="text"
-                icon={<EditOutlined />}
-                block
-                style={{
+              <MuiButton
+                variant="text"
+                startIcon={<EditOutlined />}
+                fullWidth
+                sx={{
                   height: 48,
                   justifyContent: 'flex-start',
                   paddingLeft: themeTokens.spacing[4],
@@ -313,16 +317,16 @@ function BottomTabBar({ boardDetails, angle }: BottomTabBarProps) {
                 }}
               >
                 Climb
-              </Button>
+              </MuiButton>
             </Link>
           )}
           {!isMoonboard && (
-            <Button
-              type="text"
-              icon={<TagOutlined />}
-              block
+            <MuiButton
+              variant="text"
+              startIcon={<LocalOfferOutlined />}
+              fullWidth
               onClick={handleOpenCreatePlaylist}
-              style={{
+              sx={{
                 height: 48,
                 justifyContent: 'flex-start',
                 paddingLeft: themeTokens.spacing[4],
@@ -330,7 +334,7 @@ function BottomTabBar({ boardDetails, angle }: BottomTabBarProps) {
               }}
             >
               Playlist
-            </Button>
+            </MuiButton>
           )}
         </Box>
       </SwipeableDrawer>
@@ -349,13 +353,13 @@ function BottomTabBar({ boardDetails, angle }: BottomTabBarProps) {
           body: { padding: themeTokens.spacing[4] },
         }}
         extra={
-          <Button
-            type="primary"
+          <MuiButton
+            variant="contained"
             onClick={handleCreatePlaylist}
-            loading={isCreatingPlaylist}
+            disabled={isCreatingPlaylist}
           >
-            Create
-          </Button>
+            {isCreatingPlaylist ? 'Creating...' : 'Create'}
+          </MuiButton>
         }
       >
         <Form form={form} layout="vertical">

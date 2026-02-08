@@ -1,9 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
-import { InputNumber, Select, Switch, Alert, Typography, Tooltip, Button } from 'antd';
+import { InputNumber, Select, Switch, Alert, Tooltip } from 'antd';
+import MuiTypography from '@mui/material/Typography';
+import MuiButton from '@mui/material/Button';
 import Box from '@mui/material/Box';
-import { LoginOutlined, SortAscendingOutlined } from '@ant-design/icons';
+import LoginOutlined from '@mui/icons-material/LoginOutlined';
+import ArrowUpwardOutlined from '@mui/icons-material/ArrowUpwardOutlined';
 import { TENSION_KILTER_GRADES } from '@/app/lib/board-data';
 import { getGradeTintColor } from '@/app/lib/grade-colors';
 import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
@@ -21,7 +24,6 @@ import {
 } from './search-summary-utils';
 import styles from './accordion-search-form.module.css';
 
-const { Text } = Typography;
 
 // Kilter Homewall layout ID
 const KILTER_HOMEWALL_LAYOUT_ID = 8;
@@ -83,12 +85,12 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
       content: (
         <div className={styles.panelContent}>
           <div className={styles.inputGroup}>
-            <Text strong>Climb Name</Text>
+            <MuiTypography variant="body2" component="span" fontWeight={600}>Climb Name</MuiTypography>
             <SearchClimbNameInput />
           </div>
 
           <div className={styles.inputGroup}>
-            <Text strong>Grade Range</Text>
+            <MuiTypography variant="body2" component="span" fontWeight={600}>Grade Range</MuiTypography>
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '0px 8px' }}>
               <Box sx={{ width: '50%' }}>
                 <Select
@@ -129,7 +131,7 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
             <div className={styles.switchGroup}>
               <div className={styles.switchRow}>
                 <Tooltip title="Show only climbs that use holds in the bottom 8 rows (only available on 10x12 boards)">
-                  <Text>Tall Climbs Only</Text>
+                  <MuiTypography variant="body2" component="span">Tall Climbs Only</MuiTypography>
                 </Tooltip>
                 <Switch
                   size="small"
@@ -141,19 +143,19 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
           )}
 
           <div className={styles.inputGroup}>
-            <Text strong>Setter</Text>
+            <MuiTypography variant="body2" component="span" fontWeight={600}>Setter</MuiTypography>
             <SetterNameSelect />
           </div>
 
-          <Button
-            type="text"
+          <MuiButton
+            variant="text"
             size="small"
-            icon={<SortAscendingOutlined />}
+            startIcon={<ArrowUpwardOutlined />}
             className={styles.sortToggle}
             onClick={() => setShowSort(!showSort)}
           >
             Sort
-          </Button>
+          </MuiButton>
 
           {showSort && (
             <div className={styles.inputGroup}>
@@ -201,7 +203,7 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '12px 12px' }}>
             <Box sx={{ width: '50%' }}>
               <div className={styles.compactInputGroup}>
-                <Text>Min Ascents</Text>
+                <MuiTypography variant="body2" component="span">Min Ascents</MuiTypography>
                 <InputNumber
                   min={1}
                   value={uiSearchParams.minAscents}
@@ -213,7 +215,7 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
             </Box>
             <Box sx={{ width: '50%' }}>
               <div className={styles.compactInputGroup}>
-                <Text>Min Rating</Text>
+                <MuiTypography variant="body2" component="span">Min Rating</MuiTypography>
                 <InputNumber
                   min={1.0}
                   max={3.0}
@@ -228,7 +230,7 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
           </Box>
 
           <div className={styles.inputGroup}>
-            <Text>Grade Accuracy</Text>
+            <MuiTypography variant="body2" component="span">Grade Accuracy</MuiTypography>
             <Select
               value={uiSearchParams.gradeAccuracy}
               onChange={(value) => updateFilters({ gradeAccuracy: value || undefined })}
@@ -243,7 +245,7 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
 
           <div className={styles.switchGroup}>
             <div className={styles.switchRow}>
-              <Text>Classics Only</Text>
+              <MuiTypography variant="body2" component="span">Classics Only</MuiTypography>
               <Switch
                 size="small"
                 checked={uiSearchParams.onlyClassics}
@@ -270,20 +272,20 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
               showIcon
               className={styles.progressAlert}
               action={
-                <Button
+                <MuiButton
                   size="small"
-                  type="primary"
-                  icon={<LoginOutlined />}
+                  variant="contained"
+                  startIcon={<LoginOutlined />}
                   onClick={() => setShowAuthModal(true)}
                 >
                   Sign In
-                </Button>
+                </MuiButton>
               }
             />
           ) : (
             <div className={styles.switchGroup}>
               <div className={styles.switchRow}>
-                <Text>Hide Attempted</Text>
+                <MuiTypography variant="body2" component="span">Hide Attempted</MuiTypography>
                 <Switch
                   size="small"
                   checked={uiSearchParams.hideAttempted}
@@ -291,7 +293,7 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
                 />
               </div>
               <div className={styles.switchRow}>
-                <Text>Hide Completed</Text>
+                <MuiTypography variant="body2" component="span">Hide Completed</MuiTypography>
                 <Switch
                   size="small"
                   checked={uiSearchParams.hideCompleted}
@@ -299,7 +301,7 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
                 />
               </div>
               <div className={styles.switchRow}>
-                <Text>Only Attempted</Text>
+                <MuiTypography variant="body2" component="span">Only Attempted</MuiTypography>
                 <Switch
                   size="small"
                   checked={uiSearchParams.showOnlyAttempted}
@@ -307,7 +309,7 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
                 />
               </div>
               <div className={styles.switchRow}>
-                <Text>Only Completed</Text>
+                <MuiTypography variant="body2" component="span">Only Completed</MuiTypography>
                 <Switch
                   size="small"
                   checked={uiSearchParams.showOnlyCompleted}

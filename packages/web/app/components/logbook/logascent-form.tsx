@@ -1,15 +1,22 @@
+'use client';
+
 import React, { useEffect, useState } from 'react';
-import { Button, DatePicker, Select, Input, Rate, InputNumber, Form, Tag, Tooltip, Segmented } from 'antd';
+import { DatePicker, Select, InputNumber, Form, Segmented } from 'antd';
+import Rating from '@mui/material/Rating';
+import Chip from '@mui/material/Chip';
+import MuiTooltip from '@mui/material/Tooltip';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
+import TextField from '@mui/material/TextField';
+import CircularProgress from '@mui/material/CircularProgress';
 import Stack from '@mui/material/Stack';
-import { InfoCircleOutlined } from '@ant-design/icons';
+import InfoOutlined from '@mui/icons-material/InfoOutlined';
 import { track } from '@vercel/analytics';
 import { Climb, BoardDetails } from '@/app/lib/types';
 import { useBoardProvider, TickStatus } from '../board-provider/board-provider-context';
 import { TENSION_KILTER_GRADES, ANGLES } from '@/app/lib/board-data';
 import { themeTokens } from '@/app/theme/theme-config';
 import dayjs from 'dayjs';
-
-const { TextArea } = Input;
 
 type LogType = 'ascent' | 'attempt';
 
@@ -170,7 +177,7 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boar
                 Mirrored
               </Tag>
               <Tooltip title="Click the tag to toggle whether you completed this climb on the mirrored side">
-                <InfoCircleOutlined style={{ color: themeTokens.neutral[400], cursor: 'pointer' }} />
+                <InfoOutlined style={{ color: themeTokens.neutral[400], cursor: 'pointer' }} />
               </Tooltip>
             </Stack>
           )}
@@ -184,7 +191,7 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boar
       <Form.Item name="angle" label="Angle" {...formItemLayout}>
         <Select
           options={angleOptions.map((angle) => ({
-            label: `${angle}°`,
+            label: `${angle}`,
             value: angle,
           }))}
           style={{ width: '80px' }}
@@ -214,17 +221,24 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boar
       )}
 
       <Form.Item name="notes" label="Notes" {...formItemLayout}>
-        <TextArea rows={3} />
+        <TextField multiline rows={3} variant="outlined" size="small" fullWidth />
       </Form.Item>
 
       <Form.Item wrapperCol={{ offset: 0, span: 24 }} style={{ marginBottom: '8px' }}>
-        <Button type="primary" htmlType="submit" loading={isSaving} disabled={isSaving} block size="large">
+        <Button
+          variant="contained"
+          type="submit"
+          disabled={isSaving}
+          startIcon={isSaving ? <CircularProgress size={16} /> : undefined}
+          fullWidth
+          size="large"
+        >
           Submit
         </Button>
       </Form.Item>
 
       <Form.Item wrapperCol={{ offset: 0, span: 24 }}>
-        <Button block size="large" onClick={onClose} disabled={isSaving}>
+        <Button variant="outlined" fullWidth size="large" onClick={onClose} disabled={isSaving}>
           Cancel
         </Button>
       </Form.Item>

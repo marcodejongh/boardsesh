@@ -1,15 +1,16 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Spin, Typography, Button, message } from 'antd';
+import MuiButton from '@mui/material/Button';
+import Typography from '@mui/material/Typography';
 import {
+  LabelOutlined,
+  CalendarTodayOutlined,
   TagOutlined,
-  CalendarOutlined,
-  NumberOutlined,
-  GlobalOutlined,
+  PublicOutlined,
   LockOutlined,
-  FrownOutlined,
-} from '@ant-design/icons';
+  SentimentDissatisfiedOutlined,
+} from '@mui/icons-material';
 import { track } from '@vercel/analytics';
 import { BoardDetails, Climb } from '@/app/lib/types';
 import { executeGraphQL } from '@/app/lib/graphql/client';
@@ -23,6 +24,8 @@ import {
   PlaylistClimbsResult,
   Playlist,
 } from '@/app/lib/graphql/operations/playlists';
+import { useSnackbar } from '@/app/components/providers/snackbar-provider';
+import { LoadingSpinner } from '@/app/components/ui/loading-spinner';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { useQueueContext } from '@/app/components/graphql-queue';
 import { themeTokens } from '@/app/theme/theme-config';
@@ -31,7 +34,7 @@ import PlaylistEditDrawer from './playlist-edit-drawer';
 import PlaylistClimbsList from './playlist-climbs-list';
 import styles from './playlist-view.module.css';
 
-const { Title, Text } = Typography;
+// Typography destructuring removed - using MUI Typography directly
 
 // Validate hex color format
 const isValidHexColor = (color: string): boolean => {
@@ -51,6 +54,7 @@ export default function PlaylistViewContent({
   angle,
   currentUserId,
 }: PlaylistViewContentProps) {
+  const { showMessage } = useSnackbar();
   const [playlist, setPlaylist] = useState<Playlist | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -176,7 +180,7 @@ export default function PlaylistViewContent({
       }
 
       if (allClimbs.length === 0) {
-        message.info('No climbs to add from this playlist');
+        showMessage('No climbs to add from this playlist', 'info');
         return;
       }
 
@@ -190,14 +194,14 @@ export default function PlaylistViewContent({
         climbCount: allClimbs.length,
       });
 
-      message.success(`Added ${allClimbs.length} ${allClimbs.length === 1 ? 'climb' : 'climbs'} to queue`);
+      showMessage(`Added ${allClimbs.length} ${allClimbs.length === 1 ? 'climb' : 'climbs'} to queue`, 'success');
     } catch (err) {
       // Don't show error if aborted
       if (abortController.signal.aborted) {
         return;
       }
       console.error('Error adding climbs to queue:', err);
-      message.error('Failed to add climbs to queue');
+      showMessage('Failed to add climbs to queue', 'error');
     } finally {
       addingToQueueRef.current = false;
       setIsAddingToQueue(false);
@@ -228,7 +232,7 @@ export default function PlaylistViewContent({
   if (loading || tokenLoading) {
     return (
       <div className={styles.loadingContainer}>
-        <Spin size="large" />
+        <LoadingSpinner size={48} />
       </div>
     );
   }
@@ -236,7 +240,7 @@ export default function PlaylistViewContent({
   if (error || !playlist) {
     return (
       <div className={styles.errorContainer}>
-        <FrownOutlined className={styles.errorIcon} />
+        <SentimentDissatisfiedOutlined className={styles.errorIcon} />
         <div className={styles.errorTitle}>
           {error === 'Playlist not found' ? 'Playlist Not Found' : 'Unable to Load Playlist'}
         </div>
@@ -245,7 +249,7 @@ export default function PlaylistViewContent({
             ? 'This playlist may have been deleted or you may not have permission to view it.'
             : 'There was an error loading this playlist. Please try again.'}
         </div>
-        <Button onClick={fetchPlaylist}>Try Again</Button>
+        <MuiButton variant="outlined" onClick={fetchPlaylist}>Try Again</MuiButton>
       </div>
     );
   }
@@ -276,19 +280,19 @@ export default function PlaylistViewContent({
               className={styles.colorIndicator}
               style={{ backgroundColor: getPlaylistColor() }}
             >
-              <TagOutlined className={styles.colorIndicatorIcon} />
+              <LabelOutlined className={styles.colorIndicatorIcon} />
             </div>
             <div className={styles.headerContent}>
-              <Title level={2} className={styles.playlistName}>
+              <Typography variant="h4" component="h2" className={styles.playlistName}>
                 {playlist.name}
-              </Title>
+              </Typography>
               <div className={styles.playlistMeta}>
                 <span className={styles.metaItem}>
-                  <NumberOutlined />
+                  <TagOutlined />
                   {playlist.climbCount} {playlist.climbCount === 1 ? 'climb' : 'climbs'}
                 </span>
                 <span className={styles.metaItem}>
-                  <CalendarOutlined />
+                  <CalendarTodayOutlined />
                   Created {formatDate(playlist.createdAt)}
                 </span>
                 <span
@@ -298,7 +302,7 @@ export default function PlaylistViewContent({
                 >
                   {playlist.isPublic ? (
                     <>
-                      <GlobalOutlined /> Public
+                      <PublicOutlined /> Public
                     </>
                   ) : (
                     <>
@@ -314,14 +318,14 @@ export default function PlaylistViewContent({
           {playlist.description ? (
             <div className={styles.descriptionSection}>
               <div className={styles.descriptionLabel}>Description</div>
-              <Text className={styles.descriptionText}>{playlist.description}</Text>
+              <Typography variant="body2" component="span" className={styles.descriptionText}>{playlist.description}</Typography>
             </div>
           ) : isOwner ? (
             <div className={styles.descriptionSection}>
               <div className={styles.descriptionLabel}>Description</div>
-              <Text className={styles.noDescription}>
+              <Typography variant="body2" component="span" className={styles.noDescription}>
                 No description yet. Click Edit to add one.
-              </Text>
+              </Typography>
             </div>
           ) : null}
 

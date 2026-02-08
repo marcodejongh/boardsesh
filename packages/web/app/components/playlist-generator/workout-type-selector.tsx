@@ -1,14 +1,14 @@
 'use client';
 
 import React from 'react';
-import { List, Typography } from 'antd';
-import { RightOutlined } from '@ant-design/icons';
+import { List } from 'antd';
+import Typography from '@mui/material/Typography';
+import { ChevronRightOutlined } from '@mui/icons-material';
 import { WorkoutType, WORKOUT_TYPES } from './types';
 import { getWorkoutIcon } from './workout-icons';
 import { themeTokens } from '@/app/theme/theme-config';
 import styles from './workout-type-selector.module.css';
 
-const { Text } = Typography;
 
 interface WorkoutTypeSelectorProps {
   onSelect: (type: WorkoutType) => void;
@@ -29,11 +29,11 @@ const WorkoutTypeSelector: React.FC<WorkoutTypeSelectorProps> = ({ onSelect }) =
                 {getWorkoutIcon(item.icon, { size: 28, color: themeTokens.colors.primary })}
               </div>
               <div className={styles.textContent}>
-                <Text strong className={styles.title}>{item.name}</Text>
-                <Text type="secondary" className={styles.description}>{item.description}</Text>
+                <Typography variant="body2" component="span" fontWeight={600} className={styles.title}>{item.name}</Typography>
+                <Typography variant="body2" component="span" color="text.secondary" className={styles.description}>{item.description}</Typography>
               </div>
             </div>
-            <RightOutlined className={styles.arrow} />
+            <ChevronRightOutlined className={styles.arrow} />
           </List.Item>
         )}
       />

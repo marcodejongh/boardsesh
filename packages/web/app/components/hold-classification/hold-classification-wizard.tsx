@@ -1,9 +1,14 @@
 'use client';
 
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import { Button, Progress, Rate, Typography, Spin, message } from 'antd';
+import MuiButton from '@mui/material/Button';
+import Typography from '@mui/material/Typography';
+import Rating from '@mui/material/Rating';
+import LinearProgress from '@mui/material/LinearProgress';
+import CircularProgress from '@mui/material/CircularProgress';
+import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
-import { ArrowLeftOutlined, ArrowRightOutlined, CheckOutlined, CheckCircleFilled, ExpandOutlined, CompressOutlined } from '@ant-design/icons';
+import { ArrowBackOutlined, ArrowForwardOutlined, CheckOutlined, CheckCircle, OpenInFullOutlined, CompressOutlined } from '@mui/icons-material';
 import { useSession } from 'next-auth/react';
 import { BoardDetails } from '@/app/lib/types';
 import { HoldRenderData } from '../board-renderer/types';
@@ -19,7 +24,7 @@ import {
 import DirectionPicker from './direction-picker';
 import styles from './hold-classification-wizard.module.css';
 
-const { Text, Title } = Typography;
+// Typography destructuring removed - using MUI Typography directly
 
 // Zoom factor for the compact hold view (shows ~2 rows of holds)
 // Higher value = more zoomed out = can see more holds around the selected one
@@ -351,7 +356,7 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
       >
         <div className={styles.loadingContainer}>
           <Spin size="large" />
-          <Text className={styles.loadingText}>Loading holds...</Text>
+          <Typography variant="body2" component="span" className={styles.loadingText}>Loading holds...</Typography>
         </div>
       </SwipeableDrawer>
     );
@@ -371,8 +376,8 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
         }}
       >
         <div className={styles.emptyState}>
-          <Text>No holds found for this board configuration.</Text>
-          <Button onClick={onClose}>Close</Button>
+          <Typography variant="body2" component="span">No holds found for this board configuration.</Typography>
+          <MuiButton variant="outlined" onClick={onClose}>Close</MuiButton>
         </div>
       </SwipeableDrawer>
     );
@@ -392,17 +397,17 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
         }}
       >
         <div className={styles.completeContainer}>
-          <CheckCircleFilled className={styles.completeIcon} />
-          <Title level={3} className={styles.completeTitle}>
+          <CheckCircle className={styles.completeIcon} />
+          <Typography variant="h5" component="h3" className={styles.completeTitle}>
             Classification Complete!
-          </Title>
-          <Text className={styles.completeSubtitle}>
+          </Typography>
+          <Typography variant="body2" component="span" className={styles.completeSubtitle}>
             You've classified {classifiedCount} of {holds.length} holds.
             You can run through this wizard again anytime to update your ratings.
-          </Text>
-          <Button type="primary" size="large" onClick={onClose}>
+          </Typography>
+          <MuiButton variant="contained" size="large" onClick={onClose}>
             Done
-          </Button>
+          </MuiButton>
         </div>
       </SwipeableDrawer>
     );
@@ -431,9 +436,9 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
       <div className={styles.container}>
         {/* Progress indicator */}
         <div className={styles.progressSection}>
-          <Text className={styles.progressText}>
+          <Typography variant="body2" component="span" className={styles.progressText}>
             Hold {currentIndex + 1} of {holds.length} ({classifiedCount} classified)
-          </Text>
+          </Typography>
           <Progress
             percent={progress}
             showInfo={false}
@@ -448,22 +453,22 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
               <HoldView hold={currentHold} boardDetails={boardDetails} expanded={isHoldViewExpanded} />
             )}
           </div>
-          <Button
+          <MuiButton
             className={styles.expandButton}
-            type="text"
+            variant="text"
             size="small"
-            icon={isHoldViewExpanded ? <CompressOutlined /> : <ExpandOutlined />}
+            startIcon={isHoldViewExpanded ? <CompressOutlined /> : <OpenInFullOutlined />}
             onClick={() => setIsHoldViewExpanded(!isHoldViewExpanded)}
           >
             {isHoldViewExpanded ? 'Collapse' : 'Show full board'}
-          </Button>
+          </MuiButton>
         </div>
 
         {/* Classification controls */}
         <div className={styles.classificationSection}>
           {/* Hold type selection */}
           <div>
-            <Text className={styles.sectionTitle}>Hold Type</Text>
+            <Typography variant="body2" component="span" className={styles.sectionTitle}>Hold Type</Typography>
             <div className={styles.holdTypeList}>
               {filteredHoldTypeOptions.map((option) => (
                 <div
@@ -486,7 +491,7 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
 
           {/* Hand rating */}
           <div className={styles.ratingSection}>
-            <Text className={styles.sectionTitle}>Hand Rating (1-5)</Text>
+            <Typography variant="body2" component="span" className={styles.sectionTitle}>Hand Rating (1-5)</Typography>
             <div className={styles.ratingLabel}>
               5 = Easy to grip, 1 = Very difficult
             </div>
@@ -499,7 +504,7 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
 
           {/* Foot rating */}
           <div className={styles.ratingSection}>
-            <Text className={styles.sectionTitle}>Foot Rating (1-5)</Text>
+            <Typography variant="body2" component="span" className={styles.sectionTitle}>Foot Rating (1-5)</Typography>
             <div className={styles.ratingLabel}>
               5 = Easy to stand on, 1 = Very difficult
             </div>
@@ -512,7 +517,7 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
 
           {/* Direction of pull */}
           <div className={styles.directionSection}>
-            <Text className={styles.sectionTitle}>Direction of Pull</Text>
+            <Typography variant="body2" component="span" className={styles.sectionTitle}>Direction of Pull</Typography>
             <div className={styles.ratingLabel}>
               Click or drag to set the best pulling direction
             </div>
@@ -526,30 +531,32 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
 
         {/* Navigation buttons */}
         <div className={styles.navigationSection}>
-          <Button
+          <MuiButton
             className={styles.navButton}
-            icon={<ArrowLeftOutlined />}
+            variant="outlined"
+            startIcon={<ArrowBackOutlined />}
             onClick={handlePrevious}
             disabled={currentIndex === 0 || saving}
           >
             Previous
-          </Button>
-          <Button
+          </MuiButton>
+          <MuiButton
             className={styles.skipButton}
+            variant="outlined"
             onClick={handleNext}
             disabled={saving}
           >
             Skip
-          </Button>
-          <Button
+          </MuiButton>
+          <MuiButton
             className={styles.navButton}
-            type="primary"
-            icon={<ArrowRightOutlined />}
+            variant="contained"
+            startIcon={<ArrowForwardOutlined />}
             onClick={handleNext}
-            loading={saving}
+            disabled={saving}
           >
             {currentIndex === holds.length - 1 ? 'Finish' : 'Next'}
-          </Button>
+          </MuiButton>
         </div>
       </div>
     </SwipeableDrawer>

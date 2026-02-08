@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Button } from 'antd';
-import { EditOutlined, ThunderboltOutlined, PlusOutlined } from '@ant-design/icons';
+import MuiButton from '@mui/material/Button';
+import CircularProgress from '@mui/material/CircularProgress';
+import { EditOutlined, ElectricBoltOutlined, AddOutlined } from '@mui/icons-material';
 import { BoardDetails } from '@/app/lib/types';
 import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import BackButton from '@/app/components/back-button';
@@ -51,14 +52,14 @@ const PlaylistViewActions = ({
   };
 
   const addAllButton = (
-    <Button
-      icon={<PlusOutlined />}
+    <MuiButton
+      variant="outlined"
+      startIcon={isAddingToQueue ? <CircularProgress size={16} /> : <AddOutlined />}
       onClick={onAddAllToQueue}
-      loading={isAddingToQueue}
-      disabled={climbCount === 0}
+      disabled={climbCount === 0 || isAddingToQueue}
     >
       {isAddingToQueue ? 'Adding...' : 'Queue All'}
-    </Button>
+    </MuiButton>
   );
 
   return (
@@ -74,15 +75,16 @@ const PlaylistViewActions = ({
             {addAllButton}
             {isOwner && (
               <>
-                <Button
-                  icon={<ThunderboltOutlined />}
+                <MuiButton
+                  variant="outlined"
+                  startIcon={<ElectricBoltOutlined />}
                   onClick={() => setGeneratorOpen(true)}
                 >
                   Generate
-                </Button>
-                <Button icon={<EditOutlined />} onClick={onEditClick}>
+                </MuiButton>
+                <MuiButton variant="outlined" startIcon={<EditOutlined />} onClick={onEditClick}>
                   Edit
-                </Button>
+                </MuiButton>
               </>
             )}
           </div>
@@ -96,15 +98,16 @@ const PlaylistViewActions = ({
             {addAllButton}
             {isOwner && (
               <>
-                <Button
-                  icon={<ThunderboltOutlined />}
+                <MuiButton
+                  variant="outlined"
+                  startIcon={<ElectricBoltOutlined />}
                   onClick={() => setGeneratorOpen(true)}
                 >
                   Generate Playlist
-                </Button>
-                <Button icon={<EditOutlined />} onClick={onEditClick}>
+                </MuiButton>
+                <MuiButton variant="outlined" startIcon={<EditOutlined />} onClick={onEditClick}>
                   Edit Playlist
-                </Button>
+                </MuiButton>
               </>
             )}
           </div>

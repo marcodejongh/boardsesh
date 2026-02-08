@@ -1,8 +1,11 @@
 'use client';
 import React, { useEffect, useRef, useCallback, useState } from 'react';
-import { Button } from 'antd';
+import Button from '@mui/material/Button';
+import ButtonGroup from '@mui/material/ButtonGroup';
+import IconButton from '@mui/material/IconButton';
 import Box from '@mui/material/Box';
-import { AppstoreOutlined, UnorderedListOutlined } from '@ant-design/icons';
+import AppsOutlined from '@mui/icons-material/AppsOutlined';
+import FormatListBulletedOutlined from '@mui/icons-material/FormatListBulletedOutlined';
 import { track } from '@vercel/analytics';
 import { Climb, ParsedBoardRouteParameters, BoardDetails } from '@/app/lib/types';
 import { useQueueContext } from '../graphql-queue';
@@ -148,20 +151,24 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
         }}
       >
         <RecentSearchPills />
-        <Button.Group size="small" style={{ flexShrink: 0 }}>
-          <Button
-            icon={<UnorderedListOutlined />}
-            type={viewMode === 'list' ? 'primary' : 'default'}
+        <ButtonGroup size="small" sx={{ flexShrink: 0 }}>
+          <IconButton
             onClick={() => handleViewModeChange('list')}
             aria-label="List view"
-          />
-          <Button
-            icon={<AppstoreOutlined />}
-            type={viewMode === 'grid' ? 'primary' : 'default'}
+            color={viewMode === 'list' ? 'primary' : 'default'}
+            size="small"
+          >
+            <FormatListBulletedOutlined />
+          </IconButton>
+          <IconButton
             onClick={() => handleViewModeChange('grid')}
             aria-label="Grid view"
-          />
-        </Button.Group>
+            color={viewMode === 'grid' ? 'primary' : 'default'}
+            size="small"
+          >
+            <AppsOutlined />
+          </IconButton>
+        </ButtonGroup>
       </Box>
 
       {viewMode === 'grid' ? (

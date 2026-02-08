@@ -1,22 +1,22 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Button, Badge } from 'antd';
+import MuiBadge from '@mui/material/Badge';
+import MuiButton from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
-import {
-  SyncOutlined,
-  HeartOutlined,
-  HeartFilled,
-  StepBackwardOutlined,
-  StepForwardOutlined,
-  DownOutlined,
-  MoreOutlined,
-  UnorderedListOutlined,
-  DeleteOutlined,
-  EditOutlined,
-  CloseOutlined,
-  HistoryOutlined,
-} from '@ant-design/icons';
+import SyncOutlined from '@mui/icons-material/SyncOutlined';
+import FavoriteBorderOutlined from '@mui/icons-material/FavoriteBorderOutlined';
+import Favorite from '@mui/icons-material/Favorite';
+import SkipPreviousOutlined from '@mui/icons-material/SkipPreviousOutlined';
+import SkipNextOutlined from '@mui/icons-material/SkipNextOutlined';
+import ExpandMoreOutlined from '@mui/icons-material/ExpandMoreOutlined';
+import MoreVertOutlined from '@mui/icons-material/MoreVertOutlined';
+import FormatListBulletedOutlined from '@mui/icons-material/FormatListBulletedOutlined';
+import DeleteOutlined from '@mui/icons-material/DeleteOutlined';
+import EditOutlined from '@mui/icons-material/EditOutlined';
+import CloseOutlined from '@mui/icons-material/CloseOutlined';
+import HistoryOutlined from '@mui/icons-material/HistoryOutlined';
 import dynamic from 'next/dynamic';
 import { useQueueContext } from '../graphql-queue';
 import { useFavorite, ClimbActions } from '../climb-actions';
@@ -176,21 +176,21 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
       <div className={styles.drawerContent}>
         {/* Top bar: close button, ellipsis menu */}
         <div className={styles.topBar}>
-          <Button
-            type="text"
-            icon={<DownOutlined />}
+          <IconButton
             onClick={handleClose}
             aria-label="Close play view"
-          />
-          <Button
-            type="text"
-            icon={<MoreOutlined />}
+          >
+            <ExpandMoreOutlined />
+          </IconButton>
+          <IconButton
             onClick={() => {
               setIsQueueOpen(false);
               setIsActionsOpen(true);
             }}
             aria-label="Climb actions"
-          />
+          >
+            <MoreVertOutlined />
+          </IconButton>
         </div>
 
         {/* Board renderer with card-swipe */}
@@ -224,36 +224,37 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
 
         {/* Action bar with prev/next on the outside */}
         <div className={styles.actionBar}>
-          <Button
-            type="text"
-            icon={<StepBackwardOutlined />}
+          <IconButton
             disabled={!canSwipePrevious}
             onClick={() => {
               const prev = getPreviousClimbQueueItem();
               if (prev) setCurrentClimbQueueItem(prev);
             }}
-          />
+          >
+            <SkipPreviousOutlined />
+          </IconButton>
 
           {/* Mirror */}
           {boardDetails.supportsMirroring && (
-            <Button
-              type={isMirrored ? 'primary' : 'text'}
-              icon={<SyncOutlined />}
+            <IconButton
+              color={isMirrored ? 'primary' : 'default'}
               onClick={() => mirrorClimb()}
-              style={
+              sx={
                 isMirrored
-                  ? { backgroundColor: themeTokens.colors.purple, borderColor: themeTokens.colors.purple }
+                  ? { backgroundColor: themeTokens.colors.purple, borderColor: themeTokens.colors.purple, color: '#fff', '&:hover': { backgroundColor: themeTokens.colors.purple } }
                   : undefined
               }
-            />
+            >
+              <SyncOutlined />
+            </IconButton>
           )}
 
           {/* Favorite */}
-          <Button
-            type="text"
-            icon={isFavorited ? <HeartFilled style={{ color: themeTokens.colors.error }} /> : <HeartOutlined />}
+          <IconButton
             onClick={() => toggleFavorite()}
-          />
+          >
+            {isFavorited ? <Favorite sx={{ color: themeTokens.colors.error }} /> : <FavoriteBorderOutlined />}
+          </IconButton>
 
           {/* Party */}
           <ShareBoardButton buttonType="text" />
@@ -262,27 +263,27 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
           <SendClimbToBoardButton buttonType="text" />
 
           {/* Queue */}
-          <Badge count={remainingQueueCount} overflowCount={99} showZero={false} color={themeTokens.colors.primary}>
-            <Button
-              type="text"
-              icon={<UnorderedListOutlined />}
+          <MuiBadge badgeContent={remainingQueueCount} max={99} sx={{ '& .MuiBadge-badge': { backgroundColor: themeTokens.colors.primary, color: '#fff' } }}>
+            <IconButton
               onClick={() => {
                 setIsActionsOpen(false);
                 setIsQueueOpen(true);
               }}
               aria-label="Open queue"
-            />
-          </Badge>
+            >
+              <FormatListBulletedOutlined />
+            </IconButton>
+          </MuiBadge>
 
-          <Button
-            type="text"
-            icon={<StepForwardOutlined />}
+          <IconButton
             disabled={!canSwipeNext}
             onClick={() => {
               const next = getNextClimbQueueItem();
               if (next) setCurrentClimbQueueItem(next);
             }}
-          />
+          >
+            <SkipNextOutlined />
+          </IconButton>
         </div>
       </div>
 
@@ -341,27 +342,29 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
             queue.length > 0 && !viewOnlyMode && (
               isEditMode ? (
                 <Stack direction="row" spacing={1}>
-                  <Button
-                    type="text"
-                    icon={<DeleteOutlined />}
-                    style={{ color: themeTokens.neutral[400] }}
+                  <MuiButton
+                    variant="text"
+                    startIcon={<DeleteOutlined />}
+                    sx={{ color: themeTokens.neutral[400] }}
                     onClick={() => {
                       setQueue([]);
                       handleExitEditMode();
                     }}
                   >
                     Clear
-                  </Button>
-                  <Button type="text" icon={<CloseOutlined />} onClick={handleExitEditMode} />
+                  </MuiButton>
+                  <IconButton onClick={handleExitEditMode}><CloseOutlined /></IconButton>
                 </Stack>
               ) : (
                 <Stack direction="row" spacing={1}>
-                  <Button
-                    type={showHistory ? 'default' : 'text'}
-                    icon={<HistoryOutlined />}
+                  <IconButton
+                    color={showHistory ? 'default' : 'default'}
                     onClick={() => setShowHistory((prev) => !prev)}
-                  />
-                  <Button type="text" icon={<EditOutlined />} onClick={() => setIsEditMode(true)} />
+                    sx={showHistory ? { border: '1px solid', borderColor: 'divider' } : undefined}
+                  >
+                    <HistoryOutlined />
+                  </IconButton>
+                  <IconButton onClick={() => setIsEditMode(true)}><EditOutlined /></IconButton>
                 </Stack>
               )
             )
@@ -384,9 +387,9 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
             </div>
             {isEditMode && selectedItems.size > 0 && (
               <div className={styles.bulkRemoveBar}>
-                <Button type="primary" danger block onClick={handleBulkRemove}>
+                <MuiButton variant="contained" color="error" fullWidth onClick={handleBulkRemove}>
                   Remove {selectedItems.size} {selectedItems.size === 1 ? 'item' : 'items'}
-                </Button>
+                </MuiButton>
               </div>
             )}
           </div>

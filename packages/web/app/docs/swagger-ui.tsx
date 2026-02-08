@@ -8,12 +8,13 @@
  */
 
 import { useEffect, useState } from 'react';
-import { Alert, Spin, Typography } from 'antd';
+import { Alert, Spin } from 'antd';
+import Typography from '@mui/material/Typography';
 import SwaggerUI from 'swagger-ui-react';
 import 'swagger-ui-react/swagger-ui.css';
 import styles from './docs.module.css';
 
-const { Text, Paragraph } = Typography;
+// Typography destructuring removed - using MUI Typography directly
 
 type LoadState = 'loading' | 'success' | 'not-found' | 'error';
 
@@ -51,7 +52,7 @@ export default function SwaggerUIComponent() {
       <div className={styles.swaggerLoading}>
         <Spin size="large" />
         <div className={styles.swaggerLoadingText}>
-          <Text type="secondary">Loading API documentation...</Text>
+          <Typography variant="body2" component="span" color="text.secondary">Loading API documentation...</Typography>
         </div>
       </div>
     );
@@ -64,18 +65,18 @@ export default function SwaggerUIComponent() {
         message="OpenAPI Specification Not Generated"
         description={
           <div>
-            <Paragraph className={styles.swaggerInstructions}>
+            <Typography variant="body1" component="p" className={styles.swaggerInstructions}>
               The OpenAPI specification file has not been generated yet. This is expected during local development.
-            </Paragraph>
-            <Paragraph className={styles.swaggerInstructionsFinal}>
+            </Typography>
+            <Typography variant="body1" component="p" className={styles.swaggerInstructionsFinal}>
               Run the following command to generate it:
-            </Paragraph>
+            </Typography>
             <pre className={styles.swaggerCommandBlock}>
               npm run generate:openapi
             </pre>
-            <Paragraph type="secondary" className={styles.swaggerNote}>
+            <Typography variant="body1" component="p" color="text.secondary" className={styles.swaggerNote}>
               In production, this runs automatically during the build process.
-            </Paragraph>
+            </Typography>
           </div>
         }
         className={styles.swaggerAlert}

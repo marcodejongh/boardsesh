@@ -1,10 +1,18 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Input, Switch, Button, Typography, Tag, Alert, Slider, Tooltip, Upload, message, Select } from 'antd';
+import { Switch, Slider, Upload, Select } from 'antd';
+import MuiAlert from '@mui/material/Alert';
+import MuiTooltip from '@mui/material/Tooltip';
+import Chip from '@mui/material/Chip';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
-import { SettingOutlined, CloseOutlined, FireOutlined, ArrowLeftOutlined, SaveOutlined, LoginOutlined, UploadOutlined, LoadingOutlined, ImportOutlined } from '@ant-design/icons';
+import MuiButton from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
+import Typography from '@mui/material/Typography';
+import TextField from '@mui/material/TextField';
+import CircularProgress from '@mui/material/CircularProgress';
+import { SettingsOutlined, CloseOutlined, LocalFireDepartmentOutlined, ArrowBackOutlined, SaveOutlined, LoginOutlined, CloudUploadOutlined, GetAppOutlined } from '@mui/icons-material';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { track } from '@vercel/analytics';
@@ -28,8 +36,6 @@ import { useCreateClimbContext } from './create-climb-context';
 import CreateClimbHeatmapOverlay from './create-climb-heatmap-overlay';
 import styles from './create-climb-form.module.css';
 
-const { Text } = Typography;
-const { TextArea } = Input;
 
 interface CreateClimbFormValues {
   name: string;
@@ -388,21 +394,20 @@ export default function CreateClimbForm({
     if (boardType === 'aurora') {
       if (!isAuthenticated) {
         return (
-          <Button type="primary" icon={<LoginOutlined />} onClick={() => setShowAuthModal(true)}>
+          <MuiButton variant="contained" startIcon={<LoginOutlined />} onClick={() => setShowAuthModal(true)}>
             Sign In
-          </Button>
+          </MuiButton>
         );
       }
       return (
-        <Button
-          type="primary"
-          icon={<SaveOutlined />}
-          loading={isSaving}
-          disabled={!canSave}
+        <MuiButton
+          variant="contained"
+          startIcon={isSaving ? <CircularProgress size={16} /> : <SaveOutlined />}
+          disabled={isSaving || !canSave}
           onClick={handlePublish}
         >
           {isSaving ? 'Saving...' : 'Save'}
-        </Button>
+        </MuiButton>
       );
     }
 
@@ -410,22 +415,21 @@ export default function CreateClimbForm({
     if (!session?.user) {
       return (
         <Link href="/api/auth/signin">
-          <Button type="primary" icon={<LoginOutlined />}>
+          <MuiButton variant="contained" startIcon={<LoginOutlined />}>
             Log in to Save
-          </Button>
+          </MuiButton>
         </Link>
       );
     }
     return (
-      <Button
-        type="primary"
-        icon={<SaveOutlined />}
-        loading={isSaving}
-        disabled={!canSave}
+      <MuiButton
+        variant="contained"
+        startIcon={isSaving ? <CircularProgress size={16} /> : <SaveOutlined />}
+        disabled={isSaving || !canSave}
         onClick={handlePublish}
       >
         {isSaving ? 'Saving...' : 'Save'}
-      </Button>
+      </MuiButton>
     );
   };
 
@@ -433,20 +437,22 @@ export default function CreateClimbForm({
     <div className={styles.pageContainer}>
       {/* Unified Header */}
       <div className={styles.createHeader}>
-        <Button icon={<ArrowLeftOutlined />} onClick={handleCancel}>
+        <MuiButton variant="outlined" startIcon={<ArrowBackOutlined />} onClick={handleCancel}>
           Back
-        </Button>
-        <Input
+        </MuiButton>
+        <TextField
           placeholder="Climb name"
-          maxLength={100}
+          inputProps={{ maxLength: 100 }}
           className={styles.headerNameInput}
-          variant="borderless"
+          variant="standard"
           value={climbName}
           onChange={(e) => setClimbName(e.target.value)}
         />
         {/* MoonBoard: Show grade in header like climb card */}
         {boardType === 'moonboard' && userGrade && (
-          <Text
+          <Typography
+            variant="body2"
+            component="span"
             style={{
               fontSize: 28,
               fontWeight: themeTokens.typography.fontWeight.bold,
@@ -456,13 +462,13 @@ export default function CreateClimbForm({
             }}
           >
             {userGrade}
-          </Text>
+          </Typography>
         )}
-        <Button
-          type="text"
-          icon={showSettingsPanel ? <CloseOutlined /> : <SettingOutlined />}
+        <IconButton
           onClick={handleToggleSettings}
-        />
+        >
+          {showSettingsPanel ? <CloseOutlined /> : <SettingsOutlined />}
+        </IconButton>
         {renderSaveButton()}
       </div>
 
@@ -476,14 +482,14 @@ export default function CreateClimbForm({
           className={styles.authAlert}
           action={
             boardType === 'aurora' ? (
-              <Button size="small" type="primary" onClick={() => setShowAuthModal(true)}>
+              <MuiButton size="small" variant="contained" onClick={() => setShowAuthModal(true)}>
                 Sign In
-              </Button>
+              </MuiButton>
             ) : (
               <Link href="/api/auth/signin">
-                <Button size="small" type="primary">
+                <MuiButton size="small" variant="contained">
                   Sign In
-                </Button>
+                </MuiButton>
               </Link>
             )
           }
@@ -519,9 +525,9 @@ export default function CreateClimbForm({
         {/* Controls bar with draft toggle (all boards) and heatmap (Aurora only) */}
         <div className={styles.climbTitleContainer}>
           <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-            <Text type="secondary" className={styles.draftLabel}>
+            <Typography variant="body2" component="span" color="text.secondary" className={styles.draftLabel}>
               Draft
-            </Text>
+            </Typography>
             <Switch
               size="small"
               checked={isDraft}
@@ -531,20 +537,20 @@ export default function CreateClimbForm({
             {boardType === 'aurora' && (
               <>
                 <Tooltip title={showHeatmap ? 'Hide heatmap' : 'Show hold popularity heatmap'}>
-                  <Button
-                    type={showHeatmap ? 'primary' : 'text'}
-                    icon={<FireOutlined />}
+                  <IconButton
+                    color={showHeatmap ? 'error' : 'default'}
                     size="small"
                     onClick={handleToggleHeatmap}
-                    danger={showHeatmap}
                     className={styles.heatmapButton}
-                  />
+                  >
+                    <LocalFireDepartmentOutlined />
+                  </IconButton>
                 </Tooltip>
                 {showHeatmap && (
                   <>
-                    <Text type="secondary" className={styles.draftLabel}>
+                    <Typography variant="body2" component="span" color="text.secondary" className={styles.draftLabel}>
                       Opacity
-                    </Text>
+                    </Typography>
                     <Slider
                       min={0.1}
                       max={1}
@@ -597,16 +603,16 @@ export default function CreateClimbForm({
               onClick={(e) => e.stopPropagation()}
             >
               <div className={styles.settingsPanelHeader}>
-                <Text strong>Climb Settings</Text>
+                <Typography variant="body2" component="span" fontWeight={600}>Climb Settings</Typography>
               </div>
               <div className={styles.settingsPanelContent}>
                 {/* MoonBoard-specific: Angle, Grade and Benchmark */}
                 {boardType === 'moonboard' && (
                   <>
                     <div className={styles.settingsField}>
-                      <Text type="secondary" className={styles.settingsLabel}>
+                      <Typography variant="body2" component="span" color="text.secondary" className={styles.settingsLabel}>
                         Angle
-                      </Text>
+                      </Typography>
                       <Select
                         value={selectedAngle}
                         onChange={setSelectedAngle}
@@ -615,9 +621,9 @@ export default function CreateClimbForm({
                       />
                     </div>
                     <div className={styles.settingsField}>
-                      <Text type="secondary" className={styles.settingsLabel}>
+                      <Typography variant="body2" component="span" color="text.secondary" className={styles.settingsLabel}>
                         Grade
-                      </Text>
+                      </Typography>
                       <Select
                         placeholder="Select grade"
                         value={userGrade}
@@ -634,23 +640,26 @@ export default function CreateClimbForm({
                           checked={isBenchmark}
                           onChange={setIsBenchmark}
                         />
-                        <Text>Benchmark</Text>
+                        <Typography variant="body2" component="span">Benchmark</Typography>
                       </Box>
                     </div>
                   </>
                 )}
                 {/* Common: Description */}
                 <div className={styles.settingsField}>
-                  <Text type="secondary" className={styles.settingsLabel}>
+                  <Typography variant="body2" component="span" color="text.secondary" className={styles.settingsLabel}>
                     Description (optional)
-                  </Text>
-                  <TextArea
+                  </Typography>
+                  <TextField
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="Add beta or notes about your climb..."
+                    multiline
                     rows={3}
-                    maxLength={500}
-                    showCount
+                    inputProps={{ maxLength: 500 }}
+                    variant="outlined"
+                    size="small"
+                    fullWidth
                   />
                 </div>
               </div>
@@ -678,9 +687,9 @@ export default function CreateClimbForm({
           </Stack>
           <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
             {totalHolds > 0 && (
-              <Button size="small" onClick={resetHolds}>
+              <MuiButton size="small" variant="outlined" onClick={resetHolds}>
                 Clear
-              </Button>
+              </MuiButton>
             )}
             {/* MoonBoard-only: Import buttons */}
             {boardType === 'moonboard' && (
@@ -694,12 +703,12 @@ export default function CreateClimbForm({
                   }}
                   disabled={isOcrProcessing}
                 >
-                  <Button size="small" icon={isOcrProcessing ? <LoadingOutlined /> : <UploadOutlined />} disabled={isOcrProcessing}>
+                  <MuiButton size="small" variant="outlined" startIcon={isOcrProcessing ? <CircularProgress size={16} /> : <CloudUploadOutlined />} disabled={isOcrProcessing}>
                     {isOcrProcessing ? 'Processing...' : 'Import'}
-                  </Button>
+                  </MuiButton>
                 </Upload>
                 <Link href={bulkImportUrl}>
-                  <Button size="small" icon={<ImportOutlined />}>Bulk</Button>
+                  <MuiButton size="small" variant="outlined" startIcon={<GetAppOutlined />}>Bulk</MuiButton>
                 </Link>
               </>
             )}
@@ -710,9 +719,9 @@ export default function CreateClimbForm({
       {/* MoonBoard validation hint */}
       {boardType === 'moonboard' && !isValid && totalHolds > 0 && (
         <div className={styles.validationBar}>
-          <Text type="secondary">
+          <Typography variant="body2" component="span" color="text.secondary">
             A valid climb needs at least 1 start hold and 1 finish hold
-          </Text>
+          </Typography>
         </div>
       )}
 

@@ -1,10 +1,12 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { Form, Input, Switch, ColorPicker, message, Typography, Button } from 'antd';
+import { Form, Input, Switch, ColorPicker, message } from 'antd';
+import MuiButton from '@mui/material/Button';
+import Typography from '@mui/material/Typography';
 import Stack from '@mui/material/Stack';
 import SwipeableDrawer from '@/app/components/swipeable-drawer/swipeable-drawer';
-import { GlobalOutlined, LockOutlined } from '@ant-design/icons';
+import { PublicOutlined, LockOutlined } from '@mui/icons-material';
 import type { Color } from 'antd/es/color-picker';
 import { executeGraphQL } from '@/app/lib/graphql/client';
 import {
@@ -16,7 +18,7 @@ import {
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { themeTokens } from '@/app/theme/theme-config';
 
-const { Text } = Typography;
+// Typography destructuring removed - using MUI Typography directly
 
 // Validate hex color format
 const isValidHexColor = (color: string): boolean => {
@@ -121,10 +123,10 @@ export default function PlaylistEditDrawer({ open, playlist, onClose, onSuccess 
       }}
       extra={
         <Stack direction="row" spacing={1}>
-          <Button onClick={handleCancel}>Cancel</Button>
-          <Button type="primary" onClick={handleSubmit} loading={loading}>
-            Save
-          </Button>
+          <MuiButton variant="outlined" onClick={handleCancel}>Cancel</MuiButton>
+          <MuiButton variant="contained" onClick={handleSubmit} disabled={loading}>
+            {loading ? 'Saving...' : 'Save'}
+          </MuiButton>
         </Stack>
       }
     >
@@ -170,14 +172,14 @@ export default function PlaylistEditDrawer({ open, playlist, onClose, onSuccess 
             <Switch
               checked={isPublic}
               onChange={handleVisibilityChange}
-              checkedChildren={<GlobalOutlined />}
+              checkedChildren={<PublicOutlined />}
               unCheckedChildren={<LockOutlined />}
             />
-            <Text type="secondary" style={{ fontSize: 12 }}>
+            <Typography variant="body2" component="span" color="text.secondary" sx={{ fontSize: 12 }}>
               {isPublic
                 ? 'Public playlists can be viewed by anyone with the link'
                 : 'Private playlists are only visible to you'}
-            </Text>
+            </Typography>
           </Stack>
         </Form.Item>
       </Form>

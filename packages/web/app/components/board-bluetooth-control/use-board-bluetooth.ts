@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { message } from 'antd';
+import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 import { track } from '@vercel/analytics';
 import { BoardDetails } from '@/app/lib/types';
 import {
@@ -46,6 +46,7 @@ interface UseBoardBluetoothOptions {
 }
 
 export function useBoardBluetooth({ boardDetails, onConnectionChange }: UseBoardBluetoothOptions) {
+  const { showMessage } = useSnackbar();
   const [loading, setLoading] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
 
@@ -108,7 +109,7 @@ export function useBoardBluetooth({ boardDetails, onConnectionChange }: UseBoard
   const connect = useCallback(
     async (initialFrames?: string, mirrored?: boolean) => {
       if (!navigator.bluetooth) {
-        message.error('Current browser does not support Web Bluetooth.');
+        showMessage('Current browser does not support Web Bluetooth.', 'error');
         return false;
       }
 
