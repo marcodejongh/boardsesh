@@ -92,6 +92,9 @@ const SwipeableDrawer: React.FC<SwipeableDrawerProps> = ({
   // Inject the drag handle into the title so it appears above the header content.
   const handleInHeader = isVerticalPlacement && userTitle !== undefined && userTitle !== null;
 
+  // For top-placed drawers without a title, render drag handle below footer (always visible)
+  const hasExternalBottomHandle = placement === 'top' && !handleInHeader && showDragHandle;
+
   // Build the header element if title is provided
   const headerElement = useMemo(() => {
     if (userTitle === undefined || userTitle === null) {
@@ -147,10 +150,10 @@ const SwipeableDrawer: React.FC<SwipeableDrawerProps> = ({
       <>
         {(placement === 'bottom' || placement === 'left') && (isVerticalPlacement ? horizontalDragHandle : verticalDragHandle)}
         {children}
-        {(placement === 'top' || placement === 'right') && (isVerticalPlacement ? horizontalDragHandle : verticalDragHandle)}
+        {(placement === 'right' || (placement === 'top' && !hasExternalBottomHandle)) && (isVerticalPlacement ? horizontalDragHandle : verticalDragHandle)}
       </>
     );
-  }, [placement, horizontalDragHandle, verticalDragHandle, handleInHeader, isVerticalPlacement, children]);
+  }, [placement, horizontalDragHandle, verticalDragHandle, handleInHeader, isVerticalPlacement, children, hasExternalBottomHandle]);
 
   // Compute paper dimensions from height/width/styles.wrapper
   const paperSx = useMemo(() => {
@@ -236,6 +239,7 @@ const SwipeableDrawer: React.FC<SwipeableDrawerProps> = ({
           {footer}
         </Box>
       )}
+      {hasExternalBottomHandle && horizontalDragHandle}
     </>
   );
 
