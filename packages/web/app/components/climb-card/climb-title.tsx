@@ -189,6 +189,8 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
 
     return (
       <Box sx={{ display: 'flex', gap: '12px', alignItems: 'center', ...(centered ? { position: 'relative' } : {}) }} className={className}>
+        {/* Colorized V grade on the left */}
+        {largeGradeElement}
         {/* Center: Name and quality/setter stacked */}
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0, flex: 1, minWidth: 0, alignItems: centered ? 'center' : 'flex-start' }}>
           {/* Row 1: Name with addon */}
@@ -210,8 +212,6 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
             {secondLineContent.length > 0 ? secondLineContent.join(' · ') : <Box component="span" sx={{ fontStyle: 'italic' }}>project</Box>}
           </Typography>
         </Box>
-        {/* Colorized V grade on the right */}
-        {largeGradeElement}
         {/* Right addon (e.g., ascent status) */}
         {rightAddon}
       </Box>
