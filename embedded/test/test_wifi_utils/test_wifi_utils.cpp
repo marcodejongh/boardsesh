@@ -294,6 +294,88 @@ void test_getState_reflects_current_state(void) {
 }
 
 // =============================================================================
+// AP Mode Tests
+// =============================================================================
+
+void test_startAP_sets_ap_mode(void) {
+    wifiMgr->begin();
+    bool result = wifiMgr->startAP("TestAP");
+
+    TEST_ASSERT_TRUE(result);
+    TEST_ASSERT_TRUE(wifiMgr->isAPMode());
+    TEST_ASSERT_EQUAL(WiFiConnectionState::AP_MODE, wifiMgr->getState());
+}
+
+void test_startAP_clears_credentials_prevents_reconnect_loop(void) {
+    wifiMgr->begin();
+
+    // Simulate a failed connection attempt that sets currentSSID/currentPassword
+    wifiMgr->connect("FailingNetwork", "password123", false);
+    TEST_ASSERT_EQUAL(WiFiConnectionState::CONNECTING, wifiMgr->getState());
+
+    // Enter AP mode - should clear in-memory credentials
+    wifiMgr->startAP("SetupAP");
+    TEST_ASSERT_EQUAL(WiFiConnectionState::AP_MODE, wifiMgr->getState());
+
+    // Stop AP mode - transitions to DISCONNECTED
+    wifiMgr->stopAP();
+    TEST_ASSERT_EQUAL(WiFiConnectionState::DISCONNECTED, wifiMgr->getState());
+
+    // Run the loop - checkConnection should NOT attempt reconnection
+    // because currentSSID was cleared by startAP()
+    wifiMgr->loop();
+
+    // Should remain DISCONNECTED (not transition to CONNECTING)
+    TEST_ASSERT_EQUAL(WiFiConnectionState::DISCONNECTED, wifiMgr->getState());
+}
+
+void test_startAP_after_failed_connection(void) {
+    wifiMgr->begin();
+    wifiMgr->setStateCallback(testStateCallback);
+    callbackCount = 0;
+
+    // Start a connection that will fail
+    wifiMgr->connect("BadNetwork", "badpass", false);
+
+    // Enter AP mode
+    wifiMgr->startAP("SetupAP");
+    TEST_ASSERT_EQUAL(WiFiConnectionState::AP_MODE, wifiMgr->getState());
+    TEST_ASSERT_EQUAL(WIFI_AP, WiFi.getMode());
+}
+
+void test_stopAP_restores_sta_mode(void) {
+    wifiMgr->begin();
+    wifiMgr->startAP("TestAP");
+
+    wifiMgr->stopAP();
+    TEST_ASSERT_FALSE(wifiMgr->isAPMode());
+    TEST_ASSERT_EQUAL(WIFI_STA, WiFi.getMode());
+    TEST_ASSERT_EQUAL(WiFiConnectionState::DISCONNECTED, wifiMgr->getState());
+}
+
+void test_loop_skips_check_in_ap_mode(void) {
+    wifiMgr->begin();
+    wifiMgr->startAP("TestAP");
+
+    // Even if WiFi reports connected (shouldn't in AP mode), state should stay AP_MODE
+    WiFi.mockSetStatus(WL_CONNECTED);
+    wifiMgr->loop();
+
+    TEST_ASSERT_EQUAL(WiFiConnectionState::AP_MODE, wifiMgr->getState());
+}
+
+void test_hasSavedCredentials_with_saved(void) {
+    Config.setString(WiFiUtils::KEY_SSID, "SavedNet");
+    Config.setString(WiFiUtils::KEY_PASSWORD, "SavedPass");
+
+    TEST_ASSERT_TRUE(wifiMgr->hasSavedCredentials());
+}
+
+void test_hasSavedCredentials_without_saved(void) {
+    TEST_ASSERT_FALSE(wifiMgr->hasSavedCredentials());
+}
+
+// =============================================================================
 // Config Key Tests
 // =============================================================================
 
@@ -352,6 +434,15 @@ int main(int argc, char** argv) {
     RUN_TEST(test_connect_after_disconnect);
     RUN_TEST(test_loop_when_not_connecting);
     RUN_TEST(test_getState_reflects_current_state);
+
+    // AP mode tests
+    RUN_TEST(test_startAP_sets_ap_mode);
+    RUN_TEST(test_startAP_clears_credentials_prevents_reconnect_loop);
+    RUN_TEST(test_startAP_after_failed_connection);
+    RUN_TEST(test_stopAP_restores_sta_mode);
+    RUN_TEST(test_loop_skips_check_in_ap_mode);
+    RUN_TEST(test_hasSavedCredentials_with_saved);
+    RUN_TEST(test_hasSavedCredentials_without_saved);
 
     // Config key tests
     RUN_TEST(test_key_constants);

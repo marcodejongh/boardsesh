@@ -53,6 +53,12 @@ bool WiFiUtils::startAP(const char* apName) {
     // Stop any existing connection first
     WiFi.disconnect();
 
+    // Clear in-memory credentials to prevent checkConnection() from
+    // attempting reconnection with stale credentials if we later
+    // transition out of AP mode
+    currentSSID = "";
+    currentPassword = "";
+
     // Configure AP mode
     WiFi.mode(WIFI_AP);
 
