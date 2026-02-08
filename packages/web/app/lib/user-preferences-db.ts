@@ -43,9 +43,15 @@ export const getPreference = async <T>(key: string): Promise<T | null> => {
     if (legacyKey) {
       const legacyValue = localStorage.getItem(legacyKey);
       if (legacyValue !== null) {
-        await db.put(STORE_NAME, legacyValue, key);
+        let parsed: unknown = legacyValue;
+        try {
+          parsed = JSON.parse(legacyValue);
+        } catch {
+          // Value is a plain string, use as-is
+        }
+        await db.put(STORE_NAME, parsed, key);
         localStorage.removeItem(legacyKey);
-        return legacyValue as T;
+        return parsed as T;
       }
     }
 

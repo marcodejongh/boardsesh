@@ -58,7 +58,8 @@ export async function getRecentSearches(): Promise<RecentSearch[]> {
     }
 
     return [];
-  } catch {
+  } catch (error) {
+    console.error('Failed to get recent searches:', error);
     return [];
   }
 }
@@ -85,7 +86,7 @@ export async function addRecentSearch(label: string, filters: Partial<SearchRequ
     if (!db) return;
     await db.put(STORE_NAME, updated, STORE_KEY);
     window.dispatchEvent(new CustomEvent(RECENT_SEARCHES_CHANGED_EVENT));
-  } catch {
-    // Silently fail if IndexedDB is unavailable
+  } catch (error) {
+    console.error('Failed to add recent search:', error);
   }
 }
