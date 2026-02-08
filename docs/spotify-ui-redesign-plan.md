@@ -285,7 +285,7 @@ Add a "compact" display mode for the climb list that renders climbs as slim rows
 
 4. **Modify: `packages/web/app/components/board-page/climbs-list.tsx`**
    - Add a view mode toggle: "Grid" (current cards) vs "List" (compact)
-   - Store preference in localStorage (key: `climbListViewMode`)
+   - Store preference in IndexedDB via `user-preferences-db.ts` (key: `climbListViewMode`)
    - Toggle button in a sticky header area above the list
    - Icons: `AppstoreOutlined` for grid, `UnorderedListOutlined` for list
    - When in list mode: Render `ClimbListItem` instead of `ClimbCard`
@@ -679,7 +679,7 @@ Additions:
 - **Dynamic import of SendClimbToBoardButton**: After this phase, only loaded on desktop in the header. Play drawer (Phase 3) handles its own LED button.
 - **HoldClassificationWizard**: Currently rendered in `header.tsx` and triggered by meatball menu. After redesign, the wizard should be rendered within or triggered from the user drawer. The drawer can manage its own `showHoldClassification` state.
 - **AuthModal**: Currently rendered in `header.tsx`. After redesign, the user drawer handles sign-in. Move `AuthModal` rendering to the user drawer component.
-- **Session data for Recents**: The `session-history-panel.tsx` already reads stored sessions from localStorage. Reuse this data source for the Recents section in the user drawer.
+- **Session data for Recents**: The `session-history-panel.tsx` already reads stored sessions from IndexedDB. Reuse this data source for the Recents section in the user drawer.
 
 ---
 
@@ -771,7 +771,7 @@ Ensure the desktop experience remains cohesive while the mobile experience is tr
 2. **Sidebar stays** - Queue/Search/Search by Hold tabs in the sidebar (existing `ListLayoutClient` with 3 tabs, not 2)
 3. **Header keeps** - Party, LED, Create buttons in header (wrapped in `.desktopOnly` class from `header.module.css`). User avatar + left drawer works the same on desktop (no separate user dropdown).
 4. **Play view** - Desktop users still use the full `/play/` page route with the sidebar layout (`play/layout-client.tsx`)
-5. **Climb list** - Default to compact (list) mode on all devices. Grid (card) mode available via toggle. Respect any stored localStorage preference.
+5. **Climb list** - Default to compact (list) mode on all devices. Grid (card) mode available via toggle. Respect any stored IndexedDB preference.
 6. **QueueControlBar** - Shows additional prev/next buttons on desktop (existing `.navButtons` CSS class already handles this), keeps mirror button visible, keeps play link
 
 ### Files to modify
@@ -959,7 +959,7 @@ Board layout.tsx (server component)
 - **One new context likely needed**: `BluetoothContext` to share Bluetooth connection state across `SendClimbToBoardButton` (desktop header), play drawer LED button, and party drawer LED tab. A plain hook would create independent connection instances. Alternatively, keep the hook-only approach but mount it in exactly one place and pass state down via props.
 - **Existing contexts consumed**: `QueueContext` (via `useQueueContext()`), `BoardProvider` (via `useBoardProvider()`), `FavoritesProvider` (via `useFavorite()`), `PersistentSessionContext` (via `usePersistentSession()` — used by `GlobalQueueControlBar` for off-route rendering)
 - **Global bar visibility**: Derived from `PersistentSessionContext` state: `hasActiveQueue = (localQueue.length > 0 || !!localCurrentClimbQueueItem || !!activeSession)`. Combined with `useIsOnBoardRoute()` to determine whether the global instance or board-route instance should render.
-- **View mode preference**: localStorage (`climbListViewMode: 'compact' | 'grid'`). Default to `'compact'` on all devices when no stored preference.
+- **View mode preference**: IndexedDB via `user-preferences-db.ts` (`climbListViewMode: 'compact' | 'grid'`). Default to `'compact'` on all devices when no stored preference.
 - **Play drawer open state**: Local state in QueueControlBar. Use a single `activeDrawer: 'none' | 'play' | 'queue'` state to prevent drawer stacking conflicts.
 - **Bottom tab active state**: Derived from current URL pathname via `usePathname()`
 - **Bluetooth connection state**: Extracted to shared hook or context (see above)
@@ -1013,7 +1013,7 @@ Board layout.tsx (server component)
 - [x] Swipe direction detection works (vertical scroll not blocked)
 - [x] Ellipsis menu opens bottom drawer with all actions
 - [x] All actions in drawer work (favorite, queue, tick, share, playlist, open-in-app, mirror, fork, view)
-- [x] View mode toggle persists across page loads (localStorage)
+- [x] View mode toggle persists across page loads (IndexedDB)
 - [x] View mode defaults to compact on all devices
 - [x] Infinite scroll works in both modes
 - [x] Scroll position restoration (hash-based) works in both modes

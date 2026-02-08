@@ -81,7 +81,7 @@ export function getUnifiedTable<K extends keyof UnifiedTableSet>(
  * @returns True if the board name is valid
  */
 export function isValidBoardName(boardName: string): boardName is BoardName {
-  return boardName === 'kilter' || boardName === 'tension';
+  return boardName === 'kilter' || boardName === 'tension' || boardName === 'moonboard';
 }
 
 /**

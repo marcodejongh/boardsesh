@@ -61,7 +61,8 @@ export const createClimbFilters = (
 
   // Size-specific conditions using pre-fetched static edge values
   // This eliminates the need for a JOIN on product_sizes in the main query
-  const sizeConditions: SQL[] = [
+  // MoonBoard climbs have NULL edge values (single fixed size), so skip edge filtering
+  const sizeConditions: SQL[] = params.board_name === 'moonboard' ? [] : [
     sql`${tables.climbs.edgeLeft} > ${sizeEdges.edgeLeft}`,
     sql`${tables.climbs.edgeRight} < ${sizeEdges.edgeRight}`,
     sql`${tables.climbs.edgeBottom} > ${sizeEdges.edgeBottom}`,

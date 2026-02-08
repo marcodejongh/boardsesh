@@ -301,7 +301,14 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
     if (defaultSizeId !== null) {
       setSelectedSize(defaultSizeId);
     } else {
-      setSelectedSize(undefined);
+      // Fall back to first available size from board configs (needed for moonboard
+      // which has sizes in boardConfigs but not in the generated product-sizes-data)
+      const availableSizes = boardConfigs.sizes[`${selectedBoard}-${selectedLayout}`] || [];
+      if (availableSizes.length > 0) {
+        setSelectedSize(availableSizes[0].id);
+      } else {
+        setSelectedSize(undefined);
+      }
     }
 
     setSelectedSets([]);
@@ -574,23 +581,25 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
                   </FormControl>
                 </Box>
 
-                <Box sx={{ width: { xs: '100%', sm: '50%' } }}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel>Size</InputLabel>
-                    <MuiSelect
-                      value={selectedSize ?? ''}
-                      label="Size"
-                      onChange={(e: SelectChangeEvent<number | string>) => handleSizeChange(e.target.value as number)}
-                      disabled={!selectedLayout}
-                    >
-                      {sizes.map(({ id, name, description }) => (
-                        <MenuItem key={id} value={id}>
-                          {`${name} ${description}`}
-                        </MenuItem>
-                      ))}
-                    </MuiSelect>
-                  </FormControl>
-                </Box>
+                {selectedBoard !== 'moonboard' && (
+                  <Box sx={{ width: { xs: '100%', sm: '50%' } }}>
+                    <FormControl fullWidth size="small">
+                      <InputLabel>Size</InputLabel>
+                      <MuiSelect
+                        value={selectedSize ?? ''}
+                        label="Size"
+                        onChange={(e: SelectChangeEvent<number | string>) => handleSizeChange(e.target.value as number)}
+                        disabled={!selectedLayout}
+                      >
+                        {sizes.map(({ id, name, description }) => (
+                          <MenuItem key={id} value={id}>
+                            {`${name} ${description}`}
+                          </MenuItem>
+                        ))}
+                      </MuiSelect>
+                    </FormControl>
+                  </Box>
+                )}
 
                 <Box sx={{ width: { xs: '100%', sm: '50%' } }}>
                   <FormControl fullWidth size="small">

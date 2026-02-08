@@ -6,8 +6,11 @@ export const MOONBOARD_ENABLED = true;
 
 // MoonBoard grades - uses uppercase Font notation for display
 // These grades match the board_difficulty_grades table and BOULDER_GRADES in board-data.ts
-// MoonBoard only supports V3+ (starting from 6a)
+// MoonBoard supports grades from 5+ (V1) and above
 export const MOONBOARD_GRADES = [
+  { value: '5+', label: '5+ (V1)', difficultyId: 13 },
+  { value: '5B', label: '5B (V1)', difficultyId: 14 },
+  { value: '5C', label: '5C (V2)', difficultyId: 15 },
   { value: '6A', label: '6A (V3)', difficultyId: 16 },
   { value: '6A+', label: '6A+ (V3)', difficultyId: 17 },
   { value: '6B', label: '6B (V4)', difficultyId: 18 },
@@ -33,6 +36,7 @@ export const MOONBOARD_LAYOUTS = {
   'moonboard-2024': { id: 3, name: 'MoonBoard 2024', folder: 'moonboard2024' },
   'moonboard-masters-2017': { id: 4, name: 'MoonBoard Masters 2017', folder: 'moonboardmasters2017' },
   'moonboard-masters-2019': { id: 5, name: 'MoonBoard Masters 2019', folder: 'moonboardmasters2019' },
+  'mini-moonboard-2020': { id: 6, name: 'Mini MoonBoard 2020', folder: 'minimoonboard2020' },
 } as const;
 
 export type MoonBoardLayoutKey = keyof typeof MOONBOARD_LAYOUTS;
@@ -71,6 +75,12 @@ export const MOONBOARD_SETS: Record<MoonBoardLayoutKey, { id: number; name: stri
     { id: 21, name: 'Wooden Holds', imageFile: 'woodenholds.png' },
     { id: 22, name: 'Wooden Holds B', imageFile: 'woodenholdsb.png' },
     { id: 23, name: 'Wooden Holds C', imageFile: 'woodenholdsc.png' },
+  ],
+  'mini-moonboard-2020': [
+    { id: 24, name: 'Original School Holds', imageFile: 'originalschoolholds.png' },
+    { id: 25, name: 'Wooden Holds', imageFile: 'woodenholds.png' },
+    { id: 26, name: 'Wooden Holds B', imageFile: 'woodenholdsb.png' },
+    { id: 27, name: 'Wooden Holds C', imageFile: 'woodenholdsc.png' },
   ],
 };
 

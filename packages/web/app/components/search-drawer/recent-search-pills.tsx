@@ -14,7 +14,7 @@ const RecentSearchPills: React.FC = () => {
   const currentFilterKey = getFilterKey(uiSearchParams);
 
   const refreshSearches = useCallback(() => {
-    setSearches(getRecentSearches());
+    getRecentSearches().then(setSearches);
   }, []);
 
   useEffect(() => {

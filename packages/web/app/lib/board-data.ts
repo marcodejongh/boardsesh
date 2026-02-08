@@ -161,9 +161,9 @@ export type BoulderGrade = typeof BOULDER_GRADES[number];
 // Alias for backwards compatibility
 export const TENSION_KILTER_GRADES = BOULDER_GRADES;
 
-// MoonBoard only supports grades V3+ (6A and above)
+// MoonBoard supports grades from 5+ (V1) and above
 // Uses Font grade notation (uppercase) for display
-export const MOONBOARD_MIN_DIFFICULTY_ID = 16; // 6a/V3
+export const MOONBOARD_MIN_DIFFICULTY_ID = 13; // 5a/V1 (MoonBoard "5+" grade)
 
 // Helper to get grades for a specific board
 export function getGradesForBoard(boardName: BoardName) {
