@@ -27,13 +27,19 @@ This document describes the plan for adding social features to Boardsesh: commen
 ### Design Principles
 
 - **Polymorphic comments and votes**: A single `comments` table and a single `votes` table, each with an `entity_type` + `entity_id` discriminator. This avoids creating N separate tables per commentable/voteable entity.
-- **Fan-out on read**: The activity feed is assembled at query time. No separate denormalized feed table.
+- **Fan-out on write**: Feed items are materialized at write time into a per-user `feed_items` table. When a user logs an ascent, creates a climb, or posts a significant comment, the notification worker fans out a `feed_item` row to each of that user's followers. This makes feed queries simple, fast, and indexed -- no multi-source JOINs at read time. For unauthenticated users, a small fan-out-on-read approach is used for the public trending feed only (globally trending content is a bounded query that doesn't involve per-user follow graphs).
 - **Cursor-based pagination** for the activity feed (better for constantly-changing datasets than offset).
 - **Reddit-style ranking modes**: Four sort modes available across comments, feeds, and entity lists -- New (chronological), Top (highest score), Controversial (high engagement, divisive), and Hot (recent + high velocity). See [Ranking Algorithms](#ranking-algorithms) section for implementation details.
 - **Real-time via existing WebSocket infrastructure**: Notifications and live comment updates use the same graphql-ws + Redis pub/sub system as party sessions.
 - **Adjacent-angle outlier detection**: Grade proposals are automatically fast-tracked (auto-approved) when the existing grade at an angle is a statistical outlier compared to adjacent angles with strong ascent data. If neighboring angles agree the grade is significantly off, the system trusts the data and skips the voting process.
+- **Board-type-specific tables**: Aurora tables are per-board-type (`kilter_climbs`, `tension_climbs`, `kilter_climb_stats`, etc.). Throughout this document, `board_climbs` and `board_climb_stats` are shorthand for the board-specific table (e.g., `kilterClimbs`, `tensionClimbs` in the Drizzle schema). All resolvers that reference these tables must dispatch based on `boardType` to query the correct table. This follows the same pattern already used in existing resolvers (tick/ascent resolvers, sync resolvers, etc.).
 - **Server-side rendering** where possible for the feed. Interactive elements (vote buttons, comment forms) are client components embedded within server-rendered shells.
 - **Rate limiting** on social mutations.
+- **Board follow vs. new climb subscription** (intentionally independent):
+  - **Board follow** (`followBoard`) = see activity from a specific physical board installation in your feed (ascents, comments, leaderboard changes). Scoped to one `user_boards` entity.
+  - **New climb subscription** (`subscribeNewClimbs`) = get notified when ANY new climb is created for a board type + layout combination (across all physical boards with that config). Scoped to a `(boardType, layoutId)` pair.
+  - Following a board does NOT auto-subscribe to new climbs for that config, and vice versa. The UI should make this distinction clear with different copy and placement.
+- **Soft-delete pattern**: User-facing deletes use soft-delete (`deleted_at` timestamp) for safety and audit trails: `comments` (existing, for threaded coherence) and `user_boards` (preserves FK references from ticks/sessions). Exceptions where hard delete is correct: `user_follows` and `board_follows` (lightweight toggles, trivially recreatable), `votes` and `proposal_votes` (toggled on/off by design, re-voting recreates), `notifications` (pruned by retention policy after 90 days). `climb_proposals` use status-based lifecycle (`superseded`, `rejected`) which serves as logical soft-delete.
 - **Message broker for notifications**: Mutations publish lightweight events to a Redis Streams-backed broker. A separate consumer pipeline handles notification creation, deduplication, persistence, and real-time delivery. This decouples mutation latency from notification fanout and makes the system horizontally scalable from day one.
 
 ### Entity Type Registry
@@ -254,6 +260,7 @@ packages/db/src/schema/app/notifications.ts
 - `new_climb_global` -- a new climb was created on a board+layout you subscribe to (global feed)
 - `comment_reply` -- someone replied to your comment
 - `comment_on_tick` -- someone commented on your ascent
+- `comment_on_climb` -- someone commented on a climb you created (global climb discussion)
 - `vote_on_tick` -- someone voted on your ascent
 - `vote_on_comment` -- someone voted on your comment
 - `proposal_approved` -- a proposal you created or voted on was approved
@@ -269,6 +276,7 @@ packages/db/src/schema/app/notifications.ts
 - Notifications are persisted to DB for history (read/unread state survives disconnection).
 - Real-time delivery is via WebSocket pub/sub (see Phase 5).
 - Deduplication: For high-frequency events (votes), batch or deduplicate so a user doesn't get 50 notifications from 50 upvotes. Strategy: one notification per `(actor, type, entity)` tuple, updated on each new occurrence rather than inserting new rows.
+- **Retention policy**: Hard delete notifications older than 90 days via a periodic cleanup job (scheduled task or cron). `DELETE FROM notifications WHERE created_at < NOW() - INTERVAL '90 days'`. No distinction between read/unread -- after 90 days, all are pruned. This keeps the table bounded and the retention window is generous enough that users won't miss anything actionable.
 
 ### 1.6 `new_climb_subscriptions` table
 
@@ -320,20 +328,26 @@ This is distinct from Aurora's `board_walls` table (which tracks serial numbers 
 | `name` | `text` | User-assigned name (e.g., "Home Board", "Brooklyn Boulders Kilter") |
 | `description` | `text` | Nullable. Optional description or notes. |
 | `location_name` | `text` | Nullable. Gym name or location label (e.g., "Brooklyn Boulders Queensbridge") |
-| `latitude` | `double precision` | Nullable. GPS latitude for map display and proximity discovery. |
-| `longitude` | `double precision` | Nullable. GPS longitude. |
+| `latitude` | `double precision` | Nullable. GPS latitude for display and input convenience. |
+| `longitude` | `double precision` | Nullable. GPS longitude for display and input convenience. |
+| `location` | `geography(Point, 4326)` | Nullable. PostGIS geography point derived from `latitude`/`longitude`. Used for efficient proximity queries. Populated by the resolver when lat/lng are provided. |
 | `is_public` | `boolean` | DEFAULT true. Whether this board is discoverable by other users. |
 | `is_owned` | `boolean` | DEFAULT true. Whether the user physically owns this board (vs. just climbs on it, e.g., a gym board). |
 | `created_at` | `timestamp` | DEFAULT now() |
 | `updated_at` | `timestamp` | DEFAULT now() |
+| `deleted_at` | `timestamp` | Nullable. Soft-delete timestamp. When set, the board is excluded from all queries, search results, and feeds. |
 
 **Constraints:**
-- Unique index on `(owner_id, board_type, layout_id, size_id, set_ids)` -- a user can't create duplicate boards with the same hardware config. If they climb at two gyms with identical setups, they can differentiate by name/location but the config must differ (or they use the same board entry).
+- Unique index on `(owner_id, board_type, layout_id, size_id, set_ids) WHERE deleted_at IS NULL` -- a user can't create duplicate boards with the same hardware config. If they climb at two gyms with identical setups, they can differentiate by name/location but the config must differ (or they use the same board entry). Soft-deleted boards don't count toward uniqueness.
 
 **Indexes:**
-- `(owner_id, is_owned)` -- "my boards" (owned boards first)
-- `(board_type, layout_id, is_public)` -- discover public boards
-- `(latitude, longitude) WHERE is_public = true` -- proximity search for nearby boards
+- `(owner_id, is_owned) WHERE deleted_at IS NULL` -- "my boards" (owned boards first)
+- `(board_type, layout_id, is_public) WHERE deleted_at IS NULL` -- discover public boards
+- GiST index on `(location) WHERE is_public = true AND deleted_at IS NULL` -- PostGIS proximity search for nearby boards
+
+**PostGIS note:**
+- Neon DB fully supports the PostGIS extension. The `location` column uses `geography(Point, 4326)` for accurate Earth-surface distance calculations. The resolver converts `latitude`/`longitude` input to the `location` column: `ST_MakePoint(longitude, latitude)::geography`.
+- The `CreateBoardInput` and `UpdateBoardInput` GraphQL inputs accept `latitude`/`longitude` (the resolver converts to geography internally). The `UserBoard` GraphQL type returns `latitude`/`longitude` for display.
 
 **Relationship to URL routing:**
 The existing route pattern `/{board_name}/{layout_id}/{size_id}/{set_ids}/{angle}` maps directly to a `user_boards` row (minus angle, which varies per session). When the user navigates to a board path, the app can resolve which `user_board` they're using.
@@ -551,7 +565,33 @@ Stores **angle-independent** classic status for climbs. Classic means "this is a
 - This table is the "output" of the proposal system for classic proposals.
 - Separated from `climb_community_status` because classic has no angle dimension.
 
-### 1.14 `vote_counts` materialized table (optional, Phase 10 optimization)
+### 1.14 `board_follows` table
+
+```
+packages/db/src/schema/app/board-follows.ts
+```
+
+Tracks which users follow which board entities. Separate from `user_follows` (user-to-user) because the target is a board, not a user.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `bigserial` | PK |
+| `user_id` | `text` | FK -> `users.id`, ON DELETE CASCADE |
+| `board_uuid` | `text` | FK -> `user_boards.uuid`, ON DELETE CASCADE |
+| `created_at` | `timestamp` | DEFAULT now() |
+
+**Constraints:**
+- Unique index on `(user_id, board_uuid)` -- can't follow the same board twice
+
+**Indexes:**
+- `(user_id)` -- "which boards do I follow?" queries
+- `(board_uuid)` -- "who follows this board?" / follower count queries
+
+**Notes:**
+- Hard delete on unfollow (follows are lightweight toggles, no soft-delete needed).
+- Only public boards can be followed (enforced at app layer). If a board is made private, existing follows remain but no new activity is surfaced until the board is public again.
+
+### 1.15 `vote_counts` materialized table (optional, Phase 10 optimization)
 
 If `COUNT()` becomes slow:
 
@@ -565,7 +605,7 @@ If `COUNT()` becomes slow:
 
 Updated via trigger or periodic refresh. **Not needed for initial launch.**
 
-### 1.15 Schema modifications to existing tables
+### 1.16 Schema modifications to existing tables
 
 **`boardsesh_ticks`** -- add `board_id` column:
 
@@ -586,6 +626,50 @@ Updated via trigger or periodic refresh. **Not needed for initial launch.**
 
 - Resolved by matching `board_sessions.board_path` against `user_boards` config fields.
 - Allows filtering sessions by board.
+
+### 1.17 `feed_items` table (fan-out-on-write activity feed)
+
+```
+packages/db/src/schema/app/feed.ts
+```
+
+Materialized feed items. Each row represents one feed item visible to one recipient user. Created asynchronously by the notification worker when social events occur (ascent logged, climb created, comment posted, proposal approved, etc.).
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `bigserial` | PK |
+| `recipient_id` | `text` | FK -> `users.id`, ON DELETE CASCADE. Who sees this feed item. |
+| `actor_id` | `text` | FK -> `users.id`, ON DELETE SET NULL. Who performed the action. |
+| `type` | `feed_item_type` | Enum: `'ascent'`, `'new_climb'`, `'comment'`, `'proposal_approved'` |
+| `entity_type` | `social_entity_type` | What entity this is about |
+| `entity_id` | `text` | The specific entity |
+| `board_uuid` | `text` | Nullable. For board-scoped feed filtering. FK -> `user_boards.uuid`. |
+| `metadata` | `jsonb` | Type-specific denormalized data for rendering (climb name, grade, user avatar URL, etc.) |
+| `created_at` | `timestamp` | DEFAULT now(). The event timestamp. |
+
+**`feed_item_type` enum values:**
+- `ascent` -- A followed user logged a completed ascent (flash/send)
+- `new_climb` -- A followed user created a new climb
+- `comment` -- A significant comment on a trending entity
+- `proposal_approved` -- A community proposal was approved
+
+**Indexes:**
+- `(recipient_id, created_at DESC)` -- primary feed query
+- `(recipient_id, board_uuid, created_at DESC)` -- board-scoped feed query
+- `(actor_id, created_at DESC)` -- "my activity" / cleanup
+- `(created_at)` -- retention cleanup
+
+**How it works:**
+- When a user logs an ascent, the notification worker fans out a `feed_item` row to each of that user's followers. Same for new climbs, significant comments, and approved proposals.
+- The feed query becomes: `SELECT * FROM feed_items WHERE recipient_id = $me ORDER BY created_at DESC LIMIT 20` -- fast, indexed, no JOINs.
+- Board-scoped feed: `WHERE recipient_id = $me AND board_uuid = $boardUuid ORDER BY created_at DESC`
+- The `metadata` JSONB column stores denormalized rendering data (climb name, grade, user avatar URL, etc.) so the feed can render without JOINing back to source tables.
+- Fan-out happens asynchronously via the Redis Streams notification worker (same pipeline as notifications), so mutation latency isn't affected.
+- **Retention**: Hard delete feed items older than 180 days (6 months) via periodic cleanup. `DELETE FROM feed_items WHERE created_at < NOW() - INTERVAL '180 days'`
+
+**Notes:**
+- Cursor-based pagination uses `(created_at, id)` encoded as base64.
+- For `top`/`hot`/`controversial` sort modes, vote data can be stored in `metadata` (updated periodically) or JOINed from `votes` at query time (acceptable since the result set is already filtered to one user's feed).
 
 ---
 
@@ -664,6 +748,7 @@ enum NotificationType {
   new_climb_global     # A new climb on a board+layout you subscribe to
   comment_reply
   comment_on_tick
+  comment_on_climb      # Someone commented on a climb you created
   vote_on_tick
   vote_on_comment
   proposal_approved
@@ -1445,25 +1530,21 @@ New file: `packages/backend/src/graphql/resolvers/social/notifications.ts`
 New file: `packages/backend/src/graphql/resolvers/social/feed.ts`
 
 **`activityFeed` query:**
-- Auth required
-- **Board scoping**: When `boardUuid` is provided, filter all feed sources to activity on that specific board (ticks with `board_id`, new climbs matching the board's config, etc.). On the home page, this defaults to the user's `defaultBoard`.
-- Multi-source aggregation:
-
-  1. **Followed-user ascents**: Query `boardsesh_ticks` WHERE `user_id IN (SELECT following_id FROM user_follows WHERE follower_id = $me)` AND `status IN ('flash', 'send')`
-  2. **Followed-user new climbs**: Query `board_climbs` created by followed users (via `userId` or `setterId` matched through `user_board_mappings`)
-  3. **Top-voted playlist climbs**: Query votes for `entity_type = 'playlist_climb'` with high scores, joined with playlist + climb data
-  4. **Recent comments**: Query comments on entities with high engagement
-
+- Auth required (for personalized feed)
+- Reads from the `feed_items` table (fan-out-on-write, see section 1.17). No multi-source aggregation at query time.
+- **Primary query**: `SELECT * FROM feed_items WHERE recipient_id = $me ORDER BY created_at DESC LIMIT $limit`
+- **Board scoping**: When `boardUuid` is provided, filter to `WHERE recipient_id = $me AND board_uuid = $boardUuid ORDER BY created_at DESC`. On the home page, this defaults to the user's `defaultBoard`.
+- The `metadata` JSONB column contains denormalized rendering data (climb name, grade, user avatar URL, etc.) so the feed renders without JOINing back to source tables.
 - **Sort modes** (via `sortBy` parameter):
-  - `new` (default): All items sorted by timestamp descending. Pure chronological.
-  - `top`: Items ranked by net vote score. When `topPeriod` is set, only items within that time window are included (e.g., "top this week").
-  - `controversial`: Items with high total votes but divisive scores. Good for discovering debated ascents or playlist picks.
-  - `hot`: Items ranked by the hot formula -- recent items with high vote velocity surface first. Good default for discovery.
-- **Cursor**: Encode `(sort_score, timestamp, source_type, id)` as opaque base64 cursor. Sort score varies by mode (timestamp for `new`, net score for `top`, controversy score for `controversial`, hot score for `hot`).
+  - `new` (default): `ORDER BY created_at DESC`. Pure chronological. Fast, fully indexed.
+  - `top`: Items ranked by net vote score. Vote counts can be stored in `metadata` (updated periodically by a background job) or JOINed from `votes` at query time (acceptable since the result set is already filtered to one user's feed). When `topPeriod` is set, add a time window filter on `created_at`.
+  - `controversial`: Items with high total votes but divisive scores. Uses vote data from `metadata` or JOIN.
+  - `hot`: Items ranked by the hot formula -- recent items with high vote velocity surface first.
+- **Cursor**: Encode `(created_at, id)` as opaque base64 cursor for `new` sort. For other sort modes, encode `(sort_score, created_at, id)`. Sort score varies by mode (net score for `top`, controversy score for `controversial`, hot score for `hot`).
 - **Default limit**: 20 items per page, max 50
 
 **For unauthenticated users:**
-- Show globally trending content (top-voted public playlist climbs, most-commented climbs)
+- Show globally trending content via a small fan-out-on-read query (top-voted public playlist climbs, most-commented climbs). This is a bounded query that doesn't involve per-user follow graphs.
 - Prompt to sign in for personalized feed
 
 ### 3.6 Proposals Resolvers
@@ -1483,6 +1564,7 @@ New file: `packages/backend/src/graphql/resolvers/social/proposals.ts`
   - Benchmark: from `climb_community_status.is_benchmark`
   - Classic: from `climb_classic_status.is_classic` (or false if no row)
 - If an open proposal of the same `(climb_uuid, angle, type)` already exists: set its status to `superseded`. For classic proposals, match on `(climb_uuid, type)` where `angle IS NULL`.
+  - **Superseded proposal votes**: Votes on the superseded proposal remain in `proposal_votes` for historical record but have no further effect. Votes do NOT carry over to the new proposal -- users must re-vote. This is intentional: the new proposal may have a different `proposedValue` or `reason`. The superseded proposal's vote summary remains visible in proposal history for context.
 - Insert into `climb_proposals`
 - Auto-insert a +1 proposal vote from the proposer (with their role weight)
 - **Adjacent-angle outlier check** (grade proposals only): Before checking the normal vote threshold, run the outlier detection algorithm (see below). If the proposed grade aligns with adjacent-angle data and the current grade is a statistical outlier, **auto-approve immediately** regardless of vote count.
@@ -1762,12 +1844,15 @@ New file: `packages/backend/src/graphql/resolvers/social/boards.ts`
 
 **`deleteBoard` mutation:**
 - Auth required, must be board owner
-- SET NULL on any `boardsesh_ticks.board_id` and `board_sessions.board_id` referencing this board
-- DELETE from `user_boards`
+- **Soft delete**: Set `deleted_at = now()` on the `user_boards` row (do NOT hard delete)
+- Tick and session `board_id` references remain intact (the FK is to `user_boards.id`, and the row still exists)
+- Comments and votes on the board are preserved (viewable if someone has a direct link, but the board won't appear in search/feeds)
+- The board is excluded from all queries (`myBoards`, `searchBoards`, `board`, `defaultBoard`) via `WHERE deleted_at IS NULL`
+- Board owner can "restore" a soft-deleted board via `updateBoard` (which clears `deleted_at`)
 
 **`followBoard` / `unfollowBoard` mutations:**
 - Auth required
-- Uses the existing `user_follows` table or a new `board_follows` junction (TBD -- could reuse the entity follow pattern)
+- Uses the `board_follows` table (section 1.14) -- a dedicated junction table for user-to-board follows, separate from `user_follows` (user-to-user)
 - Following a board means you see its activity in your feed
 - Public boards only (reject follow on private boards unless you're the owner)
 
@@ -1787,8 +1872,8 @@ New file: `packages/backend/src/graphql/resolvers/social/boards.ts`
 - Search `user_boards` WHERE `is_public = true`
 - Text search: `name` ILIKE `%query%` OR `location_name` ILIKE `%query%`
 - Optional `boardType` filter
-- Optional proximity search: `WHERE ST_DWithin(point(longitude, latitude), point(nearLongitude, nearLatitude), radiusKm * 1000)` or equivalent Haversine distance filter
-- ORDER BY relevance, then by `totalAscents` DESC
+- Optional proximity search using PostGIS: `WHERE ST_DWithin(location, ST_MakePoint($nearLongitude, $nearLatitude)::geography, $radiusKm * 1000)`. Distance ordering: `ORDER BY ST_Distance(location, ST_MakePoint($nearLongitude, $nearLatitude)::geography)`. Uses the GiST index on `location` for efficient spatial queries.
+- ORDER BY relevance (proximity if searching by location), then by `totalAscents` DESC
 - Paginated
 
 **`boardLeaderboard` query:**
@@ -2051,7 +2136,8 @@ The consumer runs as part of each backend instance using Redis consumer groups:
 
 1. **Recipient resolution**: Determine who should be notified
    - `comment.reply` → parent comment author
-   - `comment.created` on a tick → tick owner
+   - `comment.created` on a tick → tick owner (`comment_on_tick` notification)
+   - `comment.created` on a climb → climb setter (`comment_on_climb` notification). Setter identity resolved via `board_climbs.userId` or `setterId` matched through `user_board_mappings` (same logic as `setterOverrideCommunityStatus`). Note: `board_climbs` is shorthand for the board-specific climb table (e.g., `kilterClimbs`, `tensionClimbs`).
    - `vote.cast` on a tick → tick owner
    - `follow.created` → the followed user
    - `climb.created` → followers of the setter (via `user_follows`) + subscribers of the board+layout (via `new_climb_subscriptions`). Deduplicate: if a user is both a follower and subscriber, send only one notification (prefer `new_climb` type).
@@ -2114,7 +2200,7 @@ Only **notifications** (which are fire-and-forget from the user's perspective) g
 
 ## Phase 6: Frontend Components
 
-### 5.1 Component Hierarchy
+### 6.1 Component Hierarchy
 
 ```
 packages/web/app/components/social/
@@ -2179,7 +2265,7 @@ packages/web/app/components/board-entity/
   follow-board-button.tsx    # Follow/unfollow a public board
 ```
 
-### 5.2 Vote Button (`vote-button.tsx`)
+### 6.2 Vote Button (`vote-button.tsx`)
 
 Client component. Renders upvote/downvote arrows with the score between them.
 
@@ -2202,7 +2288,7 @@ Client component. Renders upvote/downvote arrows with the score between them.
 - Neutral: `neutral[400]`
 - Score between arrows in `fontSize.sm` (14px), `neutral[800]`
 
-### 5.3 Comment Section (`comment-section.tsx`)
+### 6.3 Comment Section (`comment-section.tsx`)
 
 Client component that manages a WebSocket subscription for live updates.
 
@@ -2241,7 +2327,7 @@ Used on:
 - MUI `Avatar` with `avatarUrl`, fallback to initials
 - Edit mode: inline, replaces body text with a TextField + Save/Cancel
 
-### 5.4 Follow Button (`follow-button.tsx`)
+### 6.4 Follow Button (`follow-button.tsx`)
 
 Client component. Appears on user profile pages and in the activity feed.
 
@@ -2250,7 +2336,7 @@ Client component. Appears on user profile pages and in the activity feed.
 - Following: filled button "Following", hover reveals "Unfollow"
 - Loading: disabled with spinner
 
-### 5.5 Notification Bell (`notification-bell.tsx`)
+### 6.5 Notification Bell (`notification-bell.tsx`)
 
 Client component. Lives in the app header/navigation.
 
@@ -2268,7 +2354,7 @@ Client component. Lives in the app header/navigation.
 - "[Actor avatar] [Actor name] commented on your ascent of [climb name]" → links to tick
 - "[Actor avatar] [Actor name] upvoted your [comment/ascent]" → links to entity
 
-### 5.6 Activity Feed (`activity-feed.tsx`)
+### 6.6 Activity Feed (`activity-feed.tsx`)
 
 Extends the home page for authenticated users.
 
@@ -2289,7 +2375,7 @@ Extends the home page for authenticated users.
 - Show trending/popular content globally
 - Prompt to sign in for personalized feed
 
-### 5.7 Unified Search System
+### 6.7 Unified Search System
 
 The search drawer is extended with a **search category pill bar** at the top, allowing users to switch between searching climbs, users, and playlists. The same search bar component appears on both the climb list page and the home page.
 
@@ -2427,7 +2513,7 @@ New file: `packages/backend/src/graphql/resolvers/social/search.ts`
 
 ## Phase 7: Integration Points
 
-### 6.1 Playlist Detail View
+### 7.1 Playlist Detail View
 
 Additions to the existing playlist detail:
 - **Per-climb vote buttons** inline in the climb list
@@ -2437,7 +2523,7 @@ Additions to the existing playlist detail:
 - **Comment count** badge on each climb card
 - Use `bulkVoteSummaries` to batch-load scores for all visible climbs
 
-### 6.2 Climb Detail View
+### 7.2 Climb Detail View
 
 The climb detail page (when viewing from search results, not within a playlist):
 - **Global comment section** using `entity_type = 'climb'`, `entity_id = climbUuid`
@@ -2461,20 +2547,20 @@ The climb detail page (when viewing from search results, not within a playlist):
   - Applies immediately via `setterOverrideCommunityStatus` mutation
   - Supersedes any open grade proposals at the affected angle
 
-### 6.3 Ascent/Tick Detail
+### 7.3 Ascent/Tick Detail
 
 When viewing an ascent (activity feed or user profile):
 - **Vote buttons** on the ascent card
 - **Comment section** below the ascent using `entity_type = 'tick'`
 
-### 6.4 User Profile Page
+### 7.4 User Profile Page
 
 Additions to `/crusher/[user_id]/`:
 - **Follower/following counts** in the profile header
 - **Follow button** for other users' profiles
 - **Followers / Following tabs** showing user lists with follow-back buttons
 
-### 6.5 Home Page
+### 7.5 Home Page
 
 The home page currently redirects to a board. For authenticated users:
 - Show the activity feed before/alongside the board redirect
@@ -2492,7 +2578,7 @@ The home page currently redirects to a board. For authenticated users:
 - If the user navigates to a `/{board_type}/{layout_id}/{size_id}/{set_ids}` path and has no matching `user_board`, show a non-intrusive banner: "Climbing here? Save this board for leaderboards and a personalized feed."
 - Tapping the banner opens a quick creation form (pre-filled with board config, user just adds name and optional location)
 
-### 6.6 Board Detail View
+### 7.6 Board Detail View
 
 New page (accessible from search, board cards, or the home page board selector):
 
@@ -2504,7 +2590,7 @@ New page (accessible from search, board cards, or the home page board selector):
 - **Follow button**: For public boards (adds to your board selector and feed sources)
 - **Edit button**: For board owner (edit name, location, visibility)
 
-### 6.7 App Navigation
+### 7.7 App Navigation
 
 - **Notification bell** in the top navigation bar
 - Unread badge synced via WebSocket subscription
@@ -2514,7 +2600,7 @@ New page (accessible from search, board cards, or the home page board selector):
 
 ## Phase 8: Data Validation and Security
 
-### 7.1 Entity Validation
+### 8.1 Entity Validation
 
 Before accepting a comment or vote, validate the entity exists:
 
@@ -2524,10 +2610,10 @@ Before accepting a comment or vote, validate the entity exists:
 | `climb` | Climb exists in any board's climb table |
 | `tick` | Tick exists |
 | `comment` | Comment exists and is not deleted (for votes on comments) |
-| `proposal` | Proposal exists and is not rejected/superseded (for comments on proposals) |
+| `proposal` | Proposal exists (no status restriction -- users can comment on rejected/superseded proposals for discussion, e.g., "why was this rejected?"). Voting on proposals still requires `status = 'open'`. |
 | `board` | Board exists and is public (or requester is the owner) |
 
-### 7.2 Rate Limits
+### 8.2 Rate Limits
 
 | Action | Limit |
 |---|---|
@@ -2540,21 +2626,21 @@ Before accepting a comment or vote, validate the entity exists:
 
 Implement via Redis (backend is multi-instance) using the existing rate limiter pattern, or a simple sliding window counter in Redis.
 
-### 7.3 Content Moderation (future)
+### 8.3 Content Moderation (future)
 
 Design supports it but not in initial scope:
 - `deleted_at` for removal
 - Future: `reported_at` / `reported_by` columns for user reports
 - Future: Admin tools built on soft-delete
 
-### 7.4 Privacy
+### 8.4 Privacy
 
 - Follows are public (standard for fitness apps)
 - Vote totals are public; individual votes are private (only you see your own vote)
 - Comments are public on public entities
 - Notifications are private (only the recipient can see them)
 
-### 7.5 Notification Deduplication
+### 8.5 Notification Deduplication
 
 To avoid notification spam:
 - **Votes**: Don't create a new notification for every vote. Use UPSERT: one notification per `(actor, type, entity)` tuple per hour. If a notification already exists, update its `created_at` instead of inserting a new row.
@@ -2565,14 +2651,15 @@ To avoid notification spam:
 ## Implementation Order
 
 ### Milestone 1: Core Infrastructure (DB + types)
-1. Add `social_entity_type` (including `'board'`), `notification_type`, `proposal_type`, `proposal_status`, `community_role_type` Postgres enums
+0. Prerequisite migration: `CREATE EXTENSION IF NOT EXISTS postgis;` (Neon supports PostGIS natively)
+1. Add `social_entity_type` (including `'board'`), `notification_type`, `feed_item_type`, `proposal_type`, `proposal_status`, `community_role_type` Postgres enums
 2. Create `user_follows` table + migration
 3. Create `comments` table + migration
 4. Create `votes` table + migration
 5. Create `notifications` table + migration
 6. Create `new_climb_subscriptions` table + migration
 7. Create `user_boards` table + migration
-8. Add `board_id` column to `boardsesh_ticks` + migration (nullable FK -> user_boards)
+8. Add `board_id` column to `boardsesh_ticks` + migration (nullable FK -> user_boards, plus indexes on `(board_id, climbed_at)` and `(board_id, user_id)` for per-board leaderboard and stats queries)
 9. Add `board_id` column to `board_sessions` + migration (nullable FK -> user_boards)
 10. Create `community_roles` table + migration
 11. Create `community_settings` table + migration
@@ -2580,8 +2667,9 @@ To avoid notification spam:
 13. Create `proposal_votes` table + migration
 14. Create `climb_community_status` table + migration (angle-specific: grade, benchmark)
 15. Create `climb_classic_status` table + migration (angle-independent: classic)
-16. Export types from `packages/db`
-17. Add new GraphQL types to `packages/shared-schema`
+16. Create `feed_items` table + migration (fan-out-on-write activity feed, section 1.17)
+17. Export types from `packages/db`
+18. Add new GraphQL types to `packages/shared-schema`
 
 ### Milestone 2: Follow System
 1. `followUser` / `unfollowUser` resolver mutations
@@ -2626,6 +2714,7 @@ To avoid notification spam:
 10. `markNotificationRead` / `markAllNotificationsRead` mutations
 11. `NotificationBell` component (bell + badge + dropdown)
 12. Integration in app navigation
+13. Notification retention cleanup job: periodic `DELETE FROM notifications WHERE created_at < NOW() - INTERVAL '90 days'`
 
 ### Milestone 6: Admin and Community Roles
 1. `grantRole` / `revokeRole` mutations (admin only)
@@ -2652,33 +2741,36 @@ To avoid notification spam:
 14. Proposal notifications (approved, rejected, vote on your proposal)
 
 ### Milestone 8: Activity Feed + New Climb Feed
-1. `activityFeed` query resolver with cursor-based pagination
-2. Feed aggregation logic (followed-user ascents + followed-user new climbs + trending content + approved proposals)
-3. `ActivityFeed` server component
-4. `FeedItem` components (ascent, new_climb, comment, playlist, proposal)
-5. Home page integration
-6. Empty state for users with no follows
-7. `newClimbFeed` query resolver for board+layout new climb feed
-8. `newClimbCreated` WebSocket subscription + PubSub channels
-9. `subscribeNewClimbs` / `unsubscribeNewClimbs` mutations
-10. New climb feed UI components (`NewClimbFeed`, `NewClimbFeedItem`, `SubscribeButton`)
-11. New climb notifications: followed-user creates climb → `new_climb` notification
-12. Global new climb notifications: board+layout subscription → `new_climb_global` notification
+1. `activityFeed` query resolver reading from `feed_items` table with cursor-based pagination
+2. Feed item fan-out in the notification worker: when social events occur (ascent, new climb, comment, proposal approved), fan out `feed_item` rows to each follower of the actor. Runs asynchronously via Redis Streams (same pipeline as notifications).
+3. Feed retention cleanup job: `DELETE FROM feed_items WHERE created_at < NOW() - INTERVAL '180 days'`
+4. `ActivityFeed` server component
+5. `FeedItem` components (ascent, new_climb, comment, playlist, proposal)
+6. Home page integration
+7. Empty state for users with no follows
+8. Unauthenticated trending feed (fan-out-on-read for global trending content only)
+9. `newClimbFeed` query resolver for board+layout new climb feed
+10. `newClimbCreated` WebSocket subscription + PubSub channels
+11. `subscribeNewClimbs` / `unsubscribeNewClimbs` mutations
+12. New climb feed UI components (`NewClimbFeed`, `NewClimbFeedItem`, `SubscribeButton`)
+13. New climb notifications: followed-user creates climb → `new_climb` notification
+14. Global new climb notifications: board+layout subscription → `new_climb_global` notification
 
 ### Milestone 9: Board Entity
-1. `createBoard` / `updateBoard` / `deleteBoard` mutations
-2. `board` / `myBoards` / `searchBoards` / `defaultBoard` queries
-3. `followBoard` / `unfollowBoard` mutations
-4. `resolveBoardFromPath` helper (match URL path to user board)
-5. Wire tick logging to auto-populate `board_id` from current board context
-6. `CreateBoardForm` component (pre-fill from URL context)
-7. `BoardCard` component for board lists
-8. `BoardDetailView` (stats, leaderboard, activity feed, comments)
-9. `BoardSelectorPills` on home page (default board > other boards > all)
-10. `BoardCreationBanner` on climb list page when no matching board exists
-11. `boardLeaderboard` query resolver
-12. `BoardLeaderboard` component with time period filter
-13. Add "Boards" category to unified search (`SearchCategoryPills`, `searchBoards` resolver)
+1. Create `board_follows` table + migration
+2. `createBoard` / `updateBoard` / `deleteBoard` mutations
+3. `board` / `myBoards` / `searchBoards` / `defaultBoard` queries
+4. `followBoard` / `unfollowBoard` mutations
+5. `resolveBoardFromPath` helper (match URL path to user board)
+6. Wire tick logging to auto-populate `board_id` from current board context
+7. `CreateBoardForm` component (pre-fill from URL context)
+8. `BoardCard` component for board lists
+9. `BoardDetailView` (stats, leaderboard, activity feed, comments)
+10. `BoardSelectorPills` on home page (default board > other boards > all)
+11. `BoardCreationBanner` on climb list page when no matching board exists
+12. `boardLeaderboard` query resolver
+13. `BoardLeaderboard` component with time period filter
+14. Add "Boards" category to unified search (`SearchCategoryPills`, `searchBoards` resolver)
 
 ### Milestone 10: Unified Search
 1. `searchUsers` query resolver
@@ -2698,3 +2790,17 @@ To avoid notification spam:
 3. `vote_counts` materialized table if needed
 4. Notification batching/grouping in the UI (e.g. "3 people upvoted your ascent")
 5. Infinite scroll for feed and comment lists
+
+---
+
+## Future Considerations
+
+Features and improvements not in the initial scope but worth designing toward:
+
+- **Email digest notifications** -- daily/weekly summary of activity (new followers, comment replies, proposal outcomes) for users who don't check the app daily
+- **Push notifications** -- mobile web / PWA push notifications for time-sensitive events (proposal approved, new follower, comment reply)
+- **Content moderation** -- report system for flagging inappropriate comments, automated filtering, and admin review queue
+- **Comment reactions** -- emoji reactions on comments alongside up/downvotes (lightweight engagement without full voting semantics)
+- **Direct messaging** -- private messaging between users for coordination (send a climb, share a playlist)
+- **Collaborative playlists** -- multiple editors on a single playlist with invitation and permission management
+- **Feed recommendations** -- algorithmic feed alongside the chronological feed, surfacing content based on climbing ability, board preferences, and engagement patterns
