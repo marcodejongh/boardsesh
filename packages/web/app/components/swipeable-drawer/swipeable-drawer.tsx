@@ -180,8 +180,27 @@ const SwipeableDrawer: React.FC<SwipeableDrawerProps> = ({
     onClose?.();
   }, [onClose]);
 
-  // Callback that controls whether swipe gestures are recognized
-  const allowSwipeInChildren = useCallback(() => effectiveSwipeEnabled, [effectiveSwipeEnabled]);
+  // Callback that controls whether swipe gestures are recognized.
+  // Also prevents a parent drawer from capturing swipes that originate
+  // inside a nested SwipeableDrawer (identified via data attribute on Paper).
+  const allowSwipeInChildren = useCallback(
+    (e: TouchEvent, _swipeArea: HTMLDivElement, paper: HTMLDivElement) => {
+      if (!effectiveSwipeEnabled) return false;
+
+      const target = e.target as HTMLElement | null;
+      if (target) {
+        const closestDrawerPaper = target.closest('[data-swipeable-drawer]');
+        // If the closest drawer paper is a *nested* drawer (not this one),
+        // don't let this (parent) drawer handle the swipe.
+        if (closestDrawerPaper && closestDrawerPaper !== paper) {
+          return false;
+        }
+      }
+
+      return true;
+    },
+    [effectiveSwipeEnabled],
+  );
 
   // No-op onOpen handler — we manage open state externally
   const handleOpen = useCallback(() => {
@@ -208,7 +227,7 @@ const SwipeableDrawer: React.FC<SwipeableDrawerProps> = ({
   );
 
   const muiPaperProps = useMemo(
-    () => ({ sx: paperSx }),
+    () => ({ sx: paperSx, 'data-swipeable-drawer': 'true' }),
     [paperSx],
   );
 
