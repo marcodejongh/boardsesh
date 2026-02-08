@@ -23,7 +23,7 @@ export DB_URL="postgresql://${PGUSER}:${PGPASSWORD}@${PGHOST}:${PGPORT}/${PGDBNA
 export PGDATABASE="postgres" # Connect to the default `postgres` database
 
 if [ "$FRESH_SETUP" = true ]; then
-  echo "🗃️  Step 1/6: Setting up PostgreSQL database..."
+  echo "🗃️  Step 1/7: Setting up PostgreSQL database..."
   echo "   Database: $PGDBNAME on $PGHOST:$PGPORT"
   psql postgres -tAc "SELECT 1 FROM pg_database WHERE datname='$PGDBNAME'" | grep -q 1 && psql postgres -c "DROP DATABASE $PGDBNAME"
   psql postgres -c "CREATE DATABASE $PGDBNAME"
@@ -34,7 +34,7 @@ if [ "$FRESH_SETUP" = true ]; then
   psql $PGDBNAME -c "CREATE TABLE IF NOT EXISTS neon_control_plane.endpoints (endpoint_id VARCHAR(255) NOT NULL PRIMARY KEY, allowed_ips VARCHAR(255))"
   echo "   ✅ Neon proxy schema created"
 
-  echo "📱 Step 2/6: Downloading and extracting board databases..."
+  echo "📱 Step 2/7: Downloading and extracting board databases..."
   if [ ! -f "/db/tmp/kilter.db" ]; then
     if [ ! -f "kilterboard.apk" ]; then
       echo "   📥 Downloading Kilterboard APK..."
@@ -77,10 +77,26 @@ if [ "$FRESH_SETUP" = true ]; then
     echo "   ♻️  Tension database already exists, skipping extraction"
   fi
 
+  echo "🌙 Step 3/7: Downloading MoonBoard problem data..."
+  if [ ! -d "/db/tmp/problems_2023_01_30" ]; then
+    if [ ! -f "/db/tmp/problems_2023_01_30.zip" ]; then
+      echo "   📥 Downloading MoonBoard problems ZIP..."
+      curl -o /db/tmp/problems_2023_01_30.zip -L "https://github.com/spookykat/MoonBoard/files/13193317/problems_2023_01_30.zip"
+      echo "   ✅ MoonBoard problems ZIP downloaded"
+    else
+      echo "   ♻️  MoonBoard problems ZIP already exists, skipping download"
+    fi
+    echo "   📦 Extracting MoonBoard problems..."
+    unzip -o /db/tmp/problems_2023_01_30.zip -d /db/tmp/problems_2023_01_30/
+    echo "   ✅ MoonBoard problems extracted"
+  else
+    echo "   ♻️  MoonBoard problems already extracted, skipping"
+  fi
+
   export TENSION_DB_FILE="/db/tmp/tension.modified.db"
   export KILTER_DB_FILE="/db/tmp/kilter.modified.db"
 
-  echo "📋 Step 3/6: Preparing database copies for modification..."
+  echo "📋 Step 4/7: Preparing database copies for modification..."
   echo "   🗑️  Removing existing modified copies..."
   rm -rf $TENSION_DB_FILE
   rm -rf $KILTER_DB_FILE
@@ -90,7 +106,7 @@ if [ "$FRESH_SETUP" = true ]; then
   cp /db/tmp/kilter.db  $KILTER_DB_FILE
   echo "   ✅ Database copies prepared"
 
-  echo "🔧 Step 4/6: Fixing SQLite database compatibility issues..."
+  echo "🔧 Step 5/7: Fixing SQLite database compatibility issues..."
   echo "   (PG Loader fails to convert FLOAT UNSIGNED - converting to regular FLOAT)"
   echo "   🎯 Processing Kilter database..."
   DB_FILE=$KILTER_DB_FILE /db/cleanup_sqlite_db_problems.sh
@@ -99,7 +115,7 @@ if [ "$FRESH_SETUP" = true ]; then
   DB_FILE=$TENSION_DB_FILE /db/cleanup_sqlite_db_problems.sh
   echo "   ✅ Database fixes completed"
 
-  echo "🚛 Step 5/6: Loading data into PostgreSQL..."
+  echo "🚛 Step 6/7: Loading data into PostgreSQL..."
   echo "   📊 Loading Tension board data..."
   DB_FILE=$TENSION_DB_FILE pgloader /db/tension_db.load 
   echo "   ✅ Tension data loaded successfully"
@@ -112,7 +128,7 @@ if [ "$FRESH_SETUP" = true ]; then
   echo "🎉 Initial database setup completed!"
   echo "   💾 Database: $PGDBNAME"
   echo "   🔗 Connection: $DB_URL"
-  echo "   🏔️  Board data: Kilter + Tension ready for development"
+  echo "   🏔️  Board data: Kilter + Tension loaded, MoonBoard problems downloaded"
 else
   echo "♻️  Database setup already completed. Skipping initial setup."
 fi

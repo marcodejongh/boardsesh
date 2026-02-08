@@ -277,7 +277,14 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
     if (defaultSizeId !== null) {
       setSelectedSize(defaultSizeId);
     } else {
-      setSelectedSize(undefined);
+      // Fall back to first available size from board configs (needed for moonboard
+      // which has sizes in boardConfigs but not in the generated product-sizes-data)
+      const availableSizes = boardConfigs.sizes[`${selectedBoard}-${selectedLayout}`] || [];
+      if (availableSizes.length > 0) {
+        setSelectedSize(availableSizes[0].id);
+      } else {
+        setSelectedSize(undefined);
+      }
     }
 
     setSelectedSets([]);
@@ -537,22 +544,24 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
                 </Form.Item>
               </Col>
 
-              <Col xs={24} sm={12}>
-                <Form.Item label="Size" noStyle>
-                  <Select
-                    value={selectedSize}
-                    onChange={handleSizeChange}
-                    placeholder="Select size"
-                    disabled={!selectedLayout}
-                  >
-                    {sizes.map(({ id, name, description }) => (
-                      <Option key={id} value={id}>
-                        {`${name} ${description}`}
-                      </Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-              </Col>
+              {selectedBoard !== 'moonboard' && (
+                <Col xs={24} sm={12}>
+                  <Form.Item label="Size" noStyle>
+                    <Select
+                      value={selectedSize}
+                      onChange={handleSizeChange}
+                      placeholder="Select size"
+                      disabled={!selectedLayout}
+                    >
+                      {sizes.map(({ id, name, description }) => (
+                        <Option key={id} value={id}>
+                          {`${name} ${description}`}
+                        </Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+                </Col>
+              )}
 
               <Col xs={24} sm={12}>
                 <Form.Item label="Hold Sets" noStyle>
