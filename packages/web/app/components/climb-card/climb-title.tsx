@@ -188,11 +188,15 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
     }
 
     return (
-      <Box sx={{ display: 'flex', gap: '12px', alignItems: 'center', ...(centered ? { position: 'relative' } : {}) }} className={className}>
-        {/* Colorized V grade on the left */}
-        {largeGradeElement}
+      <Box sx={{ display: 'flex', alignItems: 'center', ...(centered ? { position: 'relative', justifyContent: 'center' } : { gap: '12px' }) }} className={className}>
+        {/* Colorized V grade - absolutely positioned left when centered */}
+        {largeGradeElement && (
+          <Box sx={centered ? { position: 'absolute', left: 0 } : undefined}>
+            {largeGradeElement}
+          </Box>
+        )}
         {/* Center: Name and quality/setter stacked */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0, flex: 1, minWidth: 0, alignItems: centered ? 'center' : 'flex-start' }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0, minWidth: 0, alignItems: centered ? 'center' : 'flex-start', ...(centered ? {} : { flex: 1 }) }}>
           {/* Row 1: Name with addon */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: `${themeTokens.spacing[2]}px` }}>
             {nameElement}
@@ -212,8 +216,12 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
             {secondLineContent.length > 0 ? secondLineContent.join(' · ') : <Box component="span" sx={{ fontStyle: 'italic' }}>project</Box>}
           </Typography>
         </Box>
-        {/* Right addon (e.g., ascent status) */}
-        {rightAddon}
+        {/* Right addon - absolutely positioned right when centered */}
+        {rightAddon && (
+          <Box sx={centered ? { position: 'absolute', right: 0 } : undefined}>
+            {rightAddon}
+          </Box>
+        )}
       </Box>
     );
   }
