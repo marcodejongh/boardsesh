@@ -14,8 +14,10 @@ This document describes the plan for adding social features to Boardsesh: commen
 6. **Real-time notifications** via WebSocket when someone follows you, replies to your comment, or votes on your content
 7. **Live comment updates** via WebSocket so screens showing comments receive new comments in real time
 8. A **well-abstracted, polymorphic system** for comments and votes that works across all entity types
-9. **Community proposals** on climbs -- propose grade changes, classic status, and benchmark status, with community voting to approve. Angle-aware (a grade proposal at 40° is independent from one at 45°)
+9. **Community proposals** on climbs -- propose grade changes, classic status, and benchmark status, with community voting to approve. Grade and benchmark proposals are **angle-specific** (a grade proposal at 40° is independent from one at 45°). Classic proposals are **angle-independent** (a classic climb is classic at every angle).
 10. **Admin and community leader roles** with weighted votes on proposals, configurable approval thresholds, and the ability to freeze climbs from further proposals
+11. **Unified search** with a category pill (Climbs | Users | Playlists) in the search drawer. The home page shows the same search bar as the climb list, defaulting to "Users" search; the climb list page defaults to "Climbs" search.
+12. **New climb notifications**: When someone you follow creates a new climb, you get a notification. A global "new climbs" feed is also available, subscribable per board + layout combination.
 
 ---
 
@@ -245,6 +247,8 @@ packages/db/src/schema/app/notifications.ts
 
 **`notification_type` enum values:**
 - `new_follower` -- someone followed you
+- `new_climb` -- someone you follow created a new climb
+- `new_climb_global` -- a new climb was created on a board+layout you subscribe to (global feed)
 - `comment_reply` -- someone replied to your comment
 - `comment_on_tick` -- someone commented on your ascent
 - `vote_on_tick` -- someone voted on your ascent
@@ -263,7 +267,35 @@ packages/db/src/schema/app/notifications.ts
 - Real-time delivery is via WebSocket pub/sub (see Phase 5).
 - Deduplication: For high-frequency events (votes), batch or deduplicate so a user doesn't get 50 notifications from 50 upvotes. Strategy: one notification per `(actor, type, entity)` tuple, updated on each new occurrence rather than inserting new rows.
 
-### 1.6 `community_roles` table
+### 1.6 `new_climb_subscriptions` table
+
+```
+packages/db/src/schema/app/new-climb-subscriptions.ts
+```
+
+Allows users to subscribe to the global "new climbs" feed for specific board + layout combinations. When a new climb is created on a subscribed board+layout, the user receives a notification.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `bigserial` | PK |
+| `user_id` | `text` | FK -> `users.id`, ON DELETE CASCADE |
+| `board_type` | `text` | Board type to subscribe to (e.g., `'kilter'`, `'tension'`) |
+| `layout_id` | `integer` | Layout ID within the board type |
+| `created_at` | `timestamp` | DEFAULT now() |
+
+**Constraints:**
+- Unique index on `(user_id, board_type, layout_id)` -- one subscription per user per board+layout
+
+**Indexes:**
+- `(user_id)` -- "what am I subscribed to?" queries
+- `(board_type, layout_id)` -- "who is subscribed to this board+layout?" (for notification fanout)
+
+**Notes:**
+- This is separate from the follow system. Following a user notifies you of *their* new climbs. This subscription notifies you of *all* new climbs on a board+layout, regardless of who created them.
+- Users can subscribe to multiple board+layout combinations.
+- The notification fanout for popular board+layouts could be large, so this goes through the Redis Streams broker (Phase 5).
+
+### 1.7 `community_roles` table
 
 ```
 packages/db/src/schema/app/community-roles.ts
@@ -293,7 +325,7 @@ packages/db/src/schema/app/community-roles.ts
 - `board_type` scoping: A community leader with `board_type = 'kilter'` has authority only over Kilter climbs. An admin with `board_type = NULL` has global authority.
 - Admins can grant/revoke both `admin` and `community_leader` roles. Community leaders cannot grant roles.
 
-### 1.7 `community_settings` table
+### 1.8 `community_settings` table
 
 ```
 packages/db/src/schema/app/community-settings.ts
@@ -332,7 +364,7 @@ Global and per-climb configuration for the proposal system.
 
 Example: A community leader can set `proposal_approval_threshold = 5` for a specific popular climb at a specific angle, overriding the global default of 3.
 
-### 1.8 `climb_proposals` table
+### 1.9 `climb_proposals` table
 
 ```
 packages/db/src/schema/app/proposals.ts
@@ -344,7 +376,7 @@ packages/db/src/schema/app/proposals.ts
 | `uuid` | `text` | Unique |
 | `climb_uuid` | `text` | FK -> `board_climbs.uuid` |
 | `board_type` | `text` | Board type for the climb |
-| `angle` | `integer` | The angle this proposal applies to |
+| `angle` | `integer` | **Nullable.** The angle this proposal applies to. NULL for classic proposals (which are angle-independent). Required for grade and benchmark proposals. |
 | `proposer_id` | `text` | FK -> `users.id`, ON DELETE CASCADE |
 | `type` | `proposal_type` | Enum: `'grade'`, `'classic'`, `'benchmark'` |
 | `proposed_value` | `text` | The proposed new value (see below) |
@@ -356,9 +388,9 @@ packages/db/src/schema/app/proposals.ts
 | `created_at` | `timestamp` | DEFAULT now() |
 
 **`proposal_type` enum values:**
-- `grade` -- Propose a new difficulty grade for this climb at this angle
-- `classic` -- Propose this climb be designated as a "classic" at this angle
-- `benchmark` -- Propose this climb be designated as a "benchmark" at this angle
+- `grade` -- Propose a new difficulty grade for this climb at this angle. **Angle-specific.**
+- `classic` -- Propose this climb be designated as a "classic". **Angle-independent** (a classic climb is classic at every angle). `angle` is NULL.
+- `benchmark` -- Propose this climb be designated as a "benchmark" at this angle. **Angle-specific.** A benchmark designation means the community grade has strong consensus at that angle, so benchmark is inherently tied to the grade and angle.
 
 **`proposal_status` enum values:**
 - `open` -- Active, accepting votes
@@ -375,14 +407,16 @@ packages/db/src/schema/app/proposals.ts
 
 **Constraints:**
 - Only one `open` proposal per `(climb_uuid, angle, type)` at a time. New proposals of the same type supersede the existing open one (set old one to `superseded`).
+- For classic proposals (`angle = NULL`): only one open classic proposal per `(climb_uuid, type)`. Use a partial unique index or app-layer enforcement.
 
 **Indexes:**
-- `(climb_uuid, angle, type, status)` -- find open proposals for a climb at an angle
+- `(climb_uuid, angle, type, status)` -- find open proposals for a climb at an angle (grade/benchmark)
+- `(climb_uuid, type, status) WHERE angle IS NULL` -- find open classic proposals for a climb
 - `(proposer_id, created_at)` -- "my proposals" query
 - `(status, created_at)` -- browse open proposals
 - `(board_type, status)` -- browse by board
 
-### 1.9 `proposal_votes` table
+### 1.10 `proposal_votes` table
 
 ```
 packages/db/src/schema/app/proposals.ts
@@ -413,13 +447,13 @@ Separate from the general `votes` table because proposal votes have special sema
 - The proposer automatically gets a +1 vote with their role's weight when creating the proposal.
 - **Auto-approval check**: After each vote, compute `SUM(value * weight) WHERE value > 0` (weighted upvotes). If this meets or exceeds the `proposal_approval_threshold` for that climb+angle, the proposal is automatically approved and its effect applied.
 
-### 1.10 `climb_community_status` table
+### 1.11 `climb_community_status` table (angle-specific)
 
 ```
 packages/db/src/schema/app/proposals.ts
 ```
 
-Stores community-determined metadata for climbs (separate from Aurora's `board_climb_stats` which comes from sync). This is where approved proposals take effect.
+Stores **angle-specific** community-determined metadata for climbs (separate from Aurora's `board_climb_stats` which comes from sync). This is where approved grade and benchmark proposals take effect.
 
 | Column | Type | Notes |
 |---|---|---|
@@ -428,8 +462,7 @@ Stores community-determined metadata for climbs (separate from Aurora's `board_c
 | `board_type` | `text` | Board type |
 | `angle` | `integer` | Angle this status applies to |
 | `community_grade` | `integer` | Nullable. Community-voted difficulty grade ID |
-| `is_classic` | `boolean` | DEFAULT false. Community classic designation |
-| `is_benchmark` | `boolean` | DEFAULT false. Community benchmark designation |
+| `is_benchmark` | `boolean` | DEFAULT false. Community benchmark designation. Tied to community grade consensus at this angle. |
 | `updated_at` | `timestamp` | DEFAULT now() |
 | `last_proposal_id` | `bigint` | FK -> `climb_proposals.id`. Most recent approved proposal that modified this row |
 
@@ -437,11 +470,37 @@ Stores community-determined metadata for climbs (separate from Aurora's `board_c
 - Unique index on `(climb_uuid, board_type, angle)` -- one community status per climb per angle
 
 **Notes:**
-- This table is the "output" of the proposal system. When a proposal is approved, the corresponding field here is updated.
+- This table is the "output" of the proposal system for **angle-specific** proposals (grade and benchmark).
 - The climb detail UI shows both Aurora's official grade and the community grade (if different), allowing users to see both perspectives.
 - `community_grade` is nullable -- NULL means no community override, use Aurora's grade.
+- **Benchmark means strong grade consensus**: A climb is marked as a benchmark at a specific angle when the community is confident in the grade at that angle. Benchmark is inherently tied to the grade and angle.
 
-### 1.11 `vote_counts` materialized table (optional, Phase 9 optimization)
+### 1.12 `climb_classic_status` table (angle-independent)
+
+```
+packages/db/src/schema/app/proposals.ts
+```
+
+Stores **angle-independent** classic status for climbs. Classic means "this is a great climb worth doing" and applies to the climb as a whole, regardless of angle.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `bigserial` | PK |
+| `climb_uuid` | `text` | FK -> `board_climbs.uuid` |
+| `board_type` | `text` | Board type |
+| `is_classic` | `boolean` | DEFAULT false. Community classic designation |
+| `updated_at` | `timestamp` | DEFAULT now() |
+| `last_proposal_id` | `bigint` | FK -> `climb_proposals.id`. Most recent approved proposal that modified this row |
+
+**Constraints:**
+- Unique index on `(climb_uuid, board_type)` -- one classic status per climb (not per angle)
+
+**Notes:**
+- Classic status is **angle-independent**: a classic climb is classic at every angle.
+- This table is the "output" of the proposal system for classic proposals.
+- Separated from `climb_community_status` because classic has no angle dimension.
+
+### 1.13 `vote_counts` materialized table (optional, Phase 9 optimization)
 
 If `COUNT()` becomes slow:
 
@@ -527,6 +586,8 @@ type PublicUserProfile {
 
 enum NotificationType {
   new_follower
+  new_climb            # Someone you follow created a new climb
+  new_climb_global     # A new climb on a board+layout you subscribe to
   comment_reply
   comment_on_tick
   vote_on_tick
@@ -545,6 +606,9 @@ type Notification {
   entityType: SocialEntityType
   entityId: String
   commentBody: String       # Preview text for comment notifications
+  climbName: String         # For new_climb / new_climb_global notifications
+  climbUuid: String         # For new_climb / new_climb_global notifications
+  boardType: String         # For new_climb / new_climb_global notifications
   isRead: Boolean!
   createdAt: String!
 }
@@ -554,6 +618,32 @@ type NotificationConnection {
   totalCount: Int!
   unreadCount: Int!
   hasMore: Boolean!
+}
+
+# --- New Climb Feed ---
+
+type NewClimbFeedItem {
+  climbUuid: String!
+  boardType: String!
+  layoutId: Int!
+  climbName: String!
+  setterDisplayName: String
+  setterAvatarUrl: String
+  grade: String             # Display grade
+  angle: Int
+  createdAt: String!
+}
+
+type NewClimbFeedConnection {
+  items: [NewClimbFeedItem!]!
+  totalCount: Int!
+  hasMore: Boolean!
+}
+
+type NewClimbSubscription {
+  boardType: String!
+  layoutId: Int!
+  boardLayoutName: String   # Human-readable name for display
 }
 
 # --- Activity Feed ---
@@ -575,6 +665,7 @@ type ActivityFeedItem {
 
 enum ActivityFeedItemType {
   ascent          # Someone you follow logged an ascent
+  new_climb       # Someone you follow created a new climb
   comment         # A recent comment on a trending entity
   playlist_vote   # A climb in a playlist received significant votes
 }
@@ -609,7 +700,7 @@ type Proposal {
   uuid: ID!
   climbUuid: String!
   boardType: String!
-  angle: Int!
+  angle: Int              # Nullable. NULL for classic proposals (angle-independent). Required for grade/benchmark.
   proposerId: ID!
   proposerDisplayName: String
   proposerAvatarUrl: String
@@ -653,12 +744,19 @@ type ClimbCommunityStatus {
   angle: Int!
   communityGrade: Int         # Difficulty grade ID, null if no override
   communityGradeName: String  # Human-readable grade name
-  isClassic: Boolean!
-  isBenchmark: Boolean!
+  isBenchmark: Boolean!       # Tied to community grade consensus at this angle
+  isClassic: Boolean!         # Angle-independent (from climb_classic_status), included here for convenience
   isFrozen: Boolean!
   freezeReason: String
-  openProposalCount: Int!
+  openProposalCount: Int!     # Grade + benchmark proposals at this angle, plus any classic proposals
   isCurrentUserSetter: Boolean!  # Whether the authenticated user is the climb creator (enables setter controls)
+}
+
+type ClimbClassicStatus {
+  climbUuid: String!
+  boardType: String!
+  isClassic: Boolean!         # Angle-independent classic designation
+  lastProposalUuid: ID        # Most recent approved classic proposal
 }
 
 type CommunityRoleAssignment {
@@ -675,6 +773,45 @@ type CommunitySetting {
   scopeKey: String
   key: String!
   value: String!
+}
+
+# --- Unified Search ---
+
+enum SearchCategory {
+  climbs      # Default on climb list page
+  users       # Default on home page
+  playlists   # Playlist discovery
+}
+
+type UserSearchResult {
+  user: PublicUserProfile!
+  recentAscentCount: Int!     # Ascents in last 30 days
+  matchReason: String         # "name match", "email match", etc.
+}
+
+type PlaylistSearchResult {
+  uuid: ID!
+  name: String!
+  description: String
+  boardType: String!
+  ownerDisplayName: String
+  ownerAvatarUrl: String
+  climbCount: Int!
+  followerCount: Int!         # Users who favorited/followed this playlist
+  isPublic: Boolean!
+  thumbnailClimbUuid: String  # First climb UUID for thumbnail
+}
+
+type UserSearchConnection {
+  results: [UserSearchResult!]!
+  totalCount: Int!
+  hasMore: Boolean!
+}
+
+type PlaylistSearchConnection {
+  results: [PlaylistSearchResult!]!
+  totalCount: Int!
+  hasMore: Boolean!
 }
 ```
 
@@ -742,7 +879,7 @@ input NotificationsInput {
 input CreateProposalInput {
   climbUuid: String!
   boardType: String!
-  angle: Int!
+  angle: Int               # Required for grade/benchmark proposals. NULL for classic proposals.
   type: ProposalType!
   proposedValue: String!      # Grade ID for grade, "true"/"false" for classic/benchmark
   reason: String              # Optional explanation
@@ -762,7 +899,7 @@ input ResolveProposalInput {
 input GetClimbProposalsInput {
   climbUuid: String!
   boardType: String!
-  angle: Int!
+  angle: Int               # Filter by angle. NULL returns classic proposals + all angle-specific proposals.
   status: ProposalStatus      # Filter by status, null = all
   type: ProposalType          # Filter by type, null = all
   limit: Int
@@ -788,10 +925,8 @@ input SetCommunitySettingInput {
 input SetterOverrideInput {
   climbUuid: String!
   boardType: String!
-  angle: Int!
-  communityGrade: Int         # Nullable. Set to update grade, omit to leave unchanged
-  isClassic: Boolean          # Nullable. Set to update, omit to leave unchanged
-  isBenchmark: Boolean        # Nullable. Set to update, omit to leave unchanged
+  angle: Int!                 # Required. The angle at which to override the grade.
+  communityGrade: Int!        # The new grade. Setter override only applies to grade (not benchmark or classic).
 }
 
 input FreezeClimbInput {
@@ -812,6 +947,37 @@ input RevokeRoleInput {
   userId: ID!
   role: CommunityRole!
   boardType: String           # null = global
+}
+
+# --- Unified Search Inputs ---
+
+input SearchUsersInput {
+  query: String!              # Search by display name or email prefix
+  boardType: String           # Optional: filter to users active on this board
+  limit: Int                  # Default 20, max 50
+  offset: Int
+}
+
+input SearchPlaylistsInput {
+  query: String!              # Search by playlist name or description
+  boardType: String           # Optional: filter by board type
+  publicOnly: Boolean         # Default true
+  limit: Int                  # Default 20, max 50
+  offset: Int
+}
+
+# --- New Climb Feed Inputs ---
+
+input NewClimbFeedInput {
+  boardType: String!          # Required: which board
+  layoutId: Int!              # Required: which layout
+  limit: Int                  # Default 20, max 50
+  offset: Int
+}
+
+input SubscribeNewClimbsInput {
+  boardType: String!
+  layoutId: Int!
 }
 ```
 
@@ -851,6 +1017,17 @@ extend type Query {
   communitySettings(scope: String!, scopeKey: String): [CommunitySetting!]!
   communityRoles(boardType: String): [CommunityRoleAssignment!]!
   myRoles: [CommunityRoleAssignment!]!
+
+  # Classic status (angle-independent)
+  climbClassicStatus(climbUuid: String!, boardType: String!): ClimbClassicStatus
+
+  # Unified Search
+  searchUsers(input: SearchUsersInput!): UserSearchConnection!
+  searchPlaylists(input: SearchPlaylistsInput!): PlaylistSearchConnection!
+
+  # New Climb Feed
+  newClimbFeed(input: NewClimbFeedInput!): NewClimbFeedConnection!
+  myNewClimbSubscriptions: [NewClimbSubscription!]!   # List of board+layout pairs the user subscribes to
 }
 ```
 
@@ -879,7 +1056,7 @@ extend type Mutation {
   voteOnProposal(input: VoteOnProposalInput!): ProposalVoteSummary!
   resolveProposal(input: ResolveProposalInput!): Proposal!  # Admin/leader only
 
-  # Setter override (climb creator can bypass proposals)
+  # Setter override (climb creator can bypass proposals -- grade only)
   setterOverrideCommunityStatus(input: SetterOverrideInput!): ClimbCommunityStatus!
 
   # Admin / Community Settings
@@ -887,6 +1064,10 @@ extend type Mutation {
   freezeClimb(input: FreezeClimbInput!): ClimbCommunityStatus!  # Admin/leader only
   grantRole(input: GrantRoleInput!): CommunityRoleAssignment!  # Admin only
   revokeRole(input: RevokeRoleInput!): Boolean!  # Admin only
+
+  # New Climb Feed subscriptions
+  subscribeNewClimbs(input: SubscribeNewClimbsInput!): NewClimbSubscription!    # Subscribe to a board+layout
+  unsubscribeNewClimbs(input: SubscribeNewClimbsInput!): Boolean!               # Unsubscribe from a board+layout
 }
 ```
 
@@ -899,6 +1080,9 @@ extend type Subscription {
 
   # Live comment updates for an entity being viewed
   commentUpdates(entityType: SocialEntityType!, entityId: String!): CommentEvent!
+
+  # Live new climb feed for a board+layout (public, no auth required)
+  newClimbCreated(boardType: String!, layoutId: Int!): NewClimbFeedItem!
 }
 
 union NotificationEvent = NotificationCreated
@@ -1052,8 +1236,9 @@ New file: `packages/backend/src/graphql/resolvers/social/feed.ts`
 - Multi-source aggregation:
 
   1. **Followed-user ascents**: Query `boardsesh_ticks` WHERE `user_id IN (SELECT following_id FROM user_follows WHERE follower_id = $me)` AND `status IN ('flash', 'send')`
-  2. **Top-voted playlist climbs**: Query votes for `entity_type = 'playlist_climb'` with high scores, joined with playlist + climb data
-  3. **Recent comments**: Query comments on entities with high engagement
+  2. **Followed-user new climbs**: Query `board_climbs` created by followed users (via `userId` or `setterId` matched through `user_board_mappings`)
+  3. **Top-voted playlist climbs**: Query votes for `entity_type = 'playlist_climb'` with high scores, joined with playlist + climb data
+  4. **Recent comments**: Query comments on entities with high engagement
 
 - **Sort modes** (via `sortBy` parameter):
   - `new` (default): All items sorted by timestamp descending. Pure chronological.
@@ -1074,12 +1259,16 @@ New file: `packages/backend/src/graphql/resolvers/social/proposals.ts`
 **`createProposal` mutation:**
 - Auth required
 - Validate climb exists for `(climbUuid, boardType)`
-- Validate angle is valid for the climb's board
-- Check climb is not frozen at this angle (query `community_settings` for `climb_frozen`)
+- For `grade`/`benchmark` proposals: validate `angle` is provided and valid for the climb's board
+- For `classic` proposals: `angle` must be NULL (classic is angle-independent)
+- Check climb is not frozen (query `community_settings` for `climb_frozen`; for grade/benchmark check at the specific angle, for classic check at any scope)
 - For `grade` proposals: validate `proposedValue` is a valid difficulty ID in `board_difficulty_grades`
 - For `classic`/`benchmark` proposals: validate `proposedValue` is `"true"` or `"false"`
-- Capture `currentValue` from `board_climb_stats` (for grade: `display_difficulty`, for benchmark: `benchmark_difficulty` presence) or `climb_community_status` if it exists
-- If an open proposal of the same `(climb_uuid, angle, type)` already exists: set its status to `superseded`
+- Capture `currentValue`:
+  - Grade: from `climb_community_status` (if exists) or `board_climb_stats.display_difficulty`
+  - Benchmark: from `climb_community_status.is_benchmark`
+  - Classic: from `climb_classic_status.is_classic` (or false if no row)
+- If an open proposal of the same `(climb_uuid, angle, type)` already exists: set its status to `superseded`. For classic proposals, match on `(climb_uuid, type)` where `angle IS NULL`.
 - Insert into `climb_proposals`
 - Auto-insert a +1 proposal vote from the proposer (with their role weight)
 - **Check threshold immediately** (an admin creating a proposal might auto-approve if their weight alone meets the threshold)
@@ -1094,9 +1283,11 @@ New file: `packages/backend/src/graphql/resolvers/social/proposals.ts`
   - Check for `community_leader` role (matching board_type) → `leader_vote_weight`
   - Otherwise → weight 1
 - UPSERT: same toggle semantics as general votes (same value = remove, different = flip)
-- **Threshold check**: After vote, compute `SUM(weight) WHERE value = +1`. If >= `proposal_approval_threshold` for this climb+angle:
+- **Threshold check**: After vote, compute `SUM(weight) WHERE value = +1`. If >= `proposal_approval_threshold` for this climb (+ angle for grade/benchmark):
   1. Set proposal status to `approved`, `resolved_at = now()`
-  2. Apply the effect to `climb_community_status` (UPSERT the corresponding field)
+  2. Apply the effect:
+     - Grade/benchmark: UPSERT `climb_community_status` at the proposal's angle
+     - Classic: UPSERT `climb_classic_status` (angle-independent)
   3. Create `proposal_approved` notification for the proposer
 - Create `proposal_vote` notification for the proposer (deduplicated)
 - Return updated `ProposalVoteSummary`
@@ -1115,18 +1306,22 @@ New file: `packages/backend/src/graphql/resolvers/social/proposals.ts`
   1. `board_climbs.userId` -- Boardsesh user who created the climb locally (set for locally-created climbs)
   2. Fallback: `board_climbs.setterId` matched via `user_board_mappings` to the authenticated user's account (for Aurora-synced climbs where the user has linked their Aurora account)
 - If neither match, reject with "Only the climb setter can use this action"
+- **Setter override applies to grade only** -- benchmark and classic status are community-driven and cannot be overridden by the setter
+- Reject if `isBenchmark` or `isClassic` fields are provided (return error: "Setter override only applies to grade")
 - Validate `communityGrade` is a valid difficulty ID if provided
-- UPSERT into `climb_community_status` with the provided fields (only update non-null fields)
-- If there are any `open` proposals of the affected type(s) for this climb+angle, set them to `superseded` (the setter's word takes precedence)
+- Require `angle` when setting `communityGrade`
+- UPSERT into `climb_community_status` with the grade field at the specified angle
+- If there are any `open` grade proposals for this climb+angle, set them to `superseded` (the setter's word takes precedence on grade)
 - Record in `climb_community_status.last_proposal_id = NULL` to indicate this was a setter override, not a proposal result
 - Return updated `ClimbCommunityStatus`
 
 **Notes on setter privilege:**
-- The setter can adjust grade, classic, and benchmark status at any angle without going through the proposal system
-- This works even if the climb is frozen (setters are not blocked by freeze)
+- The setter can adjust **grade only** at any angle without going through the proposal system
+- **Benchmark and classic status are community-driven**: even the setter must go through the proposal system for these
+- This works even if the climb is frozen (setters are not blocked by freeze for grade adjustments)
 - The setter override is logged in `climb_community_status.updated_at` for audit purposes
-- Other users can still create proposals to contest the setter's choice -- proposals work normally alongside setter overrides
-- Admins and community leaders also have override ability via `resolveProposal`
+- Other users can still create grade proposals to contest the setter's choice -- proposals work normally alongside setter overrides
+- Admins and community leaders also have override ability via `resolveProposal` (for all proposal types)
 
 **`climbProposals` query:**
 - Fetch proposals for a specific `(climbUuid, boardType, angle)`
@@ -1188,6 +1383,41 @@ New file: `packages/backend/src/graphql/resolvers/social/admin.ts`
 - Auth required
 - Fetch the authenticated user's role assignments
 
+### 3.8 New Climb Feed Resolvers
+
+New file: `packages/backend/src/graphql/resolvers/social/new-climbs.ts`
+
+**`newClimbFeed` query:**
+- No auth required (public feed)
+- Fetch recently created climbs for a specific `(boardType, layoutId)`
+- Query `board_climbs` WHERE `board_type = boardType` AND `layout_id = layoutId`, ordered by creation time DESC
+- JOIN user profiles for setter info
+- JOIN `board_climb_stats` for grade info
+- Paginated with limit/offset
+
+**`myNewClimbSubscriptions` query:**
+- Auth required
+- Fetch all `new_climb_subscriptions` for the authenticated user
+- JOIN layout info for human-readable display names
+
+**`subscribeNewClimbs` mutation:**
+- Auth required
+- INSERT into `new_climb_subscriptions`, ON CONFLICT DO NOTHING (idempotent)
+- Return the subscription
+
+**`unsubscribeNewClimbs` mutation:**
+- Auth required
+- DELETE from `new_climb_subscriptions`
+
+**New climb event publishing (triggered when a climb is created):**
+- When a new climb is created (via Aurora sync or locally), publish a `climb.created` event to the Redis Streams broker
+- The event includes: `climbUuid`, `boardType`, `layoutId`, `setterId`
+- The notification worker resolves recipients:
+  1. **Followers**: Users who follow the climb creator → `new_climb` notification
+  2. **Board+layout subscribers**: Users subscribed to this `(boardType, layoutId)` → `new_climb_global` notification
+- **Deduplication**: Don't notify the same user twice if they both follow the setter AND subscribe to the board+layout
+- **Publish to WebSocket**: `newClimbCreated` subscription for live feed updates
+
 ---
 
 ## Phase 4: PubSub Extensions for Real-Time
@@ -1202,6 +1432,7 @@ Add to `packages/backend/src/pubsub/index.ts`:
 |---|---|---|
 | `boardsesh:notifications:{userId}` | Per-user | `NotificationCreated` |
 | `boardsesh:comments:{entityType}:{entityId}` | Per-entity | `CommentAdded`, `CommentUpdated`, `CommentDeleted` |
+| `boardsesh:new-climbs:{boardType}:{layoutId}` | Per-board+layout | `NewClimbCreated` |
 
 New subscriber maps in PubSub class:
 ```typescript
@@ -1216,6 +1447,9 @@ publishNotificationEvent(userId: string, event: NotificationEvent): void
 
 subscribeComments(entityType: string, entityId: string, callback: (event: CommentEvent) => void): Promise<() => void>
 publishCommentEvent(entityType: string, entityId: string, event: CommentEvent): void
+
+subscribeNewClimbs(boardType: string, layoutId: number, callback: (item: NewClimbFeedItem) => void): Promise<() => void>
+publishNewClimbEvent(boardType: string, layoutId: number, item: NewClimbFeedItem): void
 ```
 
 ### 4.2 Redis Adapter Extensions
@@ -1224,7 +1458,8 @@ Add to `packages/backend/src/pubsub/redis-adapter.ts`:
 
 - `subscribeNotificationChannel(userId)` / `unsubscribeNotificationChannel(userId)`
 - `subscribeCommentChannel(entityType, entityId)` / `unsubscribeCommentChannel(...)`
-- `publishNotificationEvent(userId, event)` / `publishCommentEvent(entityType, entityId, event)`
+- `subscribeNewClimbChannel(boardType, layoutId)` / `unsubscribeNewClimbChannel(...)`
+- `publishNotificationEvent(userId, event)` / `publishCommentEvent(entityType, entityId, event)` / `publishNewClimbEvent(boardType, layoutId, item)`
 
 Same pattern as queue/session channels:
 - Include `instanceId` in messages for duplicate prevention
@@ -1255,6 +1490,14 @@ packages/backend/src/graphql/resolvers/social/subscriptions.ts
 - Client subscribes when mounting a comment section component, unsubscribes on unmount
 - Entity validation: verify the entity exists and is commentable (playlist is public, etc.)
 
+**`newClimbCreated` subscription:**
+
+- No auth required (public feed)
+- Subscribe to `new-climbs:{boardType}:{layoutId}` channel
+- Use lazy async iterator
+- Client subscribes when viewing the new climb feed page for a board+layout, unsubscribes on unmount
+- Emits a `NewClimbFeedItem` whenever a new climb is created on the subscribed board+layout
+
 ### 4.4 Event Flow Examples
 
 **New comment on a playlist climb:**
@@ -1277,6 +1520,19 @@ User A follows User B
   → INSERT notification (type: new_follower, recipient: B, actor: A)
   → pubsub.publishNotificationEvent(B.id, { __typename: "NotificationCreated", notification })
     → User B sees notification in real time (badge increments, toast appears)
+```
+
+**New climb created:**
+```
+User A creates a new climb on Kilter, layout 1
+  → INSERT into board_climbs
+  → pubsub.publishNewClimbEvent("kilter", 1, newClimbFeedItem)
+    → Anyone viewing the new climb feed for kilter/layout 1 sees it live
+  → eventBroker.publish({ type: 'climb.created', actorId: A.id, metadata: { climbUuid, boardType: "kilter", layoutId: 1 } })
+    → Notification worker resolves recipients:
+      1. Users following A → new_climb notification
+      2. Users subscribed to kilter/layout 1 → new_climb_global notification
+      3. Deduplicate: if user follows A AND subscribes to kilter/1, send only one notification (new_climb takes priority)
 ```
 
 ---
@@ -1350,6 +1606,7 @@ type SocialEventType =
   | 'comment.reply'
   | 'vote.cast'
   | 'follow.created'
+  | 'climb.created'
   | 'proposal.created'
   | 'proposal.voted'
   | 'proposal.approved'
@@ -1359,6 +1616,7 @@ type SocialEventType =
 **Metadata examples:**
 - `comment.created`: `{ commentUuid, parentCommentId? }`
 - `vote.cast`: `{ value: "+1" | "-1" }`
+- `climb.created`: `{ climbUuid, boardType, layoutId, climbName }`
 - `proposal.approved`: `{ proposalUuid, proposalType }`
 - `follow.created`: `{ followedUserId }`
 
@@ -1398,6 +1656,7 @@ The consumer runs as part of each backend instance using Redis consumer groups:
    - `comment.created` on a tick → tick owner
    - `vote.cast` on a tick → tick owner
    - `follow.created` → the followed user
+   - `climb.created` → followers of the setter (via `user_follows`) + subscribers of the board+layout (via `new_climb_subscriptions`). Deduplicate: if a user is both a follower and subscriber, send only one notification (prefer `new_climb` type).
    - `proposal.approved` → proposal creator + all voters
 
 2. **Deduplication**: Check Redis for recent notifications with the same `(actorId, type, entityId, recipientId)`. If one exists within the dedup window (1 hour for votes, 24h for follows), update its timestamp instead of creating a new one.
@@ -1490,8 +1749,26 @@ packages/web/app/components/activity-feed/
   activity-feed.tsx         # Server component: main feed container
   feed-item.tsx             # Renders one feed item based on type
   feed-item-ascent.tsx      # Ascent card (reuses existing grouped ascent UI)
+  feed-item-new-climb.tsx   # New climb card (climb name, setter, grade)
   feed-item-comment.tsx     # Comment highlight card
   feed-item-playlist.tsx    # Trending playlist climb card
+
+packages/web/app/components/new-climb-feed/
+  new-climb-feed.tsx         # Live feed of new climbs for a board+layout
+  new-climb-feed-item.tsx    # Single new climb card
+  subscribe-button.tsx       # Subscribe/unsubscribe to board+layout notifications
+
+# Search components (modifications to existing + new)
+packages/web/app/components/search-drawer/
+  search-category-pills.tsx  # NEW: Category pill bar (Climbs | Users | Playlists)
+  user-search-results.tsx    # NEW: User search result list
+  playlist-search-results.tsx # NEW: Playlist search result list
+  search-dropdown.tsx        # MODIFIED: Add category pill at top, switch form per category
+  accordion-search-form.tsx  # MODIFIED: Only render when category = 'climbs'
+  search-pill.tsx            # MODIFIED: Show active category in pill summary
+
+packages/web/app/components/board-page/
+  header.tsx                 # MODIFIED: Search bar also appears on home page
 ```
 
 ### 5.2 Vote Button (`vote-button.tsx`)
@@ -1604,6 +1881,140 @@ Extends the home page for authenticated users.
 - Show trending/popular content globally
 - Prompt to sign in for personalized feed
 
+### 5.7 Unified Search System
+
+The search drawer is extended with a **search category pill bar** at the top, allowing users to switch between searching climbs, users, and playlists. The same search bar component appears on both the climb list page and the home page.
+
+#### Current Architecture (reference)
+
+The existing search system consists of:
+- `SearchPill` (in `header.tsx`) -- triggers `SearchDropdown`
+- `SearchDropdown` -- full-screen swipeable drawer with `AccordionSearchForm`
+- `AccordionSearchForm` -- 4 collapsible filter panels (Climb, Quality, Progress, Holds)
+- `UISearchParamsProvider` -- manages filter state with 500ms debounce
+- `ClimbsList` -- renders climb results with infinite scroll
+
+All of these are currently climb-specific and live in the climb list page route.
+
+#### Search Category Pill Bar (`search-category-pills.tsx`)
+
+Client component. Renders a horizontal row of MUI `Chip` components at the top of the search drawer, above the search form.
+
+**Props:**
+- `activeCategory: SearchCategory` -- currently selected category
+- `onCategoryChange: (category: SearchCategory) => void`
+- `defaultCategory: SearchCategory` -- set by the host page (home page → `users`, climb list → `climbs`)
+
+**Design:**
+```
+[  Climbs  |  Users  |  Playlists  ]
+```
+- MUI `Chip` with `variant="filled"` for active, `variant="outlined"` for inactive
+- Horizontal scrollable on small screens
+- Sticky at the top of the search drawer
+
+#### Search Drawer Changes (`search-dropdown.tsx`)
+
+The search dropdown is modified to:
+1. Accept a `defaultCategory` prop from the host page
+2. Render `SearchCategoryPills` at the top (before any search form)
+3. **Category-specific content below the pills:**
+   - `climbs`: Render existing `AccordionSearchForm` + `ClimbsList` (unchanged)
+   - `users`: Render a simple text search input + `UserSearchResults`
+   - `playlists`: Render a simple text search input with optional board filter + `PlaylistSearchResults`
+4. Recent search pills adapt to show category-relevant recent searches
+
+#### User Search Results (`user-search-results.tsx`)
+
+Client component. Renders a list of user search results with follow buttons.
+
+**Layout per item:**
+```
+[Avatar] [Display Name]                    [Follow Button]
+         [@handle or email prefix]
+         [Recent ascents: 12 this month]
+```
+
+**Behavior:**
+- Fetches from `searchUsers` GraphQL query on text input change (debounced 300ms)
+- Minimum 2 characters before searching
+- Shows recent search history when input is empty
+- Infinite scroll with `hasMore` pagination
+- Clicking a user navigates to their profile page
+
+#### Playlist Search Results (`playlist-search-results.tsx`)
+
+Client component. Renders a list of playlist search results.
+
+**Layout per item:**
+```
+[Thumbnail] [Playlist Name]                [Climb Count]
+            [by Owner Name]
+            [Board Type badge] [Public/Private badge]
+```
+
+**Behavior:**
+- Fetches from `searchPlaylists` GraphQL query on text input change (debounced 300ms)
+- Minimum 2 characters before searching
+- Optional board type filter chip below the search input
+- Clicking a playlist navigates to the playlist detail view
+
+#### User Search Form
+
+The user search category shows a simplified form (no accordion):
+```
+[Search input: "Search users..."]
+[Optional: Board type filter chips]
+[Results list]
+```
+
+The text input searches across `display_name` (fuzzy/prefix match) and `email` (prefix match, only shows match reason, not the email itself for privacy).
+
+#### Playlist Search Form
+
+The playlist search category shows a simplified form:
+```
+[Search input: "Search playlists..."]
+[Board type filter chips: Kilter | Tension | All]
+[Results list]
+```
+
+#### Home Page Integration
+
+The home page (`packages/web/app/(app)/page.tsx` or equivalent) is modified to:
+1. Include the `SearchPill` component in the page header (same as climb list page)
+2. Pass `defaultCategory="users"` to the search drawer
+3. The search pill shows "Search users..." as placeholder text when on the home page
+4. Tapping the pill opens the unified search drawer with the Users category pre-selected
+
+#### Climb List Page Integration
+
+The existing climb list page (`packages/web/app/(app)/[board_name]/...`) is modified to:
+1. Pass `defaultCategory="climbs"` to the search drawer
+2. The existing behavior is preserved -- Climbs category shows the same `AccordionSearchForm`
+3. Users can switch to Users or Playlists category from within the search drawer
+
+#### Backend: Search Resolvers
+
+New file: `packages/backend/src/graphql/resolvers/social/search.ts`
+
+**`searchUsers` query:**
+- Search `users` JOIN `user_profiles` on `display_name` ILIKE `%query%` or `email` ILIKE `query%`
+- Optional `boardType` filter: JOIN `user_board_mappings` to filter users active on a specific board
+- Compute `recentAscentCount` via subquery on `boardsesh_ticks` in last 30 days
+- ORDER BY relevance: exact prefix match first, then fuzzy, then by activity (recent ascent count)
+- Paginated with limit/offset
+- Rate limit: 20 searches per minute per user
+
+**`searchPlaylists` query:**
+- Search `playlists` WHERE `name` ILIKE `%query%` OR `description` ILIKE `%query%`
+- Filter: `is_public = true` by default
+- Optional `boardType` filter on `playlists.board_type`
+- JOIN `users`/`user_profiles` for owner info
+- Compute `climbCount` via subquery on `playlist_climbs`
+- ORDER BY relevance, then by `climbCount` DESC
+- Paginated with limit/offset
+
 ---
 
 ## Phase 7: Integration Points
@@ -1626,18 +2037,18 @@ The climb detail page (when viewing from search results, not within a playlist):
 - This is the climb's own discussion, independent of any playlist context
 - **Community status badges** showing community grade (if different from Aurora), classic, benchmark
 - **Proposal section** (below or in a tab alongside comments):
-  - Shows open proposals for this climb at the current angle
-  - "Propose grade change" / "Propose as classic" / "Propose as benchmark" buttons
+  - Shows open proposals for this climb: grade/benchmark proposals at the current angle, plus any classic proposals (which are angle-independent)
+  - "Propose grade change" / "Propose as benchmark" (angle-specific) / "Propose as classic" (angle-independent) buttons
   - Each proposal card shows: type, proposed value, current value, reason, vote progress bar, comment count
   - Vote buttons on each proposal (support/oppose)
   - Click through to full proposal discussion (comments via `entity_type = 'proposal'`)
   - **Frozen indicator** if the climb is frozen at this angle (with reason, no "propose" buttons)
   - **Proposal history** toggle: show approved/rejected proposals for context
 - **Setter controls** (only visible if the authenticated user is the climb's creator):
-  - Direct grade adjustment dropdown (bypasses proposal system)
-  - Direct classic/benchmark toggle
-  - These apply immediately via `setterOverrideCommunityStatus` mutation
-  - Supersedes any open proposals of the affected type
+  - Direct grade adjustment dropdown (bypasses proposal system for grade only)
+  - Setter cannot override classic or benchmark status -- those are community-driven
+  - Applies immediately via `setterOverrideCommunityStatus` mutation
+  - Supersedes any open grade proposals at the affected angle
 
 ### 6.3 Ascent/Tick Detail
 
@@ -1723,13 +2134,15 @@ To avoid notification spam:
 3. Create `comments` table + migration
 4. Create `votes` table + migration
 5. Create `notifications` table + migration
-6. Create `community_roles` table + migration
-7. Create `community_settings` table + migration
-8. Create `climb_proposals` table + migration
-9. Create `proposal_votes` table + migration
-10. Create `climb_community_status` table + migration
-11. Export types from `packages/db`
-12. Add new GraphQL types to `packages/shared-schema`
+6. Create `new_climb_subscriptions` table + migration
+7. Create `community_roles` table + migration
+8. Create `community_settings` table + migration
+9. Create `climb_proposals` table + migration (with nullable `angle` for classic proposals)
+10. Create `proposal_votes` table + migration
+11. Create `climb_community_status` table + migration (angle-specific: grade, benchmark)
+12. Create `climb_classic_status` table + migration (angle-independent: classic)
+13. Export types from `packages/db`
+14. Add new GraphQL types to `packages/shared-schema`
 
 ### Milestone 2: Follow System
 1. `followUser` / `unfollowUser` resolver mutations
@@ -1758,13 +2171,14 @@ To avoid notification spam:
 
 ### Milestone 5: Notification Pipeline (Message Broker)
 1. Implement `EventBroker` using Redis Streams (`XADD`, `XREADGROUP`, `XACK`)
-2. Define `SocialEvent` types and metadata schemas
+2. Define `SocialEvent` types and metadata schemas (including `climb.created`)
 3. Wire mutations to publish events via `eventBroker.publish()` (fire-and-forget)
 4. Implement notification worker consumer:
-   a. Recipient resolution (lookup followers, entity owners, etc.)
+   a. Recipient resolution (lookup followers, entity owners, board+layout subscribers, etc.)
    b. Deduplication via Redis (1h window for votes, 24h for follows)
-   c. Persist to `notifications` table
-   d. Real-time delivery via `pubsub.publishNotificationEvent()`
+   c. Cross-source deduplication for new climbs (follower + board subscriber → one notification)
+   d. Persist to `notifications` table
+   e. Real-time delivery via `pubsub.publishNotificationEvent()`
 5. Consumer group setup with dead-consumer recovery (`XAUTOCLAIM`)
 6. Extend PubSub with notification channels (`subscribeNotifications`, `publishNotificationEvent`)
 7. Extend Redis adapter with notification channels
@@ -1783,28 +2197,45 @@ To avoid notification spam:
 6. Community settings UI panel
 
 ### Milestone 7: Community Proposals
-1. `createProposal` mutation with supersede logic and auto-vote
+1. `createProposal` mutation with supersede logic, auto-vote, and angle-awareness (nullable angle for classic proposals)
 2. `voteOnProposal` mutation with weighted votes and auto-approval threshold check
 3. `resolveProposal` mutation (admin/leader override)
-4. `climbProposals` / `browseProposals` queries
-5. `climbCommunityStatus` / `bulkClimbCommunityStatus` queries
-6. `freezeClimb` mutation
-7. `ProposalCard` component with vote progress bar
-8. `ProposalSection` component for climb detail view
-9. `CreateProposalForm` (grade picker, classic/benchmark toggle)
-10. `CommunityStatusBadge` on climb cards (shows community grade, classic, benchmark)
-11. Integration with climb detail view
-12. Proposal notifications (approved, rejected, vote on your proposal)
+4. `setterOverrideCommunityStatus` mutation (grade-only setter privilege)
+5. `climbProposals` / `browseProposals` queries
+6. `climbCommunityStatus` / `bulkClimbCommunityStatus` / `climbClassicStatus` queries
+7. `freezeClimb` mutation
+8. `ProposalCard` component with vote progress bar
+9. `ProposalSection` component for climb detail view
+10. `CreateProposalForm` (grade picker at specific angle, classic toggle angle-independent, benchmark toggle at specific angle)
+11. `CommunityStatusBadge` on climb cards (shows community grade, classic, benchmark)
+12. Integration with climb detail view (including setter controls for grade only)
+13. Proposal notifications (approved, rejected, vote on your proposal)
 
-### Milestone 8: Activity Feed
+### Milestone 8: Activity Feed + New Climb Feed
 1. `activityFeed` query resolver with cursor-based pagination
-2. Feed aggregation logic (followed-user ascents + trending content + approved proposals)
+2. Feed aggregation logic (followed-user ascents + followed-user new climbs + trending content + approved proposals)
 3. `ActivityFeed` server component
-4. `FeedItem` components (ascent, comment, playlist, proposal)
+4. `FeedItem` components (ascent, new_climb, comment, playlist, proposal)
 5. Home page integration
 6. Empty state for users with no follows
+7. `newClimbFeed` query resolver for board+layout new climb feed
+8. `newClimbCreated` WebSocket subscription + PubSub channels
+9. `subscribeNewClimbs` / `unsubscribeNewClimbs` mutations
+10. New climb feed UI components (`NewClimbFeed`, `NewClimbFeedItem`, `SubscribeButton`)
+11. New climb notifications: followed-user creates climb → `new_climb` notification
+12. Global new climb notifications: board+layout subscription → `new_climb_global` notification
 
-### Milestone 9: Polish and Performance
+### Milestone 9: Unified Search
+1. `searchUsers` query resolver
+2. `searchPlaylists` query resolver
+3. `SearchCategoryPills` component (Climbs | Users | Playlists)
+4. Modify `SearchDropdown` to accept `defaultCategory` prop and render category-specific content
+5. `UserSearchResults` component with follow buttons
+6. `PlaylistSearchResults` component
+7. Home page integration (search bar defaulting to Users category)
+8. Climb list page integration (search bar defaulting to Climbs category)
+
+### Milestone 10: Polish and Performance
 1. Bulk vote summary loading for list views
 2. Rate limiting via Redis on all social mutations
 3. `vote_counts` materialized table if needed
