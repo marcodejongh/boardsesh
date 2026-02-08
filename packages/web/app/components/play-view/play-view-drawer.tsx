@@ -217,6 +217,7 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
               canSwipePrevious={canSwipePrevious}
               className={styles.boardSection}
               boardContainerClassName={styles.swipeCardContainer}
+              fillContainer
             />
           )}
 

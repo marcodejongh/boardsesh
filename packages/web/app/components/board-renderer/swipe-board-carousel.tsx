@@ -30,6 +30,8 @@ export interface SwipeBoardCarouselProps {
   className?: string;
   /** CSS class for the inner board wrapper that translates during swipe */
   boardContainerClassName?: string;
+  /** When true, skip aspect-ratio and let the container fill its parent (parent controls sizing via flex). */
+  fillContainer?: boolean;
 }
 
 const SwipeBoardCarousel: React.FC<SwipeBoardCarouselProps> = ({
@@ -43,6 +45,7 @@ const SwipeBoardCarousel: React.FC<SwipeBoardCarouselProps> = ({
   canSwipePrevious,
   className,
   boardContainerClassName,
+  fillContainer,
 }) => {
   const enterFallbackRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -94,7 +97,7 @@ const SwipeBoardCarousel: React.FC<SwipeBoardCarouselProps> = ({
   return (
     <div
       className={`${styles.carouselContainer} ${className ?? ''}`}
-      style={{ aspectRatio: `${boardDetails.boardWidth} / ${boardDetails.boardHeight}` }}
+      style={fillContainer ? undefined : { aspectRatio: `${boardDetails.boardWidth} / ${boardDetails.boardHeight}` }}
       {...swipeHandlers}
     >
       <div
