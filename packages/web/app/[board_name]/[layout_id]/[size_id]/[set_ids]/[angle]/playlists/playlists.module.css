@@ -250,20 +250,16 @@
   padding: 0;
 }
 
-.playlistTabs :global(.ant-tabs-nav) {
+.playlistTabs :global(.MuiTabs-root) {
   margin-bottom: 0;
   padding: 0 16px;
 }
 
-.playlistTabs :global(.ant-tabs-content-holder) {
-  padding: 16px;
-}
-
-.playlistTabs :global(.ant-tabs-tab) {
+.playlistTabs :global(.MuiTab-root) {
   padding: 12px 0;
 }
 
-.playlistTabs :global(.ant-tabs-tab span) {
+.playlistTabs :global(.MuiTab-root span) {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -312,12 +308,8 @@
     border-radius: 16px;
   }
 
-  .playlistTabs :global(.ant-tabs-nav) {
+  .playlistTabs :global(.MuiTabs-root) {
     padding: 0 20px;
-  }
-
-  .playlistTabs :global(.ant-tabs-content-holder) {
-    padding: 20px;
   }
 
   .searchFilters {
@@ -331,12 +323,8 @@
     border-radius: 8px;
   }
 
-  .playlistTabs :global(.ant-tabs-nav) {
+  .playlistTabs :global(.MuiTabs-root) {
     padding: 0 12px;
-  }
-
-  .playlistTabs :global(.ant-tabs-content-holder) {
-    padding: 12px;
   }
 
   .searchFilters {

@@ -465,7 +465,7 @@ export default function CreateClimbForm({
               fontSize: 28,
               fontWeight: themeTokens.typography.fontWeight.bold,
               lineHeight: 1,
-              color: getSoftFontGradeColor(userGrade) ?? 'var(--ant-color-text-secondary)',
+              color: getSoftFontGradeColor(userGrade) ?? 'var(--neutral-500)',
               flexShrink: 0,
             }}
           >

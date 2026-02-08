@@ -29,7 +29,7 @@ export const playlists = pgTable(
     description: text('description'),
     isPublic: boolean('is_public').default(false).notNull(),
     color: text('color'), // Hex color (e.g., '#06B6D4')
-    icon: text('icon'), // Ant Design icon name (e.g., 'StarOutlined')
+    icon: text('icon'), // MUI icon name (e.g., 'StarOutlined')
 
     // Aurora sync tracking (for circuits synced from Aurora)
     auroraType: text('aurora_type'), // 'circuits' when synced from Aurora

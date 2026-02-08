@@ -8,10 +8,6 @@ vi.mock('@vercel/analytics', () => ({
   track: (...args: unknown[]) => mockTrack(...args),
 }));
 
-vi.mock('antd', () => ({
-  message: { error: vi.fn() },
-}));
-
 const mockSendFramesToBoard = vi.fn().mockResolvedValue(true);
 const mockConnect = vi.fn().mockResolvedValue(true);
 const mockDisconnect = vi.fn();

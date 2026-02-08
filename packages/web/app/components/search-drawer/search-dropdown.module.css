@@ -1,8 +1,3 @@
-/* Search Dropdown Drawer */
-.drawerRoot :global(.ant-drawer-body) {
-  background-color: var(--semantic-background, #F3F4F6);
-}
-
 /* Footer bar */
 .footer {
   display: flex;
