@@ -13,9 +13,9 @@
 }
 
 .boardSection {
-  flex-shrink: 0;
+  flex-shrink: 1;
   min-height: 0;
-  max-height: 60dvh;
+  max-height: 80dvh;
   width: 100%;
   overflow: hidden;
   position: relative;
