@@ -15,8 +15,9 @@
 .boardSection {
   flex: 1;
   min-height: 0;
+  max-height: 60dvh;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
   overflow: hidden;
   position: relative;
