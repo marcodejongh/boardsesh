@@ -10,10 +10,6 @@ type LogoProps = {
   linkToHome?: boolean;
 };
 
-// 90s vibe colors from Kilter board holds
-const KILTER_CYAN = '#00FFFF'; // Hand hold color
-const KILTER_PINK = '#FF00FF'; // Finish hold color
-
 const sizes = {
   sm: { icon: 32, fontSize: 14, gap: 6 },
   md: { icon: 40, fontSize: 16, gap: 8 },
@@ -104,13 +100,13 @@ export const Logo = ({ size = 'md', showText = true, linkToHome = true }: LogoPr
         {/* Transparent background */}
         <rect x="0" y="0" width="48" height="48" rx="4" fill="transparent" />
 
-        {/* Pink shadow layers */}
-        <PixelLetter pixels={B_PIXELS} startX={3 + shadowOffset} startY={6 + shadowOffset} pixelSize={pixelSize} fill={KILTER_PINK} />
-        <PixelLetter pixels={S_PIXELS} startX={24 + shadowOffset} startY={6 + shadowOffset} pixelSize={pixelSize} fill={KILTER_PINK} />
+        {/* Dusty rose shadow layers */}
+        <PixelLetter pixels={B_PIXELS} startX={3 + shadowOffset} startY={6 + shadowOffset} pixelSize={pixelSize} fill={themeTokens.colors.primary} />
+        <PixelLetter pixels={S_PIXELS} startX={24 + shadowOffset} startY={6 + shadowOffset} pixelSize={pixelSize} fill={themeTokens.colors.primary} />
 
-        {/* Cyan letters */}
-        <PixelLetter pixels={B_PIXELS} startX={3} startY={6} pixelSize={pixelSize} fill={KILTER_CYAN} />
-        <PixelLetter pixels={S_PIXELS} startX={24} startY={6} pixelSize={pixelSize} fill={KILTER_CYAN} />
+        {/* Sage green letters */}
+        <PixelLetter pixels={B_PIXELS} startX={3} startY={6} pixelSize={pixelSize} fill={themeTokens.colors.success} />
+        <PixelLetter pixels={S_PIXELS} startX={24} startY={6} pixelSize={pixelSize} fill={themeTokens.colors.success} />
       </svg>
       {showText && (
         <span
