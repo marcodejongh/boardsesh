@@ -21,7 +21,7 @@ const LayoutSelection = ({ layouts = [] }: { layouts: LayoutRow[]; boardName: Bo
   };
 
   return (
-    <div style={{ padding: '24px', background: '#f7f7f7', borderRadius: '8px' }}>
+    <div style={{ padding: '24px', background: 'var(--semantic-background)', borderRadius: '8px' }}>
       <Title level={4}>Select a layout</Title>
       <Form layout="vertical">
         <Form.Item label="Layout" required tooltip="Choose the layout you want to work with">

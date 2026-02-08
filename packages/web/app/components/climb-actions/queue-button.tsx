@@ -6,6 +6,7 @@ import { Tooltip } from 'antd';
 import { track } from '@vercel/analytics';
 import { useQueueContext } from '../graphql-queue';
 import { Climb, BoardDetails } from '@/app/lib/types';
+import { themeTokens } from '@/app/theme/theme-config';
 
 type QueueButtonProps = {
   climb: Climb;
@@ -47,7 +48,7 @@ export default function QueueButton({
 
   const iconStyle: React.CSSProperties = {
     fontSize: size === 'small' ? 14 : 16,
-    color: recentlyAdded ? '#52c41a' : 'inherit',
+    color: recentlyAdded ? themeTokens.colors.success : 'inherit',
     cursor: recentlyAdded ? 'not-allowed' : 'pointer',
   };
 

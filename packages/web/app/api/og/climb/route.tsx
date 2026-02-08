@@ -6,6 +6,7 @@ import { getBoardDetailsForBoard } from '@/app/lib/board-utils';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import { convertLitUpHoldsStringToMap, getImageUrl } from '@/app/components/board-renderer/util';
 import { HoldRenderData } from '@/app/components/board-renderer/types';
+import { themeTokens } from '@/app/theme/theme-config';
 
 export const runtime = 'edge';
 
@@ -83,7 +84,7 @@ export async function GET(request: NextRequest) {
               flexShrink: 0,
               alignItems: 'center',
               justifyContent: 'center',
-              background: '#f5f5f5',
+              background: themeTokens.neutral[100],
             }}
           >
             {/* Inner container with exact board dimensions */}

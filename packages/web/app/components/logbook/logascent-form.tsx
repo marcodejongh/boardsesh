@@ -5,6 +5,7 @@ import { track } from '@vercel/analytics';
 import { Climb, BoardDetails } from '@/app/lib/types';
 import { useBoardProvider, TickStatus } from '../board-provider/board-provider-context';
 import { TENSION_KILTER_GRADES, ANGLES } from '@/app/lib/board-data';
+import { themeTokens } from '@/app/theme/theme-config';
 import dayjs from 'dayjs';
 
 const { TextArea } = Input;
@@ -168,7 +169,7 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boar
                 Mirrored
               </Tag>
               <Tooltip title="Click the tag to toggle whether you completed this climb on the mirrored side">
-                <InfoCircleOutlined style={{ color: '#8c8c8c', cursor: 'pointer' }} />
+                <InfoCircleOutlined style={{ color: themeTokens.neutral[400], cursor: 'pointer' }} />
               </Tooltip>
             </Space>
           )}

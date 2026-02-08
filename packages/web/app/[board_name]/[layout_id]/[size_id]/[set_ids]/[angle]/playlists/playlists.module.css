@@ -3,18 +3,18 @@
 .pageContainer {
   padding: 16px;
   min-height: 100vh;
-  background-color: #F9FAFB;
+  background-color: var(--neutral-50);
   max-width: 800px;
   margin: 0 auto;
 }
 
 /* Actions section */
 .actionsSection {
-  background-color: #FFFFFF;
+  background-color: var(--semantic-surface);
   border-radius: 12px;
   padding: 16px;
   margin-bottom: 16px;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm);
 }
 
 .actionsContainer {
@@ -32,9 +32,9 @@
 
 /* List section */
 .listSection {
-  background-color: #FFFFFF;
+  background-color: var(--semantic-surface);
   border-radius: 12px;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm);
   overflow: hidden;
 }
 
@@ -53,7 +53,7 @@
   padding: 16px !important;
   cursor: pointer;
   transition: background-color 0.15s ease;
-  border-bottom: 1px solid #E5E7EB;
+  border-bottom: 1px solid var(--neutral-200);
   display: flex !important;
   justify-content: space-between !important;
   align-items: center !important;
@@ -64,7 +64,7 @@
 }
 
 .playlistItem:hover {
-  background-color: #F9FAFB;
+  background-color: var(--neutral-50);
 }
 
 .playlistItemContent {
@@ -87,7 +87,7 @@
 
 .playlistColorIcon {
   font-size: 18px;
-  color: #FFFFFF;
+  color: var(--semantic-surface);
 }
 
 .playlistInfo {
@@ -98,7 +98,7 @@
 .playlistName {
   font-size: 16px;
   font-weight: 500;
-  color: #111827;
+  color: var(--neutral-900);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -106,7 +106,7 @@
 
 .playlistMeta {
   font-size: 13px;
-  color: #6B7280;
+  color: var(--neutral-500);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -114,7 +114,7 @@
 }
 
 .metaDot {
-  color: #D1D5DB;
+  color: var(--neutral-300);
 }
 
 .visibilityText {
@@ -130,7 +130,7 @@
 }
 
 .playlistArrow {
-  color: #9CA3AF;
+  color: var(--neutral-400);
   font-size: 12px;
   flex-shrink: 0;
 }
@@ -143,14 +143,14 @@
   justify-content: center;
   padding: 60px 20px;
   text-align: center;
-  background-color: #FFFFFF;
+  background-color: var(--semantic-surface);
   border-radius: 12px;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm);
 }
 
 .emptyIcon {
   font-size: 48px;
-  color: #D1D5DB;
+  color: var(--neutral-300);
   margin-bottom: 16px;
 }
 
@@ -177,26 +177,26 @@
   justify-content: center;
   padding: 40px 20px;
   text-align: center;
-  background-color: #FFFFFF;
+  background-color: var(--semantic-surface);
   border-radius: 12px;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm);
 }
 
 .errorIcon {
   font-size: 48px;
-  color: #9CA3AF;
+  color: var(--neutral-400);
   margin-bottom: 16px;
 }
 
 .errorTitle {
   font-size: 18px;
   font-weight: 600;
-  color: #111827;
+  color: var(--neutral-900);
   margin-bottom: 8px;
 }
 
 .errorMessage {
-  color: #6B7280;
+  color: var(--neutral-500);
   margin-bottom: 20px;
 }
 
@@ -240,9 +240,9 @@
 
 /* Tabs container */
 .tabsContainer {
-  background-color: #FFFFFF;
+  background-color: var(--semantic-surface);
   border-radius: 12px;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm);
   overflow: hidden;
 }
 
@@ -271,11 +271,11 @@
 
 /* Search filters */
 .searchFilters {
-  background-color: #FFFFFF;
+  background-color: var(--semantic-surface);
   border-radius: 12px;
   padding: 16px;
   margin-bottom: 16px;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm);
 }
 
 /* Load more button container */

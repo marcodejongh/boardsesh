@@ -1,21 +1,17 @@
-/*
- * Color values match themeTokens from theme-config.ts
- * CSS modules cannot import JS, so hex values are used directly
- * (same pattern as index.css)
- */
+/* Color values use CSS custom properties defined in index.css (derived from theme-config.ts) */
 
 .pageLayout {
   min-height: 100vh;
-  background: #f9fafb;
+  background: var(--neutral-50);
 }
 
 .header {
-  background: #ffffff;
+  background: var(--semantic-surface);
   padding: 0 16px;
   display: flex;
   align-items: center;
   gap: 16px;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow-xs);
 }
 
 .headerTitle {
@@ -61,19 +57,19 @@
 }
 
 .warningIcon {
-  color: #f59e0b;
+  color: var(--color-warning);
 }
 
 .errorIcon {
-  color: #ef4444;
+  color: var(--color-error);
 }
 
 .successIcon {
-  color: #10b981;
+  color: var(--color-success);
 }
 
 .primaryIcon {
-  color: #06b6d4;
+  color: var(--color-primary);
 }
 
 .featureList {

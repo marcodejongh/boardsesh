@@ -50,12 +50,12 @@
 
 /* Active/pressed state for favorite */
 .iconWrapper.active {
-  color: #ff4d4f;
+  color: var(--color-error);
 }
 
 /* Recently added state for queue */
 .iconWrapper.recentlyAdded {
-  color: #52c41a;
+  color: var(--color-success);
   cursor: not-allowed;
 }
 

@@ -104,7 +104,7 @@ function TypeBadge({ type }: { type: SchemaSection['type'] }) {
     type: 'blue',
     input: 'green',
     enum: 'purple',
-    query: 'cyan',
+    query: 'geekblue',
     mutation: 'orange',
     subscription: 'magenta',
     union: 'gold',

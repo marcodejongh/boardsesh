@@ -3,8 +3,8 @@
 /* Design tokens as CSS custom properties - derived from theme-config.ts */
 :root {
   /* Primary colors */
-  --color-primary: #06B6D4;
-  --color-primary-hover: #0891B2;
+  --color-primary: #8C4A52;
+  --color-primary-hover: #7A3F47;
 
   /* Neutral palette */
   --neutral-50: #F9FAFB;
@@ -22,13 +22,24 @@
   --semantic-background: #F9FAFB;
   --semantic-surface: #FFFFFF;
   --semantic-surface-overlay: rgba(255, 255, 255, 0.95);
-  --semantic-selected: #ECFEFF;
-  --semantic-selected-light: rgba(6, 182, 212, 0.08);
-  --semantic-selected-border: #06B6D4;
+  --semantic-selected: #F7F2F3;
+  --semantic-selected-hover: #EFE6E8;
+  --semantic-selected-light: rgba(140, 74, 82, 0.06);
+  --semantic-selected-border: #8C4A52;
 
   /* Status colors */
-  --color-success: #10B981;
-  --color-error: #EF4444;
+  --color-success: #6B9080;
+  --color-success-hover: #5A7A6C;
+  --color-success-bg: #EFF5F2;
+  --color-error: #B8524C;
+  --color-error-bg: #F9EFEE;
+  --color-warning: #C4943C;
+  --color-warning-bg: #FAF5EC;
+
+  /* Shadows */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
 
   /* Borders */
   --border-subtle: rgba(0, 0, 0, 0.06);
@@ -101,8 +112,8 @@ button,
 
 /* Selected state styling utility class - use higher specificity instead of !important */
 .selected-item.selected-item {
-  background-color: #ECFEFF;
-  border-color: #06B6D4;
+  background-color: var(--semantic-selected);
+  border-color: var(--color-primary);
 }
 
 /* Custom scrollbar for webkit browsers */
@@ -112,24 +123,24 @@ button,
 }
 
 ::-webkit-scrollbar-track {
-  background: #F3F4F6;
+  background: var(--neutral-100);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #D1D5DB;
+  background: var(--neutral-300);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #9CA3AF;
+  background: var(--neutral-400);
 }
 
 /* Firefox scrollbar properties are set in the html rule above */
 
 /* Focus styles for accessibility */
 :focus-visible {
-  outline: 2px solid #06B6D4;
+  outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
 
@@ -140,7 +151,7 @@ button,
 
 /* Header shadow utility */
 .header-shadow {
-  border-bottom: 1px solid #E5E7EB;
+  border-bottom: 1px solid var(--neutral-200);
   position: relative;
   z-index: 10;
 }
@@ -230,7 +241,7 @@ button,
 /* Loading skeleton animation improvement */
 .ant-skeleton-content .ant-skeleton-title,
 .ant-skeleton-content .ant-skeleton-paragraph > li {
-  background: linear-gradient(90deg, #F3F4F6 25%, #E5E7EB 37%, #F3F4F6 63%);
+  background: linear-gradient(90deg, var(--neutral-100) 25%, var(--neutral-200) 37%, var(--neutral-100) 63%);
   background-size: 400% 100%;
   animation: skeleton-loading 1.4s ease infinite;
 }
@@ -273,12 +284,12 @@ button,
 /* Override Atlaskit drag-and-drop indicator color to match theme
    Note: !important is required here as third-party library sets inline styles */
 [data-drop-indicator-edge] {
-  --indicator-color: #06B6D4 !important;
-  background-color: #06B6D4 !important;
+  --indicator-color: var(--color-primary) !important;
+  background-color: var(--color-primary) !important;
 }
 
 /* Alternative selector for drop indicator line */
 .pragmatic-drop-indicator,
 [class*="drop-indicator"] {
-  background-color: #06B6D4 !important;
+  background-color: var(--color-primary) !important;
 }

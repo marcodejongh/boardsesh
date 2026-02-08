@@ -50,7 +50,7 @@ export function QueueAction({
 
   const Icon = recentlyAdded ? CheckCircleOutlined : PlusCircleOutlined;
   const iconStyle = recentlyAdded
-    ? { color: '#52c41a', fontSize: iconSize }
+    ? { color: themeTokens.colors.success, fontSize: iconSize }
     : { fontSize: iconSize };
   const icon = <Icon style={iconStyle} />;
 

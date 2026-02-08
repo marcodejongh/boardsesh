@@ -4,7 +4,7 @@
 
 .boardPreview {
   padding: 8px;
-  background: #f5f5f5;
+  background: var(--neutral-100);
   display: flex;
   justify-content: center;
   align-items: center;

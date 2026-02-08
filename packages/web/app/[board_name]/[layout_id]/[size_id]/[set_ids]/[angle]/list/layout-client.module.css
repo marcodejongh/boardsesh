@@ -21,7 +21,7 @@
   top: 8vh; /* Below the header */
   height: calc(92vh - 64px); /* Full height minus header and queue bar */
   overflow-y: auto;
-  background: #fff;
+  background: var(--semantic-surface);
   box-shadow: -2px 0 8px rgba(0, 0, 0, 0.08);
   display: none;
 }

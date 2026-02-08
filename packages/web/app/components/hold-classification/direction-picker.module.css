@@ -17,12 +17,12 @@
 
 .label {
   font-size: 10px;
-  fill: var(--neutral-500, #6B7280);
+  fill: var(--neutral-500);
   font-weight: 500;
 }
 
 .angleDisplay {
   font-size: 14px;
-  color: var(--neutral-600, #4B5563);
+  color: var(--neutral-600);
   font-weight: 500;
 }

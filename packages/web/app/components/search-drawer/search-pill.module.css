@@ -5,28 +5,28 @@
   width: 100%;
   padding: 6px 14px;
   border-radius: 9999px;
-  background: #F9FAFB;
-  border: 1px solid #E5E7EB;
+  background: var(--neutral-50);
+  border: 1px solid var(--neutral-200);
   cursor: pointer;
   transition: box-shadow 200ms ease;
   font-size: 14px;
-  color: #6B7280;
+  color: var(--neutral-500);
   line-height: 1.4;
   position: relative;
 }
 
 .pill:hover {
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm);
 }
 
 .pill:active {
-  background: #F3F4F6;
+  background: var(--neutral-100);
 }
 
 .icon {
   flex-shrink: 0;
   font-size: 14px;
-  color: #9CA3AF;
+  color: var(--neutral-400);
 }
 
 .text {
@@ -40,6 +40,6 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background-color: #06B6D4;
+  background-color: var(--color-primary);
   flex-shrink: 0;
 }

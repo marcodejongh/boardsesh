@@ -3,18 +3,18 @@
 .pageContainer {
   padding: 16px;
   min-height: 100vh;
-  background-color: #F9FAFB;
+  background-color: var(--neutral-50);
   max-width: 1400px;
   margin: 0 auto;
 }
 
 /* Actions section - white card container */
 .actionsSection {
-  background-color: #FFFFFF;
+  background-color: var(--semantic-surface);
   border-radius: 12px;
   padding: 16px;
   margin-bottom: 16px;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm);
 }
 
 /* Main content wrapper */
@@ -26,10 +26,10 @@
 
 /* Playlist details section */
 .detailsSection {
-  background-color: #FFFFFF;
+  background-color: var(--semantic-surface);
   border-radius: 12px;
   padding: 20px;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm);
 }
 
 /* Header with color indicator */
@@ -52,7 +52,7 @@
 
 .colorIndicatorIcon {
   font-size: 24px;
-  color: #FFFFFF;
+  color: var(--semantic-surface);
 }
 
 .headerContent {
@@ -71,7 +71,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  color: #6B7280;
+  color: var(--neutral-500);
   font-size: 14px;
 }
 
@@ -84,25 +84,25 @@
 /* Description section */
 .descriptionSection {
   padding-top: 16px;
-  border-top: 1px solid #E5E7EB;
+  border-top: 1px solid var(--neutral-200);
 }
 
 .descriptionLabel {
   font-size: 12px;
-  color: #9CA3AF;
+  color: var(--neutral-400);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 8px;
 }
 
 .descriptionText {
-  color: #374151;
+  color: var(--neutral-700);
   line-height: 1.6;
   white-space: pre-wrap;
 }
 
 .noDescription {
-  color: #9CA3AF;
+  color: var(--neutral-400);
   font-style: italic;
 }
 
@@ -111,7 +111,7 @@
   display: flex;
   gap: 24px;
   padding-top: 16px;
-  border-top: 1px solid #E5E7EB;
+  border-top: 1px solid var(--neutral-200);
   margin-top: 16px;
 }
 
@@ -123,12 +123,12 @@
 .statValue {
   font-size: 24px;
   font-weight: 600;
-  color: #111827;
+  color: var(--neutral-900);
 }
 
 .statLabel {
   font-size: 12px;
-  color: #6B7280;
+  color: var(--neutral-500);
 }
 
 /* Loading and error states */
@@ -146,26 +146,26 @@
   justify-content: center;
   padding: 40px 20px;
   text-align: center;
-  background-color: #FFFFFF;
+  background-color: var(--semantic-surface);
   border-radius: 12px;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm);
 }
 
 .errorIcon {
   font-size: 48px;
-  color: #9CA3AF;
+  color: var(--neutral-400);
   margin-bottom: 16px;
 }
 
 .errorTitle {
   font-size: 18px;
   font-weight: 600;
-  color: #111827;
+  color: var(--neutral-900);
   margin-bottom: 8px;
 }
 
 .errorMessage {
-  color: #6B7280;
+  color: var(--neutral-500);
   margin-bottom: 20px;
 }
 
@@ -181,13 +181,13 @@
 }
 
 .publicBadge {
-  background-color: #ECFDF5;
-  color: #059669;
+  background-color: var(--neutral-100);
+  color: var(--color-success);
 }
 
 .privateBadge {
-  background-color: #F3F4F6;
-  color: #6B7280;
+  background-color: var(--neutral-100);
+  color: var(--neutral-500);
 }
 
 /* Mobile adjustments */
@@ -244,21 +244,21 @@
 
 /* Climbs section */
 .climbsSection {
-  background-color: #FFFFFF;
+  background-color: var(--semantic-surface);
   border-radius: 12px;
   padding: 20px;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm);
 }
 
 .climbsSectionHeader {
   margin-bottom: 16px;
   padding-bottom: 12px;
-  border-bottom: 1px solid #E5E7EB;
+  border-bottom: 1px solid var(--neutral-200);
 }
 
 .climbsSectionTitle {
   font-size: 16px;
-  color: #111827;
+  color: var(--neutral-900);
 }
 
 /* Desktop layout */
@@ -312,6 +312,13 @@
   .climbsSectionTitle {
     font-size: 14px;
   }
+}
+
+/* End of list message */
+.endOfList {
+  text-align: center;
+  padding: 20px;
+  color: var(--neutral-400);
 }
 
 /* Hidden climbs notice */

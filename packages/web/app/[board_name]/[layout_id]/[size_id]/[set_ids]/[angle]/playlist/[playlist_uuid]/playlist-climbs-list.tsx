@@ -254,7 +254,7 @@ export default function PlaylistClimbsList({
           </Row>
         )}
         {!hasNextPage && visibleClimbs.length > 0 && (
-          <div style={{ textAlign: 'center', padding: '20px', color: '#888' }}>
+          <div className={styles.endOfList}>
             {allClimbs.length >= totalCount ? `All ${visibleCount} climbs loaded` : 'No more climbs'}
           </div>
         )}

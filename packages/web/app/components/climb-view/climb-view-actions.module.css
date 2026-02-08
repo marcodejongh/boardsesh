@@ -38,13 +38,13 @@
 
 /* In Queue button - uses theme success color */
 .inQueueButton {
-  color: #10B981 !important;
-  border-color: #10B981 !important;
+  color: var(--color-success) !important;
+  border-color: var(--color-success) !important;
 }
 
 .inQueueButton:hover {
-  color: #059669 !important;
-  border-color: #059669 !important;
+  color: var(--color-success-hover) !important;
+  border-color: var(--color-success-hover) !important;
 }
 
 @media (min-width: 768px) {

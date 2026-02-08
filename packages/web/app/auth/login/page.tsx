@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 function AuthPageFallback() {
   return (
-    <Layout style={{ minHeight: '100vh', background: '#f5f5f5', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+    <Layout style={{ minHeight: '100vh', background: 'var(--semantic-background)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
       <Spin size="large" />
     </Layout>
   );

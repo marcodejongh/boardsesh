@@ -7,7 +7,7 @@
   overflow: hidden;
   touch-action: manipulation;
   /* semantic.background = neutral-50 */
-  background-color: var(--semantic-background, #F9FAFB);
+  background-color: var(--semantic-background);
 }
 
 /* Header for create page with back and save buttons */
@@ -17,8 +17,8 @@
   justify-content: space-between;
   gap: 12px;
   padding: 8px 12px;
-  background-color: var(--semantic-surface, #FFFFFF);
-  border-bottom: 1px solid var(--border-subtle, #E5E7EB);
+  background-color: var(--semantic-surface);
+  border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
 
@@ -44,8 +44,8 @@
 .validationBar {
   padding: 8px 12px;
   text-align: center;
-  background-color: var(--semantic-surface, #FFFFFF);
-  border-top: 1px solid var(--border-subtle, #E5E7EB);
+  background-color: var(--semantic-surface);
+  border-top: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
 
@@ -136,13 +136,11 @@
 
 /* Heatmap button next to title */
 .heatmapButton {
-  /* neutral-400 */
-  color: #9CA3AF;
+  color: var(--neutral-400);
 }
 
 .heatmapButton:hover {
-  /* neutral-500 */
-  color: #6B7280;
+  color: var(--neutral-500);
 }
 
 /* Opacity slider for heatmap */
