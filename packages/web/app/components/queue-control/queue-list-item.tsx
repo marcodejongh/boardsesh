@@ -9,7 +9,6 @@ import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
-import Box from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
 import CheckOutlined from '@mui/icons-material/CheckOutlined';
 import CloseOutlined from '@mui/icons-material/CloseOutlined';
@@ -25,7 +24,7 @@ import { DropIndicator } from '@atlaskit/pragmatic-drag-and-drop-react-drop-indi
 import { attachClosestEdge, extractClosestEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge';
 import type { Edge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/types';
 import { combine } from '@atlaskit/pragmatic-drag-and-drop/combine';
-import { useSwipeable } from 'react-swipeable';
+import { useSwipeActions } from '@/app/hooks/use-swipe-actions';
 import { ClimbQueueItem } from './types';
 import ClimbThumbnail from '../climb-card/climb-thumbnail';
 import ClimbTitle from '../climb-card/climb-title';
@@ -97,8 +96,6 @@ export const AscentStatus = ({ climbUuid, fontSize }: { climbUuid: ClimbUuid; fo
   );
 };
 
-// Threshold in pixels to trigger the swipe action
-const SWIPE_THRESHOLD = 100;
 // Maximum swipe distance
 const MAX_SWIPE = 120;
 
@@ -119,9 +116,6 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
   const router = useRouter();
   const [closestEdge, setClosestEdge] = useState<Edge | null>(null);
   const [menuAnchorEl, setMenuAnchorEl] = useState<HTMLElement | null>(null);
-  const [swipeOffset, setSwipeOffset] = useState(0);
-  const [isSwipeComplete, setIsSwipeComplete] = useState(false);
-  const [isHorizontalSwipe, setIsHorizontalSwipe] = useState<boolean | null>(null);
   const itemRef = useRef<HTMLDivElement>(null);
 
   const handleViewClimb = useCallback(() => {
@@ -156,17 +150,11 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
 
   const handleSwipeLeft = useCallback(() => {
     // Swipe left = remove from queue
-    setIsSwipeComplete(true);
-    setTimeout(() => {
-      removeFromQueue(item);
-      setSwipeOffset(0);
-      setIsSwipeComplete(false);
-    }, 200);
+    removeFromQueue(item);
   }, [item, removeFromQueue]);
 
   const handleSwipeRight = useCallback(() => {
     // Swipe right = tick (open tick drawer)
-    setSwipeOffset(0);
     if (item.climb) {
       onTickClick(item.climb);
     }
@@ -186,62 +174,10 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
 
   const { ref: doubleTapRef, onDoubleClick: handleDoubleTap } = useDoubleTap(isEditMode ? undefined : doubleTapCallback);
 
-  const swipeHandlers = useSwipeable({
-    onSwiping: (eventData) => {
-      const { deltaX, deltaY, event } = eventData;
-
-      // On first movement, determine if this is a horizontal or vertical swipe
-      if (isHorizontalSwipe === null) {
-        const absX = Math.abs(deltaX);
-        const absY = Math.abs(deltaY);
-        // Need a minimum movement to determine direction
-        if (absX > 10 || absY > 10) {
-          setIsHorizontalSwipe(absX > absY);
-        }
-        return;
-      }
-
-      // If it's a vertical swipe, don't interfere - let scrolling happen
-      if (!isHorizontalSwipe) {
-        return;
-      }
-
-      // It's a horizontal swipe - prevent scroll and update offset
-      // Access native event for reliable preventDefault on touch events
-      if ('nativeEvent' in event) {
-        event.nativeEvent.preventDefault();
-      } else {
-        event.preventDefault();
-      }
-      const clampedOffset = Math.max(-MAX_SWIPE, Math.min(MAX_SWIPE, deltaX));
-      setSwipeOffset(clampedOffset);
-    },
-    onSwipedLeft: (eventData) => {
-      if (isHorizontalSwipe && Math.abs(eventData.deltaX) >= SWIPE_THRESHOLD) {
-        handleSwipeLeft();
-      } else {
-        setSwipeOffset(0);
-      }
-      setIsHorizontalSwipe(null);
-    },
-    onSwipedRight: (eventData) => {
-      if (isHorizontalSwipe && Math.abs(eventData.deltaX) >= SWIPE_THRESHOLD) {
-        handleSwipeRight();
-      } else {
-        setSwipeOffset(0);
-      }
-      setIsHorizontalSwipe(null);
-    },
-    onTouchEndOrOnMouseUp: () => {
-      // Reset if swipe didn't complete
-      if (Math.abs(swipeOffset) < SWIPE_THRESHOLD) {
-        setSwipeOffset(0);
-      }
-      setIsHorizontalSwipe(null);
-    },
-    trackMouse: false,
-    trackTouch: true,
-    preventScrollOnSwipe: false,
+  const { swipeHandlers, isSwipeComplete, contentRef, leftActionRef, rightActionRef } = useSwipeActions({
+    onSwipeLeft: handleSwipeLeft,
+    onSwipeRight: handleSwipeRight,
+    disabled: isEditMode,
   });
 
   useEffect(() => {
@@ -280,12 +216,6 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
     }
   }, [index, item.uuid, isEditMode]);
 
-  // Calculate action visibility based on swipe offset
-  const showLeftAction = swipeOffset < 0; // Swiping left reveals delete action on right
-  const showRightAction = swipeOffset > 0; // Swiping right reveals tick action on left
-  const leftActionOpacity = Math.min(1, Math.abs(swipeOffset) / SWIPE_THRESHOLD);
-  const rightActionOpacity = Math.min(1, swipeOffset / SWIPE_THRESHOLD);
-
   return (
     <div ref={itemRef} data-testid="queue-item">
       <div
@@ -294,13 +224,14 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
       >
         {/* Left action background (tick - revealed on swipe right) */}
         <div
+          ref={leftActionRef}
           className={styles.leftAction}
           style={{
             width: MAX_SWIPE,
             backgroundColor: themeTokens.colors.success,
             paddingLeft: themeTokens.spacing[4],
-            opacity: rightActionOpacity,
-            visibility: showRightAction ? 'visible' : 'hidden',
+            opacity: 0,
+            visibility: 'hidden',
           }}
         >
           <CheckOutlined className={styles.actionIcon} />
@@ -308,13 +239,14 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
 
         {/* Right action background (delete - revealed on swipe left) */}
         <div
+          ref={rightActionRef}
           className={styles.rightAction}
           style={{
             width: MAX_SWIPE,
             backgroundColor: themeTokens.colors.error,
             paddingRight: themeTokens.spacing[4],
-            opacity: leftActionOpacity,
-            visibility: showLeftAction ? 'visible' : 'hidden',
+            opacity: 0,
+            visibility: 'hidden',
           }}
         >
           <DeleteOutlined className={styles.actionIcon} />
@@ -326,6 +258,7 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
           ref={isEditMode ? undefined : (node: HTMLDivElement | null) => {
             doubleTapRef(node);
             swipeHandlers.ref(node);
+            contentRef(node);
           }}
           className={styles.swipeableContent}
           style={{
@@ -336,38 +269,36 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
                 ? themeTokens.neutral[100]
                 : themeTokens.semantic.surface,
             opacity: isSwipeComplete ? 0 : isHistory ? 0.6 : 1,
-            transform: `translateX(${swipeOffset}px)`,
-            transition: swipeOffset === 0 || isSwipeComplete ? `transform ${themeTokens.transitions.fast}, opacity ${themeTokens.transitions.fast}` : 'none',
             cursor: isEditMode ? 'pointer' : undefined,
           }}
           onDoubleClick={isEditMode ? undefined : handleDoubleTap}
           onClick={isEditMode ? () => onToggleSelect?.(item.uuid) : undefined}
         >
-          <Box className={styles.contentRow} sx={{ display: 'flex', flexWrap: 'nowrap', gap: '8px 8px', alignItems: 'center' }}>
+          <div className={styles.contentRow}>
             {isEditMode && (
-              <Box sx={{ width: { xs: '8.33%', sm: '8.33%' } }}>
+              <div className={styles.colCheckbox}>
                 <MuiCheckbox
                   checked={isSelected}
                   onClick={(e) => e.stopPropagation()}
                   onChange={() => onToggleSelect?.(item.uuid)}
                 />
-              </Box>
+              </div>
             )}
-            <Box sx={{ width: { xs: isEditMode ? '20.83%' : '25%', sm: isEditMode ? '16.67%' : '20.83%' } }}>
+            <div className={isEditMode ? styles.colThumbnailEdit : styles.colThumbnail}>
               <ClimbThumbnail
                 boardDetails={boardDetails}
                 currentClimb={item.climb}
               />
-            </Box>
-            <Box sx={{ width: { xs: isEditMode ? '58.33%' : '54.17%', sm: isEditMode ? '66.67%' : '62.5%' } }}>
+            </div>
+            <div className={isEditMode ? styles.colTitleEdit : styles.colTitle}>
               <ClimbTitle
                 climb={item.climb}
                 showAngle
                 centered
                 nameAddon={<AscentStatus climbUuid={item.climb?.uuid} />}
               />
-            </Box>
-            <Box sx={{ width: { xs: '8.33%', sm: '8.33%' } }}>
+            </div>
+            <div className={styles.colAvatar}>
               {item.addedByUser ? (
                 <MuiTooltip title={item.addedByUser.username}>
                   <MuiAvatar sx={{ width: 24, height: 24 }} src={item.addedByUser.avatarUrl}>
@@ -383,37 +314,39 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
                   </MuiAvatar>
                 </MuiTooltip>
               )}
-            </Box>
+            </div>
             {!isEditMode && (
-              <Box sx={{ width: { xs: '12.5%', sm: '8.33%' } }}>
+              <div className={styles.colMenu}>
                 <IconButton onClick={(e) => setMenuAnchorEl(e.currentTarget)}><MoreVertOutlined /></IconButton>
-                <Menu
-                  anchorEl={menuAnchorEl}
-                  open={Boolean(menuAnchorEl)}
-                  onClose={() => setMenuAnchorEl(null)}
-                  anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-                  transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-                >
-                  <MenuItem onClick={() => { setMenuAnchorEl(null); handleViewClimb(); }}>
-                    <ListItemIcon><InfoOutlined /></ListItemIcon>
-                    <ListItemText>View Climb</ListItemText>
-                  </MenuItem>
-                  <MenuItem onClick={() => { setMenuAnchorEl(null); item.climb && onTickClick(item.climb); }}>
-                    <ListItemIcon><CheckOutlined /></ListItemIcon>
-                    <ListItemText>Tick Climb</ListItemText>
-                  </MenuItem>
-                  <MenuItem onClick={() => { setMenuAnchorEl(null); handleOpenInApp(); }}>
-                    <ListItemIcon><AppsOutlined /></ListItemIcon>
-                    <ListItemText>Open in App</ListItemText>
-                  </MenuItem>
-                  <MenuItem onClick={() => { setMenuAnchorEl(null); removeFromQueue(item); }} sx={{ color: 'error.main' }}>
-                    <ListItemIcon><DeleteOutlined color="error" /></ListItemIcon>
-                    <ListItemText>Remove from Queue</ListItemText>
-                  </MenuItem>
-                </Menu>
-              </Box>
+                {menuAnchorEl && (
+                  <Menu
+                    anchorEl={menuAnchorEl}
+                    open={Boolean(menuAnchorEl)}
+                    onClose={() => setMenuAnchorEl(null)}
+                    anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                    transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+                  >
+                    <MenuItem onClick={() => { setMenuAnchorEl(null); handleViewClimb(); }}>
+                      <ListItemIcon><InfoOutlined /></ListItemIcon>
+                      <ListItemText>View Climb</ListItemText>
+                    </MenuItem>
+                    <MenuItem onClick={() => { setMenuAnchorEl(null); if (item.climb) onTickClick(item.climb); }}>
+                      <ListItemIcon><CheckOutlined /></ListItemIcon>
+                      <ListItemText>Tick Climb</ListItemText>
+                    </MenuItem>
+                    <MenuItem onClick={() => { setMenuAnchorEl(null); handleOpenInApp(); }}>
+                      <ListItemIcon><AppsOutlined /></ListItemIcon>
+                      <ListItemText>Open in App</ListItemText>
+                    </MenuItem>
+                    <MenuItem onClick={() => { setMenuAnchorEl(null); removeFromQueue(item); }} sx={{ color: 'error.main' }}>
+                      <ListItemIcon><DeleteOutlined color="error" /></ListItemIcon>
+                      <ListItemText>Remove from Queue</ListItemText>
+                    </MenuItem>
+                  </Menu>
+                )}
+              </div>
             )}
-          </Box>
+          </div>
         </div>
         {closestEdge && <DropIndicator edge={closestEdge} gap="1px" />}
       </div>

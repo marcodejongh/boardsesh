@@ -1,3 +1,68 @@
 .historyDivider {
   margin: 8px 0;
 }
+
+.queueColumn {
+  display: flex;
+  flex-direction: column;
+}
+
+.suggestedColumn {
+  display: flex;
+  flex-direction: column;
+}
+
+.suggestedItem {
+  display: flex;
+  align-items: center;
+}
+
+.suggestedItemRow {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  width: 100%;
+  align-items: center;
+}
+
+.suggestedThumbnailCol {
+  width: 25%;
+}
+
+.suggestedTitleCol {
+  width: 62.5%;
+}
+
+.suggestedActionCol {
+  width: 12.5%;
+}
+
+@media (min-width: 600px) {
+  .suggestedThumbnailCol {
+    width: 20.83%;
+  }
+
+  .suggestedTitleCol {
+    width: 70.83%;
+  }
+
+  .suggestedActionCol {
+    width: 8.33%;
+  }
+}
+
+.loadMoreContainer {
+  display: flex;
+  flex-direction: column;
+}
+
+.loadMoreSkeletonRow {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.noMoreSuggestions {
+  text-align: center;
+}
