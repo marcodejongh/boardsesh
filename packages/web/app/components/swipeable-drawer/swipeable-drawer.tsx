@@ -148,9 +148,9 @@ const SwipeableDrawer: React.FC<SwipeableDrawerProps> = ({
 
   const isVerticalPlacement = placement === 'top' || placement === 'bottom';
 
-  const horizontalDragHandle = useMemo(() => effectiveEnabled && showDragHandle ? (
+  const horizontalDragHandle = useMemo(() => showDragHandle ? (
     <div
-      {...handleRegionProps}
+      {...(effectiveEnabled ? handleRegionProps : {})}
       className={styles.dragHandleZoneHorizontal}
     >
       <div className={styles.dragHandleBarHorizontal} />
@@ -228,9 +228,9 @@ const SwipeableDrawer: React.FC<SwipeableDrawerProps> = ({
   }, [userTitle, closable, extra, onClose, placement, handleInHeader, horizontalDragHandle, mergedStyles?.header]);
 
   const wrappedChildren = useMemo(() => {
-    if (swipeRegion === 'body' && effectiveEnabled) {
+    if (swipeRegion === 'body') {
       return (
-        <div {...(bodyRegionProps || {})} className={styles.bodySwipeWrapper}>
+        <div {...(effectiveEnabled ? (bodyRegionProps || {}) : {})} className={styles.bodySwipeWrapper}>
           {!handleInHeader && placement === 'bottom' && horizontalDragHandle}
           {children}
           {!handleInHeader && placement === 'top' && horizontalDragHandle}
