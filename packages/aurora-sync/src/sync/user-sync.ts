@@ -8,6 +8,20 @@ import { UNIFIED_TABLES } from '../db/table-select';
 import { boardseshTicks, playlists, playlistClimbs, playlistOwnership } from '@boardsesh/db/schema/app';
 import { randomUUID } from 'crypto';
 import { convertQuality } from './convert-quality';
+import {
+  validateSyncTimestamp,
+  truncate,
+  truncateOrNull,
+  capRecords,
+  STRING_LIMITS,
+  VALID_USER_SYNC_TABLES,
+} from './sync-validation';
+
+function safeInt(value: unknown): number | null {
+  if (value == null) return null;
+  const num = Number(value);
+  return Number.isNaN(num) ? null : num;
+}
 
 // Batch size for bulk inserts
 const BATCH_SIZE = 100;
@@ -53,7 +67,7 @@ async function upsertTableData(
         const values = batch.map((item) => ({
           boardType: boardName,
           id: Number(item.id),
-          username: item.username,
+          username: truncate(item.username, STRING_LIMITS.username),
           createdAt: item.created_at,
         }));
         await db
@@ -76,14 +90,14 @@ async function upsertTableData(
           boardType: boardName,
           uuid: item.uuid,
           userId: Number(auroraUserId),
-          name: item.name,
+          name: truncate(item.name, STRING_LIMITS.name),
           productId: Number(item.product_id),
           isAdjustable: Boolean(item.is_adjustable),
           angle: Number(item.angle),
           layoutId: Number(item.layout_id),
           productSizeId: Number(item.product_size_id),
           hsm: Number(item.hsm),
-          serialNumber: item.serial_number,
+          serialNumber: truncateOrNull(item.serial_number, STRING_LIMITS.serialNumber),
           createdAt: item.created_at,
         }));
         await db
@@ -107,24 +121,38 @@ async function upsertTableData(
 
     case 'draft_climbs': {
       const climbsSchema = UNIFIED_TABLES.climbs;
-      await processBatches(data, BATCH_SIZE, async (batch) => {
+      const validData = data.filter((item) => {
+        if (!item.uuid) {
+          log(`  Warning: skipping draft_climb with missing uuid`);
+          return false;
+        }
+        if (item.layout_id == null || Number.isNaN(Number(item.layout_id))) {
+          log(`  Warning: skipping draft_climb ${item.uuid} with invalid layout_id: ${item.layout_id}`);
+          return false;
+        }
+        return true;
+      });
+      if (validData.length < data.length) {
+        log(`  Filtered out ${data.length - validData.length} invalid draft_climbs`);
+      }
+      await processBatches(validData, BATCH_SIZE, async (batch) => {
         const values = batch.map((item) => ({
           boardType: boardName,
           uuid: item.uuid,
           layoutId: Number(item.layout_id),
-          setterId: Number(auroraUserId),
-          setterUsername: item.setter_username || '',
-          name: item.name || 'Untitled Draft',
-          description: item.description || '',
-          hsm: Number(item.hsm),
-          edgeLeft: Number(item.edge_left),
-          edgeRight: Number(item.edge_right),
-          edgeBottom: Number(item.edge_bottom),
-          edgeTop: Number(item.edge_top),
-          angle: Number(item.angle),
+          setterId: safeInt(auroraUserId) ?? Number(auroraUserId),
+          setterUsername: truncate(item.setter_username || '', STRING_LIMITS.username),
+          name: truncate(item.name || 'Untitled Draft', STRING_LIMITS.name),
+          description: truncate(item.description || '', STRING_LIMITS.description),
+          hsm: safeInt(item.hsm),
+          edgeLeft: safeInt(item.edge_left),
+          edgeRight: safeInt(item.edge_right),
+          edgeBottom: safeInt(item.edge_bottom),
+          edgeTop: safeInt(item.edge_top),
+          angle: safeInt(item.angle),
           framesCount: Number(item.frames_count || 1),
           framesPace: Number(item.frames_pace || 0),
-          frames: item.frames || '',
+          frames: truncate(item.frames || '', STRING_LIMITS.frames),
           isDraft: true,
           isListed: false,
           createdAt: item.created_at || new Date().toISOString(),
@@ -135,22 +163,25 @@ async function upsertTableData(
           .onConflictDoUpdate({
             target: climbsSchema.uuid,
             set: {
-              layoutId: sql`excluded.layout_id`,
-              setterId: sql`excluded.setter_id`,
-              setterUsername: sql`excluded.setter_username`,
-              name: sql`excluded.name`,
-              description: sql`excluded.description`,
-              hsm: sql`excluded.hsm`,
-              edgeLeft: sql`excluded.edge_left`,
-              edgeRight: sql`excluded.edge_right`,
-              edgeBottom: sql`excluded.edge_bottom`,
-              edgeTop: sql`excluded.edge_top`,
-              angle: sql`excluded.angle`,
-              framesCount: sql`excluded.frames_count`,
-              framesPace: sql`excluded.frames_pace`,
-              frames: sql`excluded.frames`,
-              isDraft: sql`excluded.is_draft`,
-              isListed: sql`excluded.is_listed`,
+              // Only update fields if existing climb is still a draft.
+              // Published climbs (isDraft=false) are fully immutable via sync.
+              layoutId: sql`CASE WHEN ${climbsSchema.isDraft} = true THEN excluded.layout_id ELSE ${climbsSchema.layoutId} END`,
+              setterId: sql`CASE WHEN ${climbsSchema.isDraft} = true THEN excluded.setter_id ELSE ${climbsSchema.setterId} END`,
+              setterUsername: sql`CASE WHEN ${climbsSchema.isDraft} = true THEN excluded.setter_username ELSE ${climbsSchema.setterUsername} END`,
+              name: sql`CASE WHEN ${climbsSchema.isDraft} = true THEN excluded.name ELSE ${climbsSchema.name} END`,
+              description: sql`CASE WHEN ${climbsSchema.isDraft} = true THEN excluded.description ELSE ${climbsSchema.description} END`,
+              hsm: sql`CASE WHEN ${climbsSchema.isDraft} = true THEN excluded.hsm ELSE ${climbsSchema.hsm} END`,
+              edgeLeft: sql`CASE WHEN ${climbsSchema.isDraft} = true THEN excluded.edge_left ELSE ${climbsSchema.edgeLeft} END`,
+              edgeRight: sql`CASE WHEN ${climbsSchema.isDraft} = true THEN excluded.edge_right ELSE ${climbsSchema.edgeRight} END`,
+              edgeBottom: sql`CASE WHEN ${climbsSchema.isDraft} = true THEN excluded.edge_bottom ELSE ${climbsSchema.edgeBottom} END`,
+              edgeTop: sql`CASE WHEN ${climbsSchema.isDraft} = true THEN excluded.edge_top ELSE ${climbsSchema.edgeTop} END`,
+              angle: sql`CASE WHEN ${climbsSchema.isDraft} = true THEN excluded.angle ELSE ${climbsSchema.angle} END`,
+              framesCount: sql`CASE WHEN ${climbsSchema.isDraft} = true THEN excluded.frames_count ELSE ${climbsSchema.framesCount} END`,
+              framesPace: sql`CASE WHEN ${climbsSchema.isDraft} = true THEN excluded.frames_pace ELSE ${climbsSchema.framesPace} END`,
+              frames: sql`CASE WHEN ${climbsSchema.isDraft} = true THEN excluded.frames ELSE ${climbsSchema.frames} END`,
+              // Never unpublish: isDraft and isListed stay as-is
+              isDraft: sql`${climbsSchema.isDraft}`,
+              isListed: sql`${climbsSchema.isListed}`,
             },
           });
       });
@@ -174,7 +205,7 @@ async function upsertTableData(
             quality: convertQuality(item.quality),
             difficulty: item.difficulty ? Number(item.difficulty) : null,
             isBenchmark: Boolean(item.is_benchmark || 0),
-            comment: item.comment || '',
+            comment: truncate(item.comment || '', STRING_LIMITS.comment),
             climbedAt: new Date(item.climbed_at).toISOString(),
             createdAt: item.created_at ? new Date(item.created_at).toISOString() : now,
             updatedAt: now,
@@ -227,7 +258,7 @@ async function upsertTableData(
             quality: null,
             difficulty: null,
             isBenchmark: false,
-            comment: item.comment || '',
+            comment: truncate(item.comment || '', STRING_LIMITS.comment),
             climbedAt: new Date(item.climbed_at).toISOString(),
             createdAt: new Date(item.created_at).toISOString(),
             updatedAt: now,
@@ -264,6 +295,7 @@ async function upsertTableData(
       const tagsSchema = UNIFIED_TABLES.tags;
       await processBatches(data, BATCH_SIZE, async (batch) => {
         for (const item of batch) {
+          const tagName = truncate(item.name, STRING_LIMITS.name);
           // First try to update existing record
           const result = await db
             .update(tagsSchema)
@@ -275,7 +307,7 @@ async function upsertTableData(
                 eq(tagsSchema.boardType, boardName),
                 eq(tagsSchema.entityUuid, item.entity_uuid),
                 eq(tagsSchema.userId, Number(auroraUserId)),
-                eq(tagsSchema.name, item.name),
+                eq(tagsSchema.name, tagName),
               ),
             )
             .returning();
@@ -286,7 +318,7 @@ async function upsertTableData(
               boardType: boardName,
               entityUuid: item.entity_uuid,
               userId: Number(auroraUserId),
-              name: item.name,
+              name: tagName,
               isListed: Boolean(item.is_listed),
             });
           }
@@ -303,9 +335,9 @@ async function upsertTableData(
         const values = batch.map((item) => ({
           boardType: boardName,
           uuid: item.uuid,
-          name: item.name,
-          description: item.description,
-          color: item.color,
+          name: truncate(item.name, STRING_LIMITS.name),
+          description: truncateOrNull(item.description, STRING_LIMITS.description),
+          color: truncateOrNull(item.color, STRING_LIMITS.color),
           userId: Number(auroraUserId),
           isPublic: Boolean(item.is_public),
           createdAt: item.created_at,
@@ -329,8 +361,11 @@ async function upsertTableData(
       // 2. Dual write to playlists table (only if NextAuth user exists)
       if (nextAuthUserId) {
         for (const item of data) {
+          const circuitName = truncate(item.name, STRING_LIMITS.name);
+          const circuitDescription = truncateOrNull(item.description, STRING_LIMITS.description);
+          const circuitColor = truncateOrNull(item.color, STRING_LIMITS.color);
           // Format color - Aurora uses hex without #, we store with #
-          const formattedColor = item.color ? `#${item.color}` : null;
+          const formattedColor = circuitColor ? `#${circuitColor}` : null;
 
           // Insert/update playlist
           const [playlist] = await db
@@ -339,8 +374,8 @@ async function upsertTableData(
               uuid: item.uuid, // Use same UUID as Aurora circuit
               boardType: boardName,
               layoutId: null, // Nullable for Aurora-synced circuits
-              name: item.name || 'Untitled Circuit',
-              description: item.description || null,
+              name: circuitName || 'Untitled Circuit',
+              description: circuitDescription || null,
               isPublic: Boolean(item.is_public),
               color: formattedColor,
               auroraType: 'circuits',
@@ -352,8 +387,8 @@ async function upsertTableData(
             .onConflictDoUpdate({
               target: playlists.auroraId,
               set: {
-                name: item.name || 'Untitled Circuit',
-                description: item.description || null,
+                name: circuitName || 'Untitled Circuit',
+                description: circuitDescription || null,
                 isPublic: Boolean(item.is_public),
                 color: formattedColor,
                 updatedAt: item.updated_at ? new Date(item.updated_at) : new Date(),
@@ -417,18 +452,31 @@ async function updateUserSyncs(
   const userSyncsSchema = UNIFIED_TABLES.userSyncs;
 
   for (const sync of userSyncs) {
+    // Validate table_name against known list
+    if (!VALID_USER_SYNC_TABLES.has(sync.table_name)) {
+      console.warn(`[sync-validation] Skipping unknown user_sync table_name: ${String(sync.table_name).slice(0, 100)}`);
+      continue;
+    }
+
+    // Validate timestamp
+    const validatedTimestamp = validateSyncTimestamp(sync.last_synchronized_at);
+    if (!validatedTimestamp) {
+      console.warn(`[sync-validation] Skipping user_sync for ${sync.table_name}: invalid timestamp`);
+      continue;
+    }
+
     await tx
       .insert(userSyncsSchema)
       .values({
         boardType: boardName,
         userId: Number(sync.user_id),
         tableName: sync.table_name,
-        lastSynchronizedAt: sync.last_synchronized_at,
+        lastSynchronizedAt: validatedTimestamp,
       })
       .onConflictDoUpdate({
         target: [userSyncsSchema.boardType, userSyncsSchema.userId, userSyncsSchema.tableName],
         set: {
-          lastSynchronizedAt: sync.last_synchronized_at,
+          lastSynchronizedAt: validatedTimestamp,
         },
       });
   }
@@ -544,7 +592,7 @@ export async function syncUserData(
         for (const tableName of tables) {
           log(`Syncing ${tableName} for user ${auroraUserId} (batch ${syncAttempts})`);
           if (syncResults[tableName] && Array.isArray(syncResults[tableName])) {
-            const data = syncResults[tableName];
+            const data = capRecords(syncResults[tableName], tableName);
 
             const upsertResult = await upsertTableData(tx, board, tableName, auroraUserId, nextAuthUserId, data, log);
 
@@ -589,8 +637,8 @@ export async function syncUserData(
           error instanceof Error
             ? error.message.includes('violates foreign key constraint')
               ? `FK constraint violation: ${error.message.split('violates foreign key constraint')[1]?.split('"')[1] || 'unknown'}`
-              : error.message.slice(0, 500)
-            : String(error).slice(0, 500);
+              : error.message.slice(0, 2000)
+            : String(error).slice(0, 2000);
         log(`Database error: ${errorMessage}`);
         throw new Error(`Database error: ${errorMessage}`);
       } finally {
