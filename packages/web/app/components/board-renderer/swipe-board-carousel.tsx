@@ -92,7 +92,11 @@ const SwipeBoardCarousel: React.FC<SwipeBoardCarouselProps> = ({
   const transition = getSwipeTransition();
 
   return (
-    <div className={`${styles.carouselContainer} ${className ?? ''}`} {...swipeHandlers}>
+    <div
+      className={`${styles.carouselContainer} ${className ?? ''}`}
+      style={{ aspectRatio: `${boardDetails.boardWidth} / ${boardDetails.boardHeight}` }}
+      {...swipeHandlers}
+    >
       <div
         className={boardContainerClassName}
         style={{
