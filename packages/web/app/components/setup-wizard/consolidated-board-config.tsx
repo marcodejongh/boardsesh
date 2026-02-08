@@ -1,7 +1,11 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Form, Select, Switch } from 'antd';
+import MuiSelect, { SelectChangeEvent } from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
+import FormControl from '@mui/material/FormControl';
+import InputLabel from '@mui/material/InputLabel';
+import MuiSwitch from '@mui/material/Switch';
 import MuiTabs from '@mui/material/Tabs';
 import MuiTab from '@mui/material/Tab';
 import Accordion from '@mui/material/Accordion';
@@ -44,8 +48,6 @@ import JoinSessionTab from './join-session-tab';
 import SessionHistoryPanel from './session-history-panel';
 import AuthModal from '../auth/auth-modal';
 import { setDefaultBoardCookie, clearDefaultBoardCookie, getDefaultBoardCookieClient } from '@/app/lib/default-board-cookie';
-
-const { Option } = Select;
 
 // IndexedDB configuration
 const DB_NAME = 'boardsesh-config';
@@ -533,89 +535,105 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
                       </Accordion>
           <MuiDivider />
 
-          <Form layout="vertical">
-            <Form.Item label="Board Configuration" required>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Box>
+              <Typography variant="body2" fontWeight={600} sx={{ mb: 1 }}>Board Configuration *</Typography>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
                 <Box sx={{ width: { xs: '100%', sm: '50%' } }}>
-                  <Form.Item label="Board" noStyle>
-                    <Select value={selectedBoard} onChange={handleBoardChange} placeholder="Please select">
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Board</InputLabel>
+                    <MuiSelect
+                      value={selectedBoard || ''}
+                      label="Board"
+                      onChange={(e: SelectChangeEvent) => handleBoardChange(e.target.value as BoardName)}
+                    >
                       {SUPPORTED_BOARDS.map((board_name) => (
-                        <Option key={board_name} value={board_name}>
+                        <MenuItem key={board_name} value={board_name}>
                           {board_name.charAt(0).toUpperCase() + board_name.slice(1)}
-                        </Option>
+                        </MenuItem>
                       ))}
-                    </Select>
-                  </Form.Item>
+                    </MuiSelect>
+                  </FormControl>
                 </Box>
 
                 <Box sx={{ width: { xs: '100%', sm: '50%' } }}>
-                  <Form.Item label="Layout" noStyle>
-                    <Select
-                      value={selectedLayout}
-                      onChange={handleLayoutChange}
-                      placeholder="Select layout"
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Layout</InputLabel>
+                    <MuiSelect
+                      value={selectedLayout ?? ''}
+                      label="Layout"
+                      onChange={(e: SelectChangeEvent<number | string>) => handleLayoutChange(e.target.value as number)}
                       disabled={!selectedBoard}
                     >
                       {layouts.map(({ id: layoutId, name: layoutName }) => (
-                        <Option key={layoutId} value={layoutId}>
+                        <MenuItem key={layoutId} value={layoutId}>
                           {layoutName}
-                        </Option>
+                        </MenuItem>
                       ))}
-                    </Select>
-                  </Form.Item>
+                    </MuiSelect>
+                  </FormControl>
                 </Box>
 
                 <Box sx={{ width: { xs: '100%', sm: '50%' } }}>
-                  <Form.Item label="Size" noStyle>
-                    <Select
-                      value={selectedSize}
-                      onChange={handleSizeChange}
-                      placeholder="Select size"
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Size</InputLabel>
+                    <MuiSelect
+                      value={selectedSize ?? ''}
+                      label="Size"
+                      onChange={(e: SelectChangeEvent<number | string>) => handleSizeChange(e.target.value as number)}
                       disabled={!selectedLayout}
                     >
                       {sizes.map(({ id, name, description }) => (
-                        <Option key={id} value={id}>
+                        <MenuItem key={id} value={id}>
                           {`${name} ${description}`}
-                        </Option>
+                        </MenuItem>
                       ))}
-                    </Select>
-                  </Form.Item>
+                    </MuiSelect>
+                  </FormControl>
                 </Box>
 
                 <Box sx={{ width: { xs: '100%', sm: '50%' } }}>
-                  <Form.Item label="Hold Sets" noStyle>
-                    <Select
-                      mode="multiple"
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Hold Sets</InputLabel>
+                    <MuiSelect<number[]>
+                      multiple
                       value={selectedSets}
-                      onChange={handleSetsChange}
-                      placeholder="Select hold sets"
+                      label="Hold Sets"
+                      onChange={(e) => handleSetsChange(e.target.value as number[])}
                       disabled={!selectedSize}
                     >
                       {sets.map(({ id, name }) => (
-                        <Option key={id} value={id}>
+                        <MenuItem key={id} value={id}>
                           {name}
-                        </Option>
+                        </MenuItem>
                       ))}
-                    </Select>
-                  </Form.Item>
+                    </MuiSelect>
+                  </FormControl>
                 </Box>
 
                 <Box sx={{ width: { xs: '100%', sm: '50%' } }}>
-                  <Form.Item label="Angle" noStyle>
-                    <Select value={selectedAngle} onChange={handleAngleChange} disabled={!selectedBoard}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Angle</InputLabel>
+                    <MuiSelect
+                      value={selectedAngle}
+                      label="Angle"
+                      onChange={(e: SelectChangeEvent<number>) => handleAngleChange(e.target.value as number)}
+                      disabled={!selectedBoard}
+                    >
                       {selectedBoard &&
                         ANGLES[selectedBoard].map((angle) => (
-                          <Option key={angle} value={angle}>
+                          <MenuItem key={angle} value={angle}>
                             {angle}
-                          </Option>
+                          </MenuItem>
                         ))}
-                    </Select>
-                  </Form.Item>
+                    </MuiSelect>
+                  </FormControl>
                 </Box>
               </Box>
-            </Form.Item>
+            </Box>
 
-            <Form.Item label="Board Name (Optional)">
+            <Box>
+              <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>Board Name (Optional)</Typography>
               <TextField
                 value={configName}
                 onChange={(e) => setConfigName(e.target.value)}
@@ -625,13 +643,14 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
                 fullWidth
                 inputProps={{ maxLength: 50 }}
               />
-            </Form.Item>
+            </Box>
 
-            <Form.Item label="Session Settings">
+            <Box>
+              <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>Session Settings</Typography>
               <div style={{ display: 'flex', alignItems: 'center', gap: themeTokens.spacing[2] }}>
-                <Switch
+                <MuiSwitch
                   checked={allowOthersToJoin}
-                  onChange={(checked) => {
+                  onChange={(_, checked) => {
                     if (checked && !session) {
                       setShowAuthModal(true);
                     } else {
@@ -652,13 +671,13 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
                   Please sign in to enable discoverable sessions.
                 </Typography>
               )}
-            </Form.Item>
+            </Box>
 
-            <Form.Item>
+            <Box>
               <div style={{ display: 'flex', alignItems: 'center', gap: themeTokens.spacing[2] }}>
-                <Switch
+                <MuiSwitch
                   checked={useAsDefault}
-                  onChange={(checked) => setUseAsDefault(checked)}
+                  onChange={(_, checked) => setUseAsDefault(checked)}
                   disabled={!isFormComplete}
                 />
                 <span>
@@ -669,7 +688,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
                   <InfoOutlined style={{ color: themeTokens.neutral[400] }} />
                 </MuiTooltip>
               </div>
-            </Form.Item>
+            </Box>
 
             {targetUrl ? (
               <Link href={targetUrl} onClick={handleStartClimbing}>
@@ -693,7 +712,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
                 Start Climbing
               </Button>
             )}
-          </Form>
+          </Box>
 
           {isFormComplete && (
             <>

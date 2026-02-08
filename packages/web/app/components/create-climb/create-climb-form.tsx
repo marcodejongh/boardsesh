@@ -1,7 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Switch, Slider, Upload, Select } from 'antd';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import MuiAlert from '@mui/material/Alert';
 import MuiTooltip from '@mui/material/Tooltip';
 import Chip from '@mui/material/Chip';
@@ -12,6 +11,10 @@ import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
 import TextField from '@mui/material/TextField';
 import CircularProgress from '@mui/material/CircularProgress';
+import MuiSwitch from '@mui/material/Switch';
+import MuiSlider from '@mui/material/Slider';
+import MuiSelect from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
 import { SettingsOutlined, CloseOutlined, LocalFireDepartmentOutlined, ArrowBackOutlined, SaveOutlined, LoginOutlined, CloudUploadOutlined, GetAppOutlined } from '@mui/icons-material';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
@@ -114,6 +117,9 @@ export default function CreateClimbForm({
   });
 
   const createClimbContext = useCreateClimbContext();
+
+  // Refs
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Form state
   const [isSaving, setIsSaving] = useState(false);
@@ -525,10 +531,10 @@ export default function CreateClimbForm({
             <Typography variant="body2" component="span" color="text.secondary" className={styles.draftLabel}>
               Draft
             </Typography>
-            <Switch
+            <MuiSwitch
               size="small"
               checked={isDraft}
-              onChange={setIsDraft}
+              onChange={(_, checked) => setIsDraft(checked)}
             />
             {/* Aurora-only: Heatmap toggle */}
             {boardType === 'aurora' && (
@@ -548,12 +554,12 @@ export default function CreateClimbForm({
                     <Typography variant="body2" component="span" color="text.secondary" className={styles.draftLabel}>
                       Opacity
                     </Typography>
-                    <Slider
+                    <MuiSlider
                       min={0.1}
                       max={1}
                       step={0.1}
                       value={heatmapOpacity}
-                      onChange={setHeatmapOpacity}
+                      onChange={(_, value) => setHeatmapOpacity(value as number)}
                       className={styles.opacitySlider}
                     />
                   </>
@@ -610,32 +616,40 @@ export default function CreateClimbForm({
                       <Typography variant="body2" component="span" color="text.secondary" className={styles.settingsLabel}>
                         Angle
                       </Typography>
-                      <Select
+                      <MuiSelect
                         value={selectedAngle}
-                        onChange={setSelectedAngle}
-                        options={MOONBOARD_ANGLES.map(a => ({ value: a, label: `${a}°` }))}
+                        onChange={(e) => setSelectedAngle(e.target.value as number)}
                         className={styles.settingsGradeField}
-                      />
+                        size="small"
+                      >
+                        {MOONBOARD_ANGLES.map(a => (
+                          <MenuItem key={a} value={a}>{a}&deg;</MenuItem>
+                        ))}
+                      </MuiSelect>
                     </div>
                     <div className={styles.settingsField}>
                       <Typography variant="body2" component="span" color="text.secondary" className={styles.settingsLabel}>
                         Grade
                       </Typography>
-                      <Select
-                        placeholder="Select grade"
-                        value={userGrade}
-                        onChange={setUserGrade}
-                        options={MOONBOARD_GRADES.map(g => ({ value: g.value, label: g.label }))}
+                      <MuiSelect
+                        displayEmpty
+                        value={userGrade ?? ''}
+                        onChange={(e) => setUserGrade(e.target.value === '' ? undefined : (e.target.value as string))}
                         className={styles.settingsGradeField}
-                        allowClear
-                      />
+                        size="small"
+                      >
+                        <MenuItem value=""><em>None</em></MenuItem>
+                        {MOONBOARD_GRADES.map(g => (
+                          <MenuItem key={g.value} value={g.value}>{g.label}</MenuItem>
+                        ))}
+                      </MuiSelect>
                     </div>
                     <div className={styles.settingsField}>
                       <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                        <Switch
+                        <MuiSwitch
                           size="small"
                           checked={isBenchmark}
-                          onChange={setIsBenchmark}
+                          onChange={(_, checked) => setIsBenchmark(checked)}
                         />
                         <Typography variant="body2" component="span">Benchmark</Typography>
                       </Box>
@@ -691,19 +705,21 @@ export default function CreateClimbForm({
             {/* MoonBoard-only: Import buttons */}
             {boardType === 'moonboard' && (
               <>
-                <Upload
+                <input
+                  type="file"
+                  ref={fileInputRef}
                   accept="image/png,image/jpeg,image/webp"
-                  showUploadList={false}
-                  beforeUpload={(file) => {
-                    handleOcrImport(file);
-                    return false;
+                  style={{ display: 'none' }}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleOcrImport(file);
+                    e.target.value = '';
                   }}
                   disabled={isOcrProcessing}
-                >
-                  <MuiButton size="small" variant="outlined" startIcon={isOcrProcessing ? <CircularProgress size={16} /> : <CloudUploadOutlined />} disabled={isOcrProcessing}>
-                    {isOcrProcessing ? 'Processing...' : 'Import'}
-                  </MuiButton>
-                </Upload>
+                />
+                <MuiButton size="small" variant="outlined" startIcon={isOcrProcessing ? <CircularProgress size={16} /> : <CloudUploadOutlined />} disabled={isOcrProcessing} onClick={() => fileInputRef.current?.click()}>
+                  {isOcrProcessing ? 'Processing...' : 'Import'}
+                </MuiButton>
                 <Link href={bulkImportUrl}>
                   <MuiButton size="small" variant="outlined" startIcon={<GetAppOutlined />}>Bulk</MuiButton>
                 </Link>

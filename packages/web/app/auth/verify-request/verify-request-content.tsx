@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Form } from 'antd';
 import MuiAlert from '@mui/material/Alert';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
@@ -20,11 +19,26 @@ import BackButton from '@/app/components/back-button';
 import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 import { themeTokens } from '@/app/theme/theme-config';
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+type EmailErrors = { email?: string };
+
+function validateEmail(email: string): EmailErrors {
+  const errors: EmailErrors = {};
+  if (!email) {
+    errors.email = 'Please enter your email';
+  } else if (!EMAIL_REGEX.test(email)) {
+    errors.email = 'Please enter a valid email';
+  }
+  return errors;
+}
+
 export default function VerifyRequestContent() {
   const searchParams = useSearchParams();
   const error = searchParams.get('error');
   const [resendLoading, setResendLoading] = useState(false);
-  const [form] = Form.useForm();
+  const [email, setEmail] = useState('');
+  const [errors, setErrors] = useState<EmailErrors>({});
   const { showMessage } = useSnackbar();
 
   const getErrorMessage = () => {
@@ -43,14 +57,17 @@ export default function VerifyRequestContent() {
   };
 
   const handleResend = async () => {
+    const validationErrors = validateEmail(email);
+    setErrors(validationErrors);
+    if (Object.keys(validationErrors).length > 0) return;
+
     try {
-      const values = await form.validateFields();
       setResendLoading(true);
 
       const response = await fetch('/api/auth/resend-verification', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: values.email }),
+        body: JSON.stringify({ email }),
       });
 
       const data = await response.json();
@@ -118,30 +135,33 @@ export default function VerifyRequestContent() {
                 </>
               )}
 
-              <Form form={form} layout="vertical" onFinish={handleResend}>
-                <Form.Item
-                  name="email"
-                  rules={[
-                    { required: true, message: 'Please enter your email' },
-                    { type: 'email', message: 'Please enter a valid email' },
-                  ]}
-                >
-                  <TextField
-                    placeholder="Enter your email to resend"
-                    variant="outlined"
-                    size="medium"
-                    fullWidth
-                    slotProps={{
-                      input: {
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <MailOutlined />
-                          </InputAdornment>
-                        ),
-                      },
-                    }}
-                  />
-                </Form.Item>
+              <Box
+                component="form"
+                onSubmit={(e: React.FormEvent) => { e.preventDefault(); handleResend(); }}
+                sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}
+              >
+                <TextField
+                  placeholder="Enter your email to resend"
+                  variant="outlined"
+                  size="medium"
+                  fullWidth
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (errors.email) setErrors({});
+                  }}
+                  error={!!errors.email}
+                  helperText={errors.email}
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <MailOutlined />
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                />
 
                 <Button
                   variant="contained"
@@ -153,7 +173,7 @@ export default function VerifyRequestContent() {
                 >
                   Resend Verification Email
                 </Button>
-              </Form>
+              </Box>
 
               <Button variant="text" href="/auth/login">
                 Back to Login

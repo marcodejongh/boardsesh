@@ -17,6 +17,7 @@ import { LogAscentDrawer } from './log-ascent-drawer';
 import AuthModal from '../auth/auth-modal';
 import { constructClimbInfoUrl } from '@/app/lib/url-utils';
 import { themeTokens } from '@/app/theme/theme-config';
+import { useAlwaysTickInApp } from '@/app/hooks/use-always-tick-in-app';
 
 interface TickButtonProps {
   angle: Angle;
@@ -29,13 +30,21 @@ export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boa
   const { logbook, isAuthenticated } = useBoardProvider();
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const { alwaysUseApp, loaded, enableAlwaysUseApp } = useAlwaysTickInApp();
 
   const showDrawer = () => {
-    setDrawerVisible(true);
     track('Tick Button Clicked', {
       boardLayout: boardDetails.layout_name || '',
       existingAscentCount: badgeCount,
     });
+
+    if (!isAuthenticated && alwaysUseApp && loaded && currentClimb) {
+      const url = constructClimbInfoUrl(boardDetails, currentClimb.uuid, angle);
+      window.open(url, '_blank', 'noopener');
+      return;
+    }
+
+    setDrawerVisible(true);
   };
   const closeDrawer = () => setDrawerVisible(false);
 
@@ -84,7 +93,7 @@ export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boa
           onClose={closeDrawer}
           open={drawerVisible}
           swipeRegion="body"
-          styles={{ wrapper: { height: '50%' } }}
+          styles={{ wrapper: { height: '60%' } }}
         >
           <Stack spacing={3} style={{ width: '100%', textAlign: 'center', padding: '24px 0' }}>
             <Typography variant="body2" component="span" fontWeight={600} sx={{ fontSize: 16 }}>Sign in to record ticks</Typography>
@@ -99,6 +108,17 @@ export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boa
             </Typography>
             <Button variant="outlined" startIcon={<AppsOutlined />} onClick={handleOpenInApp} fullWidth>
               Open in App
+            </Button>
+            <Button
+              variant="text"
+              size="small"
+              color="secondary"
+              onClick={async () => {
+                await enableAlwaysUseApp();
+                handleOpenInApp();
+              }}
+            >
+              Always open in app
             </Button>
           </Stack>
         </SwipeableDrawer>

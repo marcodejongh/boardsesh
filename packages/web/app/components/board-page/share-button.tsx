@@ -20,7 +20,8 @@ import Typography from '@mui/material/Typography';
 import Badge from '@mui/material/Badge';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
-import { QRCode, Switch } from 'antd';
+import { QRCodeSVG } from 'qrcode.react';
+import MuiSwitch from '@mui/material/Switch';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
@@ -388,7 +389,7 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
           </IconButton>
         </Box>
         <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-          <QRCode value={shareUrl} size={160} bordered={false} />
+          <QRCodeSVG value={shareUrl} size={160} />
         </Box>
       </Box>
     </>
@@ -441,7 +442,7 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
                 Others nearby can find and join your session
               </Typography>
             </Stack>
-            <Switch checked={discoverable} onChange={setDiscoverable} />
+            <MuiSwitch checked={discoverable} onChange={(_, checked) => setDiscoverable(checked)} />
           </Box>
 
           <MuiButton

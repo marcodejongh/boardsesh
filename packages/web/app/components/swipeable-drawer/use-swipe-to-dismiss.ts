@@ -2,9 +2,7 @@
 
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { useSwipeable } from 'react-swipeable';
-import type { DrawerProps } from 'antd';
-
-type Placement = NonNullable<DrawerProps['placement']>;
+type Placement = 'left' | 'right' | 'top' | 'bottom';
 
 type DrawerStylesObject = Partial<Record<string, React.CSSProperties>>;
 

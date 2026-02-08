@@ -158,9 +158,13 @@
 }
 
 /* Grade select with color background */
-.gradeSelectColored :global(.ant-select-selector) {
-  background-color: var(--grade-bg) !important;
+.gradeSelectColored :global(.MuiOutlinedInput-notchedOutline) {
   border-color: transparent !important;
+}
+
+.gradeSelectColored :global(.MuiSelect-select) {
+  background-color: var(--grade-bg);
+  border-radius: 4px;
 }
 
 /* Mobile adjustments */

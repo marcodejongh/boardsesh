@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Image } from 'antd';
 import Accordion from '@mui/material/Accordion';
 import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
@@ -39,7 +38,8 @@ const helpSections = [
         label: 'How do I use the heatmap feature?',
         children: (
           <div className={styles.answerContent}>
-            <Image
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
               src="/help/heatmap.png"
               alt="Heatmap visualization"
               className={styles.featureImage}
@@ -76,7 +76,8 @@ const helpSections = [
         label: 'How do I classify holds on my board?',
         children: (
           <div className={styles.answerContent}>
-            <Image
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
               src="/help/hold-classification.png"
               alt="Hold classification wizard"
               className={styles.featureImage}
@@ -117,7 +118,8 @@ const helpSections = [
         label: 'How do I start a collaborative session?',
         children: (
           <div className={styles.answerContent}>
-            <Image
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
               src="/help/party-mode-active.png"
               alt="Active party mode session"
               className={styles.featureImage}
@@ -161,7 +163,8 @@ const helpSections = [
         label: 'How do I manage the climb queue?',
         children: (
           <div className={styles.answerContent}>
-            <Image
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
               src="/help/main-interface.png"
               alt="Queue management"
               className={styles.featureImage}
@@ -268,7 +271,8 @@ const helpSections = [
         label: 'What search filters are available?',
         children: (
           <div className={styles.answerContent}>
-            <Image
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
               src="/help/search-filters.png"
               alt="Search filters"
               className={styles.featureImage}
@@ -287,7 +291,8 @@ const helpSections = [
             <Typography variant="body1" component="p">
               <Typography variant="body2" component="span" fontWeight={600}>Personal Progress filters</Typography> (requires login):
             </Typography>
-            <Image
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
               src="/help/personal-progress.png"
               alt="Personal progress filters"
               className={styles.featureImage}
@@ -306,7 +311,8 @@ const helpSections = [
         label: 'How do I search by specific holds?',
         children: (
           <div className={styles.answerContent}>
-            <Image
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
               src="/help/search-by-hold.png"
               alt="Search by hold"
               className={styles.featureImage}
@@ -381,7 +387,8 @@ const helpSections = [
         label: 'How do I sync with my Kilter/Tension account?',
         children: (
           <div className={styles.answerContent}>
-            <Image
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
               src="/help/settings-aurora.png"
               alt="Aurora account settings"
               className={styles.featureImage}
@@ -418,7 +425,8 @@ const helpSections = [
         label: 'How do I track my climbs?',
         children: (
           <div className={styles.answerContent}>
-            <Image
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
               src="/help/climb-detail.png"
               alt="Climb detail with actions"
               className={styles.featureImage}

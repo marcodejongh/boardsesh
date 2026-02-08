@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import {
-  Form,
-  Space,
-  Select,
-} from 'antd';
+import Box from '@mui/material/Box';
+import Stack from '@mui/material/Stack';
+import MuiSelect from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
+import FormControl from '@mui/material/FormControl';
+import InputLabel from '@mui/material/InputLabel';
 import Chip from '@mui/material/Chip';
 import MuiAlert from '@mui/material/Alert';
 import AlertTitle from '@mui/material/AlertTitle';
@@ -31,8 +32,6 @@ import { getBoardSelectorOptions } from '@/app/lib/__generated__/product-sizes-d
 import { BoardName } from '@/app/lib/types';
 import styles from './controllers-section.module.css';
 import { useSnackbar } from '@/app/components/providers/snackbar-provider';
-
-const { Option } = Select;
 
 // Get board config data (synchronous - from generated data)
 const boardSelectorOptions = getBoardSelectorOptions();
@@ -190,7 +189,7 @@ export default function ControllersSection() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
-  const [form] = Form.useForm();
+  const [formValues, setFormValues] = useState({ name: '' });
   const { showMessage } = useSnackbar();
 
   // Board configuration selection state
@@ -242,7 +241,7 @@ export default function ControllersSection() {
   }, []);
 
   const handleAddClick = () => {
-    form.resetFields();
+    setFormValues({ name: '' });
     setSelectedBoard(undefined);
     setSelectedLayout(undefined);
     setSelectedSize(undefined);
@@ -252,7 +251,7 @@ export default function ControllersSection() {
 
   const handleModalCancel = () => {
     setIsModalOpen(false);
-    form.resetFields();
+    setFormValues({ name: '' });
     setSelectedBoard(undefined);
     setSelectedLayout(undefined);
     setSelectedSize(undefined);
@@ -264,14 +263,12 @@ export default function ControllersSection() {
     setSelectedLayout(undefined);
     setSelectedSize(undefined);
     setSelectedSets([]);
-    form.setFieldsValue({ layoutId: undefined, sizeId: undefined, setIds: undefined });
   };
 
   const handleLayoutChange = (value: number) => {
     setSelectedLayout(value);
     setSelectedSize(undefined);
     setSelectedSets([]);
-    form.setFieldsValue({ sizeId: undefined, setIds: undefined });
   };
 
   const handleSizeChange = (value: number) => {
@@ -282,7 +279,6 @@ export default function ControllersSection() {
       : [];
     const allSetIds = availableSets.map((s) => s.id);
     setSelectedSets(allSetIds);
-    form.setFieldsValue({ setIds: allSetIds });
   };
 
   const handleSetsChange = (value: number[]) => {
@@ -319,7 +315,7 @@ export default function ControllersSection() {
 
       // Close the registration modal
       setIsModalOpen(false);
-      form.resetFields();
+      setFormValues({ name: '' });
 
       // Show the API key success modal
       setSuccessApiKey(data.apiKey);
@@ -390,7 +386,7 @@ export default function ControllersSection() {
               </Typography>
             </div>
           ) : (
-            <Space direction="vertical" size="middle" className={styles.cardsContainer}>
+            <Stack spacing={2} className={styles.cardsContainer}>
               {controllers.map((controller) => (
                 <ControllerCard
                   key={controller.id}
@@ -399,7 +395,7 @@ export default function ControllersSection() {
                   isRemoving={removingId === controller.id}
                 />
               ))}
-            </Space>
+            </Stack>
           )}
 
           <Button
@@ -426,80 +422,83 @@ export default function ControllersSection() {
             Register a new ESP32 controller to receive LED commands from BoardSesh.
             You'll receive an API key to configure on the device.
           </Typography>
-        <Form form={form} layout="vertical" onFinish={handleRegister}>
-          <Form.Item
-            name="name"
+        <Box
+          component="form"
+          onSubmit={(e: React.FormEvent) => {
+            e.preventDefault();
+            if (!selectedBoard || !selectedLayout || !selectedSize || selectedSets.length === 0) return;
+            handleRegister({
+              name: formValues.name,
+              boardName: selectedBoard,
+              layoutId: selectedLayout,
+              sizeId: selectedSize,
+              setIds: selectedSets,
+            });
+          }}
+          sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}
+        >
+          <TextField
             label="Controller Name (optional)"
-          >
-            <TextField placeholder="e.g., Living Room Board" variant="outlined" size="small" fullWidth inputProps={{ maxLength: 100 }} />
-          </Form.Item>
+            placeholder="e.g., Living Room Board"
+            variant="outlined"
+            size="small"
+            fullWidth
+            value={formValues.name}
+            onChange={(e) => setFormValues((prev) => ({ ...prev, name: e.target.value }))}
+            inputProps={{ maxLength: 100 }}
+          />
 
-          <Form.Item
-            name="boardName"
-            label="Board Type"
-            rules={[{ required: true, message: 'Please select a board type' }]}
-          >
-            <Select
-              placeholder="Select board type"
-              onChange={handleBoardChange}
-              value={selectedBoard}
+          <FormControl fullWidth required>
+            <InputLabel>Board Type</InputLabel>
+            <MuiSelect
+              value={selectedBoard || ''}
+              label="Board Type"
+              onChange={(e) => handleBoardChange(e.target.value as BoardName)}
             >
-              <Option value="kilter">Kilter</Option>
-              <Option value="tension">Tension</Option>
-            </Select>
-          </Form.Item>
+              <MenuItem value="kilter">Kilter</MenuItem>
+              <MenuItem value="tension">Tension</MenuItem>
+            </MuiSelect>
+          </FormControl>
 
-          <Form.Item
-            name="layoutId"
-            label="Layout"
-            rules={[{ required: true, message: 'Please select a layout' }]}
-          >
-            <Select
-              placeholder="Select layout"
-              disabled={!selectedBoard}
-              onChange={handleLayoutChange}
-              value={selectedLayout}
+          <FormControl fullWidth required disabled={!selectedBoard}>
+            <InputLabel>Layout</InputLabel>
+            <MuiSelect
+              value={selectedLayout ?? ''}
+              label="Layout"
+              onChange={(e) => handleLayoutChange(e.target.value as number)}
             >
               {layouts.map(({ id, name }) => (
-                <Option key={id} value={id}>{name}</Option>
+                <MenuItem key={id} value={id}>{name}</MenuItem>
               ))}
-            </Select>
-          </Form.Item>
+            </MuiSelect>
+          </FormControl>
 
-          <Form.Item
-            name="sizeId"
-            label="Size"
-            rules={[{ required: true, message: 'Please select a size' }]}
-          >
-            <Select
-              placeholder="Select size"
-              disabled={!selectedLayout}
-              onChange={handleSizeChange}
-              value={selectedSize}
+          <FormControl fullWidth required disabled={!selectedLayout}>
+            <InputLabel>Size</InputLabel>
+            <MuiSelect
+              value={selectedSize ?? ''}
+              label="Size"
+              onChange={(e) => handleSizeChange(e.target.value as number)}
             >
               {sizes.map(({ id, name, description }) => (
-                <Option key={id} value={id}>{name} {description}</Option>
+                <MenuItem key={id} value={id}>{name} {description}</MenuItem>
               ))}
-            </Select>
-          </Form.Item>
+            </MuiSelect>
+          </FormControl>
 
-          <Form.Item
-            name="setIds"
-            label="Hold Sets"
-            rules={[{ required: true, message: 'Please select at least one hold set' }]}
-          >
-            <Select
-              mode="multiple"
-              placeholder="Select hold sets"
-              disabled={!selectedSize}
-              onChange={handleSetsChange}
+          <FormControl fullWidth required disabled={!selectedSize}>
+            <InputLabel>Hold Sets</InputLabel>
+            <MuiSelect
+              multiple
               value={selectedSets}
+              label="Hold Sets"
+              onChange={(e) => handleSetsChange(e.target.value as number[])}
             >
               {sets.map(({ id, name }) => (
-                <Option key={id} value={id}>{name}</Option>
+                <MenuItem key={id} value={id}>{name}</MenuItem>
               ))}
-            </Select>
-          </Form.Item>
+            </MuiSelect>
+          </FormControl>
 
           <Button
             variant="contained"
@@ -510,7 +509,7 @@ export default function ControllersSection() {
           >
             {isSaving ? 'Registering...' : 'Register Controller'}
           </Button>
-        </Form>
+        </Box>
         </DialogContent>
       </Dialog>
 

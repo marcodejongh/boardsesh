@@ -3,7 +3,8 @@
 import React from 'react';
 import { BoardDetails, HoldState } from '@/app/lib/types';
 import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
-import { Select } from 'antd';
+import MuiSelect from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
 import MuiTypography from '@mui/material/Typography';
 import Stack from '@mui/material/Stack';
 import Chip from '@mui/material/Chip';
@@ -58,27 +59,28 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
       <div className={styles.holdSearchHeaderCompact}>
         <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
           <MuiTypography variant="body2" component="span" color="text.secondary">Tap to:</MuiTypography>
-          <Select
+          <MuiSelect
             value={selectedState}
-            onChange={(value) => {
-              setSelectedState(value as HoldState);
+            onChange={(e) => {
+              const value = e.target.value as HoldState;
+              setSelectedState(value);
               track('Search Hold State Changed', {
                 hold_state: value,
                 boardLayout: boardDetails.layout_name || '',
               });
             }}
             size="small"
-            style={{ width: 110 }}
-            options={stateItems.map(item => ({
-              value: item.value,
-              label: (
+            sx={{ width: 110 }}
+          >
+            {stateItems.map(item => (
+              <MenuItem key={item.value} value={item.value}>
                 <Stack direction="row" spacing={0.5}>
                   {item.icon}
                   {item.label}
                 </Stack>
-              ),
-            }))}
-          />
+              </MenuItem>
+            ))}
+          </MuiSelect>
           {anyHoldsCount > 0 && <Chip label={`${anyHoldsCount} in`} size="small" sx={{ bgcolor: themeTokens.colors.primary, color: '#fff', margin: 0 }} />}
           {notHoldsCount > 0 && <Chip label={`${notHoldsCount} out`} size="small" sx={{ bgcolor: themeTokens.colors.error, color: '#fff', margin: 0 }} />}
         </Stack>

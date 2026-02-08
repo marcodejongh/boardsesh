@@ -1,7 +1,10 @@
 'use client';
 
 import React from 'react';
-import { Select, InputNumber, Switch } from 'antd';
+import MuiSelect from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
+import MuiSwitch from '@mui/material/Switch';
+import TextField from '@mui/material/TextField';
 import MuiTooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
@@ -100,18 +103,19 @@ const GeneratorOptionsForm: React.FC<GeneratorOptionsFormProps> = ({
   ) => (
     <div className={styles.formRow}>
       <Typography variant="body2" component="span" className={styles.label}>{label}</Typography>
-      <Select
+      <MuiSelect
         value={value}
-        onChange={onUpdate}
+        onChange={(e) => onUpdate(e.target.value as T)}
         className={styles.select}
-        popupMatchSelectWidth={false}
+        size="small"
+        MenuProps={{ sx: { width: 'auto' } }}
       >
         {optionsList.map((opt) => (
-          <Select.Option key={String(opt.value)} value={opt.value}>
+          <MenuItem key={String(opt.value)} value={opt.value}>
             {opt.label}
-          </Select.Option>
+          </MenuItem>
         ))}
-      </Select>
+      </MuiSelect>
     </div>
   );
 
@@ -124,18 +128,19 @@ const GeneratorOptionsForm: React.FC<GeneratorOptionsFormProps> = ({
       {/* Target Grade */}
       <div className={styles.formRow}>
         <Typography variant="body2" component="span" className={styles.label}>Target Grade</Typography>
-        <Select
+        <MuiSelect
           value={options.targetGrade}
-          onChange={(v) => updateOption('targetGrade', v)}
+          onChange={(e) => updateOption('targetGrade', e.target.value as number)}
           className={styles.select}
-          popupMatchSelectWidth={false}
+          size="small"
+          MenuProps={{ sx: { width: 'auto' } }}
         >
           {grades.map((grade) => (
-            <Select.Option key={grade.difficulty_id} value={grade.difficulty_id}>
+            <MenuItem key={grade.difficulty_id} value={grade.difficulty_id}>
               {grade.difficulty_name}
-            </Select.Option>
+            </MenuItem>
           ))}
-        </Select>
+        </MuiSelect>
       </div>
     </>
   );
@@ -145,23 +150,24 @@ const GeneratorOptionsForm: React.FC<GeneratorOptionsFormProps> = ({
     <>
       <div className={styles.formRow}>
         <Typography variant="body2" component="span" className={styles.label}>Min Ascents</Typography>
-        <InputNumber
-          min={0}
-          max={1000}
+        <TextField
+          type="number"
+          size="small"
           value={options.minAscents}
-          onChange={(v) => updateOption('minAscents', v || 0)}
+          onChange={(e) => updateOption('minAscents', Number(e.target.value) || 0)}
+          slotProps={{ htmlInput: { min: 0, max: 1000 } }}
           className={styles.inputNumber}
         />
       </div>
 
       <div className={styles.formRow}>
         <Typography variant="body2" component="span" className={styles.label}>Min Rating</Typography>
-        <InputNumber
-          min={0}
-          max={3}
-          step={0.5}
+        <TextField
+          type="number"
+          size="small"
           value={options.minRating}
-          onChange={(v) => updateOption('minRating', v || 0)}
+          onChange={(e) => updateOption('minRating', Number(e.target.value) || 0)}
+          slotProps={{ htmlInput: { min: 0, max: 3, step: 0.5 } }}
           className={styles.inputNumber}
         />
       </div>
@@ -175,9 +181,9 @@ const GeneratorOptionsForm: React.FC<GeneratorOptionsFormProps> = ({
           <MuiTooltip title="Show only climbs that use holds in the bottom 8 rows (only available on 10x12 boards)">
             <Typography variant="body2" component="span" className={styles.label}>Tall Climbs Only</Typography>
           </MuiTooltip>
-          <Switch
+          <MuiSwitch
             checked={options.onlyTallClimbs}
-            onChange={(checked) => updateOption('onlyTallClimbs', checked)}
+            onChange={(_, checked) => updateOption('onlyTallClimbs', checked)}
           />
         </div>
       )}

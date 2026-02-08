@@ -17,6 +17,7 @@ import { LogAscentDrawer } from '../../logbook/log-ascent-drawer';
 import { track } from '@vercel/analytics';
 import { constructClimbInfoUrl } from '@/app/lib/url-utils';
 import { themeTokens } from '@/app/theme/theme-config';
+import { useAlwaysTickInApp } from '@/app/hooks/use-always-tick-in-app';
 
 export function TickAction({
   climb,
@@ -36,6 +37,8 @@ export function TickAction({
     isAuthenticated,
     logbook,
   } = useBoardProvider();
+
+  const { alwaysUseApp, loaded, enableAlwaysUseApp } = useAlwaysTickInApp();
 
   // Find ascent entries for this climb
   const filteredLogbook = useMemo(() => {
@@ -57,9 +60,16 @@ export function TickAction({
       existingAscentCount: badgeCount,
     });
 
+    if (!isAuthenticated && alwaysUseApp && loaded) {
+      const url = constructClimbInfoUrl(boardDetails, climb.uuid, angle);
+      window.open(url, '_blank', 'noopener');
+      onComplete?.();
+      return;
+    }
+
     setDrawerVisible(true);
     onComplete?.();
-  }, [boardDetails.layout_name, badgeCount, onComplete]);
+  }, [boardDetails, badgeCount, onComplete, isAuthenticated, alwaysUseApp, loaded, climb.uuid, angle]);
 
   const closeDrawer = useCallback(() => {
     setDrawerVisible(false);
@@ -86,6 +96,17 @@ export function TickAction({
       <MuiButton variant="outlined" startIcon={<AppsOutlined />} onClick={handleOpenInApp} fullWidth>
         Open in App
       </MuiButton>
+      <MuiButton
+        variant="text"
+        size="small"
+        color="secondary"
+        onClick={async () => {
+          await enableAlwaysUseApp();
+          handleOpenInApp();
+        }}
+      >
+        Always open in app
+      </MuiButton>
     </Stack>
   );
 
@@ -111,8 +132,8 @@ export function TickAction({
           placement="bottom"
           onClose={closeDrawer}
           open={drawerVisible}
-          swipeRegion="body"
-          styles={{ wrapper: { height: '50%' } }}
+          swipeRegion="handle"
+          styles={{ wrapper: { height: '60%' } }}
         >
           {renderSignInPrompt()}
         </SwipeableDrawer>

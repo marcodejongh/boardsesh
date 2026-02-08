@@ -1,45 +1,45 @@
 'use client';
 import React, { useState } from 'react';
-import { Form, Select } from 'antd';
+import MuiSelect from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
+import FormControl from '@mui/material/FormControl';
+import InputLabel from '@mui/material/InputLabel';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
+import Box from '@mui/material/Box';
 import { useRouter } from 'next/navigation';
 import { LayoutRow } from '@/app/lib/data/queries';
 import { BoardName } from '@/app/lib/types';
 
-const { Option } = Select;
-
 const LayoutSelection = ({ layouts = [] }: { layouts: LayoutRow[]; boardName: BoardName }) => {
   const router = useRouter();
-  const [selectedLayout, setSelectedLayout] = useState<number>();
-
-  const onLayoutChange = (value: number) => {
-    setSelectedLayout(value);
-  };
+  const [selectedLayout, setSelectedLayout] = useState<number | ''>('');
 
   const handleNext = () => {
     router.push(`${window.location.pathname}/${selectedLayout}`);
   };
 
   return (
-    <div style={{ padding: '24px', background: 'var(--semantic-background)', borderRadius: '8px' }}>
+    <Box sx={{ padding: '24px', background: 'var(--semantic-background)', borderRadius: '8px' }}>
       <Typography variant="h4">Select a layout</Typography>
-      <Form layout="vertical">
-        <Form.Item label="Layout" required tooltip="Choose the layout you want to work with">
-          <Select onChange={onLayoutChange}>
-            {layouts.map(({ id: layoutId, name: layoutName }) => (
-              <Option key={layoutId} value={layoutId}>
-                {layoutName}
-              </Option>
-            ))}
-          </Select>
-        </Form.Item>
-
-        <Button variant="contained" fullWidth sx={{ marginTop: '16px' }} onClick={handleNext} disabled={!selectedLayout}>
-          Next
-        </Button>
-      </Form>
-    </div>
+      <FormControl fullWidth sx={{ mt: 2 }} required>
+        <InputLabel>Layout</InputLabel>
+        <MuiSelect
+          value={selectedLayout}
+          label="Layout"
+          onChange={(e) => setSelectedLayout(e.target.value as number)}
+        >
+          {layouts.map(({ id: layoutId, name: layoutName }) => (
+            <MenuItem key={layoutId} value={layoutId}>
+              {layoutName}
+            </MenuItem>
+          ))}
+        </MuiSelect>
+      </FormControl>
+      <Button variant="contained" fullWidth sx={{ marginTop: '16px' }} onClick={handleNext} disabled={!selectedLayout}>
+        Next
+      </Button>
+    </Box>
   );
 };
 

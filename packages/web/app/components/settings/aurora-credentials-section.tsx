@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Form } from 'antd';
+import Box from '@mui/material/Box';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -168,7 +168,7 @@ export default function AuroraCredentialsSection() {
   const [selectedBoard, setSelectedBoard] = useState<'kilter' | 'tension'>('kilter');
   const [isSaving, setIsSaving] = useState(false);
   const [removingBoard, setRemovingBoard] = useState<string | null>(null);
-  const [form] = Form.useForm();
+  const [formValues, setFormValues] = useState({ username: '', password: '' });
 
   const fetchCredentials = async () => {
     try {
@@ -203,13 +203,13 @@ export default function AuroraCredentialsSection() {
 
   const handleAddClick = (boardType: 'kilter' | 'tension') => {
     setSelectedBoard(boardType);
-    form.resetFields();
+    setFormValues({ username: '', password: '' });
     setIsModalOpen(true);
   };
 
   const handleModalCancel = () => {
     setIsModalOpen(false);
-    form.resetFields();
+    setFormValues({ username: '', password: '' });
   };
 
   const handleSaveCredentials = async (values: { username: string; password: string }) => {
@@ -232,7 +232,7 @@ export default function AuroraCredentialsSection() {
 
       showMessage(`${selectedBoard.charAt(0).toUpperCase() + selectedBoard.slice(1)} account linked successfully`, 'success');
       setIsModalOpen(false);
-      form.resetFields();
+      setFormValues({ username: '', password: '' });
       await fetchCredentials();
     } catch (error) {
       showMessage(error instanceof Error ? error.message : 'Failed to link account', 'error');
@@ -325,22 +325,38 @@ export default function AuroraCredentialsSection() {
           username and password to import your Aurora data.
           Your credentials are encrypted and securely stored. Data syncs every 6 hours.
         </Typography>
-        <Form form={form} layout="vertical" onFinish={handleSaveCredentials}>
-          <Form.Item
-            name="username"
+        <Box
+          component="form"
+          onSubmit={(e: React.FormEvent) => {
+            e.preventDefault();
+            const vals = formValues;
+            if (!vals.username || !vals.password) return;
+            handleSaveCredentials(vals);
+          }}
+          sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}
+        >
+          <TextField
             label="Username"
-            rules={[{ required: true, message: 'Please enter your username' }]}
-          >
-            <TextField placeholder="Enter your username" variant="outlined" size="small" fullWidth />
-          </Form.Item>
+            placeholder="Enter your username"
+            variant="outlined"
+            size="small"
+            fullWidth
+            required
+            value={formValues.username}
+            onChange={(e) => setFormValues((prev) => ({ ...prev, username: e.target.value }))}
+          />
 
-          <Form.Item
-            name="password"
+          <TextField
             label="Password"
-            rules={[{ required: true, message: 'Please enter your password' }]}
-          >
-            <TextField type="password" placeholder="Enter your password" variant="outlined" size="small" fullWidth />
-          </Form.Item>
+            type="password"
+            placeholder="Enter your password"
+            variant="outlined"
+            size="small"
+            fullWidth
+            required
+            value={formValues.password}
+            onChange={(e) => setFormValues((prev) => ({ ...prev, password: e.target.value }))}
+          />
 
           <Button
             variant="contained"
@@ -351,7 +367,7 @@ export default function AuroraCredentialsSection() {
           >
             {isSaving ? 'Linking...' : 'Link Account'}
           </Button>
-        </Form>
+        </Box>
         </DialogContent>
       </Dialog>
     </>

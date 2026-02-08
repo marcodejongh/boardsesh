@@ -2,12 +2,11 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
-import {
-  Layout,
-  Segmented,
-  Space,
-  DatePicker,
-} from 'antd';
+import Box from '@mui/material/Box';
+import Stack from '@mui/material/Stack';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
+import ToggleButton from '@mui/material/ToggleButton';
+import { DatePicker as MuiDatePicker } from '@mui/x-date-pickers/DatePicker';
 import MuiAvatar from '@mui/material/Avatar';
 import MuiTooltip from '@mui/material/Tooltip';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -53,7 +52,6 @@ const ProfileStatsCharts = dynamic(() => import('./profile-stats-charts'), {
   ),
 });
 
-const { Content, Header } = Layout;
 
 interface UserProfile {
   id: string;
@@ -614,28 +612,28 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
 
   if (loading) {
     return (
-      <Layout className={styles.layout}>
-        <Content className={styles.loadingContent}>
+      <Box className={styles.layout}>
+        <Box component="main" className={styles.loadingContent}>
           <CircularProgress size={48} />
-        </Content>
-      </Layout>
+        </Box>
+      </Box>
     );
   }
 
   if (notFound) {
     return (
-      <Layout className={styles.layout}>
-        <Header className={styles.header}>
+      <Box className={styles.layout}>
+        <Box component="header" className={styles.header}>
           <BackButton fallbackUrl="/" />
           <Logo size="sm" showText={false} />
           <Typography variant="h6" component="h4" className={styles.headerTitle}>
             Profile
           </Typography>
-        </Header>
-        <Content className={styles.content}>
+        </Box>
+        <Box component="main" className={styles.content}>
           <EmptyState description="User not found" />
-        </Content>
-      </Layout>
+        </Box>
+      </Box>
     );
   }
 
@@ -666,16 +664,16 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
   ];
 
   return (
-    <Layout className={styles.layout}>
-      <Header className={styles.header}>
+    <Box className={styles.layout}>
+      <Box component="header" className={styles.header}>
         <BackButton fallbackUrl="/" />
         <Logo size="sm" showText={false} />
         <Typography variant="h6" component="h4" className={styles.headerTitle}>
           Profile
         </Typography>
-      </Header>
+      </Box>
 
-      <Content className={styles.content}>
+      <Box component="main" className={styles.content}>
         {/* Profile Card */}
         <MuiCard className={styles.profileCard}><CardContent>
           <div className={styles.profileInfo}>
@@ -806,11 +804,16 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
           </Typography>
 
           <div className={styles.timeframeSelector}>
-            <Segmented
-              options={aggregatedTimeframeOptions}
+            <ToggleButtonGroup
+              exclusive
+              size="small"
               value={aggregatedTimeframe}
-              onChange={(value) => setAggregatedTimeframe(value as AggregatedTimeframeType)}
-            />
+              onChange={(_, val) => { if (val) setAggregatedTimeframe(val as AggregatedTimeframeType); }}
+            >
+              {aggregatedTimeframeOptions.map(opt => (
+                <ToggleButton key={opt.value} value={opt.value}>{opt.label}</ToggleButton>
+              ))}
+            </ToggleButtonGroup>
           </div>
 
           {loadingAggregated ? (
@@ -838,36 +841,48 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
           <>
             {/* Board Selector */}
             <div className={styles.boardSelector}>
-              <Segmented
-                options={boardOptions}
+              <ToggleButtonGroup
+                exclusive
+                size="small"
                 value={selectedBoard}
-                onChange={(value) => setSelectedBoard(value as string)}
-              />
+                onChange={(_, val) => { if (val) setSelectedBoard(val as string); }}
+              >
+                {boardOptions.map(opt => (
+                  <ToggleButton key={opt.value} value={opt.value}>{opt.label}</ToggleButton>
+                ))}
+              </ToggleButtonGroup>
             </div>
 
             {/* Timeframe Selector */}
             <div className={styles.timeframeSelector}>
-              <Segmented
-                options={timeframeOptions}
+              <ToggleButtonGroup
+                exclusive
+                size="small"
                 value={timeframe}
-                onChange={(value) => setTimeframe(value as TimeframeType)}
-              />
+                onChange={(_, val) => { if (val) setTimeframe(val as TimeframeType); }}
+              >
+                {timeframeOptions.map(opt => (
+                  <ToggleButton key={opt.value} value={opt.value}>{opt.label}</ToggleButton>
+                ))}
+              </ToggleButtonGroup>
             </div>
 
             {timeframe === 'custom' && (
               <div className={styles.customDateRange}>
-                <Space>
+                <Stack direction="row" spacing={1} alignItems="center">
                   <Typography variant="body2" component="span">From:</Typography>
-                  <DatePicker
+                  <MuiDatePicker
                     value={fromDate ? dayjs(fromDate) : null}
-                    onChange={(date) => setFromDate(date ? date.format('YYYY-MM-DD') : '')}
+                    onChange={(val) => setFromDate(val ? val.format('YYYY-MM-DD') : '')}
+                    slotProps={{ textField: { size: 'small' } }}
                   />
                   <Typography variant="body2" component="span">To:</Typography>
-                  <DatePicker
+                  <MuiDatePicker
                     value={toDate ? dayjs(toDate) : null}
-                    onChange={(date) => setToDate(date ? date.format('YYYY-MM-DD') : '')}
+                    onChange={(val) => setToDate(val ? val.format('YYYY-MM-DD') : '')}
+                    slotProps={{ textField: { size: 'small' } }}
                   />
-                </Space>
+                </Stack>
               </div>
             )}
 
@@ -898,7 +913,7 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
           </Typography>
           <AscentsFeed userId={userId} pageSize={10} />
         </CardContent></MuiCard>
-      </Content>
-    </Layout>
+      </Box>
+    </Box>
   );
 }

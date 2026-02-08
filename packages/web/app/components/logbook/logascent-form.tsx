@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { DatePicker, Select, InputNumber, Form, Segmented } from 'antd';
 import MuiRating from '@mui/material/Rating';
 import Chip from '@mui/material/Chip';
 import MuiTooltip from '@mui/material/Tooltip';
@@ -10,6 +9,12 @@ import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 import CircularProgress from '@mui/material/CircularProgress';
 import Stack from '@mui/material/Stack';
+import Box from '@mui/material/Box';
+import MuiSelect from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
+import ToggleButton from '@mui/material/ToggleButton';
+import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import InfoOutlined from '@mui/icons-material/InfoOutlined';
 import { track } from '@vercel/analytics';
 import { Climb, BoardDetails } from '@/app/lib/types';
@@ -17,11 +22,6 @@ import { useBoardProvider, TickStatus } from '../board-provider/board-provider-c
 import { TENSION_KILTER_GRADES, ANGLES } from '@/app/lib/board-data';
 import { themeTokens } from '@/app/theme/theme-config';
 import dayjs from 'dayjs';
-
-// Wrapper to bridge MUI Rating's onChange(event, value) with AntD Form.Item's onChange(value)
-const FormRating = ({ value, onChange, ...props }: { value?: number; onChange?: (value: number | null) => void; max?: number }) => (
-  <MuiRating value={value ?? 0} onChange={(_, val) => onChange?.(val)} {...props} />
-);
 
 type LogType = 'ascent' | 'attempt';
 
@@ -57,7 +57,16 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boar
   const { saveTick, isAuthenticated } = useBoardProvider();
   const grades = TENSION_KILTER_GRADES;
   const angleOptions = ANGLES[boardDetails.board_name];
-  const [form] = Form.useForm<LogAscentFormValues>();
+
+  const getInitialValues = (): LogAscentFormValues => ({
+    date: dayjs(),
+    angle: currentClimb?.angle || 0,
+    attempts: 1,
+    quality: 0,
+    difficulty: grades.find((grade) => grade.difficulty_name === currentClimb?.difficulty)?.difficulty_id || 0,
+  });
+
+  const [formValues, setFormValues] = useState<LogAscentFormValues>(getInitialValues);
   const [isMirrored, setIsMirrored] = useState(!!currentClimb?.mirrored);
   const [isSaving, setIsSaving] = useState(false);
   const [logType, setLogType] = useState<LogType>('ascent');
@@ -66,14 +75,15 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boar
   const showMirrorTag = boardDetails.supportsMirroring;
 
   useEffect(() => {
-    form.setFieldsValue({
+    setFormValues((prev) => ({
+      ...prev,
       date: dayjs(),
-      angle: currentClimb?.angle,
-      difficulty: grades.find((grade) => grade.difficulty_name === currentClimb?.difficulty)?.difficulty_id,
+      angle: currentClimb?.angle || prev.angle,
+      difficulty: grades.find((grade) => grade.difficulty_name === currentClimb?.difficulty)?.difficulty_id || prev.difficulty,
       attempts: 1,
-    });
+    }));
     setIsMirrored(!!currentClimb?.mirrored);
-  }, [currentClimb, form, grades]);
+  }, [currentClimb, grades]);
 
   const handleMirrorToggle = () => {
     setIsMirrored((prev) => !prev);
@@ -136,7 +146,7 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boar
         status,
       });
 
-      form.resetFields();
+      setFormValues(getInitialValues());
       setLogType('ascent');
       onClose();
     } catch (error) {
@@ -149,87 +159,136 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boar
     }
   };
 
-  const formItemLayout = {
-    labelCol: { flex: '120px' },
-    wrapperCol: { flex: 'auto' },
-    style: { marginBottom: '12px' },
-  };
-
   return (
-    <Form form={form} layout="horizontal" onFinish={handleSubmit}>
-      <Form.Item wrapperCol={{ span: 24 }} style={{ marginBottom: '16px' }}>
-        <Segmented
-          block
-          options={[
-            { label: 'Ascent', value: 'ascent' },
-            { label: 'Attempt', value: 'attempt' },
-          ]}
+    <Box component="form" onSubmit={(e: React.FormEvent) => { e.preventDefault(); handleSubmit(formValues); }}>
+      <Box sx={{ mb: 2 }}>
+        <ToggleButtonGroup
+          exclusive
+          fullWidth
           value={logType}
-          onChange={(value) => setLogType(value as LogType)}
-        />
-      </Form.Item>
+          onChange={(_, val) => val && setLogType(val as LogType)}
+        >
+          <ToggleButton value="ascent">Ascent</ToggleButton>
+          <ToggleButton value="attempt">Attempt</ToggleButton>
+        </ToggleButtonGroup>
+      </Box>
 
-      <Form.Item label="Boulder" {...formItemLayout}>
-        <Stack direction="row" spacing={1}>
-          <strong>{currentClimb?.name || 'N/A'}</strong>
-          {showMirrorTag && (
-            <Stack direction="row" spacing={0.5}>
-              <Chip
-                label="Mirrored"
-                size="small"
-                color={isMirrored ? 'secondary' : undefined}
-                sx={{ cursor: 'pointer', margin: 0 }}
-                onClick={handleMirrorToggle}
-              />
-              <MuiTooltip title="Click the tag to toggle whether you completed this climb on the mirrored side">
-                <InfoOutlined style={{ color: themeTokens.neutral[400], cursor: 'pointer' }} />
-              </MuiTooltip>
-            </Stack>
-          )}
-        </Stack>
-      </Form.Item>
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
+        <Typography sx={{ width: 120, flexShrink: 0 }}>Boulder</Typography>
+        <Box sx={{ flex: 1 }}>
+          <Stack direction="row" spacing={1}>
+            <strong>{currentClimb?.name || 'N/A'}</strong>
+            {showMirrorTag && (
+              <Stack direction="row" spacing={0.5}>
+                <Chip
+                  label="Mirrored"
+                  size="small"
+                  color={isMirrored ? 'secondary' : undefined}
+                  sx={{ cursor: 'pointer', margin: 0 }}
+                  onClick={handleMirrorToggle}
+                />
+                <MuiTooltip title="Click the tag to toggle whether you completed this climb on the mirrored side">
+                  <InfoOutlined sx={{ color: themeTokens.neutral[400], cursor: 'pointer' }} />
+                </MuiTooltip>
+              </Stack>
+            )}
+          </Stack>
+        </Box>
+      </Box>
 
-      <Form.Item name="date" label="Date and Time" {...formItemLayout}>
-        <DatePicker showTime showSecond={false} />
-      </Form.Item>
-
-      <Form.Item name="angle" label="Angle" {...formItemLayout}>
-        <Select
-          options={angleOptions.map((angle) => ({
-            label: `${angle}`,
-            value: angle,
-          }))}
-          style={{ width: '80px' }}
-        />
-      </Form.Item>
-
-      <Form.Item name="attempts" label="Attempts" {...formItemLayout}>
-        <InputNumber min={1} max={999} style={{ width: '80px' }} />
-      </Form.Item>
-
-      {logType === 'ascent' && (
-        <Form.Item name="quality" label="Quality" {...formItemLayout} rules={[{ required: true, message: 'Please rate the climb' }]}>
-          <FormRating max={5} />
-        </Form.Item>
-      )}
-
-      {logType === 'ascent' && (
-        <Form.Item name="difficulty" label="Difficulty" {...formItemLayout}>
-          <Select
-            options={grades.map((grade) => ({
-              label: grade.difficulty_name,
-              value: grade.difficulty_id,
-            }))}
-            style={{ width: '120px' }}
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
+        <Typography sx={{ width: 120, flexShrink: 0 }}>Date and Time</Typography>
+        <Box sx={{ flex: 1 }}>
+          <DateTimePicker
+            value={formValues.date}
+            onChange={(val) => setFormValues((prev) => ({ ...prev, date: val || dayjs() }))}
+            views={['year', 'month', 'day', 'hours', 'minutes']}
+            slotProps={{ textField: { size: 'small' } }}
           />
-        </Form.Item>
+        </Box>
+      </Box>
+
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
+        <Typography sx={{ width: 120, flexShrink: 0 }}>Angle</Typography>
+        <Box sx={{ flex: 1 }}>
+          <MuiSelect
+            value={formValues.angle}
+            onChange={(e) => setFormValues((prev) => ({ ...prev, angle: Number(e.target.value) }))}
+            size="small"
+            sx={{ width: 80 }}
+          >
+            {angleOptions.map((angle) => (
+              <MenuItem key={angle} value={angle}>
+                {angle}
+              </MenuItem>
+            ))}
+          </MuiSelect>
+        </Box>
+      </Box>
+
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
+        <Typography sx={{ width: 120, flexShrink: 0 }}>Attempts</Typography>
+        <Box sx={{ flex: 1 }}>
+          <TextField
+            type="number"
+            value={formValues.attempts}
+            onChange={(e) => setFormValues((prev) => ({ ...prev, attempts: Number(e.target.value) }))}
+            slotProps={{ htmlInput: { min: 1, max: 999 } }}
+            size="small"
+            sx={{ width: 80 }}
+          />
+        </Box>
+      </Box>
+
+      {logType === 'ascent' && (
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
+          <Typography sx={{ width: 120, flexShrink: 0 }}>Quality</Typography>
+          <Box sx={{ flex: 1 }}>
+            <MuiRating
+              value={formValues.quality}
+              onChange={(_, val) => setFormValues((prev) => ({ ...prev, quality: val ?? 0 }))}
+              max={5}
+            />
+          </Box>
+        </Box>
       )}
 
-      <Form.Item name="notes" label="Notes" {...formItemLayout}>
-        <TextField multiline rows={3} variant="outlined" size="small" fullWidth />
-      </Form.Item>
+      {logType === 'ascent' && (
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
+          <Typography sx={{ width: 120, flexShrink: 0 }}>Difficulty</Typography>
+          <Box sx={{ flex: 1 }}>
+            <MuiSelect
+              value={formValues.difficulty}
+              onChange={(e) => setFormValues((prev) => ({ ...prev, difficulty: Number(e.target.value) }))}
+              size="small"
+              sx={{ width: 120 }}
+            >
+              {grades.map((grade) => (
+                <MenuItem key={grade.difficulty_id} value={grade.difficulty_id}>
+                  {grade.difficulty_name}
+                </MenuItem>
+              ))}
+            </MuiSelect>
+          </Box>
+        </Box>
+      )}
 
-      <Form.Item wrapperCol={{ offset: 0, span: 24 }} style={{ marginBottom: '8px' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
+        <Typography sx={{ width: 120, flexShrink: 0 }}>Notes</Typography>
+        <Box sx={{ flex: 1 }}>
+          <TextField
+            multiline
+            rows={3}
+            variant="outlined"
+            size="small"
+            fullWidth
+            value={formValues.notes || ''}
+            onChange={(e) => setFormValues((prev) => ({ ...prev, notes: e.target.value }))}
+          />
+        </Box>
+      </Box>
+
+      <Box sx={{ mb: 1 }}>
         <Button
           variant="contained"
           type="submit"
@@ -240,13 +299,13 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boar
         >
           Submit
         </Button>
-      </Form.Item>
+      </Box>
 
-      <Form.Item wrapperCol={{ offset: 0, span: 24 }}>
+      <Box>
         <Button variant="outlined" fullWidth size="large" onClick={onClose} disabled={isSaving}>
           Cancel
         </Button>
-      </Form.Item>
-    </Form>
+      </Box>
+    </Box>
   );
 };

@@ -1,13 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import {
-  Layout,
-  Form,
-  Upload,
-  Space,
-  Divider,
-} from 'antd';
+import React, { useState, useEffect, useRef } from 'react';
+import Box from '@mui/material/Box';
+import Stack from '@mui/material/Stack';
+import MuiDivider from '@mui/material/Divider';
 import MuiAvatar from '@mui/material/Avatar';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
@@ -19,7 +15,6 @@ import CircularProgress from '@mui/material/CircularProgress';
 import PersonOutlined from '@mui/icons-material/PersonOutlined';
 import UploadOutlined from '@mui/icons-material/UploadOutlined';
 import Instagram from '@mui/icons-material/Instagram';
-import type { UploadFile, UploadProps } from 'antd/es/upload/interface';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Logo from '@/app/components/brand/logo';
@@ -29,7 +24,6 @@ import BackButton from '@/app/components/back-button';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { usePartyProfile } from '@/app/components/party-manager/party-profile-context';
 import { useSnackbar } from '@/app/components/providers/snackbar-provider';
-const { Content, Header } = Layout;
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
@@ -69,16 +63,17 @@ interface UserProfile {
 export default function SettingsPageContent() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [form] = Form.useForm();
+  const [formValues, setFormValues] = useState({ displayName: '', instagramUrl: '' });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [fileList, setFileList] = useState<UploadFile[]>([]);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | undefined>();
   const { token: authToken } = useWsAuthToken();
   const { refreshProfile: refreshPartyProfile } = usePartyProfile();
   const { showMessage } = useSnackbar();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -111,7 +106,7 @@ export default function SettingsPageContent() {
       }
       const data = await response.json();
       setProfile(data);
-      form.setFieldsValue({
+      setFormValues({
         displayName: data.profile?.displayName || data.name || '',
         instagramUrl: data.profile?.instagramUrl || '',
       });
@@ -142,16 +137,8 @@ export default function SettingsPageContent() {
     setPreviewUrl(objectUrl);
 
     // Store file for later upload
-    setFileList([
-      {
-        uid: '-1',
-        name: file.name,
-        status: 'done',
-        originFileObj: file as unknown as UploadFile['originFileObj'],
-      },
-    ]);
+    setSelectedFile(file);
 
-    // Prevent automatic upload
     return false;
   };
 
@@ -160,18 +147,28 @@ export default function SettingsPageContent() {
       URL.revokeObjectURL(previewUrl);
     }
     setPreviewUrl(undefined);
-    setFileList([]);
+    setSelectedFile(null);
   };
 
   const handleSubmit = async () => {
     try {
-      const values = await form.validateFields();
+      // Inline validation
+      const values = { ...formValues };
+      if (values.displayName && values.displayName.length > 100) {
+        showMessage('Display name must be less than 100 characters', 'error');
+        return;
+      }
+      if (values.instagramUrl && !/^(https?:\/\/)?(www\.)?instagram\.com\/[a-zA-Z0-9._]+\/?$/.test(values.instagramUrl)) {
+        showMessage('Please enter a valid Instagram profile URL', 'error');
+        return;
+      }
+
       setSaving(true);
 
       let avatarUrl = profile?.profile?.avatarUrl || profile?.image || null;
 
       // Upload avatar if there's a new file
-      if (fileList.length > 0 && fileList[0].originFileObj) {
+      if (selectedFile) {
         setUploading(true);
         try {
           const backendUrl = getBackendHttpUrl();
@@ -188,7 +185,7 @@ export default function SettingsPageContent() {
           }
 
           const formData = new FormData();
-          formData.append('avatar', fileList[0].originFileObj as File);
+          formData.append('avatar', selectedFile);
           formData.append('userId', profile.id);
 
           const uploadResponse = await fetch(`${backendUrl}/api/avatars`, {
@@ -236,7 +233,7 @@ export default function SettingsPageContent() {
       }
 
       showMessage('Settings saved successfully', 'success');
-      setFileList([]);
+      setSelectedFile(null);
       // Refresh profile locally and in context (so queue items show updated avatar)
       await fetchProfile();
       await refreshPartyProfile();
@@ -248,22 +245,15 @@ export default function SettingsPageContent() {
     }
   };
 
-  const uploadProps: UploadProps = {
-    beforeUpload,
-    fileList: [],
-    accept: ALLOWED_TYPES.join(','),
-    showUploadList: false,
-  };
-
   const isSaving = saving || uploading;
 
   if (status === 'loading' || loading) {
     return (
-      <Layout style={{ minHeight: '100vh', background: 'var(--semantic-background)' }}>
-        <Content style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+      <Box sx={{ minHeight: '100vh', background: 'var(--semantic-background)' }}>
+        <Box component="main" sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
           <CircularProgress size={48} />
-        </Content>
-      </Layout>
+        </Box>
+      </Box>
     );
   }
 
@@ -272,25 +262,27 @@ export default function SettingsPageContent() {
   }
 
   return (
-    <Layout style={{ minHeight: '100vh', background: 'var(--semantic-background)' }}>
-      <Header
-        style={{
+    <Box sx={{ minHeight: '100vh', background: 'var(--semantic-background)' }}>
+      <Box
+        component="header"
+        sx={{
           background: 'var(--semantic-surface)',
           padding: '0 16px',
           display: 'flex',
           alignItems: 'center',
-          gap: 16,
+          gap: 2,
           boxShadow: 'var(--shadow-xs)',
+          height: 64,
         }}
       >
         <BackButton />
         <Logo size="sm" showText={false} />
-        <Typography variant="h4" style={{ margin: 0, flex: 1 }}>
+        <Typography variant="h4" sx={{ margin: 0, flex: 1 }}>
           Settings
         </Typography>
-      </Header>
+      </Box>
 
-      <Content style={{ padding: '24px', maxWidth: 600, margin: '0 auto', width: '100%' }}>
+      <Box component="main" sx={{ padding: '24px', maxWidth: 600, margin: '0 auto', width: '100%' }}>
         <Card>
           <CardContent>
             <Typography variant="h5">Profile</Typography>
@@ -298,44 +290,54 @@ export default function SettingsPageContent() {
               Customize how you appear on Boardsesh
             </Typography>
 
-            <Form form={form} layout="vertical">
-              <Form.Item label="Avatar">
-                <Space orientation="vertical" align="center" style={{ width: '100%' }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <Box>
+                <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>Avatar</Typography>
+                <Stack spacing={1} alignItems="center" sx={{ width: '100%' }}>
                   <MuiAvatar sx={{ width: 96, height: 96 }} src={previewUrl ?? undefined}>
                     {!previewUrl && <PersonOutlined />}
                   </MuiAvatar>
-                  <Space>
-                    <Upload {...uploadProps}>
-                      <Button
-                        variant="outlined"
-                        startIcon={uploading ? <CircularProgress size={16} /> : <UploadOutlined />}
-                        disabled={isSaving}
-                      >
-                        {previewUrl ? 'Change' : 'Upload'}
-                      </Button>
-                    </Upload>
+                  <Stack direction="row" spacing={1}>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      accept={ALLOWED_TYPES.join(',')}
+                      style={{ display: 'none' }}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) beforeUpload(file);
+                        e.target.value = '';
+                      }}
+                    />
+                    <Button
+                      variant="outlined"
+                      startIcon={uploading ? <CircularProgress size={16} /> : <UploadOutlined />}
+                      disabled={isSaving}
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      {previewUrl ? 'Change' : 'Upload'}
+                    </Button>
                     {previewUrl && (
                       <Button variant="outlined" onClick={handleRemoveAvatar} disabled={isSaving}>
                         Remove
                       </Button>
                     )}
-                  </Space>
+                  </Stack>
                   <Typography variant="body2" component="span" color="text.secondary" sx={{ fontSize: 12 }}>
                     JPG, PNG, GIF, or WebP. Max 2MB.
                   </Typography>
-                </Space>
-              </Form.Item>
+                </Stack>
+              </Box>
 
-              <Form.Item
-                name="displayName"
-                label="Display Name"
-                rules={[{ max: 100, message: 'Display name must be less than 100 characters' }]}
-              >
+              <Box>
+                <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>Display Name</Typography>
                 <TextField
                   placeholder="Enter your display name"
                   variant="outlined"
                   size="small"
                   fullWidth
+                  value={formValues.displayName}
+                  onChange={(e) => setFormValues((prev) => ({ ...prev, displayName: e.target.value }))}
                   slotProps={{
                     input: {
                       startAdornment: (
@@ -347,23 +349,17 @@ export default function SettingsPageContent() {
                   }}
                   inputProps={{ maxLength: 100 }}
                 />
-              </Form.Item>
+              </Box>
 
-              <Form.Item
-                name="instagramUrl"
-                label="Instagram Profile"
-                rules={[
-                  {
-                    pattern: /^(https?:\/\/)?(www\.)?instagram\.com\/[a-zA-Z0-9._]+\/?$/,
-                    message: 'Please enter a valid Instagram profile URL',
-                  },
-                ]}
-              >
+              <Box>
+                <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>Instagram Profile</Typography>
                 <TextField
                   placeholder="https://instagram.com/username"
                   variant="outlined"
                   size="small"
                   fullWidth
+                  value={formValues.instagramUrl}
+                  onChange={(e) => setFormValues((prev) => ({ ...prev, instagramUrl: e.target.value }))}
                   slotProps={{
                     input: {
                       startAdornment: (
@@ -374,11 +370,12 @@ export default function SettingsPageContent() {
                     },
                   }}
                 />
-              </Form.Item>
+              </Box>
 
-              <Divider />
+              <MuiDivider sx={{ my: 2 }} />
 
-              <Form.Item label="Email">
+              <Box>
+                <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>Email</Typography>
                 <TextField
                   value={profile?.email || session?.user?.email || ''}
                   disabled
@@ -398,9 +395,9 @@ export default function SettingsPageContent() {
                 <Typography variant="body2" component="span" color="text.secondary" sx={{ fontSize: 12, marginTop: 0.5, display: 'block' }}>
                   Email cannot be changed
                 </Typography>
-              </Form.Item>
+              </Box>
 
-              <Form.Item style={{ marginBottom: 0, marginTop: 24 }}>
+              <Box sx={{ mt: 3 }}>
                 <Button
                   variant="contained"
                   onClick={handleSubmit}
@@ -410,19 +407,19 @@ export default function SettingsPageContent() {
                 >
                   Save Changes
                 </Button>
-              </Form.Item>
-            </Form>
+              </Box>
+            </Box>
           </CardContent>
         </Card>
 
-        <Divider />
+        <MuiDivider sx={{ my: 2 }} />
 
         <AuroraCredentialsSection />
 
-        <Divider />
+        <MuiDivider sx={{ my: 2 }} />
 
         <ControllersSection />
-      </Content>
-    </Layout>
+      </Box>
+    </Box>
   );
 }

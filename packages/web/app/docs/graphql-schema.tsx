@@ -11,7 +11,10 @@
  */
 
 import { useState, type ReactNode } from 'react';
-import { Input } from 'antd';
+import TextField from '@mui/material/TextField';
+import InputAdornment from '@mui/material/InputAdornment';
+import ClearOutlined from '@mui/icons-material/ClearOutlined';
+import IconButton from '@mui/material/IconButton';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import Accordion from '@mui/material/Accordion';
@@ -30,7 +33,6 @@ import { tokenizeLine } from './graphql-tokenizer';
 import styles from './docs.module.css';
 
 // Typography destructuring removed - using MUI Typography directly
-const { Search } = Input;
 
 type SchemaSection = {
   name: string;
@@ -176,11 +178,24 @@ export default function GraphQLSchemaViewer() {
   return (
     <div>
       <div className={styles.searchContainer}>
-        <Search
+        <TextField
           placeholder="Search types, fields, descriptions..."
-          allowClear
+          value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className={styles.searchInput}
+          size="small"
+          fullWidth
+          slotProps={{
+            input: {
+              endAdornment: searchQuery ? (
+                <InputAdornment position="end">
+                  <IconButton size="small" onClick={() => setSearchQuery('')}>
+                    <ClearOutlined fontSize="small" />
+                  </IconButton>
+                </InputAdornment>
+              ) : undefined,
+            },
+          }}
         />
       </div>
 

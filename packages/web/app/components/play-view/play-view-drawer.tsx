@@ -27,7 +27,6 @@ import ClimbTitle from '../climb-card/climb-title';
 import SwipeBoardCarousel from '../board-renderer/swipe-board-carousel';
 import { useWakeLock } from '../board-bluetooth-control/use-wake-lock';
 import { themeTokens } from '@/app/theme/theme-config';
-import DrawerContext from '@rc-component/drawer/es/context';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import type { ActiveDrawer } from '../queue-control/queue-control-bar';
 import type { BoardDetails, Angle } from '@/app/lib/types';
@@ -45,8 +44,6 @@ interface PlayViewDrawerProps {
   angle: Angle;
 }
 
-// Stable no-op context to prevent child drawers from pushing the parent.
-const noPushContext = { pushDistance: 0, push: () => {}, pull: () => {} };
 
 const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
   activeDrawer,
@@ -287,8 +284,6 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
         </div>
       </div>
 
-      {/* Isolate child drawers from parent push context */}
-      <DrawerContext.Provider value={noPushContext}>
         {/* Climb actions drawer */}
         {currentClimb && (
           <SwipeableDrawer
@@ -394,7 +389,6 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
             )}
           </div>
         </SwipeableDrawer>
-      </DrawerContext.Provider>
     </SwipeableDrawer>
   );
 };

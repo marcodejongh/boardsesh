@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { List } from 'antd';
+import MuiList from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -198,11 +199,10 @@ export default function PlaylistsListContent({
 
     return (
       <div className={styles.listSection}>
-        <List
-          dataSource={playlists}
-          renderItem={(playlist) => (
-            <Link href={getPlaylistUrl(playlist.uuid)} className={styles.playlistLink}>
-              <List.Item className={styles.playlistItem}>
+        <MuiList>
+          {playlists.map((playlist) => (
+            <Link key={playlist.uuid} href={getPlaylistUrl(playlist.uuid)} className={styles.playlistLink}>
+              <ListItem className={styles.playlistItem}>
                 <div className={styles.playlistItemContent}>
                   <div
                     className={styles.playlistColor}
@@ -228,10 +228,10 @@ export default function PlaylistsListContent({
                   </div>
                 </div>
                 <ChevronRightOutlined className={styles.playlistArrow} />
-              </List.Item>
+              </ListItem>
             </Link>
-          )}
-        />
+          ))}
+        </MuiList>
       </div>
     );
   };

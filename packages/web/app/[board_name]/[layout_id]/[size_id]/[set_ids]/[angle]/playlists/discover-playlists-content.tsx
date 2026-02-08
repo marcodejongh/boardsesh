@@ -1,15 +1,21 @@
 'use client';
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { List, Input, Form } from 'antd';
+import MuiList from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
 import CircularProgress from '@mui/material/CircularProgress';
 import MuiButton from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
+import TextField from '@mui/material/TextField';
+import InputAdornment from '@mui/material/InputAdornment';
+import IconButton from '@mui/material/IconButton';
+import Box from '@mui/material/Box';
 import {
   LabelOutlined,
   SearchOutlined,
   ChevronRightOutlined,
   PersonOutlined,
+  ClearOutlined,
 } from '@mui/icons-material';
 import Link from 'next/link';
 import { BoardDetails } from '@/app/lib/types';
@@ -159,25 +165,41 @@ export default function DiscoverPlaylistsContent({
     <div className={styles.contentWrapper}>
       {/* Search Filters */}
       <div className={styles.searchFilters}>
-        <Form layout="vertical">
-          <Form.Item label="Search by name" style={{ marginBottom: 12 }}>
-            <Input
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+          <Box>
+            <Typography variant="body2" sx={{ mb: 0.5 }}>Search by name</Typography>
+            <TextField
+              fullWidth
+              size="small"
               placeholder="Search playlists..."
-              prefix={<SearchOutlined />}
               value={searchName}
               onChange={(e) => setSearchName(e.target.value)}
-              allowClear
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchOutlined />
+                  </InputAdornment>
+                ),
+                endAdornment: searchName ? (
+                  <InputAdornment position="end">
+                    <IconButton size="small" onClick={() => setSearchName('')} edge="end">
+                      <ClearOutlined fontSize="small" />
+                    </IconButton>
+                  </InputAdornment>
+                ) : null,
+              }}
             />
-          </Form.Item>
-          <Form.Item label="Filter by creator" style={{ marginBottom: 0 }}>
+          </Box>
+          <Box>
+            <Typography variant="body2" sx={{ mb: 0.5 }}>Filter by creator</Typography>
             <CreatorNameSelect
               boardType={boardDetails.board_name}
               layoutId={boardDetails.layout_id}
               value={selectedCreators}
               onChange={setSelectedCreators}
             />
-          </Form.Item>
-        </Form>
+          </Box>
+        </Box>
       </div>
 
       {/* Content */}
@@ -197,24 +219,10 @@ export default function DiscoverPlaylistsContent({
         </div>
       ) : (
         <div className={styles.listSection}>
-          <List
-            dataSource={playlists}
-            loadMore={
-              hasMore ? (
-                <div className={styles.loadMoreContainer}>
-                  <MuiButton
-                    variant="outlined"
-                    onClick={handleLoadMore}
-                    disabled={loadingMore}
-                  >
-                    {loadingMore ? 'Loading...' : 'Load more'}
-                  </MuiButton>
-                </div>
-              ) : null
-            }
-            renderItem={(playlist) => (
-              <Link href={getPlaylistUrl(playlist.uuid)} className={styles.playlistLink}>
-                <List.Item className={styles.playlistItem}>
+          <MuiList>
+            {playlists.map((playlist) => (
+              <Link key={playlist.uuid} href={getPlaylistUrl(playlist.uuid)} className={styles.playlistLink}>
+                <ListItem className={styles.playlistItem}>
                   <div className={styles.playlistItemContent}>
                     <div
                       className={styles.playlistColor}
@@ -234,10 +242,21 @@ export default function DiscoverPlaylistsContent({
                     </div>
                   </div>
                   <ChevronRightOutlined className={styles.playlistArrow} />
-                </List.Item>
+                </ListItem>
               </Link>
-            )}
-          />
+            ))}
+          </MuiList>
+          {hasMore && (
+            <div className={styles.loadMoreContainer}>
+              <MuiButton
+                variant="outlined"
+                onClick={handleLoadMore}
+                disabled={loadingMore}
+              >
+                {loadingMore ? 'Loading...' : 'Load more'}
+              </MuiButton>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -4,7 +4,6 @@ import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import CircularProgress from '@mui/material/CircularProgress';
 import Box from '@mui/material/Box';
-import { Header } from 'antd/es/layout/layout';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import SearchPill from '../search-drawer/search-pill';
 import SearchDropdown from '../search-drawer/search-dropdown';
@@ -96,9 +95,10 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
     : null;
 
   return (
-    <Header
+    <Box
+      component="header"
       className={`${styles.header} header-shadow`}
-      style={{
+      sx={{
         background: 'var(--semantic-surface)',
         height: '8dvh',
         minHeight: 48,
@@ -172,6 +172,6 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
         open={searchDropdownOpen}
         onClose={() => setSearchDropdownOpen(false)}
       />
-    </Header>
+    </Box>
   );
 }

@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useEffect } from 'react';
-import { Form, Input } from 'antd';
+import React, { useEffect, useState } from 'react';
 import Typography from '@mui/material/Typography';
+import TextField from '@mui/material/TextField';
 import Chip from '@mui/material/Chip';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
@@ -98,7 +98,7 @@ export default function MoonBoardEditModal({
   onSave,
   onCancel,
 }: MoonBoardEditModalProps) {
-  const [form] = Form.useForm<{ name: string }>();
+  const [climbName, setClimbName] = useState(climb.name);
 
   const initialHoldsMap = convertClimbToHoldsMap(climb);
 
@@ -119,19 +119,18 @@ export default function MoonBoardEditModal({
     if (open) {
       const newHoldsMap = convertClimbToHoldsMap(climb);
       setLitUpHoldsMap(newHoldsMap);
-      form.setFieldsValue({ name: climb.name });
+      setClimbName(climb.name);
     }
-  }, [climb, open, setLitUpHoldsMap, form]);
+  }, [climb, open, setLitUpHoldsMap]);
 
   const handleOk = () => {
-    form.validateFields().then((values) => {
-      const updatedClimb: MoonBoardClimb = {
-        ...climb,
-        name: values.name,
-        holds: convertHoldsMapToOcrFormat(litUpHoldsMap),
-      };
-      onSave(updatedClimb);
-    });
+    if (!climbName.trim()) return;
+    const updatedClimb: MoonBoardClimb = {
+      ...climb,
+      name: climbName.trim(),
+      holds: convertHoldsMapToOcrFormat(litUpHoldsMap),
+    };
+    onSave(updatedClimb);
   };
 
   return (
@@ -167,21 +166,26 @@ export default function MoonBoardEditModal({
             )}
           </div>
 
-          <Form form={form} layout="vertical" className={styles.formSection}>
-            <Form.Item
-              name="name"
+          <div className={styles.formSection}>
+            <TextField
               label="Climb Name"
-              rules={[{ required: true, message: 'Please enter a name' }]}
-            >
-              <Input placeholder="Climb name" maxLength={100} />
-            </Form.Item>
+              value={climbName}
+              onChange={(e) => setClimbName(e.target.value)}
+              required
+              fullWidth
+              size="small"
+              placeholder="Climb name"
+              slotProps={{ htmlInput: { maxLength: 100 } }}
+              error={!climbName.trim()}
+              helperText={!climbName.trim() ? 'Please enter a name' : undefined}
+            />
 
             <div className={styles.climbInfo}>
               <Typography variant="body2" component="span" color="text.secondary">Setter: {climb.setter || 'Unknown'}</Typography>
               <Typography variant="body2" component="span" color="text.secondary">Grade: {climb.userGrade || 'Unknown'}</Typography>
               <Typography variant="body2" component="span" color="text.secondary">Angle: {climb.angle}°</Typography>
             </div>
-          </Form>
+          </div>
         </div>
       </DialogContent>
       <DialogActions>

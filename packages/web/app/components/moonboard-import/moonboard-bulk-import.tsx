@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useReducer, useCallback, useState, useRef } from 'react';
-import { Upload } from 'antd';
 import MuiAlert from '@mui/material/Alert';
 import AlertTitle from '@mui/material/AlertTitle';
 import LinearProgress from '@mui/material/LinearProgress';
@@ -20,7 +19,6 @@ import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { parseMultipleScreenshots, deduplicateClimbs } from '@boardsesh/moonboard-ocr/browser';
 import type { MoonBoardClimb } from '@boardsesh/moonboard-ocr/browser';
-import type { RcFile } from 'antd/es/upload/interface';
 import MoonBoardImportCard from './moonboard-import-card';
 import MoonBoardEditModal from './moonboard-edit-modal';
 import { convertOcrHoldsToMap } from '@/app/lib/moonboard-climbs-db';
@@ -28,8 +26,6 @@ import { useBackendUrl } from '@/app/components/connection-manager/connection-se
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { uploadOcrTestDataBatch } from '@/app/lib/moonboard-ocr-upload';
 import styles from './moonboard-bulk-import.module.css';
-
-const { Dragger } = Upload;
 
 interface MoonBoardBulkImportProps {
   layoutFolder: string;
@@ -133,12 +129,15 @@ export default function MoonBoardBulkImport({
   // Store original files for OCR test data upload
   const filesMapRef = useRef<Map<string, File>>(new Map());
 
+  // File input ref for the drop zone
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   // Backend URL and auth token for OCR upload
   const { backendUrl } = useBackendUrl();
   const { token: authToken } = useWsAuthToken();
 
   const handleFilesUpload = useCallback(
-    async (fileList: RcFile[]) => {
+    async (fileList: File[]) => {
       if (fileList.length === 0) return;
 
       // Store files for potential OCR test data upload
@@ -306,26 +305,43 @@ export default function MoonBoardBulkImport({
       {/* Upload Section */}
       {state.status === 'idle' && (
         <div className={styles.uploadSection}>
-          <Dragger
-            accept="image/png,image/jpeg,image/webp"
-            multiple
-            showUploadList={false}
-            beforeUpload={(file, fileList) => {
-              // Only process when all files are ready
-              if (file === fileList[0]) {
-                handleFilesUpload(fileList);
-              }
-              return false;
+          <Box
+            sx={{
+              border: '2px dashed',
+              borderColor: 'divider',
+              borderRadius: 2,
+              p: 4,
+              textAlign: 'center',
+              cursor: 'pointer',
+              '&:hover': { borderColor: 'primary.main' },
+            }}
+            onClick={() => fileInputRef.current?.click()}
+            onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+            onDrop={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              const files = Array.from(e.dataTransfer.files);
+              if (files.length > 0) handleFilesUpload(files);
             }}
           >
-            <p className="ant-upload-drag-icon">
-              <InboxOutlined />
-            </p>
-            <p className="ant-upload-text">Click or drag screenshot files to this area</p>
-            <p className="ant-upload-hint">
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept="image/png,image/jpeg,image/webp"
+              multiple
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                const files = Array.from(e.target.files || []);
+                if (files.length > 0) handleFilesUpload(files);
+                e.target.value = '';
+              }}
+            />
+            <InboxOutlined sx={{ fontSize: 48, color: 'text.secondary', mb: 1 }} />
+            <Typography variant="body1">Click or drag screenshot files to this area</Typography>
+            <Typography variant="body2" color="text.secondary">
               Support for MoonBoard app screenshots. Drop multiple files to bulk import.
-            </p>
-          </Dragger>
+            </Typography>
+          </Box>
         </div>
       )}
 

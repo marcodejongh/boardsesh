@@ -4,7 +4,10 @@ import React, { useState, useCallback } from 'react';
 import MuiButton from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import MuiTypography from '@mui/material/Typography';
-import { List, Form, Input, ColorPicker } from 'antd';
+import TextField from '@mui/material/TextField';
+import Box from '@mui/material/Box';
+import MuiList from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
 import MuiBadge from '@mui/material/Badge';
 import Stack from '@mui/material/Stack';
 import { ActionTooltip } from '../action-tooltip';
@@ -17,7 +20,6 @@ import type { ClimbActionProps, ClimbActionResult } from '../types';
 import { usePlaylists } from '../use-playlists';
 import AuthModal from '../../auth/auth-modal';
 import type { Playlist } from '../playlists-batch-context';
-import type { Color } from 'antd/es/color-picker';
 import { themeTokens } from '@/app/theme/theme-config';
 import { useSnackbar } from '../../providers/snackbar-provider';
 
@@ -43,7 +45,7 @@ export function PlaylistAction({
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [form] = Form.useForm();
+  const [createFormValues, setCreateFormValues] = useState({ name: '', description: '', color: '' });
   const [creatingPlaylist, setCreatingPlaylist] = useState(false);
 
   const {
@@ -107,49 +109,46 @@ export function PlaylistAction({
 
   const handleCreatePlaylist = useCallback(async () => {
     try {
-      const values = await form.validateFields();
-      setCreatingPlaylist(true);
-
-      // Extract and validate hex color from ColorPicker value
-      let colorHex: string | undefined;
-      if (values.color) {
-        let rawColor: string | undefined;
-        if (typeof values.color === 'string') {
-          rawColor = values.color;
-        } else if (typeof values.color === 'object' && 'toHexString' in values.color) {
-          rawColor = (values.color as Color).toHexString();
-        }
-        // Only use color if it's a valid hex format
-        if (rawColor && isValidHexColor(rawColor)) {
-          colorHex = rawColor;
-        }
+      // Inline validation
+      if (!createFormValues.name.trim()) {
+        showMessage('Please enter a playlist name', 'error');
+        return;
+      }
+      if (createFormValues.name.length > 100) {
+        showMessage('Name too long', 'error');
+        return;
+      }
+      if (createFormValues.description.length > 500) {
+        showMessage('Description too long', 'error');
+        return;
       }
 
-      const newPlaylist = await createPlaylist(values.name, values.description, colorHex, undefined);
+      setCreatingPlaylist(true);
+
+      // Extract and validate hex color
+      const colorHex = createFormValues.color && isValidHexColor(createFormValues.color) ? createFormValues.color : undefined;
+
+      const newPlaylist = await createPlaylist(createFormValues.name, createFormValues.description, colorHex, undefined);
 
       // Automatically add current climb to new playlist
       await addToPlaylist(newPlaylist.id);
 
-      showMessage(`Created playlist "${values.name}"`, 'success');
+      showMessage(`Created playlist "${createFormValues.name}"`, 'success');
       track('Create Playlist', {
         boardName: boardDetails.board_name,
-        playlistName: values.name,
+        playlistName: createFormValues.name,
       });
 
-      form.resetFields();
+      setCreateFormValues({ name: '', description: '', color: '' });
       setShowCreateForm(false);
       onComplete?.();
       // Note: No need to call refreshPlaylists() - optimistic updates handle state
     } catch (error) {
-      if (error instanceof Error && 'errorFields' in error) {
-        // Form validation error - don't show message
-        return;
-      }
       showMessage('Failed to create playlist', 'error');
     } finally {
       setCreatingPlaylist(false);
     }
-  }, [form, createPlaylist, addToPlaylist, boardDetails.board_name, onComplete]);
+  }, [createFormValues, createPlaylist, addToPlaylist, boardDetails.board_name, onComplete, showMessage]);
 
   const inlineContent = (
     <div
@@ -186,41 +185,42 @@ export function PlaylistAction({
         <>
           {!showCreateForm && (
             <>
-              <List
-                dataSource={playlists}
-                loading={isLoading}
-                size="small"
-                split={false}
-                renderItem={(playlist: Playlist) => {
-                  const isInPlaylist = playlistsContainingClimb.has(playlist.uuid);
-                  const validColor = playlist.color && isValidHexColor(playlist.color) ? playlist.color : null;
-                  return (
-                    <List.Item
-                      style={{
-                        padding: `${themeTokens.spacing[1] + 2}px ${themeTokens.spacing[2]}px`,
-                        cursor: 'pointer',
-                        borderLeft: validColor ? `3px solid ${validColor}` : '3px solid transparent',
-                        borderRadius: themeTokens.borderRadius.sm,
-                        marginBottom: themeTokens.spacing[1],
-                        backgroundColor: isInPlaylist ? themeTokens.semantic.selectedLight : undefined,
-                      }}
-                      onClick={() => handleTogglePlaylist(playlist.uuid, isInPlaylist)}
-                    >
-                      <Stack direction="row" spacing={1} style={{ width: '100%', justifyContent: 'space-between' }}>
-                        <Stack spacing={0}>
-                          <MuiTypography variant="body2" component="span" fontWeight={600} sx={{ fontSize: 13 }}>{playlist.name}</MuiTypography>
-                          <MuiTypography variant="body2" component="span" color="text.secondary" sx={{ fontSize: 11 }}>
-                            {playlist.climbCount} {playlist.climbCount === 1 ? 'climb' : 'climbs'}
-                          </MuiTypography>
+              <MuiList dense disablePadding>
+                {isLoading ? (
+                  <CircularProgress size={20} />
+                ) : (
+                  playlists.map((playlist: Playlist) => {
+                    const isInPlaylist = playlistsContainingClimb.has(playlist.uuid);
+                    const validColor = playlist.color && isValidHexColor(playlist.color) ? playlist.color : null;
+                    return (
+                      <ListItem
+                        key={playlist.uuid}
+                        onClick={() => handleTogglePlaylist(playlist.uuid, isInPlaylist)}
+                        sx={{
+                          padding: `${themeTokens.spacing[1] + 2}px ${themeTokens.spacing[2]}px`,
+                          cursor: 'pointer',
+                          borderLeft: validColor ? `3px solid ${validColor}` : '3px solid transparent',
+                          borderRadius: `${themeTokens.borderRadius.sm}px`,
+                          mb: 0.5,
+                          backgroundColor: isInPlaylist ? themeTokens.semantic.selectedLight : undefined,
+                        }}
+                      >
+                        <Stack direction="row" spacing={1} sx={{ width: '100%', justifyContent: 'space-between' }}>
+                          <Stack spacing={0}>
+                            <MuiTypography variant="body2" component="span" fontWeight={600} sx={{ fontSize: 13 }}>{playlist.name}</MuiTypography>
+                            <MuiTypography variant="body2" component="span" color="text.secondary" sx={{ fontSize: 11 }}>
+                              {playlist.climbCount} {playlist.climbCount === 1 ? 'climb' : 'climbs'}
+                            </MuiTypography>
+                          </Stack>
+                          {isInPlaylist && (
+                            <CheckOutlined sx={{ color: themeTokens.colors.success, fontSize: 14 }} />
+                          )}
                         </Stack>
-                        {isInPlaylist && (
-                          <CheckOutlined sx={{ color: themeTokens.colors.success, fontSize: 14 }} />
-                        )}
-                      </Stack>
-                    </List.Item>
-                  );
-                }}
-              />
+                      </ListItem>
+                    );
+                  })
+                )}
+              </MuiList>
               <MuiButton
                 variant="outlined"
                 startIcon={<AddOutlined />}
@@ -236,41 +236,50 @@ export function PlaylistAction({
 
           {showCreateForm && (
             <div>
-              <Form form={form} layout="vertical" size="small">
-                <Form.Item
-                  name="name"
-                  label="Playlist Name"
-                  rules={[
-                    { required: true, message: 'Please enter a playlist name' },
-                    { max: 100, message: 'Name too long' },
-                  ]}
-                  style={{ marginBottom: 8 }}
-                >
-                  <Input placeholder="e.g., Hard Crimps" autoFocus />
-                </Form.Item>
-                <Form.Item
-                  name="description"
-                  label="Description (optional)"
-                  rules={[{ max: 500, message: 'Description too long' }]}
-                  style={{ marginBottom: 8 }}
-                >
-                  <Input.TextArea
-                    placeholder="Optional description..."
-                    rows={2}
-                    maxLength={500}
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                <Box>
+                  <MuiTypography variant="body2" fontWeight={600} sx={{ mb: 0.5, fontSize: 12 }}>Playlist Name</MuiTypography>
+                  <TextField
+                    placeholder="e.g., Hard Crimps"
+                    autoFocus
+                    fullWidth
+                    size="small"
+                    value={createFormValues.name}
+                    onChange={(e) => setCreateFormValues(prev => ({...prev, name: e.target.value}))}
+                    slotProps={{ htmlInput: { maxLength: 100 } }}
                   />
-                </Form.Item>
-                <Form.Item name="color" label="Color (optional)" style={{ marginBottom: 8 }}>
-                  <ColorPicker format="hex" showText size="small" />
-                </Form.Item>
-              </Form>
+                </Box>
+                <Box>
+                  <MuiTypography variant="body2" fontWeight={600} sx={{ mb: 0.5, fontSize: 12 }}>Description (optional)</MuiTypography>
+                  <TextField
+                    placeholder="Optional description..."
+                    multiline
+                    rows={2}
+                    fullWidth
+                    size="small"
+                    value={createFormValues.description}
+                    onChange={(e) => setCreateFormValues(prev => ({...prev, description: e.target.value}))}
+                    slotProps={{ htmlInput: { maxLength: 500 } }}
+                  />
+                </Box>
+                <Box>
+                  <MuiTypography variant="body2" fontWeight={600} sx={{ mb: 0.5, fontSize: 12 }}>Color (optional)</MuiTypography>
+                  <TextField
+                    type="color"
+                    value={createFormValues.color || '#000000'}
+                    onChange={(e) => setCreateFormValues(prev => ({...prev, color: e.target.value}))}
+                    size="small"
+                    sx={{ width: 60 }}
+                  />
+                </Box>
+              </Box>
               <Stack direction="row" spacing={1} style={{ width: '100%', justifyContent: 'flex-end' }}>
                 <MuiButton
                   variant="outlined"
                   size="small"
                   onClick={() => {
                     setShowCreateForm(false);
-                    form.resetFields();
+                    setCreateFormValues({ name: '', description: '', color: '' });
                   }}
                 >
                   Cancel

@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Form, Input, ColorPicker } from 'antd';
 import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 import MuiButton from '@mui/material/Button';
 import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
+import TextField from '@mui/material/TextField';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import FormatListBulletedOutlined from '@mui/icons-material/FormatListBulletedOutlined';
 import AddOutlined from '@mui/icons-material/AddOutlined';
@@ -13,7 +14,6 @@ import EditOutlined from '@mui/icons-material/EditOutlined';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { track } from '@vercel/analytics';
-import type { Color } from 'antd/es/color-picker';
 import { BoardDetails } from '@/app/lib/types';
 import { generateLayoutSlug, generateSizeSlug, generateSetSlug, constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { themeTokens } from '@/app/theme/theme-config';
@@ -48,12 +48,15 @@ const getBasePath = (path: string): string => {
   return path.split('/').slice(0, 6).join('/');
 };
 
+const INITIAL_PLAYLIST_FORM = { name: '', description: '', color: '' };
+
 function BottomTabBar({ boardDetails, angle }: BottomTabBarProps) {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isCreatePlaylistOpen, setIsCreatePlaylistOpen] = useState(false);
   const [isCreatingPlaylist, setIsCreatingPlaylist] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [form] = Form.useForm();
+  const [playlistFormValues, setPlaylistFormValues] = useState(INITIAL_PLAYLIST_FORM);
+  const [playlistFormErrors, setPlaylistFormErrors] = useState<Record<string, string>>({});
   const pathname = usePathname();
   const router = useRouter();
 
@@ -191,36 +194,45 @@ function BottomTabBar({ boardDetails, angle }: BottomTabBarProps) {
     setIsCreatePlaylistOpen(true);
   };
 
+  const validatePlaylistForm = (): boolean => {
+    const errors: Record<string, string> = {};
+    if (!playlistFormValues.name.trim()) {
+      errors.name = 'Please enter a playlist name';
+    } else if (playlistFormValues.name.length > 100) {
+      errors.name = 'Name too long';
+    }
+    if (playlistFormValues.description.length > 500) {
+      errors.description = 'Description too long';
+    }
+    setPlaylistFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleCreatePlaylist = useCallback(async () => {
+    if (!validatePlaylistForm()) {
+      return;
+    }
+
     try {
-      const values = await form.validateFields();
       setIsCreatingPlaylist(true);
 
-      // Extract and validate hex color from ColorPicker value
+      // Extract and validate hex color
       let colorHex: string | undefined;
-      if (values.color) {
-        let rawColor: string | undefined;
-        if (typeof values.color === 'string') {
-          rawColor = values.color;
-        } else if (typeof values.color === 'object' && 'toHexString' in values.color) {
-          rawColor = (values.color as Color).toHexString();
-        }
-        // Only use color if it's a valid hex format
-        if (rawColor && isValidHexColor(rawColor)) {
-          colorHex = rawColor;
-        }
+      if (playlistFormValues.color && isValidHexColor(playlistFormValues.color)) {
+        colorHex = playlistFormValues.color;
       }
 
-      const newPlaylist = await createPlaylist(values.name, values.description, colorHex, undefined);
+      const newPlaylist = await createPlaylist(playlistFormValues.name, playlistFormValues.description, colorHex, undefined);
 
-      showMessage(`Created playlist "${values.name}"`, 'success');
+      showMessage(`Created playlist "${playlistFormValues.name}"`, 'success');
       track('Create Playlist', {
         boardName: boardDetails.board_name,
-        playlistName: values.name,
+        playlistName: playlistFormValues.name,
         source: 'bottom-tab-bar',
       });
 
-      form.resetFields();
+      setPlaylistFormValues(INITIAL_PLAYLIST_FORM);
+      setPlaylistFormErrors({});
       setIsCreatePlaylistOpen(false);
 
       // Navigate to the new playlist
@@ -229,15 +241,12 @@ function BottomTabBar({ boardDetails, angle }: BottomTabBarProps) {
         router.push(newPlaylistUrl);
       }
     } catch (error) {
-      if (error instanceof Error && 'errorFields' in error) {
-        // Form validation error - don't show message
-        return;
-      }
       showMessage('Failed to create playlist', 'error');
     } finally {
       setIsCreatingPlaylist(false);
     }
-  }, [form, createPlaylist, boardDetails.board_name, router, getPlaylistUrl]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playlistFormValues, createPlaylist, boardDetails.board_name, router, getPlaylistUrl, showMessage]);
 
   const getTabColor = (tab: Tab) =>
     activeTab === tab ? themeTokens.colors.primary : themeTokens.neutral[400];
@@ -348,7 +357,8 @@ function BottomTabBar({ boardDetails, angle }: BottomTabBarProps) {
         open={isCreatePlaylistOpen}
         onClose={() => {
           setIsCreatePlaylistOpen(false);
-          form.resetFields();
+          setPlaylistFormValues(INITIAL_PLAYLIST_FORM);
+          setPlaylistFormErrors({});
         }}
         styles={{
           wrapper: { height: 'auto' },
@@ -364,32 +374,52 @@ function BottomTabBar({ boardDetails, angle }: BottomTabBarProps) {
           </MuiButton>
         }
       >
-        <Form form={form} layout="vertical">
-          <Form.Item
-            name="name"
-            label="Name"
-            rules={[
-              { required: true, message: 'Please enter a playlist name' },
-              { max: 100, message: 'Name too long' },
-            ]}
-          >
-            <Input placeholder="e.g., Hard Crimps" autoFocus />
-          </Form.Item>
-          <Form.Item
-            name="description"
-            label="Description (optional)"
-            rules={[{ max: 500, message: 'Description too long' }]}
-          >
-            <Input.TextArea
-              placeholder="Optional description..."
-              rows={2}
-              maxLength={500}
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <Box>
+            <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>Name</Typography>
+            <TextField
+              placeholder="e.g., Hard Crimps"
+              autoFocus
+              fullWidth
+              size="small"
+              value={playlistFormValues.name}
+              onChange={(e) => {
+                setPlaylistFormValues((prev) => ({ ...prev, name: e.target.value }));
+                setPlaylistFormErrors((prev) => ({ ...prev, name: '' }));
+              }}
+              error={!!playlistFormErrors.name}
+              helperText={playlistFormErrors.name}
             />
-          </Form.Item>
-          <Form.Item name="color" label="Color (optional)">
-            <ColorPicker format="hex" showText />
-          </Form.Item>
-        </Form>
+          </Box>
+          <Box>
+            <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>Description (optional)</Typography>
+            <TextField
+              placeholder="Optional description..."
+              multiline
+              rows={2}
+              fullWidth
+              size="small"
+              slotProps={{ htmlInput: { maxLength: 500 } }}
+              value={playlistFormValues.description}
+              onChange={(e) => {
+                setPlaylistFormValues((prev) => ({ ...prev, description: e.target.value }));
+                setPlaylistFormErrors((prev) => ({ ...prev, description: '' }));
+              }}
+              error={!!playlistFormErrors.description}
+              helperText={playlistFormErrors.description}
+            />
+          </Box>
+          <Box>
+            <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>Color (optional)</Typography>
+            <TextField
+              type="color"
+              value={playlistFormValues.color || '#000000'}
+              onChange={(e) => setPlaylistFormValues((prev) => ({ ...prev, color: e.target.value }))}
+              size="small"
+              sx={{ width: 80 }}
+            />
+          </Box>
+        </Box>
       </SwipeableDrawer>
 
       <AuthModal

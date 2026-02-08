@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { List } from 'antd';
+import MuiList from '@mui/material/List';
+import ListItemButton from '@mui/material/ListItemButton';
 import Typography from '@mui/material/Typography';
 import { ChevronRightOutlined } from '@mui/icons-material';
 import { WorkoutType, WORKOUT_TYPES } from './types';
@@ -17,10 +18,10 @@ interface WorkoutTypeSelectorProps {
 const WorkoutTypeSelector: React.FC<WorkoutTypeSelectorProps> = ({ onSelect }) => {
   return (
     <div className={styles.container}>
-      <List
-        dataSource={WORKOUT_TYPES}
-        renderItem={(item) => (
-          <List.Item
+      <MuiList>
+        {WORKOUT_TYPES.map((item) => (
+          <ListItemButton
+            key={item.type}
             className={styles.listItem}
             onClick={() => onSelect(item.type)}
           >
@@ -34,9 +35,9 @@ const WorkoutTypeSelector: React.FC<WorkoutTypeSelectorProps> = ({ onSelect }) =
               </div>
             </div>
             <ChevronRightOutlined className={styles.arrow} />
-          </List.Item>
-        )}
-      />
+          </ListItemButton>
+        ))}
+      </MuiList>
     </div>
   );
 };

@@ -1,7 +1,10 @@
 'use client';
 
 import React from 'react';
-import Card from 'antd/es/card';
+import MuiCard from '@mui/material/Card';
+import CardHeader from '@mui/material/CardHeader';
+import CardContent from '@mui/material/CardContent';
+import CardActions from '@mui/material/CardActions';
 
 import ClimbCardCover from './climb-card-cover';
 import ClimbTitle from './climb-title';
@@ -78,29 +81,26 @@ function ClimbCardWithActions({
 
   return (
     <div data-testid="climb-card">
-      <Card
-        title={cardTitle}
-        size="small"
-        styles={{
-          header: { paddingTop: themeTokens.spacing[2], paddingBottom: themeTokens.spacing[1] + 2 },
-          body: {
-            padding: themeTokens.spacing[1] + 2,
+      <MuiCard>
+        <CardHeader
+          title={cardTitle}
+          sx={{ paddingTop: `${themeTokens.spacing[2]}px`, paddingBottom: `${themeTokens.spacing[1] + 2}px` }}
+        />
+        <CardContent
+          sx={{
+            padding: `${themeTokens.spacing[1] + 2}px`,
             backgroundColor: selected ? (getGradeTintColor(climb.difficulty, 'light') ?? themeTokens.semantic.selectedLight) : undefined,
-          },
-        }}
-      >
-        <div style={{ position: 'relative' }}>
-          {cover}
-        </div>
+          }}
+        >
+          <div style={{ position: 'relative' }}>
+            {cover}
+          </div>
+        </CardContent>
         {/* Actions rendered as a proper component to support hooks */}
-        <div
-          style={{
-            display: 'flex',
+        <CardActions
+          sx={{
             justifyContent: 'space-around',
-            alignItems: 'center',
             borderTop: `1px solid ${themeTokens.neutral[200]}`,
-            marginTop: themeTokens.spacing[2],
-            paddingTop: themeTokens.spacing[2],
           }}
         >
           <ClimbActions
@@ -110,8 +110,8 @@ function ClimbCardWithActions({
             viewMode="icon"
             exclude={excludeActions}
           />
-        </div>
-      </Card>
+        </CardActions>
+      </MuiCard>
     </div>
   );
 }
@@ -138,23 +138,28 @@ const ClimbCardStatic = React.memo(
 
     return (
       <div data-testid="climb-card">
-        <Card
-          title={cardTitle}
-          size="small"
-          styles={{
-            header: { paddingTop: themeTokens.spacing[2], paddingBottom: themeTokens.spacing[1] + 2 },
-            body: {
-              padding: themeTokens.spacing[1] + 2,
+        <MuiCard>
+          <CardHeader
+            title={cardTitle}
+            sx={{ paddingTop: `${themeTokens.spacing[2]}px`, paddingBottom: `${themeTokens.spacing[1] + 2}px` }}
+          />
+          <CardContent
+            sx={{
+              padding: `${themeTokens.spacing[1] + 2}px`,
               backgroundColor: selected ? (getGradeTintColor(climb?.difficulty, 'light') ?? themeTokens.semantic.selectedLight) : undefined,
-            },
-          }}
-          actions={actions || []}
-        >
-          <div style={{ position: 'relative' }}>
-            {cover}
-            {expandedContent}
-          </div>
-        </Card>
+            }}
+          >
+            <div style={{ position: 'relative' }}>
+              {cover}
+              {expandedContent}
+            </div>
+          </CardContent>
+          {actions && actions.length > 0 && (
+            <CardActions sx={{ justifyContent: 'space-around', borderTop: `1px solid ${themeTokens.neutral[200]}` }}>
+              {actions}
+            </CardActions>
+          )}
+        </MuiCard>
       </div>
     );
   },
