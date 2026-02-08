@@ -1,10 +1,6 @@
 /*
  * Profile page styles
- * Values here should match themeTokens from @/app/theme/theme-config.ts
- * semantic.background = #F9FAFB (neutral.50)
- * semantic.surface = #FFFFFF
- * shadows.xs = 0 1px 2px 0 rgba(0, 0, 0, 0.05)
- * spacing: 1=4px, 2=8px, 3=12px, 4=16px, 5=20px, 6=24px, 8=32px, 10=40px, 12=48px
+ * Uses CSS custom properties from index.css (derived from theme-config.ts)
  */
 
 .layout {
@@ -18,7 +14,7 @@
   display: flex;
   align-items: center;
   gap: 16px; /* spacing.4 */
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); /* shadows.xs */
+  box-shadow: var(--shadow-xs);
   height: 64px;
 }
 
