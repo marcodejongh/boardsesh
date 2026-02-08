@@ -1,7 +1,6 @@
 .carouselContainer {
   position: relative;
   overflow: hidden;
-  max-height: 100%;
 }
 
 .peekBoardContainer {
