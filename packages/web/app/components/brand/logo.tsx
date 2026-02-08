@@ -100,13 +100,13 @@ export const Logo = ({ size = 'md', showText = true, linkToHome = true }: LogoPr
         {/* Transparent background */}
         <rect x="0" y="0" width="48" height="48" rx="4" fill="transparent" />
 
-        {/* Dusty rose shadow layers */}
-        <PixelLetter pixels={B_PIXELS} startX={3 + shadowOffset} startY={6 + shadowOffset} pixelSize={pixelSize} fill={themeTokens.colors.primary} />
-        <PixelLetter pixels={S_PIXELS} startX={24 + shadowOffset} startY={6 + shadowOffset} pixelSize={pixelSize} fill={themeTokens.colors.primary} />
+        {/* Rose shadow layers */}
+        <PixelLetter pixels={B_PIXELS} startX={3 + shadowOffset} startY={6 + shadowOffset} pixelSize={pixelSize} fill={themeTokens.colors.logoRose} />
+        <PixelLetter pixels={S_PIXELS} startX={24 + shadowOffset} startY={6 + shadowOffset} pixelSize={pixelSize} fill={themeTokens.colors.logoRose} />
 
         {/* Sage green letters */}
-        <PixelLetter pixels={B_PIXELS} startX={3} startY={6} pixelSize={pixelSize} fill={themeTokens.colors.success} />
-        <PixelLetter pixels={S_PIXELS} startX={24} startY={6} pixelSize={pixelSize} fill={themeTokens.colors.success} />
+        <PixelLetter pixels={B_PIXELS} startX={3} startY={6} pixelSize={pixelSize} fill={themeTokens.colors.logoGreen} />
+        <PixelLetter pixels={S_PIXELS} startX={24} startY={6} pixelSize={pixelSize} fill={themeTokens.colors.logoGreen} />
       </svg>
       {showText && (
         <span

@@ -17,6 +17,8 @@ export const themeTokens = {
     errorBg: '#F9EFEE',
     purple: '#7C3AED', // For mirror button
     purpleHover: '#6D28D9',
+    logoGreen: '#5DBE94', // Brighter sage green for logo
+    logoRose: '#C75B64', // Brighter dusty rose for logo
   },
 
   // Neutral palette
