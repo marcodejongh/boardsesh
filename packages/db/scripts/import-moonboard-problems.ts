@@ -18,6 +18,27 @@ import {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// =============================================================================
+// Data Source
+// =============================================================================
+// MoonBoard problem data comes from a community-provided dump:
+//   GitHub issue: https://github.com/spookykat/MoonBoard/issues/6#issuecomment-1783515787
+//   Direct download: https://github.com/spookykat/MoonBoard/files/13193317/problems_2023_01_30.zip
+//   Date: 2023-01-30
+//
+// The ZIP contains these JSON files:
+//   - problems MoonBoard 2016 .json
+//   - problems MoonBoard Masters 2017 25.json
+//   - problems MoonBoard Masters 2017 40.json
+//   - problems MoonBoard Masters 2019 25.json
+//   - problems MoonBoard Masters 2019 40.json
+//   - problems Mini MoonBoard 2020 40.json
+//
+// During `npm run db:setup`, the ZIP is downloaded and extracted automatically
+// to packages/db/docker/tmp/problems_2023_01_30/. The import runs as part of
+// `npm run db:up` after migrations.
+// =============================================================================
+
 // Load environment files (same as migrate.ts)
 config({ path: path.resolve(__dirname, '../../../.env.local') });
 config({ path: path.resolve(__dirname, '../../web/.env.local') });
@@ -137,7 +158,9 @@ const BATCH_SIZE = 500;
 // =============================================================================
 
 async function importMoonBoardProblems() {
-  const dumpPath = process.argv[2] || path.join(process.env.HOME || '~', 'Downloads', 'problems_2023_01_30');
+  const dumpPath = process.argv[2]
+    ? path.resolve(process.cwd(), process.argv[2])
+    : path.join(process.env.HOME || '~', 'Downloads', 'problems_2023_01_30');
 
   // Verify dump directory exists
   if (!fs.existsSync(dumpPath)) {
