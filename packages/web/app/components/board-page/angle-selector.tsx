@@ -89,59 +89,57 @@ export default function AngleSelector({ boardName, boardDetails, currentAngle, c
     const hasStats = currentClimb && stats;
 
     return (
-      <Box key={angle} sx={{ width: { xs: '33.33%', sm: '25%', md: '16.67%' } }}>
-        <div ref={isSelected ? currentAngleRef : null}>
-          <MuiCard
-            onClick={() => handleAngleChange(angle)}
+      <div key={angle} ref={isSelected ? currentAngleRef : null}>
+        <MuiCard
+          onClick={() => handleAngleChange(angle)}
+          sx={{
+            cursor: 'pointer',
+            '&:hover': { boxShadow: 3 },
+            backgroundColor: isSelected ? themeTokens.semantic.selected : undefined,
+            borderColor: isSelected ? themeTokens.colors.primary : undefined,
+            borderWidth: isSelected ? 2 : 1,
+            borderStyle: 'solid',
+          }}
+        >
+          <CardContent
             sx={{
-              cursor: 'pointer',
-              '&:hover': { boxShadow: 3 },
-              backgroundColor: isSelected ? themeTokens.semantic.selected : undefined,
-              borderColor: isSelected ? themeTokens.colors.primary : undefined,
-              borderWidth: isSelected ? 2 : 1,
-              borderStyle: 'solid',
+              p: '12px 8px',
+              minHeight: 80,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              '&:last-child': { pb: '12px' },
             }}
           >
-            <CardContent
-              sx={{
-                p: '12px 8px',
-                minHeight: 80,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                '&:last-child': { pb: '12px' },
-              }}
-            >
-              <Typography variant="body2" component="span" fontWeight={600} sx={{ fontSize: 20, lineHeight: 1.2 }}>
-                {angle}°
-              </Typography>
-              {hasStats && (
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: '2px', alignItems: 'center', marginTop: '4px' }}>
-                  {stats.difficulty && (
-                    <Typography variant="body2" component="span" sx={{ fontSize: 12, fontWeight: 500 }}>{stats.difficulty}</Typography>
-                  )}
-                  <Box sx={{ display: 'flex', gap: '4px', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
-                    {stats.quality_average !== null && Number(stats.quality_average) > 0 && (
-                      <Typography variant="body2" component="span" sx={{ fontSize: 11, color: themeTokens.colors.warning }}>
-                        ★{Number(stats.quality_average).toFixed(1)}
-                      </Typography>
-                    )}
-                    <Typography variant="body2" component="span" color="text.secondary" sx={{ fontSize: 10 }}>
-                      {stats.ascensionist_count} sends
+            <Typography variant="body2" component="span" fontWeight={600} sx={{ fontSize: 20, lineHeight: 1.2 }}>
+              {angle}°
+            </Typography>
+            {hasStats && (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: '2px', alignItems: 'center', marginTop: '4px' }}>
+                {stats.difficulty && (
+                  <Typography variant="body2" component="span" sx={{ fontSize: 12, fontWeight: 500 }}>{stats.difficulty}</Typography>
+                )}
+                <Box sx={{ display: 'flex', gap: '4px', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
+                  {stats.quality_average !== null && Number(stats.quality_average) > 0 && (
+                    <Typography variant="body2" component="span" sx={{ fontSize: 11, color: themeTokens.colors.warning }}>
+                      ★{Number(stats.quality_average).toFixed(1)}
                     </Typography>
-                  </Box>
+                  )}
+                  <Typography variant="body2" component="span" color="text.secondary" sx={{ fontSize: 10 }}>
+                    {stats.ascensionist_count} sends
+                  </Typography>
                 </Box>
-              )}
-              {currentClimb && !hasStats && !isLoading && (
-                <Typography variant="body2" component="span" color="text.secondary" sx={{ fontSize: 10, marginTop: '4px' }}>
-                  No data
-                </Typography>
-              )}
-            </CardContent>
-          </MuiCard>
-        </div>
-      </Box>
+              </Box>
+            )}
+            {currentClimb && !hasStats && !isLoading && (
+              <Typography variant="body2" component="span" color="text.secondary" sx={{ fontSize: 10, marginTop: '4px' }}>
+                No data
+              </Typography>
+            )}
+          </CardContent>
+        </MuiCard>
+      </div>
     );
   };
 
@@ -159,17 +157,21 @@ export default function AngleSelector({ boardName, boardDetails, currentAngle, c
         styles={{ wrapper: { width: '90%' }, body: { padding: 12 } }}
       >
         {currentClimb && (
-          <div style={{ marginBottom: 12, padding: '0 8px' }}>
+          <Box sx={{ mb: 2, pb: 2, borderBottom: `1px solid ${themeTokens.neutral[200]}` }}>
             <DrawerClimbHeader climb={currentClimb} boardDetails={boardDetails} />
-          </div>
+          </Box>
         )}
         {currentClimb && isLoading && (
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '12px' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, mb: 2 }}>
             <CircularProgress size={20} />
             <Typography variant="body2" component="span" color="text.secondary" sx={{ fontSize: 12 }}>Loading stats...</Typography>
           </Box>
         )}
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+        <Box sx={{
+          display: 'grid',
+          gridTemplateColumns: { xs: 'repeat(3, 1fr)', sm: 'repeat(4, 1fr)', md: 'repeat(6, 1fr)' },
+          gap: 1,
+        }}>
           {ANGLES[boardName].map(renderAngleCard)}
         </Box>
       </SwipeableDrawer>
