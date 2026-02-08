@@ -11,7 +11,7 @@ import Favorite from '@mui/icons-material/Favorite';
 import SkipPreviousOutlined from '@mui/icons-material/SkipPreviousOutlined';
 import SkipNextOutlined from '@mui/icons-material/SkipNextOutlined';
 import ExpandMoreOutlined from '@mui/icons-material/ExpandMoreOutlined';
-import MoreVertOutlined from '@mui/icons-material/MoreVertOutlined';
+import MoreHorizOutlined from '@mui/icons-material/MoreHorizOutlined';
 import FormatListBulletedOutlined from '@mui/icons-material/FormatListBulletedOutlined';
 import DeleteOutlined from '@mui/icons-material/DeleteOutlined';
 import EditOutlined from '@mui/icons-material/EditOutlined';
@@ -186,7 +186,7 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
             }}
             aria-label="Climb actions"
           >
-            <MoreVertOutlined />
+            <MoreHorizOutlined />
           </IconButton>
         </div>
 
@@ -314,6 +314,8 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
           placement="bottom"
           height="60%"
           open={isQueueOpen}
+          closable={false}
+          swipeEnabled={true}
           getContainer={false}
           onClose={() => {
             setIsQueueOpen(false);
@@ -378,6 +380,7 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
                 showHistory={showHistory}
                 selectedItems={selectedItems}
                 onToggleSelect={handleToggleSelect}
+                scrollContainerRef={queueScrollRef}
               />
             </div>
             {isEditMode && selectedItems.size > 0 && (
