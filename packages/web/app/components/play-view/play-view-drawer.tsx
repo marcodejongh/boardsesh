@@ -16,8 +16,10 @@ import DeleteOutlined from '@mui/icons-material/DeleteOutlined';
 import EditOutlined from '@mui/icons-material/EditOutlined';
 import CloseOutlined from '@mui/icons-material/CloseOutlined';
 import HistoryOutlined from '@mui/icons-material/HistoryOutlined';
+import HeadsetOutlined from '@mui/icons-material/HeadsetOutlined';
 import dynamic from 'next/dynamic';
 import { useQueueContext } from '../graphql-queue';
+import { useMediaSession } from '@/app/hooks/use-media-session';
 import { useFavorite, ClimbActions } from '../climb-actions';
 import { ShareBoardButton } from '../board-page/share-button';
 import { TickButton } from '../logbook/tick-button';
@@ -81,6 +83,8 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
   const { isFavorited, toggleFavorite } = useFavorite({
     climbUuid: currentClimb?.uuid ?? '',
   });
+
+  const { toggle: toggleMediaSession, isActive: isMediaSessionActive } = useMediaSession();
 
   const currentQueueIndex = currentClimbQueueItem
     ? queue.findIndex(item => item.uuid === currentClimbQueueItem.uuid)
@@ -269,6 +273,20 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
 
           {/* LED */}
           <SendClimbToBoardButton buttonType="text" />
+
+          {/* Media session controls (lock screen next/prev) */}
+          <IconButton
+            onClick={toggleMediaSession}
+            aria-label={isMediaSessionActive ? 'Disable lock screen controls' : 'Enable lock screen controls'}
+            color={isMediaSessionActive ? 'primary' : 'default'}
+            sx={
+              isMediaSessionActive
+                ? { backgroundColor: themeTokens.colors.primary, color: 'common.white', '&:hover': { backgroundColor: themeTokens.colors.primaryHover } }
+                : undefined
+            }
+          >
+            <HeadsetOutlined />
+          </IconButton>
 
           {/* More actions */}
           <IconButton
