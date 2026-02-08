@@ -157,7 +157,7 @@ export default function AngleSelector({ boardName, boardDetails, currentAngle, c
         styles={{ wrapper: { width: '90%' }, body: { padding: 12 } }}
       >
         {currentClimb && (
-          <Box sx={{ mb: 2, pb: 2, borderBottom: `1px solid ${themeTokens.neutral[200]}` }}>
+          <Box sx={{ mb: 2, pb: 2, borderBottom: 1, borderColor: 'divider' }}>
             <DrawerClimbHeader climb={currentClimb} boardDetails={boardDetails} />
           </Box>
         )}
