@@ -178,12 +178,12 @@ function hexToHSL(hex: string): { h: number; s: number; l: number } {
 
 /**
  * Create a softened version of a hex color for use as text color.
- * Preserves the hue but uses moderate saturation and lightness so the color
- * is distinguishable without being visually overwhelming on bold/large text.
+ * Preserves the hue with high saturation to stay close to the original color
+ * while using controlled lightness for readability on bold/large text.
  */
 function softenColor(hex: string): string {
   const { h } = hexToHSL(hex);
-  return `hsl(${Math.round(h)}, 40%, 45%)`;
+  return `hsl(${Math.round(h)}, 72%, 44%)`;
 }
 
 /**
