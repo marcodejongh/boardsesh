@@ -17,7 +17,42 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { getDefaultBoardCookieClient } from '@/app/lib/default-board-cookie';
 import { themeTokens } from '@/app/theme/theme-config';
-import styles from '@/app/components/bottom-tab-bar/bottom-tab-bar.module.css';
+
+interface TabButtonProps {
+  label: string;
+  icon: React.ReactNode;
+  active?: boolean;
+  onClick?: () => void;
+}
+
+const TabButton = ({ label, icon, active, onClick }: TabButtonProps) => (
+  <Box
+    component="button"
+    onClick={onClick}
+    role="tab"
+    aria-label={label}
+    aria-selected={active}
+    sx={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      flex: 1,
+      py: '6px',
+      cursor: 'pointer',
+      color: active ? themeTokens.colors.primary : themeTokens.neutral[400],
+      transition: 'color 150ms ease',
+      WebkitTapHighlightColor: 'transparent',
+      touchAction: 'manipulation',
+      userSelect: 'none',
+      background: 'none',
+      border: 'none',
+    }}
+  >
+    {icon}
+    <Typography sx={{ fontSize: 10, mt: '2px', lineHeight: 1 }}>{label}</Typography>
+  </Box>
+);
 
 export default function HomePageContent() {
   const { data: session } = useSession();
@@ -82,58 +117,29 @@ export default function HomePageContent() {
       </Box>
 
       {/* Bottom Tab Bar */}
-      <div className={styles.tabBar} style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 1100 }}>
-        {/* Home tab (active) */}
-        <button
-          className={styles.tabItem}
-          style={{ color: themeTokens.colors.primary }}
-          aria-label="Home"
-          role="tab"
-          aria-selected={true}
-        >
-          <HomeOutlined style={{ fontSize: 20 }} />
-          <span className={styles.tabLabel}>Home</span>
-        </button>
-
-        {/* Climbs tab */}
-        <button
-          className={styles.tabItem}
-          onClick={() => handleBoardNav('list')}
-          style={{ color: themeTokens.neutral[400] }}
-          aria-label="Climbs"
-          role="tab"
-          aria-selected={false}
-        >
-          <FormatListBulletedOutlined style={{ fontSize: 20 }} />
-          <span className={styles.tabLabel}>Climb</span>
-        </button>
-
-        {/* Library tab */}
-        <button
-          className={styles.tabItem}
-          onClick={() => handleBoardNav('playlists')}
-          style={{ color: themeTokens.neutral[400] }}
-          aria-label="Your library"
-          role="tab"
-          aria-selected={false}
-        >
-          <LocalOfferOutlined style={{ fontSize: 20 }} />
-          <span className={styles.tabLabel}>Your Library</span>
-        </button>
-
-        {/* Create tab */}
-        <button
-          className={styles.tabItem}
-          onClick={() => handleBoardNav('create')}
-          style={{ color: themeTokens.neutral[400] }}
-          aria-label="Create"
-          role="tab"
-          aria-selected={false}
-        >
-          <AddOutlined style={{ fontSize: 20 }} />
-          <span className={styles.tabLabel}>Create</span>
-        </button>
-      </div>
+      <Box
+        sx={{
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          zIndex: 1100,
+          display: 'flex',
+          justifyContent: 'space-around',
+          alignItems: 'center',
+          width: '100%',
+          background: 'rgba(255, 255, 255, 0.4)',
+          WebkitBackdropFilter: 'blur(10px)',
+          backdropFilter: 'blur(10px)',
+          pt: '4px',
+          pb: 'env(safe-area-inset-bottom, 0px)',
+        }}
+      >
+        <TabButton label="Home" icon={<HomeOutlined sx={{ fontSize: 20 }} />} active />
+        <TabButton label="Climb" icon={<FormatListBulletedOutlined sx={{ fontSize: 20 }} />} onClick={() => handleBoardNav('list')} />
+        <TabButton label="Your Library" icon={<LocalOfferOutlined sx={{ fontSize: 20 }} />} onClick={() => handleBoardNav('playlists')} />
+        <TabButton label="Create" icon={<AddOutlined sx={{ fontSize: 20 }} />} onClick={() => handleBoardNav('create')} />
+      </Box>
 
       <UserSearchDrawer open={searchOpen} onClose={() => setSearchOpen(false)} />
     </Box>
