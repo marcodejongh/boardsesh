@@ -171,7 +171,7 @@ class WaveshareDisplay : public DisplayBase {
 
     // Touch debouncing
     unsigned long _lastTouchTime;
-    static const unsigned long TOUCH_DEBOUNCE_MS = 300;
+    static const unsigned long TOUCH_DEBOUNCE_MS = 150;
 
     // Internal drawing methods
     void drawStatusBar();

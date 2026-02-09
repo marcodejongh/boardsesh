@@ -292,58 +292,6 @@ void LilyGoDisplay::drawStatusBar() {
     }
 }
 
-void LilyGoDisplay::drawPrevClimbIndicator() {
-    // Clear previous indicator area
-    _display.fillRect(0, PREV_INDICATOR_Y, SCREEN_WIDTH, PREV_INDICATOR_HEIGHT, COLOR_BACKGROUND);
-
-    // Only draw if we have navigation and a previous climb
-    if (!_hasNavigation || !_prevClimb.isValid) {
-        return;
-    }
-
-    _display.setFont(&fonts::Font0);
-    _display.setTextDatum(lgfx::middle_left);
-
-    // Draw left arrow
-    _display.setTextColor(COLOR_ACCENT);
-    _display.drawString("<", 4, PREV_INDICATOR_Y + PREV_INDICATOR_HEIGHT / 2);
-
-    // Draw "Prev:" label
-    _display.setTextColor(COLOR_TEXT_DIM);
-    _display.drawString("Prev:", 14, PREV_INDICATOR_Y + PREV_INDICATOR_HEIGHT / 2);
-
-    // Truncate name if needed
-    String name = _prevClimb.name;
-    if (name.length() > 10) {
-        name = name.substring(0, 8) + "..";
-    }
-
-    // Draw climb name
-    _display.setTextColor(COLOR_TEXT);
-    _display.drawString(name.c_str(), 50, PREV_INDICATOR_Y + PREV_INDICATOR_HEIGHT / 2);
-
-    // Draw grade with color
-    uint16_t gradeColor = COLOR_TEXT;
-    if (_prevClimb.gradeColor.length() > 0) {
-        gradeColor = hexToRgb565(_prevClimb.gradeColor.c_str());
-    } else if (_prevClimb.grade.length() > 0) {
-        gradeColor = getGradeColor(_prevClimb.grade.c_str());
-    }
-
-    // Extract V-grade for display
-    String grade = _prevClimb.grade;
-    int slashPos = grade.indexOf('/');
-    if (slashPos > 0) {
-        grade = grade.substring(slashPos + 1);
-    }
-
-    _display.setTextDatum(lgfx::middle_right);
-    _display.setTextColor(gradeColor);
-    _display.drawString(grade.c_str(), SCREEN_WIDTH - 4, PREV_INDICATOR_Y + PREV_INDICATOR_HEIGHT / 2);
-
-    _display.setTextDatum(lgfx::top_left);
-}
-
 void LilyGoDisplay::drawCurrentClimb() {
     int yStart = CURRENT_CLIMB_Y;
 

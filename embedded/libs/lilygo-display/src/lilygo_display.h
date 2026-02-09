@@ -50,11 +50,7 @@
 #define STATUS_BAR_HEIGHT 20
 #define STATUS_BAR_Y 0
 
-// Previous climb indicator (kept for backward compatibility, not displayed)
-#define PREV_INDICATOR_Y 20
-#define PREV_INDICATOR_HEIGHT 22
-
-// Current climb section (moved up - prev indicator removed, redundant with history)
+// Current climb section
 #define CURRENT_CLIMB_Y 20
 #define CURRENT_CLIMB_HEIGHT 75
 
@@ -131,7 +127,6 @@ class LilyGoDisplay : public DisplayBase {
 
     // Internal drawing methods
     void drawStatusBar();
-    void drawPrevClimbIndicator();
     void drawCurrentClimb();
     void drawQRCode();
     void drawNextClimbIndicator();
