@@ -102,19 +102,18 @@ export const playlistQueries = {
   },
 
   /**
-   * Get a specific playlist by ID (requires ownership)
+   * Get a specific playlist by ID
+   * Public playlists are viewable by anyone; private playlists require ownership
    */
   playlist: async (
     _: unknown,
     { playlistId }: { playlistId: string },
     ctx: ConnectionContext
   ): Promise<unknown | null> => {
-    requireAuthenticated(ctx);
+    const userId = ctx.userId;
 
-    const userId = ctx.userId!;
-
-    // Get playlist with ownership check
-    const result = await db
+    // Fetch the playlist by UUID without ownership filter
+    const playlistResult = await db
       .select({
         id: dbSchema.playlists.id,
         uuid: dbSchema.playlists.uuid,
@@ -128,24 +127,38 @@ export const playlistQueries = {
         createdAt: dbSchema.playlists.createdAt,
         updatedAt: dbSchema.playlists.updatedAt,
         lastAccessedAt: dbSchema.playlists.lastAccessedAt,
-        role: dbSchema.playlistOwnership.role,
       })
       .from(dbSchema.playlists)
-      .innerJoin(
-        dbSchema.playlistOwnership,
-        eq(dbSchema.playlistOwnership.playlistId, dbSchema.playlists.id)
-      )
-      .where(
-        and(
-          eq(dbSchema.playlists.uuid, playlistId),
-          eq(dbSchema.playlistOwnership.userId, userId)
-        )
-      )
+      .where(eq(dbSchema.playlists.uuid, playlistId))
       .limit(1);
 
-    if (result.length === 0) return null;
+    if (playlistResult.length === 0) return null;
 
-    const playlist = result[0];
+    const playlist = playlistResult[0];
+
+    // Check user's role if authenticated
+    let userRole: string | null = null;
+    if (userId) {
+      const ownershipResult = await db
+        .select({ role: dbSchema.playlistOwnership.role })
+        .from(dbSchema.playlistOwnership)
+        .where(
+          and(
+            eq(dbSchema.playlistOwnership.playlistId, playlist.id),
+            eq(dbSchema.playlistOwnership.userId, userId)
+          )
+        )
+        .limit(1);
+
+      if (ownershipResult.length > 0) {
+        userRole = ownershipResult[0].role;
+      }
+    }
+
+    // If playlist is private and user is not an owner/member, deny access
+    if (!playlist.isPublic && !userRole) {
+      return null;
+    }
 
     // Get climb count
     const climbCount = await db
@@ -168,7 +181,7 @@ export const playlistQueries = {
       updatedAt: playlist.updatedAt.toISOString(),
       lastAccessedAt: playlist.lastAccessedAt?.toISOString() ?? null,
       climbCount: climbCount[0]?.count || 0,
-      userRole: playlist.role,
+      userRole,
     };
   },
 
@@ -231,10 +244,9 @@ export const playlistQueries = {
     } },
     ctx: ConnectionContext
   ): Promise<{ climbs: Climb[]; totalCount: number; hasMore: boolean }> => {
-    requireAuthenticated(ctx);
     validateInput(GetPlaylistClimbsInputSchema, input, 'input');
 
-    const userId = ctx.userId!;
+    const userId = ctx.userId;
     const boardName = input.boardName as BoardName;
 
     // Validate board name
@@ -251,26 +263,40 @@ export const playlistQueries = {
     const page = input.page ?? 0;
     const pageSize = input.pageSize ?? 20;
 
-    // First, verify the user has access to this playlist
+    // Verify the user has access to this playlist
     const playlistResult = await db
       .select({
         id: dbSchema.playlists.id,
+        isPublic: dbSchema.playlists.isPublic,
       })
       .from(dbSchema.playlists)
-      .innerJoin(
-        dbSchema.playlistOwnership,
-        eq(dbSchema.playlistOwnership.playlistId, dbSchema.playlists.id)
-      )
-      .where(
-        and(
-          eq(dbSchema.playlists.uuid, input.playlistId),
-          eq(dbSchema.playlistOwnership.userId, userId)
-        )
-      )
+      .where(eq(dbSchema.playlists.uuid, input.playlistId))
       .limit(1);
 
     if (playlistResult.length === 0) {
       throw new Error('Playlist not found or access denied');
+    }
+
+    // If playlist is private, require ownership
+    if (!playlistResult[0].isPublic) {
+      if (!userId) {
+        throw new Error('Playlist not found or access denied');
+      }
+
+      const ownershipResult = await db
+        .select({ role: dbSchema.playlistOwnership.role })
+        .from(dbSchema.playlistOwnership)
+        .where(
+          and(
+            eq(dbSchema.playlistOwnership.playlistId, playlistResult[0].id),
+            eq(dbSchema.playlistOwnership.userId, userId)
+          )
+        )
+        .limit(1);
+
+      if (ownershipResult.length === 0) {
+        throw new Error('Playlist not found or access denied');
+      }
     }
 
     const playlistId = playlistResult[0].id;
