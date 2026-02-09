@@ -287,7 +287,12 @@ function BottomTabBar({ boardDetails, angle, boardConfigs }: BottomTabBarProps) 
           borderRadius: `${themeTokens.borderRadius.xl}px`,
           py: `${themeTokens.spacing[2]}px`,
           height: 'auto',
-          '@media (min-width: 768px)': { display: 'none' },
+          '@media (min-width: 768px)': {
+            maxWidth: 480,
+            mx: 'auto',
+            boxShadow: themeTokens.shadows.lg,
+            border: `1px solid ${themeTokens.neutral[200]}`,
+          },
         }}
       >
         <BottomNavigationAction
