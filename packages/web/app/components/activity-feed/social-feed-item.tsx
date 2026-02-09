@@ -165,7 +165,7 @@ const SocialFeedItem: React.FC<SocialFeedItemProps> = ({ item, showUserHeader = 
 
             {/* Vote */}
             <Box sx={{ mt: 0.5 }}>
-              <VoteButton entityType="tick" entityId={item.uuid} />
+              <VoteButton entityType="tick" entityId={item.uuid} likeOnly />
             </Box>
           </Box>
         </Box>

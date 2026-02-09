@@ -6,6 +6,8 @@ import IconButton from '@mui/material/IconButton';
 import MuiTypography from '@mui/material/Typography';
 import ArrowUpwardOutlined from '@mui/icons-material/ArrowUpwardOutlined';
 import ArrowDownwardOutlined from '@mui/icons-material/ArrowDownwardOutlined';
+import FavoriteBorderOutlined from '@mui/icons-material/FavoriteBorderOutlined';
+import FavoriteOutlined from '@mui/icons-material/FavoriteOutlined';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
@@ -24,6 +26,7 @@ interface VoteButtonProps {
   initialDownvotes?: number;
   initialUserVote?: number;
   layout?: 'vertical' | 'horizontal';
+  likeOnly?: boolean;
   onVoteChange?: (summary: { upvotes: number; downvotes: number; voteScore: number; userVote: number }) => void;
 }
 
@@ -34,6 +37,7 @@ export default function VoteButton({
   initialDownvotes = 0,
   initialUserVote = 0,
   layout = 'horizontal',
+  likeOnly = false,
   onVoteChange,
 }: VoteButtonProps) {
   const [upvotes, setUpvotes] = useState(initialUpvotes);
@@ -119,6 +123,41 @@ export default function VoteButton({
 
   const score = upvotes - downvotes;
   const isVertical = layout === 'vertical';
+  const isLiked = userVote === 1;
+
+  if (likeOnly) {
+    return (
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+        <IconButton
+          size="small"
+          onClick={() => handleVote(1)}
+          disabled={isLoading}
+          aria-label={isLiked ? 'Unlike' : 'Like'}
+          sx={{
+            color: isLiked ? themeTokens.colors.error : themeTokens.neutral[400],
+            p: 0.5,
+          }}
+        >
+          {isLiked ? (
+            <FavoriteOutlined sx={{ fontSize: 18 }} />
+          ) : (
+            <FavoriteBorderOutlined sx={{ fontSize: 18 }} />
+          )}
+        </IconButton>
+        {upvotes > 0 && (
+          <MuiTypography
+            variant="body2"
+            sx={{
+              color: isLiked ? themeTokens.colors.error : themeTokens.neutral[500],
+              fontSize: themeTokens.typography.fontSize.xs,
+            }}
+          >
+            {upvotes}
+          </MuiTypography>
+        )}
+      </Box>
+    );
+  }
 
   return (
     <Box
