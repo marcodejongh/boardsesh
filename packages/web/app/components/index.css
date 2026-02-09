@@ -22,6 +22,7 @@
   --semantic-background: #F9FAFB;
   --semantic-surface: #FFFFFF;
   --semantic-surface-overlay: rgba(255, 255, 255, 0.95);
+  --semantic-surface-glass: rgba(255, 255, 255, 0.3);
   --semantic-selected: #F7F2F3;
   --semantic-selected-hover: #EFE6E8;
   --semantic-selected-light: rgba(140, 74, 82, 0.06);
@@ -45,7 +46,9 @@
   --border-subtle: rgba(0, 0, 0, 0.06);
 }
 
-/* Base styles */
+/* Base styles
+   Note: !important on background-color is required to override MUI's CssBaseline,
+   which sets its own background-color with high specificity via Emotion styles. */
 html {
   touch-action: manipulation;
   background-color: var(--semantic-surface) !important;
