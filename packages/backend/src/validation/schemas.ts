@@ -413,3 +413,41 @@ export const GetPlaylistCreatorsInputSchema = z.object({
   layoutId: z.number().int().positive(),
   searchQuery: z.string().max(100).optional(),
 });
+
+// ============================================
+// Social / Follow Schemas
+// ============================================
+
+/**
+ * Follow input validation schema
+ */
+export const FollowInputSchema = z.object({
+  userId: z.string().min(1, 'User ID cannot be empty'),
+});
+
+/**
+ * Follow list input validation schema
+ */
+export const FollowListInputSchema = z.object({
+  userId: z.string().min(1, 'User ID cannot be empty'),
+  limit: z.number().int().min(1).max(50).optional().default(20),
+  offset: z.number().int().min(0).optional().default(0),
+});
+
+/**
+ * Search users input validation schema
+ */
+export const SearchUsersInputSchema = z.object({
+  query: z.string().min(2, 'Search query must be at least 2 characters').max(100),
+  boardType: BoardNameSchema.optional(),
+  limit: z.number().int().min(1).max(50).optional().default(20),
+  offset: z.number().int().min(0).optional().default(0),
+});
+
+/**
+ * Following ascents feed input validation schema
+ */
+export const FollowingAscentsFeedInputSchema = z.object({
+  limit: z.number().int().min(1).max(50).optional().default(20),
+  offset: z.number().int().min(0).optional().default(0),
+});

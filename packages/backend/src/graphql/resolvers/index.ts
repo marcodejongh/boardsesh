@@ -23,6 +23,9 @@ import { queueEventResolver } from './queue/type-resolvers';
 import { controllerQueries } from './controller/queries';
 import { controllerMutations } from './controller/mutations';
 import { controllerSubscriptions, controllerEventResolver } from './controller/subscriptions';
+import { socialFollowQueries, socialFollowMutations } from './social/follows';
+import { socialSearchQueries } from './social/search';
+import { socialFeedQueries } from './social/feed';
 
 export const resolvers = {
   // Scalar types
@@ -39,6 +42,9 @@ export const resolvers = {
     ...favoriteClimbsQuery,
     ...playlistQueries,
     ...controllerQueries,
+    ...socialFollowQueries,
+    ...socialSearchQueries,
+    ...socialFeedQueries,
   },
 
   Mutation: {
@@ -49,6 +55,7 @@ export const resolvers = {
     ...favoriteMutations,
     ...playlistMutations,
     ...controllerMutations,
+    ...socialFollowMutations,
   },
 
   Subscription: {

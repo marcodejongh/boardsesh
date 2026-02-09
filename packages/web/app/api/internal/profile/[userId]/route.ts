@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth/next";
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/app/lib/db/db";
 import * as schema from "@/app/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and, count } from "drizzle-orm";
 import { authOptions } from "@/app/lib/auth/auth-options";
 import { getUserBoardMappings } from "@/app/lib/auth/user-board-mappings";
 
@@ -49,6 +49,35 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       auroraUserId: m.boardUserId,
     }));
 
+    // Get follower/following counts
+    const [followerCountResult] = await db
+      .select({ count: count() })
+      .from(schema.userFollows)
+      .where(eq(schema.userFollows.followingId, userId));
+
+    const [followingCountResult] = await db
+      .select({ count: count() })
+      .from(schema.userFollows)
+      .where(eq(schema.userFollows.followerId, userId));
+
+    const followerCount = Number(followerCountResult?.count || 0);
+    const followingCount = Number(followingCountResult?.count || 0);
+
+    // Check if current user follows this profile
+    let isFollowedByMe = false;
+    if (session?.user?.id && session.user.id !== userId) {
+      const [followCheck] = await db
+        .select({ count: count() })
+        .from(schema.userFollows)
+        .where(
+          and(
+            eq(schema.userFollows.followerId, session.user.id),
+            eq(schema.userFollows.followingId, userId)
+          )
+        );
+      isFollowedByMe = Number(followCheck?.count || 0) > 0;
+    }
+
     return NextResponse.json({
       id: user.id,
       // Only include email if viewing own profile
@@ -64,6 +93,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         : null,
       credentials,
       isOwnProfile,
+      followerCount,
+      followingCount,
+      isFollowedByMe,
     });
   } catch (error) {
     console.error("Failed to get profile:", error);

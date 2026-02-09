@@ -7,6 +7,7 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import TextField from '@mui/material/TextField';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
+import HomeOutlined from '@mui/icons-material/HomeOutlined';
 import FormatListBulletedOutlined from '@mui/icons-material/FormatListBulletedOutlined';
 import AddOutlined from '@mui/icons-material/AddOutlined';
 import LocalOfferOutlined from '@mui/icons-material/LocalOfferOutlined';
@@ -22,7 +23,7 @@ import AuthModal from '../auth/auth-modal';
 import { getTabNavigationState, saveTabNavigationState } from '@/app/lib/tab-navigation-db';
 import styles from './bottom-tab-bar.module.css';
 
-type Tab = 'climbs' | 'library' | 'create';
+type Tab = 'home' | 'climbs' | 'library' | 'create';
 
 interface BottomTabBarProps {
   boardDetails: BoardDetails;
@@ -142,6 +143,13 @@ function BottomTabBar({ boardDetails, angle }: BottomTabBarProps) {
   // Active tab for rendering: drawer state takes priority
   const activeTab = (isCreateOpen || isCreatePlaylistOpen) ? 'create' : resolvedTab;
 
+  const handleHomeTab = () => {
+    setIsCreateOpen(false);
+    setIsCreatePlaylistOpen(false);
+    router.push('/');
+    track('Bottom Tab Bar', { tab: 'home' });
+  };
+
   const handleClimbsTab = () => {
     setIsCreateOpen(false);
     setIsCreatePlaylistOpen(false);
@@ -237,6 +245,19 @@ function BottomTabBar({ boardDetails, angle }: BottomTabBarProps) {
   return (
     <>
       <div className={styles.tabBar}>
+        {/* Home tab */}
+        <button
+          className={styles.tabItem}
+          onClick={handleHomeTab}
+          style={{ color: themeTokens.neutral[400] }}
+          aria-label="Home"
+          role="tab"
+          aria-selected={false}
+        >
+          <HomeOutlined style={{ fontSize: 20 }} />
+          <span className={styles.tabLabel}>Home</span>
+        </button>
+
         {/* Climbs tab */}
         <button
           className={styles.tabItem}

@@ -19,6 +19,8 @@ import { useSession } from 'next-auth/react';
 import Logo from '@/app/components/brand/logo';
 import BackButton from '@/app/components/back-button';
 import AscentsFeed from '@/app/components/activity-feed';
+import FollowButton from '@/app/components/social/follow-button';
+import FollowerCount from '@/app/components/social/follower-count';
 import dayjs from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
@@ -63,6 +65,9 @@ interface UserProfile {
     avatarUrl: string | null;
     instagramUrl: string | null;
   } | null;
+  followerCount: number;
+  followingCount: number;
+  isFollowedByMe: boolean;
 }
 
 interface LogbookEntry {
@@ -224,6 +229,9 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
         name: data.name,
         image: data.image,
         profile: data.profile,
+        followerCount: data.followerCount ?? 0,
+        followingCount: data.followingCount ?? 0,
+        isFollowedByMe: data.isFollowedByMe ?? false,
       });
     } catch (error) {
       console.error('Failed to fetch profile:', error);
@@ -681,9 +689,31 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
               {!avatarUrl && <PersonOutlined />}
             </MuiAvatar>
             <div className={styles.profileDetails}>
-              <Typography variant="h6" component="h4" className={styles.displayName}>
-                {displayName}
-              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography variant="h6" component="h4" className={styles.displayName}>
+                  {displayName}
+                </Typography>
+                {!isOwnProfile && (
+                  <FollowButton
+                    userId={userId}
+                    initialIsFollowing={profile?.isFollowedByMe ?? false}
+                    onFollowChange={(isFollowing) => {
+                      if (profile) {
+                        setProfile({
+                          ...profile,
+                          followerCount: profile.followerCount + (isFollowing ? 1 : -1),
+                          isFollowedByMe: isFollowing,
+                        });
+                      }
+                    }}
+                  />
+                )}
+              </Box>
+              <FollowerCount
+                userId={userId}
+                followerCount={profile?.followerCount ?? 0}
+                followingCount={profile?.followingCount ?? 0}
+              />
               {isOwnProfile && (
                 <Typography variant="body2" component="span" color="text.secondary">{profile?.email}</Typography>
               )}
