@@ -1,8 +1,8 @@
 {
-    "name": "lilygo-display",
+    "name": "waveshare-display",
     "version": "1.0.0",
-    "description": "Display driver and UI renderer for LilyGo T-Display S3 (170x320 ST7789)",
-    "keywords": ["esp32", "lcd", "display", "climbing", "boardsesh", "lilygo", "t-display"],
+    "description": "Display driver and UI renderer for Waveshare ESP32-S3-Touch-LCD-7 (800x480 RGB, portrait 480x800)",
+    "keywords": ["esp32", "lcd", "display", "climbing", "boardsesh", "waveshare", "7inch", "touch"],
     "repository": {
         "type": "git",
         "url": "https://github.com/marcodejongh/boardsesh.git"
