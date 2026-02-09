@@ -24,7 +24,6 @@ import {
   type GetFollowingQueryResponse,
 } from '@/app/lib/graphql/operations';
 import type { PublicUserProfile } from '@boardsesh/shared-schema';
-import { themeTokens } from '@/app/theme/theme-config';
 
 interface FollowerCountProps {
   userId: string;

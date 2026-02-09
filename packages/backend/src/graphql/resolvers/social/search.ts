@@ -7,7 +7,7 @@ import { SearchUsersInputSchema } from '../../../validation/schemas';
 
 export const socialSearchQueries = {
   /**
-   * Search for users by name or email
+   * Search for users by name
    */
   searchUsers: async (
     _: unknown,
@@ -29,7 +29,6 @@ export const socialSearchQueries = {
     const searchConditions = or(
       ilike(dbSchema.userProfiles.displayName, searchPattern),
       ilike(dbSchema.users.name, searchPattern),
-      ilike(dbSchema.users.email, prefixPattern)
     );
 
     // Count total matches
@@ -66,7 +65,6 @@ export const socialSearchQueries = {
     const selectFields = {
       id: dbSchema.users.id,
       name: dbSchema.users.name,
-      email: dbSchema.users.email,
       image: dbSchema.users.image,
       displayName: dbSchema.userProfiles.displayName,
       avatarUrl: dbSchema.userProfiles.avatarUrl,
@@ -121,8 +119,6 @@ export const socialSearchQueries = {
       let matchReason: string | undefined;
       if (row.displayName?.toLowerCase().includes(lowerQuery) || row.name?.toLowerCase().includes(lowerQuery)) {
         matchReason = 'name match';
-      } else if (row.email.toLowerCase().startsWith(lowerQuery)) {
-        matchReason = 'email match';
       }
 
       return {
