@@ -238,6 +238,7 @@ export type Tick = {
   auroraId: string | null;
   auroraSyncedAt: string | null;
   layoutId: number | null;
+  boardId?: number | null;
 };
 
 export type SaveTickInput = {
@@ -253,6 +254,9 @@ export type SaveTickInput = {
   comment: string;
   climbedAt: string;
   sessionId?: string;
+  layoutId?: number;
+  sizeId?: number;
+  setIds?: string;
 };
 
 export type GetTicksInput = {
@@ -280,6 +284,114 @@ export type LayoutStats = {
 export type ProfileStats = {
   totalDistinctClimbs: number;
   layoutStats: LayoutStats[];
+};
+
+// ============================================
+// Board Entity Types
+// ============================================
+
+export type UserBoard = {
+  uuid: string;
+  slug: string;
+  ownerId: string;
+  ownerDisplayName?: string;
+  ownerAvatarUrl?: string;
+  boardType: string;
+  layoutId: number;
+  sizeId: number;
+  setIds: string;
+  name: string;
+  description?: string | null;
+  locationName?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  isPublic: boolean;
+  isOwned: boolean;
+  createdAt: string;
+  layoutName?: string | null;
+  sizeName?: string | null;
+  sizeDescription?: string | null;
+  setNames?: string[] | null;
+  totalAscents: number;
+  uniqueClimbers: number;
+  followerCount: number;
+  commentCount: number;
+  isFollowedByMe: boolean;
+};
+
+export type UserBoardConnection = {
+  boards: UserBoard[];
+  totalCount: number;
+  hasMore: boolean;
+};
+
+export type BoardLeaderboardEntry = {
+  userId: string;
+  userDisplayName?: string;
+  userAvatarUrl?: string;
+  rank: number;
+  totalSends: number;
+  totalFlashes: number;
+  hardestGrade?: number | null;
+  hardestGradeName?: string | null;
+  totalSessions: number;
+};
+
+export type BoardLeaderboard = {
+  boardUuid: string;
+  entries: BoardLeaderboardEntry[];
+  totalCount: number;
+  hasMore: boolean;
+  periodLabel: string;
+};
+
+export type CreateBoardInput = {
+  boardType: string;
+  layoutId: number;
+  sizeId: number;
+  setIds: string;
+  name: string;
+  description?: string;
+  locationName?: string;
+  latitude?: number;
+  longitude?: number;
+  isPublic?: boolean;
+  isOwned?: boolean;
+};
+
+export type UpdateBoardInput = {
+  boardUuid: string;
+  name?: string;
+  slug?: string;
+  description?: string;
+  locationName?: string;
+  latitude?: number;
+  longitude?: number;
+  isPublic?: boolean;
+  isOwned?: boolean;
+};
+
+export type BoardLeaderboardInput = {
+  boardUuid: string;
+  period?: string;
+  limit?: number;
+  offset?: number;
+};
+
+export type MyBoardsInput = {
+  limit?: number;
+  offset?: number;
+};
+
+export type FollowBoardInput = {
+  boardUuid: string;
+};
+
+export type SearchBoardsInput = {
+  query?: string;
+  boardType?: string;
+  limit?: number;
+  offset?: number;
 };
 
 // ============================================

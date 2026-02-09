@@ -98,7 +98,15 @@ function BottomTabBar({ boardDetails, angle, boardConfigs }: BottomTabBarProps) 
   const activeTab = (isCreateOpen || isCreatePlaylistOpen) ? 'create' : activeTabFromPath;
 
   // Build URLs using effective board details
+  // If we're on a /b/ slug route, preserve the slug URL format
   const listUrl = (() => {
+    if (pathname.startsWith('/b/')) {
+      const segments = pathname.split('/');
+      // /b/{slug}/{angle}/... → /b/{slug}/{angle}/list
+      if (segments.length >= 4) {
+        return `/b/${segments[2]}/${segments[3]}/list`;
+      }
+    }
     if (!effectiveBoardDetails) return null;
     const { board_name, layout_name, size_name, size_description, set_names } = effectiveBoardDetails;
     if (layout_name && size_name && set_names) {

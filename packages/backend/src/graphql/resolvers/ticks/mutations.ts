@@ -4,6 +4,7 @@ import { db } from '../../../db/client';
 import * as dbSchema from '@boardsesh/db/schema';
 import { requireAuthenticated, validateInput } from '../shared/helpers';
 import { SaveTickInputSchema } from '../../../validation/schemas';
+import { resolveBoardFromPath } from '../social/boards';
 
 export const tickMutations = {
   /**
@@ -23,6 +24,18 @@ export const tickMutations = {
     const uuid = uuidv4();
     const now = new Date().toISOString();
     const climbedAt = new Date(validatedInput.climbedAt).toISOString();
+
+    // Resolve board ID from board config if provided
+    let boardId: number | null = null;
+    if (validatedInput.layoutId && validatedInput.sizeId && validatedInput.setIds) {
+      boardId = await resolveBoardFromPath(
+        userId,
+        validatedInput.boardType,
+        validatedInput.layoutId,
+        validatedInput.sizeId,
+        validatedInput.setIds,
+      );
+    }
 
     // Insert into database
     const [tick] = await db
@@ -44,6 +57,7 @@ export const tickMutations = {
         createdAt: now,
         updatedAt: now,
         sessionId: validatedInput.sessionId ?? null,
+        boardId,
         // Aurora sync fields are null - will be populated by periodic sync job
         auroraType: null,
         auroraId: null,
@@ -69,6 +83,7 @@ export const tickMutations = {
       createdAt: tick.createdAt,
       updatedAt: tick.updatedAt,
       sessionId: tick.sessionId,
+      boardId: tick.boardId,
       auroraType: tick.auroraType,
       auroraId: tick.auroraId,
       auroraSyncedAt: tick.auroraSyncedAt,

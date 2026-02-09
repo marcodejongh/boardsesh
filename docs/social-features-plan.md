@@ -2682,7 +2682,7 @@ Each milestone creates only the DB tables and types it needs, and delivers testa
 - View your followers/following lists
 - Follower counts update correctly
 
-### Milestone 2: Comments & Votes
+### Milestone 2: Comments & Votes [COMPLETED]
 
 **User value**: "I can discuss climbs and playlists, and upvote/downvote content."
 
@@ -2719,7 +2719,7 @@ Each milestone creates only the DB tables and types it needs, and delivers testa
 - Reply to a comment (1-level threading)
 - Bulk vote summaries load for playlist climb lists
 
-### Milestone 3: Board Entity + Leaderboards
+### Milestone 3: Board Entity + Leaderboards [COMPLETED]
 
 **User value**: "I can name my physical board, see who climbs on it, and compete on leaderboards."
 

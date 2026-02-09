@@ -18,9 +18,20 @@ import { BoardConfigData } from '@/app/lib/server-board-configs';
 import { BoardName } from '@/app/lib/types';
 import { SUPPORTED_BOARDS, ANGLES } from '@/app/lib/board-data';
 import { getDefaultSizeForLayout } from '@/app/lib/__generated__/product-sizes-data';
-import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
+import { constructClimbListWithSlugs, constructBoardSlugListUrl } from '@/app/lib/url-utils';
 import { loadSavedBoards, saveBoardConfig, deleteBoardConfig, StoredBoardConfig } from '@/app/lib/saved-boards-db';
 import { setLastUsedBoard } from '@/app/lib/last-used-board-db';
+import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
+import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
+import { GET_MY_BOARDS, type GetMyBoardsQueryResponse } from '@/app/lib/graphql/operations';
+import type { UserBoard } from '@boardsesh/shared-schema';
+import Chip from '@mui/material/Chip';
+import Card from '@mui/material/Card';
+import CardActionArea from '@mui/material/CardActionArea';
+import CardContent from '@mui/material/CardContent';
+import LocationOnOutlined from '@mui/icons-material/LocationOnOutlined';
+import CircularProgress from '@mui/material/CircularProgress';
+import { themeTokens } from '@/app/theme/theme-config';
 import styles from './board-selector-drawer.module.css';
 
 interface BoardSelectorDrawerProps {
@@ -40,6 +51,9 @@ export default function BoardSelectorDrawer({
   const [activeTab, setActiveTab] = useState<'saved' | 'new'>('saved');
   const [savedConfigurations, setSavedConfigurations] = useState<StoredBoardConfig[]>([]);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [serverBoards, setServerBoards] = useState<UserBoard[]>([]);
+  const [isLoadingServerBoards, setIsLoadingServerBoards] = useState(false);
+  const { token, isAuthenticated } = useWsAuthToken();
 
   // New board form state
   const [selectedBoard, setSelectedBoard] = useState<BoardName | undefined>(undefined);
@@ -81,6 +95,18 @@ export default function BoardSelectorDrawer({
       });
     }
   }, [open, selectedBoard]);
+
+  // Fetch server-side board entities (owned + followed)
+  useEffect(() => {
+    if (!open || !isAuthenticated || !token) return;
+    setIsLoadingServerBoards(true);
+    const client = createGraphQLHttpClient(token);
+    client
+      .request<GetMyBoardsQueryResponse>(GET_MY_BOARDS, { input: { limit: 50, offset: 0 } })
+      .then((data) => setServerBoards(data.myBoards.boards))
+      .catch((err) => console.error('Failed to fetch boards:', err))
+      .finally(() => setIsLoadingServerBoards(false));
+  }, [open, isAuthenticated, token]);
 
   // Auto-cascade: layout when board changes
   useEffect(() => {
@@ -260,26 +286,59 @@ export default function BoardSelectorDrawer({
 
       {activeTab === 'saved' && (
         <>
-          {savedConfigurations.length > 0 ? (
-            <Box className={styles.boardGrid}>
-              {savedConfigurations.map((config) => (
-                <BoardConfigPreview
-                  key={config.name}
-                  config={config}
-                  onDelete={handleDeleteConfig}
-                  onSelect={handleSavedBoardSelect}
-                  boardConfigs={boardConfigs}
-                  isEditMode={isEditMode}
-                />
-              ))}
+          {/* Server-side board entities (owned + followed) */}
+          {isLoadingServerBoards ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+              <CircularProgress size={24} />
             </Box>
-          ) : (
+          ) : serverBoards.length > 0 ? (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="caption" color="text.secondary" sx={{ px: 1, mb: 1, display: 'block' }}>
+                My Boards
+              </Typography>
+              <Box className={styles.boardGrid}>
+                {serverBoards.map((board) => (
+                  <ServerBoardCard
+                    key={board.uuid}
+                    board={board}
+                    onSelect={() => {
+                      router.push(constructBoardSlugListUrl(board.slug, 40));
+                      onClose();
+                    }}
+                  />
+                ))}
+              </Box>
+            </Box>
+          ) : null}
+
+          {/* Locally saved board configurations */}
+          {savedConfigurations.length > 0 ? (
+            <>
+              {serverBoards.length > 0 && (
+                <Typography variant="caption" color="text.secondary" sx={{ px: 1, mb: 1, display: 'block' }}>
+                  Local Configurations
+                </Typography>
+              )}
+              <Box className={styles.boardGrid}>
+                {savedConfigurations.map((config) => (
+                  <BoardConfigPreview
+                    key={config.name}
+                    config={config}
+                    onDelete={handleDeleteConfig}
+                    onSelect={handleSavedBoardSelect}
+                    boardConfigs={boardConfigs}
+                    isEditMode={isEditMode}
+                  />
+                ))}
+              </Box>
+            </>
+          ) : serverBoards.length === 0 ? (
             <div className={styles.emptyState}>
               <Typography variant="body2" color="text.secondary">
                 No saved boards yet. Configure a new board to get started.
               </Typography>
             </div>
-          )}
+          ) : null}
         </>
       )}
 
@@ -382,5 +441,45 @@ export default function BoardSelectorDrawer({
         </Box>
       )}
     </SwipeableDrawer>
+  );
+}
+
+const BOARD_TYPE_LABELS: Record<string, string> = {
+  kilter: 'Kilter',
+  tension: 'Tension',
+  moonboard: 'MoonBoard',
+  decoy: 'Decoy',
+  touchstone: 'Touchstone',
+  grasshopper: 'Grasshopper',
+  soill: 'So iLL',
+};
+
+function ServerBoardCard({ board, onSelect }: { board: UserBoard; onSelect: () => void }) {
+  return (
+    <Card variant="outlined" sx={{ minWidth: 0, borderRadius: `${themeTokens.borderRadius.md}px` }}>
+      <CardActionArea onClick={onSelect}>
+        <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 0.5 }}>
+            <Typography variant="body2" fontWeight={600} noWrap>
+              {board.name}
+            </Typography>
+            <Chip
+              label={BOARD_TYPE_LABELS[board.boardType] || board.boardType}
+              size="small"
+              variant="outlined"
+              sx={{ fontSize: 11, height: 20, flexShrink: 0 }}
+            />
+          </Box>
+          {board.locationName && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
+              <LocationOnOutlined sx={{ fontSize: 12, color: themeTokens.neutral[400] }} />
+              <Typography variant="caption" color="text.secondary" noWrap>
+                {board.locationName}
+              </Typography>
+            </Box>
+          )}
+        </CardContent>
+      </CardActionArea>
+    </Card>
   );
 }

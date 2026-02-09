@@ -14,6 +14,7 @@ import { useSearchParams } from 'next/navigation';
 import { themeTokens } from '@/app/theme/theme-config';
 import RecentSearchPills from '../search-drawer/recent-search-pills';
 import { getPreference, setPreference } from '@/app/lib/user-preferences-db';
+import BoardCreationBanner from '@/app/components/board-entity/board-creation-banner';
 
 type ViewMode = 'grid' | 'list';
 
@@ -37,7 +38,7 @@ const ClimbsListSkeleton = ({ aspectRatio, viewMode }: { aspectRatio: number; vi
   ));
 };
 
-const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
+const ClimbsList = ({ boardDetails, initialClimbs, board_name, layout_id, size_id, set_ids, angle }: ClimbsListProps) => {
   const {
     setCurrentClimb,
     climbSearchResults,
@@ -188,6 +189,14 @@ const ClimbsList = ({ boardDetails, initialClimbs }: ClimbsListProps) => {
 
   return (
     <Box sx={{ pt: `${themeTokens.spacing[1]}px` }}>
+      {/* Board creation banner */}
+      <BoardCreationBanner
+        boardType={board_name}
+        layoutId={layout_id}
+        sizeId={size_id}
+        setIds={set_ids.join(',')}
+        angle={angle}
+      />
       {/* View mode toggle + recent searches */}
       <Box sx={headerBoxSx}>
         <RecentSearchPills />

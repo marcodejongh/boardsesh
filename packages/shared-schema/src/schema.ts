@@ -470,6 +470,8 @@ export const typeDefs = /* GraphQL */ `
     auroraSyncedAt: String
     "Layout ID when the climb was attempted"
     layoutId: Int
+    "Board entity ID if tick was associated with a board"
+    boardId: Int
   }
 
   """
@@ -500,6 +502,12 @@ export const typeDefs = /* GraphQL */ `
     climbedAt: String!
     "Session ID if in a session"
     sessionId: String
+    "Layout ID for board resolution"
+    layoutId: Int
+    "Size ID for board resolution"
+    sizeId: Int
+    "Set IDs for board resolution"
+    setIds: String
   }
 
   """
@@ -967,6 +975,218 @@ export const typeDefs = /* GraphQL */ `
     page: Int
     "Page size"
     pageSize: Int
+  }
+
+  # ============================================
+  # Board Entity Types
+  # ============================================
+
+  """
+  A named physical board installation (board type + layout + size + hold sets).
+  """
+  type UserBoard {
+    "Unique identifier"
+    uuid: ID!
+    "URL slug for this board"
+    slug: String!
+    "Owner user ID"
+    ownerId: ID!
+    "Owner display name"
+    ownerDisplayName: String
+    "Owner avatar URL"
+    ownerAvatarUrl: String
+    "Board type (kilter, tension, moonboard)"
+    boardType: String!
+    "Layout ID"
+    layoutId: Int!
+    "Size ID"
+    sizeId: Int!
+    "Comma-separated set IDs"
+    setIds: String!
+    "Board name"
+    name: String!
+    "Optional description"
+    description: String
+    "Location name"
+    locationName: String
+    "GPS latitude"
+    latitude: Float
+    "GPS longitude"
+    longitude: Float
+    "Whether publicly visible"
+    isPublic: Boolean!
+    "Whether the user owns the physical board"
+    isOwned: Boolean!
+    "When created"
+    createdAt: String!
+    "Human-readable layout name"
+    layoutName: String
+    "Human-readable size name"
+    sizeName: String
+    "Human-readable size description"
+    sizeDescription: String
+    "Human-readable set names"
+    setNames: [String!]
+    "Total ascents on this board"
+    totalAscents: Int!
+    "Number of unique climbers"
+    uniqueClimbers: Int!
+    "Number of followers"
+    followerCount: Int!
+    "Number of comments"
+    commentCount: Int!
+    "Whether the current user follows this board"
+    isFollowedByMe: Boolean!
+  }
+
+  """
+  Paginated list of boards.
+  """
+  type UserBoardConnection {
+    "List of boards"
+    boards: [UserBoard!]!
+    "Total number of boards"
+    totalCount: Int!
+    "Whether more boards are available"
+    hasMore: Boolean!
+  }
+
+  """
+  A leaderboard entry for a board.
+  """
+  type BoardLeaderboardEntry {
+    "User ID"
+    userId: ID!
+    "Display name"
+    userDisplayName: String
+    "Avatar URL"
+    userAvatarUrl: String
+    "Rank on the leaderboard"
+    rank: Int!
+    "Total sends (flash + send)"
+    totalSends: Int!
+    "Total flashes"
+    totalFlashes: Int!
+    "Hardest grade sent (difficulty ID)"
+    hardestGrade: Int
+    "Human-readable hardest grade name"
+    hardestGradeName: String
+    "Total sessions"
+    totalSessions: Int!
+  }
+
+  """
+  Board leaderboard result.
+  """
+  type BoardLeaderboard {
+    "Board UUID"
+    boardUuid: ID!
+    "Leaderboard entries"
+    entries: [BoardLeaderboardEntry!]!
+    "Total number of entries"
+    totalCount: Int!
+    "Whether more entries are available"
+    hasMore: Boolean!
+    "Label for the time period"
+    periodLabel: String!
+  }
+
+  """
+  Input for creating a board.
+  """
+  input CreateBoardInput {
+    "Board type"
+    boardType: String!
+    "Layout ID"
+    layoutId: Int!
+    "Size ID"
+    sizeId: Int!
+    "Comma-separated set IDs"
+    setIds: String!
+    "Board name"
+    name: String!
+    "Optional description"
+    description: String
+    "Location name"
+    locationName: String
+    "GPS latitude"
+    latitude: Float
+    "GPS longitude"
+    longitude: Float
+    "Whether publicly visible (default true)"
+    isPublic: Boolean
+    "Whether user owns the physical board (default true)"
+    isOwned: Boolean
+  }
+
+  """
+  Input for updating a board.
+  """
+  input UpdateBoardInput {
+    "Board UUID to update"
+    boardUuid: ID!
+    "New name"
+    name: String
+    "New slug"
+    slug: String
+    "New description"
+    description: String
+    "New location name"
+    locationName: String
+    "New GPS latitude"
+    latitude: Float
+    "New GPS longitude"
+    longitude: Float
+    "New visibility"
+    isPublic: Boolean
+    "New ownership flag"
+    isOwned: Boolean
+  }
+
+  """
+  Input for board leaderboard query.
+  """
+  input BoardLeaderboardInput {
+    "Board UUID"
+    boardUuid: ID!
+    "Time period (week, month, year, all)"
+    period: String
+    "Max entries to return"
+    limit: Int
+    "Offset for pagination"
+    offset: Int
+  }
+
+  """
+  Input for listing user's boards.
+  """
+  input MyBoardsInput {
+    "Max boards to return"
+    limit: Int
+    "Offset for pagination"
+    offset: Int
+  }
+
+  """
+  Input for following/unfollowing a board.
+  """
+  input FollowBoardInput {
+    "Board UUID"
+    boardUuid: ID!
+  }
+
+  """
+  Input for searching boards.
+  """
+  input SearchBoardsInput {
+    "Search query"
+    query: String
+    "Filter by board type"
+    boardType: String
+    "Max results to return"
+    limit: Int
+    "Offset for pagination"
+    offset: Int
   }
 
   # ============================================
@@ -1538,6 +1758,42 @@ export const typeDefs = /* GraphQL */ `
     globalAscentsFeed(input: FollowingAscentsFeedInput): FollowingAscentsFeedResult!
 
     # ============================================
+    # Board Entity Queries
+    # ============================================
+
+    """
+    Get a board by UUID.
+    """
+    board(boardUuid: ID!): UserBoard
+
+    """
+    Get a board by slug (for URL routing).
+    """
+    boardBySlug(slug: String!): UserBoard
+
+    """
+    Get current user's boards.
+    Requires authentication.
+    """
+    myBoards(input: MyBoardsInput): UserBoardConnection!
+
+    """
+    Search public boards.
+    """
+    searchBoards(input: SearchBoardsInput!): UserBoardConnection!
+
+    """
+    Get leaderboard for a board.
+    """
+    boardLeaderboard(input: BoardLeaderboardInput!): BoardLeaderboard!
+
+    """
+    Get the user's default board (first owned, then most used).
+    Requires authentication.
+    """
+    defaultBoard: UserBoard
+
+    # ============================================
     # Comments & Votes Queries
     # ============================================
 
@@ -1724,6 +1980,35 @@ export const typeDefs = /* GraphQL */ `
     Unfollow a user.
     """
     unfollowUser(input: FollowInput!): Boolean!
+
+    # ============================================
+    # Board Entity Mutations (require auth)
+    # ============================================
+
+    """
+    Create a new board.
+    """
+    createBoard(input: CreateBoardInput!): UserBoard!
+
+    """
+    Update a board's metadata.
+    """
+    updateBoard(input: UpdateBoardInput!): UserBoard!
+
+    """
+    Soft-delete a board.
+    """
+    deleteBoard(boardUuid: ID!): Boolean!
+
+    """
+    Follow a board.
+    """
+    followBoard(input: FollowBoardInput!): Boolean!
+
+    """
+    Unfollow a board.
+    """
+    unfollowBoard(input: FollowBoardInput!): Boolean!
 
     # ============================================
     # Comments & Votes Mutations (require auth)

@@ -28,6 +28,7 @@ import { socialSearchQueries } from './social/search';
 import { socialFeedQueries } from './social/feed';
 import { socialCommentQueries, socialCommentMutations } from './social/comments';
 import { socialVoteQueries, socialVoteMutations } from './social/votes';
+import { socialBoardQueries, socialBoardMutations } from './social/boards';
 
 export const resolvers = {
   // Scalar types
@@ -49,6 +50,7 @@ export const resolvers = {
     ...socialFeedQueries,
     ...socialCommentQueries,
     ...socialVoteQueries,
+    ...socialBoardQueries,
   },
 
   Mutation: {
@@ -62,6 +64,7 @@ export const resolvers = {
     ...socialFollowMutations,
     ...socialCommentMutations,
     ...socialVoteMutations,
+    ...socialBoardMutations,
   },
 
   Subscription: {

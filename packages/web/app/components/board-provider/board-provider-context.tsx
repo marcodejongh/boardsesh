@@ -35,6 +35,10 @@ export interface SaveTickOptions {
   comment: string;
   climbedAt: string;
   sessionId?: string;
+  // Board resolution fields (for associating ticks with board entities)
+  layoutId?: number;
+  sizeId?: number;
+  setIds?: string;
 }
 
 // Logbook entry that works for both local ticks and legacy Aurora entries
@@ -224,6 +228,9 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
           comment: options.comment,
           climbedAt: options.climbedAt,
           sessionId: options.sessionId,
+          layoutId: options.layoutId,
+          sizeId: options.sizeId,
+          setIds: options.setIds,
         }
       };
 

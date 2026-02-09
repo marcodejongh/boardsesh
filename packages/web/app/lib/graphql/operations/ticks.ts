@@ -73,6 +73,7 @@ export const SAVE_TICK = gql`
       createdAt
       updatedAt
       sessionId
+      boardId
       auroraType
       auroraId
       auroraSyncedAt

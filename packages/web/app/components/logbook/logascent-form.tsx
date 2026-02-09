@@ -139,6 +139,9 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boar
         isBenchmark: false,
         comment: values.notes || '',
         climbedAt: values.date.toISOString(),
+        layoutId: boardDetails.layout_id,
+        sizeId: boardDetails.size_id,
+        setIds: Array.isArray(boardDetails.set_ids) ? boardDetails.set_ids.join(',') : String(boardDetails.set_ids),
       });
 
       track('Tick Logged', {

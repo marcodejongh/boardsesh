@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import Box from '@mui/material/Box';
-import MuiButton from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
-import PersonSearchOutlined from '@mui/icons-material/PersonSearchOutlined';
+import SearchOutlined from '@mui/icons-material/SearchOutlined';
 import FollowingAscentsFeed from '@/app/components/social/following-ascents-feed';
 import GlobalAscentsFeed from '@/app/components/social/global-ascents-feed';
+import searchPillStyles from '@/app/components/search-drawer/search-pill.module.css';
 import UserSearchDrawer from '@/app/components/social/user-search-drawer';
 import UserDrawer from '@/app/components/user-drawer/user-drawer';
 import BottomTabBar from '@/app/components/bottom-tab-bar/bottom-tab-bar';
@@ -19,6 +19,10 @@ import { useSession } from 'next-auth/react';
 import { themeTokens } from '@/app/theme/theme-config';
 import { BoardConfigData } from '@/app/lib/server-board-configs';
 import ErrorBoundary from '@/app/components/error-boundary';
+import BoardSelectorPills from '@/app/components/board-entity/board-selector-pills';
+import { constructBoardSlugListUrl } from '@/app/lib/url-utils';
+import { useRouter } from 'next/navigation';
+import type { UserBoard } from '@boardsesh/shared-schema';
 import bottomBarStyles from '@/app/components/bottom-tab-bar/bottom-bar-wrapper.module.css';
 
 interface HomePageContentProps {
@@ -36,6 +40,12 @@ export default function HomePageContent({ boardConfigs }: HomePageContentProps) 
   } = usePersistentSession();
 
   const isAuthenticated = status === 'authenticated' && !!session?.user;
+  const router = useRouter();
+
+  const handleBoardSelect = useCallback((board: UserBoard) => {
+    // Default angle 40 — boards don't store a preferred angle yet
+    router.push(constructBoardSlugListUrl(board.slug, 40));
+  }, [router]);
 
   // Determine if there's an active queue to show the QueueControlBar
   const isPartyMode = !!activeSession;
@@ -53,29 +63,30 @@ export default function HomePageContent({ boardConfigs }: HomePageContentProps) 
         sx={{
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between',
+          gap: 1.5,
           px: 2,
           py: 1.5,
           borderBottom: `1px solid ${themeTokens.neutral[200]}`,
         }}
       >
         <UserDrawer boardConfigs={boardConfigs} />
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-          {isAuthenticated && (
-            <MuiButton
-              startIcon={<PersonSearchOutlined />}
-              onClick={() => setSearchOpen(true)}
-              size="small"
-              variant="outlined"
-            >
-              Find Climbers
-            </MuiButton>
-          )}
-        </Box>
+        {isAuthenticated && (
+          <button
+            className={searchPillStyles.pill}
+            onClick={() => setSearchOpen(true)}
+            type="button"
+          >
+            <SearchOutlined className={searchPillStyles.icon} />
+            <span className={searchPillStyles.text}>Search boards & climbers</span>
+          </button>
+        )}
       </Box>
 
       {/* Feed */}
       <Box component="main" sx={{ flex: 1, px: 2, py: 2 }}>
+        {isAuthenticated && (
+          <BoardSelectorPills onBoardSelect={handleBoardSelect} />
+        )}
         <Typography variant="h6" component="h1" sx={{ mb: 2 }}>
           Activity
         </Typography>
