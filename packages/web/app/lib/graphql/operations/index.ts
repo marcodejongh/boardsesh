@@ -3,3 +3,4 @@ export * from './favorites';
 export * from './ticks';
 export * from './playlists';
 export * from './social';
+export * from './comments-votes';
