@@ -4,7 +4,7 @@ import ws from 'ws';
 import { config } from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { eq, ne, sql, and, isNotNull } from 'drizzle-orm';
+import { eq, ne, sql, and } from 'drizzle-orm';
 import { faker } from '@faker-js/faker';
 
 import { users } from '../src/schema/auth/users.js';

@@ -21,8 +21,10 @@ export const socialSearchQueries = {
     const boardType = validatedInput.boardType;
     const limit = validatedInput.limit ?? 20;
     const offset = validatedInput.offset ?? 0;
-    const searchPattern = `%${query}%`;
-    const prefixPattern = `${query}%`;
+    // Escape LIKE wildcards (%, _) in user input to prevent pattern injection
+    const escapedQuery = query.replace(/[%_\\]/g, '\\$&');
+    const searchPattern = `%${escapedQuery}%`;
+    const prefixPattern = `${escapedQuery}%`;
 
     const searchConditions = or(
       ilike(dbSchema.userProfiles.displayName, searchPattern),
