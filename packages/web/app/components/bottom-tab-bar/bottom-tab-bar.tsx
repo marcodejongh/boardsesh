@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useContext } from 'react';
 import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 import MuiButton from '@mui/material/Button';
 import Box from '@mui/material/Box';
@@ -18,16 +18,18 @@ import { track } from '@vercel/analytics';
 import { BoardDetails } from '@/app/lib/types';
 import { constructClimbListWithSlugs, generateLayoutSlug, generateSizeSlug, generateSetSlug } from '@/app/lib/url-utils';
 import { themeTokens } from '@/app/theme/theme-config';
-import { usePlaylistsContext } from '../climb-actions/playlists-batch-context';
+import { PlaylistsContext } from '../climb-actions/playlists-batch-context';
 import AuthModal from '../auth/auth-modal';
 import { getTabNavigationState, saveTabNavigationState } from '@/app/lib/tab-navigation-db';
+import { getDefaultBoardCookieClient } from '@/app/lib/default-board-cookie';
+import { usePersistentSession } from '../persistent-session';
 import styles from './bottom-tab-bar.module.css';
 
 type Tab = 'home' | 'climbs' | 'library' | 'create';
 
 interface BottomTabBarProps {
-  boardDetails: BoardDetails;
-  angle: number;
+  boardDetails?: BoardDetails | null;
+  angle?: number;
 }
 
 // Validate hex color format
@@ -61,33 +63,67 @@ function BottomTabBar({ boardDetails, angle }: BottomTabBarProps) {
   const pathname = usePathname();
   const router = useRouter();
 
-  const { createPlaylist, isAuthenticated } = usePlaylistsContext();
+  // PlaylistsContext is only available on board routes (within PlaylistsProvider)
+  const playlistsContext = useContext(PlaylistsContext);
+  const createPlaylist = playlistsContext?.createPlaylist;
+  const isAuthenticated = playlistsContext?.isAuthenticated ?? false;
   const { showMessage } = useSnackbar();
 
+  // Use the active queue's board details as a fallback when no boardDetails prop
+  const {
+    activeSession,
+    localBoardDetails,
+    localCurrentClimbQueueItem,
+  } = usePersistentSession();
+
+  // Resolve effective board details: prop > active session > local queue
+  const effectiveBoardDetails = boardDetails
+    ?? (activeSession ? activeSession.boardDetails : null)
+    ?? localBoardDetails;
+  const effectiveAngle = angle
+    ?? (activeSession ? activeSession.parsedParams.angle : undefined)
+    ?? localCurrentClimbQueueItem?.climb?.angle
+    ?? 0;
+
+  const hasBoardContext = !!effectiveBoardDetails;
+
   // Hide playlists for moonboard (not yet supported)
-  const isMoonboard = boardDetails.board_name === 'moonboard';
+  const isMoonboard = effectiveBoardDetails?.board_name === 'moonboard';
+
+  // On the home page, "Home" is the active tab
+  const isHomePage = pathname === '/';
 
   // --- Tab navigation state ---
   // Ref tracks the "true" active tab (survives across ambiguous pages like /view/ and /play/)
-  const currentTabRef = useRef<Tab>(getTabForPath(pathname) ?? 'climbs');
+  const currentTabRef = useRef<Tab>(isHomePage ? 'home' : (getTabForPath(pathname) ?? 'climbs'));
   // State for rendering (triggers re-renders when active tab changes)
-  const [resolvedTab, setResolvedTab] = useState<Tab>(getTabForPath(pathname) ?? 'climbs');
+  const [resolvedTab, setResolvedTab] = useState<Tab>(isHomePage ? 'home' : (getTabForPath(pathname) ?? 'climbs'));
   // Store last visited URL per tab
   const lastUrlsRef = useRef<Record<string, string>>({});
 
-  // Build default tab root URLs
+  // Build default tab root URLs using effective board details (prop, active queue, or cookie fallback)
   const listUrl = (() => {
-    const { board_name, layout_name, size_name, size_description, set_names } = boardDetails;
+    if (!effectiveBoardDetails) {
+      const cookieUrl = getDefaultBoardCookieClient();
+      if (cookieUrl) return cookieUrl.replace(/\/[^/]+$/, '') + '/list';
+      return null;
+    }
+    const { board_name, layout_name, size_name, size_description, set_names } = effectiveBoardDetails;
     if (layout_name && size_name && set_names) {
-      return constructClimbListWithSlugs(board_name, layout_name, size_name, size_description, set_names, angle);
+      return constructClimbListWithSlugs(board_name, layout_name, size_name, size_description, set_names, effectiveAngle);
     }
     return null;
   })();
 
   const createClimbUrl = (() => {
-    const { board_name, layout_name, size_name, size_description, set_names } = boardDetails;
+    if (!effectiveBoardDetails) {
+      const cookieUrl = getDefaultBoardCookieClient();
+      if (cookieUrl) return cookieUrl.replace(/\/[^/]+$/, '') + '/create';
+      return null;
+    }
+    const { board_name, layout_name, size_name, size_description, set_names } = effectiveBoardDetails;
     if (layout_name && size_name && set_names) {
-      return `/${board_name}/${generateLayoutSlug(layout_name)}/${generateSizeSlug(size_name, size_description)}/${generateSetSlug(set_names)}/${angle}/create`;
+      return `/${board_name}/${generateLayoutSlug(layout_name)}/${generateSizeSlug(size_name, size_description)}/${generateSetSlug(set_names)}/${effectiveAngle}/create`;
     }
     return null;
   })();
@@ -98,6 +134,7 @@ function BottomTabBar({ boardDetails, angle }: BottomTabBarProps) {
 
   // Initialize from IndexedDB on mount
   useEffect(() => {
+    if (isHomePage) return; // No tab state to restore on home page
     const basePath = getBasePath(pathname);
     getTabNavigationState(basePath).then((stored) => {
       if (!stored) return;
@@ -119,6 +156,12 @@ function BottomTabBar({ boardDetails, angle }: BottomTabBarProps) {
 
   // Track pathname changes: update active tab and store last URL
   useEffect(() => {
+    if (pathname === '/') {
+      currentTabRef.current = 'home';
+      setResolvedTab('home');
+      return;
+    }
+
     const tab = getTabForPath(pathname);
     if (tab) {
       currentTabRef.current = tab;
@@ -127,7 +170,7 @@ function BottomTabBar({ boardDetails, angle }: BottomTabBarProps) {
 
     // Store the current URL as the last URL for the active tab
     const activeTab = currentTabRef.current;
-    if (activeTab !== 'create') {
+    if (activeTab !== 'create' && activeTab !== 'home') {
       const fullPath = pathname + (typeof window !== 'undefined' ? window.location.search : '');
       lastUrlsRef.current[activeTab] = fullPath;
     }
@@ -159,6 +202,8 @@ function BottomTabBar({ boardDetails, angle }: BottomTabBarProps) {
       if (url !== currentUrl) {
         router.push(url);
       }
+    } else {
+      router.push('/?select=true');
     }
     track('Bottom Tab Bar', { tab: 'climbs' });
   };
@@ -175,7 +220,16 @@ function BottomTabBar({ boardDetails, angle }: BottomTabBarProps) {
   };
 
   const handleCreateTab = () => {
-    setIsCreateOpen(true);
+    if (!playlistsContext) {
+      // Without playlist context (off-board), navigate to create URL or board selector
+      if (createClimbUrl) {
+        router.push(createClimbUrl);
+      } else {
+        router.push('/?select=true');
+      }
+    } else {
+      setIsCreateOpen(true);
+    }
     track('Bottom Tab Bar', { tab: 'create' });
   };
 
@@ -203,7 +257,7 @@ function BottomTabBar({ boardDetails, angle }: BottomTabBarProps) {
   };
 
   const handleCreatePlaylist = useCallback(async () => {
-    if (!validatePlaylistForm()) {
+    if (!validatePlaylistForm() || !createPlaylist) {
       return;
     }
 
@@ -220,7 +274,7 @@ function BottomTabBar({ boardDetails, angle }: BottomTabBarProps) {
 
       showMessage(`Created playlist "${playlistFormValues.name}"`, 'success');
       track('Create Playlist', {
-        boardName: boardDetails.board_name,
+        boardName: effectiveBoardDetails?.board_name ?? 'unknown',
         playlistName: playlistFormValues.name,
         source: 'bottom-tab-bar',
       });
@@ -237,7 +291,7 @@ function BottomTabBar({ boardDetails, angle }: BottomTabBarProps) {
       setIsCreatingPlaylist(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playlistFormValues, createPlaylist, boardDetails.board_name, router, getPlaylistUrl, showMessage]);
+  }, [playlistFormValues, createPlaylist, effectiveBoardDetails?.board_name, router, getPlaylistUrl, showMessage]);
 
   const getTabColor = (tab: Tab) =>
     activeTab === tab ? themeTokens.colors.primary : themeTokens.neutral[400];
@@ -249,10 +303,10 @@ function BottomTabBar({ boardDetails, angle }: BottomTabBarProps) {
         <button
           className={styles.tabItem}
           onClick={handleHomeTab}
-          style={{ color: themeTokens.neutral[400] }}
+          style={{ color: getTabColor('home') }}
           aria-label="Home"
           role="tab"
-          aria-selected={false}
+          aria-selected={activeTab === 'home'}
         >
           <HomeOutlined style={{ fontSize: 20 }} />
           <span className={styles.tabLabel}>Home</span>

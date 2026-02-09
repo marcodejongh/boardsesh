@@ -140,6 +140,41 @@ export const GET_FOLLOWING_ASCENTS_FEED = gql`
 `;
 
 // ============================================
+// Global Ascents Feed
+// ============================================
+
+export const GET_GLOBAL_ASCENTS_FEED = gql`
+  query GetGlobalAscentsFeed($input: FollowingAscentsFeedInput) {
+    globalAscentsFeed(input: $input) {
+      items {
+        uuid
+        userId
+        userDisplayName
+        userAvatarUrl
+        climbUuid
+        climbName
+        setterUsername
+        boardType
+        layoutId
+        angle
+        isMirror
+        status
+        attemptCount
+        quality
+        difficulty
+        difficultyName
+        isBenchmark
+        comment
+        climbedAt
+        frames
+      }
+      totalCount
+      hasMore
+    }
+  }
+`;
+
+// ============================================
 // Query/Mutation Variable Types
 // ============================================
 
@@ -205,4 +240,12 @@ export interface GetFollowingAscentsFeedQueryVariables {
 
 export interface GetFollowingAscentsFeedQueryResponse {
   followingAscentsFeed: FollowingAscentsFeedResult;
+}
+
+export interface GetGlobalAscentsFeedQueryVariables {
+  input?: { limit?: number; offset?: number };
+}
+
+export interface GetGlobalAscentsFeedQueryResponse {
+  globalAscentsFeed: FollowingAscentsFeedResult;
 }

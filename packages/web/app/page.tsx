@@ -1,10 +1,6 @@
 import React from 'react';
-import { cookies } from 'next/headers';
-import { getServerSession } from 'next-auth/next';
 import ConsolidatedBoardConfig from './components/setup-wizard/consolidated-board-config';
 import { getAllBoardConfigs } from './lib/server-board-configs';
-import { DEFAULT_BOARD_COOKIE_NAME } from './lib/default-board-cookie';
-import { authOptions } from './lib/auth/auth-options';
 import HomePageContent from './home-page-content';
 
 type HomeProps = {
@@ -15,30 +11,11 @@ export default async function Home({ searchParams }: HomeProps) {
   const params = await searchParams;
 
   // Check if user explicitly wants to see the board selector
-  const showSelector = params.select === 'true';
-
-  if (showSelector) {
+  if (params.select === 'true') {
     const boardConfigs = await getAllBoardConfigs();
     return <ConsolidatedBoardConfig boardConfigs={boardConfigs} />;
   }
 
-  const session = await getServerSession(authOptions);
-  const cookieStore = await cookies();
-  const defaultBoardCookie = cookieStore.get(DEFAULT_BOARD_COOKIE_NAME);
-
-  // Authenticated users see the Home feed
-  if (session?.user) {
-    return <HomePageContent />;
-  }
-
-  // Unauthenticated users with a default board get redirected to it
-  if (defaultBoardCookie?.value) {
-    const { redirect } = await import('next/navigation');
-    const defaultBoardUrl = decodeURIComponent(defaultBoardCookie.value);
-    redirect(defaultBoardUrl);
-  }
-
-  // Everyone else sees the board selector
-  const boardConfigs = await getAllBoardConfigs();
-  return <ConsolidatedBoardConfig boardConfigs={boardConfigs} />;
+  // Home page for all users (auth state handled client-side)
+  return <HomePageContent />;
 }

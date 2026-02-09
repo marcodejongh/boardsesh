@@ -35,7 +35,7 @@ import {
 import styles from './user-drawer.module.css';
 
 interface UserDrawerProps {
-  boardDetails: BoardDetails;
+  boardDetails?: BoardDetails | null;
   angle?: number;
 }
 
@@ -47,7 +47,7 @@ export default function UserDrawer({ boardDetails }: UserDrawerProps) {
   const [showHoldClassification, setShowHoldClassification] = useState(false);
   const [recentSessions, setRecentSessions] = useState<StoredSession[]>([]);
 
-  const isMoonboard = boardDetails.board_name === 'moonboard';
+  const isMoonboard = boardDetails?.board_name === 'moonboard';
 
   // Load recent sessions when drawer opens
   useEffect(() => {
@@ -148,7 +148,7 @@ export default function UserDrawer({ boardDetails }: UserDrawerProps) {
           {/* Navigation section */}
           <nav>
             <Link
-              href="/"
+              href="/?select=true"
               className={styles.menuItem}
               onClick={handleClose}
             >
@@ -176,7 +176,7 @@ export default function UserDrawer({ boardDetails }: UserDrawerProps) {
               <span className={styles.menuItemLabel}>Settings</span>
             </Link>
 
-            {!isMoonboard && (
+            {boardDetails && !isMoonboard && (
               <button
                 type="button"
                 className={styles.menuItem}
@@ -278,11 +278,13 @@ export default function UserDrawer({ boardDetails }: UserDrawerProps) {
         description="Sign in to access all features including saving favorites, tracking ascents, and more."
       />
 
-      <HoldClassificationWizard
-        open={showHoldClassification}
-        onClose={() => setShowHoldClassification(false)}
-        boardDetails={boardDetails}
-      />
+      {boardDetails && (
+        <HoldClassificationWizard
+          open={showHoldClassification}
+          onClose={() => setShowHoldClassification(false)}
+          boardDetails={boardDetails}
+        />
+      )}
     </>
   );
 }

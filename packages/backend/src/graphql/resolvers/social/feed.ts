@@ -1,4 +1,4 @@
-import { eq, and, desc, inArray, count, sql } from 'drizzle-orm';
+import { eq, and, desc, inArray, count } from 'drizzle-orm';
 import type { ConnectionContext } from '@boardsesh/shared-schema';
 import { db } from '../../../db/client';
 import * as dbSchema from '@boardsesh/db/schema';
@@ -78,6 +78,90 @@ export const socialFeedQueries = {
         )
       )
       .where(inArray(dbSchema.boardseshTicks.userId, followedUserIds))
+      .orderBy(desc(dbSchema.boardseshTicks.climbedAt))
+      .limit(limit)
+      .offset(offset);
+
+    const items = results.map(({ tick, userName, userImage, userDisplayName, userAvatarUrl, climbName, setterUsername, layoutId, frames, difficultyName }) => ({
+      uuid: tick.uuid,
+      userId: tick.userId,
+      userDisplayName: userDisplayName || userName || undefined,
+      userAvatarUrl: userAvatarUrl || userImage || undefined,
+      climbUuid: tick.climbUuid,
+      climbName: climbName || 'Unknown Climb',
+      setterUsername,
+      boardType: tick.boardType,
+      layoutId,
+      angle: tick.angle,
+      isMirror: tick.isMirror ?? false,
+      status: tick.status,
+      attemptCount: tick.attemptCount,
+      quality: tick.quality,
+      difficulty: tick.difficulty,
+      difficultyName,
+      isBenchmark: tick.isBenchmark ?? false,
+      comment: tick.comment || '',
+      climbedAt: tick.climbedAt,
+      frames,
+    }));
+
+    return {
+      items,
+      totalCount,
+      hasMore: offset + items.length < totalCount,
+    };
+  },
+
+  /**
+   * Get global activity feed of all recent ascents
+   * No authentication required
+   */
+  globalAscentsFeed: async (
+    _: unknown,
+    { input }: { input?: { limit?: number; offset?: number } },
+  ) => {
+    const validatedInput = validateInput(FollowingAscentsFeedInputSchema, input || {}, 'input');
+    const limit = validatedInput.limit ?? 20;
+    const offset = validatedInput.offset ?? 0;
+
+    // Get total count
+    const countResult = await db
+      .select({ count: count() })
+      .from(dbSchema.boardseshTicks);
+
+    const totalCount = Number(countResult[0]?.count || 0);
+
+    // Fetch ticks with user, climb, and grade data
+    const results = await db
+      .select({
+        tick: dbSchema.boardseshTicks,
+        userName: dbSchema.users.name,
+        userImage: dbSchema.users.image,
+        userDisplayName: dbSchema.userProfiles.displayName,
+        userAvatarUrl: dbSchema.userProfiles.avatarUrl,
+        climbName: dbSchema.boardClimbs.name,
+        setterUsername: dbSchema.boardClimbs.setterUsername,
+        layoutId: dbSchema.boardClimbs.layoutId,
+        frames: dbSchema.boardClimbs.frames,
+        difficultyName: dbSchema.boardDifficultyGrades.boulderName,
+      })
+      .from(dbSchema.boardseshTicks)
+      .innerJoin(dbSchema.users, eq(dbSchema.boardseshTicks.userId, dbSchema.users.id))
+      .leftJoin(dbSchema.userProfiles, eq(dbSchema.boardseshTicks.userId, dbSchema.userProfiles.userId))
+      .leftJoin(
+        dbSchema.boardClimbs,
+        and(
+          eq(dbSchema.boardseshTicks.climbUuid, dbSchema.boardClimbs.uuid),
+          eq(dbSchema.boardseshTicks.boardType, dbSchema.boardClimbs.boardType)
+        )
+      )
+      .leftJoin(
+        dbSchema.boardDifficultyGrades,
+        and(
+          eq(dbSchema.boardseshTicks.difficulty, dbSchema.boardDifficultyGrades.difficulty),
+          eq(dbSchema.boardseshTicks.boardType, dbSchema.boardDifficultyGrades.boardType)
+        )
+      )
       .orderBy(desc(dbSchema.boardseshTicks.climbedAt))
       .limit(limit)
       .offset(offset);

@@ -1363,6 +1363,12 @@ export const typeDefs = /* GraphQL */ `
     Requires authentication.
     """
     followingAscentsFeed(input: FollowingAscentsFeedInput): FollowingAscentsFeedResult!
+
+    """
+    Get global activity feed of all recent ascents.
+    No authentication required.
+    """
+    globalAscentsFeed(input: FollowingAscentsFeedInput): FollowingAscentsFeedResult!
   }
 
   """
