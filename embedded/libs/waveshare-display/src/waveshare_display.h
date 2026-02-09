@@ -162,6 +162,7 @@ class WaveshareDisplay : public DisplayBase {
     void showConfigPortal(const char* apName, const char* ip) override;
     void showSetupScreen(const char* apName) override;
     void refresh() override;
+    void refreshInfoOnly() override;
 
     // Touch handling
     TouchEvent pollTouch();

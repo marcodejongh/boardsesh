@@ -71,8 +71,15 @@ class DisplayBase {
     const char* getPendingQueueItemUuid() const;
     void setPendingNavigation(bool pending) { _pendingNavigation = pending; }
 
+    // ====== Climb display (info-only, skips board image redraw) ======
+    void showClimbInfoOnly(const char* name, const char* grade, const char* gradeColor, int angle, const char* uuid,
+                           const char* boardType);
+
     // ====== Refresh all sections (implemented by each display) ======
     virtual void refresh() = 0;
+
+    // ====== Refresh info sections only (status, climb info, nav) - skips board image ======
+    virtual void refreshInfoOnly() { refresh(); }
 
     // ====== Utility ======
     static uint16_t hexToRgb565(const char* hex);

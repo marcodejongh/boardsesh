@@ -283,26 +283,49 @@ void WaveshareDisplay::onStatusChanged() {
 }
 
 void WaveshareDisplay::refresh() {
-    _display.fillScreen(COLOR_BACKGROUND);
     drawStatusBar();
 
 #ifdef ENABLE_BOARD_IMAGE
     if (_hasBoardImage && _currentBoardConfig) {
+        // Clear margins around the board image instead of full fillScreen
+        int offsetX = (SCREEN_WIDTH - _currentBoardConfig->imageWidth) / 2;
+        if (offsetX > 0) {
+            _display.fillRect(0, WS_BOARD_IMAGE_Y, offsetX, _currentBoardConfig->imageHeight, COLOR_BACKGROUND);
+            _display.fillRect(offsetX + _currentBoardConfig->imageWidth, WS_BOARD_IMAGE_Y, offsetX, _currentBoardConfig->imageHeight, COLOR_BACKGROUND);
+        }
         drawBoardImageWithHolds();
         drawClimbInfoCompact();
     } else {
+        _display.fillScreen(COLOR_BACKGROUND);
+        drawStatusBar();
         drawCurrentClimb();
         drawQRCode();
         drawNextClimbIndicator();
         drawHistory();
     }
 #else
+    _display.fillScreen(COLOR_BACKGROUND);
+    drawStatusBar();
     drawCurrentClimb();
     drawQRCode();
     drawNextClimbIndicator();
     drawHistory();
 #endif
 
+    drawNavButtons();
+}
+
+void WaveshareDisplay::refreshInfoOnly() {
+    drawStatusBar();
+#ifdef ENABLE_BOARD_IMAGE
+    if (_hasBoardImage && _currentBoardConfig) {
+        drawClimbInfoCompact();
+    } else {
+        drawCurrentClimb();
+    }
+#else
+    drawCurrentClimb();
+#endif
     drawNavButtons();
 }
 
@@ -622,9 +645,10 @@ void WaveshareDisplay::drawBoardImageWithHolds() {
                 int dx = offsetX + cfg->holdMap[mid].cx;
                 int dy = offsetY + cfg->holdMap[mid].cy;
                 int dr = cfg->holdMap[mid].radius;
-                // 2px stroke circle (matching web renderer style)
-                _display.drawCircle(dx, dy, dr, color);
-                _display.drawCircle(dx, dy, dr - 1, color);
+                // Anti-aliased ring using fillArc (full 360° sweep)
+                int strokeWidth = 3;
+                int innerR = max(1, dr - strokeWidth);
+                _display.fillArc(dx, dy, dr, innerR, 0.0f, 360.0f, color);
                 break;
             } else if (midPos < target) {
                 lo = mid + 1;

@@ -989,15 +989,19 @@ void navigatePrevious() {
         return;
     }
 
-    // Optimistic update - immediately show previous climb
+    // Optimistic update - immediately show previous climb info (no board image redraw)
     if (Display.navigateToPrevious()) {
         const LocalQueueItem* newCurrent = Display.getCurrentQueueItem();
         if (newCurrent) {
             Logger.logln("Navigation: Optimistic update to previous - %s (uuid: %s)", newCurrent->name,
                          newCurrent->uuid);
 
-            // Update display immediately (optimistic)
-            Display.showClimb(newCurrent->name, newCurrent->grade, "", 0, newCurrent->climbUuid, boardType.c_str());
+#if defined(ENABLE_WAVESHARE_DISPLAY) && defined(ENABLE_BOARD_IMAGE)
+            // Clear LED commands so stale holds aren't drawn if a full refresh happens
+            Display.setLedCommands(nullptr, 0);
+#endif
+            // Update display info only (skips expensive board image redraw)
+            Display.showClimbInfoOnly(newCurrent->name, newCurrent->grade, "", 0, newCurrent->climbUuid, boardType.c_str());
 
             // Schedule debounced mutation (will be sent after MUTATION_DEBOUNCE_MS of inactivity)
             // Store the UUID so it persists even if Display state changes from incoming updates
@@ -1030,14 +1034,18 @@ void navigateNext() {
         return;
     }
 
-    // Optimistic update - immediately show next climb
+    // Optimistic update - immediately show next climb info (no board image redraw)
     if (Display.navigateToNext()) {
         const LocalQueueItem* newCurrent = Display.getCurrentQueueItem();
         if (newCurrent) {
             Logger.logln("Navigation: Optimistic update to next - %s (uuid: %s)", newCurrent->name, newCurrent->uuid);
 
-            // Update display immediately (optimistic)
-            Display.showClimb(newCurrent->name, newCurrent->grade, "", 0, newCurrent->climbUuid, boardType.c_str());
+#if defined(ENABLE_WAVESHARE_DISPLAY) && defined(ENABLE_BOARD_IMAGE)
+            // Clear LED commands so stale holds aren't drawn if a full refresh happens
+            Display.setLedCommands(nullptr, 0);
+#endif
+            // Update display info only (skips expensive board image redraw)
+            Display.showClimbInfoOnly(newCurrent->name, newCurrent->grade, "", 0, newCurrent->climbUuid, boardType.c_str());
 
             // Schedule debounced mutation (will be sent after MUTATION_DEBOUNCE_MS of inactivity)
             // Store the UUID so it persists even if Display state changes from incoming updates

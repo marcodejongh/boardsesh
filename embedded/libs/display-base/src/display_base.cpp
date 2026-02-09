@@ -61,6 +61,26 @@ void DisplayBase::showClimb(const char* name, const char* grade, const char* gra
     refresh();
 }
 
+void DisplayBase::showClimbInfoOnly(const char* name, const char* grade, const char* gradeColor, int angle,
+                                     const char* uuid, const char* boardType) {
+    _climbName = name ? name : "";
+    _grade = grade ? grade : "";
+    _gradeColor = gradeColor ? gradeColor : "";
+    _angle = angle;
+    _climbUuid = uuid ? uuid : "";
+    _boardType = boardType ? boardType : "kilter";
+    _hasClimb = true;
+
+    // Generate QR code for the session (boardsesh.com/join/{sessionId})
+    if (_sessionId.length() > 0) {
+        String url = "https://www.boardsesh.com/join/";
+        url += _sessionId;
+        setQRCodeUrl(url.c_str());
+    }
+
+    refreshInfoOnly();
+}
+
 void DisplayBase::showNoClimb() {
     _hasClimb = false;
     _climbName = "";

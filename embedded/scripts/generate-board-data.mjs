@@ -32,9 +32,9 @@ const IMAGES_BASE = path.join(PROJECT_ROOT, 'packages/web/public/images');
 const OUTPUT_DIR = path.join(__dirname, '../libs/board-data/src');
 
 // Target image dimensions for the 480x800 display
-const MAX_IMAGE_WIDTH = 400;
+const MAX_IMAGE_WIDTH = 460;
 const MAX_IMAGE_HEIGHT = 560;
-const JPEG_QUALITY = 70;
+const JPEG_QUALITY = 85;
 
 // Only generate for these boards (skip moonboard)
 const BOARD_NAMES = ['kilter', 'tension'];
