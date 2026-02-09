@@ -271,7 +271,7 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
   return (
     <div id="onboarding-queue-bar" className={`queue-bar-shadow ${styles.queueBar}`} data-testid="queue-control-bar">
       {/* Main Control Bar */}
-      <MuiCard variant="outlined" className={styles.card} sx={{ border: 'none', backgroundColor: 'transparent' }}>
+      <MuiCard variant="outlined" className={styles.card} sx={{ border: 'none', background: 'transparent' }}>
         <CardContent sx={{ p: 0, '&:last-child': { pb: 0 } }}>
         {/* Swipe container - captures swipe gestures, does NOT translate */}
         <div className={styles.swipeWrapper}>
