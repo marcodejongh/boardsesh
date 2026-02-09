@@ -61,11 +61,12 @@ export default function BoardLeaderboard({ boardUuid }: BoardLeaderboardProps) {
           input: { boardUuid, period, limit: 20, offset },
         });
 
-        if (append && leaderboard) {
-          setLeaderboard({
-            ...data.boardLeaderboard,
-            entries: [...leaderboard.entries, ...data.boardLeaderboard.entries],
-          });
+        if (append) {
+          setLeaderboard((prev) =>
+            prev
+              ? { ...data.boardLeaderboard, entries: [...prev.entries, ...data.boardLeaderboard.entries] }
+              : data.boardLeaderboard,
+          );
         } else {
           setLeaderboard(data.boardLeaderboard);
         }
@@ -76,7 +77,7 @@ export default function BoardLeaderboard({ boardUuid }: BoardLeaderboardProps) {
         setIsLoadingMore(false);
       }
     },
-    [token, boardUuid, period, leaderboard],
+    [token, boardUuid, period],
   );
 
   useEffect(() => {

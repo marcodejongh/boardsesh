@@ -42,11 +42,6 @@ export default function BoardCreationBanner({
   const router = useRouter();
   const pathname = usePathname();
 
-  // Already on a /b/ slug route — user has a board, don't show banner
-  if (pathname.startsWith('/b/')) {
-    return null;
-  }
-
   const dismissKey = `${DISMISS_KEY_PREFIX}${boardType}:${layoutId}:${sizeId}:${setIds}`;
 
   useEffect(() => {
@@ -69,6 +64,11 @@ export default function BoardCreationBanner({
     setIsDismissed(true);
     router.push(constructBoardSlugListUrl(board.slug, angle));
   }, [router, angle]);
+
+  // Already on a /b/ slug route — user has a board, don't show banner
+  if (pathname.startsWith('/b/')) {
+    return null;
+  }
 
   if (!isAuthenticated || isDismissed) {
     return null;

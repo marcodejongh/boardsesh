@@ -93,68 +93,76 @@ async function enrichBoard(
   board: typeof dbSchema.userBoards.$inferSelect,
   authenticatedUserId?: string,
 ) {
-  // Get owner profile
-  const [ownerInfo] = await db
-    .select({
-      name: dbSchema.users.name,
-      image: dbSchema.users.image,
-      displayName: dbSchema.userProfiles.displayName,
-      avatarUrl: dbSchema.userProfiles.avatarUrl,
-    })
-    .from(dbSchema.users)
-    .leftJoin(dbSchema.userProfiles, eq(dbSchema.users.id, dbSchema.userProfiles.userId))
-    .where(eq(dbSchema.users.id, board.ownerId))
-    .limit(1);
+  // Run all independent queries in parallel to avoid N+1 per board
+  const [ownerResult, tickStatsResult, followerStatsResult, commentStatsResult, followCheckResult] =
+    await Promise.all([
+      // Get owner profile
+      db
+        .select({
+          name: dbSchema.users.name,
+          image: dbSchema.users.image,
+          displayName: dbSchema.userProfiles.displayName,
+          avatarUrl: dbSchema.userProfiles.avatarUrl,
+        })
+        .from(dbSchema.users)
+        .leftJoin(dbSchema.userProfiles, eq(dbSchema.users.id, dbSchema.userProfiles.userId))
+        .where(eq(dbSchema.users.id, board.ownerId))
+        .limit(1),
 
-  // Count total ascents and unique climbers
-  const [tickStats] = await db
-    .select({
-      totalAscents: count(),
-      uniqueClimbers: sql<number>`COUNT(DISTINCT ${dbSchema.boardseshTicks.userId})`,
-    })
-    .from(dbSchema.boardseshTicks)
-    .where(
-      and(
-        eq(dbSchema.boardseshTicks.boardId, board.id),
-        or(
-          eq(dbSchema.boardseshTicks.status, 'flash'),
-          eq(dbSchema.boardseshTicks.status, 'send'),
+      // Count total ascents and unique climbers
+      db
+        .select({
+          totalAscents: count(),
+          uniqueClimbers: sql<number>`COUNT(DISTINCT ${dbSchema.boardseshTicks.userId})`,
+        })
+        .from(dbSchema.boardseshTicks)
+        .where(
+          and(
+            eq(dbSchema.boardseshTicks.boardId, board.id),
+            or(
+              eq(dbSchema.boardseshTicks.status, 'flash'),
+              eq(dbSchema.boardseshTicks.status, 'send'),
+            ),
+          )
         ),
-      )
-    );
 
-  // Count followers
-  const [followerStats] = await db
-    .select({ count: count() })
-    .from(dbSchema.boardFollows)
-    .where(eq(dbSchema.boardFollows.boardUuid, board.uuid));
+      // Count followers
+      db
+        .select({ count: count() })
+        .from(dbSchema.boardFollows)
+        .where(eq(dbSchema.boardFollows.boardUuid, board.uuid)),
 
-  // Count comments
-  const [commentStats] = await db
-    .select({ count: count() })
-    .from(dbSchema.comments)
-    .where(
-      and(
-        eq(dbSchema.comments.entityType, 'board'),
-        eq(dbSchema.comments.entityId, board.uuid),
-        isNull(dbSchema.comments.deletedAt),
-      )
-    );
+      // Count comments
+      db
+        .select({ count: count() })
+        .from(dbSchema.comments)
+        .where(
+          and(
+            eq(dbSchema.comments.entityType, 'board'),
+            eq(dbSchema.comments.entityId, board.uuid),
+            isNull(dbSchema.comments.deletedAt),
+          )
+        ),
 
-  // Check if authenticated user follows this board
-  let isFollowedByMe = false;
-  if (authenticatedUserId) {
-    const [followCheck] = await db
-      .select({ count: count() })
-      .from(dbSchema.boardFollows)
-      .where(
-        and(
-          eq(dbSchema.boardFollows.userId, authenticatedUserId),
-          eq(dbSchema.boardFollows.boardUuid, board.uuid),
-        )
-      );
-    isFollowedByMe = Number(followCheck?.count || 0) > 0;
-  }
+      // Check if authenticated user follows this board
+      authenticatedUserId
+        ? db
+            .select({ count: count() })
+            .from(dbSchema.boardFollows)
+            .where(
+              and(
+                eq(dbSchema.boardFollows.userId, authenticatedUserId),
+                eq(dbSchema.boardFollows.boardUuid, board.uuid),
+              )
+            )
+        : Promise.resolve([]),
+    ]);
+
+  const ownerInfo = ownerResult[0];
+  const tickStats = tickStatsResult[0];
+  const followerStats = followerStatsResult[0];
+  const commentStats = commentStatsResult[0];
+  const isFollowedByMe = Number(followCheckResult[0]?.count || 0) > 0;
 
   return {
     uuid: board.uuid,
@@ -220,6 +228,11 @@ export const socialBoardQueries = {
     { slug }: { slug: string },
     ctx: ConnectionContext,
   ) => {
+    // Validate slug format: lowercase alphanumeric with hyphens, max 120 chars
+    if (!slug || slug.length > 120 || !/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(slug)) {
+      return null;
+    }
+
     const [board] = await db
       .select()
       .from(dbSchema.userBoards)
@@ -311,10 +324,12 @@ export const socialBoardQueries = {
     }
 
     if (query) {
+      // Escape SQL LIKE wildcards to prevent wildcard injection
+      const escapedQuery = query.replace(/[%_\\]/g, '\\$&');
       conditions.push(
         or(
-          ilike(dbSchema.userBoards.name, `%${query}%`),
-          ilike(dbSchema.userBoards.locationName, `%${query}%`),
+          ilike(dbSchema.userBoards.name, `%${escapedQuery}%`),
+          ilike(dbSchema.userBoards.locationName, `%${escapedQuery}%`),
         )!,
       );
     }
