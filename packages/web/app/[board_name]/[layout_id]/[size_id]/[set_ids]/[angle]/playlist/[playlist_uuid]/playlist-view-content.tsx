@@ -125,9 +125,9 @@ export default function PlaylistViewContent({
     fetchPlaylist();
   }, [fetchPlaylist]);
 
-  // Update lastAccessedAt when playlist loads (fire-and-forget)
+  // Update lastAccessedAt when playlist loads (fire-and-forget, only for owners)
   useEffect(() => {
-    if (playlist && token && !lastAccessedUpdatedRef.current) {
+    if (playlist && token && playlist.userRole === 'owner' && !lastAccessedUpdatedRef.current) {
       lastAccessedUpdatedRef.current = true;
       executeGraphQL<UpdatePlaylistLastAccessedMutationResponse, UpdatePlaylistLastAccessedMutationVariables>(
         UPDATE_PLAYLIST_LAST_ACCESSED,
