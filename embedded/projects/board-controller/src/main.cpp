@@ -18,8 +18,19 @@
 #include <climb_history.h>
 #endif
 
-#ifdef ENABLE_DISPLAY
+// Display support - include the right display driver
+#ifdef ENABLE_WAVESHARE_DISPLAY
+#include <waveshare_display.h>
+#ifdef ENABLE_BOARD_IMAGE
+#include <board_hold_data.h>
+#endif
+#elif defined(ENABLE_DISPLAY)
 #include <lilygo_display.h>
+#endif
+
+// Unified macro for code that works with any display
+#if defined(ENABLE_WAVESHARE_DISPLAY) || defined(ENABLE_DISPLAY)
+#define HAS_DISPLAY 1
 #endif
 
 // Project-specific config
@@ -31,7 +42,7 @@ bool wifiConnected = false;
 bool backendConnected = false;
 bool bleInitialized = false;
 
-#ifdef ENABLE_DISPLAY
+#ifdef HAS_DISPLAY
 // Navigation mutation debounce - wait for rapid presses to stop before sending mutation
 const unsigned long G_MUTATION_DEBOUNCE_MS = 100;  // Wait 100ms after last press before sending mutation
 unsigned long g_pendingMutationTime = 0;           // When to send the debounced mutation (0 = none pending)
@@ -39,7 +50,7 @@ bool g_mutationPending = false;                    // Flag indicating a mutation
 char g_pendingMutationUuid[64] = "";               // UUID of the queue item to navigate to
 #endif
 
-#ifdef ENABLE_DISPLAY
+#ifdef HAS_DISPLAY
 // Queue/climb state for display
 String currentQueueItemUuid = "";
 String currentGradeColor = "";
@@ -52,6 +63,75 @@ bool hasCurrentClimb = false;
 // Static buffer for queue sync to avoid heap fragmentation
 // LocalQueueItem is ~88 bytes each, so 150 items = ~13KB
 static LocalQueueItem g_queueSyncBuffer[MAX_QUEUE_SIZE];
+
+#if defined(ENABLE_WAVESHARE_DISPLAY) && defined(ENABLE_BOARD_IMAGE)
+// Board image config lookup state
+const BoardConfig* currentBoardConfig = nullptr;
+String currentBoardConfigKey = "";
+
+/**
+ * Extract config key from boardPath, stripping the angle segment.
+ * "kilter/1/7/1,20/40" -> "kilter/1/7/1,20"
+ * Also sorts set_ids numerically for consistent matching.
+ */
+String extractConfigKey(const char* boardPath) {
+    if (!boardPath) return "";
+
+    String bp = boardPath;
+    // Find segments: board_name/layout_id/size_id/set_ids/angle
+    int slash1 = bp.indexOf('/');
+    if (slash1 < 0) return "";
+    int slash2 = bp.indexOf('/', slash1 + 1);
+    if (slash2 < 0) return "";
+    int slash3 = bp.indexOf('/', slash2 + 1);
+    if (slash3 < 0) return "";
+    int slash4 = bp.indexOf('/', slash3 + 1);
+
+    // Extract set_ids part and sort numerically
+    String setIdsPart;
+    if (slash4 > 0) {
+        setIdsPart = bp.substring(slash3 + 1, slash4);
+    } else {
+        setIdsPart = bp.substring(slash3 + 1);
+    }
+
+    // Parse and sort set IDs (max 8 sets per board config in practice)
+    static const int MAX_SET_IDS = 16;
+    int setIds[MAX_SET_IDS];
+    int setCount = 0;
+    int start = 0;
+    for (int i = 0; i <= (int)setIdsPart.length(); i++) {
+        if (i == (int)setIdsPart.length() || setIdsPart[i] == ',') {
+            if (i > start && setCount < MAX_SET_IDS) {
+                setIds[setCount++] = setIdsPart.substring(start, i).toInt();
+            }
+            start = i + 1;
+        }
+    }
+    if (setCount == 0) return "";
+
+    // Simple insertion sort
+    for (int i = 1; i < setCount; i++) {
+        int key = setIds[i];
+        int j = i - 1;
+        while (j >= 0 && setIds[j] > key) {
+            setIds[j + 1] = setIds[j];
+            j--;
+        }
+        setIds[j + 1] = key;
+    }
+
+    // Rebuild sorted set_ids string
+    String sortedSetIds;
+    for (int i = 0; i < setCount; i++) {
+        if (i > 0) sortedSetIds += ",";
+        sortedSetIds += String(setIds[i]);
+    }
+
+    // Build config key: board_name/layout_id/size_id/sorted_set_ids
+    return bp.substring(0, slash3 + 1) + sortedSetIds;
+}
+#endif
 
 /**
  * Convert hex color string to RGB565 without String allocations
@@ -88,7 +168,7 @@ void onBLELedData(const LedCommand* commands, int count, int angle);
 void onGraphQLStateChange(GraphQLConnectionState state);
 void onGraphQLMessage(JsonDocument& doc);
 void initializeBLE();
-#ifdef ENABLE_DISPLAY
+#ifdef HAS_DISPLAY
 void handleLedUpdateExtended(JsonObject& data);
 void onQueueSync(const ControllerQueueSyncData& data);
 void navigatePrevious();
@@ -141,7 +221,7 @@ void initializeBLE() {
     Proxy.setSendToAppCallback(sendToAppViaBLE);
 #endif
 
-#ifdef ENABLE_DISPLAY
+#ifdef HAS_DISPLAY
     Display.setBleStatus(true, false);  // BLE enabled, not connected
 #endif
 
@@ -159,7 +239,7 @@ void setup() {
 #ifdef ENABLE_BLE_PROXY
     Logger.logln("BLE Proxy: Enabled");
 #endif
-#ifdef ENABLE_DISPLAY
+#ifdef HAS_DISPLAY
     Logger.logln("Display: Enabled");
 #endif
     Logger.logln("=================================");
@@ -167,9 +247,9 @@ void setup() {
     // Initialize config manager
     Config.begin();
 
-#ifdef ENABLE_DISPLAY
+#ifdef HAS_DISPLAY
     // Initialize display first (before LEDs for visual feedback)
-    Logger.logln("Initializing display... (ENABLE_DISPLAY is defined)");
+    Logger.logln("Initializing display...");
     if (!Display.begin()) {
         Logger.logln("ERROR: Display initialization failed!");
     } else {
@@ -183,7 +263,7 @@ void setup() {
     Display.showConnecting();
     Logger.logln("Display initialization complete");
 #else
-    Logger.logln("ENABLE_DISPLAY is NOT defined");
+    Logger.logln("Display is NOT enabled");
 #endif
 
     // Initialize LEDs
@@ -199,14 +279,14 @@ void setup() {
     WiFiMgr.begin();
     WiFiMgr.setStateCallback(onWiFiStateChange);
 
-#ifdef ENABLE_DISPLAY
+#ifdef HAS_DISPLAY
     Display.setWiFiStatus(false);
 #endif
 
     // Try to connect to saved WiFi
     if (!WiFiMgr.connectSaved()) {
         Logger.logln("No saved WiFi credentials - starting AP mode");
-#ifdef ENABLE_DISPLAY
+#ifdef HAS_DISPLAY
         // Start AP mode for WiFi configuration
         if (WiFiMgr.startAP()) {
             Logger.logln("AP mode started: %s", DEFAULT_AP_NAME);
@@ -225,8 +305,8 @@ void setup() {
         initializeBLE();
     }
 
-#ifdef ENABLE_DISPLAY
-    // Initialize button pins for navigation
+    // Initialize button pins for LilyGo navigation (Waveshare uses touch instead)
+#if defined(ENABLE_DISPLAY) && !defined(ENABLE_WAVESHARE_DISPLAY)
     pinMode(BUTTON_1_PIN, INPUT_PULLUP);
     pinMode(BUTTON_2_PIN, INPUT_PULLUP);
 #endif
@@ -246,7 +326,7 @@ void setup() {
     LEDs.blink(0, 255, 0, 3, 100);
 
     // Don't refresh display if in AP mode - keep showing setup screen
-#ifdef ENABLE_DISPLAY
+#ifdef HAS_DISPLAY
     if (!WiFiMgr.isAPMode()) {
         Display.refresh();
     }
@@ -275,18 +355,8 @@ void loop() {
     // Process web server
     WebConfig.loop();
 
-#ifdef ENABLE_DISPLAY
-    // Handle button presses with debouncing
-    static bool lastButton1 = HIGH;
-    static bool lastButton2 = HIGH;
-    static unsigned long button1PressTime = 0;
-    static unsigned long button2PressTime = 0;
-    static bool button1LongPressTriggered = false;
-    static const unsigned long DEBOUNCE_MS = 50;
-    static const unsigned long LONG_PRESS_MS = 3000;
-    static const unsigned long SHORT_PRESS_MAX_MS = 500;
-
-    // Process debounced navigation mutation (uses global g_* variables)
+#ifdef HAS_DISPLAY
+    // Process debounced navigation mutation (shared across all display types)
     if (g_mutationPending && millis() >= g_pendingMutationTime) {
         // If a mutation is already in flight, extend the debounce timer
         if (GraphQL.isMutationInFlight()) {
@@ -301,6 +371,28 @@ void loop() {
             g_pendingMutationUuid[0] = '\0';  // Clear after sending
         }
     }
+#endif
+
+#ifdef ENABLE_WAVESHARE_DISPLAY
+    // Handle touch input for Waveshare display
+    TouchEvent touchEvent = Display.pollTouch();
+    if (touchEvent.action == TouchAction::NAVIGATE_PREVIOUS) {
+        Logger.logln("Touch: navigate previous");
+        navigatePrevious();
+    } else if (touchEvent.action == TouchAction::NAVIGATE_NEXT) {
+        Logger.logln("Touch: navigate next");
+        navigateNext();
+    }
+#elif defined(ENABLE_DISPLAY)
+    // Handle button presses with debouncing (LilyGo T-Display-S3)
+    static bool lastButton1 = HIGH;
+    static bool lastButton2 = HIGH;
+    static unsigned long button1PressTime = 0;
+    static unsigned long button2PressTime = 0;
+    static bool button1LongPressTriggered = false;
+    static const unsigned long DEBOUNCE_MS = 50;
+    static const unsigned long LONG_PRESS_MS = 3000;
+    static const unsigned long SHORT_PRESS_MAX_MS = 500;
 
     bool button1 = digitalRead(BUTTON_1_PIN);
     bool button2 = digitalRead(BUTTON_2_PIN);
@@ -364,7 +456,7 @@ void onWiFiStateChange(WiFiConnectionState state) {
             Logger.logln("WiFi connected: %s", WiFiMgr.getIP().c_str());
             wifiConnected = true;
 
-#ifdef ENABLE_DISPLAY
+#ifdef HAS_DISPLAY
             Display.setWiFiStatus(true);
             // Show normal UI now that we're connected
             Display.showNoClimb();
@@ -402,28 +494,28 @@ void onWiFiStateChange(WiFiConnectionState state) {
             Logger.logln("WiFi disconnected");
             wifiConnected = false;
             backendConnected = false;
-#ifdef ENABLE_DISPLAY
+#ifdef HAS_DISPLAY
             Display.setWiFiStatus(false);
 #endif
             break;
 
         case WiFiConnectionState::CONNECTING:
             Logger.logln("WiFi connecting...");
-#ifdef ENABLE_DISPLAY
+#ifdef HAS_DISPLAY
             Display.setWiFiStatus(false);
 #endif
             break;
 
         case WiFiConnectionState::CONNECTION_FAILED:
             Logger.logln("WiFi connection failed");
-#ifdef ENABLE_DISPLAY
+#ifdef HAS_DISPLAY
             Display.setWiFiStatus(false);
 #endif
             // If connection failed and we don't have saved credentials, start AP mode
             if (!WiFiMgr.hasSavedCredentials()) {
                 Logger.logln("No saved credentials - starting AP mode for configuration");
                 if (WiFiMgr.startAP()) {
-#ifdef ENABLE_DISPLAY
+#ifdef HAS_DISPLAY
                     Display.showSetupScreen(DEFAULT_AP_NAME);
 #endif
                 }
@@ -432,7 +524,7 @@ void onWiFiStateChange(WiFiConnectionState state) {
 
         case WiFiConnectionState::AP_MODE:
             Logger.logln("WiFi in AP mode: %s", WiFiMgr.getAPIP().c_str());
-#ifdef ENABLE_DISPLAY
+#ifdef HAS_DISPLAY
             Display.setWiFiStatus(false);
 #endif
             break;
@@ -442,12 +534,12 @@ void onWiFiStateChange(WiFiConnectionState state) {
 void onBLEConnect(bool connected) {
     if (connected) {
         Logger.logln("BLE client connected");
-#ifdef ENABLE_DISPLAY
+#ifdef HAS_DISPLAY
         Display.setBleStatus(true, true);
 #endif
     } else {
         Logger.logln("BLE client disconnected");
-#ifdef ENABLE_DISPLAY
+#ifdef HAS_DISPLAY
         Display.setBleStatus(true, false);
 #endif
     }
@@ -466,7 +558,7 @@ void onBLERawForward(const uint8_t* data, size_t len) {
 }
 
 void onProxyStateChange(BLEProxyState state) {
-#ifdef ENABLE_DISPLAY
+#ifdef HAS_DISPLAY
     switch (state) {
         case BLEProxyState::CONNECTED:
             Display.setBleStatus(true, true);  // BLE enabled, proxy connected
@@ -548,7 +640,7 @@ void onGraphQLStateChange(GraphQLConnectionState state) {
                 break;
             }
 
-#ifdef ENABLE_DISPLAY
+#ifdef HAS_DISPLAY
             // Pass session ID to display for QR code generation
             Display.setSessionId(sessionId.c_str());
 #endif
@@ -570,7 +662,7 @@ void onGraphQLStateChange(GraphQLConnectionState state) {
                               "} }",
                               variables.c_str());
 
-#ifdef ENABLE_DISPLAY
+#ifdef HAS_DISPLAY
             // Set queue sync callback for display builds
             GraphQL.setQueueSyncCallback(onQueueSync);
             hasCurrentClimb = false;
@@ -590,7 +682,7 @@ void onGraphQLStateChange(GraphQLConnectionState state) {
 }
 
 void onGraphQLMessage(JsonDocument& doc) {
-#ifdef ENABLE_DISPLAY
+#ifdef HAS_DISPLAY
     // Handle extended LedUpdate data (for display)
     JsonObject payloadObj = doc["payload"];
     if (payloadObj["data"].is<JsonObject>()) {
@@ -609,7 +701,7 @@ void onGraphQLMessage(JsonDocument& doc) {
 #endif
 }
 
-#ifdef ENABLE_DISPLAY
+#ifdef HAS_DISPLAY
 /**
  * Handle queue sync event from backend
  * Uses static buffer to avoid heap fragmentation from repeated allocations
@@ -752,6 +844,42 @@ void handleLedUpdateExtended(JsonObject& data) {
             boardType = bp.substring(0, slashPos);
         }
     }
+
+#if defined(ENABLE_WAVESHARE_DISPLAY) && defined(ENABLE_BOARD_IMAGE)
+    // Look up board image config from boardPath
+    if (boardPath) {
+        String configKey = extractConfigKey(boardPath);
+        if (configKey.length() > 0 && configKey != currentBoardConfigKey) {
+            currentBoardConfigKey = configKey;
+            currentBoardConfig = findBoardConfig(configKey.c_str());
+            if (currentBoardConfig) {
+                Display.setBoardConfig(currentBoardConfig);
+                Logger.logln("Board image: loaded config '%s' (%dx%d, %d holds)",
+                             configKey.c_str(), currentBoardConfig->imageWidth,
+                             currentBoardConfig->imageHeight, currentBoardConfig->holdCount);
+            } else {
+                Display.setBoardConfig(nullptr);
+                Logger.logln("Board image: no config found for '%s'", configKey.c_str());
+            }
+        }
+    }
+
+    // Pass LED commands to display for hold overlay rendering
+    if (!commands.isNull() && count > 0 && currentBoardConfig) {
+        WaveshareDisplay::LedCmd ledCmds[512];
+        int cmdCount = min(count, 512);
+        int idx = 0;
+        for (JsonObject cmd : commands) {
+            if (idx >= cmdCount) break;
+            ledCmds[idx].position = cmd["position"] | 0;
+            ledCmds[idx].r = cmd["r"] | 0;
+            ledCmds[idx].g = cmd["g"] | 0;
+            ledCmds[idx].b = cmd["b"] | 0;
+            idx++;
+        }
+        Display.setLedCommands(ledCmds, idx);
+    }
+#endif
 
     // Update state
     currentQueueItemUuid = queueItemUuid ? queueItemUuid : "";
@@ -920,7 +1048,7 @@ void navigateNext() {
         }
     }
 }
-#endif
+#endif  // HAS_DISPLAY
 
 void startupAnimation() {
     // Simple chase animation to verify LED wiring

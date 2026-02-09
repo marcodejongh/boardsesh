@@ -5,14 +5,13 @@ import TextField from '@mui/material/TextField';
 import InputAdornment from '@mui/material/InputAdornment';
 import SearchOutlined from '@mui/icons-material/SearchOutlined';
 import { useUISearchParams } from '../queue-control/ui-searchparams-provider';
-import { themeTokens } from '@/app/theme/theme-config';
 
 const SearchClimbNameInput = () => {
   const { uiSearchParams, updateFilters } = useUISearchParams();
 
   return (
     <TextField
-      placeholder="Search by climb name..."
+      placeholder="Search climbs..."
       variant="outlined"
       size="small"
       fullWidth
@@ -20,7 +19,7 @@ const SearchClimbNameInput = () => {
         input: {
           startAdornment: (
             <InputAdornment position="start">
-              <SearchOutlined sx={{ color: themeTokens.neutral[400] }} />
+              <SearchOutlined color="action" />
             </InputAdornment>
           ),
         },

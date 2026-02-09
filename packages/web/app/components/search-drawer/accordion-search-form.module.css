@@ -92,11 +92,21 @@
   padding: 16px 24px 24px;
 }
 
-/* Panel content sections (reused from before) */
+/* Panel content sections */
 .panelContent {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
+}
+
+/* Modern form label */
+.fieldLabel {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--neutral-400, #9CA3AF);
+  margin-bottom: 2px;
 }
 
 .inputGroup {
@@ -108,11 +118,77 @@
 .compactInputGroup {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .fullWidth {
   width: 100%;
+}
+
+/* Grade range row */
+.gradeRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+/* Quality metrics row */
+.qualityRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* Sort controls row */
+.sortRow {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 8px;
+}
+
+/* Scoped MUI input overrides for modern filled-background look */
+.panelContent :global(.MuiOutlinedInput-root) {
+  background-color: var(--neutral-50, #F9FAFB);
+  border-radius: 12px;
+  transition: background-color 200ms ease, box-shadow 200ms ease;
+}
+
+.panelContent :global(.MuiOutlinedInput-root:hover) {
+  background-color: var(--neutral-100, #F3F4F6);
+}
+
+.panelContent :global(.MuiOutlinedInput-root.Mui-focused) {
+  background-color: var(--semantic-surface, #FFFFFF);
+  box-shadow: 0 0 0 2px var(--color-primary, #8C4A52);
+}
+
+.panelContent :global(.MuiOutlinedInput-notchedOutline) {
+  border-color: transparent;
+}
+
+.panelContent :global(.MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline) {
+  border-color: transparent;
+}
+
+.panelContent :global(.MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline) {
+  border-color: transparent;
+}
+
+/* Hide number input spinners for cleaner look */
+.panelContent :global(input[type="number"]::-webkit-outer-spin-button),
+.panelContent :global(input[type="number"]::-webkit-inner-spin-button) {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.panelContent :global(input[type="number"]) {
+  -moz-appearance: textfield;
+}
+
+/* Autocomplete overrides */
+.panelContent :global(.MuiAutocomplete-root .MuiOutlinedInput-root) {
+  padding-top: 4px;
+  padding-bottom: 4px;
 }
 
 /* Switch groups */
@@ -120,7 +196,7 @@
   display: flex;
   flex-direction: column;
   gap: 0;
-  background-color: var(--semantic-background, #F9FAFB);
+  background-color: var(--neutral-50, #F9FAFB);
   border-radius: 12px;
   padding: 4px 0;
 }
@@ -129,12 +205,17 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
+  padding: 10px 16px;
   transition: background-color 150ms ease;
 }
 
 .switchRow:hover {
   background-color: var(--neutral-100, #F3F4F6);
+}
+
+/* Subtle divider between switch rows */
+.switchRow + .switchRow {
+  border-top: 1px solid var(--neutral-200, #E5E7EB);
 }
 
 /* Sort toggle */
@@ -148,6 +229,7 @@
 /* Progress alert */
 .progressAlert {
   margin: 0;
+  border-radius: 12px;
 }
 
 /* Hold search container */
@@ -164,7 +246,11 @@
 
 .gradeSelectColored :global(.MuiSelect-select) {
   background-color: var(--grade-bg);
-  border-radius: 4px;
+  border-radius: 8px;
+}
+
+.gradeSelectColored:global(.MuiOutlinedInput-root) {
+  background-color: var(--grade-bg);
 }
 
 /* Mobile adjustments */
@@ -190,10 +276,10 @@
   }
 
   .switchRow {
-    padding: 10px 14px;
+    padding: 8px 14px;
   }
 
   .panelContent {
-    gap: 14px;
+    gap: 16px;
   }
 }

@@ -4,7 +4,7 @@
 #include <Arduino.h>
 
 #include <LovyanGFX.hpp>
-#include <vector>
+#include <display_base.h>
 
 // ============================================
 // LilyGo T-Display S3 Pin Configuration
@@ -50,11 +50,7 @@
 #define STATUS_BAR_HEIGHT 20
 #define STATUS_BAR_Y 0
 
-// Previous climb indicator (kept for backward compatibility, not displayed)
-#define PREV_INDICATOR_Y 20
-#define PREV_INDICATOR_HEIGHT 22
-
-// Current climb section (moved up - prev indicator removed, redundant with history)
+// Current climb section
 #define CURRENT_CLIMB_Y 20
 #define CURRENT_CLIMB_HEIGHT 75
 
@@ -87,23 +83,6 @@
 #define BUTTON_HINT_HEIGHT 11
 
 // ============================================
-// Colors (RGB565)
-// ============================================
-
-#define COLOR_BACKGROUND 0x0000  // Black
-#define COLOR_TEXT 0xFFFF        // White
-#define COLOR_TEXT_DIM 0x7BEF    // Gray
-#define COLOR_ACCENT 0x07FF      // Cyan
-
-#define COLOR_STATUS_OK 0x07E0     // Green
-#define COLOR_STATUS_WARN 0xFD20   // Orange
-#define COLOR_STATUS_ERROR 0xF800  // Red
-#define COLOR_STATUS_OFF 0x4208    // Dark gray
-
-#define COLOR_QR_FG 0x0000  // Black
-#define COLOR_QR_BG 0xFFFF  // White
-
-// ============================================
 // LilyGo T-Display S3 Display Class
 // ============================================
 
@@ -117,133 +96,21 @@ class LGFX_TDisplayS3 : public lgfx::LGFX_Device {
 };
 
 // ============================================
-// Queue Item for Local Queue Storage
-// ============================================
-
-// Maximum number of queue items to store locally
-#define MAX_QUEUE_SIZE 150
-
-// Optimized queue item structure (~88 bytes per item)
-struct LocalQueueItem {
-    char uuid[37];           // Queue item UUID (for navigation)
-    char climbUuid[37];      // Climb UUID (for display/matching)
-    char name[32];           // Climb name (truncated for display)
-    char grade[12];          // Grade string
-    uint16_t gradeColorRgb;  // RGB565 color (saves parsing)
-
-    LocalQueueItem() : gradeColorRgb(0xFFFF) {
-        uuid[0] = '\0';
-        climbUuid[0] = '\0';
-        name[0] = '\0';
-        grade[0] = '\0';
-    }
-
-    bool isValid() const { return uuid[0] != '\0'; }
-    void clear() {
-        uuid[0] = '\0';
-        climbUuid[0] = '\0';
-        name[0] = '\0';
-        grade[0] = '\0';
-        gradeColorRgb = 0xFFFF;
-    }
-};
-
-// ============================================
-// Climb History Entry
-// ============================================
-
-struct ClimbHistoryEntry {
-    String name;
-    String grade;
-    String gradeColor;  // Hex color from backend
-};
-
-// ============================================
-// Queue Navigation Item (for prev/next display)
-// ============================================
-
-struct QueueNavigationItem {
-    String name;
-    String grade;
-    String gradeColor;
-    bool isValid;
-
-    QueueNavigationItem() : isValid(false) {}
-    QueueNavigationItem(const String& n, const String& g, const String& c)
-        : name(n), grade(g), gradeColor(c), isValid(true) {}
-    void clear() {
-        name = "";
-        grade = "";
-        gradeColor = "";
-        isValid = false;
-    }
-};
-
-// ============================================
 // LilyGo Display Manager
 // ============================================
 
-class LilyGoDisplay {
+class LilyGoDisplay : public DisplayBase {
   public:
     LilyGoDisplay();
     ~LilyGoDisplay();
 
-    // Initialization
-    bool begin();
-
-    // Status indicators
-    void setWiFiStatus(bool connected);
-    void setBackendStatus(bool connected);
-    void setBleStatus(bool enabled, bool connected);
-
-    // Full screen modes
-    void showConnecting();
-    void showError(const char* message, const char* ipAddress = nullptr);
-    void showConfigPortal(const char* apName, const char* ip);
-    void showSetupScreen(const char* apName);
-
-    // Climb display
-    void showClimb(const char* name, const char* grade, const char* gradeColor, int angle, const char* uuid,
-                   const char* boardType);
-    void showNoClimb();
-
-    // Session ID for QR code
-    void setSessionId(const char* sessionId);
-
-    // History management
-    void addToHistory(const char* name, const char* grade, const char* gradeColor);
-    void clearHistory();
-
-    // Queue navigation (for prev/next indicators)
-    void setNavigationContext(const QueueNavigationItem& prevClimb, const QueueNavigationItem& nextClimb,
-                              int currentIndex, int totalCount);
-    void clearNavigationContext();
-
-    // Local queue management
-    void setQueueFromSync(LocalQueueItem* items, int count, int currentIndex);
-    void clearQueue();
-    int getQueueCount() const { return _queueCount; }
-    int getCurrentQueueIndex() const { return _currentQueueIndex; }
-    const LocalQueueItem* getQueueItem(int index) const;
-    const LocalQueueItem* getCurrentQueueItem() const;
-    const LocalQueueItem* getPreviousQueueItem() const;
-    const LocalQueueItem* getNextQueueItem() const;
-    bool canNavigatePrevious() const { return _queueCount > 0 && _currentQueueIndex > 0; }
-    bool canNavigateNext() const { return _queueCount > 0 && _currentQueueIndex < _queueCount - 1; }
-
-    // Optimistic navigation (returns true if navigation was possible)
-    bool navigateToPrevious();
-    bool navigateToNext();
-    void setCurrentQueueIndex(int index);
-
-    // Pending navigation state (for reconciliation with backend)
-    bool hasPendingNavigation() const { return _pendingNavigation; }
-    void clearPendingNavigation() { _pendingNavigation = false; }
-    const char* getPendingQueueItemUuid() const;
-    void setPendingNavigation(bool pending) { _pendingNavigation = pending; }
-
-    // Refresh all sections
-    void refresh();
+    // DisplayBase overrides
+    bool begin() override;
+    void showConnecting() override;
+    void showError(const char* message, const char* ipAddress = nullptr) override;
+    void showConfigPortal(const char* apName, const char* ip) override;
+    void showSetupScreen(const char* apName) override;
+    void refresh() override;
 
     // Get display for custom drawing
     LGFX_TDisplayS3& getDisplay() { return _display; }
@@ -252,65 +119,19 @@ class LilyGoDisplay {
     static const int SCREEN_WIDTH = LILYGO_SCREEN_WIDTH;
     static const int SCREEN_HEIGHT = LILYGO_SCREEN_HEIGHT;
 
+  protected:
+    void onStatusChanged() override;
+
   private:
     LGFX_TDisplayS3 _display;
 
-    // Status state
-    bool _wifiConnected;
-    bool _backendConnected;
-    bool _bleEnabled;
-    bool _bleConnected;
-
-    // Current climb state
-    bool _hasClimb;
-    String _climbName;
-    String _grade;
-    String _gradeColor;
-    int _angle;
-    String _climbUuid;
-    String _boardType;
-
-    // Session ID for QR code URL
-    String _sessionId;
-
-    // History
-    std::vector<ClimbHistoryEntry> _history;
-    static const int MAX_HISTORY_ITEMS = 5;
-
-    // Local queue storage
-    LocalQueueItem _queueItems[MAX_QUEUE_SIZE];
-    int _queueCount;
-    int _currentQueueIndex;
-    bool _pendingNavigation;
-
-    // Navigation state (from backend)
-    QueueNavigationItem _prevClimb;
-    QueueNavigationItem _nextClimb;
-    int _queueIndex;
-    int _queueTotal;
-    bool _hasNavigation;
-
-    // QR code data
-    // QR Version 6: size = 6*4+17 = 41 modules per side
-    // Buffer = ((41*41)+7)/8 = 211 bytes
-    static const int QR_VERSION = 6;
-    static const int QR_BUFFER_SIZE = 211;
-    uint8_t _qrCodeData[QR_BUFFER_SIZE];
-    String _qrUrl;
-    bool _hasQRCode;
-
     // Internal drawing methods
     void drawStatusBar();
-    void drawPrevClimbIndicator();
     void drawCurrentClimb();
     void drawQRCode();
     void drawNextClimbIndicator();
     void drawHistory();
     void drawButtonHints();
-    void setQRCodeUrl(const char* url);
-
-    // Utility
-    uint16_t hexToRgb565(const char* hex);
 };
 
 extern LilyGoDisplay Display;

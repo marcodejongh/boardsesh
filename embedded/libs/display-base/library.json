@@ -1,8 +1,8 @@
 {
-    "name": "lilygo-display",
+    "name": "display-base",
     "version": "1.0.0",
-    "description": "Display driver and UI renderer for LilyGo T-Display S3 (170x320 ST7789)",
-    "keywords": ["esp32", "lcd", "display", "climbing", "boardsesh", "lilygo", "t-display"],
+    "description": "Shared state management and types for Boardsesh display drivers",
+    "keywords": ["esp32", "display", "climbing", "boardsesh"],
     "repository": {
         "type": "git",
         "url": "https://github.com/marcodejongh/boardsesh.git"
@@ -17,8 +17,6 @@
     "frameworks": "arduino",
     "platforms": "espressif32",
     "dependencies": {
-        "display-base": "*",
-        "lovyan03/LovyanGFX": "^1.1.12",
         "ricmoo/qrcode": "^0.0.1"
     }
 }

@@ -23,6 +23,7 @@ import BoardSelectorPills from '@/app/components/board-entity/board-selector-pil
 import { constructBoardSlugListUrl } from '@/app/lib/url-utils';
 import { useRouter } from 'next/navigation';
 import type { UserBoard } from '@boardsesh/shared-schema';
+import bottomBarStyles from '@/app/components/bottom-tab-bar/bottom-bar-wrapper.module.css';
 
 interface HomePageContentProps {
   boardConfigs: BoardConfigData;
@@ -97,7 +98,7 @@ export default function HomePageContent({ boardConfigs }: HomePageContentProps) 
       </Box>
 
       {/* Bottom Bar: QueueControlBar (if active) + BottomTabBar */}
-      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 10 }}>
+      <div className={bottomBarStyles.bottomBarWrapper}>
         {hasActiveQueue && queueBoardDetails && (
           <ErrorBoundary>
             <BoardProvider boardName={queueBoardDetails.board_name}>

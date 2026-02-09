@@ -68,6 +68,28 @@ const ROLE_NOT_SET = -1;
 const ANGLE_NOT_SET = -32768;  // INT16_MIN - unlikely valid angle value
 
 /**
+ * ESP32 Memory Optimization: Field Exclusions
+ *
+ * These fields are intentionally excluded from the generated GraphQL operation
+ * strings to reduce memory usage on the ESP32 microcontroller (~320KB RAM).
+ * The firmware only needs a subset of fields for LED control and basic display.
+ *
+ * New fields added to these types in the schema will be automatically included
+ * in operations unless explicitly excluded here. When adding an exclusion,
+ * document the reason.
+ */
+const ESP32_FIELD_EXCLUSIONS = {
+  LedUpdate: new Set([
+    'queueItemUuid',  // Not needed for LED display on ESP32
+    'climbGrade',     // Grade info not displayed on ESP32 hardware
+    'gradeColor',     // Color info not displayed on ESP32 hardware
+    'boardPath',      // Board path not used by ESP32 controller
+    'navigation',     // Complex nested type (QueueNavigationContext), exceeds ESP32 memory budget
+    'clientId',       // BLE disconnect logic uses different mechanism on ESP32
+  ]),
+};
+
+/**
  * Parse GraphQL schema and extract types
  * @param {string} schemaContent
  * @returns {Map<string, object>}
@@ -76,18 +98,38 @@ function parseGraphQLSchema(schemaContent) {
   const types = new Map();
 
   // Remove doc comments for easier parsing
-  const cleanSchema = schemaContent.replace(/"""[\s\S]*?"""/g, '');
+  const cleanSchema = schemaContent
+    .replace(/"""[\s\S]*?"""/g, '')
+    // Simplify single-line string literals to prevent mismatched braces inside strings
+    // from confusing the brace-counting parser (e.g., "Use {foo}" would be simplified to "")
+    .replace(/"[^"]*"/g, '""');
 
-  // Parse type definitions
-  // Note: This regex doesn't handle nested braces (e.g., directives with @deprecated(reason: "..."))
-  // If schema evolution requires nested constructs, this parser will need enhancement
-  const typeRegex = /(type|input)\s+(\w+)\s*\{([^}]+)\}/g;
+  // Parse type/input definitions using brace-counting to handle nested braces correctly.
+  // This handles cases like @deprecated(reason: "...") or directives with object arguments
+  // such as @directive(config: { key: "value" }) that a simple [^}]+ regex would break on.
+  const typeStartRegex = /(type|input)\s+(\w+)\s*\{/g;
   let match;
 
-  while ((match = typeRegex.exec(cleanSchema)) !== null) {
+  while ((match = typeStartRegex.exec(cleanSchema)) !== null) {
     const kind = match[1];
     const name = match[2];
-    const body = match[3];
+    const bodyStart = match.index + match[0].length;
+
+    // Count braces to find the matching closing brace
+    let depth = 1;
+    let i = bodyStart;
+    while (i < cleanSchema.length && depth > 0) {
+      if (cleanSchema[i] === '{') depth++;
+      else if (cleanSchema[i] === '}') depth--;
+      i++;
+    }
+
+    // Advance regex past the type block to avoid re-matching body content
+    typeStartRegex.lastIndex = i;
+
+    if (depth !== 0) continue; // Unmatched braces, skip
+
+    const body = cleanSchema.substring(bodyStart, i - 1);
 
     if (!CONTROLLER_TYPES.includes(name)) continue;
 
@@ -215,26 +257,71 @@ function generateCppStruct(type) {
 }
 
 /**
- * Generate GraphQL operation strings
+ * Generate GraphQL field selection string from a parsed type.
+ * Recurses into sub-types to build nested selections (e.g., "commands { position r g b }").
+ * Uses ESP32_FIELD_EXCLUSIONS to omit fields not needed on the microcontroller.
+ *
+ * @param {string} typeName - Name of the GraphQL type
+ * @param {Map<string, object>} types - Parsed type map from parseGraphQLSchema
+ * @param {number} depth - Recursion depth (max 3 to prevent infinite loops)
+ * @returns {string} Field selection string for use in GraphQL operations
+ */
+function generateFieldSelection(typeName, types, depth = 0) {
+  if (depth > 3) return '';
+
+  const type = types.get(typeName);
+  if (!type || type.kind === 'union') return '';
+
+  const exclusions = ESP32_FIELD_EXCLUSIONS[typeName] || new Set();
+
+  return type.fields
+    .filter(f => !exclusions.has(f.name))
+    .map(f => {
+      const subType = types.get(f.type);
+      if (subType && subType.kind !== 'union' && subType.fields.length > 0) {
+        const subSelection = generateFieldSelection(f.type, types, depth + 1);
+        return subSelection ? `${f.name} { ${subSelection} }` : f.name;
+      }
+      return f.name;
+    })
+    .join(' ');
+}
+
+/**
+ * Generate GraphQL operation strings from parsed schema types.
+ * Field selections are generated from the schema to stay in sync automatically.
+ * See ESP32_FIELD_EXCLUSIONS for intentionally omitted fields.
+ *
+ * @param {Map<string, object>} types - Parsed types from parseGraphQLSchema
  * @returns {string}
  */
-function generateOperations() {
+function generateOperations(types) {
+  const ledUpdateFields = generateFieldSelection('LedUpdate', types);
+  const controllerPingFields = generateFieldSelection('ControllerPing', types);
+  const climbMatchResultFields = generateFieldSelection('ClimbMatchResult', types);
+  const sendDeviceLogsResponseFields = generateFieldSelection('SendDeviceLogsResponse', types);
+
   return `
 // ============================================
 // GraphQL Operations for ESP32 Controller
 // ============================================
+// Field selections are auto-generated from the schema.
+// See ESP32_FIELD_EXCLUSIONS for intentionally omitted fields.
 
 namespace GraphQLOps {
 
 /**
  * Subscription: Controller Events
  * Receives LED updates and ping events from the backend
+ *
+ * Note: ControllerQueueSync union member is not included here -
+ * ESP32 firmware does not yet handle queue display synchronization.
  */
 constexpr const char* CONTROLLER_EVENTS_SUBSCRIPTION =
     "subscription ControllerEvents($sessionId: ID!) { "
     "controllerEvents(sessionId: $sessionId) { "
-    "... on LedUpdate { __typename commands { position r g b } climbUuid climbName angle } "
-    "... on ControllerPing { __typename timestamp } "
+    "... on LedUpdate { __typename ${ledUpdateFields} } "
+    "... on ControllerPing { __typename ${controllerPingFields} } "
     "} }";
 
 /**
@@ -244,7 +331,7 @@ constexpr const char* CONTROLLER_EVENTS_SUBSCRIPTION =
 constexpr const char* SET_CLIMB_FROM_LED_POSITIONS =
     "mutation SetClimbFromLeds($sessionId: ID!, $positions: [LedCommandInput!]!) { "
     "setClimbFromLedPositions(sessionId: $sessionId, positions: $positions) { "
-    "matched climbUuid climbName } }";
+    "${climbMatchResultFields} } }";
 
 /**
  * Mutation: Controller Heartbeat
@@ -260,7 +347,7 @@ constexpr const char* CONTROLLER_HEARTBEAT =
  */
 constexpr const char* SEND_DEVICE_LOGS =
     "mutation SendDeviceLogs($input: SendDeviceLogsInput!) { "
-    "sendDeviceLogs(input: $input) { success accepted } }";
+    "sendDeviceLogs(input: $input) { ${sendDeviceLogsResponseFields} } }";
 
 } // namespace GraphQLOps
 `;
@@ -330,8 +417,8 @@ namespace GraphQLTypename {
     content += `// ${generateCppStruct(controllerEvent)}\n\n`;
   }
 
-  // Add operations
-  content += generateOperations();
+  // Add operations (field selections generated from parsed schema types)
+  content += generateOperations(types);
 
   // Add helper functions for JSON parsing
   content += `
@@ -530,9 +617,12 @@ export {
   graphqlTypeToCpp,
   generateCppStruct,
   generateHeader,
+  generateFieldSelection,
+  generateOperations,
   TYPE_MAP,
   FIELD_TYPE_OVERRIDES,
   CONTROLLER_TYPES,
+  ESP32_FIELD_EXCLUSIONS,
   ROLE_NOT_SET,
   ANGLE_NOT_SET,
 };

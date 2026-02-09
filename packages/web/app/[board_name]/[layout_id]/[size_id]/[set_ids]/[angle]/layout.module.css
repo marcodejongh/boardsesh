@@ -1,9 +1,30 @@
 .bottomBarWrapper {
   position: fixed;
-  bottom: 2dvh;
+  bottom: 0;
   left: 2dvw;
   right: 2dvw;
   z-index: 10;
   background: none;
   border-radius: 16px;
+}
+
+@media (min-width: 768px) {
+  .bottomBarWrapper {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding-bottom: 16px;
+    border-radius: 0;
+  }
+}
+
+/* Mobile Safari renders a grey rectangle under the chrome when bottom: 0,
+   so offset with 2dvh. -webkit-touch-callout is only supported by iOS Safari
+   (all iOS browsers use WebKit), and the media query limits to touch devices. */
+@supports (-webkit-touch-callout: none) {
+  @media (hover: none) and (pointer: coarse) {
+    .bottomBarWrapper {
+      bottom: 2dvh;
+    }
+  }
 }

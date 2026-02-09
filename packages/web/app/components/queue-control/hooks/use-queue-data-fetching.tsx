@@ -1,7 +1,6 @@
 import { useCallback, useRef, useEffect, useMemo } from 'react';
 import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSnackbar } from '@/app/components/providers/snackbar-provider';
-import { searchParamsToUrlParams } from '@/app/lib/url-utils';
 import { PAGE_LIMIT } from '../../board-page/constants';
 import { ClimbQueue } from '../types';
 import { ParsedBoardRouteParameters, SearchRequestPagination, SearchClimbsResult } from '@/app/lib/types';
@@ -291,13 +290,9 @@ export const useQueueDataFetching = ({
 
   const fetchMoreClimbs = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) {
-      // Update URL with new page number for scroll restoration
-      const currentPage = data?.pages.length ?? 0;
-      const newParams = { ...searchParams, page: currentPage };
-      history.replaceState(null, '', `${window.location.pathname}?${searchParamsToUrlParams(newParams).toString()}`);
       fetchNextPage();
     }
-  }, [searchParams, hasNextPage, isFetchingNextPage, fetchNextPage, data?.pages.length]);
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   return {
     data,

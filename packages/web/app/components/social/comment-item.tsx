@@ -31,6 +31,7 @@ import {
   type GetCommentsQueryResponse,
 } from '@/app/lib/graphql/operations';
 import { themeTokens } from '@/app/theme/theme-config';
+import { ConfirmPopover } from '@/app/components/ui/confirm-popover';
 import VoteButton from './vote-button';
 import CommentForm from './comment-form';
 
@@ -156,9 +157,13 @@ export default function CommentItem({
     setReplies((prev) => prev.map((r) => (r.uuid === updated.uuid ? updated : r)));
   }, []);
 
-  const handleReplyDeleted = useCallback((uuid: string) => {
-    setReplies((prev) => prev.filter((r) => r.uuid !== uuid));
-  }, []);
+  const handleReplyDeleted = useCallback(
+    (uuid: string) => {
+      setReplies((prev) => prev.filter((r) => r.uuid !== uuid));
+      onCommentUpdated({ ...comment, replyCount: Math.max(0, comment.replyCount - 1) });
+    },
+    [comment, onCommentUpdated],
+  );
 
   if (comment.isDeleted) {
     return (
@@ -277,14 +282,21 @@ export default function CommentItem({
                   >
                     <EditOutlined sx={{ fontSize: 16 }} />
                   </IconButton>
-                  <IconButton
-                    size="small"
-                    onClick={handleDelete}
-                    sx={{ color: themeTokens.neutral[400] }}
-                    aria-label="Delete comment"
+                  <ConfirmPopover
+                    title="Delete comment"
+                    description="Are you sure you want to delete this comment? This cannot be undone."
+                    onConfirm={handleDelete}
+                    okText="Delete"
+                    okButtonProps={{ color: 'error' }}
                   >
-                    <DeleteOutlined sx={{ fontSize: 16 }} />
-                  </IconButton>
+                    <IconButton
+                      size="small"
+                      sx={{ color: themeTokens.neutral[400] }}
+                      aria-label="Delete comment"
+                    >
+                      <DeleteOutlined sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  </ConfirmPopover>
                 </>
               )}
             </Box>
