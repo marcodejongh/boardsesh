@@ -54,9 +54,10 @@ interface BoardDetailProps {
   open: boolean;
   onClose: () => void;
   onDeleted?: () => void;
+  anchor?: 'top' | 'bottom';
 }
 
-export default function BoardDetail({ boardUuid, open, onClose, onDeleted }: BoardDetailProps) {
+export default function BoardDetail({ boardUuid, open, onClose, onDeleted, anchor = 'bottom' }: BoardDetailProps) {
   const [board, setBoard] = useState<UserBoard | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(0);
@@ -123,14 +124,21 @@ export default function BoardDetail({ boardUuid, open, onClose, onDeleted }: Boa
 
   return (
     <Drawer
-      anchor="bottom"
+      anchor={anchor}
       open={open}
       onClose={onClose}
       PaperProps={{
         sx: {
           height: '90dvh',
-          borderTopLeftRadius: themeTokens.borderRadius.xl,
-          borderTopRightRadius: themeTokens.borderRadius.xl,
+          ...(anchor === 'bottom'
+            ? {
+                borderTopLeftRadius: themeTokens.borderRadius.xl,
+                borderTopRightRadius: themeTokens.borderRadius.xl,
+              }
+            : {
+                borderBottomLeftRadius: themeTokens.borderRadius.xl,
+                borderBottomRightRadius: themeTokens.borderRadius.xl,
+              }),
         },
       }}
     >

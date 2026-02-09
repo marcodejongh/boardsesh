@@ -144,6 +144,7 @@ export default function BoardSearchResults({ query, authToken }: BoardSearchResu
           boardUuid={selectedBoardUuid}
           open={!!selectedBoardUuid}
           onClose={() => setSelectedBoardUuid(null)}
+          anchor="top"
         />
       )}
     </>
