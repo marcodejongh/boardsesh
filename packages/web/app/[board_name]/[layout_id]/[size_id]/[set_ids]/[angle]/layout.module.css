@@ -7,3 +7,13 @@
   background: none;
   border-radius: 16px;
 }
+
+@media (min-width: 768px) {
+  .bottomBarWrapper {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding-bottom: 16px;
+    border-radius: 0;
+  }
+}

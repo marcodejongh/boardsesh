@@ -19,6 +19,7 @@ import { useSession } from 'next-auth/react';
 import { themeTokens } from '@/app/theme/theme-config';
 import { BoardConfigData } from '@/app/lib/server-board-configs';
 import ErrorBoundary from '@/app/components/error-boundary';
+import homeStyles from './home-page-content.module.css';
 
 interface HomePageContentProps {
   boardConfigs: BoardConfigData;
@@ -86,7 +87,7 @@ export default function HomePageContent({ boardConfigs }: HomePageContentProps) 
       </Box>
 
       {/* Bottom Bar: QueueControlBar (if active) + BottomTabBar */}
-      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 10 }}>
+      <div className={homeStyles.bottomBarWrapper}>
         {hasActiveQueue && queueBoardDetails && (
           <ErrorBoundary>
             <BoardProvider boardName={queueBoardDetails.board_name}>
