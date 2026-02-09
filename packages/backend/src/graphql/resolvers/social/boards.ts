@@ -1,0 +1,772 @@
+import { v4 as uuidv4 } from 'uuid';
+import { eq, and, count, isNull, sql, ilike, or, desc, inArray } from 'drizzle-orm';
+import type { ConnectionContext } from '@boardsesh/shared-schema';
+import { db } from '../../../db/client';
+import * as dbSchema from '@boardsesh/db/schema';
+import { requireAuthenticated, applyRateLimit, validateInput } from '../shared/helpers';
+import {
+  CreateBoardInputSchema,
+  UpdateBoardInputSchema,
+  BoardLeaderboardInputSchema,
+  MyBoardsInputSchema,
+  FollowBoardInputSchema,
+  SearchBoardsInputSchema,
+  UUIDSchema,
+} from '../../../validation/schemas';
+
+// ============================================
+// Helpers
+// ============================================
+
+/**
+ * Generate a unique slug from a board name.
+ * Slugifies the name and appends a suffix on collision.
+ */
+async function generateUniqueSlug(name: string): Promise<string> {
+  const baseSlug = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 100) || 'board';
+
+  // Check if base slug is available
+  const existing = await db
+    .select({ slug: dbSchema.userBoards.slug })
+    .from(dbSchema.userBoards)
+    .where(and(eq(dbSchema.userBoards.slug, baseSlug), isNull(dbSchema.userBoards.deletedAt)))
+    .limit(1);
+
+  if (existing.length === 0) {
+    return baseSlug;
+  }
+
+  // Find next available suffix
+  for (let i = 2; i <= 100; i++) {
+    const candidateSlug = `${baseSlug}-${i}`;
+    const check = await db
+      .select({ slug: dbSchema.userBoards.slug })
+      .from(dbSchema.userBoards)
+      .where(and(eq(dbSchema.userBoards.slug, candidateSlug), isNull(dbSchema.userBoards.deletedAt)))
+      .limit(1);
+    if (check.length === 0) {
+      return candidateSlug;
+    }
+  }
+
+  // Fallback: append UUID fragment
+  return `${baseSlug}-${uuidv4().slice(0, 8)}`;
+}
+
+/**
+ * Resolve a board ID from user + board config.
+ * Used by tick logging to auto-populate boardId.
+ */
+export async function resolveBoardFromPath(
+  userId: string,
+  boardType: string,
+  layoutId: number,
+  sizeId: number,
+  setIds: string,
+): Promise<number | null> {
+  const [board] = await db
+    .select({ id: dbSchema.userBoards.id })
+    .from(dbSchema.userBoards)
+    .where(
+      and(
+        eq(dbSchema.userBoards.ownerId, userId),
+        eq(dbSchema.userBoards.boardType, boardType),
+        eq(dbSchema.userBoards.layoutId, layoutId),
+        eq(dbSchema.userBoards.sizeId, sizeId),
+        eq(dbSchema.userBoards.setIds, setIds),
+        isNull(dbSchema.userBoards.deletedAt),
+      )
+    )
+    .limit(1);
+
+  return board?.id ?? null;
+}
+
+/**
+ * Enrich a board row with computed fields (counts, names, follow status).
+ */
+async function enrichBoard(
+  board: typeof dbSchema.userBoards.$inferSelect,
+  authenticatedUserId?: string,
+) {
+  // Get owner profile
+  const [ownerInfo] = await db
+    .select({
+      name: dbSchema.users.name,
+      image: dbSchema.users.image,
+      displayName: dbSchema.userProfiles.displayName,
+      avatarUrl: dbSchema.userProfiles.avatarUrl,
+    })
+    .from(dbSchema.users)
+    .leftJoin(dbSchema.userProfiles, eq(dbSchema.users.id, dbSchema.userProfiles.userId))
+    .where(eq(dbSchema.users.id, board.ownerId))
+    .limit(1);
+
+  // Count total ascents and unique climbers
+  const [tickStats] = await db
+    .select({
+      totalAscents: count(),
+      uniqueClimbers: sql<number>`COUNT(DISTINCT ${dbSchema.boardseshTicks.userId})`,
+    })
+    .from(dbSchema.boardseshTicks)
+    .where(
+      and(
+        eq(dbSchema.boardseshTicks.boardId, board.id),
+        or(
+          eq(dbSchema.boardseshTicks.status, 'flash'),
+          eq(dbSchema.boardseshTicks.status, 'send'),
+        ),
+      )
+    );
+
+  // Count followers
+  const [followerStats] = await db
+    .select({ count: count() })
+    .from(dbSchema.boardFollows)
+    .where(eq(dbSchema.boardFollows.boardUuid, board.uuid));
+
+  // Count comments
+  const [commentStats] = await db
+    .select({ count: count() })
+    .from(dbSchema.comments)
+    .where(
+      and(
+        eq(dbSchema.comments.entityType, 'board'),
+        eq(dbSchema.comments.entityId, board.uuid),
+        isNull(dbSchema.comments.deletedAt),
+      )
+    );
+
+  // Check if authenticated user follows this board
+  let isFollowedByMe = false;
+  if (authenticatedUserId) {
+    const [followCheck] = await db
+      .select({ count: count() })
+      .from(dbSchema.boardFollows)
+      .where(
+        and(
+          eq(dbSchema.boardFollows.userId, authenticatedUserId),
+          eq(dbSchema.boardFollows.boardUuid, board.uuid),
+        )
+      );
+    isFollowedByMe = Number(followCheck?.count || 0) > 0;
+  }
+
+  return {
+    uuid: board.uuid,
+    slug: board.slug,
+    ownerId: board.ownerId,
+    ownerDisplayName: ownerInfo?.displayName || ownerInfo?.name || undefined,
+    ownerAvatarUrl: ownerInfo?.avatarUrl || ownerInfo?.image || undefined,
+    boardType: board.boardType,
+    layoutId: Number(board.layoutId),
+    sizeId: Number(board.sizeId),
+    setIds: board.setIds,
+    name: board.name,
+    description: board.description,
+    locationName: board.locationName,
+    latitude: board.latitude,
+    longitude: board.longitude,
+    isPublic: board.isPublic,
+    isOwned: board.isOwned,
+    createdAt: board.createdAt.toISOString(),
+    // Computed name fields (TODO: resolve from board-specific layout/size/set tables if needed)
+    layoutName: null,
+    sizeName: null,
+    sizeDescription: null,
+    setNames: null,
+    totalAscents: Number(tickStats?.totalAscents || 0),
+    uniqueClimbers: Number(tickStats?.uniqueClimbers || 0),
+    followerCount: Number(followerStats?.count || 0),
+    commentCount: Number(commentStats?.count || 0),
+    isFollowedByMe,
+  };
+}
+
+// ============================================
+// Queries
+// ============================================
+
+export const socialBoardQueries = {
+  /**
+   * Get a board by UUID
+   */
+  board: async (
+    _: unknown,
+    { boardUuid }: { boardUuid: string },
+    ctx: ConnectionContext,
+  ) => {
+    validateInput(UUIDSchema, boardUuid, 'boardUuid');
+
+    const [board] = await db
+      .select()
+      .from(dbSchema.userBoards)
+      .where(and(eq(dbSchema.userBoards.uuid, boardUuid), isNull(dbSchema.userBoards.deletedAt)))
+      .limit(1);
+
+    if (!board) return null;
+    return enrichBoard(board, ctx.isAuthenticated ? ctx.userId : undefined);
+  },
+
+  /**
+   * Get a board by slug (for URL routing)
+   */
+  boardBySlug: async (
+    _: unknown,
+    { slug }: { slug: string },
+    ctx: ConnectionContext,
+  ) => {
+    const [board] = await db
+      .select()
+      .from(dbSchema.userBoards)
+      .where(and(eq(dbSchema.userBoards.slug, slug), isNull(dbSchema.userBoards.deletedAt)))
+      .limit(1);
+
+    if (!board) return null;
+    return enrichBoard(board, ctx.isAuthenticated ? ctx.userId : undefined);
+  },
+
+  /**
+   * Get current user's boards (owned + followed)
+   */
+  myBoards: async (
+    _: unknown,
+    { input }: { input?: { limit?: number; offset?: number } },
+    ctx: ConnectionContext,
+  ) => {
+    requireAuthenticated(ctx);
+    const validatedInput = validateInput(MyBoardsInputSchema, input || {}, 'input');
+    const userId = ctx.userId!;
+    const limit = validatedInput.limit ?? 20;
+    const offset = validatedInput.offset ?? 0;
+
+    // Get UUIDs of boards the user follows
+    const followedBoardUuids = await db
+      .select({ boardUuid: dbSchema.boardFollows.boardUuid })
+      .from(dbSchema.boardFollows)
+      .where(eq(dbSchema.boardFollows.userId, userId));
+
+    const followedUuids = followedBoardUuids.map((f) => f.boardUuid);
+
+    // Build WHERE: owned OR followed, and not deleted
+    const ownerCondition = eq(dbSchema.userBoards.ownerId, userId);
+    const followedCondition = followedUuids.length > 0
+      ? inArray(dbSchema.userBoards.uuid, followedUuids)
+      : undefined;
+    const matchCondition = followedCondition
+      ? or(ownerCondition, followedCondition)!
+      : ownerCondition;
+    const whereClause = and(matchCondition, isNull(dbSchema.userBoards.deletedAt));
+
+    const [countResult] = await db
+      .select({ count: count() })
+      .from(dbSchema.userBoards)
+      .where(whereClause);
+
+    const totalCount = Number(countResult?.count || 0);
+
+    const boards = await db
+      .select()
+      .from(dbSchema.userBoards)
+      .where(whereClause)
+      .orderBy(desc(dbSchema.userBoards.isOwned), desc(dbSchema.userBoards.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    const enrichedBoards = await Promise.all(
+      boards.map((b) => enrichBoard(b, userId)),
+    );
+
+    return {
+      boards: enrichedBoards,
+      totalCount,
+      hasMore: offset + boards.length < totalCount,
+    };
+  },
+
+  /**
+   * Search public boards
+   */
+  searchBoards: async (
+    _: unknown,
+    { input }: { input: unknown },
+    ctx: ConnectionContext,
+  ) => {
+    const validatedInput = validateInput(SearchBoardsInputSchema, input, 'input');
+    const { query, boardType } = validatedInput;
+    const limit = validatedInput.limit ?? 20;
+    const offset = validatedInput.offset ?? 0;
+
+    const conditions = [
+      eq(dbSchema.userBoards.isPublic, true),
+      isNull(dbSchema.userBoards.deletedAt),
+    ];
+
+    if (boardType) {
+      conditions.push(eq(dbSchema.userBoards.boardType, boardType));
+    }
+
+    if (query) {
+      conditions.push(
+        or(
+          ilike(dbSchema.userBoards.name, `%${query}%`),
+          ilike(dbSchema.userBoards.locationName, `%${query}%`),
+        )!,
+      );
+    }
+
+    const whereClause = and(...conditions);
+
+    const [countResult] = await db
+      .select({ count: count() })
+      .from(dbSchema.userBoards)
+      .where(whereClause);
+
+    const totalCount = Number(countResult?.count || 0);
+
+    const boards = await db
+      .select()
+      .from(dbSchema.userBoards)
+      .where(whereClause)
+      .orderBy(desc(dbSchema.userBoards.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    const enrichedBoards = await Promise.all(
+      boards.map((b) => enrichBoard(b, ctx.isAuthenticated ? ctx.userId : undefined)),
+    );
+
+    return {
+      boards: enrichedBoards,
+      totalCount,
+      hasMore: offset + boards.length < totalCount,
+    };
+  },
+
+  /**
+   * Get leaderboard for a board
+   */
+  boardLeaderboard: async (
+    _: unknown,
+    { input }: { input: unknown },
+    ctx: ConnectionContext,
+  ) => {
+    const validatedInput = validateInput(BoardLeaderboardInputSchema, input, 'input');
+    const { boardUuid, period } = validatedInput;
+    const limit = validatedInput.limit ?? 20;
+    const offset = validatedInput.offset ?? 0;
+
+    // Get the board
+    const [board] = await db
+      .select({ id: dbSchema.userBoards.id })
+      .from(dbSchema.userBoards)
+      .where(and(eq(dbSchema.userBoards.uuid, boardUuid), isNull(dbSchema.userBoards.deletedAt)))
+      .limit(1);
+
+    if (!board) {
+      throw new Error('Board not found');
+    }
+
+    // Build time filter
+    let timeFilter;
+    let periodLabel = 'All Time';
+    if (period === 'week') {
+      timeFilter = sql`${dbSchema.boardseshTicks.climbedAt} >= NOW() - INTERVAL '7 days'`;
+      periodLabel = 'This Week';
+    } else if (period === 'month') {
+      timeFilter = sql`${dbSchema.boardseshTicks.climbedAt} >= NOW() - INTERVAL '30 days'`;
+      periodLabel = 'This Month';
+    } else if (period === 'year') {
+      timeFilter = sql`${dbSchema.boardseshTicks.climbedAt} >= NOW() - INTERVAL '365 days'`;
+      periodLabel = 'This Year';
+    }
+
+    const conditions = [
+      eq(dbSchema.boardseshTicks.boardId, board.id),
+      or(
+        eq(dbSchema.boardseshTicks.status, 'flash'),
+        eq(dbSchema.boardseshTicks.status, 'send'),
+      )!,
+    ];
+
+    if (timeFilter) {
+      conditions.push(timeFilter);
+    }
+
+    const whereClause = and(...conditions);
+
+    // Get total distinct users
+    const [countResult] = await db
+      .select({ count: sql<number>`COUNT(DISTINCT ${dbSchema.boardseshTicks.userId})` })
+      .from(dbSchema.boardseshTicks)
+      .where(whereClause);
+
+    const totalCount = Number(countResult?.count || 0);
+
+    // Get leaderboard entries
+    const entries = await db
+      .select({
+        userId: dbSchema.boardseshTicks.userId,
+        totalSends: count(),
+        totalFlashes: sql<number>`SUM(CASE WHEN ${dbSchema.boardseshTicks.status} = 'flash' THEN 1 ELSE 0 END)`,
+        hardestGrade: sql<number | null>`MAX(${dbSchema.boardseshTicks.difficulty})`,
+        totalSessions: sql<number>`COUNT(DISTINCT DATE(${dbSchema.boardseshTicks.climbedAt}))`,
+      })
+      .from(dbSchema.boardseshTicks)
+      .where(whereClause)
+      .groupBy(dbSchema.boardseshTicks.userId)
+      .orderBy(sql`COUNT(*) DESC`)
+      .limit(limit)
+      .offset(offset);
+
+    // Batch fetch user profiles
+    const userIds = entries.map((e) => e.userId);
+    let userMap = new Map<string, { displayName?: string; avatarUrl?: string }>();
+
+    if (userIds.length > 0) {
+      const users = await db
+        .select({
+          id: dbSchema.users.id,
+          name: dbSchema.users.name,
+          image: dbSchema.users.image,
+          displayName: dbSchema.userProfiles.displayName,
+          avatarUrl: dbSchema.userProfiles.avatarUrl,
+        })
+        .from(dbSchema.users)
+        .leftJoin(dbSchema.userProfiles, eq(dbSchema.users.id, dbSchema.userProfiles.userId))
+        .where(inArray(dbSchema.users.id, userIds));
+
+      for (const u of users) {
+        userMap.set(u.id, {
+          displayName: u.displayName || u.name || undefined,
+          avatarUrl: u.avatarUrl || u.image || undefined,
+        });
+      }
+    }
+
+    const enrichedEntries = entries.map((entry, idx) => {
+      const userInfo = userMap.get(entry.userId);
+      return {
+        userId: entry.userId,
+        userDisplayName: userInfo?.displayName,
+        userAvatarUrl: userInfo?.avatarUrl,
+        rank: offset + idx + 1,
+        totalSends: Number(entry.totalSends),
+        totalFlashes: Number(entry.totalFlashes),
+        hardestGrade: entry.hardestGrade ? Number(entry.hardestGrade) : null,
+        hardestGradeName: null, // TODO: resolve grade name from board-specific grade tables
+        totalSessions: Number(entry.totalSessions),
+      };
+    });
+
+    return {
+      boardUuid,
+      entries: enrichedEntries,
+      totalCount,
+      hasMore: offset + entries.length < totalCount,
+      periodLabel,
+    };
+  },
+
+  /**
+   * Get the user's default board
+   */
+  defaultBoard: async (
+    _: unknown,
+    _args: unknown,
+    ctx: ConnectionContext,
+  ) => {
+    requireAuthenticated(ctx);
+    const userId = ctx.userId!;
+
+    // First: try to find an owned board
+    const [ownedBoard] = await db
+      .select()
+      .from(dbSchema.userBoards)
+      .where(
+        and(
+          eq(dbSchema.userBoards.ownerId, userId),
+          eq(dbSchema.userBoards.isOwned, true),
+          isNull(dbSchema.userBoards.deletedAt),
+        )
+      )
+      .orderBy(desc(dbSchema.userBoards.createdAt))
+      .limit(1);
+
+    if (ownedBoard) {
+      return enrichBoard(ownedBoard, userId);
+    }
+
+    // Fallback: any board owned by user
+    const [anyBoard] = await db
+      .select()
+      .from(dbSchema.userBoards)
+      .where(
+        and(
+          eq(dbSchema.userBoards.ownerId, userId),
+          isNull(dbSchema.userBoards.deletedAt),
+        )
+      )
+      .orderBy(desc(dbSchema.userBoards.createdAt))
+      .limit(1);
+
+    if (anyBoard) {
+      return enrichBoard(anyBoard, userId);
+    }
+
+    return null;
+  },
+};
+
+// ============================================
+// Mutations
+// ============================================
+
+export const socialBoardMutations = {
+  /**
+   * Create a new board
+   */
+  createBoard: async (
+    _: unknown,
+    { input }: { input: unknown },
+    ctx: ConnectionContext,
+  ) => {
+    requireAuthenticated(ctx);
+    applyRateLimit(ctx, 10);
+
+    const validatedInput = validateInput(CreateBoardInputSchema, input, 'input');
+    const userId = ctx.userId!;
+
+    // Check for duplicate config
+    const [existing] = await db
+      .select({ id: dbSchema.userBoards.id })
+      .from(dbSchema.userBoards)
+      .where(
+        and(
+          eq(dbSchema.userBoards.ownerId, userId),
+          eq(dbSchema.userBoards.boardType, validatedInput.boardType),
+          eq(dbSchema.userBoards.layoutId, validatedInput.layoutId),
+          eq(dbSchema.userBoards.sizeId, validatedInput.sizeId),
+          eq(dbSchema.userBoards.setIds, validatedInput.setIds),
+          isNull(dbSchema.userBoards.deletedAt),
+        )
+      )
+      .limit(1);
+
+    if (existing) {
+      throw new Error('You already have a board with this configuration');
+    }
+
+    const uuid = uuidv4();
+    const slug = await generateUniqueSlug(validatedInput.name);
+
+    const [board] = await db
+      .insert(dbSchema.userBoards)
+      .values({
+        uuid,
+        slug,
+        ownerId: userId,
+        boardType: validatedInput.boardType,
+        layoutId: validatedInput.layoutId,
+        sizeId: validatedInput.sizeId,
+        setIds: validatedInput.setIds,
+        name: validatedInput.name,
+        description: validatedInput.description ?? null,
+        locationName: validatedInput.locationName ?? null,
+        latitude: validatedInput.latitude ?? null,
+        longitude: validatedInput.longitude ?? null,
+        isPublic: validatedInput.isPublic ?? true,
+        isOwned: validatedInput.isOwned ?? true,
+      })
+      .returning();
+
+    return enrichBoard(board, userId);
+  },
+
+  /**
+   * Update a board's metadata
+   */
+  updateBoard: async (
+    _: unknown,
+    { input }: { input: unknown },
+    ctx: ConnectionContext,
+  ) => {
+    requireAuthenticated(ctx);
+    applyRateLimit(ctx, 20);
+
+    const validatedInput = validateInput(UpdateBoardInputSchema, input, 'input');
+    const userId = ctx.userId!;
+
+    // Verify ownership
+    const [board] = await db
+      .select()
+      .from(dbSchema.userBoards)
+      .where(eq(dbSchema.userBoards.uuid, validatedInput.boardUuid))
+      .limit(1);
+
+    if (!board) {
+      throw new Error('Board not found');
+    }
+
+    if (board.ownerId !== userId) {
+      throw new Error('Not authorized to update this board');
+    }
+
+    // Build update values (only provided fields)
+    const updateValues: Record<string, unknown> = {
+      updatedAt: new Date(),
+    };
+
+    if (validatedInput.name !== undefined) updateValues.name = validatedInput.name;
+    if (validatedInput.description !== undefined) updateValues.description = validatedInput.description;
+    if (validatedInput.locationName !== undefined) updateValues.locationName = validatedInput.locationName;
+    if (validatedInput.latitude !== undefined) updateValues.latitude = validatedInput.latitude;
+    if (validatedInput.longitude !== undefined) updateValues.longitude = validatedInput.longitude;
+    if (validatedInput.isPublic !== undefined) updateValues.isPublic = validatedInput.isPublic;
+    if (validatedInput.isOwned !== undefined) updateValues.isOwned = validatedInput.isOwned;
+
+    // Handle slug update
+    if (validatedInput.slug !== undefined) {
+      // Check slug uniqueness
+      const [slugConflict] = await db
+        .select({ id: dbSchema.userBoards.id })
+        .from(dbSchema.userBoards)
+        .where(
+          and(
+            eq(dbSchema.userBoards.slug, validatedInput.slug),
+            isNull(dbSchema.userBoards.deletedAt),
+            sql`${dbSchema.userBoards.id} != ${board.id}`,
+          )
+        )
+        .limit(1);
+
+      if (slugConflict) {
+        throw new Error('Slug is already taken');
+      }
+      updateValues.slug = validatedInput.slug;
+    }
+
+    // If board was soft-deleted, restore it
+    if (board.deletedAt) {
+      updateValues.deletedAt = null;
+    }
+
+    const [updated] = await db
+      .update(dbSchema.userBoards)
+      .set(updateValues)
+      .where(eq(dbSchema.userBoards.id, board.id))
+      .returning();
+
+    return enrichBoard(updated, userId);
+  },
+
+  /**
+   * Soft-delete a board
+   */
+  deleteBoard: async (
+    _: unknown,
+    { boardUuid }: { boardUuid: string },
+    ctx: ConnectionContext,
+  ): Promise<boolean> => {
+    requireAuthenticated(ctx);
+    applyRateLimit(ctx, 10);
+
+    validateInput(UUIDSchema, boardUuid, 'boardUuid');
+    const userId = ctx.userId!;
+
+    const [board] = await db
+      .select({ id: dbSchema.userBoards.id, ownerId: dbSchema.userBoards.ownerId })
+      .from(dbSchema.userBoards)
+      .where(and(eq(dbSchema.userBoards.uuid, boardUuid), isNull(dbSchema.userBoards.deletedAt)))
+      .limit(1);
+
+    if (!board) {
+      throw new Error('Board not found');
+    }
+
+    if (board.ownerId !== userId) {
+      throw new Error('Not authorized to delete this board');
+    }
+
+    await db
+      .update(dbSchema.userBoards)
+      .set({ deletedAt: new Date() })
+      .where(eq(dbSchema.userBoards.id, board.id));
+
+    return true;
+  },
+
+  /**
+   * Follow a board
+   */
+  followBoard: async (
+    _: unknown,
+    { input }: { input: { boardUuid: string } },
+    ctx: ConnectionContext,
+  ): Promise<boolean> => {
+    requireAuthenticated(ctx);
+    applyRateLimit(ctx, 20);
+
+    const validatedInput = validateInput(FollowBoardInputSchema, input, 'input');
+    const userId = ctx.userId!;
+
+    // Verify board exists and is accessible
+    const [board] = await db
+      .select({
+        uuid: dbSchema.userBoards.uuid,
+        ownerId: dbSchema.userBoards.ownerId,
+        isPublic: dbSchema.userBoards.isPublic,
+      })
+      .from(dbSchema.userBoards)
+      .where(and(eq(dbSchema.userBoards.uuid, validatedInput.boardUuid), isNull(dbSchema.userBoards.deletedAt)))
+      .limit(1);
+
+    if (!board) {
+      throw new Error('Board not found');
+    }
+
+    if (!board.isPublic && board.ownerId !== userId) {
+      throw new Error('Cannot follow a private board');
+    }
+
+    await db
+      .insert(dbSchema.boardFollows)
+      .values({
+        userId,
+        boardUuid: validatedInput.boardUuid,
+      })
+      .onConflictDoNothing();
+
+    return true;
+  },
+
+  /**
+   * Unfollow a board
+   */
+  unfollowBoard: async (
+    _: unknown,
+    { input }: { input: { boardUuid: string } },
+    ctx: ConnectionContext,
+  ): Promise<boolean> => {
+    requireAuthenticated(ctx);
+    applyRateLimit(ctx, 20);
+
+    const validatedInput = validateInput(FollowBoardInputSchema, input, 'input');
+    const userId = ctx.userId!;
+
+    await db
+      .delete(dbSchema.boardFollows)
+      .where(
+        and(
+          eq(dbSchema.boardFollows.userId, userId),
+          eq(dbSchema.boardFollows.boardUuid, validatedInput.boardUuid),
+        )
+      );
+
+    return true;
+  },
+};

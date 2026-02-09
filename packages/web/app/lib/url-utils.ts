@@ -548,6 +548,12 @@ export const constructCreateClimbUrl = (
  * // => '/kilter/original/12x12/default'
  */
 export function getBaseBoardPath(pathname: string): string {
+  // Handle /b/{slug}/{angle}/... URLs — base path is /b/{slug}
+  const boardSlugMatch = pathname.match(/^(\/b\/[^/]+)/);
+  if (boardSlugMatch) {
+    return boardSlugMatch[1];
+  }
+
   // URL structure: /{board}/{layout}/{size}/{sets}/{angle}[/play/uuid|/view/slug|/list|/create]
   // We want to extract: /{board}/{layout}/{size}/{sets}
 
@@ -585,3 +591,35 @@ export function getBaseBoardPath(pathname: string): string {
 
   return path;
 }
+
+// ============================================
+// Board Entity Slug URL Constructors
+// ============================================
+
+/**
+ * Construct a board slug URL for the climb list.
+ * /b/{board-slug}/{angle}/list
+ */
+export const constructBoardSlugUrl = (slug: string, angle: number, path?: string) =>
+  `/b/${slug}/${angle}${path ? `/${path}` : ''}`;
+
+/**
+ * Construct a board slug URL for the climb list.
+ * /b/{board-slug}/{angle}/list
+ */
+export const constructBoardSlugListUrl = (slug: string, angle: number) =>
+  constructBoardSlugUrl(slug, angle, 'list');
+
+/**
+ * Construct a board slug URL for the play view.
+ * /b/{board-slug}/{angle}/play/{climb_uuid}
+ */
+export const constructBoardSlugPlayUrl = (slug: string, angle: number, climbUuid: string) =>
+  constructBoardSlugUrl(slug, angle, `play/${climbUuid}`);
+
+/**
+ * Construct a board slug URL for the climb view.
+ * /b/{board-slug}/{angle}/view/{climb_uuid}
+ */
+export const constructBoardSlugViewUrl = (slug: string, angle: number, climbUuid: string) =>
+  constructBoardSlugUrl(slug, angle, `view/${climbUuid}`);

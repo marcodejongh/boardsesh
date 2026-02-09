@@ -1,3 +1,4 @@
+export * from './boards';
 export * from './sessions';
 export * from './favorites';
 export * from './ascents';

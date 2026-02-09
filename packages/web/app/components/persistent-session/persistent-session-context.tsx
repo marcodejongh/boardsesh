@@ -1120,5 +1120,6 @@ export function usePersistentSession() {
 // Helper hook to check if we're on a board route
 export function useIsOnBoardRoute() {
   const pathname = usePathname();
-  return BOARD_NAMES.some((board) => pathname.startsWith(`/${board}/`));
+  // Check both legacy routes (/kilter/..., /tension/...) and slug-based routes (/b/...)
+  return pathname.startsWith('/b/') || BOARD_NAMES.some((board) => pathname.startsWith(`/${board}/`));
 }

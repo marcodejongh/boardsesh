@@ -2,6 +2,7 @@ import {
   pgTable,
   text,
   integer,
+  bigint,
   boolean,
   timestamp,
   bigserial,
@@ -11,6 +12,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { users } from '../auth/users';
 import { boardSessions } from './sessions';
+import { userBoards } from './boards';
 
 /**
  * Tick status enum
@@ -61,6 +63,9 @@ export const boardseshTicks = pgTable(
     // Optional link to group session (if tick was during party mode)
     sessionId: text('session_id').references(() => boardSessions.id, { onDelete: 'set null' }),
 
+    // Optional link to the board entity this tick was recorded on
+    boardId: bigint('board_id', { mode: 'number' }).references(() => userBoards.id, { onDelete: 'set null' }),
+
     // Aurora sync tracking - populated by periodic sync job
     auroraType: auroraTableTypeEnum('aurora_type'), // 'ascents' or 'bids'
     auroraId: text('aurora_id'), // UUID in Aurora's system
@@ -90,6 +95,9 @@ export const boardseshTicks = pgTable(
     sessionIdx: index('boardsesh_ticks_session_idx').on(table.sessionId),
     // Index for climbed_at for sorting
     climbedAtIdx: index('boardsesh_ticks_climbed_at_idx').on(table.climbedAt),
+    // Index for board-scoped queries
+    boardClimbedAtIdx: index('boardsesh_ticks_board_climbed_at_idx').on(table.boardId, table.climbedAt),
+    boardUserIdx: index('boardsesh_ticks_board_user_idx').on(table.boardId, table.userId),
   })
 );
 

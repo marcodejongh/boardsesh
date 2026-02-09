@@ -1,6 +1,7 @@
-import { pgTable, text, timestamp, boolean, jsonb, integer, doublePrecision, index } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, boolean, jsonb, integer, bigint, doublePrecision, index } from 'drizzle-orm/pg-core';
 import type { ClimbQueueItem } from '@boardsesh/shared-schema';
 import { users } from '../auth/users';
+import { userBoards } from './boards';
 
 // Board sessions for party mode (renamed from 'sessions' to avoid conflict with NextAuth sessions)
 export const boardSessions = pgTable('board_sessions', {
@@ -19,6 +20,8 @@ export const boardSessions = pgTable('board_sessions', {
   createdByUserId: text('created_by_user_id').references(() => users.id, { onDelete: 'set null' }),
   // Session name for display in discovery
   name: text('name'),
+  // Optional link to the board entity this session is for
+  boardId: bigint('board_id', { mode: 'number' }).references(() => userBoards.id, { onDelete: 'set null' }),
 }, (table) => ({
   locationIdx: index('board_sessions_location_idx').on(table.latitude, table.longitude),
   discoverableIdx: index('board_sessions_discoverable_idx').on(table.discoverable),

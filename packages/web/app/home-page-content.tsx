@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import Box from '@mui/material/Box';
 import MuiButton from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
@@ -19,6 +19,10 @@ import { useSession } from 'next-auth/react';
 import { themeTokens } from '@/app/theme/theme-config';
 import { BoardConfigData } from '@/app/lib/server-board-configs';
 import ErrorBoundary from '@/app/components/error-boundary';
+import BoardSelectorPills from '@/app/components/board-entity/board-selector-pills';
+import { constructBoardSlugListUrl } from '@/app/lib/url-utils';
+import { useRouter } from 'next/navigation';
+import type { UserBoard } from '@boardsesh/shared-schema';
 
 interface HomePageContentProps {
   boardConfigs: BoardConfigData;
@@ -35,6 +39,12 @@ export default function HomePageContent({ boardConfigs }: HomePageContentProps) 
   } = usePersistentSession();
 
   const isAuthenticated = status === 'authenticated' && !!session?.user;
+  const router = useRouter();
+
+  const handleBoardSelect = useCallback((board: UserBoard) => {
+    // Default angle 40 — boards don't store a preferred angle yet
+    router.push(constructBoardSlugListUrl(board.slug, 40));
+  }, [router]);
 
   // Determine if there's an active queue to show the QueueControlBar
   const isPartyMode = !!activeSession;
@@ -75,6 +85,9 @@ export default function HomePageContent({ boardConfigs }: HomePageContentProps) 
 
       {/* Feed */}
       <Box component="main" sx={{ flex: 1, px: 2, py: 2 }}>
+        {isAuthenticated && (
+          <BoardSelectorPills onBoardSelect={handleBoardSelect} />
+        )}
         <Typography variant="h6" component="h1" sx={{ mb: 2 }}>
           Activity
         </Typography>

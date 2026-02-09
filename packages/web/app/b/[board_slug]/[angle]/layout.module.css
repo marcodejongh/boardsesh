@@ -1,0 +1,9 @@
+.bottomBarWrapper {
+  position: fixed;
+  bottom: 2dvh;
+  left: 2dvw;
+  right: 2dvw;
+  z-index: 10;
+  background: none;
+  border-radius: 16px;
+}
