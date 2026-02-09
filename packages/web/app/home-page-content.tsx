@@ -17,8 +17,13 @@ import { BoardProvider } from '@/app/components/board-provider/board-provider-co
 import { BluetoothProvider } from '@/app/components/board-bluetooth-control/bluetooth-context';
 import { useSession } from 'next-auth/react';
 import { themeTokens } from '@/app/theme/theme-config';
+import { BoardConfigData } from '@/app/lib/server-board-configs';
 
-export default function HomePageContent() {
+interface HomePageContentProps {
+  boardConfigs: BoardConfigData;
+}
+
+export default function HomePageContent({ boardConfigs }: HomePageContentProps) {
   const { data: session, status } = useSession();
   const [searchOpen, setSearchOpen] = useState(false);
   const {
@@ -52,7 +57,7 @@ export default function HomePageContent() {
           borderBottom: `1px solid ${themeTokens.neutral[200]}`,
         }}
       >
-        <UserDrawer />
+        <UserDrawer boardConfigs={boardConfigs} />
         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
           {isAuthenticated && (
             <MuiButton
@@ -90,7 +95,7 @@ export default function HomePageContent() {
             </PersistentQueueProvider>
           </BoardProvider>
         )}
-        <BottomTabBar />
+        <BottomTabBar boardConfigs={boardConfigs} />
       </div>
 
       {isAuthenticated && (

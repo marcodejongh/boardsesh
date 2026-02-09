@@ -25,7 +25,9 @@ import Link from 'next/link';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import AuthModal from '../auth/auth-modal';
 import { HoldClassificationWizard } from '../hold-classification';
+import BoardSelectorDrawer from '../board-selector-drawer/board-selector-drawer';
 import { BoardDetails } from '@/app/lib/types';
+import { BoardConfigData } from '@/app/lib/server-board-configs';
 import {
   type StoredSession,
   getRecentSessions,
@@ -37,14 +39,16 @@ import styles from './user-drawer.module.css';
 interface UserDrawerProps {
   boardDetails?: BoardDetails | null;
   angle?: number;
+  boardConfigs?: BoardConfigData;
 }
 
-export default function UserDrawer({ boardDetails }: UserDrawerProps) {
+export default function UserDrawer({ boardDetails, boardConfigs }: UserDrawerProps) {
   const { data: session } = useSession();
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showHoldClassification, setShowHoldClassification] = useState(false);
+  const [showBoardSelector, setShowBoardSelector] = useState(false);
   const [recentSessions, setRecentSessions] = useState<StoredSession[]>([]);
 
   const isMoonboard = boardDetails?.board_name === 'moonboard';
@@ -147,14 +151,21 @@ export default function UserDrawer({ boardDetails }: UserDrawerProps) {
 
           {/* Navigation section */}
           <nav>
-            <Link
-              href="/?select=true"
+            <button
+              type="button"
               className={styles.menuItem}
-              onClick={handleClose}
+              onClick={() => {
+                handleClose();
+                if (boardConfigs) {
+                  setShowBoardSelector(true);
+                } else {
+                  router.push('/?select=true');
+                }
+              }}
             >
               <span className={styles.menuItemIcon}><SwapHorizOutlined /></span>
               <span className={styles.menuItemLabel}>Change Board</span>
-            </Link>
+            </button>
 
             {session?.user && (
               <Link
@@ -283,6 +294,14 @@ export default function UserDrawer({ boardDetails }: UserDrawerProps) {
           open={showHoldClassification}
           onClose={() => setShowHoldClassification(false)}
           boardDetails={boardDetails}
+        />
+      )}
+
+      {boardConfigs && (
+        <BoardSelectorDrawer
+          open={showBoardSelector}
+          onClose={() => setShowBoardSelector(false)}
+          boardConfigs={boardConfigs}
         />
       )}
     </>

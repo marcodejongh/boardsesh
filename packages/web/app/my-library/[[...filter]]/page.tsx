@@ -1,8 +1,6 @@
 import React from 'react';
 import { notFound } from 'next/navigation';
-import { cookies } from 'next/headers';
 import { Metadata } from 'next';
-import { DEFAULT_BOARD_COOKIE_NAME } from '@/app/lib/default-board-cookie';
 import LibraryPageContent from './library-page-content';
 import styles from '@/app/components/library/library.module.css';
 
@@ -23,17 +21,7 @@ export default async function MyLibraryPage({
   let boardFilter: string | undefined;
 
   if (!filter || filter.length === 0) {
-    // No filter segment — read default board cookie
-    const cookieStore = await cookies();
-    const defaultBoardUrl = cookieStore.get(DEFAULT_BOARD_COOKIE_NAME)?.value;
-    if (defaultBoardUrl) {
-      const decoded = decodeURIComponent(defaultBoardUrl);
-      // URL looks like /kilter/... — extract board name from first segment
-      const firstSegment = decoded.split('/').filter(Boolean)[0];
-      if (firstSegment && VALID_FILTERS.includes(firstSegment)) {
-        boardFilter = firstSegment;
-      }
-    }
+    // No filter segment — show all playlists
   } else if (filter.length === 1 && VALID_FILTERS.includes(filter[0])) {
     boardFilter = filter[0];
   } else {

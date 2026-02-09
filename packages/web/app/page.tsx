@@ -9,13 +9,13 @@ type HomeProps = {
 
 export default async function Home({ searchParams }: HomeProps) {
   const params = await searchParams;
+  const boardConfigs = await getAllBoardConfigs();
 
   // Check if user explicitly wants to see the board selector
   if (params.select === 'true') {
-    const boardConfigs = await getAllBoardConfigs();
     return <ConsolidatedBoardConfig boardConfigs={boardConfigs} />;
   }
 
   // Home page for all users (auth state handled client-side)
-  return <HomePageContent />;
+  return <HomePageContent boardConfigs={boardConfigs} />;
 }

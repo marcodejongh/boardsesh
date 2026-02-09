@@ -2,16 +2,13 @@
 
 import React, { useState, useEffect } from 'react';
 import Typography from '@mui/material/Typography';
-import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import Chip from '@mui/material/Chip';
-import MuiTooltip from '@mui/material/Tooltip';
 import MuiSkeleton from '@mui/material/Skeleton';
 import DeleteOutlined from '@mui/icons-material/DeleteOutlined';
-import Star from '@mui/icons-material/Star';
 import Link from 'next/link';
 import { BoardDetails, BoardName } from '@/app/lib/types';
 import { getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
@@ -19,18 +16,7 @@ import { getMoonBoardDetails } from '@/app/lib/moonboard-config';
 import BoardRenderer from '../board-renderer/board-renderer';
 import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { BoardConfigData } from '@/app/lib/server-board-configs';
-
-type StoredBoardConfig = {
-  name: string;
-  board: string;
-  layoutId: number;
-  sizeId: number;
-  setIds: number[];
-  angle: number;
-  useAsDefault: boolean;
-  createdAt: string;
-  lastUsed?: string;
-};
+import { StoredBoardConfig } from '@/app/lib/saved-boards-db';
 
 type BoardConfigPreviewProps = {
   config: StoredBoardConfig;
@@ -183,7 +169,6 @@ export default function BoardConfigPreview({ config, onDelete, onSelect, boardCo
                 <Stack direction="row" spacing={0.25}>
                   <Chip label={sizeName} size="small" />
                   <Chip label={config.angle || 40} size="small" />
-                  {config.useAsDefault && <Star />}
                 </Stack>
               </Stack>
             </Stack>
@@ -218,11 +203,6 @@ export default function BoardConfigPreview({ config, onDelete, onSelect, boardCo
             <Stack direction="row" spacing={0.25}>
               <Chip label={sizeName} size="small" />
               <Chip label={config.angle || 40} size="small" />
-              {config.useAsDefault && (
-                <MuiTooltip title="Default configuration">
-                  <Star />
-                </MuiTooltip>
-              )}
             </Stack>
           </Stack>
         </CardContent>
