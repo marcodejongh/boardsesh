@@ -29,8 +29,6 @@ import EditOutlined from '@mui/icons-material/EditOutlined';
 import GroupOutlined from '@mui/icons-material/GroupOutlined';
 import InfoOutlined from '@mui/icons-material/InfoOutlined';
 import HelpOutlineOutlined from '@mui/icons-material/HelpOutlineOutlined';
-import StarBorderOutlined from '@mui/icons-material/StarBorderOutlined';
-import { openDB } from 'idb';
 import { track } from '@vercel/analytics';
 import { useSession } from 'next-auth/react';
 import { SUPPORTED_BOARDS, ANGLES } from '@/app/lib/board-data';
@@ -47,25 +45,8 @@ import { themeTokens } from '@/app/theme/theme-config';
 import JoinSessionTab from './join-session-tab';
 import SessionHistoryPanel from './session-history-panel';
 import AuthModal from '../auth/auth-modal';
-import { setDefaultBoardCookie, clearDefaultBoardCookie, getDefaultBoardCookieClient } from '@/app/lib/default-board-cookie';
-
-// IndexedDB configuration
-const DB_NAME = 'boardsesh-config';
-const DB_VERSION = 1;
-const STORE_NAME = 'board-configurations';
-
-// Types for stored configuration
-type StoredBoardConfig = {
-  name: string;
-  board: BoardName;
-  layoutId: number;
-  sizeId: number;
-  setIds: number[];
-  angle: number;
-  useAsDefault: boolean;
-  createdAt: string;
-  lastUsed?: string;
-};
+import { loadSavedBoards, saveBoardConfig, deleteBoardConfig, StoredBoardConfig } from '@/app/lib/saved-boards-db';
+import { setLastUsedBoard } from '@/app/lib/last-used-board-db';
 
 type ConsolidatedBoardConfigProps = {
   boardConfigs: BoardConfigData;
@@ -99,7 +80,6 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
   // Login states - for now just skip login on setup page
 
   // Additional states
-  const [useAsDefault, setUseAsDefault] = useState(false);
   const [savedConfigurations, setSavedConfigurations] = useState<StoredBoardConfig[]>([]);
   const [suggestedName, setSuggestedName] = useState<string>('');
   const [savedBoardsExpanded, setSavedBoardsExpanded] = useState(false);
@@ -144,58 +124,10 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
     }
   }, [selectedBoard, selectedLayout, selectedSize, selectedSets, boardConfigs]);
 
-  // IndexedDB helper functions
-  const initDB = async () => {
-    return openDB(DB_NAME, DB_VERSION, {
-      upgrade(db) {
-        if (!db.objectStoreNames.contains(STORE_NAME)) {
-          db.createObjectStore(STORE_NAME, { keyPath: 'name' });
-        }
-      },
-    });
-  };
-
-  const saveConfiguration = async (config: StoredBoardConfig) => {
-    try {
-      const db = await initDB();
-      await db.put(STORE_NAME, config);
-
-      // If this is set as default, clear other defaults
-      if (config.useAsDefault) {
-        const allConfigs = await db.getAll(STORE_NAME);
-        for (const existingConfig of allConfigs) {
-          if (existingConfig.name !== config.name && existingConfig.useAsDefault) {
-            existingConfig.useAsDefault = false;
-            await db.put(STORE_NAME, existingConfig);
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Failed to save configuration:', error);
-    }
-  };
-
-  const loadAllConfigurations = useCallback(async () => {
-    try {
-      const db = await initDB();
-      const allConfigs = await db.getAll(STORE_NAME);
-      return allConfigs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    } catch (error) {
-      console.error('Failed to load configurations:', error);
-      return [];
-    }
-  }, []);
-
-  const deleteConfiguration = async (configName: string) => {
-    try {
-      const db = await initDB();
-      await db.delete(STORE_NAME, configName);
-      // Reload configurations
-      const updatedConfigs = await loadAllConfigurations();
-      setSavedConfigurations(updatedConfigs);
-    } catch (error) {
-      console.error('Failed to delete configuration:', error);
-    }
+  const deleteConfiguration = async (name: string) => {
+    await deleteBoardConfig(name);
+    const updatedConfigs = await loadSavedBoards();
+    setSavedConfigurations(updatedConfigs);
   };
 
   // Generate suggested name based on current selections
@@ -232,27 +164,19 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
     prefetchImages();
   }, [boardConfigs.details]);
 
-  // Load configurations on mount and sync useAsDefault state with cookie
+  // Load configurations on mount
   useEffect(() => {
     const loadConfigurations = async () => {
-      // Load all saved configurations
-      const allConfigs = await loadAllConfigurations();
+      const allConfigs = await loadSavedBoards();
       setSavedConfigurations(allConfigs);
 
-      // Expand saved boards panel if there are saved configurations
       if (allConfigs.length > 0) {
         setSavedBoardsExpanded(true);
-      }
-
-      // Check if there's a default board cookie set
-      const defaultBoardUrl = getDefaultBoardCookieClient();
-      if (defaultBoardUrl) {
-        setUseAsDefault(true);
       }
     };
 
     loadConfigurations();
-  }, [loadAllConfigurations]);
+  }, []);
 
   // Set default selections on initial load if no saved configs exist
   useEffect(() => {
@@ -417,8 +341,13 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
       // Track board configuration completion
       track('Board Configuration Completed', {
         boardLayout: selectedLayout,
-        setAsDefault: useAsDefault,
       });
+
+      const layout = layouts.find((l) => l.id === selectedLayout);
+      const size = sizes.find((s) => s.id === selectedSize);
+      const selectedSetNames = sets
+        .filter((s) => selectedSets.includes(s.id))
+        .map((s) => s.name);
 
       // Always save configuration with either user-provided or generated name
       const config: StoredBoardConfig = {
@@ -428,25 +357,26 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
         sizeId: selectedSize,
         setIds: selectedSets,
         angle: selectedAngle,
-        useAsDefault,
         createdAt: new Date().toISOString(),
         lastUsed: new Date().toISOString(),
       };
 
-      await saveConfiguration(config);
+      await saveBoardConfig(config);
       // Refresh the saved configurations list
-      const updatedConfigs = await loadAllConfigurations();
+      const updatedConfigs = await loadSavedBoards();
       setSavedConfigurations(updatedConfigs);
 
-      // Set or clear the default board cookie based on useAsDefault
-      if (useAsDefault && targetUrl) {
-        setDefaultBoardCookie(targetUrl);
-      } else {
-        clearDefaultBoardCookie();
-      }
-
-      // Navigate using the SEO-friendly slug URL (targetUrl is always computed with slugs)
+      // Save as last used board
       if (targetUrl) {
+        await setLastUsedBoard({
+          url: targetUrl,
+          boardName: selectedBoard,
+          layoutName: layout?.name || '',
+          sizeName: size?.name || '',
+          sizeDescription: size?.description,
+          setNames: selectedSetNames,
+          angle: selectedAngle,
+        });
         router.push(targetUrl);
       }
     } catch (error) {
@@ -680,23 +610,6 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
                   Please sign in to enable discoverable sessions.
                 </Typography>
               )}
-            </Box>
-
-            <Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: `${themeTokens.spacing[2]}px` }}>
-                <MuiSwitch
-                  checked={useAsDefault}
-                  onChange={(_, checked) => setUseAsDefault(checked)}
-                  disabled={!isFormComplete}
-                />
-                <Box component="span">
-                  <StarBorderOutlined sx={{ marginRight: `${themeTokens.spacing[1]}px` }} />
-                  Set as my default board
-                </Box>
-                <MuiTooltip title="When enabled, visiting boardsesh.com will automatically load this board. Click the logo anytime to return to board selection.">
-                  <InfoOutlined sx={{ color: themeTokens.neutral[400] }} />
-                </MuiTooltip>
-              </Box>
             </Box>
 
             {targetUrl ? (

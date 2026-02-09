@@ -282,6 +282,66 @@ export type ProfileStats = {
   layoutStats: LayoutStats[];
 };
 
+// ============================================
+// Social / Follow Types
+// ============================================
+
+export type PublicUserProfile = {
+  id: string;
+  displayName?: string;
+  avatarUrl?: string;
+  followerCount: number;
+  followingCount: number;
+  isFollowedByMe: boolean;
+};
+
+export type FollowConnection = {
+  users: PublicUserProfile[];
+  totalCount: number;
+  hasMore: boolean;
+};
+
+export type UserSearchResult = {
+  user: PublicUserProfile;
+  recentAscentCount: number;
+  matchReason?: string;
+};
+
+export type UserSearchConnection = {
+  results: UserSearchResult[];
+  totalCount: number;
+  hasMore: boolean;
+};
+
+export type FollowingAscentFeedItem = {
+  uuid: string;
+  userId: string;
+  userDisplayName?: string;
+  userAvatarUrl?: string;
+  climbUuid: string;
+  climbName: string;
+  setterUsername?: string;
+  boardType: string;
+  layoutId?: number;
+  angle: number;
+  isMirror: boolean;
+  status: string;
+  attemptCount: number;
+  quality?: number;
+  difficulty?: number;
+  difficultyName?: string;
+  isBenchmark: boolean;
+  comment: string;
+  climbedAt: string;
+  frames?: string;
+};
+
+export type FollowingAscentsFeedResult = {
+  items: FollowingAscentFeedItem[];
+  totalCount: number;
+  hasMore: boolean;
+};
+
 /**
  * Event types for GraphQL subscriptions
  *

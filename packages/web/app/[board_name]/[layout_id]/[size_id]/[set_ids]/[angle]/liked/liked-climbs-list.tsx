@@ -21,7 +21,7 @@ import ClimbListItem from '@/app/components/climb-card/climb-list-item';
 import { ClimbCardSkeleton } from '@/app/components/board-page/board-page-skeleton';
 import { EmptyState } from '@/app/components/ui/empty-state';
 import { getPreference, setPreference } from '@/app/lib/user-preferences-db';
-import styles from '../playlist/[playlist_uuid]/playlist-view.module.css';
+import styles from '@/app/components/library/playlist-view.module.css';
 
 type ViewMode = 'grid' | 'list';
 

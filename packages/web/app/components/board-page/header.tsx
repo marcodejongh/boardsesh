@@ -6,7 +6,7 @@ import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import SearchPill from '../search-drawer/search-pill';
 import SearchDropdown from '../search-drawer/search-dropdown';
 import { BoardDetails } from '@/app/lib/types';
-
+import { BoardConfigData } from '@/app/lib/server-board-configs';
 import { constructClimbListWithSlugs, generateLayoutSlug, generateSizeSlug, generateSetSlug } from '@/app/lib/url-utils';
 import { useQueueContext } from '../graphql-queue';
 import AddOutlined from '@mui/icons-material/AddOutlined';
@@ -21,6 +21,7 @@ type PageMode = 'list' | 'view' | 'play' | 'create' | 'other';
 type BoardSeshHeaderProps = {
   boardDetails: BoardDetails;
   angle?: number;
+  boardConfigs?: BoardConfigData;
 };
 
 function usePageMode(): PageMode {
@@ -35,7 +36,7 @@ function usePageMode(): PageMode {
   }, [pathname]);
 }
 
-export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeaderProps) {
+export default function BoardSeshHeader({ boardDetails, angle, boardConfigs }: BoardSeshHeaderProps) {
   const { currentClimb } = useQueueContext();
   const pageMode = usePageMode();
   const searchParams = useSearchParams();
@@ -91,7 +92,7 @@ export default function BoardSeshHeader({ boardDetails, angle }: BoardSeshHeader
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '8px' }}>
         {/* Left section: Avatar + Back button */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
-          <UserDrawer boardDetails={boardDetails} angle={angle} />
+          <UserDrawer boardDetails={boardDetails} angle={angle} boardConfigs={boardConfigs} />
 
           {/* Play page: Show back button next to logo (mobile only) */}
           {pageMode === 'play' && (

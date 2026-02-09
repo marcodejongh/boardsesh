@@ -808,6 +808,14 @@ export const typeDefs = /* GraphQL */ `
   }
 
   """
+  Input for getting all user's playlists across boards.
+  """
+  input GetAllUserPlaylistsInput {
+    "Optional filter by board type"
+    boardType: String
+  }
+
+  """
   Input for getting playlists containing a climb.
   """
   input GetPlaylistsForClimbInput {
@@ -959,6 +967,166 @@ export const typeDefs = /* GraphQL */ `
     page: Int
     "Page size"
     pageSize: Int
+  }
+
+  # ============================================
+  # Social / Follow Types
+  # ============================================
+
+  """
+  Public-facing user profile for social features.
+  """
+  type PublicUserProfile {
+    "User ID"
+    id: ID!
+    "Display name"
+    displayName: String
+    "Avatar URL"
+    avatarUrl: String
+    "Number of followers"
+    followerCount: Int!
+    "Number of users being followed"
+    followingCount: Int!
+    "Whether the current user follows this user"
+    isFollowedByMe: Boolean!
+  }
+
+  """
+  Paginated list of user profiles (for follower/following lists).
+  """
+  type FollowConnection {
+    "List of user profiles"
+    users: [PublicUserProfile!]!
+    "Total number of users"
+    totalCount: Int!
+    "Whether more users are available"
+    hasMore: Boolean!
+  }
+
+  """
+  A user search result with relevance metadata.
+  """
+  type UserSearchResult {
+    "The matching user profile"
+    user: PublicUserProfile!
+    "Number of recent ascents (last 30 days)"
+    recentAscentCount: Int!
+    "Why this user matched the search"
+    matchReason: String
+  }
+
+  """
+  Paginated user search results.
+  """
+  type UserSearchConnection {
+    "List of search results"
+    results: [UserSearchResult!]!
+    "Total number of matching users"
+    totalCount: Int!
+    "Whether more results are available"
+    hasMore: Boolean!
+  }
+
+  """
+  An ascent from a followed user, enriched with user and climb data.
+  """
+  type FollowingAscentFeedItem {
+    "Tick UUID"
+    uuid: ID!
+    "User who climbed"
+    userId: ID!
+    "Display name of the user"
+    userDisplayName: String
+    "Avatar URL of the user"
+    userAvatarUrl: String
+    "UUID of the climb"
+    climbUuid: String!
+    "Name of the climb"
+    climbName: String!
+    "Username of the setter"
+    setterUsername: String
+    "Board type"
+    boardType: String!
+    "Layout ID"
+    layoutId: Int
+    "Board angle"
+    angle: Int!
+    "Whether climb was mirrored"
+    isMirror: Boolean!
+    "Result of the attempt"
+    status: String!
+    "Number of attempts"
+    attemptCount: Int!
+    "Quality rating"
+    quality: Int
+    "Difficulty rating"
+    difficulty: Int
+    "Human-readable difficulty name"
+    difficultyName: String
+    "Whether this is a benchmark climb"
+    isBenchmark: Boolean!
+    "Comment"
+    comment: String!
+    "When climbed (ISO 8601)"
+    climbedAt: String!
+    "Encoded hold frames for thumbnail display"
+    frames: String
+  }
+
+  """
+  Input for following ascents feed pagination.
+  """
+  input FollowingAscentsFeedInput {
+    "Maximum number of items to return"
+    limit: Int
+    "Number of items to skip"
+    offset: Int
+  }
+
+  """
+  Paginated feed of ascents from followed users.
+  """
+  type FollowingAscentsFeedResult {
+    "List of feed items"
+    items: [FollowingAscentFeedItem!]!
+    "Total count for pagination"
+    totalCount: Int!
+    "Whether more items are available"
+    hasMore: Boolean!
+  }
+
+  """
+  Input for follow/unfollow operations.
+  """
+  input FollowInput {
+    "User ID to follow/unfollow"
+    userId: ID!
+  }
+
+  """
+  Input for listing followers or following.
+  """
+  input FollowListInput {
+    "User ID whose followers/following to list"
+    userId: ID!
+    "Maximum number of users to return"
+    limit: Int
+    "Number of users to skip"
+    offset: Int
+  }
+
+  """
+  Input for searching users.
+  """
+  input SearchUsersInput {
+    "Search query (min 2 characters)"
+    query: String!
+    "Optional board type filter"
+    boardType: String
+    "Maximum number of results"
+    limit: Int
+    "Number of results to skip"
+    offset: Int
   }
 
   """
@@ -1118,6 +1286,12 @@ export const typeDefs = /* GraphQL */ `
     userPlaylists(input: GetUserPlaylistsInput!): [Playlist!]!
 
     """
+    Get all current user's playlists across boards/layouts.
+    Optional boardType filter. Requires authentication.
+    """
+    allUserPlaylists(input: GetAllUserPlaylistsInput!): [Playlist!]!
+
+    """
     Get a specific playlist by ID.
     Checks ownership/access permissions.
     """
@@ -1153,6 +1327,48 @@ export const typeDefs = /* GraphQL */ `
 
     # Get current user's registered controllers
     myControllers: [ControllerInfo!]!
+
+    # ============================================
+    # Social / Follow Queries
+    # ============================================
+
+    """
+    Get followers of a user.
+    """
+    followers(input: FollowListInput!): FollowConnection!
+
+    """
+    Get users that a user is following.
+    """
+    following(input: FollowListInput!): FollowConnection!
+
+    """
+    Check if the current user follows a specific user.
+    Requires authentication.
+    """
+    isFollowing(userId: ID!): Boolean!
+
+    """
+    Get a public user profile by ID.
+    """
+    publicProfile(userId: ID!): PublicUserProfile
+
+    """
+    Search for users by name or email.
+    """
+    searchUsers(input: SearchUsersInput!): UserSearchConnection!
+
+    """
+    Get activity feed of ascents from followed users.
+    Requires authentication.
+    """
+    followingAscentsFeed(input: FollowingAscentsFeedInput): FollowingAscentsFeedResult!
+
+    """
+    Get global activity feed of all recent ascents.
+    No authentication required.
+    """
+    globalAscentsFeed(input: FollowingAscentsFeedInput): FollowingAscentsFeedResult!
   }
 
   """
@@ -1309,6 +1525,20 @@ export const typeDefs = /* GraphQL */ `
     registerController(input: RegisterControllerInput!): ControllerRegistration!
     # Delete a registered controller - requires auth
     deleteController(controllerId: ID!): Boolean!
+    # ============================================
+    # Social / Follow Mutations (require auth)
+    # ============================================
+
+    """
+    Follow a user. Idempotent (no error if already following).
+    """
+    followUser(input: FollowInput!): Boolean!
+
+    """
+    Unfollow a user.
+    """
+    unfollowUser(input: FollowInput!): Boolean!
+
     # ESP32 sends LED positions from official app Bluetooth
     # frames: Pre-built frames string from ESP32 (preferred)
     # positions: Legacy LED positions array (for backwards compatibility)

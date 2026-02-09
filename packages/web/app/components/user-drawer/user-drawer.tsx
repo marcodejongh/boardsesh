@@ -25,8 +25,9 @@ import Link from 'next/link';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import AuthModal from '../auth/auth-modal';
 import { HoldClassificationWizard } from '../hold-classification';
+import BoardSelectorDrawer from '../board-selector-drawer/board-selector-drawer';
 import { BoardDetails } from '@/app/lib/types';
-import { generateLayoutSlug, generateSizeSlug, generateSetSlug } from '@/app/lib/url-utils';
+import { BoardConfigData } from '@/app/lib/server-board-configs';
 import {
   type StoredSession,
   getRecentSessions,
@@ -36,19 +37,21 @@ import {
 import styles from './user-drawer.module.css';
 
 interface UserDrawerProps {
-  boardDetails: BoardDetails;
+  boardDetails?: BoardDetails | null;
   angle?: number;
+  boardConfigs?: BoardConfigData;
 }
 
-export default function UserDrawer({ boardDetails, angle }: UserDrawerProps) {
+export default function UserDrawer({ boardDetails, boardConfigs }: UserDrawerProps) {
   const { data: session } = useSession();
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showHoldClassification, setShowHoldClassification] = useState(false);
+  const [showBoardSelector, setShowBoardSelector] = useState(false);
   const [recentSessions, setRecentSessions] = useState<StoredSession[]>([]);
 
-  const isMoonboard = boardDetails.board_name === 'moonboard';
+  const isMoonboard = boardDetails?.board_name === 'moonboard';
 
   // Load recent sessions when drawer opens
   useEffect(() => {
@@ -77,13 +80,7 @@ export default function UserDrawer({ boardDetails, angle }: UserDrawerProps) {
     handleClose();
   };
 
-  const playlistsUrl = (() => {
-    const { board_name, layout_name, size_name, size_description, set_names } = boardDetails;
-    if (layout_name && size_name && set_names && angle !== undefined) {
-      return `/${board_name}/${generateLayoutSlug(layout_name)}/${generateSizeSlug(size_name, size_description)}/${generateSetSlug(set_names)}/${angle}/playlists`;
-    }
-    return null;
-  })();
+  const playlistsUrl = '/my-library';
 
   const userAvatar = session?.user?.image ?? undefined;
   const userName = session?.user?.name;
@@ -154,14 +151,21 @@ export default function UserDrawer({ boardDetails, angle }: UserDrawerProps) {
 
           {/* Navigation section */}
           <nav>
-            <Link
-              href="/"
+            <button
+              type="button"
               className={styles.menuItem}
-              onClick={handleClose}
+              onClick={() => {
+                handleClose();
+                if (boardConfigs) {
+                  setShowBoardSelector(true);
+                } else {
+                  router.push('/?select=true');
+                }
+              }}
             >
               <span className={styles.menuItemIcon}><SwapHorizOutlined /></span>
               <span className={styles.menuItemLabel}>Change Board</span>
-            </Link>
+            </button>
 
             {session?.user && (
               <Link
@@ -183,7 +187,7 @@ export default function UserDrawer({ boardDetails, angle }: UserDrawerProps) {
               <span className={styles.menuItemLabel}>Settings</span>
             </Link>
 
-            {!isMoonboard && (
+            {boardDetails && !isMoonboard && (
               <button
                 type="button"
                 className={styles.menuItem}
@@ -197,16 +201,14 @@ export default function UserDrawer({ boardDetails, angle }: UserDrawerProps) {
               </button>
             )}
 
-            {playlistsUrl && !isMoonboard && (
-              <Link
-                href={playlistsUrl}
-                className={styles.menuItem}
-                onClick={handleClose}
-              >
-                <span className={styles.menuItemIcon}><LocalOfferOutlined /></span>
-                <span className={styles.menuItemLabel}>My Playlists</span>
-              </Link>
-            )}
+            <Link
+              href={playlistsUrl}
+              className={styles.menuItem}
+              onClick={handleClose}
+            >
+              <span className={styles.menuItemIcon}><LocalOfferOutlined /></span>
+              <span className={styles.menuItemLabel}>My Playlists</span>
+            </Link>
           </nav>
 
           {/* Recents section */}
@@ -287,11 +289,21 @@ export default function UserDrawer({ boardDetails, angle }: UserDrawerProps) {
         description="Sign in to access all features including saving favorites, tracking ascents, and more."
       />
 
-      <HoldClassificationWizard
-        open={showHoldClassification}
-        onClose={() => setShowHoldClassification(false)}
-        boardDetails={boardDetails}
-      />
+      {boardDetails && (
+        <HoldClassificationWizard
+          open={showHoldClassification}
+          onClose={() => setShowHoldClassification(false)}
+          boardDetails={boardDetails}
+        />
+      )}
+
+      {boardConfigs && (
+        <BoardSelectorDrawer
+          open={showBoardSelector}
+          onClose={() => setShowBoardSelector(false)}
+          boardConfigs={boardConfigs}
+        />
+      )}
     </>
   );
 }

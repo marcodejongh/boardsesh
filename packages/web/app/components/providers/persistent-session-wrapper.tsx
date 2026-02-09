@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { usePathname } from 'next/navigation';
 import { PartyProfileProvider } from '../party-manager/party-profile-context';
 import { PersistentSessionProvider, usePersistentSession, useIsOnBoardRoute } from '../persistent-session';
 import { PersistentQueueProvider } from '../queue-control/persistent-queue-provider';
@@ -36,6 +37,8 @@ export default function PersistentSessionWrapper({ children }: PersistentSession
  */
 function OffBoardQueueBar() {
   const isOnBoardRoute = useIsOnBoardRoute();
+  const pathname = usePathname();
+  const isHomePage = pathname === '/';
   const {
     activeSession,
     localQueue,
@@ -50,8 +53,9 @@ function OffBoardQueueBar() {
     : (localCurrentClimbQueueItem?.climb?.angle ?? 0);
 
   // Only show when off board routes and there's something to show
+  // Home page handles its own bottom bar with QueueControlBar integration
   const hasContent = localQueue.length > 0 || !!localCurrentClimbQueueItem || !!activeSession;
-  if (!hasContent || isOnBoardRoute || !boardDetails) {
+  if (!hasContent || isOnBoardRoute || isHomePage || !boardDetails) {
     return null;
   }
 

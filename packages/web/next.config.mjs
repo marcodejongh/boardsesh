@@ -19,6 +19,21 @@ const nextConfig = {
   experimental: {
     optimizePackageImports: [],
   },
+  async redirects() {
+    return [
+      // Redirect old board-scoped playlist routes to /my-library
+      {
+        source: '/:board/:layout/:size/:set/:angle/playlists',
+        destination: '/my-library',
+        permanent: true,
+      },
+      {
+        source: '/:board/:layout/:size/:set/:angle/playlist/:uuid',
+        destination: '/my-library/playlist/:uuid',
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default withSentryConfig(nextConfig, {

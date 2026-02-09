@@ -17,6 +17,8 @@ import BoardPageSkeleton from '@/app/components/board-page/board-page-skeleton';
 import BottomTabBar from '@/app/components/bottom-tab-bar/bottom-tab-bar';
 import { BluetoothProvider } from '@/app/components/board-bluetooth-control/bluetooth-context';
 import { UISearchParamsProvider } from '@/app/components/queue-control/ui-searchparams-provider';
+import LastUsedBoardTracker from '@/app/components/board-page/last-used-board-tracker';
+import { getAllBoardConfigs } from '@/app/lib/server-board-configs';
 
 // Helper to get board details for any board type
 function getBoardDetailsUniversal(parsedParams: ParsedBoardRouteParameters): BoardDetails {
@@ -142,18 +144,42 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
 
   const { angle } = parsedParams;
 
-  // Fetch the board details server-side
-  const boardDetails = getBoardDetailsUniversal(parsedParams);
+  // Fetch the board details and board configs server-side
+  const [boardDetails, boardConfigs] = await Promise.all([
+    Promise.resolve(getBoardDetailsUniversal(parsedParams)),
+    getAllBoardConfigs(),
+  ]);
+
+  // Compute the list URL for last-used-board tracking
+  const listUrl = boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names
+    ? constructClimbListWithSlugs(
+        boardDetails.board_name,
+        boardDetails.layout_name,
+        boardDetails.size_name,
+        boardDetails.size_description,
+        boardDetails.set_names,
+        angle,
+      )
+    : `/${boardDetails.board_name}`;
 
   return (
     <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', padding: 0, background: 'var(--semantic-surface)' }}>
+      <LastUsedBoardTracker
+        url={listUrl}
+        boardName={boardDetails.board_name}
+        layoutName={boardDetails.layout_name || ''}
+        sizeName={boardDetails.size_name || ''}
+        sizeDescription={boardDetails.size_description}
+        setNames={boardDetails.set_names || []}
+        angle={angle}
+      />
       <BoardSessionBridge boardDetails={boardDetails} parsedParams={parsedParams}>
         <ConnectionSettingsProvider>
           <GraphQLQueueProvider parsedParams={parsedParams} boardDetails={boardDetails}>
             <PartyProvider>
               <BluetoothProvider boardDetails={boardDetails}>
                 <UISearchParamsProvider>
-                  <BoardSeshHeader boardDetails={boardDetails} angle={angle} />
+                  <BoardSeshHeader boardDetails={boardDetails} angle={angle} boardConfigs={boardConfigs} />
 
                   <main
                     id="content-for-scrollable"
@@ -172,7 +198,7 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
 
                   <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 10 }}>
                     <QueueControlBar boardDetails={boardDetails} angle={angle} />
-                    <BottomTabBar boardDetails={boardDetails} angle={angle} />
+                    <BottomTabBar boardDetails={boardDetails} angle={angle} boardConfigs={boardConfigs} />
                   </div>
                 </UISearchParamsProvider>
               </BluetoothProvider>

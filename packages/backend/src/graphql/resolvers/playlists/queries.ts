@@ -6,6 +6,7 @@ import * as dbSchema from '@boardsesh/db/schema';
 import { requireAuthenticated, validateInput } from '../shared/helpers';
 import {
   GetUserPlaylistsInputSchema,
+  GetAllUserPlaylistsInputSchema,
   GetPlaylistsForClimbInputSchema,
   GetPlaylistClimbsInputSchema,
   DiscoverPlaylistsInputSchema,
@@ -67,6 +68,86 @@ export const playlistQueries = {
       );
 
     // Get climb counts for each playlist
+    const playlistIds = userPlaylists.map(p => p.id);
+
+    const climbCounts =
+      playlistIds.length > 0
+        ? await db
+            .select({
+              playlistId: dbSchema.playlistClimbs.playlistId,
+              count: sql<number>`count(*)::int`,
+            })
+            .from(dbSchema.playlistClimbs)
+            .where(inArray(dbSchema.playlistClimbs.playlistId, playlistIds))
+            .groupBy(dbSchema.playlistClimbs.playlistId)
+        : [];
+
+    const countMap = new Map(climbCounts.map(c => [c.playlistId.toString(), c.count]));
+
+    return userPlaylists.map(p => ({
+      id: p.id.toString(),
+      uuid: p.uuid,
+      boardType: p.boardType,
+      layoutId: p.layoutId,
+      name: p.name,
+      description: p.description,
+      isPublic: p.isPublic,
+      color: p.color,
+      icon: p.icon,
+      createdAt: p.createdAt.toISOString(),
+      updatedAt: p.updatedAt.toISOString(),
+      lastAccessedAt: p.lastAccessedAt?.toISOString() ?? null,
+      climbCount: countMap.get(p.id.toString()) || 0,
+      userRole: p.role,
+    }));
+  },
+
+  /**
+   * Get all playlists owned by the authenticated user, optionally filtered by board type.
+   * No layoutId filter — shows playlists across all layouts.
+   */
+  allUserPlaylists: async (
+    _: unknown,
+    { input }: { input: { boardType?: string } },
+    ctx: ConnectionContext
+  ): Promise<unknown[]> => {
+    requireAuthenticated(ctx);
+    validateInput(GetAllUserPlaylistsInputSchema, input, 'input');
+
+    const userId = ctx.userId!;
+
+    const conditions = [eq(dbSchema.playlistOwnership.userId, userId)];
+
+    if (input.boardType) {
+      conditions.push(eq(dbSchema.playlists.boardType, input.boardType));
+    }
+
+    const userPlaylists = await db
+      .select({
+        id: dbSchema.playlists.id,
+        uuid: dbSchema.playlists.uuid,
+        boardType: dbSchema.playlists.boardType,
+        layoutId: dbSchema.playlists.layoutId,
+        name: dbSchema.playlists.name,
+        description: dbSchema.playlists.description,
+        isPublic: dbSchema.playlists.isPublic,
+        color: dbSchema.playlists.color,
+        icon: dbSchema.playlists.icon,
+        createdAt: dbSchema.playlists.createdAt,
+        updatedAt: dbSchema.playlists.updatedAt,
+        lastAccessedAt: dbSchema.playlists.lastAccessedAt,
+        role: dbSchema.playlistOwnership.role,
+      })
+      .from(dbSchema.playlists)
+      .innerJoin(
+        dbSchema.playlistOwnership,
+        eq(dbSchema.playlistOwnership.playlistId, dbSchema.playlists.id)
+      )
+      .where(and(...conditions))
+      .orderBy(
+        desc(sql`COALESCE(${dbSchema.playlists.lastAccessedAt}, ${dbSchema.playlists.updatedAt})`),
+      );
+
     const playlistIds = userPlaylists.map(p => p.id);
 
     const climbCounts =
