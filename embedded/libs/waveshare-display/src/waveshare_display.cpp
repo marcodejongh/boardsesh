@@ -607,20 +607,29 @@ void WaveshareDisplay::drawBoardImageWithHolds() {
                      offsetX, offsetY,
                      cfg->imageWidth, cfg->imageHeight);
 
-    // Overlay hold circles for each active LED command
+    // Overlay hold circles for each active LED command.
+    // holdMap is sorted by ledPosition (at code generation time),
+    // so we use binary search for O(n log m) instead of O(n*m).
     for (int i = 0; i < _ledCommandCount; i++) {
-        // Linear scan through holdMap to find matching LED position
-        for (int j = 0; j < cfg->holdCount; j++) {
-            if (cfg->holdMap[j].ledPosition == _ledCommands[i].position) {
+        uint16_t target = _ledCommands[i].position;
+        int lo = 0, hi = cfg->holdCount - 1;
+        while (lo <= hi) {
+            int mid = (lo + hi) / 2;
+            uint16_t midPos = cfg->holdMap[mid].ledPosition;
+            if (midPos == target) {
                 uint16_t color = _display.color565(
                     _ledCommands[i].r, _ledCommands[i].g, _ledCommands[i].b);
-                int dx = offsetX + cfg->holdMap[j].cx;
-                int dy = offsetY + cfg->holdMap[j].cy;
-                int dr = cfg->holdMap[j].radius;
+                int dx = offsetX + cfg->holdMap[mid].cx;
+                int dy = offsetY + cfg->holdMap[mid].cy;
+                int dr = cfg->holdMap[mid].radius;
                 // 2px stroke circle (matching web renderer style)
                 _display.drawCircle(dx, dy, dr, color);
                 _display.drawCircle(dx, dy, dr - 1, color);
                 break;
+            } else if (midPos < target) {
+                lo = mid + 1;
+            } else {
+                hi = mid - 1;
             }
         }
     }

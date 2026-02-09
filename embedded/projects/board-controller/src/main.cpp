@@ -95,18 +95,20 @@ String extractConfigKey(const char* boardPath) {
         setIdsPart = bp.substring(slash3 + 1);
     }
 
-    // Parse and sort set IDs
-    int setIds[16];
+    // Parse and sort set IDs (max 8 sets per board config in practice)
+    static const int MAX_SET_IDS = 16;
+    int setIds[MAX_SET_IDS];
     int setCount = 0;
     int start = 0;
     for (int i = 0; i <= (int)setIdsPart.length(); i++) {
         if (i == (int)setIdsPart.length() || setIdsPart[i] == ',') {
-            if (i > start && setCount < 16) {
+            if (i > start && setCount < MAX_SET_IDS) {
                 setIds[setCount++] = setIdsPart.substring(start, i).toInt();
             }
             start = i + 1;
         }
     }
+    if (setCount == 0) return "";
 
     // Simple insertion sort
     for (int i = 1; i < setCount; i++) {

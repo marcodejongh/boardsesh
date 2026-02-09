@@ -152,7 +152,7 @@ def run_board_data_codegen():
             cwd=str(PROJECT_ROOT),
             capture_output=True,
             text=True,
-            timeout=300,  # Board data gen can take a while (image processing)
+            timeout=600,  # Board data gen processes 36 board images (compositing + JPEG conversion)
         )
 
         if result.returncode != 0:
