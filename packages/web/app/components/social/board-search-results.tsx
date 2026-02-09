@@ -7,6 +7,7 @@ import MuiButton from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
 import BoardCard from '@/app/components/board-entity/board-card';
+import BoardDetail from '@/app/components/board-entity/board-detail';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
 import {
   SEARCH_BOARDS,
@@ -18,14 +19,14 @@ import type { UserBoard } from '@boardsesh/shared-schema';
 interface BoardSearchResultsProps {
   query: string;
   authToken: string | null;
-  onBoardSelect?: (board: UserBoard) => void;
 }
 
-export default function BoardSearchResults({ query, authToken, onBoardSelect }: BoardSearchResultsProps) {
+export default function BoardSearchResults({ query, authToken }: BoardSearchResultsProps) {
   const [results, setResults] = useState<UserBoard[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [totalCount, setTotalCount] = useState(0);
+  const [selectedBoardUuid, setSelectedBoardUuid] = useState<string | null>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchResults = useCallback(async (searchQuery: string, offset = 0) => {
@@ -123,7 +124,7 @@ export default function BoardSearchResults({ query, authToken, onBoardSelect }: 
     <>
       <Stack spacing={1.5} sx={{ px: 2, py: 1 }}>
         {results.map((board) => (
-          <BoardCard key={board.uuid} board={board} onClick={onBoardSelect} />
+          <BoardCard key={board.uuid} board={board} onClick={(b) => setSelectedBoardUuid(b.uuid)} />
         ))}
       </Stack>
       {hasMore && (
@@ -137,6 +138,13 @@ export default function BoardSearchResults({ query, authToken, onBoardSelect }: 
             {loading ? 'Loading...' : `Load more (${results.length} of ${totalCount})`}
           </MuiButton>
         </Box>
+      )}
+      {selectedBoardUuid && (
+        <BoardDetail
+          boardUuid={selectedBoardUuid}
+          open={!!selectedBoardUuid}
+          onClose={() => setSelectedBoardUuid(null)}
+        />
       )}
     </>
   );

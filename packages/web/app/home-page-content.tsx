@@ -115,7 +115,7 @@ export default function HomePageContent({ boardConfigs }: HomePageContentProps) 
       </div>
 
       {isAuthenticated && (
-        <UserSearchDrawer open={searchOpen} onClose={() => setSearchOpen(false)} onBoardSelect={handleBoardSelect} />
+        <UserSearchDrawer open={searchOpen} onClose={() => setSearchOpen(false)} />
       )}
     </Box>
   );

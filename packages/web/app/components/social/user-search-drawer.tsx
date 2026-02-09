@@ -10,18 +10,16 @@ import SwipeableDrawer from '@/app/components/swipeable-drawer/swipeable-drawer'
 import UserSearchResults from './user-search-results';
 import BoardSearchResults from './board-search-results';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
-import type { UserBoard } from '@boardsesh/shared-schema';
 
 type SearchType = 'boards' | 'climbers';
 
 interface UserSearchDrawerProps {
   open: boolean;
   onClose: () => void;
-  onBoardSelect?: (board: UserBoard) => void;
   defaultSearchType?: SearchType;
 }
 
-export default function UserSearchDrawer({ open, onClose, onBoardSelect, defaultSearchType = 'boards' }: UserSearchDrawerProps) {
+export default function UserSearchDrawer({ open, onClose, defaultSearchType = 'boards' }: UserSearchDrawerProps) {
   const [query, setQuery] = useState('');
   const [searchType, setSearchType] = useState<SearchType>(defaultSearchType);
   const { token } = useWsAuthToken();
@@ -34,11 +32,6 @@ export default function UserSearchDrawer({ open, onClose, onBoardSelect, default
   const handleSearchTypeChange = (type: SearchType) => {
     setSearchType(type);
     setQuery('');
-  };
-
-  const handleBoardSelect = (board: UserBoard) => {
-    onBoardSelect?.(board);
-    handleClose();
   };
 
   return (
@@ -86,7 +79,7 @@ export default function UserSearchDrawer({ open, onClose, onBoardSelect, default
         />
       </Box>
       {searchType === 'boards' ? (
-        <BoardSearchResults query={query} authToken={token} onBoardSelect={handleBoardSelect} />
+        <BoardSearchResults query={query} authToken={token} />
       ) : (
         <UserSearchResults query={query} authToken={token} />
       )}
