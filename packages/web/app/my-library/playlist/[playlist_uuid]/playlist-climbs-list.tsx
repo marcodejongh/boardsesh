@@ -15,13 +15,12 @@ import {
   GetPlaylistClimbsQueryVariables,
 } from '@/app/lib/graphql/operations/playlists';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
-import { useQueueContext } from '@/app/components/graphql-queue';
 import ClimbCard from '@/app/components/climb-card/climb-card';
 import ClimbListItem from '@/app/components/climb-card/climb-list-item';
 import { ClimbCardSkeleton } from '@/app/components/board-page/board-page-skeleton';
 import { EmptyState } from '@/app/components/ui/empty-state';
 import { getPreference, setPreference } from '@/app/lib/user-preferences-db';
-import styles from './playlist-view.module.css';
+import styles from '@/app/components/library/playlist-view.module.css';
 
 type ViewMode = 'grid' | 'list';
 
@@ -31,7 +30,6 @@ type PlaylistClimbsListProps = {
   angle: number;
 };
 
-// Memoized sx prop for skeleton cards
 const skeletonCardBoxSx = { width: { xs: '100%', lg: '50%' } };
 
 const ClimbsListSkeleton = ({ aspectRatio }: { aspectRatio: number }) => {
@@ -52,7 +50,6 @@ export default function PlaylistClimbsList({
   angle,
 }: PlaylistClimbsListProps) {
   const { token, isLoading: tokenLoading } = useWsAuthToken();
-  const { setCurrentClimb } = useQueueContext();
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const [selectedClimbUuid, setSelectedClimbUuid] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
@@ -111,11 +108,10 @@ export default function PlaylistClimbsList({
     staleTime: 5 * 60 * 1000,
   });
 
-  // Flatten all pages of climbs
   const allClimbs: Climb[] = data?.pages.flatMap((page) => page.climbs as Climb[]) ?? [];
   const totalCount = data?.pages[0]?.totalCount ?? 0;
 
-  // Filter out cross-layout climbs, count how many are hidden, and update angle to route angle
+  // Filter out cross-layout climbs
   const { visibleClimbs, hiddenCount } = useMemo(() => {
     const visible: Climb[] = [];
     let hidden = 0;
@@ -132,23 +128,16 @@ export default function PlaylistClimbsList({
     return { visibleClimbs: visible, hiddenCount: hidden };
   }, [allClimbs, boardDetails.layout_id, angle]);
 
-  // Intersection Observer callback for infinite scroll
   const handleObserver = useCallback(
     (entries: IntersectionObserverEntry[]) => {
       const [target] = entries;
       if (target.isIntersecting && hasNextPage && !isFetchingNextPage) {
-        track('Playlist Infinite Scroll Load More', {
-          playlistUuid,
-          currentCount: allClimbs.length,
-          hasMore: hasNextPage,
-        });
         fetchNextPage();
       }
     },
-    [hasNextPage, isFetchingNextPage, fetchNextPage, allClimbs.length, playlistUuid],
+    [hasNextPage, isFetchingNextPage, fetchNextPage],
   );
 
-  // Set up Intersection Observer
   useEffect(() => {
     const element = loadMoreRef.current;
     if (!element) return;
@@ -166,33 +155,27 @@ export default function PlaylistClimbsList({
     };
   }, [handleObserver]);
 
-  // Handle climb double-click - add to queue and make it the active climb
-  const handleClimbDoubleClick = useCallback((climb: Climb) => {
+  const handleClimbSelect = useCallback((climb: Climb) => {
     setSelectedClimbUuid(climb.uuid);
-    setCurrentClimb(climb);
-    track('Playlist Climb Card Double Clicked', {
+    track('Playlist Climb Selected', {
       climbUuid: climb.uuid,
       playlistUuid,
-      angle: climb.angle,
     });
-  }, [playlistUuid, setCurrentClimb]);
+  }, [playlistUuid]);
 
-  // Memoize climb-specific handlers to prevent unnecessary re-renders
   const climbHandlersMap = useMemo(() => {
     const map = new Map<string, () => void>();
     visibleClimbs.forEach(climb => {
-      map.set(climb.uuid, () => handleClimbDoubleClick(climb));
+      map.set(climb.uuid, () => handleClimbSelect(climb));
     });
     return map;
-  }, [visibleClimbs, handleClimbDoubleClick]);
+  }, [visibleClimbs, handleClimbSelect]);
 
-  // Memoize inline style objects
   const sentinelStyle = useMemo(
     () => ({ minHeight: '20px', marginTop: '16px' }),
     [],
   );
 
-  // Memoize sx prop objects to prevent recreation on every render
   const gridContainerSx = useMemo(() => ({
     display: 'flex',
     flexWrap: 'wrap' as const,
@@ -205,7 +188,6 @@ export default function PlaylistClimbsList({
 
   const aspectRatio = boardDetails.boardWidth / boardDetails.boardHeight;
 
-  // Loading state
   if ((isLoading || tokenLoading) && allClimbs.length === 0) {
     return (
       <div className={styles.climbsSection}>
@@ -216,7 +198,6 @@ export default function PlaylistClimbsList({
     );
   }
 
-  // Error state
   if (error) {
     return (
       <div className={styles.climbsSection}>
@@ -225,7 +206,6 @@ export default function PlaylistClimbsList({
     );
   }
 
-  // Empty state (considering both visible and hidden climbs)
   if (visibleClimbs.length === 0 && hiddenCount === 0 && !isFetching) {
     return (
       <div className={styles.climbsSection}>
@@ -256,14 +236,12 @@ export default function PlaylistClimbsList({
         </IconButton>
       </div>
 
-      {/* Notice for hidden cross-layout climbs */}
       {hiddenCount > 0 && (
         <MuiAlert severity="info" className={styles.hiddenClimbsNotice}>
           {`Not showing ${hiddenCount} ${hiddenCount === 1 ? 'climb' : 'climbs'} from other layouts`}
         </MuiAlert>
       )}
 
-      {/* Empty state when all climbs are from other layouts */}
       {visibleClimbs.length === 0 && hiddenCount > 0 && !isFetching && (
         <EmptyState description="All climbs in this playlist are from other layouts" />
       )}
@@ -298,7 +276,6 @@ export default function PlaylistClimbsList({
         </Box>
       )}
 
-      {/* Sentinel element for Intersection Observer */}
       <div ref={loadMoreRef} style={sentinelStyle}>
         {isFetchingNextPage && (
           <Box sx={gridContainerSx}>

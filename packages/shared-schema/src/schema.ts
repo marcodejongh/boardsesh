@@ -808,6 +808,14 @@ export const typeDefs = /* GraphQL */ `
   }
 
   """
+  Input for getting all user's playlists across boards.
+  """
+  input GetAllUserPlaylistsInput {
+    "Optional filter by board type"
+    boardType: String
+  }
+
+  """
   Input for getting playlists containing a climb.
   """
   input GetPlaylistsForClimbInput {
@@ -1116,6 +1124,12 @@ export const typeDefs = /* GraphQL */ `
     Requires authentication.
     """
     userPlaylists(input: GetUserPlaylistsInput!): [Playlist!]!
+
+    """
+    Get all current user's playlists across boards/layouts.
+    Optional boardType filter. Requires authentication.
+    """
+    allUserPlaylists(input: GetAllUserPlaylistsInput!): [Playlist!]!
 
     """
     Get a specific playlist by ID.

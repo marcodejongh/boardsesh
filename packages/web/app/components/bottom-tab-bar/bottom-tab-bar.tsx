@@ -15,7 +15,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { track } from '@vercel/analytics';
 import { BoardDetails } from '@/app/lib/types';
-import { generateLayoutSlug, generateSizeSlug, generateSetSlug, constructClimbListWithSlugs } from '@/app/lib/url-utils';
+import { constructClimbListWithSlugs, generateLayoutSlug, generateSizeSlug, generateSetSlug } from '@/app/lib/url-utils';
 import { themeTokens } from '@/app/theme/theme-config';
 import { usePlaylistsContext } from '../climb-actions/playlists-batch-context';
 import AuthModal from '../auth/auth-modal';
@@ -37,7 +37,7 @@ const isValidHexColor = (color: string): boolean => {
 // Determine which tab a path clearly belongs to.
 // Returns null for ambiguous pages (view/play) that could be reached from either tab.
 const getTabForPath = (path: string): Tab | null => {
-  if (path.includes('/playlists') || path.includes('/playlist/')) return 'library';
+  if (path.startsWith('/my-library') || path.includes('/playlists') || path.includes('/playlist/')) return 'library';
   if (path.includes('/list') || path.includes('/import')) return 'climbs';
   if (path.includes('/create')) return 'create';
   return null;
@@ -91,21 +91,9 @@ function BottomTabBar({ boardDetails, angle }: BottomTabBarProps) {
     return null;
   })();
 
-  const playlistsUrl = (() => {
-    const { board_name, layout_name, size_name, size_description, set_names } = boardDetails;
-    if (layout_name && size_name && set_names) {
-      return `/${board_name}/${generateLayoutSlug(layout_name)}/${generateSizeSlug(size_name, size_description)}/${generateSetSlug(set_names)}/${angle}/playlists`;
-    }
-    return null;
-  })();
-
   const getPlaylistUrl = useCallback((playlistUuid: string) => {
-    const { board_name, layout_name, size_name, size_description, set_names } = boardDetails;
-    if (layout_name && size_name && set_names) {
-      return `/${board_name}/${generateLayoutSlug(layout_name)}/${generateSizeSlug(size_name, size_description)}/${generateSetSlug(set_names)}/${angle}/playlist/${playlistUuid}`;
-    }
-    return null;
-  }, [boardDetails, angle]);
+    return `/my-library/playlist/${playlistUuid}`;
+  }, []);
 
   // Initialize from IndexedDB on mount
   useEffect(() => {
@@ -170,12 +158,10 @@ function BottomTabBar({ boardDetails, angle }: BottomTabBarProps) {
   const handleLibraryTab = () => {
     setIsCreateOpen(false);
     setIsCreatePlaylistOpen(false);
-    const url = lastUrlsRef.current.library || playlistsUrl;
-    if (url) {
-      const currentUrl = pathname + window.location.search;
-      if (url !== currentUrl) {
-        router.push(url);
-      }
+    const url = '/my-library';
+    const currentUrl = pathname + window.location.search;
+    if (url !== currentUrl) {
+      router.push(url);
     }
     track('Bottom Tab Bar', { tab: 'library' });
   };
@@ -236,10 +222,7 @@ function BottomTabBar({ boardDetails, angle }: BottomTabBarProps) {
       setIsCreatePlaylistOpen(false);
 
       // Navigate to the new playlist
-      const newPlaylistUrl = getPlaylistUrl(newPlaylist.uuid);
-      if (newPlaylistUrl) {
-        router.push(newPlaylistUrl);
-      }
+      router.push(getPlaylistUrl(newPlaylist.uuid));
     } catch (error) {
       showMessage('Failed to create playlist', 'error');
     } finally {
@@ -276,7 +259,6 @@ function BottomTabBar({ boardDetails, angle }: BottomTabBarProps) {
           aria-label="Your library"
           role="tab"
           aria-selected={activeTab === 'library'}
-          disabled={!playlistsUrl}
         >
           <LocalOfferOutlined style={{ fontSize: 20 }} />
           <span className={styles.tabLabel}>Your Library</span>

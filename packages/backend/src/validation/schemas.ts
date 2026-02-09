@@ -355,6 +355,10 @@ export const GetUserPlaylistsInputSchema = z.object({
   layoutId: z.number().int().positive(),
 });
 
+export const GetAllUserPlaylistsInputSchema = z.object({
+  boardType: BoardNameSchema.optional(),
+});
+
 export const GetPlaylistsForClimbInputSchema = z.object({
   boardType: BoardNameSchema,
   layoutId: z.number().int().positive(),

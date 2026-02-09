@@ -25,10 +25,9 @@ import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 import { LoadingSpinner } from '@/app/components/ui/loading-spinner';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { useQueueContext } from '@/app/components/graphql-queue';
-import { generateLayoutSlug, generateSizeSlug, generateSetSlug } from '@/app/lib/url-utils';
 import BackButton from '@/app/components/back-button';
 import LikedClimbsList from './liked-climbs-list';
-import styles from '../playlist/[playlist_uuid]/playlist-view.module.css';
+import styles from '@/app/components/library/playlist-view.module.css';
 
 type LikedClimbsViewContentProps = {
   boardDetails: BoardDetails;
@@ -48,14 +47,7 @@ export default function LikedClimbsViewContent({
   const { addToQueue } = useQueueContext();
 
   const getBackUrl = () => {
-    const { board_name, layout_name, size_name, size_description, set_names } = boardDetails;
-    if (layout_name && size_name && set_names) {
-      const layoutSlug = generateLayoutSlug(layout_name);
-      const sizeSlug = generateSizeSlug(size_name, size_description);
-      const setSlug = generateSetSlug(set_names);
-      return `/${board_name}/${layoutSlug}/${sizeSlug}/${setSlug}/${angle}/playlists`;
-    }
-    return `/${board_name}/${boardDetails.layout_id}/${boardDetails.size_id}/${boardDetails.set_ids.join(',')}/${angle}/playlists`;
+    return '/my-library';
   };
 
   const handleAddAllToQueue = useCallback(async () => {

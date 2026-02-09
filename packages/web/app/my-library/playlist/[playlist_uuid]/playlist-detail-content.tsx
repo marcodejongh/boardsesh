@@ -14,24 +14,18 @@ import {
   LockOutlined,
   SentimentDissatisfiedOutlined,
   MoreVertOutlined,
-  AddOutlined,
   ElectricBoltOutlined,
   EditOutlined,
   DeleteOutlined,
 } from '@mui/icons-material';
-import { track } from '@vercel/analytics';
-import { BoardDetails, Climb } from '@/app/lib/types';
+import { BoardDetails } from '@/app/lib/types';
 import { executeGraphQL } from '@/app/lib/graphql/client';
 import {
   GET_PLAYLIST,
-  GET_PLAYLIST_CLIMBS,
   DELETE_PLAYLIST,
   UPDATE_PLAYLIST_LAST_ACCESSED,
   GetPlaylistQueryResponse,
   GetPlaylistQueryVariables,
-  GetPlaylistClimbsQueryResponse,
-  GetPlaylistClimbsQueryVariables,
-  PlaylistClimbsResult,
   Playlist,
   UpdatePlaylistLastAccessedMutationVariables,
   UpdatePlaylistLastAccessedMutationResponse,
@@ -41,15 +35,14 @@ import {
 import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 import { LoadingSpinner } from '@/app/components/ui/loading-spinner';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
-import { useQueueContext } from '@/app/components/graphql-queue';
+import { getBoardDetailsForPlaylist, getDefaultAngleForBoard } from '@/app/lib/board-config-for-playlist';
 import { themeTokens } from '@/app/theme/theme-config';
-import { generateLayoutSlug, generateSizeSlug, generateSetSlug } from '@/app/lib/url-utils';
 import { useRouter } from 'next/navigation';
 import BackButton from '@/app/components/back-button';
 import { PlaylistGeneratorDrawer } from '@/app/components/playlist-generator';
-import PlaylistEditDrawer from './playlist-edit-drawer';
+import PlaylistEditDrawer from '@/app/components/library/playlist-edit-drawer';
 import PlaylistClimbsList from './playlist-climbs-list';
-import styles from './playlist-view.module.css';
+import styles from '@/app/components/library/playlist-view.module.css';
 
 // Validate hex color format
 const isValidHexColor = (color: string): boolean => {
@@ -67,17 +60,13 @@ const PLAYLIST_COLORS = [
   themeTokens.colors.amber,
 ];
 
-type PlaylistViewContentProps = {
+type PlaylistDetailContentProps = {
   playlistUuid: string;
-  boardDetails: BoardDetails;
-  angle: number;
 };
 
-export default function PlaylistViewContent({
+export default function PlaylistDetailContent({
   playlistUuid,
-  boardDetails,
-  angle,
-}: PlaylistViewContentProps) {
+}: PlaylistDetailContentProps) {
   const router = useRouter();
   const { showMessage } = useSnackbar();
   const [playlist, setPlaylist] = useState<Playlist | null>(null);
@@ -86,13 +75,13 @@ export default function PlaylistViewContent({
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);
   const [generatorOpen, setGeneratorOpen] = useState(false);
   const [listRefreshKey, setListRefreshKey] = useState(0);
-  const [isAddingToQueue, setIsAddingToQueue] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
-  const addingToQueueRef = useRef(false);
-  const abortControllerRef = useRef<AbortController | null>(null);
   const lastAccessedUpdatedRef = useRef(false);
   const { token, isLoading: tokenLoading } = useWsAuthToken();
-  const { addToQueue } = useQueueContext();
+
+  // Derived board details from playlist
+  const [boardDetails, setBoardDetails] = useState<BoardDetails | null>(null);
+  const [angle, setAngle] = useState<number>(40);
 
   const fetchPlaylist = useCallback(async () => {
     if (tokenLoading) return;
@@ -113,6 +102,14 @@ export default function PlaylistViewContent({
       }
 
       setPlaylist(response.playlist);
+
+      // Derive board details
+      const details = getBoardDetailsForPlaylist(
+        response.playlist.boardType,
+        response.playlist.layoutId,
+      );
+      setBoardDetails(details);
+      setAngle(getDefaultAngleForBoard(response.playlist.boardType));
     } catch (err) {
       console.error('Error fetching playlist:', err);
       setError('Failed to load playlist');
@@ -139,13 +136,6 @@ export default function PlaylistViewContent({
     }
   }, [playlist, token, playlistUuid]);
 
-  // Cleanup abort controller on unmount
-  useEffect(() => {
-    return () => {
-      abortControllerRef.current?.abort();
-    };
-  }, []);
-
   const handleEditSuccess = useCallback((updatedPlaylist: Playlist) => {
     setPlaylist(updatedPlaylist);
   }, []);
@@ -154,85 +144,6 @@ export default function PlaylistViewContent({
     setListRefreshKey((prev) => prev + 1);
     fetchPlaylist();
   }, [fetchPlaylist]);
-
-  const handleAddAllToQueue = useCallback(async () => {
-    if (!token || addingToQueueRef.current) return;
-
-    abortControllerRef.current?.abort();
-    const abortController = new AbortController();
-    abortControllerRef.current = abortController;
-
-    addingToQueueRef.current = true;
-    setIsAddingToQueue(true);
-    setMenuAnchor(null);
-
-    try {
-      type PlaylistClimb = PlaylistClimbsResult['climbs'][number];
-      const allClimbs: Array<PlaylistClimb & { angle: number }> = [];
-      let page = 0;
-      let hasMore = true;
-      const pageSize = 100;
-
-      while (hasMore) {
-        if (abortController.signal.aborted) return;
-
-        const response = await executeGraphQL<
-          GetPlaylistClimbsQueryResponse,
-          GetPlaylistClimbsQueryVariables
-        >(
-          GET_PLAYLIST_CLIMBS,
-          {
-            input: {
-              playlistId: playlistUuid,
-              boardName: boardDetails.board_name,
-              layoutId: boardDetails.layout_id,
-              sizeId: boardDetails.size_id,
-              setIds: boardDetails.set_ids.join(','),
-              angle,
-              page,
-              pageSize,
-            },
-          },
-          token,
-        );
-
-        if (abortController.signal.aborted) return;
-
-        const climbs = response.playlistClimbs.climbs;
-        for (const climb of climbs) {
-          const isCrossLayout = climb.layoutId != null && climb.layoutId !== boardDetails.layout_id;
-          if (!isCrossLayout) {
-            allClimbs.push({ ...climb, angle });
-          }
-        }
-        hasMore = response.playlistClimbs.hasMore;
-        page++;
-      }
-
-      if (allClimbs.length === 0) {
-        showMessage('No climbs to add from this playlist', 'info');
-        return;
-      }
-
-      for (const climb of allClimbs) {
-        addToQueue(climb as Climb);
-      }
-
-      track('Playlist Add All To Queue', {
-        playlistUuid,
-        climbCount: allClimbs.length,
-      });
-
-      showMessage(`Added ${allClimbs.length} ${allClimbs.length === 1 ? 'climb' : 'climbs'} to queue`, 'success');
-    } catch (err) {
-      if (abortController.signal.aborted) return;
-      console.error('Error adding climbs to queue:', err);
-      showMessage('Failed to add climbs to queue', 'error');
-    } finally {
-      addingToQueueRef.current = false;
-      setIsAddingToQueue(false);
-    }
-  }, [token, playlistUuid, boardDetails, angle, addToQueue, showMessage]);
 
   const handleDelete = useCallback(async () => {
     if (!token || !playlist) return;
@@ -246,22 +157,12 @@ export default function PlaylistViewContent({
       );
 
       showMessage('Playlist deleted', 'success');
-
-      // Navigate back to playlists
-      const { board_name, layout_name, size_name, size_description, set_names } = boardDetails;
-      if (layout_name && size_name && set_names) {
-        const layoutSlug = generateLayoutSlug(layout_name);
-        const sizeSlug = generateSizeSlug(size_name, size_description);
-        const setSlug = generateSetSlug(set_names);
-        router.push(`/${board_name}/${layoutSlug}/${sizeSlug}/${setSlug}/${angle}/playlists`);
-      } else {
-        router.push(`/${board_name}/${boardDetails.layout_id}/${boardDetails.size_id}/${boardDetails.set_ids.join(',')}/${angle}/playlists`);
-      }
+      router.push('/my-library');
     } catch (err) {
       console.error('Error deleting playlist:', err);
       showMessage('Failed to delete playlist', 'error');
     }
-  }, [token, playlist, playlistUuid, boardDetails, angle, router, showMessage]);
+  }, [token, playlist, playlistUuid, router, showMessage]);
 
   const isOwner = playlist?.userRole === 'owner';
 
@@ -270,17 +171,6 @@ export default function PlaylistViewContent({
       return playlist.color;
     }
     return PLAYLIST_COLORS[0];
-  };
-
-  const getBackUrl = () => {
-    const { board_name, layout_name, size_name, size_description, set_names } = boardDetails;
-    if (layout_name && size_name && set_names) {
-      const layoutSlug = generateLayoutSlug(layout_name);
-      const sizeSlug = generateSizeSlug(size_name, size_description);
-      const setSlug = generateSetSlug(set_names);
-      return `/${board_name}/${layoutSlug}/${sizeSlug}/${setSlug}/${angle}/playlists`;
-    }
-    return `/${board_name}/${boardDetails.layout_id}/${boardDetails.size_id}/${boardDetails.set_ids.join(',')}/${angle}/playlists`;
   };
 
   if (loading || tokenLoading) {
@@ -312,7 +202,7 @@ export default function PlaylistViewContent({
     <>
       {/* Back Button */}
       <div className={styles.actionsSection}>
-        <BackButton fallbackUrl={getBackUrl()} />
+        <BackButton fallbackUrl="/my-library" />
       </div>
 
       {/* Main Content */}
@@ -361,7 +251,7 @@ export default function PlaylistViewContent({
           {/* Ellipsis Menu */}
           <IconButton
             className={styles.heroMenuButton}
-            onClick={(e) => setMenuAnchor(e.currentTarget)}
+            onClick={(e: React.MouseEvent<HTMLButtonElement>) => setMenuAnchor(e.currentTarget)}
             aria-label="Playlist actions"
           >
             <MoreVertOutlined />
@@ -372,13 +262,6 @@ export default function PlaylistViewContent({
             open={Boolean(menuAnchor)}
             onClose={() => setMenuAnchor(null)}
           >
-            <MenuItem
-              onClick={handleAddAllToQueue}
-              disabled={playlist.climbCount === 0 || isAddingToQueue}
-            >
-              <ListItemIcon><AddOutlined /></ListItemIcon>
-              <ListItemText>{isAddingToQueue ? 'Adding...' : 'Queue All'}</ListItemText>
-            </MenuItem>
             {isOwner && (
               <MenuItem onClick={() => { setMenuAnchor(null); setGeneratorOpen(true); }}>
                 <ListItemIcon><ElectricBoltOutlined /></ListItemIcon>
@@ -401,12 +284,22 @@ export default function PlaylistViewContent({
         </div>
 
         {/* Climbs List */}
-        <PlaylistClimbsList
-          key={listRefreshKey}
-          playlistUuid={playlistUuid}
-          boardDetails={boardDetails}
-          angle={angle}
-        />
+        {boardDetails && (
+          <PlaylistClimbsList
+            key={listRefreshKey}
+            playlistUuid={playlistUuid}
+            boardDetails={boardDetails}
+            angle={angle}
+          />
+        )}
+
+        {!boardDetails && (
+          <div className={styles.errorContainer}>
+            <Typography variant="body2" color="text.secondary">
+              Unable to load climb previews for this board configuration.
+            </Typography>
+          </div>
+        )}
       </div>
 
       {/* Edit Drawer */}
@@ -420,14 +313,16 @@ export default function PlaylistViewContent({
       )}
 
       {/* Generator Drawer */}
-      <PlaylistGeneratorDrawer
-        open={generatorOpen}
-        onClose={() => setGeneratorOpen(false)}
-        playlistUuid={playlistUuid}
-        boardDetails={boardDetails}
-        angle={angle}
-        onSuccess={handlePlaylistUpdated}
-      />
+      {boardDetails && (
+        <PlaylistGeneratorDrawer
+          open={generatorOpen}
+          onClose={() => setGeneratorOpen(false)}
+          playlistUuid={playlistUuid}
+          boardDetails={boardDetails}
+          angle={angle}
+          onSuccess={handlePlaylistUpdated}
+        />
+      )}
     </>
   );
 }

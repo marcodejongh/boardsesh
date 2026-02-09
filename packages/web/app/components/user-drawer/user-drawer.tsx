@@ -26,7 +26,6 @@ import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import AuthModal from '../auth/auth-modal';
 import { HoldClassificationWizard } from '../hold-classification';
 import { BoardDetails } from '@/app/lib/types';
-import { generateLayoutSlug, generateSizeSlug, generateSetSlug } from '@/app/lib/url-utils';
 import {
   type StoredSession,
   getRecentSessions,
@@ -40,7 +39,7 @@ interface UserDrawerProps {
   angle?: number;
 }
 
-export default function UserDrawer({ boardDetails, angle }: UserDrawerProps) {
+export default function UserDrawer({ boardDetails }: UserDrawerProps) {
   const { data: session } = useSession();
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
@@ -77,13 +76,7 @@ export default function UserDrawer({ boardDetails, angle }: UserDrawerProps) {
     handleClose();
   };
 
-  const playlistsUrl = (() => {
-    const { board_name, layout_name, size_name, size_description, set_names } = boardDetails;
-    if (layout_name && size_name && set_names && angle !== undefined) {
-      return `/${board_name}/${generateLayoutSlug(layout_name)}/${generateSizeSlug(size_name, size_description)}/${generateSetSlug(set_names)}/${angle}/playlists`;
-    }
-    return null;
-  })();
+  const playlistsUrl = '/my-library';
 
   const userAvatar = session?.user?.image ?? undefined;
   const userName = session?.user?.name;
@@ -197,16 +190,14 @@ export default function UserDrawer({ boardDetails, angle }: UserDrawerProps) {
               </button>
             )}
 
-            {playlistsUrl && !isMoonboard && (
-              <Link
-                href={playlistsUrl}
-                className={styles.menuItem}
-                onClick={handleClose}
-              >
-                <span className={styles.menuItemIcon}><LocalOfferOutlined /></span>
-                <span className={styles.menuItemLabel}>My Playlists</span>
-              </Link>
-            )}
+            <Link
+              href={playlistsUrl}
+              className={styles.menuItem}
+              onClick={handleClose}
+            >
+              <span className={styles.menuItemIcon}><LocalOfferOutlined /></span>
+              <span className={styles.menuItemLabel}>My Playlists</span>
+            </Link>
           </nav>
 
           {/* Recents section */}
