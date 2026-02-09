@@ -281,13 +281,13 @@ function BottomTabBar({ boardDetails, angle, boardConfigs }: BottomTabBarProps) 
         onChange={handleTabChange}
         showLabels
         sx={{
-          background: 'rgba(255, 255, 255, 0.3)',
+          background: themeTokens.semantic.surfaceGlass,
           WebkitBackdropFilter: 'blur(5px)',
           backdropFilter: 'blur(5px)',
           borderRadius: `${themeTokens.borderRadius.xl}px`,
           py: `${themeTokens.spacing[2]}px`,
           height: 'auto',
-          '@media (min-width: 768px)': { display: 'none' },
+          [`@media (min-width: ${themeTokens.breakpoints.mobile}px)`]: { display: 'none' },
         }}
       >
         <BottomNavigationAction
