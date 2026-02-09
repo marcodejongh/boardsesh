@@ -12,6 +12,10 @@
 }
 
 @media (min-width: 768px) {
+  .queueBar {
+    background-color: transparent;
+  }
+
   .card {
     max-width: 480px;
     margin: 0 auto;
