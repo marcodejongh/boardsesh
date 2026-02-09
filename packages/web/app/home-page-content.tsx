@@ -4,7 +4,7 @@ import React, { useState, useCallback } from 'react';
 import Box from '@mui/material/Box';
 import MuiButton from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
-import PersonSearchOutlined from '@mui/icons-material/PersonSearchOutlined';
+import SearchOutlined from '@mui/icons-material/SearchOutlined';
 import FollowingAscentsFeed from '@/app/components/social/following-ascents-feed';
 import GlobalAscentsFeed from '@/app/components/social/global-ascents-feed';
 import UserSearchDrawer from '@/app/components/social/user-search-drawer';
@@ -72,12 +72,12 @@ export default function HomePageContent({ boardConfigs }: HomePageContentProps) 
         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
           {isAuthenticated && (
             <MuiButton
-              startIcon={<PersonSearchOutlined />}
+              startIcon={<SearchOutlined />}
               onClick={() => setSearchOpen(true)}
               size="small"
               variant="outlined"
             >
-              Find Climbers
+              Search
             </MuiButton>
           )}
         </Box>
@@ -115,7 +115,7 @@ export default function HomePageContent({ boardConfigs }: HomePageContentProps) 
       </div>
 
       {isAuthenticated && (
-        <UserSearchDrawer open={searchOpen} onClose={() => setSearchOpen(false)} />
+        <UserSearchDrawer open={searchOpen} onClose={() => setSearchOpen(false)} onBoardSelect={handleBoardSelect} />
       )}
     </Box>
   );
