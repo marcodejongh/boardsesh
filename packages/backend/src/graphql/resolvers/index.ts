@@ -26,6 +26,8 @@ import { controllerSubscriptions, controllerEventResolver } from './controller/s
 import { socialFollowQueries, socialFollowMutations } from './social/follows';
 import { socialSearchQueries } from './social/search';
 import { socialFeedQueries } from './social/feed';
+import { socialCommentQueries, socialCommentMutations } from './social/comments';
+import { socialVoteQueries, socialVoteMutations } from './social/votes';
 
 export const resolvers = {
   // Scalar types
@@ -45,6 +47,8 @@ export const resolvers = {
     ...socialFollowQueries,
     ...socialSearchQueries,
     ...socialFeedQueries,
+    ...socialCommentQueries,
+    ...socialVoteQueries,
   },
 
   Mutation: {
@@ -56,6 +60,8 @@ export const resolvers = {
     ...playlistMutations,
     ...controllerMutations,
     ...socialFollowMutations,
+    ...socialCommentMutations,
+    ...socialVoteMutations,
   },
 
   Subscription: {

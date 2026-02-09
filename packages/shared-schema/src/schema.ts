@@ -970,6 +970,35 @@ export const typeDefs = /* GraphQL */ `
   }
 
   # ============================================
+  # Social Enums
+  # ============================================
+
+  enum SocialEntityType {
+    playlist_climb
+    climb
+    tick
+    comment
+    proposal
+    board
+  }
+
+  enum SortMode {
+    new
+    top
+    controversial
+    hot
+  }
+
+  enum TimePeriod {
+    hour
+    day
+    week
+    month
+    year
+    all
+  }
+
+  # ============================================
   # Social / Follow Types
   # ============================================
 
@@ -1025,6 +1054,144 @@ export const typeDefs = /* GraphQL */ `
     totalCount: Int!
     "Whether more results are available"
     hasMore: Boolean!
+  }
+
+  # ============================================
+  # Comments & Votes Types
+  # ============================================
+
+  """
+  A comment on a social entity (climb, tick, playlist_climb, etc).
+  """
+  type Comment {
+    "Public unique identifier"
+    uuid: ID!
+    "User who posted the comment"
+    userId: ID!
+    "Display name of the comment author"
+    userDisplayName: String
+    "Avatar URL of the comment author"
+    userAvatarUrl: String
+    "Entity type this comment belongs to"
+    entityType: SocialEntityType!
+    "Entity ID this comment belongs to"
+    entityId: String!
+    "Parent comment UUID for replies (null for top-level)"
+    parentCommentUuid: String
+    "Comment body text (null if deleted)"
+    body: String
+    "Whether this comment has been deleted"
+    isDeleted: Boolean!
+    "Number of replies to this comment"
+    replyCount: Int!
+    "Number of upvotes"
+    upvotes: Int!
+    "Number of downvotes"
+    downvotes: Int!
+    "Net vote score (upvotes - downvotes)"
+    voteScore: Int!
+    "Current user's vote (-1, 0, or 1)"
+    userVote: Int!
+    "When the comment was created (ISO 8601)"
+    createdAt: String!
+    "When the comment was last updated (ISO 8601)"
+    updatedAt: String!
+  }
+
+  """
+  Paginated list of comments.
+  """
+  type CommentConnection {
+    "List of comments"
+    comments: [Comment!]!
+    "Total number of matching comments"
+    totalCount: Int!
+    "Whether more comments are available"
+    hasMore: Boolean!
+  }
+
+  """
+  Vote summary for an entity.
+  """
+  type VoteSummary {
+    "Entity type"
+    entityType: SocialEntityType!
+    "Entity ID"
+    entityId: String!
+    "Number of upvotes"
+    upvotes: Int!
+    "Number of downvotes"
+    downvotes: Int!
+    "Net vote score"
+    voteScore: Int!
+    "Current user's vote (-1, 0, or 1)"
+    userVote: Int!
+  }
+
+  """
+  Input for adding a comment.
+  """
+  input AddCommentInput {
+    "Entity type to comment on"
+    entityType: SocialEntityType!
+    "Entity ID to comment on"
+    entityId: String!
+    "Parent comment UUID for replies"
+    parentCommentUuid: String
+    "Comment body text"
+    body: String!
+  }
+
+  """
+  Input for updating a comment.
+  """
+  input UpdateCommentInput {
+    "UUID of the comment to update"
+    commentUuid: ID!
+    "New body text"
+    body: String!
+  }
+
+  """
+  Input for voting on an entity.
+  """
+  input VoteInput {
+    "Entity type to vote on"
+    entityType: SocialEntityType!
+    "Entity ID to vote on"
+    entityId: String!
+    "Vote value (+1 or -1)"
+    value: Int!
+  }
+
+  """
+  Input for fetching comments.
+  """
+  input CommentsInput {
+    "Entity type"
+    entityType: SocialEntityType!
+    "Entity ID"
+    entityId: String!
+    "Parent comment UUID to fetch replies for"
+    parentCommentUuid: String
+    "Sort mode"
+    sortBy: SortMode
+    "Time period filter"
+    timePeriod: TimePeriod
+    "Maximum number of comments to return"
+    limit: Int
+    "Number of comments to skip"
+    offset: Int
+  }
+
+  """
+  Input for fetching vote summaries in bulk.
+  """
+  input BulkVoteSummaryInput {
+    "Entity type"
+    entityType: SocialEntityType!
+    "List of entity IDs"
+    entityIds: [String!]!
   }
 
   """
@@ -1369,6 +1536,25 @@ export const typeDefs = /* GraphQL */ `
     No authentication required.
     """
     globalAscentsFeed(input: FollowingAscentsFeedInput): FollowingAscentsFeedResult!
+
+    # ============================================
+    # Comments & Votes Queries
+    # ============================================
+
+    """
+    Get comments for an entity.
+    """
+    comments(input: CommentsInput!): CommentConnection!
+
+    """
+    Get vote summary for a single entity.
+    """
+    voteSummary(entityType: SocialEntityType!, entityId: String!): VoteSummary!
+
+    """
+    Get vote summaries for multiple entities of the same type.
+    """
+    bulkVoteSummaries(input: BulkVoteSummaryInput!): [VoteSummary!]!
   }
 
   """
@@ -1538,6 +1724,30 @@ export const typeDefs = /* GraphQL */ `
     Unfollow a user.
     """
     unfollowUser(input: FollowInput!): Boolean!
+
+    # ============================================
+    # Comments & Votes Mutations (require auth)
+    # ============================================
+
+    """
+    Add a comment to an entity.
+    """
+    addComment(input: AddCommentInput!): Comment!
+
+    """
+    Update a comment's body text.
+    """
+    updateComment(input: UpdateCommentInput!): Comment!
+
+    """
+    Delete a comment (soft-delete if it has replies).
+    """
+    deleteComment(commentUuid: ID!): Boolean!
+
+    """
+    Vote on an entity. Same value toggles (removes vote).
+    """
+    vote(input: VoteInput!): VoteSummary!
 
     # ESP32 sends LED positions from official app Bluetooth
     # frames: Pre-built frames string from ESP32 (preferred)

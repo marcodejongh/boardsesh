@@ -311,6 +311,27 @@
   color: var(--neutral-400);
 }
 
+/* Discussion section */
+.discussionSection {
+  background-color: var(--semantic-surface);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+}
+
+@media (max-width: 767px) {
+  .discussionSection {
+    padding: 16px;
+    border-radius: 8px;
+  }
+}
+
+@media (min-width: 992px) {
+  .discussionSection {
+    padding: 24px;
+  }
+}
+
 /* Hidden climbs notice */
 .hiddenClimbsNotice {
   margin-bottom: 16px;

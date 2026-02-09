@@ -16,6 +16,7 @@ import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import type { FollowingAscentFeedItem } from '@boardsesh/shared-schema';
 import AscentThumbnail from './ascent-thumbnail';
+import VoteButton from '@/app/components/social/vote-button';
 import { themeTokens } from '@/app/theme/theme-config';
 import styles from './ascents-feed.module.css';
 
@@ -161,6 +162,11 @@ const SocialFeedItem: React.FC<SocialFeedItemProps> = ({ item, showUserHeader = 
                 {item.comment}
               </MuiTypography>
             )}
+
+            {/* Vote */}
+            <Box sx={{ mt: 0.5 }}>
+              <VoteButton entityType="tick" entityId={item.uuid} likeOnly />
+            </Box>
           </Box>
         </Box>
       </CardContent>

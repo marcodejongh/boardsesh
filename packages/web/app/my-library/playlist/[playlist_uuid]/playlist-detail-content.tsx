@@ -42,6 +42,7 @@ import BackButton from '@/app/components/back-button';
 import { PlaylistGeneratorDrawer } from '@/app/components/playlist-generator';
 import PlaylistEditDrawer from '@/app/components/library/playlist-edit-drawer';
 import PlaylistClimbsList from './playlist-climbs-list';
+import CommentSection from '@/app/components/social/comment-section';
 import styles from '@/app/components/library/playlist-view.module.css';
 
 // Validate hex color format
@@ -298,6 +299,17 @@ export default function PlaylistDetailContent({
             <Typography variant="body2" color="text.secondary">
               Unable to load climb previews for this board configuration.
             </Typography>
+          </div>
+        )}
+
+        {/* Discussion */}
+        {playlist.isPublic && (
+          <div className={styles.discussionSection}>
+            <CommentSection
+              entityType="playlist_climb"
+              entityId={`${playlistUuid}:_all`}
+              title="Discussion"
+            />
           </div>
         )}
       </div>

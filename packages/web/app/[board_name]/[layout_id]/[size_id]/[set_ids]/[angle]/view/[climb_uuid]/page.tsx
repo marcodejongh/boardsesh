@@ -18,6 +18,7 @@ import {
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import { convertLitUpHoldsStringToMap } from '@/app/components/board-renderer/util';
 import ClimbViewActions from '@/app/components/climb-view/climb-view-actions';
+import ClimbSocialSection from '@/app/components/social/climb-social-section';
 import { Metadata } from 'next';
 import { dbz } from '@/app/lib/db/db';
 import { eq, and } from 'drizzle-orm';
@@ -208,6 +209,9 @@ export default async function DynamicResultsPage(props: { params: Promise<BoardR
             </div>
             <div className={styles.logbookSection}>
               <LogbookSection climb={climbWithProcessedData} />
+            </div>
+            <div className={styles.logbookSection}>
+              <ClimbSocialSection climbUuid={parsedParams.climb_uuid} />
             </div>
           </div>
         </div>
