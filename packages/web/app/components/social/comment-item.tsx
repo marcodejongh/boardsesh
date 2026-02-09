@@ -43,6 +43,7 @@ interface CommentItemProps {
   entityType: SocialEntityType;
   entityId: string;
   depth?: number;
+  currentUserId?: string | null;
 }
 
 export default function CommentItem({
@@ -52,6 +53,7 @@ export default function CommentItem({
   entityType,
   entityId,
   depth = 0,
+  currentUserId,
 }: CommentItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [showReplyForm, setShowReplyForm] = useState(false);
@@ -61,6 +63,7 @@ export default function CommentItem({
   const { token, isAuthenticated } = useWsAuthToken();
   const { showMessage } = useSnackbar();
 
+  const isAuthor = isAuthenticated && !!currentUserId && comment.userId === currentUserId;
   const timeAgo = dayjs(comment.createdAt).fromNow();
   const wasEdited = comment.createdAt !== comment.updatedAt;
 
@@ -183,6 +186,7 @@ export default function CommentItem({
             entityType={entityType}
             entityId={entityId}
             depth={1}
+            currentUserId={currentUserId}
           />
         ))}
       </Box>
@@ -263,7 +267,7 @@ export default function CommentItem({
                   Reply
                 </MuiButton>
               )}
-              {isAuthenticated && (
+              {isAuthor && (
                 <>
                   <IconButton
                     size="small"
@@ -318,6 +322,7 @@ export default function CommentItem({
               entityType={entityType}
               entityId={entityId}
               depth={1}
+              currentUserId={currentUserId}
             />
           ))}
         </Box>

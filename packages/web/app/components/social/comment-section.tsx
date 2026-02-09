@@ -4,6 +4,7 @@ import React, { useState, useCallback } from 'react';
 import Box from '@mui/material/Box';
 import MuiTypography from '@mui/material/Typography';
 import type { SocialEntityType } from '@boardsesh/shared-schema';
+import { useSession } from 'next-auth/react';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
@@ -23,7 +24,9 @@ interface CommentSectionProps {
 
 export default function CommentSection({ entityType, entityId, title = 'Discussion' }: CommentSectionProps) {
   const [refreshKey, setRefreshKey] = useState(0);
+  const { data: session } = useSession();
   const { token, isAuthenticated } = useWsAuthToken();
+  const currentUserId = session?.user?.id ?? null;
   const { showMessage } = useSnackbar();
 
   const handleAddComment = useCallback(
@@ -60,7 +63,7 @@ export default function CommentSection({ entityType, entityId, title = 'Discussi
         </MuiTypography>
       )}
 
-      <CommentList entityType={entityType} entityId={entityId} refreshKey={refreshKey} />
+      <CommentList entityType={entityType} entityId={entityId} refreshKey={refreshKey} currentUserId={currentUserId} />
     </Box>
   );
 }

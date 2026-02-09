@@ -99,6 +99,7 @@ export const socialCommentQueries = {
 
     // If parentCommentUuid is provided, resolve to internal ID for filtering replies
     let parentCommentFilter: ReturnType<typeof sql>;
+    let resolvedParentId: number | null = null;
     if (parentCommentUuid) {
       const [parentComment] = await db
         .select({ id: dbSchema.comments.id })
@@ -110,7 +111,8 @@ export const socialCommentQueries = {
         return { comments: [], totalCount: 0, hasMore: false };
       }
 
-      parentCommentFilter = sql`c."parent_comment_id" = ${parentComment.id}`;
+      resolvedParentId = parentComment.id;
+      parentCommentFilter = sql`c."parent_comment_id" = ${resolvedParentId}`;
     } else {
       parentCommentFilter = sql`c."parent_comment_id" IS NULL`;
     }
@@ -139,7 +141,7 @@ export const socialCommentQueries = {
         orderByClause = sql`c."created_at" DESC`;
     }
 
-    // Total count query using query builder
+    // Total count query — reuse resolvedParentId to avoid duplicate lookup
     const countResult = await db
       .select({ count: count() })
       .from(dbSchema.comments)
@@ -147,38 +149,12 @@ export const socialCommentQueries = {
         and(
           eq(dbSchema.comments.entityType, entityType),
           eq(dbSchema.comments.entityId, entityId),
-          parentCommentUuid
-            ? sql`"parent_comment_id" IS NOT NULL`
+          resolvedParentId !== null
+            ? eq(dbSchema.comments.parentCommentId, resolvedParentId)
             : isNull(dbSchema.comments.parentCommentId),
         ),
       );
-    // Refine count for parentCommentUuid case (need to check specific parent)
-    let totalCount: number;
-    if (parentCommentUuid) {
-      const [parentComment] = await db
-        .select({ id: dbSchema.comments.id })
-        .from(dbSchema.comments)
-        .where(eq(dbSchema.comments.uuid, parentCommentUuid))
-        .limit(1);
-
-      if (!parentComment) {
-        totalCount = 0;
-      } else {
-        const pcResult = await db
-          .select({ count: count() })
-          .from(dbSchema.comments)
-          .where(
-            and(
-              eq(dbSchema.comments.entityType, entityType),
-              eq(dbSchema.comments.entityId, entityId),
-              eq(dbSchema.comments.parentCommentId, parentComment.id),
-            ),
-          );
-        totalCount = Number(pcResult[0]?.count || 0);
-      }
-    } else {
-      totalCount = Number(countResult[0]?.count || 0);
-    }
+    const totalCount = Number(countResult[0]?.count || 0);
 
     // Main query with JOINs — use raw SQL but cast result properly
     const rawResult = await db.execute(sql`

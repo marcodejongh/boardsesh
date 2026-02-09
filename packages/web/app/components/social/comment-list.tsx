@@ -23,11 +23,12 @@ interface CommentListProps {
   entityType: SocialEntityType;
   entityId: string;
   refreshKey?: number;
+  currentUserId?: string | null;
 }
 
 const PAGE_SIZE = 20;
 
-export default function CommentList({ entityType, entityId, refreshKey = 0 }: CommentListProps) {
+export default function CommentList({ entityType, entityId, refreshKey = 0, currentUserId }: CommentListProps) {
   const [comments, setComments] = useState<CommentType[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [hasMore, setHasMore] = useState(false);
@@ -153,6 +154,7 @@ export default function CommentList({ entityType, entityId, refreshKey = 0 }: Co
               onCommentDeleted={handleCommentDeleted}
               entityType={entityType}
               entityId={entityId}
+              currentUserId={currentUserId}
             />
           ))}
           {hasMore && (

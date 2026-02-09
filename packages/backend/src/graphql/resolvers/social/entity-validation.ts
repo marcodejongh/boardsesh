@@ -39,7 +39,7 @@ export async function validateEntityExists(
     }
 
     case 'playlist_climb': {
-      // Format: "playlistUuid:climbUuid"
+      // Format: "playlistUuid:climbUuid" or "playlistUuid:_all" for general playlist discussion
       const parts = entityId.split(':');
       if (parts.length !== 2) {
         throw new Error('Invalid playlist_climb entity ID format. Expected "playlistUuid:climbUuid"');
@@ -56,19 +56,22 @@ export async function validateEntityExists(
         throw new Error('Playlist not found');
       }
 
-      const [playlistClimb] = await db
-        .select({ id: dbSchema.playlistClimbs.id })
-        .from(dbSchema.playlistClimbs)
-        .where(
-          and(
-            eq(dbSchema.playlistClimbs.playlistId, playlist.id),
-            eq(dbSchema.playlistClimbs.climbUuid, climbUuid),
-          ),
-        )
-        .limit(1);
+      // "_all" is used for general playlist discussion — only validate playlist exists
+      if (climbUuid !== '_all') {
+        const [playlistClimb] = await db
+          .select({ id: dbSchema.playlistClimbs.id })
+          .from(dbSchema.playlistClimbs)
+          .where(
+            and(
+              eq(dbSchema.playlistClimbs.playlistId, playlist.id),
+              eq(dbSchema.playlistClimbs.climbUuid, climbUuid),
+            ),
+          )
+          .limit(1);
 
-      if (!playlistClimb) {
-        throw new Error('Climb not found in playlist');
+        if (!playlistClimb) {
+          throw new Error('Climb not found in playlist');
+        }
       }
       break;
     }
@@ -98,8 +101,7 @@ export async function validateEntityExists(
     }
 
     case 'proposal': {
-      // Proposals don't exist yet — skip validation
-      break;
+      throw new Error('Proposals are not yet supported');
     }
 
     default: {
