@@ -209,9 +209,9 @@ export const socialCommentQueries = {
       OFFSET ${offset}
     `);
 
-    // Convert RowList to a plain array, then cast to CommentRow[]
-    const rows = Array.from(rawResult as Iterable<unknown>) as CommentRow[];
-    const comments = rows.map(mapCommentRow);
+    // db.execute() returns QueryResult (neon-serverless) with .rows property
+    const rawRows = (rawResult as unknown as { rows: CommentRow[] }).rows;
+    const comments = rawRows.map(mapCommentRow);
 
     return {
       comments,
