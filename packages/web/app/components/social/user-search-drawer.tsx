@@ -37,7 +37,7 @@ export default function UserSearchDrawer({ open, onClose, defaultSearchType = 'b
   return (
     <SwipeableDrawer
       title="Search"
-      placement="bottom"
+      placement="top"
       open={open}
       onClose={handleClose}
       styles={{

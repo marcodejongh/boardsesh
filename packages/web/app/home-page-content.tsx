@@ -2,11 +2,11 @@
 
 import React, { useState, useCallback } from 'react';
 import Box from '@mui/material/Box';
-import MuiButton from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import SearchOutlined from '@mui/icons-material/SearchOutlined';
 import FollowingAscentsFeed from '@/app/components/social/following-ascents-feed';
 import GlobalAscentsFeed from '@/app/components/social/global-ascents-feed';
+import searchPillStyles from '@/app/components/search-drawer/search-pill.module.css';
 import UserSearchDrawer from '@/app/components/social/user-search-drawer';
 import UserDrawer from '@/app/components/user-drawer/user-drawer';
 import BottomTabBar from '@/app/components/bottom-tab-bar/bottom-tab-bar';
@@ -62,25 +62,23 @@ export default function HomePageContent({ boardConfigs }: HomePageContentProps) 
         sx={{
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between',
+          gap: 1.5,
           px: 2,
           py: 1.5,
           borderBottom: `1px solid ${themeTokens.neutral[200]}`,
         }}
       >
         <UserDrawer boardConfigs={boardConfigs} />
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-          {isAuthenticated && (
-            <MuiButton
-              startIcon={<SearchOutlined />}
-              onClick={() => setSearchOpen(true)}
-              size="small"
-              variant="outlined"
-            >
-              Search
-            </MuiButton>
-          )}
-        </Box>
+        {isAuthenticated && (
+          <button
+            className={searchPillStyles.pill}
+            onClick={() => setSearchOpen(true)}
+            type="button"
+          >
+            <SearchOutlined className={searchPillStyles.icon} />
+            <span className={searchPillStyles.text}>Search boards & climbers</span>
+          </button>
+        )}
       </Box>
 
       {/* Feed */}
