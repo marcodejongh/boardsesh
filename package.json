@@ -28,6 +28,7 @@
     "db:migrate": "npm run db:migrate --workspace=@boardsesh/db",
     "db:studio": "npm run db:studio --workspace=@boardsesh/db",
     "db:import-moonboard": "npm run db:import-moonboard --workspace=@boardsesh/db",
+    "db:seed-social": "npm run db:seed-social --workspace=@boardsesh/db",
     "controller:codegen": "node embedded/scripts/generate-graphql-types.mjs",
     "controller:codegen:test": "node --test embedded/scripts/generate-graphql-types.test.mjs && python3 embedded/scripts/test_prebuild.py",
     "controller:build": "cd embedded/projects/board-controller && pio run",
