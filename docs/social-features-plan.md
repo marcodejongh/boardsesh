@@ -2655,7 +2655,7 @@ Each milestone creates only the DB tables and types it needs, and delivers testa
 
 **Dependency chain**: M1 → M4 (follows → notifications), M1+M2 → M4 → M5 (follows + comments → notifications → feed), M5 → M6 (feed → proposals with notification wiring).
 
-### Milestone 1: User Profiles & Follow System
+### Milestone 1: User Profiles & Follow System [COMPLETED]
 
 **User value**: "I can find other climbers, view their profiles, and follow them."
 

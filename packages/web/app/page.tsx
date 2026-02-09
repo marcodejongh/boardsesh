@@ -22,24 +22,23 @@ export default async function Home({ searchParams }: HomeProps) {
     return <ConsolidatedBoardConfig boardConfigs={boardConfigs} />;
   }
 
-  // Check for authenticated user with a default board
   const session = await getServerSession(authOptions);
   const cookieStore = await cookies();
   const defaultBoardCookie = cookieStore.get(DEFAULT_BOARD_COOKIE_NAME);
 
-  // Authenticated users with a default board see the Home feed
-  if (session?.user && defaultBoardCookie?.value) {
+  // Authenticated users see the Home feed
+  if (session?.user) {
     return <HomePageContent />;
   }
 
-  // Unauthenticated users without a default board see the board selector
-  // If they have a default board but aren't authenticated, redirect to it
-  if (!session?.user && defaultBoardCookie?.value) {
+  // Unauthenticated users with a default board get redirected to it
+  if (defaultBoardCookie?.value) {
     const { redirect } = await import('next/navigation');
     const defaultBoardUrl = decodeURIComponent(defaultBoardCookie.value);
     redirect(defaultBoardUrl);
   }
 
+  // Everyone else sees the board selector
   const boardConfigs = await getAllBoardConfigs();
   return <ConsolidatedBoardConfig boardConfigs={boardConfigs} />;
 }

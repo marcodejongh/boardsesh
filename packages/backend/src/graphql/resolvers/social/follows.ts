@@ -1,9 +1,10 @@
-import { eq, and, sql, count } from 'drizzle-orm';
+import { eq, and, count } from 'drizzle-orm';
 import type { ConnectionContext } from '@boardsesh/shared-schema';
 import { db } from '../../../db/client';
 import * as dbSchema from '@boardsesh/db/schema';
 import { requireAuthenticated, applyRateLimit, validateInput } from '../shared/helpers';
 import { FollowInputSchema, FollowListInputSchema } from '../../../validation/schemas';
+import { batchEnrichUserProfiles } from './helpers';
 
 export const socialFollowQueries = {
   /**
@@ -44,43 +45,24 @@ export const socialFollowQueries = {
       .limit(limit)
       .offset(offset);
 
-    // Compute follower/following counts and isFollowedByMe for each user
-    const users = await Promise.all(
-      results.map(async (row) => {
-        const [followerCountResult] = await db
-          .select({ count: count() })
-          .from(dbSchema.userFollows)
-          .where(eq(dbSchema.userFollows.followingId, row.followerId));
-
-        const [followingCountResult] = await db
-          .select({ count: count() })
-          .from(dbSchema.userFollows)
-          .where(eq(dbSchema.userFollows.followerId, row.followerId));
-
-        let isFollowedByMe = false;
-        if (ctx.isAuthenticated && ctx.userId) {
-          const [followCheck] = await db
-            .select({ count: count() })
-            .from(dbSchema.userFollows)
-            .where(
-              and(
-                eq(dbSchema.userFollows.followerId, ctx.userId),
-                eq(dbSchema.userFollows.followingId, row.followerId)
-              )
-            );
-          isFollowedByMe = Number(followCheck?.count || 0) > 0;
-        }
-
-        return {
-          id: row.followerId,
-          displayName: row.displayName || row.userName || undefined,
-          avatarUrl: row.avatarUrl || row.userImage || undefined,
-          followerCount: Number(followerCountResult?.count || 0),
-          followingCount: Number(followingCountResult?.count || 0),
-          isFollowedByMe,
-        };
-      })
+    // Batch-fetch follower/following counts and isFollowedByMe (3 queries instead of 3N)
+    const userIds = results.map((r) => r.followerId);
+    const enrichments = await batchEnrichUserProfiles(
+      userIds,
+      ctx.isAuthenticated ? ctx.userId : undefined,
     );
+
+    const users = results.map((row) => {
+      const enrichment = enrichments.get(row.followerId);
+      return {
+        id: row.followerId,
+        displayName: row.displayName || row.userName || undefined,
+        avatarUrl: row.avatarUrl || row.userImage || undefined,
+        followerCount: enrichment?.followerCount ?? 0,
+        followingCount: enrichment?.followingCount ?? 0,
+        isFollowedByMe: enrichment?.isFollowedByMe ?? false,
+      };
+    });
 
     return {
       users,
@@ -127,43 +109,24 @@ export const socialFollowQueries = {
       .limit(limit)
       .offset(offset);
 
-    // Compute follower/following counts and isFollowedByMe for each user
-    const users = await Promise.all(
-      results.map(async (row) => {
-        const [followerCountResult] = await db
-          .select({ count: count() })
-          .from(dbSchema.userFollows)
-          .where(eq(dbSchema.userFollows.followingId, row.followingId));
-
-        const [followingCountResult] = await db
-          .select({ count: count() })
-          .from(dbSchema.userFollows)
-          .where(eq(dbSchema.userFollows.followerId, row.followingId));
-
-        let isFollowedByMe = false;
-        if (ctx.isAuthenticated && ctx.userId) {
-          const [followCheck] = await db
-            .select({ count: count() })
-            .from(dbSchema.userFollows)
-            .where(
-              and(
-                eq(dbSchema.userFollows.followerId, ctx.userId),
-                eq(dbSchema.userFollows.followingId, row.followingId)
-              )
-            );
-          isFollowedByMe = Number(followCheck?.count || 0) > 0;
-        }
-
-        return {
-          id: row.followingId,
-          displayName: row.displayName || row.userName || undefined,
-          avatarUrl: row.avatarUrl || row.userImage || undefined,
-          followerCount: Number(followerCountResult?.count || 0),
-          followingCount: Number(followingCountResult?.count || 0),
-          isFollowedByMe,
-        };
-      })
+    // Batch-fetch follower/following counts and isFollowedByMe (3 queries instead of 3N)
+    const userIds = results.map((r) => r.followingId);
+    const enrichments = await batchEnrichUserProfiles(
+      userIds,
+      ctx.isAuthenticated ? ctx.userId : undefined,
     );
+
+    const users = results.map((row) => {
+      const enrichment = enrichments.get(row.followingId);
+      return {
+        id: row.followingId,
+        displayName: row.displayName || row.userName || undefined,
+        avatarUrl: row.avatarUrl || row.userImage || undefined,
+        followerCount: enrichment?.followerCount ?? 0,
+        followingCount: enrichment?.followingCount ?? 0,
+        isFollowedByMe: enrichment?.isFollowedByMe ?? false,
+      };
+    });
 
     return {
       users,
@@ -224,38 +187,20 @@ export const socialFollowQueries = {
 
     const user = users[0];
 
-    // Get counts
-    const [followerCountResult] = await db
-      .select({ count: count() })
-      .from(dbSchema.userFollows)
-      .where(eq(dbSchema.userFollows.followingId, userId));
-
-    const [followingCountResult] = await db
-      .select({ count: count() })
-      .from(dbSchema.userFollows)
-      .where(eq(dbSchema.userFollows.followerId, userId));
-
-    let isFollowedByMe = false;
-    if (ctx.isAuthenticated && ctx.userId) {
-      const [followCheck] = await db
-        .select({ count: count() })
-        .from(dbSchema.userFollows)
-        .where(
-          and(
-            eq(dbSchema.userFollows.followerId, ctx.userId),
-            eq(dbSchema.userFollows.followingId, userId)
-          )
-        );
-      isFollowedByMe = Number(followCheck?.count || 0) > 0;
-    }
+    // Batch-fetch counts (single user, but uses same efficient pattern)
+    const enrichments = await batchEnrichUserProfiles(
+      [userId],
+      ctx.isAuthenticated ? ctx.userId : undefined,
+    );
+    const enrichment = enrichments.get(userId);
 
     return {
       id: user.id,
       displayName: user.displayName || user.name || undefined,
       avatarUrl: user.avatarUrl || user.image || undefined,
-      followerCount: Number(followerCountResult?.count || 0),
-      followingCount: Number(followingCountResult?.count || 0),
-      isFollowedByMe,
+      followerCount: enrichment?.followerCount ?? 0,
+      followingCount: enrichment?.followingCount ?? 0,
+      isFollowedByMe: enrichment?.isFollowedByMe ?? false,
     };
   },
 };
