@@ -48,24 +48,27 @@
 /* Base styles */
 html {
   touch-action: manipulation;
-  background-color: var(--semantic-surface);
+  background-color: var(--semantic-surface) !important;
   scrollbar-width: thin;
   scrollbar-color: var(--neutral-300) var(--neutral-100);
+  min-height: 100dvh !important;
+  min-height: -webkit-fill-available !important;
+  overscroll-behavior-y: none;
 }
 
 body {
   margin: 0;
   padding: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  background-color: var(--semantic-surface);
+  background-color: var(--semantic-surface) !important;
   color: var(--neutral-800);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow-x: hidden;
-  max-width: 100vw;
-  min-height: 100dvh;
+  min-height: 100dvh !important;
+  min-height: -webkit-fill-available !important;
   display: flex;
   flex-direction: column;
+  overscroll-behavior-y: none;
 }
 
 /* Smooth transitions for interactive elements */

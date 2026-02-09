@@ -6,6 +6,8 @@ import MuiButton from '@mui/material/Button';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import TextField from '@mui/material/TextField';
+import BottomNavigation from '@mui/material/BottomNavigation';
+import BottomNavigationAction from '@mui/material/BottomNavigationAction';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import HomeOutlined from '@mui/icons-material/HomeOutlined';
 import FormatListBulletedOutlined from '@mui/icons-material/FormatListBulletedOutlined';
@@ -25,7 +27,6 @@ import { getLastUsedBoard } from '@/app/lib/last-used-board-db';
 import { getRecentSearches } from '@/app/components/search-drawer/recent-searches-storage';
 import BoardSelectorDrawer from '../board-selector-drawer/board-selector-drawer';
 import { BoardConfigData } from '@/app/lib/server-board-configs';
-import styles from './bottom-tab-bar.module.css';
 
 type Tab = 'home' | 'climbs' | 'library' | 'create';
 
@@ -47,6 +48,14 @@ const getActiveTab = (pathname: string): Tab => {
 };
 
 const INITIAL_PLAYLIST_FORM = { name: '', description: '', color: '' };
+
+const actionSx = {
+  color: themeTokens.neutral[400],
+  '&.Mui-selected': { color: themeTokens.colors.primary },
+  WebkitTapHighlightColor: 'transparent',
+  touchAction: 'manipulation',
+  minWidth: 'auto',
+};
 
 function BottomTabBar({ boardDetails, angle, boardConfigs }: BottomTabBarProps) {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -188,6 +197,23 @@ function BottomTabBar({ boardDetails, angle, boardConfigs }: BottomTabBarProps) 
     track('Bottom Tab Bar', { tab: 'create' });
   };
 
+  const handleTabChange = (_event: React.SyntheticEvent, newValue: Tab) => {
+    switch (newValue) {
+      case 'home':
+        handleHomeTab();
+        break;
+      case 'climbs':
+        handleClimbsTab();
+        break;
+      case 'library':
+        handleLibraryTab();
+        break;
+      case 'create':
+        handleCreateTab();
+        break;
+    }
+  };
+
   const handleOpenCreatePlaylist = () => {
     if (!isAuthenticated) {
       setShowAuthModal(true);
@@ -248,64 +274,47 @@ function BottomTabBar({ boardDetails, angle, boardConfigs }: BottomTabBarProps) 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playlistFormValues, createPlaylist, effectiveBoardDetails?.board_name, router, getPlaylistUrl, showMessage]);
 
-  const getTabColor = (tab: Tab) =>
-    activeTab === tab ? themeTokens.colors.primary : themeTokens.neutral[400];
-
   return (
     <>
-      <div className={styles.tabBar}>
-        {/* Home tab */}
-        <button
-          className={styles.tabItem}
-          onClick={handleHomeTab}
-          style={{ color: getTabColor('home') }}
-          aria-label="Home"
-          role="tab"
-          aria-selected={activeTab === 'home'}
-        >
-          <HomeOutlined style={{ fontSize: 20 }} />
-          <span className={styles.tabLabel}>Home</span>
-        </button>
-
-        {/* Climbs tab */}
-        <button
-          className={styles.tabItem}
-          onClick={handleClimbsTab}
-          style={{ color: getTabColor('climbs') }}
-          aria-label="Climbs"
-          role="tab"
-          aria-selected={activeTab === 'climbs'}
-        >
-          <FormatListBulletedOutlined style={{ fontSize: 20 }} />
-          <span className={styles.tabLabel}>Climb</span>
-        </button>
-
-        {/* Your Library tab */}
-        <button
-          className={styles.tabItem}
-          onClick={handleLibraryTab}
-          style={{ color: getTabColor('library') }}
-          aria-label="Your library"
-          role="tab"
-          aria-selected={activeTab === 'library'}
-        >
-          <LocalOfferOutlined style={{ fontSize: 20 }} />
-          <span className={styles.tabLabel}>Your Library</span>
-        </button>
-
-        {/* Create tab */}
-        <button
-          className={styles.tabItem}
-          onClick={handleCreateTab}
-          style={{ color: getTabColor('create') }}
-          aria-label="Create"
-          role="tab"
-          aria-selected={activeTab === 'create'}
-        >
-          <AddOutlined style={{ fontSize: 20 }} />
-          <span className={styles.tabLabel}>Create</span>
-        </button>
-      </div>
+      <BottomNavigation
+        value={activeTab}
+        onChange={handleTabChange}
+        showLabels
+        sx={{
+          background: 'rgba(255, 255, 255, 0.3)',
+          WebkitBackdropFilter: 'blur(5px)',
+          backdropFilter: 'blur(5px)',
+          borderRadius: `${themeTokens.borderRadius.xl}px`,
+          py: `${themeTokens.spacing[2]}px`,
+          height: 'auto',
+          '@media (min-width: 768px)': { display: 'none' },
+        }}
+      >
+        <BottomNavigationAction
+          label="Home"
+          icon={<HomeOutlined sx={{ fontSize: 20 }} />}
+          value="home"
+          sx={actionSx}
+        />
+        <BottomNavigationAction
+          label="Climb"
+          icon={<FormatListBulletedOutlined sx={{ fontSize: 20 }} />}
+          value="climbs"
+          sx={actionSx}
+        />
+        <BottomNavigationAction
+          label="Your Library"
+          icon={<LocalOfferOutlined sx={{ fontSize: 20 }} />}
+          value="library"
+          sx={actionSx}
+        />
+        <BottomNavigationAction
+          label="Create"
+          icon={<AddOutlined sx={{ fontSize: 20 }} />}
+          value="create"
+          sx={actionSx}
+        />
+      </BottomNavigation>
 
       {/* Create Menu Drawer */}
       <SwipeableDrawer
