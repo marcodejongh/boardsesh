@@ -16,7 +16,7 @@ import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import BoardConfigPreview from '../setup-wizard/board-config-preview';
 import { BoardConfigData } from '@/app/lib/server-board-configs';
 import { BoardName } from '@/app/lib/types';
-import { SUPPORTED_BOARDS, ANGLES } from '@/app/lib/board-data';
+import { SUPPORTED_BOARDS, ANGLES, getDefaultAngle } from '@/app/lib/board-data';
 import { getDefaultSizeForLayout } from '@/app/lib/__generated__/product-sizes-data';
 import { constructClimbListWithSlugs, constructBoardSlugListUrl } from '@/app/lib/url-utils';
 import { loadSavedBoards, saveBoardConfig, deleteBoardConfig, StoredBoardConfig } from '@/app/lib/saved-boards-db';
@@ -302,7 +302,7 @@ export default function BoardSelectorDrawer({
                     key={board.uuid}
                     board={board}
                     onSelect={() => {
-                      router.push(constructBoardSlugListUrl(board.slug, 40));
+                      router.push(constructBoardSlugListUrl(board.slug, getDefaultAngle(board.boardType)));
                       onClose();
                     }}
                   />

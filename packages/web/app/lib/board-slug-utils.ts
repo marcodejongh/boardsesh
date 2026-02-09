@@ -67,7 +67,8 @@ export const resolveBoardBySlug = cache(async (slug: string): Promise<ResolvedBo
 
     const data = await response.json();
     return data?.data?.boardBySlug ?? null;
-  } catch {
+  } catch (error) {
+    console.error('[resolveBoardBySlug] Failed to fetch board by slug:', error);
     return null;
   }
 });

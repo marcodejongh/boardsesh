@@ -125,6 +125,16 @@ export const ANGLES: Record<BoardName, Angle[]> = {
   moonboard: [...MOONBOARD_ANGLES],
 };
 
+/**
+ * Get the default angle for a given board type.
+ * Returns 40 for boards that support it, otherwise the first available angle.
+ */
+export function getDefaultAngle(boardType: string): number {
+  const angles = ANGLES[boardType as BoardName];
+  if (!angles || angles.length === 0) return 40;
+  return angles.includes(40 as Angle) ? 40 : angles[0];
+}
+
 // Unified grade system used by all boards
 // difficulty_id matches board_difficulty_grades table
 // font_grade is the Font/Fontainebleau grade (used for MoonBoard display)

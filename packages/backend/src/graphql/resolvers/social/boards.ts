@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { eq, and, count, isNull, sql, ilike, or, desc, inArray } from 'drizzle-orm';
+import { eq, and, count, isNull, sql, or, desc, inArray } from 'drizzle-orm';
 import type { ConnectionContext } from '@boardsesh/shared-schema';
 import { db } from '../../../db/client';
 import * as dbSchema from '@boardsesh/db/schema';
@@ -195,6 +195,137 @@ async function enrichBoard(
   };
 }
 
+/**
+ * Batch-enrich multiple boards with computed fields in 5 queries total,
+ * instead of 5 queries per board (N+1 prevention).
+ */
+async function batchEnrichBoards(
+  boards: (typeof dbSchema.userBoards.$inferSelect)[],
+  authenticatedUserId?: string,
+) {
+  if (boards.length === 0) return [];
+
+  const boardIds = boards.map((b) => b.id);
+  const boardUuids = boards.map((b) => b.uuid);
+  const ownerIds = [...new Set(boards.map((b) => b.ownerId))];
+
+  const [owners, tickStats, followerStats, commentStats, followChecks] = await Promise.all([
+    // Batch: get all owner profiles
+    db
+      .select({
+        id: dbSchema.users.id,
+        name: dbSchema.users.name,
+        image: dbSchema.users.image,
+        displayName: dbSchema.userProfiles.displayName,
+        avatarUrl: dbSchema.userProfiles.avatarUrl,
+      })
+      .from(dbSchema.users)
+      .leftJoin(dbSchema.userProfiles, eq(dbSchema.users.id, dbSchema.userProfiles.userId))
+      .where(inArray(dbSchema.users.id, ownerIds)),
+
+    // Batch: tick stats grouped by board
+    db
+      .select({
+        boardId: dbSchema.boardseshTicks.boardId,
+        totalAscents: count(),
+        uniqueClimbers: sql<number>`COUNT(DISTINCT ${dbSchema.boardseshTicks.userId})`,
+      })
+      .from(dbSchema.boardseshTicks)
+      .where(
+        and(
+          inArray(dbSchema.boardseshTicks.boardId, boardIds),
+          or(
+            eq(dbSchema.boardseshTicks.status, 'flash'),
+            eq(dbSchema.boardseshTicks.status, 'send'),
+          ),
+        )
+      )
+      .groupBy(dbSchema.boardseshTicks.boardId),
+
+    // Batch: follower counts grouped by board
+    db
+      .select({
+        boardUuid: dbSchema.boardFollows.boardUuid,
+        count: count(),
+      })
+      .from(dbSchema.boardFollows)
+      .where(inArray(dbSchema.boardFollows.boardUuid, boardUuids))
+      .groupBy(dbSchema.boardFollows.boardUuid),
+
+    // Batch: comment counts grouped by board
+    db
+      .select({
+        entityId: dbSchema.comments.entityId,
+        count: count(),
+      })
+      .from(dbSchema.comments)
+      .where(
+        and(
+          eq(dbSchema.comments.entityType, 'board'),
+          inArray(dbSchema.comments.entityId, boardUuids),
+          isNull(dbSchema.comments.deletedAt),
+        )
+      )
+      .groupBy(dbSchema.comments.entityId),
+
+    // Batch: follow check for authenticated user
+    authenticatedUserId
+      ? db
+          .select({ boardUuid: dbSchema.boardFollows.boardUuid })
+          .from(dbSchema.boardFollows)
+          .where(
+            and(
+              eq(dbSchema.boardFollows.userId, authenticatedUserId),
+              inArray(dbSchema.boardFollows.boardUuid, boardUuids),
+            )
+          )
+      : Promise.resolve([]),
+  ]);
+
+  // Build lookup maps
+  const ownerMap = new Map(owners.map((o) => [o.id, o]));
+  const tickStatsMap = new Map(tickStats.map((t) => [t.boardId, t]));
+  const followerStatsMap = new Map(followerStats.map((f) => [f.boardUuid, f]));
+  const commentStatsMap = new Map(commentStats.map((c) => [c.entityId, c]));
+  const followedUuids = new Set(followChecks.map((f) => f.boardUuid));
+
+  return boards.map((board) => {
+    const ownerInfo = ownerMap.get(board.ownerId);
+    const tickStat = tickStatsMap.get(board.id);
+    const followerStat = followerStatsMap.get(board.uuid);
+    const commentStat = commentStatsMap.get(board.uuid);
+
+    return {
+      uuid: board.uuid,
+      slug: board.slug,
+      ownerId: board.ownerId,
+      ownerDisplayName: ownerInfo?.displayName || ownerInfo?.name || undefined,
+      ownerAvatarUrl: ownerInfo?.avatarUrl || ownerInfo?.image || undefined,
+      boardType: board.boardType,
+      layoutId: Number(board.layoutId),
+      sizeId: Number(board.sizeId),
+      setIds: board.setIds,
+      name: board.name,
+      description: board.description,
+      locationName: board.locationName,
+      latitude: board.latitude,
+      longitude: board.longitude,
+      isPublic: board.isPublic,
+      isOwned: board.isOwned,
+      createdAt: board.createdAt.toISOString(),
+      layoutName: null,
+      sizeName: null,
+      sizeDescription: null,
+      setNames: null,
+      totalAscents: Number(tickStat?.totalAscents || 0),
+      uniqueClimbers: Number(tickStat?.uniqueClimbers || 0),
+      followerCount: Number(followerStat?.count || 0),
+      commentCount: Number(commentStat?.count || 0),
+      isFollowedByMe: followedUuids.has(board.uuid),
+    };
+  });
+}
+
 // ============================================
 // Queries
 // ============================================
@@ -290,9 +421,7 @@ export const socialBoardQueries = {
       .limit(limit)
       .offset(offset);
 
-    const enrichedBoards = await Promise.all(
-      boards.map((b) => enrichBoard(b, userId)),
-    );
+    const enrichedBoards = await batchEnrichBoards(boards, userId);
 
     return {
       boards: enrichedBoards,
@@ -324,12 +453,13 @@ export const socialBoardQueries = {
     }
 
     if (query) {
-      // Escape SQL LIKE wildcards to prevent wildcard injection
-      const escapedQuery = query.replace(/[%_\\]/g, '\\$&');
+      // Escape SQL LIKE wildcards using backslash as explicit escape character.
+      // Order matters: escape backslashes first so we don't double-escape.
+      const escapedQuery = query.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
       conditions.push(
         or(
-          ilike(dbSchema.userBoards.name, `%${escapedQuery}%`),
-          ilike(dbSchema.userBoards.locationName, `%${escapedQuery}%`),
+          sql`${dbSchema.userBoards.name} ILIKE ${'%' + escapedQuery + '%'} ESCAPE '\\'`,
+          sql`${dbSchema.userBoards.locationName} ILIKE ${'%' + escapedQuery + '%'} ESCAPE '\\'`,
         )!,
       );
     }
@@ -351,9 +481,7 @@ export const socialBoardQueries = {
       .limit(limit)
       .offset(offset);
 
-    const enrichedBoards = await Promise.all(
-      boards.map((b) => enrichBoard(b, ctx.isAuthenticated ? ctx.userId : undefined)),
-    );
+    const enrichedBoards = await batchEnrichBoards(boards, ctx.isAuthenticated ? ctx.userId : undefined);
 
     return {
       boards: enrichedBoards,

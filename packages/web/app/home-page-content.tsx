@@ -21,6 +21,7 @@ import { BoardConfigData } from '@/app/lib/server-board-configs';
 import ErrorBoundary from '@/app/components/error-boundary';
 import BoardSelectorPills from '@/app/components/board-entity/board-selector-pills';
 import { constructBoardSlugListUrl } from '@/app/lib/url-utils';
+import { getDefaultAngle } from '@/app/lib/board-data';
 import { useRouter } from 'next/navigation';
 import type { UserBoard } from '@boardsesh/shared-schema';
 import bottomBarStyles from '@/app/components/bottom-tab-bar/bottom-bar-wrapper.module.css';
@@ -43,8 +44,7 @@ export default function HomePageContent({ boardConfigs }: HomePageContentProps) 
   const router = useRouter();
 
   const handleBoardSelect = useCallback((board: UserBoard) => {
-    // Default angle 40 — boards don't store a preferred angle yet
-    router.push(constructBoardSlugListUrl(board.slug, 40));
+    router.push(constructBoardSlugListUrl(board.slug, getDefaultAngle(board.boardType)));
   }, [router]);
 
   // Determine if there's an active queue to show the QueueControlBar
