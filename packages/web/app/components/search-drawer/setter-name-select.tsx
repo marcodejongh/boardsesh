@@ -101,13 +101,13 @@ const SetterNameSelect = () => {
       renderInput={(params) => (
         <TextField
           {...params}
-          placeholder={selectedOptions.length === 0 ? 'Select setters...' : ''}
+          placeholder={selectedOptions.length === 0 ? 'Search setters...' : ''}
           slotProps={{
             input: {
               ...params.InputProps,
               endAdornment: (
                 <>
-                  {isLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                  {isLoading ? <CircularProgress color="inherit" size={16} /> : null}
                   {params.InputProps.endAdornment}
                 </>
               ),

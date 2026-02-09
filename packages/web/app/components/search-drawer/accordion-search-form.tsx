@@ -5,7 +5,6 @@ import MuiAlert from '@mui/material/Alert';
 import MuiTooltip from '@mui/material/Tooltip';
 import MuiTypography from '@mui/material/Typography';
 import MuiButton from '@mui/material/Button';
-import Box from '@mui/material/Box';
 import MuiSelect, { SelectChangeEvent } from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import MuiSwitch from '@mui/material/Switch';
@@ -90,46 +89,44 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
       content: (
         <div className={styles.panelContent}>
           <div className={styles.inputGroup}>
-            <MuiTypography variant="body2" component="span" fontWeight={600}>Climb Name</MuiTypography>
+            <span className={styles.fieldLabel}>Climb Name</span>
             <SearchClimbNameInput />
           </div>
 
           <div className={styles.inputGroup}>
-            <MuiTypography variant="body2" component="span" fontWeight={600}>Grade Range</MuiTypography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '0px 8px' }}>
-              <Box sx={{ width: '50%' }}>
-                <MuiSelect
-                  value={uiSearchParams.minGrade || 0}
-                  onChange={(e: SelectChangeEvent<number>) => handleGradeChange('min', e.target.value as number || undefined)}
-                  className={`${styles.fullWidth} ${minGradeBg ? styles.gradeSelectColored : ''}`}
-                  sx={minGradeBg ? { '--grade-bg': minGradeBg } as React.CSSProperties : undefined}
-                  size="small"
-                >
-                  <MenuItem value={0}>Any</MenuItem>
-                  {grades.map((grade) => (
-                    <MenuItem key={grade.difficulty_id} value={grade.difficulty_id}>
-                      {grade.difficulty_name}
-                    </MenuItem>
-                  ))}
-                </MuiSelect>
-              </Box>
-              <Box sx={{ width: '50%' }}>
-                <MuiSelect
-                  value={uiSearchParams.maxGrade || 0}
-                  onChange={(e: SelectChangeEvent<number>) => handleGradeChange('max', e.target.value as number || undefined)}
-                  className={`${styles.fullWidth} ${maxGradeBg ? styles.gradeSelectColored : ''}`}
-                  sx={maxGradeBg ? { '--grade-bg': maxGradeBg } as React.CSSProperties : undefined}
-                  size="small"
-                >
-                  <MenuItem value={0}>Any</MenuItem>
-                  {grades.map((grade) => (
-                    <MenuItem key={grade.difficulty_id} value={grade.difficulty_id}>
-                      {grade.difficulty_name}
-                    </MenuItem>
-                  ))}
-                </MuiSelect>
-              </Box>
-            </Box>
+            <span className={styles.fieldLabel}>Grade Range</span>
+            <div className={styles.gradeRow}>
+              <MuiSelect
+                value={uiSearchParams.minGrade || 0}
+                onChange={(e: SelectChangeEvent<number>) => handleGradeChange('min', e.target.value as number || undefined)}
+                className={`${styles.fullWidth} ${minGradeBg ? styles.gradeSelectColored : ''}`}
+                sx={minGradeBg ? { '--grade-bg': minGradeBg } as React.CSSProperties : undefined}
+                size="small"
+                displayEmpty
+              >
+                <MenuItem value={0}>Min</MenuItem>
+                {grades.map((grade) => (
+                  <MenuItem key={grade.difficulty_id} value={grade.difficulty_id}>
+                    {grade.difficulty_name}
+                  </MenuItem>
+                ))}
+              </MuiSelect>
+              <MuiSelect
+                value={uiSearchParams.maxGrade || 0}
+                onChange={(e: SelectChangeEvent<number>) => handleGradeChange('max', e.target.value as number || undefined)}
+                className={`${styles.fullWidth} ${maxGradeBg ? styles.gradeSelectColored : ''}`}
+                sx={maxGradeBg ? { '--grade-bg': maxGradeBg } as React.CSSProperties : undefined}
+                size="small"
+                displayEmpty
+              >
+                <MenuItem value={0}>Max</MenuItem>
+                {grades.map((grade) => (
+                  <MenuItem key={grade.difficulty_id} value={grade.difficulty_id}>
+                    {grade.difficulty_name}
+                  </MenuItem>
+                ))}
+              </MuiSelect>
+            </div>
           </div>
 
           {showTallClimbsFilter && (
@@ -140,6 +137,7 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
                 </MuiTooltip>
                 <MuiSwitch
                   size="small"
+                  color="primary"
                   checked={uiSearchParams.onlyTallClimbs}
                   onChange={(_, checked) => updateFilters({ onlyTallClimbs: checked })}
                 />
@@ -148,7 +146,7 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
           )}
 
           <div className={styles.inputGroup}>
-            <MuiTypography variant="body2" component="span" fontWeight={600}>Setter</MuiTypography>
+            <span className={styles.fieldLabel}>Setter</span>
             <SetterNameSelect />
           </div>
 
@@ -164,33 +162,29 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
 
           {showSort && (
             <div className={styles.inputGroup}>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '0px 8px' }}>
-                <Box sx={{ width: '58.33%' }}>
-                  <MuiSelect
-                    value={uiSearchParams.sortBy}
-                    onChange={(e) => updateFilters({ sortBy: e.target.value as typeof uiSearchParams.sortBy })}
-                    className={styles.fullWidth}
-                    size="small"
-                  >
-                    <MenuItem value="ascents">Ascents</MenuItem>
-                    <MenuItem value="popular">Popular</MenuItem>
-                    <MenuItem value="difficulty">Difficulty</MenuItem>
-                    <MenuItem value="name">Name</MenuItem>
-                    <MenuItem value="quality">Quality</MenuItem>
-                  </MuiSelect>
-                </Box>
-                <Box sx={{ width: '41.67%' }}>
-                  <MuiSelect
-                    value={uiSearchParams.sortOrder}
-                    onChange={(e) => updateFilters({ sortOrder: e.target.value as typeof uiSearchParams.sortOrder })}
-                    className={styles.fullWidth}
-                    size="small"
-                  >
-                    <MenuItem value="desc">Desc</MenuItem>
-                    <MenuItem value="asc">Asc</MenuItem>
-                  </MuiSelect>
-                </Box>
-              </Box>
+              <div className={styles.sortRow}>
+                <MuiSelect
+                  value={uiSearchParams.sortBy}
+                  onChange={(e) => updateFilters({ sortBy: e.target.value as typeof uiSearchParams.sortBy })}
+                  className={styles.fullWidth}
+                  size="small"
+                >
+                  <MenuItem value="ascents">Ascents</MenuItem>
+                  <MenuItem value="popular">Popular</MenuItem>
+                  <MenuItem value="difficulty">Difficulty</MenuItem>
+                  <MenuItem value="name">Name</MenuItem>
+                  <MenuItem value="quality">Quality</MenuItem>
+                </MuiSelect>
+                <MuiSelect
+                  value={uiSearchParams.sortOrder}
+                  onChange={(e) => updateFilters({ sortOrder: e.target.value as typeof uiSearchParams.sortOrder })}
+                  className={styles.fullWidth}
+                  size="small"
+                >
+                  <MenuItem value="desc">Desc</MenuItem>
+                  <MenuItem value="asc">Asc</MenuItem>
+                </MuiSelect>
+              </div>
             </div>
           )}
 
@@ -205,39 +199,35 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
       getSummary: () => getQualityPanelSummary(uiSearchParams),
       content: (
         <div className={styles.panelContent}>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '12px 12px' }}>
-            <Box sx={{ width: '50%' }}>
-              <div className={styles.compactInputGroup}>
-                <MuiTypography variant="body2" component="span">Min Ascents</MuiTypography>
-                <TextField
-                  type="number"
-                  slotProps={{ htmlInput: { min: 1 } }}
-                  value={uiSearchParams.minAscents ?? ''}
-                  onChange={(e) => updateFilters({ minAscents: Number(e.target.value) || undefined })}
-                  className={styles.fullWidth}
-                  placeholder="Any"
-                  size="small"
-                />
-              </div>
-            </Box>
-            <Box sx={{ width: '50%' }}>
-              <div className={styles.compactInputGroup}>
-                <MuiTypography variant="body2" component="span">Min Rating</MuiTypography>
-                <TextField
-                  type="number"
-                  slotProps={{ htmlInput: { min: 1.0, max: 3.0, step: 0.1 } }}
-                  value={uiSearchParams.minRating ?? ''}
-                  onChange={(e) => updateFilters({ minRating: Number(e.target.value) || undefined })}
-                  className={styles.fullWidth}
-                  placeholder="Any"
-                  size="small"
-                />
-              </div>
-            </Box>
-          </Box>
+          <div className={styles.qualityRow}>
+            <div className={styles.compactInputGroup}>
+              <span className={styles.fieldLabel}>Min Ascents</span>
+              <TextField
+                type="number"
+                slotProps={{ htmlInput: { min: 1 } }}
+                value={uiSearchParams.minAscents ?? ''}
+                onChange={(e) => updateFilters({ minAscents: Number(e.target.value) || undefined })}
+                className={styles.fullWidth}
+                placeholder="Any"
+                size="small"
+              />
+            </div>
+            <div className={styles.compactInputGroup}>
+              <span className={styles.fieldLabel}>Min Rating</span>
+              <TextField
+                type="number"
+                slotProps={{ htmlInput: { min: 1.0, max: 3.0, step: 0.1 } }}
+                value={uiSearchParams.minRating ?? ''}
+                onChange={(e) => updateFilters({ minRating: Number(e.target.value) || undefined })}
+                className={styles.fullWidth}
+                placeholder="Any"
+                size="small"
+              />
+            </div>
+          </div>
 
           <div className={styles.inputGroup}>
-            <MuiTypography variant="body2" component="span">Grade Accuracy</MuiTypography>
+            <span className={styles.fieldLabel}>Grade Accuracy</span>
             <MuiSelect
               value={uiSearchParams.gradeAccuracy ?? 0}
               onChange={(e) => updateFilters({ gradeAccuracy: (e.target.value as number) || undefined })}
@@ -256,6 +246,7 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
               <MuiTypography variant="body2" component="span">Classics Only</MuiTypography>
               <MuiSwitch
                 size="small"
+                color="primary"
                 checked={uiSearchParams.onlyClassics}
                 onChange={(_, checked) => updateFilters({ onlyClassics: checked })}
               />
@@ -297,6 +288,7 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
                 <MuiTypography variant="body2" component="span">Hide Attempted</MuiTypography>
                 <MuiSwitch
                   size="small"
+                  color="primary"
                   checked={uiSearchParams.hideAttempted}
                   onChange={(_, checked) => updateFilters({ hideAttempted: checked })}
                 />
@@ -305,6 +297,7 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
                 <MuiTypography variant="body2" component="span">Hide Completed</MuiTypography>
                 <MuiSwitch
                   size="small"
+                  color="primary"
                   checked={uiSearchParams.hideCompleted}
                   onChange={(_, checked) => updateFilters({ hideCompleted: checked })}
                 />
@@ -313,6 +306,7 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
                 <MuiTypography variant="body2" component="span">Only Attempted</MuiTypography>
                 <MuiSwitch
                   size="small"
+                  color="primary"
                   checked={uiSearchParams.showOnlyAttempted}
                   onChange={(_, checked) => updateFilters({ showOnlyAttempted: checked })}
                 />
@@ -321,6 +315,7 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
                 <MuiTypography variant="body2" component="span">Only Completed</MuiTypography>
                 <MuiSwitch
                   size="small"
+                  color="primary"
                   checked={uiSearchParams.showOnlyCompleted}
                   onChange={(_, checked) => updateFilters({ showOnlyCompleted: checked })}
                 />
