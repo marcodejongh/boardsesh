@@ -57,7 +57,7 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
   return (
     <div className={styles.holdSearchForm}>
       <div className={styles.holdSearchHeaderCompact}>
-        <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
+        <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', alignItems: 'center' }}>
           <MuiTypography variant="body2" component="span" color="text.secondary">Tap to:</MuiTypography>
           <MuiSelect
             value={selectedState}
@@ -70,19 +70,19 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
               });
             }}
             size="small"
-            sx={{ width: 110 }}
+            sx={{ minWidth: 120 }}
           >
             {stateItems.map(item => (
               <MenuItem key={item.value} value={item.value}>
-                <Stack direction="row" spacing={0.5}>
+                <Stack direction="row" spacing={0.5} alignItems="center">
                   {item.icon}
                   {item.label}
                 </Stack>
               </MenuItem>
             ))}
           </MuiSelect>
-          {anyHoldsCount > 0 && <Chip label={`${anyHoldsCount} in`} size="small" sx={{ bgcolor: themeTokens.colors.primary, color: 'common.white', margin: 0 }} />}
-          {notHoldsCount > 0 && <Chip label={`${notHoldsCount} out`} size="small" sx={{ bgcolor: themeTokens.colors.error, color: 'common.white', margin: 0 }} />}
+          {anyHoldsCount > 0 && <Chip label={`${anyHoldsCount} included`} size="small" sx={{ bgcolor: themeTokens.colors.primary, color: 'common.white' }} />}
+          {notHoldsCount > 0 && <Chip label={`${notHoldsCount} excluded`} size="small" sx={{ bgcolor: themeTokens.colors.error, color: 'common.white' }} />}
         </Stack>
       </div>
 

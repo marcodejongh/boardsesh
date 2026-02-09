@@ -89,13 +89,41 @@
 .holdSearchForm {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
 }
 
 .holdSearchHeaderCompact {
   display: flex;
   align-items: center;
-  padding: 8px 0;
+  padding: 4px 0;
+}
+
+/* Scoped MUI overrides for hold search select */
+.holdSearchHeaderCompact :global(.MuiOutlinedInput-root) {
+  background-color: var(--neutral-50, #F9FAFB);
+  border-radius: 12px;
+  transition: background-color 200ms ease, box-shadow 200ms ease;
+}
+
+.holdSearchHeaderCompact :global(.MuiOutlinedInput-root:hover) {
+  background-color: var(--neutral-100, #F3F4F6);
+}
+
+.holdSearchHeaderCompact :global(.MuiOutlinedInput-root.Mui-focused) {
+  background-color: var(--semantic-surface, #FFFFFF);
+  box-shadow: 0 0 0 2px var(--color-primary, #8C4A52);
+}
+
+.holdSearchHeaderCompact :global(.MuiOutlinedInput-notchedOutline) {
+  border-color: transparent;
+}
+
+.holdSearchHeaderCompact :global(.MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline) {
+  border-color: transparent;
+}
+
+.holdSearchHeaderCompact :global(.MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline) {
+  border-color: transparent;
 }
 
 .boardContainer {
