@@ -27,7 +27,7 @@ export const muiTheme = createTheme({
       main: themeTokens.neutral[500],
     },
     background: {
-      default: themeTokens.semantic.background,
+      default: themeTokens.semantic.surface,
       paper: themeTokens.semantic.surface,
     },
     text: {
@@ -173,6 +173,19 @@ export const muiTheme = createTheme({
         paper: {
           borderRadius: themeTokens.borderRadius.lg,
         },
+        paperAnchorBottom: {
+          borderRadius: `${themeTokens.borderRadius.lg}px ${themeTokens.borderRadius.lg}px 0 0`,
+          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+        },
+        paperAnchorLeft: {
+          borderRadius: `0 ${themeTokens.borderRadius.lg}px ${themeTokens.borderRadius.lg}px 0`,
+        },
+        paperAnchorRight: {
+          borderRadius: `${themeTokens.borderRadius.lg}px 0 0 ${themeTokens.borderRadius.lg}px`,
+        },
+        paperAnchorTop: {
+          borderRadius: `0 0 ${themeTokens.borderRadius.lg}px ${themeTokens.borderRadius.lg}px`,
+        },
       },
     },
     MuiDialog: {
@@ -267,6 +280,18 @@ export const muiTheme = createTheme({
       styleOverrides: {
         paper: {
           borderRadius: themeTokens.borderRadius.md,
+        },
+      },
+    },
+    MuiBottomNavigationAction: {
+      styleOverrides: {
+        label: {
+          fontSize: '10px',
+          marginTop: '2px',
+          lineHeight: 1,
+          '&.Mui-selected': {
+            fontSize: '10px',
+          },
         },
       },
     },

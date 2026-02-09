@@ -19,6 +19,7 @@ import { BluetoothProvider } from '@/app/components/board-bluetooth-control/blue
 import { UISearchParamsProvider } from '@/app/components/queue-control/ui-searchparams-provider';
 import LastUsedBoardTracker from '@/app/components/board-page/last-used-board-tracker';
 import { getAllBoardConfigs } from '@/app/lib/server-board-configs';
+import layoutStyles from './layout.module.css';
 
 // Helper to get board details for any board type
 function getBoardDetailsUniversal(parsedParams: ParsedBoardRouteParameters): BoardDetails {
@@ -196,7 +197,7 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
                     </Suspense>
                   </main>
 
-                  <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 10 }}>
+                  <div className={layoutStyles.bottomBarWrapper} data-testid="bottom-bar-wrapper">
                     <QueueControlBar boardDetails={boardDetails} angle={angle} />
                     <BottomTabBar boardDetails={boardDetails} angle={angle} boardConfigs={boardConfigs} />
                   </div>
